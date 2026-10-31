@@ -565,6 +565,39 @@ async def wave_cockpit(
     return await load_cockpit(db, str(tenant.id), await _load_wave(db, tenant.id, wave_id))
 
 
+_NOT_GO = {"no_go": "no-go", "at_risk": "at risk"}
+
+
+def signoff_refusal(cockpit: dict) -> dict:
+    """The 409 body of a refused sign-off (F18): the sentence, the wave's verdict and one reason per object that is
+    not go, with what holds it (blocking gaps, records blocked, the score against the wave's threshold) and where to
+    open it, so the screen lists them instead of a toast."""
+    from api.services import app_links
+
+    th = cockpit.get("threshold")
+    reasons = []
+    for o in cockpit.get("objects") or []:
+        if o["verdict"] == "go":
+            continue
+        why = []
+        if o.get("score") is None and o["verdict"] == "no_go":
+            why.append("not analysed for this wave")
+        if o.get("blocker_count"):
+            why.append(f"{o['blocker_count']} blocking gaps")
+        if o.get("records_blocked"):
+            why.append(f"{o['records_blocked']} records blocked")
+        if th is not None and o.get("dqs") is not None and o["dqs"] < th:
+            why.append(f"score {o['dqs']:.1f} under the wave's threshold {th:.1f}")
+        reason = "; ".join(why) or "conditional fixes needed"
+        reasons.append({"module": o["module"], "label": o["label"], "verdict": o["verdict"], "reason": reason,
+                        "sentence": f"{o['label']} is {_NOT_GO.get(o['verdict'], o['verdict'])}: {reason}.",
+                        "blocker_count": o.get("blocker_count") or 0, "records_blocked": o.get("records_blocked") or 0,
+                        "score": o.get("score"), "dqs": o.get("dqs"), "threshold": th,
+                        "href": app_links.object_page(o["module"], "readiness")})
+    return {"detail": "Only a wave with a go verdict can be signed off.", "verdict": cockpit["verdict"],
+            "reasons": reasons}
+
+
 @router.post("/waves/{wave_id}/signoff")
 async def signoff_wave(
     wave_id: uuid.UUID,
@@ -584,7 +617,7 @@ async def signoff_wave(
         raise HTTPException(status_code=409, detail="This wave is already signed off.")
     cockpit = await load_cockpit(db, str(tenant.id), w)
     if cockpit["verdict"] != "go":
-        raise HTTPException(status_code=409, detail="Only a wave with a go verdict can be signed off.")
+        raise HTTPException(status_code=409, detail=signoff_refusal(cockpit))
     uid = current_user_id(request)
     row = (await db.execute(text(f"""
         UPDATE migration_waves SET signed_off_by = :u, signed_off_at = now(), updated_at = now()
@@ -731,7 +764,10 @@ async def blocker_fix_batch(
     uid, label = current_user_id(request), current_user_label()
     out = await db.run_sync(lambda s: remediation.draft_batch(s, str(tenant.id), name, body.model_dump_json(),
                                                               issues, uid, label))
+    from api.services import handoff_notices  # the owners of its objects are told it waits (inbox and email)
+    mails = await db.run_sync(lambda s: handoff_notices.batch_waiting(s, str(tenant.id), str(out["id"])))
     await db.commit()
+    handoff_notices.dispatch(mails)
     return out
 
 

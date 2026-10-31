@@ -5,12 +5,13 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExt
 import { usePathname, useRouter } from "next/navigation";
 import { AuthGuard } from "../auth/Guard";
 import { useAuth } from "@/context/auth-context";
-import { usePreferencesSync } from "@/hooks/use-preferences";
+import { usePreferences, usePreferencesSync } from "@/hooks/use-preferences";
 import { PermissionsProvider } from "@/lib/permissions";
 import { RequestAccessHost } from "../RequestAccess";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { createDispatcher, gridRegistry, ledgerRegistry, type GoDestination, type KeyContext } from "@/lib/v2/keys";
-import { useOpenItem, usePhone, useV2Href } from "@/lib/v2/hooks";
+import { useOpenItem, usePhone, useV2Href, useV2Session } from "@/lib/v2/hooks";
+import { DensityContext, resolveDensity } from "@/lib/v2/density";
 import { useApplyKeyHints } from "@/lib/v2/prefs";
 import { readPrefs, subscribePreferences } from "@/lib/preferences";
 import { t, useCatalogueVersion, useInterfaceLang } from "@/lib/v2/i18n";
@@ -153,11 +154,17 @@ function Chrome({ children, fixture }: { children: ReactNode; fixture: boolean }
   const theme = useTenantTheme();
   useDocumentLang(tag);
   const grid = useGridOverlay();
+  // Density: the person's choice in Preferences, else their role's (compact for stewards and Basis).
+  const { prefs } = usePreferences();
+  const { persona } = useV2Session();
+  const density = resolveDensity(prefs.density, persona);
   return (
-    <div className="m2-root" data-m2="" data-fixture={fixture ? "1" : undefined} data-grid={grid ? "" : undefined} lang={tag} {...themeRootProps(theme)}>
-      <ToastProvider>
-        <ChromeBody>{children}</ChromeBody>
-      </ToastProvider>
+    <div className="m2-root" data-m2="" data-fixture={fixture ? "1" : undefined} data-grid={grid ? "" : undefined} data-density={density} lang={tag} {...themeRootProps(theme)}>
+      <DensityContext.Provider value={density}>
+        <ToastProvider>
+          <ChromeBody>{children}</ChromeBody>
+        </ToastProvider>
+      </DensityContext.Provider>
       <GridOverlay on={grid} />
     </div>
   );

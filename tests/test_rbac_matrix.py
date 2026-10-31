@@ -83,7 +83,8 @@ def test_every_mutating_route_is_guarded():
 
 def test_audit_reads_accept_view_audit_or_manage_users():
     src = (ROOT / "api" / "routes" / "audit.py").read_text()
-    assert src.count('require_any_permission("view_audit", "manage_users")') == 4
+    # the log, its export, its summary and its actors (the Who filter, F25)
+    assert src.count('require_any_permission("view_audit", "manage_users")') == 5
     assert 'require_permission("manage_users")' not in src
     assert has_permission("auditor", "view_audit") and not has_permission("auditor", "manage_users")
 

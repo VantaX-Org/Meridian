@@ -274,7 +274,7 @@ interface Done {
 export interface FxBatch {
   id: string;
   name: string;
-  status: "draft" | "approved" | "exported";
+  status: "draft" | "approved" | "awaiting_load" | "exported";
   created_by: string;
   created_by_label: string;
   steward_label: string | null;
@@ -876,6 +876,22 @@ export function sendBatchFixture(id: string): SendResult {
     state.delta = add(state.delta, delta);
   }
   return { filename: `remediation-cockpit_xlsx-${id}.xlsx`, sha256: "9f2c4e1a7b3d58e0c6a14f92d7b05e38a1c4d6f90b2e7a35c8d1f4b60a93e27c", records: b.items, job_id: null };
+}
+
+/** POST /remediation/batches/{id}/loaded: the load file was loaded in SAP; awaiting_load becomes exported. */
+export function loadedBatchFixture(id: string): Record<string, never> {
+  const b = findBatch(id);
+  if (b.status === "exported") fail(409, "This batch is already sent to SAP.");
+  if (b.status !== "awaiting_load") fail(409, `This batch is ${b.status}: only a batch whose load file waits for the SAP load can be confirmed.`);
+  if (b.created_by === ME_ID) fail(403, "The batch creator cannot confirm its load; a second person does.");
+  b.status = "exported";
+  b.events = [...b.events, { action: "loaded", user_label: ME_LABEL, at: "2026-10-16T10:00:00Z", note: null }];
+  return {};
+}
+
+/** Tests only: put a fixture batch into a status, e.g. awaiting_load, without the moves an export makes. */
+export function setFixtureBatchStatus(id: string, status: "draft" | "approved" | "awaiting_load" | "exported"): void {
+  findBatch(id).status = status;
 }
 
 /*

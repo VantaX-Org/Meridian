@@ -27,7 +27,7 @@ from sqlalchemy import text
 
 log = logging.getLogger("meridian.work_counts")
 
-OPEN = ("to_fix", "proposed", "approved", "sent")  # api/routes/work.py OPEN
+OPEN = ("to_fix", "proposed", "approved", "awaiting_load", "sent")  # api/routes/work.py OPEN
 SEVERITY_NAMES = ("critical", "high", "medium", "low")
 SEV_NAME_SQL = ("CASE {c} WHEN 0 THEN 'critical' WHEN 1 THEN 'high' WHEN 2 THEN 'medium' WHEN 3 THEN 'low' "
                 "ELSE 'info' END")

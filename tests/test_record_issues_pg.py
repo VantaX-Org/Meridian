@@ -696,6 +696,8 @@ def test_baseline_monitor_drafts_regressions(app_engine, monkeypatch):
                        "(:a, :t, 'a@x', 'A', 'steward'), (:b, :t, 'b@x', 'B', 'steward')"), {"a": accepter, "b": approver, "t": tid})
         c.execute(text("INSERT INTO remediation_events (tenant_id, batch_id, user_id, user_label, action) "
                        "VALUES (:t, :b, :u, 'a@x', 'accepted')"), {"t": tid, "b": batch.id, "u": accepter})
+        # the steward enters the value: a change without one is never approved (F12)
+        c.execute(text("UPDATE remediation_items SET proposed_value = 'NEW' WHERE batch_id = :b"), {"b": batch.id})
 
     aeng = create_async_engine(app.url.set(drivername="postgresql+asyncpg"))
     factory = async_sessionmaker(aeng, expire_on_commit=False)

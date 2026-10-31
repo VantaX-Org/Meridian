@@ -35,6 +35,24 @@ class GateRefused(Exception):
         self.reasons = reasons
 
 
+def refusal(reasons: list[dict], detail: str = "The wave is not ready to certify.") -> dict:
+    """The 409 body of a refused certificate (F18): the sentence, the objects as before (``objects``), and
+    ``reasons``, one per object with its label, the reason in words, the rules in the way and where to open each."""
+    from api.services import app_links
+    from api.services.migration import object_label
+
+    out = []
+    for r in reasons:
+        m = r.get("module")
+        rules = list(r.get("rules") or [])
+        out.append({"module": m, "label": object_label(m) if m else None, "reason": r["reason"],
+                    "sentence": (f"{object_label(m)}: {r['reason']}" + (f" ({', '.join(rules)})" if rules else ""))
+                    if m else r["reason"].capitalize() + ".",
+                    "rules": [{"check_id": c, "href": app_links.rule(c)} for c in rules],
+                    "href": app_links.object_page(m) if m else None})
+    return {"detail": detail, "objects": reasons, "reasons": out}
+
+
 def canonical(content: dict) -> bytes:
     return json.dumps(content, sort_keys=True, separators=(",", ":"), default=str).encode()
 

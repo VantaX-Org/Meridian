@@ -10,7 +10,7 @@
 .m2-root .m2-pop-cmp { display: flex; gap: var(--m2-s2); align-items: center; flex-wrap: wrap; margin-top: var(--m2-s3); }
 .m2-root .m2-cta .m2-pop-cmp { margin-top: 0; }
 .m2-root .m2-pop-cmp label { color: var(--m2-meta); }
-.m2-root .m2-sel { height: var(--m2-row-h); max-width: 100%; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-fg); font: inherit; font-size: var(--m2-fs-13); padding: 0 var(--m2-s2); }
+.m2-root .m2-sel { height: 32px; max-width: 100%; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-fg); font: inherit; font-size: var(--m2-fs-13); padding: 0 var(--m2-s2); }
 .m2-root .m2-tl-box { width: 100%; min-width: 0; }
 .m2-root .m2-tl { display: block; max-width: 100%; height: auto; overflow: visible; }
 .m2-root .m2-tl-ax { stroke: var(--m2-line-2); stroke-width: 1; }
@@ -48,11 +48,6 @@
 .m2-root .m2-tbl td.m2-up, .m2-root .m2-tbl td.m2-dn { font-weight: 500; }
 .m2-only-narrow { display: none; }
 
-/* Diverging bar of a score change: the zero line in the middle, green to the right, red to the left, sign beside it */
-.m2-root .m2-dbar { display: block; }
-.m2-root .m2-dbar .m2-z { stroke: var(--m2-ink-3); stroke-width: 1; }
-.m2-root .m2-dbar .m2-up { fill: var(--m2-pass); }
-.m2-root .m2-dbar .m2-dn { fill: var(--m2-crit); }
 .m2-root .m2-chg-v { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--m2-s2); }
 
 /* "What changed": four lists side by side, one column on a phone */
@@ -94,3 +89,5 @@
   .m2-only-narrow { display: block; }
   .m2-root .m2-tlpop { left: 8px !important; right: 8px; width: auto; }
 }
+.m2-root .m2-runshape { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--m2-s6) var(--m2-s8); align-items: start; }
+@media (max-width: 900px) { .m2-root .m2-runshape { grid-template-columns: minmax(0, 1fr); } }

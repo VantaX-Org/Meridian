@@ -7,7 +7,7 @@ import { downloadBlob } from "./download";
 /** The run to read, or (none) the current state. */
 const scoped = (version_id?: string) => (version_id ? { version_id } : { scope: "current" as const });
 
-export type WorkStatus = "to_fix" | "proposed" | "approved" | "sent" | "not_an_issue" | "fixed";
+export type WorkStatus = "to_fix" | "proposed" | "approved" | "awaiting_load" | "sent" | "not_an_issue" | "fixed";
 export type WorkSeverity = "critical" | "high" | "medium" | "low" | "info";
 export type WorkAction = "accept" | "edit" | "not_an_issue" | "accept_risk" | "undo" | "assign" | "comment";
 

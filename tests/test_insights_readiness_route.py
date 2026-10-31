@@ -76,7 +76,8 @@ async def test_readiness_reads_wave_rows_and_is_tenant_isolated(two_tenants, mon
         r = await client.get("/api/v1/insights/readiness", headers=headers)
     assert r.status_code == 200
     assert r.json()["cells"] == [{"module": "material_master", "wave": "Wave 1", "verdict": "no_go",
-                                  "blocker_count": 0, "dqs": None, "score": None, "records_blocked": 0}]
+                                  "blocker_count": 0, "dqs": None, "score": None, "records_blocked": 0,
+                                  "threshold": 75.0}]  # the wave's one threshold: here the tenant's (F16)
 
     _patch_tenant(monkeypatch, t2)
     await api_deps.engine.dispose()

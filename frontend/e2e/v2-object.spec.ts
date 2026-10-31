@@ -211,7 +211,7 @@ for (const size of SIZES) {
         await expect(chart.getByTestId("cap-line")).toHaveAttribute("data-level", "70");
         await expect(chart.getByTestId("baseline-rule")).toBeAttached(); // a vertical rule has no width, so it is attached rather than "visible"
         expect(await chart.getByTestId("baseline-rule").evaluate((el) => getComputedStyle(el).strokeWidth)).toBe("1px");
-        await expect(chart.locator("circle")).toHaveCount(0);
+        await expect(chart.locator("circle.m2-end")).toHaveCount(1); // the last run, named in ink beside its end dot
         const dash = await chart.getByTestId("cap-line").evaluate((el) => getComputedStyle(el).strokeDasharray);
         expect(dash).not.toBe("none");
         const width = await chart.getByTestId("score-line").evaluate((el) => getComputedStyle(el).strokeWidth);

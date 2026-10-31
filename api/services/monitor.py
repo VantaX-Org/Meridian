@@ -49,7 +49,7 @@ _ISSUES_SQL = """
        AND NOT EXISTS (SELECT 1 FROM remediation_items i JOIN remediation_batches rb ON rb.id = i.batch_id
                         WHERE i.issue_id = ri.id
                           AND (rb.status IN ('draft', 'approved')
-                               OR (rb.status = 'exported' AND i.recon_status IS NULL)))
+                               OR (rb.status IN ('awaiting_load', 'exported') AND i.recon_status IS NULL)))
      LIMIT :lim
 """
 

@@ -189,7 +189,7 @@ export interface RunList {
   total?: number;
 }
 
-export type WorkStatus = "to_fix" | "proposed" | "approved" | "sent" | "not_an_issue" | "fixed";
+export type WorkStatus = "to_fix" | "proposed" | "approved" | "awaiting_load" | "sent" | "not_an_issue" | "fixed";
 
 /** One row of GET /work/records. `value_at_risk` is the step 0 addition; absent on a server from before it. */
 export interface WorkRow {

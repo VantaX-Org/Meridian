@@ -1,8 +1,10 @@
 """Remediation batches — fix files for a human-controlled SAP load.
 
 draft (steward edits proposed values; a second person may bulk-accept the
-high-confidence auto_fix proposals) → approved (a second person) → exported
-(Migration Cockpit staging XLSX/CSV or a generic LSMW / mass-change CSV).
+high-confidence auto_fix proposals) → approved (a second person) → awaiting_load
+(the load file is exported: Migration Cockpit staging XLSX/CSV or a generic LSMW /
+mass-change CSV) → exported, read "Sent to SAP" (an approver or SAP Basis confirmed
+the load: POST /batches/{id}/loaded; or live write-back committed it by BAPI).
 Meridian never posts to SAP; see api/services/remediation.py.
 """
 
@@ -19,8 +21,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _row, _rls, _where
-from api.services import attention, remediation, undo, webhooks, worklist
-from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
+from api.services import attention, handoff_notices, remediation, undo, webhooks, workflow, worklist
+from api.services.rbac import (current_user_id, current_user_label, require_any_permission, require_permission,
+                               scope_from_path)
 
 router = APIRouter(prefix="/api/v1/remediation", tags=["remediation"])
 
@@ -89,7 +92,8 @@ _EXTRAS_SQL = """
 async def _batch_extras(db: AsyncSession, tenant: Tenant, batches: list[dict]) -> dict[str, dict]:
     """Per batch (one read for all of them, no query per batch): ``records`` (distinct records with an item),
     ``value_at_risk`` (each record's attribution as the work API sums it: every failing check's cost at risk shared over
-    the records it fails on, read from the record's latest work row; None when no check is priced), ``steward_label``
+    the records it fails on, read from the record's latest work row; None when no check is priced), ``verification``
+    (the latest run's verdict: run, fixed, still failing; None before a run covered the batch), ``steward_label``
     (the creator's display name) and ``due_at`` (the batch's creation time plus the SLA policy of its highest severity,
     in business hours when the policy says so; None without a policy or a severity)."""
     if not batches:
@@ -98,7 +102,11 @@ async def _batch_extras(db: AsyncSession, tenant: Tenant, batches: list[dict]) -
 
     from api.services import triage
     t = str(tenant.id)
-    rows = {r["id"]: r for r in (await db.execute(text(_EXTRAS_SQL), {"t": t, "ids": [str(b["id"]) for b in batches]})).mappings().all()}
+    ids = [str(b["id"]) for b in batches]
+    rows = {r["id"]: r for r in (await db.execute(text(_EXTRAS_SQL), {"t": t, "ids": ids})).mappings().all()}
+    from api.services import batch_verification
+    verdicts = batch_verification.latest((await db.execute(text(batch_verification.LATEST_SQL),
+                                                           {"t": t, "ids": ids})).mappings().all())
     pols = (await db.execute(text("SELECT severity, module, resolve_minutes, business_hours, at_risk_pct, ack_minutes FROM sla_policies "
                                   "WHERE tenant_id = CAST(:t AS uuid)"), {"t": t})).mappings().all()
     cal = None
@@ -123,6 +131,8 @@ async def _batch_extras(db: AsyncSession, tenant: Tenant, batches: list[dict]) -
             "value_at_risk": round(float(r["value_at_risk"]), 2) if r and r["value_at_risk"] is not None else None,
             "due_at": due.isoformat() if due else None,
             "steward_label": r["steward_label"] if r else b.get("created_by_label"),
+            # the latest run's verdict on the batch's records (F09), None before a run has covered them
+            "verification": verdicts.get(str(b["id"])),
         }
     return out
 
@@ -130,10 +140,17 @@ async def _batch_extras(db: AsyncSession, tenant: Tenant, batches: list[dict]) -
 async def _items(db: AsyncSession, batch_id) -> list[dict]:
     rows = await db.execute(text("SELECT * FROM remediation_items WHERE batch_id = :id "
                                  "ORDER BY module, check_id, record_key"), {"id": batch_id})
-    return [{**(i := _row(r)), "auto_approvable": _auto_approvable(i)} for r in rows.fetchall()]
+    return [{**(i := _row(r)), "auto_approvable": _auto_approvable(i),
+             "no_value": not remediation.has_value(i.get("proposed_value"))} for r in rows.fetchall()]
 
 
 _auto_approvable = remediation.auto_approvable
+
+
+async def _tell_owners(db: AsyncSession, tenant: Tenant, batch_id) -> list:
+    """The batch waits for approval: its objects' owners and their deputies are told (inbox and email), once per
+    batch and round. Returns the emails to queue after the commit (api/services/handoff_notices.py)."""
+    return await db.run_sync(lambda s: handoff_notices.batch_waiting(s, str(tenant.id), str(batch_id)))
 
 
 async def _event(db, tenant, batch_id, action, request, item_ids=None, to_value=None):
@@ -190,7 +207,9 @@ async def create_batch(
     await db.run_sync(lambda s: notify_batch_waiting_sync(s, str(tenant.id), str(out["id"]), body.name,
                                                           [i["module"] for i in issues], uid))
     await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(out["id"]), "batch.waiting"))
+    mails = await _tell_owners(db, tenant, out["id"])
     await db.commit()
+    handoff_notices.dispatch(mails)
     return out
 
 
@@ -244,7 +263,9 @@ async def create_batch_from_cleaning(
     out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), out["id"]))
     await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(out["id"]), "batch.waiting"))
+    mails = await _tell_owners(db, tenant, out["id"])
     await db.commit()
+    handoff_notices.dispatch(mails)
     return out
 
 
@@ -272,7 +293,9 @@ async def create_batch_from_simulation(
     out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), out["id"]))
     await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(out["id"]), "batch.waiting"))
+    mails = await _tell_owners(db, tenant, out["id"])
     await db.commit()
+    handoff_notices.dispatch(mails)
     return out
 
 
@@ -285,13 +308,14 @@ async def list_batches(
     await _rls(db, tenant)
     rows = await db.execute(text("""
         SELECT b.*, COUNT(i.id) AS items,
-               COUNT(i.id) FILTER (WHERE i.proposed_value IS NOT NULL) AS with_proposal,
+               COUNT(i.id) FILTER (WHERE {has}) AS with_proposal,
+               COUNT(i.id) FILTER (WHERE NOT {has}) AS no_value,
                COUNT(i.id) FILTER (WHERE i.proposal_source = 'rule' AND i.confidence = 'high') AS auto_approvable,
                COUNT(i.id) FILTER (WHERE i.recon_status = 'fixed') AS fixed,
                COUNT(i.id) FILTER (WHERE i.recon_status = 'still_failing') AS still_failing
           FROM remediation_batches b LEFT JOIN remediation_items i ON i.batch_id = b.id
          WHERE b.tenant_id = :tid GROUP BY b.id ORDER BY b.created_at DESC
-    """), {"tid": str(tenant.id)})
+    """.replace("{has}", remediation.has_value_sql("i.proposed_value"))), {"tid": str(tenant.id)})
     items = [_row(r) for r in rows.fetchall()]
     extras = await _batch_extras(db, tenant, items)
     return {"items": [{**b, **extras[b["id"]]} for b in items]}
@@ -385,11 +409,19 @@ async def accept_high_confidence(
         raise HTTPException(status_code=403, detail="The batch creator cannot accept its proposals.")
     ids = [r[0] for r in (await db.execute(text(
         "UPDATE remediation_items SET accepted = true, updated_at = now() WHERE batch_id = :bid "
-        "AND proposal_source = 'rule' AND confidence = 'high' AND proposed_value IS NOT NULL AND NOT accepted "
+        f"AND proposal_source = 'rule' AND confidence = 'high' AND {remediation.has_value_sql('proposed_value')} "
+        "AND NOT accepted "
         "RETURNING id"), {"bid": batch_id})).fetchall()]
     await _event(db, tenant, batch_id, "accepted", request, item_ids=ids)
     await db.commit()
     return {"id": str(batch_id), "accepted": len(ids), "accepted_by": current_user_label()}
+
+
+class ApproveBody(BaseModel):
+    comment: Optional[str] = Field(None, max_length=4000, description="told to the steward who built the batch")
+    without_blank: bool = Field(False, description="approve the changes that have a new value; the ones without "
+                                                   "(blank, or a placeholder such as 'no value yet') are held out: "
+                                                   "never exported or sent")
 
 
 @router.post("/batches/{batch_id}/approve")
@@ -399,8 +431,11 @@ async def approve_batch(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("approve", scope=scope_from_path)),
+    body: Optional[ApproveBody] = None,
 ):
-    """Four eyes: the approver must not be the person who built the batch."""
+    """Four eyes: the approver must not be the person who built the batch. Once approved, the steward who built it is
+    told (inbox and email), with the comment when one is given."""
+    comment = ((body.comment if body else None) or "").strip() or None
     b = await _batch(db, tenant, batch_id)
     if b["status"] != "draft":
         raise HTTPException(status_code=409, detail=f"Batch is already {b['status']}.")
@@ -412,18 +447,68 @@ async def approve_batch(
             "AND user_id = CAST(:uid AS uuid) LIMIT 1"), {"bid": batch_id, "uid": uid})).first():
         # a monitor-drafted batch has no human creator: whoever accepted its proposals is the first pair of eyes
         raise HTTPException(status_code=403, detail="You accepted this batch's proposals; a second person must approve it.")
+    # F12: changes without a new value are never approved unseen: refused with the records, or held out on request
+    items = await _items(db, batch_id)
+    blank = remediation.blank_items(items)
+    if blank and not (body and body.without_blank):
+        valued = len({(i["module"], i["record_key"]) for i in items} - {(i["module"], i["record_key"]) for i in blank})
+        raise HTTPException(status_code=409, detail=remediation.blank_sentence(blank, valued))
+    if blank and len(blank) == len(items):
+        raise HTTPException(status_code=409, detail="No change of this batch has a new value; there is nothing to "
+                                                    "approve. Enter the values or send the batch back.")
+    # The approval runs through the tenant's workflow for fix batches (api/services/workflow.py); its default, one
+    # four-eyes step for anyone holding approve except the creator, is the rule above. The batch is approved once the
+    # workflow is: a definition with more steps leaves it a draft until its last step is approved.
+    facts = await batch_facts(db, tenant, b)
+    try:
+        res = await db.run_sync(lambda s: workflow.decide_object(
+            s, str(tenant.id), "fix_batch", str(batch_id), b["created_by"], b.get("created_by_label"), facts, uid,
+            current_user_label(), "approve", comment, {"approve"}))
+    except workflow.WorkflowError as e:
+        raise HTTPException(status_code=e.status, detail=e.detail)
+    if res["status"] != "approved":
+        await db.commit()
+        return {"id": str(batch_id), "status": b["status"], "approved_by": None, "action_id": None,
+                "workflow": _workflow_summary(res["instance"])}
     rec = undo.Recorder()
     rec.batch = await undo.batch_snapshot(db, tenant, batch_id, "approved")
     await db.execute(text("UPDATE remediation_batches SET status = 'approved', approved_by = CAST(:uid AS uuid), "
                           "approved_by_label = :label, approved_at = now() WHERE id = :id"),
                      {"uid": uid, "label": current_user_label(), "id": batch_id})
     await _event(db, tenant, batch_id, "approved", request)
+    if blank:  # the approver saw them and approved the rest: each held-out change keeps that in its trail
+        await _event(db, tenant, batch_id, "held_out", request, item_ids=[i["id"] for i in blank], to_value="no value")
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
     action_id = await rec.save(db, tenant, request, "approve_batch", {"batch_id": str(batch_id), "name": b["name"]})
     await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.approved"))
+    mails = await db.run_sync(lambda s: handoff_notices.batch_decided(
+        s, str(tenant.id), str(batch_id), "approved", uid, current_user_label(), comment, res["instance"]["id"]))
     await db.commit()
+    handoff_notices.dispatch(mails)
     attention.invalidate(tenant.id)
-    return {"id": str(batch_id), "status": "approved", "approved_by": current_user_label(), "action_id": action_id}
+    return {"id": str(batch_id), "status": "approved", "approved_by": current_user_label(), "action_id": action_id,
+            "workflow": _workflow_summary(res["instance"])}
+
+
+def _workflow_summary(inst: dict) -> dict:
+    """The batch's approval in a few words: the workflow, its status and the step waiting, if any."""
+    waiting = next((t for t in inst["tasks"] if t["status"] == "pending"), None)
+    return {"instance_id": inst["id"], "workflow": inst["definition_key"], "version": inst["definition_version"],
+            "status": inst["status"], "waiting_step": waiting["step_name"] if waiting else None,
+            "steps": [{"name": t["step_name"], "status": t["status"], "decided_by": t["decided_by_label"]}
+                      for t in inst["tasks"]]}
+
+
+async def batch_facts(db: AsyncSession, tenant: Tenant, b: dict) -> dict:
+    """What a workflow condition may test about a fix batch (api/services/workflow.py FACTS)."""
+    rows = (await db.execute(text(
+        "SELECT DISTINCT module, upper(field) AS field FROM remediation_items WHERE batch_id = :b AND tenant_id = :t"),
+        {"b": b["id"], "t": str(tenant.id)})).fetchall()
+    extras = (await _batch_extras(db, tenant, [b]))[b["id"]]
+    fields = sorted({r[1] for r in rows if r[1]})
+    classes = await db.run_sync(lambda s: workflow.policy_classes(s, str(tenant.id), fields))
+    return {"title": f"Fix batch {b['name']}", "modules": sorted({r[0] for r in rows if r[0]}), "fields": fields,
+            "records": extras["records"], "value_at_risk": extras["value_at_risk"], "policy_classes": classes}
 
 
 class Reassign(BaseModel):
@@ -502,6 +587,11 @@ async def send_back_batch(
         raise HTTPException(status_code=422, detail="Say what the author has to change.")
     rec = undo.Recorder()
     rec.batch = await undo.batch_snapshot(db, tenant, batch_id, "draft")
+    # its approval in progress ends rejected with the note; an approval already given is withdrawn
+    closed = await db.run_sync(lambda s_: workflow.close(s_, str(tenant.id), "fix_batch", str(batch_id), "rejected", uid,
+                                                         current_user_label(), note)
+                               or workflow.close(s_, str(tenant.id), "fix_batch", str(batch_id), "withdrawn", uid,
+                                                 current_user_label(), note))
     await db.execute(text("""
         UPDATE remediation_batches SET status = 'draft', approved_by = NULL, approved_by_label = NULL, approved_at = NULL,
                filter = COALESCE(filter, '{}'::jsonb) || jsonb_build_object('returned', jsonb_build_object(
@@ -516,7 +606,10 @@ async def send_back_batch(
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
     action_id = await rec.save(db, tenant, request, "send_back_batch",
                                {"batch_id": str(batch_id), "name": b["name"], "note": note})
+    mails = await db.run_sync(lambda s: handoff_notices.batch_decided(
+        s, str(tenant.id), str(batch_id), "sent_back", uid, current_user_label(), note, closed))
     await db.commit()
+    handoff_notices.dispatch(mails)
     attention.invalidate(tenant.id)
     return {"id": str(batch_id), "status": "draft", "sent_back_by": current_user_label(), "action_id": action_id}
 
@@ -535,11 +628,18 @@ async def export_batch(
     format: ExportFormat = Query("cockpit_xlsx"),
     cr_type: Optional[str] = Query(None, max_length=40, pattern=r"^[A-Z0-9_]+$",
                                    description="mdg_cr_json only: the change-request type"),
+    loader_id: Optional[uuid.UUID] = Query(None, description="who loads the file into SAP; told in the inbox and by "
+                                                             "email (default: the SAP Basis people)"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
-    """Approved batch as a load file. Items without a proposed value are left out."""
+    """Approved batch as a load file. Items without a proposed value are left out.
+
+    The first export of an approved batch moves it to ``awaiting_load`` ("Exported, waiting for the SAP load") with
+    who exported it and when: nothing reached SAP yet. The loader (``loader_id``, else the SAP Basis people) and the
+    steward are told; ``POST /batches/{id}/loaded`` confirms the load and the batch reads Sent to SAP (``exported``).
+    Exporting again (another format, a lost file) changes nothing but the package trail."""
     b = await _batch(db, tenant, batch_id)
     if b["status"] == "draft":
         raise HTTPException(status_code=409, detail="Approve the batch before exporting it.")
@@ -596,8 +696,24 @@ async def export_batch(
         filename = xlsx_filename(f"remediation-{format}", str(batch_id))
     else:
         filename = f"remediation_{batch_id}_{format}.{ext}"
-    await db.execute(text("UPDATE remediation_batches SET status = 'exported', exported_at = now() WHERE id = :id"),
-                     {"id": batch_id})
+    first = b["status"] == "approved"
+    if loader_id is not None and not (await db.execute(
+            text("SELECT 1 FROM users WHERE id = :u AND tenant_id = :t AND is_active"),
+            {"u": loader_id, "t": str(tenant.id)})).scalar():
+        raise HTTPException(status_code=404, detail="The person to load the file was not found.")
+    # one statement: the first export of an approved batch waits for the SAP load; a re-export keeps the status
+    await db.execute(text("""
+        UPDATE remediation_batches
+           SET status = CASE WHEN status = 'approved' THEN 'awaiting_load' ELSE status END,
+               exported_at = CASE WHEN status = 'approved' THEN now() ELSE COALESCE(exported_at, now()) END,
+               exported_by = CASE WHEN status = 'approved' THEN CAST(:uid AS uuid) ELSE exported_by END,
+               exported_by_label = CASE WHEN status = 'approved' THEN CAST(:label AS text) ELSE exported_by_label END,
+               filter = CASE WHEN status = 'approved' AND CAST(:loader AS text) IS NOT NULL
+                             THEN COALESCE(filter, '{}'::jsonb) || jsonb_build_object('loader_id', CAST(:loader AS text))
+                             ELSE filter END
+         WHERE id = :id AND tenant_id = :tid"""),
+        {"id": batch_id, "tid": str(tenant.id), "uid": uid, "label": current_user_label(),
+         "loader": str(loader_id) if loader_id else None})
     await db.execute(text(
         "INSERT INTO export_packages (tenant_id, batch_id, format, filename, sha256, size_bytes, item_count, "
         "created_by, created_by_label, approved_by_label) VALUES (:tid, :bid, :fmt, :fn, :sha, :size, :cnt, "
@@ -605,13 +721,60 @@ async def export_batch(
         {"tid": str(tenant.id), "bid": batch_id, "fmt": format, "fn": filename, "sha": digest, "size": len(data),
          "cnt": len(items), "uid": uid, "label": current_user_label(), "approved_label": b["approved_by_label"]})
     await _event(db, tenant, batch_id, "exported", request, to_value=format)
-    await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
-    await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.sent"))
+    mails: list = []
+    if first:
+        await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
+        await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.exported"))
+        mails = await db.run_sync(lambda s: handoff_notices.batch_awaiting_load(
+            s, str(tenant.id), str(batch_id), str(loader_id) if loader_id else None, uid, current_user_label()))
     await db.commit()
+    handoff_notices.dispatch(mails)
+    if first:
+        attention.invalidate(tenant.id)
     return Response(content=data, media_type=_MEDIA[ext], headers={
         "Content-Disposition": f"attachment; filename={filename}",
         "X-Content-SHA256": digest,
         "Access-Control-Expose-Headers": "X-Content-SHA256"})
+
+
+class LoadedBody(BaseModel):
+    note: Optional[str] = Field(None, max_length=4000, description="how it was loaded, e.g. the LTMC project")
+
+
+@router.post("/batches/{batch_id}/loaded",
+             dependencies=[Depends(require_any_permission("approve", "manage_systems"))])
+async def confirm_loaded(
+    batch_id: uuid.UUID,
+    request: Request,
+    body: Optional[LoadedBody] = None,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """The batch's load file was loaded in SAP: an approver or SAP Basis confirms it, and the batch and its records
+    read Sent to SAP (``exported``), with who confirmed and when. The next run that covers its records verifies the
+    load (GET /batches/{id}: ``verification``). Not by the person who built the batch."""
+    b = await _batch(db, tenant, batch_id)
+    if b["status"] != "awaiting_load":
+        raise HTTPException(status_code=409, detail=(
+            "This batch is already sent to SAP." if b["status"] == "exported" else
+            f"This batch is {b['status']}: only a batch whose load file waits for the SAP load can be confirmed."))
+    uid = current_user_id(request)
+    if b["created_by"] and uid and uid == b["created_by"]:
+        raise HTTPException(status_code=403, detail="The batch creator cannot confirm its load; a second person does.")
+    note = ((body.note if body else None) or "").strip() or None
+    await db.execute(text(
+        "UPDATE remediation_batches SET status = 'exported', loaded_at = now(), loaded_by = CAST(:uid AS uuid), "
+        "loaded_by_label = :label, load_note = :note WHERE id = :id AND tenant_id = :tid AND status = 'awaiting_load'"),
+        {"uid": uid, "label": current_user_label(), "note": note, "id": batch_id, "tid": str(tenant.id)})
+    await _event(db, tenant, batch_id, "loaded", request, to_value=note)
+    await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
+    await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.sent"))
+    mails = await db.run_sync(lambda s: handoff_notices.batch_loaded(s, str(tenant.id), str(batch_id), uid,
+                                                                     current_user_label(), note))
+    await db.commit()
+    handoff_notices.dispatch(mails)
+    attention.invalidate(tenant.id)
+    return {"id": str(batch_id), "status": "exported", "loaded_by": current_user_label(), "load_note": note}
 
 
 @router.get("/batches/{batch_id}/diff")

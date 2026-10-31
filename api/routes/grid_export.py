@@ -1,7 +1,10 @@
 """Excel export of any v2 grid with the columns on screen.
 
-POST /api/v1/export/grid   {title, route, columns: [{key, header, kind?}], rows: [{key: value}], filters?}
-                           -> the branded workbook (cover sheet, one data sheet), the same writer as every export
+POST /api/v1/export/grid   {title, route, columns: [{key, header, kind?}], rows: [{key: value}], filters?, total?}
+                           -> the branded workbook (cover sheet, one data sheet), the same writer as every export;
+                              ``total`` (the rows the filter holds) puts "12 of 48 rows" on the cover when fewer were
+                              sent; X-Row-Count / X-Total-Count say the same. A full filtered export of a Work list
+                              is GET /work/export (fix sheet) or GET /work/exceptions/export (signed-off records).
 
 The client sends what the grid shows: its visible columns in order and the rows it has loaded, already formatted
 for reading. The server only writes them, through the formula-injection guard of the branded writer. Needs ``export``;
@@ -9,7 +12,7 @@ audited (route, row and column counts, never the values).
 """
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
@@ -43,6 +46,8 @@ class GridExportIn(BaseModel):
     columns: list[GridColumn] = Field(min_length=1, max_length=80)
     rows: list[dict[str, str | int | float | bool | None]] = Field(max_length=MAX_ROWS)
     filters: dict[str, str] = Field(default_factory=dict, max_length=30)
+    total: Optional[int] = Field(None, ge=0, description="rows the filter holds, when the grid loaded fewer: the "
+                                                        "cover says how many of them the file holds")
 
 
 def sheet_rows(body: GridExportIn) -> list[dict[str, object]]:
@@ -56,10 +61,18 @@ async def export_grid(body: GridExportIn, request: Request, db: AsyncSession = D
                       tenant: Tenant = Depends(get_tenant)):
     cols = [ColumnSpec(c.key, c.header, kind=c.kind) for c in body.columns]
     note = ("Filtered: " + ", ".join(f"{k} {v}" for k, v in sorted(body.filters.items()))) if body.filters else None
+    if body.total is not None and body.total > len(body.rows):  # never silently incomplete evidence (F26)
+        part = f"{len(body.rows)} of {body.total} rows: the rows loaded on screen, not every row of the filter."
+        note = f"{note}. {part}" if note else part
     data = build_workbook(tenant_name=tenant.name, run_label=None, run_id=None, title=body.title,
                           sheets=[SheetSpec(title=body.title[:31], columns=cols, rows=sheet_rows(body), note=note)])
     await write_audit(db, tenant.id, request, "export.grid", "grid", body.route, None,
-                      {"rows": len(body.rows), "columns": [c.key for c in body.columns]})
+                      {"rows": len(body.rows), "total": body.total, "columns": [c.key for c in body.columns]})
     await db.commit()
     slug = "".join(ch if ch.isalnum() else "-" for ch in body.route.lower()).strip("-") or "grid"
-    return xlsx_response(data, xlsx_filename(slug, body.title))
+    out = xlsx_response(data, xlsx_filename(slug, body.title))
+    out.headers["X-Row-Count"] = str(len(body.rows))
+    if body.total is not None:
+        out.headers["X-Total-Count"] = str(body.total)
+    out.headers["Access-Control-Expose-Headers"] = "X-Row-Count, X-Total-Count"
+    return out

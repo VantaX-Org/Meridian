@@ -367,12 +367,12 @@ describe("the Work ledger, fixture mode", () => {
     expect(text(tags)).toContain("Unassigned");
   });
 
-  it("density: Compact makes the rows 28 pixels", async () => {
+  it("density: comfortable rows are 36 pixels, and Compact makes them 28", async () => {
     mount();
     const grid = await ledger();
     await within(grid).findByTitle(KEY_232);
     const row = rowFor(grid, KEY_232);
-    expect(row.style.height).toBe("32px");
+    expect(row.style.height).toBe("36px");
     fireEvent.click(screen.getByRole("button", { name: "Compact" }));
     expect(getUrl()).toContain("density=compact");
   });

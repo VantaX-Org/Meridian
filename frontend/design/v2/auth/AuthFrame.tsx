@@ -11,8 +11,10 @@ import { productName, useTenantTheme } from "@/lib/v2/theme";
 const appVersion = process.env.NEXT_PUBLIC_APP_VERSION;
 
 /**
- * The frame of every signed-out page and of the forced password change: the tenant's mark and name, one card with the
- * page's h1, an optional lead and the form, and the version under it.
+ * The frame of every signed-out page and of the forced password change. On a wide screen two columns on the slate
+ * ground: on the left the tenant's mark and name, the one sentence of what the product does, three facts in plain
+ * words and the ruler drawn as the brand's own picture; on the right one white card with the page's h1, an optional
+ * lead and the form, the version under it. On a phone the mark and name, then the card, then the facts.
  */
 export function AuthFrame({ title, lead, children }: { title: string; lead?: ReactNode; children: ReactNode }) {
   const theme = useTenantTheme();
@@ -20,20 +22,63 @@ export function AuthFrame({ title, lead, children }: { title: string; lead?: Rea
   useWindowTitle(titleRef);
   return (
     <main className="m2-auth" id="main">
-      <div className="m2-auth-col">
+      <div className="m2-auth-wrap">
         <span className="m2-auth-brand" data-testid={theme?.customised ? "tenant-brand" : undefined}>
           {/* eslint-disable-next-line @next/next/no-img-element -- the tenant's logo, served by the API */}
           {theme?.logo_url ? <img src={theme.logo_url} alt="" className="m2-auth-tenant" /> : <Mark size={28} />}
           <span>{productName(theme)}</span>
         </span>
-        <div className="m2-auth-card">
-          <h1 ref={titleRef}>{title}</h1>
-          {lead ? <p className="m2-auth-lead">{lead}</p> : null}
-          {children}
+        <section className="m2-auth-about" aria-label={t("About {product}", { product: productName(theme) })}>
+          <p className="m2-auth-promise">{t("SAP data quality, scored and routed to the people who fix it.")}</p>
+          <ul className="m2-auth-facts-list">
+            <li>{t("Every figure is a rule result over your own records, and each one explains its arithmetic.")}</li>
+            <li>{t("Each object is scored on one ruler: six dimensions, a cap when a critical rule fails.")}</li>
+            <li>{t("Your SAP data, findings and reports stay in your environment.")}</li>
+          </ul>
+          <RulerMotif />
+        </section>
+        <div className="m2-auth-col">
+          <div className="m2-auth-card">
+            <h1 ref={titleRef}>{title}</h1>
+            {lead ? <p className="m2-auth-lead">{lead}</p> : null}
+            {children}
+          </div>
+          {appVersion ? <p className="m2-auth-meta m2-auth-version">{`v${appVersion}`}</p> : null}
         </div>
-        {appVersion ? <p className="m2-auth-meta m2-auth-version">{`v${appVersion}`}</p> : null}
       </div>
     </main>
+  );
+}
+
+/** The DQS weights of the six dimensions, completeness first: the widths of the ruler's segments. */
+const MOTIF_WEIGHTS = [25, 25, 20, 10, 10, 10] as const;
+const MOTIF_FILL = [0.92, 0.84, 0.88, 0.7, 0.96, 0.78] as const;
+
+/**
+ * The ruler as a picture: six segments as wide as their weights, each filled to a score, the tick across them at the
+ * measured score. Decorative; the words beside it say what it is.
+ */
+function RulerMotif() {
+  const W = 320;
+  const H = 72;
+  const gap = 4;
+  const room = W - gap * (MOTIF_WEIGHTS.length - 1);
+  const segs = MOTIF_WEIGHTS.map((w, i) => ({
+    x: MOTIF_WEIGHTS.slice(0, i).reduce((a, b) => a + (room * b) / 100 + gap, 0),
+    width: (room * w) / 100,
+    fill: MOTIF_FILL[i],
+  }));
+  const tickY = H * (1 - 0.86);
+  return (
+    <svg className="m2-auth-motif" viewBox={`0 0 ${W} ${H + 8}`} width={W} height={H + 8} aria-hidden="true" focusable="false">
+      {segs.map((sg, i) => (
+        <g key={i}>
+          <rect className="m2-auth-motif-t" x={sg.x} y={0} width={sg.width} height={H} rx={2} />
+          <rect className="m2-auth-motif-f" x={sg.x} y={H * (1 - sg.fill)} width={sg.width} height={H * sg.fill} rx={2} />
+        </g>
+      ))}
+      <rect className="m2-auth-motif-k" x={-4} y={tickY - 1} width={W + 8} height={2} rx={1} />
+    </svg>
   );
 }
 

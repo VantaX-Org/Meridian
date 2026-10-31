@@ -3,7 +3,7 @@
 import type { ComponentType, ReactNode } from "react";
 import type { OpenItem, OpenKind } from "@/lib/v2/hooks";
 import dynamic from "next/dynamic";
-import { Skeleton } from "../parts";
+import { InspectorSkeleton } from "../parts";
 import { t } from "@/lib/v2/i18n";
 
 /**
@@ -14,15 +14,7 @@ function InspectorLoading() {
   return (
     <aside className="m2-insp" id="m2-inspector" aria-label={t("Inspector")} aria-busy="true" data-testid="inspector-loading">
       <div className="m2-insp-d">
-        <div className="m2-ih">
-          <Skeleton width="60%" height={20} />
-          <Skeleton width="40%" height={14} />
-        </div>
-        <div className="m2-ib">
-          <Skeleton width="100%" height={14} />
-          <Skeleton width="90%" height={14} />
-          <Skeleton width="75%" height={14} />
-        </div>
+        <InspectorSkeleton />
       </div>
     </aside>
   );

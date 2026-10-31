@@ -110,14 +110,15 @@ def test_export_batch_cockpit_xlsx_builds_real_workbook():
         MagicMock(),  # RLS set_config
         MagicMock(fetchone=lambda: batch_row),  # _batch select
         MagicMock(fetchall=lambda: [item_row]),  # _items select
-        MagicMock(),  # UPDATE remediation_batches ... status = 'exported'
+        MagicMock(),  # UPDATE remediation_batches ... status = 'awaiting_load'
         MagicMock(),  # export_packages audit insert
         MagicMock(),  # _event insert
     ]
     db.commit = AsyncMock()
 
     response = asyncio.run(
-        export_batch(batch_id=batch_id, request=None, format="cockpit_xlsx", cr_type=None, db=db, tenant=tenant)
+        export_batch(batch_id=batch_id, request=None, format="cockpit_xlsx", cr_type=None, loader_id=None, db=db,
+                     tenant=tenant)
     )
 
     disposition = response.headers["content-disposition"]

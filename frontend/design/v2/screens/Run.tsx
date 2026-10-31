@@ -11,6 +11,7 @@ import { useLandscape } from "@/lib/v2/queries";
 import { useTimeline, useV2Jobs, useVersionHead, useVersionsPage } from "@/lib/v2/runs-queries";
 import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { VerdictMark } from "../marks";
+import { ChartFrame, ChartTable, DIST_H, Distribution, STACK_H, StackedBar, scoreDomain, severityParts } from "../charts";
 import { Dash, Dot, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { kindWord, triggerOf } from "../RunTimeline";
@@ -19,6 +20,62 @@ import { t as tr, lc } from "@/lib/v2/i18n";
 import { baselineRefusalOf, type BaselineRefusal } from "@/lib/api/v2/step9";
 import { breachWords } from "@/lib/v2/step9";
 import { moduleText } from "@/lib/v2/labels";
+
+/**
+ * The shape of a run in two figures: how its objects spread over the measured score, against the verdict bands, and
+ * its findings by severity. Both from the chart grammar, each with its figures as a table.
+ */
+function RunShape({ cells, labelOf, severity, loading }: { cells: LandscapeCell[]; labelOf: (m: string) => string; severity: Record<string, number> | null; loading: boolean }) {
+  const items = useMemo(() => cells.filter((c) => c.raw_score != null).map((c) => ({ id: c.module, label: labelOf(c.module), value: c.raw_score ?? 0 })), [cells, labelOf]);
+  const domain = useMemo(() => {
+    const [lo] = scoreDomain(items.map((i) => i.value), [], 40);
+    return [Math.min(lo, 60), 100] as const;
+  }, [items]);
+  const refs = useMemo(() => [{ value: 75, label: tr("75 at risk") }, { value: 90, label: tr("90 go") }], []);
+  const parts = useMemo(() => (severity ? severityParts(severity) : []), [severity]);
+  const findings = parts.reduce((n, p) => n + p.value, 0);
+  if (!loading && cells.length === 0) return null;
+  const state = loading ? "loading" : "ready";
+  const sorted = [...items].sort((a, b) => a.value - b.value);
+  return (
+    <section className="m2-sec m2-runshape" aria-label={tr("Shape of the run")} data-testid="run-shape">
+      <ChartFrame
+        title={tr("Objects by measured score")}
+        sub={tr("Before any cap, in bins of 5")}
+        state={state}
+        height={DIST_H}
+        testId="run-distribution"
+        table={
+          <ChartTable
+            caption={tr("Objects by measured score")}
+            head={[tr("Object"), tr("Measured")]}
+            rows={sorted.map((i) => [i.label, f1(i.value)])}
+          />
+        }
+      >
+        <Distribution
+          items={items}
+          domain={domain}
+          binWidth={5}
+          refs={refs}
+          label={tr("{count} {count, plural, one {object} other {objects}} by measured score, from {low} to {high}", { count: items.length, low: f1(sorted[0]?.value ?? null), high: f1(sorted[sorted.length - 1]?.value ?? null) })}
+          describe={(b, names) => tr("{from} to {to}: {count} {count, plural, one {object} other {objects}}{names}", { from: b.from, to: b.to, count: names.length, names: names.length ? `, ${names.join(", ")}` : "" })}
+        />
+      </ChartFrame>
+      <ChartFrame
+        title={tr("Findings by severity")}
+        sub={findings > 0 ? tr("{n} {count, plural, one {finding} other {findings}} in this run", { n: int(findings), count: findings }) : undefined}
+        state={state === "loading" ? "loading" : severity ? "ready" : "empty"}
+        empty={tr("This run did not count its findings by severity.")}
+        height={STACK_H + 24}
+        testId="run-severity"
+        table={<ChartTable caption={tr("Findings by severity")} head={[tr("Severity"), tr("Findings")]} rows={parts.map((p) => [p.label, int(p.value)])} />}
+      >
+        <StackedBar parts={parts} format={int} label={parts.map((p) => p.title).join(". ")} />
+      </ChartFrame>
+    </section>
+  );
+}
 
 /** A refused pin: the server's reason, the enforced contract breaches behind it, and "Pin anyway" with a reason. */
 function PinRefusal({ refusal, canForce, pending, onForce }: { refusal: BaselineRefusal; canForce: boolean; pending: boolean; onForce: (reason: string) => void }) {
@@ -382,6 +439,8 @@ export function RunCanvas({ id }: { id: string }) {
           }
         />
       ) : null}
+
+      <RunShape cells={cells} labelOf={labelOf} severity={v?.severity_counts ?? null} loading={land.isLoading || head.isPending} />
 
       <section className="m2-sec" aria-label={tr("By object")}>
         <div className="m2-sechead">

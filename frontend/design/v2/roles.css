@@ -21,7 +21,7 @@
 .m2-root .m2-rbanner { display: flex; align-items: center; gap: var(--m2-s3); flex-wrap: wrap; padding: var(--m2-s2) var(--m2-s4); border-bottom: 1px solid var(--m2-line); background: var(--m2-high-bg); color: var(--m2-high-ink); font-size: var(--m2-fs-13); }
 .m2-root .m2-rbanner[data-tone="info"] { background: var(--m2-sheet); color: var(--m2-ink-2); }
 .m2-root .m2-rbanner strong { font-weight: 600; }
-.m2-root .m2-ibanner { border-left: 2px solid var(--m2-high); padding: var(--m2-s1) var(--m2-s3); margin: 0 0 var(--m2-s3); font-size: var(--m2-fs-13); color: var(--m2-ink-2); }
+.m2-root .m2-ibanner { background: var(--m2-warn-bg); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); margin: 0 0 var(--m2-s3); font-size: var(--m2-fs-13); color: var(--m2-warn-ink); }
 
 .m2-root .m2-gtools { display: inline-flex; gap: var(--m2-s2); align-items: center; }
 .m2-root .m2-gate { display: inline-flex; align-items: center; gap: var(--m2-s1); font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
@@ -39,7 +39,7 @@
 .m2-root .m2-related .m2-meta { font-size: var(--m2-fs-12); }
 .m2-root .m2-related a { display: inline-block; min-height: var(--m2-s6); line-height: var(--m2-s6); }
 .m2-root .m2-related-wait { min-height: calc(2 * var(--m2-s6) + var(--m2-s2)); margin: var(--m2-s2) 0 0; }
-.m2-root .m2-fixhint { font-size: var(--m2-fs-13); color: var(--m2-high-ink); border-left: 2px solid var(--m2-high); padding: var(--m2-s1) var(--m2-s3); margin: var(--m2-s2) 0; }
+.m2-root .m2-fixhint { font-size: var(--m2-fs-13); color: var(--m2-warn-ink); background: var(--m2-warn-bg); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); margin: var(--m2-s2) 0; }
 
 .m2-root .m2-tmpl { width: 100%; border-collapse: collapse; font-size: var(--m2-fs-13); }
 .m2-root .m2-tmpl th, .m2-root .m2-tmpl td { text-align: left; padding: var(--m2-s1) var(--m2-s2); border-bottom: 1px solid var(--m2-line); vertical-align: top; }
@@ -51,7 +51,7 @@
 .m2-root .m2-scroll { overflow-x: auto; max-width: 100%; }
 .m2-root .m2-tmpl .m2-r { text-align: right; font-variant-numeric: tabular-nums; }
 /* The demo data bar (shell/DemoBar.tsx): the critical hue, so sample figures never read as measured ones. */
-.m2-root .m2-demobar { display: flex; align-items: baseline; gap: var(--m2-s3); flex-wrap: wrap; padding: var(--m2-s1) var(--m2-s4); background: var(--m2-crit-bg); color: var(--m2-crit-ink); border-bottom: 2px solid var(--m2-crit); font-size: var(--m2-fs-13); }
+.m2-root .m2-demobar { display: flex; align-items: baseline; gap: var(--m2-s3); flex-wrap: wrap; padding: var(--m2-s1) var(--m2-s4); background: var(--m2-warn-bg); color: var(--m2-warn-ink); border-bottom: 1px solid var(--m2-line); font-size: var(--m2-fs-13); }
 .m2-root .m2-demobar strong { font-weight: 600; }
 /* The confirmation of a bulk change over 25 rows (Work): stays in view at the foot of the canvas. */
 .m2-root .m2-bulkconfirm { position: sticky; bottom: 0; z-index: 2; background: var(--m2-sheet); }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useDensity } from "@/lib/v2/density";
 import { Money } from "../Money";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -72,7 +73,7 @@ const itemId = (it: Item): string => (it.kind === "row" ? recordItemId(it.row) :
 const GROUP_ROWS = 25;
 const COLUMNS_ID = "work-ledger";
 const GROUPABLE: ReadonlySet<ChipId | null> = new Set<ChipId | null>(["tofix", "proposed", null]);
-const OPEN_STATUSES = new Set(["to_fix", "proposed", "approved", "sent"]);
+const OPEN_STATUSES = new Set(["to_fix", "proposed", "approved", "awaiting_load", "sent"]);
 
 /** After a change, which rows still belong to the list the chip asks for. */
 function belongs(row: WorkRow, chip: ChipId | null, batch: string | null = null): boolean {
@@ -415,7 +416,10 @@ export function WorkCanvas() {
   const text = sentence({ persona: session.persona, chip: state.chip, summary, objectLabel, module: state.module });
   const topGroup = (groupsQ.data?.groups ?? []).find((g) => g.proposed > 0 && (!state.module || g.module === state.module));
   const headers = useMemo(() => keyHeaders(recordRows), [recordRows]);
-  const compact = state.density === "compact";
+  // The ledger's own density when the address or a saved view gives one, else the one in Preferences.
+  const shellDensity = useDensity();
+  const density: Density = state.density ?? shellDensity;
+  const compact = density === "compact";
   const [now] = useState(() => Date.now());
 
   const columns = useMemo<GridColumn<Item>[]>(() => {
@@ -652,8 +656,8 @@ export function WorkCanvas() {
       </label>
       <div className="m2-seg m2-only-wide" role="group" aria-label={tr("Row density")}>
         {(["compact", "comfortable"] as Density[]).map((d) => (
-          <button key={d} type="button" aria-pressed={state.density === d} title={d === "compact" ? tr("Rows 28 pixels") : tr("Rows 32 pixels")} onClick={() => go({ density: d })}>
-            {d === "compact" ? tr("Compact") : tr("Standard")}
+          <button key={d} type="button" aria-pressed={density === d} title={d === "compact" ? tr("Rows 28 pixels") : tr("Rows 36 pixels")} onClick={() => go({ density: d })}>
+            {d === "compact" ? tr("Compact") : tr("Comfortable")}
           </button>
         ))}
       </div>
@@ -895,7 +899,7 @@ export function WorkCanvas() {
           onConfirm={(name) => {
             setSaving(false);
             void viewsQ
-              .save({ route: "work", name, filters: viewFilters(state), columns: null, density: state.density })
+              .save({ route: "work", name, filters: viewFilters(state), columns: null, density })
               .then((saved) => {
                 toast.show(tr("Saved the view {name}", { name: saved.name }));
                 goView(saved.id);

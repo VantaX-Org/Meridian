@@ -176,7 +176,7 @@ describe("Write-back: Send to SAP", () => {
     fireEvent.click(within(head).getByRole("button", { name: "Send batch B-236 to SAP" }));
     await waitFor(() => expect(send).toHaveBeenCalledWith("B-236", 180));
     const result = await screen.findByTestId("action-result");
-    expect(text(result)).toContain("Sent to SAP, 180 records");
+    expect(text(result)).toContain("Load file exported, 180 records");
     expect(text(result)).toContain("remediation-cockpit_xlsx-B-236.xlsx");
     await waitFor(() => expect(text(within(grid).getByTestId("batch-row-B-236"))).toMatch(/Sent to SAP, 180 records, /));
     await waitFor(() => expect(within(grid).getAllByText("Sent to SAP").length).toBeGreaterThan(0));

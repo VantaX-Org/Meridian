@@ -5,7 +5,7 @@ GET /api/v1/people   everyone who owns an object, steward-assigned work or a wor
 A person is listed when they are an object/rule/system owner or steward (data_owners), hold an open stewardship item,
 have a work record assigned to them in the current state, or are the caller. Counts are read from what is stored:
 
-  open_work           work records assigned to them, open (to fix, proposed, approved, sent), in the current state
+  open_work           work records assigned to them, open (to fix, proposed, approved, awaiting the SAP load, sent), in the current state
   overdue             of those, the ones past their SLA due date
   approvals_waiting   draft fix batches that await a second person, for a user who may approve (not their own batches)
   sla_hours           the strictest resolve time of the tenant's SLA policies (triage) for the severities of their open
@@ -37,7 +37,7 @@ from api.services.rbac import actions_for, current_user_id, has_permission, requ
 
 router = APIRouter(prefix="/api/v1/people", tags=["people"], dependencies=[Depends(require_permission("view"))])
 
-_OPEN = ("to_fix", "proposed", "approved", "sent")
+_OPEN = ("to_fix", "proposed", "approved", "awaiting_load", "sent")
 _SEVERITY = {0: "critical", 1: "high", 2: "medium", 3: "low"}  # work_records.sev_rank
 
 

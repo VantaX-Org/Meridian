@@ -84,16 +84,6 @@
 
 /* ---- the Runs tab ---- */
 .m2-rungrid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--m2-s8) var(--m2-s10); align-items: start; }
-.m2-chart { display: block; width: 100%; max-width: 640px; height: auto; font-variant-numeric: tabular-nums; }
-.m2-chart .m2-gl { stroke: var(--m2-line); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.m2-chart .m2-axis { stroke: var(--m2-line-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.m2-chart .m2-vbar { stroke: var(--m2-ink-3); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.m2-chart .m2-capl { stroke: var(--m2-ink-2); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
-.m2-chart .m2-ln { fill: none; stroke: var(--m2-data); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.m2-chart .m2-ax { fill: var(--m2-meta); font-size: var(--m2-fs-12); font-family: var(--m2-font); }
-.m2-chart .m2-lab { fill: var(--m2-data); font-size: var(--m2-fs-13); font-weight: 600; font-family: var(--m2-font); }
-.m2-chart .m2-hit { fill: transparent; }
-.m2-chart .m2-hit:hover { fill: var(--m2-hover); }
 .m2-why { list-style: none; margin: 0; padding: 0; font-size: var(--m2-fs-13); }
 .m2-why li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto) 56px; gap: var(--m2-s1) var(--m2-s3); padding: var(--m2-s2) 0; border-bottom: 1px solid var(--m2-line); align-items: baseline; }
 .m2-why .m2-s { color: var(--m2-meta); font-size: var(--m2-fs-12); }

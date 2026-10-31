@@ -5,7 +5,8 @@ GET  /api/v1/migration/waves/{wave_id}/certificate                    every vers
 POST /api/v1/migration/waves/{wave_id}/certificate/{cert_id}/sign     an owner signs (user, time, statement)
 GET  /api/v1/migration/waves/{wave_id}/certificate/{cert_id}/pdf      the certificate PDF
 
-Issuing refuses with 409 while any object of the wave has a critical rule over tolerance or was never measured.
+Issuing refuses with 409 while any object of the wave has a critical rule over tolerance or was never measured; the
+body lists the reasons (``reasons``: object, reason, rules, links). Once issued, the owners who must sign are told.
 Every write is audited (audit_log) and runs under the tenant's row-level security.
 """
 from __future__ import annotations
@@ -71,7 +72,7 @@ async def issue_certificate(wave_id: uuid.UUID, request: Request, db: AsyncSessi
     try:
         content = await rc.build(db, t, wave, tenant.name, version, current_user_label())
     except rc.GateRefused as e:
-        raise HTTPException(status_code=409, detail={"detail": "The wave is not ready to certify.", "objects": e.reasons})
+        raise HTTPException(status_code=409, detail=rc.refusal(e.reasons))
     sha = rc.content_hash(content)
     pdf = await asyncio.to_thread(pdf_reports.render, "readiness_certificate.html", rc.pdf_context(content, sha))
     file_name = f"readiness_certificate_{wave.name.replace(' ', '_')}_v{version}.pdf"
@@ -88,7 +89,17 @@ async def issue_certificate(wave_id: uuid.UUID, request: Request, db: AsyncSessi
     await write_audit(db, tenant.id, request, "certificate_issued", "wave_certificate", content["certificate_id"], None,
                       {"wave_id": str(wave_id), "version": version, "sha256": sha,
                        "runs": [m["run_id"] for m in content["measured_on"]]})
+    # the owners who must sign are told it waits for them (inbox and email), once per certificate
+    from api.services import app_links, handoff_notices
+    mails = await db.run_sync(lambda s: handoff_notices.notify(
+        s, t, list(owners), type_="approval", title=f"Readiness certificate of {wave.name} v{version} waits for your "
+                                                    "signature",
+        body=f"{current_user_label() or 'A programme lead'} issued version {version} of the readiness certificate of "
+             f"{wave.name}. Sign it for your objects.",
+        link=app_links.opened(app_links.LANDSCAPE + "?view=waves", "certificate", str(wave_id)),
+        key=f"certificate:{content['certificate_id']}", skip=[uid], button="Open the certificate"))
     await db.commit()
+    handoff_notices.dispatch(mails)
     return {"id": content["certificate_id"], "wave_id": str(wave_id), "version": version, "status": "issued",
             "sha256": sha, "report_file_id": file_id, "measured_on": content["measured_on"],
             "required_signers": [{"user_id": k, **v} for k, v in owners.items()]}

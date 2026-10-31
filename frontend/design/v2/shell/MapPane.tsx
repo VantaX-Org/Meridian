@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import type { Landscape, LandscapeCell, LandscapeSystem } from "@/lib/api/v2/types";
@@ -9,6 +9,8 @@ import { useCounts, useLandscape } from "@/lib/v2/queries";
 import { DIMENSIONS } from "@/lib/api/v2/types";
 import { byMeasured, f1, int, moduleSlug, readingText, systemSlug } from "@/lib/v2/score";
 import { Ruler } from "../Ruler";
+import { Sparkline } from "../charts";
+import { useTimeline } from "@/lib/v2/runs-queries";
 import { IconChevron } from "../marks";
 import { ErrorFrame, Skeleton, V2Link } from "../parts";
 import { RunMenu, ScopeMenu } from "./TopBar";
@@ -18,7 +20,11 @@ export function dimsOf(cell: LandscapeCell): (number | null)[] {
   return DIMENSIONS.map((d) => cell.dimensions[d.key] ?? null);
 }
 
-function ObjectRow({ system, cell, label, current, fixtureRun }: { system: LandscapeSystem; cell: LandscapeCell; label: string; current: boolean; fixtureRun: string | null }) {
+function ObjectRow({ system, cell, label, current, fixtureRun, trend }: { system: LandscapeSystem; cell: LandscapeCell; label: string; current: boolean; fixtureRun: string | null; trend: readonly (number | null)[] }) {
+  const known = trend.filter((v): v is number => v != null);
+  const mid = known.length ? (Math.min(...known) + Math.max(...known)) / 2 : 0;
+  const half = known.length ? Math.max(3, (Math.max(...known) - Math.min(...known)) / 2) : 3;
+  const domain = [mid - half, mid + half] as const;
   const reading = readingText({ label, measured: cell.raw_score, score: cell.score, capped: cell.capped, capLevel: cell.cap_level, breaches: cell.breaches, dims: dimsOf(cell), records: cell.records_checked, rules: cell.rules_measured, coverage: cell.coverage, lowConfidence: cell.low_confidence });
   const href = `/o/${systemSlug(system.name)}/${moduleSlug(cell.module)}${fixtureRun ? `?run=${fixtureRun}` : ""}`;
   return (
@@ -47,8 +53,41 @@ function ObjectRow({ system, cell, label, current, fixtureRun }: { system: Lands
           lowConfidence={cell.low_confidence}
           showScore={false}
         />
+        {trend.filter((v) => v != null).length > 1 ? (
+          <Sparkline
+            values={trend}
+            width={48}
+            height={8}
+            domain={domain}
+            label={t("{label}, measured score over the last {count} runs: {first} to {last}", { label, count: trend.length, first: f1(trend.find((v) => v != null) ?? null), last: f1([...trend].reverse().find((v) => v != null) ?? null) })}
+            testId="map-spark"
+          />
+        ) : null}
       </span>
     </V2Link>
+  );
+}
+
+/**
+ * The objects of one open system, each with its trend: the measured score over the system's last 8 runs (the same
+ * timeline the run picker reads). Each line is drawn on its own range, at least 6 points tall, so the direction reads at
+ * 8 pixels; the ruler beside it carries the level.
+ */
+function SystemObjects({ system, landscape, cells, pathname, run }: { system: LandscapeSystem; landscape: Landscape; cells: LandscapeCell[]; pathname: string; run: string | null }) {
+  const timeline = useTimeline(system.id, 8).data?.runs;
+  const trends = useMemo(() => {
+    const out = new Map<string, (number | null)[]>();
+    for (const c of cells) out.set(c.module, (timeline ?? []).map((r) => r.objects[c.module]?.raw_score ?? r.objects[c.module]?.score ?? null));
+    return out;
+  }, [timeline, cells]);
+  return (
+    <>
+      {cells.map((c) => {
+        const label = landscape.objects.find((o) => o.module === c.module)?.label ?? c.module;
+        const here = pathname.startsWith(`/o/${systemSlug(system.name)}/${moduleSlug(c.module)}`);
+        return <ObjectRow key={c.module} system={system} cell={c} label={label} current={here} fixtureRun={run} trend={trends.get(c.module) ?? []} />;
+      })}
+    </>
   );
 }
 
@@ -150,13 +189,7 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
                 <div className="m2-sysrow-st">
                   <SystemStatus system={s} landscape={L} />
                 </div>
-                {openNow
-                  ? cells.map((c) => {
-                      const label = L.objects.find((o) => o.module === c.module)?.label ?? c.module;
-                      const here = pathname.startsWith(`/o/${systemSlug(s.name)}/${moduleSlug(c.module)}`);
-                      return <ObjectRow key={c.module} system={s} cell={c} label={label} current={here} fixtureRun={run} />;
-                    })
-                  : null}
+                {openNow ? <SystemObjects system={s} landscape={L} cells={cells} pathname={pathname} run={run} /> : null}
               </div>
             );
           })}

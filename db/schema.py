@@ -632,6 +632,8 @@ class User(Base):
     external_subject = Column(Text, nullable=True)
     # Validated by api/routes/preferences.py (theme, density, locale, saved views, ...).
     preferences = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    # The person this user reports to, for the workflow assignee rule "requester's manager" (migration 119).
+    manager_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -1117,7 +1119,9 @@ class RemediationBatch(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     name = Column(Text, nullable=False)
-    status = Column(Text, nullable=False, server_default="draft")  # draft|approved|exported
+    # draft|approved|awaiting_load (load file exported, waiting for the SAP load)|exported (sent to SAP: written by
+    # BAPI, or the load confirmed); migration 121
+    status = Column(Text, nullable=False, server_default="draft")
     filter = Column(JSONB, nullable=False, server_default="{}")
     created_by = Column(UUID(as_uuid=True), nullable=True)
     created_by_label = Column(Text, nullable=True)
@@ -1126,6 +1130,30 @@ class RemediationBatch(Base):
     approved_by_label = Column(Text, nullable=True)
     approved_at = Column(DateTime(timezone=True), nullable=True)
     exported_at = Column(DateTime(timezone=True), nullable=True)
+    exported_by = Column(UUID(as_uuid=True), nullable=True)
+    exported_by_label = Column(Text, nullable=True)
+    loaded_at = Column(DateTime(timezone=True), nullable=True)
+    loaded_by = Column(UUID(as_uuid=True), nullable=True)
+    loaded_by_label = Column(Text, nullable=True)
+    load_note = Column(Text, nullable=True)
+
+
+class RemediationBatchVerification(Base):
+    """What the first run after a batch's export found for its records (migration 121): one row per batch and run."""
+    __tablename__ = "remediation_batch_verifications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    batch_id = Column(UUID(as_uuid=True), ForeignKey("remediation_batches.id", ondelete="CASCADE"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    run_at = Column(DateTime(timezone=True), nullable=True)
+    records = Column(Integer, nullable=False, server_default="0")
+    fixed = Column(Integer, nullable=False, server_default="0")
+    still_failing = Column(Integer, nullable=False, server_default="0")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("batch_id", "version_id", name="uq_remediation_batch_verifications"),
+                      Index("ix_remediation_batch_verifications_batch", "tenant_id", "batch_id", "created_at"))
 
 
 class RemediationItem(Base):
@@ -1492,7 +1520,7 @@ class NotificationDelivery(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     channel = Column(Text, nullable=False)  # email | in_app
-    kind = Column(Text, nullable=False)  # critical | digest | test
+    kind = Column(Text, nullable=False)  # critical | digest | test | event (a hand-off notice, migration 121)
     status = Column(Text, nullable=False)  # pending | sent | failed | no_backend | skipped
     error = Column(Text, nullable=True)
     #: idempotency key claimed before sending: version id, daily:<date>, weekly:<year>-W<week>, test:<uuid>
@@ -2171,6 +2199,7 @@ class AccessRequest(Base):
     system_id = Column(UUID(as_uuid=True), nullable=True)
     module = Column(Text, nullable=True)
     reason = Column(Text, nullable=True)
+    permission = Column(Text, nullable=True)  # the action asked for by name, e.g. manage_digests (migration 121)
     status = Column(Text, nullable=False, server_default="open")
     decided_by = Column(UUID(as_uuid=True), nullable=True)
     decided_at = Column(DateTime(timezone=True), nullable=True)
@@ -3133,3 +3162,204 @@ class SkippedDelivery(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (Index("ix_skipped_deliveries_tenant", "tenant_id", "created_at"),)
+
+
+# ── Configurable approval workflows (migration 119) ──────────────────────────
+
+
+class WorkflowDefinition(Base):
+    """One version of a tenant's approval workflow for one object kind; steps as JSON (api/services/workflow.py)."""
+    __tablename__ = "workflow_definitions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    key = Column(Text, nullable=False)
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    object_kind = Column(Text, nullable=False)  # fix_batch | change_request
+    version = Column(Integer, nullable=False)
+    active = Column(Boolean, nullable=False, server_default=text("false"))
+    definition = Column(JSONB, nullable=False)
+    created_by = Column(UUID(as_uuid=True), nullable=True)
+    created_by_label = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    activated_at = Column(DateTime(timezone=True), nullable=True)
+    activated_by_label = Column(Text, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("object_kind IN ('fix_batch', 'change_request')", name="ck_workflow_definitions_kind"),
+        UniqueConstraint("tenant_id", "key", "version", name="uq_workflow_definitions_version"),
+        Index("uq_workflow_definitions_active", "tenant_id", "object_kind", unique=True,
+              postgresql_where=text("active")),
+    )
+
+
+class WorkflowInstance(Base):
+    """One run of a definition version over one object, with the facts its conditions were evaluated against."""
+    __tablename__ = "workflow_instances"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    definition_id = Column(UUID(as_uuid=True), ForeignKey("workflow_definitions.id"), nullable=False)
+    definition_key = Column(Text, nullable=False)
+    definition_version = Column(Integer, nullable=False)
+    object_kind = Column(Text, nullable=False)
+    object_id = Column(Text, nullable=False)
+    status = Column(Text, nullable=False, server_default="in_progress")
+    requester_id = Column(UUID(as_uuid=True), nullable=True)
+    requester_label = Column(Text, nullable=True)
+    facts = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    started_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('in_progress', 'approved', 'rejected', 'cancelled', 'withdrawn')",
+                        name="ck_workflow_instances_status"),
+        Index("ix_workflow_instances_object", "tenant_id", "object_kind", "object_id"),
+        Index("uq_workflow_instances_open", "tenant_id", "object_kind", "object_id", unique=True,
+              postgresql_where=text("status = 'in_progress'")),
+    )
+
+
+class WorkflowTask(Base):
+    """One step of an instance: who may decide, quorum, due time, votes and the decision."""
+    __tablename__ = "workflow_tasks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    instance_id = Column(UUID(as_uuid=True), ForeignKey("workflow_instances.id", ondelete="CASCADE"), nullable=False)
+    step_index = Column(SmallInteger, nullable=False)
+    step_name = Column(Text, nullable=False)
+    assignee_rule = Column(JSONB, nullable=False)
+    assigned_users = Column(ARRAY(UUID(as_uuid=True)), nullable=False, server_default="{}")
+    assignee_note = Column(Text, nullable=True)
+    quorum = Column(Text, nullable=False, server_default="any")
+    requester_may_approve = Column(Boolean, nullable=False, server_default=text("false"))
+    status = Column(Text, nullable=False, server_default="waiting")
+    skip_reason = Column(Text, nullable=True)
+    sla_hours = Column(Float, nullable=True)
+    escalate = Column(Boolean, nullable=False, server_default=text("true"))
+    due_at = Column(DateTime(timezone=True), nullable=True)
+    escalation_level = Column(SmallInteger, nullable=False, server_default="0")
+    escalated_to = Column(ARRAY(UUID(as_uuid=True)), nullable=False, server_default="{}")
+    overdue_notified_at = Column(DateTime(timezone=True), nullable=True)
+    votes = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    decided_by = Column(UUID(as_uuid=True), nullable=True)
+    decided_by_label = Column(Text, nullable=True)
+    on_behalf_of = Column(UUID(as_uuid=True), nullable=True)
+    decision = Column(Text, nullable=True)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    activated_at = Column(DateTime(timezone=True), nullable=True)
+    notified_at = Column(DateTime(timezone=True), nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('waiting', 'pending', 'approved', 'rejected', 'skipped', 'cancelled')",
+                        name="ck_workflow_tasks_status"),
+        CheckConstraint("quorum IN ('any', 'all')", name="ck_workflow_tasks_quorum"),
+        UniqueConstraint("instance_id", "step_index", name="uq_workflow_tasks_step"),
+        Index("ix_workflow_tasks_pending", "tenant_id", "status", "due_at"),
+    )
+
+
+class WorkflowEvent(Base):
+    """Append-only trail of every workflow and change request transition, with the actor."""
+    __tablename__ = "workflow_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    object_kind = Column(Text, nullable=False)
+    object_id = Column(Text, nullable=False)
+    instance_id = Column(UUID(as_uuid=True), ForeignKey("workflow_instances.id", ondelete="CASCADE"), nullable=True)
+    task_id = Column(UUID(as_uuid=True), ForeignKey("workflow_tasks.id", ondelete="CASCADE"), nullable=True)
+    action = Column(Text, nullable=False)
+    from_status = Column(Text, nullable=True)
+    to_status = Column(Text, nullable=True)
+    actor_id = Column(UUID(as_uuid=True), nullable=True)
+    actor_label = Column(Text, nullable=True)
+    detail = Column(JSONB, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (Index("ix_workflow_events_object", "tenant_id", "object_kind", "object_id", "created_at"),)
+
+
+# ── Master data change requests (migration 120) ──────────────────────────────
+
+
+class ChangeRequest(Base):
+    """A proposed create or change of a material, customer, vendor or business partner (api/services/change_requests.py)."""
+    __tablename__ = "change_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    kind = Column(Text, nullable=False)  # create | change
+    object = Column(Text, nullable=False)  # material | customer | vendor | business_partner
+    target_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="SET NULL"), nullable=True)
+    object_key = Column(Text, nullable=True)
+    title = Column(Text, nullable=True)
+    payload = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    status = Column(Text, nullable=False, server_default="draft")
+    requester_id = Column(UUID(as_uuid=True), nullable=True)
+    requester_label = Column(Text, nullable=True)
+    workflow_instance_id = Column(UUID(as_uuid=True), ForeignKey("workflow_instances.id", ondelete="SET NULL"),
+                                  nullable=True)
+    precheck = Column(JSONB, nullable=True)
+    validated_at = Column(DateTime(timezone=True), nullable=True)
+    sap_key = Column(Text, nullable=True)
+    sap_result = Column(JSONB, nullable=True)
+    sap_phase = Column(Text, nullable=True)
+    sap_attempts = Column(Integer, nullable=False, server_default="0")
+    delivery = Column(Text, nullable=True)  # sap | export
+    export = Column(JSONB, nullable=True)
+    reason = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    submitted_at = Column(DateTime(timezone=True), nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('create', 'change')", name="ck_change_requests_kind"),
+        CheckConstraint("object IN ('material', 'customer', 'vendor', 'business_partner')",
+                        name="ck_change_requests_object"),
+        CheckConstraint("status IN ('draft', 'submitted', 'in_approval', 'approved', 'rejected', 'creating', "
+                        "'created', 'failed', 'cancelled')", name="ck_change_requests_status"),
+        CheckConstraint("kind = 'create' OR object_key IS NOT NULL", name="ck_change_requests_change_key"),
+        Index("ix_change_requests_status", "tenant_id", "status", "created_at"),
+        Index("ix_change_requests_requester", "tenant_id", "requester_id", "created_at"),
+    )
+
+
+class ChangeRequestAttachment(Base):
+    """Metadata of a file attached to a change request."""
+    __tablename__ = "change_request_attachments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("change_requests.id", ondelete="CASCADE"), nullable=False)
+    filename = Column(Text, nullable=False)
+    content_type = Column(Text, nullable=True)
+    size_bytes = Column(BigInteger, nullable=True)
+    sha256 = Column(Text, nullable=True)
+    storage_key = Column(Text, nullable=True)
+    uploaded_by = Column(UUID(as_uuid=True), nullable=True)
+    uploaded_by_label = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (Index("ix_change_request_attachments_request", "tenant_id", "request_id"),)
+
+
+class ChangeRequestComment(Base):
+    """One comment on a change request."""
+    __tablename__ = "change_request_comments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("change_requests.id", ondelete="CASCADE"), nullable=False)
+    author_id = Column(UUID(as_uuid=True), nullable=True)
+    author_label = Column(Text, nullable=True)
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (Index("ix_change_request_comments_request", "tenant_id", "request_id", "created_at"),)

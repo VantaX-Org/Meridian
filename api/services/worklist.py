@@ -13,7 +13,8 @@ Work status, one vocabulary for every screen (a record takes the least-advanced 
   to_fix        open, nobody has decided a value yet
   proposed      a value is decided and waits in a draft fix batch
   approved      a second person approved the batch
-  sent          the batch was exported for the SAP load
+  awaiting_load the batch's load file was exported and waits for the SAP load (nobody confirmed it yet)
+  sent          the batch reached SAP: written by BAPI, or its load confirmed
   not_an_issue  signed off as an exception (accepted risk / false positive)
   fixed         a later run showed the record passing
 """
@@ -27,28 +28,31 @@ from sqlalchemy import text
 
 from api.middleware.cache import mark_work_changed
 from api.services.record_issues import _copy, scope_of
+from api.services.remediation import has_value_sql
 from checks.profiling import is_sensitive
 
 log = logging.getLogger(__name__)
 
-STATUSES = ("to_fix", "proposed", "approved", "sent", "not_an_issue", "fixed")
+STATUSES = ("to_fix", "proposed", "approved", "awaiting_load", "sent", "not_an_issue", "fixed")
 KEEP_RUNS = 2  # work rows kept per object of a system: the newest runs, so the previous one can be compared
 
 SEV_RANK_SQL = ("CASE {c} WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 "
                 "WHEN 'low' THEN 3 ELSE 4 END")
-_STATUS_OF_RANK = "(ARRAY['to_fix','proposed','approved','sent','not_an_issue','fixed'])[{r} + 1]"
+_STATUS_OF_RANK = "(ARRAY['to_fix','proposed','approved','awaiting_load','sent','not_an_issue','fixed'])[{r} + 1]"
 
 # The work status rank of each failing (check, record) of a run: the issue's own sign-off or fix
 # first, else the furthest its newest fix batch item got.
 _STATUS_ROWS = f"""
     SELECT fr.module, fr.check_id, fr.record_key, f.severity,
            {SEV_RANK_SQL.format(c="f.severity")} AS sev_rank,
-           CASE WHEN ri.status = 'resolved' THEN 5
-                WHEN ri.status = 'accepted' THEN 4
+           CASE WHEN ri.status = 'resolved' THEN 6
+                WHEN ri.status = 'accepted' THEN 5
                 WHEN rem.recon_status = 'still_failing' THEN 0
-                WHEN rem.batch_status = 'exported' THEN 3
+                WHEN NOT {has_value_sql('rem.proposed_value')} THEN 0  -- no new value (blank, "no value yet"): still to fix in any batch
+                WHEN rem.batch_status = 'exported' THEN 4
+                WHEN rem.batch_status = 'awaiting_load' THEN 3
                 WHEN rem.batch_status = 'approved' THEN 2
-                WHEN rem.batch_status = 'draft' AND rem.proposed_value IS NOT NULL THEN 1
+                WHEN rem.batch_status = 'draft' THEN 1
                 ELSE 0 END AS status_rank,
            ri.assigned_to, CASE WHEN ri.status NOT IN ('resolved', 'accepted') THEN ri.due_at END AS due_at
       FROM finding_records fr

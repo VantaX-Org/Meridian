@@ -5,6 +5,7 @@ import runsJson from "./runs.json";
 import rulesJson from "./rules.json";
 import type { CommandGroup, CommandResult, Landscape, Receipt, RuleRow, RunList, StatusStrip, WorkPage } from "../types";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
+import { fixtureParam } from "../fixture";
 import { NONE, runsFixtureResponse } from "./runs";
 import { objectFixture } from "./object";
 import { failingRulesOf } from "./library";
@@ -127,6 +128,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     if (method === "POST" && batch) return wf.batchFixture(batch[2] as "approve" | "send-back", decodeURIComponent(batch[1]), (body as { note?: string } | undefined)?.note);
     const send = /^\/remediation\/batches\/([^/]+)\/export$/.exec(path);
     if (method === "POST" && send) return wf.sendBatchFixture(decodeURIComponent(send[1]));
+    const loaded = /^\/remediation\/batches\/([^/]+)\/loaded$/.exec(path);
+    if (method === "POST" && loaded) return wf.loadedBatchFixture(decodeURIComponent(loaded[1]));
     const live = /^\/writeback\/batches\/([^/]+)\/(check|send)$/.exec(path);
     if (method === "POST" && live) return live[2] === "check" ? wf.writebackCheckFixture(decodeURIComponent(live[1])) : wf.writebackSendFixture(decodeURIComponent(live[1]));
     const read = /^\/notifications\/([^/]+)\/read$/.exec(path);
@@ -181,6 +184,13 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (s6 !== NOT_MINE) return s6 as T;
   const runsStep = runsFixtureResponse(path, params);
   if (runsStep !== NONE) return runsStep as T;
+  // `?landscape=empty`: a tenant on its first day, with no system connected and nothing uploaded (the guided start).
+  if (fixtureParam("landscape") === "empty") {
+    if (path === "/landscape") return { ...landscapeFixture, systems: [], objects: [], cells: [], counts: { go: 0, at_risk: 0, no_go: 0 }, status_strip: { ...landscapeFixture.status_strip, run_at: null, records_checked: null, rules_measured: null } } as T;
+    if (path === "/work/summary") return { ...(wf.workSummary(params) as object), objects: [] } as T;
+    if (path === "/status") return { ...landscapeFixture.status_strip, run_at: null, records_checked: null, rules_measured: null, scored_in_s: null } as T;
+    if (path === "/shell/counts") return { fix: 0, inbox: ap.unreadFixture().count } as T;
+  }
   const out = ((): unknown => {
     if (path === "/landscape") return withPolicyMarks(withContractMarks(withSystems(withOpenDelta(landscapeFixture))));
     if (path === "/status") return withSandbox(landscapeFixture.status_strip as StatusStrip);

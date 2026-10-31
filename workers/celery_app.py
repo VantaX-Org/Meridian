@@ -85,6 +85,10 @@ import workers.tasks.build_worklist  # noqa: F401 — steward work list per run
 import workers.tasks.reconcile_work_counts  # registers the nightly work_counts drift check (beat)
 import workers.tasks.report_schedules  # noqa: F401 — scheduled reports (beat) and run now
 import workers.tasks.webhooks  # outbound webhook deliveries (beat)
+import workers.tasks.workflows  # noqa: F401 — approval steps past due climb the escalation chain (beat)
+import workers.tasks.change_requests  # noqa: F401 — approved master data change requests written to SAP
+import workers.tasks.handoff_notices  # noqa: F401 — the emails of hand-off notices (batch waiting, approved, ...)
+import workers.tasks.verify_batches  # noqa: F401 — the next run's verdict on each fix batch it covered
 import workers.tasks.fix_mining  # learned rules from stewards' fixes (beat)
 import workers.tasks.digests  # noqa: F401 — scheduled digests and executive mailouts (beat)
 import workers.scheduler  # noqa: F401, E402 — registers beat schedule

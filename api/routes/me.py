@@ -44,8 +44,11 @@ async def my_permissions(
 
 
 class AccessRequestBody(BaseModel):
-    resource: str
-    action: str
+    """What is asked for: a ``permission`` by name (the action a refusal names, e.g. manage_digests), or a
+    ``resource`` and ``action`` pair of the roles matrix."""
+    permission: Optional[str] = Field(default=None, max_length=60)
+    resource: Optional[str] = Field(default=None, max_length=60)
+    action: Optional[str] = Field(default=None, max_length=60)
     system_id: Optional[uuid.UUID] = None
     module: Optional[str] = None
     reason: Optional[str] = Field(default=None, max_length=2000)
@@ -57,7 +60,8 @@ class DecideBody(BaseModel):
     role_key: Optional[str] = None  # when granting: also create this grant at the request's scope
 
 
-_COLS = "id, user_id, resource, action, system_id, module, reason, status, decided_by, decided_at, created_at"
+_COLS = ("id, user_id, resource, action, permission, system_id, module, reason, status, decided_by, decided_at, "
+         "created_at")
 
 
 class AccessRequestOut(BaseModel):
@@ -65,6 +69,7 @@ class AccessRequestOut(BaseModel):
     user_id: str
     resource: str
     action: str
+    permission: Optional[str] = None
     system_id: Optional[str] = None
     module: Optional[str] = None
     reason: Optional[str] = None
@@ -85,9 +90,19 @@ def _str(v: Optional[uuid.UUID]) -> Optional[str]:
 def _row(r: Row) -> AccessRequestOut:
     m = r._mapping
     return AccessRequestOut(
-        id=str(m["id"]), user_id=str(m["user_id"]), resource=m["resource"], action=m["action"],
+        id=str(m["id"]), user_id=str(m["user_id"]), resource=m["resource"], action=m["action"], permission=m["permission"],
         system_id=_str(m["system_id"]), module=m["module"], reason=m["reason"], status=m["status"],
         decided_by=_str(m["decided_by"]), decided_at=_iso(m["decided_at"]), created_at=m["created_at"].isoformat())
+
+
+def permission_pair(permission: str) -> tuple[str, str]:
+    """The (resource, action) of the roles matrix a named permission stands for: its first concrete pair, sorted (a
+    permission that only spans every resource, such as view, stands for its first resource)."""
+    from api.services.rbac import _required_pairs
+    pairs = sorted(_required_pairs(permission))
+    if not pairs:
+        raise HTTPException(status_code=422, detail="Unknown permission")
+    return pairs[0]
 
 
 @router.post("/access-requests", status_code=201, dependencies=[Depends(require_permission("view"))])
@@ -95,22 +110,46 @@ async def create_access_request(
     body: AccessRequestBody, request: Request,
     db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
 ) -> AccessRequestOut:
-    if not _GRANTABLE.get(body.resource, {}).get(body.action):
+    """Ask the administrators for a permission (by name, as a refusal names it, or as a resource and action pair),
+    with a reason. The administrators (manage users) are told in the inbox and by email. Asking again while the same
+    request is open returns the open one."""
+    from api.services import handoff_notices
+
+    if body.permission:
+        if body.permission not in LEGACY_ACTION_MAP:
+            raise HTTPException(status_code=422, detail="Unknown permission")
+        resource, action = permission_pair(body.permission)
+    elif body.resource and body.action:
+        resource, action = body.resource, body.action
+    else:
+        raise HTTPException(status_code=422, detail="Say which permission you need (permission, or resource and action)")
+    if not _GRANTABLE.get(resource, {}).get(action):
         raise HTTPException(status_code=422, detail="Unknown or ungrantable resource/action")
     uid = current_user_id(request)
     if not uid:
         raise HTTPException(status_code=403, detail="Authentication required")
     await db.execute(text(f"SET LOCAL app.tenant_id = '{str(tenant.id)}'"))
+    p = {"t": str(tenant.id), "u": uid, "r": resource, "a": action, "perm": body.permission,
+         "s": str(body.system_id) if body.system_id else None, "m": body.module, "why": body.reason}
+    open_row = (await db.execute(text(
+        f"SELECT {_COLS} FROM access_requests WHERE tenant_id = :t AND user_id = :u AND status = 'open' "
+        f"AND resource = :r AND action = :a AND permission IS NOT DISTINCT FROM CAST(:perm AS text) "
+        f"AND system_id IS NOT DISTINCT FROM CAST(:s AS uuid) AND module IS NOT DISTINCT FROM CAST(:m AS text) "
+        f"ORDER BY created_at DESC LIMIT 1"), p)).fetchone()
+    if open_row is not None:
+        return _row(open_row)
     row = await db.execute(
-        text(f"INSERT INTO access_requests (tenant_id, user_id, resource, action, system_id, module, reason) "
-             f"VALUES (:t, :u, :r, :a, :s, :m, :why) RETURNING {_COLS}"),
-        {"t": str(tenant.id), "u": uid, "r": body.resource, "a": body.action,
-         "s": str(body.system_id) if body.system_id else None, "m": body.module, "why": body.reason},
-    )
+        text(f"INSERT INTO access_requests (tenant_id, user_id, resource, action, permission, system_id, module, reason) "
+             f"VALUES (:t, :u, :r, :a, :perm, :s, :m, :why) RETURNING {_COLS}"), p)
     out = _row(row.fetchone())
     await write_audit(db, tenant.id, request, "access_request.create", "access_request", out.id, None,
                       out.model_dump())
+    mails = await db.run_sync(lambda s: handoff_notices.access_requested(s, str(tenant.id), out.id, uid,
+                                                                         body.permission or f"{action} on {resource}",
+                                                                         body.reason))
     await db.commit()
+    handoff_notices.dispatch(mails)
+    attention.invalidate(tenant.id)
     return out
 
 
@@ -173,6 +212,14 @@ async def decide_access_request(
     after = _row(row.fetchone())
     await write_audit(db, tenant.id, request, "access_request.decide", "access_request",
                       str(request_id), before.model_dump(), after.model_dump())
+    from api.services import handoff_notices
+    asked = before.permission or f"{before.action} on {before.resource}"
+    mails = await db.run_sync(lambda s: handoff_notices.notify(
+        s, str(tenant.id), [before.user_id], type_="access_request",
+        title=f"Your request for {asked} was {body.decision}",
+        body=f"An administrator {body.decision} your request for {asked}." + (f' "{body.reason}"' if body.reason else ""),
+        link="/", key=f"access_decided:{request_id}"))
     await db.commit()
+    handoff_notices.dispatch(mails)
     attention.invalidate(tenant.id)
     return after

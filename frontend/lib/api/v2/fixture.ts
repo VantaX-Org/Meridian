@@ -73,11 +73,33 @@ export function useFixture(): boolean {
   return useSyncExternalStore(noop, fixtureActive, () => false);
 }
 
-/** A v2 href that keeps fixture mode: appends `fixture=1` when the page is in it. */
-export function withFixture(href: string, on: boolean): string {
-  if (!on || /[?&]fixture=/.test(href)) return href;
+/** The address keys fixture mode carries from page to page: who is looking (`role`, `persona`). */
+export const FIXTURE_CARRY = ["role", "persona"] as const;
+
+/** The carried keys of the current page (`?role=sap_basis`), so a demo follows a journey across screens as one person. */
+export function fixtureCarry(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const k of FIXTURE_CARRY) {
+    const v = fixtureParam(k);
+    if (v) out[k] = v;
+  }
+  return out;
+}
+
+/**
+ * A v2 href that keeps fixture mode: appends `fixture=1` when the page is in it, and the carried keys (`role`,
+ * `persona`) the href does not set itself, so a link never drops the person the demo is walking as.
+ */
+export function withFixture(href: string, on: boolean, carry: Readonly<Record<string, string>> = {}): string {
+  if (!on) return href;
   const hash = href.indexOf("#");
-  const base = hash >= 0 ? href.slice(0, hash) : href;
+  let base = hash >= 0 ? href.slice(0, hash) : href;
   const tail = hash >= 0 ? href.slice(hash) : "";
-  return `${base}${base.includes("?") ? "&" : "?"}fixture=1${tail}`;
+  const has = (k: string) => new RegExp(`[?&]${k}=`).test(base);
+  const add = (k: string, v: string) => {
+    base = `${base}${base.includes("?") ? "&" : "?"}${k}=${encodeURIComponent(v)}`;
+  };
+  if (!has("fixture")) add("fixture", "1");
+  for (const [k, v] of Object.entries(carry)) if (!has(k)) add(k, v);
+  return `${base}${tail}`;
 }

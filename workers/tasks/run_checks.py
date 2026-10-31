@@ -1361,6 +1361,14 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             reraise_soft_limit(e)
             logger.warning(f"Failed to enqueue evaluate_contracts (non-fatal): {e}")
 
+        # The run's verdict on each fix batch it covered: n fixed, m still failing (idempotent, non-fatal)
+        try:
+            from workers.tasks.verify_batches import verify_batches
+            verify_batches.delay(version_id, tenant_id)
+        except Exception as e:
+            reraise_soft_limit(e)
+            logger.warning(f"Failed to enqueue verify_batches (non-fatal): {e}")
+
         # Alert thresholds (failing-check counts, DQS drop, per-module floors)
         try:
             from workers.tasks.send_notifications import send_notification

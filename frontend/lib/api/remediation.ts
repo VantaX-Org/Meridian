@@ -3,7 +3,7 @@ import apiClient from "./client";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type BatchStatus = "draft" | "approved" | "exported";
+export type BatchStatus = "draft" | "approved" | "awaiting_load" | "exported";
 export type ProposalSource = "rule" | "steward" | "manual" | "cleaning" | "simulation";
 export type Confidence = "high" | "medium" | "low";
 export type ReconStatus = "fixed" | "still_failing";
@@ -157,7 +157,7 @@ export function writeBackModeSentence(liveEnabled: boolean | undefined): string 
   return liveEnabled ? "Approved batches are written back to SAP." : "Approved batches are exported for SAP.";
 }
 
-export const STATUS_LABEL: Record<BatchStatus, string> = { draft: "Draft", approved: "Approved", exported: "Exported" };
+export const STATUS_LABEL: Record<BatchStatus, string> = { draft: "Draft", approved: "Approved", awaiting_load: "Waiting for the SAP load", exported: "Exported" };
 export const SOURCE_LABEL: Record<ProposalSource, string> = {
   rule: "Rule", steward: "Steward", manual: "Manual", cleaning: "Cleaning", simulation: "Simulation",
 };

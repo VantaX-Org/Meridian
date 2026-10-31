@@ -30,8 +30,18 @@ from typing import Any
 
 from sqlalchemy import text
 
-EVENTS = ("run.finished", "run.failed", "batch.waiting", "batch.approved", "batch.sent", "score.dropped",
-          "breach.new", "config.drift", "certificate.signed", "digest.sent")
+EVENTS = ("run.finished", "run.failed", "batch.waiting", "batch.approved", "batch.exported", "batch.sent",
+          "batch.verified", "score.dropped",
+          "breach.new", "config.drift", "certificate.signed", "digest.sent",
+          # master data change requests (api/services/change_requests.py)
+          "change_request.submitted", "change_request.approved", "change_request.rejected",
+          "change_request.created", "change_request.failed", "change_request.cancelled",
+          # approval workflow steps (api/services/workflow.py)
+          "workflow.started", "workflow.step_waiting", "workflow.step_decided", "workflow.escalated",
+          "workflow.completed")
+# The step-level workflow events reach a webhook that names them, or "workflow.*"; "*" covers every other event. A
+# wildcard subscription made before workflows existed so receives exactly what it did (one batch.approved per batch).
+WORKFLOW_WILDCARD = "workflow.*"
 TEST_EVENT = "webhook.test"
 MAX_ATTEMPTS = 5
 BACKOFF_SECONDS = 60
@@ -116,8 +126,9 @@ def emit(session, tenant_id: str, event: str, data: dict, *, webhook_id: str | N
         return []
     hooks = [r[0] for r in session.execute(text(
         "SELECT id::text FROM webhooks WHERE tenant_id = :t AND (CAST(:w AS uuid) IS NULL OR id = CAST(:w AS uuid)) "
-        "AND (active OR CAST(:w AS uuid) IS NOT NULL) AND (:e = ANY(events) OR '*' = ANY(events) OR :e = :test)"),
-        {"t": str(tenant_id), "w": webhook_id, "e": event, "test": TEST_EVENT}).fetchall()]
+        "AND (active OR CAST(:w AS uuid) IS NOT NULL) AND (:e = ANY(events) OR :e = :test "
+        "OR ('*' = ANY(events) AND :e NOT LIKE 'workflow.%') OR (:e LIKE 'workflow.%' AND :ww = ANY(events)))"),
+        {"t": str(tenant_id), "w": webhook_id, "e": event, "test": TEST_EVENT, "ww": WORKFLOW_WILDCARD}).fetchall()]
     if not hooks:
         return []
     event_id = str(uuid.uuid4())
@@ -290,7 +301,8 @@ def run_failed(session, tenant_id: str, version_id: str) -> int:
 
 
 def batch_event(session, tenant_id: str, batch_id: str, event: str) -> int:
-    """batch.waiting / batch.approved / batch.sent: the batch, its size and the objects and rules it touches."""
+    """batch.waiting / batch.approved / batch.exported (load file out, waiting for the SAP load) / batch.sent
+    (written by BAPI, or the load confirmed): the batch, its size and the objects and rules it touches."""
     b = session.execute(text(
         "SELECT id::text, name, status, created_by_label, approved_by_label FROM remediation_batches "
         "WHERE id = CAST(:b AS uuid) AND tenant_id = :t"), {"b": batch_id, "t": str(tenant_id)}).mappings().first()

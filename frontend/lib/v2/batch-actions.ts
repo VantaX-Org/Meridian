@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/design/v2/Toast";
-import { sendBatchToSap, type SendResult } from "@/lib/api/v2/batches";
+import { confirmBatchLoaded, sendBatchToSap, type SendResult } from "@/lib/api/v2/batches";
 import { postApproveBatch, postSendBack } from "@/lib/api/v2/work";
 import { useV2Session } from "./hooks";
 import { refreshV2 } from "./queries";
@@ -15,6 +15,8 @@ export interface BatchCan {
   approve: boolean;
   /** Send an approved batch to SAP: the export permission. */
   send: boolean;
+  /** Confirm a load file was loaded in SAP: approve or manage systems (SAP Basis). */
+  confirmLoad: boolean;
   /** Reassign work: the assign permission. */
   assign: boolean;
   apply: boolean;
@@ -26,7 +28,7 @@ export interface BatchCan {
 export function useBatchCan(): BatchCan {
   const session = useV2Session();
   const wc = useWorkCan();
-  return useMemo(() => ({ approve: wc.approve, assign: wc.assign, apply: wc.apply, send: wc.mode !== "viewer" && session.can("export"), me: session.id }), [wc.approve, wc.assign, wc.apply, wc.mode, session]);
+  return useMemo(() => ({ approve: wc.approve, assign: wc.assign, apply: wc.apply, send: wc.mode !== "viewer" && session.can("export"), confirmLoad: wc.mode !== "viewer" && (session.can("approve") || session.can("manage_systems")), me: session.id }), [wc.approve, wc.assign, wc.apply, wc.mode, session]);
 }
 
 /**
@@ -76,5 +78,14 @@ export function useBatchActions() {
     [settle],
   );
 
-  return { approve, sendBack, sendToSap };
+  const confirmLoaded = useCallback(
+    async (id: string, label: string, note: string | null) => {
+      await confirmBatchLoaded(id, note);
+      toast.show(t("Batch {label} is loaded in SAP", { label }));
+      await settle();
+    },
+    [settle, toast],
+  );
+
+  return { approve, sendBack, sendToSap, confirmLoaded };
 }

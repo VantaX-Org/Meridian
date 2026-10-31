@@ -583,10 +583,13 @@ async def _approved_batch(db: AsyncSession, tenant: Tenant, batch_id: uuid.UUID)
     """The batch and its items with a proposed value; 409 unless it is approved (or already sent)."""
     from api.routes.remediation import _batch, _items
 
+    from api.services.remediation import has_value
+
     b = await _batch(db, tenant, batch_id)
     if b["status"] == "draft":
         raise HTTPException(status_code=409, detail="Approve the batch before sending it to SAP.")
-    items = [i for i in await _items(db, batch_id) if i.get("field") and i.get("proposed_value") is not None]
+    # a change without a new value (blank, or a placeholder such as "no value yet") is never sent (F12)
+    items = [i for i in await _items(db, batch_id) if i.get("field") and has_value(i.get("proposed_value"))]
     return b, items
 
 

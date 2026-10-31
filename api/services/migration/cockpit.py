@@ -31,6 +31,8 @@ async def list_wave_verdicts(db: AsyncSession, tenant_id: str, waves: list[dict]
         summaries = {str(r.id): (r.dqs_summary or {}) for r in (await db.execute(
             text("SELECT id, dqs_summary FROM analysis_versions WHERE tenant_id = :t AND id = ANY(CAST(:v AS uuid[]))"),
             {"t": tenant_id, "v": sorted(version_ids)})).fetchall()}
+    from api.services.wave_gate import gate_scores, wave_threshold
+    gates = await gate_scores(db, tenant_id, [w["id"] for w in waves if w.get("id")])
     for w in waves:
         gap_summary = w.pop("last_gap_summary", None)
         version_id = w.pop("last_version_id", None)
@@ -38,7 +40,9 @@ async def list_wave_verdicts(db: AsyncSession, tenant_id: str, waves: list[dict]
             w["last_verdict"] = None
             continue
         dqs = {m: (d or {}).get("composite_score") for m, d in summaries.get(str(version_id), {}).items()}
-        cells = build_wave_cells(w["name"], list(w["modules"] or []), gap_summary or {}, dqs, w["min_readiness"], w["min_dqs"])
+        w["threshold"] = wave_threshold(gates.get(str(w.get("id"))), w["min_dqs"])
+        cells = build_wave_cells(w["name"], list(w["modules"] or []), gap_summary or {}, dqs, w["min_readiness"],
+                                 w["threshold"])
         w["last_verdict"] = wave_verdict(cells)
 
 
@@ -59,7 +63,8 @@ async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
                                     {"v": str(run.source_version_id), "t": tenant_id})).scalar() or {}
         dqs = {m: (d or {}).get("composite_score") for m, d in summary.items()}
     gap_summary = (run.gap_summary if run else None) or {}
-    min_dqs = wave.min_dqs
+    from api.services.wave_gate import gate_scores, wave_threshold
+    min_dqs = wave_threshold((await gate_scores(db, tenant_id, [str(wave.id)])).get(str(wave.id)), wave.min_dqs)
     cells = build_wave_cells(wave.name, list(wave.modules or []), gap_summary, dqs, wave.min_readiness, min_dqs)
     blocking: dict[str, int] = {}
     if run:
@@ -97,6 +102,7 @@ async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
         "source_version_id": str(run.source_version_id) if run and run.source_version_id else None,
         "dest_system_type": dest_type,
         "verdict": wave_verdict(cells),
+        "threshold": min_dqs,  # the wave's one score threshold (gate min score, else min_dqs; F16)
         "score": run.readiness_score if run else None,
         "records_total": run.records_total if run else 0,
         "records_blocked": run.records_blocked if run else 0,

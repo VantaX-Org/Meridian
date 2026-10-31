@@ -25,6 +25,8 @@ logger = logging.getLogger("meridian.delegation")
 ROUTED_TYPES: frozenset[str] = frozenset({
     "approval", "batch_waiting", "mention", "assignment", "sla_at_risk", "sla_breached", "sla_ack_breached",
     "comment", "critical_breach", "score_dropped", "run_finished",
+    # fix batch hand-offs (api/services/handoff_notices.py)
+    "batch_approved", "batch_sent_back", "batch_awaiting_load", "batch_loaded", "batch_verified",
 })
 
 ACTIVE_SQL = "d.revoked_at IS NULL AND d.starts_on <= CAST(:today AS date) AND d.ends_on >= CAST(:today AS date)"

@@ -3,46 +3,130 @@
  * every other v2 file reads these through var(--m2-*). Everything is scoped to .m2-root, so the root layout's base
  * (design/tokens.css: the attribution strip, the global error page) stays apart from it.
  *
- * Light is white ground and white sheets with 1px rules; dark is true neutral steps. One data hue marks the
- * selected cell, the current run and the next-step button. Status hues are always paired with a shape and a word.
- * Motion is declared in the last section only: lint:tokens keeps transitions and durations out of other files.
+ * Colour is built in three layers. Two ramps hold every neutral and every blue the interface draws: the neutral ramp
+ * (--m2-n-*, a cool slate at hue 240 in OKLCH, chroma under 0.025) and the Meridian blue ramp (--m2-b-*, hue 263; step
+ * 700 is the brand blue). The semantic tokens (ground, ink, data, status, chart) name a step of a ramp for light and
+ * another for dark, so the two themes are chosen, not inverted. Status and chart hues sit beside the ramps with their
+ * light and dark steps. design/v2/__tests__/tokens.test.ts holds every pair a screen draws to WCAG 2.1 AA in both
+ * themes, and the chart palette to the colour-vision checks (DESIGN.md, Colour).
+ *
+ * Light is a whisper of slate for the ground and white sheets on it; dark is the same ramp from the other end. One data
+ * hue marks the selected cell, the current run and the next-step button. Status hues are always paired with a shape and
+ * a word. Motion is declared in the last section only: lint:tokens keeps transitions and durations out of other files.
  */
 
 .m2-root {
+  /* The neutral ramp: white to near black, one hue. Grounds, rules and inks are steps of it. */
+  --m2-n-0: #FFFFFF;
+  --m2-n-25: #F7F9FB;
+  --m2-n-50: #F0F3F6;
+  --m2-n-100: #E6EBEF;
+  --m2-n-150: #DEE4E8;
+  --m2-n-200: #CAD1D6;
+  --m2-n-300: #A9B3BB;
+  --m2-n-400: #8C979F;
+  --m2-n-500: #6B767E;
+  --m2-n-600: #59646C;
+  --m2-n-700: #3E4A53;
+  --m2-n-800: #2D373E;
+  --m2-n-850: #242D33;
+  --m2-n-875: #1E262B;
+  --m2-n-900: #1A2024;
+  --m2-n-925: #151A1E;
+  --m2-n-950: #0E1215;
+  /* The Meridian blue ramp. 700 is the brand blue (the mark, the data hue in light); 300 is the data hue in dark. */
+  --m2-b-50: #F2F6FE;
+  --m2-b-100: #DFEAFE;
+  --m2-b-200: #C0D5FD;
+  --m2-b-300: #8EB1F5;
+  --m2-b-400: #648FE7;
+  --m2-b-500: #406FD1;
+  --m2-b-600: #2A54B0;
+  --m2-b-700: #1B3F8F;
+  --m2-b-800: #132E6A;
+  --m2-b-900: #0C1F47;
+  --m2-b-950: #08152F;
+
   /* Ground and ink */
-  --m2-bg: #FFFFFF;
-  --m2-sheet: #FFFFFF;
-  --m2-line: #E3E7EA;
-  --m2-line-2: #C9D0D5;
-  --m2-rule: #EEF1F3;
-  --m2-chrome: #E3E7EA;
-  --m2-fg: #121A20;
-  --m2-ink-2: #3E4A53;
-  --m2-ink-3: #6B767E;
-  --m2-meta: #59646C;
-  /* Data hue and info */
-  --m2-data: #1B3F8F;
-  --m2-on-data: #FFFFFF;
-  --m2-info: #2E5C8A;
-  /* Status: shape plus word, never colour alone */
-  --m2-crit: #A3221A;
-  --m2-crit-bg: #F0E0DF;
-  --m2-crit-ink: #74190F;
-  --m2-high: #8F5200;
-  --m2-high-bg: #EFE5D4;
-  --m2-high-ink: #5E3500;
+  --m2-bg: var(--m2-n-25);
+  --m2-sheet: var(--m2-n-0);
+  --m2-line: var(--m2-n-150);
+  --m2-line-2: var(--m2-n-200);
+  --m2-rule: var(--m2-n-50);
+  --m2-chrome: var(--m2-n-150);
+  --m2-fg: var(--m2-n-925);
+  --m2-ink-2: var(--m2-n-700);
+  --m2-ink-3: var(--m2-n-500);
+  --m2-meta: var(--m2-n-600);
+  /* Data hue: the one strong colour of a canvas, its wash under a selection, and the text on it */
+  --m2-data: var(--m2-b-700);
+  --m2-data-bg: var(--m2-b-50);
+  --m2-on-data: var(--m2-n-0);
+  /* Semantic: pass, warn, fail, critical and info, each a mark colour, a wash and the text on the wash. A status hue
+     is always paired with a shape and a word, never alone. Fail and critical share the stop red: two reds in one
+     ledger would read as a difference that is not there; critical adds the square mark. */
   --m2-pass: #1D6B3F;
   --m2-pass-bg: #DCEAE1;
   --m2-pass-ink: #124A2B;
+  --m2-warn: #8F5200;
+  --m2-warn-bg: #F3E8D6;
+  --m2-warn-ink: #5E3500;
+  --m2-crit: #A3221A;
+  --m2-crit-bg: #F5E3E1;
+  --m2-crit-ink: #74190F;
+  --m2-fail: var(--m2-crit);
+  --m2-fail-bg: var(--m2-crit-bg);
+  --m2-fail-ink: var(--m2-crit-ink);
+  --m2-info: #2E5C8A;
+  --m2-info-bg: #E7F1FC;
+  --m2-info-ink: #12416D;
+  /* High severity and At risk read in the warn hue (the names the screens were written with). */
+  --m2-high: var(--m2-warn);
+  --m2-high-bg: var(--m2-warn-bg);
+  --m2-high-ink: var(--m2-warn-ink);
   /* Surfaces and states */
-  --m2-hover: #F7F9FA;
-  --m2-active: #F1F3F5;
-  --m2-track: #E6EAED;
-  --m2-seg: #5F6B74;
-  --m2-scrim: #121A2059;
-  --m2-shadow: 0 8px 28px #121A202E;
-  --m2-inverse: #121A20;
-  --m2-on-inverse: #F5F7F8;
+  --m2-hover: var(--m2-n-50);
+  --m2-active: var(--m2-n-100);
+  --m2-track: var(--m2-n-100);
+  --m2-seg: var(--m2-n-600);
+  --m2-scrim: #151A1E59;
+  --m2-shadow: 0 8px 28px #151A1E2E;
+  /* The one card that stands alone on the ground (the signed-out pages): a lift of a few pixels, not a float. */
+  --m2-shadow-card: 0 1px 2px #151A1E0F, 0 12px 32px #151A1E0D;
+  --m2-inverse: var(--m2-n-925);
+  --m2-on-inverse: var(--m2-n-25);
+  /* The stop red where it marks an error on the inverse ground (a toast) */
+  --m2-on-inverse-crit: #F0877F;
+
+  /* Charts (design/v2/charts). Categorical: eight hues in a fixed order, validated for colour-vision separation on the
+     adjacent pairs (worst 9.6 in OKLab x100) and for 3:1 against the sheet; the first three also on every pair, so a
+     scatter or a small-multiple legend stops at three. Sequential: one hue, the blue ramp, light to dark. Severity:
+     ordinal, the stop red and the warn amber for critical and high, two receding neutral steps for medium and low (low
+     sits at 2:1, the floor of an ordinal end: its count is always in the legend and the table). */
+  --m2-chart-1: #406FD1;
+  --m2-chart-2: #C65A1E;
+  --m2-chart-3: #0F8A78;
+  --m2-chart-4: #A87600;
+  --m2-chart-5: #7559C7;
+  --m2-chart-6: #4D7F1A;
+  --m2-chart-7: #1F7FAE;
+  --m2-chart-8: #B8487E;
+  --m2-seq-1: var(--m2-b-300);
+  --m2-seq-2: var(--m2-b-400);
+  --m2-seq-3: var(--m2-b-500);
+  --m2-seq-4: var(--m2-b-600);
+  --m2-seq-5: var(--m2-b-700);
+  --m2-sev-crit: var(--m2-crit);
+  --m2-sev-high: var(--m2-warn);
+  --m2-sev-med: var(--m2-n-500);
+  --m2-sev-low: var(--m2-n-300);
+  --m2-chart-grid: var(--m2-n-100);
+  --m2-chart-axis: var(--m2-n-200);
+  --m2-chart-text: var(--m2-n-600);
+  --m2-chart-line: var(--m2-data);
+  --m2-chart-area: color-mix(in srgb, var(--m2-data) 10%, transparent);
+  --m2-chart-quiet: var(--m2-n-500);
+  --m2-chart-ring: var(--m2-sheet);
 
   /* Type: IBM Plex Sans for words and figures, IBM Plex Mono for SAP identifiers only. Scale 12/13/14/16/20/24. */
   --m2-font: var(--font-plex-sans), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -88,15 +172,30 @@
   --m2-bar-h: 48px;
   --m2-map-w: 280px;
   --m2-insp-w: 400px;
-  --m2-row-h: 32px;
+  --m2-row-h: 36px;
   --m2-row-h-compact: 28px;
+  /* Density (lib/v2/density.ts): comfortable here, compact under [data-density="compact"] below. The grid row, a list
+     row, a map row and a fact row, the side padding of a cell and the text of a row. */
+  --m2-list-row-h: 40px;
+  --m2-orow-h: 32px;
+  --m2-fact-h: 32px;
+  --m2-cell-px: var(--m2-s3);
+  --m2-cell-py: var(--m2-s3);
+  --m2-row-fs: var(--m2-fs-14);
+  --m2-row-lh: var(--m2-lh-14);
   /* The canvas gutter: 24 at desktop widths, 16 on a phone (redefined in the phone query below). */
   --m2-gutter: var(--m2-s6);
 
-  /* Motion: 150 and 200 milliseconds, exponential ease-out */
+  /* Motion: 150 milliseconds for a state (hover, press, a part of a chart), 200 for something arriving (the inspector,
+     a menu, a notice), 1600 for the breath of a placeholder. Exponential ease-out for what arrives and changes; the
+     symmetric ease only for what loops. Nothing moves under prefers-reduced-motion. */
   --m2-t-fast: 150ms;
   --m2-t-med: 200ms;
+  --m2-t-pulse: 1600ms;
   --m2-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --m2-ease-loop: cubic-bezier(0.45, 0, 0.55, 1);
+  /* How far an arriving panel travels: a hint of direction, not a slide. */
+  --m2-rise: 6px;
 
   /* Focus: one ring for every focusable thing, the data hue at 2px (WCAG 2.4.7) */
   --m2-focus: var(--m2-data);
@@ -107,80 +206,203 @@
 
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) .m2-root {
-    --m2-bg: #0E1113;
-    --m2-sheet: #151A1D;
-    --m2-line: #232A2F;
-    --m2-line-2: #343D44;
-    --m2-rule: #232A2F;
-    --m2-chrome: #0E1113;
-    --m2-fg: #E6EBEE;
-    --m2-ink-2: #A3AEB6;
-    --m2-ink-3: #717C84;
-    --m2-meta: #8C979F;
-    --m2-data: #8FB0F5;
-    --m2-on-data: #0A1020;
-    --m2-info: #7FB3E8;
-    --m2-crit: #F0877F;
-    --m2-crit-bg: #2B1A18;
-    --m2-crit-ink: #F4A9A3;
-    --m2-high: #DDA44A;
-    --m2-high-bg: #2A2112;
-    --m2-high-ink: #E8C07C;
+    --m2-bg: var(--m2-n-950);
+    --m2-sheet: var(--m2-n-925);
+    --m2-line: var(--m2-n-875);
+    --m2-line-2: var(--m2-n-800);
+    --m2-rule: var(--m2-n-875);
+    --m2-chrome: var(--m2-n-950);
+    --m2-fg: var(--m2-n-100);
+    --m2-ink-2: var(--m2-n-300);
+    --m2-ink-3: var(--m2-n-500);
+    --m2-meta: var(--m2-n-400);
+    --m2-data: var(--m2-b-300);
+    --m2-data-bg: #192133;
+    --m2-on-data: var(--m2-b-950);
     --m2-pass: #74C291;
     --m2-pass-bg: #15241B;
     --m2-pass-ink: #94D4AE;
-    --m2-hover: #1A2024;
-    --m2-active: #242C31;
-    --m2-track: #262E33;
-    --m2-seg: #8A959D;
+    --m2-warn: #DDA44A;
+    --m2-warn-bg: #2A2112;
+    --m2-warn-ink: #E8C07C;
+    --m2-crit: #F0877F;
+    --m2-crit-bg: #2B1A18;
+    --m2-crit-ink: #F4A9A3;
+    --m2-info: #7FB3E8;
+    --m2-info-bg: #142332;
+    --m2-info-ink: #A9CFF7;
+    --m2-hover: var(--m2-n-900);
+    --m2-active: var(--m2-n-850);
+    --m2-track: var(--m2-n-850);
+    --m2-seg: var(--m2-n-400);
     --m2-scrim: #000000A6;
     --m2-shadow: 0 8px 28px #000000B3;
-    --m2-inverse: #E6EBEE;
-    --m2-on-inverse: #0E1113;
+  --m2-shadow-card: 0 1px 2px #00000066;
+    --m2-shadow-card: 0 1px 2px #00000066;
+    --m2-inverse: var(--m2-n-100);
+    --m2-on-inverse: var(--m2-n-950);
+  --m2-on-inverse-crit: #A3221A;
+    --m2-on-inverse-crit: #A3221A;
+    --m2-chart-1: #648FE7;
+    --m2-chart-2: #D06A30;
+    --m2-chart-3: #1E9C88;
+    --m2-chart-4: #B98A1C;
+    --m2-chart-5: #8C70DE;
+    --m2-chart-6: #5F962A;
+    --m2-chart-7: #2E94C8;
+    --m2-chart-8: #CC5A93;
+    --m2-seq-1: var(--m2-b-600);
+    --m2-seq-2: var(--m2-b-500);
+    --m2-seq-3: var(--m2-b-400);
+    --m2-seq-4: var(--m2-b-300);
+    --m2-seq-5: var(--m2-b-200);
+    --m2-sev-med: var(--m2-n-400);
+    --m2-sev-low: var(--m2-n-600);
+    --m2-chart-grid: var(--m2-n-875);
+    --m2-chart-axis: var(--m2-n-800);
+    --m2-chart-text: var(--m2-n-400);
     color-scheme: dark;
   }
 }
 
 html[data-theme="dark"] .m2-root {
-  --m2-bg: #0E1113;
-  --m2-sheet: #151A1D;
-  --m2-line: #232A2F;
-  --m2-line-2: #343D44;
-  --m2-rule: #232A2F;
-  --m2-chrome: #0E1113;
-  --m2-fg: #E6EBEE;
-  --m2-ink-2: #A3AEB6;
-  --m2-ink-3: #717C84;
-  --m2-meta: #8C979F;
-  --m2-data: #8FB0F5;
-  --m2-on-data: #0A1020;
-  --m2-info: #7FB3E8;
-  --m2-crit: #F0877F;
-  --m2-crit-bg: #2B1A18;
-  --m2-crit-ink: #F4A9A3;
-  --m2-high: #DDA44A;
-  --m2-high-bg: #2A2112;
-  --m2-high-ink: #E8C07C;
+  --m2-bg: var(--m2-n-950);
+  --m2-sheet: var(--m2-n-925);
+  --m2-line: var(--m2-n-875);
+  --m2-line-2: var(--m2-n-800);
+  --m2-rule: var(--m2-n-875);
+  --m2-chrome: var(--m2-n-950);
+  --m2-fg: var(--m2-n-100);
+  --m2-ink-2: var(--m2-n-300);
+  --m2-ink-3: var(--m2-n-500);
+  --m2-meta: var(--m2-n-400);
+  --m2-data: var(--m2-b-300);
+  --m2-data-bg: #192133;
+  --m2-on-data: var(--m2-b-950);
   --m2-pass: #74C291;
   --m2-pass-bg: #15241B;
   --m2-pass-ink: #94D4AE;
-  --m2-hover: #1A2024;
-  --m2-active: #242C31;
-  --m2-track: #262E33;
-  --m2-seg: #8A959D;
+  --m2-warn: #DDA44A;
+  --m2-warn-bg: #2A2112;
+  --m2-warn-ink: #E8C07C;
+  --m2-crit: #F0877F;
+  --m2-crit-bg: #2B1A18;
+  --m2-crit-ink: #F4A9A3;
+  --m2-info: #7FB3E8;
+  --m2-info-bg: #142332;
+  --m2-info-ink: #A9CFF7;
+  --m2-hover: var(--m2-n-900);
+  --m2-active: var(--m2-n-850);
+  --m2-track: var(--m2-n-850);
+  --m2-seg: var(--m2-n-400);
   --m2-scrim: #000000A6;
   --m2-shadow: 0 8px 28px #000000B3;
-  --m2-inverse: #E6EBEE;
-  --m2-on-inverse: #0E1113;
+  --m2-shadow-card: 0 1px 2px #00000066;
+  --m2-inverse: var(--m2-n-100);
+  --m2-on-inverse: var(--m2-n-950);
+  --m2-on-inverse-crit: #A3221A;
+  --m2-chart-1: #648FE7;
+  --m2-chart-2: #D06A30;
+  --m2-chart-3: #1E9C88;
+  --m2-chart-4: #B98A1C;
+  --m2-chart-5: #8C70DE;
+  --m2-chart-6: #5F962A;
+  --m2-chart-7: #2E94C8;
+  --m2-chart-8: #CC5A93;
+  --m2-seq-1: var(--m2-b-600);
+  --m2-seq-2: var(--m2-b-500);
+  --m2-seq-3: var(--m2-b-400);
+  --m2-seq-4: var(--m2-b-300);
+  --m2-seq-5: var(--m2-b-200);
+  --m2-sev-med: var(--m2-n-400);
+  --m2-sev-low: var(--m2-n-600);
+  --m2-chart-grid: var(--m2-n-875);
+  --m2-chart-axis: var(--m2-n-800);
+  --m2-chart-text: var(--m2-n-400);
   color-scheme: dark;
 }
 
-/* Motion. State changes only: no entrance choreography. */
-.m2-root .m2-motion-bg { transition: background-color var(--m2-t-fast) var(--m2-ease), border-color var(--m2-t-fast) var(--m2-ease); }
+/*
+ * Density. The shell root carries data-density (the person's choice, else their role's: lib/v2/density.ts), and a grid
+ * that is told otherwise carries its own. Compact is the steward's and the Basis team's start: more rows, the same type
+ * scale one step down.
+ */
+.m2-root[data-density="compact"],
+.m2-root [data-density="compact"] {
+  --m2-row-h: 28px;
+  --m2-list-row-h: 32px;
+  --m2-orow-h: 28px;
+  --m2-fact-h: 26px;
+  --m2-cell-px: var(--m2-s2);
+  --m2-cell-py: var(--m2-s2);
+  --m2-row-fs: var(--m2-fs-13);
+  --m2-row-lh: var(--m2-lh-13);
+}
+.m2-root [data-density="comfortable"] {
+  --m2-row-h: 36px;
+  --m2-list-row-h: 40px;
+  --m2-orow-h: 32px;
+  --m2-fact-h: 32px;
+  --m2-cell-px: var(--m2-s3);
+  --m2-cell-py: var(--m2-s3);
+  --m2-row-fs: var(--m2-fs-14);
+  --m2-row-lh: var(--m2-lh-14);
+}
+
+/*
+ * Motion. State changes ease in 150ms; three things arrive in 200ms (the inspector from the right, a menu from where it
+ * opens, a notice from below) and nothing else makes an entrance. Placeholders breathe
+ * while they wait. The reduced-motion block at the end of this section turns every one of them off.
+ */
+.m2-root .m2-motion-bg,
+.m2-root .m2-btn,
+.m2-root .m2-tbtn,
+.m2-root .m2-x,
+.m2-root .m2-mi,
+.m2-root .m2-orow,
+.m2-root .m2-sysrow,
+.m2-root .m2-lrow,
+.m2-root .m2-grow,
+.m2-root .m2-menu-i,
+.m2-root .m2-seg,
+.m2-root .m2-segs > button,
+.m2-root .m2-search,
+.m2-root .m2-linkbtn,
+.m2-root .m2-toast-b,
+.m2-root .m2-toast-x,
+.m2-root .m2-auth-show,
+.m2-root input,
+.m2-root select,
+.m2-root textarea { transition: background-color var(--m2-t-fast) var(--m2-ease), border-color var(--m2-t-fast) var(--m2-ease), color var(--m2-t-fast) var(--m2-ease), box-shadow var(--m2-t-fast) var(--m2-ease); }
 .m2-root .m2-job-bar { transition: width var(--m2-t-med) var(--m2-ease); }
 .m2-root .m2-chev { transition: transform var(--m2-t-fast) var(--m2-ease); }
 .m2-root .m2-map { transition: transform var(--m2-t-med) var(--m2-ease), visibility 0s linear var(--m2-t-med); }
 .m2-root .m2-map.m2-open { transition: transform var(--m2-t-med) var(--m2-ease); }
+.m2-root .m2-stack-s,
+.m2-root .m2-chart .m2-col { transition: fill var(--m2-t-fast) var(--m2-ease), stroke var(--m2-t-fast) var(--m2-ease); }
+
+/* Arrivals move, they do not fade: text is at full contrast from its first frame. */
+@keyframes m2-arrive-x {
+  from { transform: translateX(var(--m2-rise)); }
+  to { transform: none; }
+}
+@keyframes m2-arrive-y {
+  from { transform: translateY(calc(-1 * var(--m2-rise))); }
+  to { transform: none; }
+}
+@keyframes m2-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes m2-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.m2-root .m2-insp-d { animation: m2-arrive-x var(--m2-t-med) var(--m2-ease); }
+.m2-root .m2-menu { animation: m2-arrive-y var(--m2-t-med) var(--m2-ease); }
+.m2-root .m2-scrim { animation: m2-fade var(--m2-t-med) var(--m2-ease); }
+.m2-root .m2-viz-tip { animation: m2-fade var(--m2-t-fast) var(--m2-ease); }
+.m2-root .m2-skel { animation: m2-breathe var(--m2-t-pulse) var(--m2-ease-loop) infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .m2-root *,
@@ -194,22 +416,26 @@ html[data-theme="dark"] .m2-root {
 
 /*
  * Tenant accent (Admin, Settings, Appearance). The shell root carries data-tenant-accent and the two custom
- * properties when the tenant's accent passed the 4.5:1 check (lib/v2/theme.ts): the accent as chosen on the light
- * ground, its tint on the dark one. Text on the accent follows it.
+ * properties (lib/v2/theme.ts themeRootProps): the accent on the light ground, darkened until it reads at 4.5:1 when it
+ * did not, and its tint on the dark one, lightened until it does. Text on the accent and the wash under a selection
+ * follow it, so a tenant's colour never lowers a contrast the test holds Meridian's own blue to.
  */
 .m2-root[data-tenant-accent] {
   --m2-data: var(--m2-tenant-accent);
-  --m2-on-data: #FFFFFF;
+  --m2-data-bg: color-mix(in srgb, var(--m2-tenant-accent) 7%, var(--m2-n-0));
+  --m2-on-data: var(--m2-n-0);
 }
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) .m2-root[data-tenant-accent] {
     --m2-data: var(--m2-tenant-accent-dark);
-    --m2-on-data: #0A1020;
+    --m2-data-bg: color-mix(in srgb, var(--m2-tenant-accent-dark) 12%, var(--m2-n-925));
+    --m2-on-data: var(--m2-b-950);
   }
 }
 html[data-theme="dark"] .m2-root[data-tenant-accent] {
   --m2-data: var(--m2-tenant-accent-dark);
-  --m2-on-data: #0A1020;
+  --m2-data-bg: color-mix(in srgb, var(--m2-tenant-accent-dark) 12%, var(--m2-n-925));
+  --m2-on-data: var(--m2-b-950);
 }
 
 /* Japanese: the Plex faces carry no kana or kanji, so the system's Japanese face follows them. */
@@ -219,7 +445,7 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
 
 /* Arrival of a change notice and of the run timeline's marks. Both stop under prefers-reduced-motion (above). */
 @keyframes m2-toast-in {
-  from { transform: translateY(8px); opacity: 0; }
+  from { transform: translateY(var(--m2-rise)); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
 @keyframes m2-tl-in {
@@ -231,7 +457,8 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
 
 /* The phone gutter: one pane at a time, full-width sheets with 16px sides. */
 @media (max-width: 760px) {
-  .m2-root { --m2-gutter: var(--m2-s4); }
+  /* One pane at a time: the canvas is the page, so the ground is the sheet. */
+  .m2-root { --m2-gutter: var(--m2-s4); --m2-bg: var(--m2-sheet); }
 }
 
 /*

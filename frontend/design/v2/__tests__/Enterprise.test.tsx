@@ -4,7 +4,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as ent from "@/lib/api/v2/enterprise";
 import { resetAdminFixture, resetEnterpriseFixture } from "@/lib/api/v2/fixtures";
 import { setLang } from "@/lib/v2/i18n";
-import { checkAccent, darkTint, DARK_GROUND_LUMINANCE, luminance, ratio, refreshTenantTheme, themeRootProps, useTenantTheme } from "@/lib/v2/theme";
+import { checkAccent, darkTint, DARK_GROUND_LUMINANCE, lightShade, luminance, ratio, refreshTenantTheme, themeRootProps, useTenantTheme } from "@/lib/v2/theme";
 import { AppearanceBlock, ComplianceBlock, DiagnosticsBlock, GroupRoleEditor, ScimCard } from "../admin/enterprise";
 import { resetKeptOutcomes } from "../inspector/shared";
 import { V2Shell } from "../shell/V2Shell";
@@ -61,8 +61,23 @@ describe("accent contrast", () => {
     // The server's dark accent is checked on its own dark ground; one too dark for this sheet is tinted further.
     expect((themeRootProps({ ...base, accent_dark: "#5A7BC0" }).style as Record<string, string>)["--m2-tenant-accent-dark"]).not.toBe("#5A7BC0");
     expect(themeRootProps({ ...base, customised: false })).toEqual({});
-    expect(themeRootProps({ ...base, accent: "#FFD700" })).toEqual({});
     expect(themeRootProps(null)).toEqual({});
+  });
+
+  it("clamps an accent that does not read at 4.5:1 to the nearest shade of it that does, in both themes", () => {
+    const base = { product_name: "Meridian", accent: "#FFD700", accent_dark: "", logo_url: null, customised: true };
+    const props = themeRootProps(base);
+    expect(props["data-tenant-accent"]).toBe("");
+    const vars = props.style as Record<string, string>;
+    expect(vars["--m2-tenant-accent"]).not.toBe("#FFD700");
+    expect(ratio(luminance(vars["--m2-tenant-accent"]), 1)).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(luminance(vars["--m2-tenant-accent-dark"]), DARK_GROUND_LUMINANCE)).toBeGreaterThanOrEqual(4.5);
+    // Each clamp is the first passing step: one step lighter would fail.
+    expect(ratio(luminance(lightShade("#FFD700")), 1)).toBeLessThan(4.9);
+    // An accent that passes is drawn as chosen.
+    expect(lightShade("#1B3F8F")).toBe("#1B3F8F");
+    expect(checkAccent("#ffd700")?.lightShade).toBe(lightShade("#ffd700"));
+    for (const c of ["#FFFFFF", "#00FF00", "#7FB3E8", "#E87BA4"]) expect(ratio(luminance(lightShade(c)), 1), c).toBeGreaterThanOrEqual(4.5);
   });
 });
 
@@ -295,13 +310,9 @@ describe("Admin › Users › Provisioning (SCIM)", () => {
 
 describe("the grounds the accent is measured against", () => {
   it("are the light and dark --m2-sheet of design/v2/tokens.css", async () => {
-    const { readFileSync } = await import("node:fs");
-    const { join } = await import("node:path");
     const { LIGHT_GROUND_LUMINANCE } = await import("@/lib/v2/theme");
-    const css = readFileSync(join(__dirname, "..", "tokens.css"), "utf8");
-    const sheets = [...css.matchAll(/--m2-sheet:\s*(#[0-9A-Fa-f]{6});/g)].map((m) => m[1]);
-    expect(luminance(sheets[0])).toBeCloseTo(LIGHT_GROUND_LUMINANCE, 4);
-    expect(luminance(sheets[1])).toBeCloseTo(DARK_GROUND_LUMINANCE, 4);
-    expect(luminance(sheets[2])).toBeCloseTo(DARK_GROUND_LUMINANCE, 4);
+    const { resolve } = await import("./tokens-css");
+    expect(luminance(resolve("light", "--m2-sheet"))).toBeCloseTo(LIGHT_GROUND_LUMINANCE, 4);
+    expect(luminance(resolve("dark", "--m2-sheet"))).toBeCloseTo(DARK_GROUND_LUMINANCE, 4);
   });
 });

@@ -17,7 +17,7 @@ from api.routes.objects import _measured_dimensions
 from api.services.scoring import critical_over_tolerance
 
 DIMENSION_ORDER = ("completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity")
-OPEN_WORK = ("to_fix", "proposed", "approved", "sent")  # api/routes/work.py OPEN
+OPEN_WORK = ("to_fix", "proposed", "approved", "awaiting_load", "sent")  # api/routes/work.py OPEN
 
 
 def breach_ids(mod_summary: dict) -> list[str]:

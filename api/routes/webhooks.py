@@ -29,8 +29,13 @@ from api.services import automation_settings, webhooks
 from api.services.rbac import current_user_id, require_permission, write_audit
 
 router = APIRouter(prefix="/api/v1", tags=["webhooks"])
-Event = Literal["*", "run.finished", "run.failed", "batch.waiting", "batch.approved", "batch.sent", "score.dropped",
-                "breach.new", "config.drift", "certificate.signed", "digest.sent"]
+Event = Literal["*", "run.finished", "run.failed", "batch.waiting", "batch.approved", "batch.exported", "batch.sent",
+                "batch.verified", "score.dropped",
+                "breach.new", "config.drift", "certificate.signed", "digest.sent",
+                "change_request.submitted", "change_request.approved", "change_request.rejected",
+                "change_request.created", "change_request.failed", "change_request.cancelled",
+                "workflow.*", "workflow.started", "workflow.step_waiting", "workflow.step_decided",
+                "workflow.escalated", "workflow.completed"]
 _COLS = "id::text, url, events, active, description, created_by::text, created_at, updated_at"
 
 

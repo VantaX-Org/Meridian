@@ -51,6 +51,8 @@ PERMISSIONS: dict[str, set[str]] = {
         "manage_system", "manage_systems", "manage_settings", "view_audit",
         "ai_feedback", "review_ai_rules", "trigger_ai", "trigger_sync",
         "mdm.write", "run_process_discovery", "export_process",
+        # approval workflow definitions (api/routes/workflows.py): the administrator manages, everyone else reads
+        "manage_workflows",
     },
     "manager": _READ | {
         "upload", "analyse", "approve", "apply", "export", "assign", "handoff_rule",
@@ -82,7 +84,9 @@ PERMISSIONS: dict[str, set[str]] = {
 PERSONA_ROLES: dict[str, set[str]] = {
     # Leads and stewards run process discovery (owner decision 2026-10-26); the legacy keys stay unchanged.
     # manage_triage: edit teams, assignment rules and SLA policies (not the tenant clock, which stays manage_settings).
-    "programme_lead": PERMISSIONS["manager"] | {"run_process_discovery", "manage_triage"},
+    # manage_digests: read, create and send the scheduled digests (the committee's monthly pack) without the tenant's
+    # settings (manage_settings stays the administrator's).
+    "programme_lead": PERMISSIONS["manager"] | {"run_process_discovery", "manage_triage", "manage_digests"},
     "data_steward": PERMISSIONS["steward"] | {"run_process_discovery", "manage_triage"},
     "data_owner": PERMISSIONS["approver"],
     # No manage_system: in code it gates platform update/restart and admin doctor
@@ -357,8 +361,12 @@ LEGACY_ACTION_MAP: dict[str, set[tuple[str, str]]] = {
     "manage_settings": {("analysis", "admin"), ("reports", "admin"), ("rules", "admin")},
     # Triage teams, assignment rules and SLA policies; business hours and holidays stay manage_settings.
     "manage_triage": {("stewardship", "admin")},
+    # Scheduled digests by role or wave (api/routes/digests.py): read, create, change, send now.
+    "manage_digests": {("reports", "edit")},
     "manage_llm": {("llm", "admin")},
     "manage_users": {("users", "admin")},
+    # Approval workflow definitions for fix batches and change requests (create, new version, activate).
+    "manage_workflows": {("fixes", "admin")},
     "view_audit": {("audit", "view"), ("audit", "export")},
     "run_process_discovery": {("process", "run")},
     "export_process": {("process", "export")},

@@ -110,7 +110,7 @@ function save(blob: Blob, filename: string): void {
 
 /**
  * Send an approved batch to SAP: POST /remediation/batches/{id}/export, the one call that moves an approved batch on
- * (status exported, shown as Sent to SAP). Meridian hands the load file; a person loads it, so the result is the file's
+ * (status awaiting_load, Exported, waiting for the SAP load, until someone confirms the load). Meridian hands the load file; a person loads it, so the result is the file's
  * name and checksum. The batch creator is refused (403, the server's own sentence).
  */
 export async function sendBatchToSap(id: string, records: number | null, format: ExportFormat = "cockpit_xlsx"): Promise<SendResult> {
@@ -132,6 +132,18 @@ export async function sendBatchToSap(id: string, records: number | null, format:
     }
     throw err;
   }
+}
+
+/**
+ * The batch's load file was loaded in SAP: POST /remediation/batches/{id}/loaded. An approver or SAP Basis confirms
+ * it (not the person who built the batch), and the batch moves from awaiting_load to exported (Sent to SAP).
+ */
+export async function confirmBatchLoaded(id: string, note: string | null): Promise<void> {
+  if (fixtureActive()) {
+    await fixtureWrite<Record<string, never>>("POST", `/remediation/batches/${enc(id)}/loaded`, { note }, {});
+    return;
+  }
+  await apiClient.post(`/api/v1/remediation/batches/${enc(id)}/loaded`, { note });
 }
 
 const formula = /^[=+\-@\t\r]/;
