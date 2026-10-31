@@ -114,6 +114,15 @@ Forecast and plan, under Cost and causes on the map, shows where each object's s
 
 The effort and cost assumptions are shown above the sprint plan.
 
+## Value delivered
+
+Value delivered, under Forecast and plan on the map, prices what the latest finished run found. Each failing record is given the unit cost of the loss it can cause, taken from your cost model, and the mitigation share is what fixing it removes. The banner shows the annual risk found, the risk mitigated a year, the return on the subscription and the payback in months. When no subscription cost is set in the cost model the return and payback show as a dash with a note instead of an invented fee. Under it:
+
+- **Where the risk sits.** The eight kinds of loss (duplicate payments, missed warranty claims, compliance penalties, inventory write-offs, blocked invoices, failed postings, contract violations and steward time saved), each with what counts towards it, how many findings or exceptions feed it, its annual risk, the amount mitigated and the formula used to price it.
+- **Cost avoided month by month.** The monthly report records the subscription, the risk mitigated and the return to date on the first of each month. Until the first month is recorded the page says so.
+
+Only the latest run is priced, so the figures never add the same failing records twice across runs.
+
 ## What is on it
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.

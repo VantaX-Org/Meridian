@@ -375,6 +375,33 @@ def _create_stripe_invoice(session: Session, tenant_id: str, billing: dict) -> s
 # ── Trigger 3: monthly_report — 04:00 SAST 1st of month ─────────────────────
 
 
+def _record_impact(session: Session, tid: str, version_id: str) -> float:
+    """Price one run into impact_records, replacing that run's earlier rows; return the annual risk mitigated.
+
+    Same pricing as GET /analytics/impact, so the stored rows, the board report and the screen agree.
+    """
+    from api.services.analytics_engine import BusinessImpactAnalytics
+    own_model = session.execute(text("SELECT cost_model FROM tenants WHERE id = :tid"), {"tid": tid}).scalar()
+    findings = [dict(r._mapping) for r in session.execute(text(
+        "SELECT module, check_id, dimension, affected_count FROM findings"
+        " WHERE tenant_id = :tid AND version_id = :vid"), {"tid": tid, "vid": version_id})]
+    exceptions = [dict(r._mapping) for r in session.execute(text(
+        "SELECT type, category FROM exceptions WHERE tenant_id = :tid"), {"tid": tid})]
+    impacts = BusinessImpactAnalytics(own_model if isinstance(own_model, dict) else None).quantify_impact(
+        findings, exceptions)
+
+    session.execute(text("DELETE FROM impact_records WHERE tenant_id = :tid AND version_id = :vid"),
+                    {"tid": tid, "vid": version_id})
+    session.execute(text("""
+        INSERT INTO impact_records (id, tenant_id, version_id, category, annual_risk_zar, mitigated_zar,
+                                    finding_count, calculation_method)
+        VALUES (gen_random_uuid(), :tid, :vid, :category, :risk, :mitigated, :n, :method)
+    """), [{"tid": tid, "vid": version_id, "category": i["category"], "risk": i["annual_risk"],
+            "mitigated": i["mitigated"], "n": i["finding_count"], "method": i["calculation_method"]}
+           for i in impacts])
+    return sum(i["mitigated"] for i in impacts)
+
+
 @celery_app.task(name="workers.scheduler.monthly_report",
                  soft_time_limit=1800, time_limit=1860)
 def monthly_report():
@@ -406,7 +433,11 @@ def monthly_report():
 
                 version_id = str(version_row[0])
 
-                # 1. Enqueue PDF generation
+                # 1. Price the run into impact_records (one set per run, replaced on a re-run) and commit
+                # before the PDF is enqueued, so the board report reads this run's impact.
+                annual_mitigated = _record_impact(session, tid, version_id)
+                session.commit()
+                _set_rls(session, tid)  # the commit hands the connection back; the next one needs the tenant again
                 from workers.tasks.generate_pdf import generate_pdf
                 generate_pdf.delay(version_id, tid)
                 logger.info(f"  tenant={tid}: enqueued generate_pdf for version={version_id}")
@@ -416,20 +447,8 @@ def monthly_report():
                 prev_month = (now.replace(day=1) - timedelta(days=1))
                 period = prev_month.strftime("%Y-%m")
 
-                # Sum mitigated risk (tenant cost-model currency) from impact_records
-                impact_result = session.execute(
-                    text("""
-                        SELECT COALESCE(SUM(
-                            CASE WHEN mitigated_zar IS NOT NULL THEN mitigated_zar ELSE 0 END
-                        ), 0) as total_mitigated
-                        FROM impact_records
-                        WHERE tenant_id = :tid
-                          AND created_at >= date_trunc('month', CAST(:prev_date AS date))
-                          AND created_at < date_trunc('month', CAST(:curr_date AS date))
-                    """),
-                    {"tid": tid, "prev_date": prev_month.isoformat(), "curr_date": now.isoformat()},
-                )
-                mitigated = impact_result.scalar() or 0
+                # The month's share of the annual risk mitigated, in the tenant's currency.
+                mitigated = annual_mitigated / 12
                 # The tenant's monthly subscription (cost model ``subscription_monthly``); unset, 0, so the
                 # ROI multiple stays 0 rather than come from an invented fee. Same currency as the risk.
                 from checks import cost as cost_model

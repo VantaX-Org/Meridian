@@ -33,6 +33,29 @@ const sprint = (n: number, a: typeof actions, now: number | null, proj: number |
   estimated_cost: a.reduce((s, x) => s + (x.estimated_cost ?? 0), 0), currency: "USD", dqs_now: now, dqs_projected: proj,
 });
 
+const impact = (category: string, risk: number, share: number, n: number, method: string) => ({
+  category, annual_risk: risk, mitigated: Math.round(risk * share), annual_risk_zar: risk, mitigated_zar: Math.round(risk * share),
+  finding_count: n, calculation_method: method, currency: "USD",
+});
+
+const impacts = [
+  impact("duplicate_payment", 1_850_000, 0.6, 4, "affected_count × 5,000 USD"),
+  impact("inventory_write_off", 920_000, 0.4, 11, "affected_count × 200 USD"),
+  impact("compliance_penalty", 300_000, 0.5, 2, "affected_count × 10,000 USD"),
+  impact("blocked_invoice", 48_000, 0.8, 16, "count × 3,000 USD"),
+  impact("warranty_miss", 0, 0.5, 0, "affected_count × 1,500 USD"),
+];
+const mitigated = impacts.reduce((s, i) => s + i.mitigated, 0);
+const months = [61_200, 70_400, 79_900, 88_350, 95_200, 101_300];
+
+const roi = {
+  roi: { subscription_annual: 240_000, risk_mitigated: mitigated, roi_multiple: Math.round((mitigated / 240_000) * 10) / 10, payback_months: Math.round((240_000 / mitigated) * 120) / 10, currency: "USD" },
+  impacts, version_id: "v-12",
+  cost_avoidance_history: months.map((m, i) => ({
+    period: `2026-${String(i + 4).padStart(2, "0")}`, subscription_cost_zar: 20_000, risk_mitigated_zar: m, cumulative_roi_multiple: Math.round((m / 20_000) * 10) / 10,
+  })).reverse(),
+};
+
 export function analyticsRead(path: string): unknown {
   if (path === "/analytics/predictive") return {
     forecasts, runs_seen: 21, days_seen: 28,
@@ -50,5 +73,6 @@ export function analyticsRead(path: string): unknown {
   };
   if (path === "/analytics/bottlenecks") return { bottlenecks: [{ stage: "recommended", count: 61_906, avg_age_hours: 96.4 }], total_queue_size: 62_015 };
   if (path === "/analytics/capacity") return { needed: 4, current: 2, surplus_deficit: -2, daily_inflow: 412.5, per_steward: 118.2 };
+  if (path === "/analytics/roi") return roi;
   return NONE_ANALYTICS;
 }

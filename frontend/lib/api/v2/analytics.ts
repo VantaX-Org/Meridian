@@ -110,3 +110,42 @@ export const getPredictive = (): Promise<Predictive> => v2Get("/analytics/predic
 export const getPrescriptive = (): Promise<Prescriptive> => v2Get("/analytics/prescriptive", { limit: 50 });
 export const getBottlenecks = (): Promise<{ bottlenecks: Bottleneck[]; total_queue_size: number }> => v2Get("/analytics/bottlenecks");
 export const getCapacity = (): Promise<Capacity> => v2Get("/analytics/capacity");
+
+/*
+ * Value delivered (GET /analytics/roi): the latest finished run priced live into eight impact categories from the
+ * tenant cost model, the ROI against the subscription, and the monthly cost avoidance the monthly job records.
+ * The `_zar` names are historical; amounts are in `currency`.
+ */
+export interface ImpactCategory {
+  category: string;
+  annual_risk: number;
+  mitigated: number;
+  finding_count: number;
+  calculation_method: string;
+  currency: string;
+}
+
+export interface Roi {
+  /** Null with no subscription set in the cost model, as are the multiple and payback. */
+  subscription_annual: number | null;
+  risk_mitigated: number;
+  roi_multiple: number | null;
+  payback_months: number | null;
+  currency: string;
+}
+
+export interface CostAvoidanceMonth {
+  period: string;
+  subscription_cost_zar: number;
+  risk_mitigated_zar: number;
+  cumulative_roi_multiple: number | null;
+}
+
+export interface Value {
+  roi: Roi;
+  impacts: ImpactCategory[];
+  version_id?: string | null;
+  cost_avoidance_history: CostAvoidanceMonth[];
+}
+
+export const getValue = (): Promise<Value> => v2Get("/analytics/roi");

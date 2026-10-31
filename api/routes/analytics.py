@@ -30,7 +30,6 @@ from db.schema import (
     CostAvoidance,
     Exception_,
     Finding,
-    ImpactRecord,
     StewardMetric,
 )
 
@@ -258,6 +257,38 @@ async def _planner_inputs(db: AsyncSession, tenant: Tenant) -> tuple[dict, dict]
 # ── 3. GET /analytics/impact ─────────────────────────────────────────────────
 
 
+async def _live_impact(db: AsyncSession, tenant: Tenant, version_id: Optional[str]) -> dict:
+    """Price one run's findings and the open exceptions into the 8 impact categories, and the ROI from them.
+
+    Nothing stores these: they are worked out from the run each time, so a new cost model or a new run shows
+    at once. With no finished run the impacts are empty and the ROI has nulls, never made-up zeros.
+    """
+    impact_analytics = await _impact_analytics(db, tenant)
+    if version_id:
+        vid = uuid.UUID(version_id)
+    else:
+        vid = (await db.execute(
+            select(AnalysisVersion.id)
+            .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status.in_(FINISHED))
+            .order_by(AnalysisVersion.run_at.desc())
+            .limit(1)
+        )).scalar()
+        if vid is None:
+            return {"impacts": [], "roi": impact_analytics.calculate_roi([])}
+
+    # Only the columns the pricing reads: a run carries thousands of findings with large JSON fields.
+    findings = [dict(r._mapping) for r in (await db.execute(
+        select(Finding.module, Finding.check_id, Finding.dimension, Finding.affected_count)
+        .where(Finding.tenant_id == tenant.id, Finding.version_id == vid)
+    )).all()]
+    exceptions = [dict(r._mapping) for r in (await db.execute(
+        select(Exception_.type, Exception_.category).where(Exception_.tenant_id == tenant.id)
+    )).all()]
+
+    impacts = impact_analytics.quantify_impact(findings, exceptions)
+    return {"impacts": impacts, "roi": impact_analytics.calculate_roi(impacts), "version_id": str(vid)}
+
+
 @router.get("/impact")
 async def get_impact_analytics(
     version_id: Optional[str] = Query(None),
@@ -266,41 +297,7 @@ async def get_impact_analytics(
 ):
     """Business impact quantification across 8 categories, priced from the tenant cost model."""
     await _set_tenant(db, tenant)
-    impact_analytics = await _impact_analytics(db, tenant)
-
-    # Determine version
-    if version_id:
-        vid = uuid.UUID(version_id)
-    else:
-        latest = await db.execute(
-            select(AnalysisVersion)
-            .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status.in_(FINISHED))
-            .order_by(AnalysisVersion.run_at.desc())
-            .limit(1)
-        )
-        row = latest.first()
-        if not row:
-            # No run yet: the same ROI as a run with no impact (no subscription: nulls, never made-up zeros).
-            return {"impacts": [], "roi": impact_analytics.calculate_roi([])}
-        vid = row[0].id
-
-    # Load findings
-    findings_result = await db.execute(
-        select(Finding).where(Finding.tenant_id == tenant.id, Finding.version_id == vid)
-    )
-    findings_data = [_row_to_dict(r) for r in findings_result.all()]
-
-    # Load exceptions
-    exc_result = await db.execute(
-        select(Exception_).where(Exception_.tenant_id == tenant.id)
-    )
-    exc_data = [_row_to_dict(r) for r in exc_result.all()]
-
-    impacts = impact_analytics.quantify_impact(findings_data, exc_data)
-
-    roi = impact_analytics.calculate_roi(impacts)
-
-    return {"impacts": impacts, "roi": roi, "version_id": str(vid)}
+    return await _live_impact(db, tenant, version_id)
 
 
 # ── 4. GET /analytics/impact/{finding_id} ────────────────────────────────────
@@ -484,33 +481,24 @@ async def get_roi(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """ROI calculation from latest impact records and cost avoidance."""
+    """ROI of the latest finished run, priced live, and the monthly cost avoidance history.
+
+    The ROI sums one run only: summing stored rows across runs would count the same risk once per run.
+    """
     await _set_tenant(db, tenant)
+    live = await _live_impact(db, tenant, None)
 
-    # Load latest impact records
-    impact_result = await db.execute(
-        select(ImpactRecord)
-        .where(ImpactRecord.tenant_id == tenant.id)
-        .order_by(ImpactRecord.recorded_at.desc())
-        .limit(20)
-    )
-    impacts = [_row_to_dict(r) for r in impact_result.all()]
-
-    # Load cost avoidance history
     ca_result = await db.execute(
         select(CostAvoidance)
         .where(CostAvoidance.tenant_id == tenant.id)
         .order_by(CostAvoidance.period.desc())
         .limit(12)
     )
-    cost_avoidance = [_row_to_dict(r) for r in ca_result.all()]
-
-    roi = (await _impact_analytics(db, tenant)).calculate_roi(impacts)
-
     return {
-        "roi": roi,
-        "impact_records": impacts,
-        "cost_avoidance_history": cost_avoidance,
+        "roi": live["roi"],
+        "impacts": live["impacts"],
+        "version_id": live.get("version_id"),
+        "cost_avoidance_history": [_row_to_dict(r) for r in ca_result.all()],
     }
 
 
