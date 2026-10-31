@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BANDS, createMatchRule, deleteMatchRule, listMatchRules, MATCH_TYPES, simulateMatchRules, updateMatchRule, type MatchRule, type MatchRuleInput, type MatchSimulation, type MatchType } from "@/lib/api/v2/match-rules";
+import { approveProposedRule, BANDS, createMatchRule, deleteMatchRule, listMatchRules, listProposedRules, MATCH_TYPES, PROPOSED_KEY, rejectProposedRule, simulateMatchRules, updateMatchRule, type MatchRule, type MatchRuleInput, type MatchSimulation, type MatchType, type ProposedRule } from "@/lib/api/v2/match-rules";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { apiErrorMessage } from "@/lib/error";
 import { t } from "@/lib/v2/i18n";
@@ -185,6 +185,125 @@ function DomainBlock({ domain, rules, onEdit, onDelete }: { domain: string; rule
   );
 }
 
+function RejectForm({ p, onClose }: { p: ProposedRule; onClose: () => void }) {
+  const qc = useQueryClient();
+  const done = useDone();
+  const [reason, setReason] = useState("");
+  const { outcome, pending, run } = useOutcome();
+  return (
+    <Dialog title={t("Reject this proposal?")} description={t("{field} on {object} is not added to the match rules. The reason goes to the audit log.", { field: p.proposed_rule.field ?? "—", object: moduleText(p.domain) })} onClose={onClose}>
+      <Fld label={t("Reason (optional)")} wide>
+        <textarea rows={3} maxLength={2000} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </Fld>
+      {outcome ? <ResultFrame outcome={outcome} /> : null}
+      <div className="m2-adm-acts">
+        <button type="button" className="m2-btn" onClick={onClose}>{t("Cancel")}</button>
+        <button
+          type="button"
+          className="m2-btn m2-strong"
+          disabled={pending !== null}
+          onClick={() =>
+            void run("rej", async () => {
+              try {
+                await rejectProposedRule(p.id, reason.trim());
+              } catch (e) {
+                return { tone: "fail", title: t("The proposal was not rejected"), detail: apiErrorMessage(e) };
+              }
+              await qc.invalidateQueries({ queryKey: PROPOSED_KEY });
+              done(t("Proposal rejected"));
+              onClose();
+              return { tone: "ok", title: t("Rejected") };
+            })
+          }
+        >
+          {pending === "rej" ? t("Rejecting…") : t("Reject")}
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+
+function ProposedBlock() {
+  const fixture = useFixture();
+  const qc = useQueryClient();
+  const done = useDone();
+  const q = useQuery({ queryKey: [...PROPOSED_KEY, fixture], queryFn: listProposedRules });
+  const [rejecting, setRejecting] = useState<ProposedRule | null>(null);
+  const { pending, run } = useOutcome();
+  const rows = q.data?.rules ?? [];
+  return (
+    <Block title={t("Proposed by Aletheia")} hint={t("Rules drawn from the pairs stewards corrected. Approving one adds it to the match rules as active.")}>
+      <Loaded q={q} what={t("The proposed rules")}>
+        {() =>
+          rows.length === 0 ? (
+            <EmptyFrame>{t("No proposal waiting. Aletheia proposes a rule once stewards correct ten or more pairs of an object in a week.")}</EmptyFrame>
+          ) : (
+            <div className="m2-frame" tabIndex={0}>
+              <table className="m2-tbl" aria-label={t("Proposed match rules")}>
+                <thead>
+                  <tr>
+                    <th scope="col">{t("Object")}</th>
+                    <th scope="col">{t("Field")}</th>
+                    <th scope="col">{t("Compared by")}</th>
+                    <th scope="col" className="m2-r">{t("Weight")}</th>
+                    <th scope="col" className="m2-r">{t("Similarity needed")}</th>
+                    <th scope="col">{t("Why")}</th>
+                    <th scope="col" className="m2-r">{t("Corrections behind it")}</th>
+                    <th scope="col">{t("Proposed")}</th>
+                    <th scope="col"><span className="m2-sr">{t("Actions")}</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((p) => {
+                    const r = p.proposed_rule;
+                    return (
+                      <tr key={p.id}>
+                        <td>{moduleText(p.domain)}</td>
+                        <th scope="row">{r.field ? <><Mono>{r.field}</Mono> {labelText(r.field)}</> : "—"}</th>
+                        <td>{r.match_type ? TYPE[r.match_type]?.() ?? labelText(r.match_type) : "—"}</td>
+                        <td className="m2-r">{r.weight != null ? int(r.weight) : "—"}</td>
+                        <td className="m2-r">{r.threshold != null ? `${Math.round(r.threshold * 100)}%` : "—"}</td>
+                        <td>{p.rationale || "—"}</td>
+                        <td className="m2-r">{int(p.supporting_correction_count)}</td>
+                        <td>{p.created_at.slice(0, 10)}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="m2-btn m2-strong"
+                            disabled={pending !== null}
+                            onClick={() =>
+                              void run(`ok-${p.id}`, async () => {
+                                try {
+                                  await approveProposedRule(p.id);
+                                } catch (e) {
+                                  done(t("The proposal was not approved. {detail}", { detail: apiErrorMessage(e) }));
+                                  await qc.invalidateQueries({ queryKey: PROPOSED_KEY });
+                                  return { tone: "fail", title: t("Not approved") };
+                                }
+                                await Promise.all([qc.invalidateQueries({ queryKey: PROPOSED_KEY }), qc.invalidateQueries({ queryKey: KEY })]);
+                                done(t("Proposal approved and added to the match rules"));
+                                return { tone: "ok", title: t("Approved") };
+                              })
+                            }
+                          >
+                            {pending === `ok-${p.id}` ? t("Approving…") : t("Approve")}
+                          </button>{" "}
+                          <button type="button" className="m2-btn" disabled={pending !== null} onClick={() => setRejecting(p)}>{t("Reject")}</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
+      </Loaded>
+      {rejecting ? <RejectForm p={rejecting} onClose={() => setRejecting(null)} /> : null}
+    </Block>
+  );
+}
+
 export function MatchRulesSection() {
   const can = useCan();
   const allowed = can("manage_rules");
@@ -225,6 +344,7 @@ export function MatchRulesSection() {
           )
         }
       </Loaded>
+      {can("review_ai_rules") ? <ProposedBlock /> : null}
       {editing ? <RuleForm rule={editing === "new" ? null : editing} domains={domains} onClose={() => setEditing(null)} /> : null}
       {removing ? (
         <Confirm

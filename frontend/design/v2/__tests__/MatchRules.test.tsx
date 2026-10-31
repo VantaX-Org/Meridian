@@ -41,4 +41,22 @@ describe("match rules", () => {
     expect(await screen.findByTestId("mr-sim")).toBeInTheDocument();
     expect(screen.getByText(/Nothing was written/)).toBeInTheDocument();
   });
+
+  // Runs last: approving changes the session's fixture rules.
+  it("approves a proposal into the match rules and rejects another with a reason", async () => {
+    renderWithQuery(<MatchRulesSection />);
+    const prop = await screen.findByRole("table", { name: "Proposed match rules" });
+    expect(within(prop).getAllByRole("row").length).toBe(3);
+    const post = within(prop).getByText("POST_CODE1").closest("tr")!;
+    expect(within(post).getByText("14")).toBeInTheDocument();
+    fireEvent.click(within(post).getByRole("button", { name: "Approve" }));
+    const bp = await screen.findByRole("table", { name: /Match rules for Business partner/i });
+    await within(bp).findByText("POST_CODE1");
+    const matkl = within(screen.getByRole("table", { name: "Proposed match rules" })).getByText("MATKL").closest("tr")!;
+    fireEvent.click(within(matkl).getByRole("button", { name: "Reject" }));
+    const dlg = await screen.findByRole("dialog");
+    fireEvent.change(within(dlg).getByRole("textbox"), { target: { value: "Material group differs between plants" } });
+    fireEvent.click(within(dlg).getByRole("button", { name: "Reject" }));
+    expect(await screen.findByText(/No proposal waiting/)).toBeInTheDocument();
+  });
 });

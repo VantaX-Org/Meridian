@@ -3,7 +3,7 @@
  * api/routes/match_rules.py. Writes change the list for the session. A simulation answers a fixed split of the
  * pending pairs per object, and nothing for an object without an active rule, as the route does.
  */
-import type { MatchRule, MatchRuleInput, MatchSimulation } from "../match-rules";
+import type { MatchRule, MatchRuleInput, MatchSimulation, ProposedRule } from "../match-rules";
 
 export const NONE_MATCH = Symbol("not a match rules path");
 
@@ -39,13 +39,37 @@ const SPLIT: Record<string, MatchSimulation> = {
 
 const sorted = () => [...list()].sort((a, b) => a.domain.localeCompare(b.domain) || b.weight - a.weight);
 
+// Proposals Aletheia drew from steward corrections; approving one adds it to the rules, as the route does.
+let proposed: ProposedRule[] | null = null;
+const proposals = (): ProposedRule[] =>
+  (proposed ??= [
+    { id: "pr-1", tenant_id: TENANT, domain: "business_partner", proposed_rule: { field: "POST_CODE1", match_type: "exact", weight: 15, threshold: 1 }, rationale: "Stewards rejected 14 pairs with the same name in different post codes. Comparing the post code would have kept them apart.", supporting_correction_count: 14, status: "pending", created_at: "2026-10-29T06:00:00Z" },
+    { id: "pr-2", tenant_id: TENANT, domain: "material_master", proposed_rule: { field: "MATKL", match_type: "exact", weight: 10, threshold: 1 }, rationale: "Stewards merged 11 pairs that share a material group and a similar description but scored below the merge band.", supporting_correction_count: 11, status: "pending", created_at: "2026-10-30T06:00:00Z" },
+  ]);
+
 export function matchRead(path: string): unknown {
+  if (path === "/ai/proposed-rules") {
+    const open = proposals().filter((p) => p.status === "pending");
+    return { rules: open, total: open.length };
+  }
   if (path !== "/match-rules") return NONE_MATCH;
   const all = sorted();
   return { rules: all, total: all.length };
 }
 
 export function matchWrite(method: string, path: string, body: unknown): unknown {
+  const pm = /^\/ai\/proposed-rules\/([^/]+)\/(approve|reject)$/.exec(path);
+  if (method === "POST" && pm) {
+    const p = proposals().find((x) => x.id === decodeURIComponent(pm[1])) ?? refuse(404, "Proposed rule not found");
+    if (p.status !== "pending") refuse(400, `Rule is already ${p.status}`);
+    p.status = pm[2] === "approve" ? "approved" : "rejected";
+    p.reviewed_at = new Date().toISOString();
+    if (pm[2] === "reject") return { id: p.id, status: p.status };
+    const r = p.proposed_rule;
+    const rule: MatchRule = { id: `mr-new-${++next}`, tenant_id: TENANT, domain: p.domain, field: r.field ?? "", match_type: r.match_type ?? "exact", weight: r.weight ?? 50, threshold: r.threshold ?? 0.8, active: true };
+    list().push(rule);
+    return { id: p.id, status: p.status, match_rule_id: rule.id };
+  }
   if (!path.startsWith("/match-rules")) return NONE_MATCH;
   const b = (body ?? {}) as Partial<MatchRuleInput> & { domain?: string };
   if (method === "POST" && path === "/match-rules/simulate") {

@@ -5680,6 +5680,20 @@ export const en = {
   "Warehouse {k}": "Warehouse {k}",
   "Work scheduling": "Work scheduling",
   "Your role cannot read material records.": "Your role cannot read material records.",
+  "Reject this proposal?": "Reject this proposal?",
+  "{field} on {object} is not added to the match rules. The reason goes to the audit log.": "{field} on {object} is not added to the match rules. The reason goes to the audit log.",
+  "The proposal was not rejected": "The proposal was not rejected",
+  "Proposal rejected": "Proposal rejected",
+  "Rejecting…": "Rejecting…",
+  "Proposed by Aletheia": "Proposed by Aletheia",
+  "Rules drawn from the pairs stewards corrected. Approving one adds it to the match rules as active.": "Rules drawn from the pairs stewards corrected. Approving one adds it to the match rules as active.",
+  "The proposed rules": "The proposed rules",
+  "No proposal waiting. Aletheia proposes a rule once stewards correct ten or more pairs of an object in a week.": "No proposal waiting. Aletheia proposes a rule once stewards correct ten or more pairs of an object in a week.",
+  "Proposed match rules": "Proposed match rules",
+  "Corrections behind it": "Corrections behind it",
+  "The proposal was not approved. {detail}": "The proposal was not approved. {detail}",
+  "Not approved": "Not approved",
+  "Proposal approved and added to the match rules": "Proposal approved and added to the match rules",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
