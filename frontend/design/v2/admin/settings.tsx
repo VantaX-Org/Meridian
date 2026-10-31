@@ -1,6 +1,7 @@
 "use client";
 
 import { SandboxBlock } from "./sandbox";
+import { MaintenanceBlock } from "./maintenance";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { CostModel, DimensionScores, PlannerConfig } from "@/types/api";
@@ -683,6 +684,7 @@ export function SettingsSection() {
       ) : (
         <NeedsPermission what={tr("Retention")} permission="manage_settings" />
       )}
+      <MaintenanceBlock />
       <SandboxBlock />
       <ComplianceBlock />
       {can("manage_system") && write ? <TenantPurge /> : null}
