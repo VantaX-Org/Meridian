@@ -24,6 +24,7 @@ import { cleaningRead, cleaningWrite, NONE_CLEANING, resetCleaningFixture } from
 import { matchRead, matchWrite, NONE_MATCH } from "./match-rules";
 import { mdmHealthRead, NONE_MDM_HEALTH } from "./mdm-health";
 import { linksRead, NONE_LINKS } from "./links";
+import { attentionRead, NONE_ATTENTION } from "./attention";
 import { issuesRead, issuesWrite, NONE_ISSUES, resetIssuesFixture } from "./issues";
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
@@ -289,6 +290,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (lk !== NONE_LINKS) return lk as T;
   const iss = issuesRead(path, params);
   if (iss !== NONE_ISSUES) return iss as T;
+  const att = attentionRead(path, params);
+  if (att !== NONE_ATTENTION) return att as T;
   const mr = matchRead(path);
   if (mr !== NONE_MATCH) return mr as T;
   const rolesStep = rolesFixtureResponse(path, params);

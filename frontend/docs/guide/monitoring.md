@@ -55,7 +55,14 @@ The Issues page, under Issues in the map, is the steward work list. Each issue i
 - **Change the selected issues.** Tick issues to move them to another status, assign them or add a note. Accepting an issue needs the approve permission and a resolution (risk accepted or false positive); a false positive needs a reason. Resolving needs the resolution fixed in the source. Other moves and assignments need the assign permission.
 - **One issue.** Open a record to see the runs that found it failing or clean, and who did what to it. Users who may analyse can add a comment.
 
-## What is on it
+## Action centre
+
+The Action centre, second in the map, lists everything that needs you, most urgent first: fixes waiting for your approval, systems that cannot be reached, records failing again, overdue stewardship items, failed jobs, rules waiting for review and, for administrators, access requests and expiring keys. You see only what your role can act on. The banner counts the items by severity and says when the list was last checked; it refreshes every minute. Under it:
+
+- **Filter.** Narrow the list to one kind or one system. The choice stays in the address, so a link to it opens the same view.
+- **What needs attention, by kind.** How many items of each kind.
+- **Act on these.** Each item with what happened, its severity, the system and object, when it started and how many records or items it covers. The button opens the screen where you resolve it.
+
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.
 - **Per system.** One row per connected system with the score then (the run before the clean), the score now, the change, how many records have failed again and how many were fixed since.

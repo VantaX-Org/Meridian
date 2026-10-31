@@ -159,6 +159,9 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
           <span>{t("Landscape")}</span>
           <kbd className="m2-kb">g l</kbd>
         </V2Link>
+        <V2Link href="/attention" className="m2-mi" aria-current={current("/attention") ? "page" : undefined}>
+          <span>{t("Action centre")}</span>
+        </V2Link>
         <V2Link href="/work" className="m2-mi" aria-current={current("/work") ? "page" : undefined}>
           <span>{t("Work")}</span>
           {counts.data?.fix ? <span className="m2-n">{int(counts.data.fix)}</span> : <kbd className="m2-kb">g w</kbd>}

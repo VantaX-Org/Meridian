@@ -100,11 +100,11 @@ describe("map", () => {
     mount();
     const nav = screen.getByRole("navigation", { name: "Places" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Landscape", "Work", "Runs", "People", "Requests", "Configuration", "Cleansing", "Process discovery", "Data mining", "MDM health", "Record links", "Issues"]);
+    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Landscape", "Action centre", "Work", "Runs", "People", "Requests", "Configuration", "Cleansing", "Process discovery", "Data mining", "MDM health", "Record links", "Issues"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
-    expect(links[1]).not.toHaveAttribute("aria-current");
-    await waitFor(() => expect(links[1]).toHaveTextContent("25,712"));
-    expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/work/));
+    expect(links[2]).not.toHaveAttribute("aria-current");
+    await waitFor(() => expect(links[2]).toHaveTextContent("25,712"));
+    expect(links[2]).toHaveAttribute("href", expect.stringMatching(/^\/work/));
   });
 
   it("draws systems then objects: each object a row with its name, score, 48 ruler and the work waiting", async () => {
