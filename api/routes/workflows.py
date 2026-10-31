@@ -380,7 +380,8 @@ async def decide_task(
     if kind == "fix_batch":
         from api.routes import remediation
         if body.decision == "approve":
-            return await remediation.approve_batch(uuid.UUID(oid), request, db, tenant, role)
+            return await remediation.approve_batch(uuid.UUID(oid), request, db, tenant, role,
+                                                   remediation.ApproveBody(comment=body.comment))
         return await remediation.send_back_batch(uuid.UUID(oid), remediation.SendBack(note=body.comment or ""),
                                                  request, db, tenant, role)
     from api.routes import change_requests

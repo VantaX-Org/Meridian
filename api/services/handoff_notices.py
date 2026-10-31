@@ -82,22 +82,24 @@ def _valid_ids(user_ids: Iterable[Optional[str]]) -> list[str]:
 
 def notify(session: Session, tenant_id: str, user_ids: Iterable[Optional[str]], *, type_: str, title: str, body: str,
            link: Optional[str], key: str, skip: Iterable[Optional[str]] = (), email: bool = True,
-           button: str = "Open in Meridian") -> list[EmailJob]:
+           button: str = "Open in Meridian", inbox: bool = True) -> list[EmailJob]:
     """Tell each person once per ``key``: an inbox notification (copied to their delegate while they are away) and,
     with ``email``, an email to them and to that delegate. ``skip``: people never told (the person who acted).
+    ``inbox`` False: the inbox line was already written elsewhere (the workflow engine), only the email goes.
     Returns the emails to send once the caller has committed (``dispatch``). Never raises: a notice must not cost
     the decision it reports; a failure is logged and the person is simply not told."""
     try:
         with session.begin_nested():
             return _notify(session, str(tenant_id), user_ids, type_, title, body, link, key, set(_valid_ids(skip)),
-                           email, button)
+                           email, button, inbox)
     except Exception as exc:  # noqa: BLE001 - see the docstring
         logger.warning("hand-off notice %s not written: %s", type_, type(exc).__name__)
         return []
 
 
 def _notify(session: Session, tid: str, user_ids: Iterable[Optional[str]], type_: str, title: str, body: str,
-            link: Optional[str], key: str, skip: set[str], email: bool, button: str) -> list[EmailJob]:
+            link: Optional[str], key: str, skip: set[str], email: bool, button: str,
+            inbox: bool = True) -> list[EmailJob]:
     from api.services.notifications import create_notification_sync
 
     people = _people(session, tid, [u for u in _valid_ids(user_ids) if u not in skip])
@@ -107,8 +109,9 @@ def _notify(session: Session, tid: str, user_ids: Iterable[Optional[str]], type_
         claimed = claim_delivery(session, tid, uid, "in_app", "event", key)
         if claimed is None:
             continue  # already told about this hand-off
-        create_notification_sync(tid, uid, type_, title, body, link, session)
-        finish_delivery(session, claimed, "sent")
+        if inbox:
+            create_notification_sync(tid, uid, type_, title, body, link, session)
+        finish_delivery(session, claimed, "sent" if inbox else "skipped")
         recipients = [(uid, p, title)]
         away = delegation.delegate_for_sync(session, tid, uid)
         if away and away[0] != uid and away[0] not in skip:
@@ -223,3 +226,57 @@ def _batch_waiting(session: Session, tenant_id: str, batch_id: str) -> list[Emai
                   body=body, link=batch_link(str(batch_id)),
                   key=f"batch_waiting:{batch_id}:{batch_round(session, tid, str(batch_id))}",
                   skip=[b["created_by"]], button="Open the batch")
+
+
+def _engine_told_requester(session: Session, tid: str, instance_id: Optional[str]) -> bool:
+    """The batch's workflow definition tells the requester the outcome itself (``notify_requester``)."""
+    if not instance_id:
+        return False
+    row = session.execute(text(
+        "SELECT d.definition, i.status FROM workflow_instances i JOIN workflow_definitions d ON d.id = i.definition_id "
+        "WHERE i.id = CAST(:i AS uuid) AND i.tenant_id = CAST(:t AS uuid)"), {"i": instance_id, "t": tid}).first()
+    if row is None or row[1] not in ("approved", "rejected"):  # a withdrawn approval is closed without a notice
+        return False
+    doc = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+    return bool((doc or {}).get("notify_requester", True))
+
+
+def _batch_row(session: Session, tid: str, batch_id: str) -> Optional[dict]:
+    row = session.execute(text(
+        "SELECT b.name, b.status, b.created_by::text AS created_by, b.approved_by::text AS approved_by "
+        "FROM remediation_batches b WHERE b.id = CAST(:b AS uuid) AND b.tenant_id = CAST(:t AS uuid)"),
+        {"b": batch_id, "t": tid}).mappings().first()
+    return dict(row) if row else None
+
+
+def batch_decided(session: Session, tenant_id: str, batch_id: str, decision: str, actor_id: Optional[str],
+                  actor_label: Optional[str], comment: Optional[str], instance_id: Optional[str] = None) -> list[EmailJob]:
+    """An approver approved the batch (``approved``) or sent it back (``sent_back``): tell the steward who built it,
+    with the comment. Once per approval (the workflow instance) or per send-back round. Never raises."""
+    try:
+        with session.begin_nested():
+            tid = str(tenant_id)
+            b = _batch_row(session, tid, str(batch_id))
+            if b is None or not b["created_by"]:
+                return []
+            who = actor_label or "An approver"
+            note = (comment or "").strip()
+            link = batch_link(str(batch_id))
+            if decision == "approved":
+                title = f"Fix batch {b['name']} was approved"
+                body = (f"{who} approved the fix batch {b['name']}." + (f' "{note}"' if note else "")
+                        + " It can go to SAP: export the load file or send it.")
+                key = f"batch_approved:{batch_id}:{instance_id or batch_round(session, tid, str(batch_id))}"
+                inbox = not _engine_told_requester(session, tid, instance_id)
+                type_ = "batch_approved"
+            else:
+                title = f"Fix batch {b['name']} was sent back"
+                body = f"{who} sent the fix batch {b['name']} back to you: \"{note}\" Change it and it waits again."
+                key = f"batch_sent_back:{batch_id}:{batch_round(session, tid, str(batch_id))}"
+                inbox = not _engine_told_requester(session, tid, instance_id)
+                type_ = "batch_sent_back"
+            return notify(session, tid, [b["created_by"]], type_=type_, title=title, body=body, link=link, key=key,
+                          skip=[actor_id], button="Open the batch", inbox=inbox)
+    except Exception as exc:  # noqa: BLE001 - a notice never costs the decision
+        logger.warning("batch decision notice not written: %s", type(exc).__name__)
+        return []

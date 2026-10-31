@@ -70,9 +70,11 @@ async def test_the_default_workflow_is_todays_four_eyes_approval(batch, monkeypa
     # the same webhook traffic as before: a wildcard subscription hears batch.approved and no workflow step event
     events = [r[0] for r in _q(eng, tid, "SELECT event FROM webhook_deliveries WHERE tenant_id = :t")]
     assert events == ["batch.approved"]
-    # nobody else was told anything new: the default does not notify approvers of a step decided at once, nor the
-    # creator of the outcome
+    # the default does not notify approvers of a step decided at once; the creator hears of the outcome from the
+    # batch (F07), not from the engine
     assert _q(eng, tid, "SELECT count(*) FROM notifications WHERE tenant_id = :t AND type = 'approval'") == [(0,)]
+    assert _q(eng, tid, "SELECT user_id::text, title FROM notifications WHERE tenant_id = :t AND type = 'batch_approved'") == [
+        (w["requester"], "Fix batch Lead times was approved")]
     again = await _post(monkeypatch, tid, w["bob"], url)
     assert again.status_code == 409
 

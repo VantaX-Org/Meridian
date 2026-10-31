@@ -404,6 +404,10 @@ async def accept_high_confidence(
     return {"id": str(batch_id), "accepted": len(ids), "accepted_by": current_user_label()}
 
 
+class ApproveBody(BaseModel):
+    comment: Optional[str] = Field(None, max_length=4000, description="told to the steward who built the batch")
+
+
 @router.post("/batches/{batch_id}/approve")
 async def approve_batch(
     batch_id: uuid.UUID,
@@ -411,8 +415,11 @@ async def approve_batch(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("approve", scope=scope_from_path)),
+    body: Optional[ApproveBody] = None,
 ):
-    """Four eyes: the approver must not be the person who built the batch."""
+    """Four eyes: the approver must not be the person who built the batch. Once approved, the steward who built it is
+    told (inbox and email), with the comment when one is given."""
+    comment = ((body.comment if body else None) or "").strip() or None
     b = await _batch(db, tenant, batch_id)
     if b["status"] != "draft":
         raise HTTPException(status_code=409, detail=f"Batch is already {b['status']}.")
@@ -431,7 +438,7 @@ async def approve_batch(
     try:
         res = await db.run_sync(lambda s: workflow.decide_object(
             s, str(tenant.id), "fix_batch", str(batch_id), b["created_by"], b.get("created_by_label"), facts, uid,
-            current_user_label(), "approve", None, {"approve"}))
+            current_user_label(), "approve", comment, {"approve"}))
     except workflow.WorkflowError as e:
         raise HTTPException(status_code=e.status, detail=e.detail)
     if res["status"] != "approved":
@@ -447,7 +454,10 @@ async def approve_batch(
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
     action_id = await rec.save(db, tenant, request, "approve_batch", {"batch_id": str(batch_id), "name": b["name"]})
     await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.approved"))
+    mails = await db.run_sync(lambda s: handoff_notices.batch_decided(
+        s, str(tenant.id), str(batch_id), "approved", uid, current_user_label(), comment, res["instance"]["id"]))
     await db.commit()
+    handoff_notices.dispatch(mails)
     attention.invalidate(tenant.id)
     return {"id": str(batch_id), "status": "approved", "approved_by": current_user_label(), "action_id": action_id,
             "workflow": _workflow_summary(res["instance"])}
@@ -551,10 +561,10 @@ async def send_back_batch(
     rec = undo.Recorder()
     rec.batch = await undo.batch_snapshot(db, tenant, batch_id, "draft")
     # its approval in progress ends rejected with the note; an approval already given is withdrawn
-    await db.run_sync(lambda s_: workflow.close(s_, str(tenant.id), "fix_batch", str(batch_id), "rejected", uid,
-                                                current_user_label(), note)
-                      or workflow.close(s_, str(tenant.id), "fix_batch", str(batch_id), "withdrawn", uid,
-                                        current_user_label(), note))
+    closed = await db.run_sync(lambda s_: workflow.close(s_, str(tenant.id), "fix_batch", str(batch_id), "rejected", uid,
+                                                         current_user_label(), note)
+                               or workflow.close(s_, str(tenant.id), "fix_batch", str(batch_id), "withdrawn", uid,
+                                                 current_user_label(), note))
     await db.execute(text("""
         UPDATE remediation_batches SET status = 'draft', approved_by = NULL, approved_by_label = NULL, approved_at = NULL,
                filter = COALESCE(filter, '{}'::jsonb) || jsonb_build_object('returned', jsonb_build_object(
@@ -569,7 +579,10 @@ async def send_back_batch(
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
     action_id = await rec.save(db, tenant, request, "send_back_batch",
                                {"batch_id": str(batch_id), "name": b["name"], "note": note})
+    mails = await db.run_sync(lambda s: handoff_notices.batch_decided(
+        s, str(tenant.id), str(batch_id), "sent_back", uid, current_user_label(), note, closed))
     await db.commit()
+    handoff_notices.dispatch(mails)
     attention.invalidate(tenant.id)
     return {"id": str(batch_id), "status": "draft", "sent_back_by": current_user_label(), "action_id": action_id}
 
