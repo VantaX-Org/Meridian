@@ -5,7 +5,8 @@
 #   sudo bash scripts/build-rfc-overlay.sh [--sdk /usr/local/sap/nwrfcsdk]
 #
 # Produces meridian-api:rfc-local and meridian-worker:rfc-local on top of the
-# currently pulled :latest images and writes docker-compose.rfc.yml (next to the
+# pulled images of MERIDIAN_BASE_TAG (default :latest; update.sh passes the
+# release it pinned) and writes docker-compose.rfc.yml (next to the
 # customer compose file) so
 # api, worker and beat run them. scripts/update.sh re-runs this after every
 # pull while that file exists, so an update never drops RFC support.
@@ -34,7 +35,7 @@ cp -a "$SDK" "$CTX/nwrfcsdk"
 cp docker/Dockerfile.rfc "$CTX/Dockerfile"
 
 for svc in api worker; do
-    base="ghcr.io/vantax-org/meridian-${svc}:latest"
+    base="ghcr.io/vantax-org/meridian-${svc}:${MERIDIAN_BASE_TAG:-latest}"
     docker image inspect "$base" >/dev/null 2>&1 || die "$base not present — pull it first (docker compose pull)."
     echo "[INFO] Building meridian-${svc}:rfc-local from $base ..."
     # The build's apt-get/pip need the host's working network (the buildkit bridge has no

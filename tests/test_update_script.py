@@ -225,3 +225,12 @@ def test_failed_storage_copy_keeps_the_running_release_pinned(tmp_path):
     (host / "docker/.env").write_text("MERIDIAN_VERSION=v2.3.0\n")
     _run(host, {**env, "OLD_MINIO": "oldminio", "FAIL_COPY": "1"}, ok=False)
     assert _env(host) == {"MERIDIAN_VERSION": "v2.3.0"}
+
+
+def test_rfc_overlay_builds_on_the_pinned_release_not_latest():
+    # A pinned update pulls :vX.Y.Z and never moves :latest, so an overlay built
+    # on :latest would put api/worker/beat back on the previous release.
+    update = (REPO / "scripts" / "update.sh").read_text()
+    overlay = (REPO / "scripts" / "build-rfc-overlay.sh").read_text()
+    assert 'MERIDIAN_BASE_TAG="$TARGET_TAG" bash scripts/build-rfc-overlay.sh' in update
+    assert 'meridian-${svc}:${MERIDIAN_BASE_TAG:-latest}' in overlay

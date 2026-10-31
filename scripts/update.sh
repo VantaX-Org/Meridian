@@ -315,7 +315,8 @@ sync_deployment_files() {
 rebuild_rfc_overlay() {
     [[ -f "$RFC_OVERLAY" ]] || return 0
     info "Rebuilding the SAP RFC overlay on the new images..."
-    bash scripts/build-rfc-overlay.sh \
+    # Build on the release just pulled, not :latest (which a pinned update never moves).
+    MERIDIAN_BASE_TAG="$TARGET_TAG" bash scripts/build-rfc-overlay.sh \
         || error "RFC overlay rebuild failed — update aborted before any restart. Running stack is untouched."
 }
 
