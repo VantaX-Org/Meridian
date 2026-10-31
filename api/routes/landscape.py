@@ -67,6 +67,17 @@ class LandscapeSystemOut(BaseModel):
     records: Optional[int] = None              # rows of the system's latest completed extraction, summed over profiles
     state: SystemState
     latest_run_id: Optional[str] = None
+    # SAP refused the system's credentials: its last health check failed authentication, or its latest extraction or
+    # configuration job failed on the sign-in (F20)
+    sign_in_failed: bool = False
+
+
+class NextStepOut(BaseModel):
+    kind: Literal["fix_sign_in", "extract", "analyse", "open"]
+    system_id: str
+    system_name: str
+    label: str
+    href: str
 
 
 class LandscapeObjectOut(BaseModel):
@@ -123,6 +134,8 @@ class LandscapeOut(BaseModel):
     cells: list[LandscapeCellOut]
     sentence: LandscapeSentenceOut
     counts: LandscapeCountsOut
+    # SAP Basis's next step: fix a refused sign-in before extracting or analysing (api/services/sign_in.py)
+    basis_next_step: Optional[NextStepOut] = None
 
 
 async def build_status(db: AsyncSession, tenant: Tenant) -> StatusStripOut:
@@ -318,6 +331,11 @@ async def _landscape(scope: str, run: uuid.UUID | None, db: AsyncSession, tenant
     sentence = sentence_of(cells)
     by_system: dict[str, bool] = {c["system_id"]: True for c in cells}
 
+    import asyncio
+
+    from api.services import jobs as job_registry
+    from api.services.sign_in import basis_next_step, failed_sign_ins
+    refused = failed_sign_ins(await asyncio.to_thread(job_registry.list_jobs, t, limit=job_registry.INDEX_KEEP))
     out_systems = []
     for s in systems:
         latest = await latest_run(db, tenant.id, system_id=s["id"])
@@ -326,7 +344,8 @@ async def _landscape(scope: str, run: uuid.UUID | None, db: AsyncSession, tenant
             "id": s["id"], "name": s["name"], "system_type": s["system_type"], "version": s["sap_release"],
             "client": s["client"], "health_status": s["health_status"], "last_extracted_at": s["last_extracted_at"],
             "records": int(s["records"]) if s["records"] is not None else None,
-            "state": state, "latest_run_id": latest})
+            "state": state, "latest_run_id": latest,
+            "sign_in_failed": s["health_status"] == "auth_failed" or s["id"] in refused})
     order = {s["id"]: i for i, s in enumerate(out_systems)}
     cells.sort(key=lambda c: (order[c["system_id"]], c["module"]))
     if sort != "position":
@@ -343,4 +362,5 @@ async def _landscape(scope: str, run: uuid.UUID | None, db: AsyncSession, tenant
         "counts": {"go": sum(1 for c in cells if c["verdict"] == "go"),
                    "at_risk": sum(1 for c in cells if c["verdict"] == "at-risk"),
                    "no_go": sum(1 for c in cells if c["verdict"] == "no-go")},
+        "basis_next_step": basis_next_step(out_systems),
     }

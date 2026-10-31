@@ -1496,9 +1496,8 @@ class ConnectivityManager:
             return {"connected": healthy, "status": status, "message": message}
 
         except SAPConnectorError as e:
-            status = ("auth_failed"
-                      if "auth" in str(e).lower() or "token" in str(e).lower()
-                      else "unreachable")
+            from api.services.sign_in import failure_status
+            status = failure_status(str(e))  # refused credentials (401, logon, token) or unreachable
             self._update_health(system_id, status, str(e)[:200], reset_failures=False)
             return {"connected": False, "status": status, "message": str(e)[:200]}
         finally:
