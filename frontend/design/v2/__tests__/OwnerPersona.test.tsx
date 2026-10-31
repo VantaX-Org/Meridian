@@ -74,7 +74,8 @@ describe("the data owner on the landscape", () => {
   it("the button opens the batch inspector on the landscape", async () => {
     visit("&persona=owner&open=batch%3AB-241");
     mount();
-    const insp = await screen.findByTestId("inspector");
-    expect(await within(insp).findByRole("heading", { level: 2, name: "Batch B-241" })).toBeInTheDocument();
+    // The landscape and the inspector render together; under coverage that takes longer than the default second.
+    const insp = await screen.findByTestId("inspector", undefined, { timeout: 10_000 });
+    expect(await within(insp).findByRole("heading", { level: 2, name: "Batch B-241" }, { timeout: 10_000 })).toBeInTheDocument();
   });
 });

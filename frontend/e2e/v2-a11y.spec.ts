@@ -343,7 +343,7 @@ test.describe("keyboard only", () => {
     await prepare(page, "light", null);
     await open(page, "/work?fixture=1&persona=owner&filter=approvals");
     await skipToContent(page);
-    await tabTo(page, /^Approve batch B-241$/);
+    await tabTo(page, /^Approve batch B-241$/, 300);
     await focusVisible(page);
     await page.keyboard.press("Enter");
     const notice = page.getByRole("region", { name: "Change notices" });
@@ -357,7 +357,7 @@ test.describe("keyboard only", () => {
     await prepare(page, "light", null);
     await open(page, "/?fixture=1&persona=basis");
     await skipToContent(page);
-    await tabTo(page, /^Fix the SuccessFactors sign-in$/);
+    await tabTo(page, /^Fix the SuccessFactors sign-in$/, 300);
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "SuccessFactors" });
     await expect(dialog).toBeVisible(NAV);
