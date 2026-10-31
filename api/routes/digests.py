@@ -1,13 +1,16 @@
 """Scheduled digests and executive mailouts (migration 114; api/services/digests.py).
 
-GET    /api/v1/digests                       the tenant's digest schedules (manage_settings)
-POST   /api/v1/digests                       add one (manage_settings, audited); next_run_at from its cron
-GET    /api/v1/digests/{id}                  one schedule (manage_settings)
-PATCH  /api/v1/digests/{id}                  change it (manage_settings, audited)
-DELETE /api/v1/digests/{id}                  remove it (manage_settings, audited)
-POST   /api/v1/digests/{id}/send-now         build and send it now, outside its schedule (manage_settings)
-GET    /api/v1/digests/{id}/deliveries       its slots: sent, failed or skipped, with the reason (manage_settings)
-GET    /api/v1/digests/{id}/preview          the digest as HTML (view; without manage_settings only a role digest of
+Managing digests needs manage_settings (the administrator) or manage_digests (the programme lead, who reports to
+the steering committee); written "manage" below.
+
+GET    /api/v1/digests                       the tenant's digest schedules (manage)
+POST   /api/v1/digests                       add one (manage, audited); next_run_at from its cron
+GET    /api/v1/digests/{id}                  one schedule (manage)
+PATCH  /api/v1/digests/{id}                  change it (manage, audited)
+DELETE /api/v1/digests/{id}                  remove it (manage, audited)
+POST   /api/v1/digests/{id}/send-now         build and send it now, outside its schedule (manage)
+GET    /api/v1/digests/{id}/deliveries       its slots: sent, failed or skipped, with the reason (manage)
+GET    /api/v1/digests/{id}/preview          the digest as HTML (view; without manage only a role digest of
                                              the caller's own role)
 GET    /api/v1/digests/{id}/preview.json     the numbers the digest is rendered from (same permission as preview)
 """
@@ -28,7 +31,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
 from api.services import digests
-from api.services.rbac import (VALID_ROLES, current_user_id, persona_for, require_permission, write_audit)
+from api.services.rbac import (VALID_ROLES, current_user_id, persona_for, require_any_permission, require_permission,
+                               write_audit)
+
+# The administrator (manage_settings) or the programme lead, who reports to the committee (manage_digests).
+_MANAGE = ("manage_settings", "manage_digests")
 
 router = APIRouter(prefix="/api/v1/digests", tags=["digests"])
 
@@ -189,7 +196,7 @@ async def _check(db: AsyncSession, tenant: Tenant, v: dict) -> None:
             raise HTTPException(status_code=422, detail="Every recipient user must be a user of this tenant")
 
 
-@router.get("", dependencies=[Depends(require_permission("manage_settings"))])
+@router.get("", dependencies=[Depends(require_any_permission(*_MANAGE))])
 async def list_digests(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
     rows = (await db.execute(text(f"SELECT {_OUT_COLS} FROM digest_schedules WHERE tenant_id = :t "
@@ -197,7 +204,7 @@ async def list_digests(db: AsyncSession = Depends(get_db), tenant: Tenant = Depe
     return {"digests": [_out(r) for r in rows]}
 
 
-@router.post("", status_code=201, response_model=DigestOut, dependencies=[Depends(require_permission("manage_settings"))])
+@router.post("", status_code=201, response_model=DigestOut, dependencies=[Depends(require_any_permission(*_MANAGE))])
 async def create_digest(body: DigestCreate, request: Request, db: AsyncSession = Depends(get_db),
                         tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
@@ -222,13 +229,13 @@ async def create_digest(body: DigestCreate, request: Request, db: AsyncSession =
     return out
 
 
-@router.get("/{digest_id}", response_model=DigestOut, dependencies=[Depends(require_permission("manage_settings"))])
+@router.get("/{digest_id}", response_model=DigestOut, dependencies=[Depends(require_any_permission(*_MANAGE))])
 async def get_digest(digest_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     return await _one(db, tenant, digest_id)
 
 
-@router.patch("/{digest_id}", response_model=DigestOut, dependencies=[Depends(require_permission("manage_settings"))])
+@router.patch("/{digest_id}", response_model=DigestOut, dependencies=[Depends(require_any_permission(*_MANAGE))])
 async def update_digest(digest_id: uuid.UUID, body: DigestUpdate, request: Request, db: AsyncSession = Depends(get_db),
                         tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
@@ -264,7 +271,7 @@ async def update_digest(digest_id: uuid.UUID, body: DigestUpdate, request: Reque
     return out
 
 
-@router.delete("/{digest_id}", status_code=204, dependencies=[Depends(require_permission("manage_settings"))])
+@router.delete("/{digest_id}", status_code=204, dependencies=[Depends(require_any_permission(*_MANAGE))])
 async def delete_digest(digest_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
                         tenant: Tenant = Depends(get_tenant)) -> None:
     await _rls(db, tenant)
@@ -289,7 +296,7 @@ def _send_now(tenant_id: str, digest_id: str) -> Optional[dict]:
 
 
 @router.post("/{digest_id}/send-now", response_model=SendOut,
-             dependencies=[Depends(require_permission("manage_settings"))])
+             dependencies=[Depends(require_any_permission(*_MANAGE))])
 async def send_now(digest_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Build and send the digest now (its schedule is not moved). In sandbox mode it is recorded as skipped."""
     await _rls(db, tenant)
@@ -301,7 +308,7 @@ async def send_now(digest_id: uuid.UUID, db: AsyncSession = Depends(get_db), ten
     return out
 
 
-@router.get("/{digest_id}/deliveries", dependencies=[Depends(require_permission("manage_settings"))])
+@router.get("/{digest_id}/deliveries", dependencies=[Depends(require_any_permission(*_MANAGE))])
 async def list_deliveries(digest_id: uuid.UUID, db: AsyncSession = Depends(get_db),
                           tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
@@ -318,8 +325,9 @@ async def _previewable(request: Request, db: AsyncSession, tenant: Tenant, role:
 
     await _rls(db, tenant)
     d = await _one(db, tenant, digest_id)
-    if await _allowed(db, tenant, request, role, "manage_settings"):
-        return d
+    for action in _MANAGE:
+        if await _allowed(db, tenant, request, role, action):
+            return d
     if d["audience"] == "role" and d["role"] and persona_for(d["role"]) == persona_for(role):
         return d
     raise HTTPException(status_code=403, detail="Only your own role's digest can be previewed")

@@ -337,3 +337,27 @@ def batch_loaded(session: Session, tenant_id: str, batch_id: str, actor_id: Opti
     except Exception as exc:  # noqa: BLE001 - a notice never costs the confirmation
         logger.warning("batch loaded notice not written: %s", type(exc).__name__)
         return []
+
+
+def access_requested(session: Session, tenant_id: str, request_id: str, user_id: str, asked: str,
+                     reason: Optional[str]) -> list[EmailJob]:
+    """Someone asked for a permission from a refusal: tell the administrators (holders of manage users). Once per
+    request. Never raises."""
+    from api.services.workflow import Assignee, resolve
+
+    try:
+        with session.begin_nested():
+            tid = str(tenant_id)
+            who = session.execute(text(
+                "SELECT COALESCE(NULLIF(name, ''), email) FROM users WHERE id = CAST(:u AS uuid) "
+                "AND tenant_id = CAST(:t AS uuid)"), {"u": user_id, "t": tid}).scalar() or "Someone"
+            admins = resolve(session, tid, Assignee(rule="role", action="manage_users"), {}, None)
+            from api.services import app_links
+            return notify(session, tid, admins, type_="access_request", title=f"{who} asks for {asked}",
+                          body=f"{who} asks for the permission {asked}." + (f' "{reason}"' if reason else "")
+                          + " Grant or decline it in Users.",
+                          link=app_links.admin("users"), key=f"access_request:{request_id}", skip=[user_id],
+                          button="Review the request")
+    except Exception as exc:  # noqa: BLE001 - the request is stored either way
+        logger.warning("access request notice not written: %s", type(exc).__name__)
+        return []
