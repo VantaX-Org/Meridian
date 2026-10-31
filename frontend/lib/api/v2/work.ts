@@ -28,6 +28,10 @@ export interface WorkFilters {
   system?: string;
   /** Step 10: the ledger as it stood at this run; GET /work/records only, never with scope=current. */
   as_of_run?: string;
+  /** A migration wave id: only the objects in that wave. */
+  wave?: string;
+  /** With a wave: only its objects with this verdict (go, no-go). */
+  verdict?: string;
 }
 
 export interface WorkQuery extends WorkFilters {
@@ -81,7 +85,9 @@ export interface BatchResult {
   action_id?: string | null;
 }
 /** Four eyes: the approver is not the person who built the batch. Approves every row of the batch. */
-export const postApproveBatch = (batch: string): Promise<BatchResult> => v2Send<BatchResult>("POST", `/remediation/batches/${encodeURIComponent(batch)}/approve`);
+/** `withoutBlank` approves the records that have a new value and holds out the ones without (the server's 409 names them). */
+export const postApproveBatch = (batch: string, withoutBlank = false): Promise<BatchResult> =>
+  v2Send<BatchResult>("POST", `/remediation/batches/${encodeURIComponent(batch)}/approve`, withoutBlank ? { without_blank: true } : undefined);
 export const postSendBack = (batch: string, note: string): Promise<BatchResult> => v2Send<BatchResult>("POST", `/remediation/batches/${encodeURIComponent(batch)}/send-back`, { note });
 
 /** The sentence to show for a failed write: the server's own, else the fallback. */

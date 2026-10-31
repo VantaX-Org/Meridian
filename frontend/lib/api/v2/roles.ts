@@ -321,6 +321,8 @@ export interface GridExportBody {
   columns: { key: string; header: string; kind?: "text" | "int" | "pct" }[];
   rows: Record<string, string | number | null>[];
   filters?: Record<string, string>;
+  /** The rows the filter holds; the cover says so when fewer rows were sent. */
+  total?: number;
 }
 
 function saveBlob(blob: Blob, name: string): void {

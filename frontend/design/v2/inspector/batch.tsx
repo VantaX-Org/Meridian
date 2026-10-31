@@ -13,6 +13,7 @@ import type { RowRef } from "@/lib/v2/work-actions";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
 import { EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { BatchButtons, ReassignMenu, day, money, useBatchControls } from "../screens/batch-parts";
+import { KeyText, keyValue } from "../screens/work-parts";
 import { useToast } from "../Toast";
 import { ResultFrame, useOutcome } from "./shared";
 import { CollabSections } from "./collab";
@@ -49,8 +50,14 @@ function Records({ id, total }: { id: string; total: number }) {
         {items.slice(0, SHOWN).map((it) => (
           <li key={it.id}>
             <V2Link href={hrefFor({ kind: "record", id: `${it.module}:${it.record_key}` })}>
-              <Mono>{it.record_key.split("|")[0].replace(/^[A-Z0-9_]+=/, "")}</Mono>
+              <KeyText value={keyValue(it, 0) ?? it.record_key} />
             </V2Link>
+            {keyValue(it, 1) ? (
+              <>
+                {" "}
+                <Mono>{keyValue(it, 1)}</Mono>
+              </>
+            ) : null}
             <span>
               <Mono>{it.check_id}</Mono>
             </span>
@@ -163,6 +170,17 @@ function BatchBody({ b }: { b: BatchRow }) {
       ) : null}
       <SlaClock status={b.status} dueAt={b.dueAt} />
       {b.status === "exported" ? <p className="m2-prov">{sentLine(b, day)}</p> : null}
+      {b.verification ? (
+        <p className="m2-prov" data-testid="batch-verified">
+          {tr("Verified on run {date}: {fixed} fixed, {failing} still failing.", { date: day(b.verification.runAt), fixed: int(b.verification.fixed), failing: int(b.verification.stillFailing) })}
+          {b.verification.stillFailing > 0 ? (
+            <>
+              {" "}
+              <V2Link href={`/work?batch=${encodeURIComponent(b.id)}`}>{tr("Open the {count}", { count: int(b.verification.stillFailing) })}</V2Link>
+            </>
+          ) : null}
+        </p>
+      ) : null}
 
       <h3>{tr("Records")}</h3>
       <Records id={b.id} total={b.records} />
@@ -190,7 +208,7 @@ function BatchBody({ b }: { b: BatchRow }) {
       {b.status === "draft" && !can.approve ? <p className="m2-prov">{tr("Approving needs the approve permission, which your role does not hold.")}</p> : null}
       {b.status === "draft" && can.approve && mine ? <p className="m2-prov">{tr("You built this batch, so a second person approves it.")}</p> : null}
       {b.status === "draft" && can.approve && !mine ? <p className="m2-prov">{tr("Approving acts on the whole batch. You can take it back from the notice that follows.")}</p> : null}
-      {b.status === "approved" && !live ? <p className="m2-prov">{tr("Send to SAP hands the approved values over as a Migration Cockpit file. It cannot be taken back.")}</p> : null}
+      {b.status === "approved" && !live ? <p className="m2-prov">{tr("Export load file hands the approved values over as a Migration Cockpit file, for the person you name to load in SAP. It cannot be taken back.")}</p> : null}
       {b.status === "approved" && live ? <p className="m2-prov">{tr("Export load file hands the approved values over as a Migration Cockpit file instead of writing them live. It cannot be taken back.")}</p> : null}
       {b.status === "awaiting_load" ? <p className="m2-prov" data-testid="batch-awaiting-load">{tr("The load file is out and waits for the SAP load. Once it is loaded in SAP, an approver or SAP Basis confirms it here; the next run then checks the records.")}</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}

@@ -22,9 +22,11 @@ export const workKeys = {
 };
 
 /** Counts per status for every object: the chips, the sentence and the next step read this. */
-export function useWorkSummary() {
+/** The ledger's counts; a wave (and verdict) narrows them to that wave's objects and names the wave (F14). */
+export function useWorkSummary(f: Pick<WorkFilters, "wave" | "verdict"> = {}) {
   const fx = useFixture();
-  return useQuery({ queryKey: workKeys.summary(fx), queryFn: () => getSummary(), staleTime: STALE });
+  const narrowed = Boolean(f.wave || f.verdict);
+  return useQuery({ queryKey: narrowed ? [...workKeys.summary(fx), f] : workKeys.summary(fx), queryFn: () => getSummary(narrowed ? f : {}), staleTime: STALE });
 }
 
 export function useWorkGroups(f: Pick<WorkFilters, "module" | "severity">, enabled = true) {
@@ -44,6 +46,18 @@ export function useWorkRows(filters: WorkFilters, sort: SortKey, enabled = true)
     staleTime: STALE,
     enabled,
   });
+}
+
+/** Every row of the filter, page by page (the grid export, F26). Stops at `max` rows, the export's own ceiling. */
+export async function allWorkRows(filters: WorkFilters, sort: SortKey, max = 100_000): Promise<WorkRow[]> {
+  const out: WorkRow[] = [];
+  let after: string | undefined;
+  do {
+    const page = await getWork({ ...filters, sort: SERVER_SORT[sort], after, limit: 500 });
+    out.push(...page.items);
+    after = page.next ?? undefined;
+  } while (after && out.length < max);
+  return out.slice(0, max);
 }
 
 /** The first rows of each expanded rule in the "By rule" view. */

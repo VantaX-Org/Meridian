@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as workApi from "@/lib/api/v2/work";
+import * as rolesApi from "@/lib/api/v2/roles";
 import { resetWorkFixture } from "@/lib/api/v2/fixtures";
 import { resetActions } from "@/lib/v2/undo";
 import { clearPatches } from "@/lib/v2/work-overrides";
@@ -410,6 +411,40 @@ describe("the Work ledger, fixture mode", () => {
     expect(byObject.mock.calls[0][0]).toMatchObject({ batch_id: "b-1", policy: "sox", sort: "-age,-value" });
   });
 
+  it("F10: Approved, Sent to SAP and Fixed are chips; Sent to SAP lists the records under their batch", async () => {
+    mount();
+    const chips = screen.getByRole("group", { name: "Filter by state" });
+    expect(within(chips).getByRole("button", { name: /Approved/ })).toBeInTheDocument();
+    expect(within(chips).getByRole("button", { name: /Fixed/ })).toBeInTheDocument();
+    fireEvent.click(within(chips).getByRole("button", { name: /Sent to SAP/ }));
+    expect(getUrl()).toContain("filter=sent");
+    expect(await screen.findByTestId("batch-row-B-229")).toBeInTheDocument();
+  });
+
+  it("F14: the wave filter narrows the ledger and the sentence names the wave", async () => {
+    const summary = vi.spyOn(workApi, "getSummary");
+    mount("&wave=w-1");
+    await waitFor(() => expect(screen.getByTestId("work-sentence")).toHaveTextContent("in Wave 1: finance foundations"));
+    expect(summary.mock.calls.some(([f]) => (f as { wave?: string } | undefined)?.wave === "w-1")).toBe(true);
+    expect(screen.getByRole("button", { name: "Remove filter: Wave 1: finance foundations" })).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("work-wave"), { target: { value: "" } });
+    expect(getUrl()).not.toContain("wave=");
+  });
+
+  it("F26: Export to Excel fetches every row of the filter and names the count in the file and the notice", async () => {
+    const spy = vi.spyOn(rolesApi, "exportGrid").mockResolvedValue("work.xlsx");
+    const pages = vi.spyOn(workApi, "getWork");
+    mount("&filter=open");
+    await ledger();
+    fireEvent.click(screen.getByRole("button", { name: "Share and export Work" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Export to Excel/ }));
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    const body = spy.mock.calls[0][0];
+    expect(body.total).toBe(body.rows.length);
+    expect(pages.mock.calls.filter(([q]) => q.limit === 500).length).toBeGreaterThan(0);
+    expect(await screen.findByText(`Exported ${body.rows.length.toLocaleString("en")} rows to work.xlsx`)).toBeInTheDocument();
+  });
+
   it("?export=1 (the command line's export) saves the sheet once and leaves the address clean", async () => {
     const spy = vi.spyOn(workApi, "exportFixSheet").mockResolvedValue({ filename: "fix-sheet.xlsx" });
     mount("&export=1");
@@ -646,6 +681,25 @@ describe("phone: rows are two-line list items", () => {
       expect(first.querySelector("input")).toBeNull();
       fireEvent.click(first);
       expect(decodeURIComponent(getUrl())).toContain(`open=record:material_master:MATNR=${KEY_232}`);
+    } finally {
+      window.matchMedia = mq;
+    }
+  });
+});
+
+describe("phone: one Filters button above the rows (F28)", () => {
+  it("shows the chips and a Filters button; the filters open from it", async () => {
+    const mq = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: true, media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false })) as typeof window.matchMedia;
+    try {
+      mount("&rule=MM142");
+      await screen.findByRole("list", { name: "Work ledger" });
+      expect(screen.getByRole("group", { name: "Filter by state" })).toBeInTheDocument();
+      const button = screen.getByTestId("work-filters");
+      expect(button).toHaveTextContent("Filters (1)");
+      expect(screen.queryByRole("list", { name: "Filters in force" })).toBeNull();
+      fireEvent.click(button);
+      expect(screen.getByRole("list", { name: "Filters in force" })).toBeInTheDocument();
     } finally {
       window.matchMedia = mq;
     }

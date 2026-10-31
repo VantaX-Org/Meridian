@@ -7,7 +7,7 @@ import type { ExportQuery, SavedView, WorkFilters, WorkSummary } from "@/lib/api
 import { t as tr } from "@/lib/v2/i18n";
 import { whole } from "./format";
 
-export type ChipId = "tofix" | "proposed" | "approvals" | "exceptions";
+export type ChipId = "tofix" | "proposed" | "approvals" | "approved" | "sent" | "fixed" | "exceptions";
 export type SortKey = "value" | "due" | "age" | "owner";
 export type Density = "comfortable" | "compact";
 
@@ -35,8 +35,13 @@ export const CHIPS: readonly ChipDef[] = [
   { id: "tofix", get label() { return tr("To fix"); }, status: "to_fix", count: (s, m) => sumStatus(s, "to_fix", m) },
   { id: "proposed", get label() { return tr("Fix proposed"); }, status: "to_fix", proposed: true, count: (s, m) => (s ? objectsOf(s, m).reduce((n, o) => n + o.proposed, 0) : null) },
   { id: "approvals", get label() { return tr("Waiting for approval"); }, status: "proposed", count: (s, m) => sumStatus(s, "proposed", m) },
+  { id: "approved", get label() { return tr("Approved"); }, status: "approved", count: (s, m) => sumStatus(s, "approved", m) },
+  { id: "sent", get label() { return tr("Sent to SAP"); }, status: "sent", count: (s, m) => sumStatus(s, "sent", m) },
+  { id: "fixed", get label() { return tr("Fixed"); }, status: "fixed", count: (s, m) => sumStatus(s, "fixed", m) },
   { id: "exceptions", get label() { return tr("Exceptions"); }, status: "not_an_issue", count: (s, m) => sumStatus(s, "not_an_issue", m) },
 ];
+/** The chips whose rows sit in a fix batch, so the ledger groups them by batch. */
+export const BATCH_CHIPS: ReadonlySet<ChipId | null> = new Set<ChipId | null>(["approvals", "approved", "sent", "fixed"]);
 export const chipDef = (id: ChipId): ChipDef => CHIPS.find((c) => c.id === id) ?? CHIPS[0];
 
 export interface LedgerState {
@@ -55,16 +60,20 @@ export interface LedgerState {
   system: string | null;
   /** Time travel: the ledger as it stood when this run finished; the statuses are today's. */
   asOf: string | null;
+  /** A migration wave id: only the records of that wave's objects. */
+  wave: string | null;
+  /** go, at-risk or no-go: only the objects with that verdict (with wave, the wave's). */
+  verdict: string | null;
   group: boolean;
   sort: SortKey;
   /** The ledger's own density (?density= or a saved view); null follows the density in Preferences. */
   density: Density | null;
 }
 
-export const DEFAULT_STATE: LedgerState = { chip: "tofix", module: null, rule: null, severity: null, assigned: null, due: null, batch: null, policy: null, system: null, asOf: null, group: false, sort: "value", density: null };
+export const DEFAULT_STATE: LedgerState = { chip: "tofix", module: null, rule: null, severity: null, assigned: null, due: null, batch: null, policy: null, system: null, asOf: null, wave: null, verdict: null, group: false, sort: "value", density: null };
 
 /** The query keys the ledger owns; everything else in the address (fixture, persona, open) is left alone. */
-export const MANAGED = ["filter", "status", "proposed", "module", "rule", "check_id", "severity", "assigned", "due", "batch", "policy", "system", "as_of_run", "group", "sort", "density", "view"] as const;
+export const MANAGED = ["filter", "status", "proposed", "module", "rule", "check_id", "severity", "assigned", "due", "batch", "policy", "system", "as_of_run", "wave", "verdict", "group", "sort", "density", "view"] as const;
 
 function chipFrom(get: (k: string) => string | null, fallback: ChipId | null): ChipId | null {
   const filter = get("filter");
@@ -75,7 +84,8 @@ function chipFrom(get: (k: string) => string | null, fallback: ChipId | null): C
   if (!status) return fallback;
   if (status === "open" || status === "all") return null;
   if (status === "to_fix") return get("proposed") === "true" ? "proposed" : "tofix";
-  if (status === "proposed" || status === "approved") return "approvals";
+  if (status === "proposed") return "approvals";
+  if (status === "approved" || status === "sent" || status === "fixed") return status;
   if (status === "not_an_issue") return "exceptions";
   return fallback;
 }
@@ -99,6 +109,8 @@ export function readState(params: URLSearchParams, view?: SavedView): LedgerStat
     policy: get("policy"),
     system: get("system"),
     asOf: params.get("as_of_run"),
+    wave: get("wave"),
+    verdict: get("verdict"),
     group: get("group") === "rule",
     sort: sort === "due" || sort === "age" || sort === "owner" ? sort : "value",
     density: density === "compact" || density === "comfortable" ? density : null,
@@ -118,6 +130,8 @@ export function filtersOf(s: LedgerState): WorkFilters {
     policy: s.policy ?? undefined,
     system: s.system ?? undefined,
     as_of_run: s.asOf ?? undefined,
+    wave: s.wave ?? undefined,
+    verdict: s.verdict ?? undefined,
     status: c ? c.status : "open",
     proposed: c?.proposed ? true : undefined,
   };
@@ -141,6 +155,8 @@ export function toParams(s: LedgerState): Record<string, string> {
   if (s.policy) out.policy = s.policy;
   if (s.system) out.system = s.system;
   if (s.asOf) out.as_of_run = s.asOf;
+  if (s.wave) out.wave = s.wave;
+  if (s.verdict) out.verdict = s.verdict;
   if (s.group) out.group = "rule";
   if (s.sort !== "value") out.sort = s.sort;
   if (s.density) out.density = s.density;
@@ -295,11 +311,18 @@ export const STATUS_LABEL: Record<string, string> = {
 
 const n = (x: number): string => whole(x);
 
+/** The landscape verdicts as the sentence names them. */
+const VERDICT_WORD: Record<string, string> = { get go() { return tr("go"); }, get "at-risk"() { return tr("at-risk"); }, get "no-go"() { return tr("no-go"); } };
+
 /** The sentence under the title. Numbers are the summary's; nothing here is estimated. */
 export function sentence(opts: { persona: string; chip: ChipId | null; summary: WorkSummary | undefined; objectLabel: string | null; module?: string | null }): string {
   const { persona, chip, summary, objectLabel } = opts;
   if (!summary) return "";
-  const where = objectLabel ? tr(" in {objectLabel}", { objectLabel }) : "";
+  const wave = summary.wave?.name ?? null;
+  const verdict = summary.wave?.verdict ? VERDICT_WORD[summary.wave.verdict] ?? summary.wave.verdict : null;
+  const where =
+    (objectLabel ? tr(" in {objectLabel}", { objectLabel }) : "") +
+    (wave && verdict ? tr(" in the {verdict} objects of {wave}", { verdict, wave }) : wave ? tr(" in {wave}", { wave }) : verdict ? tr(" in the {verdict} objects", { verdict }) : "");
   const { module } = opts;
   const toFix = chipDef("tofix").count(summary, module) ?? 0;
   const suggested = chipDef("proposed").count(summary, module) ?? 0;
