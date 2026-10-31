@@ -24,6 +24,7 @@ import { breachWords } from "@/lib/v2/step9";
 import { moduleText } from "@/lib/v2/labels";
 import { ObjectChangeBars } from "./Compare";
 import { CcBanner, CcPage } from "./cc-parts";
+import { WhatIf } from "./WhatIf";
 import "../basis.css";
 
 /**
@@ -555,6 +556,8 @@ export function RunCanvas({ id }: { id: string }) {
       </section>
 
       <ProveThree run={id} modules={[...new Set(cells.map((c) => c.module))]} />
+
+      <WhatIf run={id} canRun={canChange} />
 
       <RunJobs runId={id} />
     </CcPage>

@@ -37,6 +37,7 @@ import { issuesRead, issuesWrite, NONE_ISSUES, resetIssuesFixture } from "./issu
 import { exceptionsRead, exceptionsWrite, NONE_EXCEPTIONS, resetExceptionsFixture } from "./exceptions";
 import { NONE_TRIAGE, resetTriageFixture, triageRead, triageWrite } from "./triage";
 import { NONE_MAINTENANCE, maintenanceRead, maintenanceWrite, resetMaintenanceFixture } from "./maintenance";
+import { NONE_SIMULATIONS, simulationsRead, simulationsWrite, resetSimulationsFixture } from "./simulations";
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
 import { guardDecision, NONE_STEP10, receiptPolicy, resetStep10Fixture, step10Read, step10Write, withPolicyMarks, withSandbox } from "./step10";
@@ -161,6 +162,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (tw !== NONE_TRIAGE) return tw as T;
   const mw = maintenanceWrite(method, path, body);
   if (mw !== NONE_MAINTENANCE) return mw as T;
+  const sw = simulationsWrite(method, path, body);
+  if (sw !== NONE_SIMULATIONS) return sw as T;
   const roles = rolesFixtureWrite(method, path, body, params);
   if (roles !== NONE_ROLES) return roles as T;
   const out = ((): unknown => {
@@ -218,6 +221,7 @@ export const resetWorkFixture = (): void => {
   resetExceptionsFixture();
   resetTriageFixture();
   resetMaintenanceFixture();
+  resetSimulationsFixture();
   resetCleaningFixture();
   resetDiscoveryFixture();
 };
@@ -334,6 +338,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (tri !== NONE_TRIAGE) return tri as T;
   const mnt = maintenanceRead(path);
   if (mnt !== NONE_MAINTENANCE) return mnt as T;
+  const sim = simulationsRead(path);
+  if (sim !== NONE_SIMULATIONS) return sim as T;
   const att = attentionRead(path, params);
   if (att !== NONE_ATTENTION) return att as T;
   const mat = materialsRead(path);
