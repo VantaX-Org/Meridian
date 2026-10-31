@@ -47,6 +47,13 @@ async def test_gate_refuses_a_critical_over_tolerance(owner, monkeypatch):
         assert r.status_code == 409
         assert r.json()["detail"]["objects"] == [{"module": "material_master", "reason": "critical over tolerance",
                                                   "rules": ["MM001", "MM005"]}]
+        # F18: the reasons as a list the certificate inspector shows, each with its links
+        reasons = r.json()["detail"]["reasons"]
+        assert r.json()["detail"]["detail"] == "The wave is not ready to certify."
+        assert reasons == [{"module": "material_master", "label": reasons[0]["label"], "reason": "critical over tolerance",
+                            "sentence": f"{reasons[0]['label']}: critical over tolerance (MM001, MM005)",
+                            "rules": [{"check_id": "MM001", "href": "/r/MM001"}, {"check_id": "MM005", "href": "/r/MM005"}],
+                            "href": "/o/_/material-master"}]
     with owner.connect() as c:
         assert c.execute(text("SELECT count(*) FROM wave_certificates WHERE tenant_id = :t"), {"t": s["tid"]}).scalar() == 0
 
@@ -87,6 +94,13 @@ async def test_issue_sign_and_list(owner, monkeypatch):
         assert v1["version"] == 1 and v1["status"] == "issued"
         assert v1["measured_on"][0]["run_id"] == s["run"]
         assert v1["required_signers"] == [{"user_id": s["cara"], "name": "Cara Owner", "modules": ["material_master"]}]
+    # the owner who must sign is told (inbox), once per certificate
+    with owner.connect() as c:
+        told = c.execute(text("SELECT user_id::text, title, link FROM notifications WHERE tenant_id = :t AND "
+                              "title LIKE 'Readiness certificate%'"), {"t": tid}).fetchall()
+    assert told == [(s["cara"], "Readiness certificate of Wave 1 v1 waits for your signature",
+                     f"/?view=waves&open=certificate:{wave}")]
+    async with await as_user(monkeypatch, tid, s["ann"]) as client:
         pdf = await client.get(f"{base}/{v1['id']}/pdf", headers=headers("programme_lead"))
         assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
 
