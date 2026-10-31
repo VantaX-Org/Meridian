@@ -1,5 +1,5 @@
 import workJson from "./work.json";
-import type { Batch, BatchDetail, BatchEvent, BatchItem } from "@/lib/api/remediation";
+import type { BackAfterClean, Batch, BatchDetail, BatchEvent, BatchItem, MonitorItem } from "@/lib/api/remediation";
 import type { BatchRowApi, BatchWritebackCheck, BatchWritebackSend, SendResult, WritebackField, WritebackRecord } from "../batches";
 import rulesJson from "./rules.json";
 import type { Decision, WorkGroup, WorkIssue, WorkRecordDetail, WorkSummary } from "@/lib/api/work";
@@ -1081,3 +1081,59 @@ export function importFixture(name: string): ImportResult {
 }
 
 export const fixtureWorkIds = { MODULE, VERSION };
+
+/** Post-clean monitoring: the production system re-ran after batch B-236 loaded; a few cleaned records came back. */
+export function monitorFixture(): { items: MonitorItem[] } {
+  return {
+    items: [
+      {
+        scope: "a1b2c3d4-0001-4000-8000-000000000001",
+        system_name: "ECC production",
+        baseline: { id: "run-0412", run_at: "2026-10-15T11:30:00Z", dqs: 71.4 },
+        latest: { id: "run-0431", run_at: "2026-10-30T05:00:00Z", dqs: 74.9 },
+        monitor: {
+          baseline_id: "run-0412",
+          baseline_run_at: "2026-10-15T11:30:00Z",
+          new_records: 41,
+          regressed_checks: [
+            { check_id: "MM142", module: "material_master", severity: "critical", new: 17 },
+            { check_id: "MM007", module: "material_master", severity: "high", new: 9 },
+            { check_id: "MM023", module: "material_master", severity: "medium", new: 4 },
+          ],
+          regressed_check_count: 3,
+          resolved_records: 186,
+          batch_id: "B-236",
+          batch_items: 180,
+        },
+      },
+      {
+        scope: "a1b2c3d4-0003-4000-8000-000000000003",
+        system_name: "SuccessFactors",
+        baseline: { id: "run-0409", run_at: "2026-10-12T06:00:00Z", dqs: 82.1 },
+        latest: { id: "run-0428", run_at: "2026-10-29T06:00:00Z", dqs: 82.6 },
+        monitor: null,
+      },
+    ],
+  };
+}
+
+/** Records cleaned by a batch that failed again, by week, rule and batch. */
+export function backAfterCleanFixture(): BackAfterClean {
+  const back = [0, 1, 0, 2, 1, 3, 2, 4, 3, 6, 9, 7];
+  const fixed = [40, 62, 55, 80, 74, 96, 120, 88, 140, 165, 210, 186];
+  const start = Date.UTC(2026, 7, 10);
+  return {
+    weeks: back.map((b, i) => ({ week: new Date(start + i * 7 * 86_400_000).toISOString().slice(0, 10), back: b, fixed: fixed[i] })),
+    rules: [
+      { check_id: "MM142", back: 17, fixed: 328, back_recent: 12, back_before: 5 },
+      { check_id: "MM007", back: 9, fixed: 272, back_recent: 4, back_before: 5 },
+      { check_id: "MM023", back: 4, fixed: 180, back_recent: 1, back_before: 3 },
+      { check_id: "MM003", back: 2, fixed: 96, back_recent: 0, back_before: 2 },
+    ],
+    batches: [
+      { id: "B-236", created_at: "2026-10-09T09:00:00Z", fixed: 180, back: 11 },
+      { id: "B-238", created_at: "2026-10-13T10:30:00Z", fixed: 272, back: 9 },
+      { id: "B-241", created_at: "2026-10-14T08:10:00Z", fixed: 328, back: 12 },
+    ],
+  };
+}

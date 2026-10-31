@@ -7,10 +7,12 @@
       "chapters": [
         { "slug": "overview", "title": "Meridian in three minutes", "summary": "The map, the canvas and the inspector; the ruler, the cap and the next step; where each role starts.", "video": "guide2-overview" },
         { "slug": "landscape", "title": "Landscape", "summary": "Every system and object with its score, the sentence that says what holds them back, and your next step.", "video": "guide2-landscape" },
+        { "slug": "ask", "title": "Ask Meridian", "summary": "Grounded answers about the current run: every number checked against a measured fact, with the facts and rules cited.", "video": "guide2-ask" },
         { "slug": "object", "title": "An object and its tabs", "summary": "The ruler and its receipt, the cap and the critical rules behind it, and the Rules, Records, Fixes, Runs and Readiness tabs.", "video": "guide2-object" },
         { "slug": "rules", "title": "The rule canvas and the rules library", "summary": "One rule across every object: definition, failing records, impact, history; and every rule of the tenant with drafts and suppressions.", "video": "guide2-rules" },
         { "slug": "work", "title": "The Work ledger", "summary": "Every failing record and field on one row: edit, accept in bulk, fill down, undo, export the fix sheet and import it back.", "video": "guide2-work" },
         { "slug": "approvals", "title": "Approvals and exceptions", "summary": "Four eyes on every fix batch: approve or send back, what happens after approval, and records signed off as not an issue or accepted risk.", "video": "guide2-approvals" },
+        { "slug": "monitoring", "title": "Post-clean monitoring", "summary": "Whether cleaned records stay clean: score then and now per system, failing again by week, drift by rule and still clean by batch.", "video": "guide2-monitoring" },
         { "slug": "people", "title": "People and inbox", "summary": "Owners and stewards with their open work and SLA, balance work, data contracts, out of office, triage, and the inbox.", "video": "guide2-people" },
         { "slug": "runs", "title": "Runs", "summary": "The run timeline, the runs and jobs tables, the job line and the job inspector with retry.", "video": "guide2-runs" },
         { "slug": "run-compare", "title": "Run and Compare", "summary": "One run object by object, and two runs side by side: which rules started failing, which were fixed, and why each score moved.", "video": "guide2-run-compare" },

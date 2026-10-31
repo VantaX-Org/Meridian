@@ -18,6 +18,7 @@ import { contractMark } from "@/lib/v2/step9";
 import { policyMark } from "@/lib/v2/step10";
 import { AsOfView, PolicyBreaches } from "./step10/ObjectParts";
 import { ObjectContractsBlock } from "./step9/Contracts";
+import { TopFailing } from "./object/TopFailing";
 import { t as tr, tn } from "@/lib/v2/i18n";
 
 type TabKey = "rules" | "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "glossary" | "golden";
@@ -355,6 +356,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               </p>
             </div>
           </div>
+          {onRules ? <TopFailing module={apiModule} run={run} /> : null}
           {!onRules ? null : receipt ? (
             <details className="m2-rdet" open>
               <summary>{tr("How {score} is made", { score: f1(receipt.score) })}</summary>

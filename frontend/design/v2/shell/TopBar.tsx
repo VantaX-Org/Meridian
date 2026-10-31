@@ -148,6 +148,7 @@ export function TopBar({ onOpenCommand, onToggleMap, onShortcuts, mapOpen }: Top
   const inbox = useMemo(() => (unread ? int(unread.count) : "—"), [unread]);
   const inboxOpen = open?.kind === "inbox";
   const helpOpen = open?.kind === "help";
+  const askOpen = open?.kind === "ask";
   const tenant = useTenantTheme();
   const name = productName(tenant);
   return (
@@ -164,12 +165,15 @@ export function TopBar({ onOpenCommand, onToggleMap, onShortcuts, mapOpen }: Top
         <ScopeMenu />
         <RunMenu />
       </div>
-      <button type="button" className="m2-search" aria-haspopup="dialog" aria-label={tr("Search or type a command")} onClick={onOpenCommand}>
+      <button type="button" className="m2-search" aria-haspopup="dialog" aria-label={tr("Search, ask, or type a command")} onClick={onOpenCommand}>
         <IconSearch />
-        <span className="m2-search-ph">{tr("Search or type a command")}</span>
+        <span className="m2-search-ph">{tr("Search, ask, or type a command")}</span>
         <span className="m2-kb" aria-hidden="true">{"⌘"}K</span>
       </button>
       <div className="m2-top-r">
+        <button type="button" className="m2-tbtn" aria-haspopup="dialog" aria-expanded={askOpen} onClick={() => (askOpen ? close() : openItem({ kind: "ask", id: "" }))}>
+          {tr("Ask Meridian")}
+        </button>
         <button type="button" className="m2-tbtn" aria-haspopup="dialog" aria-expanded={inboxOpen} aria-label={tr("Inbox {inbox}, unread", { inbox })} onClick={() => (inboxOpen ? close() : openItem({ kind: "inbox", id: "" }))}>
           {tr("Inbox")}{" "}<b>{inbox}</b>
         </button>

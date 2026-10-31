@@ -27,6 +27,7 @@ const GoldenTab = dynamic<TabProps>(() => import("./object/GoldenTab").then((m) 
 const GlossaryTab = dynamic<TabProps>(() => import("./object/GlossaryTab").then((m) => m.GlossaryTab), { loading: TabLoading });
 const LineageTab = dynamic<TabProps>(() => import("./object/LineageTab").then((m) => m.LineageTab), { loading: TabLoading });
 const ProcessesTab = dynamic<TabProps>(() => import("./object/ProcessesTab").then((m) => m.ProcessesTab), { loading: TabLoading });
+const RecordCanvas = dynamic<{ module: string; recordKey: string }>(() => import("./RecordCanvas").then((m) => m.RecordCanvas), { loading: TabLoading });
 const RuleCanvas = dynamic<{ id: string }>(() => import("./Rule").then((m) => m.RuleCanvas), { loading: TabLoading });
 
 interface ObjectParams {
@@ -61,6 +62,12 @@ export function ObjectTabRoute({ tab }: { tab: "records" | "fixes" | "runs" | "r
   if (tab === "glossary") return <GlossaryTab system={system} module={module} />;
   if (tab === "golden") return <GoldenTab system={system} module={module} />;
   return <EmptyTab tab={tab} system={system} module={module} />;
+}
+
+/** /o/{system}/{module}/records/{key}: one record on the canvas. */
+export function ObjectRecordRoute() {
+  const p = useParams<ObjectParams & { key: string }>();
+  return <RecordCanvas module={String(p.module)} recordKey={String(p.key)} />;
 }
 
 /** /r/{check_id}: the rule canvas. */

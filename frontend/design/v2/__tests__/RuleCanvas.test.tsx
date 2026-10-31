@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { resetObjectFixture } from "@/lib/api/v2/fixtures/object";
 import { RuleCanvas } from "../screens/Rule";
@@ -40,17 +40,30 @@ describe("the rule canvas /r/{check_id}", () => {
     expect(document.querySelector('svg[data-size]')).toBeNull(); // a rule has no ruler
   });
 
-  it("has the tabs Definition, Failing records, Prove in SAP, Impact and History, Definition first", async () => {
+  it("has the tabs Overview, Definition, Failing records, Prove in SAP, Impact and History, Overview first", async () => {
     renderWithQuery(<RuleCanvas id="MM142" />);
     const nav = await screen.findByRole("navigation", { name: "Views of MM142" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Definition", "Failing records", "Prove in SAP", "Impact", "History"]);
+    expect(links.map((l) => l.textContent)).toEqual(["Overview", "Definition", "Failing records", "Prove in SAP", "Impact", "History"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
-    expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/r\/MM142\?.*tab=failing/));
+    expect(links[2]).toHaveAttribute("href", expect.stringMatching(/^\/r\/MM142\?.*tab=failing/));
     expect(links[0]).toHaveAttribute("href", expect.not.stringContaining("tab="));
   });
 
+  it("Overview counts failures by plant and a click narrows the sample ledger", async () => {
+    renderWithQuery(<RuleCanvas id="MM142" />);
+    const grp = await screen.findByTestId("rule-by-WERKS");
+    const filters = () => JSON.parse(screen.getByTestId("ledger-slot").getAttribute("data-filters") ?? "{}");
+    expect(filters()).toEqual({ check_id: "MM142" });
+    fireEvent.click(within(grp).getByRole("button", { name: /2000/ }));
+    expect(filters()).toEqual({ check_id: "MM142", part: "WERKS=2000" });
+    expect(within(grp).getByRole("button", { name: /2000/ })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(grp).getByRole("button", { name: "All" }));
+    expect(filters()).toEqual({ check_id: "MM142" });
+  });
+
   it("Definition shows the definition, authority, versions, scope, contract and the role's actions", async () => {
+    setUrl("/r/MM142?fixture=1&tab=definition");
     renderWithQuery(<RuleCanvas id="MM142" />);
     await screen.findByRole("region", { name: "Definition" });
     expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Definition", "Authority", "Versions", "Scope: 2 objects, 1 system", "Contract", "Actions"]);

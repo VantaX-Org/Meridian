@@ -56,6 +56,7 @@ import { useWaves } from "@/lib/v2/admin-queries";
 import { BulkActions, CurrentValue, DecisionCell, NewValueCell, OwnerCell, PossibleValuesCell, KeyText, PromptDialog, keyValue, rowKeyOf, type LedgerHandlers } from "./work-parts";
 import { GridTools, useGridKey } from "../GridTools";
 import { FixOrderHint } from "./object/Related";
+import { WorkTabs } from "./WorkTabs";
 import { t as tr, lc } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
 import { formatDate } from "@/lib/format";
@@ -167,7 +168,6 @@ export function WorkCanvas() {
   const waves = useWaves().data;
   // At phone width the chips and one Filters button sit above the rows; the tags and the toolbar open under it (F28).
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const showFilters = !phone || filtersOpen;
   const asOfRun = state.asOf ? runList.data?.versions.find((v) => v.id === state.asOf) : undefined;
   const groupsQ = useWorkGroups({ module: state.module ?? undefined, severity: state.severity ?? undefined }, true);
   const rowsQ = useWorkRows(filters, state.sort, !grouped && !viewPending);
@@ -653,6 +653,18 @@ export function WorkCanvas() {
     return null;
   };
 
+  const tagUl = tags.length ? (
+        <ul className="m2-tags" aria-label={tr("Filters in force")}>
+            {tags.map((t) => (
+              <li key={t.key}>
+                <span>{t.label}</span>
+                <button type="button" aria-label={tr("Remove filter: {label}", { label: t.label })} onClick={t.clear}>
+                  <IconClose />
+                </button>
+              </li>
+            ))}
+          </ul>
+  ) : null;
   const toolbar = (
     <div className="m2-tool" role="toolbar" aria-label={tr("Ledger controls")}>
       <div className="m2-seg" role="group" aria-label={tr("Grouping")}>
@@ -743,6 +755,7 @@ export function WorkCanvas() {
   return (
     <div onDragOver={(e) => can.apply && e.preventDefault()} onDrop={onDrop} data-testid="work-ledger">
       <PageTitle sub={objectLabel ?? tr("All objects")}>{tr("Work")}</PageTitle>
+      <WorkTabs current="ledger" />
       {text ? (
         <p className="m2-finding" data-testid="work-sentence">
           {text}
@@ -786,20 +799,25 @@ export function WorkCanvas() {
             {tags.length ? tr("Filters ({count})", { count: tags.length }) : tr("Filters")}
           </button>
         ) : null}
-        {showFilters && tags.length ? (
-          <ul className="m2-tags" aria-label={tr("Filters in force")}>
-            {tags.map((t) => (
-              <li key={t.key}>
-                <span>{t.label}</span>
-                <button type="button" aria-label={tr("Remove filter: {label}", { label: t.label })} onClick={t.clear}>
-                  <IconClose />
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        {phone ? null : tagUl}
       </div>
-      {showFilters ? toolbar : null}
+      {phone ? (
+        filtersOpen ? (
+          <>
+            <div className="m2-scrim" onClick={() => setFiltersOpen(false)} aria-hidden="true" />
+            <div className="m2-fsheet" role="dialog" aria-label={tr("Filters")}>
+              <h2>{tr("Filters")}</h2>
+              {tagUl}
+              {toolbar}
+              <button type="button" className="m2-btn" onClick={() => setFiltersOpen(false)}>
+                {tr("Done")}
+              </button>
+            </div>
+          </>
+        ) : null
+      ) : (
+        toolbar
+      )}
       {importOpen ? (
         <div className="m2-drop" data-testid="import-panel">
           <span>

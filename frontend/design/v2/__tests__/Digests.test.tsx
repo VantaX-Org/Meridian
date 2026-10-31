@@ -53,7 +53,7 @@ describe("Admin, Digests", () => {
 
   it("lists the digests with who they are for, the cadence in words, the channel and the last send", async () => {
     page();
-    const grid = await screen.findByRole("grid", { name: "Digests" });
+    const grid = await screen.findByRole("list", { name: "Digests" });
     await waitFor(() => expect(norm(grid)).toContain("Monday leadership digest"));
     expect(norm(grid)).toContain("Role: Programme lead / CIO");
     expect(norm(grid)).toContain("Mondays at 07:00 UTC, Africa/Johannesburg");

@@ -4,7 +4,7 @@ Meridian can be driven from the keyboard: a whole ledger can be worked without t
 
 ## The command line
 
-Open it with `⌘K` (Ctrl+K on Windows and Linux) or `/`. "Search or type a command." Type:
+Open it with `⌘K` (Ctrl+K on Windows and Linux) or `/`. "Search, ask, or type a command." Type:
 
 - a **record key** such as a material number to open the record;
 - a **rule id** such as `MM142` to open the rule;

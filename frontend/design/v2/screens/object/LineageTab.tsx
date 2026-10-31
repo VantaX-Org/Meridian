@@ -146,6 +146,22 @@ export function LineageView({ graph, label }: { graph: LineageGraph; label: stri
                 </div>
               ))}
             </dl>
+            {(["upstream", "downstream"] as const).map((dir) => {
+              const ids = graph.edges.filter((e) => (dir === "upstream" ? e.to : e.from) === active.id).map((e) => (dir === "upstream" ? e.from : e.to));
+              const ns = ids.map((id) => byId.get(id)).filter((n): n is LineageNode => n != null);
+              return (
+                <div key={dir} data-testid={`node-${dir}`}>
+                  <h4 className="m2-h3"><span>{dir === "upstream" ? tr("Upstream") : tr("Downstream")}</span><span className="m2-meta">{ns.length}</span></h4>
+                  {ns.length === 0 ? <p className="m2-rp m2-meta">{tr("None")}</p> : (
+                    <ul className="m2-flist">
+                      {ns.map((n) => (
+                        <li key={n.id}><button type="button" className="m2-linkbtn" onClick={() => setPinned(n.id)}>{n.label}</button></li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
             {active.open ? (
               <p className="m2-rp">
                 <V2Link href={hrefOf(active.open.kind, active.open.id)}>{active.open.kind === "rule" ? tr("Open the rule") : tr("Open the feature")}</V2Link>

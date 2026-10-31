@@ -3,7 +3,7 @@
 import "../step10.css";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { applyPolicyPack, unapplyPolicyPack, type Digest, type PolicyPack } from "@/lib/api/v2/step10";
+import { applyPolicyPack, unapplyPolicyPack, type PolicyPack } from "@/lib/api/v2/step10";
 import { apiErrorMessage } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { useWaves } from "@/lib/v2/admin-queries";
@@ -14,8 +14,6 @@ import { int } from "@/lib/v2/score";
 import { audienceWords, CHANNEL_WORD } from "@/lib/v2/step10";
 import { refreshStep10, useDigests, usePolicyPacks } from "@/lib/v2/step10-queries";
 import { ROLE_NAMES } from "@/lib/v2/view-as";
-import { type GridColumn } from "../Grid";
-import { ToolGrid } from "../GridTools";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { EmptyFrame, ErrorFrame } from "../parts";
 import { PolicyMark } from "../Ruler";
@@ -167,15 +165,6 @@ export function DigestsSection() {
   }
   const waveName = (id: string) => waves.data?.find((w) => w.id === id)?.name ?? null;
   const roleName = (r: string) => ROLE_NAMES[r] ?? r;
-  const columns: GridColumn<Digest>[] = [
-    { id: "name", header: t("Name"), width: 240, pin: true, locked: true, cell: (d) => d.name },
-    { id: "for", header: t("For"), width: 240, cell: (d) => audienceWords(d, roleName, waveName) },
-    { id: "when", header: t("Cadence"), width: 220, cell: (d) => t("{cadence}, {zone}", { cadence: describeCron(d.cron), zone: d.timezone }) },
-    { id: "channel", header: t("Channel"), width: 130, cell: (d) => CHANNEL_WORD[d.channel] ?? d.channel },
-    { id: "last", header: t("Last sent"), width: 150, cell: (d) => (d.last_sent_at ? formatDate(d.last_sent_at, "datetime") : t("Never")) },
-    { id: "next", header: t("Next"), width: 150, cell: (d) => (d.next_run_at ? formatDate(d.next_run_at, "datetime") : "—") },
-    { id: "state", header: t("State"), width: 110, cell: (d) => <StatusWord tone={d.enabled ? "go" : "neutral"}>{d.enabled ? t("On") : t("Paused")}</StatusWord> },
-  ];
   const rows = q.data?.digests ?? [];
   return (
     <AdminPage
@@ -188,29 +177,27 @@ export function DigestsSection() {
       }
     >
       <Block>
-        <ToolGrid<Digest>
-          toolsTitle={t("Digests")}
-          id="admin-digests"
-          ariaLabel={t("Digests")}
-          columns={columns}
-          rows={rows}
-          rowId={(d) => d.id}
-          loading={q.isPending}
-          error={q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The digests could not be read. {detail}", { detail: apiErrorMessage(q.error) })}</ErrorFrame> : undefined}
-          emptyFrame={
-            <EmptyFrame
-              action={
-                <button type="button" className="m2-btn" onClick={() => openItem({ kind: "digest", id: "new" })}>
-                  {t("Add a digest")}
+        {q.isError ? (
+          <ErrorFrame onRetry={() => void q.refetch()}>{t("The digests could not be read. {detail}", { detail: apiErrorMessage(q.error) })}</ErrorFrame>
+        ) : q.isPending ? null : rows.length === 0 ? (
+          <EmptyFrame action={<button type="button" className="m2-btn" onClick={() => openItem({ kind: "digest", id: "new" })}>{t("Add a digest")}</button>}>
+            {t("No digest yet. Add one for a role, such as the programme lead every Monday, or for a migration wave.")}
+          </EmptyFrame>
+        ) : (
+          <ul className="m2-digrows" aria-label={t("Digests")}>
+            {rows.map((d) => (
+              <li key={d.id} data-open={open?.kind === "digest" && open.id === d.id ? "true" : undefined}>
+                <button type="button" className="m2-digrow" onClick={() => openItem({ kind: "digest", id: d.id })}>
+                  <span className="m2-digname">{d.name}<small>{audienceWords(d, roleName, waveName)}</small></span>
+                  <span>{t("{cadence}, {zone}", { cadence: describeCron(d.cron), zone: d.timezone })}</span>
+                  <span>{CHANNEL_WORD[d.channel] ?? d.channel}</span>
+                  <span className="m2-meta">{d.last_sent_at ? t("Sent {when}", { when: formatDate(d.last_sent_at, "datetime") }) : t("Never sent")}{d.next_run_at ? `, ${t("next {when}", { when: formatDate(d.next_run_at, "datetime") })}` : ""}</span>
+                  <StatusWord tone={d.enabled ? "go" : "neutral"}>{d.enabled ? t("On") : t("Paused")}</StatusWord>
                 </button>
-              }
-            >
-              {t("No digest yet. Add one for a role, such as the programme lead every Monday, or for a migration wave.")}
-            </EmptyFrame>
-          }
-          onOpen={(d) => openItem({ kind: "digest", id: d.id })}
-          openRowId={open?.kind === "digest" ? open.id : null}
-        />
+              </li>
+            ))}
+          </ul>
+        )}
       </Block>
     </AdminPage>
   );

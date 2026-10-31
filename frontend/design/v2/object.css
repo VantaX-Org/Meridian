@@ -128,3 +128,4 @@
 .m2-prove .m2-prove-tbl { margin: var(--m2-s3) 0; }
 .m2-prove .m2-prove-tbl th, .m2-prove .m2-prove-tbl td { height: auto; white-space: normal; vertical-align: top; padding: var(--m2-s2); }
 .m2-prove .m2-aform { margin-bottom: var(--m2-s3); }
+.m2-rgroup { margin-bottom: var(--m2-s3); }

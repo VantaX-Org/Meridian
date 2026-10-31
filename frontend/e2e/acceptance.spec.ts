@@ -312,8 +312,8 @@ test("13. auditor: a record's history across runs", async ({ page, request }) =>
 
 test("14. analyst: the command line in plain words", async ({ page }) => {
   await signIn(page, "analyst");
-  await page.getByRole("button", { name: "Search or type a command" }).click();
-  await page.getByRole("combobox", { name: "Search or type a command" }).fill("?critical business partner issues");
+  await page.getByRole("button", { name: "Search, ask, or type a command" }).click();
+  await page.getByRole("combobox", { name: "Search, ask, or type a command" }).fill("?critical business partner issues");
   await expect(page.getByText("The filter that will run")).toBeVisible({ timeout: 30_000 });
   note((await page.getByText(/^Records severity/).innerText()).trim());
   await page.getByRole("button", { name: "Open in Work" }).click();

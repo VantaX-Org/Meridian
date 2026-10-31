@@ -157,7 +157,7 @@ for (const size of SIZES) {
         await page.goto("/?fixture=1", { waitUntil: "load" });
         await expect(page.getByTestId("landscape-sentence")).toBeVisible();
         await page.keyboard.press("Control+k");
-        const palette = page.getByRole("dialog", { name: "Search or type a command" });
+        const palette = page.getByRole("dialog", { name: "Search, ask, or type a command" });
         await expect(palette).toBeVisible();
         await palette.getByRole("combobox").fill("MM0");
         await expect(palette.getByText("MM003: Material type is mandatory - determines procurement and storage behaviour")).toBeVisible();

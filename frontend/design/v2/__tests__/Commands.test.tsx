@@ -29,7 +29,7 @@ async function ask(query: string) {
     </V2Shell>,
   );
   fireEvent.keyDown(document.body, { key: "k", metaKey: true });
-  const dialog = await screen.findByRole("dialog", { name: "Search or type a command" });
+  const dialog = await screen.findByRole("dialog", { name: "Search, ask, or type a command" });
   const input = within(dialog).getByRole("combobox");
   fireEvent.change(input, { target: { value: query } });
   return { dialog, input };

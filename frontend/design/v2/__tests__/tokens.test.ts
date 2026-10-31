@@ -25,7 +25,8 @@ describe("v2 tokens", () => {
     }
     // The brand blue is a step of its ramp, not a colour of its own.
     expect(LIGHT["--m2-b-700"]).toBe("#1B3F8F");
-    expect(LIGHT["--m2-data"]).toBe("var(--m2-b-700)");
+    // The Ledger data blue is a literal of its own (boards/*.dc.html), the dark one too.
+    expect(LIGHT["--m2-data"]).toBe("#2F5FD0");
   });
 
   it("sets the same tokens for dark by system preference and by data-theme, and only tokens light defines", () => {
@@ -43,13 +44,13 @@ describe("v2 tokens", () => {
   });
 
   it("uses the brand palette: the blue data hue, the status hues and the slate grounds", () => {
-    expect(resolve("light", "--m2-data")).toBe("#1B3F8F");
-    expect(resolve("light", "--m2-crit")).toBe("#A3221A");
-    expect(resolve("light", "--m2-pass")).toBe("#1D6B3F");
+    expect(resolve("light", "--m2-data")).toBe("#2F5FD0");
+    expect(resolve("light", "--m2-crit")).toBe("#B8322A");
+    expect(resolve("light", "--m2-pass")).toBe("#1F7A45");
     expect(resolve("light", "--m2-sheet")).toBe("#FFFFFF");
-    expect(resolve("light", "--m2-bg")).toBe("#F7F9FB");
-    expect(resolve("dark", "--m2-bg")).toBe("#0E1215");
-    expect(resolve("dark", "--m2-data")).toBe("#8EB1F5");
+    expect(resolve("light", "--m2-bg")).toBe("#F6F7F8");
+    expect(resolve("dark", "--m2-bg")).toBe("#0F1419");
+    expect(resolve("dark", "--m2-data")).toBe("#7FA2F0");
     // Fail and critical share the stop red; high severity reads in the warn hue.
     for (const theme of THEMES) {
       expect(resolve(theme, "--m2-fail")).toBe(resolve(theme, "--m2-crit"));

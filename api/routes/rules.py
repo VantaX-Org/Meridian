@@ -559,6 +559,39 @@ async def rule_history(rule_id: str, limit: int = Query(50, ge=1, le=500),
         for r in rows]}
 
 
+@router.get("/rules/{rule_id}/failures-by", dependencies=[Depends(require_permission("view"))])
+async def rule_failures_by(rule_id: str, version_id: Optional[uuid.UUID] = None,
+                           db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Failing records of one rule in one run (default: the newest run that stored any), counted by each part of the
+    record key past the first: a plant-level key MATNR=1|WERKS=1000 groups by WERKS. Each group lists its 12 largest
+    values; `part` is the FIELD=VALUE the records ledger takes to list just those records."""
+    await _set_rls(db, tenant.id)
+    if version_id is None:
+        version_id = (await db.execute(text("""
+            SELECT fr.version_id FROM finding_records fr JOIN analysis_versions av ON av.id = fr.version_id
+             WHERE fr.check_id = :r AND fr.tenant_id = :t ORDER BY av.run_at DESC LIMIT 1
+        """), {"r": rule_id, "t": str(tenant.id)})).scalar()
+    if version_id is None:
+        return {"rule_id": rule_id, "version_id": None, "total": 0, "groups": []}
+    total = (await db.execute(text("SELECT count(*) FROM finding_records WHERE version_id = :v AND check_id = :r "
+                                   "AND tenant_id = :t"), {"v": str(version_id), "r": rule_id, "t": str(tenant.id)})).scalar() or 0
+    rows = (await db.execute(text("""
+        WITH parts AS (
+            SELECT split_part(kv.p, '=', 1) AS field, substr(kv.p, position('=' IN kv.p) + 1) AS value
+              FROM finding_records fr, unnest(string_to_array(fr.record_key, '|')) WITH ORDINALITY AS kv(p, n)
+             WHERE fr.version_id = :v AND fr.check_id = :r AND fr.tenant_id = :t AND kv.n > 1 AND kv.p LIKE '%=%')
+        SELECT field, value, count(*) AS records FROM parts GROUP BY field, value
+         ORDER BY field, records DESC, value
+    """), {"v": str(version_id), "r": rule_id, "t": str(tenant.id)})).mappings().all()
+    groups: dict[str, list[dict]] = {}
+    for r in rows:
+        g = groups.setdefault(r["field"], [])
+        if len(g) < 12:
+            g.append({"value": r["value"], "records": r["records"], "part": f"{r['field']}={r['value']}"})
+    return {"rule_id": rule_id, "version_id": str(version_id), "total": total,
+            "groups": [{"field": f, "values": v} for f, v in groups.items()]}
+
+
 _RULE_HISTORY_EXPORT_COLUMNS = [
     ColumnSpec("version_id", "Version ID", kind="mono"),
     ColumnSpec("run_at", "Run at", kind="datetime"),

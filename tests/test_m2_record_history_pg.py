@@ -106,3 +106,21 @@ async def test_history_and_time_travel(owner, monkeypatch):
         assert (await client.get(f"/api/v1/work/records/{M}/{K2}/history", headers=headers())).status_code == 404
         assert (await client.get(f"/api/v1/objects/{M}/as-of?run={s['run1']}", headers=headers())).status_code == 404
         assert (await client.get(f"/api/v1/work/records?as_of_run={s['run1']}", headers=headers())).status_code == 404
+
+
+@pytest.mark.anyio
+async def test_back_after_clean(owner, monkeypatch):
+    s = _seed(owner)
+    tid = s["tid"]
+    iid = q(owner, "SELECT id FROM record_issues WHERE tenant_id = :t AND check_id = 'AP039'", t=tid)[0][0]
+    for action in ("auto_resolved", "reopened"):
+        q(owner, "INSERT INTO record_issue_events (tenant_id, issue_id, action, user_label) VALUES (:t, :i, :a, 'system')",
+          t=tid, i=iid, a=action)
+    deps, client = make_client(monkeypatch, tid, s["ann"])
+    await deps.engine.dispose()
+    async with client:
+        r = await client.get("/api/v1/work/back-after-clean", headers=headers())
+    assert r.status_code == 200
+    body = r.json()
+    assert sum(w["back"] for w in body["weeks"]) == 1 and sum(w["fixed"] for w in body["weeks"]) == 1
+    assert body["rules"][0]["check_id"] == "AP039"

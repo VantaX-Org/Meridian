@@ -1,6 +1,7 @@
 "use client";
 
 import { Sparkline } from "../charts";
+import { TrendChart } from "../charts/TrendChart";
 import { Money } from "../Money";
 import { createContext, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -400,7 +401,20 @@ export function RuleHistory({ view, limit = 8 }: { view: RuleView; limit?: numbe
   const top = Math.max(1, ...trend.map((x) => x.n));
   return (
     <Sec title={tr("History")}>
-      {trend.length > 1 ? (
+      {trend.length > 1 && limit > 8 ? (
+        <div className="m2-rtrend">
+          <TrendChart
+            points={trend.map((x, i) => ({ id: String(i), label: formatDate(x.at, "date"), title: `${formatDate(x.at, "date")}: ${int(x.n)}`, value: x.n }))}
+            domain={[0, top]}
+            ticks={[0, Math.round(top / 2), top]}
+            label={tr("Failing records over the last {count} runs: {first} to {last}", { count: trend.length, first: int(trend[0].n), last: int(trend[trend.length - 1].n) })}
+            yLabel={tr("Failing records")}
+            format={int}
+            height={200}
+            testId="rule-trend"
+          />
+        </div>
+      ) : trend.length > 1 ? (
         <div className="m2-rtrend">
           <Sparkline
             values={trend.map((x) => x.n)}

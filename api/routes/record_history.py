@@ -245,3 +245,47 @@ async def object_as_of(module: str, run: uuid.UUID = Query(..., description="the
                    "failing": int(r["affected_count"] or 0), "total": int(r["total_count"] or 0),
                    "pass_rate": float(r["pass_rate"]) if r["pass_rate"] is not None else None} for r in rules],
     }
+
+
+# ── Back after clean ──────────────────────────────────────────────────────────
+
+@router.get("/work/back-after-clean", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
+async def back_after_clean(weeks: int = Query(12, ge=2, le=52), db: AsyncSession = Depends(get_db),
+                           tenant: Tenant = Depends(get_tenant)):
+    """Post-clean monitoring from the issue lifecycle: per ISO week the records that failed again (``reopened``) and
+    the records fixed (``auto_resolved``); per rule the same counts plus the last four weeks against the four before;
+    per fix batch the records it fixed and how many of those came back after it was created."""
+    await _rls(db, tenant)
+    p = {"t": str(tenant.id), "w": weeks}
+    since = "date_trunc('week', now()) - make_interval(weeks => :w - 1)"
+    weekly = (await db.execute(text(f"""
+        SELECT date_trunc('week', e.created_at)::date AS week,
+               count(*) FILTER (WHERE e.action = 'reopened') AS back,
+               count(*) FILTER (WHERE e.action = 'auto_resolved') AS fixed
+          FROM record_issue_events e
+         WHERE e.tenant_id = CAST(:t AS uuid) AND e.action IN ('reopened', 'auto_resolved')
+           AND e.created_at >= {since}
+         GROUP BY 1 ORDER BY 1"""), p)).mappings().all()
+    rules = (await db.execute(text(f"""
+        SELECT ri.check_id,
+               count(*) FILTER (WHERE e.action = 'reopened') AS back,
+               count(*) FILTER (WHERE e.action = 'auto_resolved') AS fixed,
+               count(*) FILTER (WHERE e.action = 'reopened' AND e.created_at >= now() - interval '28 days') AS back_recent,
+               count(*) FILTER (WHERE e.action = 'reopened' AND e.created_at < now() - interval '28 days'
+                                  AND e.created_at >= now() - interval '56 days') AS back_before
+          FROM record_issue_events e JOIN record_issues ri ON ri.id = e.issue_id AND ri.tenant_id = e.tenant_id
+         WHERE e.tenant_id = CAST(:t AS uuid) AND e.action IN ('reopened', 'auto_resolved')
+           AND e.created_at >= {since}
+         GROUP BY ri.check_id HAVING count(*) FILTER (WHERE e.action = 'reopened') > 0
+         ORDER BY back_recent - back_before DESC, back DESC LIMIT 25"""), p)).mappings().all()
+    batches = (await db.execute(text(f"""
+        SELECT b.id::text AS id, b.created_at,
+               count(DISTINCT i.issue_id) FILTER (WHERE i.recon_status = 'fixed') AS fixed,
+               count(DISTINCT i.issue_id) FILTER (WHERE i.recon_status = 'fixed' AND EXISTS (
+                   SELECT 1 FROM record_issue_events e WHERE e.issue_id = i.issue_id AND e.action = 'reopened'
+                      AND e.created_at > b.created_at)) AS back
+          FROM remediation_batches b JOIN remediation_items i ON i.batch_id = b.id
+         WHERE b.tenant_id = CAST(:t AS uuid) AND b.created_at >= {since}
+         GROUP BY b.id HAVING count(*) FILTER (WHERE i.recon_status = 'fixed') > 0
+         ORDER BY b.created_at"""), p)).mappings().all()
+    return {"weeks": [dict(r) for r in weekly], "rules": [dict(r) for r in rules], "batches": [dict(r) for r in batches]}

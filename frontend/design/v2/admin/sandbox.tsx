@@ -57,15 +57,10 @@ export function SandboxBlock() {
             {outcome ? <ResultFrame outcome={outcome} /> : null}
             {can ? (
               <div className="m2-adm-acts">
-                {s.sandbox ? (
-                  <button type="button" className="m2-btn" disabled={pending !== null} onClick={() => setAsking("exit")}>
-                    {pending === "exit" ? t("Working…") : t("Exit sandbox mode")}
-                  </button>
-                ) : (
-                  <button type="button" className="m2-btn m2-strong" disabled={pending !== null} onClick={() => setAsking("enter")}>
-                    {pending === "enter" ? t("Working…") : t("Enter sandbox mode")}
-                  </button>
-                )}
+                <button type="button" role="switch" aria-checked={s.sandbox} className="m2-switch" disabled={pending !== null} onClick={() => setAsking(s.sandbox ? "exit" : "enter")}>
+                  <span className="m2-switch-knob" aria-hidden="true" />
+                  {pending ? t("Working…") : s.sandbox ? t("Exit sandbox mode") : t("Enter sandbox mode")}
+                </button>
               </div>
             ) : (
               <p className="m2-prov">{t("Entering and exiting sandbox mode needs the manage system permission.")}</p>

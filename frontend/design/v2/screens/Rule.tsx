@@ -4,10 +4,12 @@ import { useSearchParams } from "next/navigation";
 import { RuleActions, RuleAuthority, RuleBlocks, RuleContract, RuleDefinition, RuleFacts, RuleHistory, RuleLineage, RuleProve, RuleScopeSection, RuleVersions, SectionLevel, ruleStatLine, useRule } from "../inspector/rule";
 import { EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { LedgerSlot } from "./object/LedgerSlot";
+import { RuleOverview } from "./RuleOverview";
 import { t as tr } from "@/lib/v2/i18n";
 
-type TabKey = "definition" | "failing" | "prove" | "impact" | "history";
+type TabKey = "overview" | "definition" | "failing" | "prove" | "impact" | "history";
 const TABS: { key: TabKey; label: string }[] = [
+  { key: "overview", get label() { return tr("Overview"); } },
   { key: "definition", get label() { return tr("Definition"); } },
   { key: "failing", get label() { return tr("Failing records"); } },
   { key: "prove", get label() { return tr("Prove in SAP"); } },
@@ -16,12 +18,12 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 function tabOf(value: string | null): TabKey {
-  return TABS.some((t) => t.key === value) ? (value as TabKey) : "definition";
+  return TABS.some((t) => t.key === value) ? (value as TabKey) : "overview";
 }
 
 /**
  * The rule canvas, /r/{check_id}: one rule across systems. The header is the rule's own statistics in a line (no
- * ruler: a rule has no score of its own), then Definition, Failing records (the ledger scoped to the rule), Prove in
+ * ruler: a rule has no score of its own), then Overview (why, trend, failures by plant), Definition, Failing records (the ledger scoped to the rule), Prove in
  * SAP (the SE16 selection that reproduces the count), Impact and History. The content is the inspector's, laid out as
  * a canvas.
  */
@@ -63,7 +65,7 @@ export function RuleCanvas({ id }: { id: string }) {
   const name = v.scope.name ?? v.scope.definition.message ?? null;
   const href = (key: TabKey) => {
     const next = new URLSearchParams(params.toString());
-    if (key === "definition") next.delete("tab");
+    if (key === "overview") next.delete("tab");
     else next.set("tab", key);
     next.delete("open");
     const qs = next.toString();
@@ -91,7 +93,9 @@ export function RuleCanvas({ id }: { id: string }) {
       </nav>
       <div className="m2-tabpanel">
         <SectionLevel level="h2">
-          {tab === "definition" ? (
+          {tab === "overview" ? (
+            <RuleOverview view={v} />
+          ) : tab === "definition" ? (
             <div className="m2-rcols">
               <div>
                 <RuleDefinition view={v} />

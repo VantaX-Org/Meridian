@@ -6,9 +6,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { WorkIssue, WorkRecordDetail } from "@/lib/api/work";
 import { formatDate } from "@/lib/format";
 import { errorSentence, postApproveBatch, postSendBack, type RecordLinks } from "@/lib/api/v2/work";
-import { useOpenItem } from "@/lib/v2/hooks";
+import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
 import { ledgerRegistry } from "@/lib/v2/keys";
-import { refreshV2 } from "@/lib/v2/queries";
+import { refreshV2, useLandscape } from "@/lib/v2/queries";
+import { objectHref } from "@/lib/v2/people";
 import { describeField, sapField } from "@/lib/v2/sap-fields";
 import { int } from "@/lib/v2/score";
 import { STATUS_LABEL, splitKey } from "@/lib/v2/work";
@@ -35,7 +36,7 @@ const sev = (s: string | null | undefined): SeverityKey => (s === "critical" || 
 const SHOWN_ALLOWED = 5;
 
 /** What the history rows say, in the words of the trade. */
-function historyLine(h: RecordLinks["history"][number]): string {
+export function historyLine(h: RecordLinks["history"][number]): string {
   if (h.action === "assign") return h.to_value ? tr("Assigned to {to_value}{value}", { to_value: h.to_value, value: h.user ? tr(" by {user}", { user: h.user }) : "" }) : (h.user ? tr("Unassigned by {user}", { user: h.user }) : tr("Unassigned"));
   if (h.action === "comment") return tr("{user} wrote: {note}", { user: h.user ?? tr("Someone"), note: h.note ?? "" });
   if (h.action === "status") return `${h.check_id ? `${h.check_id}: ` : ""}${h.to_value ?? tr("Status changed")}${h.user ? `, ${h.user}` : ""}${h.note ? `. ${h.note}` : ""}`;
@@ -216,6 +217,7 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
   const actions = useWorkActions();
   const can = useWorkCan();
   const { hrefFor } = useOpenItem();
+  const landscape = useLandscape(useRunParam()).data;
   const [reason, setReason] = useState<{ kind: "not_an_issue" | "accept_risk"; issues: WorkIssue[] } | { kind: "send_back" } | null>(null);
   const [busy, setBusy] = useState(false);
   const [pane, setPane] = useState<"record" | "history">("record");
@@ -454,6 +456,7 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
   return (
     <>
       <InspectorFrame title={<Mono>{title}</Mono>} status={status} onClose={onClose}>
+        <p className="m2-prov"><V2Link href={`${objectHref(landscape, module)}/records/${encodeURIComponent(key)}`}>{tr("Open full record")}</V2Link></p>
         <div className="m2-hist-tabs" role="tablist" aria-label={tr("Views of this record")}>
           <button type="button" role="tab" id="rec-tab-record" aria-controls="rec-panel" aria-selected={pane === "record"} tabIndex={pane === "record" ? 0 : -1} onClick={() => setPane("record")} onKeyDown={(e) => e.key === "ArrowRight" && (setPane("history"), document.getElementById("rec-tab-history")?.focus())}>
             {tr("Record")}

@@ -36,7 +36,7 @@ describe("top bar", () => {
     expect(brand).toHaveTextContent("Meridian");
     expect(screen.getByRole("button", { name: "Scope, All systems" })).toHaveTextContent("All systems");
     expect(await screen.findByRole("button", { name: "Run 16 Oct 2026, 05:17" })).toBeInTheDocument();
-    const search = screen.getByRole("button", { name: "Search or type a command" });
+    const search = screen.getByRole("button", { name: "Search, ask, or type a command" });
     expect(search).toHaveTextContent("⌘K");
     expect(await screen.findByRole("button", { name: "Inbox 7, unread" })).toHaveTextContent("Inbox 7");
     expect(screen.getByRole("button", { name: "Account, Programme lead" })).toHaveTextContent("Programme lead");
@@ -149,7 +149,7 @@ describe("command line", () => {
   it("opens with the shortcut, finds a rule by its id, moves with the arrows, opens with Enter and closes with Esc", async () => {
     mount();
     keyOnBody("k", { metaKey: true });
-    const dialog = await screen.findByRole("dialog", { name: "Search or type a command" });
+    const dialog = await screen.findByRole("dialog", { name: "Search, ask, or type a command" });
     const input = within(dialog).getByRole("combobox");
     await waitFor(() => expect(input).toHaveFocus());
     expect(within(dialog).getByText("Landscape")).toBeInTheDocument(); // empty query lists the places
@@ -163,13 +163,13 @@ describe("command line", () => {
     fireEvent.keyDown(input, { key: "ArrowUp" });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(push).toHaveBeenCalledWith(expect.stringContaining("open=rule:MM003"));
-    expect(screen.queryByRole("dialog", { name: "Search or type a command" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Search, ask, or type a command" })).toBeNull();
   });
 
   it("finds a record by its number", async () => {
     mount();
     keyOnBody("/");
-    const dialog = await screen.findByRole("dialog", { name: "Search or type a command" });
+    const dialog = await screen.findByRole("dialog", { name: "Search, ask, or type a command" });
     fireEvent.change(within(dialog).getByRole("combobox"), { target: { value: "101" } });
     expect(await within(dialog).findByText(/Material 000000000000000101/)).toBeInTheDocument();
     expect(within(dialog).getByText("Records")).toBeInTheDocument();
@@ -177,8 +177,8 @@ describe("command line", () => {
 
   it("answers a word with the action: approve lists the approvals waiting", async () => {
     mount();
-    fireEvent.click(screen.getByRole("button", { name: "Search or type a command" }));
-    const dialog = await screen.findByRole("dialog", { name: "Search or type a command" });
+    fireEvent.click(screen.getByRole("button", { name: "Search, ask, or type a command" }));
+    const dialog = await screen.findByRole("dialog", { name: "Search, ask, or type a command" });
     fireEvent.change(within(dialog).getByRole("combobox"), { target: { value: "approve" } });
     expect(await within(dialog).findByText("Approvals waiting 612")).toBeInTheDocument();
   });
@@ -186,20 +186,20 @@ describe("command line", () => {
   it("says what to try when nothing matches", async () => {
     mount();
     keyOnBody("/");
-    const dialog = await screen.findByRole("dialog", { name: "Search or type a command" });
+    const dialog = await screen.findByRole("dialog", { name: "Search, ask, or type a command" });
     fireEvent.change(within(dialog).getByRole("combobox"), { target: { value: "zzzzqq" } });
     expect(await within(dialog).findByText(/No match for zzzzqq\. Try a material number, a rule id such as MM142/)).toBeInTheDocument();
   });
 
   it("shows the key hints from the registry and closes on Esc, returning focus to where it was", async () => {
     mount();
-    const search = screen.getByRole("button", { name: "Search or type a command" });
+    const search = screen.getByRole("button", { name: "Search, ask, or type a command" });
     search.focus();
     fireEvent.click(search);
-    const dialog = await screen.findByRole("dialog", { name: "Search or type a command" });
+    const dialog = await screen.findByRole("dialog", { name: "Search, ask, or type a command" });
     expect(norm(dialog.querySelector(".m2-pal-foot") as HTMLElement)).toBe("↑ ↓ Move through the resultsEnter Open the resultEsc Close");
     fireEvent.keyDown(within(dialog).getByRole("combobox"), { key: "Escape" });
-    expect(screen.queryByRole("dialog", { name: "Search or type a command" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Search, ask, or type a command" })).toBeNull();
     expect(search).toHaveFocus();
   });
 });

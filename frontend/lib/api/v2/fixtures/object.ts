@@ -335,6 +335,12 @@ export function objectFixture(path: string, params: Params): unknown {
   if (rec) return reconcile(decodeURIComponent(rec[1]), typeof params.run === "string" ? params.run : undefined);
   const hist = /^\/rules\/([^/]+)\/history$/.exec(path);
   if (hist) return ruleHistory(decodeURIComponent(hist[1]));
+  const fb = /^\/rules\/([^/]+)\/failures-by$/.exec(path);
+  if (fb) {
+    const r = ruleRow(decodeURIComponent(fb[1]));
+    const n = r?.affected_count ?? 0;
+    return { total: n, groups: n ? [{ field: "WERKS", values: [["1000", 0.6], ["2000", 0.3], ["3000", 0.1]].map(([v, k]) => ({ value: String(v), records: Math.round(n * Number(k)), part: `WERKS=${v}` })) }] : [] };
+  }
   const ex = /^\/explain\/([^/]+)$/.exec(path);
   if (ex) return explain(ex[1], params);
   if (path === "/insights/readiness") return readiness();
@@ -369,6 +375,23 @@ export function fixturePost<T>(path: string, body: unknown, params: Record<strin
   }
   if (path === "/rule-suppressions") return { id: "s-001", check_id: (body as { check_id: string }).check_id, expires_at: (body as { expires_at: string }).expires_at } as T;
   if (path === "/stewardship/handoff") return { task_id: "t-001", exception_id: "e-001", assigned_to: (body as { assignee_id: string }).assignee_id, due_at: (body as { due_date: string }).due_date } as T;
+  if (path === "/assistant/ask") {
+    const question = (body as { question: string }).question;
+    return {
+      answer: `Held objects are limited by critical rules over tolerance (question: ${question}).`,
+      intent: "summary",
+      data: null,
+      chart: null,
+      links: [{ label: "Open the landscape", href: "/" }],
+      ai: false,
+      phrased: false,
+      version_id: CURRENT_RUN,
+      facts: [{ statement: "Current run", value: null, source: "Landscape status strip", href: "/", checks: [] }],
+      coverage: 1,
+      grounded: true,
+      citations: [],
+    } as T;
+  }
   void params;
   throw new FixtureNotFound(path);
 }

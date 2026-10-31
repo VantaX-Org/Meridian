@@ -24,6 +24,8 @@ The receipt table then adds the score up: one row per dimension with its weight,
 
 **As of** in the run menu shows the object as it stood when an earlier run finished: a band says so, the ruler and the rules are that run's, and **Back to today** returns.
 
+**Top failing rules**, on the Rules tab under the ruler, lists the five failing rules with the highest value at risk: each with its severity, id and name, its failing rows and a small trend of its failing rows over its last runs. Select a rule id to open the rule.
+
 **Critical rules over tolerance** lists the rules behind the cap with their failing records and share, for example "MM003 Material type is mandatory - determines procurement and storage behaviour, 2,904 failing, 4.7%" and "MM035 Valuation class is mandatory for FI account determination, 1,420 failing, 2.3%".
 
 ## The tabs
@@ -32,8 +34,15 @@ The receipt table then adds the score up: one row per dimension with its weight,
 - **Records**: the Work ledger scoped to this object. See the Work ledger chapter.
 - **Fixes**: the fix batches of this object. "No fix batches for Material master yet. A batch starts when a steward accepts suggested values or imports a filled fix sheet."
 - **Runs**: the measured score over the last eight runs with the cap line and the baseline, a table of measured and shown scores per run ("Scores are as stored with each run; the measured score is before the cap, the shown score after it."), **Compare with** to open two runs side by side, and **Why the score moved** against the baseline: rules newly failing, fixed, worse and better.
-- **Readiness**: the migration waves this object belongs to with the verdict, blocking gaps, score, readiness and records blocked, and "What the failing rules do in S/4HANA": the features blocked and degraded, each with the rules behind it.
-- **Processes**, **Lineage**, **Glossary**, **Golden records**: each has its own chapter.
+- **Readiness**: the migration waves this object belongs to with the verdict, blocking gaps, score, readiness and records blocked, and "What the failing rules do in S/4HANA": the features blocked and degraded, each with the rules behind it. **Blockers** turns that round: one row per rule of this object behind a blocked or degraded feature, with its severity, the features it holds back and its failing rows, most failing first. **Readiness by object** lists every object in the same waves with its ruler, verdict and blocking gaps, the most blocked first, with this object marked; select one to open it.
+- **Lineage**: the drawing from source table to S/4 feature. Select a node to pin its facts, with its **Upstream** and **Downstream** nodes listed under them; select one of those to move to it. See the Lineage chapter.
+- **Processes**, **Glossary**, **Golden records**: each has its own chapter.
+
+## The numbers and where they come from
+
+- **Top failing rules** are ranked by value at risk among the rules with failing rows in the run; the trend is read from each rule's own history.
+- **Blockers** comes from the feature impact of the run: the failing rows of each rule that blocks or degrades a feature.
+- **Readiness by object** takes the verdict and blocking gaps from the waves' readiness and the ruler from the run in the top bar.
 
 ## What you can do, by role
 

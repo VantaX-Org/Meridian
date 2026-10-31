@@ -234,6 +234,36 @@ describe("Custom objects", () => {
 describe("the connection form", () => {
   const fill = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
+  it("walks the setup steps: skip SuccessFactors, rail marks the current step, invite finishes", async () => {
+    setUrl("/s/new?fixture=1");
+    renderWithQuery(<ConnectCanvas />);
+    const form = await screen.findByRole("form", { name: "Connect a system" });
+    expect(screen.getByRole("button", { name: /Connect SAP/ })).toHaveAttribute("aria-current", "step");
+    expect(screen.getByRole("button", { name: /Choose objects/ })).toBeDisabled();
+    fill("Name", "ECC test");
+    fill("Host", "ecc-test.internal");
+    fill("Client", "300");
+    fill("Instance number", "01");
+    fill("Password", "s3cret");
+    fireEvent.click(within(form).getByRole("button", { name: "Connect system" }));
+    await screen.findByRole("heading", { name: "Connect SuccessFactors" });
+    expect(screen.getByRole("button", { name: /Connect SuccessFactors/ })).toHaveAttribute("aria-current", "step");
+    fireEvent.click(screen.getByRole("button", { name: "Skip for now" }));
+    expect(await screen.findByRole("heading", { name: "Choose objects" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Choose policy packs/ }));
+    expect(screen.queryByRole("heading", { name: "Choose policy packs" })).toBeNull();
+    fireEvent.click((await screen.findAllByRole("checkbox"))[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await screen.findByRole("heading", { name: "Choose policy packs" });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save schedule" }));
+    await screen.findByRole("heading", { name: "Invite people" });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@b.co" } });
+    fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
+    expect(await screen.findByRole("heading", { name: "Setup complete" })).toBeInTheDocument();
+    expect(bodyOf("POST", "/users/invite")).toMatchObject({ email: "a@b.co" });
+  });
+
   it("connects a new system, validating first, and opens it", async () => {
     setUrl("/s/new?fixture=1");
     renderWithQuery(<ConnectCanvas />);
@@ -248,9 +278,8 @@ describe("the connection form", () => {
     fill("Instance number", "01");
     fill("Password", "s3cret");
     fireEvent.click(within(form).getByRole("button", { name: "Connect system" }));
-    await waitFor(() => expect(replace).toHaveBeenCalled());
+    expect(await screen.findByRole("heading", { name: "Connect SuccessFactors" })).toBeInTheDocument();
     expect(bodyOf("POST", "/systems")).toMatchObject({ name: "ECC test", system_type: "ecc", host: "ecc-test.internal", client: "300", sysnr: "01", auth_type: "rfc", credentials: { password: "s3cret" } });
-    expect(String(replace.mock.calls.at(-1)?.[0])).toMatch(/\/s\/.+\?open=system:/);
   });
 
   it("tests a draft before it is saved", async () => {

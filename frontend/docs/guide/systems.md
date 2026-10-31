@@ -1,10 +1,25 @@
 # Systems
 
-A system is one SAP or cloud source Meridian reads from: ECC, S/4HANA on premise or Cloud, Extended Warehouse Management, SuccessFactors, Concur, Ariba or BTP. Meridian reads from SAP with a read-only role; live write-back is off unless an administrator turns it on (see the Approvals chapter). The system canvas is where SAP Basis connects a system, tests it, extracts with a scope, schedules extractions, loads the configuration and reviews custom objects. Open a system from its heading on the landscape or the map (`/s/{id}`); connect a new one from the command line ("Connect a system") or at `/s/new`.
+A system is one SAP or cloud source Meridian reads from: ECC, S/4HANA on premise or Cloud, Extended Warehouse Management, SuccessFactors, Concur, Ariba or BTP. Meridian reads from SAP with a read-only role; live write-back is off unless an administrator turns it on (see the Approvals chapter). The system canvas is where SAP Basis connects a system, tests it, extracts with a scope, schedules extractions, loads the configuration and reviews custom objects. Open a system from its heading on the landscape or the map (`/s/{id}`); connect a new one from the command line ("Connect a system") or at `/s/new`. Every system is listed at `/s`.
+
+## The systems list
+
+`/s` opens **Systems**, with the sentence "2 systems connected." and either "Every connection answers." or how many "cannot be reached or signed in to". **Connect a system** opens the setup. A drawing shows which systems feed Meridian (on the left) and which receive from it (on the right), each name coloured by its health. Under it, **Connection health** lists every system: name, release or type and environment, the health (**Connected**, **Degraded**, **Unreachable**, **Sign-in failed** or **Not tested**), "Last sync" with its time or "Never synced", and the reason when the connection or the last sync is not healthy. Select a row to open the system in the inspector. With nothing connected the page says "No system is connected yet." with a link to connect one.
 
 ## Connect a system
 
-"Meridian reads from SAP and never writes to it. Enter the connection, test it, and connect. Then extract the objects you want checked."
+`/s/new` opens **Set up Meridian**: "Setup only reads from SAP. Nothing is written to SAP until an approved batch is sent." Six steps run down the left, each ticked when done; a later step opens once the one before it is done. On the right, **What the first run will do** counts the systems, objects, tables and policy packs applied so far.
+
+1. **Connect SAP**: the connection form below. Saving it moves to the next step.
+2. **Connect SuccessFactors**: optional. Choose SuccessFactors as the system type, or **Skip for now**.
+3. **Choose objects**: the objects the SAP system offers, each with its number of tables. Tick at least one, then **Continue**.
+4. **Choose policy packs**: GxP, SOX and GDPR with their authority. Ticking a pack applies it at once; untick to remove it.
+5. **Schedule runs**: the rhythm and mode, as on the Schedules view (the default is every night at 02:00, changes only). **Save schedule** creates one schedule for each chosen object.
+6. **Invite people**: an email and a role (data steward, data owner, analyst or viewer) per line, **Add another**, then **Finish setup**. Empty lines are skipped.
+
+"Setup complete" follows: "The first run starts on the schedule you set. Open the system to start it now." **Open the system** opens its canvas.
+
+The connection form in step 1:
 
 1. Name the system, choose the **System type** and the **Environment** (Production, Quality, Development).
 2. Fill in the connection. For ECC and S/4HANA on premise: **Host**, **Client** (3 digits), **Instance number** (2 digits) and an optional **User** ("Leave empty to use the deployment's default RFC user"), then the password under **Sign-in secrets**. Cloud systems ask for their base URL and OAuth details instead.
@@ -45,16 +60,19 @@ In the system inspector, **Extract** asks for the objects and the scope: "Choose
 
 ## The numbers and where they come from
 
+- **Systems connected** on `/s` counts every system; the systems that cannot be reached or signed in to are those whose health is Unreachable or Sign-in failed.
+- **What the first run will do** counts what the setup has saved so far: tables are the tables of the chosen objects.
 - **Records** is what the last extraction stored, across every object.
 - **Configuration** counts areas loaded out of those the connector knows, for example "11 of 12 areas".
 - The dry run counts rows from the last extraction of each table; a table never extracted is not counted and says so.
 
 ## What you can do, by role
 
-- **SAP Basis** (manage systems, trigger sync): connect, test, rotate credentials, extract, dry run, delta, schedule, load configuration, remove a system.
+- **SAP Basis** (manage systems, trigger sync): run the setup, connect, test, rotate credentials, extract, dry run, delta, schedule, load configuration, remove a system.
 - **Analyst and programme lead** (analyse, trigger sync where granted): run analysis, extract.
 - **Rule maintainers** (manage rules): edit a custom object's registry entry, add a Z rule.
-- **Everyone else**: read.
+- **Policy packs and invitations** in the setup need manage rules and manage users; without them the step shows the refusal under it.
+- **Everyone else**: read the systems list and each system.
 
 ## Keyboard
 

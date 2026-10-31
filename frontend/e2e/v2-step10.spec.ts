@@ -177,9 +177,9 @@ for (const size of SIZES) {
       test("natural language: ? in the command line shows the filter that will run", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/?fixture=1", { waitUntil: "load" });
-        await expect(page.getByRole("button", { name: "Search or type a command" })).toBeVisible(NAV);
-        await page.getByRole("button", { name: "Search or type a command" }).click();
-        const dialog = page.getByRole("dialog", { name: "Search or type a command" });
+        await expect(page.getByRole("button", { name: "Search, ask, or type a command" })).toBeVisible(NAV);
+        await page.getByRole("button", { name: "Search, ask, or type a command" }).click();
+        const dialog = page.getByRole("dialog", { name: "Search, ask, or type a command" });
         await dialog.getByRole("combobox").fill("?critical materials assigned to me due this week zebra");
         await expect(dialog.getByTestId("nl-chips")).toContainText("Severity", NAV);
         await expect(dialog.getByTestId("nl-unmatched")).toContainText("zebra");

@@ -36,6 +36,7 @@ export const queryKeys = {
   remediationBatch: (id: string) => ["remediation", "batch", id] as const,
   remediationEvents: (id: string) => ["remediation", "events", id] as const,
   remediationMonitor: () => ["remediation", "monitor"] as const,
+  backAfterClean: () => ["work", "back-after-clean"] as const,
   remediationDiff: (id: string) => ["remediation", "diff", id] as const,
   remediationPackages: (id: string) => ["remediation", "packages", id] as const,
   inbox: (filters: Record<string, unknown>) => ["inbox", normalizeFilters(filters)] as const,

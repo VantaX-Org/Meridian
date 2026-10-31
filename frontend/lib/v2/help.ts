@@ -63,7 +63,7 @@ export function screenOf(pathname: string): Screen | null {
   if (pathname.startsWith("/r/")) return "rule";
   if (pathname.startsWith("/work")) return "work";
   if (pathname.startsWith("/run")) return "runs";
-  if (pathname.startsWith("/s/")) return "system";
+  if (pathname === "/s" || pathname.startsWith("/s/")) return "system";
   if (pathname.startsWith("/people")) return "people";
   if (pathname.startsWith("/requests")) return "work";
   if (pathname.startsWith("/admin")) return "admin";
@@ -86,6 +86,8 @@ const APPLIES: Record<string, Screen[]> = {
   "v2:glossary": ["object"],
   "v2:lineage": ["object"],
   "v2:processes": ["object"],
+  "v2:monitoring": ["work", "object"],
+  "v2:ask": ["landscape", "object", "rule"],
   "v2:schedules": ["reports"],
   "v2:waves": ["landscape"],
   "v2:administration": ["admin"],
@@ -115,6 +117,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/o/[system]/[module]": "v2:object",
   "/o/[system]/[module]/rules": "v2:object",
   "/o/[system]/[module]/records": "v2:work",
+  "/o/[system]/[module]/records/[key]": "v2:work",
   "/o/[system]/[module]/fixes": "v2:approvals",
   "/o/[system]/[module]/runs": "v2:run-compare",
   "/o/[system]/[module]/readiness": "v2:waves",
@@ -126,11 +129,13 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/r/[id]": "v2:rules",
   "/rules": "v2:rules",
   "/work": "v2:work",
+  "/work/monitor": "v2:monitoring",
   "/people": "v2:people",
   "/requests": "v2:approvals",
   "/runs": "v2:runs",
   "/run/[id]": "v2:run-compare",
   "/run/[id]/vs/[b]": "v2:run-compare",
+  "/s": "v2:systems",
   "/s/[id]": "v2:systems",
   "/s/new": "v2:systems",
   "/share/[token]": "v2:persona-auditor",
@@ -143,6 +148,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
 const OPEN_CHAPTERS: Readonly<Record<string, string>> = {
   preferences: "v2:preferences",
   waves: "v2:waves",
+  ask: "v2:ask",
   batch: "v2:approvals",
   request: "v2:approvals",
   triage: "v2:people",
@@ -174,12 +180,13 @@ export function routeOf(pathname: string): string | null {
   const seg = (pathname.replace(/\/+$/, "") || "/").split("/").slice(1);
   const [a, b, c, d, e] = seg;
   if (!a) return "/";
-  if (a === "o" && b && c) return `/o/[system]/[module]${d ? `/${d}` : ""}${e ? `/${e}` : ""}`;
+  if (a === "o" && b && c) return `/o/[system]/[module]${d ? `/${d}` : ""}${e ? (d === "records" ? "/[key]" : `/${e}`) : ""}`;
   if (a === "r" && b) return "/r/[id]";
   if (a === "run" && b) return c === "vs" && d ? "/run/[id]/vs/[b]" : "/run/[id]";
   if (a === "s" && b) return b === "new" ? "/s/new" : "/s/[id]";
   if (a === "share" && b) return "/share/[token]";
   if (a === "admin") return b ? "/admin/[section]" : "/admin";
+  if (a === "work" && b === "monitor") return "/work/monitor";
   return `/${a}`;
 }
 
