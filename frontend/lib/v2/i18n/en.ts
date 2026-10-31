@@ -6445,6 +6445,19 @@ export const en = {
   "Value now of map {n}": "Value now of map {n}",
   "Value now": "Value now",
   "Write it as TABLE.FIELD, for example MARA.MTART.": "Write it as TABLE.FIELD, for example MARA.MTART.",
+  "The objects": "The objects",
+  "{n, plural, one {# more object has} other {# more objects have}} no stored extraction. Start an extraction first.": "{n, plural, one {# more object has} other {# more objects have}} no stored extraction. Start an extraction first.",
+  "{n, plural, one {# object} other {# objects}} queued for a re-check": "{n, plural, one {# object} other {# objects}} queued for a re-check",
+  "Latest analysis": "Latest analysis",
+  "No object has a stored extraction to re-check yet.": "No object has a stored extraction to re-check yet.",
+  "Not queued: {objects}.": "Not queued: {objects}.",
+  "Nothing was queued": "Nothing was queued",
+  "Objects to re-check": "Objects to re-check",
+  "Re-check {n, plural, one {# object} other {# objects}}": "Re-check {n, plural, one {# object} other {# objects}}",
+  "Re-check {object}": "Re-check {object}",
+  "Re-check objects": "Re-check objects",
+  "Re-checking objects needs the trigger_sync permission.": "Re-checking objects needs the trigger_sync permission.",
+  "Scores the latest stored extraction of each object again against the rules as they stand now. Nothing is read from SAP.": "Scores the latest stored extraction of each object again against the rules as they stand now. Nothing is read from SAP.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
