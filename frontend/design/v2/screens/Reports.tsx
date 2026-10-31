@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { ReportFile, ReportSchedule } from "@/lib/api/reports";
 import * as rep from "@/lib/api/v2/reports";
 import { apiErrorMessage } from "@/lib/error";
 import { failureText } from "@/lib/v2/errors";
 import { formatDate } from "@/lib/format";
 import { useOpenItem } from "@/lib/v2/hooks";
-import { useReportHistory, useScheduleOptions, useSchedules } from "@/lib/v2/admin-queries";
+import { useCatalogue, useReportHistory, useScheduleOptions, useSchedules } from "@/lib/v2/admin-queries";
 import { type GridColumn } from "../Grid";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle } from "../parts";
 import { StatusWord, useCan } from "../admin/kit";
@@ -15,6 +15,9 @@ import { SCHEDULE_TONE, SCHEDULE_WORD, sizeText } from "../inspector/reports";
 import { ToolGrid } from "../GridTools";
 import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
+import { int } from "@/lib/v2/score";
+import type { Verdict } from "@/lib/api/v2/types";
+import { CcBanner, CcHBars, CcPage, type CcBarRow } from "./cc-parts";
 
 const SOURCE: Record<ReportFile["source"], string> = { get download() { return t("Downloaded"); }, get schedule() { return t("Scheduled"); }, get run_now() { return t("On request"); } };
 
@@ -66,6 +69,74 @@ function scheduleColumns(users: Map<string, string>, channels: Map<string, strin
   ];
 }
 
+/** A schedule is late when it is on and its next run is more than an hour past: the scheduler missed it. */
+const LATE_MS = 60 * 60 * 1000;
+const isLate = (s: ReportSchedule, now: number): boolean => s.enabled && !!s.next_run_at && now - Date.parse(s.next_run_at) > LATE_MS;
+
+/** The banner and the reports-by-kind bars: whether the schedules deliver, and which reports people make. */
+function ReportsOverview({ files, total, list, names, action }: { files: readonly ReportFile[]; total: number | null; list: readonly ReportSchedule[]; names: Map<string, { name: string; about: string }>; action: ReactNode }) {
+  const [now] = useState(() => Date.now());
+  const failed = list.filter((s) => s.last_status === "failed");
+  const late = list.filter((s) => isLate(s, now));
+  const partial = list.filter((s) => s.last_status === "partial");
+  const active = list.filter((s) => s.enabled).length;
+  const scheduled = files.filter((f) => f.source === "schedule").length;
+  const [verdict, headline, why]: [Verdict, string, string] = failed.length
+    ? ["no-go", t("{n} {count, plural, one {schedule failed} other {schedules failed}} on the last run", { n: int(failed.length), count: failed.length }), t("{name} did not deliver. Open it to see why, then run it again.", { name: failed[0].name })]
+    : late.length
+      ? ["no-go", t("{n} {count, plural, one {schedule is} other {schedules are}} overdue", { n: int(late.length), count: late.length }), t("{name} should have run by now and has not.", { name: late[0].name })]
+      : partial.length
+        ? ["at-risk", t("{n} {count, plural, one {schedule} other {schedules}} reached only some recipients", { n: int(partial.length), count: partial.length }), t("{name} was partly delivered. Check its recipients.", { name: partial[0].name })]
+        : ["go", list.length ? t("Every schedule delivered on its last run") : t("No report goes out on a schedule yet"), list.length ? t("Each schedule reached its recipients the last time it ran.") : t("Schedule a report and it arrives with no one asking for it.")];
+  const byKind = new Map<string, { n: number; sched: number }>();
+  for (const f of files) {
+    const k = byKind.get(f.kind) ?? { n: 0, sched: 0 };
+    k.n += 1;
+    if (f.source === "schedule") k.sched += 1;
+    byKind.set(f.kind, k);
+  }
+  const bars: CcBarRow[] = [...byKind]
+    .sort((a, b) => b[1].n - a[1].n)
+    .map(([kind, v]) => {
+      const c = names.get(kind);
+      return {
+        key: kind,
+        label: (
+          <>
+            {c?.name ?? labelText(kind)} <span className="m2-meta">{c?.about || t("Report kind {kind}", { kind })}</span>
+          </>
+        ),
+        value: v.n,
+        text: v.sched ? t("{n} made, {s} by schedule", { n: int(v.n), s: int(v.sched) }) : t("{n} made", { n: int(v.n) }),
+      };
+    });
+  return (
+    <>
+      <CcBanner
+        testId="reports-banner"
+        label={t("Report delivery")}
+        eyebrow={t("Report delivery")}
+        verdict={verdict}
+        headline={headline}
+        why={why}
+        figs={[
+          { label: t("Reports made"), value: total == null ? "—" : int(total), note: t("{n} of the latest by schedule", { n: int(scheduled) }) },
+          { label: t("Schedules on"), value: int(active), note: t("of {n} in all", { n: int(list.length) }) },
+          { label: t("Need attention"), value: int(failed.length + late.length + partial.length), note: t("failed, overdue or partly delivered") },
+        ]}
+        action={action}
+      />
+      {bars.length > 0 ? (
+        <section className="m2-cc-card" aria-label={t("Reports made by kind")} data-testid="reports-by-kind">
+          <h3>{t("Reports made by kind")}</h3>
+          <p className="m2-cc-lede">{t("Counted over the latest {n} reports in the history.", { n: int(files.length) })}</p>
+          <CcHBars rows={bars} label={t("Reports made by kind")} />
+        </section>
+      ) : null}
+    </>
+  );
+}
+
 /** /reports: the reports that exist, a way to make one, and the schedules that make them on a rhythm. */
 export function ReportsCanvas() {
   const can = useCan();
@@ -73,6 +144,7 @@ export function ReportsCanvas() {
   const history = useReportHistory();
   const schedules = useSchedules();
   const options = useScheduleOptions();
+  const catalogue = useCatalogue({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const exportAllowed = can("export");
@@ -92,16 +164,20 @@ export function ReportsCanvas() {
   const files = history.data?.items ?? [];
   const list = schedules.data ?? [];
   const active = list.filter((s) => s.enabled).length;
+  const names = new Map((catalogue.data ?? []).map((c) => [c.id, { name: c.name, about: c.about }]));
+  const create = (
+    <button type="button" className="m2-btn m2-next" disabled={!exportAllowed} onClick={() => openItem({ kind: "report", id: "new" })}>
+      {t("Create a report")}
+    </button>
+  );
   return (
-    <>
+    <CcPage>
       <PageTitle>{t("Reports")}</PageTitle>
+      {schedules.data && !history.isPending ? <ReportsOverview files={files} total={history.data?.total ?? null} list={list} names={names} action={create} /> : <div className="m2-cta">{create}</div>}
       <p className="m2-finding">
         {t("{value}{value2}. Reports are built from stored runs, so a number in a report matches the run it names.", { value: history.data ? t("{total} {total, plural, one {report} other {reports}} made, ", { total: history.data.total }) : "", value2: schedules.data ? t("{active} of {listCount} {listCount, plural, one {schedule is} other {schedules are}} on", { active, listCount: list.length }) : "" })}
       </p>
       <div className="m2-cta">
-        <button type="button" className="m2-btn m2-next" disabled={!exportAllowed} onClick={() => openItem({ kind: "report", id: "new" })}>
-          {t("Create a report")}
-        </button>
         <button type="button" className="m2-btn" disabled={!exportAllowed} onClick={() => openItem({ kind: "schedule", id: "new" })}>
           {t("Schedule a report")}
         </button>
@@ -148,6 +224,6 @@ export function ReportsCanvas() {
           compact
         />
       </section>
-    </>
+    </CcPage>
   );
 }
