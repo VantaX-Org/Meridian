@@ -4861,6 +4861,20 @@ export const en = {
   "What the rule that rejected the value says, with its check id.": "What the rule that rejected the value says, with its check id.",
   "The value held in SAP at extraction, with its meaning where the rule gives one.": "The value held in SAP at extraction, with its meaning where the rule gives one.",
   "critical rules failing: {n}": "critical rules failing: {n}",
+  "Review the {waiting} waiting for approval": "Review the {waiting} waiting for approval",
+  "Start with the {n} records failing {check}": "Start with the {n} records failing {check}",
+  "More": "More",
+  "More filters": "More filters",
+  "Open records by rule": "Open records by rule",
+  "Open records by object": "Open records by object",
+  "{open} records to fix": "{open} records to fix",
+  "Open records": "Open records",
+  "still failing a rule": "still failing a rule",
+  "fix these first": "fix these first",
+  "With a suggested value": "With a suggested value",
+  "ready to accept": "ready to accept",
+  "{n} open": "{n} open",
+  "Nothing is open.": "Nothing is open.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

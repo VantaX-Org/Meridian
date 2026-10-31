@@ -631,3 +631,25 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-wback { fill: var(--m2-crit); }
 @media (max-width: 1200px) { .m2-cc { grid-template-columns: minmax(0, 1fr); } .m2-cc-dock { position: static; max-height: 480px; } }
 @media (max-width: 900px) { .m2-cc-banner, .m2-cc-row { grid-template-columns: minmax(0, 1fr); } }
+
+/* Command centre: work */
+.m2-cc-act { display: flex; flex-direction: column; align-items: flex-start; gap: var(--m2-s2); }
+.m2-wk-main > .m2-cc-banner { margin-bottom: 0; }
+.m2-wk-banner { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.6fr); }
+.m2-wk-banner .m2-cc-act { grid-column: 1 / -1; flex-direction: row; align-items: center; }
+.m2-wk-banner .m2-cc-figs { gap: var(--m2-s3); }
+.m2-wk-banner .m2-cc-figs > div { padding-left: var(--m2-s3); }
+.m2-wk-banner .m2-cc-figs dd { font-size: var(--m2-fs-24); }
+.m2-wk-strip { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--m2-s4); }
+.m2-wk-bars button { display: grid; gap: var(--m2-s1); width: 100%; padding: var(--m2-s1) 0; border: 0; background: none; color: var(--m2-fg); font: inherit; text-align: left; cursor: pointer; }
+.m2-wk-bars button:hover .m2-cc-bmsg { text-decoration: underline; }
+.m2-wk-bars button:focus-visible { outline: 2px solid var(--m2-data); outline-offset: 2px; }
+.m2-wk-bars button[aria-pressed="true"] .m2-cc-bmsg { font-weight: 600; }
+.m2-wk-bars button[aria-pressed="true"] .m2-cc-bar > span { background: var(--m2-data); }
+.m2-wk-more { position: relative; }
+.m2-wk-more > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; }
+.m2-wk-more > summary::-webkit-details-marker { display: none; }
+.m2-wk-more-body { display: flex; flex-wrap: wrap; gap: var(--m2-s2) var(--m2-s3); align-items: center; margin-top: var(--m2-s2); padding: var(--m2-s3); border: 1px solid var(--m2-line); border-radius: var(--m2-r2); background: var(--m2-sheet); }
+.m2-wk-more[open] { flex-basis: 100%; }
+.m2-wk-more-body .m2-prov { flex-basis: 100%; margin: 0; }
+@media (max-width: 900px) { .m2-wk-banner, .m2-wk-strip { grid-template-columns: minmax(0, 1fr); } }

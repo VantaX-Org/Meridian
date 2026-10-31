@@ -225,7 +225,7 @@ function TopBlockers() {
 }
 
 /** Post-clean monitoring on the home page: what was fixed this week, and what came back. */
-function AutoCleaned() {
+export function AutoCleaned() {
   const q = useQuery({ queryKey: queryKeys.backAfterClean(), queryFn: () => getBackAfterClean(12), staleTime: 30_000 });
   const weeks = q.data?.weeks ?? [];
   const last = weeks[weeks.length - 1];
