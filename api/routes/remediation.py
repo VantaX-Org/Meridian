@@ -92,7 +92,8 @@ _EXTRAS_SQL = """
 async def _batch_extras(db: AsyncSession, tenant: Tenant, batches: list[dict]) -> dict[str, dict]:
     """Per batch (one read for all of them, no query per batch): ``records`` (distinct records with an item),
     ``value_at_risk`` (each record's attribution as the work API sums it: every failing check's cost at risk shared over
-    the records it fails on, read from the record's latest work row; None when no check is priced), ``steward_label``
+    the records it fails on, read from the record's latest work row; None when no check is priced), ``verification``
+    (the latest run's verdict: run, fixed, still failing; None before a run covered the batch), ``steward_label``
     (the creator's display name) and ``due_at`` (the batch's creation time plus the SLA policy of its highest severity,
     in business hours when the policy says so; None without a policy or a severity)."""
     if not batches:
@@ -101,7 +102,11 @@ async def _batch_extras(db: AsyncSession, tenant: Tenant, batches: list[dict]) -
 
     from api.services import triage
     t = str(tenant.id)
-    rows = {r["id"]: r for r in (await db.execute(text(_EXTRAS_SQL), {"t": t, "ids": [str(b["id"]) for b in batches]})).mappings().all()}
+    ids = [str(b["id"]) for b in batches]
+    rows = {r["id"]: r for r in (await db.execute(text(_EXTRAS_SQL), {"t": t, "ids": ids})).mappings().all()}
+    from api.services import batch_verification
+    verdicts = batch_verification.latest((await db.execute(text(batch_verification.LATEST_SQL),
+                                                           {"t": t, "ids": ids})).mappings().all())
     pols = (await db.execute(text("SELECT severity, module, resolve_minutes, business_hours, at_risk_pct, ack_minutes FROM sla_policies "
                                   "WHERE tenant_id = CAST(:t AS uuid)"), {"t": t})).mappings().all()
     cal = None
@@ -126,6 +131,8 @@ async def _batch_extras(db: AsyncSession, tenant: Tenant, batches: list[dict]) -
             "value_at_risk": round(float(r["value_at_risk"]), 2) if r and r["value_at_risk"] is not None else None,
             "due_at": due.isoformat() if due else None,
             "steward_label": r["steward_label"] if r else b.get("created_by_label"),
+            # the latest run's verdict on the batch's records (F09), None before a run has covered them
+            "verification": verdicts.get(str(b["id"])),
         }
     return out
 
