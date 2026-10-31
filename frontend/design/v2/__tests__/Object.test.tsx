@@ -187,7 +187,7 @@ describe("object canvas states", () => {
     setUrl("/o/ecc-production/material-master/records");
     frame();
     const tabs = await screen.findByRole("navigation", { name: "Views of Material master" });
-    const ruler = await screen.findByRole("img", { name: /measured 71\.8/ });
+    const ruler = await screen.findByRole("img", { name: /held down from 71\.8/ });
     expect(tabs.compareDocumentPosition(ruler) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // Off the Rules view the receipt stays out of the way of the tab's content.
     expect(screen.queryByText(/How 70\.0 is made/)).toBeNull();

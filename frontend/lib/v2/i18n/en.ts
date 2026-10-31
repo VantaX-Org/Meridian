@@ -4861,6 +4861,21 @@ export const en = {
   "What the rule that rejected the value says, with its check id.": "What the rule that rejected the value says, with its check id.",
   "The value held in SAP at extraction, with its meaning where the rule gives one.": "The value held in SAP at extraction, with its meaning where the rule gives one.",
   "critical rules failing: {n}": "critical rules failing: {n}",
+  "held down from {measured}": "held down from {measured}",
+  "{breachesCount} failing critical rules": "{breachesCount} failing critical rules",
+  ", held down from {measured} because {breachNames} fail": ", held down from {measured} because {breachNames} fail",
+  "Based on {records} records and {rules} rules, covering {pct1} of the data{value}.": "Based on {records} records and {rules} rules, covering {pct1} of the data{value}.",
+  ", so treat it with care": ", so treat it with care",
+  "{label} scores {score}{cap}. {dims}. {tail}": "{label} scores {score}{cap}. {dims}. {tail}",
+  "No critical rule is failing, so nothing holds this score down.": "No critical rule is failing, so nothing holds this score down.",
+  "A critical rule is failing, but the score is already below the limit it sets.": "A critical rule is failing, but the score is already below the limit it sets.",
+  "Held at {capLevel} because one critical rule fails: {breaches}.": "Held at {capLevel} because one critical rule fails: {breaches}.",
+  "Held at {capLevel} because two critical rules fail: {breaches} and {breaches2}.": "Held at {capLevel} because two critical rules fail: {breaches} and {breaches2}.",
+  "Held at {capLevel} because {n} critical rules fail, including {breaches} and {breaches2}.": "Held at {capLevel} because {n} critical rules fail, including {breaches} and {breaches2}.",
+  "{n} critical {n, plural, one {rule} other {rules}} failing": "{n} critical {n, plural, one {rule} other {rules}} failing",
+  "{held_under_85} of {objects} objects cannot reach 85 yet, because {critical_over_tolerance} critical {critical_over_tolerance, plural, one {rule fails} other {rules fail}} on too many records": "{held_under_85} of {objects} objects cannot reach 85 yet, because {critical_over_tolerance} critical {critical_over_tolerance, plural, one {rule fails} other {rules fail}} on too many records",
+  ", held down by a failing critical rule": ", held down by a failing critical rule",
+  "{records_checked} records checked against {rules_measured} rules": "{records_checked} records checked against {rules_measured} rules",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

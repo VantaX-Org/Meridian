@@ -142,8 +142,7 @@ export function Ruler(props: RulerProps) {
       {showScore ? (
         <span className="m2-ruler-num">
           <span className="m2-sc" data-testid="ruler-score">{empty ? DASH : f1(score)}</span>
-          {!empty && capped ? <span className="m2-capword">{t("capped")}</span> : null}
-          {!empty && capped && measured != null ? <span className="m2-meas" data-testid="ruler-measured">{t("{measured} measured", { measured: f1(measured) })}</span> : null}
+          {!empty && capped && measured != null ? <span className="m2-meas" data-testid="ruler-measured">{t("held down from {measured}", { measured: f1(measured) })}</span> : null}
           {!empty && props.contract ? <ContractMark mark={props.contract} /> : null}
           {!empty && props.policy ? <PolicyMark mark={props.policy} /> : null}
         </span>

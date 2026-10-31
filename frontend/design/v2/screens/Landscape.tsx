@@ -63,7 +63,7 @@ export function LandscapeSentence({ landscape }: { landscape: Landscape }) {
   const ids = s.release_if_fixed;
   return (
     <>
-      {t("{held_under_85} of {objects} objects are held under 85 by {critical_over_tolerance} critical {critical_over_tolerance, plural, one {rule} other {rules}} over tolerance", { held_under_85: s.held_under_85, objects: s.objects, critical_over_tolerance: s.critical_over_tolerance })}
+      {t("{held_under_85} of {objects} objects cannot reach 85 yet, because {critical_over_tolerance} critical {critical_over_tolerance, plural, one {rule fails} other {rules fail}} on too many records", { held_under_85: s.held_under_85, objects: s.objects, critical_over_tolerance: s.critical_over_tolerance })}
       {ids.length > 0 && s.released > 0 ? (
         <>
           {t("; fixing ")}
@@ -233,7 +233,7 @@ function CellLink({ system, cell, label, selected, run }: { system: LandscapeSys
       data-selected={selected ? "true" : undefined}
       data-testid="matrix-cell"
       title={reading}
-      aria-label={`${label}, ${system.name}, ${f1(cell.score)}${cell.capped ? " capped" : ""}, ${VERDICT_LABEL[cell.verdict]}${cell.low_confidence ? t(", low coverage") : ""}${mark ? `, ${mark.title}` : ""}${pmark ? `, ${pmark.title}` : ""}`}
+      aria-label={`${label}, ${system.name}, ${f1(cell.score)}${cell.capped ? t(", held down by a failing critical rule") : ""}, ${VERDICT_LABEL[cell.verdict]}${cell.low_confidence ? t(", low coverage") : ""}${mark ? `, ${mark.title}` : ""}${pmark ? `, ${pmark.title}` : ""}`}
       onClick={() => rememberCell(`${system.id}:${cell.module}`)}
     >
       <Ruler
@@ -352,7 +352,7 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
                   <Ruler size={48} dims={dimsOf(c)} measured={c.raw_score} score={c.score} capped={c.capped} capLevel={c.cap_level} breaches={c.breaches} label={label} records={c.records_checked} rules={c.rules_measured} coverage={c.coverage} lowConfidence={c.low_confidence} contract={contractMark(c)} policy={policyMark(c)} />
                 </span>
                 <span className="m2-c">
-                  {t("{records_checked} records checked, {rules_measured} rules measured", { records_checked: int(c.records_checked), rules_measured: int(c.rules_measured) })}
+                  {t("{records_checked} records checked against {rules_measured} rules", { records_checked: int(c.records_checked), rules_measured: int(c.rules_measured) })}
                   {c.low_confidence ? <span className="m2-lcm">{t("low coverage")}</span> : null}
                   {landscape.systems.length > 1 ? `, ${s.name}` : ""}
                 </span>

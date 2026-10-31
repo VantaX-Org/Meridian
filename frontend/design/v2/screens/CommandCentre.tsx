@@ -137,7 +137,7 @@ function Tile({ cell, name, href }: { cell: LandscapeCell; name: string; href: s
           {cell.open_work
             ? t("{n} to fix", { n: int(cell.open_work) })
             : cell.breaches.length
-              ? t("critical rules failing: {n}", { n: int(cell.breaches.length) })
+              ? t("{n} critical {n, plural, one {rule} other {rules}} failing", { n: cell.breaches.length })
               : t("clean")}
         </span>
       </span>
