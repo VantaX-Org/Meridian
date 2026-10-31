@@ -40,13 +40,13 @@ describe("the rule canvas /r/{check_id}", () => {
     expect(document.querySelector('svg[data-size]')).toBeNull(); // a rule has no ruler
   });
 
-  it("has the tabs Overview, Definition, Failing records, Prove in SAP, Impact and History, Overview first", async () => {
+  it("has the tabs Overview, Blast radius, Definition, Failing records, Prove in SAP, Impact and History, Overview first", async () => {
     renderWithQuery(<RuleCanvas id="MM142" />);
     const nav = await screen.findByRole("navigation", { name: "Views of MM142" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Overview", "Definition", "Failing records", "Prove in SAP", "Impact", "History"]);
+    expect(links.map((l) => l.textContent)).toEqual(["Overview", "Blast radius", "Definition", "Failing records", "Prove in SAP", "Impact", "History"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
-    expect(links[2]).toHaveAttribute("href", expect.stringMatching(/^\/r\/MM142\?.*tab=failing/));
+    expect(links[3]).toHaveAttribute("href", expect.stringMatching(/^\/r\/MM142\?.*tab=failing/));
     expect(links[0]).toHaveAttribute("href", expect.not.stringContaining("tab="));
   });
 

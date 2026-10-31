@@ -5096,6 +5096,21 @@ export const en = {
   "Measured score, last {n} runs": "Measured score, last {n} runs",
   "Requests by stage": "Requests by stage",
   "Requests by stage, from draft to SAP": "Requests by stage, from draft to SAP",
+  "Blast radius": "Blast radius",
+  "Process steps": "Process steps",
+  "KPIs": "KPIs",
+  "The lineage of this rule could not be read. The lineage model may not cover it yet.": "The lineage of this rule could not be read. The lineage model may not cover it yet.",
+  "The lineage model maps no process step or feature to the fields this rule reads.": "The lineage model maps no process step or feature to the fields this rule reads.",
+  "Documents in flight": "Documents in flight",
+  "Process steps touched": "Process steps touched",
+  "{n} of {total}": "{n} of {total}",
+  "Features blocked": "Features blocked",
+  "Cost a month": "Cost a month",
+  "Fix the {n} failing records": "Fix the {n} failing records",
+  "Select a field, step or feature to trace its path. Documents in flight are the open documents the failing records touch, joined in SAP on their keys.": "Select a field, step or feature to trace its path. Documents in flight are the open documents the failing records touch, joined in SAP on their keys.",
+  "The failing records were sampled for the join.": "The failing records were sampled for the join.",
+  "{n} documents": "{n} documents",
+  "{v} a month": "{v} a month",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

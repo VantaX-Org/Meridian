@@ -3,6 +3,7 @@ import receiptsJson from "./receipts.json";
 import workJson from "./work.json";
 import runsJson from "./runs.json";
 import rulesJson from "./rules.json";
+import lineageJson from "./lineage.json";
 import type { CommandGroup, CommandResult, Landscape, Receipt, RuleRow, RunList, StatusStrip, WorkPage } from "../types";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { fixtureParam } from "../fixture";
@@ -175,6 +176,23 @@ export const resetWorkFixture = (): void => {
 export { resetStep9Fixture, resetStep10Fixture };
 
 /** The answer to one v2 read in fixture mode. Throws a 404-shaped error for a path the contract does not have. */
+/** The fixture rules' lineage graphs and blast radii, exported from the real lineage model (sap/lineage_model.yaml). */
+function lineageRead(path: string, params: Params): unknown {
+  const lin = lineageJson as { graph: Record<string, unknown>; blast: Record<string, unknown> };
+  if (path === "/lineage/graph") {
+    const id = String(params.node ?? "").replace(/^check:/, "");
+    if (!lin.graph[id]) throw new FixtureNotFound(path);
+    return lin.graph[id];
+  }
+  const blast = /^\/lineage\/blast-radius\/([^/]+)\/([^/]+)$/.exec(path);
+  if (blast) {
+    const b = lin.blast[decodeURIComponent(blast[2])];
+    if (!b) throw new FixtureNotFound(path);
+    return { version_id: decodeURIComponent(blast[1]), ...b };
+  }
+  return undefined;
+}
+
 export function fixtureResponse<T>(path: string, params: Params): T {
   const req = requestsRead(path, params);
   if (req !== NONE_REQ) return req as T;
@@ -182,6 +200,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (step10 !== NONE_STEP10) return step10 as T;
   const step9 = step9Read(path, params);
   if (step9 !== NONE_STEP9) return step9 as T;
+  const lin = lineageRead(path, params);
+  if (lin !== undefined) return lin as T;
   const rolesStep = rolesFixtureResponse(path, params);
   if (rolesStep !== NONE_ROLES) return rolesStep as T;
   const ent = enterpriseFixtureResponse(path);

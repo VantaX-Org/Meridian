@@ -8,9 +8,10 @@ The title is the rule name, for example "Base unit of measure MEINS must referen
 
 The facts line under it reads like "High, Consistency, 4,212 failing across 2 objects, 4.99% of records checked, ZAR 1.18 m at risk, estimated, within tolerance, blocks 3 S/4 features".
 
-Six tabs follow. The rule opens on **Overview**:
+Seven tabs follow. The rule opens on **Overview**:
 
 - **Overview**: why the rule exists (its authority and what goes wrong in SAP), a chart of its failing records over the last runs, and **Failing records**. Where the failing records key on more than one field, such as material and plant, the newest run's failing records are counted by each part of the key, for example by **Plant**: one chip per value with its count, and **All**. Select a chip to narrow the ledger under it to those records; select it again, or **All**, to show every failing record.
+- **Blast radius**: where the rule's bad data goes. Four columns: the fields the rule reads, the process steps those fields feed (with the transaction), the S/4HANA features the steps enable, and the KPIs they drive. Each step shows the open documents the failing records touch, joined in SAP on their keys; each blocked or degraded feature shows its cost a month. Select any field, step or feature to light its path end to end and dim the rest; select it again to clear. The figures above the map total failing records, documents in flight, steps touched, features blocked and the cost a month. A dash means Meridian has not measured that value, for example before the rule has run.
 - **Definition**: the check class (such as "Exists in check table"), the field (`MARA-MEINS`), the expression (`MARA-MEINS in T006-MSEHI`), its parameters such as the check table `T006` and check field `MSEHI`, the source ("Shipped with Meridian" or a custom rule), the authority ("Best practice", or "SAP hard constraint") and what goes wrong in SAP. **Versions** lists every version with who changed it and why; the shipped definition names its file and content hash.
 - **Failing records**: the scope, for example "Scope: 2 objects, 1 system", with each object, its run and its failing count. **Open failing records** opens the Work ledger filtered to this rule.
 - **Prove in SAP**: how to reproduce the rule's count by hand in SE16 or SE16N (see below).

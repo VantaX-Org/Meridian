@@ -7,11 +7,13 @@ import { int } from "@/lib/v2/score";
 import { CcBanner, CcPage } from "./cc-parts";
 import { LedgerSlot } from "./object/LedgerSlot";
 import { RuleOverview } from "./RuleOverview";
+import { BlastRadius } from "./BlastRadius";
 import { t as tr } from "@/lib/v2/i18n";
 
-type TabKey = "overview" | "definition" | "failing" | "prove" | "impact" | "history";
+type TabKey = "overview" | "blast" | "definition" | "failing" | "prove" | "impact" | "history";
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", get label() { return tr("Overview"); } },
+  { key: "blast", get label() { return tr("Blast radius"); } },
   { key: "definition", get label() { return tr("Definition"); } },
   { key: "failing", get label() { return tr("Failing records"); } },
   { key: "prove", get label() { return tr("Prove in SAP"); } },
@@ -124,6 +126,8 @@ export function RuleCanvas({ id }: { id: string }) {
         <SectionLevel level="h2">
           {tab === "overview" ? (
             <RuleOverview view={v} />
+          ) : tab === "blast" ? (
+            <BlastRadius checkId={id} versionId={v.scope.objects[0]?.run_id ?? null} failing={v.scope.failing_records} fixHref={href("failing")} />
           ) : tab === "definition" ? (
             <div className="m2-rcols">
               <div>
