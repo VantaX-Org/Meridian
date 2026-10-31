@@ -199,7 +199,7 @@ export const getMonitor = (): Promise<{ items: MonitorItem[] }> => v2Get("/remed
 
 export interface BackAfterClean {
   weeks: { week: string; back: number; fixed: number }[];
-  rules: { check_id: string; back: number; fixed: number; back_recent: number; back_before: number }[];
+  rules: { check_id: string; message?: string | null; back: number; fixed: number; back_recent: number; back_before: number }[];
   batches: { id: string; created_at: string; fixed: number; back: number }[];
 }
 

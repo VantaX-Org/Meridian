@@ -22,7 +22,7 @@ import { Sev } from "../inspector/rule";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import "../object.css";
 import { ScrollFrame } from "./object/ScrollFrame";
-import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton } from "../parts";
+import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton } from "../parts";
 import { t, tx } from "@/lib/v2/i18n";
 
 type View = "rules" | "drafts" | "suppressions";
@@ -269,7 +269,7 @@ function Suppressions({ canEnd }: { canEnd: boolean }) {
             <tbody>
               {items.map((s) => (
                 <tr key={s.id}>
-                  <th scope="row"><Mono>{s.check_id}</Mono></th>
+                  <th scope="row"><Coded code={s.check_id} text={s.message} /></th>
                   <td>{s.reason}</td>
                   <td>{formatDate(s.expires_at, "date")}</td>
                   <td>

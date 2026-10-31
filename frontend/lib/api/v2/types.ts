@@ -216,6 +216,9 @@ export interface WorkRow {
    * business description and, for an exception, whether the sign-off was "not an issue" or "accept risk".
    */
   current_value?: string | null;
+  /** What the current and the suggested value mean in the rule's value list ("each" for EA); null when it does not say. */
+  current_label?: string | null;
+  suggested_label?: string | null;
   possible_values?: { value: string; label: string | null }[] | null;
   possible_values_total?: number | null;
   field_description?: string | null;

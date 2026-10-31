@@ -6,7 +6,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { formatDate } from "@/lib/format";
 import { int, f1 } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
-import { EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { batchLabel } from "@/lib/v2/batches";
 import { ChartFrame, ChartTable, DeltaBar, TrendChart, niceTicks } from "../charts";
 import { WorkTabs } from "./WorkTabs";
@@ -140,7 +140,7 @@ function Trend() {
                 <tr key={r.check_id}>
                   <td>
                     <V2Link href={`/r/${encodeURIComponent(r.check_id)}`}>
-                      <Mono>{r.check_id}</Mono>
+                      <Coded code={r.check_id} text={r.message} />
                     </V2Link>
                   </td>
                   <td className="m2-r">{int(r.back_before)}</td>

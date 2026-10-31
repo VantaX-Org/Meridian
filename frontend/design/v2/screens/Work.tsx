@@ -43,7 +43,7 @@ import { PAGE, allWorkRows, useGroupRows, useWorkGroups, useWorkRows, useWorkSum
 import { Grid, type GridColumn, type GridHandle } from "../Grid";
 import { IconChevron, IconClose, SeverityMark } from "../marks";
 import { MenuButton, type MenuEntry } from "../Menu";
-import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { Coded, Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { usePhone } from "@/lib/v2/hooks";
 import { useToast } from "../Toast";
 import "../approvals.css";
@@ -446,7 +446,7 @@ export function WorkCanvas() {
       { id: "record", header: headers.first, width: 170, pin: true, locked: true, title: tr("{first}, as SAP shows it (leading zeros of a numeric key left out; the full key is on hover). Pinned.", { first: headers.first }), cell: r((x) => <KeyText value={keyValue(x, 0) ?? x.record_key} />) },
       { id: "second", header: headers.second, width: 70, title: tr("{second}, the second part of the record key. A dash when the record has none.", { second: headers.second }), cell: r((x) => (keyValue(x, 1) ? <Mono>{keyValue(x, 1)}</Mono> : <Dash why={tr("This record has no second key part")} />)) },
       { id: "name", header: tr("Name"), width: 170, title: tr("The record's name."), cell: r((x) => (x.name ? <span title={x.name}>{x.name}</span> : <Dash />)) },
-      { id: "rule", header: tr("Rule"), width: 70, title: tr("Check id of the rule that rejected the value."), cell: r((x) => <Mono>{x.checks[0] ?? "—"}</Mono>) },
+      { id: "rule", header: tr("Rule"), width: 230, title: tr("What the rule that rejected the value says, with its check id."), cell: r((x) => (x.checks[0] ? <Coded code={x.checks[0]} text={x.top_message} /> : <Dash />)) },
       {
         id: "severity",
         header: tr("Severity"),
@@ -459,13 +459,13 @@ export function WorkCanvas() {
           </span>
         )),
       },
-      { id: "current", header: tr("Current value"), width: 110, title: tr("The value held in SAP at extraction."), cell: r((x) => <CurrentValue value={x.current_value} />) },
-      { id: "suggested", header: tr("Suggested value"), width: 120, title: tr("The value the rules propose. Blank when no single value is right."), cell: r((x) => (x.suggested_value ? <Mono>{x.suggested_value}</Mono> : <Dash why={tr("No suggested value for this row")} />)) },
+      { id: "current", header: tr("Current value"), width: 150, title: tr("The value held in SAP at extraction, with its meaning where the rule gives one."), cell: r((x) => <CurrentValue value={x.current_value} label={x.current_label} />) },
+      { id: "suggested", header: tr("Suggested value"), width: 150, title: tr("The value the rules propose. Blank when no single value is right."), cell: r((x) => (x.suggested_value ? <Coded code={x.suggested_value} text={x.suggested_label} first /> : <Dash why={tr("No suggested value for this row")} />)) },
       { id: "newvalue", header: tr("New value"), width: 130, locked: true, title: tr("The value to write back. Type and press Enter, paste a column, or fill down with ⌘D."), cell: r((x) => <NewValueCell row={x} h={h} />) },
       { id: "decision", header: tr("Decision"), width: 130, locked: true, title: tr("fix, not an issue or accept risk. The last two ask for a reason."), cell: r((x) => <DecisionCell row={x} h={h} onChoose={onChoose} />) },
       { id: "fdesc", header: tr("Field description"), width: 150, defaultHidden: true, title: tr("Business name of the failing field."), cell: r((x) => (x.field_description ? <span title={x.field_description}>{x.field_description}</span> : <Dash why={tr("The API has no description for this field yet")} />)) },
-      { id: "sapfield", header: tr("SAP field"), width: 120, title: tr("TABLE-FIELD of the failing value."), cell: r((x) => (x.top_field ? <Mono>{x.top_field}</Mono> : <Dash />)) },
-      { id: "problem", header: tr("Problem"), width: 230, title: tr("What the rule found wrong with the value."), cell: r((x) => (x.top_message ? <span title={x.top_message}>{x.top_message}</span> : <Dash />)) },
+      { id: "sapfield", header: tr("SAP field"), width: 230, title: tr("TABLE-FIELD of the failing value."), cell: r((x) => (x.top_field ? <Coded code={x.top_field} text={x.field_description} /> : <Dash />)) },
+      { id: "problem", header: tr("Problem"), width: 230, defaultHidden: true, title: tr("What the rule found wrong with the value."), cell: r((x) => (x.top_message ? <span title={x.top_message}>{x.top_message}</span> : <Dash />)) },
       { id: "possible", header: tr("Possible values"), width: 200, defaultHidden: true, title: tr("Values the rule accepts. Open the row for the full list with meanings."), cell: r((x) => <PossibleValuesCell row={x} />) },
       { id: "first", header: tr("First seen"), width: 100, defaultHidden: true, title: tr("The date the oldest failing issue of this row was first seen."), cell: r((x) => (x.first_seen_at ? <span title={formatDate(x.first_seen_at, "date")}>{formatDate(x.first_seen_at, "day")}</span> : <Dash />)) },
       { id: "days", header: tr("Days open"), width: 90, defaultHidden: true, numeric: true, title: tr("Days since this row was first seen."), cell: r((x) => { const d = daysOpen(x.first_seen_at, now); return d == null ? <Dash /> : <>{int(d)}</>; }) },

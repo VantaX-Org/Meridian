@@ -391,6 +391,8 @@ export interface RuleSuppression {
   created_by: string | null;
   created_at: string;
   active: boolean;
+  /** The rule's plain message, when a run has had the rule. */
+  message?: string | null;
 }
 
 export async function getRuleSuppressions(includeExpired = false): Promise<{ suppressions: RuleSuppression[] }> {

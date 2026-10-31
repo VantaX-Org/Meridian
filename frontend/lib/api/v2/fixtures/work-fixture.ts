@@ -100,6 +100,8 @@ function withDerived(r: WorkRow): WorkRow {
   return {
     ...r,
     current_value: currentFor(rule, r.record_key),
+    current_label: m.values.find((v) => v.value === currentFor(rule, r.record_key))?.label ?? null,
+    suggested_label: m.values.find((v) => v.value === suggestion)?.label ?? null,
     possible_values: m.values.length ? m.values.slice(0, 8) : null,
     possible_values_total: m.values.length ? m.total : null,
     field_description: m.fieldDescription,

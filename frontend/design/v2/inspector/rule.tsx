@@ -17,7 +17,8 @@ import { int, moduleSlug, systemSlug } from "@/lib/v2/score";
 import { Explain } from "../Explain";
 import "../object.css";
 import { SeverityMark, type SeverityKey } from "../marks";
-import { Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { describeField } from "@/lib/v2/sap-fields";
+import { Coded, Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { CollabSections } from "./collab";
 import { t as tr, lc, tx } from "@/lib/v2/i18n";
 import { labelText, moneyCompactText } from "@/lib/v2/labels";
@@ -175,7 +176,7 @@ export function RuleFacts({ view }: { view: RuleView }) {
         <Fact label={tr("Dimension")}>{s.definition.dimension ? DIM_WORD(s.definition.dimension) : <Dash />}</Fact>
         <Fact label={tr("Field")}>
           {fieldWords ? <>{fieldWords} </> : null}
-          {s.definition.field ? <Mono>{s.definition.field}</Mono> : <Dash />}
+          {s.definition.field ? <Coded code={s.definition.field} text={describeField(s.definition.field)} /> : <Dash />}
         </Fact>
         <Fact label={<>{tr("Tolerance")}{" "}<Explain metric="tolerance" label={tr("Tolerance")} module={primary} /></>}>
           {view.severity === "critical" && view.tolerance ? tr("{rows} rows", { rows: int(view.tolerance.rows) }) : <Dash why={tr("Only critical rules carry a tolerance")} />}
@@ -207,7 +208,7 @@ export function RuleDefinition({ view }: { view: RuleView }) {
     <Sec title={tr("Definition")}>
       <Facts>
         <Fact label={tr("Check class")}>{d.check_class ? <span title={d.check_class}>{tx(checkClassLabel(d.check_class))}</span> : <Dash />}</Fact>
-        <Fact label={tr("Field")}>{d.field ? <Mono>{d.field}</Mono> : <Dash />}</Fact>
+        <Fact label={tr("Field")}>{d.field ? <Coded code={d.field} text={describeField(d.field)} /> : <Dash />}</Fact>
         <Fact label={tr("Expression")}>{d.expression ? <Mono>{d.expression}</Mono> : <Dash why={tr("The rule has no stored expression")} />}</Fact>
         {params.map(([k, v]) => (
           <Fact key={k} label={<span title={k}>{labelText(k)}</span>}>

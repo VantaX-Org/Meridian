@@ -14,7 +14,8 @@ import { useRequest } from "@/lib/v2/requests-queries";
 import { int } from "@/lib/v2/score";
 import { t as tr } from "@/lib/v2/i18n";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
-import { EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { describeField } from "@/lib/v2/sap-fields";
+import { Coded, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { StepDecide } from "./decide";
 import { ResultFrame, useOutcome } from "./shared";
@@ -72,7 +73,7 @@ export function PrecheckView({ p }: { p: Precheck }) {
               </V2Link>
               <span>{labelOf(f.severity)}</span>
               <span className="m2-rl-sub">
-                {f.field ? <Mono>{f.field}</Mono> : null}
+                {f.field ? <Coded code={f.field} text={describeField(f.field)} /> : null}
                 {f.field ? " " : null}
                 {f.message}
               </span>

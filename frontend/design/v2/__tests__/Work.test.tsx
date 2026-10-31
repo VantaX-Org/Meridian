@@ -87,7 +87,6 @@ describe("the Work ledger, fixture mode", () => {
       "New value",
       "Decision",
       "SAP field",
-      "Problem",
       "Owner",
       "Value at risk",
     ]);
@@ -621,7 +620,7 @@ describe("the keyboard, in the shell", () => {
     const heads = within(grid).getAllByRole("columnheader").map((h) => (h.textContent ?? "").trim());
     const at = (name: string) => heads.findIndex((h) => h.startsWith(name));
     for (const name of ["Current value", "Suggested value", "New value", "Decision"]) expect(at(name), name).toBeGreaterThan(at("Rule"));
-    expect(at("Decision")).toBeLessThan(at("Problem"));
+    expect(at("Decision")).toBeLessThan(at("Owner"));
     for (const hidden of ["Field description", "Possible values", "First seen", "Days open"]) expect(at(hidden), hidden).toBe(-1);
   });
 

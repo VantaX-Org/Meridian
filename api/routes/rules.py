@@ -40,6 +40,7 @@ from api.services.branded_xlsx import (
     xlsx_filename,
     xlsx_response,
 )
+from api.services.rule_text import rule_messages
 from api.services.rbac import current_user_label, has_permission, require_permission
 from checks import lifecycle
 
@@ -672,7 +673,8 @@ async def list_suppressions(include_expired: bool = False, db: AsyncSession = De
         "SELECT id, check_id, record_key, reason, expires_at, created_by, created_at, expires_at > now() AS active "
         f"FROM rule_suppressions {'' if include_expired else 'WHERE expires_at > now()'} ORDER BY expires_at"
     ))).mappings().all()
-    return {"suppressions": [dict(r) for r in rows]}
+    said = await rule_messages(db, tenant.id, (r["check_id"] for r in rows))
+    return {"suppressions": [{**r, "message": said.get(r["check_id"])} for r in rows]}
 
 
 @router.post("/rule-suppressions", status_code=201, dependencies=[Depends(require_permission("approve"))])
