@@ -140,7 +140,7 @@ for (const [who, label] of Object.entries(ROLES) as [keyof typeof ROLES, string]
     await signIn(page, who);
     await expect(page.getByRole("button", { name: new RegExp(`^Account, ${label.split(" /")[0]}`) })).toBeVisible();
     await page.goto("/");
-    await expect(page.getByText(/objects? (is|are) held under 85|objects? scored/).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/objects? (is|are) cannot reach 85|objects? scored/).first()).toBeVisible({ timeout: 30_000 });
     await expectScreen(page);
   });
 }

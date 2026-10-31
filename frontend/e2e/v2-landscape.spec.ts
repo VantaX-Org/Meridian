@@ -67,7 +67,7 @@ for (const size of SIZES) {
         await page.goto("/?fixture=1", { waitUntil: "load" });
         await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Landscape/);
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
-        await expect(page.getByTestId("landscape-sentence")).toContainText("11 of 15 objects are held under 85 by 30 critical rules over tolerance");
+        await expect(page.getByTestId("landscape-sentence")).toContainText("11 of 15 objects cannot reach 85 yet, because 30 critical rules fail on too many records");
         // With migration waves in the fixture the lead's next step clears the no-go objects of the next wave.
         await expect(page.getByRole("link", { name: "Clear the 3 no-go objects in Wave 1: finance foundations" })).toBeVisible();
 

@@ -39,7 +39,7 @@ export function CcBanner({ eyebrow, headline, verdict, why, figs = [], action, t
             <div key={f.label}>
               <dt>{f.label}</dt>
               <dd>{f.value}</dd>
-              {f.note ? <span>{f.note}</span> : null}
+              {f.note ? <dd className="m2-cc-note">{f.note}</dd> : null}
             </div>
           ))}
         </dl>

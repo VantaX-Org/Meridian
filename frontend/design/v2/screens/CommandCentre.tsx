@@ -50,12 +50,12 @@ export function GoLiveBanner({ landscape, waves }: { landscape: Landscape; waves
         <div>
           <dt>{t("Days to go-live")}</dt>
           <dd>{days == null ? "—" : int(Math.max(days, 0))}</dd>
-          <span>{wave?.target_date ? formatDate(wave.target_date, "date") : t("no date set")}</span>
+          <dd className="m2-cc-note">{wave?.target_date ? formatDate(wave.target_date, "date") : t("no date set")}</dd>
         </div>
         <div>
           <dt>{t("Cost of waiting")}</dt>
           <dd>{cost == null ? "—" : moneyCompactText(cost, money?.currency)}</dd>
-          <span>{cost == null ? t("no cost model") : t("per month")}</span>
+          <dd className="m2-cc-note">{cost == null ? t("no cost model") : t("per month")}</dd>
         </div>
         <div>
           <dt>{t("Objects ready")}</dt>
@@ -63,7 +63,7 @@ export function GoLiveBanner({ landscape, waves }: { landscape: Landscape; waves
             {int(ready)}
             <small>/{int(scope.length)}</small>
           </dd>
-          <span>{t("{n} critical issues open", { n: int(critical) })}</span>
+          <dd className="m2-cc-note">{t("{n} critical issues open", { n: int(critical) })}</dd>
         </div>
       </dl>
       <div className="m2-cc-act">

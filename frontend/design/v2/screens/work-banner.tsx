@@ -23,17 +23,17 @@ export function WorkBanner({ why, open, critical, proposed, action, pending }: {
         <div>
           <dt>{t("Open records")}</dt>
           <dd>{int(open)}</dd>
-          <span>{t("still failing a rule")}</span>
+          <dd className="m2-cc-note">{t("still failing a rule")}</dd>
         </div>
         <div>
           <dt>{t("Critical")}</dt>
           <dd>{int(critical)}</dd>
-          <span>{t("fix these first")}</span>
+          <dd className="m2-cc-note">{t("fix these first")}</dd>
         </div>
         <div>
           <dt>{t("With a suggested value")}</dt>
           <dd>{int(proposed)}</dd>
-          <span>{t("ready to accept")}</span>
+          <dd className="m2-cc-note">{t("ready to accept")}</dd>
         </div>
       </dl>
       <div className="m2-cc-act">{action}</div>

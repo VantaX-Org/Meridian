@@ -375,7 +375,11 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-gx { margin-left: var(--m2-s4); }
 .m2-cd { display: flex; align-items: baseline; gap: var(--m2-s2); min-width: 0; }
 .m2-cd > .m2-cdt { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.m2-cd > .m2-cdc { flex: none; max-width: 50%; overflow: hidden; text-overflow: ellipsis; color: var(--m2-ink-3); font-size: var(--m2-fs-12); }
+.m2-cd > .m2-cdc { flex: none; max-width: 50%; overflow: hidden; text-overflow: ellipsis; color: var(--m2-ink-2); font-size: var(--m2-fs-12); }
+/* In a sentence a coded term flows with the prose instead of truncating. */
+.m2-cc-why .m2-cd { display: inline; }
+.m2-cc-why .m2-cd > .m2-cdt { white-space: normal; }
+.m2-cc-why .m2-cd > .m2-cdc { margin-left: var(--m2-s1); }
 .m2-pvl { display: flex; gap: var(--m2-s1); min-width: 0; color: var(--m2-meta); }
 .m2-pvt { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .m2-pvm { flex: none; }
@@ -592,7 +596,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-figs dt { font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
 .m2-cc-figs dd { margin: 0; white-space: nowrap; font-size: clamp(var(--m2-fs-24), 2.2vw, calc(var(--m2-fs-24) * 1.5)); line-height: 1.1; font-weight: 600; font-variant-numeric: tabular-nums; }
 .m2-cc-figs dd small { font-size: var(--m2-fs-16); color: var(--m2-ink-3); font-weight: 500; }
-.m2-cc-figs span { font-size: var(--m2-fs-12); color: var(--m2-ink-3); }
+.m2-cc-figs > div > dd.m2-cc-note { font-size: var(--m2-fs-12); line-height: 1.4; font-weight: 400; color: var(--m2-ink-3); }
 .m2-cc-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--m2-s3); flex-wrap: wrap; }
 .m2-cc-legend { display: inline-flex; gap: var(--m2-s4); font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
 .m2-cc-legend > span { display: inline-flex; align-items: center; gap: var(--m2-s1); font-variant-numeric: tabular-nums; }
@@ -693,5 +697,5 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-banner .m2-cc-act { grid-column: 1 / -1; justify-self: start; }
 .m2-cc-figs dd { font-size: var(--m2-fs-24); }
 .m2-cc-figs > div { min-width: 0; padding-left: var(--m2-s3); }
-.m2-cc-figs dd, .m2-cc-figs span { overflow-wrap: anywhere; white-space: normal; }
+.m2-cc-figs dd { overflow-wrap: anywhere; white-space: normal; }
 .m2-cc-lede { margin-bottom: var(--m2-s4); }

@@ -30,12 +30,12 @@ export function ObjectBanner({ cell, receipt, label, system, module, cap }: { ce
         <div>
           <dt>{t("Records to fix")}</dt>
           <dd>{receipt || cell.open_work != null ? int(open) : "—"}</dd>
-          <span>{t("of {n} checked", { n: int(cell.records_checked) })}</span>
+          <dd className="m2-cc-note">{t("of {n} checked", { n: int(cell.records_checked) })}</dd>
         </div>
         <div>
           <dt>{t("Money at risk")}</dt>
           <dd>{risk == null ? "—" : moneyCompactText(risk, receipt?.currency)}</dd>
-          <span>{risk == null ? t("no cost model") : receipt?.cost_model_source === "default" ? t("estimate, default costs") : t("per month")}</span>
+          <dd className="m2-cc-note">{risk == null ? t("no cost model") : receipt?.cost_model_source === "default" ? t("estimate, default costs") : t("per month")}</dd>
         </div>
       </dl>
       <div className="m2-cc-act">
