@@ -345,7 +345,7 @@ test.describe("keyboard only", () => {
   test("flow 4: start an extraction as Basis", async ({ page }) => {
     await prepare(page, "light", null);
     await open(page, "/?fixture=1&persona=basis");
-    await tabTo(page, /^Extract SuccessFactors$/);
+    await tabTo(page, /^Fix the SuccessFactors sign-in$/);
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "SuccessFactors" });
     await expect(dialog).toBeVisible(NAV);

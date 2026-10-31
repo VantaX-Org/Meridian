@@ -6,7 +6,7 @@ import "../runs.css";
 import "../system.css";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatDate } from "@/lib/format";
+import { formatDate, labelOf } from "@/lib/format";
 import { errorSentence } from "@/lib/api/v2/client";
 import { attachToRequest, cancelRequest, commentRequest, exportRequest, retryRequest, submitRequest, type ChangeRequest, type Precheck, type RequestDetail, type RequestKind, type RequestObject, type RequestStatus } from "@/lib/api/v2/requests";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
@@ -70,7 +70,7 @@ export function PrecheckView({ p }: { p: Precheck }) {
               <V2Link href={hrefFor({ kind: "rule", id: f.check_id })}>
                 <Mono>{f.check_id}</Mono>
               </V2Link>
-              <span>{f.severity}</span>
+              <span>{labelOf(f.severity)}</span>
               <span className="m2-rl-sub">
                 {f.field ? <Mono>{f.field}</Mono> : null}
                 {f.field ? " " : null}
