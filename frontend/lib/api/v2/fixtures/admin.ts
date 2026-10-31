@@ -506,6 +506,10 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
     const offset = Number(params.offset ?? 0);
     return { entries: clone(all.slice(offset, offset + limit)), total: all.length, limit, offset };
   }
+  if (path === "/audit/actors") {
+    const ids = new Set(s.audit.map((e) => e.actor_user_id));
+    return { actors: s.users.filter((u) => ids.has(u.id)).map((u) => ({ id: u.id, name: u.name })).sort((a, b) => a.name.localeCompare(b.name)) };
+  }
   if (path === "/audit/summary") {
     const counts = new Map<string, number>();
     s.audit.forEach((e) => counts.set(`${e.action}|${e.entity_type}`, (counts.get(`${e.action}|${e.entity_type}`) ?? 0) + 1));

@@ -84,6 +84,14 @@ describe("Admin: audit log", () => {
     await waitFor(() => expect(dataRows("Audit log").every((r) => norm(r).includes("Thabo Molefe"))).toBe(true));
   });
 
+  it("offers every person in the log to an auditor without user administration", async () => {
+    h.allowed = ["view", "view_audit"];
+    withInspector(<AuditSection />);
+    await screen.findByRole("option", { name: "Thabo Molefe" });
+    fireEvent.change(screen.getByLabelText("Who"), { target: { value: "u-4" } });
+    await waitFor(() => expect(dataRows("Audit log").every((r) => norm(r).includes("Thabo Molefe"))).toBe(true));
+  });
+
   it("exports with the filters that are on screen", async () => {
     const spy = vi.spyOn(adminApi, "exportAudit");
     withInspector(<AuditSection />);
