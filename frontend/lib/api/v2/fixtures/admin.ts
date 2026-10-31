@@ -402,8 +402,10 @@ const CATALOGUE: Omit<CatalogueEntry, "url" | "last_built_at">[] = [
   { id: "board", name: "Board pack", format: "PDF", about: "Where data quality stands, what moved and what it is worth: the pack for a steering committee.", sections: ["Verdict", "Movement", "Value at risk", "Migration waves"], page_estimate: 8, requires: ["run"] },
   { id: "workbook", name: "Analyst workbook", format: "XLSX", about: "Every object, rule and failing record count for one run in a workbook.", sections: ["Objects", "Rules", "Records"], page_estimate: 0, requires: ["run"] },
   { id: "analysis", name: "Analysis report", format: "PDF", about: "One run read end to end: coverage, scores, failing rules.", sections: ["Coverage", "Scores", "Rules"], page_estimate: 14, requires: ["run"] },
-  { id: "trend", name: "Trend report", format: "PDF", about: "Score by object across runs.", sections: ["Trend"], page_estimate: 5, requires: [] },
-  { id: "rules", name: "Rule catalogue", format: "PDF", about: "Every rule with its definition and severity.", sections: ["Rules"], page_estimate: 40, requires: [] },
+  { id: "trend", name: "Trend report", format: "PDF", about: "Score by object across runs.", sections: ["Trend"], page_estimate: 5, requires: ["run"] },
+  { id: "owners", name: "Owner workload", format: "PDF", about: "Each owner's score, open items and objects, then the objects with no owner.", sections: ["Owners", "Objects by owner", "Objects with no owner"], page_estimate: 4, requires: ["run"] },
+  { id: "rules", name: "Rule catalogue", format: "PDF", about: "One object's validation rules, with severity, dimension and SAP field.", sections: ["Rules"], page_estimate: 60, requires: ["module"] },
+  { id: "dictionary", name: "Data dictionary", format: "PDF", about: "The SAP tables and fields Meridian reads, by table and object.", sections: ["Fields by table"], page_estimate: 40, requires: [] },
   { id: "object", name: "Object report", format: "PDF", about: "One object's rules and fields for one run.", sections: ["Object"], page_estimate: 6, requires: ["run", "module"] },
 ];
 
@@ -413,7 +415,9 @@ function catalogue(params: Record<string, unknown>): CatalogueEntry[] {
   return CATALOGUE.map((c) => {
     const ready = (!c.requires.includes("run") || v) && (!c.requires.includes("module") || m);
     const ext = c.format.toLowerCase();
-    const url = !ready ? null : c.id === "board" ? `/api/v1/reports/board/${v}.pdf` : c.id === "workbook" ? `/api/v1/reports/${v}/workbook.xlsx${m ? `?module=${m}` : ""}` : c.id === "object" ? `/api/v1/reports/object/${v}/${m}.pdf` : c.id === "analysis" ? `/api/v1/reports/analysis/${v}.pdf` : `/api/v1/reports/${c.id}.${ext}`;
+    const url = !ready ? null : c.id === "board" ? `/api/v1/reports/board/${v}.pdf` : c.id === "workbook" ? `/api/v1/reports/${v}/workbook.xlsx${m ? `?module=${m}` : ""}` : c.id === "object" ? `/api/v1/reports/object/${v}/${m}.pdf` : c.id === "analysis" ? `/api/v1/reports/analysis/${v}.pdf`
+      : c.id === "owners" ? `/api/v1/reports/owners/${v}.pdf` : c.id === "trend" ? `/api/v1/reports/trend.pdf?version_id=${v}&runs=12`
+      : c.id === "rules" ? `/api/v1/reports/rules.pdf?module=${m}` : c.id === "dictionary" ? `/api/v1/reports/dictionary.pdf${m ? `?module=${m}` : ""}` : `/api/v1/reports/${c.id}.${ext}`;
     return { ...c, url, last_built_at: st().history.find((h) => h.kind === c.id)?.created_at ?? null };
   });
 }
