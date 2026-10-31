@@ -21,6 +21,7 @@ import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, 
 import { NONE_REQ, requestsDownload, requestsRead, requestsWrite, resetRequestsFixture } from "./requests";
 import { configRead, configWrite, NONE_CONFIG } from "./config";
 import { cleaningRead, cleaningWrite, NONE_CLEANING, resetCleaningFixture } from "./cleaning";
+import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
 import { guardDecision, NONE_STEP10, receiptPolicy, resetStep10Fixture, step10Read, step10Write, withPolicyMarks, withSandbox } from "./step10";
 
 /**
@@ -125,6 +126,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (cfg !== NONE_CONFIG) return cfg as T;
   const cl = cleaningWrite(method, path);
   if (cl !== NONE_CLEANING) return cl as T;
+  const pd = discoveryWrite(method, path, body);
+  if (pd !== NONE_DISCOVERY) return pd as T;
   const roles = rolesFixtureWrite(method, path, body, params);
   if (roles !== NONE_ROLES) return roles as T;
   const out = ((): unknown => {
@@ -166,7 +169,7 @@ export { resetEnterpriseFixture } from "./enterprise";
 
 /** A file in fixture mode: the step 9 certificate PDF, the enterprise stand-ins, then the admin area's. */
 export function fixtureDownload(path: string, params: Record<string, unknown>, fallback: string): { name: string; text: string } {
-  return requestsDownload(path) ?? step9Download(path) ?? enterpriseFixtureDownload(path) ?? adminFixtureDownload(path, params, fallback);
+  return requestsDownload(path) ?? discoveryDownload(path) ?? step9Download(path) ?? enterpriseFixtureDownload(path) ?? adminFixtureDownload(path, params, fallback);
 }
 export const fixtureExport = wf.exportFixture;
 export const fixtureImport = wf.importFixture;
@@ -179,6 +182,7 @@ export const resetWorkFixture = (): void => {
   resetStep10Fixture();
   resetRequestsFixture();
   resetCleaningFixture();
+  resetDiscoveryFixture();
 };
 export { resetStep9Fixture, resetStep10Fixture };
 
@@ -263,6 +267,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (cfg !== NONE_CONFIG) return cfg as T;
   const cl = cleaningRead(path);
   if (cl !== NONE_CLEANING) return cl as T;
+  const pd = discoveryRead(path, params);
+  if (pd !== NONE_DISCOVERY) return pd as T;
   const rolesStep = rolesFixtureResponse(path, params);
   if (rolesStep !== NONE_ROLES) return rolesStep as T;
   const ent = enterpriseFixtureResponse(path);

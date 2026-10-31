@@ -124,6 +124,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/go-live": "v2:waves",
   "/atlas": "v2:landscape",
   "/config": "v2:processes",
+  "/processes": "v2:processes",
   "/cleansing": "v2:monitoring",
   "/o/[system]/[module]/golden": "v2:golden-records",
   "/o/[system]/[module]/glossary": "v2:glossary",

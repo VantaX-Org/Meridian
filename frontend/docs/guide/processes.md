@@ -24,6 +24,18 @@ Open a step for its transaction, its activities and fields, the rules failing on
 - **What changed**, **Save as a new version**, **Discard changes**, and **Versions**.
 - The rule at the foot: "A step is blocked in process readiness when a field it reads fails a critical or high rule. Map the fields each activity reads here, and the Processes tab shows them on the next run."
 
+## Process discovery
+
+**Process discovery** (`/processes`) mines the as-is flow of each L1 process from the event tables of one system. Pick the system at the top. The sentence reads "3 of 7 processes mined on ECC production", with the median fitness, the cases mined and the processes behind their schedule.
+
+- **The catalogue** lists every L1 with its cases, variants, median throughput time, automation rate, fitness against the reference model and the data quality defects on the records it touched. **Mine** starts a run; **Mine again** refreshes one. Starting a run needs the run process discovery permission. A process the system cannot mine says why.
+- **Open flow** shows the run. The steps are bars sized by case count; click a step to go down a level, from L2 to L5, and the breadcrumb takes you back up. The table under it lists the as-is hand-overs between steps with their counts and median wait.
+- **Variants** lists the case paths, most frequent first. Click one to filter the cases to it.
+- **Conformance** shows the fitness of each reference step, how often it ran out of order, and the activities that happened outside the reference.
+- **Cases** lists the cases of the run; open one to read its events in order, with the time, the user, whether it was automated and the source table.
+- **Health** shows how the fitness of each process moved since the run before. **Schedules** re-mines a process on a cron schedule; pause, resume or remove a schedule there.
+- **Exports** writes the run as a Signavio file, and a selected step as BPMN. Both need the export process permission.
+
 ## The numbers and where they come from
 
 - Step states come from the fields mapped to each activity and the rules that failed on those fields in the run.
