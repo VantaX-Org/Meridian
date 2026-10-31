@@ -29,10 +29,11 @@ for _param, _sf in bc.BP_FIELDS.values():
 
 def interfaces(testrun: bool = True, bp_address: bool = True) -> dict[str, dict[str, tuple[str, Optional[set[str]], bool]]]:
     """bapi -> {parameter: (class, structure fields or None, optional)}"""
-    mat = {p: ("I" if p != "UNITSOFMEASURE" and p != "UNITSOFMEASUREX" and p != "MATERIALDESCRIPTION" else "T", f, p != "HEADDATA")
+    # Fresh sets each call: FakeSAP(drop=...) removes fields from them, which must not leak into later tests.
+    mat = {p: ("I" if p != "UNITSOFMEASURE" and p != "UNITSOFMEASUREX" and p != "MATERIALDESCRIPTION" else "T", set(f), p != "HEADDATA")
            for p, f in _MAT_STRUCTS.items()}
     mat["RETURN"] = ("E", None, True)
-    bp = {p: ("I", f, True) for p, f in _BP_STRUCTS.items() if bp_address or p != "ADDRESSDATA"}
+    bp = {p: ("I", set(f), True) for p, f in _BP_STRUCTS.items() if bp_address or p != "ADDRESSDATA"}
     bp.update({p: ("I", None, p != "PARTNERCATEGORY") for p in _BP_SCALARS})
     bp.update({"BUSINESSPARTNER": ("E", None, True), "RETURN": ("T", None, True)})
     out = {

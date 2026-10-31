@@ -62,11 +62,12 @@ def upgrade() -> None:
     )
     op.create_index("ix_remediation_batch_verifications_batch", "remediation_batch_verifications",
                     ["tenant_id", "batch_id", "created_at"])
-    table = "remediation_batch_verifications"
-    op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
-    op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
-    op.execute(f"DROP POLICY IF EXISTS {table}_rls ON {table}")
-    op.execute(f"CREATE POLICY {table}_rls ON {table} USING (tenant_id = current_setting('app.tenant_id')::uuid)")
+    # Written out in full: tests/test_rls_conformance.py reads the migrations' text for each table's RLS statement.
+    op.execute("ALTER TABLE remediation_batch_verifications ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE remediation_batch_verifications FORCE ROW LEVEL SECURITY")
+    op.execute("DROP POLICY IF EXISTS remediation_batch_verifications_rls ON remediation_batch_verifications")
+    op.execute("CREATE POLICY remediation_batch_verifications_rls ON remediation_batch_verifications "
+               "USING (tenant_id = current_setting('app.tenant_id')::uuid)")
 
     op.drop_constraint("ck_notification_deliveries_kind", "notification_deliveries", type_="check")
     op.create_check_constraint("ck_notification_deliveries_kind", "notification_deliveries",
