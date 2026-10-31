@@ -16,6 +16,7 @@ import { SsoSection } from "./signin";
 import { SystemSection } from "./system";
 import { BillingSection, LicenceSection } from "./tenant";
 import { UsersSection } from "./users";
+import { MatchRulesSection } from "./matchrules";
 import { WebhooksSection } from "./webhooks";
 import { DigestsSection, PolicyPacksSection } from "./step10";
 import { t } from "@/lib/v2/i18n";
@@ -228,6 +229,8 @@ function Section({ slug }: { slug: AdminSlug }) {
       return <MappingsSection />;
     case "reference":
       return <ReferenceSection />;
+    case "matchrules":
+      return <MatchRulesSection />;
     case "audit":
       return <AuditSection />;
     case "alerts":
