@@ -146,6 +146,12 @@ export function triageWrite(method: string, path: string, body: unknown): unknow
     ruleState().push(r);
     return r;
   }
+  if (method === "POST" && path === "/triage/rules/reorder") {
+    const ids = (b.ids as string[] | undefined) ?? [];
+    if (new Set(ids).size !== ids.length || ids.length !== ruleState().length || !ruleState().every((r) => ids.includes(r.id))) refuse("ids must list every rule exactly once", 422);
+    for (const r of ruleState()) r.position = ids.indexOf(r.id);
+    return [...ruleState()].sort((a, b) => a.position - b.position);
+  }
   const rm = /^\/triage\/rules\/([^/]+)$/.exec(path);
   if (rm) {
     const r = ruleState().find((x) => x.id === decodeURIComponent(rm[1])) ?? refuse("Rule not found", 404);

@@ -6385,6 +6385,8 @@ export const en = {
   "Your role cannot read the triage queue.": "Your role cannot read the triage queue.",
   "Rank score": "Rank score",
   "Impact {i}, {u} of the SLA used": "Impact {i}, {u} of the SLA used",
+  "Rule order saved.": "Rule order saved.",
+  "The rule order could not be saved.": "The rule order could not be saved.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

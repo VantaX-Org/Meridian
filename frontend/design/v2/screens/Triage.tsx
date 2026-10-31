@@ -6,7 +6,7 @@ import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
   bulkTriage, createAssignRule, createTeam, deleteAssignRule, deleteTeam, getAssignable, getAssignRules, getTeams, getTriageMetrics,
-  getTriageQueue, setAssignRuleEnabled, setTeamMembers,
+  getTriageQueue, reorderAssignRules, setAssignRuleEnabled, setTeamMembers,
   type AssignableUser, type AssignRule, type BulkAction, type BulkBody, type QueueItem, type Team,
 } from "@/lib/api/v2/triage";
 import { formatDate } from "@/lib/format";
@@ -481,6 +481,14 @@ function matchText(m: AssignRule["match"]): string {
   return parts.length ? parts.join("; ") : t("Every new item");
 }
 
+
+/** The rule ids in evaluation order with rows a and b swapped, as /triage/rules/reorder wants them. */
+const swap = (l: AssignRule[], a: number, b: number): string[] => {
+  const ids = l.map((r) => r.id);
+  [ids[a], ids[b]] = [ids[b], ids[a]];
+  return ids;
+};
+
 function Rules({ people, teams, modules }: { people: AssignableUser[]; teams: Team[]; modules: string[] }) {
   const fixture = useFixture();
   const edit = useEditTriage();
@@ -495,6 +503,7 @@ function Rules({ people, teams, modules }: { people: AssignableUser[]; teams: Te
     onSuccess: (r) => done(r.enabled ? t("Rule switched on.") : t("Rule switched off."))(),
     onError: fail(t("The rule could not be changed.")),
   });
+  const move = useMutation({ mutationFn: reorderAssignRules, onSuccess: done(t("Rule order saved.")), onError: fail(t("The rule order could not be saved.")) });
   const remove = useMutation({ mutationFn: deleteAssignRule, onSuccess: done(t("Rule deleted.")), onError: fail(t("The rule could not be deleted.")) });
   const create = useMutation({
     mutationFn: () => createAssignRule({
@@ -533,11 +542,11 @@ function Rules({ people, teams, modules }: { people: AssignableUser[]; teams: Te
               </tr>
             </thead>
             <tbody>
-              {list.map((r) => (
+              {list.map((r, i) => (
                 <tr key={r.id}>
                   <th scope="row" className="m2-card-lead">
                     {r.name}
-                    <span className="m2-meta"> {t("Order {n}", { n: int(r.position) })}</span>
+                    <span className="m2-meta"> {t("Order {n}", { n: int(i + 1) })}</span>
                   </th>
                   <td data-label={t("Matches")}>{matchText(r.match)}</td>
                   <td data-label={t("Assigns to")}>
@@ -554,6 +563,8 @@ function Rules({ people, teams, modules }: { people: AssignableUser[]; teams: Te
                   </td>
                   {edit ? (
                     <td data-label={t("Change")}>
+                      <button type="button" className="m2-btn" aria-label={t("Move {name} up", { name: r.name })} disabled={i === 0 || move.isPending} onClick={() => move.mutate(swap(list, i, i - 1))}>{t("Up")}</button>
+                      <button type="button" className="m2-btn" aria-label={t("Move {name} down", { name: r.name })} disabled={i === list.length - 1 || move.isPending} onClick={() => move.mutate(swap(list, i, i + 1))}>{t("Down")}</button>
                       <button type="button" className="m2-btn" disabled={remove.isPending} onClick={() => remove.mutate(r.id)}>{t("Delete")}</button>
                     </td>
                   ) : null}

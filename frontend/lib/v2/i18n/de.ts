@@ -6386,4 +6386,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Your role cannot read the triage queue.": "Ihre Rolle kann die Triage-Warteschlange nicht lesen.",
   "Rank score": "Rangwert",
   "Impact {i}, {u} of the SLA used": "Auswirkung {i}, {u} des SLA verbraucht",
+  "Rule order saved.": "Regelreihenfolge gespeichert.",
+  "The rule order could not be saved.": "Die Regelreihenfolge konnte nicht gespeichert werden.",
 };

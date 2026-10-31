@@ -119,4 +119,6 @@ export const createAssignRule = (b: { name: string; match: AssignRule["match"]; 
 /** PATCH /triage/rules/{id} replaces the whole rule, so the switch sends the rule back with only `enabled` changed. */
 export const setAssignRuleEnabled = (r: AssignRule, enabled: boolean): Promise<AssignRule> =>
   v2Send("PATCH", `/triage/rules/${encodeURIComponent(r.id)}`, { name: r.name, match: r.match, assign_user_id: r.assign_user_id ?? undefined, assign_team_id: r.assign_team_id ?? undefined, enabled });
+/** POST /triage/rules/reorder: every rule id once, in the new evaluation order. */
+export const reorderAssignRules = (ids: string[]): Promise<AssignRule[]> => v2Send("POST", "/triage/rules/reorder", { ids });
 export const deleteAssignRule = (id: string): Promise<unknown> => v2Send("DELETE", `/triage/rules/${encodeURIComponent(id)}`);

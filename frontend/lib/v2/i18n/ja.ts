@@ -6386,4 +6386,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Your role cannot read the triage queue.": "あなたのロールではトリアージキューを読み込めません。",
   "Rank score": "ランクスコア",
   "Impact {i}, {u} of the SLA used": "影響度 {i}、SLA の {u} を消費",
+  "Rule order saved.": "ルールの順序を保存しました。",
+  "The rule order could not be saved.": "ルールの順序を保存できませんでした。",
 };

@@ -58,4 +58,12 @@ describe("Triage", () => {
     expect(screen.queryByRole("form", { name: "Create a team" })).toBeNull();
     expect(screen.queryByRole("form", { name: "Create an assignment rule" })).toBeNull();
   });
+
+  it("moves an assignment rule up the evaluation order", async () => {
+    renderWithQuery(<Triage />);
+    const rules = await screen.findByTestId("triage-rules");
+    const second = await within(rules).findByRole("button", { name: "Move Finance modules up" });
+    fireEvent.click(second);
+    await waitFor(() => expect(within(screen.getByTestId("triage-rules")).getAllByRole("rowheader")[0].textContent).toContain("Finance modules"));
+  });
 });
