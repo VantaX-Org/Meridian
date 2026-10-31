@@ -67,6 +67,18 @@ describe("the reports canvas", () => {
     expect(screen.getByText(/6 reports made, 2 of 3 schedules are on/)).toBeInTheDocument();
   });
 
+  it("leads with the failed schedule and charts the reports made per kind, each with its description", async () => {
+    page();
+    const banner = await screen.findByTestId("reports-banner");
+    expect(norm(banner)).toContain("1 schedule failed on the last run");
+    expect(norm(banner)).toContain("Trend report, daily did not deliver.");
+    expect(within(banner).getByRole("button", { name: "Create a report" })).toBeEnabled();
+    const bars = within(await screen.findByTestId("reports-by-kind")).getAllByRole("listitem").map(norm);
+    expect(bars).toHaveLength(5);
+    expect(bars[0]).toContain("Board pack");
+    expect(bars[0]).toContain("2 made, 2 by schedule");
+  });
+
   it("downloads a report from its row, and says when the download fails", async () => {
     const spy = vi.spyOn(rep, "downloadReportFile").mockResolvedValueOnce("board-2026-10-16.pdf").mockRejectedValueOnce(new Error("The file is gone."));
     page();
