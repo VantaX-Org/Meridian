@@ -42,6 +42,7 @@ The receipt table then adds the score up: one row per dimension with its weight,
 - **Runs**: the measured score over the last eight runs with the cap line and the baseline, a table of measured and shown scores per run ("Scores are as stored with each run; the measured score is before the cap, the shown score after it."), **Compare with** to open two runs side by side, and **Why the score moved** against the baseline: rules newly failing, fixed, worse and better.
 - **Readiness**: the migration waves this object belongs to with the verdict, blocking gaps, score, readiness and records blocked, and "What the failing rules do in S/4HANA": the features blocked and degraded, each with the rules behind it. **Blockers** turns that round: one row per rule of this object behind a blocked or degraded feature, with its severity, the features it holds back and its failing rows, most failing first. **Readiness by object** lists every object in the same waves with its ruler, verdict and blocking gaps, the most blocked first, with this object marked; select one to open it.
 - **Lineage**: the drawing from source table to S/4 feature. Select a node to pin its facts, with its **Upstream** and **Downstream** nodes listed under them; select one of those to move to it. See the Lineage chapter.
+- **Profile**: what the run found in each field the object reads, table by table: the field with its dictionary text, its type, the blank share, distinct values, length, and the commonest values or the range of a number or date. Values stay withheld for personal data and free text. **Mined dependencies** lists where one field decides another in almost every record, for example "MARA-MTART Material type decides MARA-MBRSH Industry sector, holds in 99.3%", with the rows breaking it. A person who manages rules picks a severity and selects **Make it a rule**; the rule runs from the next analysis.
 - **Processes**, **Glossary**, **Golden records**: each has its own chapter.
 
 ## The numbers and where they come from
@@ -59,6 +60,7 @@ The receipt table then adds the score up: one row per dimension with its weight,
 - **Data owner**: apply the steward template to objects you own, from the object's steward template action.
 - **Programme lead**: share the page as a link, compare runs.
 - **Process analyst**: the Processes tab and its what-if simulation.
+- **Rules manager**: turn a mined dependency on the Profile tab into a rule.
 
 ## Keyboard
 

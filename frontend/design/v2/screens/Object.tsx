@@ -24,7 +24,7 @@ import { ObjectContractsBlock } from "./step9/Contracts";
 import { TopFailing } from "./object/TopFailing";
 import { t as tr, tn } from "@/lib/v2/i18n";
 
-type TabKey = "rules" | "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "glossary" | "golden";
+type TabKey = "rules" | "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "profile" | "glossary" | "golden";
 const TABS: { key: TabKey; label: string; segment: string }[] = [
   { key: "rules", get label() { return tr("Rules"); }, segment: "" },
   { key: "records", get label() { return tr("Records"); }, segment: "/records" },
@@ -33,6 +33,7 @@ const TABS: { key: TabKey; label: string; segment: string }[] = [
   { key: "readiness", get label() { return tr("Readiness"); }, segment: "/readiness" },
   { key: "processes", get label() { return tr("Processes"); }, segment: "/processes" },
   { key: "lineage", get label() { return tr("Lineage"); }, segment: "/lineage" },
+  { key: "profile", get label() { return tr("Profile"); }, segment: "/profile" },
   { key: "glossary", get label() { return tr("Glossary"); }, segment: "/glossary" },
   { key: "golden", get label() { return tr("Golden records"); }, segment: "/golden" },
 ];
@@ -378,6 +379,7 @@ const EMPTY: Record<Exclude<TabKey, "rules">, { text: (label: string) => string;
   readiness: { text: (l) => tr("Feature impact for {l} is calculated from the rules that fail. It fills when the impact model has run for this object.", { l }), get action() { return tr("Open the capping rules"); }, href: () => "" },
   processes: { text: (l) => tr("No process step reads {l} yet. Process readiness fills when a step of the process model reads the fields of the object.", { l }), get action() { return tr("Open the designer"); }, href: (s, m) => `/o/${s}/${m}/processes/design` },
   lineage: { text: (l) => tr("Lineage fills when a field map is loaded for {l}: it shows where its fields come from and which rules read them.", { l }), get action() { return tr("Open the landscape"); }, href: () => "/" },
+  profile: { text: (l) => tr("This run did not profile {l}. A profile is taken when an analysis reads the object from SAP.", { l }), get action() { return tr("Open the rules"); }, href: (s, m) => `/o/${s}/${m}` },
   glossary: { text: (l) => tr("No glossary terms are linked to {l} yet. A data owner links a term to a field and it appears here.", { l }), get action() { return tr("Open the rules"); }, href: (s, m) => `/o/${s}/${m}` },
   golden: { text: (l) => tr("No golden records for {l} yet. A match run creates them from the records that describe the same thing.", { l }), get action() { return tr("Open the rules"); }, href: (s, m) => `/o/${s}/${m}` },
 };
