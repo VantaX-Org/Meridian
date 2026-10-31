@@ -85,6 +85,7 @@ The Analytics tab, third at the top of the Work ledger, shows how fast the stewa
 - **What the latest run changed.** Per object, the issues the latest run found new, fixed and still failing against the run before, with the rules newly failing and the rules recovered.
 - **Time to fix.** From found to fixed over the last 180 days: the median and the slowest tenth, by severity, by object and for the slowest rules.
 - **Decisions per person.** Each steward's decisions over the last weeks, split by kind, with a small line for each day. Under it, the open work per assignee with the critical and overdue items.
+- **Cleaning engine pace.** What the cleaning engine has found and applied over every day it has recorded: fixes applied a day, fixes still waiting, the share approved without review, the share rejected at review or rolled back after applying, and the average review time.
 - **Issues that came back.** The rules and the systems whose issues reopen most after they were closed, with the rate.
 - **Where the failing records sit.** The records with an open issue by organisational unit, such as plant or company code, with the share of each value.
 - **How good the proposals are.** For each source of proposals (rules, the cleaning engine, steward edits and simulations), how many were approved and how many were still fixed at the next run. A source with nothing proposed shows a dash.

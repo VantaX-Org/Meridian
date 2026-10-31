@@ -6210,6 +6210,19 @@ export const en = {
   "This system has not been discovered yet. Discover again reads its dictionary.": "This system has not been discovered yet. Discover again reads its dictionary.",
   "This system has not been discovered yet.": "This system has not been discovered yet.",
   "This table is not in the latest discovery.": "This table is not in the latest discovery.",
+  "{n} hours": "{n} hours",
+  "Applied a day": "Applied a day",
+  "Approved without review": "Approved without review",
+  "Average review time": "Average review time",
+  "Cleaning engine pace": "Cleaning engine pace",
+  "Every day the cleaning engine has recorded": "Every day the cleaning engine has recorded",
+  "Fixes applied": "Fixes applied",
+  "Fixes found": "Fixes found",
+  "Most fixes found in": "Most fixes found in",
+  "Rejected at review": "Rejected at review",
+  "Rolled back after applying": "Rolled back after applying",
+  "The cleaning engine has not recorded a day yet.": "The cleaning engine has not recorded a day yet.",
+  "Waiting to be applied": "Waiting to be applied",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

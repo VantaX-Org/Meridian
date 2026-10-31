@@ -111,6 +111,26 @@ export const getPrescriptive = (): Promise<Prescriptive> => v2Get("/analytics/pr
 export const getBottlenecks = (): Promise<{ bottlenecks: Bottleneck[]; total_queue_size: number }> => v2Get("/analytics/bottlenecks");
 export const getCapacity = (): Promise<Capacity> => v2Get("/analytics/capacity");
 
+/**
+ * Cleaning engine pace (GET /analytics/operational): the recorded cleaning metrics summed over every day on file.
+ * Rates are percentages. The steward-based figures (SLA, queue age) are left out: the backend fills them with a
+ * default when no steward metric is recorded.
+ */
+export interface Operational {
+  kpis: {
+    throughput: number;
+    automation_rate: number;
+    mttr_hours: number;
+    rejection_rate: number;
+    rollback_rate: number;
+    items_in_flight: number;
+    top_object_type: string;
+    total_processed: number;
+    total_detected: number;
+  };
+}
+export const getOperational = (): Promise<Operational> => v2Get("/analytics/operational", { period_type: "daily" });
+
 /*
  * Value delivered (GET /analytics/roi): the latest finished run priced live into eight impact categories from the
  * tenant cost model, the ROI against the subscription, and the monthly cost avoidance the monthly job records.

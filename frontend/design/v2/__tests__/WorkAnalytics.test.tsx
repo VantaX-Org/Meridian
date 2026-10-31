@@ -30,6 +30,14 @@ describe("Work analytics", () => {
     expect(screen.getByTestId("wa-burndown")).toBeInTheDocument();
   });
 
+  it("shows the cleaning engine pace", async () => {
+    renderWithQuery(<WorkAnalytics />);
+    const pace = await screen.findByTestId("wa-cleaning-pace");
+    expect(await within(pace).findByText("69,331")).toBeInTheDocument();
+    expect(pace.textContent).toContain("38.2%");
+    expect(pace.textContent).toContain("6.4 hours");
+  });
+
   it("names the rules the latest run changed and shows a dash for a source with nothing proposed", async () => {
     renderWithQuery(<WorkAnalytics />);
     const change = await screen.findByTestId("wa-run-change");

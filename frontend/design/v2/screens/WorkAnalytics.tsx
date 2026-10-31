@@ -4,11 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getBurndown, getProposalQuality, getRecurrence, getRootCauses, getRuleFeedback, getRunChange, getThroughput, getTimeToFix, type FixStat } from "@/lib/api/v2/work-analytics";
+import { getOperational } from "@/lib/api/v2/analytics";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { f1, int, pct1 } from "@/lib/v2/score";
 import { useRuleList } from "@/lib/v2/sys-queries";
 import { ChartFrame, ChartTable, niceTicks, Sparkline, TrendChart } from "../charts";
+import { Fact, Facts } from "../Inspector";
 import { Sev } from "../inspector/rule";
 import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { CcBanner, CcPage } from "./cc-parts";
@@ -106,6 +108,7 @@ export function WorkAnalytics() {
       <RunChangePanel />
       <TimeToFixPanel />
       <ThroughputPanel />
+      <CleaningPacePanel />
       <RecurrencePanel />
       <RootCausePanel />
       <ProposalPanel />
@@ -205,6 +208,27 @@ function TimeToFixPanel() {
             {d.by_check.map((s) => <tr key={s.check_id}><th scope="row" className="m2-card-lead">{rule(s.check_id)}</th>{statCells(s)}</tr>)}
           </Table>
         </>
+      )}
+    </Section>
+  );
+}
+
+function CleaningPacePanel() {
+  const q = useAnalytics("operational", getOperational);
+  return (
+    <Section q={q} title={t("Cleaning engine pace")} meta={t("Every day the cleaning engine has recorded")} testId="wa-cleaning-pace">
+      {({ kpis: k }) => k.total_detected === 0 && k.total_processed === 0 ? <EmptyFrame>{t("The cleaning engine has not recorded a day yet.")}</EmptyFrame> : (
+        <Facts>
+          <Fact label={t("Fixes found")}>{int(k.total_detected)}</Fact>
+          <Fact label={t("Fixes applied")}>{int(k.total_processed)}</Fact>
+          <Fact label={t("Applied a day")}>{f1(k.throughput)}</Fact>
+          <Fact label={t("Waiting to be applied")}>{int(k.items_in_flight)}</Fact>
+          <Fact label={t("Approved without review")}>{pctOf(k.automation_rate)}</Fact>
+          <Fact label={t("Rejected at review")}>{pctOf(k.rejection_rate)}</Fact>
+          <Fact label={t("Rolled back after applying")}>{pctOf(k.rollback_rate)}</Fact>
+          <Fact label={t("Average review time")}>{k.mttr_hours ? t("{n} hours", { n: f1(k.mttr_hours) }) : f1(null)}</Fact>
+          <Fact label={t("Most fixes found in")}>{k.top_object_type && k.top_object_type !== "N/A" ? formatModuleName(k.top_object_type) : f1(null)}</Fact>
+        </Facts>
       )}
     </Section>
   );

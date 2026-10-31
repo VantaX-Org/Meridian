@@ -74,5 +74,9 @@ export function analyticsRead(path: string): unknown {
   if (path === "/analytics/bottlenecks") return { bottlenecks: [{ stage: "recommended", count: 61_906, avg_age_hours: 96.4 }], total_queue_size: 62_015 };
   if (path === "/analytics/capacity") return { needed: 4, current: 2, surplus_deficit: -2, daily_inflow: 412.5, per_steward: 118.2 };
   if (path === "/analytics/roi") return roi;
+  if (path === "/analytics/operational") return {
+    kpis: { throughput: 412.5, automation_rate: 38.2, mttr_hours: 6.4, rejection_rate: 4.1, rollback_rate: 0.3, items_in_flight: 61_906, top_object_type: "material_master", total_processed: 7_425, total_detected: 69_331, sla_compliance_pct: 100, avg_queue_age_hours: 0, top_rule_by_volume: "material_master" },
+    bottlenecks: [], capacity: {},
+  };
   return NONE_ANALYTICS;
 }
