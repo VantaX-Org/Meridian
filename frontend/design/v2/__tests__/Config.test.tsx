@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as config from "@/lib/api/v2/config";
 import { Config } from "../screens/Config";
@@ -30,6 +30,18 @@ describe("configuration", () => {
     expect(rows[0]).toHaveTextContent("Critical");
     expect(rows.at(-1)).not.toHaveTextContent("Critical");
     expect(screen.getByTestId("config-changes")).toHaveTextContent("Removed");
+  });
+
+  it("narrows the findings to the shadow processes", async () => {
+    renderWithQuery(<Config />);
+    const panel = await screen.findByTestId("config-findings");
+    fireEvent.click(await within(panel).findByRole("button", { name: /^Shadow process/ }));
+    const rows = within(panel).getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent("Record-to-Report process incomplete");
+    expect(panel).toHaveTextContent("Processes found in the data that the configuration does not describe.");
+    fireEvent.click(within(panel).getByRole("button", { name: /^All / }));
+    expect(within(panel).getAllByRole("row").length).toBeGreaterThan(2);
   });
 
   it("asks for an analysis when no config run is stored", async () => {

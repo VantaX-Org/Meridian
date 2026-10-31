@@ -6458,6 +6458,18 @@ export const en = {
   "Re-check objects": "Re-check objects",
   "Re-checking objects needs the trigger_sync permission.": "Re-checking objects needs the trigger_sync permission.",
   "Scores the latest stored extraction of each object again against the rules as they stand now. Nothing is read from SAP.": "Scores the latest stored extraction of each object again against the rules as they stand now. Nothing is read from SAP.",
+  "Bottleneck": "Bottleneck",
+  "Conflict": "Conflict",
+  "Ghost configuration": "Ghost configuration",
+  "Integration gap": "Integration gap",
+  "Kind of finding": "Kind of finding",
+  "Mismatch": "Mismatch",
+  "Number range": "Number range",
+  "Organisation gap": "Organisation gap",
+  "Processes found in the data that the configuration does not describe.": "Processes found in the data that the configuration does not describe.",
+  "Settings that exist but no transaction uses.": "Settings that exist but no transaction uses.",
+  "Shadow process": "Shadow process",
+  "Unused licence": "Unused licence",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
 import { getConfigAlignment, getConfigDrift, getConfigHealth, getConfigInventory, getConfigLicence, getConfigProcesses, rediscoverConfig, type AlignmentFinding, type ProcessHealth } from "@/lib/api/v2/config";
@@ -56,6 +56,24 @@ const SEVERITY: Record<AlignmentFinding["severity"], { word: () => string; tone:
 };
 const RANK = { critical: 0, high: 1, medium: 2, low: 3 } as const;
 
+/** The kinds of finding the alignment validator raises, as api/services/config_intelligence/serializers.py names them. */
+const KIND: Record<string, () => string> = {
+  ghost: () => t("Ghost configuration"),
+  shadow: () => t("Shadow process"),
+  drift: () => t("Drift"),
+  bottleneck: () => t("Bottleneck"),
+  licence_waste: () => t("Unused licence"),
+  conflict: () => t("Conflict"),
+  org_gap: () => t("Organisation gap"),
+  mismatch: () => t("Mismatch"),
+  number_range: () => t("Number range"),
+  integration_gap: () => t("Integration gap"),
+};
+const KIND_HINT: Record<string, () => string> = {
+  ghost: () => t("Settings that exist but no transaction uses."),
+  shadow: () => t("Processes found in the data that the configuration does not describe."),
+};
+
 const CHANGE: Record<string, () => string> = { added: () => t("Added"), removed: () => t("Removed"), modified: () => t("Changed"), changed: () => t("Changed") };
 
 function useConfig<T>(name: string, fn: () => Promise<T>) {
@@ -70,6 +88,7 @@ export function Config() {
   const alignment = useConfig("alignment", getConfigAlignment);
   const licence = useConfig("licence", getConfigLicence);
   const drift = useConfig("drift", getConfigDrift);
+  const [kind, setKind] = useState<string | null>(null);
   const { can } = useV2Session();
   const toast = useToast();
   const rerun = useMutation({
@@ -85,6 +104,8 @@ export function Config() {
   const findings = [...alignment.data.findings].sort((a, b) => RANK[a.severity] - RANK[b.severity] || b.estimated_impact_zar - a.estimated_impact_zar);
   const currency = alignment.data.currency ?? "ZAR";
   const cost = findings.reduce((s, f) => s + f.estimated_impact_zar, 0);
+  const kinds = [...new Set(findings.map((f) => f.category))].sort((a, b) => (KIND[a]?.() ?? a).localeCompare(KIND[b]?.() ?? b));
+  const shown = kind && kinds.includes(kind) ? findings.filter((f) => f.category === kind) : findings;
   const urgent = findings.filter((f) => f.severity === "critical" || f.severity === "high").length;
   const elements = inventory.data.elements;
   const used = elements.filter((e) => e.transaction_count > 0).length;
@@ -152,7 +173,20 @@ export function Config() {
         </Panel>
       </div>
 
-      <Panel title={t("Findings")} meta={t("{n} findings, worst first", { n: int(findings.length) })} testId="config-findings">
+      <Panel title={t("Findings")} meta={t("{n} findings, worst first", { n: int(shown.length) })} testId="config-findings">
+        {kinds.length > 1 ? (
+          <div className="m2-segs" role="group" aria-label={t("Kind of finding")}>
+            <button type="button" className="m2-seg" aria-pressed={shown === findings} onClick={() => setKind(null)}>
+              {t("All {n}", { n: int(findings.length) })}
+            </button>
+            {kinds.map((k) => (
+              <button key={k} type="button" className="m2-seg" aria-pressed={kind === k} title={KIND_HINT[k]?.()} onClick={() => setKind(k)}>
+                {KIND[k]?.() ?? labelText(k)} {int(findings.filter((f) => f.category === k).length)}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {kind && KIND_HINT[kind] && shown !== findings ? <p className="m2-meta">{KIND_HINT[kind]()}</p> : null}
         {findings.length === 0 ? <EmptyFrame>{t("The configuration matches how the system is used.")}</EmptyFrame> : (
           <ScrollFrame label={t("Findings table, scrollable")}>
             <table className="m2-tbl m2-cards">
@@ -160,13 +194,14 @@ export function Config() {
                 <tr>
                   <th scope="col">{t("Severity")}</th>
                   <th scope="col">{t("Finding")}</th>
+                  <th scope="col">{t("Kind")}</th>
                   <th scope="col">{t("Area")}</th>
                   <th scope="col">{t("Affected")}</th>
                   <th scope="col" className="m2-r">{t("At stake")}</th>
                 </tr>
               </thead>
               <tbody>
-                {findings.map((f) => (
+                {shown.map((f) => (
                   <tr key={f.check_id}>
                     <td data-label={t("Severity")}><span className="m2-cf-sev" data-tone={SEVERITY[f.severity].tone}>{SEVERITY[f.severity].word()}</span></td>
                     <th scope="row" className="m2-card-lead">
@@ -174,6 +209,7 @@ export function Config() {
                       <span className="m2-meta">{f.description}</span>
                       {f.remediation ? <span className="m2-meta">{t("Fix: {what}", { what: f.remediation })}</span> : null}
                     </th>
+                    <td data-label={t("Kind")}>{KIND[f.category]?.() ?? labelText(f.category)}</td>
                     <td data-label={t("Area")}><Area code={f.module} /></td>
                     <td data-label={t("Affected")}><Affected values={f.affected_elements} /></td>
                     <td className="m2-r" data-label={t("At stake")}>{moneyCompactText(f.estimated_impact_zar, currency)}</td>
