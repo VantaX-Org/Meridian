@@ -26,7 +26,7 @@
         {"caption": "Compare two runs and Meridian says why each score moved.", "go": "/run/b0500000-0000-4000-8000-000000000005/vs/d3229ded-0708-4967-9dfb-1b7f4fada953"},
         {"caption": "People: who holds the open work, what waits for approval, and the SLA.", "go": "/people"},
         {"caption": "Press Command K, or slash, to open the command line.", "press": "Control+k"},
-        {"caption": "Type a rule id, a material number, an object, or a word such as approve.", "fill": {"label": "Search or type a command", "text": "MM142"}},
+        {"caption": "Type a rule id, a material number, an object, or a word such as approve.", "fill": {"label": "Search, ask, or type a command", "text": "MM142"}},
         {"caption": "Enter opens the result.", "press": "Enter"},
         {"caption": "Help is the question mark in the top bar: the chapter for this screen comes first.", "go": "/?open=help"},
         {"caption": "Every number has its receipt. Nothing is guessed: every figure is a rule result over stored data.", "go": "/"}
@@ -76,7 +76,7 @@
       "steps": [
         {"caption": "A rule is a fixed check with an id, a field, a dimension and a severity.", "go": "/r/MM142"},
         {"caption": "MM142 is a high rule: failing records across objects, the share, the estimated value at risk, within tolerance, features blocked.", "point": {"text": "failing across", "nth": 0}},
-        {"caption": "Definition: the check class, the field as MARA-MEINS, the expression and the authority.", "point": {"text": "Expression", "nth": 0}},
+        {"caption": "Definition: the check class, the field as MARA-MEINS, the expression and the authority.", "click": {"role": "link", "name": "Definition"}},
         {"caption": "Versions: who changed the rule, when and why.", "scroll": 400},
         {"caption": "Scope: every object and system the rule runs on, with its failing count.", "scroll": 300},
         {"caption": "The rule inspector holds the same facts beside any canvas. MM003 is one of the two critical rules that cap Material master.", "go": "/?open=rule%3AMM003"},
@@ -172,7 +172,7 @@
     {
       "video": "guide2-systems", "chapter": "systems", "params": "role=sap_basis",
       "steps": [
-        {"caption": "Meridian reads from SAP and never writes to it. Connect a system here.", "go": "/s/new"},
+        {"caption": "Setup only reads from SAP; nothing is written until an approved batch is sent. Connect a system here.", "go": "/s/new"},
         {"caption": "Choose the system type and fill in the connection, then test it.", "point": {"text": "System type", "nth": 0}},
         {"caption": "You can connect now and test later. Nothing is read until you extract.", "point": {"role": "button", "name": "Connect system"}},
         {"caption": "The system canvas: health, type, last extraction and the last connection test.", "go": "/s/a1b2c3d4-0001-4000-8000-000000000001"},
@@ -315,8 +315,8 @@
         {"caption": "The shortcut sheet: everywhere, go to, tables, the ledger, the inspector, the command line.", "focus": "#m2-canvas", "press": "?"},
         {"caption": "Esc closes the top layer.", "press": "Escape"},
         {"caption": "Command K, or slash, opens the command line.", "press": "Control+k"},
-        {"caption": "Type a rule id to open the rule.", "fill": {"label": "Search or type a command", "text": "MM142"}},
-        {"caption": "Or a word such as approve.", "fill": {"label": "Search or type a command", "text": "approve"}},
+        {"caption": "Type a rule id to open the rule.", "fill": {"label": "Search, ask, or type a command", "text": "MM142"}},
+        {"caption": "Or a word such as approve.", "fill": {"label": "Search, ask, or type a command", "text": "approve"}},
         {"caption": "Enter opens it.", "press": "Enter"},
         {"caption": "G then W goes to Work; g then l, r or p to Landscape, Runs or People.", "go": "/work"},
         {"caption": "In the ledger, j and k move, x selects, Enter opens the row.", "focus": "#m2-canvas", "press": "j"},
@@ -342,9 +342,9 @@
       "video": "guide2-persona-steward", "chapter": "persona-steward", "params": "role=data_steward",
       "steps": [
         {"caption": "Data steward: decide the right value for each failing field.", "go": "/"},
-        {"caption": "Step 1, Landscape: press Accept the suggested values.", "click": {"text": "Accept the suggested values", "nth": 0}},
+        {"caption": "Step 1, Landscape: press the button that accepts the suggested values for the top rule.", "click": {"testid": "steward-next"}},
         {"caption": "Step 2, Work: your rows, ranked by value at risk.", "point": {"role": "grid", "name": "Work ledger"}},
-        {"caption": "Accept a suggested value; the notice has Undo.", "select": {"label": "Decision for 000000000000000100", "value": "fix"}},
+        {"caption": "Accept a suggested value; the notice has Undo.", "select": {"label": "Decision for 000000000000000628", "value": "fix"}},
         {"caption": "Step 3, a record: read the possible values and type the new value.", "go": "/work?open=record%3Amaterial_master%3AMATNR%3D000000000000000100"},
         {"caption": "Step 4, By rule: decide a whole rule at once, or export the fix sheet.", "go": "/work"},
         {"caption": "By rule groups the rows to fix under their rule.", "click": {"role": "button", "name": "By rule"}},
@@ -422,6 +422,31 @@
         {"caption": "Support: copy the diagnostics from help. They hold no record values and no secrets.", "go": "/admin/system?open=help"},
         {"caption": "View as a role: see the product as one role sees it, read-only, for support.", "go": "/admin/viewas"},
         {"caption": "Configuration bundle: move a configuration between tenants, with a diff first.", "go": "/admin/configbundle"}
+      ]
+    },
+    {
+      "video": "guide2-monitoring", "chapter": "monitoring", "params": "persona=steward",
+      "steps": [
+        {"caption": "A clean is never one-off. After a batch loads, the next run shows which records failed again.", "go": "/work/monitor"},
+        {"caption": "Per system: the score before and after the batch, records failing again and records fixed since.", "point": {"text": "ECC production", "nth": 0}},
+        {"caption": "Rules failing again names the checks behind the records that came back on each system.", "point": {"text": "Rules failing again", "nth": 0}},
+        {"caption": "Failing again by week, against the records fixed. A rising line means the source keeps creating bad data.", "point": {"text": "Failing again after a clean, by week", "nth": 0}},
+        {"caption": "Drift by rule names the rules that come back, so the fix goes upstream to the process, not the record.", "point": {"role": "table", "name": "Drift by rule"}},
+        {"caption": "Before and change show how far each rule has moved since the batch, so a growing gap stands out.", "point": {"text": "Change", "nth": 0, "optional": true}},
+        {"caption": "Still clean by batch: each loaded batch with the records that stayed fixed.", "scroll": 1200}
+      ]
+    },
+    {
+      "video": "guide2-ask", "chapter": "ask", "params": "persona=lead",
+      "steps": [
+        {"caption": "Ask Meridian answers questions about your data from this run's facts only.", "go": "/"},
+        {"caption": "Open it from the top bar on any screen.", "click": {"role": "button", "name": "Ask Meridian"}},
+        {"caption": "Start from a suggested question or type your own.", "point": {"text": "What is holding the score down?", "nth": 0}},
+        {"caption": "Every number in the answer must match a fact. If one does not, the answer is withheld.", "click": {"text": "What is holding the score down?", "nth": 0}},
+        {"caption": "The badge says the answer is grounded: every number in it matched a fact from this run.", "point": {"text": "Grounded, every number matches a fact", "nth": 0}},
+        {"caption": "Figures in the answer are drawn to scale, so the size of each number is plain at a glance.", "point": {"role": "list", "name": "Figures in the answer", "optional": true}},
+        {"caption": "The facts used and the rules cited sit under the answer, so you can check each figure.", "point": {"text": "Facts used", "nth": 0}},
+        {"caption": "Rules cited link to the checks behind the answer. Open one to see its definition and its failing records.", "point": {"text": "Rules cited", "nth": 0, "optional": true}}
       ]
     }
   ]

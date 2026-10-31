@@ -71,7 +71,7 @@ describe("sandbox mode", () => {
     renderWithQuery(<AdminCanvas section="settings" />);
     const block = await screen.findByRole("region", { name: "Sandbox mode" });
     await waitFor(() => expect(norm(block)).toContain("StateOff"));
-    fireEvent.click(within(block).getByRole("button", { name: "Enter sandbox mode" }));
+    fireEvent.click(within(block).getByRole("switch", { name: "Enter sandbox mode" }));
     const dlg = await screen.findByRole("dialog", { name: "Enter sandbox mode" });
     fireEvent.click(within(dlg).getByRole("button", { name: "Copy the latest run and enter" }));
     await waitFor(() => expect(enter).toHaveBeenCalledWith(true));
@@ -79,7 +79,7 @@ describe("sandbox mode", () => {
     await waitFor(() => expect(norm(block)).toContain("In sandbox"));
     expect(norm(block)).toContain("794 findings");
     expect(within(block).getByRole("link", { name: "sbx-d3229ded" })).toBeInTheDocument();
-    fireEvent.click(within(block).getByRole("button", { name: "Exit sandbox mode" }));
+    fireEvent.click(within(block).getByRole("switch", { name: "Exit sandbox mode" }));
     const out = await screen.findByRole("dialog", { name: "Exit sandbox mode" });
     fireEvent.click(within(out).getByRole("button", { name: "Discard the sandbox and exit" }));
     await waitFor(() => expect(exit).toHaveBeenCalled());

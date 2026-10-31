@@ -34,6 +34,7 @@ const ChannelInspector = dynamic<BodyProps>(() => import("./records").then((m) =
 const MappingInspector = dynamic<BodyProps>(() => import("./records").then((m) => m.MappingInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
 const ReportInspector = dynamic<BodyProps>(() => import("./reports").then((m) => m.ReportInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
 const ScheduleInspector = dynamic<BodyProps>(() => import("./reports").then((m) => m.ScheduleInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
+const AskPanel = dynamic<BodyProps>(() => import("./ask").then((m) => m.AskPanel as ComponentType<BodyProps>), { loading: InspectorLoading });
 const WavesPanel = dynamic<BodyProps>(() => import("./waves").then((m) => m.WavesPanel as ComponentType<BodyProps>), { loading: InspectorLoading });
 const RunInspector = dynamic<BodyProps>(() => import("./run").then((m) => m.RunInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
 const SystemInspector = dynamic<BodyProps>(() => import("./system").then((m) => m.SystemInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
@@ -91,6 +92,7 @@ export const INSPECTOR_BODIES: Partial<Record<OpenKind, ComponentType<BodyProps>
   preferences: PreferencesPanel,
   help: HelpPanel,
   waves: WavesPanel,
+  ask: AskPanel,
   connection: ConnectionInspector,
   config: ConfigInspector,
   syncschedule: SyncScheduleInspector,

@@ -1,37 +1,37 @@
 WEBVTT
 
 1
-00:00:00.326 --> 00:00:12.016
+00:00:00.004 --> 00:00:06.010
 A run is one measurement of your data. Runs lists them on a timeline.
 
 2
-00:00:12.016 --> 00:00:18.655
+00:00:06.010 --> 00:00:11.263
 The baseline is marked: comparisons measure against it.
 
 3
-00:00:18.655 --> 00:00:26.993
+00:00:11.263 --> 00:00:19.559
 The table counts its own rows: 9 runs, 1 of them failed. Each run: system, trigger, records, rules, score range, status and duration.
 
 4
-00:00:26.993 --> 00:00:34.890
+00:00:19.559 --> 00:00:24.797
 A failed run says so; its job says why.
 
 5
-00:00:34.890 --> 00:00:43.462
+00:00:24.797 --> 00:00:30.274
 Jobs lists every extraction, analysis and configuration load.
 
 6
-00:00:43.462 --> 00:00:52.249
+00:00:30.274 --> 00:00:36.570
 Open a failed job for its stages, the error in plain words and Retry.
 
 7
-00:00:52.249 --> 00:01:02.717
+00:00:36.570 --> 00:00:42.184
 Start a run opens the start panel for an extraction or an analysis.
 
 8
-00:01:02.717 --> 00:01:12.690
+00:00:42.184 --> 00:00:48.071
 Choose the system and what to run.
 
 9
-00:01:12.690 --> 00:01:22.093
+00:00:48.071 --> 00:00:55.292
 Administration, Start and schedule starts and schedules extractions, analyses and uploads. The runs themselves are here on Runs.

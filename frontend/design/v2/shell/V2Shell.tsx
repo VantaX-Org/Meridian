@@ -26,6 +26,7 @@ import { RoleBanners } from "./RoleBanners";
 import { SandboxBanner } from "./SandboxBanner";
 import { DemoBar } from "./DemoBar";
 import { StatusStrip } from "./StatusStrip";
+import { PhoneTabs } from "./PhoneTabs";
 import { ToastProvider, useToast } from "../Toast";
 import { TopBar } from "./TopBar";
 import { useDocumentLang } from "./Standalone";
@@ -141,6 +142,7 @@ function ChromeBody({ children }: { children: ReactNode }) {
           <Inspector key={open?.kind === "preferences" ? "preferences" : localeKey} />
         </div>
       </div>
+      <PhoneTabs />
       {commandOpen ? <CommandLine onClose={() => setCommandOpen(false)} /> : null}
       {sheetOpen ? <ShortcutSheet onClose={() => setSheetOpen(false)} /> : null}
     </>

@@ -1,65 +1,65 @@
 WEBVTT
 
 1
-00:00:00.098 --> 00:00:08.680
+00:00:00.004 --> 00:00:06.030
 Work is the ledger: every failing record and field, ranked by value at risk.
 
 2
-00:00:08.680 --> 00:00:15.328
+00:00:06.030 --> 00:00:11.384
 The chips are the filter: to fix, fix proposed, waiting for approval, exceptions.
 
 3
-00:00:15.328 --> 00:00:24.566
+00:00:11.384 --> 00:00:19.690
 Each row holds the current value, the suggested value, the new value and the decision. Possible values are in the column chooser.
 
 4
-00:00:24.566 --> 00:00:31.389
+00:00:19.690 --> 00:00:25.550
 Choose a decision: fix, not an issue or accept risk.
 
 5
-00:00:31.389 --> 00:00:37.588
+00:00:25.550 --> 00:00:30.798
 Every change shows a notice with Undo.
 
 6
-00:00:37.588 --> 00:00:42.468
+00:00:30.798 --> 00:00:35.613
 Command Z takes the last change back.
 
 7
-00:00:42.468 --> 00:00:48.873
+00:00:35.613 --> 00:00:40.868
 Select rows with x or the checkboxes; Shift J extends the selection.
 
 8
-00:00:48.873 --> 00:00:55.127
+00:00:40.868 --> 00:00:46.130
 The bulk bar acts on every selected row.
 
 9
-00:00:55.127 --> 00:01:02.716
+00:00:46.130 --> 00:00:52.751
 A change of more than 25 rows waits on a confirmation bar with the count.
 
 10
-00:01:02.716 --> 00:01:07.556
+00:00:52.751 --> 00:00:57.568
 Enter confirms; Escape keeps the rows as they are.
 
 11
-00:01:07.556 --> 00:01:15.394
+00:00:57.568 --> 00:01:04.527
 By rule groups the rows under their rule, so a whole rule is decided at once.
 
 12
-00:01:15.394 --> 00:01:22.176
+00:01:04.527 --> 00:01:10.078
 Open a record: every failing field, its possible values and the decision.
 
 13
-00:01:22.176 --> 00:01:27.235
+00:01:10.078 --> 00:01:15.060
 Feature impact, provenance and history are on the record too.
 
 14
-00:01:27.235 --> 00:01:34.546
+00:01:15.060 --> 00:01:21.007
 Export fix sheet saves the rows on screen to Excel, with the same columns.
 
 15
-00:01:34.546 --> 00:01:42.026
+00:01:21.007 --> 00:01:27.668
 Fill it in offline and import it back: Meridian checks keys, fields and values before anything changes.
 
 16
-00:01:42.026 --> 00:01:49.476
+00:01:27.668 --> 00:01:34.317
 Share and export saves a view, exports any grid, or shares the page as a read-only link.

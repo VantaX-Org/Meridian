@@ -1,45 +1,45 @@
 WEBVTT
 
 1
-00:00:00.069 --> 00:00:07.333
-Meridian reads from SAP and never writes to it. Connect a system here.
+00:00:00.004 --> 00:00:07.277
+Setup only reads from SAP; nothing is written until an approved batch is sent. Connect a system here.
 
 2
-00:00:07.333 --> 00:00:13.497
+00:00:07.277 --> 00:00:12.542
 Choose the system type and fill in the connection, then test it.
 
 3
-00:00:13.497 --> 00:00:19.628
+00:00:12.542 --> 00:00:17.869
 You can connect now and test later. Nothing is read until you extract.
 
 4
-00:00:19.628 --> 00:00:26.606
+00:00:17.869 --> 00:00:23.350
 The system canvas: health, type, last extraction and the last connection test.
 
 5
-00:00:26.606 --> 00:00:33.868
+00:00:23.350 --> 00:00:29.036
 Test, load or extract opens the system inspector.
 
 6
-00:00:33.868 --> 00:00:40.013
+00:00:29.036 --> 00:00:35.090
 Choose the objects and the scope, then a dry run counts what an extraction would read.
 
 7
-00:00:40.013 --> 00:00:49.054
+00:00:35.090 --> 00:00:40.604
 Configuration: what Meridian read from the customising tables, by area.
 
 8
-00:00:49.054 --> 00:00:54.386
+00:00:40.604 --> 00:00:45.929
 A table that could not be read says why, and what the user needs.
 
 9
-00:00:54.386 --> 00:01:02.905
+00:00:45.929 --> 00:00:51.414
 Schedules: full or changes only, on a rhythm, times in UTC.
 
 10
-00:01:02.905 --> 00:01:11.905
+00:00:51.414 --> 00:00:56.925
 Custom objects: Z tables and fields found across every system, with anomalies.
 
 11
-00:01:11.905 --> 00:01:21.123
+00:00:56.925 --> 00:01:02.512
 Connection settings: stored secrets are never shown; type new values to replace them.

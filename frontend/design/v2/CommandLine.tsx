@@ -38,6 +38,7 @@ export function placeIndex(can: (action: string) => boolean): { id: string; titl
     ...PLACES.items,
     { id: "reports", title: tr("Reports"), href: "/reports" },
     { id: "requests", title: tr("Requests"), href: "/requests" },
+    { id: "ask", title: tr("Ask Meridian"), href: "/?open=ask" },
     { id: "waves", title: tr("Waves"), href: "/?view=waves" },
     { id: "status", title: tr("Status"), href: "/status" },
     { id: "inbox", title: tr("Inbox"), href: "/?open=inbox" },
@@ -166,7 +167,7 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
   return (
     <div onKeyDown={onKeyDown}>
       <div className="m2-scrim" onClick={onClose} aria-hidden="true" />
-      <div className="m2-pal" role="dialog" aria-modal="true" aria-label={tr("Search or type a command")} data-testid="command-line">
+      <div className="m2-pal" role="dialog" aria-modal="true" aria-label={tr("Search, ask, or type a command")} data-testid="command-line">
         <input
           ref={input}
           type="text"
@@ -175,8 +176,8 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
           aria-controls={nlMode ? "m2-nl" : "m2-pal-list"}
           aria-describedby="m2-pal-hint"
           aria-activedescendant={!nlMode && rows.length ? `m2-po-${clamped}` : undefined}
-          aria-label={tr("Search or type a command")}
-          placeholder={tr("Search or type a command")}
+          aria-label={tr("Search, ask, or type a command")}
+          placeholder={tr("Search, ask, or type a command")}
           autoComplete="off"
           spellCheck={false}
           value={q}

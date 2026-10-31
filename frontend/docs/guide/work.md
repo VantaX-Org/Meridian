@@ -4,6 +4,8 @@ Work is the one list of everything that needs a person: every failing record and
 
 ## What is on it
 
+- **Ledger and Monitor**: the two views of Work, as tabs at the top. **Ledger** is the list described here; **Monitor** (`/work/monitor`) shows whether records a batch fixed stay fixed: see the Post-clean monitoring chapter.
+
 - **The title and scope**: "Work" and the objects in scope, such as "All objects". Click an object in the map to scope the ledger to it.
 - **The sentence**: what the current filter holds, for example "25,712 records to fix, ranked by value at risk." and, under it, "Rows are read from the latest run of each object. Value at risk is from cost model ZAR."
 - **The state chips**: **To fix**, **Fix proposed**, **Waiting for approval** and **Exceptions**, each with its count. The chips are the filter.
@@ -27,6 +29,12 @@ The ledger loads 100 rows at a time ("Showing 100 of 25,712. Sorted by value at 
 ## Editing a row
 
 Type in **New value** and press `Enter`; until you do the cell reads "Not saved yet: press Enter". Or choose a **Decision**: **fix** (accept the suggested or entered value), **not an issue** or **accept risk**. A record in the inspector shows every failing field with the same cells, plus its facts, feature impact, provenance and history. Its **History** tab lists every run that measured the record with the values of its failing fields in that run, then every decision on it in order, with who and when, each linked to its run. On a phone, editing happens in the inspector.
+
+**Open full record** in the record inspector opens the record on its own page, `/o/{system}/{object}/records/{key}`, for example `/o/ecc-production/material-master/records/100`. The title is the record key with its name and status under it. **Findings** lists each failing rule with its severity, message, state and suggested value. **Facts** groups every field of the record by its SAP table, with the field description, the SAP field, the value ("blank" when empty) and the rules that reject it. **Change log** lists every run and decision on the record, and **Possible duplicate** links to open duplicates and the golden record when one is named. Decisions stay in the inspector.
+
+## On a phone
+
+At 760 pixels wide and narrower, four tabs sit at the bottom of the screen: **Landscape**, **Work**, **Runs** and **Inbox**, with the unread count beside Inbox. The ledger's chips, controls and filters in force move into a sheet: **Filters** (with the count of filters in force) opens it from the bottom, and **Done** or a tap outside closes it.
 
 Every change shows a notice at the bottom of the screen, such as "Accepted 1 suggested value", with **Undo**. `⌘Z` takes the last change back while focus is not in a field: "Undone: accepted 1 suggested value". The chip counts move at once.
 
@@ -52,6 +60,7 @@ Accepted and entered values go into your draft fix batch. They wait there for a 
 - **Data steward** (apply): edit values, accept suggestions, bulk actions, import, assign to yourself.
 - **Data owner** (approve): sign records off as not an issue or accept risk, approve batches.
 - **Programme lead** (assign): assign rows, balance work from People.
+- **Everyone**: open the full record page and the Monitor view.
 - **Auditor, viewer, analyst**: read and export; the ledger says "Read-only for your role".
 
 ## Keyboard

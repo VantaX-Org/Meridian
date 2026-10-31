@@ -30,7 +30,7 @@ const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").tr
 async function ask(sentence: string) {
   renderWithQuery(<V2Shell><h1>Page</h1></V2Shell>);
   fireEvent.keyDown(document.body, { key: "k", metaKey: true });
-  const dialog = await screen.findByRole("dialog", { name: "Search or type a command" });
+  const dialog = await screen.findByRole("dialog", { name: "Search, ask, or type a command" });
   const input = within(dialog).getByRole("combobox");
   fireEvent.change(input, { target: { value: sentence } });
   return { dialog, input };
@@ -40,7 +40,7 @@ describe("the command line's natural language mode", () => {
   it("shows the hint for a sentence before anything is typed", async () => {
     renderWithQuery(<V2Shell><h1>Page</h1></V2Shell>);
     fireEvent.keyDown(document.body, { key: "/" });
-    const dialog = await screen.findByRole("dialog", { name: "Search or type a command" });
+    const dialog = await screen.findByRole("dialog", { name: "Search, ask, or type a command" });
     expect(within(dialog).getByText(/Start with \? to ask in a sentence/)).toBeInTheDocument();
     expect(within(dialog).getByRole("combobox")).toHaveAttribute("aria-describedby", "m2-pal-hint");
   });
@@ -60,7 +60,7 @@ describe("the command line's natural language mode", () => {
     expect(input).toHaveAttribute("aria-controls", "m2-nl");
     fireEvent.keyDown(input, { key: "Enter" });
     expect(push).toHaveBeenCalledWith(`/work?assigned=me&due=week&module=material_master&severity=critical&system=${ECC}&filter=open&fixture=1`);
-    expect(screen.queryByRole("dialog", { name: "Search or type a command" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Search, ask, or type a command" })).toBeNull();
   });
 
   it("Open in Work opens a policy class filter, and the ledger reads every slot the sentence filled", async () => {

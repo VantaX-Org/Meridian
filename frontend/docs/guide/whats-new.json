@@ -1,4 +1,5 @@
 [
+  { "step": "12", "date": "2026-10-31", "ref": "release", "text": "The Ledger look, light by default with dark as an option: Ask Meridian with grounded answers, the record page, rule overview, top failing rules, readiness by object, post-clean monitoring, the systems page, a six-step setup and Work on the phone." },
   { "step": "0", "date": "2026-10-29", "ref": "#517, #518", "text": "The landscape with its coverage matrix, the object canvas with the ruler and its receipt, the inspector and the command line." },
   { "step": "1", "date": "2026-10-29", "ref": "#521", "text": "The Work ledger: one row per failing record and field, the record inspector, bulk decisions, fill down, the fix sheet round trip and undo." },
   { "step": "2", "date": "2026-10-29", "ref": "#520", "text": "Object tabs for rules, records, runs and readiness, and the rule canvas and inspector with definition, failing records, impact and history." },

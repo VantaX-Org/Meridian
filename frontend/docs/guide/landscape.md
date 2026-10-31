@@ -8,6 +8,7 @@ The landscape is the start screen for every role. It answers three questions in 
 - **The title and scope**: "Landscape" and the systems in scope, such as "All systems". Change the scope and the run from the top bar.
 - **The sentence**: one line that says what holds the landscape back, for example "11 of 15 objects are held under 85 by 30 critical rules over tolerance; fixing MM003 and MM035 would release 1 of them."
 - **The provenance line**: records checked, rules measured and the run, for example "400,662 records checked, 794 rules measured, run 16 Oct 2026, 05:17".
+- **The score hero**, under the provenance line: the lowest measured object as a large number and a ruler, labelled for example "Material master, the lowest measured object", with the change since the previous run where there is one ("+1.4 since the previous run"). Beside it, when the cost model gives an amount, the money at risk: one figure "a month blocked by data quality" and the three objects whose fixes would unblock the most each month.
 - **The next-step button**: one per role (see below), with the wave and its due date under it for the programme lead.
 - **The coverage matrix**: objects as rows, systems as columns. Each cell is a small ruler with the shown score, the word **capped** and the measured score beside it where a cap applies ("70.0 capped, 71.8 measured"), the verdict (Go, At risk, No-go), records checked and rules measured. A cell flagged **low coverage** has fewer than 70% of its rules producing a result. A system never extracted shows "Not extracted yet. Extract"; one extracted but not scored shows "Extracted, not analysed. Run analysis".
 - **The order**: objects are ranked by the measured score, so capped objects still sort by how good they are.
@@ -16,7 +17,12 @@ The landscape is the start screen for every role. It answers three questions in 
 - **The Basis home** (SAP Basis only), above the matrix: **Connections**, **Last extraction**, **Failed jobs to triage**, **Authorisation errors** and **Schedules**. See the SAP Basis walkthrough.
 - **Objects from uploaded files**: when no system is connected but files have been uploaded, the landscape lists those objects with their records to fix, says they came from uploaded files, and offers Work, Runs and connecting a system.
 
+- **Ask Meridian**, in the top bar on every page: ask a question about the run in plain words, such as "What is holding the score down?". The answer uses only the run's facts. See the Ask Meridian chapter.
+
 ## The numbers and where they come from
+
+- **The score hero** shows the measured score of the object with the lowest measured score in the run, before any cap; its ruler shows the shown score and the cap as the matrix does. The change compares the last two runs of that object that have a score.
+- **Money at risk** in the hero is the monthly opportunity cost from the cost model, and each object beside it the monthly value its fixes would unblock. Both are estimates from the cost model under Administration, Settings.
 
 - **The score in each cell** is the object's shown score in the run in the top bar: the weighted dimension scores, capped at 85 by one critical rule over tolerance and at 70 by two or more. Open the **i** beside the object name for the receipt.
 - **The verdict** comes from the score bands under Administration, Settings: at or above target is go, at or above warning is at risk, below that is no-go. A critical rule over tolerance keeps an object out of go.
@@ -27,7 +33,7 @@ The landscape is the start screen for every role. It answers three questions in 
 ## What you can do, by role
 
 - **Programme lead**: follow the next step ("Clear the 3 no-go objects in Wave 1: finance foundations"), switch to **Waves**, open any cell, share the page from **Share and export**, export the grid to Excel.
-- **Data steward**: "Accept the suggested values" opens Work with your rows; Your next work lists your highest-value records.
+- **Data steward**: "Accept N suggested values for" the top rule opens Work on that rule's rows; Your next work lists your highest-value records.
 - **Data owner**: the line under the sentence says how many batches wait for you and your SLA, for example "2 batches wait for your approval, SLA met on 92% of your open work"; the button is "Approve batch B-241".
 - **SAP Basis**: the Basis home above the matrix; the button extracts or analyses the system that needs it first; the task list shows every system's state.
 - **Process analyst**: "Open PTP step 3" opens the first blocked process step.
@@ -38,7 +44,7 @@ Selecting a cell opens the object canvas. Selecting a system heading opens the s
 ## Keyboard
 
 - `g` then `l` returns here from anywhere.
-- `⌘K` opens the command line; type an object name and system, such as "material master ECC".
+- `⌘K` opens the command line ("Search, ask, or type a command"); type an object name and system, such as "material master ECC".
 - In the matrix and in Your next work, `j` and `k` move, `Enter` opens.
 
 ## When something is wrong

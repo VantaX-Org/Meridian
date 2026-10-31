@@ -220,6 +220,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     if (path === "/views") return wf.views(String(params.route ?? "work"));
     if (path === "/shell/counts") return { fix: work.total + wf.workOpenDelta(), inbox: ap.unreadFixture().count };
     if (path === "/remediation/batches") return wf.batchesFixture();
+    if (path === "/remediation/monitor") return wf.monitorFixture();
+    if (path === "/work/back-after-clean") return wf.backAfterCleanFixture();
     const events = /^\/remediation\/batches\/([^/]+)\/events$/.exec(path);
     if (events) return wf.batchEventsFixture(decodeURIComponent(events[1]));
     const batchOne = /^\/remediation\/batches\/([^/]+)$/.exec(path);

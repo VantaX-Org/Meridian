@@ -93,7 +93,7 @@ for (const size of SIZES) {
       test("digests: the Admin section, a new digest, Send now and the preview", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/admin/digests?fixture=1", { waitUntil: "load" });
-        await expect(page.getByRole("grid", { name: "Digests" })).toContainText("Monday leadership digest", NAV);
+        await expect(page.getByRole("list", { name: "Digests" })).toContainText("Monday leadership digest", NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "digests");
         await page.goto("/admin/digests?fixture=1&open=digest:new", { waitUntil: "load" });
@@ -119,7 +119,7 @@ for (const size of SIZES) {
         await shot(page, "sandbox-banner");
         await page.goto("/admin/settings?fixture=1#sandbox", { waitUntil: "load" });
         const block = page.getByRole("region", { name: "Sandbox mode" });
-        await block.getByRole("button", { name: "Enter sandbox mode" }).click(NAV);
+        await block.getByRole("switch", { name: "Enter sandbox mode" }).click(NAV);
         await page.getByRole("dialog", { name: "Enter sandbox mode" }).getByRole("button", { name: "Copy the latest run and enter" }).click();
         await expect(block).toContainText("Sandbox mode is on", NAV);
         await expect(page.getByTestId("sandbox-banner")).toBeVisible(NAV);
@@ -177,9 +177,9 @@ for (const size of SIZES) {
       test("natural language: ? in the command line shows the filter that will run", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/?fixture=1", { waitUntil: "load" });
-        await expect(page.getByRole("button", { name: "Search or type a command" })).toBeVisible(NAV);
-        await page.getByRole("button", { name: "Search or type a command" }).click();
-        const dialog = page.getByRole("dialog", { name: "Search or type a command" });
+        await expect(page.getByRole("button", { name: "Search, ask, or type a command" })).toBeVisible(NAV);
+        await page.getByRole("button", { name: "Search, ask, or type a command" }).click();
+        const dialog = page.getByRole("dialog", { name: "Search, ask, or type a command" });
         await dialog.getByRole("combobox").fill("?critical materials assigned to me due this week zebra");
         await expect(dialog.getByTestId("nl-chips")).toContainText("Severity", NAV);
         await expect(dialog.getByTestId("nl-unmatched")).toContainText("zebra");

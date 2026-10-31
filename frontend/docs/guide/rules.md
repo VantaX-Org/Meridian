@@ -6,8 +6,9 @@ Every number in Meridian comes from a rule: a fixed, deterministic check with an
 
 The title is the rule id and name, for example "MM142 Base unit of measure MEINS must reference a valid entry in T006". The facts line under it reads like "High, Consistency, 4,212 failing across 2 objects, 4.99% of records checked, ZAR 1.18 m at risk, estimated, within tolerance, blocks 3 S/4 features".
 
-Five sections follow:
+Six tabs follow. The rule opens on **Overview**:
 
+- **Overview**: why the rule exists (its authority and what goes wrong in SAP), a chart of its failing records over the last runs, and **Failing records**. Where the failing records key on more than one field, such as material and plant, the newest run's failing records are counted by each part of the key, for example by **Plant**: one chip per value with its count, and **All**. Select a chip to narrow the ledger under it to those records; select it again, or **All**, to show every failing record.
 - **Definition**: the check class (such as "Exists in check table"), the field (`MARA-MEINS`), the expression (`MARA-MEINS in T006-MSEHI`), its parameters such as the check table `T006` and check field `MSEHI`, the source ("Shipped with Meridian" or a custom rule), the authority ("Best practice", or "SAP hard constraint") and what goes wrong in SAP. **Versions** lists every version with who changed it and why; the shipped definition names its file and content hash.
 - **Failing records**: the scope, for example "Scope: 2 objects, 1 system", with each object, its run and its failing count. **Open failing records** opens the Work ledger filtered to this rule.
 - **Prove in SAP**: how to reproduce the rule's count by hand in SE16 or SE16N (see below).
@@ -43,6 +44,8 @@ Rules can also be imported and exported in bulk under Administration, Rules impo
 ## The numbers and where they come from
 
 - **Failing** is distinct records failing the rule in the latest run of each object in scope.
+- **The Overview trend** plots the failing records of each run that measured the rule, up to the last 30.
+- **The chip counts** are distinct failing records in the rule's newest run with that key value.
 - **Failing %** divides by the records checked in those runs.
 - **Over tolerance** applies to critical rules only: a critical rule is over tolerance when it fails at least the share or the count of records set as its tolerance. "Only critical rules count: when one is over tolerance it caps the score (85 for one rule, 70 for two or more); a critical rule within tolerance still lowers its dimension but never caps."
 - **Value at risk** is from the cost model of the run, in the tenant currency.
@@ -50,7 +53,7 @@ Rules can also be imported and exported in bulk under Administration, Rules impo
 
 ## What you can do, by role
 
-- **Everyone**: read, watch, comment, export the library, read the SE16 selection of a rule.
+- **Everyone**: read, watch, comment, narrow the Overview ledger by a chip, export the library, read the SE16 selection of a rule.
 - **Export permission**: download the reconciliation workbook of a run.
 - **Data steward and rule maintainers** (manage rules): **New rule draft**, **Edit in authoring**, **Suppress** with a reason, **Hand to a steward**.
 - **Process analyst** (handoff rule): hand a blocking rule to a steward from the step inspector.

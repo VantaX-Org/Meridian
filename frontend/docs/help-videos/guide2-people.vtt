@@ -1,45 +1,45 @@
 WEBVTT
 
 1
-00:00:00.018 --> 00:00:06.971
+00:00:00.004 --> 00:00:05.948
 People lists owners and stewards with their open work, approvals waiting, overdue and SLA.
 
 2
-00:00:06.971 --> 00:00:13.744
+00:00:05.948 --> 00:00:11.637
 The Unassigned row holds the open records nobody owns, so the total matches Work.
 
 3
-00:00:13.744 --> 00:00:20.439
+00:00:11.637 --> 00:00:17.323
 Open a person for their objects, open work and their own activity.
 
 4
-00:00:20.440 --> 00:00:27.077
+00:00:17.323 --> 00:00:22.811
 Balance work: even counts, whole objects, or by the assignment template.
 
 5
-00:00:27.077 --> 00:00:32.961
+00:00:22.811 --> 00:00:28.064
 Propose a plan, read the moves, apply it. The notice has Undo.
 
 6
-00:00:32.961 --> 00:00:39.830
+00:00:28.064 --> 00:00:33.547
 Data contracts: what each consumer is promised, and whether it is met.
 
 7
-00:00:39.830 --> 00:00:47.130
+00:00:33.547 --> 00:00:39.651
 A contract has versions and breaches; a data owner approves it, never their own.
 
 8
-00:00:47.130 --> 00:00:53.889
+00:00:39.651 --> 00:00:45.134
 Out of office: who covers your approvals and work between two dates.
 
 9
-00:00:53.889 --> 00:01:01.348
+00:00:45.134 --> 00:00:50.658
 Triage and SLA: days to resolve by severity, and the escalation chain.
 
 10
-00:01:01.348 --> 00:01:08.483
+00:00:50.658 --> 00:00:56.354
 The inbox: approvals, SLA warnings, finished runs, mentions and digests.
 
 11
-00:01:08.483 --> 00:01:14.949
+00:00:56.354 --> 00:01:01.612
 Each item has one action; mark read when you are done.

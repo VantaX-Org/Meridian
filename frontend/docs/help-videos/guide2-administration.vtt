@@ -1,65 +1,65 @@
 WEBVTT
 
 1
-00:00:00.338 --> 00:00:09.801
+00:00:00.004 --> 00:00:05.535
 Administration: everything that sets up this tenant.
 
 2
-00:00:09.801 --> 00:00:17.193
+00:00:05.535 --> 00:00:11.011
 Users: seats, roles as grants, invitations.
 
 3
-00:00:17.193 --> 00:00:26.263
+00:00:11.011 --> 00:00:16.476
 Roles and permissions: built-in roles are fixed; copy one to change it.
 
 4
-00:00:26.263 --> 00:00:33.761
+00:00:16.476 --> 00:00:21.929
 Single sign-on with OpenID Connect, and the sign-in page rules.
 
 5
-00:00:33.761 --> 00:00:41.222
+00:00:21.929 --> 00:00:27.383
 View as a role: read-only, for support, and in the audit log.
 
 6
-00:00:41.222 --> 00:00:49.195
+00:00:27.383 --> 00:00:32.835
 Licence: status, seats, validity and the modules this deployment may use.
 
 7
-00:00:49.195 --> 00:00:56.684
+00:00:32.835 --> 00:00:38.398
 Settings: weights, score bands, the cap rule and tolerance, cost model and retention.
 
 8
-00:00:56.684 --> 00:01:07.007
+00:00:38.398 --> 00:00:46.061
 One critical rule beyond its tolerance holds an object at 85; two or more at 70. The caps are fixed.
 
 9
-00:01:07.007 --> 00:01:15.515
+00:00:46.061 --> 00:00:51.529
 Stewardship: one owner per object, stewards per slice, and the gaps.
 
 10
-00:01:15.515 --> 00:01:23.027
+00:00:51.529 --> 00:00:57.067
 Configuration bundle: export the configuration as one file; import with a diff first.
 
 11
-00:01:23.027 --> 00:01:30.061
+00:00:57.067 --> 00:01:02.515
 Rules import and export: imported rules land as drafts, never live.
 
 12
-00:01:30.061 --> 00:01:38.136
+00:01:02.515 --> 00:01:08.742
 Audit log: every change, by whom and when, and every call to the language model.
 
 13
-00:01:38.137 --> 00:01:45.022
+00:01:08.742 --> 00:01:14.216
 Alerts: channels and thresholds. Alerts never carry record values.
 
 14
-00:01:45.022 --> 00:01:52.513
+00:01:14.216 --> 00:01:20.753
 Default digest: the summary the tenant gets by default. Each person sets their own in Preferences.
 
 15
-00:01:52.513 --> 00:02:00.162
+00:01:20.753 --> 00:01:27.647
 Start and schedule: start an extraction, an analysis, a configuration load or an upload, and schedule them.
 
 16
-00:02:00.162 --> 00:02:06.572
+00:01:27.647 --> 00:01:33.203
 Platform and updates: jobs, the platform version, health checks and the diagnostics bundle.

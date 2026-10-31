@@ -3,16 +3,16 @@
  * every other v2 file reads these through var(--m2-*). Everything is scoped to .m2-root, so the root layout's base
  * (design/tokens.css: the attribution strip, the global error page) stays apart from it.
  *
- * Colour is built in three layers. Two ramps hold every neutral and every blue the interface draws: the neutral ramp
- * (--m2-n-*, a cool slate at hue 240 in OKLCH, chroma under 0.025) and the Meridian blue ramp (--m2-b-*, hue 263; step
- * 700 is the brand blue). The semantic tokens (ground, ink, data, status, chart) name a step of a ramp for light and
- * another for dark, so the two themes are chosen, not inverted. Status and chart hues sit beside the ramps with their
- * light and dark steps. design/v2/__tests__/tokens.test.ts holds every pair a screen draws to WCAG 2.1 AA in both
- * themes, and the chart palette to the colour-vision checks (DESIGN.md, Colour).
+ * Colour follows the Ledger palette. Two ramps still hold the neutrals and the Meridian blue (--m2-n-*, hue 240;
+ * --m2-b-*, hue 263, step 700 the brand blue), but the semantic tokens (ground, sheet, rules, inks, data, status) are
+ * set to the Ledger values themselves, one set for light and one for dark, so the two themes are chosen, not inverted.
+ * Status and chart hues sit beside the ramps with their light and dark steps. design/v2/__tests__/tokens.test.ts holds
+ * every pair a screen draws to WCAG 2.1 AA in both themes, and the chart palette to the colour-vision checks
+ * (DESIGN.md, Colour).
  *
- * Light is a whisper of slate for the ground and white sheets on it; dark is the same ramp from the other end. One data
+ * Light is the default: a pale cool ground with white sheets and hairline rules; dark has full parity. One data
  * hue marks the selected cell, the current run and the next-step button. Status hues are always paired with a shape and
- * a word. Motion is declared in the last section only: lint:tokens keeps transitions and durations out of other files.
+ * a word. Only the menu, popover and dialog cast a shadow. Motion is declared in the last section only: lint:tokens keeps transitions and durations out of other files.
  */
 
 .m2-root {
@@ -48,51 +48,51 @@
   --m2-b-950: #08152F;
 
   /* Ground and ink */
-  --m2-bg: var(--m2-n-25);
-  --m2-sheet: var(--m2-n-0);
-  --m2-line: var(--m2-n-150);
-  --m2-line-2: var(--m2-n-200);
-  --m2-rule: var(--m2-n-50);
-  --m2-chrome: var(--m2-n-150);
-  --m2-fg: var(--m2-n-925);
-  --m2-ink-2: var(--m2-n-700);
-  --m2-ink-3: var(--m2-n-500);
-  --m2-meta: var(--m2-n-600);
+  --m2-bg: #F6F7F8;
+  --m2-sheet: #FFFFFF;
+  --m2-line: #E3E7EA;
+  --m2-line-2: #CBD2D7;
+  --m2-rule: var(--m2-line);
+  --m2-chrome: var(--m2-sheet);
+  --m2-fg: #14191D;
+  --m2-ink-2: #4A555D;
+  --m2-ink-3: #67727A;
+  --m2-meta: var(--m2-ink-2);
   /* Data hue: the one strong colour of a canvas, its wash under a selection, and the text on it */
-  --m2-data: var(--m2-b-700);
-  --m2-data-bg: var(--m2-b-50);
+  --m2-data: #2F5FD0;
+  --m2-data-bg: #E8EFFC;
   --m2-on-data: var(--m2-n-0);
   /* Semantic: pass, warn, fail, critical and info, each a mark colour, a wash and the text on the wash. A status hue
      is always paired with a shape and a word, never alone. Fail and critical share the stop red: two reds in one
      ledger would read as a difference that is not there; critical adds the square mark. */
-  --m2-pass: #1D6B3F;
-  --m2-pass-bg: #DCEAE1;
+  --m2-pass: #1F7A45;
+  --m2-pass-bg: #E4F3EA;
   --m2-pass-ink: #124A2B;
-  --m2-warn: #8F5200;
-  --m2-warn-bg: #F3E8D6;
+  --m2-warn: #8A580C;
+  --m2-warn-bg: #FBF0DC;
   --m2-warn-ink: #5E3500;
-  --m2-crit: #A3221A;
-  --m2-crit-bg: #F5E3E1;
+  --m2-crit: #B8322A;
+  --m2-crit-bg: #FBE7E5;
   --m2-crit-ink: #74190F;
   --m2-fail: var(--m2-crit);
   --m2-fail-bg: var(--m2-crit-bg);
   --m2-fail-ink: var(--m2-crit-ink);
-  --m2-info: #2E5C8A;
-  --m2-info-bg: #E7F1FC;
+  --m2-info: #1F64A8;
+  --m2-info-bg: #E3EEF9;
   --m2-info-ink: #12416D;
   /* High severity and At risk read in the warn hue (the names the screens were written with). */
   --m2-high: var(--m2-warn);
   --m2-high-bg: var(--m2-warn-bg);
   --m2-high-ink: var(--m2-warn-ink);
   /* Surfaces and states */
-  --m2-hover: var(--m2-n-50);
-  --m2-active: var(--m2-n-100);
+  --m2-hover: #F0F2F4;
+  --m2-active: #E8ECEF;
   --m2-track: var(--m2-n-100);
   --m2-seg: var(--m2-n-600);
   --m2-scrim: #151A1E59;
   --m2-shadow: 0 8px 28px #151A1E2E;
-  /* The one card that stands alone on the ground (the signed-out pages): a lift of a few pixels, not a float. */
-  --m2-shadow-card: 0 1px 2px #151A1E0F, 0 12px 32px #151A1E0D;
+  /* Ledger: no decorative shadow; only the menu, popover and dialog (--m2-shadow) lift. The card token stays so callers resolve. */
+  --m2-shadow-card: none;
   --m2-inverse: var(--m2-n-925);
   --m2-on-inverse: var(--m2-n-25);
   /* The stop red where it marks an error on the inverse ground (a toast) */
@@ -206,43 +206,41 @@
 
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) .m2-root {
-    --m2-bg: var(--m2-n-950);
-    --m2-sheet: var(--m2-n-925);
-    --m2-line: var(--m2-n-875);
-    --m2-line-2: var(--m2-n-800);
-    --m2-rule: var(--m2-n-875);
-    --m2-chrome: var(--m2-n-950);
-    --m2-fg: var(--m2-n-100);
-    --m2-ink-2: var(--m2-n-300);
-    --m2-ink-3: var(--m2-n-500);
-    --m2-meta: var(--m2-n-400);
-    --m2-data: var(--m2-b-300);
-    --m2-data-bg: #192133;
-    --m2-on-data: var(--m2-b-950);
-    --m2-pass: #74C291;
-    --m2-pass-bg: #15241B;
+    --m2-bg: #0F1419;
+    --m2-sheet: #161C22;
+    --m2-line: #252D35;
+    --m2-line-2: #34404A;
+    --m2-rule: var(--m2-line);
+    --m2-chrome: var(--m2-sheet);
+    --m2-fg: #E6EAED;
+    --m2-ink-2: #AEB7BE;
+    --m2-ink-3: #86919A;
+    --m2-meta: var(--m2-ink-2);
+    --m2-data: #7FA2F0;
+    --m2-data-bg: #1C2A47;
+    --m2-on-data: #0F1419;
+    --m2-pass: #5CC08A;
+    --m2-pass-bg: #163024;
     --m2-pass-ink: #94D4AE;
-    --m2-warn: #DDA44A;
-    --m2-warn-bg: #2A2112;
+    --m2-warn: #E0A84A;
+    --m2-warn-bg: #33270F;
     --m2-warn-ink: #E8C07C;
-    --m2-crit: #F0877F;
-    --m2-crit-bg: #2B1A18;
+    --m2-crit: #F07A70;
+    --m2-crit-bg: #3A1A18;
     --m2-crit-ink: #F4A9A3;
-    --m2-info: #7FB3E8;
-    --m2-info-bg: #142332;
+    --m2-info: #6EA8E0;
+    --m2-info-bg: #15283C;
     --m2-info-ink: #A9CFF7;
-    --m2-hover: var(--m2-n-900);
-    --m2-active: var(--m2-n-850);
-    --m2-track: var(--m2-n-850);
+    --m2-hover: #1C232A;
+    --m2-active: #232B33;
+    --m2-track: #232B33;
     --m2-seg: var(--m2-n-400);
     --m2-scrim: #000000A6;
     --m2-shadow: 0 8px 28px #000000B3;
-  --m2-shadow-card: 0 1px 2px #00000066;
-    --m2-shadow-card: 0 1px 2px #00000066;
+  --m2-shadow-card: none;
     --m2-inverse: var(--m2-n-100);
     --m2-on-inverse: var(--m2-n-950);
   --m2-on-inverse-crit: #A3221A;
-    --m2-on-inverse-crit: #A3221A;
     --m2-chart-1: #648FE7;
     --m2-chart-2: #D06A30;
     --m2-chart-3: #1E9C88;
@@ -266,38 +264,38 @@
 }
 
 html[data-theme="dark"] .m2-root {
-  --m2-bg: var(--m2-n-950);
-  --m2-sheet: var(--m2-n-925);
-  --m2-line: var(--m2-n-875);
-  --m2-line-2: var(--m2-n-800);
-  --m2-rule: var(--m2-n-875);
-  --m2-chrome: var(--m2-n-950);
-  --m2-fg: var(--m2-n-100);
-  --m2-ink-2: var(--m2-n-300);
-  --m2-ink-3: var(--m2-n-500);
-  --m2-meta: var(--m2-n-400);
-  --m2-data: var(--m2-b-300);
-  --m2-data-bg: #192133;
-  --m2-on-data: var(--m2-b-950);
-  --m2-pass: #74C291;
-  --m2-pass-bg: #15241B;
+  --m2-bg: #0F1419;
+  --m2-sheet: #161C22;
+  --m2-line: #252D35;
+  --m2-line-2: #34404A;
+  --m2-rule: var(--m2-line);
+  --m2-chrome: var(--m2-sheet);
+  --m2-fg: #E6EAED;
+  --m2-ink-2: #AEB7BE;
+  --m2-ink-3: #86919A;
+  --m2-meta: var(--m2-ink-2);
+  --m2-data: #7FA2F0;
+  --m2-data-bg: #1C2A47;
+  --m2-on-data: #0F1419;
+  --m2-pass: #5CC08A;
+  --m2-pass-bg: #163024;
   --m2-pass-ink: #94D4AE;
-  --m2-warn: #DDA44A;
-  --m2-warn-bg: #2A2112;
+  --m2-warn: #E0A84A;
+  --m2-warn-bg: #33270F;
   --m2-warn-ink: #E8C07C;
-  --m2-crit: #F0877F;
-  --m2-crit-bg: #2B1A18;
+  --m2-crit: #F07A70;
+  --m2-crit-bg: #3A1A18;
   --m2-crit-ink: #F4A9A3;
-  --m2-info: #7FB3E8;
-  --m2-info-bg: #142332;
+  --m2-info: #6EA8E0;
+  --m2-info-bg: #15283C;
   --m2-info-ink: #A9CFF7;
-  --m2-hover: var(--m2-n-900);
-  --m2-active: var(--m2-n-850);
-  --m2-track: var(--m2-n-850);
+  --m2-hover: #1C232A;
+  --m2-active: #232B33;
+  --m2-track: #232B33;
   --m2-seg: var(--m2-n-400);
   --m2-scrim: #000000A6;
   --m2-shadow: 0 8px 28px #000000B3;
-  --m2-shadow-card: 0 1px 2px #00000066;
+  --m2-shadow-card: none;
   --m2-inverse: var(--m2-n-100);
   --m2-on-inverse: var(--m2-n-950);
   --m2-on-inverse-crit: #A3221A;
@@ -428,13 +426,13 @@ html[data-theme="dark"] .m2-root {
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) .m2-root[data-tenant-accent] {
     --m2-data: var(--m2-tenant-accent-dark);
-    --m2-data-bg: color-mix(in srgb, var(--m2-tenant-accent-dark) 12%, var(--m2-n-925));
+    --m2-data-bg: color-mix(in srgb, var(--m2-tenant-accent-dark) 12%, var(--m2-sheet));
     --m2-on-data: var(--m2-b-950);
   }
 }
 html[data-theme="dark"] .m2-root[data-tenant-accent] {
   --m2-data: var(--m2-tenant-accent-dark);
-  --m2-data-bg: color-mix(in srgb, var(--m2-tenant-accent-dark) 12%, var(--m2-n-925));
+  --m2-data-bg: color-mix(in srgb, var(--m2-tenant-accent-dark) 12%, var(--m2-sheet));
   --m2-on-data: var(--m2-b-950);
 }
 

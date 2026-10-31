@@ -30,7 +30,7 @@ function v2Routes(dir = APP, out: string[] = []): string[] {
   return out.sort();
 }
 /** An address for a route pattern, with sample values in its brackets. */
-const sample = (route: string) => route.replace("[system]", "ecc-production").replace("[module]", "material-master").replace("[section]", "users").replace("[token]", "fx-token").replace("[b]", "r2").replace("[id]", "r1");
+const sample = (route: string) => route.replace("[system]", "ecc-production").replace("[module]", "material-master").replace("[section]", "users").replace("[token]", "fx-token").replace("[b]", "r2").replace("[id]", "r1").replace("[key]", "MATNR%3D100");
 
 describe("the help index", () => {
   it("is the one the build script writes from docs/guide", () => {
@@ -38,8 +38,8 @@ describe("the help index", () => {
   });
 
   it("lists the guide's chapters and nothing of the retired interface", () => {
-    expect(v2).toHaveLength(26);
-    expect(chapters).toHaveLength(26);
+    expect(v2).toHaveLength(28);
+    expect(chapters).toHaveLength(28);
     expect(chapters.every((c) => c.kind === "v2" && c.interface === "v2")).toBe(true);
     expect(chapters.every((c) => c.sections.length > 0 && c.title && c.summary)).toBe(true);
   });
@@ -207,8 +207,8 @@ describe("searching help", () => {
 });
 
 describe("what's new", () => {
-  it("has one dated line for each step from 0 to the cut-over (7), step 10 and the release of 30 October, newest first", () => {
-    expect(whatsNew.map((w) => w.step)).toEqual(["11", "10", "7", "6c", "6b", "6", "5", "4", "3", "2", "1", "0"]);
+  it("has one dated line for each step from 0 to the cut-over (7), step 10 and the releases of 30 and 31 October, newest first", () => {
+    expect(whatsNew.map((w) => w.step)).toEqual(["12", "11", "10", "7", "6c", "6b", "6", "5", "4", "3", "2", "1", "0"]);
     for (const w of whatsNew) {
       expect(w.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(w.text).not.toContain("\n");

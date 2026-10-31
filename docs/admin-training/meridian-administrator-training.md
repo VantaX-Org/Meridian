@@ -7,7 +7,8 @@ read-only role, extracting on a schedule, scoring, routing fixes and backed up.
 Work through the modules in order. Each one has learning objectives, steps, checks ("you should now see ...") and a
 short exercise. Every setting, route and command named here exists in the release this edition describes. The
 screenshots are taken from the product's demo build with sample data (the "Demo data" bar at the top of each one);
-your own deployment shows your data and never shows that bar.
+your own deployment shows your data and never shows that bar. They show the light theme, the default; each person can
+switch to dark under Preferences.
 
 Who does what:
 
@@ -270,13 +271,17 @@ or path).
 
 ### Steps
 
-1. Connect a system from the command line ("Connect a system") or at `/s/new`. Name it, choose the **System type**
+1. Open **Systems** (`/s`), which lists every connected system with its connection health and last sync, and choose
+   **Connect a system**, or go straight to `/s/new`. **Set up Meridian** runs in six steps: **Connect SAP**, **Connect
+   SuccessFactors** (optional; **Skip for now**), **Choose objects**, **Choose policy packs**, **Schedule runs** and
+   **Invite people**, with **What the first run will do** beside them. In **Connect SAP**, name the system, choose the **System type**
    and the **Environment**, then for RFC systems **Host**, **Client** (3 digits), **Instance number** (2 digits) and
    an optional **User** (empty uses the deployment's default RFC user, `SAP_RFC_USER`), with the password under
    **Sign-in secrets**, then the **Extraction path** and the **Table reader**. Cloud systems ask for their base URL
    and OAuth details instead.
 2. **Test connection**. A passing test reads like "RFC connection succeeded (client 100, 41 ms)".
-3. **Connect system**. Nothing is read from SAP until you extract.
+3. **Connect and continue**, then work through the remaining steps and **Finish setup**. Nothing is read from SAP
+   until the first run; setup only reads, and nothing is written to SAP until an approved batch is sent.
 4. If SAP host names resolve only on your corporate DNS, set `MERIDIAN_DNS_1` (and `MERIDIAN_DNS_2`) in `.env`;
    `scripts/dns-overlay.sh` gives the API and worker those resolvers, and the installer and `update.sh` apply it.
    Without them containers use the host's resolver.
@@ -285,7 +290,7 @@ or path).
 
 ### Checks
 
-- You should now see the system on the map and, for the SAP Basis role, a row under **Connections** on the Basis
+- You should now see the system on the map and on **Systems** (`/s`) and, for the SAP Basis role, a row under **Connections** on the Basis
   home with "Connected" and what the last test said.
 - A table the user may not read shows "No authorisation to read this table. The user needs read access to it."; SU53
   on the SAP side shows the failed check.
@@ -492,7 +497,8 @@ BAPI (a vendor that is a business partner) and which by export, and why (a compa
 2. **Administration, Default digest**: the summary the tenant gets by default. Each person sets their own digest
    under Preferences.
 3. **Administration, Digests**: scheduled summaries for a role or a migration wave, with cadence, time zone and
-   channel; **Preview**, **Send now**, **Pause** and the delivery log. Email needs the `SMTP_*` or Microsoft Graph
+   channel, one row each showing audience, cadence, channel, when it was last sent and when it runs next, and On or
+   Paused; **Preview**, **Send now**, **Pause** and the delivery log. Email needs the `SMTP_*` or Microsoft Graph
    settings; without them an email digest is recorded as failed with the reason.
 4. **Administration, Webhooks**: **Add a webhook** with the URL of a Slack or Teams workflow, or any https endpoint,
    and the events it should receive. Meridian posts a signed JSON event (ids, names and numbers, never SAP values);
@@ -553,7 +559,7 @@ touching the real one: run it monthly.
 - **Download diagnostics bundle** under Administration, Platform and updates: versions, health checks, recent errors
   and configuration with every secret removed. It holds no SAP record values.
 - **The status page** at `/status` is readable signed out.
-- **Sandbox mode** (Administration, Settings): copies the latest run; decisions land on the copy and notifications,
+- **Sandbox mode** (a switch under Administration, Settings): copies the latest run; decisions land on the copy and notifications,
   webhooks, digests, report mailouts and write-backs are held back until you exit.
 
 ![Administration, Platform and updates: jobs, version, health checks and the diagnostics bundle.](img/platform-and-updates.png)

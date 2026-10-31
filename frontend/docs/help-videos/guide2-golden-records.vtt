@@ -1,41 +1,41 @@
 WEBVTT
 
 1
-00:00:00.016 --> 00:00:07.315
+00:00:00.003 --> 00:00:06.539
 A golden record is the one trusted version of a thing held more than once.
 
 2
-00:00:07.315 --> 00:00:13.331
+00:00:06.539 --> 00:00:11.795
 Match candidates, best score first, each with Review.
 
 3
-00:00:13.331 --> 00:00:20.012
+00:00:11.796 --> 00:00:18.104
 Review opens the pair side by side: pick a value per field that differs.
 
 4
-00:00:20.012 --> 00:00:25.038
+00:00:18.104 --> 00:00:23.063
 Merge the pair, or mark it not a duplicate with the reason.
 
 5
-00:00:25.038 --> 00:00:29.862
+00:00:23.063 --> 00:00:27.876
 Golden records: sources, survivorship, confidence, last merged and open conflicts.
 
 6
-00:00:29.862 --> 00:00:35.200
+00:00:27.876 --> 00:00:33.202
 Open conflicts are fields where the sources disagree and no rule has settled it.
 
 7
-00:00:35.200 --> 00:00:41.789
+00:00:33.202 --> 00:00:38.748
 Survivorship rules decide, field by field, which value survives.
 
 8
-00:00:41.789 --> 00:00:46.888
+00:00:38.748 --> 00:00:43.817
 Most recent, most complete, most frequent, trusted source, chain of systems, manual override.
 
 9
-00:00:46.888 --> 00:00:51.866
+00:00:43.817 --> 00:00:48.777
 Save the rules; they apply at the next match run.
 
 10
-00:00:51.866 --> 00:00:56.691
+00:00:48.777 --> 00:00:53.588
 Every merge and every not a duplicate is in the audit log.

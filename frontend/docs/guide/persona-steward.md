@@ -1,10 +1,10 @@
 # Walkthrough: data steward
 
-You clean the data: you decide the right value for each failing field, accept what Meridian suggests where it is right, sign off what is not a problem, and hand your batch to a second person. Your start screen is the **Landscape** with "Accept the suggested values" as your next step.
+You clean the data: you decide the right value for each failing field, accept what Meridian suggests where it is right, sign off what is not a problem, and hand your batch to a second person. Your start screen is the **Landscape** with "Accept N suggested values for" the top rule as your next step.
 
 ## Your first five steps
 
-1. **Landscape**: press **Accept the suggested values**; Work opens on your rows.
+1. **Landscape**: press **Accept N suggested values for** the top rule; Work opens on that rule's rows.
 2. **Work**: read the top rows, ranked by value at risk. Select rows and press `a` to accept their suggested values; the notice has **Undo**.
 3. **A record**: press `Enter` on a row without a suggestion. Read the possible values with their meanings, type the New value and press `Enter`.
 4. **By rule**: switch the ledger to **By rule** and decide a whole rule at once, or **Export fix sheet** (`e`) to work offline and **Import filled sheet** when done.

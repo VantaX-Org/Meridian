@@ -239,6 +239,18 @@ export async function getRuleHistory(checkId: string, limit = 12): Promise<RuleR
   return res.runs;
 }
 
+/* ---- GET /rules/{check_id}/failures-by ---- */
+
+export interface FailureGroup {
+  field: string;
+  values: { value: string; records: number; part: string }[];
+}
+
+/** Failing records of the rule in its newest run, counted by each key part past the identity (WERKS, BUKRS...). */
+export async function getRuleFailuresBy(checkId: string): Promise<{ total: number; groups: FailureGroup[] }> {
+  return v2Get<{ total: number; groups: FailureGroup[] }>(`/rules/${encodeURIComponent(checkId)}/failures-by`);
+}
+
 /* ---- GET /runs/timeline, /runs/{a}/vs/{b}/summary, /versions/compare ---- */
 
 export interface TimelineObject {

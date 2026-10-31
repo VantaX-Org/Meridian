@@ -1,49 +1,49 @@
 WEBVTT
 
 1
-00:00:00.021 --> 00:00:08.087
+00:00:00.004 --> 00:00:06.860
 A rule is a fixed check with an id, a field, a dimension and a severity.
 
 2
-00:00:08.087 --> 00:00:16.400
+00:00:06.860 --> 00:00:14.515
 MM142 is a high rule: failing records across objects, the share, the estimated value at risk, within tolerance, features blocked.
 
 3
-00:00:16.400 --> 00:00:23.740
+00:00:14.515 --> 00:00:20.462
 Definition: the check class, the field as MARA-MEINS, the expression and the authority.
 
 4
-00:00:23.740 --> 00:00:28.693
+00:00:20.462 --> 00:00:25.370
 Versions: who changed the rule, when and why.
 
 5
-00:00:28.693 --> 00:00:33.752
+00:00:25.370 --> 00:00:30.370
 Scope: every object and system the rule runs on, with its failing count.
 
 6
-00:00:33.752 --> 00:00:45.466
+00:00:30.370 --> 00:00:38.961
 The rule inspector holds the same facts beside any canvas. MM003 is one of the two critical rules that cap Material master.
 
 7
-00:00:45.466 --> 00:00:53.572
+00:00:38.961 --> 00:00:44.304
 Tolerance: only critical rules carry one. Over it, the rule caps the score.
 
 8
-00:00:53.572 --> 00:00:58.774
+00:00:44.304 --> 00:00:49.264
 Comment on the rule, and watch it.
 
 9
-00:00:58.774 --> 00:01:08.760
+00:00:49.264 --> 00:00:56.189
 The rules library lists every rule of the tenant: 794 across 15 objects, every page of them.
 
 10
-00:01:08.760 --> 00:01:15.653
+00:00:56.189 --> 00:01:01.448
 Filter by object, dimension, severity, check class and state.
 
 11
-00:01:15.653 --> 00:01:23.637
+00:01:01.448 --> 00:01:07.318
 Drafts run nowhere until they are reviewed and enabled.
 
 12
-00:01:23.637 --> 00:01:31.223
+00:01:07.318 --> 00:01:12.562
 New rule draft starts a rule in authoring.

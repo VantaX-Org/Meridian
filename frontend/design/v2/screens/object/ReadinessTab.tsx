@@ -9,7 +9,10 @@ import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
 import { useConfigImpact, useReadiness } from "@/lib/v2/object-queries";
 import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { f1, int, moduleFromSlug, VERDICT_LABEL } from "@/lib/v2/score";
-import { VerdictMark } from "../../marks";
+import { SeverityMark, VerdictMark, type SeverityKey } from "../../marks";
+import { Ruler } from "../../Ruler";
+import { dimsOf } from "../../shell/MapPane";
+import { objectHref } from "@/lib/v2/people";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
 import { ObjectMoney } from "../step9/Money";
 import { t, tn } from "@/lib/v2/i18n";
@@ -72,6 +75,92 @@ function FeatureList({ title, results, module, empty }: { title: string; results
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/** Every object in this object's waves, each as a ruler, with its verdict and open blocking gaps. */
+function ByObject({ module, waves }: { module: string; waves: Set<string> }) {
+  const run = useRunParam();
+  const landscape = useLandscape(run).data;
+  const cells = useReadiness().data?.cells.filter((c) => waves.has(c.wave)) ?? [];
+  const rows = [...new Map(cells.map((c) => [c.module, c])).values()].sort((a, b) => b.blocker_count - a.blocker_count);
+  if (rows.length < 2 || !landscape) return null;
+  return (
+    <section aria-label={t("Readiness by object")} className="m2-sec" data-testid="readiness-by-object">
+      <h2 className="m2-h2">{t("Readiness by object")}</h2>
+      <table className="m2-tbl">
+        <thead>
+          <tr>
+            <th scope="col">{t("Object")}</th>
+            <th scope="col">{t("Score")}</th>
+            <th scope="col">{t("Verdict")}</th>
+            <th scope="col" className="m2-r">{t("Blocking gaps")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((c) => {
+            const cell = landscape.cells.find((x) => x.module === c.module);
+            const label = landscape.objects.find((o) => o.module === c.module)?.label ?? c.module.replace(/_/g, " ");
+            return (
+              <tr key={c.module} aria-current={c.module === module ? "true" : undefined}>
+                <th scope="row"><V2Link href={objectHref(landscape, c.module)}>{label}</V2Link></th>
+                <td>
+                  {cell ? (
+                    <Ruler size={48} dims={dimsOf(cell)} measured={cell.raw_score} score={cell.score} capped={cell.capped} capLevel={cell.cap_level} breaches={cell.breaches} label={label} records={cell.records_checked} rules={cell.rules_measured} coverage={cell.coverage} />
+                  ) : <Dash />}
+                </td>
+                <td>
+                  <span className="m2-v"><VerdictMark verdict={VERDICT[c.verdict]} />{VERDICT_LABEL[VERDICT[c.verdict]]}</span>
+                </td>
+                <td className="m2-r">{int(c.blocker_count)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+/** The rules of this object behind blocked or degraded features, worst first, with the features each one holds back. */
+function Blockers({ results, module }: { results: ImpactResult[]; module: string }) {
+  const { hrefFor } = useOpenItem();
+  const by = new Map<string, { count: number; severity?: string; features: string[] }>();
+  for (const r of results) {
+    for (const f of r.blocking_findings) {
+      if (f.module && f.module !== module) continue;
+      const e = by.get(f.check_id) ?? { count: f.affected_count ?? 0, severity: f.severity, features: [] };
+      e.features.push(r.feature);
+      by.set(f.check_id, e);
+    }
+  }
+  const rows = [...by.entries()].sort((a, b) => b[1].count - a[1].count);
+  if (!rows.length) return null;
+  return (
+    <div data-testid="readiness-blockers">
+      <h3 className="m2-h3"><span>{t("Blockers")}</span><span className="m2-meta">{rows.length}</span></h3>
+      <table className="m2-tbl">
+        <thead>
+          <tr>
+            <th scope="col">{t("Rule")}</th>
+            <th scope="col">{t("Features")}</th>
+            <th scope="col" className="m2-r">{t("Failing rows")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([id, e]) => (
+            <tr key={id}>
+              <th scope="row">
+                {e.severity ? <><SeverityMark severity={e.severity as SeverityKey} />{" "}</> : null}
+                <V2Link href={hrefFor({ kind: "rule", id })} className="m2-mono">{id}</V2Link>
+              </th>
+              <td>{e.features.join(", ")}</td>
+              <td className="m2-r">{int(e.count)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -177,10 +266,12 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
               <FeatureList title={t("Blocked in S/4HANA")} results={blocked} module={apiModule} empty={t("No S/4 feature is blocked by a rule of this object.")} />
               <FeatureList title={t("Degraded in S/4HANA")} results={degraded} module={apiModule} empty={t("No S/4 feature is degraded by a rule of this object.")} />
             </div>
+            <Blockers results={mine} module={apiModule} />
             <p className="m2-prov">{t("Mapped from the rules that fail by the feature impact rules, for the rules of this object in this run.")}</p>
           </>
         )}
       </section>
+      <ByObject module={apiModule} waves={new Set(cells.map((c) => c.wave))} />
       <ObjectMoney module={apiModule} label={label} />
     </div>
   );

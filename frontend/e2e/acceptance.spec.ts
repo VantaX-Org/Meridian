@@ -283,7 +283,7 @@ test("12. admin: sandbox mode entered and left from Settings", async ({ page, re
   await signIn(page, "admin");
   try {
     await page.goto("/admin/settings");
-    const enter = page.getByRole("button", { name: "Enter sandbox mode" });
+    const enter = page.getByRole("switch", { name: "Enter sandbox mode" });
     await expect(enter).toBeVisible({ timeout: 45_000 });
     await enter.click();
     await page.getByRole("button", { name: "Copy the latest run and enter" }).click();
@@ -291,7 +291,7 @@ test("12. admin: sandbox mode entered and left from Settings", async ({ page, re
     note((await page.getByText(/Runs copied/).locator("..").innerText()).replace(/\s+/g, " "));
     await page.getByRole("button", { name: "Exit sandbox mode" }).click();
     await page.getByRole("button", { name: "Discard the sandbox and exit" }).click();
-    await expect(page.getByRole("button", { name: "Enter sandbox mode" })).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByRole("switch", { name: "Enter sandbox mode" })).toBeVisible({ timeout: 45_000 });
     await expect(page.getByText("Sandbox: nothing leaves this deployment.")).toHaveCount(0);
   } finally {
     await apiPost(request, "admin", "/admin/sandbox/exit"); // never leave the tenant in sandbox mode
@@ -312,8 +312,8 @@ test("13. auditor: a record's history across runs", async ({ page, request }) =>
 
 test("14. analyst: the command line in plain words", async ({ page }) => {
   await signIn(page, "analyst");
-  await page.getByRole("button", { name: "Search or type a command" }).click();
-  await page.getByRole("combobox", { name: "Search or type a command" }).fill("?critical business partner issues");
+  await page.getByRole("button", { name: "Search, ask, or type a command" }).click();
+  await page.getByRole("combobox", { name: "Search, ask, or type a command" }).fill("?critical business partner issues");
   await expect(page.getByText("The filter that will run")).toBeVisible({ timeout: 30_000 });
   note((await page.getByText(/^Records severity/).innerText()).trim());
   await page.getByRole("button", { name: "Open in Work" }).click();

@@ -12,6 +12,7 @@ import { useStatusPage } from "@/lib/v2/enterprise-queries";
 import { overallVerdict, overallWord } from "@/lib/v2/status";
 import { SeverityMark, VerdictMark } from "../marks";
 import { Dot, V2Link } from "../parts";
+import { useAuroraPrefs } from "@/hooks/use-theme";
 import { t } from "@/lib/v2/i18n";
 import "../basis.css";
 
@@ -70,6 +71,18 @@ function FailureLine() {
   );
 }
 
+/** The dark-mode switch in the strip's foot: light is the default; "system" counts as whatever the OS shows. */
+function DarkToggle() {
+  const { theme, setTheme } = useAuroraPrefs();
+  const dark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  return (
+    <button type="button" className="m2-thl" role="switch" aria-checked={dark} onClick={() => setTheme(dark ? "light" : "dark")} data-testid="dark-toggle">
+      <span className="m2-thl-t" aria-hidden="true" />
+      {t("Dark mode")}
+    </button>
+  );
+}
+
 /**
  * The status strip under the canvas: what the numbers on screen were made from. When the canvas is scoped to a run
  * (`?run=` or a run page) the figures are that run's. A failed job adds one line at the end.
@@ -111,6 +124,7 @@ export function StatusStrip() {
         </span>
       </span>
       <FailureLine />
+      <DarkToggle />
     </footer>
   );
 }

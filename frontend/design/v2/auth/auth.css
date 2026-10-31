@@ -3,9 +3,12 @@
  * password change: one card on the ground, the mark and the product name above it, the version under it. The same
  * tokens as the map, canvas and inspector; no picture, no gradient.
  */
-.m2-root .m2-auth { min-height: calc(100dvh - var(--m-attribution-h, 0px)); display: grid; place-items: center; padding: var(--m2-s10) var(--m2-s6); background: var(--m2-bg); }
-.m2-root .m2-auth-wrap { width: 100%; max-width: 960px; display: grid; grid-template-columns: minmax(0, 1fr) 400px; grid-template-areas: "brand card" "about card"; grid-template-rows: auto 1fr; gap: var(--m2-s6) var(--m2-s12); align-items: start; }
-.m2-root .m2-auth-col { grid-area: card; width: 100%; max-width: 400px; display: grid; gap: var(--m2-s3); }
+.m2-root .m2-auth { min-height: calc(100dvh - var(--m-attribution-h, 0px)); display: grid; padding: 0; background: var(--m2-bg); }
+/* The Login board: the ground carries the product on the left; the sign-in is a full-height white sheet on the right, divided by one rule. */
+.m2-root .m2-auth-wrap { width: 100%; display: grid; grid-template-columns: minmax(0, 2fr) minmax(380px, 1fr); grid-template-areas: "brand card" "about card"; grid-template-rows: auto 1fr; gap: var(--m2-s6) 0; align-items: start; }
+.m2-root .m2-auth-wrap > .m2-auth-brand, .m2-root .m2-auth-wrap > .m2-auth-about { margin-left: var(--m2-s10); max-width: 440px; }
+.m2-root .m2-auth-wrap > .m2-auth-brand { margin-top: var(--m2-s8); }
+.m2-root .m2-auth-col { grid-area: card; align-self: stretch; width: 100%; max-width: 520px; justify-self: end; box-sizing: border-box; display: grid; gap: var(--m2-s3); align-content: start; padding: var(--m2-s10); background: var(--m2-sheet); border-left: 1px solid var(--m2-line); }
 .m2-root .m2-auth-brand { grid-area: brand; display: inline-flex; align-items: center; gap: var(--m2-s2); font-weight: 600; font-size: var(--m2-fs-16); line-height: var(--m2-lh-16); color: var(--m2-fg); min-width: 0; overflow-wrap: anywhere; }
 .m2-root .m2-auth-about { grid-area: about; display: grid; gap: var(--m2-s5); align-content: start; padding-top: var(--m2-s4); max-width: 440px; }
 .m2-root .m2-auth-promise { margin: 0; font-size: var(--m2-fs-24); line-height: var(--m2-lh-24); font-weight: 600; color: var(--m2-fg); letter-spacing: -0.01em; text-wrap: balance; }
@@ -18,7 +21,7 @@
 .m2-root .m2-auth-motif g:nth-child(1) .m2-auth-motif-f, .m2-root .m2-auth-motif g:nth-child(2) .m2-auth-motif-f { fill: var(--m2-seq-4); }
 .m2-root .m2-auth-motif g:nth-child(3) .m2-auth-motif-f { fill: var(--m2-seq-3); }
 .m2-root .m2-auth-motif-k { fill: var(--m2-fg); }
-.m2-root .m2-auth-card { background: var(--m2-sheet); border: 1px solid var(--m2-line); border-radius: var(--m2-r2); padding: var(--m2-s8) var(--m2-s8) var(--m2-s6); display: grid; gap: var(--m2-s4); box-shadow: var(--m2-shadow-card); }
+.m2-root .m2-auth-card { display: grid; gap: var(--m2-s4); }
 .m2-root .m2-auth-card h1 { margin: 0; font-size: var(--m2-fs-20); line-height: var(--m2-lh-20); font-weight: 600; color: var(--m2-fg); }
 .m2-root .m2-auth-lead { margin: 0; font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); color: var(--m2-ink-2); }
 .m2-root .m2-auth-form { display: grid; gap: var(--m2-s4); }
@@ -48,16 +51,16 @@
 .m2-root .m2-auth-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .m2-root .m2-auth-tenant { display: block; height: 32px; width: auto; max-width: 160px; object-fit: contain; }
 .m2-root .m2-auth-wait { min-height: 100dvh; display: grid; place-items: center; background: var(--m2-bg); color: var(--m2-ink-3); font-size: var(--m2-fs-14); padding: var(--m2-s4); }
-.m2-root .m2-auth-wait > .m2-auth-col { justify-items: stretch; }
+.m2-root .m2-auth-wait > .m2-auth-col { justify-items: stretch; background: none; border-left: 0; padding: 0; }
 .m2-root .m2-auth-list { margin: 0; padding-left: var(--m2-s4); }
 @media (max-width: 860px) {
-  .m2-root .m2-auth { place-items: start center; padding: var(--m2-s8) var(--m2-s4); }
-  .m2-root .m2-auth-wrap { max-width: 400px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "brand" "card" "about"; grid-template-rows: none; gap: var(--m2-s4); }
+  .m2-root .m2-auth-wrap { grid-template-columns: minmax(0, 1fr); grid-template-areas: "brand" "card" "about"; grid-template-rows: none; gap: var(--m2-s4); }
+  .m2-root .m2-auth-wrap > .m2-auth-brand, .m2-root .m2-auth-wrap > .m2-auth-about { margin-left: var(--m2-s4); margin-right: var(--m2-s4); }
+  .m2-root .m2-auth-col { max-width: none; justify-self: stretch; border-left: 0; border-top: 1px solid var(--m2-line); padding: var(--m2-s6) var(--m2-s4); }
   .m2-root .m2-auth-about { padding-top: var(--m2-s4); gap: var(--m2-s4); }
   .m2-root .m2-auth-promise { font-size: var(--m2-fs-16); line-height: var(--m2-lh-16); }
   .m2-root .m2-auth-motif { display: none; }
 }
 @media (max-width: 480px) {
   .m2-root .m2-auth { padding: var(--m2-s4); }
-  .m2-root .m2-auth-card { padding: var(--m2-s5) var(--m2-s4); }
 }

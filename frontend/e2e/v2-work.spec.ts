@@ -178,7 +178,7 @@ for (const size of SIZES) {
         await page.goto("/?fixture=1", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByTestId("landscape-sentence")).toBeVisible(NAV);
         await page.keyboard.press("Control+k");
-        const palette = page.getByRole("dialog", { name: "Search or type a command" });
+        const palette = page.getByRole("dialog", { name: "Search, ask, or type a command" });
         await palette.getByRole("combobox").fill("approve");
         await expect(palette.getByText("Approvals waiting 612")).toBeVisible();
         await page.keyboard.press("Enter");

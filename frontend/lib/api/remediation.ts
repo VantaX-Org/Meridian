@@ -1,4 +1,5 @@
 import type { AxiosResponse } from "axios";
+import { v2Get } from "@/lib/api/v2/client";
 import apiClient from "./client";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -194,10 +195,15 @@ export const getBatchEvents = async (id: string, itemId?: string): Promise<{ ite
   return data;
 };
 
-export const getMonitor = async (): Promise<{ items: MonitorItem[] }> => {
-  const { data } = await apiClient.get<{ items: MonitorItem[] }>("/api/v1/remediation/monitor");
-  return data;
-};
+export const getMonitor = (): Promise<{ items: MonitorItem[] }> => v2Get("/remediation/monitor");
+
+export interface BackAfterClean {
+  weeks: { week: string; back: number; fixed: number }[];
+  rules: { check_id: string; back: number; fixed: number; back_recent: number; back_before: number }[];
+  batches: { id: string; created_at: string; fixed: number; back: number }[];
+}
+
+export const getBackAfterClean = (weeks = 12): Promise<BackAfterClean> => v2Get("/work/back-after-clean", { weeks });
 
 export const getBatchDiff = async (id: string): Promise<{ records: DiffRecord[] }> => {
   const { data } = await apiClient.get<{ records: DiffRecord[] }>(`/api/v1/remediation/batches/${id}/diff`);

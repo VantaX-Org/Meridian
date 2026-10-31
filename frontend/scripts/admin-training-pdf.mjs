@@ -17,7 +17,7 @@ const DIR = path.join(root, "..", "docs", "admin-training");
 const SRC = path.join(DIR, "meridian-administrator-training.md");
 const OUT = path.join(DIR, "meridian-administrator-training.pdf");
 /** The edition this source describes; change it with the text. */
-const EDITION = "30 October 2026";
+const EDITION = "31 October 2026";
 
 /** A screenshot as an embedded figure with its caption. */
 function figure(src, alt) {
