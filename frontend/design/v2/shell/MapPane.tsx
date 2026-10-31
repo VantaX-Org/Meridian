@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import type { Landscape, LandscapeCell, LandscapeSystem } from "@/lib/api/v2/types";
-import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
+import { useOpenItem, useRunParam, useV2Session } from "@/lib/v2/hooks";
+import "../basis.css";
 import { useCounts, useLandscape } from "@/lib/v2/queries";
 import { DIMENSIONS } from "@/lib/api/v2/types";
 import { byMeasured, f1, int, moduleSlug, readingText, systemSlug } from "@/lib/v2/score";
@@ -116,6 +117,7 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
   const run = useRunParam();
   const q = useLandscape(run);
   const counts = useCounts();
+  const { can } = useV2Session();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const current = (href: string, exact = false) => (exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
   const L = q.data;
@@ -159,7 +161,10 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
           <kbd className="m2-kb">g p</kbd>
         </V2Link>
       </nav>
-      <div className="m2-mgrp">{t("Systems")}</div>
+      <div className="m2-mgrp m2-mgrp-act">
+        <span>{t("Systems")}</span>
+        {can("manage_systems") ? <V2Link href="/s/new" data-testid="map-connect">{t("Connect a system")}</V2Link> : null}
+      </div>
       {q.isError ? (
         <ErrorFrame onRetry={() => void q.refetch()}>{t("The systems could not be read.")}</ErrorFrame>
       ) : !L ? (

@@ -214,16 +214,26 @@ def _rule_sheet(p: dict) -> list[dict[str, object]]:
 
 @router.get("/runs/{run_id}/reconciliation.xlsx", dependencies=[Depends(require_permission("export"))])
 async def reconciliation_workbook(run_id: str, request: Request, top: int = Query(10, ge=1, le=50),
+                                  rules: Optional[str] = Query(None, max_length=400),
                                   db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """The rules the person proved first (`rules`, comma separated, in their order), then the top rules by failing
+    records, without repeats."""
     from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, xlsx_filename, xlsx_response
     await _rls(db, tenant)
     t = str(tenant.id)
     r = await _run(db, t, run_id)
-    findings = (await db.execute(text(
-        "SELECT check_id, module, affected_count, total_count, details FROM findings WHERE tenant_id = CAST(:t AS uuid) "
-        "AND version_id = CAST(:v AS uuid) AND affected_count > 0 ORDER BY affected_count DESC, check_id LIMIT :n"),
-        {"t": t, "v": r["id"], "n": top})).mappings().all()
-    packs = [await _pack(db, t, f["check_id"], r, dict(f)) for f in findings]
+    asked = list(dict.fromkeys(c.strip() for c in (rules or "").split(",") if c.strip()))[:20]
+    cols = "SELECT DISTINCT ON (check_id) check_id, module, affected_count, total_count, details FROM findings "
+    where = "WHERE tenant_id = CAST(:t AS uuid) AND version_id = CAST(:v AS uuid) "
+    first = {f["check_id"]: dict(f) for f in (await db.execute(text(
+        cols + where + "AND check_id = ANY(:ids) ORDER BY check_id, affected_count DESC"),
+        {"t": t, "v": r["id"], "ids": asked})).mappings().all()} if asked else {}
+    rest = (await db.execute(text(
+        "SELECT check_id, module, affected_count, total_count, details FROM findings " + where +
+        "AND affected_count > 0 AND NOT (check_id = ANY(:ids)) ORDER BY affected_count DESC, check_id LIMIT :n"),
+        {"t": t, "v": r["id"], "n": top, "ids": asked})).mappings().all()
+    findings = [first[c] for c in asked if c in first] + [dict(f) for f in rest]
+    packs = [await _pack(db, t, f["check_id"], r, f) for f in findings]
     yes_no = ("Yes", "No")
     summary = SheetSpec(
         title="Summary",
@@ -243,6 +253,6 @@ async def reconciliation_workbook(run_id: str, request: Request, top: int = Quer
     data = build_workbook(tenant_name=tenant.name, run_label=r.get("label"), run_id=r["id"],
                           title="Reconciliation workbook", sheets=sheets)
     await write_audit(db, tenant.id, request, "export.reconciliation", "run", r["id"], None,
-                      {"rules": [p["check_id"] for p in packs], "top": top})
+                      {"rules": [p["check_id"] for p in packs], "top": top, "proved": [c for c in asked if c in first]})
     await db.commit()
     return xlsx_response(data, xlsx_filename("reconciliation", r.get("label")))

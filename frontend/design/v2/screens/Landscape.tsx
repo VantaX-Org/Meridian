@@ -13,6 +13,7 @@ import { useOpenItem, useRunParam, useV2Session, type V2Persona } from "@/lib/v2
 import { useBatches, usePeople } from "@/lib/v2/approvals-queries";
 import { slaMet } from "@/lib/v2/people";
 import { useWorkSummary } from "@/lib/v2/work-queries";
+import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { BasisHome } from "./BasisHome";
 import { useLandscape, useStatus, useTopWork } from "@/lib/v2/queries";
 import { byMeasured, f1, int, moduleSlug, readingText, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
@@ -103,6 +104,27 @@ function OwnerNext() {
   );
 }
 
+/** Basis: a system whose credentials SAP refused comes first, then the next one to extract or analyse. */
+function BasisNext({ landscape }: { landscape: Landscape }) {
+  const { hrefFor } = useOpenItem();
+  const refused = (useSystemsExtended().data ?? []).find((x) => x.health_status === "auth_failed");
+  if (refused) {
+    return (
+      <V2Link href={hrefFor({ kind: "connection", id: refused.id })} className="m2-btn m2-next" data-testid="basis-fix-signin">
+        {t("Fix the {name} sign-in", { name: refused.name })}
+      </V2Link>
+    );
+  }
+  const s = landscape.systems.find((x) => x.state === "not_extracted") ?? landscape.systems.find((x) => x.state === "extracted") ?? landscape.systems[0];
+  if (!s) return null;
+  const label = s.state === "extracted" ? t("Run analysis on {name}", { name: s.name }) : t("Extract {name}", { name: s.name });
+  return (
+    <V2Link href={hrefFor({ kind: "system", id: s.id })} className="m2-btn m2-next">
+      {label}
+    </V2Link>
+  );
+}
+
 /** What waits for the owner and how their SLA stands, under the landscape sentence. */
 function OwnerLine() {
   const people = usePeople().data?.people;
@@ -144,16 +166,7 @@ export function NextStep({ landscape, persona, waves }: { landscape: Landscape; 
       </V2Link>
     );
   }
-  if (persona === "basis") {
-    const s = landscape.systems.find((x) => x.state === "not_extracted") ?? landscape.systems.find((x) => x.state === "extracted") ?? landscape.systems[0];
-    if (!s) return null;
-    const label = s.state === "extracted" ? t("Run analysis on {name}", { name: s.name }) : t("Extract {name}", { name: s.name });
-    return (
-      <V2Link href={hrefFor({ kind: "system", id: s.id })} className="m2-btn m2-next">
-        {label}
-      </V2Link>
-    );
-  }
+  if (persona === "basis") return <BasisNext landscape={landscape} />;
   const wave = waves && waves.length ? nextWave(waves) : null;
   if (wave) {
     const [group] = groupByWave(landscape, [wave], landscape.cells);
@@ -544,6 +557,8 @@ export function FirstSteps({ connected, analysed }: { connected: boolean; analys
   const canConnect = session.can("manage_systems");
   const canUpload = session.can("upload");
   const canRun = session.can("analyse");
+  const canInvite = session.can("manage_users");
+  const { hrefFor } = useOpenItem();
   const current = !connected ? 1 : !analysed ? 2 : 3;
   const step = (n: number, title: string, body: ReactNode, action: ReactNode) => (
     <li className="m2-start-step" data-state={n < current ? "done" : n === current ? "current" : "next"} aria-current={n === current ? "step" : undefined}>
@@ -579,6 +594,11 @@ export function FirstSteps({ connected, analysed }: { connected: boolean; analys
               {canUpload ? (
                 <V2Link href="/admin/runs" className="m2-btn">
                   {t("Upload a file")}
+                </V2Link>
+              ) : null}
+              {canInvite ? (
+                <V2Link href={hrefFor({ kind: "user", id: "new:sap_basis" })} className="m2-btn" data-testid="invite-basis">
+                  {t("Invite SAP Basis")}
                 </V2Link>
               ) : null}
             </>

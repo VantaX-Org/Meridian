@@ -4575,6 +4575,23 @@ export const en = {
   "Welcome to {product}, {name}": "Welcome to {product}, {name}",
   "Your objects are on the map; the approvals waiting for you are on Work.": "Your objects are on the map; the approvals waiting for you are on Work.",
   "Your work starts on Work: the records to fix, the ones that hold the most back first.": "Your work starts on Work: the records to fix, the ones that hold the most back first.",
+  "You have unsaved changes. Leave without saving them?": "You have unsaved changes. Leave without saving them?",
+  "Save and retry the failed job": "Save and retry the failed job",
+  "The workbook leads with the rules you opened here, then the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.": "The workbook leads with the rules you opened here, then the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.",
+  "Connection test": "Connection test",
+  "{JOB_KIND_LABEL} job": "{JOB_KIND_LABEL} job",
+  "Cause": "Cause",
+  "Seen in": "Seen in",
+  "Missing authorisation": "Missing authorisation",
+  "Fix the {name} sign-in": "Fix the {name} sign-in",
+  "Invite SAP Basis": "Invite SAP Basis",
+  "Prove three rules": "Prove three rules",
+  "Count them in SE16 before anyone acts on a number": "Count them in SE16 before anyone acts on a number",
+  "{count} failing": "{count} failing",
+  "{statusWord}, 1 failed job": "{statusWord}, 1 failed job",
+  "{statusWord}, {count} failed jobs": "{statusWord}, {count} failed jobs",
+  "Value list": "Value list",
+  "Join or condition": "Join or condition",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

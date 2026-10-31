@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuditEntry, AuditListParams } from "@/lib/api/audit";
 import type { FieldMapping } from "@/lib/api/field-mappings";
@@ -313,8 +313,9 @@ export function AuditSection() {
   const [offset, setOffset] = useState(0);
   const [exporting, setExporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Filtering by actor needs the user list; an auditor without user admin gets no actor filter.
+  // The user list needs user admin; without it the Who filter offers everyone the log has shown so far.
   const users = useUsers({}, can("manage_users"));
+  const seen = useRef(new Map<string, string>());
   const filters: AuditListParams = useMemo(
     () => ({ actor_user_id: actor || undefined, action: action.trim() || undefined, entity_type: object || undefined, since: from || undefined, until: to || undefined }),
     [actor, action, object, from, to],
@@ -325,6 +326,8 @@ export function AuditSection() {
   const kinds = useMemo(() => [...new Set((summary.data?.summary ?? []).map((r) => r.entity_type).filter((x): x is string => !!x))].sort(), [summary.data]);
   const who = (e: AuditEntry) => (e.actor_email ? (users.data?.users.find((u) => u.id === e.actor_user_id)?.name ?? e.actor_email) : t("The system"));
   const columns = useMemo(() => AUDIT_COLUMNS(who), [users.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  for (const e of q.data?.entries ?? []) if (e.actor_user_id && e.actor_email) seen.current.set(e.actor_user_id, e.actor_email);
+  const actors = users.data ? users.data.users.map((u) => ({ id: u.id, name: u.name })) : [...seen.current].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   if (!allowed) return <AdminPage title={t("Audit log")}><NeedsPermission what={t("Reading the audit log")} permission="view_audit" /></AdminPage>;
   const filtered = Object.values(filters).some(Boolean);
   const badRange = !!from && !!to && to < from;
@@ -358,18 +361,16 @@ export function AuditSection() {
       {error ? <ErrorFrame>{t("The export did not finish. {error}", { error })}</ErrorFrame> : null}
       <Block>
         <div className="m2-fbar" role="search" aria-label={t("Filter the audit log")}>
-          {can("manage_users") ? (
-            <Fld label={t("Who")}>
-              <select value={actor} onChange={(e) => reset(() => setActor(e.target.value))}>
-                <option value="">{t("Anyone")}</option>
-                {(users.data?.users ?? []).map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
-                ))}
-              </select>
-            </Fld>
-          ) : null}
+          <Fld label={t("Who")}>
+            <select value={actor} onChange={(e) => reset(() => setActor(e.target.value))} data-testid="audit-who">
+              <option value="">{t("Anyone")}</option>
+              {actors.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          </Fld>
           <Fld label={t("Action contains")}>
             <input value={action} placeholder="user.invite" onChange={(e) => reset(() => setAction(e.target.value))} />
           </Fld>

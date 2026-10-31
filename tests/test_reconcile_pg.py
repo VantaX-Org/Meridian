@@ -111,3 +111,11 @@ async def test_reconciliation_workbook(owner, monkeypatch):
             "SELECT action, entity_id FROM audit_log WHERE tenant_id = :t AND action = 'export.reconciliation'"),
             {"t": s["tid"]}).fetchall()
         assert [(a, e) for a, e in audit] == [("export.reconciliation", s["run"])]
+        led = await client.get(f"/api/v1/runs/{s['run']}/reconciliation.xlsx",
+                               params={"top": 2, "rules": f"{ranked[1]},NOPE,{ranked[1]}"}, headers=headers("analyst"))
+        assert led.status_code == 200, led.text  # the proved rule leads, unknown ids drop, no repeats
+        assert load_workbook(io.BytesIO(led.content)).sheetnames[1:] == ["Summary", ranked[1], ranked[0], *(
+            [x[0] for x in owner.connect().execute(text(
+                "SELECT check_id FROM findings WHERE tenant_id = :t AND version_id = :v AND affected_count > 0 "
+                "AND check_id <> :c ORDER BY affected_count DESC, check_id OFFSET 1 LIMIT 1"),
+                {"t": s["tid"], "v": s["run"], "c": ranked[1]}).fetchall()])]

@@ -13,6 +13,7 @@ import { overallVerdict, overallWord } from "@/lib/v2/status";
 import { SeverityMark, VerdictMark } from "../marks";
 import { Dot, V2Link } from "../parts";
 import { t } from "@/lib/v2/i18n";
+import "../basis.css";
 
 /** The platform's health in one word, a link to the status page. Nothing shows until the status page has answered. */
 function HealthWord() {
@@ -23,6 +24,22 @@ function HealthWord() {
     <V2Link href="/status" className="m2-health" data-testid="status-health" aria-label={t("Platform {statusWord}, open the status page", { statusWord: overallWord(s) })}>
       <VerdictMark verdict={overallVerdict(s)} />
       {overallWord(s)}
+    </V2Link>
+  );
+}
+
+/** At phone width the strip is one line, the platform's health and how many jobs failed, a link to the status page. */
+function PhoneLine() {
+  const q = useStatusPage();
+  const { jobs } = useV2Jobs();
+  if (!q.data) return null;
+  const word = overallWord(q.data.status);
+  const n = openFailures(jobs).length;
+  const line = n === 0 ? word : n === 1 ? t("{statusWord}, 1 failed job", { statusWord: word }) : t("{statusWord}, {count} failed jobs", { statusWord: word, count: int(n) });
+  return (
+    <V2Link href="/status" className="m2-health m2-only-narrow" data-testid="status-phone">
+      <VerdictMark verdict={overallVerdict(q.data.status)} />
+      {line}
     </V2Link>
   );
 }
@@ -43,7 +60,7 @@ function FailureLine() {
   const why = firstSentence(failed.error);
   const sentence = t("{JOB_KIND_LABEL} of {jobObject} failed{value}", { JOB_KIND_LABEL: JOB_KIND_LABEL[failed.kind], jobObject: jobObject(failed), value: why ? `: ${why}` : "" });
   return (
-    <span className="m2-fail" data-testid="status-failure">
+    <span className="m2-fail m2-only-wide" data-testid="status-failure">
       <SeverityMark severity="critical" />
       <span title={sentence}>
         {sentence}{" "}
@@ -75,7 +92,8 @@ export function StatusStrip() {
     : [];
   return (
     <footer className="m2-status" data-testid="status-strip" aria-label={t("Status")}>
-      <span className="m2-status-l">
+      <PhoneLine />
+      <span className="m2-status-l m2-only-wide">
         <HealthWord />
         <span className="m2-status-t">
         {q.isError ? (
