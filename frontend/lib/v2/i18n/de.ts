@@ -5094,4 +5094,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{rule} failing records over the last {n} runs": "Fehlerhafte Datensätze von {rule} über die letzten {n} Läufe",
   "Accept {count} suggested values on {check}": "{count} vorgeschlagene Werte für {check} übernehmen",
   "{open} records open": "{open} Datensätze offen",
+  "Measured score, last {n} runs": "Gemessener Score, letzte {n} Läufe",
 };

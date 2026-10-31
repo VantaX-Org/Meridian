@@ -5093,6 +5093,7 @@ export const en = {
   "{rule} failing records over the last {n} runs": "{rule} failing records over the last {n} runs",
   "Accept {count} suggested values on {check}": "Accept {count} suggested values on {check}",
   "{open} records open": "{open} records open",
+  "Measured score, last {n} runs": "Measured score, last {n} runs",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

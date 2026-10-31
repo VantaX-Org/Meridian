@@ -11,7 +11,8 @@ import { ANY_SYSTEM, f1, findSystem, int, moduleFromSlug, pct1, systemForModule,
 import { Explain } from "../Explain";
 import { VerdictMark } from "../marks";
 import { ObjectBanner, DimensionBars } from "./object/Banner";
-import { AletheiaDock } from "./CommandCentre";
+import { AletheiaDock, LandscapeTrend } from "./CommandCentre";
+import { FixPipeline } from "./Cockpit";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { Ruler } from "../Ruler";
 import { dimsOf } from "../shell/MapPane";
@@ -335,6 +336,14 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
                 <div className="m2-co-grid">
                   <DimensionBars cell={cell} />
                   <TopFailing module={apiModule} run={run} />
+                </div>
+              ) : null}
+              {onRules ? (
+                <div className="m2-ck-row">
+                  <section className="m2-cc-card">
+                    <LandscapeTrend systemId={system.id} module={apiModule} />
+                  </section>
+                  <FixPipeline label={() => label} module={apiModule} />
                 </div>
               ) : null}
               {!onRules ? null : receipt ? (

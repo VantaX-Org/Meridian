@@ -5094,4 +5094,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{rule} failing records over the last {n} runs": "直近 {n} 回の実行における {rule} の不合格レコード",
   "Accept {count} suggested values on {check}": "{check} の提案値 {count} 件を承認",
   "{open} records open": "未処理のレコード {open} 件",
+  "Measured score, last {n} runs": "測定スコア（直近 {n} 回の実行）",
 };

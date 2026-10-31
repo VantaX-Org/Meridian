@@ -102,11 +102,11 @@ export function AletheiaDock() {
   );
 }
 
-/** The landscape's score over the last runs: the mean of the objects' measured scores, per run. */
-function LandscapeTrend({ systemId }: { systemId: string | null }) {
+/** The score over the last runs: one object's measured score, or with no object the mean of all of them, per run. */
+export function LandscapeTrend({ systemId, module }: { systemId: string | null; module?: string }) {
   const runs = useTimeline(systemId, 12).data?.runs ?? [];
   const points = runs.map((r) => {
-    const vs = Object.values(r.objects)
+    const vs = (module ? [r.objects[module]].filter(Boolean) : Object.values(r.objects))
       .map((o) => o.raw_score ?? o.score)
       .filter((v): v is number => v != null);
     const value = vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null;
@@ -118,7 +118,7 @@ function LandscapeTrend({ systemId }: { systemId: string | null }) {
   return (
     <ChartFrame
       title={t("Readiness over time")}
-      sub={t("Average object score, last {n} runs", { n: points.length })}
+      sub={module ? t("Measured score, last {n} runs", { n: points.length }) : t("Average object score, last {n} runs", { n: points.length })}
       height={160}
       level={3}
       state={known.length < 2 ? "empty" : "ready"}
