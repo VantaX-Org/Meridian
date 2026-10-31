@@ -24,6 +24,7 @@ import "../object.css";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { RuleBoard } from "./Cockpit";
 import { t, tx } from "@/lib/v2/i18n";
 
 type View = "rules" | "drafts" | "suppressions";
@@ -32,12 +33,12 @@ const columns: GridColumn<LibRow>[] = [
   { id: "rule", get header() { return t("Rule"); }, width: 300, pin: true, locked: true, cell: (r) => <Coded code={r.checkId} text={r.message} /> },
   { id: "object", get header() { return t("Object"); }, width: 170, cell: (r) => labelOf(r.module) },
   { id: "severity", get header() { return t("Severity"); }, width: 110, cell: (r) => <Sev severity={r.severity} /> },
-  { id: "dimension", get header() { return t("Dimension"); }, width: 120, cell: (r) => (r.dimension ? labelOf(r.dimension) : <Dash why={t("Read from the object's rules when you filter by dimension")} />) },
-  { id: "class", get header() { return t("Class"); }, width: 150, cell: (r) => (r.checkClass ? labelOf(r.checkClass) : <Dash why={t("Read from the object's rules when you filter by class")} />) },
   { id: "failing", get header() { return t("Failing"); }, width: 90, numeric: true, cell: (r) => (r.failing == null ? <Dash why={t("Not run yet")} /> : int(r.failing)) },
   { id: "pass", get header() { return t("Pass rate"); }, width: 90, numeric: true, cell: (r) => (r.passRate == null ? <Dash why={t("Not run yet")} /> : `${r.passRate.toFixed(1)}%`) },
   { id: "state", get header() { return t("State"); }, width: 110, cell: (r) => (r.suppressed ? t("Suppressed") : r.enabled ? t("Enabled") : t("Disabled")) },
   { id: "source", get header() { return t("Source"); }, width: 90, cell: (r) => (r.source === "yaml" ? t("Shipped") : t("Custom")) },
+  { id: "dimension", get header() { return t("Dimension"); }, width: 120, cell: (r) => (r.dimension ? labelOf(r.dimension) : <Dash why={t("Read from the object's rules when you filter by dimension")} />) },
+  { id: "class", get header() { return t("Class"); }, width: 150, cell: (r) => (r.checkClass ? labelOf(r.checkClass) : <Dash why={t("Read from the object's rules when you filter by class")} />) },
 ];
 
 function FilterBar({ f, set, modules }: { f: LibFilters; set: (f: LibFilters) => void; modules: string[] }) {
@@ -396,6 +397,7 @@ export function RulesLibrary() {
               <CcHBars rows={moduleBars} label={t("Failing rules by object")} />
             </section>
           ) : null}
+          <RuleBoard label={labelOf} />
         </>
       ) : null}
       <p className="m2-statusline" data-testid="rules-status-line">

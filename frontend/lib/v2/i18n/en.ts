@@ -5094,6 +5094,8 @@ export const en = {
   "Accept {count} suggested values on {check}": "Accept {count} suggested values on {check}",
   "{open} records open": "{open} records open",
   "Measured score, last {n} runs": "Measured score, last {n} runs",
+  "Requests by stage": "Requests by stage",
+  "Requests by stage, from draft to SAP": "Requests by stage, from draft to SAP",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

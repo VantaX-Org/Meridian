@@ -14,7 +14,7 @@ import { useRequests } from "@/lib/v2/requests-queries";
 import { t } from "@/lib/v2/i18n";
 import { kindWord, objectWord, PrecheckView, statusWord } from "../inspector/request";
 import { EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
-import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { CcBanner, CcHBars, CcPage, type CcBarRow } from "./cc-parts";
 
 const VIEWS: readonly RequestView[] = ["mine", "to_approve", "all"];
 const OBJECTS: readonly RequestObject[] = ["material", "customer", "vendor", "business_partner"];
@@ -192,6 +192,11 @@ export function RequestsCanvas() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
     .map(([who, n]) => ({ key: who, label: who, value: n, text: t("{n} {count, plural, one {request} other {requests}}", { n, count: n }) }));
+  const tone = (s: RequestStatus): CcBarRow["tone"] => (s === "failed" || s === "rejected" ? "crit" : s === "created" ? "pass" : s === "submitted" || s === "in_approval" ? "warn" : "data");
+  const pipeline = STATUSES.map((s) => {
+    const n = rows.filter((r) => r.status === s).length;
+    return { key: s, label: statusWord(s), value: n, tone: tone(s), text: t("{n} {count, plural, one {request} other {requests}}", { n, count: n }) };
+  });
   return (
     <CcPage>
     <div data-testid="requests-canvas">
@@ -214,11 +219,19 @@ export function RequestsCanvas() {
           </button>
         }
       />
-      {byPerson.length > 0 ? (
-        <section className="m2-cc-card" aria-label={t("Requests per person")} data-testid="requests-workload">
-          <h3>{t("Requests per person")}</h3>
-          <CcHBars label={t("Requests per person")} rows={byPerson} />
-        </section>
+      {rows.length > 0 ? (
+        <div className="m2-cc-row">
+          <section className="m2-cc-card" aria-label={t("Requests by stage")} data-testid="requests-pipeline">
+            <h3>{t("Requests by stage")}</h3>
+            <CcHBars label={t("Requests by stage, from draft to SAP")} rows={pipeline} />
+          </section>
+          {byPerson.length > 0 ? (
+            <section className="m2-cc-card" aria-label={t("Requests per person")} data-testid="requests-workload">
+              <h3>{t("Requests per person")}</h3>
+              <CcHBars label={t("Requests per person")} rows={byPerson} />
+            </section>
+          ) : null}
+        </div>
       ) : null}
       <div className="m2-cta">
         <div className="m2-seg" role="group" aria-label={t("Requests views")}>

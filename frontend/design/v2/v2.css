@@ -686,7 +686,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-ck-rule > .m2-mono { font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
 .m2-ck-rule > span:nth-child(2) { font-weight: 400; }
 .m2-ck-rule small { font-size: var(--m2-fs-12); color: var(--m2-ink-3); }
-.m2-ck-own { white-space: nowrap; }
+.m2-ck-own { min-width: 7em; overflow-wrap: normal; }
 .m2-ck-share { display: inline-flex; align-items: center; gap: var(--m2-s2); }
 .m2-ck-sbar { display: block; width: 72px; height: 6px; border-radius: var(--m2-r1); background: var(--m2-bg); overflow: hidden; }
 .m2-ck-sbar > span { display: block; height: 100%; background: var(--m2-sev-med); }

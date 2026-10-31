@@ -5095,4 +5095,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Accept {count} suggested values on {check}": "{count} vorgeschlagene Werte für {check} übernehmen",
   "{open} records open": "{open} Datensätze offen",
   "Measured score, last {n} runs": "Gemessener Score, letzte {n} Läufe",
+  "Requests by stage": "Anträge nach Phase",
+  "Requests by stage, from draft to SAP": "Anträge nach Phase, vom Entwurf bis SAP",
 };

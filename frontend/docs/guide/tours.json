@@ -104,8 +104,10 @@
         {"caption": "By rule groups the rows under their rule, so a whole rule is decided at once.", "click": {"role": "button", "name": "By rule"}},
         {"caption": "Open a record: every failing field, its possible values and the decision.", "go": "/work?open=record%3Amaterial_master%3AMATNR%3D000000000000000100"},
         {"caption": "Feature impact, provenance and history are on the record too.", "scroll": 700, "in": "dialog"},
-        {"caption": "Export fix sheet saves the rows on screen to Excel, with the same columns.", "go": "/work"},
+        {"caption": "Back on the ledger, More holds the fix sheet.", "go": "/work"},
+        {"caption": "Export fix sheet saves the rows on screen to Excel, with the same columns.", "click": {"role": "button", "name": "More"}},
         {"caption": "Fill it in offline and import it back: Meridian checks keys, fields and values before anything changes.", "point": {"text": "Import filled sheet", "nth": 0}},
+        {"caption": "Escape closes the menu.", "press": "Escape"},
         {"caption": "Share and export saves a view, exports any grid, or shares the page as a read-only link.", "point": {"text": "Share and export", "nth": 0}}
       ]
     },

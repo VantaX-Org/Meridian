@@ -5095,4 +5095,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Accept {count} suggested values on {check}": "{check} の提案値 {count} 件を承認",
   "{open} records open": "未処理のレコード {open} 件",
   "Measured score, last {n} runs": "測定スコア（直近 {n} 回の実行）",
+  "Requests by stage": "段階別の申請",
+  "Requests by stage, from draft to SAP": "段階別の申請（下書きから SAP まで）",
 };
