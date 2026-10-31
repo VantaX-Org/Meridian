@@ -34,6 +34,17 @@ The MDM health page, under MDM health in the map, shows the daily snapshot of ho
 
 The snapshot runs once a day. Until the first one has run the page says so, and the charts need two days of snapshots before they draw a line. Viewers and process analysts see no figures.
 
+## Record links
+
+The Record links page, under Record links in the map, shows which records are linked across objects: a business partner and the customer it is, a material and its plants, a vendor and its company codes. Relationship discovery reads these links from the SAP link tables at each sync, and the AI impact scorer adds links it infers. The banner counts the links, with the link types in use, the objects they join and the share that was inferred rather than read from SAP. Under it:
+
+- **Find the links of one record.** Pick an object and type a record key to see every link to and from that record. Tick **Include ended links** to see links that no longer exist in SAP.
+- **Links by type.** How many links of each type, most first. The list holds the latest 200 links; when there are more, the bars cover only those, and the banner says so.
+- **Links.** Each link with the record on each side, what the link means, the SAP table it was read from (or the confidence of an inferred link) and the day it was found.
+- **Link types SAP defines.** The link types with the SAP tables on each side.
+
+Roles without permission to see AI confidence see a dash instead of the confidence of an inferred link.
+
 ## What is on it
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.
