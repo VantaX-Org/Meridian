@@ -62,6 +62,9 @@ describe("the admin's jobs", () => {
     expect(norm(diff)).toContain("Add: business partner, Steward");
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
     await screen.findByText(/^Applied: 1 added/);
+    const bp = await waitFor(() => within(screen.getByTestId("steward-assignments")).getByRole("row", { name: /^Business partner/ }));
+    expect(within(bp).getAllByRole("cell").map((c) => c.textContent)).toEqual(["Whole object", "All", "A. Naidoo", "The template"]);
+    expect(norm(screen.getByTestId("steward-assignments"))).toContain("By hand");
     const gaps = await screen.findByTestId("template-gaps");
     expect(norm(gaps)).toContain("No owner");
   });

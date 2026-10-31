@@ -6481,4 +6481,11 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The lineage model puts no process step behind this KPI.": "Das Herkunftsmodell ordnet dieser Kennzahl keinen Prozessschritt zu.",
   "The rules guarding this KPI could not be read.": "Die Regeln, die diese Kennzahl absichern, konnten nicht gelesen werden.",
   "Weakest pass rate": "Schwächste Erfolgsquote",
+  "By hand": "Manuell",
+  "No steward is assigned yet. Apply the template to assign them.": "Noch kein Steward zugewiesen. Wenden Sie die Vorlage an, um sie zuzuweisen.",
+  "Set by": "Festgelegt durch",
+  "Stewards in place": "Zugewiesene Stewards",
+  "The steward assignments": "Die Steward-Zuweisungen",
+  "The template": "Die Vorlage",
+  "Who stewards each object and slice now, and whether the template or a person set it.": "Wer jedes Objekt und jeden Ausschnitt derzeit betreut und ob die Vorlage oder eine Person dies festgelegt hat.",
 };

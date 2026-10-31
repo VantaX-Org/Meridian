@@ -310,6 +310,15 @@ export interface RelatedOut {
 export const getTemplate = () => v2Get<TemplateOut>("/admin/assignment-template");
 export const putTemplate = (template: AssignmentTemplate) => v2Send<TemplateOut>("PUT", "/admin/assignment-template", { template });
 export const applyTemplate = (dryRun: boolean, modules?: string[]) => v2Send<ApplyPlan>("POST", "/admin/assignment-template/apply", { dry_run: dryRun, modules });
+export interface StewardAssignment {
+  module: string;
+  slice_kind: SliceKind;
+  slice_value: string;
+  steward_user_id: string | null;
+  steward_name: string | null;
+  source: "template" | "manual";
+}
+export const getStewardAssignments = () => v2Get<{ assignments: StewardAssignment[] }>("/admin/steward-assignments");
 export const getTemplateGaps = () => v2Get<{ objects: number; gaps: Gap[]; based_on: string }>("/admin/assignment-template/gaps");
 export const getRelated = (module: string) => v2Get<RelatedOut>(`/objects/${encodeURIComponent(module)}/related`);
 

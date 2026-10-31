@@ -6480,6 +6480,13 @@ export const en = {
   "The lineage model puts no process step behind this KPI.": "The lineage model puts no process step behind this KPI.",
   "The rules guarding this KPI could not be read.": "The rules guarding this KPI could not be read.",
   "Weakest pass rate": "Weakest pass rate",
+  "By hand": "By hand",
+  "No steward is assigned yet. Apply the template to assign them.": "No steward is assigned yet. Apply the template to assign them.",
+  "Set by": "Set by",
+  "Stewards in place": "Stewards in place",
+  "The steward assignments": "The steward assignments",
+  "The template": "The template",
+  "Who stewards each object and slice now, and whether the template or a person set it.": "Who stewards each object and slice now, and whether the template or a person set it.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

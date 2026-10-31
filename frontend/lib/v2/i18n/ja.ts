@@ -6481,4 +6481,11 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The lineage model puts no process step behind this KPI.": "系譜モデルはこの KPI の背後にプロセスステップを置いていません。",
   "The rules guarding this KPI could not be read.": "この KPI を守るルールを読み取れませんでした。",
   "Weakest pass rate": "最も低い合格率",
+  "By hand": "手動",
+  "No steward is assigned yet. Apply the template to assign them.": "スチュワードはまだ割り当てられていません。テンプレートを適用して割り当ててください。",
+  "Set by": "設定元",
+  "Stewards in place": "割り当て済みのスチュワード",
+  "The steward assignments": "スチュワードの割り当て",
+  "The template": "テンプレート",
+  "Who stewards each object and slice now, and whether the template or a person set it.": "各オブジェクトとスライスを現在担当しているスチュワードと、それをテンプレートと担当者のどちらが設定したか。",
 };

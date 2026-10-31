@@ -10,7 +10,7 @@ import { formatDate } from "@/lib/format";
 import { useAssignable } from "@/lib/v2/approvals-queries";
 import { failureText } from "@/lib/v2/errors";
 import { useV2Session } from "@/lib/v2/hooks";
-import { refreshRoles, useShareLinks, useTemplate, useTemplateGaps } from "@/lib/v2/roles-queries";
+import { refreshRoles, useShareLinks, useStewardAssignments, useTemplate, useTemplateGaps } from "@/lib/v2/roles-queries";
 import { useQuery } from "@tanstack/react-query";
 import { getAllDelegations } from "@/lib/api/v2/roles";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -49,6 +49,7 @@ export function StewardshipSection() {
   const qc = useQueryClient();
   const q = useTemplate();
   const gaps = useTemplateGaps();
+  const current = useStewardAssignments();
   const people = useAssignable(true);
   const [draft, setDraft] = useState<AssignmentTemplate | null>(null);
   const [plan, setPlan] = useState<ApplyPlan | null>(null);
@@ -147,6 +148,40 @@ export function StewardshipSection() {
                 {plan ? <Diff plan={plan} /> : null}
                 {error ? <Note tone="bad">{error}</Note> : null}
                 {msg ? <p role="status">{msg}</p> : null}
+              </Block>
+              <Block title={tr("Stewards in place")} hint={tr("Who stewards each object and slice now, and whether the template or a person set it.")}>
+                <Loaded q={current} what={tr("The steward assignments")}>
+                  {(c) =>
+                    c.assignments.length === 0 ? (
+                      <p className="m2-prov">{tr("No steward is assigned yet. Apply the template to assign them.")}</p>
+                    ) : (
+                      <div className="m2-scroll">
+                        <table className="m2-tmpl" data-testid="steward-assignments">
+                          <thead>
+                            <tr>
+                              <th scope="col">{tr("Object")}</th>
+                              <th scope="col">{tr("Stewards by")}</th>
+                              <th scope="col">{tr("Value")}</th>
+                              <th scope="col">{tr("Steward")}</th>
+                              <th scope="col">{tr("Set by")}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {c.assignments.map((a) => (
+                              <tr key={`${a.module}|${a.slice_kind}|${a.slice_value}`}>
+                                <th scope="row">{t.labels[a.module] ?? a.module}</th>
+                                <td>{SLICE_WORD[a.slice_kind] ?? a.slice_kind}</td>
+                                <td>{a.slice_value === "*" ? tr("All") : <Mono>{a.slice_value}</Mono>}</td>
+                                <td>{a.steward_name ?? "—"}</td>
+                                <td className="m2-meta">{a.source === "template" ? tr("The template") : tr("By hand")}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  }
+                </Loaded>
               </Block>
               <Block title={tr("Gaps")} hint={tr("Every object needs one owner and at least one steward per active slice.")}>
                 <Loaded q={gaps} what={tr("The gaps")}>
