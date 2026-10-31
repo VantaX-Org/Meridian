@@ -36,18 +36,20 @@ export function RuleCanvas({ id }: { id: string }) {
 
   if (state.status === "loading") {
     return (
-      <div aria-busy="true" data-testid="rule-canvas-loading">
-        <PageTitle>
-          <Mono>{id}</Mono>
-        </PageTitle>
-        <p className="m2-statusline"><Skeleton width={420} height={14} /></p>
-        <div className="m2-sec"><Skeleton width="100%" height={160} /></div>
-      </div>
+      <CcPage>
+        <div aria-busy="true" data-testid="rule-canvas-loading">
+          <PageTitle>
+            <Mono>{id}</Mono>
+          </PageTitle>
+          <p className="m2-statusline"><Skeleton width={420} height={14} /></p>
+          <div className="m2-sec"><Skeleton width="100%" height={160} /></div>
+        </div>
+      </CcPage>
     );
   }
   if (state.status === "error") {
     return (
-      <>
+      <CcPage>
         <PageTitle>
           <Mono>{id}</Mono>
         </PageTitle>
@@ -59,7 +61,7 @@ export function RuleCanvas({ id }: { id: string }) {
             </EmptyFrame>
           </div>
         </div>
-      </>
+      </CcPage>
     );
   }
 

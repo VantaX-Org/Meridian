@@ -79,6 +79,7 @@ function Row({ i }: { i: MonitorItem }) {
                 <V2Link href={`/r/${encodeURIComponent(c.check_id)}`}>
                   <Mono>{c.check_id}</Mono>
                 </V2Link>{" "}
+                {c.name ? <span>{c.name}</span> : null}{" "}
                 <span className="m2-meta">{int(c.new)}</span>
               </div>
             ))

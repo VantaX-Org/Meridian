@@ -1098,9 +1098,9 @@ export function monitorFixture(): { items: MonitorItem[] } {
           baseline_run_at: "2026-10-15T11:30:00Z",
           new_records: 41,
           regressed_checks: [
-            { check_id: "MM142", module: "material_master", severity: "critical", new: 17 },
-            { check_id: "MM007", module: "material_master", severity: "high", new: 9 },
-            { check_id: "MM023", module: "material_master", severity: "medium", new: 4 },
+            { check_id: "MM142", name: "Base unit of measure MEINS must reference a valid entry in T006", module: "material_master", severity: "critical", new: 17 },
+            { check_id: "MM007", name: "Material group is required for reporting and procurement", module: "material_master", severity: "high", new: 9 },
+            { check_id: "MM023", name: "MRP type (plant level) must exist in T438A", module: "material_master", severity: "medium", new: 4 },
           ],
           regressed_check_count: 3,
           resolved_records: 186,

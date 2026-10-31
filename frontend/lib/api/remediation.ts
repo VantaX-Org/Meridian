@@ -95,6 +95,8 @@ export interface MonitorRun {
 
 export interface RegressedCheck {
   check_id: string;
+  /** The rule's title from the rules table; null when the tenant has no rule row for it. */
+  name?: string | null;
   module: string;
   severity: string;
   new: number;
