@@ -57,7 +57,10 @@ describe("the People canvas", () => {
     const naidoo = within(t).getByRole("link", { name: "A. Naidoo" }).closest("tr") as HTMLElement;
     const cells = within(naidoo).getAllByRole("cell").map(text);
     expect(text(within(naidoo).getByRole("rowheader"))).toContain("Data steward");
-    expect(cells).toEqual(["2 stewarded", "214", "0", "31", "86%", "9", expect.stringMatching(/Oct/)]);
+    expect(cells).toEqual(["2 stewarded", "214", "0", "31 Remind", "86%", "9", expect.stringMatching(/Oct/)]);
+    // F30: the overdue count opens that person's overdue rows; Remind sends them a notice.
+    expect(within(naidoo).getByTestId("person-overdue").getAttribute("href")).toMatch(/^\/work\?assigned=[^&]+&due=overdue/);
+    expect(within(naidoo).getByRole("button", { name: "Remind A. Naidoo" })).toBeEnabled();
   });
 
   it("puts the caller's own row first and marks it, then orders by open work", async () => {

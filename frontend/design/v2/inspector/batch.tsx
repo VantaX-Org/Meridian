@@ -20,6 +20,18 @@ import { DelegationBanner } from "./delegation";
 import { LiveWriteback } from "./writeback";
 import { useTenantSettings } from "@/lib/v2/admin-queries";
 import { t as tr } from "@/lib/v2/i18n";
+import { daysUntil } from "@/lib/v2/waves";
+
+/** The batch's SLA clock while it still waits on a person: days left to its due date, or days past it. */
+function SlaClock({ status, dueAt }: { status: string; dueAt: string | null | undefined }) {
+  const d = status === "draft" || status === "approved" || status === "awaiting_load" ? daysUntil(dueAt ?? null) : null;
+  if (d == null) return null;
+  return (
+    <p className="m2-prov" data-testid="batch-sla" data-late={d < 0 || undefined}>
+      {d < 0 ? tr("{n} {count, plural, one {day} other {days}} past the due date.", { n: int(-d), count: -d }) : d === 0 ? tr("Due today.") : tr("Due in {n} {count, plural, one {day} other {days}}.", { n: int(d), count: d })}
+    </p>
+  );
+}
 
 const SHOWN = 50;
 const REASSIGN_MAX = 500;
@@ -149,6 +161,7 @@ function BatchBody({ b }: { b: BatchRow }) {
           {tr("Sent back{value}{value2}{value3}", { value: b.returned.by ? tr(" by {who}", { who: b.returned.by }) : "", value2: b.returned.at ? tr(" on {date}", { date: day(b.returned.at) }) : "", value3: b.returned.note ? `: ${b.returned.note}` : "." })}
         </p>
       ) : null}
+      <SlaClock status={b.status} dueAt={b.dueAt} />
       {b.status === "exported" ? <p className="m2-prov">{sentLine(b, day)}</p> : null}
 
       <h3>{tr("Records")}</h3>

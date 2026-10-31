@@ -414,7 +414,7 @@ export function WorkCanvas() {
   const [gridKey, bumpGrid] = useGridKey(COLUMNS_ID);
   const objectLabel = state.module ? objectName(state.module, labels) : null;
   const text = sentence({ persona: session.persona, chip: state.chip, summary, objectLabel, module: state.module });
-  const topGroup = (groupsQ.data?.groups ?? []).find((g) => g.proposed > 0 && (!state.module || g.module === state.module));
+  const topGroup = (groupsQ.data?.groups ?? []).find((g) => g.proposed > 0 && (!state.module || g.module === state.module) && (!state.rule || g.check_id === state.rule));
   const headers = useMemo(() => keyHeaders(recordRows), [recordRows]);
   // The ledger's own density when the address or a saved view gives one, else the one in Preferences.
   const shellDensity = useDensity();
@@ -734,7 +734,7 @@ export function WorkCanvas() {
           </button>
         </div>
       ) : null}
-      <p className="m2-prov m2-only-wide">{tr("Rows are read from the latest run of each object{value}.", { value: status?.cost_model ? tr(". Value at risk is from cost model {cost_model}", { cost_model: status.cost_model }) : "" })}</p>
+      <p className="m2-prov m2-only-wide">{tr("Rows are read from the latest run of each object{value}.", { value: status?.cost_model ? tr(". Value at risk is from cost model {cost_model}", { cost_model: status.cost_model }) : "" })}{" "}{tr("Each count is of records, not issues: one record with three failed rules counts once. Chip counts follow the object, rule and person filters.")}</p>
       {session.persona === "steward" && can.apply && topGroup && state.chip !== "approvals" && state.chip !== "exceptions" ? (
         <div className="m2-cta">
           <button type="button" className="m2-btn m2-next" onClick={() => ask(topGroup.proposed, tr("Accept {count} suggested values for {check}?", { count: int(topGroup.proposed), check: topGroup.check_id }), tr("Accept {count} values", { count: int(topGroup.proposed) }), () => void actions.acceptRule(topGroup.check_id, topGroup.proposed, topGroup.version_id, recordRows))}>

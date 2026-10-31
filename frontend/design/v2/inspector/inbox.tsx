@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import { useV2Href } from "@/lib/v2/hooks";
 import { groupNotifications, kindOf, linkOf, sentenceOf } from "@/lib/v2/inbox";
-import { useMarkRead, useNotifications, useUnread } from "@/lib/v2/approvals-queries";
+import { useMarkRead, useNextSteps, useNotifications, useUnread } from "@/lib/v2/approvals-queries";
+import type { NextStep } from "@/lib/api/v2/people";
 import { useLandscape } from "@/lib/v2/queries";
 import { int } from "@/lib/v2/score";
 import type { Notification } from "@/types/api";
@@ -83,8 +84,64 @@ function Group({ title, items, today, ...rest }: { title: string; items: Notific
   );
 }
 
+/** The sentence and the one action of a next step (GET /people/next). */
+function stepWords(s: NextStep): { kind: string; sentence: string; action: string; severity: "critical" | "high" | "medium" | "low" } {
+  switch (s.kind) {
+    case "task":
+      return { kind: tr("Approval"), sentence: tr("{title} waits for your decision.", { title: s.title }), action: tr("Decide"), severity: "medium" };
+    case "approve_batch":
+      return { kind: tr("Approval"), sentence: tr("Batch {title} waits for your approval.", { title: s.title }), action: tr("Open the batch"), severity: "medium" };
+    case "sent_back":
+      return { kind: tr("Sent back"), sentence: tr("Batch {title} was sent back to you.", { title: s.title }), action: tr("Open the batch"), severity: "high" };
+    case "load":
+      return { kind: tr("SAP load"), sentence: tr("Batch {title} waits for you to load it in SAP and confirm.", { title: s.title }), action: tr("Confirm the load"), severity: "medium" };
+    case "overdue":
+      return { kind: tr("Overdue"), sentence: tr("{n} {count, plural, one {record assigned to you is} other {records assigned to you are}} past the due date.", { n: int(s.count), count: s.count }), action: tr("Open the ledger"), severity: "high" };
+    default:
+      return { kind: tr("Job failed"), sentence: tr("{n} {count, plural, one {job} other {jobs}} failed on {title}.", { n: int(s.count), count: s.count, title: s.title }), action: tr("Open the job"), severity: "critical" };
+  }
+}
+
 /**
- * `?open=inbox`: the notifications, grouped Today and Earlier, in the inspector's frame. j and k move, Enter opens the
+ * What waits for the caller, in the order to do it, each with its one action: approvals, batches sent back, loads to
+ * confirm, overdue work, failed jobs (GET /people/next). Leads the inbox and the start screen. `quiet`: draw nothing
+ * when nothing waits (the start screen); the inbox says so.
+ */
+export function NextList({ quiet = false }: { quiet?: boolean }) {
+  const q = useNextSteps();
+  const items = q.data?.items ?? [];
+  if (q.isLoading || q.isError || (quiet && items.length === 0)) return null;
+  return (
+    <section aria-label={tr("Next steps")} data-testid="next-steps">
+      <h3>{tr("Next steps")}</h3>
+      {items.length === 0 ? (
+        <p className="m2-prov">{tr("Nothing waits for you.")}</p>
+      ) : (
+        <ul className="m2-nlist">
+          {items.map((s) => {
+            const w = stepWords(s);
+            return (
+              <li key={`${s.kind}:${s.id}`} className="m2-nitem" data-kind={s.kind}>
+                <span className="m2-nk">
+                  <SeverityMark severity={w.severity} />
+                  {w.kind}
+                </span>
+                <span className="m2-nat">{s.due_at ? tr("Due {date}", { date: when(s.due_at, false) }) : null}</span>
+                <span className="m2-ns">{w.sentence}</span>
+                <span className="m2-na">
+                  <V2Link href={s.href}>{w.action}</V2Link>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/**
+ * `?open=inbox`: the next steps, then the notifications, grouped Today and Earlier, in the inspector's frame. j and k move, Enter opens the
  * highlighted one (and marks it read); marking read refetches the list and the count in the top bar.
  */
 export function InboxPanel({ onClose }: { onClose: () => void }) {
@@ -155,6 +212,7 @@ export function InboxPanel({ onClose }: { onClose: () => void }) {
           </a>
           <MentionCount />
         </div>
+        <NextList />
         <DriftInbox />
         {all.isError || one.isError ? <ErrorFrame>{tr("The change could not be saved. Try again.")}</ErrorFrame> : null}
         {q.isLoading ? (
