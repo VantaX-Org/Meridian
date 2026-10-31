@@ -76,10 +76,15 @@ export function GoLiveBanner({ landscape, waves }: { landscape: Landscape; waves
             {t("Clear {n} critical issues", { n: int(critical) })}
           </V2Link>
         ) : (
-          <V2Link href="/waves" className="m2-btn m2-next">
+          <V2Link href="/?view=waves" className="m2-btn m2-next">
             {t("Sign off the wave")}
           </V2Link>
         )}
+        {wave ? (
+          <V2Link href="/go-live" className="m2-btn">
+            {t("Open the flight deck")}
+          </V2Link>
+        ) : null}
       </div>
     </section>
   );

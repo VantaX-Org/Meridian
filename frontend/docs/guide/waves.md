@@ -30,6 +30,16 @@ For each wave: **Name**, **Target date**, **Stage** (Plan, Mock load 1, Mock loa
 - **Gate state** checks each condition against the same run: the shown scores, the critical rules over tolerance, and the active contracts that name the objects.
 - **Due in N days** counts from today to the target date.
 
+## Go-live flight deck
+
+The flight deck at `/go-live` reads the next wave with a go-live date against the forecast of every object in it. Open it from **Open the flight deck** on the landscape banner.
+
+- **Runway**: one row per object. The grey line is its daily score history; the blue line is the forecast to go-live with its 95% band shaded; the dashed red line is the wave's minimum score. A row whose forecast lands under the line is short.
+- **Line meets target** is the day the slowest object's forecast crosses the minimum; it shows a dash while any object has too little history to forecast.
+- **Cost of waiting** is the value at risk the wave's failing records carry today.
+- **What if**: pick an object, tick the top fixes, and read the score, gates and verdict it would reach if those rules passed. Nothing is changed in SAP.
+- Forecasts need three daily scores; an object with fewer shows **Forecast unavailable** instead of a guessed line.
+
 ## What you can do, by role
 
 - **Programme lead** (analyse): plan waves, set gates, assign objects.

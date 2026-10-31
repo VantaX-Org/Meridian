@@ -193,6 +193,54 @@ function lineageRead(path: string, params: Params): unknown {
   return undefined;
 }
 
+/** A deterministic forecast per module: twelve daily scores three days apart, ending at the landscape score. */
+function forecastRead(path: string): unknown {
+  const m = /^\/analytics\/forecast\/([^/]+)$/.exec(path);
+  if (!m) return undefined;
+  const mod = decodeURIComponent(m[1]);
+  const cell = landscapeFixture.cells.find((c) => c.module === mod && c.score != null);
+  if (!cell) return { module_id: mod, forecast: null, message: "Need at least 3 data points for forecasting (have 0)" };
+  const seed = [...mod].reduce((s, ch) => s + ch.charCodeAt(0), 0);
+  const end = cell.score as number;
+  // slope between -0.1 and +0.5 points a day; a module far below 95 climbs faster
+  const slope = Math.round((Math.min(0.5, (95 - end) / 60) - (seed % 3) * 0.05) * 100) / 100;
+  const history = Array.from({ length: 12 }, (_, i) => {
+    const day = (i - 11) * 3;
+    const wobble = ((seed * (i + 3)) % 7) / 7 - 0.5;
+    return { day, score: Math.round(Math.min(100, end + slope * day + (i === 11 ? 0 : wobble)) * 10) / 10 };
+  });
+  const n = history.length;
+  const mx = history.reduce((s, p) => s + p.day, 0) / n;
+  const my = history.reduce((s, p) => s + p.score, 0) / n;
+  const sxx = history.reduce((s, p) => s + (p.day - mx) ** 2, 0);
+  const b = history.reduce((s, p) => s + (p.day - mx) * (p.score - my), 0) / sxx;
+  const a = my - b * mx;
+  const se = Math.sqrt(history.reduce((s, p) => s + (p.score - a - b * p.day) ** 2, 0) / (n - 2));
+  const r1 = (v: number) => Math.round(Math.min(100, Math.max(0, v)) * 10) / 10;
+  const at = (h: number) => {
+    const pt = a + b * h;
+    const half = 2.23 * se * Math.sqrt(1 + 1 / n + (h - mx) ** 2 / sxx);
+    return { [`forecast_${h}d`]: r1(pt), [`forecast_${h}d_low`]: r1(pt - half), [`forecast_${h}d_high`]: r1(pt + half) };
+  };
+  const h7 = at(7);
+  return {
+    module_id: mod,
+    forecast: {
+      module_id: mod,
+      current_score: end,
+      ...h7,
+      ...at(30),
+      ...at(90),
+      trend: b > 0.1 ? "improving" : b < -0.3 ? "critical" : b < -0.1 ? "declining" : "stable",
+      confidence: r1(100 - ((h7.forecast_7d_high as number) - (h7.forecast_7d_low as number))),
+      points: n,
+      span_days: 33,
+      history,
+      contributing_factors: [],
+    },
+  };
+}
+
 export function fixtureResponse<T>(path: string, params: Params): T {
   const req = requestsRead(path, params);
   if (req !== NONE_REQ) return req as T;
@@ -202,6 +250,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (step9 !== NONE_STEP9) return step9 as T;
   const lin = lineageRead(path, params);
   if (lin !== undefined) return lin as T;
+  const fc = forecastRead(path);
+  if (fc !== undefined) return fc as T;
   const rolesStep = rolesFixtureResponse(path, params);
   if (rolesStep !== NONE_ROLES) return rolesStep as T;
   const ent = enterpriseFixtureResponse(path);

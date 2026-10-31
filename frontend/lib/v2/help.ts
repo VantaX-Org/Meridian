@@ -121,6 +121,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/o/[system]/[module]/fixes": "v2:approvals",
   "/o/[system]/[module]/runs": "v2:run-compare",
   "/o/[system]/[module]/readiness": "v2:waves",
+  "/go-live": "v2:waves",
   "/o/[system]/[module]/golden": "v2:golden-records",
   "/o/[system]/[module]/glossary": "v2:glossary",
   "/o/[system]/[module]/lineage": "v2:lineage",
