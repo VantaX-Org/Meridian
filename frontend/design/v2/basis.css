@@ -1,0 +1,28 @@
+/* Basis and administration additions: tables that become cards on a phone, action links in a heading row, the phone status line. */
+
+.m2-mgrp-act { display: flex; align-items: baseline; justify-content: space-between; gap: var(--m2-s2); }
+.m2-mgrp-act a { font-size: var(--m2-fs-12); }
+.m2-dirty { color: var(--m2-warn); font-size: var(--m2-fs-12); font-weight: 400; margin-left: var(--m2-s2); }
+
+@media (max-width: 760px) {
+  .m2-cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .m2-cards, .m2-cards tbody { display: block; }
+  .m2-cards tr { display: flex; flex-direction: column; gap: var(--m2-s1); padding: var(--m2-s3); border-bottom: 1px solid var(--m2-line); }
+  .m2-cards tbody tr:last-child { border-bottom: 0; }
+  .m2-cards th, .m2-cards td { display: block; height: auto; padding: 0; border: 0; white-space: normal; text-align: left; }
+  .m2-cards tbody th { order: -2; font-weight: 500; }
+  .m2-cards td.m2-card-lead { order: -1; }
+  .m2-cards td.m2-r { text-align: left; }
+  .m2-cards td[data-label]::before { content: attr(data-label); display: block; color: var(--m2-meta); font-size: var(--m2-fs-12); }
+}
+
+/* The status strip is one line at phone width, the full strip above it. */
+.m2-root .m2-status .m2-only-narrow { display: none; }
+@media (max-width: 760px) {
+  .m2-root .m2-status .m2-only-narrow { display: inline-flex; padding: var(--m2-s1) 0; }
+  .m2-root .m2-status .m2-only-wide { display: none; }
+}
+
+/* Prove three rules on the run */
+.m2-root .m2-prove3 { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--m2-line); }
+.m2-root .m2-prove3 > li { border-bottom: 1px solid var(--m2-rule); min-height: 44px; display: flex; flex-wrap: wrap; align-items: center; gap: var(--m2-s2); padding: var(--m2-s1) 0; }

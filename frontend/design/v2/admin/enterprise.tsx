@@ -12,7 +12,7 @@ import { checkAccent, darkAccentFor, isHex, MIN_CONTRAST, refreshTenantTheme } f
 import { Mark } from "../marks";
 import { Mono } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
-import { Block, Confirm, Fld, Kv, Loaded, Note, StatusWord, copyText, since, useCan } from "./kit";
+import { Block, Confirm, Fld, Kv, Loaded, Note, StatusWord, copyText, since, useCan, useUnsaved } from "./kit";
 import { t as tr } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
 
@@ -96,6 +96,7 @@ function AppearanceForm({ initial, write }: { initial: ThemeSettings; write: boo
   const [useAccent, setUseAccent] = useState(Boolean(initial.accent));
   const [accent, setAccent] = useState(() => initial.accent ?? currentDataHue());
   const [accentDark, setAccentDark] = useState(initial.accent_dark ?? "");
+  useUnsaved([file?.name ?? null, removeLogo, name, useAccent, accent, accentDark]);
   const [picker, setPicker] = useState(() => (initial.accent && isHex(initial.accent) ? initial.accent.toLowerCase() : currentDataHue()));
   const [logoError, setLogoError] = useState<string | null>(null);
   useEffect(() => () => {
@@ -237,6 +238,7 @@ function ComplianceForm({ data, write }: { data: ComplianceStatement; write: boo
   const { outcome, pending, run } = useOutcome("compliance");
   const editable = data.retention.families.filter((f) => f.configurable && ent.RETENTION_FIELD[f.family]);
   const [days, setDays] = useState<Record<string, string>>(() => Object.fromEntries(editable.map((f) => [f.family, f.days == null ? "" : String(f.days)])));
+  useUnsaved(days);
   const field = (family: string) => ent.RETENTION_FIELD[family];
   const valid = (family: string, v: string) => {
     if (!v.trim()) return true;

@@ -41,12 +41,12 @@ async function open(): Promise<HTMLElement> {
 const section = (d: HTMLElement, name: RegExp | string) => within(d).getByRole("region", { name });
 
 describe("the rule inspector", () => {
-  it("is named by the rule id and draws the sections in order: facts, definition, authority, scope, blocks, lineage, versions, contract, prove in SAP, actions, history, watch, comments", async () => {
+  it("is named by the rule id and draws the sections in order: facts, prove in SAP, definition, authority, scope, blocks, lineage, versions, contract, actions, history, watch, comments", async () => {
     const d = await open();
     expect(d).toHaveAccessibleName("MM142");
     expect(within(d).getByTestId("rule-name")).toHaveTextContent("Base unit of measure MEINS must reference a valid entry in T006");
     const names = within(d).getAllByRole("region").map((r) => r.getAttribute("aria-label"));
-    expect(names).toEqual(["Facts", "Definition", "Authority", "Scope: 2 objects, 1 system", "Blocks: 3 S/4 features", "Lineage", "Versions", "Contract", "Prove in SAP", "Actions", "History", "Watch", "Comments"]);
+    expect(names).toEqual(["Facts", "Prove in SAP", "Definition", "Authority", "Scope: 2 objects, 1 system", "Blocks: 3 S/4 features", "Lineage", "Versions", "Contract", "Actions", "History", "Watch", "Comments"]);
     expect(within(d).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(names);
   });
 

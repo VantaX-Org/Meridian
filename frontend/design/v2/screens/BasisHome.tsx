@@ -9,7 +9,7 @@ import type { Job } from "@/types/jobs";
 import type { SAPSystemExtended, SyncProfile } from "@/types/api";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { describeCron } from "@/lib/v2/cron";
-import { useOpenItem } from "@/lib/v2/hooks";
+import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { firstSentence, JOB_KIND_LABEL, jobObject, openFailures, readPathSummary } from "@/lib/v2/jobs";
 import { runKeys, useSystemsExtended, useV2Jobs } from "@/lib/v2/runs-queries";
 import { int } from "@/lib/v2/score";
@@ -17,6 +17,7 @@ import { t } from "@/lib/v2/i18n";
 import { SeverityMark, VerdictMark } from "../marks";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import "../basis.css";
 
 /**
  * The SAP Basis home on the landscape: what a Basis or integration administrator looks after, from the reads the Runs
@@ -29,6 +30,31 @@ import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 const AUTH = /\b(401|403)\b|unauthori[sz]ed|not authori[sz]ed|authori[sz]ation|credential|S_TABU_DIS|S_RFC|RFC_NO_AUTHORITY|NO_AUTHORITY|logon|password/i;
 
 export const isAuthError = (text: string | null | undefined): boolean => Boolean(text && AUTH.test(text));
+
+/** A refusal of the sign-in itself, as against a missing authorisation object for a signed-in user. */
+const SIGN_IN = /\b401\b|unauthori[sz]ed|credential|logon|password/i;
+
+export type AuthCause = "credentials" | "authorisation";
+export const authCause = (text: string | null | undefined): AuthCause => (!text || SIGN_IN.test(text) ? "credentials" : "authorisation");
+
+export type AuthSighting = { systemId: string | null; where: string; what: string; at: string | null; cause: AuthCause; source: { label: string; href: string } };
+export type AuthRow = Omit<AuthSighting, "source"> & { key: string; sources: { label: string; href: string }[] };
+
+/** One row per system and cause: the connection test and the jobs that hit the same refusal are named together, the newest answer leads. */
+export function groupAuthErrors(sightings: readonly AuthSighting[]): AuthRow[] {
+  const rows = new Map<string, AuthRow>();
+  for (const s of sightings) {
+    const key = `${s.systemId ?? s.where}|${s.cause}`;
+    const row = rows.get(key);
+    if (!row) {
+      rows.set(key, { key, systemId: s.systemId, where: s.where, what: s.what, at: s.at, cause: s.cause, sources: [s.source] });
+      continue;
+    }
+    row.sources.push(s.source);
+    if (s.at && (!row.at || s.at > row.at)) Object.assign(row, { what: s.what, at: s.at });
+  }
+  return [...rows.values()];
+}
 
 function healthOf(status: SAPSystemExtended["health_status"]): { verdict: "go" | "at-risk" | "no-go" | null; word: string } {
   switch (status) {
@@ -73,12 +99,13 @@ export function lastExtractionJobs(jobs: readonly Job[]): Map<string, Job> {
   return out;
 }
 
-function Block({ title, testid, children, note }: { title: string; testid: string; children: ReactNode; note?: ReactNode }) {
+function Block({ title, testid, children, note, action }: { title: string; testid: string; children: ReactNode; note?: ReactNode; action?: ReactNode }) {
   return (
     <section className="m2-sec" aria-label={title} data-testid={testid}>
       <div className="m2-sechead">
         <h2 className="m2-h2">{title}</h2>
         {note ? <span className="m2-sub">{note}</span> : null}
+        {action}
       </div>
       {children}
     </section>
@@ -88,6 +115,7 @@ function Block({ title, testid, children, note }: { title: string; testid: strin
 export function BasisHome({ landscape }: { landscape: Landscape }) {
   const fixture = useFixture();
   const { hrefFor } = useOpenItem();
+  const { can } = useV2Session();
   const systemsQ = useSystemsExtended();
   const jobsQ = useV2Jobs();
   const systems = systemsQ.data ?? [];
@@ -95,15 +123,24 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
   const failed = openFailures(jobsQ.jobs);
   const lastJobs = lastExtractionJobs(jobsQ.jobs);
   const nameOf = (id: string | null | undefined) => systems.find((s) => s.id === id)?.name ?? landscape.systems.find((s) => s.id === id)?.name ?? null;
-  const authErrors: { where: string; what: string; at: string | null; href: string }[] = [
-    ...systems.filter((s) => s.health_status === "auth_failed" || isAuthError(s.health_message)).map((s) => ({ where: s.name, what: s.health_message ?? t("Refused the credentials"), at: s.last_health_check, href: hrefFor({ kind: "system", id: s.id }) })),
-    ...failed.filter((j) => isAuthError(j.error)).map((j: Job) => ({ where: nameOf(j.system_id) ?? jobObject(j), what: firstSentence(j.error), at: new Date((j.finished_at ?? j.updated_at) * 1000).toISOString(), href: hrefFor({ kind: "job", id: j.id }) })),
-  ];
-  const schedules: (SyncProfile & { systemName: string })[] = profileQs.flatMap((q, i) => (q.data ?? []).map((p) => ({ ...p, systemName: systems[i]?.name ?? "" })));
+  const authErrors = groupAuthErrors([
+    ...systems
+      .filter((s) => s.health_status === "auth_failed" || isAuthError(s.health_message))
+      .map((s) => ({ systemId: s.id, where: s.name, what: s.health_message ?? t("Refused the credentials"), at: s.last_health_check, cause: s.health_status === "auth_failed" ? ("credentials" as const) : authCause(s.health_message), source: { label: t("Connection test"), href: hrefFor({ kind: "system", id: s.id }) } })),
+    ...failed
+      .filter((j) => isAuthError(j.error))
+      .map((j: Job) => ({ systemId: j.system_id ?? null, where: nameOf(j.system_id) ?? jobObject(j), what: firstSentence(j.error), at: new Date((j.finished_at ?? j.updated_at) * 1000).toISOString(), cause: authCause(j.error), source: { label: t("{JOB_KIND_LABEL} job", { JOB_KIND_LABEL: JOB_KIND_LABEL[j.kind] }), href: hrefFor({ kind: "job", id: j.id }) } })),
+  ]);
+  const schedules: (SyncProfile & { systemId: string; systemName: string })[] = profileQs.flatMap((q, i) => (q.data ?? []).map((p) => ({ ...p, systemId: systems[i]?.id ?? "", systemName: systems[i]?.name ?? "" })));
 
   return (
     <div data-testid="basis-home">
-      <Block title={t("Connections")} testid="basis-connections" note={t("{count} {count, plural, one {system} other {systems}}", { count: systems.length })}>
+      <Block
+        title={t("Connections")}
+        testid="basis-connections"
+        note={t("{count} {count, plural, one {system} other {systems}}", { count: systems.length })}
+        action={can("manage_systems") && systems.length > 0 ? <V2Link href="/s/new" data-testid="basis-connect">{t("Connect a system")}</V2Link> : null}
+      >
         {systemsQ.isLoading ? (
           <Skeleton width="100%" height={96} />
         ) : systemsQ.isError ? (
@@ -112,7 +149,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
           <EmptyFrame action={<V2Link href="/s/new" className="m2-btn">{t("Connect a system")}</V2Link>}>{t("No system is connected yet.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Connections table, scrollable")}>
-            <table className="m2-tbl">
+            <table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("System")}</th>
@@ -129,11 +166,11 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                   return (
                     <tr key={s.id}>
                       <th scope="row"><V2Link href={hrefFor({ kind: "system", id: s.id })} className="m2-rowlink">{s.name}</V2Link></th>
-                      <td>{systemTypeLabel(s.system_type)}{s.client ? <> <Mono>{s.client}</Mono></> : null}</td>
-                      <td><span className="m2-v">{h.verdict ? <VerdictMark verdict={h.verdict} /> : null}{h.word}</span></td>
-                      <td data-testid="basis-path">{extractionPathWord(s) ?? <Dash why={t("Cloud systems are read through their APIs")} />}</td>
-                      <td>{s.last_health_check ? formatDate(s.last_health_check, "datetime") : <Dash why={t("No connection test has run")} />}</td>
-                      <td>{s.health_message ?? <Dash />}</td>
+                      <td data-label={t("Type")}>{systemTypeLabel(s.system_type)}{s.client ? <> <Mono>{s.client}</Mono></> : null}</td>
+                      <td className="m2-card-lead" data-label={t("Connection")}><span className="m2-v">{h.verdict ? <VerdictMark verdict={h.verdict} /> : null}{h.word}</span></td>
+                      <td data-label={t("Extraction path")} data-testid="basis-path">{extractionPathWord(s) ?? <Dash why={t("Cloud systems are read through their APIs")} />}</td>
+                      <td data-label={t("Last check")}>{s.last_health_check ? formatDate(s.last_health_check, "datetime") : <Dash why={t("No connection test has run")} />}</td>
+                      <td className="m2-card-lead" data-label={t("What it said")}>{s.health_message ?? <Dash />}</td>
                     </tr>
                   );
                 })}
@@ -145,7 +182,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
 
       <Block title={t("Last extraction")} testid="basis-extractions">
         <ScrollFrame label={t("Extractions table, scrollable")}>
-          <table className="m2-tbl">
+          <table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("System")}</th>
@@ -159,10 +196,10 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
               {landscape.systems.map((s) => (
                 <tr key={s.id}>
                   <th scope="row">{s.name}</th>
-                  <td>{s.last_extracted_at ? formatDate(s.last_extracted_at, "datetime") : <Dash why={t("Never extracted")} />}</td>
-                  <td className="m2-r">{s.records == null ? <Dash why={t("Never extracted")} /> : int(s.records)}</td>
-                  <td>{s.state === "analysed" ? t("Analysed") : s.state === "extracted" ? t("Extracted, not analysed") : t("Not extracted")}</td>
-                  <td data-testid="basis-read-through">{(() => {
+                  <td data-label={t("Last extraction")}>{s.last_extracted_at ? formatDate(s.last_extracted_at, "datetime") : <Dash why={t("Never extracted")} />}</td>
+                  <td className="m2-r" data-label={t("Records")}>{s.records == null ? <Dash why={t("Never extracted")} /> : int(s.records)}</td>
+                  <td className="m2-card-lead" data-label={t("State")}>{s.state === "analysed" ? t("Analysed") : s.state === "extracted" ? t("Extracted, not analysed") : t("Not extracted")}</td>
+                  <td data-label={t("Read through")} data-testid="basis-read-through">{(() => {
                     const job = lastJobs.get(s.id);
                     const summary = job ? readPathSummary(job) : null;
                     return job && summary ? <V2Link href={hrefFor({ kind: "job", id: job.id })} className="m2-rowlink">{summary}</V2Link> : <Dash why={t("No extraction job with table detail is on record")} />;
@@ -181,7 +218,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
           <EmptyFrame>{t("No failed job is waiting. A job that fails and is not followed by a success of the same kind lands here.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Failed jobs table, scrollable")}>
-            <table className="m2-tbl">
+            <table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Job")}</th>
@@ -196,9 +233,9 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                     <th scope="row">
                       <span className="m2-v"><SeverityMark severity="critical" /><V2Link href={hrefFor({ kind: "job", id: j.id })} className="m2-rowlink">{t("{JOB_KIND_LABEL} of {jobObject}", { JOB_KIND_LABEL: JOB_KIND_LABEL[j.kind], jobObject: jobObject(j) })}</V2Link></span>
                     </th>
-                    <td>{nameOf(j.system_id) ?? <Dash />}</td>
-                    <td>{formatDate(new Date((j.finished_at ?? j.updated_at) * 1000).toISOString(), "datetime")}</td>
-                    <td>{firstSentence(j.error) || <Dash />}</td>
+                    <td data-label={t("System")}>{nameOf(j.system_id) ?? <Dash />}</td>
+                    <td data-label={t("Failed")}>{formatDate(new Date((j.finished_at ?? j.updated_at) * 1000).toISOString(), "datetime")}</td>
+                    <td className="m2-card-lead" data-label={t("Why")}>{firstSentence(j.error) || <Dash />}</td>
                   </tr>
                 ))}
               </tbody>
@@ -212,20 +249,31 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
           <EmptyFrame>{t("No refused credentials or missing authorisations in the connection tests and the jobs read.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Authorisation errors table, scrollable")}>
-            <table className="m2-tbl">
+            <table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Where")}</th>
+                  <th scope="col">{t("Cause")}</th>
                   <th scope="col">{t("When")}</th>
                   <th scope="col">{t("What SAP answered")}</th>
+                  <th scope="col">{t("Seen in")}</th>
                 </tr>
               </thead>
               <tbody>
-                {authErrors.map((a, i) => (
-                  <tr key={i}>
-                    <th scope="row"><V2Link href={a.href} className="m2-rowlink">{a.where}</V2Link></th>
-                    <td>{a.at ? formatDate(a.at, "datetime") : <Dash />}</td>
-                    <td>{a.what}</td>
+                {authErrors.map((a) => (
+                  <tr key={a.key} data-testid="basis-auth-row">
+                    <th scope="row">{a.systemId ? <V2Link href={hrefFor({ kind: "system", id: a.systemId })} className="m2-rowlink">{a.where}</V2Link> : a.where}</th>
+                    <td className="m2-card-lead" data-label={t("Cause")}>{a.cause === "credentials" ? t("Sign-in refused") : t("Missing authorisation")}</td>
+                    <td data-label={t("When")}>{a.at ? formatDate(a.at, "datetime") : <Dash />}</td>
+                    <td className="m2-card-lead" data-label={t("What SAP answered")}>{a.what}</td>
+                    <td data-label={t("Seen in")}>
+                      {a.sources.map((src, i) => (
+                        <span key={src.href}>
+                          {i > 0 ? ", " : null}
+                          <V2Link href={src.href}>{src.label}</V2Link>
+                        </span>
+                      ))}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -239,7 +287,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
           <EmptyFrame action={<V2Link href="/admin/runs" className="m2-btn">{t("Start and schedule")}</V2Link>}>{t("No extraction is scheduled.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Schedules table, scrollable")}>
-            <table className="m2-tbl">
+            <table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("System")}</th>
@@ -250,15 +298,21 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                 </tr>
               </thead>
               <tbody>
-                {schedules.map((p) => (
-                  <tr key={p.id}>
-                    <th scope="row">{p.systemName}</th>
-                    <td>{landscape.objects.find((o) => o.module === p.domain)?.label ?? formatModuleName(p.domain)}</td>
-                    <td>{p.active && p.schedule_cron ? describeCron(p.schedule_cron) : t("Not scheduled")}</td>
-                    <td>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : <Dash why={t("Not scheduled")} />}</td>
-                    <td>{p.extraction_mode === "delta" ? t("Changes only") : t("Full")}</td>
-                  </tr>
-                ))}
+                {schedules.map((p) => {
+                  const href = hrefFor({ kind: "syncschedule", id: `${p.systemId}:${p.id}` });
+                  const scheduled = p.active && p.schedule_cron;
+                  return (
+                    <tr key={p.id} data-testid="basis-schedule-row">
+                      <th scope="row"><V2Link href={href} className="m2-rowlink">{p.systemName}</V2Link></th>
+                      <td data-label={t("Object")}>{landscape.objects.find((o) => o.module === p.domain)?.label ?? formatModuleName(p.domain)}</td>
+                      <td className="m2-card-lead" data-label={t("When")}>
+                        {scheduled ? describeCron(p.schedule_cron) : <>{t("Not scheduled")}{can("manage_systems") ? <> <V2Link href={href} data-testid="basis-add-schedule">{t("Add a schedule")}</V2Link></> : null}</>}
+                      </td>
+                      <td data-label={t("Next run")}>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : <Dash why={t("Not scheduled")} />}</td>
+                      <td data-label={t("Mode")}>{p.extraction_mode === "delta" ? t("Changes only") : t("Full")}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </ScrollFrame>

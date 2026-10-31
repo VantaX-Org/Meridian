@@ -4576,6 +4576,23 @@ export const en = {
   "No readiness score in this wave's run": "No readiness score in this wave's run",
   "Readiness and records blocked are not shown: no migration run has a readiness score for {label} yet. The verdict comes from its blocking gaps and its score.": "Readiness and records blocked are not shown: no migration run has a readiness score for {label} yet. The verdict comes from its blocking gaps and its score.",
   "Compare with last month": "Compare with last month",
+  "You have unsaved changes. Leave without saving them?": "You have unsaved changes. Leave without saving them?",
+  "Save and retry the failed job": "Save and retry the failed job",
+  "The workbook leads with the rules you opened here, then the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.": "The workbook leads with the rules you opened here, then the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.",
+  "Connection test": "Connection test",
+  "{JOB_KIND_LABEL} job": "{JOB_KIND_LABEL} job",
+  "Cause": "Cause",
+  "Seen in": "Seen in",
+  "Missing authorisation": "Missing authorisation",
+  "Fix the {name} sign-in": "Fix the {name} sign-in",
+  "Invite SAP Basis": "Invite SAP Basis",
+  "Prove three rules": "Prove three rules",
+  "Count them in SE16 before anyone acts on a number": "Count them in SE16 before anyone acts on a number",
+  "{count} failing": "{count} failing",
+  "{statusWord}, 1 failed job": "{statusWord}, 1 failed job",
+  "{statusWord}, {count} failed jobs": "{statusWord}, {count} failed jobs",
+  "Value list": "Value list",
+  "Join or condition": "Join or condition",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

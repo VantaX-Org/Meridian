@@ -6,7 +6,7 @@ import { EmptyFrame, V2Link } from "../parts";
 import { ApiKeysSection } from "./apikeys";
 import { ConfigBundleSection, DelegationsSection, RulesIoSection, ShareLinksSection, StewardshipSection, ViewAsSection } from "./capabilities";
 import { AuditSection, MappingsSection, ReferenceSection } from "./data";
-import { AdminPage, Block, NeedsPermission, useCan } from "./kit";
+import { AdminPage, Block, NeedsPermission, useCan, useUnsavedCount } from "./kit";
 import { AlertsSection, NotificationsSection } from "./notify";
 import { RolesSection } from "./roles";
 import { RunsSection } from "./runs";
@@ -19,11 +19,20 @@ import { WebhooksSection } from "./webhooks";
 import { DigestsSection, PolicyPacksSection } from "./step10";
 import { t } from "@/lib/v2/i18n";
 
+/** The places of the landscape map, first in the index so leaving administration is one tap. */
+const PLACES: readonly (readonly [string, () => string, string])[] = [
+  ["/", () => t("Landscape"), "g l"],
+  ["/work", () => t("Work"), "g w"],
+  ["/runs", () => t("Runs"), "g r"],
+  ["/people", () => t("People"), "g p"],
+];
+
 /** The left index of the Admin canvas: the same column as the landscape map, sections in place of objects. */
 export function AdminMap({ open, onClose, phone }: { open: boolean; onClose: () => void; phone: boolean }) {
   const pathname = usePathname();
   const can = useCan();
   const sections = visibleSections(can);
+  const unsaved = useUnsavedCount();
   const groups = [...new Set(sections.map((s) => s.group))];
   return (
     <aside id="m2-map" className={`m2-map${open ? " m2-open" : ""}`} aria-label={t("Administration")} role={phone && open ? "dialog" : undefined} aria-modal={phone && open ? true : undefined} data-testid="admin-index">
@@ -34,10 +43,12 @@ export function AdminMap({ open, onClose, phone }: { open: boolean; onClose: () 
         </button>
       </div>
       <nav className="m2-mnav" aria-label={t("Administration sections")}>
-        <V2Link href="/" className="m2-mi">
-          <span>{t("Back to the landscape")}</span>
-          <kbd className="m2-kb">g l</kbd>
-        </V2Link>
+        {PLACES.map(([href, label, key]) => (
+          <V2Link key={href} href={href} className="m2-mi">
+            <span>{label()}</span>
+            <kbd className="m2-kb">{key}</kbd>
+          </V2Link>
+        ))}
         <V2Link href="/admin" className="m2-mi" aria-current={pathname === "/admin" ? "page" : undefined}>
           <span>{t("All of administration")}</span>
         </V2Link>
@@ -49,6 +60,7 @@ export function AdminMap({ open, onClose, phone }: { open: boolean; onClose: () 
               .map((s) => (
                 <V2Link key={s.slug} href={`/admin/${s.slug}`} className="m2-mi" aria-current={pathname === `/admin/${s.slug}` ? "page" : undefined}>
                   <span>{s.label}</span>
+                  {unsaved > 0 && pathname === `/admin/${s.slug}` ? <span className="m2-dirty" data-testid="index-unsaved">{t("Unsaved")}</span> : null}
                 </V2Link>
               ))}
           </div>

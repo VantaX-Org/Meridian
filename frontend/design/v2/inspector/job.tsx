@@ -4,7 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
 import type { Job } from "@/types/jobs";
 import { retryJobById } from "@/lib/api/v2/runs";
-import { useV2Session } from "@/lib/v2/hooks";
+import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
+import { isAuthError } from "../screens/BasisHome";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject, jobSeconds, readPathLabel, retryPermission } from "@/lib/v2/jobs";
 import { useLandscape } from "@/lib/v2/queries";
 import { useV2Job } from "@/lib/v2/runs-queries";
@@ -79,12 +80,19 @@ function JobBody({ job }: { job: Job }) {
   const allowed = session.can(retryPermission(job.kind));
   const retryable = canRetry(job);
   const live = job.status === "queued" || job.status === "running";
+  const { hrefFor } = useOpenItem();
+  // A refused sign-in is not fixed by retrying: the credentials change first, then the editor retries this job.
+  const signIn = job.status === "failed" && system && isAuthError(job.error) && session.can("manage_systems") ? system : null;
   return (
     <>
       <Facts>
         <Fact label={tr("Job")}>{JOB_KIND_LABEL[job.kind]}</Fact>
         <Fact label={tr("Object")}>{jobObject(job)}</Fact>
-        {system ? <Fact label={tr("System")}>{system.name}</Fact> : null}
+        {system ? (
+          <Fact label={tr("System")}>
+            <V2Link href={`/s/${system.id}`} data-testid="job-open-system">{system.name}</V2Link>
+          </Fact>
+        ) : null}
         {job.status === "queued" ? <Fact label={tr("Queue")}>{job.queue_position != null ? tr("Position {n} in the queue", { n: job.queue_position }) : <Dash why={tr("The server did not give this job's place in the queue")} />}</Fact> : null}
         <Fact label={tr("Started")}>{formatDate(job.started_at * 1000, "datetime")}</Fact>
         <Fact label={live ? tr("Running for") : tr("Took")}>{secs == null ? "—" : duration(secs)}</Fact>
@@ -132,9 +140,14 @@ function JobBody({ job }: { job: Job }) {
 
       {job.status === "failed" ? (
         <Actions>
+          {signIn ? (
+            <V2Link href={hrefFor({ kind: "connection", id: `${signIn.id}:${job.id}` })} className="m2-btn m2-strong" data-testid="job-connection-settings">
+              {tr("Connection settings")}
+            </V2Link>
+          ) : null}
           <button
             type="button"
-            className="m2-btn m2-strong"
+            className={signIn ? "m2-btn" : "m2-btn m2-strong"}
             disabled={!allowed || !retryable || pending !== null}
             onClick={() =>
               void run("retry", async () => {

@@ -13,7 +13,7 @@ import { fixed } from "@/lib/v2/format";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { ResultFrame, useOutcome } from "../inspector/shared";
-import { AdminPage, Block, Confirm, Fld, Kv, Loaded, NeedsPermission, Note, Sw, useCan, useDone } from "./kit";
+import { AdminPage, Block, Confirm, Fld, Kv, Loaded, NeedsPermission, Note, Sw, useCan, useDone, useUnsaved } from "./kit";
 import { AppearanceBlock, ComplianceBlock } from "./enterprise";
 import { t as tr } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
@@ -54,6 +54,9 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
   const [bands, setBands] = useState({ target: String(s.thresholds.target), warning: String(s.thresholds.warning), critical: String(s.thresholds.critical) });
   const [tol, setTol] = useState({ pct: String(s.critical_tolerance.pct ?? 0.1), rows: String(s.critical_tolerance.rows ?? 25) });
   const [sev, setSev] = useState(() => Object.fromEntries(Object.keys(s.severity_weights).map((k) => [k, { weight: String(s.severity_weights[k]), mult: String(s.severity_multipliers[k] ?? 1) }])));
+  const wDirty = useUnsaved(w);
+  const bDirty = useUnsaved(bands);
+  const tDirty = useUnsaved([tol, sev]);
   const sum = Math.round(DIMS.reduce((a, d) => a + (num(w[d]) || 0), 0) * 100) / 100;
   const weightsOk = DIMS.every((d) => okNum(w[d], 0, 100)) && Math.abs(sum - 100) < 0.01;
   const bandsOk = [bands.target, bands.warning, bands.critical].every((v) => okNum(v, 0, 100)) && num(bands.critical) <= num(bands.warning) && num(bands.warning) <= num(bands.target);
@@ -72,7 +75,7 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
     });
   return (
     <>
-      <Block title={tr("Dimension weights")} hint={tr("The score is each measured dimension times its weight. The weights must add up to 100.")}>
+      <Block dirty={wDirty} title={tr("Dimension weights")} hint={tr("The score is each measured dimension times its weight. The weights must add up to 100.")}>
         <div className="m2-fgrid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
           {DIMS.map((d) => (
             <Fld key={d} label={tr("{labelText} weight, percent", { labelText: labelText(d) })} error={okNum(w[d], 0, 100) ? null : tr("0 to 100")}>
@@ -90,7 +93,7 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
           </button>
         </div>
       </Block>
-      <Block title={tr("Score bands")} hint={tr("At or above target is on target (go), at or above warning is at risk, below that is failing. Critical marks the line below which an object is failing badly.")}>
+      <Block dirty={bDirty} title={tr("Score bands")} hint={tr("At or above target is on target (go), at or above warning is at risk, below that is failing. Critical marks the line below which an object is failing badly.")}>
         <div className="m2-fgrid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
           {(["target", "warning", "critical"] as const).map((k) => (
             <Fld key={k} label={labelText(k)}>
@@ -108,7 +111,7 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
           </button>
         </div>
       </Block>
-      <Block title={tr("Cap rule and tolerance")} hint={tr("One critical rule failing beyond its tolerance holds that object at 85; two or more hold it at 70. The caps are fixed. The tolerance says how many failing records count as beyond.")}>
+      <Block dirty={tDirty} title={tr("Cap rule and tolerance")} hint={tr("One critical rule failing beyond its tolerance holds that object at 85; two or more hold it at 70. The caps are fixed. The tolerance says how many failing records count as beyond.")}>
         <div className="m2-fgrid">
           <Fld label={tr("Failing share, percent")} hint={tr("At or above this share of the records checked.")} error={okNum(tol.pct, 0, 100) ? null : tr("0 to 100")}>
             <input type="number" min={0} max={100} step={0.05} value={tol.pct} onChange={(e) => setTol({ ...tol, pct: e.target.value })} />
@@ -178,6 +181,7 @@ function CostBlock({ model }: { model: CostModel }) {
   const [impact, setImpact] = useState(() => Object.fromEntries(Object.entries(model.impact ?? {}).map(([k, c]) => [k, { unit: String(c.unit_cost ?? 0), factor: String(c.factor ?? 1), mit: String(Math.round((c.mitigation ?? 0) * 1000) / 10) }])));
   const [align, setAlign] = useState<Record<string, string>>(() => Object.fromEntries(Object.entries(model.config_alignment ?? {}).map(([k, v]) => [k, String(v)])));
   const [addFeature, setAddFeature] = useState("");
+  const dirty = useUnsaved([currency, sub, sev, feat, impact, align]);
   const valid =
     /^[A-Z]{3}$/.test(currency) &&
     (sub.trim() === "" || okNum(sub)) &&
@@ -202,7 +206,7 @@ function CostBlock({ model }: { model: CostModel }) {
       return { tone: "ok", title: tr("Cost model saved"), detail: tr("It applies from the next analysis or re-analysis.") };
     });
   return (
-    <Block title={tr("Cost model and currency")} hint={tr("What a defect costs, in one currency: every value at risk, ROI and planner figure is in it.")}>
+    <Block dirty={dirty} title={tr("Cost model and currency")} hint={tr("What a defect costs, in one currency: every value at risk, ROI and planner figure is in it.")}>
       <div className="m2-fgrid">
         <Fld label={tr("Currency")} hint={tr("Three-letter ISO 4217 code, such as ZAR, EUR or USD.")} error={/^[A-Z]{3}$/.test(currency) ? null : tr("Use three capital letters")}>
           <input value={currency} maxLength={3} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
@@ -330,6 +334,7 @@ function PlannerBlock({ initial, currency }: { initial: PlannerConfig; currency:
     sprint_hours: String(initial.sprint_hours),
     cost_per_record: initial.cost_per_record == null ? "" : String(initial.cost_per_record),
   }));
+  const dirty = useUnsaved(p);
   const valid = ["minutes_per_record", "investigation_hours", "exception_hours"].every((k) => okNum(p[k])) && okNum(p.sprint_hours, 1) && (p.cost_per_record === "" || okNum(p.cost_per_record));
   const field = (k: string, label: string, min = 0) => (
     <Fld label={label}>
@@ -337,7 +342,7 @@ function PlannerBlock({ initial, currency }: { initial: PlannerConfig; currency:
     </Fld>
   );
   return (
-    <Block title={tr("Planner assumptions")} hint={tr("The next-sprint planner ranks open work by severity-weighted records per hour. Money appears only when you state what one failing record costs you.")}>
+    <Block dirty={dirty} title={tr("Planner assumptions")} hint={tr("The next-sprint planner ranks open work by severity-weighted records per hour. Money appears only when you state what one failing record costs you.")}>
       <div className="m2-fgrid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
         {field("minutes_per_record", tr("Minutes per record"))}
         {field("investigation_hours", tr("Hours per finding"))}
@@ -383,12 +388,13 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
   const [f, setF] = useState({ versions: dayField(data.policy.versions_days), reports: dayField(data.policy.reports_days), audit: dayField(data.policy.audit_days), keep: String(data.policy.keep_latest_per_system), baseline: data.policy.keep_baseline });
   const [items, setItems] = useState<RetentionPreviewItem[] | null>(null);
   const [purging, setPurging] = useState<RetentionPreviewItem | null>(null);
+  const dirty = useUnsaved(f);
   const days = (s: string) => s.trim() === "" || (Number.isInteger(Number(s)) && Number(s) >= 1);
   const valid = days(f.versions) && days(f.reports) && days(f.audit) && Number.isInteger(Number(f.keep)) && Number(f.keep) >= 0;
   const policy = (): RetentionPolicy => ({ versions_days: daysOf(f.versions), reports_days: daysOf(f.reports), audit_days: daysOf(f.audit), keep_baseline: f.baseline, keep_latest_per_system: Number(f.keep) });
   const e = data.enforcement;
   return (
-    <Block title={tr("Retention")} hint={tr("How long runs, reports and audit rows are kept. Archived runs past the limit are purged for good by the nightly task. Empty means for ever.")}>
+    <Block dirty={dirty} title={tr("Retention")} hint={tr("How long runs, reports and audit rows are kept. Archived runs past the limit are purged for good by the nightly task. Empty means for ever.")}>
       <div className="m2-fgrid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
         <Fld label={tr("Keep runs, days")} error={days(f.versions) ? null : tr("A whole number of days")}>
           <input type="number" min={1} value={f.versions} onChange={(ev) => setF({ ...f, versions: ev.target.value })} />
@@ -658,7 +664,7 @@ export function SettingsSection() {
       </Block>
       <AppearanceBlock />
       <Loaded q={scoring} what={tr("The scoring settings")} rows={3}>
-        {(s) => (write ? <ScoringBlock key={JSON.stringify(s.dimension_weights) + JSON.stringify(s.thresholds) + JSON.stringify(s.critical_tolerance)} s={s} /> : (
+        {(s) => (write ? <ScoringBlock key={JSON.stringify([s.dimension_weights, s.thresholds, s.critical_tolerance, s.severity_weights, s.severity_multipliers])} s={s} /> : (
           <Block title={tr("Scoring")}>
             <Kv rows={[[tr("Bands"), tr("target {target}, warning {warning}, critical {critical}", { target: s.thresholds.target, warning: s.thresholds.warning, critical: s.thresholds.critical })], [tr("Weights"), DIMS.map((d) => `${labelText(d)} ${toPercent(fractions(s.dimension_weights))[d]}`).join(", ")], [tr("Tolerance"), tr("{pct}% or {rows} records", { pct: s.critical_tolerance.pct, rows: s.critical_tolerance.rows })]]} />
           </Block>
