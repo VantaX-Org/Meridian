@@ -25,6 +25,7 @@ import { matchRead, matchWrite, NONE_MATCH } from "./match-rules";
 import { mdmHealthRead, NONE_MDM_HEALTH } from "./mdm-health";
 import { NONE_WORK_ANALYTICS, workAnalyticsRead } from "./work-analytics";
 import { migrationRead, migrationWrite, NONE_MIGRATION } from "./migration";
+import { insightsRead, NONE_INSIGHTS } from "./insights";
 import { linksRead, NONE_LINKS } from "./links";
 import { attentionRead, NONE_ATTENTION } from "./attention";
 import { materialsRead, NONE_MATERIALS } from "./materials";
@@ -295,6 +296,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (wa !== NONE_WORK_ANALYTICS) return wa as T;
   const mg = migrationRead(path, params);
   if (mg !== NONE_MIGRATION) return mg as T;
+  const ins = insightsRead(path);
+  if (ins !== NONE_INSIGHTS) return ins as T;
   const lk = linksRead(path, params);
   if (lk !== NONE_LINKS) return lk as T;
   const iss = issuesRead(path, params);

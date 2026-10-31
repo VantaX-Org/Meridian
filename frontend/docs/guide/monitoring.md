@@ -91,6 +91,18 @@ The Analytics tab, third at the top of the Work ledger, shows how fast the stewa
 
 A role that cannot read a list sees a short note in its place.
 
+## Cost and causes
+
+Cost and causes, under Migration on the map, shows what bad data costs and where it comes from. Money is always shown per business area, such as procure to pay or order to cash, and never added across areas. The banner names the area with the most value at risk, with the largest value at risk, the largest proven cost, the SAP features at risk and the number of root causes. Under it:
+
+- **By business area.** The proven cost and the value at risk of each area side by side.
+- **Money already lost.** Costs measured in posted documents, such as late purchase orders or duplicate vendor payments, with the documents counted and the rules behind them. A cost in more than one currency lists each currency on its own.
+- **SAP features at risk.** The features the failing rules block or degrade, with the records they touch, the value a record and the rules that cause it.
+- **Root causes.** The failing rules grouped by the field they fail on, with the severity, the records, the share that can be fixed automatically and the program or user the bad values mostly come from. A figure that has not been worked out shows a dash; an estimated record count says "about".
+- **Score run by run.** The score of the last runs, with the rules each run fixed and newly found.
+
+Before the first scored run the page says so instead of showing figures.
+
 ## What is on it
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.

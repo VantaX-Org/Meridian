@@ -21,10 +21,10 @@ import { WorkTabs } from "./WorkTabs";
  * read from the backend; a figure it has not computed shows as a dash.
  */
 
-const status = (e: unknown) => (e as { response?: { status?: number }; status?: number } | null)?.response?.status ?? (e as { status?: number } | null)?.status;
-const retry = (n: number, e: unknown) => { const s = status(e); return s !== 403 && s !== 404 && n < 2; };
+export const status = (e: unknown) => (e as { response?: { status?: number }; status?: number } | null)?.response?.status ?? (e as { status?: number } | null)?.status;
+export const retry = (n: number, e: unknown) => { const s = status(e); return s !== 403 && s !== 404 && n < 2; };
 /** The backend gives shares as percentages; pct1 takes a share of one. */
-const pctOf = (n: number | null | undefined) => (n == null ? pct1(null) : pct1(n / 100));
+export const pctOf = (n: number | null | undefined) => (n == null ? pct1(null) : pct1(n / 100));
 const days = (n: number | null | undefined) => (n == null ? f1(null) : t("{n} days", { n: f1(n) }));
 
 const SOURCE: Record<string, () => string> = {
@@ -41,7 +41,7 @@ function useAnalytics<T>(key: string, fn: () => Promise<T>) {
 }
 
 /** The rule name beside a check id, from the rule library. */
-function useRuleName() {
+export function useRuleName() {
   const rules = useRuleList();
   const names = new Map((rules.data?.rules ?? []).map((r) => [r.id, r.name]));
   return function RuleName(id: string) {
@@ -114,7 +114,7 @@ export function WorkAnalytics() {
 }
 
 /** A panel that reads its own endpoint, with a dash state for a role that cannot read it. */
-function Section<T>({ q, title, meta, testId, children }: { q: { isPending: boolean; isError: boolean; error: unknown; data: T | undefined; refetch: () => unknown }; title: string; meta?: string; testId: string; children: (d: T) => ReactNode }) {
+export function Section<T>({ q, title, meta, testId, children }: { q: { isPending: boolean; isError: boolean; error: unknown; data: T | undefined; refetch: () => unknown }; title: string; meta?: string; testId: string; children: (d: T) => ReactNode }) {
   return (
     <Panel title={title} meta={meta} testId={testId}>
       {q.isPending ? (
@@ -128,7 +128,7 @@ function Section<T>({ q, title, meta, testId, children }: { q: { isPending: bool
   );
 }
 
-function Table({ title, head, children }: { title: string; head: string[]; children: ReactNode }) {
+export function Table({ title, head, children }: { title: string; head: string[]; children: ReactNode }) {
   return (
     <ScrollFrame label={title}>
       <table className="m2-tbl m2-cards">
