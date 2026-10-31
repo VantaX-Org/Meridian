@@ -335,10 +335,11 @@ async def get_finding_impact(
 
 # Per-stage count and summed age (hours) of the tenant's cleaning queue, aggregated in Postgres:
 # loading every queue row as an ORM object only to count it took seconds on a 60k-row queue.
+# Applied and rejected items have left the queue; counted, they aged forever and always showed as a bottleneck.
 _QUEUE_STAGES_SQL = """
     SELECT status, count(*) AS n,
            COALESCE(sum(extract(epoch FROM now() - COALESCE(detected_at, created_at))), 0) / 3600.0 AS total_age
-      FROM cleaning_queue WHERE tenant_id = :tid
+      FROM cleaning_queue WHERE tenant_id = :tid AND status NOT IN ('applied', 'rejected')
      GROUP BY status ORDER BY status
 """
 
@@ -592,25 +593,27 @@ async def get_capacity(
     )
     cleaning_data = [_row_to_dict(r) for r in cm_result.all()]
 
-    daily_inflow = (
-        sum(m.get("detected", 0) for m in cleaning_data) / max(1, len(cleaning_data))
-        if cleaning_data
-        else 10
-    )
-
     # Steward count and throughput
     sm_result = await db.execute(
         select(StewardMetric).where(StewardMetric.tenant_id == tenant.id)
     )
     steward_data = [_row_to_dict(r) for r in sm_result.all()]
     unique_stewards = len(set(s.get("user_id") for s in steward_data if s.get("user_id")))
-    total_processed = sum(s.get("items_processed", 0) for s in steward_data)
+
+    # No recorded inflow or no steward throughput: nothing to plan from. The figures stay empty and
+    # ``reason`` says which input is missing, rather than planning from made-up defaults.
+    if not cleaning_data or not unique_stewards:
+        return {"needed": None, "current": unique_stewards, "surplus_deficit": None, "recommendation": None,
+                "daily_inflow": None, "per_steward": None,
+                "reason": "no_inflow" if not cleaning_data else "no_stewards"}
+
+    daily_inflow = sum(m.get("detected", 0) or 0 for m in cleaning_data) / len(cleaning_data)
+    total_processed = sum(s.get("items_processed", 0) or 0 for s in steward_data)
     periods = len(set(s.get("period") for s in steward_data))
-    avg_per_steward = (total_processed / max(1, unique_stewards) / max(1, periods)) if unique_stewards else 20
+    avg_per_steward = total_processed / unique_stewards / max(1, periods)
 
-    capacity = operational.capacity_planning(daily_inflow, avg_per_steward, max(1, unique_stewards))
-
-    return capacity
+    capacity = operational.capacity_planning(daily_inflow, avg_per_steward, unique_stewards)
+    return {**capacity, "daily_inflow": round(daily_inflow, 1), "per_steward": round(avg_per_steward, 1)}
 
 
 # ── 12. GET /analytics/mdm-health ──────────────────────────────────────────

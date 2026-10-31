@@ -103,6 +103,17 @@ Cost and causes, under Migration on the map, shows what bad data costs and where
 
 Before the first scored run the page says so instead of showing figures.
 
+## Forecast and plan
+
+Forecast and plan, under Cost and causes on the map, shows where each object's score is heading, what to fix next and whether the data stewards can keep up. The banner counts the objects below their floor and the objects heading below it, with the sprints needed to clear the open work and the score once they are done. Under it:
+
+- **Where each score is heading.** Each object with its floor, its score now, its last four weeks, its trend and its forecast in 30 and 90 days, each with a 95% range. A forecast needs scores from at least three days; until then the page says how many days there are.
+- **Next best work.** The failing rules, cleaning items and exceptions ranked by the severity-weighted records fixed an hour, with the records, the effort and the cost where a cost per record is set.
+- **Sprint plan.** The ranked work filled into sprints of the stated hours, with the records fixed, the critical findings cleared and the score before and after each sprint.
+- **Can the stewards keep up.** The stewards needed against the stewards working, the new items a day, the items one steward clears a day, and the queue stages where items wait longest. Items already applied or rejected are not counted. Until stewards have recorded work the page says capacity cannot be planned instead of guessing.
+
+The effort and cost assumptions are shown above the sprint plan.
+
 ## What is on it
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.

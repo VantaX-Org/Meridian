@@ -46,6 +46,7 @@ export function placeIndex(can: (action: string) => boolean): { id: string; titl
     { id: "work-analytics", title: tr("Work analytics"), href: "/work/analytics" },
     { id: "migration", title: tr("Migration analysis"), href: "/migration" },
     { id: "insights", title: tr("Cost and causes"), href: "/insights" },
+    { id: "forecast", title: tr("Forecast and plan"), href: "/forecast" },
     { id: "ask", title: tr("Ask Meridian"), href: "/?open=ask" },
     { id: "waves", title: tr("Waves"), href: "/?view=waves" },
     { id: "status", title: tr("Status"), href: "/status" },

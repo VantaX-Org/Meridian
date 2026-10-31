@@ -34,6 +34,7 @@ class _FakeDB:
         self.calls.append((sql, params or {}))
         if "cleaning_queue" in sql:
             assert "GROUP BY status" in sql, "the queue must be aggregated in SQL"
+            assert "NOT IN ('applied', 'rejected')" in sql, "finished items are not in the queue"
             return _Res(self.stages)
         return _Res([])
 
