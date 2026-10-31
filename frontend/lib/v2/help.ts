@@ -65,6 +65,7 @@ export function screenOf(pathname: string): Screen | null {
   if (pathname.startsWith("/run")) return "runs";
   if (pathname.startsWith("/s/")) return "system";
   if (pathname.startsWith("/people")) return "people";
+  if (pathname.startsWith("/requests")) return "work";
   if (pathname.startsWith("/admin")) return "admin";
   if (pathname.startsWith("/reports")) return "reports";
   return null;
@@ -126,6 +127,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/rules": "v2:rules",
   "/work": "v2:work",
   "/people": "v2:people",
+  "/requests": "v2:approvals",
   "/runs": "v2:runs",
   "/run/[id]": "v2:run-compare",
   "/run/[id]/vs/[b]": "v2:run-compare",
@@ -142,6 +144,7 @@ const OPEN_CHAPTERS: Readonly<Record<string, string>> = {
   preferences: "v2:preferences",
   waves: "v2:waves",
   batch: "v2:approvals",
+  request: "v2:approvals",
   triage: "v2:people",
   inbox: "v2:people",
   balance: "v2:people",

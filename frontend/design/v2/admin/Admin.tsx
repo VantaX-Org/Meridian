@@ -5,6 +5,7 @@ import { ADMIN_SECTIONS, canAdminister, isAdminSlug, visibleSections, type Admin
 import { EmptyFrame, V2Link } from "../parts";
 import { ApiKeysSection } from "./apikeys";
 import { ConfigBundleSection, DelegationsSection, RulesIoSection, ShareLinksSection, StewardshipSection, ViewAsSection } from "./capabilities";
+import { WorkflowsSection } from "./workflows";
 import { AuditSection, MappingsSection, ReferenceSection } from "./data";
 import { AdminPage, Block, NeedsPermission, useCan } from "./kit";
 import { AlertsSection, NotificationsSection } from "./notify";
@@ -142,6 +143,8 @@ function Section({ slug }: { slug: AdminSlug }) {
       return <ShareLinksSection />;
     case "delegations":
       return <DelegationsSection />;
+    case "workflows":
+      return <WorkflowsSection />;
   }
 }
 

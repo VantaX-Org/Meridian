@@ -37,6 +37,7 @@ export function placeIndex(can: (action: string) => boolean): { id: string; titl
   const places = [
     ...PLACES.items,
     { id: "reports", title: tr("Reports"), href: "/reports" },
+    { id: "requests", title: tr("Requests"), href: "/requests" },
     { id: "waves", title: tr("Waves"), href: "/?view=waves" },
     { id: "status", title: tr("Status"), href: "/status" },
     { id: "inbox", title: tr("Inbox"), href: "/?open=inbox" },
