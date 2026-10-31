@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { isRole, useRole } from "@/hooks/use-role";
 import { personaForRole, pillSetFor } from "@/lib/persona";
-import { fixtureParam, useFixture, withFixture } from "@/lib/api/v2/fixture";
+import { fixtureCarry, fixtureParam, useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { isAppPath } from "./paths";
 import { usePersonaOverride } from "./prefs";
 import { actionsOf, useShareMode, useViewAs } from "./view-as";
@@ -42,10 +42,13 @@ export function parseOpen(value: string | null | undefined): OpenItem | null {
 
 export const formatOpen = (item: OpenItem): string => (item.id ? `${item.kind}:${item.id}` : item.kind);
 
-/** Returns a function that adds `fixture=1` to a v2 href when the page is in fixture mode. Other hrefs pass through. */
+/**
+ * Returns a function that adds `fixture=1` to a v2 href when the page is in fixture mode, with the role and persona the
+ * page was opened as (`?role=`), so a demo keeps walking as the same person. Other hrefs pass through.
+ */
 export function useV2Href(): (href: string) => string {
   const fixture = useFixture();
-  return useCallback((href: string) => (isAppPath(href) ? withFixture(href, fixture) : href), [fixture]);
+  return useCallback((href: string) => (isAppPath(href) ? withFixture(href, fixture, fixture ? fixtureCarry() : {}) : href), [fixture]);
 }
 
 /** The inspector's state is the URL: `?open=kind:id`. Opening and closing replace the entry, so Back leaves the page. */

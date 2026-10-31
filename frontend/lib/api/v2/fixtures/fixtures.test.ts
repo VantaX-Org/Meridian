@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fixtureResponse, landscapeFixture, syntheticRules } from "./index";
 import type { CommandResult, Receipt, RuleRow, WorkPage } from "../types";
-import { withFixture } from "../fixture";
+import { fixtureCarry, withFixture } from "../fixture";
 
 const L = landscapeFixture;
 
@@ -152,5 +152,19 @@ describe("withFixture", () => {
     expect(withFixture("/?fixture=1", true)).toBe("/?fixture=1");
     expect(withFixture("/#x", true)).toBe("/?fixture=1#x");
     expect(withFixture("/", false)).toBe("/");
+  });
+
+  it("carries the role and persona the page was opened as, unless the href sets its own", () => {
+    expect(withFixture("/work?filter=approvals", true, { role: "data_owner" })).toBe("/work?filter=approvals&fixture=1&role=data_owner");
+    expect(withFixture("/?open=job:j1#a", true, { role: "sap_basis", persona: "basis" })).toBe("/?open=job:j1&fixture=1&role=sap_basis&persona=basis#a");
+    expect(withFixture("/?role=auditor", true, { role: "sap_basis" })).toBe("/?role=auditor&fixture=1");
+    expect(withFixture("/", false, { role: "sap_basis" })).toBe("/");
+  });
+
+  it("fixtureCarry reads role and persona from the address", () => {
+    window.history.replaceState(null, "", "/work?fixture=1&role=data_steward&x=1");
+    expect(fixtureCarry()).toEqual({ role: "data_steward" });
+    window.history.replaceState(null, "", "/");
+    expect(fixtureCarry()).toEqual({});
   });
 });
