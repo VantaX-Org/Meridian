@@ -34,6 +34,7 @@ import { linksRead, NONE_LINKS } from "./links";
 import { attentionRead, NONE_ATTENTION } from "./attention";
 import { materialsRead, NONE_MATERIALS } from "./materials";
 import { issuesRead, issuesWrite, NONE_ISSUES, resetIssuesFixture } from "./issues";
+import { exceptionsRead, exceptionsWrite, NONE_EXCEPTIONS, resetExceptionsFixture } from "./exceptions";
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
 import { guardDecision, NONE_STEP10, receiptPolicy, resetStep10Fixture, step10Read, step10Write, withPolicyMarks, withSandbox } from "./step10";
@@ -152,6 +153,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (mr !== NONE_MATCH) return mr as T;
   const iw = issuesWrite(method, path, body);
   if (iw !== NONE_ISSUES) return iw as T;
+  const xw = exceptionsWrite(method, path, body);
+  if (xw !== NONE_EXCEPTIONS) return xw as T;
   const roles = rolesFixtureWrite(method, path, body, params);
   if (roles !== NONE_ROLES) return roles as T;
   const out = ((): unknown => {
@@ -206,6 +209,7 @@ export const resetWorkFixture = (): void => {
   resetStep10Fixture();
   resetRequestsFixture();
   resetIssuesFixture();
+  resetExceptionsFixture();
   resetCleaningFixture();
   resetDiscoveryFixture();
 };
@@ -316,6 +320,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (lk !== NONE_LINKS) return lk as T;
   const iss = issuesRead(path, params);
   if (iss !== NONE_ISSUES) return iss as T;
+  const exc = exceptionsRead(path, params);
+  if (exc !== NONE_EXCEPTIONS) return exc as T;
   const att = attentionRead(path, params);
   if (att !== NONE_ATTENTION) return att as T;
   const mat = materialsRead(path);
