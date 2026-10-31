@@ -13,6 +13,7 @@ import { int } from "@/lib/v2/score";
 import { useToast } from "../Toast";
 import { MenuButton, type MenuEntry } from "../Menu";
 import { Dash } from "../parts";
+import { Dialog } from "../admin/kit";
 import type { Outcome } from "../inspector/shared";
 import { PromptDialog } from "./work-parts";
 import { t } from "@/lib/v2/i18n";
@@ -30,6 +31,12 @@ export function useBatchControls(onResult?: (o: Outcome) => void) {
   const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
   const [back, setBack] = useState<BatchRow | null>(null);
+  // F12: an approval the server refused because some records have no new value, with its sentence.
+  const [blank, setBlank] = useState<{ b: BatchRow; sentence: string } | null>(null);
+  // F08: the batch whose load file is about to be exported, and who loads it ("" for the SAP Basis people).
+  const [exporting, setExporting] = useState<BatchRow | null>(null);
+  const [loader, setLoader] = useState("");
+  const people = useAssignable(exporting !== null);
 
   const fail = useCallback(
     (e: unknown, fallback: string) => {
@@ -41,12 +48,14 @@ export function useBatchControls(onResult?: (o: Outcome) => void) {
   );
 
   const approve = useCallback(
-    async (b: BatchRow) => {
+    async (b: BatchRow, withoutBlank = false) => {
       setBusy(`approve:${b.id}`);
       try {
-        await actions.approve(b.id, b.label);
+        await actions.approve(b.id, b.label, withoutBlank);
       } catch (e) {
-        fail(e, t("The batch could not be approved."));
+        const sentence = errorSentence(e, "");
+        if (!withoutBlank && / no new value: /.test(sentence)) setBlank({ b, sentence });
+        else fail(e, t("The batch could not be approved."));
       } finally {
         setBusy(null);
       }
@@ -69,10 +78,10 @@ export function useBatchControls(onResult?: (o: Outcome) => void) {
   );
 
   const send = useCallback(
-    async (b: BatchRow) => {
+    async (b: BatchRow, loaderId: string | null = null) => {
       setBusy(`send:${b.id}`);
       try {
-        const r = await actions.sendToSap(b.id, b.records);
+        const r = await actions.sendToSap(b.id, b.records, loaderId);
         const sum = r.sha256 ? t(", sha256 {sha256}", { sha256: r.sha256.slice(0, 12) }) : "";
         onResult?.({ tone: "ok", title: t("Load file exported, {records} {records2, plural, one {record} other {records}}", { records: int(r.records ?? b.records), records2: (r.records ?? b.records) }), detail: t("{filename}{sum}. Load it into SAP with the Migration Cockpit, then confirm the load on the batch.", { filename: r.filename, sum }), job: r.job_id });
         if (!onResult) toast.show(t("Exported the load file of batch {label} as {filename}", { label: b.label, filename: r.filename }));
@@ -85,7 +94,78 @@ export function useBatchControls(onResult?: (o: Outcome) => void) {
     [actions, fail, onResult, toast],
   );
 
-  const dialog = back ? (
+  const askSend = useCallback((b: BatchRow) => {
+    setLoader("");
+    setExporting(b);
+  }, []);
+  const loaderName = (people.data ?? []).find((u) => u.id === loader)?.name ?? t("The SAP Basis people");
+
+  const dialog = exporting ? (
+    <Dialog
+      title={t("Export the load file")}
+      description={t("Batch {label}: {records} {records2, plural, one {record goes} other {records go}} out as a Migration Cockpit file. Nothing changes in SAP until the file is loaded, and the export cannot be taken back.", { label: exporting.label, records: int(exporting.records), records2: exporting.records })}
+      onClose={() => setExporting(null)}
+    >
+      <label>
+        {t("Who loads it in SAP")}
+        <select value={loader} onChange={(e) => setLoader(e.target.value)} disabled={people.isLoading}>
+          <option value="">{t("The SAP Basis people")}</option>
+          {(people.data ?? []).map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="m2-dlg-d" data-testid="export-loader">{t("{who} gets the file in the inbox, loads it and confirms the load here.", { who: loaderName })}</p>
+      <div className="m2-dlg-a">
+        <button type="button" className="m2-btn" onClick={() => setExporting(null)}>
+          {t("Cancel")}
+        </button>
+        <button
+          type="button"
+          className="m2-btn m2-strong"
+          onClick={() => {
+            const b = exporting;
+            setExporting(null);
+            void send(b, loader || null);
+          }}
+        >
+          {t("Export load file")}
+        </button>
+      </div>
+    </Dialog>
+  ) : blank ? (
+    <Dialog title={t("Some records have no new value")} description={blank.sentence} onClose={() => setBlank(null)}>
+      <div className="m2-dlg-a">
+        <button type="button" className="m2-btn" onClick={() => setBlank(null)}>
+          {t("Cancel")}
+        </button>
+        <button
+          type="button"
+          className="m2-btn"
+          onClick={() => {
+            const b = blank.b;
+            setBlank(null);
+            setBack(b);
+          }}
+        >
+          {t("Send back")}
+        </button>
+        <button
+          type="button"
+          className="m2-btn m2-strong"
+          onClick={() => {
+            const b = blank.b;
+            setBlank(null);
+            void approve(b, true);
+          }}
+        >
+          {t("Approve the others")}
+        </button>
+      </div>
+    </Dialog>
+  ) : back ? (
     <PromptDialog
       title={t("Send the batch back")}
       description={t("Batch {label} returns to its author with your reason.", { label: back.label })}
@@ -101,15 +181,15 @@ export function useBatchControls(onResult?: (o: Outcome) => void) {
     />
   ) : null;
 
-  return { can, busy, approve, send, askSendBack: setBack, dialog, actions };
+  return { can, busy, approve, send, askSend, askSendBack: setBack, dialog, actions };
 }
 
 export type BatchControls = ReturnType<typeof useBatchControls>;
 
 /**
- * The buttons a batch offers this person: Approve and Send back on a draft, Send to SAP on an approved batch. With
- * `live` (the batch inspector, when the deployment writes to SAP itself) the load file is offered as Export load file,
- * since Send to SAP is the live write-back there.
+ * The buttons a batch offers this person: Approve and Send back on a draft, Export load file on an approved batch (it
+ * asks once, naming who loads the file). With `live` (the deployment writes to SAP itself) the live send is the
+ * strong button, so the load file is the plain one.
  */
 export function BatchButtons({ b, c, sm = true, live = false }: { b: BatchRow; c: BatchControls; sm?: boolean; live?: boolean }) {
   const cls = `m2-btn${sm ? " m2-sm" : ""}`;
@@ -131,8 +211,8 @@ export function BatchButtons({ b, c, sm = true, live = false }: { b: BatchRow; c
     if (!c.can.send) return null;
     const mine = b.ownerId != null && b.ownerId === c.can.me;
     return (
-      <button type="button" className={`${cls}${live ? "" : " m2-strong"}`} disabled={c.busy !== null || mine} title={mine ? t("You built this batch; a second person sends it.") : undefined} aria-label={live ? t("Export batch {label} as a load file", { label: b.label }) : t("Send batch {label} to SAP", { label: b.label })} onClick={() => void c.send(b)}>
-        {c.busy === `send:${b.id}` ? t("Sending…") : live ? t("Export load file") : t("Send to SAP")}
+      <button type="button" className={`${cls}${live ? "" : " m2-strong"}`} disabled={c.busy !== null || mine} title={mine ? t("You built this batch; a second person sends it.") : undefined} aria-label={t("Export batch {label} as a load file", { label: b.label })} onClick={() => c.askSend(b)}>
+        {c.busy === `send:${b.id}` ? t("Exporting…") : t("Export load file")}
       </button>
     );
   }

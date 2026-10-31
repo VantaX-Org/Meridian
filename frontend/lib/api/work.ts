@@ -38,6 +38,8 @@ export interface WorkSummary {
   built: boolean;
   objects: WorkObject[];
   totals: { records: number; open: number; issues: number; critical: number; proposed: number; overdue: number };
+  /** With the wave or verdict filter: the wave (null name for a verdict alone) and the objects it kept. */
+  wave?: { id: string | null; name: string | null; verdict: string | null; objects: { system_id: string | null; module: string }[] } | null;
 }
 
 export interface WorkGroup {

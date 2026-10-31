@@ -52,9 +52,11 @@ export interface GridToolsProps<T> {
   /** Applies a saved view's filters on pages that have filters; views of pages without filters only carry columns. */
   onApplyFilters?: (filters: Record<string, string>) => void;
   onColumns: () => void;
+  /** Every row of the filter, not only the rows loaded on screen: the Excel and CSV exports use it when given (F26). */
+  allRows?: () => Promise<readonly T[]>;
 }
 
-export function GridTools<T>({ gridId, route, title, columns, rows, filters, onApplyFilters, onColumns }: GridToolsProps<T>) {
+export function GridTools<T>({ gridId, route, title, columns, rows, filters, onApplyFilters, onColumns, allRows }: GridToolsProps<T>) {
   const key = route ?? gridId;
   const fx = useFixture();
   const qc = useQueryClient();
@@ -105,8 +107,17 @@ export function GridTools<T>({ gridId, route, title, columns, rows, filters, onA
   const doExport = async () => {
     try {
       const shown = visibleColumns(gridId, columns);
-      const name = await exportGrid({ title, route: key, columns: shown.map((c) => ({ key: c.id, header: c.header, kind: c.numeric ? "int" : "text" })), rows: exportRows(rows, shown), filters });
-      toast.show(t("Exported {rowsCount} rows to {name}", { rowsCount: int(rows.length), name }));
+      const every = allRows ? await allRows() : rows;
+      const name = await exportGrid({ title, route: key, columns: shown.map((c) => ({ key: c.id, header: c.header, kind: c.numeric ? "int" : "text" })), rows: exportRows(every, shown), filters, total: every.length });
+      toast.show(t("Exported {rowsCount} rows to {name}", { rowsCount: int(every.length), name }));
+    } catch (e) {
+      toast.show(failureText(e), "error");
+    }
+  };
+  const doCsv = async () => {
+    try {
+      const every = allRows ? await allRows() : rows;
+      toast.show(t("Exported {rowsCount} rows to {name}", { rowsCount: int(every.length), name: downloadGridCsv(key, every, visibleColumns(gridId, columns)) }));
     } catch (e) {
       toast.show(failureText(e), "error");
     }
@@ -140,8 +151,8 @@ export function GridTools<T>({ gridId, route, title, columns, rows, filters, onA
     { kind: "separator" },
     { kind: "item", id: "save", label: t("Save these columns as a view…"), disabled: readOnly, onSelect: () => setSaving(true) },
     { kind: "item", id: "share", label: t("Share this page as a link…"), disabled: readOnly || !session.can("export"), onSelect: () => void share() },
-    { kind: "item", id: "export", label: t("Export to Excel"), sub: t("The columns on screen"), disabled: !session.can("export"), onSelect: () => void doExport() },
-    { kind: "item", id: "export-csv", label: t("Export to CSV"), sub: t("The columns and rows on screen"), disabled: !session.can("export"), onSelect: () => toast.show(t("Exported {rowsCount} rows to {name}", { rowsCount: int(rows.length), name: downloadGridCsv(key, rows, visibleColumns(gridId, columns)) })) },
+    { kind: "item", id: "export", label: t("Export to Excel"), sub: allRows ? t("The columns on screen, every row of the filter") : t("The columns on screen"), disabled: !session.can("export"), onSelect: () => void doExport() },
+    { kind: "item", id: "export-csv", label: t("Export to CSV"), sub: allRows ? t("The columns on screen, every row of the filter") : t("The columns and rows on screen"), disabled: !session.can("export"), onSelect: () => void doCsv() },
   ];
   return (
     <span className="m2-gtools" data-testid={`grid-tools-${gridId}`}>

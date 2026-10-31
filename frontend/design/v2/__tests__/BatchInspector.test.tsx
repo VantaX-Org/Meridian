@@ -97,11 +97,11 @@ describe("the batch inspector", () => {
     const insp = await body("Batch B-241");
     expect(within(insp).getByText(/Approving acts on the whole batch/)).toBeInTheDocument();
     fireEvent.click(within(insp).getByRole("button", { name: "Approve batch B-241" }));
-    await waitFor(() => expect(approve).toHaveBeenCalledWith("B-241"));
+    await waitFor(() => expect(approve).toHaveBeenCalledWith("B-241", false));
     await waitFor(() => expect(fact(insp, "Status")).toContain("Approved"));
     expect(within(screen.getByTestId("toasts")).getByText("Approved batch B-241")).toBeInTheDocument();
     expect(fact(insp, "Approved by")).toContain("Demo user");
-    await waitFor(() => expect(within(insp).getByRole("button", { name: "Send batch B-241 to SAP" })).toBeEnabled());
+    await waitFor(() => expect(within(insp).getByRole("button", { name: "Export batch B-241 as a load file" })).toBeEnabled());
   });
 
   it("sends back with a reason", async () => {
@@ -118,6 +118,27 @@ describe("the batch inspector", () => {
     await waitFor(() => expect(within(within(insp).getByTestId("batch-trail")).getAllByRole("listitem").map(text).join("|")).toContain("Sent back by Demo user"));
   });
 
+  it("F12: records without a new value stop the approval; the others can be approved without them", async () => {
+    const approve = vi.spyOn(workApi, "postApproveBatch");
+    mount("B-238");
+    const insp = await body("Batch B-238");
+    fireEvent.click(within(insp).getByRole("button", { name: "Approve batch B-238" }));
+    const dialog = await screen.findByRole("dialog", { name: "Some records have no new value" });
+    expect(text(dialog)).toContain("3 records have no new value");
+    expect(within(dialog).getByRole("button", { name: "Send back" })).toBeEnabled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Approve the others" }));
+    await waitFor(() => expect(approve).toHaveBeenLastCalledWith("B-238", true));
+    await waitFor(() => expect(fact(insp, "Status")).toContain("Approved"));
+  });
+
+  it("F09: a loaded batch says what the next run found and opens the ones still failing", async () => {
+    mount("B-229");
+    const insp = await body("Batch B-229");
+    const v = within(insp).getByTestId("batch-verified");
+    expect(text(v)).toContain("Verified on run 12 Oct 2026: 88 fixed, 8 still failing.");
+    expect(within(v).getByRole("link", { name: "Open the 8" }).getAttribute("href")).toContain("batch=B-229");
+  });
+
   it("a batch the person built cannot be approved by them", async () => {
     mount("B-244");
     const insp = await body("Batch B-244");
@@ -129,14 +150,18 @@ describe("the batch inspector", () => {
     const send = vi.spyOn(batchApi, "sendBatchToSap");
     mount("B-236");
     const insp = await body("Batch B-236");
-    fireEvent.click(within(insp).getByRole("button", { name: "Send batch B-236 to SAP" }));
-    await waitFor(() => expect(send).toHaveBeenCalledWith("B-236", 180));
+    fireEvent.click(within(insp).getByRole("button", { name: "Export batch B-236 as a load file" }));
+    // F08: asked once, naming who loads the file.
+    const dialog = await screen.findByRole("dialog", { name: "Export the load file" });
+    expect(within(dialog).getByTestId("export-loader")).toHaveTextContent("The SAP Basis people gets the file in the inbox");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Export load file" }));
+    await waitFor(() => expect(send).toHaveBeenCalledWith("B-236", 180, null));
     const result = await within(insp).findByTestId("action-result");
     expect(text(result)).toContain("Load file exported, 180 records");
     expect(text(result)).toContain("remediation-cockpit_xlsx-B-236.xlsx");
     expect(text(result)).toContain("sha256 9f2c4e1a7b3d");
     await waitFor(() => expect(fact(insp, "Status")).toContain("Sent to SAP"));
-    expect(within(insp).queryByRole("button", { name: "Send batch B-236 to SAP" })).toBeNull();
+    expect(within(insp).queryByRole("button", { name: "Export batch B-236 as a load file" })).toBeNull();
     expect(within(insp).getByText(/^Sent to SAP, 180 records, /)).toBeInTheDocument();
   });
 
@@ -144,7 +169,8 @@ describe("the batch inspector", () => {
     vi.spyOn(batchApi, "sendBatchToSap").mockResolvedValueOnce({ filename: "x.xlsx", sha256: null, records: 180, job_id: "job-77" });
     mount("B-236");
     const insp = await body("Batch B-236");
-    fireEvent.click(within(insp).getByRole("button", { name: "Send batch B-236 to SAP" }));
+    fireEvent.click(within(insp).getByRole("button", { name: "Export batch B-236 as a load file" }));
+    fireEvent.click(within(await screen.findByRole("dialog", { name: "Export the load file" })).getByRole("button", { name: "Export load file" }));
     const result = await within(insp).findByTestId("action-result");
     expect(within(result).getByRole("link", { name: "Open the job" }).getAttribute("href")).toContain("open=job%3Ajob-77");
   });
@@ -196,12 +222,12 @@ describe("live write-back of an approved batch", () => {
   };
   const rowsOf = (insp: HTMLElement, name: string) => within(within(insp).getByRole("grid", { name })).getAllByRole("row").slice(1);
 
-  it("is not offered while the API reports live write-back off: Send to SAP is the load file", async () => {
+  it("is not offered while the API reports live write-back off: the button is Export load file", async () => {
     mount("B-236");
     const insp = await body("Batch B-236");
     expect(within(insp).queryByTestId("live-writeback")).toBeNull();
     expect(within(insp).queryByRole("button", { name: "Check with SAP" })).toBeNull();
-    expect(within(insp).getByRole("button", { name: "Send batch B-236 to SAP" })).toBeInTheDocument();
+    expect(within(insp).getByRole("button", { name: "Export batch B-236 as a load file" })).toHaveTextContent("Export load file");
   });
 
   it("step 1, Check with SAP: a table of the fields, BAPI or export, and the reason; nothing is sent", async () => {

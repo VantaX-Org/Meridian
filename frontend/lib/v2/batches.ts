@@ -43,6 +43,8 @@ export interface BatchRow {
   sentAt: string | null;
   /** The last time an approver sent it back, with the reason. */
   returned: Returned | null;
+  /** The first run after the load: records found fixed and still failing (GET /remediation/batches). */
+  verification: { runAt: string | null; fixed: number; stillFailing: number } | null;
 }
 
 function returnedOf(b: BatchRowApi): Returned | null {
@@ -67,6 +69,7 @@ export function toBatchRow(b: BatchRowApi): BatchRow {
     approvedAt: b.approved_at ?? null,
     sentAt: b.exported_at ?? null,
     returned: returnedOf(b),
+    verification: b.verification ? { runAt: b.verification.run_at, fixed: b.verification.fixed, stillFailing: b.verification.still_failing } : null,
   };
 }
 

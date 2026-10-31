@@ -125,7 +125,7 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     if (method === "POST" && group) return group[2] === "accept-all" ? wf.acceptAllFixture(decodeURIComponent(group[1])) : wf.setValueFixture(decodeURIComponent(group[1]), body as { value: string });
     if (method === "POST" && path === "/actions/undo") return wf.undoFixture(body as { action_id: string });
     const batch = /^\/remediation\/batches\/([^/]+)\/(approve|send-back)$/.exec(path);
-    if (method === "POST" && batch) return wf.batchFixture(batch[2] as "approve" | "send-back", decodeURIComponent(batch[1]), (body as { note?: string } | undefined)?.note);
+    if (method === "POST" && batch) return wf.batchFixture(batch[2] as "approve" | "send-back", decodeURIComponent(batch[1]), (body as { note?: string } | undefined)?.note, (body as { without_blank?: boolean } | undefined)?.without_blank === true);
     const send = /^\/remediation\/batches\/([^/]+)\/export$/.exec(path);
     if (method === "POST" && send) return wf.sendBatchFixture(decodeURIComponent(send[1]));
     const loaded = /^\/remediation\/batches\/([^/]+)\/loaded$/.exec(path);

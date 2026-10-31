@@ -80,7 +80,7 @@ describe("Waiting for approval: records under their batch", () => {
     const grid = await ledger();
     await waitFor(() => expect(chip(/Waiting for approval/)).toHaveTextContent("612"));
     fireEvent.click(await within(grid).findByRole("button", { name: "Approve batch B-241" }));
-    await waitFor(() => expect(approve).toHaveBeenCalledWith("B-241"));
+    await waitFor(() => expect(approve).toHaveBeenCalledWith("B-241", false));
     expect(await screen.findByText("Approved batch B-241")).toBeInTheDocument();
     expect(within(screen.getByTestId("toasts")).getByRole("button", { name: "Undo" })).toBeInTheDocument();
     await waitFor(() => expect(chip(/Waiting for approval/)).toHaveTextContent("284"));
@@ -162,8 +162,8 @@ describe("Exceptions: the sign-off, its reason, who and when, and Reopen", () =>
   });
 });
 
-describe("Write-back: Send to SAP", () => {
-  it("an approved batch shows Send to SAP; sending shows the result in the frame and the batch as sent", async () => {
+describe("Write-back: Export load file", () => {
+  it("an approved batch shows Export load file; exporting shows the result in the frame and the batch as sent", async () => {
     const send = vi.spyOn(batchApi, "sendBatchToSap");
     mount("&persona=steward&filter=open&batch=B-236");
     const grid = await ledger();
@@ -173,14 +173,15 @@ describe("Write-back: Send to SAP", () => {
     // The per-record status.
     expect(within(grid).getAllByRole("columnheader").map((h) => text(h))).toContain("Status");
     await waitFor(() => expect(within(grid).getAllByText("Approved").length).toBeGreaterThan(0));
-    fireEvent.click(within(head).getByRole("button", { name: "Send batch B-236 to SAP" }));
-    await waitFor(() => expect(send).toHaveBeenCalledWith("B-236", 180));
+    fireEvent.click(within(head).getByRole("button", { name: "Export batch B-236 as a load file" }));
+    fireEvent.click(within(await screen.findByRole("dialog", { name: "Export the load file" })).getByRole("button", { name: "Export load file" }));
+    await waitFor(() => expect(send).toHaveBeenCalledWith("B-236", 180, null));
     const result = await screen.findByTestId("action-result");
     expect(text(result)).toContain("Load file exported, 180 records");
     expect(text(result)).toContain("remediation-cockpit_xlsx-B-236.xlsx");
     await waitFor(() => expect(text(within(grid).getByTestId("batch-row-B-236"))).toMatch(/Sent to SAP, 180 records, /));
     await waitFor(() => expect(within(grid).getAllByText("Sent to SAP").length).toBeGreaterThan(0));
-    expect(within(grid).queryByRole("button", { name: "Send batch B-236 to SAP" })).toBeNull();
+    expect(within(grid).queryByRole("button", { name: "Export batch B-236 as a load file" })).toBeNull();
   });
 
   it("a sent batch shows 'Sent to SAP, N records, date' and the status of each record", async () => {
@@ -189,21 +190,22 @@ describe("Write-back: Send to SAP", () => {
     const head = await within(grid).findByTestId("batch-row-B-229");
     expect(text(head)).toMatch(/Sent to SAP, 96 records, 9 Oct/);
     await waitFor(() => expect(within(grid).getAllByText("Sent to SAP").length).toBeGreaterThan(0));
-    expect(within(head).queryByRole("button", { name: /Send batch/ })).toBeNull();
+    expect(within(head).queryByRole("button", { name: /as a load file$/ })).toBeNull();
   });
 
   it("is not offered to a role without the export permission", async () => {
     mount("&persona=steward&role=viewer&filter=open&batch=B-236");
     const grid = await ledger();
     await within(grid).findByTestId("batch-row-B-236");
-    expect(screen.queryByRole("button", { name: /to SAP$/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /as a load file$/ })).toBeNull();
   });
 
   it("shows the server's refusal in the frame, not as a stack trace", async () => {
     vi.spyOn(batchApi, "sendBatchToSap").mockRejectedValueOnce(Object.assign(new Error("x"), { response: { data: { detail: "The batch creator cannot export it." } } }));
     mount("&persona=steward&filter=open&batch=B-236");
     const grid = await ledger();
-    fireEvent.click(await within(grid).findByRole("button", { name: "Send batch B-236 to SAP" }));
+    fireEvent.click(await within(grid).findByRole("button", { name: "Export batch B-236 as a load file" }));
+    fireEvent.click(within(await screen.findByRole("dialog", { name: "Export the load file" })).getByRole("button", { name: "Export load file" }));
     const result = await screen.findByTestId("action-result");
     expect(text(result)).toContain("The batch creator cannot export it.");
   });
