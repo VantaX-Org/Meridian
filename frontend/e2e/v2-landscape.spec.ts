@@ -102,7 +102,7 @@ for (const size of SIZES) {
         else await page.getByTestId("matrix-cell").first().click();
         await expect(page).toHaveURL(/\/o\/ecc-production\/material-master/, NAV);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Material master", NAV);
-        await expect(page.getByTestId("cap-sentence")).toContainText("Capped at 70 by MM003 and MM035");
+        await expect(page.getByTestId("cap-sentence")).toContainText("Held at 70 because");
         await expect(page.locator('svg[data-size="240"]')).toBeVisible();
         await expect(page.getByTestId("receipt")).toBeVisible();
         await expect(page.getByTestId("receipt-footer")).toContainText("tolerance 10% of rows or 25 rows");

@@ -10,12 +10,14 @@ import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { ANY_SYSTEM, f1, findSystem, int, moduleFromSlug, pct1, systemForModule, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { Explain } from "../Explain";
 import { VerdictMark } from "../marks";
+import { ObjectBanner, DimensionBars } from "./object/Banner";
+import { AletheiaDock } from "./CommandCentre";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { Ruler } from "../Ruler";
 import { dimsOf } from "../shell/MapPane";
-import { RelatedObjects } from "./object/Related";
 import { contractMark } from "@/lib/v2/step9";
 import { policyMark } from "@/lib/v2/step10";
+import { RelatedObjects } from "./object/Related";
 import { AsOfView, PolicyBreaches } from "./step10/ObjectParts";
 import { ObjectContractsBlock } from "./step9/Contracts";
 import { TopFailing } from "./object/TopFailing";
@@ -35,7 +37,7 @@ const TABS: { key: TabKey; label: string; segment: string }[] = [
 ];
 
 /** Names the capping rules as links that open them in the inspector. Reads the cell, so it never waits for the receipt. */
-function CapSentence({ capped, capLevel, ids }: { capped: boolean; capLevel: number | null; ids: readonly string[] }) {
+function CapSentence({ capped, cap, ids }: { capped: boolean; cap: number | null; ids: readonly string[] }) {
   const { hrefFor } = useOpenItem();
   const link = (id: string) => (
     <V2Link key={id} href={hrefFor({ kind: "rule", id })} className="m2-mono">
@@ -43,12 +45,12 @@ function CapSentence({ capped, capLevel, ids }: { capped: boolean; capLevel: num
     </V2Link>
   );
   if (!capped) {
-    return <>{ids.length === 0 ? tr("No critical rule is over tolerance, so nothing caps this score.") : tr("A critical rule is over tolerance, but the score is already below its cap.")}</>;
+    return <>{ids.length === 0 ? tr("No critical rule is failing, so nothing holds this score down.") : tr("A critical rule is failing, but the score is already below the level it would be held at.")}</>;
   }
   const n = ids.length;
-  if (n === 1) return <>{tn("Capped at {cap} by {rule}, one critical rule over tolerance.", { cap: capLevel, rule: link(ids[0]) })}</>;
-  if (n === 2) return <>{tn("Capped at {cap} by {rule} and {rule2}, two critical rules over tolerance.", { cap: capLevel, rule: link(ids[0]), rule2: link(ids[1]) })}</>;
-  return <>{tn("Capped at {cap} by {n} critical rules over tolerance, among them {rule} and {rule2}.", { cap: capLevel, n, rule: link(ids[0]), rule2: link(ids[1]) })}</>;
+  if (n === 1) return <>{tn("Held at {cap} because one critical rule fails: {rule}.", { cap: cap ?? 70, rule: link(ids[0]) })}</>;
+  if (n === 2) return <>{tn("Held at {cap} because two critical rules fail: {rule} and {rule2}.", { cap: cap ?? 70, rule: link(ids[0]), rule2: link(ids[1]) })}</>;
+  return <>{tn("Held at {cap} because {n} critical rules fail, including {rule} and {rule2}.", { cap: cap ?? 70, n, rule: link(ids[0]), rule2: link(ids[1]) })}</>;
 }
 
 /** Holds the receipt's place while it loads, at its real height, so the tabs below do not jump when it lands. */
@@ -127,7 +129,7 @@ export function ReceiptTable({ receipt }: { receipt: Receipt }) {
           {receipt.cap_level != null ? (
             <tr>
               <th scope="row">
-                {tr("Cap, {n} critical {n, plural, one {rule} other {rules}} over tolerance", { n })} <Explain metric="cap" label={tr("the cap")} module={receipt.module} run={receipt.run_id} />
+                {tr("Held down by {n} critical {n, plural, one {rule} other {rules}} failing", { n })} <Explain metric="cap" label={tr("the cap")} module={receipt.module} run={receipt.run_id} />
               </th>
               <td />
               <td />
@@ -161,7 +163,7 @@ export function ReceiptTable({ receipt }: { receipt: Receipt }) {
       </p>
       {receipt.breaches.length > 0 ? (
         <>
-          <h2 className="m2-h2 m2-sec">{tr("Critical rules over tolerance")}</h2>
+          <h2 className="m2-h2 m2-sec">{tr("Critical rules failing on too many records")}</h2>
           <ul className="m2-breaches" data-testid="breaches">
             {receipt.breaches.map((b) => (
               <li key={b.check_id}>
@@ -205,6 +207,7 @@ function statusItems(receipt: Receipt, cell: LandscapeCell | undefined): ReactNo
 /** The object canvas: header, the 240 ruler with its receipt, the capping rules, and the tabs of views. */
 export function ObjectFrame({ system: systemSegment, module: moduleSegment, children }: { system: string; module: string; children: ReactNode }) {
   const run = useRunParam();
+  const phone = usePhone();
   const asOf = useSearchParams().get("as_of");
   const pathname = usePathname();
   const router = useRouter();
@@ -212,7 +215,6 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
   const { system, cell, label } = resolve(L.data, systemSegment, moduleSegment);
   const apiModule = moduleFromSlug(moduleSegment);
   const receiptQ = useReceipt(apiModule, run, Boolean(cell));
-  const phone = usePhone();
   const base = `/o/${systemSegment}/${moduleSegment}`;
   const query = run ? `?run=${run}` : "";
   // An address without its system (`/o/_/{module}`, from an old link): replace it with the system that holds the object.
@@ -317,56 +319,40 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               <ErrorFrame onRetry={() => void receiptQ.refetch()}>{tr("The score's working could not be read for this run.")}</ErrorFrame>
             </div>
           ) : null}
-          {receipt ? (
-            <p className="m2-statusline" data-testid="object-status">
-              {statusItems(receipt, cell).map((it, i) => (
-                <span key={i}>{it}</span>
-              ))}
-            </p>
-          ) : (
-            <p className="m2-statusline"><Skeleton width={420} height={14} /></p>
-          )}
-          <div className="m2-score">
-            <Ruler
-              size={240}
-              dims={dimsOf(cell)}
-              measured={cell.raw_score}
-              score={cell.score}
-              capped={cell.capped}
-              capLevel={cell.cap_level}
-              breaches={cell.breaches}
-              label={label}
-              records={cell.records_checked}
-              rules={cell.rules_measured}
-              coverage={cell.coverage}
-              lowConfidence={cell.low_confidence}
-              selected
-              compact={phone || undefined}
-              contract={contractMark(cell)}
-              policy={policyMark(cell)}
-            />
-            <div className="m2-sline" data-testid="cap-sentence">
-              <span className="m2-v">
-                <VerdictMark verdict={cell.verdict} />
-                {VERDICT_LABEL[cell.verdict]}
-              </span>
-              <p>
-                {tr("Measured {raw_score}, the tick on the ruler. ", { raw_score: f1(cell.raw_score) })}
-                <CapSentence capped={cell.capped} capLevel={cell.cap_level} ids={cell.breaches} />
-              </p>
+          <ObjectBanner cell={cell} receipt={receipt} label={label} system={systemSegment} module={moduleSegment} cap={<CapSentence capped={cell.capped} cap={cell.cap_level} ids={cell.breaches} />} />
+          <div className="m2-cc m2-co">
+            <div className="m2-cc-main">
+              {receipt ? (
+                <p className="m2-statusline" data-testid="object-status">
+                  {statusItems(receipt, cell).map((it, i) => (
+                    <span key={i}>{it}</span>
+                  ))}
+                </p>
+              ) : (
+                <p className="m2-statusline"><Skeleton width={420} height={14} /></p>
+              )}
+              {onRules ? (
+                <div className="m2-co-grid">
+                  <DimensionBars cell={cell} />
+                  <TopFailing module={apiModule} run={run} />
+                </div>
+              ) : null}
+              {!onRules ? null : receipt ? (
+                <details className="m2-rdet" open>
+                  <summary>{tr("How {score} is made", { score: f1(receipt.score) })}</summary>
+                  <div className="m2-score">
+                    <Ruler size={240} dims={dimsOf(cell)} measured={cell.raw_score} score={cell.score} capped={cell.capped} capLevel={cell.cap_level} breaches={cell.breaches} label={label} records={cell.records_checked} rules={cell.rules_measured} coverage={cell.coverage} lowConfidence={cell.low_confidence} selected compact={phone || undefined} contract={contractMark(cell)} policy={policyMark(cell)} />
+                  </div>
+                  <ReceiptTable receipt={receipt} />
+                </details>
+              ) : receiptQ.isError ? null : (
+                <ReceiptSkeleton capRow={cell.cap_level != null} breaches={cell.breaches.length} />
+              )}
+              {onRules ? <ObjectContractsBlock module={apiModule} label={label} run={run} /> : null}
+              <div className="m2-tabpanel">{children}</div>
             </div>
+            <AletheiaDock />
           </div>
-          {onRules ? <TopFailing module={apiModule} run={run} /> : null}
-          {!onRules ? null : receipt ? (
-            <details className="m2-rdet" open>
-              <summary>{tr("How {score} is made", { score: f1(receipt.score) })}</summary>
-              <ReceiptTable receipt={receipt} />
-            </details>
-          ) : receiptQ.isError ? null : (
-            <ReceiptSkeleton capRow={cell.cap_level != null} breaches={cell.breaches.length} />
-          )}
-          {onRules ? <ObjectContractsBlock module={apiModule} label={label} run={run} /> : null}
-          <div className="m2-tabpanel">{children}</div>
         </>
       )}
     </>

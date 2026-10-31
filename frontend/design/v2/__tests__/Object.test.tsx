@@ -50,8 +50,7 @@ describe("object canvas header", () => {
   it("draws the 240 ruler, the measured score as the tick, and says what caps it with links to the rules", async () => {
     frame();
     const sentence = await screen.findByTestId("cap-sentence");
-    await waitFor(() => expect(norm(sentence)).toContain("Capped at 70 by MM003 and MM035, two critical rules over tolerance."));
-    expect(norm(sentence)).toContain("Measured 71.8");
+    await waitFor(() => expect(norm(sentence)).toContain("Held at 70 because two critical rules fail: MM003 and MM035."));
     expect(within(sentence).getByRole("link", { name: "MM035" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM035"));
     const ruler = document.querySelector('svg[data-size="240"]');
     expect(ruler).not.toBeNull();
@@ -71,7 +70,7 @@ describe("the receipt", () => {
     const weighted = within(table).getByRole("row", { name: /^Weighted/ });
     expect(norm(weighted)).toContain("71.8");
     expect(norm(within(table).getByRole("row", { name: /^Measured/ }))).toContain("71.8");
-    expect(norm(within(table).getByRole("row", { name: /^Cap, 2 critical rules over tolerance/ }))).toContain("70.0");
+    expect(norm(within(table).getByRole("row", { name: /^Held down by 2 critical rules failing/ }))).toContain("70.0");
     expect(norm(within(table).getByRole("row", { name: /^Score shown/ }))).toContain("70.0");
   });
 
@@ -183,11 +182,11 @@ describe("object canvas states", () => {
     expect(screen.queryByRole("button", { name: /Watch/ })).toBeNull();
   });
 
-  it("puts the tabs straight under the title, before the ruler and the receipt", async () => {
+  it("puts the tabs straight under the title, before the banner and the receipt", async () => {
     setUrl("/o/ecc-production/material-master/records");
     frame();
     const tabs = await screen.findByRole("navigation", { name: "Views of Material master" });
-    const ruler = await screen.findByRole("img", { name: /measured 71\.8/ });
+    const ruler = await screen.findByTestId("object-banner");
     expect(tabs.compareDocumentPosition(ruler) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // Off the Rules view the receipt stays out of the way of the tab's content.
     expect(screen.queryByText(/How 70\.0 is made/)).toBeNull();
