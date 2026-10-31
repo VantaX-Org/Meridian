@@ -234,7 +234,8 @@
 .m2-prov { font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); color: var(--m2-meta); margin: var(--m2-s1) 0 0; }
 .m2-cta { margin-top: var(--m2-s4); display: flex; gap: var(--m2-s2); align-items: center; flex-wrap: wrap; }
 .m2-statusline { font-size: var(--m2-fs-13); color: var(--m2-ink-2); margin: var(--m2-s2) 0 0; display: flex; flex-wrap: wrap; gap: 0 var(--m2-s4); }
-.m2-statusline span { white-space: nowrap; }
+.m2-statusline > span { min-width: 0; }
+.m2-statusline .m2-v { white-space: nowrap; }
 .m2-h2 { font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); font-weight: 600; margin: 0; }
 .m2-sec { margin-top: var(--m2-s8); }
 .m2-sechead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--m2-s3); margin-bottom: var(--m2-s2); flex-wrap: wrap; }

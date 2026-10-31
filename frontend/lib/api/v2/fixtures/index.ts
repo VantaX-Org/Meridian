@@ -186,6 +186,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (fixtureParam("landscape") === "empty") {
     if (path === "/landscape") return { ...landscapeFixture, systems: [], objects: [], cells: [], counts: { go: 0, at_risk: 0, no_go: 0 }, status_strip: { ...landscapeFixture.status_strip, run_at: null, records_checked: null, rules_measured: null } } as T;
     if (path === "/work/summary") return { ...(wf.workSummary(params) as object), objects: [] } as T;
+    if (path === "/status") return { ...landscapeFixture.status_strip, run_at: null, records_checked: null, rules_measured: null, scored_in_s: null } as T;
+    if (path === "/shell/counts") return { fix: 0, inbox: ap.unreadFixture().count } as T;
   }
   const out = ((): unknown => {
     if (path === "/landscape") return withPolicyMarks(withContractMarks(withSystems(withOpenDelta(landscapeFixture))));

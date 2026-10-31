@@ -108,7 +108,7 @@ const MARKS: [string, string][] = [
   ["--m2-ink-3", "--m2-bg"], ["--m2-ink-3", "--m2-sheet"], ["--m2-seg", "--m2-track"], ["--m2-focus", "--m2-sheet"], ["--m2-focus", "--m2-bg"],
   ["--m2-chart-line", "--m2-sheet"], ["--m2-on-inverse-crit", "--m2-inverse"], ["--m2-chart-quiet", "--m2-sheet"],
   ...[1, 2, 3, 4, 5, 6, 7, 8].map((i): [string, string] => [`--m2-chart-${i}`, "--m2-sheet"]),
-  ...["crit", "high", "med", "low"].map((s): [string, string] => [`--m2-sev-${s}`, "--m2-sheet"]),
+  ...["crit", "high", "med"].map((s): [string, string] => [`--m2-sev-${s}`, "--m2-sheet"]),
 ];
 
 describe("v2 contrast", () => {
@@ -146,6 +146,13 @@ describe("v2 chart palette", () => {
         expect(Math.min(deltaE(p[a], p[b], "protan"), deltaE(p[a], p[b], "deutan")), `${p[a]} and ${p[b]}`).toBeGreaterThanOrEqual(8);
         expect(deltaE(p[a], p[b]), `${p[a]} and ${p[b]}`).toBeGreaterThanOrEqual(15);
       }
+    });
+    it(`${theme}: the severity scale recedes from critical to low, its faint end at the 2:1 floor of an ordinal end`, () => {
+      const sev = ["crit", "high", "med", "low"].map((k) => resolve(theme, `--m2-sev-${k}`));
+      const sheet = resolve(theme, "--m2-sheet");
+      const c = sev.map((h) => contrastOf(h, sheet));
+      expect(c[2], "medium").toBeGreaterThan(c[3]);
+      expect(c[3], "low").toBeGreaterThanOrEqual(2);
     });
     it(`${theme}: the sequential ramp is one hue, steps apart in lightness, its faint end visible on the sheet`, () => {
       const seq = [1, 2, 3, 4, 5].map((i) => resolve(theme, `--m2-seq-${i}`));

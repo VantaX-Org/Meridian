@@ -101,7 +101,8 @@
   /* Charts (design/v2/charts). Categorical: eight hues in a fixed order, validated for colour-vision separation on the
      adjacent pairs (worst 9.6 in OKLab x100) and for 3:1 against the sheet; the first three also on every pair, so a
      scatter or a small-multiple legend stops at three. Sequential: one hue, the blue ramp, light to dark. Severity:
-     ordinal, the stop red and the warn amber for critical and high, two neutral steps for medium and low. */
+     ordinal, the stop red and the warn amber for critical and high, two receding neutral steps for medium and low (low
+     sits at 2:1, the floor of an ordinal end: its count is always in the legend and the table). */
   --m2-chart-1: #406FD1;
   --m2-chart-2: #C65A1E;
   --m2-chart-3: #0F8A78;
@@ -117,8 +118,8 @@
   --m2-seq-5: var(--m2-b-700);
   --m2-sev-crit: var(--m2-crit);
   --m2-sev-high: var(--m2-warn);
-  --m2-sev-med: var(--m2-n-700);
-  --m2-sev-low: var(--m2-n-500);
+  --m2-sev-med: var(--m2-n-500);
+  --m2-sev-low: var(--m2-n-300);
   --m2-chart-grid: var(--m2-n-100);
   --m2-chart-axis: var(--m2-n-200);
   --m2-chart-text: var(--m2-n-600);
@@ -255,8 +256,8 @@
     --m2-seq-3: var(--m2-b-400);
     --m2-seq-4: var(--m2-b-300);
     --m2-seq-5: var(--m2-b-200);
-    --m2-sev-med: var(--m2-n-300);
-    --m2-sev-low: var(--m2-n-500);
+    --m2-sev-med: var(--m2-n-400);
+    --m2-sev-low: var(--m2-n-600);
     --m2-chart-grid: var(--m2-n-875);
     --m2-chart-axis: var(--m2-n-800);
     --m2-chart-text: var(--m2-n-400);
@@ -313,8 +314,8 @@ html[data-theme="dark"] .m2-root {
   --m2-seq-3: var(--m2-b-400);
   --m2-seq-4: var(--m2-b-300);
   --m2-seq-5: var(--m2-b-200);
-  --m2-sev-med: var(--m2-n-300);
-  --m2-sev-low: var(--m2-n-500);
+  --m2-sev-med: var(--m2-n-400);
+  --m2-sev-low: var(--m2-n-600);
   --m2-chart-grid: var(--m2-n-875);
   --m2-chart-axis: var(--m2-n-800);
   --m2-chart-text: var(--m2-n-400);

@@ -70,7 +70,7 @@ Colour is quiet by default and spent on meaning. Three layers, all in `tokens.cs
 3. **Chart colours** (used only by `design/v2/charts`): `--m2-chart-1` to `--m2-chart-8`, a categorical set in a fixed
    order (blue, orange, teal, ochre, violet, green, magenta, cyan); `--m2-seq-1` to `--m2-seq-5`, the blue ramp as a
    sequential scale; `--m2-sev-crit`, `-high`, `-med`, `-low`, the ordinal severity scale (stop red, warn amber, two
-   neutral steps, matching the marks); and the chrome `--m2-chart-grid`, `--m2-chart-axis`, `--m2-chart-text`,
+   receding neutral steps); and the chrome `--m2-chart-grid`, `--m2-chart-axis`, `--m2-chart-text`,
    `--m2-chart-line`, `--m2-chart-area`, `--m2-chart-quiet`.
 
 Every pair a screen draws is measured by `design/v2/__tests__/tokens.test.ts` in light and dark: text, data and status
@@ -92,10 +92,11 @@ the lightness band of its theme. The measured values:
 | fail and critical on sheet, ink on wash | `#A3221A`, 7.50; 8.98 | `#F0877F`, 7.07; 8.74 |
 | info on sheet, ink on wash | `#2E5C8A`, 6.97; 9.18 | `#7FB3E8`, 7.94; 9.84 |
 | chart 1 to 8 on sheet | `#406FD1` 4.76, `#C65A1E` 4.30, `#0F8A78` 4.26, `#A87600` 4.00, `#7559C7` 5.24, `#4D7F1A` 4.81, `#1F7FAE` 4.46, `#B8487E` 4.92 | `#648FE7` 5.53, `#D06A30` 4.83, `#1E9C88` 5.15, `#B98A1C` 5.60, `#8C70DE` 4.58, `#5F962A` 4.91, `#2E94C8` 5.16, `#CC5A93` 4.55 |
-| severity medium, low on sheet | `#3E4A53` 9.09, `#6B767E` 4.65 | `#A9B3BB` 8.22, `#6B767E` 3.77 |
+| severity medium, low on sheet | `#6B767E` 4.65, `#A9B3BB` 2.13 (an ordinal end, 2:1 floor; the count is in the legend) | `#8C979F` 5.88, `#59646C` 2.89 |
 | sequential faint end on sheet | `#8EB1F5`, 2.15 (2:1 floor for an ordinal end) | `#2A54B0`, 2.50 |
 
 Worst categorical neighbours: 9.6 under colour-vision simulation, 17.2 for full colour vision, in both themes.
+Before and after screenshots of the refresh are in `docs/design-refresh.md`.
 
 ### Type, space, motion
 
