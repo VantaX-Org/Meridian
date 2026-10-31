@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { WorkAnalytics } from "../screens/WorkAnalytics";
 import { stubLayout } from "./layout-stub";
@@ -37,5 +37,14 @@ describe("Work analytics", () => {
     const proposals = await screen.findByTestId("wa-proposals");
     const row = (await within(proposals).findByText("Simulations")).closest("tr")!;
     expect(row.textContent).toContain("—");
+  });
+
+  it("ranks the rules stewards call wrong and opens the notes behind one", async () => {
+    renderWithQuery(<WorkAnalytics />);
+    const fb = await screen.findByTestId("wa-rule-feedback");
+    const row = (await within(fb).findByText("MM035")).closest("tr")!;
+    expect(row.textContent).toContain("77.8%");
+    fireEvent.click(within(row).getByRole("button", { name: "Show why" }));
+    expect(await within(fb).findByText("Plant is closed; the material is kept only for history")).toBeInTheDocument();
   });
 });

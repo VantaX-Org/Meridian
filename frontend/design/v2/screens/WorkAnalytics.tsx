@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { getBurndown, getProposalQuality, getRecurrence, getRootCauses, getRunChange, getThroughput, getTimeToFix, type FixStat } from "@/lib/api/v2/work-analytics";
+import { getBurndown, getProposalQuality, getRecurrence, getRootCauses, getRuleFeedback, getRunChange, getThroughput, getTimeToFix, type FixStat } from "@/lib/api/v2/work-analytics";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { f1, int, pct1 } from "@/lib/v2/score";
@@ -109,6 +109,7 @@ export function WorkAnalytics() {
       <RecurrencePanel />
       <RootCausePanel />
       <ProposalPanel />
+      <RuleFeedbackPanel />
     </CcPage>
   );
 }
@@ -336,6 +337,71 @@ function ProposalPanel() {
             </tr>
           ))}
         </Table>
+      )}
+    </Section>
+  );
+}
+
+/** Rules stewards call wrong: false-positive verdicts per rule from the steward feedback (api/routes/rules.py /rule-feedback). */
+function RuleFeedbackPanel() {
+  const fixture = useFixture();
+  const [open, setOpen] = useState<string | null>(null);
+  const q = useQuery({
+    queryKey: ["rule-feedback", fixture],
+    queryFn: async () => {
+      try {
+        return await getRuleFeedback();
+      } catch (e) {
+        if (status(e) === 404) return { rules: [] };
+        throw e;
+      }
+    },
+    staleTime: 60_000,
+    retry,
+  });
+  const why = useQuery({ queryKey: ["rule-feedback", fixture, open], queryFn: () => getRuleFeedback(open ?? undefined), enabled: open != null, staleTime: 60_000, retry });
+  const RuleName = useRuleName();
+  const title = t("Rules stewards call wrong");
+  return (
+    <Section q={q} title={title} meta={t("Steward verdicts on flagged records, most called wrong first")} testId="wa-rule-feedback">
+      {(d) => d.rules.length === 0 ? <EmptyFrame>{t("No steward has given a verdict on a flagged record yet.")}</EmptyFrame> : (
+        <>
+          <Table title={title} head={[t("Rule"), t("Verdicts"), t("Called wrong"), t("Confirmed real"), t("False-positive rate"), t("Notes")]}>
+            {d.rules.map((r) => (
+              <tr key={r.check_id}>
+                <th scope="row" className="m2-card-lead">{RuleName(r.check_id)}</th>
+                <td data-label={t("Verdicts")} className="m2-num">{int(r.flagged)}</td>
+                <td data-label={t("Called wrong")} className="m2-num">{int(r.false_positive)}</td>
+                <td data-label={t("Confirmed real")} className="m2-num">{int(r.real)}</td>
+                <td data-label={t("False-positive rate")} className="m2-num">{pct1(r.false_positive_rate)}</td>
+                <td data-label={t("Notes")}>
+                  {r.false_positive ? (
+                    <button type="button" className="m2-linkbtn" aria-pressed={open === r.check_id} onClick={() => setOpen(open === r.check_id ? null : r.check_id)}>
+                      {open === r.check_id ? t("Hide why") : t("Show why")}
+                    </button>
+                  ) : f1(null)}
+                </td>
+              </tr>
+            ))}
+          </Table>
+          {open ? (
+            why.isPending ? <Skeleton width="100%" height={80} /> : why.isError ? (
+              <ErrorFrame onRetry={() => void why.refetch()}>{t("The steward notes could not be read.")}</ErrorFrame>
+            ) : !why.data.reasons?.length ? (
+              <EmptyFrame>{t("No steward left a note when calling {rule} wrong.", { rule: open })}</EmptyFrame>
+            ) : (
+              <Table title={t("Why stewards call {rule} wrong", { rule: open })} head={[t("Steward note"), t("Records"), t("Last given")]}>
+                {why.data.reasons.map((n) => (
+                  <tr key={n.reason}>
+                    <th scope="row" className="m2-card-lead">{n.reason}</th>
+                    <td data-label={t("Records")} className="m2-num">{int(n.records)}</td>
+                    <td data-label={t("Last given")}>{n.last_at ? formatDate(n.last_at, "date") : f1(null)}</td>
+                  </tr>
+                ))}
+              </Table>
+            )
+          ) : null}
+        </>
       )}
     </Section>
   );

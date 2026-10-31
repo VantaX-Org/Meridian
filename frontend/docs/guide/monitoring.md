@@ -88,6 +88,7 @@ The Analytics tab, third at the top of the Work ledger, shows how fast the stewa
 - **Issues that came back.** The rules and the systems whose issues reopen most after they were closed, with the rate.
 - **Where the failing records sit.** The records with an open issue by organisational unit, such as plant or company code, with the share of each value.
 - **How good the proposals are.** For each source of proposals (rules, the cleaning engine, steward edits and simulations), how many were approved and how many were still fixed at the next run. A source with nothing proposed shows a dash.
+- **Rules stewards call wrong.** Each rule with the steward verdicts on its flagged records: how many were called a false positive, how many were confirmed real, and the false-positive rate, the rule called wrong most at the top. **Show why** lists the notes stewards left when they called that rule wrong, with the records behind each note and the date it was last given. A rule with a high rate is a candidate for tuning or for a scope change.
 
 A role that cannot read a list sees a short note in its place.
 

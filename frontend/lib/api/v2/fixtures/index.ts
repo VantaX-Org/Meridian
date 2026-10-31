@@ -295,7 +295,7 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (mn !== NONE_MINING) return mn as T;
   const mh = mdmHealthRead(path);
   if (mh !== NONE_MDM_HEALTH) return mh as T;
-  const wa = workAnalyticsRead(path);
+  const wa = workAnalyticsRead(path, params);
   if (wa !== NONE_WORK_ANALYTICS) return wa as T;
   const mg = migrationRead(path, params);
   if (mg !== NONE_MIGRATION) return mg as T;

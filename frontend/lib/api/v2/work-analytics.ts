@@ -70,6 +70,11 @@ export interface ProposalSource {
   fix_rate_pct: number | null;
 }
 
+export interface RuleFeedback {
+  rules: { check_id: string; flagged: number; false_positive: number; real: number; false_positive_rate: number | null }[];
+  reasons?: { reason: string; records: number; last_at: string | null }[];
+}
+
 export interface RunChange {
   objects: {
     module: string;
@@ -91,3 +96,4 @@ export const getTimeToFix = (days = 180) => v2Get<TimeToFix>(`${P}/time-to-fix`,
 export const getThroughput = () => v2Get<Throughput>(`${P}/throughput`);
 export const getRecurrence = () => v2Get<Recurrence>(`${P}/recurrence`);
 export const getProposalQuality = () => v2Get<{ sources: ProposalSource[] }>(`${P}/proposal-quality`);
+export const getRuleFeedback = (check_id?: string) => v2Get<RuleFeedback>("/rule-feedback", check_id ? { check_id } : undefined);

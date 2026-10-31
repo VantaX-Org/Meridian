@@ -108,8 +108,20 @@ const src = (source: string, proposed: number, approved: number, exported: numbe
 });
 const proposalSources = [src("rule", 3_120, 2_870, 2_640, 2_402, 118), src("cleaning", 1_460, 1_102, 980, 851, 96), src("steward", 412, 398, 377, 360, 9), src("simulation", 0, 0, 0, 0, 0)];
 
-export function workAnalyticsRead(path: string): unknown {
+const fb = (check_id: string, false_positive: number, real: number) => ({
+  check_id, flagged: false_positive + real, false_positive, real,
+  false_positive_rate: Math.round((10_000 * false_positive) / (false_positive + real)) / 10_000,
+});
+const ruleFeedback = [fb("MM035", 214, 61), fb("MM142", 88, 302), fb("MM003", 41, 517), fb("MM302", 12, 96), fb("MM015", 3, 210)];
+const fbReasons = [
+  { reason: "Plant is closed; the material is kept only for history", records: 132, last_at: "2026-10-28T09:14:00Z" },
+  { reason: "Value comes from the vendor catalogue and is correct", records: 57, last_at: "2026-10-27T15:02:00Z" },
+  { reason: "Covered by a global setting in customising", records: 25, last_at: "2026-10-22T11:40:00Z" },
+];
+
+export function workAnalyticsRead(path: string, params: Record<string, unknown> = {}): unknown {
   switch (path) {
+    case "/rule-feedback": return params.check_id ? { rules: ruleFeedback.filter((r) => r.check_id === params.check_id), reasons: fbReasons } : { rules: ruleFeedback };
     case "/work/analytics/burndown": return burndown();
     case "/work/analytics/run-change": return runChange;
     case "/work/analytics/time-to-fix": return timeToFix;

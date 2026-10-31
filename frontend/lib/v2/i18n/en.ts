@@ -6126,6 +6126,20 @@ export const en = {
   "Weights used then": "Weights used then",
   "Why rules do not apply": "Why rules do not apply",
   "Your role cannot read the score history.": "Your role cannot read the score history.",
+  "Called wrong": "Called wrong",
+  "Confirmed real": "Confirmed real",
+  "False-positive rate": "False-positive rate",
+  "Hide why": "Hide why",
+  "Last given": "Last given",
+  "No steward has given a verdict on a flagged record yet.": "No steward has given a verdict on a flagged record yet.",
+  "No steward left a note when calling {rule} wrong.": "No steward left a note when calling {rule} wrong.",
+  "Rules stewards call wrong": "Rules stewards call wrong",
+  "Show why": "Show why",
+  "Steward note": "Steward note",
+  "Steward verdicts on flagged records, most called wrong first": "Steward verdicts on flagged records, most called wrong first",
+  "The steward notes could not be read.": "The steward notes could not be read.",
+  "Verdicts": "Verdicts",
+  "Why stewards call {rule} wrong": "Why stewards call {rule} wrong",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
