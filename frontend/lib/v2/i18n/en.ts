@@ -6140,6 +6140,16 @@ export const en = {
   "The steward notes could not be read.": "The steward notes could not be read.",
   "Verdicts": "Verdicts",
   "Why stewards call {rule} wrong": "Why stewards call {rule} wrong",
+  "on target": "on target",
+  "below the warning line": "below the warning line",
+  "SAP ECC": "SAP ECC",
+  "Warehouse": "Warehouse",
+  "Each module on the six dimensions": "Each module on the six dimensions",
+  "Latest run, coloured by your score targets": "Latest run, coloured by your score targets",
+  "No finished run has dimension scores yet.": "No finished run has dimension scores yet.",
+  "{name}: {dim} not measured": "{name}: {dim} not measured",
+  "{name}: {dim} {score}, {tier}": "{name}: {dim} {score}, {tier}",
+  "Critical rules failing": "Critical rules failing",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

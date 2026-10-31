@@ -47,7 +47,30 @@ const configAware = {
   rules: [],
 };
 
+const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"];
+const heat = (module: string, group: string, vals: (number | null)[], critical = 0, cap_reason: string | null = null) => {
+  const scores: Record<string, number | null> = {};
+  const tiers: Record<string, string | null> = {};
+  DIMS.forEach((d, i) => { scores[d] = vals[i]; tiers[d] = vals[i] == null ? null : tier(vals[i] as number); });
+  const c = vals[6] ?? null;
+  scores.composite = c;
+  tiers.composite = c == null ? null : tier(c);
+  return { module, group, scores, tier: tiers, coverage: {}, critical, cap_reason };
+};
+
+const heatmap = {
+  version_id: "v-12",
+  dimensions: [...DIMS, "composite"],
+  rows: [
+    heat("material_master", "ecc", [61.4, 72.8, 66.0, 88.1, 94.2, 70.3, 68.2], 2, "Two critical rules fail, so the score is capped at 70"),
+    heat("business_partner", "ecc", [78.0, 71.5, 69.9, 90.4, 81.7, 77.2, 74.9], 1, "One critical rule fails, so the score is capped at 85"),
+    heat("fi_gl", "ecc", [86.2, 83.0, 79.4, 72.1, 99.1, 80.5, 81.3]),
+    heat("employee_central", "successfactors", [91.0, 88.4, 86.7, null, 97.9, 89.2, 89.6]),
+  ],
+};
+
 export function scoreRead(path: string): unknown {
+  if (path === "/insights/heatmap") return heatmap;
   if (path === "/scores/history") return history();
   if (path === "/findings/config-aware-score") return configAware;
   return NONE_SCORE;

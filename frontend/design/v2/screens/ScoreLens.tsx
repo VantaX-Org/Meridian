@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { getConfigAwareScore, getScoreHistory, type ConfigAwareScore, type ScoreHistory } from "@/lib/api/v2/score";
+import { getConfigAwareScore, getHeatmap, getScoreHistory, type ConfigAwareScore, type Heatmap, type HeatTier, type ScoreHistory } from "@/lib/api/v2/score";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
@@ -14,7 +14,8 @@ import { retry, Section, status, Table } from "./WorkAnalytics";
 /**
  * Score lens: every run scored two ways, with the weights stored when it ran and re-weighted under today's
  * configuration (api/routes/findings.py /scores/history), beside the config-aware score that counts only the rules
- * the loaded SAP configuration says apply (/findings/config-aware-score). Every number is the backend's.
+ * the loaded SAP configuration says apply (/findings/config-aware-score), and each module scored on the six DAMA
+ * dimensions for the latest run (/insights/heatmap). Every number is the backend's.
  */
 
 const noHistory: ScoreHistory = { history: [], modules: {} };
@@ -35,6 +36,7 @@ const diff = (a: number | null | undefined, b: number | null | undefined) => (a 
 export function ScoreLens() {
   const fixture = useFixture();
   const hist = useQuery({ queryKey: ["score-history", fixture], queryFn: lift(getScoreHistory, noHistory), staleTime: 60_000, retry });
+  const heat = useQuery({ queryKey: ["score-heatmap", fixture], queryFn: lift<Heatmap | null>(getHeatmap, null), staleTime: 60_000, retry });
   const aware = useQuery({ queryKey: ["config-aware-score", fixture], queryFn: lift<ConfigAwareScore | null>(getConfigAwareScore, null), staleTime: 60_000, retry });
 
   if (hist.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
@@ -73,6 +75,7 @@ export function ScoreLens() {
       />
       <TrendPanel runs={runs} />
       <RunsPanel runs={runs} />
+      <HeatPanel q={heat} />
       <ModulesPanel modules={hist.data.modules} />
       <AwarePanel q={aware} />
     </CcPage>
@@ -153,6 +156,72 @@ function ModulesPanel({ modules }: { modules: ScoreHistory["modules"] }) {
           })}
         </Table>
       )}
+    </Section>
+  );
+}
+
+const DIM: Record<string, () => string> = {
+  completeness: () => t("Completeness"),
+  accuracy: () => t("Accuracy"),
+  consistency: () => t("Consistency"),
+  timeliness: () => t("Timeliness"),
+  uniqueness: () => t("Uniqueness"),
+  validity: () => t("Validity"),
+  composite: () => t("Score"),
+};
+const BAND: Record<string, string> = { pass: "0", warn: "2", fail: "3" };
+const TIER: Record<string, () => string> = { pass: () => t("on target"), warn: () => t("below target"), fail: () => t("below the warning line") };
+const GROUP: Record<string, () => string> = { ecc: () => t("SAP ECC"), successfactors: () => t("SuccessFactors"), warehouse: () => t("Warehouse") };
+
+type HeatQ = { isPending: boolean; isError: boolean; error: unknown; data: Heatmap | null | undefined; refetch: () => unknown };
+
+function HeatPanel({ q }: { q: HeatQ }) {
+  const title = t("Each module on the six dimensions");
+  return (
+    <Section q={q} title={title} meta={t("Latest run, coloured by your score targets")} testId="sl-heat">
+      {(h) => {
+        if (!h || h.rows.length === 0) return <EmptyFrame>{t("No finished run has dimension scores yet.")}</EmptyFrame>;
+        const dims = h.dimensions;
+        const cell = (v: number | null | undefined, tier: HeatTier | undefined, d: string, name: string) => (
+          <td
+            key={d}
+            data-label={DIM[d]?.() ?? d}
+            className="m2-num m2-ck-heat"
+            data-band={tier ? BAND[tier] : undefined}
+            title={v == null ? t("{name}: {dim} not measured", { name, dim: DIM[d]?.() ?? d }) : t("{name}: {dim} {score}, {tier}", { name, dim: DIM[d]?.() ?? d, score: f1(v), tier: tier ? TIER[tier]() : f1(null) })}
+          >
+            {f1(v ?? null)}
+          </td>
+        );
+        return (
+          <>
+            <div className="m2-ck-matrix">
+              <Table title={title} head={[t("Module"), ...dims.map((d) => DIM[d]?.() ?? d), t("Critical rules failing")]}>
+                {h.rows.map((r) => {
+                  const name = formatModuleName(r.module);
+                  return (
+                    <tr key={r.module}>
+                      <th scope="row" className="m2-card-lead">
+                        {name} <span className="m2-mono m2-meta">{r.module}</span>
+                        <span className="m2-meta"> {GROUP[r.group]?.() ?? r.group}</span>
+                      </th>
+                      {dims.map((d) => cell(r.scores[d], r.tier[d], d, name))}
+                      <td data-label={t("Critical rules failing")} className="m2-num">{int(r.critical)}</td>
+                    </tr>
+                  );
+                })}
+              </Table>
+            </div>
+            {h.rows.some((r) => r.cap_reason) ? (
+              <ul className="m2-meta">
+                {h.rows.filter((r) => r.cap_reason).map((r) => (
+                  <li key={r.module}>{formatModuleName(r.module)}: {r.cap_reason}</li>
+                ))}
+              </ul>
+            ) : null}
+          </>
+        );
+      }}
     </Section>
   );
 }

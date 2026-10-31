@@ -29,6 +29,17 @@ describe("Score lens", () => {
     expect(banner.textContent).toMatch(/80\.3/);
   });
 
+  it("colours each module's dimension scores by target and names the capped modules", async () => {
+    renderWithQuery(<ScoreLens />);
+    const heat = await screen.findByTestId("sl-heat");
+    const mm = within(heat).getByRole("row", { name: /Material master/ });
+    expect(mm.querySelector('[data-label="Completeness"]')?.getAttribute("data-band")).toBe("3");
+    expect(mm.querySelector('[data-label="Uniqueness"]')?.getAttribute("data-band")).toBe("0");
+    const ec = within(heat).getByRole("row", { name: /Employee central/i });
+    expect(ec.querySelector('[data-label="Timeliness"]')?.hasAttribute("data-band")).toBe(false);
+    expect(heat.textContent).toMatch(/capped at 70/);
+  });
+
   it("lists runs newest first and says when the weights were not recorded", async () => {
     renderWithQuery(<ScoreLens />);
     const rows = within(await screen.findByTestId("sl-runs")).getAllByRole("row").slice(1);
