@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { addComment, deleteComment, deleteWatch, putSubscriptions, putWatch, type CommentKind, type WatchKind } from "@/lib/api/v2/roles";
+import { addComment, deleteComment, deleteWatch, type MyWatch, putSubscriptions, putWatch, type CommentKind, type WatchKind } from "@/lib/api/v2/roles";
 import { formatDate } from "@/lib/format";
 import { useAssignable } from "@/lib/v2/approvals-queries";
 import { failureText } from "@/lib/v2/errors";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
-import { notFound, refreshRoles, useActivity, useComments, useSubscriptions, useUnreadMentions, useWatch } from "@/lib/v2/roles-queries";
+import { notFound, refreshRoles, useActivity, useComments, useMyWatches, useSubscriptions, useUnreadMentions, useWatch } from "@/lib/v2/roles-queries";
+import { useLandscape } from "@/lib/v2/queries";
 import { Dash, Mono, Skeleton, V2Link } from "../parts";
 import "../roles.css";
 import { t } from "@/lib/v2/i18n";
@@ -280,5 +281,76 @@ export function MentionCount() {
     <span className="m2-meta" data-testid="mention-count">
       {t("{n} unread {n, plural, one {mention} other {mentions}}", { n })}
     </span>
+  );
+}
+
+const KIND_WORD: Record<WatchKind, () => string> = {
+  record: () => t("Record"),
+  rule: () => t("Rule"),
+  batch: () => t("Batch"),
+  contract: () => t("Contract"),
+  wave: () => t("Wave"),
+  object: () => t("Object"),
+  system: () => t("System"),
+};
+
+/** The events a watch hears about; none chosen means all of them. */
+export const watchEventsLine = (events: MyWatch["events"]): string =>
+  events.length === 0
+    ? t("All events")
+    : events.map((e) => ({ comment: t("Comments"), run_finished: t("Runs finishing"), score_dropped: t("Score drops"), critical_breach: t("Critical breaches"), batch_waiting: t("Batches waiting") })[e] ?? e).join(", ");
+
+/** Preferences: everything the caller watches, each with Stop watching. */
+export function WatchListBlock() {
+  const qc = useQueryClient();
+  const session = useV2Session();
+  const q = useMyWatches();
+  const landscape = useLandscape(null).data;
+  const [error, setError] = useState<string | null>(null);
+  const readOnly = session.shared || Boolean(session.viewAs);
+  const name = (w: MyWatch): string => {
+    if (w.target_kind !== "object") return w.target_id;
+    const mod = w.target_id.split(":").pop() ?? w.target_id;
+    return landscape?.objects.find((o) => o.module === mod)?.label ?? mod.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+  };
+  const stop = async (w: MyWatch) => {
+    setError(null);
+    try {
+      await deleteWatch(w.target_kind, w.target_id);
+      await refreshRoles(qc, "watch");
+    } catch (e) {
+      setError(failureText(e));
+    }
+  };
+  return (
+    <div data-testid="watch-list">
+      <h3>{t("What you watch")}</h3>
+      {q.isError ? (
+        <p className="m2-meta">{notFound(q.error) ? <Dash why={t("Watching is not available on this server yet")} /> : t("Your watches could not be read.")}</p>
+      ) : !q.data ? (
+        <Skeleton width="60%" height={12} />
+      ) : q.data.watches.length === 0 ? (
+        <p className="m2-meta">{t("You watch nothing yet. Use Watch on an object, rule or batch to hear about it.")}</p>
+      ) : (
+        <ul className="m2-breaches">
+          {q.data.watches.map((w) => (
+            <li key={`${w.target_kind}:${w.target_id}`}>
+              <span>
+                <span className="m2-meta">{KIND_WORD[w.target_kind]()}</span> {name(w)}
+                <span className="m2-meta"> {watchEventsLine(w.events)}</span>
+              </span>
+              <button type="button" className="m2-btn m2-sm" disabled={readOnly} onClick={() => void stop(w)}>
+                {t("Stop watching")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {error ? (
+        <p className="m2-err" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }

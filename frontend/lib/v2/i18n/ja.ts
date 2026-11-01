@@ -6717,4 +6717,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{period}: {rate}% approved": "{period}: {rate}% 承認",
   "Records processed per period": "期間ごとの処理レコード数",
   "Share of decided records approved, per period": "期間ごとの承認された判断の割合",
+  "All events": "すべてのイベント",
+  "Runs finishing": "実行の完了",
+  "Score drops": "スコアの低下",
+  "Critical breaches": "重大な違反",
+  "Batches waiting": "承認待ちのバッチ",
+  "What you watch": "ウォッチ中の対象",
+  "Your watches could not be read.": "ウォッチ一覧を読み込めませんでした。",
+  "You watch nothing yet. Use Watch on an object, rule or batch to hear about it.": "まだ何もウォッチしていません。オブジェクト、ルール、バッチで「ウォッチ」を使うと通知を受け取れます。",
+  "Stop watching": "ウォッチを解除",
 };

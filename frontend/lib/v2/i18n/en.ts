@@ -6716,6 +6716,15 @@ export const en = {
   "{period}: {rate}% approved": "{period}: {rate}% approved",
   "Records processed per period": "Records processed per period",
   "Share of decided records approved, per period": "Share of decided records approved, per period",
+  "All events": "All events",
+  "Runs finishing": "Runs finishing",
+  "Score drops": "Score drops",
+  "Critical breaches": "Critical breaches",
+  "Batches waiting": "Batches waiting",
+  "What you watch": "What you watch",
+  "Your watches could not be read.": "Your watches could not be read.",
+  "You watch nothing yet. Use Watch on an object, rule or batch to hear about it.": "You watch nothing yet. Use Watch on an object, rule or batch to hear about it.",
+  "Stop watching": "Stop watching",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

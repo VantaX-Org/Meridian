@@ -6717,4 +6717,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{period}: {rate}% approved": "{period}: {rate}% genehmigt",
   "Records processed per period": "Verarbeitete Datensätze je Zeitraum",
   "Share of decided records approved, per period": "Anteil genehmigter Entscheidungen je Zeitraum",
+  "All events": "Alle Ereignisse",
+  "Runs finishing": "Abgeschlossene Läufe",
+  "Score drops": "Punktabfälle",
+  "Critical breaches": "Kritische Verstöße",
+  "Batches waiting": "Wartende Stapel",
+  "What you watch": "Was Sie beobachten",
+  "Your watches could not be read.": "Ihre Beobachtungen konnten nicht gelesen werden.",
+  "You watch nothing yet. Use Watch on an object, rule or batch to hear about it.": "Sie beobachten noch nichts. Nutzen Sie Beobachten bei einem Objekt, einer Regel oder einem Stapel.",
+  "Stop watching": "Nicht mehr beobachten",
 };
