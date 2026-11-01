@@ -4,6 +4,9 @@ A run is one measurement of your data at a point in time: an extraction from a s
 
 ## What is on it
 
+- **The banner**: the small line says "Latest run" and the headline "Finished on 16 Oct 2026" ("No run has finished yet" before the first). The line under it says which way the data moved: "The average score rose by 2.1 points since the run before.", "did not change", or "A second run is needed to say whether the data got better or worse." when there is only one. The headline is marked at risk when the average fell. Three figures: **Runs shown** (with the baseline date or "no baseline set"), **Average score** ("out of 100") and **Took** for the latest run. The one button is **Start a run**, for people who may start an analysis.
+- **The charts**: **Score over time**, the average object score over the last runs as a line ("Two runs are needed to draw a trend." until there are two), and **How long each run took**, a horizontal bar per run for the last eight, on one scale from zero. A long bar is a slow run; compare it with its records in the table.
+- **Aletheia**, docked on the right: ask about the runs in plain words (see the Ask Meridian chapter).
 - **The sentence**: "The timeline shows the last 8 finished runs, the latest on 16 Oct 2026. The baseline is 2 Oct 2026." Over the table, its own count: "9 runs in the table, 1 of them failed."
 - **The run timeline**: one mark per run, the baseline labelled. Select a mark to open that run.
 - **Runs and Jobs**: two views. **Start a run** opens the start panel.

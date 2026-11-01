@@ -8,7 +8,11 @@ Work through the modules in order. Each one has learning objectives, steps, chec
 short exercise. Every setting, route and command named here exists in the release this edition describes. The
 screenshots are taken from the product's demo build with sample data (the "Demo data" bar at the top of each one);
 your own deployment shows your data and never shows that bar. They show the light theme, the default; each person can
-switch to dark under Preferences.
+switch to dark under Preferences, Display, or from the account menu.
+
+Every screen opens the same way: a banner with the verdict for what you are looking at (go, at risk or no-go), the
+figures behind it and one primary action, then the detail. Aletheia, the grounded assistant, is docked beside the
+canvas on every screen; it answers from the run you are looking at and cites the rules behind each number.
 
 Who does what:
 
@@ -75,7 +79,7 @@ addresses without sign-in.
 - After the password change you should land on the Landscape with **Administration** in your account menu.
 - `curl -s https://<server>/health` should print `"status": "ok"`.
 
-![Administration: every section in one index, grouped as People and access, Tenant, Data, Notifications and Operations.](img/admin-index.png)
+![Administration: the health of the setup with its one action, people by role, and every section in the map, grouped as People and access, Tenant, Data, Notifications and Operations.](img/admin-index.png)
 
 ### Exercise
 
@@ -326,7 +330,7 @@ table reader, and why (the extraction log lists the fields ODP could not deliver
    start within 5 minutes of their time.
 5. **Runs, Jobs**: every extraction, analysis and configuration load with its state. Open a failed job for its
    stages, the error in plain words and **Retry**.
-6. **The Basis home**: SAP Basis lands on the landscape with what they look after above the coverage matrix:
+6. **The Basis home**: SAP Basis lands on the landscape; below the go-live banner and the landscape map sits what they look after:
    **Connections** (health and what the last test said), **Last extraction** per system with records and state,
    **Failed jobs to triage** (a failed job not followed by a success of the same kind), **Authorisation errors**
    (refused credentials and missing authorisations from the tests and jobs) and **Schedules** with the next run and

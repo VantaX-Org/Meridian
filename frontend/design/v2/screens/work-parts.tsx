@@ -6,7 +6,7 @@ import type { WorkRow } from "@/lib/api/v2/types";
 import type { DecideKind, RowRef } from "@/lib/v2/work-actions";
 import { initials, possibleValues, splitKey } from "@/lib/v2/work";
 import { MenuButton } from "../Menu";
-import { Dash, Mono } from "../parts";
+import { Coded, Dash, Mono } from "../parts";
 import { recordsByModule } from "@/lib/v2/step9";
 import { moduleText } from "@/lib/v2/labels";
 import { SimulateDialog } from "./step9/Simulation";
@@ -56,10 +56,10 @@ export function PossibleValuesCell({ row }: { row: WorkRow }) {
   );
 }
 
-export function CurrentValue({ value }: { value: string | null | undefined }) {
+export function CurrentValue({ value, label }: { value: string | null | undefined; label?: string | null }) {
   if (value === undefined) return <Dash why={t("The current value is not in the list yet")} />;
   if (value === null || value === "") return <Dash why={t("Blank in SAP")} />;
-  return <Mono>{value}</Mono>;
+  return <Coded code={value} text={label} first />;
 }
 
 /** New value: an input in the cell. Enter commits through the API; Escape puts the stored value back. */

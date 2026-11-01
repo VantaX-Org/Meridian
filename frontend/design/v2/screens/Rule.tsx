@@ -3,13 +3,17 @@
 import { useSearchParams } from "next/navigation";
 import { RuleActions, RuleAuthority, RuleBlocks, RuleContract, RuleDefinition, RuleFacts, RuleHistory, RuleLineage, RuleProve, RuleScopeSection, RuleVersions, SectionLevel, ruleStatLine, useRule } from "../inspector/rule";
 import { EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { int } from "@/lib/v2/score";
+import { CcBanner, CcPage } from "./cc-parts";
 import { LedgerSlot } from "./object/LedgerSlot";
 import { RuleOverview } from "./RuleOverview";
+import { BlastRadius } from "./BlastRadius";
 import { t as tr } from "@/lib/v2/i18n";
 
-type TabKey = "overview" | "definition" | "failing" | "prove" | "impact" | "history";
+type TabKey = "overview" | "blast" | "definition" | "failing" | "prove" | "impact" | "history";
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", get label() { return tr("Overview"); } },
+  { key: "blast", get label() { return tr("Blast radius"); } },
   { key: "definition", get label() { return tr("Definition"); } },
   { key: "failing", get label() { return tr("Failing records"); } },
   { key: "prove", get label() { return tr("Prove in SAP"); } },
@@ -34,18 +38,20 @@ export function RuleCanvas({ id }: { id: string }) {
 
   if (state.status === "loading") {
     return (
-      <div aria-busy="true" data-testid="rule-canvas-loading">
-        <PageTitle>
-          <Mono>{id}</Mono>
-        </PageTitle>
-        <p className="m2-statusline"><Skeleton width={420} height={14} /></p>
-        <div className="m2-sec"><Skeleton width="100%" height={160} /></div>
-      </div>
+      <CcPage>
+        <div aria-busy="true" data-testid="rule-canvas-loading">
+          <PageTitle>
+            <Mono>{id}</Mono>
+          </PageTitle>
+          <p className="m2-statusline"><Skeleton width={420} height={14} /></p>
+          <div className="m2-sec"><Skeleton width="100%" height={160} /></div>
+        </div>
+      </CcPage>
     );
   }
   if (state.status === "error") {
     return (
-      <>
+      <CcPage>
         <PageTitle>
           <Mono>{id}</Mono>
         </PageTitle>
@@ -57,7 +63,7 @@ export function RuleCanvas({ id }: { id: string }) {
             </EmptyFrame>
           </div>
         </div>
-      </>
+      </CcPage>
     );
   }
 
@@ -72,10 +78,35 @@ export function RuleCanvas({ id }: { id: string }) {
     return `/r/${encodeURIComponent(id)}${qs ? `?${qs}` : ""}`;
   };
   return (
-    <>
-      <PageTitle sub={name}>
-        <Mono>{id}</Mono>
-      </PageTitle>
+    <CcPage>
+      <PageTitle sub={name ? <Mono>{id}</Mono> : undefined}>{name ?? <Mono>{id}</Mono>}</PageTitle>
+      <CcBanner
+        testId="rule-banner"
+        label={tr("Rule summary")}
+        eyebrow={tr("This rule")}
+        verdict={v.scope.failing_records === 0 ? "go" : v.overTolerance === false ? "at-risk" : "no-go"}
+        headline={
+          v.scope.failing_records === 0
+            ? tr("No record fails this rule")
+            : tr("{n} {count, plural, one {record fails} other {records fail}} this rule", { n: int(v.scope.failing_records), count: v.scope.failing_records })
+        }
+        why={
+          v.scope.definition.field ? (
+            <>
+              {tr("It checks")} {v.row?.field_description ? <>{v.row.field_description} <span className="m2-meta"><Mono>{v.scope.definition.field}</Mono></span></> : <Mono>{v.scope.definition.field}</Mono>}
+            </>
+          ) : undefined
+        }
+        figs={[
+          { label: tr("Failing records"), value: int(v.scope.failing_records), note: v.failingPct != null ? tr("{pct2} of records checked", { pct2: `${v.failingPct.toFixed(2)}%` }) : undefined },
+          { label: tr("Objects affected"), value: int(v.scope.objects.length) },
+        ]}
+        action={
+          <V2Link href={href("failing")} className="m2-btn m2-next">
+            {tr("Show the failing records")}
+          </V2Link>
+        }
+      />
       <p className="m2-statusline" data-testid="rule-stat-line">
         {ruleStatLine(v).map((t) => (
           <span key={t}>{t}</span>
@@ -95,6 +126,8 @@ export function RuleCanvas({ id }: { id: string }) {
         <SectionLevel level="h2">
           {tab === "overview" ? (
             <RuleOverview view={v} />
+          ) : tab === "blast" ? (
+            <BlastRadius checkId={id} versionId={v.scope.objects[0]?.run_id ?? null} failing={v.scope.failing_records} fixHref={href("failing")} />
           ) : tab === "definition" ? (
             <div className="m2-rcols">
               <div>
@@ -127,6 +160,6 @@ export function RuleCanvas({ id }: { id: string }) {
           )}
         </SectionLevel>
       </div>
-    </>
+    </CcPage>
   );
 }

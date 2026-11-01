@@ -5,6 +5,7 @@ The **run canvas** shows one run: what it scored, object by object, and the jobs
 ## One run
 
 - **The title**: "Run 16 Oct 2026, 05:17" and the system.
+- **The banner**: the small line says "This run", the headline is the run's worst verdict and the line under it sums up the objects: "15 objects scored: 2 go, 2 at risk, 11 no-go." Three figures: **Ready** ("of 15 objects"), **At risk** ("below target") and **Blocking** ("block go-live"). The one button is **Show scores from this run**.
 - **The facts line**: the system, records checked, rules measured, scoring time and trigger, for example "ECC production, 400,662 records checked, 794 rules measured, scored in 11 m 42 s, trigger scheduled".
 - **The sentence**: "15 objects scored: 2 go, 2 at risk, 11 no-go."
 - **Actions**: **Show scores from this run** (sets the run in the top bar so every canvas reads it), **Pin as baseline**, **Archive the 8 older runs**, **Download report**, **Compare with**.
@@ -13,7 +14,13 @@ The **run canvas** shows one run: what it scored, object by object, and the jobs
 
 ## Compare
 
-The title names both runs, for example "Run 16 Oct 2026, 05:17 vs baseline 2 Oct 2026". The sentence sums it up: "12 of 15 objects scored higher and 3 lower. 14 rules started failing and 37 stopped. 12 objects are still capped by a critical rule, so the shown score hides part of it."
+The title names both runs, for example "Run 16 Oct 2026, 05:17 vs baseline 2 Oct 2026". The banner under it says "Compared with 2 Oct 2026" and gives the answer as its headline: **Data quality improved**, **Data quality got worse** or **Data quality is about the same**. Three figures follow: **Rules newly failing** (with "37 stopped failing" under it), **Objects higher** and **Objects lower**, and the one button **Open run details**.
+
+**Change in score by object** is a diverging bar chart: one row per object, worst first, with bars to the left for objects that got worse and to the right for objects that got better, the change at the end ("-3.2 points"). The legend reads **Worse** on the left and **Better** on the right. A long bar to the left is where to look first.
+
+Aletheia is docked on the right of both screens; ask why a score moved and the answer cites the facts and rules it used.
+
+The sentence sums it up: "12 of 15 objects scored higher and 3 lower. 14 rules started failing and 37 stopped. 12 objects are still capped by a critical rule, so the shown score hides part of it."
 
 The method is stated under it, exactly as the product states it: "Rules are compared on the common set: the 5167 rules that ran cleanly in both runs. 11 rules added since the baseline of 2 Oct 2026 are excluded. A rule counts as changed when it flips between failing no records and some, or fails at least 10% and 10 records more or fewer. Coverage is the share of records a rule could evaluate."
 

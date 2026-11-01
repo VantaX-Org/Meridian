@@ -298,7 +298,7 @@ function RulesList(p: TableProps) {
           <span className="m2-c">
             <Sev severity={l.rule.severity} />
             <Dot />
-            {l.over == null ? t("tolerance not read") : l.over ? t("over tolerance") : t("within tolerance")}
+            {l.over == null ? t("tolerance not read") : l.over ? t("fails on too many records") : t("within the allowed limit")}
             <Dot />
             {t("{affected_count} rows ({pct2})", { affected_count: int(l.rule.affected_count), pct2: pct2(l.failingPct) })}
             {l.rule.why ? <><br />{l.rule.why}</> : null}

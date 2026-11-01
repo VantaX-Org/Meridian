@@ -1,6 +1,8 @@
 "use client";
 
 import { Welcome } from "./Welcome";
+import { AletheiaDock, CommandRow, GoLiveBanner } from "./CommandCentre";
+import { FixPipeline, ReadinessMatrix, RiskWaterfall, RuleBoard } from "./Cockpit";
 import { Explain } from "../Explain";
 import { Fragment, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -31,8 +33,6 @@ import { contractMark } from "@/lib/v2/step9";
 import { policyMark } from "@/lib/v2/step10";
 import { WavesByValue } from "./step9/Money";
 import { t } from "@/lib/v2/i18n";
-import { useMoney } from "@/lib/v2/step9-queries";
-import { moneyCompactText } from "@/lib/v2/labels";
 
 const SEL_KEY = "mn_v2_sel";
 
@@ -64,7 +64,7 @@ export function LandscapeSentence({ landscape }: { landscape: Landscape }) {
   const ids = s.release_if_fixed;
   return (
     <>
-      {t("{held_under_85} of {objects} objects are held under 85 by {critical_over_tolerance} critical {critical_over_tolerance, plural, one {rule} other {rules}} over tolerance", { held_under_85: s.held_under_85, objects: s.objects, critical_over_tolerance: s.critical_over_tolerance })}
+      {t("{held_under_85} of {objects} objects cannot reach 85 yet, because {critical_over_tolerance} critical {critical_over_tolerance, plural, one {rule fails} other {rules fail}} on too many records", { held_under_85: s.held_under_85, objects: s.objects, critical_over_tolerance: s.critical_over_tolerance })}
       {ids.length > 0 && s.released > 0 ? (
         <>
           {t("; fixing ")}
@@ -234,7 +234,7 @@ function CellLink({ system, cell, label, selected, run }: { system: LandscapeSys
       data-selected={selected ? "true" : undefined}
       data-testid="matrix-cell"
       title={reading}
-      aria-label={`${label}, ${system.name}, ${f1(cell.score)}${cell.capped ? " capped" : ""}, ${VERDICT_LABEL[cell.verdict]}${cell.low_confidence ? t(", low coverage") : ""}${mark ? `, ${mark.title}` : ""}${pmark ? `, ${pmark.title}` : ""}`}
+      aria-label={`${label}, ${system.name}, ${f1(cell.score)}${cell.capped ? t(", held down by a failing critical rule") : ""}, ${VERDICT_LABEL[cell.verdict]}${cell.low_confidence ? t(", low coverage") : ""}${mark ? `, ${mark.title}` : ""}${pmark ? `, ${pmark.title}` : ""}`}
       onClick={() => rememberCell(`${system.id}:${cell.module}`)}
     >
       <Ruler
@@ -353,7 +353,7 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
                   <Ruler size={48} dims={dimsOf(c)} measured={c.raw_score} score={c.score} capped={c.capped} capLevel={c.cap_level} breaches={c.breaches} label={label} records={c.records_checked} rules={c.rules_measured} coverage={c.coverage} lowConfidence={c.low_confidence} contract={contractMark(c)} policy={policyMark(c)} />
                 </span>
                 <span className="m2-c">
-                  {t("{records_checked} records checked, {rules_measured} rules measured", { records_checked: int(c.records_checked), rules_measured: int(c.rules_measured) })}
+                  {t("{records_checked} records checked against {rules_measured} rules", { records_checked: int(c.records_checked), rules_measured: int(c.rules_measured) })}
                   {c.low_confidence ? <span className="m2-lcm">{t("low coverage")}</span> : null}
                   {landscape.systems.length > 1 ? `, ${s.name}` : ""}
                 </span>
@@ -699,48 +699,7 @@ function NoSystemYet() {
   );
 }
 
-/** The landscape canvas: the sentence, the next step, the coverage matrix and the next work. */
-/** Score hero: the weakest measured object, as a ruler with the change since the previous run. Money at risk beside it. */
-function ScoreHero({ landscape }: { landscape: Landscape }) {
-  const worst = byMeasured(landscape.cells)[0];
-  const label = worst ? landscape.objects.find((o) => o.module === worst.module)?.label ?? worst.module : "";
-  const trend = useTrends(worst?.system_id ?? "", worst ? [worst.module] : []).get(worst?.module ?? "") ?? [];
-  const known = trend.filter((v): v is number => v != null);
-  const delta = known.length >= 2 ? known[known.length - 1] - known[known.length - 2] : null;
-  const money = useMoney("landscape", null).data;
-  const cost = money?.totals.opportunity_cost_per_month ?? null;
-  const top = (money?.ranking.objects ?? []).filter((o) => o.value_unblocked_per_month != null).slice(0, 3);
-  if (!worst) return null;
-  return (
-    <section className="m2-lhero" aria-label={t("Weakest object and money at risk")} data-testid="landscape-hero">
-      <div className="m2-lhero-score">
-        <span className="m2-lhero-n">{f1(worst.raw_score ?? worst.score ?? 0)}</span>
-        <span className="m2-lhero-l">
-          {t("{label}, the lowest measured object", { label })}
-          {delta != null && delta !== 0 ? <span className="m2-lhero-d">{delta > 0 ? "+" : ""}{f1(delta)} {t("since the previous run")}</span> : null}
-        </span>
-        <Ruler size={240} dims={dimsOf(worst)} measured={worst.raw_score} score={worst.score} capped={worst.capped} capLevel={worst.cap_level} breaches={worst.breaches} label={label} records={worst.records_checked} rules={worst.rules_measured} coverage={worst.coverage} lowConfidence={worst.low_confidence} />
-      </div>
-      {cost != null && money ? (
-        <div className="m2-lhero-money" data-testid="landscape-money">
-          <span className="m2-lhero-n">{moneyCompactText(cost, money.currency)}</span>
-          <span className="m2-lhero-l">{t("a month blocked by data quality")}</span>
-          {top.length > 0 ? (
-            <ul className="m2-lhero-top">
-              {top.map((o) => (
-                <li key={o.id}>
-                  <span>{o.name}</span>
-                  <span className="m2-v">{moneyCompactText(o.value_unblocked_per_month, money.currency)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
+/** The landscape canvas: the go-live banner, the readiness matrix, the fix pipeline, value at risk, the failing rules, the docked Aletheia, the coverage matrix and the next work. */
 export function LandscapeCanvas() {
   const run = useRunParam();
   const q = useLandscape(run);
@@ -766,6 +725,7 @@ export function LandscapeCanvas() {
   if (!L) return <LandscapeSkeleton />;
   if (L.systems.length === 0) return <NoSystemYet />;
   const first = L.status_strip;
+  const label = (m: string) => L.objects.find((o) => o.module === m)?.label ?? formatModuleName(m);
   return (
     <>
       {run ? (
@@ -776,18 +736,34 @@ export function LandscapeCanvas() {
       ) : null}
       <PageTitle sub={scopeName}>{t("Landscape")}</PageTitle>
       <Welcome />
-      <NextList quiet />
-      <p className="m2-finding" data-testid="landscape-sentence">
-        <LandscapeSentence landscape={L} />
-      </p>
-      <p className="m2-prov">
-        {t("{records_checked} records checked", { records_checked: int(first.records_checked) })}
-        <Dot />
-        {t("{rules_measured} rules measured", { rules_measured: int(first.rules_measured) })}
-        <Dot />
-        {first.run_at ? t("run {run_at}", { run_at: formatDate(first.run_at, "datetime") }) : t("no run yet")}
-      </p>
-      <ScoreHero landscape={L} />
+      <GoLiveBanner landscape={L} waves={waves} />
+      {L.cells.length ? <ReadinessMatrix landscape={L} run={run} /> : null}
+      <div className="m2-cc">
+        <div className="m2-cc-main">
+          <p className="m2-finding" data-testid="landscape-sentence">
+            <LandscapeSentence landscape={L} />
+          </p>
+          <p className="m2-prov">
+            {t("{records_checked} records checked", { records_checked: int(first.records_checked) })}
+            <Dot />
+            {t("{rules_measured} rules measured", { rules_measured: int(first.rules_measured) })}
+            <Dot />
+            {first.run_at ? t("run {run_at}", { run_at: formatDate(first.run_at, "datetime") }) : t("no run yet")}
+          </p>
+          {L.cells.length ? (
+            <>
+              <div className="m2-ck-row">
+                <FixPipeline label={label} />
+                <RiskWaterfall />
+              </div>
+              <RuleBoard label={label} />
+              <CommandRow landscape={L} />
+            </>
+          ) : null}
+          <NextList quiet />
+        </div>
+        <AletheiaDock />
+      </div>
       {L.cells.length === 0 ? <FirstSteps connected analysed={false} /> : null}
       {session.persona === "owner" ? <OwnerLine /> : null}
       <div className="m2-cta">

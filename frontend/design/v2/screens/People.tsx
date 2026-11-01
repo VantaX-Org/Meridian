@@ -16,6 +16,7 @@ import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../pa
 import { PeopleActions } from "./PeopleActions";
 import { t } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
+import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 
 const n = (x: number): string => whole(x);
 const slaNote = (): string => t("Share of their open work that is not yet past its due date.");
@@ -56,6 +57,72 @@ function sentenceOf(people: readonly Person[]): string {
   return t("{n} of {n2} {peopleCount, plural, one {person holds} other {people hold}} open work: {n3} {open, plural, one {record} other {records}}, {n4} overdue.{mine}", { n: n(holders), n2: n(people.length), peopleCount: people.length, n3: n(open), open, n4: n(late), mine });
 }
 
+/** The banner and the workload bars: who has overdue work, one action, and each person's open work as a bar. */
+function PeopleOverview({ rows, unassigned }: { rows: readonly Person[]; unassigned: number | null }) {
+  const late = rows.filter((p) => p.overdue > 0).sort((a, b) => b.overdue - a.overdue);
+  const lateTotal = late.reduce((a, p) => a + p.overdue, 0);
+  const worst = late[0];
+  const open = rows.reduce((a, p) => a + p.open_work, 0);
+  const bars = [...rows]
+    .filter((p) => p.open_work > 0)
+    .sort((a, b) => b.open_work - a.open_work)
+    .slice(0, 10)
+    .map((p) => ({
+      key: p.id,
+      label: (
+        <>
+          {p.name} <span className="m2-meta">{roleWord(p.role)}</span>
+        </>
+      ),
+      value: p.open_work,
+      tone: p.overdue > 0 ? ("crit" as const) : ("data" as const),
+      text: p.overdue > 0 ? t("{open} open, {late} overdue", { open: int(p.open_work), late: int(p.overdue) }) : t("{open} open", { open: int(p.open_work) }),
+    }));
+  return (
+    <>
+      <CcBanner
+        testId="people-banner"
+        label={t("Overdue work")}
+        eyebrow={t("Overdue work")}
+        verdict={lateTotal > 0 ? "no-go" : "go"}
+        headline={
+          worst
+            ? t("{n} {late, plural, one {person has} other {people have}} overdue work", { n: int(late.length), late: late.length })
+            : t("Nobody has overdue work")
+        }
+        why={worst ? t("{name} has the most, {n} {overdue, plural, one {record} other {records}} past the due date.", { name: worst.name, n: int(worst.overdue), overdue: worst.overdue }) : t("Everything assigned is still inside its due date.")}
+        figs={[
+          { label: t("Open records"), value: int(open), note: t("held by {n} people", { n: int(rows.filter((p) => p.open_work > 0).length) }) },
+          { label: t("Overdue"), value: int(lateTotal), note: t("past the due date") },
+          { label: t("Unassigned"), value: unassigned == null ? "—" : int(unassigned), note: t("nobody holds them") },
+        ]}
+        action={
+          worst ? (
+            <V2Link href={`/work?assigned=${encodeURIComponent(worst.id)}&due=overdue`} className="m2-btn m2-next">
+              {t("Open {name}'s overdue work", { name: worst.name })}
+            </V2Link>
+          ) : (
+            <V2Link href="/work" className="m2-btn m2-next">
+              {t("Open the work list")}
+            </V2Link>
+          )
+        }
+      />
+      {bars.length > 0 ? (
+        <section className="m2-cc-card" aria-label={t("Open work per person")} data-testid="people-workload">
+          <h3>{t("Open work per person")}</h3>
+          <CcBanner_legend />
+          <CcHBars rows={bars} label={t("Open work per person")} />
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+function CcBanner_legend() {
+  return <p className="m2-cc-lede">{t("Red bars belong to people with overdue work.")}</p>;
+}
+
 /** People: the owners and stewards of the data with their open work, approvals waiting and SLA. Click a row to open the person. */
 export function PeopleCanvas() {
   const q = usePeople();
@@ -79,32 +146,34 @@ export function PeopleCanvas() {
 
   if (q.isError) {
     return (
-      <>
+      <CcPage>
         <PageTitle>{t("People")}</PageTitle>
         <ErrorFrame onRetry={() => void q.refetch()}>{t("The people could not be read. Check that the API is reachable, then retry.")}</ErrorFrame>
-      </>
+      </CcPage>
     );
   }
   if (q.isLoading) {
     return (
-      <>
+      <CcPage>
         <PageTitle>{t("People")}</PageTitle>
         <Skeleton width="100%" height={220} />
-      </>
+      </CcPage>
     );
   }
   if (rows.length === 0) {
     return (
-      <>
+      <CcPage>
         <PageTitle>{t("People")}</PageTitle>
         <EmptyFrame>{t("Nobody owns an object or holds work yet. Set an owner on an object, or assign records, and people appear here with their open work.")}</EmptyFrame>
-      </>
+      </CcPage>
     );
   }
 
   return (
+    <CcPage>
     <div data-testid="people-canvas">
       <PageTitle sub={t("Owners and stewards")}>{t("People")}</PageTitle>
+      <PeopleOverview rows={rows} unassigned={unassigned} />
       <p className="m2-finding" data-testid="people-sentence">
         {sentenceOf(rows)}
         {unassigned != null && summary ? <>{" "}{t("{unassigned} of the {total} open records are assigned to nobody.", { unassigned: int(unassigned), total: int(summary.totals.open) })}</> : null}
@@ -219,5 +288,6 @@ export function PeopleCanvas() {
         </div>
       )}
     </div>
+    </CcPage>
   );
 }

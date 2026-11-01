@@ -125,6 +125,7 @@ async def test_row_fields_with_a_cost_model(owner, monkeypatch):
         r1, r2, r3, bare = rows[R1], rows[R2], rows[R3], rows[NO_COST]
         assert r1["value_at_risk"] == 1298.9 and r2["value_at_risk"] == 1098.9
         assert (r1["current_value"], r1["field_description"]) == ("XX", "Base unit of measure")
+        assert r1["current_label"] is None and r1["suggested_label"] is None  # XX is not in the rule's list: never invented
         assert r1["possible_values_total"] == 26 and len(r1["possible_values"]) == 20
         assert {"value": "EA", "label": "each"} in r1["possible_values"] or r1["possible_values"][0]["label"].startswith("Unit")
         assert all(set(v) == {"value", "label"} for v in r1["possible_values"])

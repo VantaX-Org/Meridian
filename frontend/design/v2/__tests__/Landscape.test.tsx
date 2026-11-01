@@ -36,7 +36,7 @@ describe("landscape canvas, fixture mode", () => {
   it("opens on the sentence from /landscape: 11 of 15 held under 85 by 30 critical rules, MM003 and MM035 would release 1", async () => {
     renderWithQuery(<LandscapeCanvas />);
     const sentence = await screen.findByTestId("landscape-sentence");
-    expect(text(sentence)).toBe("11 of 15 objects are held under 85 by 30 critical rules over tolerance; fixing MM003 and MM035 would release 1 of them.");
+    expect(text(sentence)).toBe("11 of 15 objects cannot reach 85 yet, because 30 critical rules fail on too many records; fixing MM003 and MM035 would release 1 of them.");
     expect(within(sentence).getByRole("link", { name: "MM003" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM003"));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Landscape");
     expect(screen.getByText(/400,662 records checked/)).toBeInTheDocument();
@@ -58,21 +58,21 @@ describe("landscape canvas, fixture mode", () => {
     expect(within(table).getAllByTestId("matrix-cell")).toHaveLength(15);
   });
 
-  it("a cell is a 48 ruler, the score, the word capped, a verdict mark with its word and 'N records, M rules'", async () => {
+  it("a cell is a 48 ruler, the score, what held it down, a verdict mark with its word and 'N records, M rules'", async () => {
     renderWithQuery(<LandscapeCanvas />);
     const table = await screen.findByTestId("coverage-matrix");
     const row = within(table).getByRole("row", { name: /Material master/ });
     const cell = within(row).getByTestId("matrix-cell");
     expect(cell.querySelector('svg[data-size="48"]')).not.toBeNull();
     expect(within(cell).getByTestId("ruler-score")).toHaveTextContent("70.0");
-    expect(within(cell).getByText("capped")).toBeInTheDocument();
+    expect(within(cell).getByTestId("ruler-measured")).toHaveTextContent("held down from 71.8");
     expect(within(cell).getByText("No-go")).toBeInTheDocument();
     expect(within(cell).getByText("61,816 records, 80 rules")).toBeInTheDocument();
     expect(cell).toHaveAttribute("href", expect.stringMatching(/^\/o\/ecc-production\/material-master/));
-    expect(cell).toHaveAccessibleName("Material master, ECC production, 70.0 capped, No-go, 3 data contract thresholds breached, not enforced, 1 policy class breached: a critical rule evidencing an applied policy pack fails");
+    expect(cell).toHaveAccessibleName("Material master, ECC production, 70.0, held down by a failing critical rule, No-go, 3 data contract thresholds breached, not enforced, 1 policy class breached: a critical rule evidencing an applied policy pack fails");
     const go = within(within(table).getByRole("row", { name: /FI general ledger/ })).getByTestId("matrix-cell");
     expect(within(go).getByText("Go")).toBeInTheDocument();
-    expect(within(go).queryByText("capped")).toBeNull();
+    expect(within(go).queryByTestId("ruler-measured")).toBeNull();
   });
 
   it("marks low coverage with a word, and says honestly what the other systems are", async () => {

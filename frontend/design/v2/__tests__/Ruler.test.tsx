@@ -115,28 +115,28 @@ describe("ruler geometry", () => {
 describe("score wording", () => {
   it("reads a capped score in full: measured, shown, the cap and what caps it", () => {
     const text = readingText({ label: "Material master", measured: 71.8, score: 70, capped: true, capLevel: 70, breaches: ["MM003", "MM035"], dims: MM, records: 61816, rules: 913, coverage: 0.974, lowConfidence: false });
-    expect(text).toContain("measured 71.8, shown 70.0, capped at 70 by MM003 and MM035");
+    expect(text).toContain("Material master scores 70.0, held down from 71.8 because MM003 and MM035 fail.");
     expect(text).toContain("Completeness 62");
-    expect(text).toContain("61,816 records checked, 913 rules measured, coverage 97.4%");
+    expect(text).toContain("Based on 61,816 records and 913 rules, covering 97.4% of the data.");
   });
 
   it("names the count when more than two rules cap it, and says low confidence", () => {
-    expect(breachNames(["A", "B", "C"])).toBe("3 critical rules over tolerance");
+    expect(breachNames(["A", "B", "C"])).toBe("3 failing critical rules");
     const text = readingText({ label: "Plant maintenance", measured: 73.5, score: 70, capped: true, capLevel: 70, breaches: ["A", "B", "C"], dims: MM, records: 15964, rules: 233, coverage: 0.642, lowConfidence: true });
-    expect(text).toContain("capped at 70 by 3 critical rules over tolerance");
-    expect(text).toContain("low confidence");
+    expect(text).toContain("held down from 73.5 because 3 failing critical rules fail");
+    expect(text).toContain("so treat it with care");
   });
 
   it("says not measured for a missing dimension and shows a dash for a missing figure", () => {
     const text = readingText({ label: "X", measured: null, score: null, capped: false, capLevel: null, breaches: [], dims: [null, 1, 1, 1, 1, 1], records: null, rules: null, coverage: null, lowConfidence: false });
     expect(text).toContain("Completeness not measured");
-    expect(text).toContain("measured —, shown —");
+    expect(text).toContain("X scores —.");
   });
 
   it("states what caps a score, or that nothing does", () => {
-    expect(capSentence(true, 70, ["MM003", "MM035"])).toBe("Capped at 70 by MM003 and MM035, two critical rules over tolerance.");
-    expect(capSentence(true, 85, ["PS004"])).toBe("Capped at 85 by PS004, one critical rule over tolerance.");
-    expect(capSentence(false, null, [])).toBe("No critical rule is over tolerance, so nothing caps this score.");
+    expect(capSentence(true, 70, ["MM003", "MM035"])).toBe("Held at 70 because two critical rules fail: MM003 and MM035.");
+    expect(capSentence(true, 85, ["PS004"])).toBe("Held at 85 because one critical rule fails: PS004.");
+    expect(capSentence(false, null, [])).toBe("No critical rule is failing, so nothing holds this score down.");
   });
 
   it("maps modules and systems to address segments and back", () => {
@@ -151,20 +151,20 @@ describe("score wording", () => {
 });
 
 describe("<Ruler>", () => {
-  it("at 48 shows the shown score, the word capped and the full reading in the title", () => {
+  it("at 48 shows the shown score, what held it down and the full reading in the title", () => {
     const { container } = render(<Ruler {...props()} />);
     expect(screen.getByTestId("ruler-score")).toHaveTextContent("70.0");
-    expect(screen.getByText("capped")).toBeInTheDocument();
+    expect(screen.getByTestId("ruler-measured")).toHaveTextContent("held down from 71.8");
     const box = container.querySelector(".m2-ruler-box");
-    expect(box?.getAttribute("title")).toContain("capped at 70 by MM003 and MM035");
-    expect(screen.getByRole("img")).toHaveAccessibleName(/Material master: measured 71\.8, shown 70\.0/);
+    expect(box?.getAttribute("title")).toContain("held down from 71.8 because MM003 and MM035 fail");
+    expect(screen.getByRole("img")).toHaveAccessibleName(/Material master scores 70\.0, held down from 71\.8/);
     expect(container.querySelectorAll(".m2-seg")).toHaveLength(6);
     expect(container.querySelectorAll(".m2-ks, .m2-k")).toHaveLength(2);
   });
 
   it("does not say capped when no cap applies", () => {
     render(<Ruler {...props({ capped: false, capLevel: null, breaches: [], score: 93.4, measured: 93.4 })} />);
-    expect(screen.queryByText("capped")).toBeNull();
+    expect(screen.queryByTestId("ruler-measured")).toBeNull();
     expect(screen.getByTestId("ruler-score")).toHaveTextContent("93.4");
   });
 
@@ -184,8 +184,7 @@ describe("<Ruler>", () => {
   it("says the measured score beside a capped one, so capped objects still rank", () => {
     render(<Ruler {...props()} />);
     expect(screen.getByTestId("ruler-score")).toHaveTextContent("70.0");
-    expect(screen.getByText("capped")).toBeInTheDocument();
-    expect(screen.getByTestId("ruler-measured")).toHaveTextContent("71.8 measured");
+    expect(screen.getByTestId("ruler-measured")).toHaveTextContent("held down from 71.8");
   });
 
   it("draws an object with no run as an empty bar with a dash", () => {

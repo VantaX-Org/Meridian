@@ -4,7 +4,7 @@ A golden record is the one trusted version of a thing your systems hold more tha
 
 ## What is on it
 
-- **Match candidates**: "148 pairs to review", best score first, each pair with its match score and both keys, for example "0.94, MATNR=5000 and MATNR=6000", and **Review**. "Showing the first 5 of 148, best score first." **Show 20 more** loads more.
+- **Match candidates**: "148 pairs to review", best score first, each pair with its match score and both keys, for example "0.94, MATNR=5000 and MATNR=6000", and **Review**. "Showing the first 5 of 148, best score first." **Show 20 more** loads more. With the approve permission each pair has a box: tick the pairs a steward should decide, pick a priority (Urgent, Normal or Low) and, if you like, a due date, then **Send N to a steward**. The pairs go on the stewardship queue as merge decisions, due in 48 hours unless you set a date.
 - **Golden records**: "1,284 records", with golden key, name, sources, survivorship, confidence, last merged and open conflicts. The line under the table explains them: "Confidence is the match engine's score for the surviving record. Last merged is when the record last changed. Open conflicts are fields where the sources disagree and no rule has settled it."
 - **Survivorship rules**: the rule per field, for example "MARA-MEINS Trusted source, ECC production" or "MARA-MATKL Most recent", with **Edit the rules**.
 

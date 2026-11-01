@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuditEntry, AuditListParams } from "@/lib/api/audit";
 import type { FieldMapping } from "@/lib/api/field-mappings";
@@ -11,7 +11,7 @@ import { failureText } from "@/lib/v2/errors";
 import { formatDate } from "@/lib/format";
 import { auditSentence } from "@/lib/v2/audit-sentence";
 import { useOpenItem } from "@/lib/v2/hooks";
-import { refreshAdmin, useAudit, useMappings, useReference, useUsers } from "@/lib/v2/admin-queries";
+import { refreshAdmin, useAudit, useAuditActors, useMappings, useReference } from "@/lib/v2/admin-queries";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { int } from "@/lib/v2/score";
 import { type GridColumn } from "../Grid";
@@ -313,9 +313,8 @@ export function AuditSection() {
   const [offset, setOffset] = useState(0);
   const [exporting, setExporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // The user list needs user admin; without it the Who filter offers everyone the log has shown so far.
-  const users = useUsers({}, can("manage_users"));
-  const seen = useRef(new Map<string, string>());
+  // Everyone who appears in the log, by name: readable with view audit alone, unlike the user list.
+  const people = useAuditActors(allowed);
   const filters: AuditListParams = useMemo(
     () => ({ actor_user_id: actor || undefined, action: action.trim() || undefined, entity_type: object || undefined, since: from || undefined, until: to || undefined }),
     [actor, action, object, from, to],
@@ -324,10 +323,9 @@ export function AuditSection() {
   const fixture = useFixture();
   const summary = useQuery({ queryKey: ["v2", "admin", fixture, "audit", "summary"], queryFn: api.getAuditSummary, staleTime: 60_000, retry: false, enabled: allowed });
   const kinds = useMemo(() => [...new Set((summary.data?.summary ?? []).map((r) => r.entity_type).filter((x): x is string => !!x))].sort(), [summary.data]);
-  const who = (e: AuditEntry) => (e.actor_email ? (users.data?.users.find((u) => u.id === e.actor_user_id)?.name ?? e.actor_email) : t("The system"));
-  const columns = useMemo(() => AUDIT_COLUMNS(who), [users.data]); // eslint-disable-line react-hooks/exhaustive-deps
-  for (const e of q.data?.entries ?? []) if (e.actor_user_id && e.actor_email) seen.current.set(e.actor_user_id, e.actor_email);
-  const actors = users.data ? users.data.users.map((u) => ({ id: u.id, name: u.name })) : [...seen.current].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  const actors = people.data?.actors ?? [];
+  const who = (e: AuditEntry) => (e.actor_email ? (actors.find((u) => u.id === e.actor_user_id)?.name ?? e.actor_email) : t("The system"));
+  const columns = useMemo(() => AUDIT_COLUMNS(who), [people.data]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!allowed) return <AdminPage title={t("Audit log")}><NeedsPermission what={t("Reading the audit log")} permission="view_audit" /></AdminPage>;
   const filtered = Object.values(filters).some(Boolean);
   const badRange = !!from && !!to && to < from;

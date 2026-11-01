@@ -12,7 +12,8 @@ import { t as tr } from "@/lib/v2/i18n";
 import { Grid, type GridColumn } from "../Grid";
 import { Fact } from "../Inspector";
 import { Confirm, StatusWord } from "../admin/kit";
-import { Dash, Mono } from "../parts";
+import { describeField } from "@/lib/v2/sap-fields";
+import { Coded, Dash, Mono } from "../parts";
 import { ResultFrame, type Outcome } from "./shared";
 
 /** One line of SAP's answer for a record: the step it came from and its RETURN message. */
@@ -27,7 +28,7 @@ interface MessageRow {
 
 const FIELD_COLUMNS = (): GridColumn<WritebackField>[] => [
   { id: "record", header: tr("Record"), width: 190, pin: true, cell: (f) => <Mono>{f.record_key}</Mono> },
-  { id: "field", header: tr("Field"), width: 110, cell: (f) => <Mono>{f.field}</Mono> },
+  { id: "field", header: tr("Field"), width: 220, cell: (f) => <Coded code={f.field} text={describeField(f.field)} /> },
   { id: "delivery", header: tr("Goes by"), width: 90, cell: (f) => (f.delivery === "bapi" ? <StatusWord tone="go">{tr("BAPI")}</StatusWord> : <StatusWord tone="at-risk">{tr("Export")}</StatusWord>) },
   { id: "bapi", header: tr("BAPI"), width: 200, cell: (f) => (f.bapi ? <Mono>{f.bapi}</Mono> : <Dash why={tr("No BAPI carries this field yet")} />) },
   { id: "reason", header: tr("Reason"), width: 320, cell: (f) => f.reason ?? tr("A BAPI carries it") },

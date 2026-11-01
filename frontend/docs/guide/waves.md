@@ -30,6 +30,38 @@ For each wave: **Name**, **Target date**, **Stage** (Plan, Mock load 1, Mock loa
 - **Gate state** checks each condition against the same run: the shown scores, the critical rules over tolerance, and the active contracts that name the objects.
 - **Due in N days** counts from today to the target date.
 
+## Go-live flight deck
+
+The flight deck at `/go-live` reads the next wave with a go-live date against the forecast of every object in it. Open it from **Open the flight deck** on the landscape banner.
+
+- **Runway**: one row per object. The grey line is its daily score history; the blue line is the forecast to go-live with its 95% band shaded; the dashed red line is the wave's minimum score. A row whose forecast lands under the line is short.
+- **Line meets target** is the day the slowest object's forecast crosses the minimum; it shows a dash while any object has too little history to forecast.
+- **Cost of waiting** is the value at risk the wave's failing records carry today.
+- **What if**: pick an object, tick the top fixes, and read the score, gates and verdict it would reach if those rules passed. Nothing is changed in SAP.
+- Forecasts need three daily scores; an object with fewer shows **Forecast unavailable** instead of a guessed line.
+
+## Migration analysis
+
+The Migration analysis page, under Migration in the map, shows how ready the source data is to load into the target system. The banner gives the verdict of the latest finished analysis (ready to load, ready with conditions or not ready to load), with the readiness score, the critical gaps and the records that will not load beside it. Under it:
+
+- **Start an analysis.** Users who may analyse choose the kind of analysis (a dry run against S/4HANA, source to target, or source to source), the systems and the objects, then press **Start**. The analysis runs in the background and appears in the list when it finishes.
+- **Analyses.** Each analysis with its kind, objects, verdict, score, critical gaps and records blocked. Press **Open** to see one; the latest finished analysis opens by default.
+- **Gaps by kind.** The gaps of the open analysis grouped by kind and severity: values with no target value, values longer than the target field, fields the target no longer has, keys that collide, values outside a check table and fields not yet mapped.
+- **Field-level gaps.** Each gap with the record, the source field and value, the target field and value, the severity and why it will not load. Filter by object, kind, severity or text; the object filter stays in the address. Users with the export permission can export the list to Excel with the same filters.
+- **Records.** The records that will not load, with the reasons, and the records that are ready to load.
+- **Field map.** For each object, each source field as it was read, the S/4HANA field it loads into and both descriptions. The source and target definitions (type, length, decimals, check table) stand side by side, and the **Delta** column says what changes between them: a type change, a field shortened or lengthened, a decimals change, a different check table, or a field not carried to the target. The **Transformation** column shows the note that bridges the change, whether a value map translates the values, and where the mapping came from (same field name, SAP standard conversion or a steward). A change that can lose or reject data with no transformation yet is marked **Needs a transformation**. Bars above the table count the fields that load as read, those whose definition changes, those still without a transformation, those translated by a value map, those not carried and those not confirmed. Users who may analyse can propose the map from the source, confirm a mapping or remove it. A field that needs a value map has a **Values** button: it lists the source values found in the latest analysis with how many records carry each, and the target value saved for each one.
+
+Every gap comes from the target data dictionary or configuration; a gap that is not grounded in either says so. Nothing is estimated: an analysis that has not finished shows a dash.
+
+## S/4HANA readiness
+
+The S/4HANA readiness page, under Migration in the map, groups the conversion-readiness rules by SAP simplification area, such as Business Partner / CVI, Material master or the Universal Journal, over every object at its latest run. The banner says whether the landscape is ready to convert, with the areas ready, the blocking and warning rules failing and the records to fix beside it. Under it:
+
+- **Simplification areas.** Each area with the SAP simplification item it answers, its status, how many of its rules ran, the blocking and warning rules failing and the records to fix, worst first. An area none of whose rules ran shows as not measured, never as ready.
+- **What stands in the way.** Every failing rule with its name, its area, whether it blocks the conversion or only needs cleansing, the records it affects and its pass rate, blocking rules first.
+
+A failing blocking rule always makes its area red, whatever its pass rate.
+
 ## What you can do, by role
 
 - **Programme lead** (analyse): plan waves, set gates, assign objects.

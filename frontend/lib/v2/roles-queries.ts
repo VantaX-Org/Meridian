@@ -24,6 +24,7 @@ export const rolesKeys = {
   links: (fx: boolean, all: boolean) => ["v2", "roles", fx, "links", all] as const,
   template: (fx: boolean) => ["v2", "roles", fx, "template"] as const,
   gaps: (fx: boolean) => ["v2", "roles", fx, "gaps"] as const,
+  stewards: (fx: boolean) => ["v2", "roles", fx, "stewards"] as const,
   related: (fx: boolean, module: string) => ["v2", "roles", fx, "related", module] as const,
 };
 
@@ -85,6 +86,10 @@ export function useTemplate() {
 export function useTemplateGaps() {
   const fx = useFixture();
   return useQuery({ queryKey: rolesKeys.gaps(fx), queryFn: r.getTemplateGaps, retry });
+}
+export function useStewardAssignments() {
+  const fx = useFixture();
+  return useQuery({ queryKey: rolesKeys.stewards(fx), queryFn: r.getStewardAssignments, retry });
 }
 export function useRelated(module: string | null) {
   const fx = useFixture();

@@ -24,6 +24,18 @@ Open a step for its transaction, its activities and fields, the rules failing on
 - **What changed**, **Save as a new version**, **Discard changes**, and **Versions**.
 - The rule at the foot: "A step is blocked in process readiness when a field it reads fails a critical or high rule. Map the fields each activity reads here, and the Processes tab shows them on the next run."
 
+## Process discovery
+
+**Process discovery** (`/processes`) mines the as-is flow of each L1 process from the event tables of one system. Pick the system at the top. The sentence reads "3 of 7 processes mined on ECC production", with the median fitness, the cases mined and the processes behind their schedule.
+
+- **The catalogue** lists every L1 with its cases, variants, median throughput time, automation rate, fitness against the reference model and the data quality defects on the records it touched. **Mine** starts a run; **Mine again** refreshes one. Starting a run needs the run process discovery permission. A process the system cannot mine says why.
+- **Open flow** shows the run. The steps are bars sized by case count; click a step to go down a level, from L2 to L5, and the breadcrumb takes you back up. The table under it lists the as-is hand-overs between steps with their counts and median wait.
+- **Variants** lists the case paths, most frequent first. Click one to filter the cases to it.
+- **Conformance** shows the fitness of each reference step, how often it ran out of order, and the activities that happened outside the reference.
+- **Cases** lists the cases of the run; open one to read its events in order, with the time, the user, whether it was automated and the source table.
+- **Health** shows how the fitness of each process moved since the run before. **Schedules** re-mines a process on a cron schedule; pause, resume or remove a schedule there.
+- **Exports** writes the run as a Signavio file, and a selected step as BPMN. Both need the export process permission.
+
 ## The numbers and where they come from
 
 - Step states come from the fields mapped to each activity and the rules that failed on those fields in the run.
@@ -45,3 +57,17 @@ Open a step for its transaction, its activities and fields, the rules failing on
 - **"Choose at least one rule."** The simulation needs a ticked rule.
 - **Every step is Ready but the object is No-go**: the failing rules are on fields no activity reads. Map them in the designer.
 - **Your edits do not show on the Processes tab**: they show on the next run, and only once the model is published.
+
+## Configuration
+
+**Configuration** (`/config`, in the map under Requests and in the command line) shows the SAP configuration Meridian reads back out of the transactions of the latest run. Nothing on it is typed in by hand: every setting, step and finding comes from the stored config run.
+
+- **The headline**: "14 configuration findings, R 2.1m at stake", with the average health across the areas, the critical and high findings, and the share of settings that carry transactions.
+- **Processes**: each end-to-end flow (Procure-to-pay `PTP`, Order-to-cash `OTC`, Record-to-report `RTR` and the others) as a chain of steps. Each step is sized by the documents that reached it and names its SAP table; the red share is its exceptions, the step with the most exceptions is marked, and the days are the wait before the next step. A step the system never ran is drawn hollow and reads "Not found".
+- **Health by area**: 100 less 3 per critical, 2 per high, 1 per medium and half per low finding, per area such as Finance `FI` or Materials management `MM`.
+- **Settings in use**: the share of each area's configured values that carry at least one transaction. Low shares are settings that were configured and never used.
+- **Findings**: worst first, each with its severity, what was found, the fix, the area, the settings it touches and the amount at stake.
+- **Changes since the last run**: settings added, removed or changed between the last two config runs.
+- **Read the configuration again** (analysts and above) queues a new config run on the latest analysed version; the figures change when it ends.
+
+When no config run exists yet, the page says "Run an analysis on an SAP system to read its configuration."

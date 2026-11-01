@@ -227,25 +227,24 @@ export interface Reading {
 export function breachNames(breaches: readonly string[]): string {
   if (breaches.length === 0) return "";
   if (breaches.length <= 2) return breaches.join(t(" and "));
-  return t("{breachesCount} critical rules over tolerance", { breachesCount: breaches.length });
+  return t("{breachesCount} failing critical rules", { breachesCount: breaches.length });
 }
 
 /** The full reading of a score, the text of the ruler's title and accessible name. */
 export function readingText(r: Reading): string {
-  const capAt = r.capLevel == null ? "capped" : t("capped at {capLevel}", { capLevel: r.capLevel });
-  const cap = r.capped ? t(", {capAt} by {breachNames}", { capAt, breachNames: breachNames(r.breaches) }) : "";
+  const cap = r.capped ? t(", held down from {measured} because {breachNames} fail", { measured: f1(r.measured), breachNames: breachNames(r.breaches) }) : "";
   const dims = DIMENSIONS.map((d, i) => `${d.label} ${r.dims[i] == null ? t("not measured") : Math.round(r.dims[i] as number)}`).join(", ");
-  const tail = t("{records} records checked, {rules} rules measured, coverage {pct1}{value}.", { records: int(r.records), rules: int(r.rules), pct1: pct1(r.coverage), value: r.lowConfidence ? t(", low confidence") : "" });
-  return t("{label}: measured {measured}, shown {score}{cap}. {dims}. {tail}", { label: r.label, measured: f1(r.measured), score: f1(r.score), cap, dims, tail });
+  const tail = t("Based on {records} records and {rules} rules, covering {pct1} of the data{value}.", { records: int(r.records), rules: int(r.rules), pct1: pct1(r.coverage), value: r.lowConfidence ? t(", so treat it with care") : "" });
+  return t("{label} scores {score}{cap}. {dims}. {tail}", { label: r.label, score: f1(r.score), cap, dims, tail });
 }
 
 /** The sentence under the big score: what caps it, in words, or that nothing does. */
 export function capSentence(capped: boolean, capLevel: number | null, breaches: readonly string[]): string {
-  if (!capped) return breaches.length === 0 ? t("No critical rule is over tolerance, so nothing caps this score.") : t("A critical rule is over tolerance, but the score is already below its cap.");
+  if (!capped) return breaches.length === 0 ? t("No critical rule is failing, so nothing holds this score down.") : t("A critical rule is failing, but the score is already below the limit it sets.");
   const n = breaches.length;
-  if (n === 1) return t("Capped at {capLevel} by {breaches}, one critical rule over tolerance.", { capLevel, breaches: breaches[0] });
-  if (n === 2) return t("Capped at {capLevel} by {breaches} and {breaches2}, two critical rules over tolerance.", { capLevel, breaches: breaches[0], breaches2: breaches[1] });
-  return t("Capped at {capLevel} by {n} critical rules over tolerance, among them {breaches} and {breaches2}.", { capLevel, n, breaches: breaches[0], breaches2: breaches[1] });
+  if (n === 1) return t("Held at {capLevel} because one critical rule fails: {breaches}.", { capLevel, breaches: breaches[0] });
+  if (n === 2) return t("Held at {capLevel} because two critical rules fail: {breaches} and {breaches2}.", { capLevel, breaches: breaches[0], breaches2: breaches[1] });
+  return t("Held at {capLevel} because {n} critical rules fail, including {breaches} and {breaches2}.", { capLevel, n, breaches: breaches[0], breaches2: breaches[1] });
 }
 
 /** URL segment for a module id: material_master becomes material-master. */

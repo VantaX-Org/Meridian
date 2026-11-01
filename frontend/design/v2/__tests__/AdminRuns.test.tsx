@@ -150,4 +150,27 @@ describe("Admin: runs and jobs", () => {
     expect(screen.getByRole("button", { name: "Schedule a run" })).toBeDisabled();
     expect(screen.getByText("Scheduling needs the manage systems permission.")).toBeInTheDocument();
   });
+
+  it("re-checks picked objects from their stored extraction and leaves out the ones still running", async () => {
+    page();
+    const table = await screen.findByRole("table", { name: "Objects to re-check" });
+    expect(within(table).queryByText("Employee central")).toBeNull();
+    expect(screen.getByText("2 more objects have no stored extraction. Start an extraction first.")).toBeInTheDocument();
+    expect(within(table).getByRole("checkbox", { name: "Re-check Plant maintenance" })).toBeDisabled();
+    const go = screen.getByRole("button", { name: "Re-check 0 objects" });
+    expect(go).toBeDisabled();
+    fireEvent.click(within(table).getByRole("checkbox", { name: "Re-check Material master" }));
+    fireEvent.click(within(table).getByRole("checkbox", { name: "Re-check FI general ledger" }));
+    fireEvent.click(screen.getByRole("button", { name: "Re-check 2 objects" }));
+    expect(await screen.findByText("2 objects queued for a re-check")).toBeInTheDocument();
+    await waitFor(() => expect(within(screen.getByRole("table", { name: "Objects to re-check" })).getByRole("checkbox", { name: "Re-check Material master" })).toBeDisabled());
+  });
+
+  it("shows the re-check list but no button without trigger_sync", async () => {
+    h.allowed = ["analyse"];
+    page();
+    await screen.findByRole("table", { name: "Objects to re-check" });
+    expect(screen.queryByRole("button", { name: /^Re-check / })).toBeNull();
+    expect(screen.getByText("Re-checking objects needs the trigger_sync permission.")).toBeInTheDocument();
+  });
 });

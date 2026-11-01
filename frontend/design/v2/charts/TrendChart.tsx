@@ -100,8 +100,9 @@ export function TrendChart({ points, domain, ticks, refs, marker, label, yLabel,
   const width = Math.max(240, useMeasuredWidth(box, fallbackWidth));
   const g = useMemo(() => trendGeometry(points.map((p) => p.value), { width, height, domain, ticks, refs, marker: marker?.index }), [points, width, height, domain, ticks, refs, marker]);
   const nav = usePointer(points.length, g.xs);
-  // Name as many dates as fit (about one per 56 pixels), the last one always.
-  const every = Math.max(1, Math.ceil((points.length * 56) / Math.max(1, g.plot.right - g.plot.left)));
+  // Name as many dates as fit (a label's width is about 7 pixels a character, never under 56), the last one always.
+  const labelW = Math.max(56, ...points.map((p) => p.label.length * 7 + 16));
+  const every = Math.max(1, Math.ceil((points.length * labelW) / Math.max(1, g.plot.right - g.plot.left)));
   const lastIdx = (() => {
     for (let i = g.ys.length - 1; i >= 0; i--) if (g.ys[i] != null) return i;
     return -1;

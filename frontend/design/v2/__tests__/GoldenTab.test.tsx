@@ -77,6 +77,32 @@ describe("the Golden records tab", () => {
     expect(screen.getByText(/Showing the first 5 of 148, best score first/)).toBeInTheDocument();
   });
 
+  it("sends the chosen pairs to the stewardship queue with a priority and a due date", async () => {
+    const propose = vi.spyOn(mdm, "proposeMerges");
+    tab();
+    const list = await screen.findByRole("list", { name: "Pairs to review" });
+    const send = screen.getByRole("button", { name: "Choose pairs to send to a steward" });
+    expect(send).toBeDisabled();
+    const boxes = within(list).getAllByRole("checkbox");
+    fireEvent.click(boxes[0]);
+    fireEvent.click(boxes[2]);
+    fireEvent.change(screen.getByLabelText("Priority"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Due date, empty for 48 hours"), { target: { value: "2026-11-05" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send 2 to a steward" }));
+    expect(await screen.findByTestId("action-result")).toHaveTextContent("2 pairs are on the stewardship queue as merge decisions.");
+    const due_at = new Date("2026-11-05T23:59:59").toISOString();
+    expect(propose).toHaveBeenCalledWith([{ match_score_id: "ms-0", priority: 1, due_at }, { match_score_id: "ms-2", priority: 1, due_at }]);
+    expect(within(list).getAllByRole("checkbox").every((b) => !(b as HTMLInputElement).checked)).toBe(true);
+  });
+
+  it("without the approve permission pairs cannot be chosen or sent", async () => {
+    granted = [];
+    tab();
+    const list = await screen.findByRole("list", { name: "Pairs to review" });
+    expect(within(list).queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: /to a steward/ })).toBeNull();
+  });
+
   it("summarises the survivorship rules and opens the editor from the inspector", async () => {
     tab();
     const sec = await screen.findByRole("region", { name: "Survivorship rules" });

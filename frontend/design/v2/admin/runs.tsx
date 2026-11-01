@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SyncProfile } from "@/types/api";
 import * as api from "@/lib/api/v2/admin";
@@ -18,11 +18,13 @@ import { EmptyFrame, ErrorFrame } from "../parts";
 import { canRetry } from "../inspector/job";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { describeCron } from "../screens/System";
-import { AdminPage, Block, Confirm, Dialog, Fld, NeedsPermission, StatusWord, useCan, useDone } from "./kit";
+import { AdminPage, Block, Confirm, Dialog, Fld, Loaded, NeedsPermission, StatusWord, useCan, useDone } from "./kit";
 import { ToolGrid } from "../GridTools";
 import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
 import { RunForecast } from "../screens/step10/Prediction";
+import { getTriggerModules, triggerModules, type ModuleStatus } from "@/lib/api/v2/syncTrigger";
+import { moduleText } from "@/lib/v2/labels";
 
 const list = (s: string): string[] | undefined => {
   const v = s.split(/[\s,;]+/).filter(Boolean);
@@ -530,6 +532,86 @@ function RecentJobs() {
   );
 }
 
+const RECHECK_STATUS: Record<ModuleStatus["status"], () => ReactNode> = {
+  completed: () => <StatusWord tone="go">{t("Analysed")}</StatusWord>,
+  running: () => <StatusWord tone="at-risk">{t("Running")}</StatusWord>,
+  failed: () => <StatusWord tone="no-go">{t("Failed")}</StatusWord>,
+  idle: () => <StatusWord tone="neutral">{t("Not analysed")}</StatusWord>,
+};
+
+/** Re-check objects: re-score the latest stored extraction of each picked object, across every system, without a new extraction. */
+function Recheck() {
+  const qc = useQueryClient();
+  const f = useFixture();
+  const can = useCan()("trigger_sync");
+  const q = useQuery({ queryKey: ["v2", "sync-trigger", f], queryFn: getTriggerModules, retry: false });
+  const [picked, setPicked] = useState<string[]>([]);
+  const { outcome, pending, run } = useOutcome("admin-recheck");
+  const rows = (q.data ?? []).filter((m) => m.last_run_at);
+  const never = (q.data ?? []).length - rows.length;
+  const flip = (id: string) => setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id]);
+  return (
+    <Block id="recheck" title={t("Re-check objects")} hint={t("Scores the latest stored extraction of each object again against the rules as they stand now. Nothing is read from SAP.")}>
+      <Loaded q={q} what={t("The objects")} rows={3}>{() => rows.length === 0 ? (
+        <EmptyFrame>{t("No object has a stored extraction to re-check yet.")}</EmptyFrame>
+      ) : (
+        <div className="m2-frame" tabIndex={0}>
+          <table className="m2-tbl" aria-label={t("Objects to re-check")}>
+            <thead>
+              <tr>
+                <th scope="col" />
+                <th scope="col">{t("Object")}</th>
+                <th scope="col">{t("System type")}</th>
+                <th scope="col">{t("Latest analysis")}</th>
+                <th scope="col">{t("Last run")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((m) => (
+                <tr key={m.module_id}>
+                  <td>
+                    <input type="checkbox" disabled={!can || m.status === "running"} checked={picked.includes(m.module_id)} aria-label={t("Re-check {object}", { object: moduleText(m.module_id) })} onChange={() => flip(m.module_id)} />
+                  </td>
+                  <th scope="row">{moduleText(m.module_id)} <span className="m2-mono m2-prov">{m.module_id}</span></th>
+                  <td>{m.category}</td>
+                  <td>{RECHECK_STATUS[m.status]()}</td>
+                  <td>{m.last_run_at ? formatDate(m.last_run_at, "datetime") : "–"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}</Loaded>
+      {never > 0 ? <p className="m2-prov">{t("{n, plural, one {# more object has} other {# more objects have}} no stored extraction. Start an extraction first.", { n: never })}</p> : null}
+      {outcome ? <ResultFrame outcome={outcome} /> : null}
+      {can ? (
+        <div className="m2-adm-acts">
+          <button
+            type="button"
+            className="m2-btn m2-next"
+            disabled={picked.length === 0 || pending !== null}
+            onClick={() =>
+              void run("recheck", async () => {
+                const r = await triggerModules(picked);
+                setPicked([]);
+                void qc.invalidateQueries({ queryKey: ["v2"] });
+                void qc.invalidateQueries({ queryKey: ["jobs"] });
+                const names = (ids: string[]) => ids.map(moduleText).join(", ");
+                if (!r.queued.length) return { tone: "fail", title: t("Nothing was queued"), detail: t("Not queued: {objects}.", { objects: names(r.skipped) }) };
+                return { tone: "ok", title: t("{n, plural, one {# object} other {# objects}} queued for a re-check", { n: r.queued.length }), detail: r.skipped.length ? t("Not queued: {objects}.", { objects: names(r.skipped) }) : names(r.queued) };
+              })
+            }
+          >
+            {pending === "recheck" ? t("Starting…") : t("Re-check {n, plural, one {# object} other {# objects}}", { n: picked.length })}
+          </button>
+        </div>
+      ) : (
+        <p className="m2-prov">{t("Re-checking objects needs the trigger_sync permission.")}</p>
+      )}
+    </Block>
+  );
+}
+
 /** Admin › Start and schedule (the runs themselves are on /runs): start an extraction, an analysis or a configuration load, schedule runs, and retry what failed. */
 export function RunsSection() {
   const can = useCan();
@@ -554,6 +636,7 @@ export function RunsSection() {
         </>
       )}
       <FileUpload key={`u-${system}`} system={system} />
+      <Recheck />
       <RecentJobs />
     </AdminPage>
   );

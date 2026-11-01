@@ -171,7 +171,7 @@ for (const size of SIZES) {
         await expect(dialog).toBeHidden();
       });
 
-      test("the rule canvas: header stat line, Definition, Failing records, Impact, History and Prove in SAP", async ({ page }) => {
+      test("the rule canvas: header stat line, Definition, Failing records, Impact, Blast radius, History and Prove in SAP", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/r/MM142?fixture=1", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toContainText("MM142", NAV);
@@ -180,7 +180,7 @@ for (const size of SIZES) {
         const stat = page.getByTestId("rule-stat-line");
         await expect(stat).toContainText("High");
         await expect(stat).toContainText("4,212 failing across 2 objects");
-        await expect(page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link")).toHaveCount(6);
+        await expect(page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link")).toHaveCount(7);
         await page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link", { name: "Definition" }).click();
         await expect(page.getByRole("region", { name: "Definition" })).toBeVisible();
         expect(await noSideScroll(page)).toBe(true);
@@ -233,7 +233,7 @@ for (const size of SIZES) {
         const waves = page.getByRole("table", { name: "Waves that include Material master" });
         await expect(waves).toBeVisible(NAV);
         await expect(waves.getByRole("row")).toHaveCount(3);
-        await expect(page.getByTestId("cap-statement")).toContainText("Held at 70 by MM003 and MM035");
+        await expect(page.getByTestId("cap-statement")).toContainText("Held at 70 because two critical rules fail: MM003 and MM035");
         await expect(page.getByRole("heading", { name: /Blocked in S\/4HANA/ })).toBeVisible();
         await expect(page.getByLabel("S/4HANA features").getByRole("link", { name: "Migration cockpit: material load" })).toBeVisible(NAV);
         await expect(page.getByRole("heading", { name: /Degraded in S\/4HANA/ })).toBeVisible();

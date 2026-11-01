@@ -83,6 +83,7 @@ function Answer({ a }: { a: AskAnswer }) {
           ))}
         </p>
       ) : null}
+      <Feedback runId={a.version_id ?? null} />
       {a.links.length ? (
         <footer className="m2-ask-links">
           {a.links.map((l) => (
@@ -96,8 +97,49 @@ function Answer({ a }: { a: AskAnswer }) {
   );
 }
 
+/** POST /insights/feedback: one vote per answer, so the team can see which answers helped. */
+function Feedback({ runId }: { runId: string | null }) {
+  const [vote, setVote] = useState<"up" | "down" | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const send = async (v: "up" | "down") => {
+    setBusy(true);
+    setError(null);
+    try {
+      await v2Post("/insights/feedback", { surface: "aletheia", run_id: runId, vote: v });
+      setVote(v);
+    } catch (e) {
+      setError(failureText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (vote) return <p className="m2-ask-cov" role="status">{t("Thanks, your feedback is recorded.")}</p>;
+  return (
+    <div className="m2-ask-vote" role="group" aria-label={t("Was this answer helpful?")}>
+      <span className="m2-ask-cov">{t("Was this answer helpful?")}</span>
+      <button type="button" className="m2-btn" disabled={busy} onClick={() => void send("up")}>
+        {t("Helpful")}
+      </button>
+      <button type="button" className="m2-btn" disabled={busy} onClick={() => void send("down")}>
+        {t("Not helpful")}
+      </button>
+      {error ? <span role="alert">{error}</span> : null}
+    </div>
+  );
+}
+
 /** `?open=ask`: Ask Meridian. Answers use only the current run's facts; any number that is not a fact is refused. */
 export function AskPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <InspectorFrame title={t("Ask Meridian")} status={t("Answers use only this run's facts. The model rewords them; any number that is not a fact is refused.")} onClose={onClose}>
+      <AskBody />
+    </InspectorFrame>
+  );
+}
+
+/** The conversation itself: the log, the suggested questions and the input. The panel and the home page's dock both use it. */
+export function AskBody({ hero = true }: { hero?: boolean }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -126,35 +168,35 @@ export function AskPanel({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <InspectorFrame title={t("Ask Meridian")} status={t("Answers use only this run's facts. The model rewords them; any number that is not a fact is refused.")} onClose={onClose}>
-      <div className="m2-ask">
+    <div className="m2-ask">
+      {hero ? (
         <div className="m2-ask-hero">
           <Mark size={40} />
         </div>
-        <div className="m2-ask-log" aria-live="polite" aria-busy={busy}>
-          {turns.map((x, i) => (
-            <div key={i}>
-              <p className="m2-ask-q">{x.question}</p>
-              {x.answer ? <Answer a={x.answer} /> : x.error ? <p role="alert">{x.error}</p> : <p>{t("Reading the facts")}</p>}
-            </div>
+      ) : null}
+      <div className="m2-ask-log" aria-live="polite" aria-busy={busy}>
+        {turns.map((x, i) => (
+          <div key={i}>
+            <p className="m2-ask-q">{x.question}</p>
+            {x.answer ? <Answer a={x.answer} /> : x.error ? <p role="alert">{x.error}</p> : <p>{t("Reading the facts")}</p>}
+          </div>
+        ))}
+      </div>
+      <form className="m2-ask-dock" onSubmit={submit}>
+        <div className="m2-ask-chips">
+          {SUGGESTIONS.map((s) => (
+            <button key={s()} type="button" className="m2-btn" onClick={() => void ask(s())} disabled={busy}>
+              {s()}
+            </button>
           ))}
         </div>
-        <form className="m2-ask-dock" onSubmit={submit}>
-          <div className="m2-ask-chips">
-            {SUGGESTIONS.map((s) => (
-              <button key={s()} type="button" className="m2-btn" onClick={() => void ask(s())} disabled={busy}>
-                {s()}
-              </button>
-            ))}
-          </div>
-          <div className="m2-ask-in">
-            <input ref={input} value={text} onChange={(e) => setText(e.target.value)} maxLength={500} aria-label={t("Your question")} placeholder={t("Ask about this run")} />
-            <button type="submit" className="m2-btn m2-next" disabled={busy || !text.trim()}>
-              {t("Ask")}
-            </button>
-          </div>
-        </form>
-      </div>
-    </InspectorFrame>
+        <div className="m2-ask-in">
+          <input ref={input} value={text} onChange={(e) => setText(e.target.value)} maxLength={500} aria-label={t("Your question")} placeholder={t("Ask about this run")} />
+          <button type="submit" className="m2-btn m2-next" disabled={busy || !text.trim()}>
+            {t("Ask")}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

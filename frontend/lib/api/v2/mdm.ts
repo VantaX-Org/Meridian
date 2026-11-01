@@ -121,3 +121,8 @@ export interface ProcessDocument {
 export function getProcessDocument(run: string, module: string): Promise<ProcessDocument> {
   return v2Get<ProcessDocument>(`/business-process/${encodeURIComponent(run)}/${encodeURIComponent(module)}`);
 }
+
+/** POST /insights/duplicates/merge-proposals: put pairs on the stewardship queue as merge decisions, due in 48 hours unless a date is given. */
+export function proposeMerges(pairs: { match_score_id: string; priority: number; due_at?: string }[]): Promise<{ created: string[] }> {
+  return v2Send<{ created: string[] }>("POST", "/insights/duplicates/merge-proposals", { pairs });
+}

@@ -265,6 +265,15 @@ export function rolesFixtureResponse(path: string, params: Params): unknown {
     return { id: "sl-1", route: "/o/ecc-production/material-master", state: { tab: "rules" }, role: "viewer", label: "Material master rules for the audit", expires_at: "2026-10-25T08:00:00Z", shared_by: "Demo user" };
   }
   if (path === "/admin/assignment-template") return { template: s.template, saved: s.templateSaved, updated_by: s.templateSaved ? "Demo user" : null, updated_at: s.templateSaved ? NOW : null, active_slices: ACTIVE, labels: Object.fromEntries(Object.keys(s.template.objects).map((m) => [m, label(m)])) } satisfies TemplateOut;
+  if (path === "/admin/steward-assignments") {
+    const seeded = new Set(["material_master|plant|3000", "material_master|plant|1000"]);
+    return {
+      assignments: Object.entries(s.stewards).sort(([a], [b]) => a.localeCompare(b)).map(([k, id]) => {
+        const [module, slice_kind, slice_value] = k.split("|");
+        return { module, slice_kind, slice_value, steward_user_id: id, steward_name: PEOPLE[id] ?? null, source: seeded.has(k) ? "manual" : "template" };
+      }),
+    };
+  }
   if (path === "/admin/assignment-template/gaps") return { objects: 15, gaps: templateGaps(s), based_on: "measured objects" };
   const rel = /^\/objects\/([^/]+)\/related$/.exec(path);
   if (rel) return relatedFixture(decodeURIComponent(rel[1]));

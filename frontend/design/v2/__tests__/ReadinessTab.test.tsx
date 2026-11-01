@@ -60,7 +60,7 @@ describe("the cap rule", () => {
   it("states what holds the score, names the capping rules as links, and quotes the cap rule", async () => {
     render();
     const s = await screen.findByTestId("cap-statement");
-    expect(norm(s)).toBe("Held at 70 by MM003 and MM035, two critical rules over tolerance. Measured 71.8, shown 70.0. Cap rule: 85 at one critical rule over tolerance, 70 at two or more.");
+    expect(norm(s)).toBe("Held at 70 because two critical rules fail: MM003 and MM035. Measured 71.8, shown 70.0. Cap rule: 85 at one critical rule over tolerance, 70 at two or more.");
     expect(within(s).getByRole("link", { name: "MM003" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM003"));
     expect(within(s).getByRole("link", { name: "MM035" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM035"));
   });

@@ -4,15 +4,16 @@ import { DeltaBar } from "../charts";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/lib/format";
-import type { ChangeKind, CompareObject } from "@/lib/api/v2/runs";
+import type { ChangeKind, CompareObject, CompareSummary } from "@/lib/api/v2/runs";
 import { useOpenItem, useV2Href } from "@/lib/v2/hooks";
 import { useCompareSummary, useTimeline, useVersionChanges } from "@/lib/v2/runs-queries";
 import { f1, int, moduleSlug, pct1 } from "@/lib/v2/score";
 import { useLandscape } from "@/lib/v2/queries";
 import { systemSlug } from "@/lib/v2/score";
 import { VerdictMark } from "../marks";
-import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { Coded, Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { t as tr } from "@/lib/v2/i18n";
+import { CcBanner, CcDelta, CcPage } from "./cc-parts";
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
@@ -32,6 +33,15 @@ export function measuredChange(o: Pick<CompareObject, "before" | "after">): numb
 
 /** The change bar of a compare row: the chart grammar's DeltaBar (design/v2/charts). */
 export const DivergingBar = DeltaBar;
+
+/** Every object's change in measured score as one diverging bar, the worst first, so what moved is seen before it is read. */
+export function ObjectChangeBars({ S }: { S: CompareSummary }) {
+  const rows = S.objects
+    .map((o) => ({ key: o.module, label: o.label, delta: measuredChange(o) }))
+    .sort((x, y) => (x.delta ?? 0) - (y.delta ?? 0))
+    .map((r) => ({ ...r, text: r.delta == null ? "—" : tr("{n} points", { n: signed(r.delta) }) }));
+  return <CcDelta rows={rows} label={tr("Change in score by object")} testId="compare-bars" />;
+}
 
 function Change({ d }: { d: number | null }) {
   return (
@@ -85,9 +95,8 @@ function WhatChanged({ a, b, totals, labelOf }: { a: string; b: string; totals: 
                       <li key={c.check_id}>
                         <span>
                           <V2Link href={hrefFor({ kind: "rule", id: c.check_id })}>
-                            <Mono>{c.check_id}</Mono>
-                          </V2Link>{" "}
-                          {c.message ?? ""}
+                            <Coded code={c.check_id} text={c.message} />
+                          </V2Link>
                         </span>
                         <span className="m2-s">{tr("{module}, {v1_affected} to {v2_affected} records failing", { module: labelOf(c.module), v1_affected: int(c.v1_affected), v2_affected: int(c.v2_affected) })}</span>
                       </li>
@@ -140,12 +149,12 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
 
   if (sum.isError) {
     return (
-      <>
+      <CcPage>
         <PageTitle>{tr("Compare runs")}</PageTitle>
         <div className="m2-sec">
           <ErrorFrame onRetry={() => void sum.refetch()}>{tr("These two runs could not be compared. Both must exist and belong to the same system.")}</ErrorFrame>
         </div>
-      </>
+      </CcPage>
     );
   }
 
@@ -155,26 +164,47 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
   const t = S?.totals;
   const title = S ? tr("Run {run_at} vs {value}{run_at2}", { run_at: formatDate(S.b.run_at, "datetime"), value: baselineA ? "baseline " : "", run_at2: formatDate(S.a.run_at, "date") }) : tr("Compare runs");
 
+  const verdict = up >= dn && (t?.newly_failing ?? 0) === 0 ? "go" : up > dn ? "at-risk" : "no-go";
   return (
-    <>
+    <CcPage>
       <PageTitle>{title}</PageTitle>
       {S && t ? (
         <>
-          <p className="m2-finding" data-testid="compare-sentence">
-            {tr("{up} of {rowsCount} objects scored higher and {dn} lower. {newly_failing} rules started failing and {fixed} stopped.", { up, rowsCount: rows.length, dn, newly_failing: int(t.newly_failing), fixed: int(t.fixed) })}
-            {held > 0 ? tr(" {held} {held, plural, one {object is} other {objects are}} still capped by a critical rule, so the shown score hides part of it.", { held }) : ""}
-          </p>
+          <CcBanner
+            testId="compare-banner"
+            label={tr("What changed")}
+            eyebrow={tr("Compared with {run_at}", { run_at: formatDate(S.a.run_at, "date") })}
+            verdict={verdict}
+            headline={up > dn ? tr("Data quality improved") : up < dn ? tr("Data quality got worse") : tr("Data quality is about the same")}
+            why={
+              <span data-testid="compare-sentence">
+                {tr("{up} of {rowsCount} objects scored higher and {dn} lower. {newly_failing} rules started failing and {fixed} stopped.", { up, rowsCount: rows.length, dn, newly_failing: int(t.newly_failing), fixed: int(t.fixed) })}
+                {held > 0 ? tr(" {held} {held, plural, one {object is} other {objects are}} held down by a critical rule, so the score shown hides part of the problem.", { held }) : ""}
+              </span>
+            }
+            figs={[
+              { label: tr("Rules newly failing"), value: int(t.newly_failing), note: tr("{n} stopped failing", { n: int(t.fixed) }) },
+              { label: tr("Objects higher"), value: int(up), note: tr("of {n}", { n: int(rows.length) }) },
+              { label: tr("Objects lower"), value: int(dn), note: tr("of {n}", { n: int(rows.length) }) },
+            ]}
+            action={
+              <V2Link href={`/run/${b}`} className="m2-btn m2-next">
+                {tr("Open run details")}
+              </V2Link>
+            }
+          />
           <p className="m2-prov" data-testid="compare-method">
             {S.method}{" "}{tr("Coverage is the share of records a rule could evaluate.")}
           </p>
+          <section className="m2-cc-card" aria-label={tr("Change in score by object")}>
+            <h3>{tr("Change in score by object")}</h3>
+            <ObjectChangeBars S={S} />
+          </section>
         </>
       ) : (
         <Skeleton width={520} height={16} />
       )}
       <div className="m2-cta">
-        <V2Link href={`/run/${b}`} className="m2-btn">
-          {tr("Open run details")}
-        </V2Link>
         {options.length > 1 ? (
           <span className="m2-pop-cmp">
             <label htmlFor="cmp-from" className="m2-meta">
@@ -332,6 +362,6 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
           labelOf={labelOf}
         />
       ) : null}
-    </>
+    </CcPage>
   );
 }

@@ -121,15 +121,35 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/o/[system]/[module]/fixes": "v2:approvals",
   "/o/[system]/[module]/runs": "v2:run-compare",
   "/o/[system]/[module]/readiness": "v2:waves",
+  "/go-live": "v2:waves",
+  "/atlas": "v2:landscape",
+  "/config": "v2:processes",
+  "/processes": "v2:processes",
+  "/cleansing": "v2:monitoring",
+  "/mining": "v2:monitoring",
+  "/mdm": "v2:monitoring",
+  "/links": "v2:monitoring",
+  "/materials": "v2:monitoring",
+  "/issues": "v2:monitoring",
+  "/attention": "v2:monitoring",
   "/o/[system]/[module]/golden": "v2:golden-records",
   "/o/[system]/[module]/glossary": "v2:glossary",
   "/o/[system]/[module]/lineage": "v2:lineage",
+  "/o/[system]/[module]/profile": "v2:object",
   "/o/[system]/[module]/processes": "v2:processes",
   "/o/[system]/[module]/processes/design": "v2:processes",
   "/r/[id]": "v2:rules",
   "/rules": "v2:rules",
   "/work": "v2:work",
   "/work/monitor": "v2:monitoring",
+  "/work/analytics": "v2:monitoring",
+  "/work/exceptions": "v2:work", "/work/triage": "v2:work",
+  "/migration": "v2:waves",
+  "/s4": "v2:waves",
+  "/insights": "v2:monitoring",
+  "/forecast": "v2:monitoring",
+  "/value": "v2:monitoring",
+  "/score": "v2:monitoring",
   "/people": "v2:people",
   "/requests": "v2:approvals",
   "/runs": "v2:runs",
@@ -187,6 +207,9 @@ export function routeOf(pathname: string): string | null {
   if (a === "share" && b) return "/share/[token]";
   if (a === "admin") return b ? "/admin/[section]" : "/admin";
   if (a === "work" && b === "monitor") return "/work/monitor";
+  if (a === "work" && b === "analytics") return "/work/analytics";
+  if (a === "work" && b === "exceptions") return "/work/exceptions";
+  if (a === "work" && b === "triage") return "/work/triage";
   return `/${a}`;
 }
 

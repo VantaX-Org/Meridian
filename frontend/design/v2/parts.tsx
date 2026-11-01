@@ -18,6 +18,20 @@ export function Mono({ children, className }: { children: ReactNode; className?:
   return <span className={`m2-mono${className ? ` ${className}` : ""}`}>{text}</span>;
 }
 
+/** An SAP code with what it means, on one line: the meaning in the text face, the code small in mono (code first for a value:
+ *  "EA each"; last for a rule or field: "Material type is mandatory MM003"). No meaning: the code alone, never invented. */
+export function Coded({ code, text, first }: { code: string; text?: string | null; first?: boolean }) {
+  if (!text || text === code) return <Mono>{code}</Mono>;
+  const c = <Mono className="m2-cdc">{code}</Mono>;
+  const d = <span className="m2-cdt">{text}</span>;
+  return (
+    <span className="m2-cd" title={`${text} (${code})`}>
+      {first ? c : d}
+      {first ? d : c}
+    </span>
+  );
+}
+
 const SAP_FIELD = /^\/?[A-Z][A-Z0-9_/]{2,}\.[A-Z][A-Z0-9_/]+$/;
 
 /** A value as data: SAP codes and keys (no spaces) in the mono face, free text such as a description in the text face. */

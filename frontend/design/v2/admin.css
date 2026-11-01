@@ -11,6 +11,7 @@
 
 .m2-root .m2-fgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--m2-s3) var(--m2-s4); max-width: 720px; }
 .m2-root .m2-fgrid .m2-wide { grid-column: 1 / -1; }
+.m2-root .m2-mwin { margin: 0; padding: var(--m2-s3) 0 0; border: 0; border-top: 1px solid var(--m2-line); display: grid; gap: var(--m2-s3); min-width: 0; }
 .m2-root .m2-afld { display: grid; gap: var(--m2-s1); align-content: start; font-size: var(--m2-fs-12); color: var(--m2-meta); min-width: 0; }
 .m2-root .m2-afld > span.m2-lbl { color: var(--m2-ink-2); font-size: var(--m2-fs-12); }
 .m2-root .m2-afld input, .m2-root .m2-afld select, .m2-root .m2-afld textarea { height: 32px; padding: 0 var(--m2-s2); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-fg); font-size: var(--m2-fs-13); min-width: 0; width: 100%; }
@@ -115,3 +116,8 @@ html[data-m2-hints="off"] .m2-root .m2-kb { display: none; }
 .m2-root .m2-switch-knob { position: absolute; top: 50%; transform: translateY(-50%); width: var(--m2-s3); height: var(--m2-s3); left: var(--m2-s1); border-radius: 50%; background: var(--m2-ink-3); }
 .m2-root .m2-switch[aria-checked="true"] .m2-switch-knob { left: calc(var(--m2-s8) - var(--m2-s3) - var(--m2-s1)); background: var(--m2-on-data); }
 .m2-root .m2-switch:disabled { opacity: .6; cursor: default; }
+
+/* Command centre: admin */
+/* The admin index takes the map column, so between 1201 and 1500 px the dock narrows to keep the section readable. */
+@media (min-width: 1201px) and (max-width: 1500px) { .m2-main:has([data-testid="admin-index"]) .m2-cc { grid-template-columns: minmax(0, 1fr) 300px; } }
+.m2-root .m2-cc-main > .m2-cc-banner { margin-bottom: 0; }

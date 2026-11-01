@@ -60,7 +60,7 @@ for (const size of SIZES) {
         await expect(chips.getByRole("button", { name: /Fix proposed/ })).toContainText("3,418");
         await expect(chips.getByRole("button", { name: /Waiting for approval/ })).toContainText("612");
         await expect(chips.getByRole("button", { name: /Exceptions/ })).toContainText("48");
-        await expect(page.getByRole("button", { name: "Accept the 112 suggested values" })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Accept 112 suggested values on MM142" })).toBeVisible();
         if (phone) {
           const list = page.getByRole("list", { name: "Work ledger" });
           await expect(list.getByRole("listitem").first()).toBeVisible(NAV);

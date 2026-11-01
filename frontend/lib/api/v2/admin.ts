@@ -183,6 +183,7 @@ export async function uploadReference(systemId: string, kind: "postal-codes" | "
 /* ── Audit ── */
 
 export const listAudit = (q: AuditListParams = {}): Promise<AuditListResponse> => v2Get("/audit", q as Record<string, string | number>);
+export const getAuditActors = (): Promise<{ actors: { id: string; name: string }[] }> => v2Get("/audit/actors");
 export const getAuditSummary = (): Promise<{ summary: AuditSummaryRow[]; total?: number }> => v2Get("/audit/summary");
 export const getAiAudit = (q: { limit?: number; offset?: number } = {}): Promise<LlmAuditResponse> => v2Get("/audit/llm", q);
 export const exportAudit = (format: "csv" | "xlsx", q: AuditListParams = {}): Promise<string> =>

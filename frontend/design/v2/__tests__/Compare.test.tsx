@@ -44,7 +44,7 @@ describe("Compare canvas", () => {
     renderWithQuery(<CompareCanvas a={A} b={B} />);
     await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Run 16 Oct 2026, 05:17 vs baseline 2 Oct 2026"));
     const sentence = await screen.findByTestId("compare-sentence");
-    expect(norm(sentence)).toBe("12 of 15 objects scored higher and 3 lower. 14 rules started failing and 37 stopped. 12 objects are still capped by a critical rule, so the shown score hides part of it.");
+    expect(norm(sentence)).toBe("12 of 15 objects scored higher and 3 lower. 14 rules started failing and 37 stopped. 12 objects are held down by a critical rule, so the score shown hides part of the problem.");
   });
 
   it("states the method: the common rule set, what was excluded, and what counts as changed", async () => {
@@ -105,7 +105,7 @@ describe("Compare canvas", () => {
     for (const li of items) expect(within(li).getByRole("link")).toHaveAttribute("href", expect.stringContaining("open=rule%3A"));
     // Each listed rule is a rule of the shipped library, with its own message (fixtures/library.json).
     for (const li of items) {
-      const id = within(li).getByRole("link").textContent ?? "";
+      const id = decodeURIComponent(within(li).getByRole("link").getAttribute("href")?.split("open=rule%3A")[1]?.split("&")[0] ?? "");
       const rule = LIBRARY.find((r) => r.check_id === id);
       expect(rule, id).toBeDefined();
       expect(norm(li)).toContain(rule?.name ?? "");

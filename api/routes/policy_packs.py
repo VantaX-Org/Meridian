@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.middleware.cache import mark_work_changed
+from api.routes.objects import rule_names
 from api.routes.record_issues import _rls
 from api.services import policy_packs as pp
 from api.services.current_state import current_pairs
@@ -34,6 +35,7 @@ router = APIRouter(prefix="/api/v1/policy-packs", tags=["policy-packs"])
 
 class RuleEvidenceOut(BaseModel):
     check_id: str = Field(description="Rule id.")
+    name: Optional[str] = Field(None, description="Rule title from the tenant's rules table.")
     measured: bool = Field(description="True when the rule ran in the run read.")
     module: Optional[str] = Field(None, description="Object (module id) of the rule.")
     severity: Optional[str] = Field(None, description="Rule severity.")
@@ -107,6 +109,10 @@ async def _evidence(db: AsyncSession, tenant: Tenant, p: dict, run_id: Optional[
     pairs = None if run_id else await current_pairs(db, tenant.id)
     found = await pp.findings_for(db, str(tenant.id), pp.pack_rules(p), pairs, run_id)
     classes = [pp.class_evidence(c, found) for c in p["classes"]]
+    names = await rule_names(db, tenant, sorted({r["check_id"] for c in classes for r in c["rules"]}))
+    for c in classes:
+        for r in c["rules"]:
+            r["name"] = names.get(r["check_id"])
     return classes, _coverage(classes)
 
 

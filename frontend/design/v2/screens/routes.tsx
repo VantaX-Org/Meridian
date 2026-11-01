@@ -25,6 +25,7 @@ const RecordsTab = dynamic<TabProps>(() => import("./object/LedgerSlot").then((m
 const RunsTab = dynamic<TabProps>(() => import("./object/RunsTab").then((m) => m.RunsTab), { loading: TabLoading });
 const GoldenTab = dynamic<TabProps>(() => import("./object/GoldenTab").then((m) => m.GoldenTab), { loading: TabLoading });
 const GlossaryTab = dynamic<TabProps>(() => import("./object/GlossaryTab").then((m) => m.GlossaryTab), { loading: TabLoading });
+const ProfileTab = dynamic<TabProps>(() => import("./object/ProfileTab").then((m) => m.ProfileTab), { loading: TabLoading });
 const LineageTab = dynamic<TabProps>(() => import("./object/LineageTab").then((m) => m.LineageTab), { loading: TabLoading });
 const ProcessesTab = dynamic<TabProps>(() => import("./object/ProcessesTab").then((m) => m.ProcessesTab), { loading: TabLoading });
 const RecordCanvas = dynamic<{ module: string; recordKey: string }>(() => import("./RecordCanvas").then((m) => m.RecordCanvas), { loading: TabLoading });
@@ -51,7 +52,7 @@ export function ObjectRulesRoute() {
   return <RulesTab system={String(p.system)} module={String(p.module)} />;
 }
 
-export function ObjectTabRoute({ tab }: { tab: "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "glossary" | "golden" }) {
+export function ObjectTabRoute({ tab }: { tab: "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "profile" | "glossary" | "golden" }) {
   const p = useParams<ObjectParams>();
   const [system, module] = [String(p.system), String(p.module)];
   if (tab === "records") return <RecordsTab system={system} module={module} />;
@@ -59,6 +60,7 @@ export function ObjectTabRoute({ tab }: { tab: "records" | "fixes" | "runs" | "r
   if (tab === "readiness") return <ReadinessTab system={system} module={module} />;
   if (tab === "processes") return <ProcessesTab system={system} module={module} />;
   if (tab === "lineage") return <LineageTab system={system} module={module} />;
+  if (tab === "profile") return <ProfileTab system={system} module={module} />;
   if (tab === "glossary") return <GlossaryTab system={system} module={module} />;
   if (tab === "golden") return <GoldenTab system={system} module={module} />;
   return <EmptyTab tab={tab} system={system} module={module} />;

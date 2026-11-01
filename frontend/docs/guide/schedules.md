@@ -4,6 +4,9 @@ Reports are files built from a stored run: the board pack, the analyst workbook,
 
 ## What is on it
 
+- **The banner**: the small line says "Report delivery" and the headline says what needs you first: "2 schedules failed on the last run", "1 schedule is overdue" (more than an hour past its next run), "1 schedule reached only some recipients", "Every schedule delivered on its last run", or "No report goes out on a schedule yet". Three figures: **Reports made** (with how many of the latest came from a schedule), **Schedules on** ("of 3 in all") and **Need attention** ("failed, overdue or partly delivered"). The one button is **Create a report**, for people with the export permission.
+- **Reports made by kind**: a horizontal bar per report kind (board pack, analyst workbook and so on), with "4 made, 2 by schedule" at the end of the row. "Counted over the latest 6 reports in the history."
+- **Aletheia**, docked on the right, as on every screen.
 - **The sentence**: "6 reports made, 2 of 3 schedules are on. Reports are built from stored runs, so a number in a report matches the run it names."
 - **Create a report** and **Schedule a report**.
 - **Reports**: report, run ("Run of 16 Oct 2026"), format (PDF or XLSX), created, by, size and **Download**. The rule catalogue is "Not tied to a run".

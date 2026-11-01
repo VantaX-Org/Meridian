@@ -94,7 +94,7 @@ async def test_policy_packs(owner, monkeypatch):
         assert ev["applied"] is True and ev["scope"] == "current"
         vb = next(c for c in ev["classes"] if c["id"] == "vendor_bank")
         ap039 = next(r for r in vb["rules"] if r["check_id"] == "AP039")
-        assert ap039 == {"check_id": "AP039", "measured": True, "module": "accounts_payable", "severity": "critical",
+        assert ap039 == {"check_id": "AP039", "name": None, "measured": True, "module": "accounts_payable", "severity": "critical",
                          "pass_rate": 98.0, "failing_records": 4, "total_records": 200}
         assert vb["pass_rate"] == 99.0 and vb["authority"].startswith("SOX Section 404")
         ev_run = (await client.get(f"/api/v1/policy-packs/sox/evidence?run={run}", headers=headers("viewer"))).json()

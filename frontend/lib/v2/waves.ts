@@ -73,3 +73,6 @@ export function reassign(waves: readonly MigrationWave[], choice: Readonly<Recor
   }
   return out;
 }
+
+/** The ISO date `days` from today (fractions round to the nearest day). */
+export const dayFromToday = (days: number, now: number = Date.now()): string => new Date(now + Math.round(days) * 86_400_000).toISOString().slice(0, 10);

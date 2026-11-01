@@ -100,7 +100,8 @@ describe("the Work ledger as of a run", () => {
     const then = fixtureResponse<WorkPage>("/work/records", { as_of_run: R3, status: "open", limit: 500 });
     expect(then.total).toBeLessThan(today.total);
     expect(() => fixtureResponse("/work/records", { as_of_run: R3, scope: "current" })).toThrow(/exclusive/);
-    expect(screen.getByRole("button", { name: /Export fix sheet/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(await screen.findByRole("menuitem", { name: /Export fix sheet/ })).toHaveAttribute("aria-disabled", "true");
     fireEvent.click(within(band).getByRole("button", { name: "Back to today" }));
     await waitFor(() => expect(getUrl()).not.toContain("as_of_run"));
   });

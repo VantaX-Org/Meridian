@@ -30,7 +30,6 @@ from db.schema import (
     CostAvoidance,
     Exception_,
     Finding,
-    ImpactRecord,
     StewardMetric,
 )
 
@@ -258,6 +257,38 @@ async def _planner_inputs(db: AsyncSession, tenant: Tenant) -> tuple[dict, dict]
 # ── 3. GET /analytics/impact ─────────────────────────────────────────────────
 
 
+async def _live_impact(db: AsyncSession, tenant: Tenant, version_id: Optional[str]) -> dict:
+    """Price one run's findings and the open exceptions into the 8 impact categories, and the ROI from them.
+
+    Nothing stores these: they are worked out from the run each time, so a new cost model or a new run shows
+    at once. With no finished run the impacts are empty and the ROI has nulls, never made-up zeros.
+    """
+    impact_analytics = await _impact_analytics(db, tenant)
+    if version_id:
+        vid = uuid.UUID(version_id)
+    else:
+        vid = (await db.execute(
+            select(AnalysisVersion.id)
+            .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status.in_(FINISHED))
+            .order_by(AnalysisVersion.run_at.desc())
+            .limit(1)
+        )).scalar()
+        if vid is None:
+            return {"impacts": [], "roi": impact_analytics.calculate_roi([])}
+
+    # Only the columns the pricing reads: a run carries thousands of findings with large JSON fields.
+    findings = [dict(r._mapping) for r in (await db.execute(
+        select(Finding.module, Finding.check_id, Finding.dimension, Finding.affected_count)
+        .where(Finding.tenant_id == tenant.id, Finding.version_id == vid)
+    )).all()]
+    exceptions = [dict(r._mapping) for r in (await db.execute(
+        select(Exception_.type, Exception_.category).where(Exception_.tenant_id == tenant.id)
+    )).all()]
+
+    impacts = impact_analytics.quantify_impact(findings, exceptions)
+    return {"impacts": impacts, "roi": impact_analytics.calculate_roi(impacts), "version_id": str(vid)}
+
+
 @router.get("/impact")
 async def get_impact_analytics(
     version_id: Optional[str] = Query(None),
@@ -266,41 +297,7 @@ async def get_impact_analytics(
 ):
     """Business impact quantification across 8 categories, priced from the tenant cost model."""
     await _set_tenant(db, tenant)
-    impact_analytics = await _impact_analytics(db, tenant)
-
-    # Determine version
-    if version_id:
-        vid = uuid.UUID(version_id)
-    else:
-        latest = await db.execute(
-            select(AnalysisVersion)
-            .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status.in_(FINISHED))
-            .order_by(AnalysisVersion.run_at.desc())
-            .limit(1)
-        )
-        row = latest.first()
-        if not row:
-            # No run yet: the same ROI as a run with no impact (no subscription: nulls, never made-up zeros).
-            return {"impacts": [], "roi": impact_analytics.calculate_roi([])}
-        vid = row[0].id
-
-    # Load findings
-    findings_result = await db.execute(
-        select(Finding).where(Finding.tenant_id == tenant.id, Finding.version_id == vid)
-    )
-    findings_data = [_row_to_dict(r) for r in findings_result.all()]
-
-    # Load exceptions
-    exc_result = await db.execute(
-        select(Exception_).where(Exception_.tenant_id == tenant.id)
-    )
-    exc_data = [_row_to_dict(r) for r in exc_result.all()]
-
-    impacts = impact_analytics.quantify_impact(findings_data, exc_data)
-
-    roi = impact_analytics.calculate_roi(impacts)
-
-    return {"impacts": impacts, "roi": roi, "version_id": str(vid)}
+    return await _live_impact(db, tenant, version_id)
 
 
 # ── 4. GET /analytics/impact/{finding_id} ────────────────────────────────────
@@ -335,10 +332,11 @@ async def get_finding_impact(
 
 # Per-stage count and summed age (hours) of the tenant's cleaning queue, aggregated in Postgres:
 # loading every queue row as an ORM object only to count it took seconds on a 60k-row queue.
+# Applied and rejected items have left the queue; counted, they aged forever and always showed as a bottleneck.
 _QUEUE_STAGES_SQL = """
     SELECT status, count(*) AS n,
            COALESCE(sum(extract(epoch FROM now() - COALESCE(detected_at, created_at))), 0) / 3600.0 AS total_age
-      FROM cleaning_queue WHERE tenant_id = :tid
+      FROM cleaning_queue WHERE tenant_id = :tid AND status NOT IN ('applied', 'rejected')
      GROUP BY status ORDER BY status
 """
 
@@ -483,33 +481,24 @@ async def get_roi(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """ROI calculation from latest impact records and cost avoidance."""
+    """ROI of the latest finished run, priced live, and the monthly cost avoidance history.
+
+    The ROI sums one run only: summing stored rows across runs would count the same risk once per run.
+    """
     await _set_tenant(db, tenant)
+    live = await _live_impact(db, tenant, None)
 
-    # Load latest impact records
-    impact_result = await db.execute(
-        select(ImpactRecord)
-        .where(ImpactRecord.tenant_id == tenant.id)
-        .order_by(ImpactRecord.recorded_at.desc())
-        .limit(20)
-    )
-    impacts = [_row_to_dict(r) for r in impact_result.all()]
-
-    # Load cost avoidance history
     ca_result = await db.execute(
         select(CostAvoidance)
         .where(CostAvoidance.tenant_id == tenant.id)
         .order_by(CostAvoidance.period.desc())
         .limit(12)
     )
-    cost_avoidance = [_row_to_dict(r) for r in ca_result.all()]
-
-    roi = (await _impact_analytics(db, tenant)).calculate_roi(impacts)
-
     return {
-        "roi": roi,
-        "impact_records": impacts,
-        "cost_avoidance_history": cost_avoidance,
+        "roi": live["roi"],
+        "impacts": live["impacts"],
+        "version_id": live.get("version_id"),
+        "cost_avoidance_history": [_row_to_dict(r) for r in ca_result.all()],
     }
 
 
@@ -592,25 +581,27 @@ async def get_capacity(
     )
     cleaning_data = [_row_to_dict(r) for r in cm_result.all()]
 
-    daily_inflow = (
-        sum(m.get("detected", 0) for m in cleaning_data) / max(1, len(cleaning_data))
-        if cleaning_data
-        else 10
-    )
-
     # Steward count and throughput
     sm_result = await db.execute(
         select(StewardMetric).where(StewardMetric.tenant_id == tenant.id)
     )
     steward_data = [_row_to_dict(r) for r in sm_result.all()]
     unique_stewards = len(set(s.get("user_id") for s in steward_data if s.get("user_id")))
-    total_processed = sum(s.get("items_processed", 0) for s in steward_data)
+
+    # No recorded inflow or no steward throughput: nothing to plan from. The figures stay empty and
+    # ``reason`` says which input is missing, rather than planning from made-up defaults.
+    if not cleaning_data or not unique_stewards:
+        return {"needed": None, "current": unique_stewards, "surplus_deficit": None, "recommendation": None,
+                "daily_inflow": None, "per_steward": None,
+                "reason": "no_inflow" if not cleaning_data else "no_stewards"}
+
+    daily_inflow = sum(m.get("detected", 0) or 0 for m in cleaning_data) / len(cleaning_data)
+    total_processed = sum(s.get("items_processed", 0) or 0 for s in steward_data)
     periods = len(set(s.get("period") for s in steward_data))
-    avg_per_steward = (total_processed / max(1, unique_stewards) / max(1, periods)) if unique_stewards else 20
+    avg_per_steward = total_processed / unique_stewards / max(1, periods)
 
-    capacity = operational.capacity_planning(daily_inflow, avg_per_steward, max(1, unique_stewards))
-
-    return capacity
+    capacity = operational.capacity_planning(daily_inflow, avg_per_steward, unique_stewards)
+    return {**capacity, "daily_inflow": round(daily_inflow, 1), "per_steward": round(avg_per_steward, 1)}
 
 
 # ── 12. GET /analytics/mdm-health ──────────────────────────────────────────

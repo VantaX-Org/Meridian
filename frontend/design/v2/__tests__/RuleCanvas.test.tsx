@@ -28,7 +28,7 @@ const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").tr
 describe("the rule canvas /r/{check_id}", () => {
   it("heads the page with the rule id and name, and a stat line of its own with no ruler", async () => {
     renderWithQuery(<RuleCanvas id="MM142" />);
-    await waitFor(() => expect(norm(screen.getByRole("heading", { level: 1 }))).toContain("MM142 Base unit of measure MEINS must reference a valid entry in T006"));
+    await waitFor(() => expect(norm(screen.getByRole("heading", { level: 1 }))).toContain("Base unit of measure MEINS must reference a valid entry in T006"));
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     const line = await screen.findByTestId("rule-stat-line");
     const parts = Array.from(line.querySelectorAll("span")).map((s) => s.textContent);
@@ -40,13 +40,13 @@ describe("the rule canvas /r/{check_id}", () => {
     expect(document.querySelector('svg[data-size]')).toBeNull(); // a rule has no ruler
   });
 
-  it("has the tabs Overview, Definition, Failing records, Prove in SAP, Impact and History, Overview first", async () => {
+  it("has the tabs Overview, Blast radius, Definition, Failing records, Prove in SAP, Impact and History, Overview first", async () => {
     renderWithQuery(<RuleCanvas id="MM142" />);
     const nav = await screen.findByRole("navigation", { name: "Views of MM142" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Overview", "Definition", "Failing records", "Prove in SAP", "Impact", "History"]);
+    expect(links.map((l) => l.textContent)).toEqual(["Overview", "Blast radius", "Definition", "Failing records", "Prove in SAP", "Impact", "History"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
-    expect(links[2]).toHaveAttribute("href", expect.stringMatching(/^\/r\/MM142\?.*tab=failing/));
+    expect(links[3]).toHaveAttribute("href", expect.stringMatching(/^\/r\/MM142\?.*tab=failing/));
     expect(links[0]).toHaveAttribute("href", expect.not.stringContaining("tab="));
   });
 
@@ -66,7 +66,7 @@ describe("the rule canvas /r/{check_id}", () => {
     setUrl("/r/MM142?fixture=1&tab=definition");
     renderWithQuery(<RuleCanvas id="MM142" />);
     await screen.findByRole("region", { name: "Definition" });
-    expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Definition", "Authority", "Versions", "Scope: 2 objects, 1 system", "Contract", "Actions"]);
+    expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Rule summary", "Definition", "Authority", "Versions", "Scope: 2 objects, 1 system", "Contract", "Actions"]);
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(expect.arrayContaining(["Definition", "Scope: 2 objects, 1 system"]));
     // On the canvas the rule is already open: no link back to itself.
     expect(within(screen.getByRole("region", { name: "Actions" })).queryByRole("link", { name: "Open the rule" })).toBeNull();
@@ -110,7 +110,7 @@ describe("the rule canvas /r/{check_id}", () => {
     setUrl("/r/MM142?tab=impact&fixture=1");
     renderWithQuery(<RuleCanvas id="MM142" />);
     await screen.findByRole("region", { name: "Facts" });
-    expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Facts", "Blocks: 3 S/4 features", "Lineage"]);
+    expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Rule summary", "Facts", "Blocks: 3 S/4 features", "Lineage"]);
     expect(screen.getByTestId("lineage")).toBeInTheDocument();
   });
 

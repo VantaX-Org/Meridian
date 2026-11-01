@@ -329,8 +329,14 @@ async def monitor_status(
 ):
     """Per system with a pinned baseline: its newest run compared with that baseline."""
     from api.services import monitor
+    from api.routes.objects import rule_names
     await _rls(db, tenant)
-    return {"items": await db.run_sync(lambda s: monitor.status(s))}
+    items = await db.run_sync(lambda s: monitor.status(s))
+    regressed = [c for i in items if i["monitor"] for c in i["monitor"].get("regressed_checks") or []]
+    names = await rule_names(db, tenant, sorted({c["check_id"] for c in regressed}))
+    for c in regressed:
+        c["name"] = names.get(c["check_id"])
+    return {"items": items}
 
 
 @router.get("/batches/{batch_id}")

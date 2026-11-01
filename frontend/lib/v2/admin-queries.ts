@@ -112,6 +112,10 @@ export const useAudit = (q: AuditListParams, enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "audit", q), () => api.listAudit(q), enabled);
 };
+export const useAuditActors = (enabled = true) => {
+  const f = useFixture();
+  return useRead(k(f, "audit", "actors"), api.getAuditActors, enabled);
+};
 export const useAuditEntry = (id: string, enabled = true) => {
   const f = useFixture();
   // The entry is one row of the same list: ask for the wide window and pick it, so a deep link works.

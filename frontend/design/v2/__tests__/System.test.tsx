@@ -163,7 +163,7 @@ describe("the system canvas", () => {
     expect(norm(line)).toContain("Last extraction 16 Oct 2026, 04:41");
     expect(norm(line)).toContain("400,662 records");
     const tabs = screen.getByRole("navigation", { name: "Views of ECC production" });
-    expect(within(tabs).getAllByRole("link").map((l) => norm(l))).toEqual(["Overview", "Extractions", "Configuration", "Configuration changes", "Schedules", "Custom objects"]);
+    expect(within(tabs).getAllByRole("link").map((l) => norm(l))).toEqual(["Overview", "Extractions", "Configuration", "Configuration changes", "Schedules", "Custom objects", "Source design"]);
     expect(within(tabs).getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
     expect(within(tabs).getByRole("link", { name: "Schedules" })).toHaveAttribute("href", expect.stringContaining("tab=schedules"));
   });
@@ -172,6 +172,9 @@ describe("the system canvas", () => {
     canvas();
     const table = await screen.findByTestId("system-objects");
     expect(within(table).getAllByRole("row")).toHaveLength(16);
+    expect(norm(screen.getByTestId("system-banner"))).toContain("ECC production is connected");
+    const chart = await screen.findByRole("list", { name: "Records per object in the latest extraction" });
+    expect(within(chart).getAllByRole("listitem").length).toBeGreaterThan(0);
     expect(await screen.findByText("Extraction, 15 objects")).toBeInTheDocument();
   });
 

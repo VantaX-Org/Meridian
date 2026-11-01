@@ -3,6 +3,8 @@ import receiptsJson from "./receipts.json";
 import workJson from "./work.json";
 import runsJson from "./runs.json";
 import rulesJson from "./rules.json";
+import lineageJson from "./lineage.json";
+import guardsJson from "./guards.json";
 import type { CommandGroup, CommandResult, Landscape, Receipt, RuleRow, RunList, StatusStrip, WorkPage } from "../types";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { fixtureParam } from "../fixture";
@@ -18,6 +20,30 @@ import { adminFixtureResponse, adminFixtureWrite, fixtureDownload as adminFixtur
 import { enterpriseFixtureDownload, enterpriseFixtureResponse, enterpriseFixtureWrite, NONE_ENTERPRISE } from "./enterprise";
 import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, step9Read, step9Write, withContractMarks } from "./step9";
 import { NONE_REQ, requestsDownload, requestsRead, requestsWrite, resetRequestsFixture } from "./requests";
+import { configRead, configWrite, NONE_CONFIG } from "./config";
+import { cleaningRead, cleaningWrite, NONE_CLEANING, resetCleaningFixture } from "./cleaning";
+import { matchRead, matchWrite, NONE_MATCH } from "./match-rules";
+import { mdmHealthRead, NONE_MDM_HEALTH } from "./mdm-health";
+import { NONE_WORK_ANALYTICS, workAnalyticsRead } from "./work-analytics";
+import { migrationRead, migrationWrite, NONE_MIGRATION } from "./migration";
+import { insightsRead, NONE_INSIGHTS } from "./insights";
+import { analyticsRead, NONE_ANALYTICS } from "./analytics";
+import { NONE_S4, s4Read } from "./s4";
+import { NONE_SCORE, scoreRead } from "./score";
+import { designRead, designWrite, NONE_DESIGN } from "./design";
+import { linksRead, NONE_LINKS } from "./links";
+import { attentionRead, NONE_ATTENTION } from "./attention";
+import { materialsRead, NONE_MATERIALS } from "./materials";
+import { issuesRead, issuesWrite, NONE_ISSUES, resetIssuesFixture } from "./issues";
+import { exceptionsRead, exceptionsWrite, NONE_EXCEPTIONS, resetExceptionsFixture } from "./exceptions";
+import { NONE_TRIAGE, resetTriageFixture, triageRead, triageWrite } from "./triage";
+import { NONE_MAINTENANCE, maintenanceRead, maintenanceWrite, resetMaintenanceFixture } from "./maintenance";
+import { NONE_LLM, llmRead, llmWrite, resetLlmFixture } from "./llm";
+import { NONE_PROFILE, profileRead, profileWrite, resetProfileFixture } from "./profile";
+import { NONE_SYNC_TRIGGER, resetSyncTriggerFixture, syncTriggerRead, syncTriggerWrite } from "./syncTrigger";
+import { NONE_SIMULATIONS, simulationsRead, simulationsWrite, resetSimulationsFixture } from "./simulations";
+import { miningRead, miningWrite, NONE_MINING } from "./mining";
+import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
 import { guardDecision, NONE_STEP10, receiptPolicy, resetStep10Fixture, step10Read, step10Write, withPolicyMarks, withSandbox } from "./step10";
 
 /**
@@ -118,6 +144,36 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (method === "POST" && (path === "/work/decide" || /^\/work\/groups\/[^/]+\/(accept-all|set-value)$/.test(path))) guardDecision();
   const step9 = step9Write(method, path, body);
   if (step9 !== NONE_STEP9) return step9 as T;
+  const cfg = configWrite(method, path);
+  if (cfg !== NONE_CONFIG) return cfg as T;
+  const dw = designWrite(method, path);
+  if (dw !== NONE_DESIGN) return dw as T;
+  const cl = cleaningWrite(method, path, (body ?? {}) as Record<string, unknown>);
+  if (cl !== NONE_CLEANING) return cl as T;
+  const pd = discoveryWrite(method, path, body);
+  if (pd !== NONE_DISCOVERY) return pd as T;
+  const mn = miningWrite(method, path, body);
+  if (mn !== NONE_MINING) return mn as T;
+  const mg = migrationWrite(method, path, body);
+  if (mg !== NONE_MIGRATION) return mg as T;
+  const mr = matchWrite(method, path, body);
+  if (mr !== NONE_MATCH) return mr as T;
+  const iw = issuesWrite(method, path, body);
+  if (iw !== NONE_ISSUES) return iw as T;
+  const xw = exceptionsWrite(method, path, body);
+  if (xw !== NONE_EXCEPTIONS) return xw as T;
+  const tw = triageWrite(method, path, body);
+  if (tw !== NONE_TRIAGE) return tw as T;
+  const mw = maintenanceWrite(method, path, body);
+  if (mw !== NONE_MAINTENANCE) return mw as T;
+  const lw = llmWrite(method, path, body);
+  if (lw !== NONE_LLM) return lw as T;
+  const pw = profileWrite(method, path, body);
+  if (pw !== NONE_PROFILE) return pw as T;
+  const stw = syncTriggerWrite(method, path, body);
+  if (stw !== NONE_SYNC_TRIGGER) return stw as T;
+  const sw = simulationsWrite(method, path, body);
+  if (sw !== NONE_SIMULATIONS) return sw as T;
   const roles = rolesFixtureWrite(method, path, body, params);
   if (roles !== NONE_ROLES) return roles as T;
   const out = ((): unknown => {
@@ -159,7 +215,7 @@ export { resetEnterpriseFixture } from "./enterprise";
 
 /** A file in fixture mode: the step 9 certificate PDF, the enterprise stand-ins, then the admin area's. */
 export function fixtureDownload(path: string, params: Record<string, unknown>, fallback: string): { name: string; text: string } {
-  return requestsDownload(path) ?? step9Download(path) ?? enterpriseFixtureDownload(path) ?? adminFixtureDownload(path, params, fallback);
+  return requestsDownload(path) ?? discoveryDownload(path) ?? step9Download(path) ?? enterpriseFixtureDownload(path) ?? adminFixtureDownload(path, params, fallback);
 }
 export const fixtureExport = wf.exportFixture;
 export const fixtureImport = wf.importFixture;
@@ -171,10 +227,92 @@ export const resetWorkFixture = (): void => {
   resetStep9Fixture();
   resetStep10Fixture();
   resetRequestsFixture();
+  resetIssuesFixture();
+  resetExceptionsFixture();
+  resetTriageFixture();
+  resetMaintenanceFixture();
+  resetLlmFixture();
+  resetProfileFixture();
+  resetSyncTriggerFixture();
+  resetSimulationsFixture();
+  resetCleaningFixture();
+  resetDiscoveryFixture();
 };
 export { resetStep9Fixture, resetStep10Fixture };
 
 /** The answer to one v2 read in fixture mode. Throws a 404-shaped error for a path the contract does not have. */
+/** The fixture rules' lineage graphs and blast radii, exported from the real lineage model (sap/lineage_model.yaml). */
+function lineageRead(path: string, params: Params): unknown {
+  const lin = lineageJson as { graph: Record<string, unknown>; blast: Record<string, unknown> };
+  if (path === "/lineage/graph") {
+    const id = String(params.node ?? "").replace(/^check:/, "");
+    if (!lin.graph[id]) throw new FixtureNotFound(path);
+    return lin.graph[id];
+  }
+  const guards = guardsJson as { model: unknown; guards: Record<string, unknown> };
+  if (path === "/lineage/model") return guards.model;
+  if (path === "/lineage/guards") {
+    const g = guards.guards[String(params.node ?? "")];
+    if (!g) throw new FixtureNotFound(path);
+    return { ...(g as object), version_id: null };
+  }
+  const blast = /^\/lineage\/blast-radius\/([^/]+)\/([^/]+)$/.exec(path);
+  if (blast) {
+    const b = lin.blast[decodeURIComponent(blast[2])];
+    if (!b) throw new FixtureNotFound(path);
+    return { version_id: decodeURIComponent(blast[1]), ...b };
+  }
+  return undefined;
+}
+
+/** A deterministic forecast per module: twelve daily scores three days apart, ending at the landscape score. */
+function forecastRead(path: string): unknown {
+  const m = /^\/analytics\/forecast\/([^/]+)$/.exec(path);
+  if (!m) return undefined;
+  const mod = decodeURIComponent(m[1]);
+  const cell = landscapeFixture.cells.find((c) => c.module === mod && c.score != null);
+  if (!cell) return { module_id: mod, forecast: null, message: "Need at least 3 data points for forecasting (have 0)" };
+  const seed = [...mod].reduce((s, ch) => s + ch.charCodeAt(0), 0);
+  const end = cell.score as number;
+  // slope between -0.1 and +0.5 points a day; a module far below 95 climbs faster
+  const slope = Math.round((Math.min(0.5, (95 - end) / 60) - (seed % 3) * 0.05) * 100) / 100;
+  const history = Array.from({ length: 12 }, (_, i) => {
+    const day = (i - 11) * 3;
+    const wobble = ((seed * (i + 3)) % 7) / 7 - 0.5;
+    return { day, score: Math.round(Math.min(100, end + slope * day + (i === 11 ? 0 : wobble)) * 10) / 10 };
+  });
+  const n = history.length;
+  const mx = history.reduce((s, p) => s + p.day, 0) / n;
+  const my = history.reduce((s, p) => s + p.score, 0) / n;
+  const sxx = history.reduce((s, p) => s + (p.day - mx) ** 2, 0);
+  const b = history.reduce((s, p) => s + (p.day - mx) * (p.score - my), 0) / sxx;
+  const a = my - b * mx;
+  const se = Math.sqrt(history.reduce((s, p) => s + (p.score - a - b * p.day) ** 2, 0) / (n - 2));
+  const r1 = (v: number) => Math.round(Math.min(100, Math.max(0, v)) * 10) / 10;
+  const at = (h: number) => {
+    const pt = a + b * h;
+    const half = 2.23 * se * Math.sqrt(1 + 1 / n + (h - mx) ** 2 / sxx);
+    return { [`forecast_${h}d`]: r1(pt), [`forecast_${h}d_low`]: r1(pt - half), [`forecast_${h}d_high`]: r1(pt + half) };
+  };
+  const h7 = at(7);
+  return {
+    module_id: mod,
+    forecast: {
+      module_id: mod,
+      current_score: end,
+      ...h7,
+      ...at(30),
+      ...at(90),
+      trend: b > 0.1 ? "improving" : b < -0.3 ? "critical" : b < -0.1 ? "declining" : "stable",
+      confidence: r1(100 - ((h7.forecast_7d_high as number) - (h7.forecast_7d_low as number))),
+      points: n,
+      span_days: 33,
+      history,
+      contributing_factors: [],
+    },
+  };
+}
+
 export function fixtureResponse<T>(path: string, params: Params): T {
   const req = requestsRead(path, params);
   if (req !== NONE_REQ) return req as T;
@@ -182,6 +320,58 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (step10 !== NONE_STEP10) return step10 as T;
   const step9 = step9Read(path, params);
   if (step9 !== NONE_STEP9) return step9 as T;
+  const lin = lineageRead(path, params);
+  if (lin !== undefined) return lin as T;
+  const fc = forecastRead(path);
+  if (fc !== undefined) return fc as T;
+  const cfg = configRead(path);
+  if (cfg !== NONE_CONFIG) return cfg as T;
+  const cl = cleaningRead(path, params);
+  if (cl !== NONE_CLEANING) return cl as T;
+  const pd = discoveryRead(path, params);
+  if (pd !== NONE_DISCOVERY) return pd as T;
+  const mn = miningRead(path);
+  if (mn !== NONE_MINING) return mn as T;
+  const mh = mdmHealthRead(path);
+  if (mh !== NONE_MDM_HEALTH) return mh as T;
+  const wa = workAnalyticsRead(path, params);
+  if (wa !== NONE_WORK_ANALYTICS) return wa as T;
+  const mg = migrationRead(path, params);
+  if (mg !== NONE_MIGRATION) return mg as T;
+  const ins = insightsRead(path);
+  if (ins !== NONE_INSIGHTS) return ins as T;
+  const an = analyticsRead(path);
+  if (an !== NONE_ANALYTICS) return an as T;
+  const s4 = s4Read(path);
+  if (s4 !== NONE_S4) return s4 as T;
+  const sc = scoreRead(path);
+  if (sc !== NONE_SCORE) return sc as T;
+  const ds = designRead(path, params);
+  if (ds !== NONE_DESIGN) return ds as T;
+  const lk = linksRead(path, params);
+  if (lk !== NONE_LINKS) return lk as T;
+  const iss = issuesRead(path, params);
+  if (iss !== NONE_ISSUES) return iss as T;
+  const exc = exceptionsRead(path, params);
+  if (exc !== NONE_EXCEPTIONS) return exc as T;
+  const tri = triageRead(path, params);
+  if (tri !== NONE_TRIAGE) return tri as T;
+  const mnt = maintenanceRead(path);
+  if (mnt !== NONE_MAINTENANCE) return mnt as T;
+  const llm = llmRead(path);
+  if (llm !== NONE_LLM) return llm as T;
+  const pf = profileRead(path, params);
+  if (pf !== NONE_PROFILE) return pf as T;
+  const str = syncTriggerRead(path);
+  if (str !== NONE_SYNC_TRIGGER) return str as T;
+  const sim = simulationsRead(path);
+  if (sim !== NONE_SIMULATIONS) return sim as T;
+  const att = attentionRead(path, params);
+  if (att !== NONE_ATTENTION) return att as T;
+  const mat = materialsRead(path);
+  if (mat !== NONE_MATERIALS) return mat as T;
+  const mr = matchRead(path);
+  if (mr !== NONE_MATCH) return mr as T;
   const rolesStep = rolesFixtureResponse(path, params);
   if (rolesStep !== NONE_ROLES) return rolesStep as T;
   const ent = enterpriseFixtureResponse(path);

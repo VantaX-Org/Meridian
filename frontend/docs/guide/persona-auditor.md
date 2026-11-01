@@ -4,7 +4,7 @@ You read: every canvas, every number and its receipt, and, as an auditor, the au
 
 ## Your first five steps
 
-1. **Landscape**: read the sentence and the coverage matrix; hover a cell for its reading.
+1. **Landscape**: read the go-live banner, the sentence, the landscape map and the coverage matrix; hover a tile or a cell for its reading.
 2. **An object**: open the receipt and every **i**: the arithmetic behind each figure.
 3. **Approvals**: in Work, **Waiting for approval** and **Exceptions** show the four-eyes evidence: who drafted, who approved, who signed off and why.
 4. **Audit log** (auditor): Administration, **Audit log**; filter by person and dates and **Export Excel**.

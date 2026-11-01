@@ -159,6 +159,9 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
           <span>{t("Landscape")}</span>
           <kbd className="m2-kb">g l</kbd>
         </V2Link>
+        <V2Link href="/attention" className="m2-mi" aria-current={current("/attention") ? "page" : undefined}>
+          <span>{t("Action centre")}</span>
+        </V2Link>
         <V2Link href="/work" className="m2-mi" aria-current={current("/work") ? "page" : undefined}>
           <span>{t("Work")}</span>
           {counts.data?.fix ? <span className="m2-n">{int(counts.data.fix)}</span> : <kbd className="m2-kb">g w</kbd>}
@@ -173,6 +176,48 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
         </V2Link>
         <V2Link href="/requests" className="m2-mi" aria-current={current("/requests") ? "page" : undefined}>
           <span>{t("Requests")}</span>
+        </V2Link>
+        <V2Link href="/config" className="m2-mi" aria-current={current("/config") ? "page" : undefined}>
+          <span>{t("Configuration")}</span>
+        </V2Link>
+        <V2Link href="/cleansing" className="m2-mi" aria-current={current("/cleansing") ? "page" : undefined}>
+          <span>{t("Cleansing")}</span>
+        </V2Link>
+        <V2Link href="/processes" className="m2-mi" aria-current={current("/processes") ? "page" : undefined}>
+          <span>{t("Process discovery")}</span>
+        </V2Link>
+        <V2Link href="/mining" className="m2-mi" aria-current={current("/mining") ? "page" : undefined}>
+          <span>{t("Data mining")}</span>
+        </V2Link>
+        <V2Link href="/mdm" className="m2-mi" aria-current={current("/mdm") ? "page" : undefined}>
+          <span>{t("MDM health")}</span>
+        </V2Link>
+        <V2Link href="/links" className="m2-mi" aria-current={current("/links") ? "page" : undefined}>
+          <span>{t("Record links")}</span>
+        </V2Link>
+        <V2Link href="/materials" className="m2-mi" aria-current={current("/materials") ? "page" : undefined}>
+          <span>{t("Material 360")}</span>
+        </V2Link>
+        <V2Link href="/issues" className="m2-mi" aria-current={current("/issues") ? "page" : undefined}>
+          <span>{t("Issues")}</span>
+        </V2Link>
+        <V2Link href="/migration" className="m2-mi" aria-current={current("/migration") ? "page" : undefined}>
+          <span>{t("Migration")}</span>
+        </V2Link>
+        <V2Link href="/s4" className="m2-mi" aria-current={current("/s4") ? "page" : undefined}>
+          <span>{t("S/4HANA readiness")}</span>
+        </V2Link>
+        <V2Link href="/insights" className="m2-mi" aria-current={current("/insights") ? "page" : undefined}>
+          <span>{t("Cost and causes")}</span>
+        </V2Link>
+        <V2Link href="/forecast" className="m2-mi" aria-current={current("/forecast") ? "page" : undefined}>
+          <span>{t("Forecast and plan")}</span>
+        </V2Link>
+        <V2Link href="/value" className="m2-mi" aria-current={current("/value") ? "page" : undefined}>
+          <span>{t("Value delivered")}</span>
+        </V2Link>
+        <V2Link href="/score" className="m2-mi" aria-current={current("/score") ? "page" : undefined}>
+          <span>{t("Score lens")}</span>
         </V2Link>
       </nav>
       <div className="m2-mgrp m2-mgrp-act">

@@ -305,7 +305,7 @@ describe("on a phone", () => {
     const first = within(list).getAllByRole("listitem")[0];
     expect(norm(first)).toContain("MM142 Base unit of measure MEINS must reference a valid entry in T006");
     expect(norm(first)).toContain("1,184,000");
-    await waitFor(() => expect(norm(within(list).getAllByRole("listitem")[1])).toContain("over tolerance"));
+    await waitFor(() => expect(norm(within(list).getAllByRole("listitem")[1])).toContain("fails on too many records"));
     expect(norm(within(list).getAllByRole("listitem")[8])).toContain("and 72 more rules");
     for (const name of ["Value at risk", "Over tolerance", "Failing %", "Coverage"]) expect(screen.getByRole("button", { name: `About ${name}` })).toBeInTheDocument();
     expect(within(list).queryByRole("button", { name: /^About/ })).toBeNull(); // the header is outside the list
