@@ -6598,4 +6598,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Of the records each batch fixed, the share that has not failed again": "Anteil der je Charge behobenen Datensätze, die nicht erneut fehlgeschlagen sind",
   "SAP transactions": "SAP-Transaktionen",
   "Last 24 hours": "Letzte 24 Stunden",
+  "Findings downloading": "Feststellungen werden heruntergeladen",
+  "The browser saves the Excel file when it is ready.": "Der Browser speichert die Excel-Datei, sobald sie bereit ist.",
+  "Export findings": "Feststellungen exportieren",
+  "Outside fixture mode this saves every finding of the run as an Excel file.": "Außerhalb des Fixture-Modus speichert dies alle Feststellungen des Laufs als Excel-Datei.",
 };

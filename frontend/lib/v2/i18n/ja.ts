@@ -6598,4 +6598,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Of the records each batch fixed, the share that has not failed again": "各バッチで修正したレコードのうち、再び違反していない割合",
   "SAP transactions": "SAPトランザクション",
   "Last 24 hours": "過去24時間",
+  "Findings downloading": "検出結果をダウンロード中",
+  "The browser saves the Excel file when it is ready.": "準備ができるとブラウザーが Excel ファイルを保存します。",
+  "Export findings": "検出結果をエクスポート",
+  "Outside fixture mode this saves every finding of the run as an Excel file.": "フィクスチャモード以外では、この実行のすべての検出結果を Excel ファイルとして保存します。",
 };

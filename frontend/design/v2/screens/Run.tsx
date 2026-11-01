@@ -5,6 +5,7 @@ import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getObjectRules } from "@/lib/api/v2/landscape";
 import { formatDate } from "@/lib/format";
+import { exportFindings } from "@/lib/api/findings";
 import type { LandscapeCell, RuleRow } from "@/lib/api/v2/types";
 import { archiveRuns, downloadRunReport, pinBaseline, restoreRuns, type TimelineRun } from "@/lib/api/v2/runs";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
@@ -514,6 +515,21 @@ export function RunCanvas({ id }: { id: string }) {
           }
         >
           {tr("Download report")}
+        </button>
+        <button
+          type="button"
+          className="m2-btn"
+          disabled={pending !== null || !v}
+          onClick={() =>
+            void run("export", async () => {
+              if (!session.fixture) await exportFindings("xlsx", { version_id: id });
+              return session.fixture
+                ? { tone: "info", title: tr("Fixture mode: no file is produced"), detail: tr("Outside fixture mode this saves every finding of the run as an Excel file.") }
+                : { tone: "ok", title: tr("Findings downloading"), detail: tr("The browser saves the Excel file when it is ready.") };
+            })
+          }
+        >
+          {tr("Export findings")}
         </button>
         <CompareControl id={id} runs={timeline.data?.runs ?? []} />
       </div>

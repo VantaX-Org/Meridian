@@ -6597,6 +6597,10 @@ export const en = {
   "Of the records each batch fixed, the share that has not failed again": "Of the records each batch fixed, the share that has not failed again",
   "SAP transactions": "SAP transactions",
   "Last 24 hours": "Last 24 hours",
+  "Findings downloading": "Findings downloading",
+  "The browser saves the Excel file when it is ready.": "The browser saves the Excel file when it is ready.",
+  "Export findings": "Export findings",
+  "Outside fixture mode this saves every finding of the run as an Excel file.": "Outside fixture mode this saves every finding of the run as an Excel file.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
