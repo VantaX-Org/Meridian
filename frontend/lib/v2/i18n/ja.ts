@@ -6724,4 +6724,12 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The steps of this run could not be read.": "この実行のステップを読み込めませんでした。",
   "No step timings are kept for this run.": "この実行にはステップの所要時間が保存されていません。",
   "Step duration": "ステップごとの所要時間",
+  "Cancel this job?": "このジョブをキャンセルしますか?",
+  "The job stops where it is. Work it already saved stays, and an analysis run is marked failed.": "ジョブはその時点で止まります。保存済みの作業は残り、分析の実行は失敗扱いになります。",
+  "The worker could not be told to stop, so it may run on until its next check. The job counts as cancelled.": "ワーカーに停止を伝えられなかったため、次の確認まで動き続ける場合があります。ジョブはキャンセル済みとして扱われます。",
+  "Cancelling…": "キャンセル中…",
+  "Yes, cancel the job": "はい、ジョブをキャンセルする",
+  "Keep it running": "実行を続ける",
+  "Cancelling a job needs the manage settings permission": "ジョブのキャンセルには manage settings 権限が必要です",
+  "Cancel job": "ジョブをキャンセル",
 };

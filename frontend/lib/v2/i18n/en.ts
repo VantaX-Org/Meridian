@@ -6723,6 +6723,14 @@ export const en = {
   "The steps of this run could not be read.": "The steps of this run could not be read.",
   "No step timings are kept for this run.": "No step timings are kept for this run.",
   "Step duration": "Step duration",
+  "Cancel this job?": "Cancel this job?",
+  "The job stops where it is. Work it already saved stays, and an analysis run is marked failed.": "The job stops where it is. Work it already saved stays, and an analysis run is marked failed.",
+  "The worker could not be told to stop, so it may run on until its next check. The job counts as cancelled.": "The worker could not be told to stop, so it may run on until its next check. The job counts as cancelled.",
+  "Cancelling…": "Cancelling…",
+  "Yes, cancel the job": "Yes, cancel the job",
+  "Keep it running": "Keep it running",
+  "Cancelling a job needs the manage settings permission": "Cancelling a job needs the manage settings permission",
+  "Cancel job": "Cancel job",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

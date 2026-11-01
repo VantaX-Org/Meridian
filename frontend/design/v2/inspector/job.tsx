@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { cancelJob } from "@/lib/api/v2/run-ops";
 import { formatDate } from "@/lib/format";
 import type { Job } from "@/types/jobs";
 import { retryJobById } from "@/lib/api/v2/runs";
@@ -80,6 +82,8 @@ function JobBody({ job }: { job: Job }) {
   const allowed = session.can(retryPermission(job.kind));
   const retryable = canRetry(job);
   const live = job.status === "queued" || job.status === "running";
+  const [confirming, setConfirming] = useState(false);
+  const canCancel = session.can("manage_settings");
   const { hrefFor } = useOpenItem();
   // A refused sign-in is not fixed by retrying: the credentials change first, then the editor retries this job.
   const signIn = job.status === "failed" && system && isAuthError(job.error) && session.can("manage_systems") ? system : null;
@@ -136,6 +140,41 @@ function JobBody({ job }: { job: Job }) {
             <p>{job.error ?? tr("The job failed and did not say why.")}</p>
           </div>
         </>
+      ) : null}
+
+      {live ? (
+        <Actions>
+          {confirming ? (
+            <div role="alertdialog" aria-label={tr("Cancel this job?")} data-testid="job-cancel-confirm">
+              <p className="m2-prov">{tr("The job stops where it is. Work it already saved stays, and an analysis run is marked failed.")}</p>
+              <button
+                type="button"
+                className="m2-btn m2-strong"
+                disabled={pending !== null}
+                onClick={() =>
+                  void run("cancel", async () => {
+                    const r = await cancelJob(job.id);
+                    setConfirming(false);
+                    void qc.invalidateQueries({ queryKey: ["v2"] });
+                    void qc.invalidateQueries({ queryKey: ["jobs"] });
+                    return r.tasks_revoked === false
+                      ? { tone: "info", title: tr("Cancelled"), detail: tr("The worker could not be told to stop, so it may run on until its next check. The job counts as cancelled.") }
+                      : { tone: "ok", title: tr("Cancelled") };
+                  })
+                }
+              >
+                {pending === "cancel" ? tr("Cancelling…") : tr("Yes, cancel the job")}
+              </button>
+              <button type="button" className="m2-btn" disabled={pending !== null} onClick={() => setConfirming(false)}>
+                {tr("Keep it running")}
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="m2-btn" disabled={!canCancel} title={canCancel ? undefined : tr("Cancelling a job needs the manage settings permission")} onClick={() => setConfirming(true)} data-testid="job-cancel">
+              {tr("Cancel job")}
+            </button>
+          )}
+        </Actions>
       ) : null}
 
       {job.status === "failed" ? (

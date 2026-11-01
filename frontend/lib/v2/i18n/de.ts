@@ -6724,4 +6724,12 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The steps of this run could not be read.": "Die Schritte dieses Laufs konnten nicht gelesen werden.",
   "No step timings are kept for this run.": "Für diesen Lauf sind keine Schrittzeiten gespeichert.",
   "Step duration": "Dauer je Schritt",
+  "Cancel this job?": "Diesen Auftrag abbrechen?",
+  "The job stops where it is. Work it already saved stays, and an analysis run is marked failed.": "Der Auftrag stoppt, wo er ist. Bereits gespeicherte Arbeit bleibt, und ein Analyselauf wird als fehlgeschlagen markiert.",
+  "The worker could not be told to stop, so it may run on until its next check. The job counts as cancelled.": "Der Worker konnte nicht zum Stoppen angewiesen werden und läuft eventuell bis zur nächsten Prüfung weiter. Der Auftrag gilt als abgebrochen.",
+  "Cancelling…": "Wird abgebrochen…",
+  "Yes, cancel the job": "Ja, Auftrag abbrechen",
+  "Keep it running": "Weiterlaufen lassen",
+  "Cancelling a job needs the manage settings permission": "Das Abbrechen eines Auftrags braucht die Berechtigung „manage settings“",
+  "Cancel job": "Auftrag abbrechen",
 };
