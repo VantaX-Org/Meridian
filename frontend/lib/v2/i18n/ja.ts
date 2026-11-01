@@ -6720,4 +6720,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Quality score": "品質スコア",
   "Nothing blocks this wave.": "このウェーブをブロックしているものはありません。",
   "Blockers of the wave": "ウェーブのブロッカー",
+  "Readiness report saved": "準備度レポートを保存しました",
+  "Download the report as Excel": "レポートを Excel でダウンロード",
+  "Download the report as PDF": "レポートを PDF でダウンロード",
 };

@@ -39,6 +39,12 @@ export function WaveCockpitBlock({ wave }: { wave: MigrationWave }) {
       };
     });
   const c = cockpit.data;
+  const canExport = session.can("export");
+  const download = (fmt: rep.WaveReportFormat) =>
+    void run(`report:${fmt}`, async () => {
+      const name = await rep.downloadWaveReport(wave.id, fmt);
+      return { tone: "ok", title: t("Readiness report saved"), detail: name };
+    });
   return (
     <div data-testid="wave-cockpit">
       {canAnalyse ? (
@@ -46,6 +52,13 @@ export function WaveCockpitBlock({ wave }: { wave: MigrationWave }) {
           {pending === "analyse" ? t("Queuing…") : t("Analyse the whole wave")}
         </button>
       ) : null}
+      {canExport && c?.run_id
+        ? (["xlsx", "pdf"] as const).map((fmt) => (
+            <button key={fmt} type="button" className="m2-btn m2-sm" disabled={pending !== null} onClick={() => download(fmt)}>
+              {pending === `report:${fmt}` ? t("Preparing…") : fmt === "xlsx" ? t("Download the report as Excel") : t("Download the report as PDF")}
+            </button>
+          ))
+        : null}
       {outcome ? (
         <ResultFrame outcome={outcome}>
           <span>

@@ -6719,6 +6719,9 @@ export const en = {
   "Quality score": "Quality score",
   "Nothing blocks this wave.": "Nothing blocks this wave.",
   "Blockers of the wave": "Blockers of the wave",
+  "Readiness report saved": "Readiness report saved",
+  "Download the report as Excel": "Download the report as Excel",
+  "Download the report as PDF": "Download the report as PDF",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

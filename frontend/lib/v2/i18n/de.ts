@@ -6720,4 +6720,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Quality score": "Qualitätswert",
   "Nothing blocks this wave.": "Nichts blockiert diese Welle.",
   "Blockers of the wave": "Blocker der Welle",
+  "Readiness report saved": "Bereitschaftsbericht gespeichert",
+  "Download the report as Excel": "Bericht als Excel herunterladen",
+  "Download the report as PDF": "Bericht als PDF herunterladen",
 };
