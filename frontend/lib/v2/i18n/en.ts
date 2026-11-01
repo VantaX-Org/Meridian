@@ -6707,6 +6707,12 @@ export const en = {
   "Readiness {s}, {n} would not load": "Readiness {s}, {n} would not load",
   "Open the analysis of {d}": "Open the analysis of {d}",
   "No costed SAP feature waits on this wave.": "No costed SAP feature waits on this wave.",
+  "Export runs": "Export runs",
+  "Export runs to Excel": "Export runs to Excel",
+  "Export runs to CSV": "Export runs to CSV",
+  "Exporting runs needs the export permission": "Exporting runs needs the export permission",
+  "Runs downloading": "Runs downloading",
+  "The browser saves the file when it is ready. It follows the system filter and the archived switch, up to 100 runs.": "The browser saves the file when it is ready. It follows the system filter and the archived switch, up to 100 runs.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

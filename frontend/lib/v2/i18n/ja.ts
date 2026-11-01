@@ -6708,4 +6708,10 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Readiness {s}, {n} would not load": "準備度 {s}、{n} 件が読み込めません",
   "Open the analysis of {d}": "{d} の分析を開く",
   "No costed SAP feature waits on this wave.": "このウェーブを待っている、コスト評価済みの SAP 機能はありません。",
+  "Export runs": "実行を書き出す",
+  "Export runs to Excel": "実行を Excel に書き出す",
+  "Export runs to CSV": "実行を CSV に書き出す",
+  "Exporting runs needs the export permission": "実行の書き出しには export 権限が必要です",
+  "Runs downloading": "実行をダウンロード中",
+  "The browser saves the file when it is ready. It follows the system filter and the archived switch, up to 100 runs.": "準備ができるとブラウザがファイルを保存します。システムの絞り込みとアーカイブの切り替えに従い、最大 100 件です。",
 };

@@ -6708,4 +6708,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Readiness {s}, {n} would not load": "Bereitschaft {s}, {n} nicht ladbar",
   "Open the analysis of {d}": "Analyse vom {d} öffnen",
   "No costed SAP feature waits on this wave.": "Auf diese Welle wartet keine bewertete SAP-Funktion.",
+  "Export runs": "Läufe exportieren",
+  "Export runs to Excel": "Läufe nach Excel exportieren",
+  "Export runs to CSV": "Läufe als CSV exportieren",
+  "Exporting runs needs the export permission": "Der Export von Läufen braucht die Berechtigung „export“",
+  "Runs downloading": "Läufe werden heruntergeladen",
+  "The browser saves the file when it is ready. It follows the system filter and the archived switch, up to 100 runs.": "Der Browser speichert die Datei, sobald sie fertig ist. Sie folgt dem Systemfilter und dem Archiv-Schalter, bis zu 100 Läufe.",
 };
