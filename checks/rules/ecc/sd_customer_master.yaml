@@ -1922,3 +1922,1619 @@ rules:
         date cannot be later than the day it is read.
     record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}:
       creation date {actual_value} is in the future.'
+  - id: SDCM700
+    field: KNVV.VKORG
+    check_class: exists_check
+    grain: KNVV
+    fields:
+    - KNVV.VKORG
+    - KNVV.VTWEG
+    - KNVV.SPART
+    target_table: TVTA
+    target_fields:
+    - VKORG
+    - VTWEG
+    - SPART
+    s4_area: organisational
+    s4_impact: blocking
+    simplification_item: Organisational data
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: Customer sales area is not a defined sales area (TVTA)
+    why_it_matters: 'A sales area is the combination of sales organisation, distribution channel and division maintained in
+      TVTA. Each of the three codes can exist on its own while the combination was never defined, or was removed from the
+      enterprise structure. Sales data kept for such a combination can never be used: VA01 only accepts sales areas that exist
+      in TVTA, and the S/4HANA Business Partner sales-area role cannot be created for it.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Sales documents cannot be created for the customer in this sales area; CVI rejects the sales data during BP
+      conversion.
+    fix_map:
+      __other__: Either define the sales area in SPRO > Enterprise Structure > Assignment > Sales and Distribution > Set up
+        sales area, or flag the customer sales data for deletion (VD06) if the combination is not used.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: the sales area is not defined
+      in TVTA.'
+  - id: SDCM701
+    field: KNVV.VTWEG
+    check_class: exists_check
+    grain: KNVV
+    fields:
+    - KNVV.VKORG
+    - KNVV.VTWEG
+    - KNVV.SPART
+    target_table: TVTA
+    target_fields:
+    - VKORG
+    - VTWKU
+    - SPAKU
+    severity: medium
+    dimension: consistency
+    message: Customer sales data is maintained in a sales area that refers to another sales area for master data
+    why_it_matters: 'TVTA.VTWKU and TVTA.SPAKU name the reference distribution channel and reference division whose customer
+      master data a sales area uses. When a sales area points to a different reference, SAP reads the customer data of the
+      reference area and ignores the data maintained directly in this one. Data stored here is dead: it is never used, it
+      drifts from the data that is used, and it doubles the volume to convert to the Business Partner.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Pricing, shipping and billing use the reference sales area data, not the values stored in this sales area.
+    fix_map:
+      __other__: Maintain the customer only in the reference sales area (TVTA.VTWKU / SPAKU) and flag the sales data in this
+        non-reference area for deletion, or remove the reference in SPRO if this area should hold its own data.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: this sales area takes customer
+      master data from another reference sales area.'
+  - id: SDCM702
+    field: KNVV.VWERK
+    check_class: exists_check
+    grain: KNVV
+    applies_when:
+      KNVV.VWERK:
+        populated: true
+    fields:
+    - KNVV.VWERK
+    - KNVV.VKORG
+    - KNVV.VTWEG
+    target_table: TVKWZ
+    target_fields:
+    - WERKS
+    - VKORG
+    - VTWEG
+    severity: medium
+    dimension: consistency
+    message: Delivering plant of the customer is not assigned to the sales organisation and distribution channel (TVKWZ)
+    why_it_matters: Plants are assigned to the combination of sales organisation and distribution channel in TVKWZ. The delivering
+      plant proposed from KNVV.VWERK is only valid in a sales order if that assignment exists. A plant that exists in T001W
+      but is not assigned to the sales organisation is proposed into every order and then rejected, so the order item has
+      no plant and no availability check.
+    rule_authority: sap_hard_constraint
+    sap_impact: 'Sales order items get an invalid delivering plant: no availability check, no delivery, no shipping point.'
+    fix_map:
+      __other__: Change the delivering plant in VD02 to a plant assigned to the sales organisation and distribution channel,
+        or add the assignment in SPRO > Enterprise Structure > Assignment > Sales and Distribution > Assign sales organisation
+        - distribution channel - plant.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: delivering plant {KNVV.VWERK}
+      is not assigned to sales organisation and distribution channel.'
+  - id: SDCM703
+    field: KNVV.VKGRP
+    check_class: exists_check
+    grain: KNVV
+    applies_when:
+      KNVV.VKGRP:
+        populated: true
+      KNVV.VKBUR:
+        populated: true
+    fields:
+    - KNVV.VKBUR
+    - KNVV.VKGRP
+    target_table: TVBVK
+    target_fields:
+    - VKBUR
+    - VKGRP
+    severity: medium
+    dimension: consistency
+    message: Sales group of the customer is not assigned to its sales office (TVBVK)
+    why_it_matters: Sales groups are assigned to sales offices in TVBVK. KNVV.VKBUR and KNVV.VKGRP are copied into every sales
+      document as the responsible office and group. A group that does not belong to the office splits sales statistics and
+      commission reports between two organisational lines and is rejected when the document is checked against the enterprise
+      structure.
+    rule_authority: sap_hard_constraint
+    sap_impact: Sales documents carry an office and group that do not belong together; sales reporting by office is wrong.
+    fix_map:
+      __other__: Correct the sales group or sales office in VD02 so the pair exists in SPRO > Enterprise Structure > Assignment
+        > Sales and Distribution > Assign sales group to sales office.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: sales group {KNVV.VKGRP}
+      is not assigned to sales office {KNVV.VKBUR}.'
+  - id: SDCM704
+    field: KNVV.VKBUR
+    check_class: null_check
+    grain: KNVV
+    applies_when:
+      KNVV.VKGRP:
+        populated: true
+    severity: low
+    dimension: completeness
+    message: Customer sales area has a sales group but no sales office
+    why_it_matters: 'A sales group is an organisational unit below a sales office: SAP assigns groups to offices (TVBVK),
+      not to sales areas. A sales group without its sales office cannot be validated, and sales documents created from this
+      record carry a group with no office, which breaks every report and authorisation that is organised by sales office.'
+    rule_authority: best_practice
+    sap_impact: Sales documents carry a sales group without its sales office; office-based reporting and authorisation miss
+      them.
+    fix_map:
+      __other__: Enter the sales office to which the sales group belongs in VD02 (Sales tab).
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: sales group {KNVV.VKGRP}
+      is maintained without a sales office.'
+  - id: SDCM705
+    field: KNVV.KUNNR
+    check_class: exists_check
+    grain: KNVV
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    s4_area: business_partner
+    s4_impact: blocking
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: Customer sales area data exists without a general customer record (KNA1)
+    why_it_matters: 'KNVV is a dependent table of KNA1: sales area data can only be created for a customer number that exists
+      in the general data. A KNVV row without a KNA1 parent is an orphan left by a deletion, a client copy or a direct table
+      load. No transaction can display or maintain it and CVI has no customer to convert it with.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Orphan sales data cannot be maintained in VD02 and is dropped or rejected in the Business Partner conversion.
+    fix_map:
+      __other__: Delete the orphan rows with the archiving object FI_ACCRECV or recreate the general data, and correct the
+        load that created them.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: no general customer record
+      exists in KNA1.'
+  - id: SDCM706
+    field: KNVV.ERNAM
+    check_class: null_check
+    grain: KNVV
+    severity: low
+    dimension: completeness
+    message: Customer sales area record has no creator (ERNAM)
+    why_it_matters: ERNAM is filled by VD01/XD01 with the user who created the sales area data. A blank creator means the
+      record was inserted outside the standard transactions (direct load, client copy without user data), so the audit trail
+      of who created the customer in this sales area is lost and the record bypassed the field checks of the transaction.
+    rule_authority: best_practice
+    sap_impact: No audit trail for the creation of the sales area data.
+    fix_map:
+      __other__: Identify the load that created the record, verify its data with the transactions, and correct the load program
+        so it fills ERNAM.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: the creating user is blank.'
+  - id: SDCM707
+    field: KNVV.ERDAT
+    check_class: null_check
+    grain: KNVV
+    severity: low
+    dimension: completeness
+    message: Customer sales area record has no creation date (ERDAT)
+    why_it_matters: ERDAT is set by VD01/XD01 to the date the sales area data was created. A blank creation date means the
+      record was written outside the standard transactions, and every age, change and aging analysis of the customer in this
+      sales area has no starting point.
+    rule_authority: best_practice
+    sap_impact: Ageing and change reporting for the sales area cannot be computed for this record.
+    fix_map:
+      __other__: Correct the load program so it fills ERDAT, and set the date from the change documents (CDHDR) where possible.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: the creation date is blank.'
+  - id: SDCM708
+    field: KNVV.ERDAT
+    check_class: cross_field_check
+    grain: KNVV
+    fail_when: '`KNVV.ERDAT` < `KNA1.ERDAT`'
+    severity: low
+    dimension: consistency
+    message: Customer sales area was created before the customer itself
+    why_it_matters: Sales area data (KNVV) can only be created for an existing customer (KNA1). A KNVV creation date earlier
+      than the KNA1 creation date is impossible in the standard transactions and shows that one of the two dates was written
+      by a load or migration with the wrong value, so age and creation reporting of the customer is wrong.
+    rule_authority: sap_hard_constraint
+    sap_impact: Customer age, creation and change reporting are inconsistent between general and sales data.
+    fix_map:
+      __other__: Correct the creation date of the general data or of the sales area data in the source of the migration and
+        re-load.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: created {KNVV.ERDAT}, before
+      the customer itself ({KNA1.ERDAT}).'
+  - id: SDCM709
+    field: KNVV.PERRL
+    check_class: referential_check
+    grain: KNVV
+    severity: medium
+    dimension: validity
+    message: Invoice list schedule of the customer is not a defined factory calendar (TFACD)
+    why_it_matters: KNVV.PERRL is the calendar that sets the dates on which invoice lists are created for the customer, and
+      its check table is the factory calendar TFACD. A calendar ID that does not exist means VF21/VF24 can never find an invoice
+      list date, so billing documents that should be collected in an invoice list are never listed.
+    rule_authority: sap_hard_constraint
+    sap_impact: Invoice lists are not created for the customer; the billing documents stay outside the list.
+    fix_map:
+      __other__: Change the invoice list schedule in VD02 (Billing tab) to a factory calendar defined in SCAL, or create the
+        calendar.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: invoice list schedule {KNVV.PERRL}
+      is not a defined calendar.'
+  - id: SDCM710
+    field: KNVV.PERFK
+    check_class: cross_field_check
+    grain: KNVV
+    fail_when: '`KNVV.PERRL`.notna() & `KNVV.PERFK`.isna()'
+    severity: low
+    dimension: consistency
+    message: Customer has an invoice list schedule but no invoice dates calendar
+    why_it_matters: Invoice lists (KNVV.PERRL) collect billing documents that were already created. SAP sets the billing date
+      of a document that goes into an invoice list from the invoice dates calendar KNVV.PERFK. With a list schedule but no
+      invoice dates calendar, each billing document is created on its own date while the list collects them on another schedule,
+      which is the opposite of what invoice lists are configured for.
+    rule_authority: best_practice
+    sap_impact: Billing documents are created daily instead of on the dates the invoice list is meant to collect.
+    fix_map:
+      __other__: Maintain the invoice dates calendar (Billing tab, field Invoice dates) together with the invoice list schedule
+        in VD02, or remove the invoice list schedule.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: invoice list schedule {KNVV.PERRL}
+      is set but no invoice dates calendar.'
+  - id: SDCM711
+    field: KNVV.INCO1
+    check_class: null_check
+    grain: KNVV
+    applies_when:
+      KNVV.LOEVM:
+        blank: true
+    severity: medium
+    dimension: completeness
+    message: Customer sales area has no Incoterms
+    why_it_matters: KNVV.INCO1 is copied into every sales order header and decides where risk and cost pass from seller to
+      buyer. Without it each order must be completed by hand, freight conditions that depend on the Incoterm are not found,
+      and export declarations and intrastat reports have no delivery terms.
+    rule_authority: best_practice
+    sap_impact: Sales orders are created without delivery terms; freight pricing and foreign trade data are incomplete.
+    fix_map:
+      __other__: Enter the Incoterms and their location in VD02 (Billing tab) for the sales area.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: no Incoterms are maintained.'
+  - id: SDCM712
+    field: KNVV.INCO1
+    check_class: cross_field_check
+    grain: KNVV
+    fail_when: '`KNVV.INCO1`.isin([''DAF'', ''DES'', ''DEQ'', ''DDU''])'
+    severity: low
+    dimension: validity
+    message: Customer uses an Incoterms 2000 term that was withdrawn in Incoterms 2010 (DAF, DES, DEQ, DDU)
+    why_it_matters: The ICC withdrew DAF, DES, DEQ and DDU from Incoterms 2010 and replaced them with DAP (and DAT, later
+      DPU). The codes stay in SAP table TINC for old documents, so SAP accepts them, but contracts, letters of credit and
+      customs declarations issued today under Incoterms 2010 or 2020 cannot refer to them.
+    rule_authority: iso_standard
+    sap_impact: Sales orders and export documents carry delivery terms that are no longer defined by the ICC.
+    fix_map:
+      __other__: Replace the term in VD02 with its current equivalent (normally DAP; DDP where the seller pays duty) after
+        agreeing it with the customer.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: Incoterms {KNVV.INCO1}
+      were withdrawn in Incoterms 2010.'
+  - id: SDCM713
+    field: KNVV.INCO1
+    check_class: cross_field_check
+    grain: KNVV
+    fail_when: '`KNVV.INCO1` == ''DAT'''
+    severity: low
+    dimension: validity
+    message: Customer uses Incoterm DAT, which Incoterms 2020 replaced with DPU
+    why_it_matters: Incoterms 2020 renamed DAT (Delivered at Terminal) to DPU (Delivered at Place Unloaded) so the place of
+      delivery is no longer limited to a terminal. DAT stays in TINC for old documents, but new contracts and customs documents
+      issued under Incoterms 2020 use DPU.
+    rule_authority: iso_standard
+    sap_impact: Sales orders and export documents carry an Incoterms 2010 term in place of its Incoterms 2020 replacement.
+    fix_map:
+      __other__: Change the Incoterms in VD02 from DAT to DPU (create DPU in SPRO > Sales and Distribution > Master Data >
+        Business Partners > Customers > Shipping > Define Incoterms if missing).
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: Incoterms DAT should be
+      DPU under Incoterms 2020.'
+  - id: SDCM714
+    field: KNVV.ANTLF
+    check_class: cross_field_check
+    grain: KNVV
+    fail_when: '`KNVV.KZTLF`.isin([''B'', ''C'']) & (`KNVV.ANTLF` > 1)'
+    severity: low
+    dimension: consistency
+    message: Customer allows more than one partial delivery but its partial delivery rule permits only one delivery
+    why_it_matters: KNVV.KZTLF values B (create only one delivery, even with quantity zero) and C (only complete delivery)
+      both mean an order item is delivered once. KNVV.ANTLF is the maximum number of partial deliveries per item. A maximum
+      above 1 contradicts a rule that allows a single delivery, so one of the two settings does not reflect what was agreed
+      with the customer.
+    rule_authority: best_practice
+    sap_impact: Delivery behaviour for the customer depends on which of the contradicting settings the order uses.
+    fix_map:
+      __other__: Decide whether the customer accepts partial deliveries and align KZTLF and the maximum partial deliveries
+        in VD02 (Shipping tab).
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: partial delivery rule {KNVV.KZTLF}
+      allows one delivery but the maximum is {KNVV.ANTLF}.'
+  - id: SDCM715
+    field: KNVV.AUTLF
+    check_class: cross_field_check
+    grain: KNVV
+    fail_when: (`KNVV.AUTLF` == 'X') & `KNVV.KZTLF`.isin(['A', 'D'])
+    severity: low
+    dimension: consistency
+    message: Customer requires complete delivery but its partial delivery rule allows partial deliveries
+    why_it_matters: 'KNVV.AUTLF = X requires each order to be delivered complete in one delivery. KNVV.KZTLF A (deliver whatever
+      quantity is available) and D (no limit to subsequent deliveries) explicitly allow partial deliveries per item. The two
+      settings contradict each other: the order header forbids what the item rule allows.'
+    rule_authority: best_practice
+    sap_impact: Delivery creation for the customer follows the order header flag, while the item rule promises partial deliveries.
+    fix_map:
+      __other__: Clear the complete delivery flag or set the partial delivery rule to C (only complete delivery) in VD02.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: complete delivery is required
+      but partial delivery rule {KNVV.KZTLF} allows partial deliveries.'
+  - id: SDCM716
+    field: KNVV.ANTLF
+    check_class: cross_field_check
+    grain: KNVV
+    fail_when: (`KNVV.AUTLF` == 'X') & (`KNVV.ANTLF` > 1)
+    severity: low
+    dimension: consistency
+    message: Customer requires complete delivery but allows more than one partial delivery
+    why_it_matters: With KNVV.AUTLF = X the whole order is delivered once. A maximum number of partial deliveries (ANTLF)
+      above 1 has no effect and contradicts the complete delivery requirement, which shows that one of the two settings was
+      copied from a template and not agreed with the customer.
+    rule_authority: best_practice
+    sap_impact: The maximum partial delivery setting is ignored; delivery behaviour is not what the record suggests.
+    fix_map:
+      __other__: Clear the maximum partial deliveries or the complete delivery flag in VD02 (Shipping tab).
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: complete delivery is required
+      but up to {KNVV.ANTLF} partial deliveries are allowed.'
+  - id: SDCM717
+    field: KNVV.PODTG
+    check_class: cross_field_check
+    grain: KNVV
+    fail_when: (`KNVV.PODTG` > 0) & `KNVV.PODKZ`.isna()
+    severity: low
+    dimension: consistency
+    message: Customer has a proof-of-delivery timeframe but is not relevant for proof of delivery
+    why_it_matters: KNVV.PODTG is the number of days after goods issue within which the customer must confirm proof of delivery.
+      SAP only uses it when KNVV.PODKZ marks the customer as POD relevant. A timeframe without the flag is never applied,
+      so the business expects POD-based billing that SAP does not perform.
+    rule_authority: best_practice
+    sap_impact: Billing is not held for proof of delivery although a POD timeframe is maintained.
+    fix_map:
+      __other__: Set the POD relevance flag in VD02 (Shipping tab) or clear the timeframe.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: POD timeframe {KNVV.PODTG}
+      days is set but the customer is not POD relevant.'
+  - id: SDCM718
+    field: KNVV.AWAHR
+    check_class: regex_check
+    grain: KNVV
+    pattern: ^(100|0?[0-9]{1,2})$
+    severity: low
+    dimension: validity
+    message: Order probability of the customer is not a percentage between 0 and 100
+    why_it_matters: KNVV.AWAHR is the probability, in percent, that a quotation or inquiry for the customer becomes an order.
+      SAP copies it into sales documents and uses it to weight expected order values. A value above 100 percent inflates the
+      order pipeline and cannot be a probability.
+    rule_authority: sap_hard_constraint
+    sap_impact: Expected order value in quotations and the sales pipeline is overstated.
+    fix_map:
+      __other__: Enter a probability from 0 to 100 in VD02 (Sales tab).
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: order probability {actual_value}
+      percent is outside 0 to 100.'
+  - id: SDCM719
+    field: KNVV.BOKRE
+    check_class: cross_field_check
+    grain: KNVV
+    fail_when: (`KNVV.BOKRE` == 'X') & `KNVV.AGREL`.isna()
+    s4_area: sales
+    s4_impact: warning
+    simplification_item: SD Rebate Processing replaced by Settlement Management
+    baseline: s4_target
+    severity: medium
+    dimension: consistency
+    message: Customer is relevant for SD rebates but not for Settlement Management
+    why_it_matters: S/4HANA no longer supports new SD rebate agreements (VBO1); rebates move to condition contracts in Settlement
+      Management. A customer can only be used in a condition contract when its sales area is flagged as relevant for settlement
+      management (KNVV.AGREL). Customers that take part in rebates today (KNVV.BOKRE = X) without that flag cannot be moved
+      to condition contracts.
+    rule_authority: s4hana_migration
+    sap_impact: Rebate agreements of the customer cannot be replaced with condition contracts after the S/4HANA conversion.
+    fix_map:
+      __other__: Set the Settlement Management relevance flag in VD02 (Billing tab) for every sales area that is rebate relevant,
+        once condition contract settlement is configured.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: rebate relevant but not
+      relevant for Settlement Management.'
+  - id: SDCM720
+    field: KNVV.PODKZ
+    check_class: domain_value_check
+    grain: KNVV
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: POD relevance (KNVV.PODKZ) must be X or empty
+    why_it_matters: 'KNVV.PODKZ is a checkbox on domain XFELD: SAP only reads the value X as set and treats anything else
+      as not set. When set, billing waits until the customer confirms proof of delivery. A value such as x, 1 or Y is written
+      by a load program or interface, never by the transaction, and the field then looks set in reports while SAP behaves
+      as if it were empty.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The pod relevance setting behaves differently from what the stored value suggests.
+    valid_values_with_labels:
+      X: Set
+      ? ''
+      : Not set
+    fix_map:
+      __other__: Set KNVV.PODKZ to X or clear it in the customer master and correct the interface that wrote the value.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: pod relevance flag holds
+      {actual_value}, which is neither X nor empty.'
+  - id: SDCM721
+    field: KNVV.BOKRE
+    check_class: domain_value_check
+    grain: KNVV
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Rebate relevance (KNVV.BOKRE) must be X or empty
+    why_it_matters: 'KNVV.BOKRE is a checkbox on domain XFELD: SAP only reads the value X as set and treats anything else
+      as not set. When set, billing documents of the customer update rebate agreements. A value such as x, 1 or Y is written
+      by a load program or interface, never by the transaction, and the field then looks set in reports while SAP behaves
+      as if it were empty.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The rebate relevance setting behaves differently from what the stored value suggests.
+    valid_values_with_labels:
+      X: Set
+      ? ''
+      : Not set
+    fix_map:
+      __other__: Set KNVV.BOKRE to X or clear it in the customer master and correct the interface that wrote the value.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: rebate relevance flag holds
+      {actual_value}, which is neither X nor empty.'
+  - id: SDCM722
+    field: KNVV.CHSPL
+    check_class: domain_value_check
+    grain: KNVV
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Batch split allowed (KNVV.CHSPL) must be X or empty
+    why_it_matters: 'KNVV.CHSPL is a checkbox on domain XFELD: SAP only reads the value X as set and treats anything else
+      as not set. When set, delivery items may be split over several batches. A value such as x, 1 or Y is written by a load
+      program or interface, never by the transaction, and the field then looks set in reports while SAP behaves as if it were
+      empty.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The batch split allowed setting behaves differently from what the stored value suggests.
+    valid_values_with_labels:
+      X: Set
+      ? ''
+      : Not set
+    fix_map:
+      __other__: Set KNVV.CHSPL to X or clear it in the customer master and correct the interface that wrote the value.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: batch split allowed flag
+      holds {actual_value}, which is neither X nor empty.'
+  - id: SDCM723
+    field: KNVV.PRFRE
+    check_class: domain_value_check
+    grain: KNVV
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Price determination relevance (KNVV.PRFRE) must be X or empty
+    why_it_matters: 'KNVV.PRFRE is a checkbox on domain XFELD: SAP only reads the value X as set and treats anything else
+      as not set. When set, the customer takes part in price determination by pricing ID. A value such as x, 1 or Y is written
+      by a load program or interface, never by the transaction, and the field then looks set in reports while SAP behaves
+      as if it were empty.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The price determination relevance setting behaves differently from what the stored value suggests.
+    valid_values_with_labels:
+      X: Set
+      ? ''
+      : Not set
+    fix_map:
+      __other__: Set KNVV.PRFRE to X or clear it in the customer master and correct the interface that wrote the value.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: price determination relevance
+      flag holds {actual_value}, which is neither X nor empty.'
+  - id: SDCM724
+    field: KNVV.MRNKZ
+    check_class: domain_value_check
+    grain: KNVV
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Manual invoice maintenance (KNVV.MRNKZ) must be X or empty
+    why_it_matters: 'KNVV.MRNKZ is a checkbox on domain XFELD: SAP only reads the value X as set and treats anything else
+      as not set. When set, billing documents of the customer may be changed manually. A value such as x, 1 or Y is written
+      by a load program or interface, never by the transaction, and the field then looks set in reports while SAP behaves
+      as if it were empty.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The manual invoice maintenance setting behaves differently from what the stored value suggests.
+    valid_values_with_labels:
+      X: Set
+      ? ''
+      : Not set
+    fix_map:
+      __other__: Set KNVV.MRNKZ to X or clear it in the customer master and correct the interface that wrote the value.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: manual invoice maintenance
+      flag holds {actual_value}, which is neither X nor empty.'
+  - id: SDCM725
+    field: KNVV.RDOFF
+    check_class: domain_value_check
+    grain: KNVV
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Rounding off (KNVV.RDOFF) must be X or empty
+    why_it_matters: 'KNVV.RDOFF is a checkbox on domain XFELD: SAP only reads the value X as set and treats anything else
+      as not set. When set, delivery quantities are not rounded with the material rounding profile. A value such as x, 1 or
+      Y is written by a load program or interface, never by the transaction, and the field then looks set in reports while
+      SAP behaves as if it were empty.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The rounding off setting behaves differently from what the stored value suggests.
+    valid_values_with_labels:
+      X: Set
+      ? ''
+      : Not set
+    fix_map:
+      __other__: Set KNVV.RDOFF to X or clear it in the customer master and correct the interface that wrote the value.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: rounding off flag holds
+      {actual_value}, which is neither X nor empty.'
+  - id: SDCM726
+    field: KNVV.UEBTK
+    check_class: domain_value_check
+    grain: KNVV
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Unlimited overdelivery (KNVV.UEBTK) must be X or empty
+    why_it_matters: 'KNVV.UEBTK is a checkbox on domain XFELD: SAP only reads the value X as set and treats anything else
+      as not set. When set, any overdelivery quantity is accepted for the customer. A value such as x, 1 or Y is written by
+      a load program or interface, never by the transaction, and the field then looks set in reports while SAP behaves as
+      if it were empty.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The unlimited overdelivery setting behaves differently from what the stored value suggests.
+    valid_values_with_labels:
+      X: Set
+      ? ''
+      : Not set
+    fix_map:
+      __other__: Set KNVV.UEBTK to X or clear it in the customer master and correct the interface that wrote the value.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: unlimited overdelivery
+      flag holds {actual_value}, which is neither X nor empty.'
+  - id: SDCM727
+    field: KNVV.BLIND
+    check_class: domain_value_check
+    grain: KNVV
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Double invoice validation (KNVV.BLIND) must be X or empty
+    why_it_matters: 'KNVV.BLIND is a checkbox on domain XFELD: SAP only reads the value X as set and treats anything else
+      as not set. When set, the customer is excluded from the duplicate invoice check. A value such as x, 1 or Y is written
+      by a load program or interface, never by the transaction, and the field then looks set in reports while SAP behaves
+      as if it were empty.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The double invoice validation setting behaves differently from what the stored value suggests.
+    valid_values_with_labels:
+      X: Set
+      ? ''
+      : Not set
+    fix_map:
+      __other__: Set KNVV.BLIND to X or clear it in the customer master and correct the interface that wrote the value.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: double invoice validation
+      flag holds {actual_value}, which is neither X nor empty.'
+  - id: SDCM728
+    field: KNVV.CARRIER_NOTIF
+    check_class: domain_value_check
+    grain: KNVV
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Carrier notification (KNVV.CARRIER_NOTIF) must be X or empty
+    why_it_matters: 'KNVV.CARRIER_NOTIF is a checkbox on domain XFELD: SAP only reads the value X as set and treats anything
+      else as not set. When set, the carrier is notified about deliveries to the customer. A value such as x, 1 or Y is written
+      by a load program or interface, never by the transaction, and the field then looks set in reports while SAP behaves
+      as if it were empty.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The carrier notification setting behaves differently from what the stored value suggests.
+    valid_values_with_labels:
+      X: Set
+      ? ''
+      : Not set
+    fix_map:
+      __other__: Set KNVV.CARRIER_NOTIF to X or clear it in the customer master and correct the interface that wrote the value.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: carrier notification flag
+      holds {actual_value}, which is neither X nor empty.'
+  - id: SDCM729
+    field: KNVV.AGREL
+    check_class: domain_value_check
+    grain: KNVV
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Settlement Management relevance (KNVV.AGREL) must be X or empty
+    why_it_matters: 'KNVV.AGREL is a checkbox on domain XFELD: SAP only reads the value X as set and treats anything else
+      as not set. When set, the customer can be used in condition contracts. A value such as x, 1 or Y is written by a load
+      program or interface, never by the transaction, and the field then looks set in reports while SAP behaves as if it were
+      empty.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The settlement management relevance setting behaves differently from what the stored value suggests.
+    valid_values_with_labels:
+      X: Set
+      ? ''
+      : Not set
+    fix_map:
+      __other__: Set KNVV.AGREL to X or clear it in the customer master and correct the interface that wrote the value.
+    record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: settlement management relevance
+      flag holds {actual_value}, which is neither X nor empty.'
+  - id: SDCM730
+    field: KNVP.VKORG
+    check_class: exists_check
+    grain: KNVP
+    fields:
+    - KNVP.KUNNR
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    target_table: KNVV
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: Partner functions are maintained for a sales area in which the customer has no sales data
+    why_it_matters: KNVP is maintained per customer and sales area from the sales data screen of VD02. Partner rows for a
+      sales area that has no KNVV record cannot be displayed or changed, cannot be used in a sales document, and are dropped
+      by the Business Partner conversion, which converts partners only as part of the sales area role data.
+    rule_authority: sap_hard_constraint
+    sap_impact: Orphan partner functions are never used and are lost in the BP conversion.
+    fix_map:
+      __other__: Create the sales area data for the customer if the partners are needed, otherwise delete the orphan partner
+        rows and correct the load that created them.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: the
+      customer has no sales data in this sales area.'
+  - id: SDCM731
+    field: KNVP.DEFPA
+    check_class: uniqueness_check
+    grain: KNVP
+    applies_when:
+      KNVP.DEFPA:
+      - X
+    fields:
+    - KNVP.KUNNR
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    - KNVP.PARVW
+    severity: medium
+    dimension: uniqueness
+    message: More than one default partner is flagged for the same partner function
+    why_it_matters: 'When a partner function has several partners (for example several ship-to parties), KNVP.DEFPA marks
+      the one that is proposed in the sales order without a selection dialog. Two defaults for the same function make the
+      proposal arbitrary: the order takes whichever row is read first.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Sales orders propose an arbitrary default partner; goods or invoices can go to the wrong party.
+    fix_map:
+      __other__: Keep the default partner flag on exactly one partner per function in VD02 (Partner functions).
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: more
+      than one partner is flagged as default.'
+  - id: SDCM732
+    field: KNVP.DEFPA
+    check_class: domain_value_check
+    grain: KNVP
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Default partner (KNVP.DEFPA) must be X or empty
+    why_it_matters: 'KNVP.DEFPA is a checkbox on domain XFELD: SAP only reads the value X as set and treats anything else
+      as not set. When set, this partner is proposed for its partner function in sales documents without a selection dialog.
+      A value such as x, 1 or Y is written by a load program or interface, never by the transaction, and the field then looks
+      set in reports while SAP behaves as if it were empty.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The default partner setting behaves differently from what the stored value suggests.
+    valid_values_with_labels:
+      X: Set
+      ? ''
+      : Not set
+    fix_map:
+      __other__: Set KNVP.DEFPA to X or clear it in the customer master and correct the interface that wrote the value.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: default
+      partner flag holds {actual_value}, which is neither X nor empty.'
+  - id: SDCM733
+    field: KNVP.PARVW
+    check_class: cross_field_check
+    grain: KNVP
+    fail_when: ~`KNVP.KUNN2`.notna() & ~`KNVP.LIFNR`.notna() & ~`KNVP.PERNR`.notna() & ~(`KNVP.PARNR`.fillna('').str.lstrip('0')
+      != '')
+    severity: high
+    dimension: completeness
+    message: Partner function row has no partner
+    why_it_matters: 'Each KNVP row assigns one partner to a partner function: a customer (KUNN2), a vendor (LIFNR), an employee
+      (PERNR) or a contact person (PARNR), depending on the partner type of the function. A row in which all four are empty
+      carries a partner function with nobody behind it; the sales order copies an empty partner and output, billing or delivery
+      for that function has no recipient.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Sales documents receive a partner function with no partner; documents for that function cannot be sent.
+    fix_map:
+      __other__: Enter the partner for the function in VD02 (Partner functions) or delete the empty row.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: no
+      customer, vendor, employee or contact person is assigned.'
+  - id: SDCM734
+    field: KNVP.PARVW
+    check_class: cross_field_check
+    grain: KNVP
+    fail_when: (`KNVP.KUNN2`.notna() & `KNVP.LIFNR`.notna()) | (`KNVP.KUNN2`.notna() & `KNVP.PERNR`.notna()) | (`KNVP.KUNN2`.notna()
+      & (`KNVP.PARNR`.fillna('').str.lstrip('0') != '')) | (`KNVP.LIFNR`.notna() & `KNVP.PERNR`.notna()) | (`KNVP.LIFNR`.notna()
+      & (`KNVP.PARNR`.fillna('').str.lstrip('0') != '')) | (`KNVP.PERNR`.notna() & (`KNVP.PARNR`.fillna('').str.lstrip('0')
+      != ''))
+    severity: medium
+    dimension: consistency
+    message: Partner function row names more than one partner
+    why_it_matters: A KNVP row holds exactly one partner, in the field that matches the partner type of the function (customer,
+      vendor, employee or contact person). When two of KUNN2, LIFNR, PERNR and PARNR are filled, the row was written by a
+      load program, and the sales document takes the partner from whichever field its partner type reads, silently ignoring
+      the other.
+    rule_authority: sap_hard_constraint
+    sap_impact: One of the two partners on the row is ignored; the business may rely on the one SAP does not use.
+    fix_map:
+      __other__: Keep only the partner that matches the partner type of the function and move the other one to its own partner
+        function.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: more
+      than one partner number is filled on the same row.'
+  - id: SDCM735
+    field: KNVP.KUNN2
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.KUNN2:
+        populated: true
+    fields:
+    - KNVP.PARVW
+    target_table: TPAR
+    target_fields:
+    - PARVW
+    target_when:
+      NRART:
+      - KU
+    severity: medium
+    dimension: consistency
+    message: A customer is assigned to a partner function whose partner type is not KU
+    why_it_matters: 'Each partner function has a partner type in TPAR.NRART that decides which partner number field it reads:
+      KU customer, LI vendor, PE employee, AP contact person. A customer number (KNVP.KUNN2) stored on a function whose partner
+      type is not KU is never read, so the function behaves as if it had no partner while the record shows one.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The customer on the row is not copied into sales documents.
+    fix_map:
+      __other__: Move the customer to a partner function of partner type KU in VD02, or correct the partner number field of
+        the row.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: a
+      customer is assigned but the partner function is not of partner type KU.'
+  - id: SDCM736
+    field: KNVP.LIFNR
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.LIFNR:
+        populated: true
+    fields:
+    - KNVP.PARVW
+    target_table: TPAR
+    target_fields:
+    - PARVW
+    target_when:
+      NRART:
+      - LI
+    severity: medium
+    dimension: consistency
+    message: A vendor is assigned to a partner function whose partner type is not LI
+    why_it_matters: 'Each partner function has a partner type in TPAR.NRART that decides which partner number field it reads:
+      KU customer, LI vendor, PE employee, AP contact person. A vendor number (KNVP.LIFNR) stored on a function whose partner
+      type is not LI is never read, so the function behaves as if it had no partner while the record shows one.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The vendor on the row is not copied into sales documents.
+    fix_map:
+      __other__: Move the vendor to a partner function of partner type LI in VD02, or correct the partner number field of
+        the row.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: a
+      vendor is assigned but the partner function is not of partner type LI.'
+  - id: SDCM737
+    field: KNVP.PERNR
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PERNR:
+        populated: true
+    fields:
+    - KNVP.PARVW
+    target_table: TPAR
+    target_fields:
+    - PARVW
+    target_when:
+      NRART:
+      - PE
+    severity: medium
+    dimension: consistency
+    message: A employee is assigned to a partner function whose partner type is not PE
+    why_it_matters: 'Each partner function has a partner type in TPAR.NRART that decides which partner number field it reads:
+      KU customer, LI vendor, PE employee, AP contact person. A employee number (KNVP.PERNR) stored on a function whose partner
+      type is not PE is never read, so the function behaves as if it had no partner while the record shows one.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The employee on the row is not copied into sales documents.
+    fix_map:
+      __other__: Move the employee to a partner function of partner type PE in VD02, or correct the partner number field of
+        the row.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: a
+      employee is assigned but the partner function is not of partner type PE.'
+  - id: SDCM738
+    field: KNVP.PARNR
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARNR:
+        gt: 0
+    fields:
+    - KNVP.PARVW
+    target_table: TPAR
+    target_fields:
+    - PARVW
+    target_when:
+      NRART:
+      - AP
+    severity: medium
+    dimension: consistency
+    message: A contact person is assigned to a partner function whose partner type is not AP
+    why_it_matters: 'Each partner function has a partner type in TPAR.NRART that decides which partner number field it reads:
+      KU customer, LI vendor, PE employee, AP contact person. A contact person number (KNVP.PARNR) stored on a function whose
+      partner type is not AP is never read, so the function behaves as if it had no partner while the record shows one.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The contact person on the row is not copied into sales documents.
+    fix_map:
+      __other__: Move the contact person to a partner function of partner type AP in VD02, or correct the partner number field
+        of the row.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: a
+      contact person is assigned but the partner function is not of partner type AP.'
+  - id: SDCM739
+    field: KNVP.LIFNR
+    check_class: exists_check
+    grain: KNVP
+    target_table: LFA1
+    target_fields:
+    - LIFNR
+    target_when:
+      SPERR:
+        populated: true
+    negate: true
+    severity: medium
+    dimension: consistency
+    message: Vendor partner of the customer is centrally posting-blocked
+    why_it_matters: Vendors appear in customer partner functions mainly as forwarding agents and service agents. LFA1.SPERR
+      blocks the vendor for posting in all company codes, so freight costs and settlements with the vendor cannot be posted
+      while the vendor is still proposed in every sales document and delivery of the customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipment cost settlement and invoices for the forwarding agent cannot be posted.
+    fix_map:
+      __other__: Replace the blocked vendor in the customer partner functions (VD02) or remove the block in XK05 if the vendor
+        is still used.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: vendor
+      {KNVP.LIFNR} is blocked for posting.'
+  - id: SDCM740
+    field: KNVP.LIFNR
+    check_class: exists_check
+    grain: KNVP
+    target_table: LFA1
+    target_fields:
+    - LIFNR
+    target_when:
+      SPERM:
+        populated: true
+    negate: true
+    severity: medium
+    dimension: consistency
+    message: Vendor partner of the customer is centrally purchasing-blocked
+    why_it_matters: LFA1.SPERM blocks the vendor for purchasing in all purchasing organisations. A forwarding agent with a
+      purchasing block cannot receive the purchase orders and service entry sheets that shipment cost processing creates,
+      yet it is still proposed in the sales documents and deliveries of the customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipment cost purchase orders for the forwarding agent are rejected.
+    fix_map:
+      __other__: Replace the blocked vendor in the customer partner functions (VD02) or remove the purchasing block in XK05.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: vendor
+      {KNVP.LIFNR} is blocked for purchasing.'
+  - id: SDCM741
+    field: KNVP.KUNN2
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW:
+      - WE
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LIFSD:
+        populated: true
+    negate: true
+    severity: medium
+    dimension: consistency
+    message: Ship-to party of the customer has a central delivery block
+    why_it_matters: KNA1.LIFSD blocks deliveries to the customer in all sales areas. A ship-to party with a central delivery
+      block stops the delivery of every order placed by the sold-to party that uses it, while the sold-to party itself is
+      not blocked, so orders are accepted that can never be shipped.
+    rule_authority: sap_hard_constraint
+    sap_impact: Orders of the sold-to party are accepted but cannot be delivered to this ship-to party.
+    fix_map:
+      __other__: Remove the delivery block of the ship-to party (VD05) if it no longer applies, or replace the ship-to party
+        in the partner functions of the sold-to party.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: ship-to
+      party {KNVP.KUNN2} is centrally blocked for delivery.'
+  - id: SDCM742
+    field: KNVP.KUNN2
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW:
+      - RE
+      - RG
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      FAKSD:
+        populated: true
+    negate: true
+    severity: medium
+    dimension: consistency
+    message: Bill-to party or payer of the customer has a central billing block
+    why_it_matters: KNA1.FAKSD blocks billing for the customer in all sales areas. A bill-to party or payer with a central
+      billing block stops the billing of every order placed by the sold-to party that uses it, so deliveries go out that can
+      never be invoiced.
+    rule_authority: sap_hard_constraint
+    sap_impact: Deliveries for the sold-to party cannot be billed; revenue is not recognised.
+    fix_map:
+      __other__: Remove the billing block of the partner (VD05) if it no longer applies, or replace the bill-to party or payer
+        in the partner functions of the sold-to party.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: partner
+      {KNVP.KUNN2} is centrally blocked for billing.'
+  - id: SDCM743
+    field: KNVP.KUNN2
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.KUNN2:
+        populated: true
+    fields:
+    - KNVP.KUNN2
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    target_table: KNVV
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    target_when:
+      AUFSD:
+        populated: true
+    negate: true
+    severity: medium
+    dimension: consistency
+    message: Customer partner has an order block in the same sales area
+    why_it_matters: KNVV.AUFSD blocks the customer in one sales area. Partner functions are resolved in the sales area of
+      the order, so a partner customer blocked in the same sales area as the sold-to party passes the block on to every order
+      of the sold-to party. Sales orders that use this partner are blocked for the partner in this sales area while the sold-to
+      party is not, so orders stop for a reason the order taker cannot see on the sold-to party.
+    rule_authority: sap_hard_constraint
+    sap_impact: Sales orders that use this partner are blocked for the partner in this sales area while the sold-to party
+      is not, so orders stop for a reason the order taker cannot see on the sold-to party.
+    fix_map:
+      __other__: Remove the sales-area block of the partner (VD05) if it no longer applies, or replace the partner in the
+        partner functions of the sold-to party.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: partner
+      {KNVP.KUNN2} has an order block in this sales area.'
+  - id: SDCM744
+    field: KNVP.KUNN2
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW:
+      - WE
+      KNVP.KUNN2:
+        populated: true
+    fields:
+    - KNVP.KUNN2
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    target_table: KNVV
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    target_when:
+      LIFSD:
+        populated: true
+    negate: true
+    severity: medium
+    dimension: consistency
+    message: Customer partner has a delivery block in the same sales area
+    why_it_matters: KNVV.LIFSD blocks the customer in one sales area. Partner functions are resolved in the sales area of
+      the order, so a partner customer blocked in the same sales area as the sold-to party passes the block on to every order
+      of the sold-to party. Orders of the sold-to party are accepted but cannot be delivered to this ship-to party in this
+      sales area.
+    rule_authority: sap_hard_constraint
+    sap_impact: Orders of the sold-to party are accepted but cannot be delivered to this ship-to party in this sales area.
+    fix_map:
+      __other__: Remove the sales-area block of the partner (VD05) if it no longer applies, or replace the partner in the
+        partner functions of the sold-to party.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: partner
+      {KNVP.KUNN2} has a delivery block in this sales area.'
+  - id: SDCM745
+    field: KNVP.KUNN2
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW:
+      - RE
+      - RG
+      KNVP.KUNN2:
+        populated: true
+    fields:
+    - KNVP.KUNN2
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    target_table: KNVV
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    target_when:
+      FAKSD:
+        populated: true
+    negate: true
+    severity: medium
+    dimension: consistency
+    message: Customer partner has a billing block in the same sales area
+    why_it_matters: KNVV.FAKSD blocks the customer in one sales area. Partner functions are resolved in the sales area of
+      the order, so a partner customer blocked in the same sales area as the sold-to party passes the block on to every order
+      of the sold-to party. Deliveries of the sold-to party cannot be billed to this partner in this sales area.
+    rule_authority: sap_hard_constraint
+    sap_impact: Deliveries of the sold-to party cannot be billed to this partner in this sales area.
+    fix_map:
+      __other__: Remove the sales-area block of the partner (VD05) if it no longer applies, or replace the partner in the
+        partner functions of the sold-to party.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: partner
+      {KNVP.KUNN2} has a billing block in this sales area.'
+  - id: SDCM746
+    field: KNVP.PERNR
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PERNR:
+        populated: true
+    target_table: PA0001
+    target_fields:
+    - PERNR
+    severity: medium
+    dimension: consistency
+    message: Employee partner of the customer does not exist in HR master data
+    why_it_matters: Employee partner functions (sales employee, account manager; partner type PE) hold a personnel number
+      that SAP checks against the HR organisational assignment (PA0001). A personnel number with no HR record cannot be resolved
+      to a name, cost centre or commission, so sales reporting and commissions by employee lose the documents of the customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Sales documents carry an employee partner that does not exist; commissions and employee reporting are wrong.
+    fix_map:
+      __other__: Replace the personnel number in the customer partner functions (VD02) with an existing employee.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: personnel
+      number {KNVP.PERNR} has no HR record.'
+  - id: SDCM747
+    field: KNVP.PERNR
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PERNR:
+        populated: true
+    target_table: PA0000
+    target_fields:
+    - PERNR
+    target_when:
+      STAT2:
+      - '0'
+      ENDDA:
+      - '99991231'
+    negate: true
+    severity: medium
+    dimension: consistency
+    message: Employee partner of the customer has left the company
+    why_it_matters: 'An employee partner function names the sales employee or account manager responsible for the customer.
+      When the current HR action status (PA0000.STAT2 = 0) shows the employee has left, the customer has no responsible employee:
+      every new order is assigned to someone who left, and commissions and workflow notifications go nowhere.'
+    rule_authority: best_practice
+    sap_impact: New sales documents are assigned to a withdrawn employee; commissions and notifications are lost.
+    fix_map:
+      __other__: Replace the withdrawn employee in the customer partner functions (VD02); a mass change by partner function
+        (for example with report RFDKVZ00 output and XD99) covers all customers of that employee.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}), partner function {KNVP.PARVW}: employee
+      {KNVP.PERNR} has left the company.'
+  - id: SDCM748
+    field: KNVA.DEFAB
+    check_class: uniqueness_check
+    grain: KNVA
+    applies_when:
+      KNVA.DEFAB:
+      - X
+    fields:
+    - KNVA.KUNNR
+    severity: medium
+    dimension: uniqueness
+    message: Customer has more than one default unloading point
+    why_it_matters: KNVA.DEFAB marks the unloading point proposed in the sales order and delivery. Only one unloading point
+      per customer can be the default; with two, the proposal depends on read order and goods are announced at the wrong gate
+      or dock.
+    rule_authority: sap_hard_constraint
+    sap_impact: Deliveries propose an arbitrary unloading point; goods arrive at the wrong dock.
+    fix_map:
+      __other__: Keep the default flag on exactly one unloading point in XD02 (Unloading points).
+    record_fix_template: 'Customer {KNVA.KUNNR}, unloading point {KNVA.ABLAD}: more than one unloading point is flagged as
+      default.'
+  - id: SDCM749
+    field: KNVA.DEFAB
+    check_class: domain_value_check
+    grain: KNVA
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Default unloading point (KNVA.DEFAB) must be X or empty
+    why_it_matters: 'KNVA.DEFAB is a checkbox on domain XFELD: SAP only reads the value X as set and treats anything else
+      as not set. When set, this unloading point is proposed in sales documents and deliveries. A value such as x, 1 or Y
+      is written by a load program or interface, never by the transaction, and the field then looks set in reports while SAP
+      behaves as if it were empty.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The default unloading point setting behaves differently from what the stored value suggests.
+    valid_values_with_labels:
+      X: Set
+      ? ''
+      : Not set
+    fix_map:
+      __other__: Set KNVA.DEFAB to X or clear it in the customer master and correct the interface that wrote the value.
+    record_fix_template: 'Customer {KNVA.KUNNR}, unloading point {KNVA.ABLAD}: default unloading point flag holds {actual_value},
+      which is neither X nor empty.'
+  - id: SDCM750
+    field: KNVA.KUNNR
+    check_class: cross_field_check
+    grain: KNVA
+    fail_when: (`KNVA.MOAB1`.notna() & `KNVA.MOBI1`.notna() & (`KNVA.MOBI1` < `KNVA.MOAB1`)) | (`KNVA.DIAB1`.notna() & `KNVA.DIBI1`.notna()
+      & (`KNVA.DIBI1` < `KNVA.DIAB1`)) | (`KNVA.MIAB1`.notna() & `KNVA.MIBI1`.notna() & (`KNVA.MIBI1` < `KNVA.MIAB1`)) | (`KNVA.DOAB1`.notna()
+      & `KNVA.DOBI1`.notna() & (`KNVA.DOBI1` < `KNVA.DOAB1`)) | (`KNVA.FRAB1`.notna() & `KNVA.FRBI1`.notna() & (`KNVA.FRBI1`
+      < `KNVA.FRAB1`)) | (`KNVA.SAAB1`.notna() & `KNVA.SABI1`.notna() & (`KNVA.SABI1` < `KNVA.SAAB1`)) | (`KNVA.SOAB1`.notna()
+      & `KNVA.SOBI1`.notna() & (`KNVA.SOBI1` < `KNVA.SOAB1`)) | (`KNVA.MOAB2`.notna() & `KNVA.MOBI2`.notna() & (`KNVA.MOBI2`
+      < `KNVA.MOAB2`)) | (`KNVA.DIAB2`.notna() & `KNVA.DIBI2`.notna() & (`KNVA.DIBI2` < `KNVA.DIAB2`)) | (`KNVA.MIAB2`.notna()
+      & `KNVA.MIBI2`.notna() & (`KNVA.MIBI2` < `KNVA.MIAB2`)) | (`KNVA.DOAB2`.notna() & `KNVA.DOBI2`.notna() & (`KNVA.DOBI2`
+      < `KNVA.DOAB2`)) | (`KNVA.FRAB2`.notna() & `KNVA.FRBI2`.notna() & (`KNVA.FRBI2` < `KNVA.FRAB2`)) | (`KNVA.SAAB2`.notna()
+      & `KNVA.SABI2`.notna() & (`KNVA.SABI2` < `KNVA.SAAB2`)) | (`KNVA.SOAB2`.notna() & `KNVA.SOBI2`.notna() & (`KNVA.SOBI2`
+      < `KNVA.SOAB2`))
+    severity: medium
+    dimension: validity
+    message: Unloading point has a goods receiving window that ends before it starts
+    why_it_matters: 'KNVA holds up to two goods receiving windows per weekday (MOAB1 to SOBI2: AB = from, BI = until). A window
+      whose until time is earlier than its from time cannot contain any time of day, so delivery scheduling finds no receiving
+      time on that day and moves the delivery date, or the window was entered with from and until swapped.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Delivery scheduling finds no receiving time on the affected weekday; delivery dates are pushed out.
+    fix_map:
+      __other__: Correct the goods receiving hours of the unloading point in XD02 so each window starts before it ends.
+    record_fix_template: 'Customer {KNVA.KUNNR}, unloading point {KNVA.ABLAD}: a goods receiving window ends before it starts.'
+  - id: SDCM751
+    field: KNVA.KUNNR
+    check_class: cross_field_check
+    grain: KNVA
+    fail_when: (`KNVA.MOAB1`.notna() & `KNVA.MOBI1`.isna()) | (`KNVA.DIAB1`.notna() & `KNVA.DIBI1`.isna()) | (`KNVA.MIAB1`.notna()
+      & `KNVA.MIBI1`.isna()) | (`KNVA.DOAB1`.notna() & `KNVA.DOBI1`.isna()) | (`KNVA.FRAB1`.notna() & `KNVA.FRBI1`.isna())
+      | (`KNVA.SAAB1`.notna() & `KNVA.SABI1`.isna()) | (`KNVA.SOAB1`.notna() & `KNVA.SOBI1`.isna()) | (`KNVA.MOAB2`.notna()
+      & `KNVA.MOBI2`.isna()) | (`KNVA.DIAB2`.notna() & `KNVA.DIBI2`.isna()) | (`KNVA.MIAB2`.notna() & `KNVA.MIBI2`.isna())
+      | (`KNVA.DOAB2`.notna() & `KNVA.DOBI2`.isna()) | (`KNVA.FRAB2`.notna() & `KNVA.FRBI2`.isna()) | (`KNVA.SAAB2`.notna()
+      & `KNVA.SABI2`.isna()) | (`KNVA.SOAB2`.notna() & `KNVA.SOBI2`.isna())
+    severity: low
+    dimension: completeness
+    message: Unloading point has a goods receiving window with a start but no end
+    why_it_matters: A goods receiving window is a from time and an until time on a weekday. A from time without an until time
+      leaves the window open, so delivery scheduling cannot tell when the receiving point closes and treats the day inconsistently.
+      A window that runs to midnight is entered with until time 24:00:00.
+    rule_authority: best_practice
+    sap_impact: Delivery scheduling has an incomplete receiving window on the affected weekday.
+    fix_map:
+      __other__: Enter the until time of every goods receiving window in XD02 (24:00:00 for midnight).
+    record_fix_template: 'Customer {KNVA.KUNNR}, unloading point {KNVA.ABLAD}: a goods receiving window has a start time but
+      no end time.'
+  - id: SDCM752
+    field: KNVA.KUNNR
+    check_class: cross_field_check
+    grain: KNVA
+    fail_when: (`KNVA.MOBI1`.notna() & `KNVA.MOAB2`.notna() & (`KNVA.MOAB2` < `KNVA.MOBI1`)) | (`KNVA.DIBI1`.notna() & `KNVA.DIAB2`.notna()
+      & (`KNVA.DIAB2` < `KNVA.DIBI1`)) | (`KNVA.MIBI1`.notna() & `KNVA.MIAB2`.notna() & (`KNVA.MIAB2` < `KNVA.MIBI1`)) | (`KNVA.DOBI1`.notna()
+      & `KNVA.DOAB2`.notna() & (`KNVA.DOAB2` < `KNVA.DOBI1`)) | (`KNVA.FRBI1`.notna() & `KNVA.FRAB2`.notna() & (`KNVA.FRAB2`
+      < `KNVA.FRBI1`)) | (`KNVA.SABI1`.notna() & `KNVA.SAAB2`.notna() & (`KNVA.SAAB2` < `KNVA.SABI1`)) | (`KNVA.SOBI1`.notna()
+      & `KNVA.SOAB2`.notna() & (`KNVA.SOAB2` < `KNVA.SOBI1`))
+    severity: low
+    dimension: consistency
+    message: Unloading point has a second goods receiving window that starts before the first one ends
+    why_it_matters: The two goods receiving windows of a weekday are meant as morning and afternoon slots (for example 08:00-12:00
+      and 13:00-17:00). A second window that starts before the first ends overlaps it, which shows the times were entered
+      in the wrong fields or the wrong order, and scheduling computes the receiving time from an inconsistent calendar.
+    rule_authority: best_practice
+    sap_impact: Delivery scheduling works with overlapping receiving windows on the affected weekday.
+    fix_map:
+      __other__: Merge the overlapping windows or enter them in time order in XD02.
+    record_fix_template: 'Customer {KNVA.KUNNR}, unloading point {KNVA.ABLAD}: the second goods receiving window overlaps
+      the first.'
+  - id: SDCM753
+    field: KNVA.KUNNR
+    check_class: cross_field_check
+    grain: KNVA
+    fail_when: (`KNVA.MOAB1`.isna() & `KNVA.MOBI1`.isna() & (`KNVA.MOAB2`.notna() | `KNVA.MOBI2`.notna())) | (`KNVA.DIAB1`.isna()
+      & `KNVA.DIBI1`.isna() & (`KNVA.DIAB2`.notna() | `KNVA.DIBI2`.notna())) | (`KNVA.MIAB1`.isna() & `KNVA.MIBI1`.isna()
+      & (`KNVA.MIAB2`.notna() | `KNVA.MIBI2`.notna())) | (`KNVA.DOAB1`.isna() & `KNVA.DOBI1`.isna() & (`KNVA.DOAB2`.notna()
+      | `KNVA.DOBI2`.notna())) | (`KNVA.FRAB1`.isna() & `KNVA.FRBI1`.isna() & (`KNVA.FRAB2`.notna() | `KNVA.FRBI2`.notna()))
+      | (`KNVA.SAAB1`.isna() & `KNVA.SABI1`.isna() & (`KNVA.SAAB2`.notna() | `KNVA.SABI2`.notna())) | (`KNVA.SOAB1`.isna()
+      & `KNVA.SOBI1`.isna() & (`KNVA.SOAB2`.notna() | `KNVA.SOBI2`.notna()))
+    severity: low
+    dimension: consistency
+    message: Unloading point has a second goods receiving window but no first one
+    why_it_matters: The goods receiving hours of a weekday are entered as window 1 and, if the receiving point closes in between,
+      window 2. A second window without a first is the result of entering the times in the wrong columns; reports and interfaces
+      that read only the first window show the day as closed.
+    rule_authority: best_practice
+    sap_impact: Reports and interfaces that read the first window treat the weekday as having no receiving time.
+    fix_map:
+      __other__: Move the times to the first window in XD02.
+    record_fix_template: 'Customer {KNVA.KUNNR}, unloading point {KNVA.ABLAD}: a second goods receiving window is set without
+      a first one.'
+  - id: SDCM754
+    field: KNVA.KUNNR
+    check_class: exists_check
+    grain: KNVA
+    target_table: KNVP
+    target_fields:
+    - KUNN2
+    target_when:
+      PARVW:
+      - WE
+    severity: low
+    dimension: consistency
+    message: Customer has unloading points but is not a ship-to party of any customer
+    why_it_matters: Unloading points and goods receiving hours are read from the ship-to party of a delivery. Unloading points
+      kept for a customer that is not used as ship-to party (KNVP.PARVW = WE) of any customer are never proposed in a document;
+      they are left over from a former role or were maintained on the sold-to party instead of the ship-to party.
+    rule_authority: best_practice
+    sap_impact: The unloading points are never used in deliveries.
+    fix_map:
+      __other__: Maintain the unloading points on the customer that is used as ship-to party, or assign this customer as ship-to
+        party where it receives goods.
+    record_fix_template: 'Customer {KNVA.KUNNR}, unloading point {KNVA.ABLAD}: the customer is not a ship-to party of any
+      customer.'
+  - id: SDCM755
+    field: KNVD.SPRAS
+    check_class: referential_check
+    grain: KNVD
+    severity: medium
+    dimension: validity
+    message: Output language of the customer document type is not a defined language (T002)
+    why_it_matters: KNVD.SPRAS sets the language in which output (order confirmations, invoices, delivery notes) of the document
+      type is printed for the customer. A language key that is not in T002 cannot select form texts, so output is printed
+      in the logon language or fails.
+    rule_authority: sap_hard_constraint
+    sap_impact: Customer output is printed in the wrong language or not at all.
+    fix_map:
+      __other__: Correct the output language in XD02 (Sales area > Output) to a language defined in T002.
+    record_fix_template: 'Customer {KNVD.KUNNR} ({KNVD.VKORG}/{KNVD.VTWEG}/{KNVD.SPART}), document type {KNVD.DOCTP}: output
+      language {KNVD.SPRAS} is not defined.'
+  - id: SDCM756
+    field: KNVD.DOVER
+    check_class: domain_value_check
+    grain: KNVD
+    allowed_values:
+    - '1'
+    - '2'
+    - '3'
+    - '4'
+    severity: low
+    dimension: validity
+    message: Output dispatch time of the customer document type is not 1, 2, 3 or 4
+    why_it_matters: 'KNVD.DOVER (domain NA_VSZTP) sets when output of the document type is sent: 1 with a periodic job, 2
+      with a job at a set time, 3 by application transaction, 4 immediately on save. Any other value is not a dispatch time
+      and the output is never sent.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Output of the document type is never dispatched to the customer.
+    valid_values_with_labels:
+      '1': Send with periodically scheduled job
+      '2': Send with job, with additional time specification
+      '3': Send with application own transaction
+      '4': Send immediately (when saving the application)
+    fix_map:
+      __other__: Set the dispatch time in XD02 (Sales area > Output) to 1, 2, 3 or 4.
+    record_fix_template: 'Customer {KNVD.KUNNR} ({KNVD.VKORG}/{KNVD.VTWEG}/{KNVD.SPART}), document type {KNVD.DOCTP}: dispatch
+      time {actual_value} is not valid.'
+  - id: SDCM757
+    field: KNVD.NACHA
+    check_class: domain_value_check
+    grain: KNVD
+    allowed_values:
+    - '1'
+    - '2'
+    - '4'
+    - '5'
+    - '6'
+    - '7'
+    - '8'
+    - '9'
+    - A
+    - T
+    severity: low
+    dimension: validity
+    message: Output medium of the customer document type is not a defined transmission medium
+    why_it_matters: 'KNVD.NACHA (domain NA_NACHA) is the transmission medium of the document type: 1 print, 2 fax, 4 telex,
+      5 external send, 6 EDI, 7 simple mail, 8 special function, 9 events (workflow), A distribution (ALE), T tasks. Any other
+      value has no output program behind it.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Output of the document type cannot be processed.
+    valid_values_with_labels:
+      '1': Print output
+      '2': Fax
+      '4': Telex
+      '5': External send
+      '6': EDI
+      '7': Simple mail
+      '8': Special function
+      '9': Events (SAP Business Workflow)
+      A: Distribution (ALE)
+      T: Tasks (SAP Business Workflow)
+    fix_map:
+      __other__: Set a valid transmission medium in XD02 (Sales area > Output).
+    record_fix_template: 'Customer {KNVD.KUNNR} ({KNVD.VKORG}/{KNVD.VTWEG}/{KNVD.SPART}), document type {KNVD.DOCTP}: transmission
+      medium {actual_value} is not defined.'
+  - id: SDCM758
+    field: KNVI.KUNNR
+    check_class: exists_check
+    grain: KNVI
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    severity: medium
+    dimension: consistency
+    message: Customer tax classification exists without a general customer record (KNA1)
+    why_it_matters: KNVI is a dependent table of KNA1. Tax classifications for a customer number that is not in KNA1 are orphans
+      from a deletion, client copy or direct load; no transaction can show them and the Business Partner conversion has no
+      customer to attach them to.
+    rule_authority: sap_hard_constraint
+    sap_impact: Orphan tax classifications cannot be maintained and are not converted.
+    fix_map:
+      __other__: Delete the orphan KNVI rows or recreate the customer, and correct the load that created them.
+    record_fix_template: 'Customer {KNVI.KUNNR}, country {KNVI.ALAND}, tax category {KNVI.TATYP}: no general customer record
+      exists in KNA1.'
+  - id: SDCM759
+    field: KNVI.ALAND
+    check_class: referential_check
+    grain: KNVI
+    severity: medium
+    dimension: validity
+    message: Country of the customer tax classification is not a defined country (T005)
+    why_it_matters: KNVI is kept per departure country (ALAND). Pricing reads the tax classification for the country of the
+      delivering plant. A country key that is not in T005 can never match a plant country, so the classification is never
+      used and output tax is determined without it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Tax determination ignores the classification; output tax can be wrong on invoices.
+    fix_map:
+      __other__: Correct the country of the tax classification in XD02 (Billing tab > Taxes) to a country defined in T005.
+    record_fix_template: 'Customer {KNVI.KUNNR}, country {KNVI.ALAND}, tax category {KNVI.TATYP}: country {KNVI.ALAND} is
+      not defined.'
+  - id: SDCM760
+    field: KNVI.TAXKD
+    check_class: exists_check
+    grain: KNVI
+    applies_when:
+      KNVI.TAXKD:
+        populated: true
+    fields:
+    - KNVI.TATYP
+    - KNVI.TAXKD
+    target_table: TSKD
+    target_fields:
+    - TATYP
+    - TAXKD
+    severity: medium
+    dimension: validity
+    message: Customer tax classification is not defined for its tax category (TSKD)
+    why_it_matters: Customer tax classifications are defined per tax category in TSKD (TATYP + TAXKD). A classification that
+      exists for some other tax category but not for the one on this row is accepted by a field-level check yet cannot be
+      found by the tax condition records of this category, so output tax falls back to no classification.
+    rule_authority: sap_hard_constraint
+    sap_impact: Output tax for the tax category is determined without the customer classification.
+    fix_map:
+      __other__: Change the tax classification in XD02 to one defined for the tax category (SPRO > Sales and Distribution
+        > Basic Functions > Taxes > Define Tax Relevancy of Master Records).
+    record_fix_template: 'Customer {KNVI.KUNNR}, country {KNVI.ALAND}, tax category {KNVI.TATYP}: classification {KNVI.TAXKD}
+      is not defined for this tax category.'
+  - id: SDCM761
+    field: CVI_CUST_LINK.CUSTOMER
+    check_class: exists_check
+    grain: CVI_CUST_LINK
+    applies_when:
+      KNA1.LIFNR:
+        populated: true
+    fields:
+    - KNA1.LIFNR
+    - CVI_CUST_LINK.PARTNER_GUID
+    target_table: CVI_VEND_LINK
+    target_fields:
+    - VENDOR
+    - PARTNER_GUID
+    s4_area: business_partner
+    s4_impact: blocking
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: Customer and its linked vendor are converted to different business partners
+    why_it_matters: When a customer is also a vendor (KNA1.LIFNR), S/4HANA expects both to be one business partner with customer
+      and supplier roles. CVI links the customer in CVI_CUST_LINK and the vendor in CVI_VEND_LINK. If the vendor is linked
+      to a different BP GUID than the customer, the same legal entity exists twice as business partner, which breaks netting
+      of receivables and payables, duplicate checks and the business partner relationship.
+    rule_authority: sap_hard_constraint
+    sap_impact: The same company exists as two business partners; clearing between customer and vendor no longer works through
+      one partner.
+    fix_map:
+      __other__: Merge the two business partners before go-live or relink the vendor to the customer business partner with
+        CVI link correction (report CVI_MIGRATION_PRECHK and the synchronisation cockpit MDS_LOAD_COCKPIT).
+    record_fix_template: 'Customer {KNA1.KUNNR}: linked vendor {KNA1.LIFNR} is not converted to the same business partner.'
+  - id: SDCM762
+    field: T001W.KUNNR
+    check_class: exists_check
+    grain: T001W
+    applies_when:
+      T001W.KUNNR:
+        populated: true
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LOEVM:
+        blank: true
+    severity: high
+    dimension: consistency
+    message: Customer number of the plant does not exist or is flagged for deletion
+    why_it_matters: T001W.KUNNR is the customer that represents the plant as receiving party in stock transport orders and
+      intercompany sales. Replenishment deliveries to the plant are created for this customer. A customer number that does
+      not exist or is flagged for deletion stops every stock transport delivery into the plant.
+    rule_authority: sap_hard_constraint
+    sap_impact: Stock transport orders into the plant cannot be delivered.
+    fix_map:
+      __other__: Assign an active customer to the plant in SPRO > Materials Management > Purchasing > Purchase Order > Set
+        up Stock Transport Order > Define Shipping Data for Plants, or remove the deletion flag of the customer.
+    record_fix_template: 'Plant {T001W.WERKS}: customer {T001W.KUNNR} does not exist or is flagged for deletion.'
+  - id: SDCM763
+    field: T001W.KUNNR
+    check_class: exists_check
+    grain: T001W
+    applies_when:
+      T001W.KUNNR:
+        populated: true
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LIFSD:
+        populated: true
+    negate: true
+    severity: medium
+    dimension: consistency
+    message: Customer number of the plant has a central delivery block
+    why_it_matters: Stock transport deliveries into the plant are created for the plant customer (T001W.KUNNR). A central
+      delivery block on that customer (KNA1.LIFSD) blocks every replenishment delivery into the plant.
+    rule_authority: sap_hard_constraint
+    sap_impact: Stock transport deliveries into the plant are blocked.
+    fix_map:
+      __other__: Remove the delivery block of the plant customer (VD05) if it was set by mistake.
+    record_fix_template: 'Plant {T001W.WERKS}: customer {T001W.KUNNR} is centrally blocked for delivery.'
+  - id: SDCM764
+    field: T001W.KUNNR
+    check_class: exists_check
+    grain: T001W
+    applies_when:
+      T001W.KUNNR:
+        populated: true
+      T001W.VKORG:
+        populated: true
+    fields:
+    - T001W.KUNNR
+    - T001W.VKORG
+    - T001W.VTWEG
+    - T001W.SPART
+    target_table: KNVV
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    severity: high
+    dimension: consistency
+    message: Plant customer has no sales data in the sales area defined for the plant
+    why_it_matters: T001W.VKORG, VTWEG and SPART are the sales area in which stock transport deliveries into the plant are
+      processed for the plant customer. If that customer has no sales data in this sales area, the replenishment delivery
+      cannot determine shipping conditions, shipping point or route, and VL10B creates no delivery.
+    rule_authority: sap_hard_constraint
+    sap_impact: Stock transport deliveries into the plant cannot be created.
+    fix_map:
+      __other__: Create the sales area data for the plant customer in VD01 for the sales area set on the plant, or correct
+        the sales area of the plant.
+    record_fix_template: 'Plant {T001W.WERKS}: customer {T001W.KUNNR} has no sales data in {T001W.VKORG}/{T001W.VTWEG}/{T001W.SPART}.'
+  - id: SDCM765
+    field: TVKO.KUNNR
+    check_class: exists_check
+    grain: TVKO
+    applies_when:
+      TVKO.KUNNR:
+        populated: true
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LOEVM:
+        blank: true
+    severity: high
+    dimension: consistency
+    message: Intercompany billing customer of the sales organisation does not exist or is flagged for deletion
+    why_it_matters: 'TVKO.KUNNR is the customer that represents the sales organisation in intercompany billing: when another
+      company code delivers for this sales organisation, the intercompany invoice is billed to this customer. A customer that
+      does not exist or is flagged for deletion stops every intercompany billing document of the sales organisation.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Intercompany invoices for the sales organisation cannot be created.
+    fix_map:
+      __other__: Assign an active customer for intercompany billing in SPRO > Sales and Distribution > Billing > Intercompany
+        Billing > Define Internal Customer Number By Sales Organization.
+    record_fix_template: 'Sales organisation {TVKO.VKORG}: intercompany customer {TVKO.KUNNR} does not exist or is flagged
+      for deletion.'
+  - id: SDCM766
+    field: TVKO.KUNNR
+    check_class: exists_check
+    grain: TVKO
+    applies_when:
+      TVKO.KUNNR:
+        populated: true
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      FAKSD:
+        populated: true
+    negate: true
+    severity: medium
+    dimension: consistency
+    message: Intercompany billing customer of the sales organisation has a central billing block
+    why_it_matters: Intercompany invoices of the sales organisation are billed to TVKO.KUNNR. A central billing block on that
+      customer (KNA1.FAKSD) holds every intercompany invoice, so the delivering company code never charges the ordering one.
+    rule_authority: sap_hard_constraint
+    sap_impact: Intercompany billing for the sales organisation is blocked.
+    fix_map:
+      __other__: Remove the billing block of the intercompany customer (VD05) if it was set by mistake.
+    record_fix_template: 'Sales organisation {TVKO.VKORG}: intercompany customer {TVKO.KUNNR} is centrally blocked for billing.'

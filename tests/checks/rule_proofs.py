@@ -459,6 +459,10 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         aw = rule.get("applies_when") or {}
         across = rule.get("unique_across")
         dup = {c: cand[c][0] if c in aw else (cand[c][1] if len(cand[c]) > 1 else "X") for c in cols}
+        # an exact-literal gate on the rule's own field: its DDIC values (e.g. XFELD '', 'X')
+        # sort ahead of the gate's literals in the candidates, so pin the gate's first literal
+        dup.update({c: str(g[0]) for c, g in aw.items() if c in dup and isinstance(g, list) and g
+                    and dup[c] not in [str(v) for v in g]})
         # two records sharing the value but differing elsewhere (not a repeated flat row)
         grain = tables_of(cols)[0]
         other = next((f"{grain}.{f.name}" for f in dictionary.table(grain).fields.values()
