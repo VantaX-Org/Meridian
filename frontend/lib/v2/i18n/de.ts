@@ -6708,4 +6708,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Readiness {s}, {n} would not load": "Bereitschaft {s}, {n} nicht ladbar",
   "Open the analysis of {d}": "Analyse vom {d} öffnen",
   "No costed SAP feature waits on this wave.": "Auf diese Welle wartet keine bewertete SAP-Funktion.",
+  "Throughput and approval rate": "Durchsatz und Genehmigungsquote",
+  "Their throughput could not be read.": "Ihr Durchsatz konnte nicht gelesen werden.",
+  "No throughput is recorded for {name} yet.": "Für {name} ist noch kein Durchsatz erfasst.",
+  "Records processed": "Verarbeitete Datensätze",
+  "{period}: {n} records processed": "{period}: {n} Datensätze verarbeitet",
+  "{period}: nothing decided": "{period}: nichts entschieden",
+  "{period}: {rate}% approved": "{period}: {rate}% genehmigt",
+  "Records processed per period": "Verarbeitete Datensätze je Zeitraum",
+  "Share of decided records approved, per period": "Anteil genehmigter Entscheidungen je Zeitraum",
 };

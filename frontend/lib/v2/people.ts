@@ -1,7 +1,7 @@
 /**
  * The People canvas's pure parts: the role words, the figures a row shows and the order of the table.
  */
-import type { Person } from "@/lib/api/v2/people";
+import type { Person, StewardPeriod } from "@/lib/api/v2/people";
 import type { Landscape } from "@/lib/api/v2/types";
 import { moduleSlug, systemSlug } from "./score";
 import { t } from "@/lib/v2/i18n";
@@ -108,4 +108,14 @@ export function workByObject(rows: readonly { module: string }[]): { module: str
   const counts = new Map<string, number>();
   for (const r of rows) counts.set(r.module, (counts.get(r.module) ?? 0) + 1);
   return [...counts].map(([module, count]) => ({ module, count })).sort((a, b) => b.count - a.count || a.module.localeCompare(b.module));
+}
+
+/** The periods of a steward's metrics oldest first, each with its approval rate (null when nothing was decided). */
+export function stewardSeries(periods: StewardPeriod[]): { period: string; processed: number; rate: number | null }[] {
+  return [...periods]
+    .sort((a, b) => a.period.localeCompare(b.period))
+    .map((p) => {
+      const decided = p.items_approved + p.items_rejected;
+      return { period: p.period, processed: p.items_processed, rate: decided > 0 ? Math.round((p.items_approved / decided) * 100) : null };
+    });
 }

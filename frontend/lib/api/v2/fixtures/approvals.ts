@@ -1,5 +1,5 @@
 import type { Notification } from "@/types/api";
-import type { NextStep, Person } from "../people";
+import type { NextStep, Person, StewardMetrics } from "../people";
 import type { AssignableUser, Digest, SlaPolicy, TriageSettings } from "../triage";
 import { batchesFixture } from "./work-fixture";
 
@@ -161,4 +161,25 @@ export function resetApprovalsFixture(): void {
   policies = buildPolicies();
   settings = buildSettings();
   digest = "weekly";
+}
+
+/** GET /analytics/operational/team/{id}: six months of counts scaled to the person's open work; none for a person with no work. */
+export function stewardFixture(id: string): StewardMetrics {
+  const base = BASE[id];
+  if (!base || (base.open_work === 0 && base.overdue === 0)) fail(404, "No metrics found for this user");
+  const months = ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"];
+  const periods = months
+    .map((period, i) => {
+      const processed = Math.round(base.open_work * (0.6 + i * 0.12));
+      const rejected = Math.round(processed * (0.04 + (base.overdue ? 0.04 : 0)));
+      return { period, items_processed: processed, items_approved: processed - rejected, items_rejected: rejected, items_applied: processed - rejected, total_review_hours: Math.round(processed * 0.2 * 10) / 10, exceptions_resolved: Math.round(processed / 10), dqs_impact: null };
+    })
+    .reverse();
+  const sum = (k: "items_processed" | "items_approved" | "items_rejected" | "total_review_hours") => periods.reduce((s, p) => s + p[k], 0);
+  const total = sum("items_processed");
+  return {
+    user_id: id,
+    periods,
+    summary: { total_processed: total, total_approved: sum("items_approved"), total_rejected: sum("items_rejected"), total_review_hours: sum("total_review_hours"), approval_rate: Math.round((sum("items_approved") / Math.max(1, sum("items_approved") + sum("items_rejected"))) * 1000) / 10, avg_review_hours: Math.round((sum("total_review_hours") / Math.max(1, total)) * 100) / 100 },
+  };
 }

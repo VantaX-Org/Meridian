@@ -6707,6 +6707,15 @@ export const en = {
   "Readiness {s}, {n} would not load": "Readiness {s}, {n} would not load",
   "Open the analysis of {d}": "Open the analysis of {d}",
   "No costed SAP feature waits on this wave.": "No costed SAP feature waits on this wave.",
+  "Throughput and approval rate": "Throughput and approval rate",
+  "Their throughput could not be read.": "Their throughput could not be read.",
+  "No throughput is recorded for {name} yet.": "No throughput is recorded for {name} yet.",
+  "Records processed": "Records processed",
+  "{period}: {n} records processed": "{period}: {n} records processed",
+  "{period}: nothing decided": "{period}: nothing decided",
+  "{period}: {rate}% approved": "{period}: {rate}% approved",
+  "Records processed per period": "Records processed per period",
+  "Share of decided records approved, per period": "Share of decided records approved, per period",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

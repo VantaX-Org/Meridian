@@ -422,6 +422,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     if (path === "/writeback/approvals") return { approvals: [], live_enabled: false };
     if (path === "/people") return ap.peopleFixture();
     if (path === "/people/next") return ap.nextFixture();
+    const steward = /^\/analytics\/operational\/team\/([^/]+)$/.exec(path);
+    if (steward) return ap.stewardFixture(decodeURIComponent(steward[1]));
     if (path === "/notifications") return ap.notificationsFixture(Number(params.limit ?? 50));
     if (path === "/notifications/unread-count") return ap.unreadFixture();
     if (path === "/triage/sla-policies") return ap.policiesFixture();

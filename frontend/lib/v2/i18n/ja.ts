@@ -6708,4 +6708,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Readiness {s}, {n} would not load": "準備度 {s}、{n} 件が読み込めません",
   "Open the analysis of {d}": "{d} の分析を開く",
   "No costed SAP feature waits on this wave.": "このウェーブを待っている、コスト評価済みの SAP 機能はありません。",
+  "Throughput and approval rate": "処理件数と承認率",
+  "Their throughput could not be read.": "処理件数を読み込めませんでした。",
+  "No throughput is recorded for {name} yet.": "{name} の処理件数はまだ記録されていません。",
+  "Records processed": "処理したレコード",
+  "{period}: {n} records processed": "{period}: {n} 件処理",
+  "{period}: nothing decided": "{period}: 判断なし",
+  "{period}: {rate}% approved": "{period}: {rate}% 承認",
+  "Records processed per period": "期間ごとの処理レコード数",
+  "Share of decided records approved, per period": "期間ごとの承認された判断の割合",
 };
