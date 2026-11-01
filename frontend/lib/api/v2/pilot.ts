@@ -29,6 +29,24 @@ export interface KnownIssuesResult { records: number; rejected: number }
 
 export const getScorecard = (systemId: string): Promise<Scorecard> => v2Get(`/systems/${enc(systemId)}/pilot/scorecard`);
 
+/** GET /rules/accuracy: per-rule precision and recall on synthetic injected defects (scripts/bench_precision_recall.py). */
+export interface AccuracyModule { module: string; rules: number; benchmarked: number; perfect: number }
+export interface AccuracyRule {
+  rule_id: string;
+  module: string;
+  check_class: string;
+  injected: number;
+  true_positives: number;
+  false_positives: number;
+  false_negatives: number;
+  precision: number;
+  recall: number;
+  f1: number;
+}
+export interface RuleAccuracy { method: string; records_per_rule: number; modules: AccuracyModule[]; rules: AccuracyRule[] }
+
+export const getRuleAccuracy = (): Promise<RuleAccuracy> => v2Get("/rules/accuracy");
+
 /** The CSV goes as the raw body (text/csv): a JSON content type would quote it. */
 export async function uploadKnownIssues(systemId: string, csv: string): Promise<KnownIssuesResult> {
   const path = `/systems/${enc(systemId)}/pilot/known-issues`;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { uploadKnownIssues, type Scorecard } from "@/lib/api/v2/pilot";
-import { refreshAdmin, useScorecard } from "@/lib/v2/admin-queries";
+import { refreshAdmin, useRuleAccuracy, useScorecard } from "@/lib/v2/admin-queries";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { int, pct1 } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
@@ -99,6 +99,49 @@ function Recall({ card }: { card: Scorecard }) {
   );
 }
 
+/** The shipped benchmark: each rule run on synthetic records with injected defects, per object. */
+function TestProven() {
+  const q = useRuleAccuracy();
+  return (
+    <Loaded q={q} what={t("The synthetic benchmark")} rows={2}>
+      {(a) => {
+        const all = a.modules.reduce((n, m) => n + m.rules, 0);
+        const done = a.modules.reduce((n, m) => n + m.benchmarked, 0);
+        const exact = a.modules.reduce((n, m) => n + m.perfect, 0);
+        return (
+          <Block title={t("Test-proven on synthetic data")} hint={t("Each rule runs on {records} synthetic records with defects injected from the rule's own definition. A rule is exact when precision and recall are both 100%. Rules that need live configuration or a second dataset are not benchmarked.", { records: int(a.records_per_rule) })}>
+            <Kv rows={[[t("Rules benchmarked"), t("{done} of {all}", { done: int(done), all: int(all) })], [t("Exact"), t("{exact} of {done}", { exact: int(exact), done: int(done) })]]} />
+            <div className="m2-frame" tabIndex={0}>
+              <table className="m2-tbl" aria-label={t("Benchmark coverage by object")}>
+                <thead>
+                  <tr>
+                    <th scope="col">{t("Object")}</th>
+                    <th scope="col" className="m2-r">{t("Rules")}</th>
+                    <th scope="col" className="m2-r">{t("Benchmarked")}</th>
+                    <th scope="col" className="m2-r">{t("Coverage")}</th>
+                    <th scope="col" className="m2-r">{t("Exact")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {a.modules.map((m) => (
+                    <tr key={m.module}>
+                      <th scope="row"><Coded code={m.module} text={moduleText(m.module)} /></th>
+                      <td className="m2-r">{int(m.rules)}</td>
+                      <td className="m2-r">{int(m.benchmarked)}</td>
+                      <td className="m2-r">{m.rules ? pct1(m.benchmarked / m.rules) : <Dash />}</td>
+                      <td className="m2-r">{int(m.perfect)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Block>
+        );
+      }}
+    </Loaded>
+  );
+}
+
 /** Admin › Rule accuracy: the pilot scorecard of one system, and the upload of its known bad records. */
 export function RuleAccuracySection() {
   const can = useCan();
@@ -111,6 +154,7 @@ export function RuleAccuracySection() {
   const { outcome, pending, run } = useOutcome();
   return (
     <AdminPage title={t("Rule accuracy")} lead={t("How often each rule is right, from reviewer verdicts, and how many known bad records the rules caught.")}>
+      <TestProven />
       <div className="m2-fbar">
         <Fld label={t("System")}>
           <select value={id} onChange={(e) => setPicked(e.target.value)}>

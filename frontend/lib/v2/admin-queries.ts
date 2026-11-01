@@ -113,7 +113,12 @@ export const useScorecard = (systemId: string) => {
   const f = useFixture();
   return useRead(k(f, "scorecard", systemId), () => pilot.getScorecard(systemId), !!systemId);
 };
-export const useAudit = (q: AuditListParams, enabled = true) => {
+/** The shipped benchmark: the same answer for every tenant and system, so it is read once. */
+export const useRuleAccuracy = () => {
+  const f = useFixture();
+  return useQuery({ queryKey: k(f, "rule-accuracy"), queryFn: pilot.getRuleAccuracy, staleTime: Infinity, retry: false });
+};
+export const useAudit =(q: AuditListParams, enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "audit", q), () => api.listAudit(q), enabled);
 };
