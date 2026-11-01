@@ -264,6 +264,8 @@
 .m2-tbl td { padding: 0 var(--m2-s3); height: 32px; border-bottom: 1px solid var(--m2-rule); white-space: nowrap; background: var(--m2-sheet); }
 .m2-tbl tbody tr:last-child td, .m2-tbl tbody tr:last-child th { border-bottom: 0; }
 .m2-tbl th.m2-r, .m2-tbl td.m2-r { text-align: right; }
+/* A delta bar carries its figure beside it, so the change reads as a number as well as a length. */
+.m2-tbl td .m2-dbar-fig { display: inline-flex; align-items: center; gap: var(--m2-s2); }
 /* A long text cell wraps instead of pushing the table past the frame. */
 /* A second line under a cell's figure (a range, a trend word), so the column stays narrow. */
 .m2-tbl td .m2-under { display: block; font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); color: var(--m2-meta); padding-bottom: var(--m2-s1); }
