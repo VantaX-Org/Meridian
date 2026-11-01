@@ -97,7 +97,6 @@ export function Mining() {
         action={<MineAction />}
       />
 
-      <div className="m2-cc-split">
         <Panel title={t("Findings by object")} meta={t("Duplicate pairs and outliers per object.")} testId="mining-objects">
           {dupes.isPending || outliers.isPending ? <Skeleton width="100%" height={120} /> : dupes.isError || outliers.isError ? (
             <Dash why={t("The findings could not be read.")} />
@@ -117,8 +116,7 @@ export function Mining() {
             );
           })()}
         </Panel>
-        <Patterns query={patterns} />
-      </div>
+      <Patterns query={patterns} />
 
       <Panel title={t("Likely duplicates")} meta={nd != null ? t("{n} pairs, highest match first", { n: more(nd, LIMITS.duplicates) }) : undefined} testId="mining-duplicates">
         <List query={dupes} empty={t("No likely duplicate was found.")} what={t("The duplicates could not be read.")}>
@@ -267,8 +265,8 @@ function Patterns({ query }: { query: ReturnType<typeof useMining<{ patterns: Mi
                         <div className="m2-meta">{moduleText(p.module)}{field && p.field_description ? <> <Mono>{field}</Mono></> : null}</div>
                       </th>
                       <td data-label={t("Severity")}><Sev severity={p.severity} /></td>
-                      <td data-label={t("Found")}>{t("{n} times", { n: int(p.occurrences) })}</td>
-                      <td data-label={t("Confidence")}>{pct1(p.confidence)}</td>
+                      <td data-label={t("Found")} className="m2-num">{t("{n, plural, one {once} other {# times}}", { n: p.occurrences })}</td>
+                      <td data-label={t("Confidence")} className="m2-num">{pct1(p.confidence)}</td>
                     </tr>
                   );
                 })}

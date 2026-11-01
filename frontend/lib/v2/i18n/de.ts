@@ -6701,4 +6701,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Send me a test message": "Testnachricht an mich senden",
   "Nothing has been sent to you yet.": "Ihnen wurde noch nichts gesendet.",
   "{d, plural, one {# duplicate pair} other {# duplicate pairs}}, {o, plural, one {# outlier} other {# outliers}}": "{d, plural, one {# Dublettenpaar} other {# Dublettenpaare}}, {o, plural, one {# Ausreißer} other {# Ausreißer}}",
+  "confidence {p}": "Konfidenz {p}",
+  "{n, plural, one {once} other {# times}}": "{n, plural, one {einmal} other {# Mal}}",
+  "Readiness {s}, {n} would not load": "Bereitschaft {s}, {n} nicht ladbar",
+  "Open the analysis of {d}": "Analyse vom {d} öffnen",
 };

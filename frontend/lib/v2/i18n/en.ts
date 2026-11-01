@@ -6700,6 +6700,10 @@ export const en = {
   "Send me a test message": "Send me a test message",
   "Nothing has been sent to you yet.": "Nothing has been sent to you yet.",
   "{d, plural, one {# duplicate pair} other {# duplicate pairs}}, {o, plural, one {# outlier} other {# outliers}}": "{d, plural, one {# duplicate pair} other {# duplicate pairs}}, {o, plural, one {# outlier} other {# outliers}}",
+  "confidence {p}": "confidence {p}",
+  "{n, plural, one {once} other {# times}}": "{n, plural, one {once} other {# times}}",
+  "Readiness {s}, {n} would not load": "Readiness {s}, {n} would not load",
+  "Open the analysis of {d}": "Open the analysis of {d}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

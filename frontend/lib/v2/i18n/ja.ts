@@ -6701,4 +6701,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Send me a test message": "自分にテストメッセージを送信",
   "Nothing has been sent to you yet.": "まだ何も送信されていません。",
   "{d, plural, one {# duplicate pair} other {# duplicate pairs}}, {o, plural, one {# outlier} other {# outliers}}": "{d, plural, other {重複ペア #件}}、{o, plural, other {外れ値 #件}}",
+  "confidence {p}": "信頼度 {p}",
+  "{n, plural, one {once} other {# times}}": "{n, plural, other {# 回}}",
+  "Readiness {s}, {n} would not load": "準備度 {s}、{n} 件が読み込めません",
+  "Open the analysis of {d}": "{d} の分析を開く",
 };

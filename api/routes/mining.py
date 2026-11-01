@@ -393,7 +393,8 @@ class MiningPattern(BaseModel):
     occurrences: int
     first_seen: str
     last_seen: str
-    confidence: float
+    # None when no outlier in the group carries a z-score, so there is nothing to measure.
+    confidence: Optional[float]
     # The mined field's dictionary text, anomaly patterns only.
     field_description: Optional[str] = None
     trend: list = Field(default_factory=list)
@@ -538,7 +539,7 @@ async def mining_patterns(
                            MAX(CASE severity
                                WHEN 'critical' THEN 4 WHEN 'high' THEN 3
                                WHEN 'medium' THEN 2 ELSE 1 END) AS sev_rank,
-                           AVG(LEAST(ABS(COALESCE(z_score, 0)) / 5.0, 1.0)) AS confidence
+                           AVG(LEAST(ABS(z_score) / 5.0, 1.0)) AS confidence
                     FROM data_anomalies
                     WHERE {' AND '.join(clauses)}
                     GROUP BY module_id, field_name
@@ -558,7 +559,7 @@ async def mining_patterns(
                     occurrences=int(r[2]),
                     first_seen=r[3] or "",
                     last_seen=r[4] or "",
-                    confidence=round(float(r[6] or 0.0), 3),
+                    confidence=None if r[6] is None else round(float(r[6]), 3),
                     field_description=field_text(r[1], r[0]),
                 )
             )

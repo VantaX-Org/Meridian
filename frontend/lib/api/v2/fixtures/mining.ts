@@ -84,11 +84,12 @@ function patterns(): MiningPattern[] {
   for (const a of anomalies()) byField.set(`${a.module_id}:${a.field_name}`, [...(byField.get(`${a.module_id}:${a.field_name}`) ?? []), a]);
   for (const [key, rows] of byField) {
     const top = rows.reduce((m, r) => Math.max(m, RANK[r.severity]), 1);
-    const conf = rows.reduce((s, r) => s + Math.min(Math.abs(r.z_score ?? 0) / 5, 1), 0) / rows.length;
+    const z = rows.filter((r) => r.z_score != null);
+    const conf = z.length ? z.reduce((s, r) => s + Math.min(Math.abs(r.z_score as number) / 5, 1), 0) / z.length : null;
     out.push({
       id: `anomaly:${key}`, name: `Anomalous values in ${rows[0].field_name}`, module: rows[0].module_id, pattern_type: "anomaly",
       severity: (Object.keys(RANK) as Severity[]).find((k) => RANK[k] === top) ?? "low", occurrences: rows.length,
-      first_seen: AT, last_seen: AT, confidence: Math.round(conf * 1000) / 1000, trend: [], promoted_to_rule: false,
+      first_seen: AT, last_seen: AT, confidence: conf == null ? null : Math.round(conf * 1000) / 1000, trend: [], promoted_to_rule: false,
       field_description: rows[0].field_description,
     });
   }

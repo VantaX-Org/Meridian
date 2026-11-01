@@ -78,7 +78,7 @@ export interface MiningPattern {
   occurrences: number;
   first_seen: string;
   last_seen: string;
-  confidence: number;
+  confidence: number | null;
   /** The mined field's dictionary text, anomaly patterns only. */
   field_description?: string | null;
   trend: unknown[];

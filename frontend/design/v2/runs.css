@@ -42,7 +42,8 @@
 
 /* Table cells that carry a link, a mark and a word */
 .m2-root .m2-tbl td a, .m2-root .m2-tbl th a { color: var(--m2-fg); }
-.m2-root .m2-tbl td a.m2-rowlink, .m2-root .m2-tbl th a.m2-rowlink { text-decoration: underline; text-underline-offset: 2px; }
+.m2-root .m2-tbl td a.m2-rowlink, .m2-root .m2-tbl th a.m2-rowlink, .m2-root .m2-tbl th button.m2-rowlink { text-decoration: underline; text-underline-offset: 2px; }
+.m2-root .m2-tbl th button.m2-rowlink { color: var(--m2-fg); background: none; border: 0; padding: 0; font: inherit; text-align: left; }
 .m2-root .m2-tbl tfoot th, .m2-root .m2-tbl tfoot td { font-weight: 500; border-top: 1px solid var(--m2-line-2); background: var(--m2-sheet); height: 32px; padding: 0 var(--m2-s3); }
 .m2-root .m2-tbl .m2-u { color: var(--m2-meta); }
 .m2-root .m2-tbl tbody tr[data-open="true"] td, .m2-root .m2-tbl tbody tr[data-open="true"] th { background: var(--m2-active); }
