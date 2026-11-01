@@ -6564,4 +6564,10 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Send {n} to a steward": "{n} 件をスチュワードに送る",
   "Send pairs to the stewardship queue": "ペアをスチュワードシップキューに送る",
   "Urgent": "緊急",
+  "The failing records could not be read.": "不合格レコードを読み取れませんでした。",
+  "No failing records are listed here yet. Rows appear when an analysis finds rules with a fixable or suggested value.": "不合格レコードはまだ一覧にありません。分析で修正可能または提案値のあるルールが見つかると行が表示されます。",
+  "showing {n}": "{n} 件表示中",
+  "Decide in Work": "作業で決定する",
+  "Show more": "さらに表示",
+  "The rule does not suggest a value": "このルールは値を提案しません",
 };

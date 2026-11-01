@@ -30,7 +30,8 @@ export type LedgerLoader = () => Promise<LedgerModule>;
 function loadScreen(name: string): Promise<LedgerModule> {
   return import(/* webpackInclude: /Ledger\.tsx$/ */ `../${name}.tsx`) as Promise<LedgerModule>;
 }
-const defaultLoader: LedgerLoader = () => loadScreen(t("Ledger"));
+// i18n-ignore: a file name, not a word
+const defaultLoader: LedgerLoader = () => loadScreen("Ledger");
 
 let cached: ComponentType<LedgerProps> | null | undefined;
 

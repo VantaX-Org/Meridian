@@ -191,7 +191,7 @@ for (const size of SIZES) {
         await page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link", { name: "Failing records" }).click();
         await expect(page).toHaveURL(/tab=failing/);
         // The ledger when the build has it, the designed frame when it does not.
-        await expect(page.locator("[data-testid='empty-frame'], [data-testid='grid']").first()).toBeVisible(NAV);
+        await expect(page.locator("[data-testid='ledger'], [data-testid='empty-frame'], [data-testid='grid']").first()).toBeVisible(NAV);
         await shot(page, "object-rule-canvas-failing");
         await axe(page, `rule canvas failing ${size.name} ${scheme}`);
 
@@ -246,7 +246,7 @@ for (const size of SIZES) {
       test("Records: the ledger scoped to the object, or its designed frame", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto(`${OBJECT}/records?fixture=1`, { waitUntil: "load", timeout: 90_000 });
-        await expect(page.locator("[data-testid='empty-frame'], [data-testid='grid']").first()).toBeVisible(NAV);
+        await expect(page.locator("[data-testid='ledger'], [data-testid='empty-frame'], [data-testid='grid']").first()).toBeVisible(NAV);
         await expect(page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link", { name: /^Records/ })).toHaveAttribute("aria-current", "page");
         expect(await noSideScroll(page)).toBe(true);
         await page.waitForLoadState("networkidle");

@@ -6564,4 +6564,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Send {n} to a steward": "{n} an einen Steward senden",
   "Send pairs to the stewardship queue": "Paare an die Stewardship-Warteschlange senden",
   "Urgent": "Dringend",
+  "The failing records could not be read.": "Die fehlerhaften Datensätze konnten nicht gelesen werden.",
+  "No failing records are listed here yet. Rows appear when an analysis finds rules with a fixable or suggested value.": "Hier sind noch keine fehlerhaften Datensätze aufgeführt. Zeilen erscheinen, sobald eine Analyse Regeln mit einem korrigierbaren oder vorgeschlagenen Wert findet.",
+  "showing {n}": "{n} angezeigt",
+  "Decide in Work": "In Arbeit entscheiden",
+  "Show more": "Mehr anzeigen",
+  "The rule does not suggest a value": "Die Regel schlägt keinen Wert vor",
 };

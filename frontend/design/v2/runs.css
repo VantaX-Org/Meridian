@@ -91,5 +91,11 @@
   .m2-only-narrow { display: block; }
   .m2-root .m2-tlpop { left: 8px !important; right: 8px; width: auto; }
 }
+/* The scoped ledger on the Records tab and the rule canvas */
+.m2-root .m2-ledger { display: grid; gap: var(--m2-s3); justify-items: start; }
+.m2-root .m2-ledger-h { display: flex; justify-content: space-between; align-items: center; gap: var(--m2-s3); width: 100%; font-size: var(--m2-fs-13); font-variant-numeric: tabular-nums; }
+.m2-root .m2-ledger-scroll { width: 100%; overflow: auto; border: 1px solid var(--m2-line); border-radius: var(--m2-r2); }
+.m2-root .m2-ledger-risk { display: inline-grid; grid-template-columns: 72px auto; gap: var(--m2-s2); align-items: center; }
+.m2-root .m2-ledger-risk .m2-cc-track { width: 72px; height: 6px; }
 .m2-root .m2-runshape { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--m2-s6) var(--m2-s8); align-items: start; }
 @media (max-width: 900px) { .m2-root .m2-runshape { grid-template-columns: minmax(0, 1fr); } }

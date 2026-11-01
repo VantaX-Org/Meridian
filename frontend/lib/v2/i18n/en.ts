@@ -6563,6 +6563,12 @@ export const en = {
   "Send {n} to a steward": "Send {n} to a steward",
   "Send pairs to the stewardship queue": "Send pairs to the stewardship queue",
   "Urgent": "Urgent",
+  "The failing records could not be read.": "The failing records could not be read.",
+  "No failing records are listed here yet. Rows appear when an analysis finds rules with a fixable or suggested value.": "No failing records are listed here yet. Rows appear when an analysis finds rules with a fixable or suggested value.",
+  "showing {n}": "showing {n}",
+  "Decide in Work": "Decide in Work",
+  "Show more": "Show more",
+  "The rule does not suggest a value": "The rule does not suggest a value",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

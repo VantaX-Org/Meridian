@@ -52,4 +52,13 @@ describe("the ledger slot", () => {
     await waitFor(() => expect(screen.queryByTestId("ledger-loading")).toBeNull());
     expect(screen.queryByTestId("ledger") ?? screen.queryByTestId("empty-frame") ?? document.querySelector("[data-grid]")).not.toBeNull();
   });
+
+  it("the scoped ledger lists the fixture's failing records with the rule's words and one action, Decide in Work", async () => {
+    const { Ledger } = await import("../screens/Ledger");
+    renderWithQuery(<Ledger module="material_master" system="ecc-production" />);
+    const ledger = await screen.findByTestId("ledger");
+    expect(ledger).toHaveTextContent("MM003");
+    expect(ledger).toHaveTextContent("Material type is mandatory");
+    expect(screen.getByRole("link", { name: "Decide in Work" })).toHaveAttribute("href", expect.stringContaining("/work?module=material_master&system=ecc-production"));
+  });
 });
