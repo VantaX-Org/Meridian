@@ -9266,3 +9266,326 @@ rules:
       zone.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: time zone {EMPEMPLOYMENT.TIMEZONE} differs from location
     {EMPEMPLOYMENT.LOCATION} ({FOLOCATION.TIMEZONE}).'
+- id: EC497
+  field: EMPWORKPERMIT.USERID
+  check_class: null_check
+  grain: EMPWORKPERMIT
+  severity: high
+  dimension: completeness
+  message: Work permit record has no user ID
+  why_it_matters: EmpWorkPermit is keyed by the employee's user ID; a document without one belongs to nobody, so
+    it is never shown on an employee's profile or included in expiry monitoring.
+  rule_authority: sap_hard_constraint
+  sap_impact: The right-to-work evidence for the employee is not attached to them and expiry alerts never reach
+    HR for that employee.
+  fix_map:
+    __other__: Attach the document to the employee's user ID or delete the orphan record.
+  record_fix_template: 'Work permit document type {EMPWORKPERMIT.DOCUMENT_TYPE} for {EMPWORKPERMIT.COUNTRY}: no
+    user ID.'
+- id: EC498
+  field: EMPWORKPERMIT.USERID
+  check_class: exists_check
+  grain: EMPWORKPERMIT
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  severity: high
+  dimension: consistency
+  message: Work permit belongs to a user with no employment
+  why_it_matters: A work permit record is meaningful only for an employment; a user ID with no EmpEmployment is
+    a deleted, purged or mistyped user, and the right-to-work evidence is attached to the wrong person or to nobody.
+  rule_authority: best_practice
+  sap_impact: Right-to-work audits cannot tie the document to an employee and data-retention purges miss it.
+  fix_map:
+    __other__: Correct the user ID on the work permit or delete the document if the employee was purged.
+  record_fix_template: 'Work permit of user {EMPWORKPERMIT.USERID}: no employment exists for this user.'
+- id: EC499
+  field: EMPWORKPERMIT.COUNTRY
+  check_class: null_check
+  grain: EMPWORKPERMIT
+  severity: high
+  dimension: completeness
+  message: Work permit has no issuing country
+  why_it_matters: A work permit grants the right to work in one country; without the country, the document cannot
+    be matched to the country of the employee's legal entity, and country-specific document-type pick lists do not
+    apply.
+  rule_authority: sap_hard_constraint
+  sap_impact: Right-to-work compliance reporting per country omits the employee and the document type cannot be
+    validated against the country's list.
+  fix_map:
+    __other__: Maintain the country the work permit was issued for.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit {EMPWORKPERMIT.DOCUMENT_TYPE} has no country.'
+- id: EC500
+  field: EMPWORKPERMIT.DOCUMENT_TYPE
+  check_class: null_check
+  grain: EMPWORKPERMIT
+  severity: high
+  dimension: completeness
+  message: Work permit has no document type
+  why_it_matters: The document type (visa, residence permit, work authorisation card and so on) determines what
+    the document allows and which renewal process applies; a record without a type cannot be assessed for right
+    to work.
+  rule_authority: sap_hard_constraint
+  sap_impact: Right-to-work audits cannot tell which permission the employee holds and expiry rules by document
+    type do not fire.
+  fix_map:
+    __other__: Maintain the document type from the country's documentType pick list.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit for {EMPWORKPERMIT.COUNTRY} has no document
+    type.'
+- id: EC501
+  field: EMPWORKPERMIT.ISSUE_DATE
+  check_class: cross_field_check
+  grain: EMPWORKPERMIT
+  fail_when: '`EMPWORKPERMIT.ISSUE_DATE`.notna() & (`EMPWORKPERMIT.ISSUE_DATE` > @today)'
+  severity: medium
+  dimension: accuracy
+  message: Work permit issue date is in the future
+  why_it_matters: A document cannot have been issued after today; a future issue date is a typo (often the expiry
+    date entered as issue date) and makes the document look not yet valid.
+  rule_authority: best_practice
+  sap_impact: Right-to-work checks treat the employee as having no valid permit yet and validity-period reporting
+    is wrong.
+  fix_map:
+    __other__: Correct the issue date from the document.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit {EMPWORKPERMIT.DOCUMENT_TYPE} issue date {EMPWORKPERMIT.ISSUE_DATE}
+    is in the future.'
+- id: EC502
+  field: EMPWORKPERMIT.DOCUMENT_NUMBER
+  check_class: cross_field_check
+  grain: EMPWORKPERMIT
+  fail_when: '`EMPWORKPERMIT.DOCUMENT_NUMBER`.notna() & `EMPWORKPERMIT.DOCUMENT_NUMBER`.astype(''string'').str.upper().str.replace(''[^A-Z0-9]'',
+    '''', regex=True).str.fullmatch(''0+|1+|9+|X+|NA|NONE|NIL|TBD|TBA|UNKNOWN|PENDING|TEST'')'
+  severity: medium
+  dimension: validity
+  message: Work permit document number is a placeholder
+  why_it_matters: A document number made only of zeros, ones, nines or X or a placeholder word was entered to get
+    past the mandatory field; it does not identify any real document.
+  rule_authority: best_practice
+  sap_impact: Right-to-work evidence for the employee cannot be verified against the issuing authority and audit
+    sampling counts the employee as documented.
+  fix_map:
+    __other__: Enter the number printed on the document, or remove the record if no document exists.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit {EMPWORKPERMIT.DOCUMENT_TYPE} number {EMPWORKPERMIT.DOCUMENT_NUMBER}
+    is a placeholder.'
+- id: EC503
+  field: EMPWORKPERMIT.DOCUMENT_NUMBER
+  check_class: uniqueness_check
+  grain: EMPWORKPERMIT
+  fields:
+  - EMPWORKPERMIT.COUNTRY
+  - EMPWORKPERMIT.DOCUMENT_TYPE
+  - EMPWORKPERMIT.DOCUMENT_NUMBER
+  normalize: alnum
+  unique_across: EMPWORKPERMIT.USERID
+  severity: high
+  dimension: uniqueness
+  message: Same work permit document number is recorded for more than one employee
+  why_it_matters: A work permit is issued to one person; the same country, document type and number on two different
+    users means one of them carries the other's document, or a duplicate person exists.
+  rule_authority: best_practice
+  sap_impact: One employee's right to work is evidenced by another person's document, which an immigration audit
+    treats as no evidence.
+  fix_map:
+    __other__: Check the documents of both employees and correct the wrong record; merge the users if they are one
+      person.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit {EMPWORKPERMIT.DOCUMENT_TYPE} {EMPWORKPERMIT.DOCUMENT_NUMBER}
+    ({EMPWORKPERMIT.COUNTRY}) is also recorded for another employee.'
+- id: EC504
+  field: EMPWORKPERMIT.IS_VALIDATED
+  check_class: cross_field_check
+  grain: EMPWORKPERMIT
+  fail_when: (`EMPWORKPERMIT.IS_VALIDATED`.astype('string').str.lower() == 'false') & (`EMPWORKPERMIT.EXPIRATION_DATE`.isna()
+    | (`EMPWORKPERMIT.EXPIRATION_DATE` >= @today))
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: validity
+  message: Active employee's current work permit has not been validated
+  why_it_matters: isValidated records that HR has inspected the original document; for an active employee relying
+    on an unexpired permit, an unvalidated document is unverified right-to-work evidence.
+  rule_authority: best_practice
+  sap_impact: In a right-to-work audit the employee counts as unverified, which carries employer penalties in most
+    jurisdictions.
+  fix_map:
+    __other__: Inspect the original document and set it to validated, or obtain a valid document.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit {EMPWORKPERMIT.DOCUMENT_TYPE} ({EMPWORKPERMIT.COUNTRY})
+    is not validated.'
+- id: EC505
+  field: EMPWORKPERMIT.EXPIRATION_DATE
+  check_class: cross_field_check
+  grain: EMPWORKPERMIT
+  fail_when: '`EMPWORKPERMIT.EXPIRATION_DATE`.notna() & (`EMPWORKPERMIT.EXPIRATION_DATE` >= @today) & `EMPEMPLOYMENT.CONTRACT_END_DATE`.notna()
+    & (`EMPEMPLOYMENT.CONTRACT_END_DATE` > `EMPWORKPERMIT.EXPIRATION_DATE`)'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Fixed-term contract runs past the work permit expiry
+  why_it_matters: When the employee's contract end date is after the expiry of a permit that is still valid today,
+    the employment is planned to continue after the right to work ends unless the permit is renewed first.
+  rule_authority: best_practice
+  sap_impact: The employee may work without a valid permit after expiry, and the contract end is not the date HR
+    must act on.
+  fix_map:
+    __other__: Start the permit renewal before expiry or align the contract end date with the permit.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: contract ends {EMPEMPLOYMENT.CONTRACT_END_DATE} but work
+    permit {EMPWORKPERMIT.DOCUMENT_TYPE} expires {EMPWORKPERMIT.EXPIRATION_DATE}.'
+- id: EC506
+  field: EMPWORKPERMIT.ISSUE_DATE
+  check_class: cross_field_check
+  grain: EMPWORKPERMIT
+  fail_when: '`EMPWORKPERMIT.ISSUE_DATE`.notna() & (`EMPWORKPERMIT.ISSUE_DATE` == `EMPWORKPERMIT.EXPIRATION_DATE`)'
+  severity: low
+  dimension: accuracy
+  message: Work permit was issued on the day it expires
+  why_it_matters: A permit valid for zero days is a data-entry error where the same date was keyed into both fields.
+  rule_authority: best_practice
+  sap_impact: The validity period of the document is lost and expiry monitoring uses the wrong date.
+  fix_map:
+    __other__: Correct the issue and expiry dates from the document.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit {EMPWORKPERMIT.DOCUMENT_TYPE} issued and expires
+    on {EMPWORKPERMIT.ISSUE_DATE}.'
+- id: EC507
+  field: EMPGLOBALASSIGNMENT.ASSIGNMENT_TYPE
+  check_class: null_check
+  grain: EMPGLOBALASSIGNMENT
+  severity: high
+  dimension: completeness
+  message: Global assignment has no assignment type
+  why_it_matters: The assignment type (for example short-term or long-term) is mandatory on Global Assignment Details
+    and drives the assignment's tax, allowance and approval processing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Mobility reporting and the allowance and tax rules keyed on the assignment type cannot classify the
+    assignment.
+  fix_map:
+    __other__: Maintain the assignment type on the global assignment.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment has no assignment type.'
+- id: EC508
+  field: EMPGLOBALASSIGNMENT.START_DATE
+  check_class: null_check
+  grain: EMPGLOBALASSIGNMENT
+  severity: high
+  dimension: completeness
+  message: Global assignment has no start date
+  why_it_matters: The start date opens the host employment; without it the assignment has no effective period and
+    is excluded from every dated query.
+  rule_authority: sap_hard_constraint
+  sap_impact: Host-country headcount, payroll and social-security reporting cannot date the assignment.
+  fix_map:
+    __other__: Maintain the assignment start date (the host employment start).
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment has no start date.'
+- id: EC509
+  field: EMPGLOBALASSIGNMENT.PLANNED_END_DATE
+  check_class: null_check
+  grain: EMPGLOBALASSIGNMENT
+  severity: medium
+  dimension: completeness
+  message: Global assignment has no planned end date
+  why_it_matters: SuccessFactors asks for the planned end date when a global assignment is added; it is the date
+    mobility uses to plan repatriation and that limits tax and social-security certificates.
+  rule_authority: sap_hard_constraint
+  sap_impact: Assignments running past their permitted duration are not detected and repatriation is not planned.
+  fix_map:
+    __other__: Maintain the planned end date on the global assignment.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment has no planned end date.'
+- id: EC510
+  field: EMPGLOBALASSIGNMENT.USERID
+  check_class: exists_check
+  grain: EMPGLOBALASSIGNMENT
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  severity: high
+  dimension: consistency
+  message: Global assignment belongs to a user with no employment
+  why_it_matters: Global Assignment Details hang off the host employment; a user ID with no EmpEmployment means
+    the host employment was deleted or the user ID is wrong.
+  rule_authority: sap_hard_constraint
+  sap_impact: The assignment is invisible on every employee profile and host-country reporting.
+  fix_map:
+    __other__: Correct the user ID on the global assignment or delete the orphan record.
+  record_fix_template: 'Global assignment of user {EMPGLOBALASSIGNMENT.USERID}: no employment exists for this user.'
+- id: EC511
+  field: EMPEMPLOYMENT.ASSIGNMENT_CLASS
+  check_class: cross_field_check
+  fail_when: '`EMPGLOBALASSIGNMENT.START_DATE`.notna() & `EMPEMPLOYMENT.ASSIGNMENT_CLASS`.notna() & (`EMPEMPLOYMENT.ASSIGNMENT_CLASS`
+    != ''GA'')'
+  severity: medium
+  dimension: consistency
+  message: Employment has global assignment details but is not a global assignment
+  why_it_matters: Global Assignment Details exist only for a host employment, whose assignment class is GA; details
+    on an employment with another assignment class contradict the employment type.
+  rule_authority: best_practice
+  sap_impact: The employment is counted as a home employment in headcount while mobility reporting treats it as
+    an assignment.
+  fix_map:
+    __other__: Correct the assignment class or remove the global assignment details from the wrong employment.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: assignment class {EMPEMPLOYMENT.ASSIGNMENT_CLASS} but global
+    assignment details exist.'
+- id: EC512
+  field: EMPGLOBALASSIGNMENT.START_DATE
+  check_class: cross_field_check
+  grain: EMPGLOBALASSIGNMENT
+  fail_when: '`EMPGLOBALASSIGNMENT.START_DATE`.notna() & `EMPEMPLOYMENT.START_DATE`.notna() & (`EMPGLOBALASSIGNMENT.START_DATE`
+    < `EMPEMPLOYMENT.START_DATE`)'
+  severity: medium
+  dimension: consistency
+  message: Global assignment starts before its host employment
+  why_it_matters: The host employment exists from the assignment start; an assignment start before the employment
+    start dates the assignment into a period when no host employment existed.
+  rule_authority: best_practice
+  sap_impact: Host-country payroll and social-security periods are calculated from the wrong start.
+  fix_map:
+    __other__: Align the assignment start with the host employment start date.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment starts {EMPGLOBALASSIGNMENT.START_DATE},
+    employment starts {EMPEMPLOYMENT.START_DATE}.'
+- id: EC513
+  field: EMPGLOBALASSIGNMENT.END_DATE
+  check_class: cross_field_check
+  grain: EMPGLOBALASSIGNMENT
+  fail_when: '`EMPGLOBALASSIGNMENT.END_DATE`.notna() & (`EMPGLOBALASSIGNMENT.END_DATE` < @today)'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Global assignment has ended but the host employment is still active
+  why_it_matters: Ending a global assignment ends the host employment; an ended assignment with an employment still
+    active means the end was recorded on one object but not the other.
+  rule_authority: best_practice
+  sap_impact: The employee is paid and counted in the host country after returning, and host payroll keeps running.
+  fix_map:
+    __other__: End the host employment as of the assignment end date, or remove the assignment end date if it was
+      extended.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment ended {EMPGLOBALASSIGNMENT.END_DATE}
+    but the employment status is {EMPEMPLOYMENT.STATUS}.'
+- id: EC514
+  field: EMPGLOBALASSIGNMENT.PLANNED_END_DATE
+  check_class: cross_field_check
+  grain: EMPGLOBALASSIGNMENT
+  fail_when: '`EMPGLOBALASSIGNMENT.START_DATE`.notna() & `EMPGLOBALASSIGNMENT.PLANNED_END_DATE`.notna() & ((`EMPGLOBALASSIGNMENT.PLANNED_END_DATE`
+    - `EMPGLOBALASSIGNMENT.START_DATE`).dt.days > 1826)'
+  severity: low
+  dimension: accuracy
+  message: Global assignment is planned for more than five years
+  why_it_matters: Global assignments are temporary by definition; tax treaties and social-security certificates
+    limit posting to between two and five years, so a longer planned duration is a typo or a permanent transfer
+    recorded as an assignment.
+  rule_authority: best_practice
+  sap_impact: Home-country social-security coverage and tax equalisation lapse while the record still shows a temporary
+    assignment.
+  fix_map:
+    __other__: Correct the planned end date or convert the move to a permanent transfer.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment runs from {EMPGLOBALASSIGNMENT.START_DATE}
+    to {EMPGLOBALASSIGNMENT.PLANNED_END_DATE}.'

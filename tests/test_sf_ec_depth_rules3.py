@@ -76,6 +76,7 @@ def test_no_message_duplicates_existing_rule():
 # ── fixtures: (rule_id, tables, expected_affected, slice_tables_for_clean) ──
 EM, EML, PH, PI = "PEREMERGENCY", "PEREMAIL", "PERPHONE", "PERINFO"
 EE, FD, FC, FL = "EMPEMPLOYMENT", "FODEPARTMENT", "FOCOSTCENTER", "FOLOCATION"
+WP, GA = "EMPWORKPERMIT", "EMPGLOBALASSIGNMENT"
 
 CASES = [
     # PEREMERGENCY ---------------------------------------------------------
@@ -153,6 +154,36 @@ CASES = [
                          TIMEZONE=["Europe/Berlin", "Africa/Johannesburg", "Europe/Berlin"]),
                FL: frame(FL, EXTERNAL_CODE=["L1", "L2"], TIMEZONE=["Africa/Johannesburg", "Africa/Johannesburg"])},
      1, [EE]),
+    # work permits and global assignments ---------------------------------
+    ("EC497", {WP: frame(WP, USERID=[None, "u1"], DOCUMENT_TYPE=["visa", "visa"])}, 1, [WP]),
+    ("EC498", {WP: frame(WP, USERID=["u9", "u1"]), EE: frame(EE, USERID=["u1"])}, 1, [WP]),
+    ("EC499", {WP: frame(WP, USERID=["u1", "u2"], COUNTRY=[None, "DEU"])}, 1, [WP]),
+    ("EC500", {WP: frame(WP, USERID=["u1", "u2"], DOCUMENT_TYPE=[None, "visa"])}, 1, [WP]),
+    ("EC501", {WP: frame(WP, USERID=["u1", "u2"], ISSUE_DATE=["20990101", "20200101"])}, 1, [WP]),
+    ("EC502", {WP: frame(WP, USERID=["u1", "u2", "u3", "u4"],
+                         DOCUMENT_NUMBER=["N/A", "AB123456", "A1", "7Q9"])}, 1, [WP]),
+    ("EC503", {WP: frame(WP, USERID=["u1", "u2", "u3"], COUNTRY=["DEU", "DEU", "DEU"],
+                         DOCUMENT_TYPE=["visa", "visa", "visa"], DOCUMENT_NUMBER=["A-1", "A1", "B2"])}, 2, [WP]),
+    ("EC504", {WP: frame(WP, USERID=["u1", "u2", "u3"], IS_VALIDATED=["false", "true", "false"],
+                         EXPIRATION_DATE=["20990101", "20990101", "20200101"]),
+               EE: frame(EE, USERID=["u1", "u2", "u3"], STATUS=["A", "A", "A"])}, 1, [WP]),
+    ("EC505", {WP: frame(WP, USERID=["u1", "u2"], EXPIRATION_DATE=["20990101", "20990101"]),
+               EE: frame(EE, USERID=["u1", "u2"], STATUS=["A", "A"],
+                         CONTRACT_END_DATE=["20991231", "20980101"])}, 1, [WP]),
+    ("EC506", {WP: frame(WP, USERID=["u1", "u2"], ISSUE_DATE=["20240101", "20230101"],
+                         EXPIRATION_DATE=["20240101", "20280101"])}, 1, [WP]),
+    ("EC507", {GA: frame(GA, USERID=["u1", "u2"], ASSIGNMENT_TYPE=[None, "LT"])}, 1, [GA]),
+    ("EC508", {GA: frame(GA, USERID=["u1", "u2"], START_DATE=[None, "20240101"])}, 1, [GA]),
+    ("EC509", {GA: frame(GA, USERID=["u1", "u2"], PLANNED_END_DATE=[None, "20260101"])}, 1, [GA]),
+    ("EC510", {GA: frame(GA, USERID=["u9", "u1"]), EE: frame(EE, USERID=["u1"])}, 1, [GA]),
+    ("EC511", {EE: frame(EE, USERID=["u1", "u2", "u3"], ASSIGNMENT_CLASS=["ST", "GA", "ST"]),
+               GA: frame(GA, USERID=["u1", "u2"], START_DATE=["20240101", "20240101"])}, 1, [EE]),
+    ("EC512", {GA: frame(GA, USERID=["u1", "u2"], START_DATE=["20190101", "20240101"]),
+               EE: frame(EE, USERID=["u1", "u2"], START_DATE=["20200101", "20200101"])}, 1, [GA]),
+    ("EC513", {GA: frame(GA, USERID=["u1", "u2"], END_DATE=["20200101", None]),
+               EE: frame(EE, USERID=["u1", "u2"], STATUS=["A", "A"])}, 1, [GA]),
+    ("EC514", {GA: frame(GA, USERID=["u1", "u2"], START_DATE=["20200101", "20200101"],
+                         PLANNED_END_DATE=["20260101", "20220101"])}, 1, [GA]),
 ]
 
 
