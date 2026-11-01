@@ -2513,6 +2513,25 @@ class InsightFeedback(Base):
     )
 
 
+class AletheiaAction(Base):
+    """A finding a person acted on from the Aletheia band, with its baseline (migration 123)."""
+    __tablename__ = "aletheia_actions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    module = Column(Text, nullable=False)
+    check_id = Column(Text, nullable=False)
+    action = Column(Text, nullable=False)
+    version_id = Column(UUID(as_uuid=True), nullable=False)
+    affected_before = Column(Integer, nullable=True)
+    score_before = Column(Numeric, nullable=True)
+    created_by = Column(UUID(as_uuid=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "module", "check_id", "action", "version_id",
+                                       name="uq_aletheia_actions"),)
+
+
 class PurgeLog(Base):
     """One row per purge, dry run or real (api/services/purge.py, migration 082)."""
     __tablename__ = "purge_log"

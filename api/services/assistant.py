@@ -51,7 +51,7 @@ EXAMPLES = (
 )
 
 INTENTS = ("help", "score", "weakest_objects", "top_rules", "critical", "readiness", "root_causes", "fixes",
-           "owners", "changes", "rule", "value_at_risk", "forecast", "progress", "retrieval", "refused")
+           "owners", "changes", "rule", "value_at_risk", "forecast", "progress", "found", "retrieval", "refused")
 
 #: Retrieval answers from the matching figures only when they cover at least this share of the question's words.
 MIN_COVERAGE = 0.5
@@ -79,6 +79,7 @@ _READINESS = _rx(r"\b(block(er|ers|ing|ed)?|readiness|ready|waves?|go[- ]?live|m
                  r"load(able)?)\b")
 _ROOT = _rx(r"\b(root[- ]?causes?|causes?|caused|why|origins?|where does .* come from)\b")
 _CRITICAL = _rx(r"\bcritical\b")
+_FOUND = _rx(r"\b(aletheia|what (did|have) you (find|found)|what should (i|we) (do|act on)|recommend\w*)\b")
 _RULE_WORD = _rx(r"\b(rules?|checks?)\b")
 _RANK = _rx(r"\b(worst|top|most|biggest|largest|main|failing|fail(s|ed)?|ranked|rank)\b")
 _OBJECT_WORD = _rx(r"\b(objects?|modules?|areas?|domains?)\b")
@@ -192,6 +193,8 @@ def match(question: str, module: Optional[str] = None) -> Match:
         return m("help")
     if find_rule_id(q):
         return m("rule")
+    if _FOUND.search(q):
+        return m("found")
     if _FORECAST.search(q):
         return m("forecast")
     if _PROGRESS.search(q):
@@ -238,6 +241,7 @@ class Sources(Protocol):
     async def impact(self, vid: Optional[str]) -> Optional[dict]: ...
     async def forecast(self, module: Optional[str]) -> dict: ...
     async def burndown(self, vid: Optional[str], module: Optional[str]) -> Optional[dict]: ...
+    async def findings(self, module: Optional[str]) -> Optional[dict]: ...
 
 
 class DbSources:
@@ -331,6 +335,12 @@ class DbSources:
         from api.services import work_analytics
 
         return await work_analytics.burndown(self.db, self.tenant.id, vid, module)
+
+    async def findings(self, module: Optional[str]) -> Optional[dict]:
+        """The "Aletheia found" band over the current state (``GET /insights/findings``)."""
+        from api.routes.insights import get_findings
+
+        return await get_findings(module, self.db, self.tenant)
 
 
 # ── answer helpers ───────────────────────────────────────────────────────────
@@ -852,10 +862,49 @@ def help_answer(version_id: Optional[str], intent: str = "help", lead: str = "")
     return {**out, "grounded": True, "coverage": 0.0 if intent in ("refused", "unknown") else 1.0}
 
 
+async def _found(src: Sources, vid: Optional[str], m: Match) -> dict:
+    """What Aletheia found over the current state: rule ids, field names and counts only. The dominant origin's
+    name (it can be a user name) never goes into a fact; only its share does."""
+    res = _need(await src.findings(m.module))
+    rows = res.get("findings") or []
+    link = {"label": "Open the command centre", "href": "/"}
+    if not rows:
+        return _answer("found", "Aletheia found no failing rule in the current state.", vid, links=[link])
+    facts = []
+    for f in rows:
+        cid, mod = f["check_id"], f["module"]
+        href, cited = f"/rules/{cid}", [check(cid, mod)]
+        s = f"{cid} in {module_name(mod)} fails on {_n(f.get('affected'))} records"
+        s += f", field {f['field']}" if f.get("field") else ""
+        facts.append(fact(s, "Aletheia found", href, f.get("affected"), checks=cited))
+        d = f.get("delta_affected")
+        if d:
+            facts.append(fact(f"{cid} changed by {d:+,} failing records since the previous run", "Aletheia found",
+                              href, d, checks=cited))
+        o = (f.get("why") or {}).get("origin") or {}
+        if o.get("status") == "computed" and o.get("share") is not None:
+            pct = round(float(o["share"]) * 100)
+            facts.append(fact(f"One origin holds {pct}% of the failing values of {cid}", "Aletheia found", href, pct,
+                              checks=cited))
+        cost = (f.get("money") or {}).get("cost_at_risk")
+        if cost:
+            facts.append(fact(f"Cost at risk from {cid}: {_num(cost)} {res.get('currency') or ''}".strip(),
+                              "Aletheia found", href, float(cost), checks=cited))
+    for c in res.get("changes") or []:
+        if c.get("delta"):
+            facts.append(fact(f"{module_name(c['module'])} score moved {c['delta']:+} points since the previous run",
+                              "Aletheia found", "/", c["delta"]))
+    top = rows[0]
+    text = (f"The top finding is {top['check_id']} in {module_name(top['module'])}, failing on "
+            f"{_n(top.get('affected'))} records.")
+    return _answer("found", text, vid, links=[link], facts=facts)
+
+
 _HANDLERS = {
     "score": _score, "weakest_objects": _weakest, "top_rules": _top_rules, "critical": _critical,
     "readiness": _readiness, "root_causes": _root_causes, "fixes": _fixes, "owners": _owners, "changes": _changes,
     "rule": _rule, "value_at_risk": _value_at_risk, "forecast": _forecast, "progress": _progress,
+    "found": _found,
 }
 
 
@@ -867,7 +916,7 @@ we were what when where which who why will with would you your""".split())
 
 #: The intents whose figures a retrieval answer may draw on (each cheap, each from the run's aggregates).
 _POOL = ("score", "weakest_objects", "top_rules", "critical", "readiness", "root_causes", "fixes", "owners",
-         "changes", "value_at_risk", "progress")
+         "changes", "value_at_risk", "progress", "found")
 
 
 def _stems(text: str) -> set[str]:

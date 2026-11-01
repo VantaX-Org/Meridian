@@ -29,7 +29,7 @@ interface Turn {
   error?: string;
 }
 
-const SUGGESTIONS = [() => t("What is holding the score down?"), () => t("Which objects are under 85?"), () => t("What is the money at risk?")];
+const SUGGESTIONS = [() => t("What is holding the score down?"), () => t("Which objects are under 85?"), () => t("What is the money at risk?"), () => t("What did Aletheia find?")];
 
 /** One answer: the grounding verdict, the text, the facts it used, and where to go next. An ungrounded answer is a refusal. */
 function Answer({ a }: { a: AskAnswer }) {

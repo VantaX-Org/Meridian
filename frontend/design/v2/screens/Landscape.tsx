@@ -1,6 +1,7 @@
 "use client";
 
 import { Welcome } from "./Welcome";
+import { AletheiaFound } from "./AletheiaFound";
 import { AletheiaDock, CommandRow, GoLiveBanner } from "./CommandCentre";
 import { FixPipeline, ReadinessMatrix, RiskWaterfall, RuleBoard } from "./Cockpit";
 import { Explain } from "../Explain";
@@ -740,6 +741,7 @@ export function LandscapeCanvas() {
       {L.cells.length ? <ReadinessMatrix landscape={L} run={run} /> : null}
       <div className="m2-cc">
         <div className="m2-cc-main">
+          <AletheiaFound />
           <p className="m2-finding" data-testid="landscape-sentence">
             <LandscapeSentence landscape={L} />
           </p>

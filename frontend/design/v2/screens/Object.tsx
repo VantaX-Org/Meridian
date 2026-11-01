@@ -23,6 +23,7 @@ import { AsOfView, PolicyBreaches } from "./step10/ObjectParts";
 import { ObjectContractsBlock } from "./step9/Contracts";
 import { TopFailing } from "./object/TopFailing";
 import { ObjectMonitorStrip } from "./ObjectMonitors";
+import { AletheiaFound } from "./AletheiaFound";
 import { t as tr, tn } from "@/lib/v2/i18n";
 
 type TabKey = "rules" | "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "profile" | "glossary" | "golden";
@@ -326,6 +327,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
           <ObjectMonitorStrip module={apiModule} />
           <div className="m2-cc m2-co">
             <div className="m2-cc-main">
+              <AletheiaFound module={apiModule} />
               {receipt ? (
                 <p className="m2-statusline" data-testid="object-status">
                   {statusItems(receipt, cell).map((it, i) => (

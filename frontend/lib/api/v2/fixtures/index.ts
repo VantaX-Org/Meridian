@@ -26,7 +26,7 @@ import { matchRead, matchWrite, NONE_MATCH } from "./match-rules";
 import { mdmHealthRead, NONE_MDM_HEALTH } from "./mdm-health";
 import { NONE_WORK_ANALYTICS, workAnalyticsRead } from "./work-analytics";
 import { migrationRead, migrationWrite, NONE_MIGRATION } from "./migration";
-import { insightsRead, NONE_INSIGHTS } from "./insights";
+import { insightsRead, insightsWrite, NONE_INSIGHTS, NONE_INSIGHTS_WRITE } from "./insights";
 import { analyticsRead, NONE_ANALYTICS } from "./analytics";
 import { NONE_S4, s4Read } from "./s4";
 import { NONE_SCORE, scoreRead } from "./score";
@@ -139,6 +139,8 @@ function withOpenDelta(l: Landscape): Landscape {
 export function fixtureWrite<T>(method: string, path: string, body: unknown, params: Params): T {
   const req = requestsWrite(method, path, body);
   if (req !== NONE_REQ) return req as T;
+  const aw = insightsWrite(method, path, body);
+  if (aw !== NONE_INSIGHTS_WRITE) return aw as T;
   const step10 = step10Write(method, path, body);
   if (step10 !== NONE_STEP10) return step10 as T;
   if (method === "POST" && (path === "/work/decide" || /^\/work\/groups\/[^/]+\/(accept-all|set-value)$/.test(path))) guardDecision();
@@ -356,7 +358,7 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (wa !== NONE_WORK_ANALYTICS) return wa as T;
   const mg = migrationRead(path, params);
   if (mg !== NONE_MIGRATION) return mg as T;
-  const ins = insightsRead(path);
+  const ins = insightsRead(path, params);
   if (ins !== NONE_INSIGHTS) return ins as T;
   const an = analyticsRead(path);
   if (an !== NONE_ANALYTICS) return an as T;

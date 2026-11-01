@@ -4,11 +4,21 @@ Ask Meridian answers questions about the current run in plain words. It is groun
 
 ## What is on it
 
-- **Your question**, typed in the box ("Ask about this run") and sent with **Ask**, and three suggested ones: "What is holding the score down?", "Which objects are under 85?" and "What is the money at risk?".
+- **Your question**, typed in the box ("Ask about this run") and sent with **Ask**, and four suggested ones: "What is holding the score down?", "Which objects are under 85?", "What is the money at risk?" and "What did Aletheia find?".
 - **The answer**, marked either "Grounded, every number matches a fact" or "Not answered" when the draft quoted a figure that is not a fact.
 - **Facts used**, with "Coverage" saying how much of the question the facts cover, and **Rules cited**, so you can open the rule or object behind each sentence. The intent Meridian read from your question is shown, and "Reworded by model" when a language model phrased the sentence.
 - **Was this answer helpful?** Under each answer, press **Helpful** or **Not helpful**. One vote per answer is recorded with the run it came from, so the team can see which answers worked; after the vote the buttons give way to a thank you.
 - The Aletheia mark, which identifies the grounded intelligence that checks the answer.
+
+## Aletheia found
+
+At the top of the landscape and of every object, the **Aletheia found** band lists what Aletheia found without being asked. It ranks the failing rules of the latest run by their impact on the score. Each finding shows the rule number with its text, the object and the SAP field it fails on, and why it matters: how many failing records it gained or lost since the previous run, and, where Meridian traced where the bad values come from, what share of them come from one origin. Beside it are the failing records with a sparkline over the last runs, the money at risk when a cost model covers the rule, and a confidence. The confidence is the share of reviewed issues stewards confirmed as real, or the share of failing values from the dominant origin; when neither has been measured it shows a dash.
+
+Each finding carries one action. **Draft cleansing batch** drafts a cleansing batch over the rule's open issues; it still needs approval before anything is written back. **Draft tuned version** drafts a tuned version of a rule that produces too many false alarms, for review in the rules library. **Open rule** opens the rule when there is nothing to act on directly.
+
+Under the findings, **What changed since the last run** shows each object's score change against its previous run and the rules that moved it. **Proof of value** follows every finding someone acted on: it waits for the next run, then shows the score gain, how many fewer records fail, and the proven cost before and after for the cost metrics that rule feeds.
+
+Ask "What did Aletheia find?" in the dock to hear the same findings as grounded sentences. The answer uses only rule numbers, field names and counts, never record values.
 
 ## The numbers and where they come from
 

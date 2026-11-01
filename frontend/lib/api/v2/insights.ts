@@ -8,7 +8,8 @@
  *
  * Costs and value at risk are grouped per L1 only; the backend never adds them across L1s and neither does the page.
  */
-import { v2Get } from "./client";
+import type { BatchCreated, BatchFilter } from "@/lib/api/remediation";
+import { v2Get, v2Send } from "./client";
 
 const P = "/insights";
 
@@ -75,3 +76,83 @@ export const getImpact = () => v2Get<{ rows: ImpactRow[] }>(`${P}/impact`, curre
 export const getProvenCost = () => v2Get<ProvenCost>(`${P}/proven-cost`, current);
 export const getCauseClusters = () => v2Get<{ clusters: CauseCluster[] }>(`${P}/root-causes`, current);
 export const getTrends = () => v2Get<{ runs: TrendRun[] }>(`${P}/trends`, { limit: 12 });
+
+/**
+ * What Aletheia found (GET /insights/findings): ranked deterministic findings over the current state, what changed
+ * since each object's previous run, and the proof of value of every finding a person acted on.
+ */
+export type AletheiaActionKind = "tune" | "cleanse" | "open";
+
+export interface AletheiaFinding {
+  id: string;
+  module: string;
+  version_id: string;
+  check_id: string;
+  name: string;
+  field: string | null;
+  severity: string | null;
+  dimension: string | null;
+  affected: number;
+  total: number | null;
+  impact: number;
+  delta_affected: number | null;
+  auto_fix_pct: number | null;
+  spark: (number | null)[];
+  why: { origin: { status: string; top: string | null; share: number | null }; delta_affected: number | null };
+  money: { cost_at_risk: number | null; currency: string; features: { feature: string; l1: string | null; value_at_risk: number | null }[] };
+  confidence: { basis: "precision" | "origin_share"; value: number } | null;
+  action: { kind: AletheiaActionKind };
+}
+
+export interface AletheiaChange {
+  module: string;
+  version_id: string;
+  previous_version_id: string | null;
+  score: number | null;
+  previous: number | null;
+  delta: number | null;
+  movers: { check_id: string; name: string; delta_affected: number }[];
+}
+
+export interface AletheiaActed {
+  module: string;
+  check_id: string;
+  /** The rule's text when the current run still has it; null otherwise. */
+  name: string | null;
+  action: AletheiaActionKind;
+  version_id: string;
+  affected_before: number | null;
+  score_before: number | null;
+  created_at: string | null;
+  waiting: boolean;
+  affected_now: number | null;
+  score_now: number | null;
+  reduction: number | null;
+  gain: number | null;
+  proven_cost: { metric: string; label: string | null; before: number | null; after: number | null }[] | null;
+  currency: string;
+}
+
+export interface AletheiaFound {
+  currency: string;
+  findings: AletheiaFinding[];
+  changes: AletheiaChange[];
+  acted: AletheiaActed[];
+}
+
+export interface ActedBaseline {
+  module: string;
+  check_id: string;
+  action: AletheiaActionKind;
+  version_id: string;
+  score_before: number | null;
+  affected_before: number | null;
+}
+
+export const getFindings = (module?: string) => v2Get<AletheiaFound>(`${P}/findings`, { module });
+/** Records that a person acted on a finding; the server stores the run, score and failing records as the baseline. */
+export const markActed = (body: { module: string; check_id: string; action: AletheiaActionKind }) =>
+  v2Send<ActedBaseline>("POST", `${P}/findings/acted`, body);
+/** A cleansing batch over one rule's open issues (POST /remediation/batches), drafted for approval. */
+export const createRuleBatch = (name: string, filter: Pick<BatchFilter, "module" | "check_id">) =>
+  v2Send<BatchCreated>("POST", "/remediation/batches", { name, filter });
