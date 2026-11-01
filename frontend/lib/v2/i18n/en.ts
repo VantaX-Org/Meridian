@@ -6731,6 +6731,18 @@ export const en = {
   "Keep it running": "Keep it running",
   "Cancelling a job needs the manage settings permission": "Cancelling a job needs the manage settings permission",
   "Cancel job": "Cancel job",
+  "Records of {check_id}": "Records of {check_id}",
+  "Kind of change": "Kind of change",
+  "Search record keys": "Search record keys",
+  "No record key matches the search.": "No record key matches the search.",
+  "No records in this group.": "No records in this group.",
+  "Records that changed": "Records that changed",
+  "Per rule: records newly failing, fixed and still failing": "Per rule: records newly failing, fixed and still failing",
+  "No rule has a failing record in either run.": "No rule has a failing record in either run.",
+  "Across the rules that can be compared: {new} newly failing, {resolved} fixed, {persisting} still failing.": "Across the rules that can be compared: {new} newly failing, {resolved} fixed, {persisting} still failing.",
+  "See records": "See records",
+  "This rule was skipped or cut short in one of the runs, so its records cannot be compared": "This rule was skipped or cut short in one of the runs, so its records cannot be compared",
+  "Not comparable": "Not comparable",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
