@@ -197,6 +197,9 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     const remind = /^\/people\/([^/]+)\/remind$/.exec(path);
     if (method === "POST" && remind) return ap.remindFixture(decodeURIComponent(remind[1]));
     if (method === "PUT" && path === "/triage/sla-policies") return ap.putPolicyFixture(body as never);
+    const sla = /^\/triage\/sla-policies\/([^/]+)$/.exec(path);
+    if (method === "DELETE" && sla) return ap.deletePolicyFixture(decodeURIComponent(sla[1]));
+    if (method === "PUT" && path === "/triage/settings") return ap.putSettingsFixture(body as never);
     if (method === "PUT" && path === "/views") return wf.putViewFixture(body as never);
     const mdm = mdmFixtureWrite(method, path, body);
     if (mdm !== undefined) return mdm;
@@ -422,6 +425,7 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     if (path === "/notifications") return ap.notificationsFixture(Number(params.limit ?? 50));
     if (path === "/notifications/unread-count") return ap.unreadFixture();
     if (path === "/triage/sla-policies") return ap.policiesFixture();
+    if (path === "/triage/settings") return ap.settingsFixture();
     if (path === "/users/assignable") return ap.assignableFixture();
     if (path === "/findings") {
       const rows = Number(params.rows ?? 0);

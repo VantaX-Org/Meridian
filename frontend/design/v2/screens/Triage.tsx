@@ -6,7 +6,7 @@ import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
   bulkTriage, createAssignRule, createTeam, deleteAssignRule, deleteTeam, getAssignable, getAssignRules, getTeams, getTriageMetrics,
-  getTriageQueue, reorderAssignRules, setAssignRuleEnabled, setTeamMembers,
+  getTriageQueue, reorderAssignRules, setAssignRuleEnabled, setTeamMembers, updateTeam,
   type AssignableUser, type AssignRule, type BulkAction, type BulkBody, type QueueItem, type Team,
 } from "@/lib/api/v2/triage";
 import { formatDate } from "@/lib/format";
@@ -358,7 +358,7 @@ function Teams({ people }: { people: AssignableUser[] }) {
   const toast = useToast();
   const qc = useQueryClient();
   const [draft, setDraft] = useState<{ name: string; strategy: Team["strategy"]; member_ids: string[] }>({ name: "", strategy: "round_robin", member_ids: [] });
-  const [editing, setEditing] = useState<{ id: string; ids: string[] } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; ids: string[]; name: string; strategy: Team["strategy"]; lead: string | null } | null>(null);
   const teams = useQuery({ queryKey: ["triage-teams", fixture], queryFn: getTeams, staleTime: 60_000, retry });
   const done = (msg: string) => () => {
     toast.show(msg);
@@ -372,9 +372,19 @@ function Teams({ people }: { people: AssignableUser[] }) {
     onError: fail(t("The team could not be created.")),
   });
   const members = useMutation({
-    mutationFn: (e: { id: string; ids: string[] }) => setTeamMembers(e.id, e.ids),
-    onSuccess: () => { setEditing(null); done(t("Team members saved."))(); },
-    onError: fail(t("The team members could not be saved.")),
+    mutationFn: async (e: NonNullable<typeof editing>) => {
+      const was = teams.data?.find((x) => x.id === e.id);
+      const lead = e.lead && e.ids.includes(e.lead) ? e.lead : null;
+      const patch = {
+        ...(e.name.trim() !== was?.name ? { name: e.name.trim() } : {}),
+        ...(e.strategy !== was?.strategy ? { strategy: e.strategy } : {}),
+        ...(lead !== (was?.lead_user_id ?? null) ? { lead_user_id: lead } : {}),
+      };
+      if (Object.keys(patch).length) await updateTeam(e.id, patch);
+      await setTeamMembers(e.id, e.ids);
+    },
+    onSuccess: () => { setEditing(null); done(t("Team saved."))(); },
+    onError: fail(t("The team could not be saved.")),
   });
   const remove = useMutation({
     mutationFn: deleteTeam,
@@ -417,13 +427,28 @@ function Teams({ people }: { people: AssignableUser[] }) {
               {list.map((x) => (
                 <tr key={x.id}>
                   <th scope="row" className="m2-card-lead">
-                    {x.name}
-                    {x.lead_user_id ? <span className="m2-meta"> {t("Led by {name}", { name: nameOf(x.lead_user_id, people) ?? x.lead_user_id })}</span> : null}
+                    {editing?.id === x.id ? (
+                      <>
+                        <input className="m2-inp" aria-label={t("Team name")} value={editing.name} maxLength={200} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+                        <select className="m2-sel" aria-label={t("Team lead")} value={editing.lead ?? ""} onChange={(e) => setEditing({ ...editing, lead: e.target.value || null })}>
+                          <option value="">{t("No lead")}</option>
+                          {editing.ids.map((id) => <option key={id} value={id}>{nameOf(id, people) ?? id}</option>)}
+                        </select>
+                      </>
+                    ) : x.name}
+                    {editing?.id !== x.id && x.lead_user_id ? <span className="m2-meta"> {t("Led by {name}", { name: nameOf(x.lead_user_id, people) ?? x.lead_user_id })}</span> : null}
                   </th>
-                  <td data-label={t("Shares work by")}>{STRATEGY_TEXT[x.strategy]()}</td>
+                  <td data-label={t("Shares work by")}>
+                    {editing?.id === x.id ? (
+                      <select className="m2-sel" aria-label={t("Shares work by")} value={editing.strategy} onChange={(e) => setEditing({ ...editing, strategy: e.target.value as Team["strategy"] })}>
+                        <option value="round_robin">{STRATEGY_TEXT.round_robin()}</option>
+                        <option value="least_loaded">{STRATEGY_TEXT.least_loaded()}</option>
+                      </select>
+                    ) : STRATEGY_TEXT[x.strategy]()}
+                  </td>
                   <td data-label={t("Members")}>
                     {editing?.id === x.id
-                      ? picker(editing.ids, (ids) => setEditing({ id: x.id, ids }), t("Members of {name}", { name: x.name }))
+                      ? picker(editing.ids, (ids) => setEditing({ ...editing, ids }), t("Members of {name}", { name: x.name }))
                       : x.member_ids.length ? x.member_ids.map((id) => nameOf(id, people) ?? id).join(", ") : <Dash why={t("The team has no members.")} />}
                   </td>
                   <td data-label={t("Open items")} className="m2-num">{int(x.open_items)}</td>
@@ -431,12 +456,12 @@ function Teams({ people }: { people: AssignableUser[] }) {
                     <td data-label={t("Change")}>
                       {editing?.id === x.id ? (
                         <>
-                          <button type="button" className="m2-btn m2-next" disabled={members.isPending} onClick={() => members.mutate(editing)}>{t("Save")}</button>
+                          <button type="button" className="m2-btn m2-next" disabled={members.isPending || !editing.name.trim()} onClick={() => members.mutate(editing)}>{t("Save")}</button>
                           <button type="button" className="m2-btn" onClick={() => setEditing(null)}>{t("Cancel")}</button>
                         </>
                       ) : (
                         <>
-                          <button type="button" className="m2-btn" onClick={() => setEditing({ id: x.id, ids: x.member_ids })}>{t("Edit members")}</button>
+                          <button type="button" className="m2-btn" onClick={() => setEditing({ id: x.id, ids: x.member_ids, name: x.name, strategy: x.strategy, lead: x.lead_user_id })}>{t("Edit")}</button>
                           <button type="button" className="m2-btn" disabled={remove.isPending} onClick={() => remove.mutate(x.id)}>{t("Delete")}</button>
                         </>
                       )}

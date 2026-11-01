@@ -136,6 +136,12 @@ export function triageWrite(method: string, path: string, body: unknown): unknow
     const t = teamState().find((x) => x.id === decodeURIComponent(tm[1])) ?? refuse("Team not found", 404);
     if (method === "DELETE") { teams = teamState().filter((x) => x !== t); return null; }
     if (method === "PUT" && tm[2]) { t.member_ids = (b.user_ids as string[]) ?? []; return t; }
+    if (method === "PATCH" && !tm[2]) {
+      const name = b.name;
+      if (typeof name === "string" && teamState().some((x) => x !== t && x.name.toLowerCase() === name.toLowerCase())) refuse("A team with this name exists", 409);
+      Object.assign(t, b);
+      return t;
+    }
   }
   if (method === "POST" && path === "/triage/rules") {
     if (!b.assign_user_id === !b.assign_team_id) refuse("exactly one of assign_user_id / assign_team_id", 422);

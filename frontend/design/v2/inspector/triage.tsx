@@ -2,9 +2,12 @@
 
 import "../approvals.css";
 import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
-import type { Digest, SlaPolicy, TriageSeverity } from "@/lib/api/v2/triage";
-import { useDigest, useSaveTriage, useSlaPolicies } from "@/lib/v2/approvals-queries";
+import { useFixture } from "@/lib/api/v2/fixture";
+import { deleteSlaPolicy, getAssignable, getTriageSettings, putTriageSettings, type Digest, type SlaPolicy, type TriageSettings, type TriageSeverity } from "@/lib/api/v2/triage";
+import { approvalKeys, useDigest, useSaveTriage, useSlaPolicies } from "@/lib/v2/approvals-queries";
+import { moduleText } from "@/lib/v2/labels";
 import { useV2Session } from "@/lib/v2/hooks";
 import { useWorkCan } from "@/lib/v2/work-actions";
 import { InspectorFrame } from "../Inspector";
@@ -41,11 +44,23 @@ function Body() {
   const prefs = useDigest();
   const save = useSaveTriage();
   const canEdit = useTriageCan();
+  const fx = useFixture();
+  const qc = useQueryClient();
+  const reset = useMutation({
+    mutationFn: (id: string) => deleteSlaPolicy(id),
+    onSuccess: () => {
+      setDays({});
+      setOutcome({ tone: "ok", title: t("Saved"), detail: t("The policy was removed. The default applies from now on.") });
+      return qc.invalidateQueries({ queryKey: approvalKeys.sla(fx) });
+    },
+    onError: (e) => setOutcome({ tone: "fail", title: t("It did not go through"), detail: errorSentence(e, t("The policy could not be removed.")) }),
+  });
   const [days, setDays] = useState<Partial<Record<TriageSeverity, string>>>({});
   const [digest, setDigest] = useState<Digest | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
   const tenantWide = useMemo(() => (sla.data ?? []).filter((p) => p.module == null), [sla.data]);
+  const overrides = useMemo(() => (sla.data ?? []).filter((p) => p.module != null && p.id), [sla.data]);
   const byKey = useMemo(() => new Map(tenantWide.map((p) => [p.severity, p] as const)), [tenantWide]);
   const stored = prefs.data?.notifications?.digest ?? "off";
   const shownDigest = digest ?? stored;
@@ -98,6 +113,11 @@ function Body() {
                 <>
                   <input id={id} className="m2-num" inputMode="decimal" value={shown} onChange={(e) => setDays((d) => ({ ...d, [s.key]: e.target.value }))} aria-invalid={Number.isNaN(parsed(s.key)) ? "true" : undefined} />
                   <span className="m2-unit">{t("days")}</span>
+                  {p?.id && !p.is_default ? (
+                    <button type="button" className="m2-btn" disabled={reset.isPending} onClick={() => reset.mutate(p.id as string)} aria-label={t("Use the default for {sev}", { sev: s.label })}>
+                      {t("Use default")}
+                    </button>
+                  ) : null}
                 </>
               ) : (
                 <span>{p ? t("{daysOf} {daysOf, plural, one {day} other {days}}", { daysOf: daysOf(p.resolve_minutes) }) : "—"}</span>
@@ -107,6 +127,26 @@ function Body() {
         })}
         {p0(tenantWide)?.is_default ? <p className="m2-hint">{t("Severities without a policy of their own use the built-in default.")}</p> : null}
       </div>
+
+      {overrides.length ? (
+        <>
+          <h3>{t("Module overrides")}</h3>
+          <div className="m2-form" role="group" aria-label={t("SLA days per module")}>
+            {overrides.map((p) => (
+              <FormRow key={p.id} label={`${moduleText(p.module as string)} (${p.module}), ${SEVERITIES.find((s) => s.key === p.severity)?.label ?? p.severity}`} htmlFor={null}>
+                <span>{t("{daysOf} {daysOf, plural, one {day} other {days}}", { daysOf: daysOf(p.resolve_minutes) })}</span>
+                {canEdit ? (
+                  <button type="button" className="m2-btn" disabled={reset.isPending} onClick={() => reset.mutate(p.id as string)}>
+                    {t("Remove")}
+                  </button>
+                ) : null}
+              </FormRow>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      <WorkingHours />
 
       <h3>{t("Escalation")}</h3>
       <div className="m2-form">
@@ -154,6 +194,122 @@ function Body() {
       </div>
       {invalid ? <p className="m2-prov">{t("Days must be a number between 0 and 365.")}</p> : null}
       {!canEdit ? <p className="m2-prov">{t("Changing SLA days needs the manage triage permission, which your role does not hold. You can still choose your own digest.")}</p> : null}
+      {outcome ? <ResultFrame outcome={outcome} /> : null}
+    </>
+  );
+}
+
+const WEEKDAYS: { n: number; label: string }[] = [
+  { n: 1, get label() { return t("Mon"); } },
+  { n: 2, get label() { return t("Tue"); } },
+  { n: 3, get label() { return t("Wed"); } },
+  { n: 4, get label() { return t("Thu"); } },
+  { n: 5, get label() { return t("Fri"); } },
+  { n: 6, get label() { return t("Sat"); } },
+  { n: 7, get label() { return t("Sun"); } },
+];
+const hm = (v: string): string => v.slice(0, 5);
+const hms = (v: string): string => (v.length === 5 ? `${v}:00` : v);
+
+/** The business calendar SLA clocks run on: timezone, work days and hours, holidays and the fallback owner. */
+function WorkingHours() {
+  const fx = useFixture();
+  const qc = useQueryClient();
+  const session = useV2Session();
+  const canEdit = session.can("manage_settings");
+  const key = ["v2", "triage-settings", fx];
+  const q = useQuery({ queryKey: key, queryFn: getTriageSettings, retry: false });
+  const users = useQuery({ queryKey: ["v2", "assignable", fx], queryFn: getAssignable, enabled: canEdit });
+  const [draft, setDraft] = useState<(TriageSettings & { holidaysText: string }) | null>(null);
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const save = useMutation({
+    mutationFn: (s: TriageSettings) => putTriageSettings(s),
+    onSuccess: (s) => {
+      qc.setQueryData(key, s);
+      setDraft(null);
+      setOutcome({ tone: "ok", title: t("Saved"), detail: t("SLA clocks use the new working hours from now on.") });
+    },
+    onError: (e) => setOutcome({ tone: "fail", title: t("It did not go through"), detail: errorSentence(e, t("The working hours could not be saved.")) }),
+  });
+
+  if (q.isLoading) return <Skeleton width="100%" height={120} />;
+  if (q.isError || !q.data) return <ErrorFrame onRetry={() => void q.refetch()}>{t("The working hours could not be read.")}</ErrorFrame>;
+  const cur = draft ?? { ...q.data, holidaysText: q.data.holidays.join("\n") };
+  const set = (patch: Partial<typeof cur>) => setDraft({ ...cur, ...patch });
+  const holidays = cur.holidaysText.split(/\s+/).filter(Boolean);
+  const badHoliday = holidays.some((h) => !/^\d{4}-\d{2}-\d{2}$/.test(h));
+  const invalid = !cur.timezone.trim() || cur.work_days.length === 0 || hm(cur.work_start) >= hm(cur.work_end) || badHoliday || holidays.length > 400;
+  const dis = !canEdit;
+
+  return (
+    <>
+      <h3>{t("Working hours")}</h3>
+      <div className="m2-form" role="group" aria-label={t("Working hours")}>
+        <label htmlFor="triage-tz">{t("Timezone")}</label>
+        <span className="m2-fv">
+          <input id="triage-tz" value={cur.timezone} disabled={dis} onChange={(e) => set({ timezone: e.target.value })} />
+        </span>
+        <span className="m2-fl">{t("Work days")}</span>
+        <span className="m2-fv">
+          {WEEKDAYS.map((d) => (
+            <label key={d.n}>
+              <input
+                type="checkbox"
+                disabled={dis}
+                checked={cur.work_days.includes(d.n)}
+                onChange={(e) => set({ work_days: e.target.checked ? [...cur.work_days, d.n].sort() : cur.work_days.filter((x) => x !== d.n) })}
+              />{" "}
+              {d.label}
+            </label>
+          ))}
+        </span>
+        <label htmlFor="triage-start">{t("Day starts")}</label>
+        <span className="m2-fv">
+          <input id="triage-start" type="time" disabled={dis} value={hm(cur.work_start)} onChange={(e) => set({ work_start: hms(e.target.value) })} />
+        </span>
+        <label htmlFor="triage-end">{t("Day ends")}</label>
+        <span className="m2-fv">
+          <input id="triage-end" type="time" disabled={dis} value={hm(cur.work_end)} onChange={(e) => set({ work_end: hms(e.target.value) })} />
+        </span>
+        <label htmlFor="triage-hol">{t("Holidays")}</label>
+        <span className="m2-fv">
+          <textarea id="triage-hol" rows={3} disabled={dis} value={cur.holidaysText} onChange={(e) => set({ holidaysText: e.target.value })} aria-invalid={badHoliday ? "true" : undefined} />
+        </span>
+        <p className="m2-hint">{t("One date per line, as YYYY-MM-DD. The SLA clock stops on these days.")}</p>
+        <label htmlFor="triage-fallback">{t("Fallback owner")}</label>
+        <span className="m2-fv">
+          {canEdit ? (
+            <select id="triage-fallback" className="m2-sel" value={cur.fallback_user_id ?? ""} onChange={(e) => set({ fallback_user_id: e.target.value || null })}>
+              <option value="">{t("None")}</option>
+              {(users.data ?? []).map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.email})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span>{cur.fallback_user_id ? cur.fallback_user_id : "—"}</span>
+          )}
+        </span>
+      </div>
+      {canEdit ? (
+        <div className="m2-acts">
+          <button
+            type="button"
+            className="m2-btn"
+            disabled={!draft || invalid || save.isPending}
+            onClick={() => {
+              setOutcome(null);
+              save.mutate({ timezone: cur.timezone.trim(), work_days: cur.work_days, work_start: cur.work_start, work_end: cur.work_end, holidays, fallback_user_id: cur.fallback_user_id });
+            }}
+          >
+            {save.isPending ? t("Saving…") : t("Save working hours")}
+          </button>
+        </div>
+      ) : (
+        <p className="m2-prov">{t("Changing working hours needs the manage settings permission.")}</p>
+      )}
+      {draft && invalid ? <p className="m2-prov">{t("Pick at least one work day, a start before the end, and dates as YYYY-MM-DD.")}</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
     </>
   );

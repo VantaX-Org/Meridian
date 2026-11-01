@@ -19,6 +19,24 @@ export type Digest = "daily" | "weekly" | "off";
 export const getSlaPolicies = (): Promise<SlaPolicy[]> => v2Get("/triage/sla-policies");
 /** PUT /triage/sla-policies: creates or replaces the tenant-wide policy of one severity. Needs manage_triage, manage_settings or manage_rules. */
 export const putSlaPolicy = (p: Omit<SlaPolicy, "id" | "is_default">): Promise<SlaPolicy> => v2Send("PUT", "/triage/sla-policies", p);
+/** DELETE /triage/sla-policies/{id}: drops a stored policy; the severity falls back to the built-in default. */
+export const deleteSlaPolicy = (id: string): Promise<unknown> => v2Send("DELETE", `/triage/sla-policies/${encodeURIComponent(id)}`);
+
+/** GET/PUT /triage/settings: the working calendar SLA clocks count in (business-hours policies) and the fallback owner. */
+export interface TriageSettings {
+  timezone: string;
+  /** ISO weekdays, Monday = 1. */
+  work_days: number[];
+  /** "HH:MM:SS". */
+  work_start: string;
+  work_end: string;
+  /** "YYYY-MM-DD". */
+  holidays: string[];
+  fallback_user_id: string | null;
+}
+export const getTriageSettings = (): Promise<TriageSettings> => v2Get("/triage/settings");
+/** PUT /triage/settings: needs manage_settings. */
+export const putTriageSettings = (s: TriageSettings): Promise<TriageSettings> => v2Send("PUT", "/triage/settings", s);
 /** GET /me/preferences: the digest the signed-in person chose lives in notifications.digest. */
 export const getPreferences = (): Promise<{ notifications?: { digest?: Digest } }> => v2Get("/me/preferences");
 /** PATCH /me/preferences (a merge patch): sets the signed-in person's digest. */
@@ -100,6 +118,8 @@ export const getTriageMetrics = (weeks = 8): Promise<TriageMetrics> => v2Get("/t
 export interface Team { id: string; name: string; strategy: "round_robin" | "least_loaded"; lead_user_id: string | null; member_ids: string[]; open_items: number }
 export const getTeams = (): Promise<Team[]> => v2Get("/triage/teams");
 export const createTeam = (b: { name: string; strategy: Team["strategy"]; member_ids: string[] }): Promise<Team> => v2Send("POST", "/triage/teams", b);
+/** PATCH /triage/teams/{id}: rename, change how work is shared, or set the lead. 409 when the name is taken. */
+export const updateTeam = (id: string, b: Partial<Pick<Team, "name" | "strategy" | "lead_user_id">>): Promise<Team> => v2Send("PATCH", `/triage/teams/${encodeURIComponent(id)}`, b);
 export const setTeamMembers = (id: string, user_ids: string[]): Promise<Team> => v2Send("PUT", `/triage/teams/${encodeURIComponent(id)}/members`, { user_ids });
 export const deleteTeam = (id: string): Promise<unknown> => v2Send("DELETE", `/triage/teams/${encodeURIComponent(id)}`);
 
