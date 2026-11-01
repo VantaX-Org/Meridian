@@ -474,6 +474,68 @@ function Schedules({ system }: { system: string }) {
   );
 }
 
+const RUN_TONE: Record<string, "go" | "at-risk" | "no-go" | "neutral"> = { completed: "go", success: "go", running: "at-risk", pending: "neutral", failed: "no-go", error: "no-go" };
+
+/** Every run the schedules of one system made, newest first, with a button that runs every active schedule now. */
+function SyncHistory({ system }: { system: string }) {
+  const qc = useQueryClient();
+  const fixture = useFixture();
+  const can = useCan()("trigger_sync");
+  const q = useQuery({ queryKey: ["v2", "admin", fixture, "sync-runs", system], queryFn: () => api.listSyncRuns(system, 50), enabled: !!system, staleTime: 15_000, retry: false });
+  const profiles = useQuery({ queryKey: ["v2", "admin", fixture, "profiles", system], queryFn: () => api.listProfiles(system), enabled: !!system, staleTime: 15_000, retry: false });
+  const { outcome, pending, run } = useOutcome("admin-sync-runs");
+  const domainOf = (id: string) => {
+    const p = (profiles.data ?? []).find((x) => x.id === id);
+    return p ? labelText(p.domain) : "—";
+  };
+  const word: Record<string, string> = { completed: t("Done"), success: t("Done"), running: t("Running"), pending: t("Waiting"), failed: t("Failed"), error: t("Failed") };
+  const columns: GridColumn<api.SyncRun>[] = [
+    { id: "started", header: t("Started"), width: 170, pin: true, locked: true, cell: (r) => formatDate(r.started_at, "datetime") },
+    { id: "object", header: t("Object"), width: 190, cell: (r) => domainOf(r.profile_id) },
+    { id: "status", header: t("Status"), width: 120, cell: (r) => <StatusWord tone={RUN_TONE[r.status] ?? "neutral"}>{word[r.status] ?? r.status}</StatusWord> },
+    { id: "rows", header: t("Rows read"), width: 120, cell: (r) => (r.completed_at ? int(r.rows_extracted) : "—") },
+    { id: "delta", header: t("Findings change"), width: 150, cell: (r) => (r.completed_at ? `${r.findings_delta > 0 ? "+" : ""}${int(r.findings_delta)}` : "—") },
+    { id: "golden", header: t("Golden records updated"), width: 190, cell: (r) => (r.completed_at ? int(r.golden_records_updated) : "—") },
+    { id: "error", header: t("Why it failed"), width: 320, cell: (r) => r.error_detail ?? "—" },
+  ];
+  return (
+    <Block title={t("Sync history")} hint={t("Each run a schedule made on this system. A rise in findings means the data got worse since the run before.")}>
+      {outcome ? <ResultFrame outcome={outcome} /> : null}
+      <ToolGrid<api.SyncRun>
+        toolsTitle={t("Sync history")}
+        id="admin-sync-runs"
+        ariaLabel={t("Sync history")}
+        columns={columns}
+        rows={q.data ?? []}
+        rowId={(r) => r.id}
+        loading={q.isPending && !!system}
+        error={q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The sync history could not be read.")}</ErrorFrame> : undefined}
+        emptyFrame={<EmptyFrame>{t("No schedule of this system has run yet.")}</EmptyFrame>}
+        fixedColumns
+        compact
+      />
+      <div className="m2-adm-acts">
+        <button
+          type="button"
+          className="m2-btn"
+          disabled={!can || !system || pending !== null}
+          onClick={() =>
+            void run("sync", async () => {
+              const r = await api.syncSystem(system);
+              void qc.invalidateQueries({ queryKey: ["v2", "admin", fixture, "sync-runs", system] });
+              void qc.invalidateQueries({ queryKey: ["jobs"] });
+              return { tone: "ok", title: t("{n, plural, one {# schedule} other {# schedules}} started", { n: r.profile_count }), detail: t("Follow them in the job line.") };
+            })
+          }
+        >
+          {pending === "sync" ? t("Starting…") : t("Run every schedule now")}
+        </button>
+      </div>
+      {!can ? <p className="m2-prov">{t("Running schedules needs the trigger_sync permission.")}</p> : null}
+    </Block>
+  );
+}
+
 function RecentJobs() {
   const qc = useQueryClient();
   const { openItem, open } = useOpenItem();
@@ -639,6 +701,7 @@ export function RunsSection() {
           <Analysis key={`a-${system}`} system={system} />
           <ConfigLoad key={`c-${system}`} system={system} />
           <Schedules key={`s-${system}`} system={system} />
+          <SyncHistory key={`h-${system}`} system={system} />
         </>
       )}
       <FileUpload key={`u-${system}`} system={system} />

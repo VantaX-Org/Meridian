@@ -219,6 +219,11 @@ export async function startExtraction(systemId: string, objects: string[], analy
   return startDownload(systemId, { objects, scope, analyse, ...(delta ? { delta: true } : {}) });
 }
 
+/** One run of a schedule, as GET /systems/{id}/runs answers it. */
+export interface SyncRun { id: string; profile_id: string; started_at: string; completed_at: string | null; rows_extracted: number; findings_delta: number; golden_records_updated: number; status: string; error_detail: string | null; ai_quality_score: number | null }
+export const listSyncRuns = (systemId: string, limit = 20): Promise<SyncRun[]> => v2Get(`/systems/${enc(systemId)}/runs`, { limit });
+/** POST /systems/{id}/sync: run every active schedule of the system now. */
+export const syncSystem = (systemId: string): Promise<{ status: string; profile_count: number; job_ids: string[] }> => v2Send("POST", `/systems/${enc(systemId)}/sync`);
 export const listProfiles = (systemId: string): Promise<SyncProfile[]> => v2Get(`/systems/${enc(systemId)}/profiles`);
 export const createProfile = (systemId: string, body: { system_id: string; domain: string; tables: string[]; schedule_cron: string; active: boolean; extraction_mode: "full" | "delta" }): Promise<SyncProfile> =>
   v2Send("POST", `/systems/${enc(systemId)}/profiles`, body);

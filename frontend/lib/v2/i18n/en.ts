@@ -6639,6 +6639,17 @@ export const en = {
   "Delete the mapping": "Delete the mapping",
   "{standard_field} leaves the mapping list. Rules on this object read the standard column again.": "{standard_field} leaves the mapping list. Rules on this object read the standard column again.",
   "Mapping deleted": "Mapping deleted",
+  "Findings change": "Findings change",
+  "Golden records updated": "Golden records updated",
+  "Why it failed": "Why it failed",
+  "Sync history": "Sync history",
+  "Each run a schedule made on this system. A rise in findings means the data got worse since the run before.": "Each run a schedule made on this system. A rise in findings means the data got worse since the run before.",
+  "The sync history could not be read.": "The sync history could not be read.",
+  "No schedule of this system has run yet.": "No schedule of this system has run yet.",
+  "{n, plural, one {# schedule} other {# schedules}} started": "{n, plural, one {# schedule} other {# schedules}} started",
+  "Follow them in the job line.": "Follow them in the job line.",
+  "Run every schedule now": "Run every schedule now",
+  "Running schedules needs the trigger_sync permission.": "Running schedules needs the trigger_sync permission.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
