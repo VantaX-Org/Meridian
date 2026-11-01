@@ -13041,3 +13041,580 @@ rules:
       S/4HANA use Fiori app F1602 (Manage Product Master Data) and add the plant.'
   record_fix_template: 'Material {MARC.MATNR}: plant is {actual_value}. Assign the plant via MM01 (ECC)
     or Fiori F1602 (S/4HANA).'
+- id: MM900
+  field: KSSK.STATU
+  check_class: null_check
+  grain: KSSK
+  applies_when:
+    KSSK.LKENZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Class assignment has no classification status
+  why_it_matters: Every object-to-class assignment carries a classification status (KSSK-STATU) that CL20N/MM02 sets on save.
+    A blank status means the assignment was written outside the classification transactions, so SAP cannot tell whether it
+    is released, locked or incomplete.
+  rule_authority: best_practice
+  sap_impact: Class searches (CL30N) and variant configuration skip or misread the assignment; materials do not show up where
+    the class is used to find them.
+  fix_map:
+    __other__: Open the material in CL20N or MM02 (classification view) and save the assignment with a valid status.
+  record_fix_template: 'Object {KSSK.OBJEK}, class type {KSSK.KLART}, class {KSSK.CLINT}: classification status is blank.'
+- id: MM901
+  field: KSSK.STDCL
+  check_class: uniqueness_check
+  grain: KSSK
+  applies_when:
+    KSSK.STDCL:
+    - X
+    KSSK.LKENZ:
+      blank: true
+  fields:
+  - KSSK.OBJEK
+  - KSSK.KLART
+  - KSSK.MAFID
+  severity: high
+  dimension: uniqueness
+  message: Object has more than one standard class in the same class type
+  why_it_matters: Where a class type allows multiple classification, exactly one of the classes may be flagged as the standard
+    class (KSSK-STDCL). CL20N refuses a second one; two flagged rows come from a direct load or a broken migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read the standard class (BOM item class, class-driven defaults, MDG replication) pick one at
+    random and give different results from run to run.
+  fix_map:
+    __other__: Keep the standard-class flag on one class only (CL20N, Standard class checkbox).
+  record_fix_template: 'Object {KSSK.OBJEK}, class type {KSSK.KLART}: class {KSSK.CLINT} is one of several standard classes.'
+- id: MM902
+  field: KSSK.KLART
+  check_class: exists_check
+  grain: KSSK
+  fields:
+  - KSSK.CLINT
+  - KSSK.KLART
+  target_table: KLAH
+  target_fields:
+  - CLINT
+  - KLART
+  severity: high
+  dimension: consistency
+  message: Class assignment class type differs from the class type of the class
+  why_it_matters: A class belongs to exactly one class type (KLAH-KLART) and an assignment must carry that same class type
+    (KSSK-KLART). A mismatch means the assignment was copied or loaded with the wrong class type; it is invisible in the class
+    type the class really belongs to.
+  rule_authority: sap_hard_constraint
+  sap_impact: CL20N does not show the assignment, characteristic values (AUSP) are filed under the wrong class type, and class
+    searches return incomplete results.
+  fix_map:
+    __other__: Delete the assignment and re-assign the object to the class under its own class type in CL20N.
+  record_fix_template: 'Object {KSSK.OBJEK}: class {KSSK.CLINT} assigned under class type {KSSK.KLART}, which is not the class
+    type of that class.'
+- id: MM903
+  field: KSSK.CLINT
+  check_class: exists_check
+  grain: KSSK
+  applies_when:
+    KSSK.LKENZ:
+      blank: true
+  negate: true
+  fields:
+  - KSSK.CLINT
+  target_table: KLAH
+  target_fields:
+  - CLINT
+  target_when:
+    BISDT:
+      older_than_days: 0
+  severity: medium
+  dimension: lifecycle
+  message: Object is still assigned to a class whose validity has ended
+  why_it_matters: A class whose valid-to date (KLAH-BISDT) has passed can no longer be assigned. Assignments that survive
+    the end date keep classifying objects with a class the business has retired.
+  rule_authority: best_practice
+  sap_impact: Searches by the retired class still return the objects and new class structures miss them; the class cannot
+    be archived while assignments remain.
+  fix_map:
+    __other__: Reassign the objects to the successor class in CL20N or CL24N, then remove the old assignment.
+  record_fix_template: 'Object {KSSK.OBJEK}, class type {KSSK.KLART}: assigned class {actual_value} has expired.'
+- id: MM904
+  field: AUSP.DATUB
+  check_class: cross_field_check
+  grain: AUSP
+  fail_when: '`AUSP.DATUB`.notna() & `AUSP.DATUV`.notna() & (`AUSP.DATUB` < `AUSP.DATUV`)'
+  severity: medium
+  dimension: consistency
+  message: Characteristic value valid-to date is before its valid-from date
+  why_it_matters: With engineering change management a characteristic value is valid from DATUV to DATUB. A value that ends
+    before it starts is never valid on any date.
+  rule_authority: sap_hard_constraint
+  sap_impact: Date-dependent reads of the classification (CL20N with a key date, variant configuration, batch determination)
+    find no value for the characteristic.
+  fix_map:
+    __other__: Correct the change number validity or re-enter the value under a valid change number in CL20N.
+  record_fix_template: 'Object {AUSP.OBJEK}, characteristic {AUSP.ATINN}: value valid to {actual_value}, before it becomes
+    valid on {AUSP.DATUV}.'
+- id: MM905
+  field: AUSP.ATINN
+  check_class: exists_check
+  grain: AUSP
+  applies_when:
+    AUSP.LKENZ:
+      blank: true
+  negate: true
+  fields:
+  - AUSP.ATINN
+  target_table: CABN
+  target_fields:
+  - ATINN
+  target_when:
+    LKENZ:
+    - X
+  severity: medium
+  dimension: lifecycle
+  message: Object carries a value for a characteristic that is flagged for deletion
+  why_it_matters: A characteristic flagged for deletion (CABN-LKENZ) is being retired. Values still assigned to it keep the
+    characteristic alive and are dropped when it is archived.
+  rule_authority: best_practice
+  sap_impact: The value disappears from the object when the characteristic is archived; until then it blocks archiving and
+    appears in searches the business no longer uses.
+  fix_map:
+    __other__: Move the value to the successor characteristic in CL20N/CL24N or remove it, then archive the characteristic.
+  record_fix_template: 'Object {AUSP.OBJEK}, class type {AUSP.KLART}: characteristic {actual_value} is flagged for deletion.'
+- id: MM906
+  field: AUSP.ATWRT
+  check_class: exists_check
+  grain: AUSP
+  applies_when:
+    AUSP.ATWRT:
+      populated: true
+    AUSP.LKENZ:
+      blank: true
+  negate: true
+  fields:
+  - AUSP.ATINN
+  - AUSP.ATWRT
+  target_table: CAWN
+  target_fields:
+  - ATINN
+  - ATWRT
+  target_when:
+    LKENZ:
+    - X
+  severity: medium
+  dimension: lifecycle
+  message: Object carries a characteristic value that is flagged for deletion in the value list
+  why_it_matters: When an allowed value (CAWN) is flagged for deletion it may no longer be assigned. Objects that still carry
+    it hold a value the characteristic no longer offers.
+  rule_authority: best_practice
+  sap_impact: CL20N reports the value as not allowed on the next change; classification searches and batch selection on the
+    new value list miss the object.
+  fix_map:
+    __other__: Replace the value with a current allowed value in CL20N or by mass change in CL24N.
+  record_fix_template: 'Object {AUSP.OBJEK}, characteristic {AUSP.ATINN}: value "{actual_value}" is flagged for deletion in
+    the characteristic.'
+- id: MM907
+  field: INOB.OBJEK
+  check_class: null_check
+  grain: INOB
+  severity: high
+  dimension: completeness
+  message: Internal classification object number points at no object
+  why_it_matters: INOB links an internal object number (CUOBJ) to the key of the classified object (OBJEK). Without the object
+    key the classification under that number belongs to nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Values and class assignments filed under the internal number are orphaned and cannot be read from any object.
+  fix_map:
+    __other__: Delete the orphaned link and its assignments, or restore the object key from the source system.
+  record_fix_template: 'Internal object {INOB.CUOBJ}, table {INOB.OBTAB}: object key is blank.'
+- id: MM908
+  field: INOB.OBJEK
+  check_class: uniqueness_check
+  grain: INOB
+  fields:
+  - INOB.OBTAB
+  - INOB.OBJEK
+  - INOB.KLART
+  severity: high
+  dimension: uniqueness
+  message: Object has more than one internal classification number for the same class type
+  why_it_matters: SAP keeps one internal object number per object table, object key and class type. Two numbers split the
+    object's classification into two halves that never meet.
+  rule_authority: sap_hard_constraint
+  sap_impact: CL20N shows only one half of the classification; searches and configuration read inconsistent values depending
+    on which number they resolve.
+  fix_map:
+    __other__: Merge the classification onto one internal number and delete the duplicate link.
+  record_fix_template: 'Object {INOB.OBJEK} in table {INOB.OBTAB}, class type {INOB.KLART}: internal number {INOB.CUOBJ} is
+    one of several.'
+- id: MM909
+  field: CABN.ATINT
+  check_class: cross_field_check
+  grain: CABN
+  fail_when: (`CABN.ATINT` == 'X') & (`CABN.ATFOR` == 'CHAR')
+  severity: medium
+  dimension: consistency
+  message: Character-format characteristic allows interval values
+  why_it_matters: Interval values (CABN-ATINT) exist only for numeric, currency, date and time characteristics. CT04 disables
+    the option for CHAR; a set flag on a CHAR characteristic comes from a direct load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Value entry and searches behave inconsistently; migration tools that validate the definition reject the characteristic.
+  fix_map:
+    __other__: Clear the interval-values indicator in CT04.
+  record_fix_template: 'Characteristic {CABN.ATNAM}: format CHAR but interval values allowed.'
+- id: MM910
+  field: CABN.ATVOR
+  check_class: cross_field_check
+  grain: CABN
+  applies_when:
+    CABN.ATFOR:
+      populated: true
+  fail_when: (`CABN.ATVOR` == 'X') & ~`CABN.ATFOR`.isin(['NUM', 'CURR'])
+  severity: low
+  dimension: consistency
+  message: Non-numeric characteristic allows negative values
+  why_it_matters: The plus/minus sign option (CABN-ATVOR) applies to numeric and currency characteristics only. On any other
+    format the flag has no meaning and signals a loaded or corrupted definition.
+  rule_authority: sap_hard_constraint
+  sap_impact: Definition checks in CT04 and characteristic replication (ALE CHRMAS) flag the inconsistency.
+  fix_map:
+    __other__: Clear the negative-values indicator in CT04.
+  record_fix_template: 'Characteristic {CABN.ATNAM}: format {CABN.ATFOR} but negative values allowed.'
+- id: MM911
+  field: CABN.ATKLE
+  check_class: cross_field_check
+  grain: CABN
+  applies_when:
+    CABN.ATFOR:
+      populated: true
+  fail_when: (`CABN.ATKLE` == 'X') & (`CABN.ATFOR` != 'CHAR')
+  severity: low
+  dimension: consistency
+  message: Non-character characteristic is flagged case sensitive
+  why_it_matters: Case sensitivity (CABN-ATKLE) only applies to CHAR characteristics, whose values are text. On numbers, dates
+    or times it signals a loaded or corrupted definition.
+  rule_authority: sap_hard_constraint
+  sap_impact: Definition checks and ALE replication of the characteristic report the inconsistency.
+  fix_map:
+    __other__: Clear the case-sensitive indicator in CT04.
+  record_fix_template: 'Characteristic {CABN.ATNAM}: format {CABN.ATFOR} but case sensitive.'
+- id: MM912
+  field: CABN.ANZDZ
+  check_class: cross_field_check
+  grain: CABN
+  applies_when:
+    CABN.ATFOR:
+    - CHAR
+    - DATE
+    - TIME
+  fail_when: '`CABN.ANZDZ` > 0'
+  severity: medium
+  dimension: consistency
+  message: Characteristic with a non-numeric format has decimal places
+  why_it_matters: Decimal places (CABN-ANZDZ) are only defined for NUM and CURR characteristics. A CHAR, DATE or TIME characteristic
+    with decimals was loaded outside CT04.
+  rule_authority: sap_hard_constraint
+  sap_impact: Value formatting and conversion of the characteristic fail; value entry may dump.
+  fix_map:
+    __other__: Set the decimal places to zero in CT04 or correct the data type.
+  record_fix_template: 'Characteristic {CABN.ATNAM}: format {CABN.ATFOR} with {actual_value} decimal places.'
+- id: MM913
+  field: CABN.ATFEL
+  check_class: cross_field_check
+  grain: CABN
+  fail_when: (`CABN.ATTAB`.notna() & `CABN.ATFEL`.isna()) | (`CABN.ATTAB`.isna() & `CABN.ATFEL`.notna())
+  severity: high
+  dimension: consistency
+  message: Reference characteristic names a table without a field, or a field without a table
+  why_it_matters: A reference characteristic reads its value from a table field (CABN-ATTAB and CABN-ATFEL, e.g. MARA-BRGEW).
+    Both are needed; one without the other cannot resolve.
+  rule_authority: sap_hard_constraint
+  sap_impact: The characteristic shows no value and object dependencies that use it return nothing; configuration and batch
+    determination built on it fail.
+  fix_map:
+    __other__: Complete the table and field name on the Additional data tab of CT04, or clear both.
+  record_fix_template: 'Characteristic {CABN.ATNAM}: reference table {CABN.ATTAB}, field {CABN.ATFEL}.'
+- id: MM914
+  field: CABN.ATNAM
+  check_class: null_check
+  grain: CABN
+  severity: high
+  dimension: completeness
+  message: Characteristic has no name
+  why_it_matters: The characteristic name (CABN-ATNAM) is the external key used in CT04, CL20N, BAPIs and object dependencies.
+    A characteristic without a name cannot be addressed.
+  rule_authority: sap_hard_constraint
+  sap_impact: The characteristic cannot be maintained, assigned to a class or migrated.
+  fix_map:
+    __other__: Delete the record or restore its name from the source system.
+  record_fix_template: 'Internal characteristic {CABN.ATINN}: name is blank.'
+- id: MM915
+  field: CABN.ATFOR
+  check_class: null_check
+  grain: CABN
+  applies_when:
+    CABN.ATTAB:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Characteristic has no data type
+  why_it_matters: 'The data type (CABN-ATFOR: CHAR, NUM, CURR, DATE, TIME) decides how values are stored in AUSP (ATWRT text
+    or ATFLV number). Without it, value entry and conversion are undefined.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Values cannot be assigned or are stored in the wrong column; searches and dependencies fail.
+  fix_map:
+    __other__: Set the data type in CT04 (only possible while no values are assigned; otherwise recreate).
+  record_fix_template: 'Characteristic {CABN.ATNAM}: data type is blank.'
+- id: MM916
+  field: CAWN.ATWRT
+  check_class: uniqueness_check
+  grain: CAWN
+  applies_when:
+    CAWN.ATWRT:
+      populated: true
+    CAWN.LKENZ:
+      blank: true
+  fields:
+  - CAWN.ATINN
+  - CAWN.ATWRT
+  severity: high
+  dimension: uniqueness
+  message: Characteristic has the same allowed value twice
+  why_it_matters: Each allowed value of a characteristic is held once in CAWN. A repeated value gives two value counters,
+    two texts and two places for dependencies to attach.
+  rule_authority: sap_hard_constraint
+  sap_impact: F4 lists show the value twice, dependencies attached to one copy do not fire for the other, and CHRMAS replication
+    fails on the duplicate key.
+  fix_map:
+    __other__: Delete the duplicate value in CT04 (Values tab).
+  record_fix_template: 'Characteristic {CAWN.ATINN}: value "{actual_value}" is defined more than once.'
+- id: MM917
+  field: KLAH.CLASS
+  check_class: uniqueness_check
+  grain: KLAH
+  fields:
+  - KLAH.KLART
+  - KLAH.CLASS
+  severity: high
+  dimension: uniqueness
+  message: Two classes have the same name in one class type
+  why_it_matters: The class name (KLAH-CLASS) is the external key within a class type. Two internal classes with one name
+    make every reference by name ambiguous.
+  rule_authority: sap_hard_constraint
+  sap_impact: CL20N, BAPIs and CLSMAS replication attach objects to whichever class they resolve first.
+  fix_map:
+    __other__: Rename or delete the duplicate class in CL02.
+  record_fix_template: 'Class type {KLAH.KLART}: class name "{actual_value}" is used by more than one class.'
+- id: MM918
+  field: MAST.STLAN
+  check_class: null_check
+  grain: MAST
+  severity: high
+  dimension: completeness
+  message: Material BOM link has no BOM usage
+  why_it_matters: 'BOM usage (MAST-STLAN: production, engineering, costing, ...) is part of the key that BOM explosion, MRP
+    and costing use to select a BOM. A link without usage is never selected.'
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP and costing do not find the BOM; planned orders and cost estimates are created without components.
+  fix_map:
+    __other__: Recreate the BOM with the correct usage in CS01 and delete the faulty link.
+  record_fix_template: 'Material {MAST.MATNR}, plant {MAST.WERKS}, BOM {MAST.STLNR}: usage is blank.'
+- id: MM919
+  field: MAST.STLAL
+  check_class: null_check
+  grain: MAST
+  severity: high
+  dimension: completeness
+  message: Material BOM link has no alternative
+  why_it_matters: The alternative BOM (MAST-STLAL) identifies which of the material's BOMs this link is. Production versions
+    and alternative selection read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Alternative selection by lot size or production version fails and the BOM is not exploded.
+  fix_map:
+    __other__: Recreate the alternative in CS01 and delete the faulty link.
+  record_fix_template: 'Material {MAST.MATNR}, plant {MAST.WERKS}, BOM {MAST.STLNR}: alternative is blank.'
+- id: MM920
+  field: MAST.STLNR
+  check_class: uniqueness_check
+  grain: MAST
+  fields:
+  - MAST.MATNR
+  - MAST.WERKS
+  - MAST.STLAN
+  unique_across: MAST.STLNR
+  severity: high
+  dimension: consistency
+  message: Material has several BOM numbers for one plant and usage
+  why_it_matters: All alternatives of a material BOM for one plant and usage share one BOM number (STLNR); CS01 adds alternatives
+    under the existing number. Different numbers for the same material, plant and usage come from a direct load.
+  rule_authority: sap_hard_constraint
+  sap_impact: CS02/CS03 and BOM explosion read only one of the numbers; the other alternatives are invisible to MRP, costing
+    and production versions.
+  fix_map:
+    __other__: Rebuild the alternatives under one BOM number with CS01/CS02 and delete the stray links.
+  record_fix_template: 'Material {MAST.MATNR}, plant {MAST.WERKS}, usage {MAST.STLAN}: BOM {actual_value} is one of several
+    BOM numbers.'
+- id: MM921
+  field: MAST.STLAL
+  check_class: exists_check
+  grain: MAST
+  fields:
+  - MAST.STLNR
+  - MAST.STLAL
+  target_table: STKO
+  target_fields:
+  - STLNR
+  - STLAL
+  target_when:
+    STLTY:
+    - M
+  severity: high
+  dimension: consistency
+  message: Material BOM link points at an alternative that has no BOM header
+  why_it_matters: Every material-BOM link (MAST) points at a material BOM header (STKO, category M) for the same BOM number
+    and alternative. The BOM number may exist while this alternative does not.
+  rule_authority: sap_hard_constraint
+  sap_impact: 'BOM explosion for the alternative returns nothing: planned orders without components, cost estimates without
+    material cost.'
+  fix_map:
+    __other__: Create the alternative in CS01/CS02 or delete the link.
+  record_fix_template: 'Material {MAST.MATNR}, plant {MAST.WERKS}: BOM {MAST.STLNR} alternative {actual_value} has no header.'
+- id: MM922
+  field: MAST.MATNR
+  check_class: exists_check
+  grain: MAST
+  negate: true
+  fields:
+  - MAST.MATNR
+  - MAST.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    LVORM:
+    - X
+  severity: low
+  dimension: lifecycle
+  message: Material BOM exists at a plant where the material is flagged for deletion
+  why_it_matters: Once the plant segment is flagged for deletion (MARC-LVORM) the material is no longer produced there, so
+    its BOM at that plant is dead data.
+  rule_authority: best_practice
+  sap_impact: The plant segment cannot be archived while the BOM exists; costing runs still pick up the BOM.
+  fix_map:
+    __other__: Flag the BOM for deletion in CS02 or remove the plant deletion flag.
+  record_fix_template: 'Material {MAST.MATNR}, plant {MAST.WERKS}: BOM {MAST.STLNR} exists but the plant segment is flagged
+    for deletion.'
+- id: MM923
+  field: STKO.BMEIN
+  check_class: exists_check
+  grain: MAST
+  fields:
+  - MAST.MATNR
+  - STKO.BMEIN
+  target_table: MARM
+  target_fields:
+  - MATNR
+  - MEINH
+  severity: high
+  dimension: consistency
+  message: BOM base unit is not a unit of measure of the header material
+  why_it_matters: The BOM base quantity is entered in a unit of the header material (STKO-BMEIN). CS01 only accepts the base
+    unit or an alternative unit maintained in MARM; any other unit cannot be converted to the order quantity.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM explosion cannot scale component quantities to the order quantity and stops with a unit conversion error.
+  fix_map:
+    __other__: Maintain the unit as an alternative unit of the material (MM02) or change the BOM base unit in CS02.
+  record_fix_template: 'Material {MAST.MATNR}, plant {MAST.WERKS}, BOM {MAST.STLNR}: base unit {actual_value} is not maintained
+    for the material.'
+- id: MM924
+  field: STKO.BMENG
+  check_class: null_check
+  grain: STKO
+  applies_when:
+    STKO.STLTY:
+    - M
+    STKO.LKENZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: BOM header has no base quantity
+  why_it_matters: Component quantities are defined per base quantity (STKO-BMENG). BOM explosion divides by it, so a zero
+    base quantity makes every component requirement undefined.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP and order creation cannot calculate component requirements; costing cannot roll up material cost.
+  fix_map:
+    __other__: Enter the base quantity in CS02 (Header overview, Quantity data).
+  record_fix_template: 'BOM {STKO.STLNR}, alternative {STKO.STLAL}: base quantity is zero.'
+- id: MM925
+  field: STKO.BMEIN
+  check_class: null_check
+  grain: STKO
+  applies_when:
+    STKO.STLTY:
+    - M
+    STKO.LKENZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: BOM header has no base unit
+  why_it_matters: The base quantity is meaningless without its unit (STKO-BMEIN); explosion converts the order quantity into
+    this unit before scaling components.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM explosion stops with a unit conversion error; planned orders get no components.
+  fix_map:
+    __other__: Enter the base unit in CS02 (Header overview, Quantity data).
+  record_fix_template: 'BOM {STKO.STLNR}, alternative {STKO.STLAL}: base unit is blank.'
+- id: MM926
+  field: STKO.STLST
+  check_class: null_check
+  grain: STKO
+  applies_when:
+    STKO.STLTY:
+    - M
+    STKO.LKENZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: BOM header has no BOM status
+  why_it_matters: The BOM status (STKO-STLST, configured in OS23/T415S) controls whether the BOM is released for MRP, costing,
+    planning and production. CS01 always sets one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Applications that check release status (MRP, costing, order BOM explosion) skip the BOM.
+  fix_map:
+    __other__: Set the BOM status in CS02 (Header overview).
+  record_fix_template: 'BOM {STKO.STLNR}, alternative {STKO.STLAL}: status is blank.'
+- id: MM927
+  field: STKO.DATUV
+  check_class: null_check
+  grain: STKO
+  applies_when:
+    STKO.STLTY:
+    - M
+    STKO.LKENZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: BOM header has no valid-from date
+  why_it_matters: Every BOM header record is valid from a date (STKO-DATUV). Explosion selects the header valid on the requirements
+    date; a header without a date is never selected.
+  rule_authority: sap_hard_constraint
+  sap_impact: The BOM is invisible to MRP and order creation on every date.
+  fix_map:
+    __other__: Correct the header validity in CS02 or under its change number.
+  record_fix_template: 'BOM {STKO.STLNR}, alternative {STKO.STLAL}: valid-from date is blank.'
+- id: MM928
+  field: STKO.STLAL
+  check_class: null_check
+  grain: STKO
+  applies_when:
+    STKO.STLTY:
+    - M
+  severity: high
+  dimension: completeness
+  message: BOM header has no alternative
+  why_it_matters: The alternative (STKO-STLAL) identifies the header within the BOM number. MAST links and production versions
+    address the header by number and alternative.
+  rule_authority: sap_hard_constraint
+  sap_impact: No material link or production version can reach the header; its items are never exploded.
+  fix_map:
+    __other__: Recreate the alternative in CS01 and delete the faulty header.
+  record_fix_template: 'BOM {STKO.STLNR}: header has no alternative.'
