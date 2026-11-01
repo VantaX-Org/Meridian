@@ -6573,4 +6573,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Next delivery": "Nächste Zustellung",
   "no schedule is on": "kein Zeitplan ist aktiv",
   "Reports are built from stored runs, so a number in a report matches the run it names.": "Berichte entstehen aus gespeicherten Läufen, daher stimmt jede Zahl in einem Bericht mit dem genannten Lauf überein.",
+  "{label}, records over the last {count} extractions": "{label}, Datensätze über die letzten {count} Extraktionen",
 };

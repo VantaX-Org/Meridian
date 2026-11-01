@@ -6573,4 +6573,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Next delivery": "次回の配信",
   "no schedule is on": "有効なスケジュールはありません",
   "Reports are built from stored runs, so a number in a report matches the run it names.": "レポートは保存済みの実行から作成されるため、レポート内の数値は記載された実行と一致します。",
+  "{label}, records over the last {count} extractions": "{label}、直近 {count} 回の抽出のレコード数",
 };

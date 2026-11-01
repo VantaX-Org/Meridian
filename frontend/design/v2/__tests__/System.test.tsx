@@ -174,7 +174,11 @@ describe("the system canvas", () => {
     expect(within(table).getAllByRole("row")).toHaveLength(16);
     expect(norm(screen.getByTestId("system-banner"))).toContain("ECC production is connected");
     const chart = await screen.findByRole("list", { name: "Records per object in the latest extraction" });
-    expect(within(chart).getAllByRole("listitem").length).toBeGreaterThan(0);
+    const rows = within(chart).getAllByRole("listitem");
+    expect(rows.length).toBeGreaterThan(0);
+    // Every bar carries the record count of that object across the last eight extractions.
+    expect(within(rows[0]).getByRole("img").getAttribute("aria-label")).toMatch(/records over the last 8 extractions/);
+    expect(within(screen.getByTestId("system-banner")).getByRole("link", { name: "Connection settings" })).toBeInTheDocument();
     expect(await screen.findByText("Extraction, 15 objects")).toBeInTheDocument();
   });
 

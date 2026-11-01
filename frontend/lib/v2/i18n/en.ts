@@ -6572,6 +6572,7 @@ export const en = {
   "Next delivery": "Next delivery",
   "no schedule is on": "no schedule is on",
   "Reports are built from stored runs, so a number in a report matches the run it names.": "Reports are built from stored runs, so a number in a report matches the run it names.",
+  "{label}, records over the last {count} extractions": "{label}, records over the last {count} extractions",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

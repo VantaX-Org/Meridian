@@ -746,6 +746,8 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-track > span[data-tone="warn"] { background: var(--m2-warn); }
 .m2-cc-track > span[data-tone="pass"] { background: var(--m2-pass); }
 .m2-cc-hval { text-align: right; font-variant-numeric: tabular-nums; color: var(--m2-ink-2); }
+.m2-cc-hbars[data-spark] li { grid-template-columns: minmax(120px, 30%) minmax(0, 1fr) minmax(64px, auto) 56px; }
+.m2-cc-hspark { display: flex; justify-content: flex-end; }
 .m2-cc-delta .m2-cc-track::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--m2-ink-3); }
 .m2-cc-legend + .m2-cc-hbars { margin-top: var(--m2-s2); }
 .m2-cc-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--m2-s4); }
@@ -760,6 +762,8 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 
 /* Command centre: system */
 .m2-cc-sysbars { margin-top: var(--m2-s4); }
+.m2-cc-banner + .m2-tabs { margin-top: var(--m2-s4); }
+.m2-cc-banner .m2-cc-act { flex-direction: row; align-items: center; }
 .m2-cc-sysbars .m2-cc-lede { margin-bottom: var(--m2-s2); }
 
 /* Blast radius (rule canvas): figures, four columns of nodes, bezier edges drawn under them. */

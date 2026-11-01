@@ -11,6 +11,7 @@ import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { HealthWord, healthVerdict, protocolOf } from "../inspector/system";
 import { labelText } from "@/lib/v2/labels";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { Sparkline } from "../charts/Sparkline";
 import { Configuration } from "./system/Configuration";
 import { CustomObjects } from "./system/CustomObjects";
 import { SourceDesign } from "./system/SourceDesign";
@@ -43,13 +44,27 @@ function Overview({ id }: { id: string }) {
   const cells = (L?.cells ?? []).filter((c) => c.system_id === id);
   const mine = jobs.jobs.filter((j) => j.system_id === id).slice(0, 5);
   const { hrefFor } = useOpenItem();
-  const latest = useSystemExtractions(id).data?.versions[0];
+  const versions = useSystemExtractions(id).data?.versions ?? [];
+  const latest = versions[0];
+  // The last eight extractions, oldest first, so each row can show how its record count moved.
+  const history = versions.slice(0, 8).reverse();
   const bars = latest
     ? Object.entries(latest.records)
         .filter(([, n]) => n > 0)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 12)
-        .map(([module, n]) => ({ key: module, label: L?.objects.find((o) => o.module === module)?.label ?? labelText(module), value: n, text: int(n) }))
+        .map(([module, n]) => {
+          const label = L?.objects.find((o) => o.module === module)?.label ?? labelText(module);
+          const series = history.map((v) => v.records[module] ?? null);
+          const top = Math.max(1, ...series.map((x) => x ?? 0));
+          return {
+            key: module,
+            label,
+            value: n,
+            text: int(n),
+            spark: history.length > 1 ? <Sparkline values={series} domain={[0, top]} label={tr("{label}, records over the last {count} extractions", { label, count: history.length })} /> : null,
+          };
+        })
     : [];
   return (
     <>
@@ -304,19 +319,18 @@ export function SystemCanvas({ id }: { id: string }) {
       {ext?.health_message ? <p className="m2-prov">{ext.health_message}</p> : null}
       {system ? (
         <SystemBanner id={id} name={system.name} health={ext?.health_status ?? system.health_status} lastExtracted={system.last_extracted_at} scored={(land.data?.cells ?? []).filter((c) => c.system_id === id).length} action={
-          <V2Link href={hrefFor({ kind: "system", id })} className="m2-btn m2-next">
-            {tr("Test, load or extract")}
-          </V2Link>
+          <>
+            <V2Link href={hrefFor({ kind: "system", id })} className="m2-btn m2-next">
+              {tr("Test, load or extract")}
+            </V2Link>
+            <V2Link href={hrefFor({ kind: "connection", id })} className="m2-btn">
+              {tr("Connection settings")}
+            </V2Link>
+          </>
         } />
       ) : (
         <Skeleton width="100%" height={120} />
       )}
-      <div className="m2-cta">
-        <V2Link href={hrefFor({ kind: "connection", id })} className="m2-btn">
-          {tr("Connection settings")}
-        </V2Link>
-      </div>
-
       <nav className="m2-tabs" aria-label={tr("Views of {name}", { name: system?.name ?? tr("the system") })}>
         {SYSTEM_TABS.map((t) => (
           <V2Link key={t.key} href={href(t.key)} className="m2-tab" aria-current={t.key === tab ? "page" : undefined}>

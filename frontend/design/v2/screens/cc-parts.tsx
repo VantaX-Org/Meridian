@@ -57,13 +57,16 @@ export interface CcBarRow {
   /** The value in words, shown at the end of the row. */
   text: string;
   tone?: "crit" | "warn" | "pass" | "data";
+  /** A sparkline of the value over time, shown after the bar when given. */
+  spark?: ReactNode;
 }
 
 /** Horizontal bars, one row per item, every bar on the same scale from zero. */
 export function CcHBars({ rows, label, testId }: { rows: CcBarRow[]; label: string; testId?: string }) {
   const max = Math.max(1, ...rows.map((r) => r.value));
+  const sparks = rows.some((r) => r.spark);
   return (
-    <ul className="m2-cc-hbars" aria-label={label} data-testid={testId}>
+    <ul className="m2-cc-hbars" aria-label={label} data-testid={testId} data-spark={sparks || undefined}>
       {rows.map((r) => (
         <li key={r.key}>
           <span className="m2-cc-hlabel">{r.label}</span>
@@ -71,6 +74,7 @@ export function CcHBars({ rows, label, testId }: { rows: CcBarRow[]; label: stri
             <span data-tone={r.tone ?? "data"} style={{ width: `${(r.value / max) * 100}%` }} />
           </span>
           <span className="m2-cc-hval">{r.text}</span>
+          {sparks ? <span className="m2-cc-hspark">{r.spark}</span> : null}
         </li>
       ))}
     </ul>
