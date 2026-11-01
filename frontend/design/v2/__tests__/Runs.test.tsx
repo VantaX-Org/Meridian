@@ -40,10 +40,14 @@ describe("helpers", () => {
 });
 
 describe("Runs canvas", () => {
-  it("has the title, a sentence about the last runs and the timeline at full width", async () => {
+  it("has the title, the baseline in the banner, the view switch beside the filters and the timeline at full width", async () => {
     renderWithQuery(<RunsCanvas />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Runs");
-    expect(await screen.findByText(/The timeline shows the last 8 finished runs, the latest on 16 Oct 2026\. The baseline is 2 Oct 2026\./)).toBeInTheDocument();
+    expect(await screen.findByText(/Finished on 16 Oct 2026/)).toBeInTheDocument();
+    expect(screen.getByTestId("runs-banner")).toHaveTextContent(/baseline 2 Oct 2026/);
+    expect(screen.queryByText(/The timeline shows the last/)).toBeNull();
+    const nav = screen.getByRole("navigation", { name: "Runs views" });
+    expect(nav.parentElement).toHaveClass("m2-rfilters");
     // The table's count comes from its own rows: the 8 finished runs and the failed one.
     expect(await screen.findByTestId("runs-count")).toHaveTextContent(`${screen.getAllByTestId("run-row").length} runs in the table, 1 of them failed.`);
     const chart = await screen.findByTestId("run-timeline");

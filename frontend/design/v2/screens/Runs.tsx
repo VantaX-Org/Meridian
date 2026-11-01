@@ -305,6 +305,16 @@ export function RunsCanvas() {
   const nowScore = latest ? meanScore(latest) : null;
   const prevScore = prev ? meanScore(prev) : null;
   const delta = nowScore != null && prevScore != null ? nowScore - prevScore : null;
+  const views = (
+    <nav className="m2-views" aria-label={t("Runs views")}>
+      <V2Link href={link("runs")} aria-current={view === "runs" ? "page" : undefined}>
+        {t("Runs")}
+      </V2Link>
+      <V2Link href={link("jobs")} aria-current={view === "jobs" ? "page" : undefined}>
+        {jobs.active.length ? t("Jobs ({activeCount} running)", { activeCount: jobs.active.length }) : t("Jobs")}
+      </V2Link>
+    </nav>
+  );
   const startButton = (
     <button type="button" className="m2-btn m2-next" aria-expanded={starting} disabled={!session.can("analyse")} title={session.can("analyse") ? undefined : t("Starting a run needs the analyse permission")} onClick={() => setStarting((v) => !v)}>
       {t("Start a run")}
@@ -338,10 +348,6 @@ export function RunsCanvas() {
       />
 
       <section className="m2-sec" aria-label={t("Timeline")}>
-        <p className="m2-cc-lede">
-          {latest ? t("The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.", { runsCount: runs.length, run_at: formatDate(latest.run_at, "date") }) : t("No run has finished for this scope yet.")}
-          {baseline ? t(" The baseline is {run_at}.", { run_at: formatDate(baseline.run_at, "date") }) : ""}
-        </p>
         {timeline.isLoading ? (
           <Skeleton width="100%" height={100} />
         ) : timeline.isError ? (
@@ -370,21 +376,12 @@ export function RunsCanvas() {
         )}
       </section>
 
-      <div className="m2-cta" style={{ justifyContent: "space-between" }}>
-        <nav className="m2-views" aria-label={t("Runs views")}>
-          <V2Link href={link("runs")} aria-current={view === "runs" ? "page" : undefined}>
-            {t("Runs")}
-          </V2Link>
-          <V2Link href={link("jobs")} aria-current={view === "jobs" ? "page" : undefined}>
-            {jobs.active.length ? t("Jobs ({activeCount} running)", { activeCount: jobs.active.length }) : t("Jobs")}
-          </V2Link>
-        </nav>
-      </div>
       {starting ? <StartRun onClose={() => setStarting(false)} /> : null}
 
       {view === "runs" ? (
         <section className="m2-sec" aria-label={t("Runs")} style={{ marginTop: "var(--m2-s4)" }}>
           <div className="m2-rfilters">
+            {views}
             <label>
               {t("System")}
               <select className="m2-sel" value={system} onChange={(e) => setSystem(e.target.value)}>
@@ -416,6 +413,7 @@ export function RunsCanvas() {
       ) : (
         <section className="m2-sec" aria-label={t("Jobs")} style={{ marginTop: "var(--m2-s4)" }}>
           <div className="m2-rfilters">
+            {views}
             <label>
               {t("Kind")}
               <select className="m2-sel" value={kind} onChange={(e) => setKind(e.target.value)}>
@@ -461,7 +459,7 @@ function RunScoreTrend({ runs }: { runs: readonly TimelineRun[] }) {
     return { id: r.id, label, title: t("{label}: average score {score}", { label: full, score: f1(value) }), value };
   });
   const known = points.map((p) => p.value).filter((v): v is number => v != null);
-  const ticks = niceTicks(Math.max(0, Math.min(...known, 100) - 5), Math.min(100, Math.max(...known, 0) + 5), 4);
+  const ticks = niceTicks(Math.max(0, Math.min(...known, 100) - 10), Math.min(100, Math.max(...known, 0) + 10), 4);
   return (
     <ChartFrame
       title={t("Score over time")}

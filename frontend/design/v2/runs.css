@@ -38,6 +38,7 @@
 .m2-root .m2-views a[aria-current="page"] { background: var(--m2-inverse); color: var(--m2-on-inverse) !important; font-weight: 500; }
 .m2-root .m2-rfilters { display: flex; flex-wrap: wrap; gap: var(--m2-s3); align-items: center; margin: var(--m2-s3) 0; font-size: var(--m2-fs-13); color: var(--m2-meta); }
 .m2-root .m2-rfilters label { display: inline-flex; gap: var(--m2-s2); align-items: center; }
+.m2-root .m2-rfilters > .m2-views { margin-right: var(--m2-s3); }
 
 /* Table cells that carry a link, a mark and a word */
 .m2-root .m2-tbl td a, .m2-root .m2-tbl th a { color: var(--m2-fg); }
