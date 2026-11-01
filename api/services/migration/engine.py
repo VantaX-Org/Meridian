@@ -123,6 +123,7 @@ def analyze(
     target_connected: bool = False,
     config_basis: str = "live",
     field_status: dict[str, tuple[str, dict, dict]] | None = None,
+    target_out: dict[tuple[str, str], dict[str, pd.Series]] | None = None,
 ) -> tuple[list[Gap], ModuleResult]:
     """Gap-analyse one module's source tables against the target.
 
@@ -130,6 +131,9 @@ def analyze(
     the resolved field-status groups from ``api.services.migration.field_status``, used to flag the
     cross-system field-status deltas a plain value map cannot see (a field required in the target
     but optional/suppressed in the source will arrive blank).
+
+    ``target_out`` (optional, out) receives the target-shape values: ``{(source table, target table):
+    {target field: values indexed like the source frame}}`` (dest_score.py projects the target DQS from it).
 
     `config_basis` is `baseline` when the target config is the SAP standard baseline; a check-table miss is
     then flagged, not blocking.
@@ -266,6 +270,8 @@ def analyze(
     for g in gaps:
         counts[g.gap_type] = counts.get(g.gap_type, 0) + 1
     ready = {t: sorted(set(all_keys[t].tolist()) - blocked.get(t, set())) for t in all_keys}
+    if target_out is not None:
+        target_out.update(target_values)
     return gaps, ModuleResult(module, records, n_blocked, score, verdict, counts, ready)
 
 

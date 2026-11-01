@@ -330,7 +330,13 @@ function waveCockpit(w: MigrationWave) {
         const verdict = verdicts[i % 3];
         const records = 1200 + i * 300;
         const blocked = verdict === "go" ? 0 : verdict === "at_risk" ? 40 : 310;
-        return { module: m, label: m, verdict, score: [98, 91, 72][i % 3], records, records_blocked: blocked, blocker_count: verdict === "go" ? 0 : 1, dqs: [96, 90, 78][i % 3] };
+        return { module: m, label: m, verdict, score: [98, 91, 72][i % 3], records, records_blocked: blocked, blocker_count: verdict === "go" ? 0 : 1, dqs: [96, 90, 78][i % 3],
+          // projected in the S/4HANA shape; the target system was last analysed for the first object only
+          dest_dqs_projected: [93.4, 82.1, 64.5][i % 3], dest_dqs_actual: i === 0 ? 91.2 : null,
+          dest_contributors: verdict === "go" ? [] : [
+            { check_id: "value_unmapped:BUT000.BU_GROUP", kind: "gap" as const, severity: "critical" as const, dimension: "completeness", description: "no value mapping from KNA1.KTOKD to BUT000.BU_GROUP", field: "BUT000.BU_GROUP", field_description: "Business Partner Grouping", source_affected: null, dest_affected: blocked, total: records, impact: -Math.round((blocked / records) * 1000) / 10 },
+            { check_id: "BP005", kind: "target" as const, severity: "high" as const, dimension: "completeness", description: "BP grouping is required - controls number range and field selection", field: "BUT000.BU_GROUP", field_description: "Business Partner Grouping", source_affected: null, dest_affected: blocked, total: records, impact: -Math.round((blocked / records) * 1000) / 10 },
+          ] };
       })
     : [];
   const blockers = objects.filter((o) => o.blocker_count > 0).map((o) => ({ module: o.module, label: o.label, gap_type: "value_unmapped", field: "MARA.MTART", severity: o.verdict === "no_go" ? "critical" : "high", records: o.records_blocked, gaps: o.records_blocked }));

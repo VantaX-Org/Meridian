@@ -62,6 +62,14 @@ async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
         summary = (await db.execute(text("SELECT dqs_summary FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
                                     {"v": str(run.source_version_id), "t": tenant_id})).scalar() or {}
         dqs = {m: (d or {}).get("composite_score") for m, d in summary.items()}
+    # measured DQS in the target: the connected target system's own latest complete analysis
+    actual: dict[str, float | None] = {}
+    if wave.target_system_id:
+        summary = (await db.execute(text("""
+            SELECT dqs_summary FROM analysis_versions
+             WHERE tenant_id = :t AND metadata->>'system_id' = :s AND status LIKE '%complete%'
+             ORDER BY run_at DESC LIMIT 1"""), {"t": tenant_id, "s": str(wave.target_system_id)})).scalar() or {}
+        actual = {m: d.get("composite_score") for m, d in summary.items() if isinstance(d, dict)}
     gap_summary = (run.gap_summary if run else None) or {}
     from api.services.wave_gate import gate_scores, wave_threshold
     min_dqs = wave_threshold((await gate_scores(db, tenant_id, [str(wave.id)])).get(str(wave.id)), wave.min_dqs)
@@ -74,7 +82,11 @@ async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
     objects = [{"module": c.module, "label": object_label(c.module), "verdict": c.verdict, "score": c.score,
                 "records": int((gap_summary.get(c.module) or {}).get("records") or 0),
                 "records_blocked": c.records_blocked,
-                "blocker_count": blocking.get(c.module, 0) if run else c.blocker_count, "dqs": c.dqs}
+                "blocker_count": blocking.get(c.module, 0) if run else c.blocker_count, "dqs": c.dqs,
+                # projected in the target shape by the readiness run (dest_score.project), measured on the target
+                "dest_dqs_projected": ((gap_summary.get(c.module) or {}).get("dest_dqs") or {}).get("composite_score"),
+                "dest_dqs_actual": actual.get(c.module),
+                "dest_contributors": ((gap_summary.get(c.module) or {}).get("dest_dqs") or {}).get("contributors") or []}
                for c in cells]
 
     trend = (await db.execute(text("""
@@ -162,7 +174,8 @@ def readiness_report_sheets(cockpit: dict) -> dict:
         "Objects": pd.DataFrame([{"Object": o["label"], "Module": o["module"], "Verdict": _VERDICT_LABEL[o["verdict"]],
                                   "Readiness %": o["score"], "Records": o["records"],
                                   "Records blocked": o["records_blocked"], "Blocking gaps": o["blocker_count"],
-                                  "DQS": o["dqs"]} for o in cockpit["objects"]]),
+                                  "DQS": o["dqs"], "Projected DQS in target": o.get("dest_dqs_projected"),
+                                  "Measured DQS in target": o.get("dest_dqs_actual")} for o in cockpit["objects"]]),
         "Blockers": pd.DataFrame([{"Object": b["label"], "Gap type": b["gap_type"], "Field": b["field"],
                                    "Severity": b["severity"], "Records": b["records"], "Gaps": b["gaps"]}
                                   for b in cockpit["blockers"]]),

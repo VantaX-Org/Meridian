@@ -1248,6 +1248,27 @@ export interface WaveObject {
   records_blocked: number;
   blocker_count: number;
   dqs: number | null;
+  /** DQS of the source data projected in the target shape by the readiness run (migration/dest_score.py). */
+  dest_dqs_projected: number | null;
+  /** DQS measured on the connected target system's own latest analysis. */
+  dest_dqs_actual: number | null;
+  dest_contributors: DestScoreContributor[];
+}
+
+/** One rule or gap that moves an object's quality score between source and target. */
+export interface DestScoreContributor {
+  check_id: string;
+  /** dropped: the rule's field is not migrated; target: a target-system rule; gap: a per-record migration gap. */
+  kind: "dropped" | "target" | "gap";
+  severity: Severity;
+  dimension: string;
+  description: string | null;
+  field: string | null;
+  field_description: string | null;
+  source_affected: number | null;
+  dest_affected: number | null;
+  total: number;
+  impact: number;
 }
 
 export interface WaveBlocker {
