@@ -518,6 +518,14 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
   if (path === "/audit/llm") return { entries: [{ id: "ll-1", service_name: "remediation_agent", called_at: ago(1), model_version: "local-8b", prompt_hash: "9f2c1a", token_count: 812, latency_ms: 3420, success: true, deterministic_hit: false, skip_reason: null }], total: 1, limit: 50, offset: 0, cache: [{ service_name: "remediation_agent", decisions: 40, deterministic: 31 }] };
   if (path === "/alert-channels") return { channels: clone(s.channels) };
   if (path === "/me/preferences") return clone(s.prefs);
+  if (path === "/me/notifications/deliveries")
+    return {
+      items: [
+        { id: "dl-3", channel: "in_app", kind: "test", status: "sent", error: null, created_at: "2026-10-16T05:12:00Z" },
+        { id: "dl-2", channel: "email", kind: "test", status: "no_backend", error: null, created_at: "2026-10-16T05:12:00Z" },
+        { id: "dl-1", channel: "email", kind: "critical", status: "failed", error: "SMTP 550: mailbox unavailable", created_at: "2026-10-15T07:40:00Z" },
+      ],
+    };
   if (path === "/reports/catalogue") return catalogue(params);
   if (path === "/reports/history") {
     const list = s.history.filter((h) => !params.kind || h.kind === params.kind);

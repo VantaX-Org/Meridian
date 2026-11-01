@@ -9,7 +9,7 @@ import type { AuditListParams, AuditListResponse, AuditSummaryRow, LlmAuditRespo
 import type { FieldMapping, FieldMappingsListResponse } from "@/lib/api/field-mappings";
 import type { LicenceManifest } from "@/lib/api/licence";
 import type { AccessRequest, EffectivePermissions } from "@/lib/api/me";
-import type { AlertChannel, AlertChannelCreate, AlertChannelUpdate } from "@/lib/api/notifications";
+import type { AlertChannel, AlertChannelCreate, AlertChannelUpdate, NotificationDelivery } from "@/lib/api/notifications";
 import type { Preferences, PreferencesPatch } from "@/lib/preferences";
 import type {
   PurgeLogEntry, PurgeResult, RetentionPolicy, RetentionPreviewItem, RetentionResponse, TenantPurgeRequest,
@@ -206,6 +206,7 @@ export const testChannel = (id: string): Promise<{ delivered: boolean }> => v2Se
 
 export const getMyPreferences = (): Promise<Preferences> => v2Get("/me/preferences");
 export const patchMyPreferences = (patch: PreferencesPatch): Promise<Preferences> => v2Send("PATCH", "/me/preferences", patch);
+export const getMyDeliveries = (limit = 20): Promise<{ items: NotificationDelivery[] }> => v2Get("/me/notifications/deliveries", { limit });
 export const sendTestNotification = (): Promise<{ email: "sent" | "no_backend" | "failed" | "sent_unrecorded"; in_app: boolean }> => v2Send("POST", "/me/notifications/test");
 
 /* ── Runs and jobs: start things, and schedule them ── */

@@ -6688,6 +6688,17 @@ export const en = {
   "Save working hours": "Save working hours",
   "Changing working hours needs the manage settings permission.": "Changing working hours needs the manage settings permission.",
   "Pick at least one work day, a start before the end, and dates as YYYY-MM-DD.": "Pick at least one work day, a start before the end, and dates as YYYY-MM-DD.",
+  "In Meridian": "In Meridian",
+  "Critical finding": "Critical finding",
+  "Test message": "Test message",
+  "No mail server set up": "No mail server set up",
+  "Sent. Check your inbox and the bell.": "Sent. Check your inbox and the bell.",
+  "Sent to the bell. No mail server is set up, so no email went out.": "Sent to the bell. No mail server is set up, so no email went out.",
+  "Sent to the bell. The email failed; the log below says why.": "Sent to the bell. The email failed; the log below says why.",
+  "Three test messages an hour is the limit. Try again later.": "Three test messages an hour is the limit. Try again later.",
+  "The test message could not be sent.": "The test message could not be sent.",
+  "Send me a test message": "Send me a test message",
+  "Nothing has been sent to you yet.": "Nothing has been sent to you yet.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
