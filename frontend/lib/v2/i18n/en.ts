@@ -6729,6 +6729,11 @@ export const en = {
   "The register could not be exported.": "The register could not be exported.",
   "Export register": "Export register",
   "Every record signed off as not an issue or an accepted risk, with who signed it off and why": "Every record signed off as not an issue or an accepted risk, with who signed it off and why",
+  "The approval detail could not be read.": "The approval detail could not be read.",
+  "This approval has no steps yet.": "This approval has no steps yet.",
+  "Nothing has happened to this approval yet.": "Nothing has happened to this approval yet.",
+  "Hide approval detail": "Hide approval detail",
+  "Show approval detail": "Show approval detail",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

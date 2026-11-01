@@ -6730,4 +6730,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The register could not be exported.": "台帳を書き出せませんでした。",
   "Export register": "台帳を書き出す",
   "Every record signed off as not an issue or an accepted risk, with who signed it off and why": "問題なしまたはリスク受容として承認したすべてのレコード（承認者と理由つき）",
+  "The approval detail could not be read.": "承認の詳細を読み込めませんでした。",
+  "This approval has no steps yet.": "この承認にはまだステップがありません。",
+  "Nothing has happened to this approval yet.": "この承認にはまだ何も起きていません。",
+  "Hide approval detail": "承認の詳細を隠す",
+  "Show approval detail": "承認の詳細を表示",
 };

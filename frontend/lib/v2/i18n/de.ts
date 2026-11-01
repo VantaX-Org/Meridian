@@ -6730,4 +6730,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The register could not be exported.": "Das Register konnte nicht exportiert werden.",
   "Export register": "Register exportieren",
   "Every record signed off as not an issue or an accepted risk, with who signed it off and why": "Jeder als unproblematisch oder akzeptiertes Risiko freigegebene Datensatz, mit Freigebendem und Begründung",
+  "The approval detail could not be read.": "Die Freigabedetails konnten nicht gelesen werden.",
+  "This approval has no steps yet.": "Diese Freigabe hat noch keine Schritte.",
+  "Nothing has happened to this approval yet.": "Zu dieser Freigabe ist noch nichts geschehen.",
+  "Hide approval detail": "Freigabedetails ausblenden",
+  "Show approval detail": "Freigabedetails anzeigen",
 };
