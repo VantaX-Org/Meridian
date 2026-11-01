@@ -755,7 +755,19 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
   if (method === "POST" && path === "/admin/purge-tenant") {
     return b.token ? { status: "purged" } : { token: "purge-demo-token", executes_after: new Date(Date.now() + 86_400_000).toISOString() };
   }
+  if (method === "POST" && path === "/field-mappings") {
+    if (s.mappings.some((m) => m.module === b.module && m.standard_field === b.standard_field)) throw new AdminRefused(409, "A mapping for this module and field already exists");
+    const m: FieldMapping = { id: `fm-${s.mappings.length + 1}-${text(b.standard_field)}`, module: text(b.module), standard_field: text(b.standard_field), standard_label: b.standard_label ? text(b.standard_label) : null, customer_field: b.customer_field ? text(b.customer_field) : null, customer_label: b.customer_label ? text(b.customer_label) : null, data_type: text(b.data_type) || "string", is_mapped: !!b.is_mapped, notes: b.notes ? text(b.notes) : null, updated_at: NOW };
+    s.mappings.push(m);
+    return clone(m);
+  }
   const fm = /^\/field-mappings\/([^/]+)$/.exec(path);
+  if (fm && method === "DELETE") {
+    const i = s.mappings.findIndex((x) => x.id === decodeURIComponent(fm[1]));
+    if (i < 0) throw new AdminNotFound(path);
+    s.mappings.splice(i, 1);
+    return { id: decodeURIComponent(fm[1]), status: "deleted" };
+  }
   if (fm && method === "PUT") {
     const m = s.mappings.find((x) => x.id === decodeURIComponent(fm[1]));
     if (!m) throw new AdminNotFound(path);

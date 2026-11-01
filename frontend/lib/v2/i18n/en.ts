@@ -6633,6 +6633,12 @@ export const en = {
   "Reports to": "Reports to",
   "Manager saved": "Manager saved",
   "The manager could not be saved.": "The manager could not be saved.",
+  "Add a mapping": "Add a mapping",
+  "Mapping added": "Mapping added",
+  "Add the mapping": "Add the mapping",
+  "Delete the mapping": "Delete the mapping",
+  "{standard_field} leaves the mapping list. Rules on this object read the standard column again.": "{standard_field} leaves the mapping list. Rules on this object read the standard column again.",
+  "Mapping deleted": "Mapping deleted",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

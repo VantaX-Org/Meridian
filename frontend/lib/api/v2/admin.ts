@@ -168,6 +168,9 @@ export async function executeTenantPurge(token: string): Promise<string> {
 export const listFieldMappings = (q: { module?: string; is_mapped?: boolean; search?: string } = {}): Promise<FieldMappingsListResponse> => v2Get("/field-mappings", q);
 export const updateFieldMapping = (id: string, body: { customer_field?: string; customer_label?: string; data_type?: string; is_mapped?: boolean; notes?: string }): Promise<FieldMapping> =>
   v2Send("PUT", `/field-mappings/${enc(id)}`, body);
+export interface FieldMappingCreate { module: string; standard_field: string; standard_label?: string; customer_field?: string; customer_label?: string; data_type: string; is_mapped: boolean; notes?: string }
+export const createFieldMapping = (body: FieldMappingCreate): Promise<FieldMapping> => v2Send("POST", "/field-mappings", body);
+export const deleteFieldMapping = (id: string): Promise<{ id: string; status: string }> => v2Send("DELETE", `/field-mappings/${enc(id)}`);
 export const resetFieldMappings = (module?: string): Promise<{ reset_count: number; module: string }> => v2Send("POST", "/field-mappings/reset", undefined, { module });
 
 /* ── Reference data ── */

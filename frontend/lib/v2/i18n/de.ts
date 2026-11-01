@@ -6634,4 +6634,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Reports to": "Berichtet an",
   "Manager saved": "Vorgesetzter gespeichert",
   "The manager could not be saved.": "Der Vorgesetzte konnte nicht gespeichert werden.",
+  "Add a mapping": "Zuordnung hinzufügen",
+  "Mapping added": "Zuordnung hinzugefügt",
+  "Add the mapping": "Zuordnung hinzufügen",
+  "Delete the mapping": "Zuordnung löschen",
+  "{standard_field} leaves the mapping list. Rules on this object read the standard column again.": "{standard_field} wird aus der Zuordnungsliste entfernt. Regeln für dieses Objekt lesen wieder die Standardspalte.",
+  "Mapping deleted": "Zuordnung gelöscht",
 };

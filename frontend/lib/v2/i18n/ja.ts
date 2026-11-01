@@ -6634,4 +6634,10 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Reports to": "上長",
   "Manager saved": "上長を保存しました",
   "The manager could not be saved.": "上長を保存できませんでした。",
+  "Add a mapping": "マッピングを追加",
+  "Mapping added": "マッピングを追加しました",
+  "Add the mapping": "マッピングを追加する",
+  "Delete the mapping": "マッピングを削除",
+  "{standard_field} leaves the mapping list. Rules on this object read the standard column again.": "{standard_field} はマッピング一覧から外れます。この対象のルールは再び標準列を読み取ります。",
+  "Mapping deleted": "マッピングを削除しました",
 };

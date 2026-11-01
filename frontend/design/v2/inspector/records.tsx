@@ -312,6 +312,8 @@ function MappingBody({ m, selfService }: { m: FieldMapping; selfService: boolean
   const [label, setLabel] = useState(shownValue(m, "customer_label"));
   const [notes, setNotes] = useState(m.notes ?? "");
   const { outcome, pending, run } = useOutcome(`mapping:${m.id}`);
+  const { close } = useOpenItem();
+  const [deleting, setDeleting] = useState(false);
   const dirty = col.trim() !== shownValue(m, "customer_field") || label.trim() !== shownValue(m, "customer_label") || notes.trim() !== (m.notes ?? "");
   const write = (body: Parameters<typeof api.updateFieldMapping>[1], title: string) =>
     void run("save", async () => {
@@ -361,7 +363,29 @@ function MappingBody({ m, selfService }: { m: FieldMapping; selfService: boolean
         <button type="button" className="m2-btn" disabled={!edit || (!m.is_mapped && !m.customer_field && !m.notes) || pending !== null} onClick={() => (setCol(""), setLabel(""), setNotes(""), write({ customer_field: "", customer_label: "", notes: "", is_mapped: false }, t("Mapping cleared")))}>
           {t("Clear the mapping")}
         </button>
+        <button type="button" className="m2-btn" disabled={!edit || pending !== null} onClick={() => setDeleting(true)}>
+          {t("Delete the mapping")}
+        </button>
       </Actions>
+      {deleting ? (
+        <Confirm
+          title={t("Delete the mapping")}
+          body={t("{standard_field} leaves the mapping list. Rules on this object read the standard column again.", { standard_field: m.standard_field })}
+          confirm={t("Delete the mapping")}
+          danger
+          pending={pending === "delete"}
+          onCancel={() => setDeleting(false)}
+          onConfirm={() =>
+            void run("delete", async () => {
+              await api.deleteFieldMapping(m.id);
+              setDeleting(false);
+              close();
+              await refreshAdmin(qc, "mappings");
+              return { tone: "ok", title: t("Mapping deleted") };
+            })
+          }
+        />
+      ) : null}
       {!edit ? <p className="m2-prov">{t("Editing mappings needs the manage field mappings permission and a licence with self-service mapping.")}</p> : null}
     </>
   );
