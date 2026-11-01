@@ -937,6 +937,7 @@ class FindingRecord(Base):
     grain = Column(Text, nullable=True)
     record_key = Column(Text, primary_key=True)
     field_values = Column(JSONB, nullable=True)  # rule columns, sensitive ones masked (migration 054)
+    context = Column(JSONB, nullable=True)  # classification codes, checks/record_context.py (migration 122)
 
     __table_args__ = (Index("ix_finding_records_tenant_record", "tenant_id", "record_key"),)
 
@@ -990,6 +991,7 @@ class RecordIssue(Base):
     status = Column(Text, nullable=False, server_default="open")  # open|in_progress|accepted|resolved
     resolution = Column(Text, nullable=True)  # verified_fixed|accepted_risk|false_positive
     steward_verdict = Column(Text, nullable=True)  # real|false_positive — survives a re-open (migration 053)
+    context = Column(JSONB, nullable=True)  # classification codes, set on every flag (migration 122)
     assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     first_seen_version = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=False)
     last_seen_version = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=False)

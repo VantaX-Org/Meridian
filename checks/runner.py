@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from checks import auto_fix, cost
+from checks import auto_fix, cost, record_context
 from checks.base import BaseCheck, CheckResult, SoftTimeLimitExceeded, as_of_time, failing_values, record_keys, reraise_soft_limit, sap_number
 from checks.frames import TableFrames, tables_of
 from checks.population import exclude, exclusions, fields_for
@@ -500,7 +500,9 @@ def _frame_inputs(rule: dict, check_cls: type[BaseCheck], frames: TableFrames,
     # the cost field and auto_fix inputs (a lazily decoded frame holds nothing else)
     optional = list(dict.fromkeys(check_cls(rule).optional_columns()
                                   + [c for x in excl for c in (x.get("fields") or [x["field"]])]
-                                  + [c for c in [cf, *auto_fix.columns(rule)] if c]))
+                                  + [c for c in [cf, *auto_fix.columns(rule)] if c]
+                                  # classification codes kept per failing record (self-tune)
+                                  + [c for c in record_context.columns(rule) if c not in cols]))
     return cols, g, excl, optional
 
 

@@ -1,0 +1,158 @@
+"""Rule self-tuning: draft a tuned rule version from the stewards' verdicts. Pure functions, no DB.
+
+A rule whose reviewed issues (record_issues.steward_verdict) put its precision below target is
+tuned by excluding the context values its false positives concentrate on, through
+``applies_when: {T.F: {not_in}}``. Candidates are the later parts of the record key (e.g.
+WERKS=1000 in 'MATNR=1|WERKS=1000') and the classification codes stored with each issue
+(record_issues.context, built by checks/record_context.py, e.g. MARA.MTART=DIEN). A bare key field
+is mapped to a TABLE.FIELD only when the rule itself already reads exactly one column of that
+name; a context column is used only while it is still one of the rule's context columns. Nothing
+is guessed. With no such pattern and a very low precision, the proposal is a one-step severity
+downgrade. A proposal is only ever a draft rule version: a human approves it through the rule
+lifecycle (checks/lifecycle.py).
+"""
+
+from __future__ import annotations
+
+from collections import defaultdict
+from typing import Iterable
+
+from api.services.pilot_scorecard import MIN_REVIEWED, TARGET_PRECISION
+from checks.record_context import columns as context_columns
+
+MIN_SUPPORT = 3            # reviewed issues a context value needs before it can be excluded
+MIN_FP_SHARE = 0.9         # share of a value's reviewed issues that must be false positives
+MAX_REAL_SHARE = 0.05      # a value carrying more than this share of the rule's real issues is never excluded
+DOWNGRADE_BELOW = 0.5      # precision under which, with no pattern, the severity steps down
+SEVERITIES = ("critical", "high", "medium", "low", "info")
+
+
+def _parts(record_key: str) -> list[tuple[str, str]]:
+    """Context (field, value) parts of a record key: every part after the first (the object key)."""
+    return [(f.strip(), v.strip()) for f, _, v in (p.partition("=") for p in record_key.split("|")[1:]) if f.strip()]
+
+
+def _refs(rule: dict) -> set[str]:
+    """TABLE.FIELD columns the rule itself names (field, fields, applies_when)."""
+    fields = rule.get("fields") or []
+    cols = {rule.get("field"), *(fields if isinstance(fields, list) else [fields]), *(rule.get("applies_when") or {})}
+    return {c for c in cols if isinstance(c, str) and "." in c}
+
+
+def resolve_column(rule: dict, key_field: str) -> str | None:
+    """The rule's TABLE.FIELD for a bare key field, or None when not unambiguous from the rule."""
+    hits = sorted(c for c in _refs(rule) if c.split(".", 1)[1] == key_field)
+    if len(hits) > 1 and rule.get("grain"):
+        hits = [c for c in hits if c.split(".", 1)[0] == rule["grain"]]
+    return hits[0] if len(hits) == 1 else None
+
+
+def _candidates(rule: dict, allowed: set[str], key: str, context: dict | None) -> set[tuple[str, str]]:
+    """(TABLE.FIELD, value) pairs one issue could be excluded on: its resolvable key parts and its
+    stored context codes that are still context columns of the rule. The same column and value
+    from both sources is one candidate."""
+    out = {(col, v) for f, v in _parts(key) if (col := resolve_column(rule, f))}
+    for col, value in (context or {}).items():
+        v = str(value).strip()
+        if col in allowed and v:
+            out.add((col, v))
+    return out
+
+
+def _precision(fp: int, real: int) -> float | None:
+    return round(real / (fp + real), 4) if fp + real else None
+
+
+def merge_exclusions(applies_when: dict | None, excl: dict[str, list[str]]) -> dict:
+    """applies_when with each column's values excluded, keeping every other condition. An allowed-value
+    list loses the values; an operator dict gains them in its not_in; a new column gets a not_in."""
+    out = dict(applies_when or {})
+    for col, values in excl.items():
+        cur = out.get(col)
+        if isinstance(cur, list):
+            out[col] = [v for v in cur if str(v).strip() not in values]
+        elif isinstance(cur, dict):
+            out[col] = {**cur, "not_in": list(dict.fromkeys([*(cur.get("not_in") or []), *values]))}
+        else:
+            out[col] = {"not_in": list(values)}
+    return out
+
+
+def propose(rule_id: str, rule: dict, body: dict, issues: Iterable[tuple]) -> dict | None:
+    """A tuning proposal for one rule, or None when it needs none or nothing deterministic helps.
+
+    ``rule`` is the effective rule (lifecycle.effective), ``body`` the override it runs with now (the
+    active version's body, {} for the shipped rule), ``issues`` its reviewed (record_key, verdict) or
+    (record_key, verdict, context) with context the stored {TABLE.FIELD: code} snapshot or None."""
+    rows = [(i[0], i[1] == "false_positive", i[2] if len(i) > 2 else None)
+            for i in issues if i[1] in ("false_positive", "real")]
+    fp_total = sum(r[1] for r in rows)
+    real_total = len(rows) - fp_total
+    before = _precision(fp_total, real_total)
+    if len(rows) < MIN_REVIEWED or before is None or before >= TARGET_PRECISION:
+        return None
+
+    allowed = set(context_columns(rule))
+    by_value: dict[tuple[str, str], set[int]] = defaultdict(set)
+    for i, (key, _, context) in enumerate(rows):
+        for cand in _candidates(rule, allowed, key, context):
+            by_value[cand].add(i)
+    candidates: dict[tuple[str, str], set[int]] = {}
+    for cand, idx in by_value.items():
+        fp = sum(rows[i][1] for i in idx)
+        real = len(idx) - fp
+        if len(idx) < MIN_SUPPORT or fp / len(idx) < MIN_FP_SHARE:
+            continue
+        if real_total and real / real_total > MAX_REAL_SHARE:
+            continue
+        candidates[cand] = idx
+
+    chosen: list[tuple[str, str]] = []
+    gone: set[int] = set()
+    precision = before
+    while precision < TARGET_PRECISION:  # greedy: take the value that raises precision the most
+        best, best_p = None, precision
+        for cand, idx in sorted(candidates.items()):
+            if cand in chosen:
+                continue
+            left = [r[1] for i, r in enumerate(rows) if i not in gone and i not in idx]
+            p = _precision(sum(left), len(left) - sum(left))
+            if p is not None and p > best_p:
+                best, best_p = cand, p
+        if best is None:
+            break
+        chosen.append(best)
+        gone |= candidates[best]
+        precision = best_p
+
+    base = {"rule_id": rule_id, "reviewed": len(rows), "precision_before": before}
+    if chosen:
+        excl: dict[str, list[str]] = defaultdict(list)
+        for col, value in chosen:
+            excl[col].append(value)
+        fp_removed = sum(rows[i][1] for i in gone)
+        real_lost = len(gone) - fp_removed
+        listed = ", ".join(f"{c.split('.', 1)[1]}={v}" for c, v in chosen)
+        return {**base, "kind": "exclude",
+                "exclusions": [{"field": c.split(".", 1)[1], "column": c, "value": v,
+                                "false_positive": sum(rows[i][1] for i in candidates[(c, v)]),
+                                "real": sum(not rows[i][1] for i in candidates[(c, v)])} for c, v in chosen],
+                "body": {**body, "applies_when": merge_exclusions(rule.get("applies_when"), dict(excl))},
+                "precision_after": precision, "records_excluded": len(gone), "fp_removed": fp_removed,
+                "real_lost": real_lost,
+                "rationale": (f"{fp_removed} of the {fp_total} false positives stewards marked sit on {listed}, "
+                              f"where at least {MIN_FP_SHARE:.0%} of reviewed issues were false positives. "
+                              f"Excluding {'it' if len(chosen) == 1 else 'them'} loses {real_lost} real issue(s) "
+                              f"and raises precision from {before:.0%} to {precision:.0%}.")}
+
+    severity = rule.get("severity")
+    if before < DOWNGRADE_BELOW and severity in SEVERITIES[:-1]:
+        lower = SEVERITIES[SEVERITIES.index(severity) + 1]
+        return {**base, "kind": "severity", "exclusions": [], "body": {**body, "severity": lower},
+                "severity_from": severity, "severity_to": lower, "precision_after": before,
+                "records_excluded": 0, "fp_removed": 0, "real_lost": 0,
+                "rationale": (f"Precision is {before:.0%} over {len(rows)} reviewed issues and no plant, company "
+                              f"code, classification code or other context value concentrates the false "
+                              f"positives. Lowering the severity from {severity} to {lower} limits the rule's "
+                              f"weight until the rule itself is rewritten.")}
+    return None

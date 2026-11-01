@@ -40,9 +40,10 @@ from api.services.branded_xlsx import (
     xlsx_filename,
     xlsx_response,
 )
+from api.services.pilot_scorecard import TARGET_PRECISION
 from api.services.rule_text import rule_messages
 from api.services.rbac import current_user_label, has_permission, require_permission
-from checks import lifecycle
+from checks import lifecycle, self_tune
 
 router = APIRouter(prefix="/api/v1", tags=["rules"])
 
@@ -463,11 +464,17 @@ async def list_versions(rule_id: str, db: AsyncSession = Depends(get_db), tenant
 async def create_version(rule_id: str, body: VersionCreate, db: AsyncSession = Depends(get_db),
                          tenant: Tenant = Depends(get_tenant)):
     """New draft. Versions are immutable once submitted; change = a new draft."""
-    if err := lifecycle.validate_body(rule_id, body.body):
+    return await _insert_version(db, tenant, rule_id, body.body, body.note, current_user_label())
+
+
+async def _insert_version(db: AsyncSession, tenant: Tenant, rule_id: str, body: dict, note: Optional[str],
+                          author: str) -> dict:
+    """Validate and insert a draft rule version by ``author`` (POST /rules/{id}/versions, the self-tune draft)."""
+    if err := lifecycle.validate_body(rule_id, body):
         raise HTTPException(status_code=400, detail=err)
     # fail_when / condition reach DataFrame.eval in cross_field_check once the version is active.
     for key in ("fail_when", "condition"):
-        expr = body.body.get(key)
+        expr = body.get(key)
         if expr is not None and not (isinstance(expr, str) and _safe_expression(expr)):
             raise HTTPException(status_code=422, detail=_EXPR_ERROR)
     await _set_rls(db, tenant.id)
@@ -476,8 +483,7 @@ async def create_version(rule_id: str, body: VersionCreate, db: AsyncSession = D
         SELECT :tid, :r, COALESCE(max(version), 0) + 1, CAST(:b AS jsonb), 'draft', :n, :u
           FROM rule_versions WHERE rule_id = :r
         RETURNING {_VERSION_COLS}
-    """), {"tid": str(tenant.id), "r": rule_id, "b": json.dumps(body.body), "n": body.note,
-           "u": current_user_label()})).mappings().one()
+    """), {"tid": str(tenant.id), "r": rule_id, "b": json.dumps(body), "n": note, "u": author})).mappings().one()
     await db.commit()
     return dict(row)
 
@@ -651,6 +657,64 @@ async def rule_feedback(check_id: Optional[str] = Query(None), db: AsyncSession 
          GROUP BY e.note ORDER BY records DESC LIMIT 20
     """), {"c": check_id})).mappings().all()
     return {"rules": rules, "reasons": [dict(r) for r in reasons]}
+
+
+# ── Self-tuning (checks/self_tune.py) ─────────────────────────────────────────
+
+SELF_TUNE_AUTHOR = "self-tune"
+
+
+async def _tuning(db: AsyncSession, tenant: Tenant, rule_id: Optional[str] = None) -> list[dict]:
+    """Self-tune proposals from the steward verdicts, each with the rule's pending (draft / in review)
+    version, if any, and the diff from the rule as it runs now."""
+    await _set_rls(db, tenant.id)
+    issues: dict[str, list[tuple[str, str, Optional[dict]]]] = {}
+    for check_id, key, verdict, context in (await db.execute(text(
+            "SELECT check_id, record_key, steward_verdict, context FROM record_issues "
+            "WHERE steward_verdict IN ('false_positive', 'real')" + (" AND check_id = :c" if rule_id else "")),
+            {"c": rule_id})).all():
+        issues.setdefault(check_id, []).append((key, verdict, context if isinstance(context, dict) else None))
+    active: dict[str, dict] = {}
+    pending: dict[str, dict] = {}
+    for rid, version, state, body in (await db.execute(text(
+            "SELECT rule_id, version, state, body FROM rule_versions "
+            "WHERE state IN ('active', 'draft', 'in_review')" + (" AND rule_id = :c" if rule_id else "")
+            + " ORDER BY version"), {"c": rule_id})).all():
+        if state == "active":
+            active[rid] = body or {}
+        else:
+            pending[rid] = {"version": version, "state": state}
+    out = []
+    for rid in sorted(issues):
+        body = active.get(rid, {})
+        rule = lifecycle.effective(rid, body)
+        if p := self_tune.propose(rid, rule, body, issues[rid]):
+            out.append({**p, "message": rule.get("message"), "module": rule.get("module"),
+                        "pending": pending.get(rid),
+                        "diff": lifecycle.diff(rid, body, p["body"], "current", "proposed")})
+    return out
+
+
+@router.get("/rule-tuning", dependencies=[Depends(require_permission("view"))])
+async def rule_tuning(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Rules whose steward-judged precision is below target, each with a deterministic tuned version to draft."""
+    return {"target_precision": TARGET_PRECISION, "proposals": await _tuning(db, tenant)}
+
+
+@router.post("/rule-tuning/{rule_id}/draft", status_code=201,
+             dependencies=[Depends(require_permission("manage_rules"))])
+async def draft_tuned_version(rule_id: str, db: AsyncSession = Depends(get_db),
+                              tenant: Tenant = Depends(get_tenant)):
+    """Draft the rule's proposal as a version by 'self-tune'; a person submits and approves it as any other."""
+    proposal = next(iter(await _tuning(db, tenant, rule_id)), None)
+    if proposal is None:
+        raise HTTPException(status_code=404, detail="No tuning proposal for this rule")
+    if pending := proposal["pending"]:
+        raise HTTPException(status_code=409, detail=f"Version {pending['version']} is already {pending['state']}")
+    note = (f"Self-tune from {proposal['reviewed']} reviewed issues: precision {proposal['precision_before']:.0%} "
+            f"to {proposal['precision_after']:.0%}, {proposal['fp_removed']} false positives removed, "
+            f"{proposal['real_lost']} real issues lost. {proposal['rationale']}")
+    return await _insert_version(db, tenant, rule_id, proposal["body"], note[:2000], SELF_TUNE_AUTHOR)
 
 
 # ── Suppressions ──────────────────────────────────────────────────────────────
