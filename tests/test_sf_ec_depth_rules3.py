@@ -75,6 +75,7 @@ def test_no_message_duplicates_existing_rule():
 
 # ── fixtures: (rule_id, tables, expected_affected, slice_tables_for_clean) ──
 EM, EML, PH, PI = "PEREMERGENCY", "PEREMAIL", "PERPHONE", "PERINFO"
+EE, FD, FC, FL = "EMPEMPLOYMENT", "FODEPARTMENT", "FOCOSTCENTER", "FOLOCATION"
 
 CASES = [
     # PEREMERGENCY ---------------------------------------------------------
@@ -126,6 +127,32 @@ CASES = [
                          COUNTRY_CODE=["27", "27", None])}, 1, [PH]),
     ("EC479", {PH: frame(PH, PERSON_ID=["p1", "p2"], AREA_CODE=["(082)", "82"])}, 1, [PH]),
     ("EC480", {PH: frame(PH, PERSON_ID=["p1", "p2"], EXTENSION=["x123", "123"])}, 1, [PH]),
+    # foundation objects ---------------------------------------------------
+    *[(f"EC{481 + i}", {t: frame(t, EXTERNAL_CODE=["X1", "X2", "X3"], STATUS=["active", "A", "I"])}, 1, [t])
+      for i, t in enumerate(["FOCOMPANY", "FOBUSINESSUNIT", "FODIVISION", "FODEPARTMENT", "FOLOCATION",
+                             "FOJOBCODE", "FOCOSTCENTER", "FOEVENTREASON"])],
+    ("EC489", {FD: frame(FD, EXTERNAL_CODE=["D1", "D2", "D3"], COST_CENTER=[None, "C1", None],
+                         STATUS=["A", "A", "I"])}, 1, [FD]),
+    ("EC490", {FC: frame(FC, EXTERNAL_CODE=["C1", "C2", "C3"], LEGAL_ENTITY=[None, "L1", None],
+                         STATUS=["A", "A", "I"])}, 1, [FC]),
+    ("EC491", {FL: frame(FL, EXTERNAL_CODE=["L1", "L2", "L3"], STANDARD_HOURS=[None, 40.0, None],
+                         STATUS=["A", "A", "I"])}, 1, [FL]),
+    ("EC492", {FL: frame(FL, EXTERNAL_CODE=["L1", "L2", "L3"], STANDARD_HOURS=[80.0, 40.0, 60.0])}, 1, [FL]),
+    ("EC493", {"FOCOMPANY": frame("FOCOMPANY", EXTERNAL_CODE=["L1", "L2", "L3"], STATUS=["A", "A", "I"]),
+               FC: frame(FC, EXTERNAL_CODE=["C1", "C2"], LEGAL_ENTITY=["L1", "L2"], STATUS=["I", "A"])},
+     1, ["FOCOMPANY"]),
+    ("EC494", {EE: frame(EE, USERID=["u1", "u2", "u3"], JOB_CODE=["J1", "J2", "J1"], STATUS=["A", "A", "T"],
+                         IS_FULLTIME=["false", "True", "false"]),
+               "FOJOBCODE": frame("FOJOBCODE", EXTERNAL_CODE=["J1", "J2"], IS_FULLTIME=["true", "true"])},
+     1, [EE]),
+    ("EC495", {EE: frame(EE, USERID=["u1", "u2", "u3"], JOB_CODE=["J1", "J2", "J1"], STATUS=["A", "A", "T"],
+                         REGULAR_TEMP=["T", "R", "T"]),
+               "FOJOBCODE": frame("FOJOBCODE", EXTERNAL_CODE=["J1", "J2"], REGULAR_TEMP=["R", "R"])},
+     1, [EE]),
+    ("EC496", {EE: frame(EE, USERID=["u1", "u2", "u3"], LOCATION=["L1", "L2", "L1"], STATUS=["A", "A", "T"],
+                         TIMEZONE=["Europe/Berlin", "Africa/Johannesburg", "Europe/Berlin"]),
+               FL: frame(FL, EXTERNAL_CODE=["L1", "L2"], TIMEZONE=["Africa/Johannesburg", "Africa/Johannesburg"])},
+     1, [EE]),
 ]
 
 

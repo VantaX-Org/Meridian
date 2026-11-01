@@ -8923,3 +8923,346 @@ rules:
   fix_map:
     __other__: Keep only the extension digits.
   record_fix_template: 'Person {PERPHONE.PERSON_ID}: extension {PERPHONE.EXTENSION} is not 1 to 6 digits.'
+- id: EC481
+  field: FOCOMPANY.STATUS
+  check_class: domain_value_check
+  grain: FOCOMPANY
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Legal entity status is not A (active) or I (inactive)
+  why_it_matters: The status of a FOCompany record takes only A or I; any other value is neither active nor inactive,
+    so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the legal entity and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the legal entity status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Legal entity {FOCOMPANY.EXTERNAL_CODE}: status {FOCOMPANY.STATUS} is not A or I.'
+- id: EC482
+  field: FOBUSINESSUNIT.STATUS
+  check_class: domain_value_check
+  grain: FOBUSINESSUNIT
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Business unit status is not A (active) or I (inactive)
+  why_it_matters: The status of a FOBusinessUnit record takes only A or I; any other value is neither active nor
+    inactive, so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it
+    inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the business unit and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the business unit status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Business unit {FOBUSINESSUNIT.EXTERNAL_CODE}: status {FOBUSINESSUNIT.STATUS} is not A or
+    I.'
+- id: EC483
+  field: FODIVISION.STATUS
+  check_class: domain_value_check
+  grain: FODIVISION
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Division status is not A (active) or I (inactive)
+  why_it_matters: The status of a FODivision record takes only A or I; any other value is neither active nor inactive,
+    so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the division and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the division status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Division {FODIVISION.EXTERNAL_CODE}: status {FODIVISION.STATUS} is not A or I.'
+- id: EC484
+  field: FODEPARTMENT.STATUS
+  check_class: domain_value_check
+  grain: FODEPARTMENT
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Department status is not A (active) or I (inactive)
+  why_it_matters: The status of a FODepartment record takes only A or I; any other value is neither active nor inactive,
+    so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the department and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the department status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Department {FODEPARTMENT.EXTERNAL_CODE}: status {FODEPARTMENT.STATUS} is not A or I.'
+- id: EC485
+  field: FOLOCATION.STATUS
+  check_class: domain_value_check
+  grain: FOLOCATION
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Location status is not A (active) or I (inactive)
+  why_it_matters: The status of a FOLocation record takes only A or I; any other value is neither active nor inactive,
+    so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the location and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the location status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Location {FOLOCATION.EXTERNAL_CODE}: status {FOLOCATION.STATUS} is not A or I.'
+- id: EC486
+  field: FOJOBCODE.STATUS
+  check_class: domain_value_check
+  grain: FOJOBCODE
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Job classification status is not A (active) or I (inactive)
+  why_it_matters: The status of a FOJobCode record takes only A or I; any other value is neither active nor inactive,
+    so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the job classification and replication of the organisational
+    structure to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the job classification status to A (active) or I (inactive) in Manage Organization, Pay and Job
+      Structures.
+  record_fix_template: 'Job classification {FOJOBCODE.EXTERNAL_CODE}: status {FOJOBCODE.STATUS} is not A or I.'
+- id: EC487
+  field: FOCOSTCENTER.STATUS
+  check_class: domain_value_check
+  grain: FOCOSTCENTER
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Cost centre status is not A (active) or I (inactive)
+  why_it_matters: The status of a FOCostCenter record takes only A or I; any other value is neither active nor inactive,
+    so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the cost centre and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the cost centre status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Cost centre {FOCOSTCENTER.EXTERNAL_CODE}: status {FOCOSTCENTER.STATUS} is not A or I.'
+- id: EC488
+  field: FOEVENTREASON.STATUS
+  check_class: domain_value_check
+  grain: FOEVENTREASON
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Event reason status is not A (active) or I (inactive)
+  why_it_matters: The status of a FOEventReason record takes only A or I; any other value is neither active nor
+    inactive, so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it
+    inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the event reason and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the event reason status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Event reason {FOEVENTREASON.EXTERNAL_CODE}: status {FOEVENTREASON.STATUS} is not A or I.'
+- id: EC489
+  field: FODEPARTMENT.COST_CENTER
+  check_class: null_check
+  grain: FODEPARTMENT
+  applies_when:
+    FODEPARTMENT.STATUS:
+    - A
+  severity: medium
+  dimension: completeness
+  message: Active department has no default cost centre
+  why_it_matters: The department's cost centre is the default SuccessFactors proposes on the job record when the
+    department is assigned, and the value cost-centre consistency checks compare against; an active department without
+    one leaves every new assignment to be costed by hand.
+  rule_authority: best_practice
+  sap_impact: New hires and transfers into the department are saved without a cost centre or with whatever was typed,
+    and personnel cost posts to the wrong or a suspense cost centre.
+  fix_map:
+    __other__: Maintain the default cost centre on the department in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Department {FODEPARTMENT.EXTERNAL_CODE}: active but no cost centre is maintained.'
+- id: EC490
+  field: FOCOSTCENTER.LEGAL_ENTITY
+  check_class: null_check
+  grain: FOCOSTCENTER
+  applies_when:
+    FOCOSTCENTER.STATUS:
+    - A
+  severity: high
+  dimension: completeness
+  message: Active cost centre has no legal entity
+  why_it_matters: A cost centre belongs to exactly one company code in SAP controlling; the legal entity on FOCostCenter
+    is what lets SuccessFactors filter cost centres by the employee's company and what payroll posting uses to derive
+    the company code.
+  rule_authority: best_practice
+  sap_impact: The cost centre is offered for employees of any legal entity and payroll postings to it can be cross-company,
+    which the FI posting rejects.
+  fix_map:
+    __other__: Maintain the legal entity on the cost centre (normally replicated from the S/4HANA or ECC cost centre
+      master).
+  record_fix_template: 'Cost centre {FOCOSTCENTER.EXTERNAL_CODE}: active but no legal entity is maintained.'
+- id: EC491
+  field: FOLOCATION.STANDARD_HOURS
+  check_class: null_check
+  grain: FOLOCATION
+  applies_when:
+    FOLOCATION.STATUS:
+    - A
+  severity: medium
+  dimension: completeness
+  message: Active location has no standard weekly hours
+  why_it_matters: Location standard hours are the default for the job record's standard weekly hours and the base
+    from which SuccessFactors calculates FTE; without them every FTE at the location is entered by hand.
+  rule_authority: best_practice
+  sap_impact: FTE and standard hours of employees at the location are not derived and drift apart, which skews headcount-to-FTE
+    reporting and part-time pay proration.
+  fix_map:
+    __other__: Maintain the standard weekly hours on the location.
+  record_fix_template: 'Location {FOLOCATION.EXTERNAL_CODE}: active but no standard hours are maintained.'
+- id: EC492
+  field: FOLOCATION.STANDARD_HOURS
+  check_class: cross_field_check
+  grain: FOLOCATION
+  fail_when: '`FOLOCATION.STANDARD_HOURS`.notna() & (`FOLOCATION.STANDARD_HOURS` > 60) & (`FOLOCATION.STANDARD_HOURS`
+    <= 168)'
+  severity: medium
+  dimension: accuracy
+  message: Location standard hours exceed 60 per week
+  why_it_matters: Standard hours on a location are contractual weekly hours; working-time law caps the regular week
+    below 60 hours in practically every jurisdiction, so a value above 60 is almost always monthly or fortnightly
+    hours keyed into the weekly field.
+  rule_authority: best_practice
+  sap_impact: FTE derived from the location is understated for every employee there (for example 40/173 = 0.23),
+    which corrupts FTE reporting and part-time proration.
+  fix_map:
+    __other__: Enter the weekly standard hours on the location (monthly hours / 4.33).
+  record_fix_template: 'Location {FOLOCATION.EXTERNAL_CODE}: standard hours {FOLOCATION.STANDARD_HOURS} exceed 60
+    per week.'
+- id: EC493
+  field: FOCOMPANY.EXTERNAL_CODE
+  check_class: exists_check
+  grain: FOCOMPANY
+  target_table: FOCOSTCENTER
+  target_fields:
+  - LEGAL_ENTITY
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    FOCOMPANY.STATUS:
+    - A
+  severity: low
+  dimension: completeness
+  message: Active legal entity has no active cost centre
+  why_it_matters: Every employee of a legal entity needs a cost centre of that legal entity; an active legal entity
+    with no active cost centre assigned to it means hires into it cannot be costed, or are costed cross-company.
+  rule_authority: best_practice
+  sap_impact: Payroll postings for the legal entity have no valid cost-centre account assignment and fall back to
+    a suspense cost centre or fail in FI.
+  fix_map:
+    __other__: Replicate or create the legal entity's cost centres and set their legal entity, or inactivate the
+      unused legal entity.
+  record_fix_template: 'Legal entity {FOCOMPANY.EXTERNAL_CODE}: active but no active cost centre belongs to it.'
+- id: EC494
+  field: EMPEMPLOYMENT.IS_FULLTIME
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.IS_FULLTIME`.notna() & `FOJOBCODE.IS_FULLTIME`.notna() & (`EMPEMPLOYMENT.IS_FULLTIME`.astype(''string'').str.lower()
+    != `FOJOBCODE.IS_FULLTIME`.astype(''string'').str.lower())'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: consistency
+  message: Full-time flag on the job differs from the job classification
+  why_it_matters: The job classification carries whether the job is full-time and SuccessFactors defaults it onto
+    the job record; a job record that disagrees with its classification was overridden or not updated after a classification
+    change.
+  rule_authority: best_practice
+  sap_impact: Headcount by full-time/part-time and benefit eligibility rules keyed on the flag give different answers
+    depending on which object they read.
+  fix_map:
+    __other__: Align the job record's full-time flag with the job classification, or reclassify the job.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: full-time flag {EMPEMPLOYMENT.IS_FULLTIME} differs from
+    job classification {EMPEMPLOYMENT.JOB_CODE} ({FOJOBCODE.IS_FULLTIME}).'
+- id: EC495
+  field: EMPEMPLOYMENT.REGULAR_TEMP
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.REGULAR_TEMP`.notna() & `FOJOBCODE.REGULAR_TEMP`.notna() & (`EMPEMPLOYMENT.REGULAR_TEMP`
+    != `FOJOBCODE.REGULAR_TEMP`)'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Regular/temporary on the job differs from the job classification
+  why_it_matters: The job classification defines whether the job is regular or temporary and SuccessFactors defaults
+    it onto the job record; a mismatch means the employee is reported as temporary in one place and regular in another.
+  rule_authority: best_practice
+  sap_impact: Fixed-term contract monitoring, workforce reporting and benefit eligibility disagree on the employee's
+    regular/temporary status.
+  fix_map:
+    __other__: Align the job record's regular/temporary value with the job classification, or reclassify the job.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: regular/temporary {EMPEMPLOYMENT.REGULAR_TEMP} differs
+    from job classification {EMPEMPLOYMENT.JOB_CODE} ({FOJOBCODE.REGULAR_TEMP}).'
+- id: EC496
+  field: EMPEMPLOYMENT.TIMEZONE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.TIMEZONE`.notna() & `FOLOCATION.TIMEZONE`.notna() & (`EMPEMPLOYMENT.TIMEZONE` != `FOLOCATION.TIMEZONE`)'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: consistency
+  message: Job time zone differs from the location's time zone
+  why_it_matters: SuccessFactors defaults the job record's time zone from the location; a different time zone is
+    legitimate only for remote workers and is otherwise a stale value left behind by a location change.
+  rule_authority: best_practice
+  sap_impact: Time recording, absence day boundaries and scheduled notifications run in the wrong time zone for
+    the employee.
+  fix_map:
+    __other__: Confirm whether the employee works remotely; otherwise set the job time zone to the location's time
+      zone.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: time zone {EMPEMPLOYMENT.TIMEZONE} differs from location
+    {EMPEMPLOYMENT.LOCATION} ({FOLOCATION.TIMEZONE}).'
