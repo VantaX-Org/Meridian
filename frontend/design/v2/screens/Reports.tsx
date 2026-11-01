@@ -7,6 +7,7 @@ import { apiErrorMessage } from "@/lib/error";
 import { failureText } from "@/lib/v2/errors";
 import { formatDate } from "@/lib/format";
 import { useOpenItem } from "@/lib/v2/hooks";
+import { relTime } from "@/lib/v2/format";
 import { useCatalogue, useReportHistory, useScheduleOptions, useSchedules } from "@/lib/v2/admin-queries";
 import { type GridColumn } from "../Grid";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle } from "../parts";
@@ -95,6 +96,7 @@ function ReportsOverview({ files, total, list, names, action }: { files: readonl
     if (f.source === "schedule") k.sched += 1;
     byKind.set(f.kind, k);
   }
+  const next = list.filter((s) => s.enabled && s.next_run_at).sort((a, b) => Date.parse(a.next_run_at ?? "") - Date.parse(b.next_run_at ?? ""))[0];
   const bars: CcBarRow[] = [...byKind]
     .sort((a, b) => b[1].n - a[1].n)
     .map(([kind, v]) => {
@@ -122,6 +124,7 @@ function ReportsOverview({ files, total, list, names, action }: { files: readonl
         figs={[
           { label: t("Reports made"), value: total == null ? "—" : int(total), note: t("{n} of the latest by schedule", { n: int(scheduled) }) },
           { label: t("Schedules on"), value: int(active), note: t("of {n} in all", { n: int(list.length) }) },
+          { label: t("Next delivery"), value: next?.next_run_at ? relTime(next.next_run_at, now) : "—", note: next?.next_run_at ? `${formatDate(next.next_run_at, "datetime")}, ${next.name}` : t("no schedule is on") },
           { label: t("Need attention"), value: int(failed.length + late.length + partial.length), note: t("failed, overdue or partly delivered") },
         ]}
         action={action}
@@ -163,7 +166,6 @@ export function ReportsCanvas() {
   };
   const files = history.data?.items ?? [];
   const list = schedules.data ?? [];
-  const active = list.filter((s) => s.enabled).length;
   const names = new Map((catalogue.data ?? []).map((c) => [c.id, { name: c.name, about: c.about }]));
   const create = (
     <button type="button" className="m2-btn m2-next" disabled={!exportAllowed} onClick={() => openItem({ kind: "report", id: "new" })}>
@@ -174,19 +176,12 @@ export function ReportsCanvas() {
     <CcPage>
       <PageTitle>{t("Reports")}</PageTitle>
       {schedules.data && !history.isPending ? <ReportsOverview files={files} total={history.data?.total ?? null} list={list} names={names} action={create} /> : <div className="m2-cta">{create}</div>}
-      <p className="m2-finding">
-        {t("{value}{value2}. Reports are built from stored runs, so a number in a report matches the run it names.", { value: history.data ? t("{total} {total, plural, one {report} other {reports}} made, ", { total: history.data.total }) : "", value2: schedules.data ? t("{active} of {listCount} {listCount, plural, one {schedule is} other {schedules are}} on", { active, listCount: list.length }) : "" })}
-      </p>
-      <div className="m2-cta">
-        <button type="button" className="m2-btn" disabled={!exportAllowed} onClick={() => openItem({ kind: "schedule", id: "new" })}>
-          {t("Schedule a report")}
-        </button>
-      </div>
       {!exportAllowed ? <p className="m2-prov">{t("Creating and scheduling reports needs the export permission.")}</p> : null}
       {error ? <ErrorFrame>{t("The download did not finish. {error}", { error })}</ErrorFrame> : null}
       <section className="m2-sec" aria-label={t("Reports")}>
         <div className="m2-sechead">
           <h2 className="m2-h2">{t("Reports")}</h2>
+          <span className="m2-sub">{t("Reports are built from stored runs, so a number in a report matches the run it names.")}</span>
         </div>
         <ToolGrid<ReportFile>
           toolsTitle={t("Report history")}
@@ -207,6 +202,9 @@ export function ReportsCanvas() {
         <div className="m2-sechead">
           <h2 className="m2-h2">{t("Schedules")}</h2>
           <span className="m2-sub">{t("Each builds a report from the latest run and sends it.")}</span>
+          <button type="button" className="m2-linkbtn" disabled={!exportAllowed} onClick={() => openItem({ kind: "schedule", id: "new" })}>
+            {t("Schedule a report")}
+          </button>
         </div>
         <ToolGrid<ReportSchedule>
           toolsTitle={t("Report schedules")}

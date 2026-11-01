@@ -6569,6 +6569,9 @@ export const en = {
   "Decide in Work": "Decide in Work",
   "Show more": "Show more",
   "The rule does not suggest a value": "The rule does not suggest a value",
+  "Next delivery": "Next delivery",
+  "no schedule is on": "no schedule is on",
+  "Reports are built from stored runs, so a number in a report matches the run it names.": "Reports are built from stored runs, so a number in a report matches the run it names.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

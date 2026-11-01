@@ -6570,4 +6570,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Decide in Work": "作業で決定する",
   "Show more": "さらに表示",
   "The rule does not suggest a value": "このルールは値を提案しません",
+  "Next delivery": "次回の配信",
+  "no schedule is on": "有効なスケジュールはありません",
+  "Reports are built from stored runs, so a number in a report matches the run it names.": "レポートは保存済みの実行から作成されるため、レポート内の数値は記載された実行と一致します。",
 };
