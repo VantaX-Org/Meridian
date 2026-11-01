@@ -13,8 +13,11 @@ from checks import lifecycle
 
 RULE = {"id": "MM142", "module": "material_master", "check_class": "null_check", "field": "MARC.DISMM",
         "grain": "MARC", "severity": "high", "message": "MRP type missing"}
-ISSUES = ([("MM142", f"MATNR={i}|WERKS=1000", "false_positive") for i in range(8)]
-          + [("MM142", f"MATNR={i}|WERKS=2000", "real") for i in range(20)])
+ISSUES = ([("MM142", f"MATNR={i}|WERKS=1000", "false_positive", None) for i in range(8)]
+          + [("MM142", f"MATNR={i}|WERKS=2000", "real", None) for i in range(20)])
+# the same verdicts with the shipped rule (no WERKS column) but a stored material type
+CONTEXT_ISSUES = ([("MM142", f"MATNR={i}|WERKS=1000", "false_positive", {"MARA.MTART": "DIEN"}) for i in range(8)]
+                  + [("MM142", f"MATNR={i}|WERKS=2000", "real", {"MARA.MTART": "FERT"}) for i in range(20)])
 
 
 class _Result:
@@ -32,8 +35,9 @@ class _Result:
 
 
 class _DB:
-    def __init__(self, versions):
+    def __init__(self, versions, issues=None):
         self.versions = versions
+        self.issues = ISSUES if issues is None else issues
         self.statements: list[tuple[str, dict]] = []
         self.committed = False
 
@@ -41,7 +45,8 @@ class _DB:
         sql = str(stmt)
         self.statements.append((sql, params or {}))
         if "FROM record_issues" in sql:
-            return _Result(ISSUES)
+            assert "context" in sql
+            return _Result(self.issues)
         if "INSERT INTO rule_versions" in sql:
             return _Result([{"rule_id": params["r"], "version": 1, "state": "draft", "created_by": params["u"],
                              "body": json.loads(params["b"]), "note": params["n"]}])
@@ -59,10 +64,10 @@ def _env(monkeypatch):
     monkeypatch.setattr(lifecycle, "shipped_rules", lambda: {"MM142": (RULE, "ecc/material_master.yaml")})
 
 
-def _client(versions=()) -> tuple[TestClient, _DB]:
+def _client(versions=(), issues=None) -> tuple[TestClient, _DB]:
     api = FastAPI()
     api.include_router(rules.router)
-    db = _DB(list(versions))
+    db = _DB(list(versions), issues)
 
     async def _db():
         yield db
@@ -108,3 +113,10 @@ def test_no_proposal_is_404_and_viewer_cannot_draft():
     client, _ = _client()  # the shipped rule names no WERKS column and precision is above the downgrade floor
     assert client.post("/api/v1/rule-tuning/MM142/draft", headers=ADMIN).status_code == 404
     assert client.post("/api/v1/rule-tuning/MM142/draft", headers={"X-User-Role": "viewer"}).status_code == 403
+
+
+def test_context_code_exclusion_from_stored_context():
+    client, _ = _client(issues=CONTEXT_ISSUES)  # the shipped rule names no WERKS column
+    [p] = client.get("/api/v1/rule-tuning", headers=ADMIN).json()["proposals"]
+    assert [(e["field"], e["column"], e["value"]) for e in p["exclusions"]] == [("MTART", "MARA.MTART", "DIEN")]
+    assert p["body"]["applies_when"] == {"MARA.MTART": {"not_in": ["DIEN"]}}

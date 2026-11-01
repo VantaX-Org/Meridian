@@ -824,7 +824,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                     fold(r.check_id, r.field, r.failing_record_keys)
                 if r.check_id not in sup_records:  # record-level suppressions are discounted at scoring
                     r.failing_record_keys = None
-            r.failing_record_values = None
+            r.failing_record_values = r.failing_record_context = None
             keys = r._all_failing_keys
             tracker = trackers.get(r.module)
             if tracker is None or keys is None or r.check_id in sup_rules:

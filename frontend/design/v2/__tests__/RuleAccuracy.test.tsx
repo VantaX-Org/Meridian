@@ -84,6 +84,8 @@ describe("Admin: rule accuracy", () => {
     expect(text).toContain("Source list is mandatory for the material at the plant");
     expect(text).toContain("MARC.WERKS=1000");
     expect(text).toContain("Plant");
+    expect(text).toContain("MARA.MTART=DIEN");
+    expect(text).toContain("Material type");
     expect(text).toContain("60.0% to 94.7%");
     expect(within(sec).getByLabelText("Changes to MM228")).toHaveTextContent("not_in:");
     expect(within(sec).getByRole("link", { name: "Review the rule's versions" }).getAttribute("href")).toContain("/r/MM228");

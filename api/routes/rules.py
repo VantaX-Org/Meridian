@@ -668,12 +668,12 @@ async def _tuning(db: AsyncSession, tenant: Tenant, rule_id: Optional[str] = Non
     """Self-tune proposals from the steward verdicts, each with the rule's pending (draft / in review)
     version, if any, and the diff from the rule as it runs now."""
     await _set_rls(db, tenant.id)
-    issues: dict[str, list[tuple[str, str]]] = {}
-    for check_id, key, verdict in (await db.execute(text(
-            "SELECT check_id, record_key, steward_verdict FROM record_issues "
+    issues: dict[str, list[tuple[str, str, Optional[dict]]]] = {}
+    for check_id, key, verdict, context in (await db.execute(text(
+            "SELECT check_id, record_key, steward_verdict, context FROM record_issues "
             "WHERE steward_verdict IN ('false_positive', 'real')" + (" AND check_id = :c" if rule_id else "")),
             {"c": rule_id})).all():
-        issues.setdefault(check_id, []).append((key, verdict))
+        issues.setdefault(check_id, []).append((key, verdict, context if isinstance(context, dict) else None))
     active: dict[str, dict] = {}
     pending: dict[str, dict] = {}
     for rid, version, state, body in (await db.execute(text(

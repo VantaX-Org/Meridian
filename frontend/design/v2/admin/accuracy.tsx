@@ -8,6 +8,7 @@ import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { int, pct1 } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { labelText, moduleText } from "@/lib/v2/labels";
+import { describeField } from "@/lib/v2/sap-fields";
 import { Coded, Dash, EmptyFrame, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Fld, Kv, Loaded, NeedsPermission, Note, StatusWord, useCan } from "./kit";
@@ -101,7 +102,9 @@ function Recall({ card }: { card: Scorecard }) {
 
 /**
  * Self-tuning proposals (GET /rule-tuning): for each rule below target, the context values its false positives
- * concentrate on, or a severity step down. Drafting creates a rule version; a person submits and approves it on the rule.
+ * concentrate on (record key parts such as the plant, or a stored classification code such as the material type), each
+ * named by its SAP field description; or a severity step down. No code-to-text lookup exists in the frontend, so the
+ * value shows as its code. Drafting creates a rule version; a person submits and approves it on the rule.
  */
 function Tuning() {
   const can = useCan();
@@ -131,7 +134,7 @@ function Tuning() {
                           <>
                             {p.exclusions.map((e) => (
                               <span key={`${e.column}=${e.value}`}>
-                                {t("Exclude")} <Coded code={`${e.column}=${e.value}`} text={e.field === "WERKS" ? t("Plant") : null} />{" "}
+                                {t("Exclude")} <Coded code={`${e.column}=${e.value}`} text={describeField(e.column) ?? (e.field === "WERKS" ? t("Plant") : null)} />{" "}
                               </span>
                             ))}
                           </>

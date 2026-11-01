@@ -56,3 +56,46 @@ def test_merge_keeps_other_conditions():
 def test_rule_at_target_or_unrated_needs_nothing():
     assert propose("MM142", RULE, {}, _issues({"1000": (1, 20)})) is None
     assert propose("MM142", RULE, {}, _issues({"1000": (5, 0)})) is None
+
+
+MTART_RULE = {"id": "MM9", "module": "material_master", "field": "MARC.DISMM", "grain": "MARC", "severity": "high"}
+
+
+def _ctx(spec: dict[str, tuple[int, int]], col: str = "MARA.MTART") -> list[tuple]:
+    """{code: (false positives, real)} -> issues with that code in the stored context, on one plant."""
+    out, n = [], 0
+    for code, (fp, real) in spec.items():
+        for verdict, count in (("false_positive", fp), ("real", real)):
+            for _ in range(count):
+                n += 1
+                out.append((f"MATNR={n}|WERKS=1000", verdict, {col: code, "MARA.MATKL": "X"}))
+    return out
+
+
+def test_context_code_excluded_when_no_key_part_helps():
+    p = propose("MM9", MTART_RULE, {}, _ctx({"DIEN": (8, 0), "FERT": (1, 20)}))
+    assert p["kind"] == "exclude"
+    assert [(e["field"], e["column"], e["value"]) for e in p["exclusions"]] == [("MTART", "MARA.MTART", "DIEN")]
+    assert p["body"] == {"applies_when": {"MARA.MTART": {"not_in": ["DIEN"]}}}
+    assert "MTART=DIEN" in p["rationale"] and p["precision_after"] >= 0.9
+
+
+def test_context_column_outside_the_rule_is_ignored():
+    # KNA1.KTOKD is a customer code: not a context column of a material rule, so never proposed
+    issues = _ctx({"0001": (8, 0), "0002": (1, 20)}, col="KNA1.KTOKD")
+    assert propose("MM9", MTART_RULE, {}, issues) is None
+
+
+def test_context_keeps_the_guards():
+    # DIEN only has 2 reviewed issues (< MIN_SUPPORT); HALB carries real issues (> MAX_REAL_SHARE)
+    p = propose("MM9", {**MTART_RULE, "severity": "low"}, {},
+                _ctx({"DIEN": (2, 0), "HALB": (18, 2), "FERT": (0, 8)}))
+    assert p["kind"] == "severity" and p["exclusions"] == []
+
+
+def test_key_part_and_context_on_the_same_column_are_one_candidate():
+    rule = {**RULE, "module": "material_master"}
+    issues = [(k, v, {"MARC.DISMM": "ND"}) for k, v in _issues({"1000": (8, 0), "2000": (1, 20)})]
+    p = propose("MM142", rule, {}, issues)
+    assert [(e["column"], e["value"]) for e in p["exclusions"]] == [("MARC.WERKS", "1000")]
+    assert p["body"]["applies_when"] == {"MARC.WERKS": {"populated": True, "not_in": ["1000"]}}

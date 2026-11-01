@@ -6954,6 +6954,16 @@ export const en = {
   "Draft tuned version": "Draft tuned version",
   "Review the rule's versions": "Review the rule's versions",
   "Drafting a tuned version": "Drafting a tuned version",
+  "Industry sector": "Industry sector",
+  "Cross-plant material status": "Cross-plant material status",
+  "Price control indicator": "Price control indicator",
+  "Customer account group": "Customer account group",
+  "Customer group": "Customer group",
+  "Partner function": "Partner function",
+  "Vendor account group": "Vendor account group",
+  "Reconciliation account": "Reconciliation account",
+  "Payment methods": "Payment methods",
+  "Special G/L indicator": "Special G/L indicator",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
