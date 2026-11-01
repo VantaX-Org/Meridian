@@ -115,6 +115,8 @@ def test_rate_limit_is_keyed_per_user(monkeypatch) -> None:
 
     fake = _Redis()
     monkeypatch.setattr(rate_limiter, "get_redis", lambda: fake)
+    # Pin the fixed window so 20 posts never straddle a window boundary.
+    monkeypatch.setattr(rate_limiter, "_current_window", lambda _w: 0)
     api = FastAPI()
 
     @api.middleware("http")
