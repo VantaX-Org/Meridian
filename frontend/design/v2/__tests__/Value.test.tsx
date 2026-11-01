@@ -37,6 +37,18 @@ describe("Value delivered", () => {
     expect(rows).toHaveLength(6);
   });
 
+  it("rolls the latest run up into the KPIs, processes and features it reaches, with a dash where cost is missing", async () => {
+    renderWithQuery(<Value />);
+    const panel = await screen.findByTestId("val-run-impact");
+    await waitFor(() => expect(within(panel).getAllByRole("row").length).toBeGreaterThan(1));
+    const rows = within(panel).getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(6);
+    expect(rows[0].textContent).toContain("KPIs");
+    expect(rows[0].textContent).toContain("Critical");
+    expect(rows.some((r) => r.textContent?.includes("Blocks the feature"))).toBe(true);
+    expect(within(panel).getByTestId("val-run-impact-unmapped").textContent).toContain("FX-ORPHAN-1");
+  });
+
   it("lists the steps behind a KPI and puts an unguarded process step first", async () => {
     renderWithQuery(<Value />);
     const panel = await screen.findByTestId("val-guards");

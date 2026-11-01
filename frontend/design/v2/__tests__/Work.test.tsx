@@ -371,6 +371,29 @@ describe("the Work ledger, fixture mode", () => {
     expect(await screen.findByRole("button", { name: "Views Ready to accept" })).toBeInTheDocument();
   });
 
+  it("never offers Delete this view for a built-in view", async () => {
+    mount("&view=builtin:work:overdue");
+    await ledger();
+    fireEvent.click(await screen.findByRole("button", { name: /^Views/ }));
+    const builtinMenu = await screen.findByRole("menu", { name: "Views" });
+    expect(within(builtinMenu).queryByRole("menuitem", { name: "Delete this view…" })).toBeNull();
+  });
+
+  it("deletes an own saved view after an in-page confirmation", async () => {
+    const del = vi.spyOn(workApi, "deleteView");
+    const saved = await workApi.putView({ route: "work", name: "Throwaway view", filters: {}, columns: null, density: null });
+    mount(`&view=${saved.id}`);
+    await ledger();
+    fireEvent.click(await screen.findByRole("button", { name: /^Views/ }));
+    const menu = await screen.findByRole("menu", { name: "Views" });
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Delete this view…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete this view" });
+    expect(del).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete view" }));
+    await waitFor(() => expect(del).toHaveBeenCalledWith(saved.id));
+    expect(((await workApi.getViews("work")).views).some((v) => v.id === saved.id)).toBe(false);
+  });
+
   it("opening a built-in view by ?view= applies its filters", async () => {
     mount("&view=builtin:work:critical-and-unassigned");
     expect(await screen.findByRole("button", { name: "Views Critical and unassigned" })).toBeInTheDocument();
@@ -420,6 +443,19 @@ describe("the Work ledger, fixture mode", () => {
     await more(/^Export by object/);
     await waitFor(() => expect(byObject).toHaveBeenCalled());
     expect(byObject.mock.calls[0][0]).toMatchObject({ batch_id: "b-1", policy: "sox", sort: "-age,-value" });
+  });
+
+  it("Export register is offered on the Exceptions chip only and saves the signed-off records", async () => {
+    const spy = vi.spyOn(workApi, "exportExceptions").mockResolvedValue({ filename: "signed-off-records.xlsx" });
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "More" }));
+    expect(screen.queryByRole("menuitem", { name: /Export register/ })).toBeNull();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    fireEvent.click(within(screen.getByRole("group", { name: "Filter by state" })).getByRole("button", { name: /Exceptions/ }));
+    await more(/Export register/);
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy.mock.calls[0][0]).toMatchObject({ status: "not_an_issue" });
+    expect(await screen.findByText("Register saved as signed-off-records.xlsx")).toBeInTheDocument();
   });
 
   it("F10: Approved, Sent to SAP and Fixed are chips; Sent to SAP lists the records under their batch", async () => {

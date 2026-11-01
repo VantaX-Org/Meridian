@@ -112,6 +112,8 @@ export interface SavedView {
 export const getViews = (route: string): Promise<{ route: string; views: SavedView[] }> => v2Get("/views", { route });
 export const putView = (view: { route: string; name: string; filters: Record<string, string>; columns: string[] | null; density: "compact" | "comfortable" | null }): Promise<SavedView> =>
   v2Send<SavedView>("PUT", "/views", view);
+/** DELETE /views/{id}: drops one of the caller's own saved views. A built-in view answers 409. */
+export const deleteView = (id: string): Promise<void> => v2Send<void>("DELETE", `/views/${encodeURIComponent(id)}`);
 
 // Record links ------------------------------------------------------------------------------------------------
 
@@ -193,6 +195,9 @@ export const exportFixSheet = (f: ExportQuery): Promise<{ filename: string }> =>
 /** GET /work/export/per-object: the same rows, one sheet per object with each record's value at risk. */
 export const exportFixSheetByObject = (f: ExportQuery): Promise<{ filename: string }> =>
   exportFile("/api/v1/work/export/per-object", f, "records-to-fix-by-object.xlsx");
+
+/** GET /work/exceptions/export: the register of records signed off as not an issue or an accepted risk, under the ledger's filters. */
+export const exportExceptions = (f: ExportQuery): Promise<{ filename: string }> => exportFile("/api/v1/work/exceptions/export", f, "signed-off-records.xlsx");
 
 export interface ImportResult {
   updated: number;

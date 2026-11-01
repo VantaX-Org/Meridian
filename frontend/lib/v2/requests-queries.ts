@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { getFacts, getRequest, listDefinitions, listRequests, listTasks, type RequestFilter } from "@/lib/api/v2/requests";
+import { getFacts, getRequest, getWorkflowInstance, listDefinitions, listRequests, listTasks, type RequestFilter } from "@/lib/api/v2/requests";
 
 const STALE = 15_000;
 
@@ -15,6 +15,12 @@ export function useRequests(f: RequestFilter) {
 export function useRequest(id: string) {
   const fx = useFixture();
   return useQuery({ queryKey: ["v2", "change-request", fx, id], queryFn: () => getRequest(id), staleTime: STALE, retry: false });
+}
+
+/** One approval run with its steps and audit trail; read only once `enabled`. */
+export function useWorkflowInstance(id: string, enabled: boolean) {
+  const fx = useFixture();
+  return useQuery({ queryKey: ["v2", "workflow-instance", fx, id], queryFn: () => getWorkflowInstance(id), staleTime: STALE, retry: false, enabled });
 }
 
 /** The workflow steps waiting for this person on objects of one kind (fix_batch, change_request). */

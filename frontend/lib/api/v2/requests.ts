@@ -60,6 +60,9 @@ export interface WorkflowTask {
 }
 export interface WorkflowInstance { id: string; definition_key: string; definition_version: number; status: string; started_at: string; completed_at: string | null; tasks: WorkflowTask[] }
 export interface WorkflowEvent { id: string; action: string; from_status: string | null; to_status: string | null; actor_label: string | null; detail: Record<string, unknown> | null; created_at: string }
+/** GET /workflows/instances/{id}: one approval run with its steps and audit trail. */
+export interface WorkflowInstanceDetail extends WorkflowInstance { object_kind: string | null; object_id: string | null; history: WorkflowEvent[] }
+export const getWorkflowInstance = (id: string) => v2Get<WorkflowInstanceDetail>(`/workflows/instances/${encodeURIComponent(id)}`);
 export interface RequestComment { id: string; author_label: string | null; body: string; created_at: string }
 export interface RequestAttachment { id: string; filename: string; content_type: string | null; size_bytes: number | null; uploaded_by_label: string | null; created_at: string }
 export interface RequestDetail { request: ChangeRequest; workflow: WorkflowInstance | null; history: WorkflowEvent[]; comments: RequestComment[]; attachments: RequestAttachment[] }

@@ -99,3 +99,33 @@ export const getLineageModel = (): Promise<LineageModel> => v2Get("/lineage/mode
 
 /** GET /lineage/guards: the rules guarding each process step behind a KPI, process, feature or step. */
 export const getGuards = (node: string): Promise<Guards> => v2Get("/lineage/guards", { node });
+
+/** One KPI, process or feature a run's failing checks reach (GET /lineage/impact). */
+export interface ImpactRow {
+  id: string;
+  type: string;
+  label: string;
+  findings: number;
+  check_ids: string[];
+  records_affected: number;
+  max_records: number;
+  worst_severity: string | null;
+  worst_impact: string | null;
+  min_hops: number;
+  /** Null when the findings carry no cost. */
+  cost_at_risk?: number | null;
+}
+
+export interface Impact {
+  version_id: string;
+  model_version: number;
+  cost_available: boolean;
+  kpis: ImpactRow[];
+  processes: ImpactRow[];
+  features: ImpactRow[];
+  /** Check ids the lineage model does not place behind any KPI. */
+  unmapped_checks: string[];
+}
+
+/** GET /lineage/impact/{version_id}: the KPIs, processes and features one run's failing checks reach. */
+export const getImpact = (versionId: string): Promise<Impact> => v2Get(`/lineage/impact/${encodeURIComponent(versionId)}`);

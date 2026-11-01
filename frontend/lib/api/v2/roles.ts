@@ -33,6 +33,15 @@ export const addComment = (kind: CommentKind, id: string, body: string, mentions
 export const deleteComment = (id: string) => v2Send<void>("DELETE", `/comments/${encodeURIComponent(id)}`);
 export const getUnreadMentions = () => v2Get<{ count: number }>("/comments/mentions/unread");
 
+/** One row of GET /watches/mine: something the caller watches, newest first. */
+export interface MyWatch {
+  target_kind: WatchKind;
+  target_id: string;
+  events: WatchEvent[];
+  created_at: string;
+}
+export const getMyWatches = () => v2Get<{ watches: MyWatch[] }>("/watches/mine");
+
 export interface WatchState {
   target_kind: WatchKind;
   target_id: string;

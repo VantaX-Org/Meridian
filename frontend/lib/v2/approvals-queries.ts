@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getBatch, getBatchEvents, getBatches, getWritebackMode } from "@/lib/api/v2/batches";
 import { getNotifications, getUnread, putRead, putReadAll } from "@/lib/api/v2/inbox";
-import { getNextSteps, getPeople } from "@/lib/api/v2/people";
+import { getNextSteps, getPeople, getStewardMetrics } from "@/lib/api/v2/people";
 import { getAssignable, getPreferences, getSlaPolicies, patchDigest, putSlaPolicy, type Digest, type SlaPolicy } from "@/lib/api/v2/triage";
 import { getWork } from "@/lib/api/v2/work";
 import { toBatchRow, withRecords, type BatchRow } from "./batches";
@@ -24,6 +24,7 @@ export const approvalKeys = {
   sla: (fx: boolean) => ["v2", "triage-sla", fx] as const,
   digest: (fx: boolean) => ["v2", "triage-digest", fx] as const,
   assignable: (fx: boolean) => ["v2", "assignable", fx] as const,
+  steward: (fx: boolean, id: string) => ["v2", "steward-metrics", fx, id] as const,
 };
 
 const STALE = 15_000;
@@ -127,4 +128,10 @@ export function useSaveTriage() {
 export function useAssignable(enabled: boolean) {
   const fx = useFixture();
   return useQuery({ queryKey: approvalKeys.assignable(fx), queryFn: getAssignable, staleTime: 60_000, enabled, retry: false });
+}
+
+/** A steward's throughput by period (null when none is recorded). */
+export function useStewardMetrics(id: string, enabled = true) {
+  const fx = useFixture();
+  return useQuery({ queryKey: approvalKeys.steward(fx, id), queryFn: () => getStewardMetrics(id), staleTime: 60_000, retry: false, enabled });
 }
