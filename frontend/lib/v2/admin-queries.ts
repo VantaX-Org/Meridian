@@ -113,6 +113,11 @@ export const useScorecard = (systemId: string) => {
   const f = useFixture();
   return useRead(k(f, "scorecard", systemId), () => pilot.getScorecard(systemId), !!systemId);
 };
+/** The shipped benchmark: the same answer for every tenant and system, so it is read once. */
+export const useRuleAccuracy = () => {
+  const f = useFixture();
+  return useQuery({ queryKey: k(f, "rule-accuracy"), queryFn: pilot.getRuleAccuracy, staleTime: Infinity, retry: false });
+};
 export const useRuleTuning = () => {
   const f = useFixture();
   return useRead(k(f, "tuning"), pilot.getRuleTuning, true);

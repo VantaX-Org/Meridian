@@ -5,6 +5,9 @@ Registered before the rules router: `/rules/coverage` must not be read as `/rule
 
 from __future__ import annotations
 
+import json
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -272,3 +275,50 @@ async def ddic_fields(fields: str = Query(..., description="Comma separated TABL
             # single values only: a range (low..high) has no one code to label
             fixed_values=[{"value": v.low, "label": v.text} for v in f.fixed_values if not v.high and v.text]))
     return DdicFieldsResponse(fields=out)
+
+
+# ── test-proven accuracy ──────────────────────────────────────────────────────
+
+_ACCURACY = Path(__file__).resolve().parents[2] / "checks" / "benchmark" / "precision_recall.json"
+
+
+class AccuracyModule(BaseModel):
+    module: str
+    rules: int
+    benchmarked: int
+    perfect: int
+
+
+class AccuracyRule(BaseModel):
+    rule_id: str
+    module: str
+    check_class: str
+    injected: int
+    true_positives: int
+    false_positives: int
+    false_negatives: int
+    precision: float
+    recall: float
+    f1: float
+
+
+class AccuracyResponse(BaseModel):
+    method: str
+    records_per_rule: int
+    modules: list[AccuracyModule]
+    rules: list[AccuracyRule]
+
+
+@lru_cache(maxsize=1)
+def _accuracy() -> AccuracyResponse:
+    data = json.loads(_ACCURACY.read_text())
+    return AccuracyResponse(
+        method=data["method"], records_per_rule=data["records_per_rule"],
+        modules=[AccuracyModule(module=m, **s) for m, s in data["modules"].items()],
+        rules=[AccuracyRule(**{k: r[k] for k in AccuracyRule.model_fields}) for r in data["rules"] if r["benchmarkable"]])
+
+
+@router.get("/rules/accuracy", response_model=AccuracyResponse)
+async def rules_accuracy():
+    """Per-rule precision and recall on synthetic injected defects (scripts/bench_precision_recall.py)."""
+    return _accuracy()

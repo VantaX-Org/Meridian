@@ -286,6 +286,11 @@ rules:
         Data > Shipping tab. Valid codes are configured in table TINC. In S/4HANA: use Fiori app F3893.'
     record_fix_template: 'Customer {KNA1.KUNNR}: INCO1 is ''{actual_value}''. Set to a valid Incoterms 2020 code via VD02 /
       Fiori app F3893.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
 
 
   - id: SDCM017
@@ -317,6 +322,11 @@ rules:
     record_fix_template: >-
       Customer {KNA1.KUNNR}: KZAZU is '{actual_value}'. Set to X or empty
       via VD02 / Fiori app F3893.
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
 
   - id: SDCM018
     field: KNVV.WAERS
@@ -343,6 +353,11 @@ rules:
     record_fix_template: >-
       Customer {KNA1.KUNNR}: WAERS is '{actual_value}'. Set to a valid ISO
       currency code via VD02 / Fiori app F3893.
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
 
   - id: SDCM019
     field: KNVV.VERSG
@@ -382,6 +397,13 @@ rules:
         In ECC: correct via T-code VD02 > Sales Area Data > Shipping tab. In S/4HANA: use Fiori app F3893.'
     record_fix_template: 'Customer {KNA1.KUNNR}: LPRIO is ''{actual_value}''. Set to 01, 02, 03, or empty via VD02 / Fiori app
       F3893.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: pad_left
+        width: 2
+        char: '0'
+      confidence: high
 
   - id: SDCM021
     field: KNVV.VSBED
@@ -530,6 +552,11 @@ rules:
         > Sales.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: customer pricing procedure
       ''{actual_value}'' not in TVKD.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM030
     field: KNVV.KDGRP
     check_class: referential_check
@@ -544,6 +571,11 @@ rules:
       __other__: Customer group '{invalid_value}' is not defined in T151. Correct it in VD02/XD02 > Sales area > Sales.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: customer group ''{actual_value}''
       not in T151.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM031
     field: KNVV.KTGRD
     check_class: null_check
@@ -575,6 +607,11 @@ rules:
         Billing documents.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: account assignment group
       ''{actual_value}'' not in TVKT.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM033
     field: KNVV.VSBED
     check_class: referential_check
@@ -589,6 +626,11 @@ rules:
       __other__: Shipping condition '{invalid_value}' is not defined in TVSB. Correct it in VD02/XD02 > Sales area > Shipping.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: shipping condition ''{actual_value}''
       not in TVSB.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM034
     field: KNVV.ZTERM
     check_class: referential_check
@@ -604,6 +646,11 @@ rules:
         documents.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: payment terms ''{actual_value}''
       not in T052.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM035
     field: KNVV.VERSG
     check_class: referential_check
@@ -618,6 +665,11 @@ rules:
       __other__: Statistics group '{invalid_value}' is not defined in TVSD. Correct it in VD02/XD02 > Sales area > Sales.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: statistics group ''{actual_value}''
       not in TVSD.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM036
     field: KNVV.PLTYP
     check_class: referential_check
@@ -632,6 +684,11 @@ rules:
       __other__: Price list type '{invalid_value}' is not defined in T189. Correct it in VD02/XD02 > Sales area > Sales.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: price list type ''{actual_value}''
       not in T189.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM037
     field: KNVV.KONDA
     check_class: referential_check
@@ -646,6 +703,11 @@ rules:
       __other__: Price group '{invalid_value}' is not defined in T188. Correct it in VD02/XD02 > Sales area > Sales.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: price group ''{actual_value}''
       not in T188.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM038
     field: KNVV.PERFK
     check_class: referential_check
@@ -661,6 +723,11 @@ rules:
         Billing documents.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: invoice dates calendar
       ''{actual_value}'' does not exist in TFACD.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM039
     field: KNVV.KKBER
     check_class: referential_check
@@ -676,6 +743,11 @@ rules:
         documents.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: credit control area ''{actual_value}''
       not in T014.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM040
     field: KNVV.VWERK
     check_class: referential_check
@@ -691,6 +763,11 @@ rules:
         delivering plant in VD02/XD02 > Sales area > Shipping.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: delivering plant ''{actual_value}''
       not allowed in TVKWZ.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM041
     field: KNVV.BZIRK
     check_class: referential_check
@@ -705,6 +782,11 @@ rules:
       __other__: Sales district '{invalid_value}' is not defined in T171. Correct it in VD02/XD02 > Sales area > Sales.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: sales district ''{actual_value}''
       not in T171.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM042
     field: KNVV.VKBUR
     check_class: referential_check
@@ -719,6 +801,11 @@ rules:
       __other__: Sales office '{invalid_value}' is not defined in TVBUR. Correct it in VD02/XD02 > Sales area > Sales.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: sales office ''{actual_value}''
       not in TVBUR.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM043
     field: KNVV.VKGRP
     check_class: referential_check
@@ -734,6 +821,11 @@ rules:
         area > Sales.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: sales group ''{actual_value}''
       not in TVBVK.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM044
     field: KNVV.AUFSD
     check_class: referential_check
@@ -748,6 +840,11 @@ rules:
       __other__: Order block '{invalid_value}' is not defined in TVAST. Set the correct block in VD05/XD05 or clear it.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: order block ''{actual_value}''
       not in TVAST.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM045
     field: KNVV.LIFSD
     check_class: referential_check
@@ -762,6 +859,11 @@ rules:
       __other__: Delivery block '{invalid_value}' is not defined in TVLS. Set the correct block in VD05/XD05 or clear it.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: delivery block ''{actual_value}''
       not in TVLS.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM046
     field: KNVV.FAKSD
     check_class: referential_check
@@ -776,6 +878,11 @@ rules:
       __other__: Billing block '{invalid_value}' is not defined in TVFS. Set the correct block in VD05/XD05 or clear it.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: billing block ''{actual_value}''
       not in TVFS.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM047
     field: KNVV.LOEVM
     check_class: domain_value_check
@@ -797,6 +904,11 @@ rules:
       __other__: Set or remove the flag in VD06/XD06; never write other values by load.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: deletion flag ''{actual_value}''
       is invalid.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
   - id: SDCM048
     field: KNVV.KZTLF
     check_class: domain_value_check
@@ -824,6 +936,11 @@ rules:
       __other__: Correct the partial delivery control in VD02/XD02 > Sales area > Shipping.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: partial delivery control
       ''{actual_value}'' is invalid.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
   - id: SDCM049
     field: KNVV.AUTLF
     check_class: domain_value_check
@@ -845,6 +962,11 @@ rules:
       __other__: Correct the complete delivery indicator in VD02/XD02 > Sales area > Shipping.
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: complete delivery indicator
       ''{actual_value}'' is invalid.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
   - id: SDCM050
     field: KNA1.LAND1
     check_class: referential_check
@@ -859,6 +981,11 @@ rules:
       __other__: Country '{invalid_value}' is not defined in T005. Correct the customer address in XD02/VD02 (BP address in
         S/4HANA).
     record_fix_template: 'Customer {KNA1.KUNNR}: country ''{actual_value}'' not in T005.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM051
     field: KNVP.KUNN2
     check_class: exists_check
@@ -1083,6 +1210,11 @@ rules:
     fix_map:
       __other__: Correct the sold-to partner to the customer itself (XD02 > Partner functions).
     record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): sold-to partner is {KNVP.KUNN2}.'
+    auto_fix:
+      steps:
+      - op: copy
+        from: KNVP.KUNNR
+      confidence: medium
   - id: SDCM205
     field: KNVP.KUNN2
     check_class: exists_check
@@ -1261,6 +1393,11 @@ rules:
     fix_map:
       __other__: Choose a defined currency in VD02 > Sales; define new ISO codes in OY03.
     record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): currency is not defined in TCURC.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM215
     field: KNVV.KURST
     check_class: referential_check
@@ -1275,6 +1412,11 @@ rules:
       __other__: Choose a defined exchange rate type (VD02 > Sales; customising OB07).
     record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): exchange rate type not defined in
       TCURV.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM216
     field: KNVV.KVGR1
     check_class: referential_check
@@ -1289,6 +1431,11 @@ rules:
       __other__: 'Choose a defined customer group 1 (VD02 > Additional data; customising: Sales and Distribution > Master Data
         > Business Partners > Customers > Additional data).'
     record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): customer group 1 not defined in TVV1.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM217
     field: KNVV.KVGR2
     check_class: referential_check
@@ -1303,6 +1450,11 @@ rules:
       __other__: 'Choose a defined customer group 2 (VD02 > Additional data; customising: Sales and Distribution > Master Data
         > Business Partners > Customers > Additional data).'
     record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): customer group 2 not defined in TVV2.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM218
     field: KNVV.KVGR3
     check_class: referential_check
@@ -1317,6 +1469,11 @@ rules:
       __other__: 'Choose a defined customer group 3 (VD02 > Additional data; customising: Sales and Distribution > Master Data
         > Business Partners > Customers > Additional data).'
     record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): customer group 3 not defined in TVV3.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM219
     field: KNVV.KVGR4
     check_class: referential_check
@@ -1331,6 +1488,11 @@ rules:
       __other__: 'Choose a defined customer group 4 (VD02 > Additional data; customising: Sales and Distribution > Master Data
         > Business Partners > Customers > Additional data).'
     record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): customer group 4 not defined in TVV4.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM220
     field: KNVV.KVGR5
     check_class: referential_check
@@ -1345,6 +1507,11 @@ rules:
       __other__: 'Choose a defined customer group 5 (VD02 > Additional data; customising: Sales and Distribution > Master Data
         > Business Partners > Customers > Additional data).'
     record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): customer group 5 not defined in TVV5.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM221
     field: KNVV.UEBTK
     check_class: cross_field_check
@@ -1429,6 +1596,11 @@ rules:
       __other__: Choose a classification defined for the tax category (customising OVK3).
     record_fix_template: 'Customer {KNVI.KUNNR}: tax classification for country {KNVI.ALAND}, category {KNVI.TATYP} is not in
       TSKD.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM226
     field: KNVI.TATYP
     check_class: referential_check
@@ -1631,6 +1803,11 @@ rules:
     fix_map:
       __other__: Choose a defined value in XD02 > Contact persons (customising OVPA).
     record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: department is not defined in TSAB.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM236
     field: KNVK.PAFKT
     check_class: referential_check
@@ -1644,6 +1821,11 @@ rules:
     fix_map:
       __other__: Choose a defined value in XD02 > Contact persons (customising OVPA).
     record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: function is not defined in TPFK.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM237
     field: KNVK.PARVO
     check_class: referential_check
@@ -1657,6 +1839,11 @@ rules:
     fix_map:
       __other__: Choose a defined value in XD02 > Contact persons (customising OVPV).
     record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: VIP indicator is not defined in TVPV.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM238
     field: KNVK.PARLA
     check_class: referential_check
@@ -1685,6 +1872,11 @@ rules:
     fix_map:
       __other__: Flag the contact persons for deletion with the customer and plan their archiving or ILM blocking.
     record_fix_template: 'Contact person {KNVK.PARNR}: customer {KNVK.KUNNR} is flagged for deletion, the contact is not.'
+    auto_fix:
+      steps:
+      - op: set
+        value: X
+      confidence: medium
   - id: SDCM240
     field: KNVA.KUNNR
     check_class: exists_check
@@ -1715,6 +1907,11 @@ rules:
     fix_map:
       __other__: Choose a defined factory calendar for the unloading point (XD02 > Unloading points; customising SCAL).
     record_fix_template: 'Customer {KNVA.KUNNR}: unloading point calendar is not defined in TFACD.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM242
     field: KNVA.WANID
     check_class: referential_check
@@ -1728,6 +1925,11 @@ rules:
     fix_map:
       __other__: Choose defined goods receiving hours (XD02 > Unloading points; customising OVL4).
     record_fix_template: 'Customer {KNVA.KUNNR}: goods receiving hours ID is not defined in TVWA.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: medium
   - id: SDCM243
     field: KNVV.KKBER
     check_class: exists_check

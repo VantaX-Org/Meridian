@@ -366,6 +366,11 @@ rules:
       F1602 or SPRO configuration.'
   record_fix_template: 'Material {MARA.MATNR}: MSTAE is ''{actual_value}''. Assign a valid status code via MM02 (ECC) or Fiori
     F1602 (S/4HANA).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM020
   field: MARA.SPART
   check_class: null_check
@@ -463,6 +468,11 @@ rules:
       S/4HANA: use Fiori F1602 or F2886.'
   record_fix_template: 'Material {MARA.MATNR}: DISMM is ''{actual_value}''. Set a valid MRP type via MM02 > MRP 1 (ECC) or
     Fiori F1602 (S/4HANA).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM024
   field: MARC.SERNP
   check_class: referential_check
@@ -482,6 +492,11 @@ rules:
   record_fix_template: 'Material {MARA.MATNR}: SERLV is ''{actual_value}''. Set to a valid serialisation level via
     MM02 (ECC) or Fiori F1602 (S/4HANA).'
   reference_values: []
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM026
   field: MARC.DISPO
   check_class: null_check
@@ -527,6 +542,11 @@ rules:
       In S/4HANA: use Fiori F1602.'
   record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: BESKZ is ''{actual_value}''. Set to E (in-house), F (external),
     or X (both) via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM029
   field: MARC.PRCTR
   check_class: null_check
@@ -564,6 +584,11 @@ rules:
       or run ABC analysis MCBA. In S/4HANA: use Fiori F1602 or inventory analytics.'
   record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: ABCIN is ''{actual_value}''. Set to A, B, or C via MM02
     (ECC) or Fiori F1602 (S/4HANA).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM032
   field: MARC.FEVOR
   check_class: null_check
@@ -1062,6 +1087,11 @@ rules:
     __other__: 'Value {invalid_value} is not valid for Costing indicator. Allowed values: ['''', ''X''].'
   record_fix_template: 'Record has invalid MBEW.EKALR value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA: Use MM02
     or Fiori app F1602 (Manage Product Master Data).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM090
   field: MARC.FABKZ
   check_class: domain_value_check
@@ -1416,6 +1446,11 @@ rules:
     __other__: Base UoM '{invalid_value}' not in T006. Use MM02 to change (prerequisites apply) or configure the missing UoM
       in SPRO > SAP NetWeaver > General Settings > Check Units of Measurement (CUNI).
   record_fix_template: 'Material {MARA.MATNR}: base UoM ''{actual_value}'' is not in T006.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 
 
 - id: MM144
@@ -1556,6 +1591,11 @@ rules:
     __other__: Set price control V on the valuation header (MM02 > Accounting 1, no valuation type); keep S or V per valuation
       type as required.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: split-valuated header has price control {actual_value}.'
+  auto_fix:
+    steps:
+    - op: set
+      value: V
+    confidence: medium
 - id: MM156
   field: MARD.LABST
   check_class: cross_field_check
@@ -1955,6 +1995,11 @@ rules:
     __other__: Replace '{invalid_value}' with one of the domain values via MM02 (ECC) or Fiori F1602 Manage Product Master
       Data (S/4HANA).
   record_fix_template: 'Material {MARC.MATNR}: MARC.PERKZ is ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM176
   field: MARC.SBDKZ
   check_class: domain_value_check
@@ -2050,6 +2095,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OMSK).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: valuation class ''{actual_value}'' is not configured
     (T025).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM182
   field: MARC.MMSTA
   check_class: referential_check
@@ -2066,6 +2116,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OMS4).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: plant-specific material status ''{actual_value}'' is
     not configured (T141).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM183
   field: MARA.MSTAV
   check_class: referential_check
@@ -2123,6 +2178,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T024D. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OPPE / OMD0).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: mrp controller ''{actual_value}'' is not configured (T024D).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM186
   field: MARC.DISLS
   check_class: referential_check
@@ -2139,6 +2199,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OMI4).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: lot-sizing procedure ''{actual_value}'' is not configured
     (T439A).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM187
   field: MARC.EKGRP
   check_class: referential_check
@@ -2155,6 +2220,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OME4).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: purchasing group ''{actual_value}'' is not configured
     (T024).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM188
   field: MARC.FEVOR
   check_class: referential_check
@@ -2171,6 +2241,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OPJ9).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: production supervisor ''{actual_value}'' is not configured
     (T024F).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM189
   field: MARC.LADGR
   check_class: referential_check
@@ -2186,6 +2261,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TLGR. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVL5).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: loading group ''{actual_value}'' is not configured (TLGR).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM190
   field: MARC.SOBSL
   check_class: referential_check
@@ -2203,6 +2283,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OMD9).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: special procurement type ''{actual_value}'' is not configured
     (T460A).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM191
   field: MARC.FHORI
   check_class: referential_check
@@ -2219,6 +2304,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OPPQ).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: scheduling margin key ''{actual_value}'' is not configured
     (T436A).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM192
   field: MARC.AWSLS
   check_class: referential_check
@@ -2234,6 +2324,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TKV01. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OKV1).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: variance key ''{actual_value}'' is not configured (TKV01).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM193
   field: MARC.LGPRO
   check_class: referential_check
@@ -2250,6 +2345,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OX09).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: production storage location ''{actual_value}'' is not
     configured (T001L).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM194
   field: MARC.LGFSB
   check_class: referential_check
@@ -2266,6 +2366,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OX09).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: default storage location for external procurement ''{actual_value}''
     is not configured (T001L).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM195
   field: MARC.MTVFP
   check_class: referential_check
@@ -2282,6 +2387,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVZ2).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: availability checking group ''{actual_value}'' is not
     configured (TMVF).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM196
   field: MARC.STRGR
   check_class: referential_check
@@ -2298,6 +2408,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OPPS).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: planning strategy group ''{actual_value}'' is not configured
     (T461P).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM197
   field: MARC.MAABC
   check_class: referential_check
@@ -2313,6 +2428,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TMABC. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OMI9 (TMABC)).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: abc indicator ''{actual_value}'' is not configured (TMABC).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM198
   field: MARC.HERKL
   check_class: referential_check
@@ -2329,6 +2449,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OY01).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: country of origin ''{actual_value}'' is not configured
     (T005).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM199
   field: MARA.SPART
   check_class: referential_check
@@ -2424,6 +2549,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T006. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (CUNI).'
   record_fix_template: 'Material {MARA.MATNR}: purchase order unit ''{actual_value}'' is not configured (T006).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM204
   field: MARA.NUMTP
   check_class: referential_check
@@ -3869,6 +3999,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TCLA. Correct the value in MM02 or create the entry in table TCLA (SM30 or the
       matching IMG node).'
   record_fix_template: 'Class {KLAH.CLASS}, class type {KLAH.KLART}: KLART ''{actual_value}'' is not configured in TCLA.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM347
   field: KLAH.STATU
   check_class: referential_check
@@ -3884,6 +4019,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TCLU. Correct the value in MM02 or create the entry in table TCLU (SM30 or the
       matching IMG node).'
   record_fix_template: 'Class {KLAH.CLASS}, class type {KLAH.KLART}: STATU ''{actual_value}'' is not configured in TCLU.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM348
   field: KLAH.STATU
   check_class: null_check
@@ -4037,6 +4177,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}, distribution channel {MVKE.VTWEG}: VERSG ''{actual_value}''
     is not configured in TVSM.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM357
   field: MVKE.KONDM
   check_class: referential_check
@@ -4052,6 +4197,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}, distribution channel {MVKE.VTWEG}: KONDM ''{actual_value}''
     is not configured in T178.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM358
   field: MVKE.MVGR1
   check_class: referential_check
@@ -4067,6 +4217,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}, distribution channel {MVKE.VTWEG}: MVGR1 ''{actual_value}''
     is not configured in TVM1.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM359
   field: MVKE.MVGR2
   check_class: referential_check
@@ -4082,6 +4237,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}, distribution channel {MVKE.VTWEG}: MVGR2 ''{actual_value}''
     is not configured in TVM2.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM360
   field: MVKE.MVGR3
   check_class: referential_check
@@ -4097,6 +4257,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}, distribution channel {MVKE.VTWEG}: MVGR3 ''{actual_value}''
     is not configured in TVM3.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM361
   field: MVKE.PBIND
   check_class: domain_value_check
@@ -4196,6 +4361,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T405. Correct the value in MM02 or create the entry in table T405 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARA.MATNR}: EKWSL ''{actual_value}'' is not configured in T405.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM367
   field: MARC.AUSME
   check_class: referential_check
@@ -4210,6 +4380,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T006. Correct the value in MM02 or create the entry in table T006 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: AUSME ''{actual_value}'' is not configured in T006.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM368
   field: MARC.MTVER
   check_class: referential_check
@@ -4225,6 +4400,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TVFM. Correct the value in MM02 or create the entry in table TVFM (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: MTVER ''{actual_value}'' is not configured in TVFM.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM369
   field: MARC.STAWN
   check_class: referential_check
@@ -4240,6 +4420,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T604. Correct the value in MM02 or create the entry in table T604 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: STAWN ''{actual_value}'' is not configured in T604.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM370
   field: MARA.TEMPB
   check_class: referential_check
@@ -4481,6 +4666,11 @@ rules:
     __other__: Correct the value in MM02 MRP 1; the allowed values are those of domain ATPKZ.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: ATPKZ is ''{actual_value}'', which is not a value of domain
     ATPKZ.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM383
   field: MARC.VRMOD
   check_class: domain_value_check
@@ -4541,6 +4731,11 @@ rules:
     __other__: Correct the value in MM02 MRP 4; the allowed values are those of domain DPLPU.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: DPLPU is ''{actual_value}'', which is not a value of domain
     DPLPU.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM387
   field: MARC.KZAGL
   check_class: domain_value_check
@@ -4570,6 +4765,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TMQ2. Correct the value in MM02 or create the entry in table TMQ2 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: USEQU ''{actual_value}'' is not configured in TMQ2.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM389
   field: MARC.LAGPR
   check_class: referential_check
@@ -4585,6 +4785,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T439L. Correct the value in MM02 or create the entry in table T439L (SM30 or
       the matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: LAGPR ''{actual_value}'' is not configured in T439L.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM390
   field: MARC.EISLO
   check_class: cross_field_check
@@ -4798,6 +5003,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TCO43. Correct the value in MM02 or create the entry in table TCO43 (SM30 or
       the matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: SFCPF ''{actual_value}'' is not configured in TCO43.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM401
   field: MARC.SFEPR
   check_class: referential_check
@@ -4813,6 +5023,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T437S. Correct the value in MM02 or create the entry in table T437S (SM30 or
       the matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: SFEPR ''{actual_value}'' is not configured in T437S.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM402
   field: MARC.SFCPF
   check_class: null_check
@@ -4895,6 +5110,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TQ08. Correct the value in MM02 or create the entry in table TQ08 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: SSQSS ''{actual_value}'' is not configured in TQ08.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM407
   field: MARC.QSSYS
   check_class: referential_check
@@ -4909,6 +5129,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TQ02. Correct the value in MM02 or create the entry in table TQ02 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: QSSYS ''{actual_value}'' is not configured in TQ02.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM408
   field: MARC.QMATA
   check_class: referential_check
@@ -4924,6 +5149,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TQ01B. Correct the value in MM02 or create the entry in table TQ01B (SM30 or
       the matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: QMATA ''{actual_value}'' is not configured in TQ01B.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM409
   field: MARC.KAUSF
   check_class: cross_field_check
@@ -5032,6 +5262,11 @@ rules:
     __other__: Correct the value in MM02 Accounting 1; the allowed values are those of domain VPRSV.
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: VMVPR is ''{actual_value}'', which is not a value
     of domain VPRSV.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM415
   field: MBEW.VJVPR
   check_class: domain_value_check
@@ -5047,6 +5282,11 @@ rules:
     __other__: Correct the value in MM02 Accounting 1; the allowed values are those of domain VPRSV.
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: VJVPR is ''{actual_value}'', which is not a value
     of domain VPRSV.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM416
   field: MBEW.SPERW
   check_class: domain_value_check
@@ -5062,6 +5302,11 @@ rules:
     __other__: Correct the value in MI01 or MM02 Accounting 1; the allowed values are those of domain SPERR.
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: SPERW is ''{actual_value}'', which is not a value
     of domain SPERR.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM417
   field: MBEW.EKLAS
   check_class: referential_check
@@ -5077,6 +5322,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: EKLAS ''{actual_value}'' is not configured in
     T025.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM418
   field: MBEW.VMBKL
   check_class: referential_check
@@ -5092,6 +5342,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: VMBKL ''{actual_value}'' is not configured in
     T025.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM419
   field: MBEW.BWTTY
   check_class: referential_check
@@ -5107,6 +5362,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: BWTTY ''{actual_value}'' is not configured in
     T149.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM420
   field: MBEW.HRKFT
   check_class: referential_check
@@ -5122,6 +5382,11 @@ rules:
       the matching IMG node).'
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: HRKFT ''{actual_value}'' is not configured in
     TKKH1.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM421
   field: MBEW.KOSGR
   check_class: referential_check
@@ -5137,6 +5402,11 @@ rules:
       the matching IMG node).'
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: KOSGR ''{actual_value}'' is not configured in
     TCK14.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM422
   field: MBEW.STPRS
   check_class: cross_field_check
@@ -5280,6 +5550,11 @@ rules:
     __other__: Correct the value in MI01 or MM02 Plant data / storage; the allowed values are those of domain SPERR.
   record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: SPERR is ''{actual_value}'',
     which is not a value of domain SPERR.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM429
   field: MARD.DISKZ
   check_class: domain_value_check
@@ -5311,6 +5586,11 @@ rules:
       the matching IMG node).'
   record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: LSOBS ''{actual_value}''
     is not configured in T460A.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM431
   field: MLGN.VOMEM
   check_class: domain_value_check
@@ -5327,6 +5607,11 @@ rules:
     __other__: Correct the value in MM02 Warehouse management 1; the allowed values are those of domain LVS_VOME.
   record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: VOMEM is ''{actual_value}'', which is not a value of
     domain LVS_VOME.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM432
   field: MLGN.MATNR
   check_class: exists_check
@@ -5606,6 +5891,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T006. Correct the value in MM02 or create the entry in table T006 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Characteristic {CABN.ATNAM}: MSEHI ''{actual_value}'' is not configured in T006.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM447
   field: MARA.MHDLP
   check_class: cross_field_check
@@ -5949,6 +6239,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TCLG. Correct the value in MM02 or create the entry in table TCLG (SM30 or the
       matching IMG node).'
   record_fix_template: 'Class {KLAH.CLASS}, class type {KLAH.KLART}: KLAGR ''{actual_value}'' is not configured in TCLG.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM467
   field: CABN.ATKLA
   check_class: referential_check
@@ -5964,6 +6259,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TCMG. Correct the value in MM02 or create the entry in table TCMG (SM30 or the
       matching IMG node).'
   record_fix_template: 'Characteristic {CABN.ATNAM}: ATKLA ''{actual_value}'' is not configured in TCMG.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM468
   field: INOB.KLART
   check_class: referential_check
@@ -5980,6 +6280,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Classification link of object {INOB.OBJEK}, class type {INOB.KLART}: KLART ''{actual_value}'' is not
     configured in TCLA.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM469
   field: INOB.OBTAB
   check_class: referential_check
@@ -5997,6 +6302,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Classification link of object {INOB.OBJEK}, class type {INOB.KLART}: OBTAB ''{actual_value}'' is not
     configured in TCLO.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM470
   field: KSSK.DATUB
   check_class: cross_field_check
@@ -6097,6 +6407,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}, distribution channel {MVKE.VTWEG}: MVGR4 ''{actual_value}''
     is not configured in TVM4.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM476
   field: MVKE.MVGR5
   check_class: referential_check
@@ -6112,6 +6427,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}, distribution channel {MVKE.VTWEG}: MVGR5 ''{actual_value}''
     is not configured in TVM5.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM477
   field: MVKE.BONUS
   check_class: referential_check
@@ -6127,6 +6447,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}, distribution channel {MVKE.VTWEG}: BONUS ''{actual_value}''
     is not configured in TVBO.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM478
   field: MVKE.PROVG
   check_class: referential_check
@@ -6142,6 +6467,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}, distribution channel {MVKE.VTWEG}: PROVG ''{actual_value}''
     is not configured in TVPR.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM479
   field: MVKE.PMATN
   check_class: exists_check
@@ -6188,6 +6518,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TMKM1. Correct the value in MM02 or create the entry in table TMKM1 (SM30 or
       the matching IMG node).'
   record_fix_template: 'Material {MLAN.MATNR}, tax country {MLAN.ALAND}: TAXIM ''{actual_value}'' is not configured in TMKM1.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM482
   field: MARC.MATNR
   check_class: exists_check
@@ -6224,6 +6559,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T006. Correct the value in MM02 or create the entry in table T006 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: EXPME ''{actual_value}'' is not configured in T006.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM484
   field: MARC.FRTME
   check_class: referential_check
@@ -6238,6 +6578,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T006. Correct the value in MM02 or create the entry in table T006 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: FRTME ''{actual_value}'' is not configured in T006.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM485
   field: EINE.INFNR
   check_class: exists_check
@@ -6348,6 +6693,11 @@ rules:
     __other__: '''{invalid_value}'' is not in MDIP. Correct the value in MM02 or create the entry in table MDIP (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: DISPR ''{actual_value}'' is not configured in MDIP.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM492
   field: MARC.RWPRO
   check_class: referential_check
@@ -6362,6 +6712,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T438R. Correct the value in MM02 or create the entry in table T438R (SM30 or
       the matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: RWPRO ''{actual_value}'' is not configured in T438R.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM493
   field: MARC.SHPRO
   check_class: referential_check
@@ -6376,6 +6731,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T438V. Correct the value in MM02 or create the entry in table T438V (SM30 or
       the matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: SHPRO ''{actual_value}'' is not configured in T438V.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM494
   field: MARC.EPRIO
   check_class: referential_check
@@ -6390,6 +6750,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T434G. Correct the value in MM02 or create the entry in table T434G (SM30 or
       the matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: EPRIO ''{actual_value}'' is not configured in T434G.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM495
   field: MARC.MRPPP
   check_class: referential_check
@@ -6404,6 +6769,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T439G. Correct the value in MM02 or create the entry in table T439G (SM30 or
       the matching IMG node).'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: MRPPP ''{actual_value}'' is not configured in T439G.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM496
   field: MARC.SAUFT
   check_class: domain_value_check
@@ -6452,6 +6822,11 @@ rules:
       the matching IMG node).'
   record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: DISMM ''{actual_value}'' is not
     configured in T438A.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM498
   field: MDMA.DISLS
   check_class: referential_check
@@ -6468,6 +6843,11 @@ rules:
       the matching IMG node).'
   record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: DISLS ''{actual_value}'' is not
     configured in T439A.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM499
   field: MDMA.MATNR
   check_class: exists_check
@@ -6808,6 +7188,13 @@ rules:
   fix_map:
     __other__: Correct the period with the period close transaction (MMPV) or a correction of the load.
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: current period {actual_value}, fiscal year {MBEW.LFGJA}.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: pad_left
+      width: 2
+      char: '0'
+    confidence: high
 - id: MM516
   field: MBEW.QKLAS
   check_class: referential_check
@@ -6823,6 +7210,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: QKLAS ''{actual_value}'' is not configured in
     T025.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM517
   field: MBEW.HKMAT
   check_class: domain_value_check
@@ -6838,6 +7230,11 @@ rules:
     __other__: Correct the value in MM02 Costing 1; the allowed values are those of domain HKMAT.
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: HKMAT is ''{actual_value}'', which is not a value
     of domain HKMAT.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM518
   field: MBEW.MLMAA
   check_class: cross_field_check
@@ -6932,6 +7329,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T006. Correct the value in MM02 or create the entry in table T006 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: LVSME ''{actual_value}'' is not configured in T006.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM524
   field: MLGN.LVSME
   check_class: exists_check
@@ -6968,6 +7370,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T304. Correct the value in MM02 or create the entry in table T304 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: LGBKZ ''{actual_value}'' is not configured in T304.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM526
   field: MLGN.LTKZE
   check_class: referential_check
@@ -6983,6 +7390,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T305. Correct the value in MM02 or create the entry in table T305 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: LTKZE ''{actual_value}'' is not configured in T305.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM527
   field: MLGN.LTKZA
   check_class: referential_check
@@ -6998,6 +7410,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T305. Correct the value in MM02 or create the entry in table T305 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: LTKZA ''{actual_value}'' is not configured in T305.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM528
   field: MLGN.BSSKZ
   check_class: referential_check
@@ -7014,6 +7431,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T306. Correct the value in MM02 or create the entry in table T306 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: BSSKZ ''{actual_value}'' is not configured in T306.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM529
   field: MLGN.PLKPT
   check_class: referential_check
@@ -7031,6 +7453,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T301. Correct the value in MM02 or create the entry in table T301 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: PLKPT ''{actual_value}'' is not configured in T301.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM530
   field: MLGN.LHMG1
   check_class: cross_field_check
@@ -7110,6 +7537,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}, storage type {MLGT.LGTYP}: KOBER ''{actual_value}''
     is not configured in T30A.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM535
   field: QMAT.AKTIV
   check_class: domain_value_check
@@ -7177,6 +7609,11 @@ rules:
       the matching IMG node).'
   record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: CHG ''{actual_value}'' is not
     configured in TQ32C.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM539
   field: QMAT.QKZVERF
   check_class: referential_check
@@ -7194,6 +7631,11 @@ rules:
       matching IMG node).'
   record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: QKZVERF ''{actual_value}''
     is not configured in TQ06.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM540
   field: MLGN.LVORM
   check_class: cross_field_check
@@ -8290,6 +8732,12 @@ rules:
       data 1).
   record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: base unit weight unit {actual_value} differs from material
     weight unit {MARA.GEWEI}.'
+  auto_fix:
+    when: '`MARM.MEINH` == `MARA.MEINS`'
+    steps:
+    - op: copy
+      from: MARA.GEWEI
+    confidence: medium
 - id: MM625
   field: MARM.NUMTP
   check_class: cross_field_check
@@ -10640,6 +11088,11 @@ rules:
   fix_map:
     __other__: Correct the procurement type in C223.
   record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: procurement type ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM760
   field: MKAL.MKSP
   check_class: domain_value_check
@@ -11719,6 +12172,12 @@ rules:
     __blank__: Maintain the valuation category on the header record in MM02.
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': valuation type
     record with no valuation category.'
+  auto_fix:
+    when: '`MARC.BWTTY`.notna()'
+    steps:
+    - op: copy
+      from: MARC.BWTTY
+    confidence: medium
 - id: MM820
   field: MBEW.BWPRS
   check_class: cross_field_check
