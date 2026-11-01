@@ -1,6 +1,7 @@
 import type { AxiosResponse } from "axios";
 import { v2Get } from "@/lib/api/v2/client";
 import apiClient from "./client";
+import type { WorkflowInstance } from "./v2/requests";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,8 @@ export interface BatchItem {
 export interface BatchDetail {
   batch: Batch;
   items: BatchItem[];
+  /** The batch's latest approval with its steps; null before its first decision. */
+  workflow?: WorkflowInstance | null;
 }
 
 export interface BatchEvent {

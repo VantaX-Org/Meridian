@@ -347,7 +347,13 @@ async def get_batch(
     _perm: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     b = await _batch(db, tenant, batch_id)
-    return {"batch": {**b, **(await _batch_extras(db, tenant, [b]))[b["id"]]}, "items": await _items(db, batch_id)}
+    tid = str(tenant.id)
+
+    def _approval(s):  # the batch's latest approval with its steps; none before its first decision
+        inst = workflow.latest_instance(s, tid, "fix_batch", str(batch_id))
+        return workflow.view(s, tid, inst["id"]) if inst else None
+    return {"batch": {**b, **(await _batch_extras(db, tenant, [b]))[b["id"]]}, "items": await _items(db, batch_id),
+            "workflow": await db.run_sync(_approval)}
 
 
 @router.get("/batches/{batch_id}/events")

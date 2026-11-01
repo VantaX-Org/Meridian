@@ -18,7 +18,7 @@ import { describeField } from "@/lib/v2/sap-fields";
 import { Coded, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { StepDecide } from "./decide";
-import { ResultFrame, useOutcome } from "./shared";
+import { ResultFrame, WorkflowSteps, useOutcome } from "./shared";
 
 export function statusWord(s: RequestStatus): string {
   const words: Record<RequestStatus, string> = {
@@ -41,8 +41,6 @@ export function objectWord(o: RequestObject): string {
 }
 
 export const kindWord = (k: RequestKind): string => (k === "create" ? tr("Create") : tr("Change"));
-
-const TASK_WORD = (s: string): string => ({ pending: tr("Waiting"), approved: tr("Approved"), rejected: tr("Rejected"), skipped: tr("Skipped"), cancelled: tr("Cancelled") })[s] ?? s;
 
 /** The rule pre-checks and duplicate candidates of a request: what the validate step answered. */
 export function PrecheckView({ p }: { p: Precheck }) {
@@ -253,23 +251,7 @@ function RequestBody({ d }: { d: RequestDetail }) {
       <StepDecide kind="change_request" id={r.id} />
 
       <h3>{tr("Approval steps")}</h3>
-      {d.workflow && d.workflow.tasks.length ? (
-        <ol className="m2-trail" data-testid="request-steps">
-          {d.workflow.tasks.map((s) => (
-            <li key={s.id}>
-              <div>
-                {`${s.step_name}: ${TASK_WORD(s.status)}`}
-                {s.decided_by_label ? tr(" by {user}", { user: s.decided_by_label }) : ""}
-              </div>
-              {s.comment ? <p className="m2-tr-note">{s.comment}</p> : null}
-              {s.skip_reason ? <p className="m2-tr-note">{s.skip_reason}</p> : null}
-              <div className="m2-tr-at">{s.decided_at ? formatDate(s.decided_at, "datetime") : s.due_at ? tr("Due {due}", { due: formatDate(s.due_at, "datetime") }) : "—"}</div>
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <EmptyFrame>{tr("The approval starts when the request is submitted.")}</EmptyFrame>
-      )}
+      {d.workflow && d.workflow.tasks.length ? <WorkflowSteps tasks={d.workflow.tasks} testId="request-steps" /> : <EmptyFrame>{tr("The approval starts when the request is submitted.")}</EmptyFrame>}
 
       <h3>{tr("History")}</h3>
       {d.history.length ? (
