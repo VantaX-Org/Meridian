@@ -79,7 +79,7 @@ prometheus_client==0.26.0
 prompt_toolkit==3.0.53
 psycopg2-binary==2.9.13
 pyarrow==26.0.0
-pyasn1==0.6.4
+pyasn1==0.6.5
 pyasn1_modules==0.4.2
 pycparser==3.11
 pycryptodome==4.0.1
