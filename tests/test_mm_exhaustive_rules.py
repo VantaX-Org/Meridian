@@ -154,7 +154,10 @@ REF4 = [
     ("MM1044", mbew, "VJBKL", "T025.BKLAS"), ("MM1045", mbew, "BWVA1", "TCK05.BWVAR"),
     ("MM1046", mbew, "BWVA2", "TCK05.BWVAR"), ("MM1047", mbew, "BWVA3", "TCK05.BWVAR"),
     ("MM1054", mvke, "RDPRF", "RDPR.RDPRF"), ("MM1055", mvke, "MEGRU", "TWMEG.MEGRU"),
-    ("MM1060", mard, "HERKL", "T005.LAND1"),
+    ("MM1060", mard, "HERKL", "T005.LAND1"), ("MM1068", marc, "IUID_TYPE", "TIUID_TYPE.IUID_TYPE"),
+    ("MM1069", marc, "CONVT", "TCSCP_CONV_TYPE.CONV_TYPE"), ("MM1070", mara, "PACKCODE", "CCUNC121.PACKCODE"),
+    ("MM1071", mara, "DG_PACK_STATUS", "TDG101.DG_PACK_STATUS"),
+    ("MM1072", mara, "COMMODITY", "TBAC_PHYSCOMM.COMMODITY"), ("MM1073", mara, "PS_SMARTFORM", "STXFADM.FORMNAME"),
 ]
 
 CASES = {
@@ -296,6 +299,12 @@ CASES = {
     "MM1059": {"MVKE": mvke(VDVZL=["20260201", "20260101"], VDBZL=["20260101", "20261231"])},
     "MM1061": {"MARD": mard(LFMON=["00", "12"], LFGJA=["2026", "2026"])},
     "MM1062": {"MARD": mard(ERSDA=["29991231", "20200101"])},
+    "MM1063": {"MARC": marc(UMLMC=[0, 0], TRAME=[-1, 5], BWESB=[0, 0])},
+    "MM1064": {"MARC": marc(LOSGR=[-10, 100])},
+    "MM1065": {"MARD": mard(KINSM=[0, 0], KEINM=[0, 3], KSPEM=[-2, 0])},
+    "MM1066": {"MBEW": mbew(STPRV=[10, 10], VJSTP=[0, 5], VJVER=[-1, 5])},
+    "MM1067": {"MARM": frame("MARM", MATNR=["M1", "M2"], MEINH=["CS", "CS"], EAN11=["", "4006381333931"],
+                             GTIN_VARIANT=["01", "01"])},
 }
 CASES.update({rid: ({mk().columns[0].split(".")[0]: mk(**{f: ["ZZ9", "OK"]})}, {ref: {"OK"}})
               for rid, mk, f, ref in REF4})

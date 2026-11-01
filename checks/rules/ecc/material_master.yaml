@@ -16141,3 +16141,187 @@ rules:
   fix_map:
     __other__: Correct the load; the system date cannot be in the future.
   record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: created on {actual_value}.'
+- id: MM1063
+  field: MARC.UMLMC
+  check_class: cross_field_check
+  grain: MARC
+  fail_when: (`MARC.UMLMC` < 0) | (`MARC.TRAME` < 0) | (`MARC.BWESB` < 0)
+  severity: high
+  dimension: consistency
+  message: Plant-level stock in transfer, stock in transit or valuated goods receipt blocked stock is negative
+  why_it_matters: Stock in transfer between plants (MARC-UMLMC), stock in transit (MARC-TRAME) and valuated goods receipt
+    blocked stock (MARC-BWESB) are only increased and reduced by goods movements. Only unrestricted-use stock can go negative,
+    so a negative value here is a load error or a corrupted stock record.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock overviews, MRP availability and stock transport order follow-up work from an impossible quantity and the
+    plant stock value is wrong.
+  fix_map:
+    __other__: Reconcile the plant stock with its material documents (MB5B, MB5T for stock in transit) and correct it with
+      the controller's agreement.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: stock in transfer {MARC.UMLMC}, in transit {MARC.TRAME},
+    valuated GR blocked {MARC.BWESB}.'
+- id: MM1064
+  field: MARC.LOSGR
+  check_class: cross_field_check
+  grain: MARC
+  fail_when: '`MARC.LOSGR` < 0'
+  severity: medium
+  dimension: accuracy
+  message: Costing lot size is negative
+  why_it_matters: The costing lot size (MARC-LOSGR) is the quantity the cost estimate is calculated for. A negative lot size
+    is a sign error in a load and divides every lot-size-dependent cost by a negative quantity.
+  rule_authority: best_practice
+  sap_impact: Standard cost estimates (CK11N, CK40N) calculate set-up costs per unit with the wrong sign.
+  fix_map:
+    __other__: Correct the costing lot size in the Costing 1 view (MM02).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: costing lot size {actual_value}.'
+- id: MM1065
+  field: MARD.KINSM
+  check_class: cross_field_check
+  grain: MARD
+  fail_when: (`MARD.KINSM` < 0) | (`MARD.KEINM` < 0) | (`MARD.KSPEM` < 0)
+  severity: high
+  dimension: consistency
+  message: Consignment stock in quality inspection, restricted use or blocked is negative
+  why_it_matters: Of the vendor consignment stock types at storage location level only unrestricted-use consignment stock
+    can be negative, and only where negative consignment stock is allowed. Consignment stock in quality inspection (MARD-KINSM),
+    restricted use (MARD-KEINM) and blocked (MARD-KSPEM) cannot fall below zero through a goods movement.
+  rule_authority: sap_hard_constraint
+  sap_impact: Consignment withdrawals, usage decisions and the consignment liability to the vendor are calculated from an
+    impossible quantity.
+  fix_map:
+    __other__: Reconcile the consignment stock with its material documents (MB5B, MB54) and correct it through physical inventory
+      or a transfer posting.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: consignment stock in inspection
+    {MARD.KINSM}, restricted {MARD.KEINM}, blocked {MARD.KSPEM}.'
+- id: MM1066
+  field: MBEW.STPRV
+  check_class: cross_field_check
+  grain: MBEW
+  fail_when: (`MBEW.STPRV` < 0) | (`MBEW.VJSTP` < 0) | (`MBEW.VJVER` < 0)
+  severity: medium
+  dimension: accuracy
+  message: Previous standard price or previous-year price is negative
+  why_it_matters: The previous standard price (MBEW-STPRV) and the previous-year standard and moving average prices (MBEW-VJSTP,
+    MBEW-VJVER) are copies of prices that were valid at the time. A price cannot be negative, so a negative value is a sign
+    error in a load or a period-closing program.
+  rule_authority: best_practice
+  sap_impact: Postings into the previous period and previous-year valuation (MR21 history, balance sheet valuation) use a
+    negative price.
+  fix_map:
+    __other__: Correct the price history with the controller; postings into the previous period use these values.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: previous standard price {MBEW.STPRV}, previous-year
+    standard {MBEW.VJSTP}, previous-year moving average {MBEW.VJVER}.'
+- id: MM1067
+  field: MARM.EAN11
+  check_class: null_check
+  grain: MARM
+  applies_when:
+    MARM.GTIN_VARIANT:
+      populated: true
+  severity: low
+  dimension: completeness
+  message: GTIN variant is set on a unit of measure that has no GTIN
+  why_it_matters: The GTIN variant (MARM-GTIN_VARIANT) qualifies the GTIN of the alternative unit of measure. Without the
+    GTIN itself (MARM-EAN11) it has nothing to qualify. MM648 checks the same on the base unit in MARA.
+  rule_authority: sap_hard_constraint
+  sap_impact: GTIN version data for the unit is incomplete and cannot be sent to trading partners.
+  fix_map:
+    __other__: Maintain the GTIN for the unit in the units of measure view (MM02) or clear the GTIN variant.
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: GTIN variant {MARM.GTIN_VARIANT} without GTIN.'
+- id: MM1068
+  field: MARC.IUID_TYPE
+  check_class: referential_check
+  grain: MARC
+  severity: medium
+  dimension: validity
+  message: Structure type of the unique item identifier (MARC.IUID_TYPE) is not defined in the system's configuration (TIUID_TYPE)
+  why_it_matters: Structure type of the unique item identifier (MARC-IUID_TYPE) is checked against TIUID_TYPE when the material
+    is maintained in the plant views (MM02). A value that is not there was loaded past the check or its entry was deleted
+    later, and every function that reads it finds nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: UII generation for the material in the plant has no structure to build the identifier from.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TIUID_TYPE. Correct the value in the plant views (MM02) or create the entry
+      in TIUID_TYPE.'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: IUID_TYPE ''{actual_value}'' is not found in TIUID_TYPE.'
+- id: MM1069
+  field: MARC.CONVT
+  check_class: referential_check
+  grain: MARC
+  severity: low
+  dimension: validity
+  message: Conversion type for production figures (MARC.CONVT) is not defined in the system's configuration (TCSCP_CONV_TYPE)
+  why_it_matters: Conversion type for production figures (MARC-CONVT) is checked against TCSCP_CONV_TYPE when the material
+    is maintained in the plant views (MM02). A value that is not there was loaded past the check or its entry was deleted
+    later, and every function that reads it finds nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Production figures cannot be converted for the material in the plant.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TCSCP_CONV_TYPE. Correct the value in the plant views (MM02) or create the entry
+      in TCSCP_CONV_TYPE.'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: CONVT ''{actual_value}'' is not found in TCSCP_CONV_TYPE.'
+- id: MM1070
+  field: MARA.PACKCODE
+  check_class: referential_check
+  grain: MARA
+  severity: medium
+  dimension: validity
+  message: Packaging code (MARA.PACKCODE) is not defined in the system's configuration (CCUNC121)
+  why_it_matters: Packaging code (MARA-PACKCODE) is checked against CCUNC121 when the material is maintained in the basic
+    data views (MM02). A value that is not there was loaded past the check or its entry was deleted later, and every function
+    that reads it finds nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Dangerous goods packaging checks and documents cannot read the packaging code.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in CCUNC121. Correct the value in the basic data views (MM02) or create the entry
+      in CCUNC121.'
+  record_fix_template: 'Material {MARA.MATNR}: PACKCODE ''{actual_value}'' is not found in CCUNC121.'
+- id: MM1071
+  field: MARA.DG_PACK_STATUS
+  check_class: referential_check
+  grain: MARA
+  severity: medium
+  dimension: validity
+  message: Dangerous goods packaging status (MARA.DG_PACK_STATUS) is not defined in the system's configuration (TDG101)
+  why_it_matters: Dangerous goods packaging status (MARA-DG_PACK_STATUS) is checked against TDG101 when the material is maintained
+    in the basic data views (MM02). A value that is not there was loaded past the check or its entry was deleted later, and
+    every function that reads it finds nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Dangerous goods checks in deliveries cannot read the packaging status of the material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TDG101. Correct the value in the basic data views (MM02) or create the entry
+      in TDG101.'
+  record_fix_template: 'Material {MARA.MATNR}: DG_PACK_STATUS ''{actual_value}'' is not found in TDG101.'
+- id: MM1072
+  field: MARA.COMMODITY
+  check_class: referential_check
+  grain: MARA
+  severity: medium
+  dimension: validity
+  message: Physical commodity (MARA.COMMODITY) is not defined in the system's configuration (TBAC_PHYSCOMM)
+  why_it_matters: Physical commodity (MARA-COMMODITY) is checked against TBAC_PHYSCOMM when the material is maintained in
+    the basic data views (MM02). A value that is not there was loaded past the check or its entry was deleted later, and every
+    function that reads it finds nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Commodity management and quantity conversions cannot find the physical commodity of the material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TBAC_PHYSCOMM. Correct the value in the basic data views (MM02) or create the
+      entry in TBAC_PHYSCOMM.'
+  record_fix_template: 'Material {MARA.MATNR}: COMMODITY ''{actual_value}'' is not found in TBAC_PHYSCOMM.'
+- id: MM1073
+  field: MARA.PS_SMARTFORM
+  check_class: referential_check
+  grain: MARA
+  severity: low
+  dimension: validity
+  message: Product stewardship form (MARA.PS_SMARTFORM) is not defined in the system's configuration (STXFADM)
+  why_it_matters: Product stewardship form (MARA-PS_SMARTFORM) is checked against STXFADM when the material is maintained
+    in the basic data views (MM02). A value that is not there was loaded past the check or its entry was deleted later, and
+    every function that reads it finds nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: The product stewardship form cannot be printed or sent for the material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in STXFADM. Correct the value in the basic data views (MM02) or create the entry
+      in STXFADM.'
+  record_fix_template: 'Material {MARA.MATNR}: PS_SMARTFORM ''{actual_value}'' is not found in STXFADM.'
