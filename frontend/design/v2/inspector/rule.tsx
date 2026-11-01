@@ -13,10 +13,11 @@ import type { Landscape, Receipt, RuleRow } from "@/lib/api/v2/types";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { v2Keys } from "@/lib/v2/queries";
 import { useRuleHistory, useRuleReconcile, useRuleScope, useStewards } from "@/lib/v2/object-queries";
-import { int, moduleSlug, systemSlug } from "@/lib/v2/score";
+import { int, moduleSlug, pct1, systemSlug } from "@/lib/v2/score";
+import { useRuleAccuracy } from "@/lib/v2/admin-queries";
 import { Explain } from "../Explain";
 import "../object.css";
-import { SeverityMark, type SeverityKey } from "../marks";
+import { SeverityMark, VerdictMark, type SeverityKey } from "../marks";
 import { describeField } from "@/lib/v2/sap-fields";
 import { Coded, Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { CollabSections } from "./collab";
@@ -207,9 +208,18 @@ export function RuleFacts({ view }: { view: RuleView }) {
 export function RuleDefinition({ view }: { view: RuleView }) {
   const d = view.scope.definition;
   const params = Object.entries(d.params ?? {});
+  const proof = useRuleAccuracy().data?.rules.find((r) => r.rule_id === view.id);
   return (
     <Sec title={tr("Definition")}>
       <Facts>
+        {proof ? (
+          <Fact label={tr("Test-proven")}>
+            <span className="m2-v" title={tr("Synthetic records with {injected} injected defects: {tp} caught, {fp} false alarms, {fn} missed.", { injected: int(proof.injected), tp: int(proof.true_positives), fp: int(proof.false_positives), fn: int(proof.false_negatives) })}>
+              <VerdictMark verdict={proof.precision === 1 && proof.recall === 1 ? "go" : "at-risk"} />
+              {tr("Precision {precision}, recall {recall}", { precision: pct1(proof.precision), recall: pct1(proof.recall) })}
+            </span>
+          </Fact>
+        ) : null}
         <Fact label={tr("Check class")}>{d.check_class ? <span title={d.check_class}>{tx(checkClassLabel(d.check_class))}</span> : <Dash />}</Fact>
         <Fact label={tr("Field")}>{d.field ? <Coded code={d.field} text={describeField(d.field)} /> : <Dash />}</Fact>
         <Fact label={tr("Expression")}>{d.expression ? <Mono>{d.expression}</Mono> : <Dash why={tr("The rule has no stored expression")} />}</Fact>

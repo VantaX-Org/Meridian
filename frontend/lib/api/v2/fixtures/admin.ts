@@ -578,6 +578,21 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
     return { mappings: clone(list), total: list.length, self_service_enabled: true };
   }
   if (/^\/systems\/[^/]+\/pilot\/scorecard$/.test(path)) return clone(pilotScorecard());
+  if (path === "/rules/accuracy") {
+    // The module totals of checks/benchmark/precision_recall.json, and a few of its rules.
+    const exact = (rule_id: string, module: string, check_class: string, injected = 10) => ({ rule_id, module, check_class, injected, true_positives: injected, false_positives: 0, false_negatives: 0, precision: 1, recall: 1, f1: 1 });
+    return {
+      method: "per-rule synthetic injection, truth derived from the rule's own YAML",
+      records_per_rule: 40,
+      modules: [
+        { module: "material_master", rules: 679, benchmarked: 201, perfect: 201 },
+        { module: "employee_central", rules: 459, benchmarked: 248, perfect: 248 },
+        { module: "sd_customer_master", rules: 100, benchmarked: 33, perfect: 33 },
+        { module: "business_partner", rules: 155, benchmarked: 72, perfect: 72 },
+      ],
+      rules: [exact("MM001", "material_master", "null_check"), exact("MM002", "material_master", "regex_check"), exact("EC001", "employee_central", "null_check"), exact("SDCM001", "sd_customer_master", "null_check"), exact("BP003", "business_partner", "null_check"), exact("BP207", "business_partner", "uniqueness_check", 20)],
+    };
+  }
   if (path === "/rule-tuning") return ruleTuning();
   const ref = /^\/systems\/([^/]+)\/reference$/.exec(path);
   if (ref) return clone(s.reference[decodeURIComponent(ref[1])] ?? []);
