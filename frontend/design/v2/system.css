@@ -40,6 +40,10 @@
 .m2-lib { display: grid; gap: var(--m2-s3); }
 .m2-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--m2-s3); align-items: end; margin-bottom: var(--m2-s3); }
 .m2-filters .m2-fld { max-width: 260px; }
+/* The rules library: search wide, the five selects in the same row, so the filters take one line, not three */
+.m2-filters[data-dense] { grid-template-columns: minmax(160px, 1.6fr) repeat(5, minmax(96px, 1fr)); }
+.m2-filters[data-dense] .m2-fld { max-width: none; }
+@media (max-width: 900px) { .m2-filters[data-dense] { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); } }
 
 /* ---- the survivorship editor ---- */
 .m2-sv { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--m2-line); }
