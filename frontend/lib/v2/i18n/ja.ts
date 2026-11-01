@@ -6727,4 +6727,10 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{n, plural, one {# record is} other {# records are}} in the batch, {p} with a proposed fix. Review it before anything is changed.": "バッチには {n} 件のレコードがあり、{p} 件に修正案があります。変更前に内容を確認してください。",
   "Open the fix batch": "修正バッチを開く",
   "Draft a fix batch": "修正バッチを下書きする",
+  "Load files saved as {name}": "ロードファイルを {name} として保存しました",
+  "The load files could not be prepared.": "ロードファイルを準備できませんでした。",
+  "Load files": "ロードファイル",
+  "Records without blocking gaps, shaped for the target system": "ブロックする不備のないレコードを、移行先システムの形式で出力します",
+  "Download as CSV files": "CSV ファイルでダウンロード",
+  "Download as Excel": "Excel でダウンロード",
 };

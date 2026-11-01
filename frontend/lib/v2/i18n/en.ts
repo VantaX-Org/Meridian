@@ -6726,6 +6726,12 @@ export const en = {
   "{n, plural, one {# record is} other {# records are}} in the batch, {p} with a proposed fix. Review it before anything is changed.": "{n, plural, one {# record is} other {# records are}} in the batch, {p} with a proposed fix. Review it before anything is changed.",
   "Open the fix batch": "Open the fix batch",
   "Draft a fix batch": "Draft a fix batch",
+  "Load files saved as {name}": "Load files saved as {name}",
+  "The load files could not be prepared.": "The load files could not be prepared.",
+  "Load files": "Load files",
+  "Records without blocking gaps, shaped for the target system": "Records without blocking gaps, shaped for the target system",
+  "Download as CSV files": "Download as CSV files",
+  "Download as Excel": "Download as Excel",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -6727,4 +6727,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{n, plural, one {# record is} other {# records are}} in the batch, {p} with a proposed fix. Review it before anything is changed.": "{n, plural, one {# Datensatz ist} other {# Datensätze sind}} im Stapel, {p} mit einem Korrekturvorschlag. Prüfen Sie ihn, bevor etwas geändert wird.",
   "Open the fix batch": "Korrekturstapel öffnen",
   "Draft a fix batch": "Korrekturstapel entwerfen",
+  "Load files saved as {name}": "Ladedateien gespeichert als {name}",
+  "The load files could not be prepared.": "Die Ladedateien konnten nicht vorbereitet werden.",
+  "Load files": "Ladedateien",
+  "Records without blocking gaps, shaped for the target system": "Datensätze ohne blockierende Lücken, im Format des Zielsystems",
+  "Download as CSV files": "Als CSV-Dateien herunterladen",
+  "Download as Excel": "Als Excel herunterladen",
 };

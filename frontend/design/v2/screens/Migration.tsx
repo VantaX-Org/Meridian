@@ -6,7 +6,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
-  deleteFieldMapping, deleteValueEntry, exportMigrationFindings, getFieldMap, getMigrationFindings, getMigrationRecords,
+  deleteFieldMapping, deleteValueEntry, exportLoadFiles, exportMigrationFindings, getFieldMap, getMigrationFindings, getMigrationRecords,
   getMigrationRun, getMigrationRuns, getValueCandidates, getValueMap, saveValueMap, seedFieldMap, startMigration,
   updateFieldMapping, type FieldDef, type MigrationMode, type MigrationRun,
 } from "@/lib/api/v2/migration";
@@ -271,9 +271,34 @@ function RunDetail({ run }: { run: MigrationRun }) {
           </>
         )}
       </Panel>
+      <LoadFilesPanel run={run} />
       <FindingsPanel run={run} gapTypes={[...new Set((q.data?.gap_breakdown ?? []).map((g) => g.gap_type))]} />
       <RecordsPanel run={run} />
     </>
+  );
+}
+
+/** Target load files for the records without blocking gaps (migration.py /export/{run}/{fmt}). */
+function LoadFilesPanel({ run }: { run: MigrationRun }) {
+  const { can, shared, viewAs } = useV2Session();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const exp = useMutation({
+    mutationFn: (fmt: "csv" | "xlsx") => exportLoadFiles(run.id, fmt),
+    onSuccess: (name) => {
+      toast.show(t("Load files saved as {name}", { name }));
+      void qc.invalidateQueries({ queryKey: ["migration"] });
+    },
+    onError: (e) => toast.show(errorSentence(e, t("The load files could not be prepared.")), "error"),
+  });
+  if (!can("export") || shared || viewAs) return null;
+  return (
+    <Panel title={t("Load files")} meta={t("Records without blocking gaps, shaped for the target system")} testId="mig-load-files">
+      <p>
+        <button type="button" className="m2-btn" disabled={exp.isPending} onClick={() => exp.mutate("csv")}>{t("Download as CSV files")}</button>{" "}
+        <button type="button" className="m2-btn" disabled={exp.isPending} onClick={() => exp.mutate("xlsx")}>{t("Download as Excel")}</button>
+      </p>
+    </Panel>
   );
 }
 

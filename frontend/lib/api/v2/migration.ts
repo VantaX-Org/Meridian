@@ -139,6 +139,10 @@ export const getValueCandidates = (id: string, targetField: string) =>
   v2Get<{ target_field: string; values: { source_value: string; records: number }[] }>(`${run(id)}/value-candidates`, { target_field: targetField });
 export const exportMigrationFindings = (id: string, q: FindingQuery) =>
   v2Download(`${run(id)}/findings/export`, { format: "xlsx", ...q, limit: undefined, offset: undefined }, `migration-findings-${id}.xlsx`);
+export type LoadFileFormat = "csv" | "xlsx";
+/** Target load files for the records without blocking gaps; csv arrives as a zip (migration.py export). */
+export const exportLoadFiles = (id: string, fmt: LoadFileFormat) =>
+  v2Download(`${P}/export/${encodeURIComponent(id)}/${fmt}`, undefined, `migration_${id}.${fmt === "xlsx" ? "xlsx" : "zip"}`);
 export const startMigration = (body: AnalyzeBody) => v2Send<{ run_id: string; status: string }>("POST", `${P}/analyze`, body);
 
 export const getFieldMap = (module: string, destType: string) => v2Get<{ mappings: FieldMapping[] }>(`${P}/field-map`, { module, dest_system_type: destType });
