@@ -267,8 +267,8 @@
 /* A delta bar carries its figure beside it, so the change reads as a number as well as a length. */
 .m2-tbl td .m2-dbar-fig { display: inline-flex; align-items: center; gap: var(--m2-s2); }
 /* A long text cell wraps instead of pushing the table past the frame. */
-/* A second line under a cell's figure (a range, a trend word), so the column stays narrow. */
-.m2-tbl td .m2-under { display: block; font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); color: var(--m2-meta); padding-bottom: var(--m2-s1); }
+/* A second line under a cell's figure or name (a range, a trend word, a state), so the column stays narrow. */
+.m2-tbl td .m2-under, .m2-tbl th .m2-under { display: block; font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); color: var(--m2-meta); padding-bottom: var(--m2-s1); }
 /* A named code in a lead cell keeps the table inside its frame; the title carries the full text. */
 .m2-tbl th.m2-card-lead .m2-cd { max-width: 280px; }
 .m2-tbl td.m2-wrap { white-space: normal; min-width: 220px; line-height: var(--m2-lh-12); padding-top: var(--m2-s2); padding-bottom: var(--m2-s2); }
