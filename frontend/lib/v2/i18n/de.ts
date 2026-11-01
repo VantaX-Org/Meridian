@@ -6579,4 +6579,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Records assigned to the person that are not yet signed off": "Der Person zugewiesene Datensätze, die noch nicht freigegeben sind",
   "Fix batches that wait for their approval": "Korrekturstapel, die auf ihre Freigabe warten",
   "Their open records past the due date": "Ihre offenen Datensätze über dem Fälligkeitsdatum",
+  "This tenant uses Meridian's own look; nothing has been customised.": "Dieser Mandant verwendet das Standardaussehen von Meridian; nichts wurde angepasst.",
+  "How the top bar reads with these settings, in the light theme.": "So wirkt die Kopfleiste mit diesen Einstellungen im hellen Design.",
 };

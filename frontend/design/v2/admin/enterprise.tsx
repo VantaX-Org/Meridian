@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import * as ent from "@/lib/api/v2/enterprise";
 import type { ComplianceStatement, RetentionInput, ScimMappings, ThemeSettings } from "@/lib/api/v2/enterprise";
@@ -65,17 +65,14 @@ export function ContrastResult({ accent, accentDark, onUse }: { accent: string; 
 
 /** What the server says it stored: the two accents and their contrast, a dash for what it does not have. */
 function SavedTheme({ th }: { th: ThemeSettings }) {
-  return (
-    <Kv
-      rows={[
-        [tr("Product name"), th.product_name_override ?? "—"],
-        [tr("Accent"), th.accent ? <Mono key="a">{`${th.accent}, ${ratioText(th.contrast.on_white)} ${tr("on white")}`}</Mono> : "—"],
-        [tr("Dark-mode accent"), th.accent_dark ? <Mono key="d">{`${th.accent_dark}, ${ratioText(th.contrast.on_dark)} ${tr("on the dark ground")}`}</Mono> : "—"],
-        [tr("Logo"), th.logo_url ? (th.logo_content_type ?? "—") : "—"],
-        [tr("Last changed"), th.updated_at ? formatDate(th.updated_at, "datetime") : "—"],
-      ]}
-    />
-  );
+  const rows: [string, ReactNode][] = [];
+  if (th.product_name_override) rows.push([tr("Product name"), th.product_name_override]);
+  if (th.accent) rows.push([tr("Accent"), <Mono key="a">{`${th.accent}, ${ratioText(th.contrast.on_white)} ${tr("on white")}`}</Mono>]);
+  if (th.accent_dark) rows.push([tr("Dark-mode accent"), <Mono key="d">{`${th.accent_dark}, ${ratioText(th.contrast.on_dark)} ${tr("on the dark ground")}`}</Mono>]);
+  if (th.logo_url) rows.push([tr("Logo"), th.logo_content_type ?? "—"]);
+  if (rows.length === 0) return <p className="m2-adm-hint" data-testid="appearance-saved">{tr("This tenant uses Meridian's own look; nothing has been customised.")}</p>;
+  if (th.updated_at) rows.push([tr("Last changed"), formatDate(th.updated_at, "datetime")]);
+  return <Kv rows={rows} />;
 }
 
 /** The data hue the screen uses now, "#rrggbb", as the starting accent; empty where styles are not computed (tests). */
@@ -142,6 +139,8 @@ function AppearanceForm({ initial, write }: { initial: ThemeSettings; write: boo
   return (
     <>
       <SavedTheme th={initial} />
+      <div className="m2-apgrid">
+      <div>
       <div className="m2-fgrid" style={{ marginTop: "var(--m2-s3)" }}>
         <Fld label={tr("Logo")} hint={tr("PNG or SVG, {max} KB at most. It replaces the mark in the top bar and on the sign-in page.", { max: ent.LOGO_MAX_BYTES / 1024 })} error={logoError}>
           <input type="file" accept={ent.LOGO_TYPES.join(",")} disabled={!write} onChange={(e) => onFile(e.target.files?.[0])} />
@@ -176,16 +175,6 @@ function AppearanceForm({ initial, write }: { initial: ThemeSettings; write: boo
           </div>
         </div>
       ) : null}
-      <h3 className="m2-h2" style={{ marginTop: "var(--m2-s4)", fontSize: 13 }}>{tr("Preview")}</h3>
-      <div className="m2-preview" data-accent={previewStyle ? "" : undefined} style={previewStyle} data-testid="appearance-preview">
-        {/* eslint-disable-next-line @next/next/no-img-element -- the stored logo or the chosen file, before it is uploaded */}
-        {shownLogo ? <img src={shownLogo} alt={tr("Logo preview")} className="m2-logo" /> : <Mark size={28} />}
-        <span className="m2-preview-bn">{cleanName || tr("Meridian")}</span>
-        <span className="m2-btn m2-next" aria-hidden="true">
-          {tr("Next step")}
-        </span>
-        <span className="m2-preview-link">{tr("A link")}</span>
-      </div>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {write ? (
         <div className="m2-adm-acts">
@@ -202,6 +191,21 @@ function AppearanceForm({ initial, write }: { initial: ThemeSettings; write: boo
           </button>
         </div>
       ) : null}
+      </div>
+      <aside aria-label={tr("Preview")}>
+      <h3 className="m2-h2" style={{ marginTop: "var(--m2-s3)", fontSize: 13 }}>{tr("Preview")}</h3>
+      <div className="m2-preview" data-accent={previewStyle ? "" : undefined} style={previewStyle} data-testid="appearance-preview">
+        {/* eslint-disable-next-line @next/next/no-img-element -- the stored logo or the chosen file, before it is uploaded */}
+        {shownLogo ? <img src={shownLogo} alt={tr("Logo preview")} className="m2-logo" /> : <Mark size={28} />}
+        <span className="m2-preview-bn">{cleanName || tr("Meridian")}</span>
+        <span className="m2-btn m2-next" aria-hidden="true">
+          {tr("Next step")}
+        </span>
+        <span className="m2-preview-link">{tr("A link")}</span>
+      </div>
+      <p className="m2-adm-hint">{tr("How the top bar reads with these settings, in the light theme.")}</p>
+      </aside>
+      </div>
     </>
   );
 }

@@ -6578,6 +6578,8 @@ export const en = {
   "Records assigned to the person that are not yet signed off": "Records assigned to the person that are not yet signed off",
   "Fix batches that wait for their approval": "Fix batches that wait for their approval",
   "Their open records past the due date": "Their open records past the due date",
+  "This tenant uses Meridian's own look; nothing has been customised.": "This tenant uses Meridian's own look; nothing has been customised.",
+  "How the top bar reads with these settings, in the light theme.": "How the top bar reads with these settings, in the light theme.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

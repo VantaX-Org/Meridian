@@ -6579,4 +6579,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Records assigned to the person that are not yet signed off": "担当者に割り当てられ、まだ承認されていないレコード",
   "Fix batches that wait for their approval": "担当者の承認を待つ修正バッチ",
   "Their open records past the due date": "担当者の期限超過の未完了レコード",
+  "This tenant uses Meridian's own look; nothing has been customised.": "このテナントは Meridian 標準の外観を使用しています。カスタマイズはありません。",
+  "How the top bar reads with these settings, in the light theme.": "この設定でのライトテーマにおけるトップバーの見え方です。",
 };

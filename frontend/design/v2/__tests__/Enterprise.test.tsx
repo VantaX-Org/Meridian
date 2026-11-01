@@ -96,6 +96,9 @@ describe("Admin › Settings › Appearance", () => {
       </>,
     );
     const block = await screen.findByRole("region", { name: "Appearance" });
+    // Nothing is customised yet: one sentence says so instead of a list of dashes, and the preview sits beside the form.
+    expect(await within(block).findByTestId("appearance-saved")).toHaveTextContent("nothing has been customised");
+    expect(within(block).getByTestId("appearance-preview").closest("aside")).not.toBeNull();
     fireEvent.click(await within(block).findByLabelText("Use our own accent colour"));
     const hex = within(block).getByLabelText("Accent, hexadecimal");
     fireEvent.change(hex, { target: { value: "#ffd700" } });
