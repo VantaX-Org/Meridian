@@ -453,6 +453,37 @@ function scheduleOptions() {
 }
 
 /** A read in the admin area, or NONE_ADMIN when the path is not one of its own. */
+let pilotKnown = 0;
+/** The pilot scorecard: a few rules with reviewer verdicts, and recall against whatever known-issues list was uploaded. */
+function pilotScorecard() {
+  const rule = (check_id: string, module: string, severity: string, message: string, flagged: number, fp: number, real: number) => {
+    const reviewed = fp + real;
+    const rated = reviewed >= 10;
+    const precision = rated ? real / reviewed : null;
+    return { check_id, module, severity, message, flagged, open: flagged - reviewed, false_positive: fp, real, reviewed, precision, rated, needs_tuning: precision !== null && precision < 0.9 };
+  };
+  const rules = [
+    rule("MM142", "material_master", "high", "Material has no base unit of measure", 3640, 9, 11),
+    rule("MM031", "material_master", "medium", "Material group is not in the standard list", 812, 1, 24),
+    rule("BP207", "business_partner", "low", "Postal code does not match the country format", 96, 0, 4),
+  ].sort((a, b) => Number(b.needs_tuning) - Number(a.needs_tuning));
+  const reviewed = rules.reduce((n, r) => n + r.reviewed, 0);
+  const falsePositives = rules.reduce((n, r) => n + r.false_positive, 0);
+  const caught = Math.floor(pilotKnown * 0.8);
+  return {
+    precision: { reviewed, false_positives: falsePositives, precision: (reviewed - falsePositives) / reviewed, min_reviewed_per_rule: 10, target: 0.9 },
+    rules,
+    recall: {
+      known: pilotKnown,
+      caught,
+      recall: pilotKnown ? caught / pilotKnown : null,
+      missed: pilotKnown ? [{ module: "material_master", record_ref: "MARA|000000000000100234", note: "Wrong base unit, found by the plant" }] : [],
+      missed_total: pilotKnown - caught,
+      objects_not_analysed: pilotKnown ? ["business_partner"] : [],
+    },
+  };
+}
+
 export function adminFixtureResponse(path: string, params: Record<string, unknown>): unknown {
   const s = st();
   if (path === "/users") {
@@ -517,6 +548,7 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
     const list = s.mappings.filter((m) => (!params.module || m.module === params.module) && (params.is_mapped === undefined || String(m.is_mapped) === String(params.is_mapped)) && (!params.search || `${m.standard_field} ${m.standard_label ?? ""} ${m.customer_field ?? ""}`.toLowerCase().includes(text(params.search).toLowerCase())));
     return { mappings: clone(list), total: list.length, self_service_enabled: true };
   }
+  if (/^\/systems\/[^/]+\/pilot\/scorecard$/.test(path)) return clone(pilotScorecard());
   const ref = /^\/systems\/([^/]+)\/reference$/.exec(path);
   if (ref) return clone(s.reference[decodeURIComponent(ref[1])] ?? []);
   if (path === "/audit") {
@@ -819,6 +851,11 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
       }
     });
     return { reset_count: n, module: text(params.module) || "all" };
+  }
+  if (method === "POST" && /^\/systems\/[^/]+\/pilot\/known-issues$/.test(path)) {
+    const rows = text(body).split(/\r?\n/).filter((l) => l.trim() && !/^object\s*,/i.test(l));
+    pilotKnown = rows.filter((l) => l.split(",").length >= 2).length;
+    return { records: pilotKnown, rejected: rows.length - pilotKnown };
   }
   const refUp = /^\/systems\/([^/]+)\/reference\/(postal-codes|bic)$/.exec(path);
   if (refUp && method === "POST") {

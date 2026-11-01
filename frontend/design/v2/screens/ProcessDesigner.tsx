@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { createModel, deleteModel, patchModel, saveModel, type ModelWithDocument } from "@/lib/api/v2/designer";
 import { saveFailure } from "@/lib/api/process-designer";
+import { v2Download } from "@/lib/api/v2/download";
+import { errorSentence } from "@/lib/api/v2/client";
 import { addChild, addNode, childrenOf, locate, moveItem, patchItem, removeItem, renameItem, patchActivity, type Level, type TreeItem } from "@/lib/v2/process-doc";
 import type { L4, L5, ProcessModelDocument } from "@/types/process-model";
 import { formatDate, labelOf } from "@/lib/format";
@@ -11,6 +13,7 @@ import { useV2Session } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
 import { useModel, useModels, useModelVersions, useRefreshV2 } from "@/lib/v2/sys-queries";
 import { ConfirmBar, Field, Gate } from "../forms";
+import { useToast } from "../Toast";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { t, lc } from "@/lib/v2/i18n";
@@ -274,6 +277,36 @@ function Editor({ data, canDesign, run, pending, onChanged }: { data: ModelWithD
  * publish the model. Models are tenant-wide, so the process that reads this object is one among them. Needs analyse or
  * run process discovery to change anything; without it the tree is read-only.
  */
+/** Saves the current version of the model as a PowerPoint deck (GET /process-designer/models/{id}/export/pptx). */
+function PptxExport({ modelId }: { modelId: string }) {
+  const session = useV2Session();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  return (
+    <p className="m2-prov">
+      <button
+        type="button"
+        className="m2-btn"
+        disabled={busy || !(session.can("export") || session.can("export_process"))}
+        onClick={async () => {
+          if (session.fixture) return toast.show(t("Fixture mode: no file is produced"));
+          setBusy(true);
+          try {
+            await v2Download(`/process-designer/models/${encodeURIComponent(modelId)}/export/pptx`, {}, "process-model.pptx");
+            toast.show(t("Deck downloading"));
+          } catch (err) {
+            toast.show(errorSentence(err, t("The export failed.")), "error");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {t("Export to PowerPoint")}
+      </button>
+    </p>
+  );
+}
+
 export function ProcessDesigner({ system, module }: { system: string; module: string }) {
   const { can } = useV2Session();
   const canDesign = can("analyse") || can("run_process_discovery");
@@ -403,6 +436,7 @@ export function ProcessDesigner({ system, module }: { system: string; module: st
           <button type="button" className="m2-btn m2-ghost" aria-expanded={removing} onClick={() => setRemoving((x) => !x)}>{t("Delete model")}</button>
         </div>
       ) : null}
+      {m ? <PptxExport modelId={m.id} /> : null}
       {rename !== null ? (
         <form
           className="m2-form6"
