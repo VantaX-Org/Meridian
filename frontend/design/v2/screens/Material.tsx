@@ -4,8 +4,10 @@ import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getDuplicates, getMaterial, getMaterialFindings, getSupersession, type CellState, type ChainNode, type MaterialFindings } from "@/lib/api/v2/materials";
+import { getWork } from "@/lib/api/v2/work";
 import { formatDate } from "@/lib/format";
 import { useUrlParam } from "@/lib/v2/hooks";
+import { splitKey } from "@/lib/v2/work";
 import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
@@ -13,6 +15,7 @@ import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { Section, Table } from "./WorkAnalytics";
 
 /**
  * Material 360: one material across every view and organisational level, the rules it fails in each view, its
@@ -89,8 +92,44 @@ export function Material() {
         </label>
         <button type="submit" className="m2-btn" disabled={!draft.trim()}>{t("Open material")}</button>
       </form>
-      {m ? <MaterialBody m={m} /> : <EmptyFrame>{t("Type a material number to see it across every view, plant and level.")}</EmptyFrame>}
+      {m ? <MaterialBody m={m} /> : (
+        <>
+          <EmptyFrame>{t("Type a material number to see it across every view, plant and level.")}</EmptyFrame>
+          <WorstMaterials onPick={(k) => { setDraft(k); setM(k); }} />
+        </>
+      )}
     </CcPage>
+  );
+}
+
+/** The materials with the most serious open findings, so the screen has somewhere to start before a number is typed. */
+function WorstMaterials({ onPick }: { onPick: (key: string) => void }) {
+  const fixture = useFixture();
+  const q = useQuery({ queryKey: ["material-worst", fixture], queryFn: () => getWork({ module: "material_master", sort: "-severity,-value", limit: 12 }), retry: false });
+  const title = t("Materials with the most serious open findings");
+  return (
+    <Section q={q} title={title} meta={q.data ? t("{n} open", { n: int(q.data.total) }) : undefined} testId="material-worst">
+      {(d) => d.items.length === 0 ? <EmptyFrame>{t("No material has an open finding.")}</EmptyFrame> : (
+        <Table title={title} head={[t("Material"), t("Severity"), t("Open issues"), t("Top issue")]}>
+          {d.items.map((r) => {
+            // The work key is MATNR=...|WERKS=...; the material number is its MATNR part.
+            const matnr = splitKey(r.record_key).find((k) => k.field === "MATNR")?.value ?? r.record_key;
+            return (
+            <tr key={r.record_key}>
+              <th scope="row" className="m2-card-lead">
+                <button type="button" className="m2-linkbtn" onClick={() => onPick(matnr)} data-testid={`material-pick-${r.record_key}`}>
+                  <Coded code={r.record_key} text={r.name ?? undefined} />
+                </button>
+              </th>
+              <td data-label={t("Severity")}><Sev severity={r.severity} /></td>
+              <td data-label={t("Open issues")} className="m2-num">{int(r.issues)}</td>
+              <td data-label={t("Top issue")} className="m2-wrap">{r.top_field ? <><Mono>{r.top_field}</Mono> </> : null}{r.top_message ?? <Dash />}</td>
+            </tr>
+            );
+          })}
+        </Table>
+      )}
+    </Section>
   );
 }
 

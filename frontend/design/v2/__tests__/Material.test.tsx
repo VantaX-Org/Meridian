@@ -27,6 +27,20 @@ describe("Material 360", () => {
     expect(within(screen.getByTestId("material-search")).getByRole("button")).toBeDisabled();
   });
 
+  it("lists the materials with the most serious open findings and opens one on a click", async () => {
+    setUrl("/materials");
+    renderWithQuery(<Material />);
+    const worst = await screen.findByTestId("material-worst");
+    const picks = await within(worst).findAllByRole("button");
+    expect(picks.length).toBeGreaterThan(0);
+    expect(within(worst).getAllByText(/^(Critical|High|Medium|Low)$/).length).toBeGreaterThan(0);
+    fireEvent.click(picks[0]);
+    // The pick opens the material: the number lands in the search box and the landing list goes.
+    const input = within(screen.getByTestId("material-search")).getByRole("textbox") as HTMLInputElement;
+    expect(input.value).toMatch(/^\d+$/);
+    expect(screen.queryByTestId("material-worst")).toBeNull();
+  });
+
   it("shows the matrix, failing rules, follow-up chain and look-alikes", async () => {
     setUrl("/materials?m=10004711");
     renderWithQuery(<Material />);

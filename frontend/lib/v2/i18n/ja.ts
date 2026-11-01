@@ -6588,4 +6588,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Waiting costs {money} a month.": "待機のコストは月あたり{money}です。",
   "Records to fix by area": "領域別の修正対象レコード",
   "Annual risk by kind of loss": "損失種類別の年間リスク",
+  "Materials with the most serious open findings": "最も深刻な未解決の指摘がある品目",
+  "No material has an open finding.": "未解決の指摘がある品目はありません。",
+  "Open issues": "未解決の問題",
+  "Top issue": "最重要の問題",
 };

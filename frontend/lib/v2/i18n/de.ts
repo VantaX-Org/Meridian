@@ -6588,4 +6588,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Waiting costs {money} a month.": "Das Warten kostet {money} pro Monat.",
   "Records to fix by area": "Zu bereinigende Datensätze je Bereich",
   "Annual risk by kind of loss": "Jahresrisiko je Verlustart",
+  "Materials with the most serious open findings": "Materialien mit den schwersten offenen Befunden",
+  "No material has an open finding.": "Kein Material hat einen offenen Befund.",
+  "Open issues": "Offene Probleme",
+  "Top issue": "Wichtigstes Problem",
 };
