@@ -6585,4 +6585,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Also:": "関連:",
   "Flight deck": "フライトデッキ",
   "Atlas": "アトラス",
+  "Waiting costs {money} a month.": "待機のコストは月あたり{money}です。",
 };

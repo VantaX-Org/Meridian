@@ -817,7 +817,9 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-fd-name[aria-pressed="true"] { border-color: var(--m2-data); background: var(--m2-data-bg); }
 .m2-fd-name .m2-meta { font-size: var(--m2-fs-12); }
 .m2-fd-rules { display: flex; flex-direction: column; gap: var(--m2-s1); margin: 0; padding: 0; list-style: none; }
-.m2-fd-rules label { display: grid; grid-template-columns: auto auto 1fr auto; align-items: baseline; gap: var(--m2-s2); font-size: var(--m2-fs-13); cursor: pointer; }
+.m2-fd-rules label { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; align-items: baseline; gap: var(--m2-s2); font-size: var(--m2-fs-13); cursor: pointer; }
+.m2-fd-rname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m2-fd-rules label > span:nth-child(4) { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .m2-fd-result { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--m2-s3); margin: 0; padding-top: var(--m2-s3); border-top: 1px solid var(--m2-line); }
 .m2-fd-result dt { font-size: var(--m2-fs-12); color: var(--m2-ink-3); }
 .m2-fd-result dd { margin: 0; font-variant-numeric: tabular-nums; }

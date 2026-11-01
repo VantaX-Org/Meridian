@@ -6584,6 +6584,7 @@ export const en = {
   "Also:": "Also:",
   "Flight deck": "Flight deck",
   "Atlas": "Atlas",
+  "Waiting costs {money} a month.": "Waiting costs {money} a month.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

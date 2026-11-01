@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { Verdict } from "@/lib/api/v2/types";
 import { getForecast, type DqsForecast } from "@/lib/api/v2/analytics";
@@ -11,6 +11,7 @@ import { useWaves } from "@/lib/v2/admin-queries";
 import { bands, courseOf, fitLine, lineAt, maxHorizon, readAt, type GoLiveReading } from "@/lib/v2/forecast";
 import { t } from "@/lib/v2/i18n";
 import { moduleText, moneyCompactText } from "@/lib/v2/labels";
+import { useObjectRules } from "@/lib/v2/queries";
 import { DASH, f1, int, moduleSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { useMoney, useTopFixes } from "@/lib/v2/step9-queries";
 import { dayFromToday, daysUntil, nextWave } from "@/lib/v2/waves";
@@ -103,13 +104,12 @@ export function FlightDeck() {
         eyebrow={wave.name}
         headline={headline}
         verdict={course === "on" ? "go" : course === "off" ? "no-go" : undefined}
-        why={why}
+        why={cost == null ? why : `${why} ${t("Waiting costs {money} a month.", { money: moneyCompactText(cost, money?.currency) })}`}
         figs={[
           { label: t("Days to go-live"), value: toGoLive == null ? DASH : int(Math.max(0, toGoLive)), note: wave.target_date ? formatDate(wave.target_date, "date") : t("no date set") },
           { label: t("Readiness today"), value: wave.last_score == null ? DASH : f1(wave.last_score), note: wave.last_verdict ? VERDICT_LABEL[wave.last_verdict.replace("_", "-") as Verdict] : t("not measured") },
           { label: t("Weakest at go-live"), value: weakest ? f1(weakest.reading?.score ?? null) : DASH, note: weakest ? moduleText(weakest.module) : t("no forecast") },
           { label: t("Line meets target"), value: crossDate ? formatDate(crossDate, "date") : DASH, note: crossDate ? t("all objects") : t("not within the forecast") },
-          { label: t("Cost of waiting"), value: cost == null ? DASH : moneyCompactText(cost, money?.currency), note: cost == null ? t("no cost model") : t("per month") },
         ]}
         action={
           weakest && course !== "on" ? (
@@ -206,6 +206,8 @@ function RunwayRow({ row, top, x, floor, target, goLiveDay, on, onPick }: { row:
 function WhatIf({ module }: { module: string }) {
   const fixture = useFixture();
   const top = useTopFixes(module, null, null);
+  const names = useObjectRules(module, null);
+  const nameOf = useMemo(() => new Map((names.data ?? []).map((r) => [r.check_id, r.name])), [names.data]);
   const [rules, setRules] = useState<string[]>([]);
   const sim = useQuery({
     queryKey: ["v2", "flight-sim", fixture, module, rules],
@@ -234,6 +236,7 @@ function WhatIf({ module }: { module: string }) {
               <label>
                 <input type="checkbox" checked={rules.includes(r.check_id)} onChange={() => toggle(r.check_id)} />
                 <span className="m2-mono">{r.check_id}</span>
+                <span className="m2-fd-rname">{nameOf.get(r.check_id) ?? DASH}</span>
                 <span>{t("{n} failing", { n: int(r.failing) })}</span>
                 <span className="m2-meta">{t("{delta} alone", { delta: `+${f1(r.delta)}` })}</span>
               </label>

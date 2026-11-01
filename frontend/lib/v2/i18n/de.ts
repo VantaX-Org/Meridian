@@ -6585,4 +6585,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Also:": "Außerdem:",
   "Flight deck": "Flight Deck",
   "Atlas": "Atlas",
+  "Waiting costs {money} a month.": "Das Warten kostet {money} pro Monat.",
 };
