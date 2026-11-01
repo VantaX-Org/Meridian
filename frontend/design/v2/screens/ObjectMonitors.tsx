@@ -169,3 +169,34 @@ export function ObjectsMonitor() {
     </section>
   );
 }
+
+const notFound = (e: unknown): boolean => {
+  const x = e as { status?: number; response?: { status?: number } } | null;
+  return (x?.response?.status ?? x?.status) === 404;
+};
+
+/** One object on its own page: freshness, cadence, last run, baseline and the drift since. Quiet when no run has measured the object yet. */
+export function ObjectMonitorStrip({ module }: { module: string }) {
+  const q = useObjectMonitor(module);
+  const m = q.data;
+  const nameOf = useRuleNames(!!m && m.drift.newly_failing_rules.length + m.drift.recovered_rules.length > 0);
+  if (q.isPending) return <Skeleton width="100%" height={48} />;
+  if (q.isError || !m) {
+    if (notFound(q.error)) return null;
+    return <ErrorFrame onRetry={() => void q.refetch()}>{t("The object monitor could not be read.")}</ErrorFrame>;
+  }
+  return (
+    <section className="m2-sec" aria-label={t("Monitor")} data-testid="object-monitor" data-freshness={m.freshness}>
+      <p className="m2-statusline">
+        <span><FreshnessMark freshness={m.freshness} /></span>
+        <span>{t("Cadence")}: {cadenceText(m) ?? <Dash why={t("This object has no schedule")} />}</span>
+        <span>{t("Last run")}: {m.last_run_at ? formatDate(m.last_run_at, "datetime") : <Dash why={t("No run yet")} />}</span>
+        <span>{t("Started by")}: {triggerText(m) ?? <Dash why={t("Not recorded")} />}</span>
+        <span>{t("Baseline")}: {baselineText(m) ?? <Dash why={t("No baseline yet")} />}</span>
+        <span>{t("Newly failing")}: {int(m.drift.new_failing)}</span>
+        <span>{t("Recovered")}: {int(m.drift.recovered)}</span>
+      </p>
+      <DriftRules m={m} nameOf={nameOf} />
+    </section>
+  );
+}

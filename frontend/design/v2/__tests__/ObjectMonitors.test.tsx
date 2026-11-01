@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { resetRunsFixture } from "@/lib/api/v2/fixtures/runs";
-import { ObjectsMonitor, baselineText, cadenceText, triggerText } from "../screens/ObjectMonitors";
+import { ObjectMonitorStrip, ObjectsMonitor, baselineText, cadenceText, triggerText } from "../screens/ObjectMonitors";
 import type { ObjectMonitor } from "@/lib/api/v2/run-ops";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
@@ -44,6 +44,22 @@ describe("monitor words", () => {
     expect(cadenceText({ ...base, cadence: { ...base.cadence, interval_seconds: 3600 } })).toContain("Every");
     expect(triggerText({ ...base, trigger: "scheduled" })).toBe("Scheduled");
     expect(baselineText({ ...base, baseline: { kind: "pinned", version_id: "v", run_at: null } })).toBe("Pinned run");
+  });
+});
+
+describe("Object monitor strip", () => {
+  it("shows freshness and drift for a measured object", async () => {
+    renderWithQuery(<ObjectMonitorStrip module="material_master" />);
+    const strip = await screen.findByTestId("object-monitor");
+    expect(strip.getAttribute("data-freshness")).toMatch(/^(fresh|due|stale|failed|paused|manual)$/);
+    expect(within(strip).getByText(/Baseline:/)).toBeTruthy();
+  });
+
+  it("is quiet for an object no run has measured", async () => {
+    const { container } = renderWithQuery(<ObjectMonitorStrip module="no_such_module" />);
+    await waitFor(() => expect(container.querySelector(".m2-skeleton, [data-testid=skeleton]")).toBeNull());
+    expect(screen.queryByTestId("object-monitor")).toBeNull();
+    expect(screen.queryByTestId("error-frame")).toBeNull();
   });
 });
 
