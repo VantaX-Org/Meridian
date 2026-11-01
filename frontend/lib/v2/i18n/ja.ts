@@ -6602,4 +6602,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The browser saves the Excel file when it is ready.": "準備ができるとブラウザーが Excel ファイルを保存します。",
   "Export findings": "検出結果をエクスポート",
   "Outside fixture mode this saves every finding of the run as an Excel file.": "フィクスチャモード以外では、この実行のすべての検出結果を Excel ファイルとして保存します。",
+  "Score again": "再スコアリング",
+  "This run's stored data is being scored again with the rules as they are now. Its findings are replaced when it finishes.": "この実行の保存済みデータを現在のルールで再スコアリングしています。完了すると検出結果が置き換わります。",
+  "Outside fixture mode this saves the run's report.": "フィクスチャモード以外では、この実行のレポートを保存します。",
+  "Export the failing records": "不合格レコードをエクスポート",
 };

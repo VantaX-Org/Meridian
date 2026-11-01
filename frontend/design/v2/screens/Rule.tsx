@@ -9,6 +9,11 @@ import { LedgerSlot } from "./object/LedgerSlot";
 import { RuleOverview } from "./RuleOverview";
 import { BlastRadius } from "./BlastRadius";
 import { t as tr } from "@/lib/v2/i18n";
+import { useState } from "react";
+import { exportFindingRecords } from "@/lib/api/findings";
+import { useV2Session } from "@/lib/v2/hooks";
+import { useToast } from "../Toast";
+import { errorSentence } from "@/lib/api/v2/work";
 
 type TabKey = "overview" | "blast" | "definition" | "failing" | "prove" | "impact" | "history";
 const TABS: { key: TabKey; label: string }[] = [
@@ -142,7 +147,10 @@ export function RuleCanvas({ id }: { id: string }) {
               </div>
             </div>
           ) : tab === "failing" ? (
-            <LedgerSlot label={id} scope={{ module: v.scope.module ?? v.scope.objects[0]?.module, filters: { check_id: id } }} />
+            <>
+              <RecordsExport checkId={id} runIds={[...new Set(v.scope.objects.map((o) => o.run_id).filter((r): r is string => !!r))]} />
+              <LedgerSlot label={id} scope={{ module: v.scope.module ?? v.scope.objects[0]?.module, filters: { check_id: id } }} />
+            </>
           ) : tab === "prove" ? (
             <RuleProve view={v} />
           ) : tab === "impact" ? (
@@ -161,5 +169,36 @@ export function RuleCanvas({ id }: { id: string }) {
         </SectionLevel>
       </div>
     </CcPage>
+  );
+}
+
+/** Saves every record that fails the rule, one Excel file per run the rule was measured in. */
+function RecordsExport({ checkId, runIds }: { checkId: string; runIds: string[] }) {
+  const session = useV2Session();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  if (!runIds.length) return null;
+  return (
+    <p className="m2-prov">
+      <button
+        type="button"
+        className="m2-btn"
+        disabled={busy || !session.can("export")}
+        onClick={async () => {
+          if (session.fixture) return toast.show(tr("Fixture mode: no file is produced"));
+          setBusy(true);
+          try {
+            for (const r of runIds) await exportFindingRecords(r, checkId, "xlsx");
+            toast.show(tr("Findings downloading"));
+          } catch (err) {
+            toast.show(errorSentence(err, tr("The export failed.")), "error");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {tr("Export the failing records")}
+      </button>
+    </p>
   );
 }

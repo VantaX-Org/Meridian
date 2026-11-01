@@ -7,7 +7,7 @@ import { getObjectRules } from "@/lib/api/v2/landscape";
 import { formatDate } from "@/lib/format";
 import { exportFindings } from "@/lib/api/findings";
 import type { LandscapeCell, RuleRow } from "@/lib/api/v2/types";
-import { archiveRuns, downloadRunReport, pinBaseline, restoreRuns, type TimelineRun } from "@/lib/api/v2/runs";
+import { analyseRun, archiveRuns, downloadRunReport, pinBaseline, restoreRuns, type TimelineRun } from "@/lib/api/v2/runs";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject, jobSeconds } from "@/lib/v2/jobs";
 import { useLandscape, v2Keys } from "@/lib/v2/queries";
@@ -509,7 +509,7 @@ export function RunCanvas({ id }: { id: string }) {
             void run("report", async () => {
               await downloadRunReport(id);
               return session.fixture
-                ? { tone: "info", title: tr("Fixture mode: no file is produced"), detail: "Outside fixture mode this saves the run's report from /reports/{run}/download." }
+                ? { tone: "info", title: tr("Fixture mode: no file is produced"), detail: tr("Outside fixture mode this saves the run's report.") }
                 : { tone: "ok", title: tr("Report downloading"), detail: tr("The browser saves it when the file is ready.") };
             })
           }
@@ -530,6 +530,20 @@ export function RunCanvas({ id }: { id: string }) {
           }
         >
           {tr("Export findings")}
+        </button>
+        <button
+          type="button"
+          className="m2-btn"
+          disabled={!canChange || pending !== null || !v}
+          onClick={() =>
+            void run("analyse", async () => {
+              const r = await analyseRun(id);
+              refresh();
+              return { tone: "ok", title: tr("Analysis started"), detail: tr("This run's stored data is being scored again with the rules as they are now. Its findings are replaced when it finishes."), job: r.job_id };
+            })
+          }
+        >
+          {pending === "analyse" ? tr("Starting…") : tr("Score again")}
         </button>
         <CompareControl id={id} runs={timeline.data?.runs ?? []} />
       </div>

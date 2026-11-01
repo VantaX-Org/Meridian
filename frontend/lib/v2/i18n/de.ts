@@ -6602,4 +6602,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The browser saves the Excel file when it is ready.": "Der Browser speichert die Excel-Datei, sobald sie bereit ist.",
   "Export findings": "Feststellungen exportieren",
   "Outside fixture mode this saves every finding of the run as an Excel file.": "Außerhalb des Fixture-Modus speichert dies alle Feststellungen des Laufs als Excel-Datei.",
+  "Score again": "Erneut bewerten",
+  "This run's stored data is being scored again with the rules as they are now. Its findings are replaced when it finishes.": "Die gespeicherten Daten dieses Laufs werden mit den aktuellen Regeln neu bewertet. Die Befunde werden nach Abschluss ersetzt.",
+  "Outside fixture mode this saves the run's report.": "Außerhalb des Fixture-Modus speichert dies den Bericht des Laufs.",
+  "Export the failing records": "Fehlerhafte Datensätze exportieren",
 };

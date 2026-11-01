@@ -6601,6 +6601,10 @@ export const en = {
   "The browser saves the Excel file when it is ready.": "The browser saves the Excel file when it is ready.",
   "Export findings": "Export findings",
   "Outside fixture mode this saves every finding of the run as an Excel file.": "Outside fixture mode this saves every finding of the run as an Excel file.",
+  "Score again": "Score again",
+  "This run's stored data is being scored again with the rules as they are now. Its findings are replaced when it finishes.": "This run's stored data is being scored again with the rules as they are now. Its findings are replaced when it finishes.",
+  "Outside fixture mode this saves the run's report.": "Outside fixture mode this saves the run's report.",
+  "Export the failing records": "Export the failing records",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
