@@ -129,24 +129,24 @@ function WarningsPanel({ forecasts, warnings, reason, days }: { forecasts: DqsFo
           {reason === "needs_three_days" ? t("Three days of scores are needed to forecast; there are {n}.", { n: int(days) }) : t("No object has been scored on enough days to forecast.")}
         </EmptyFrame>
       ) : (
-        <Table title={title} head={[t("Object"), t("Signal"), t("Floor"), t("Score now"), t("Last 4 weeks"), t("Trend"), t("In 30 days"), t("In 90 days")]}>
+        <Table title={title} head={[t("Object"), t("Signal"), t("Floor"), t("Score now"), t("Last 4 weeks"), t("In 30 days"), t("In 90 days")]}>
           {d.map((w) => {
             const f = forecasts.find((x) => x.module_id === w.module_id);
             return (
               <tr key={w.module_id}>
                 <th scope="row" className="m2-card-lead">{formatModuleName(w.module_id)}</th>
-                <td data-label={t("Signal")}>{SIGNAL[w.reason]()}</td>
+                <td data-label={t("Signal")} className="m2-wrap">{SIGNAL[w.reason]()}</td>
                 <td data-label={t("Floor")} className="m2-num">{f1(w.threshold)}</td>
                 <td data-label={t("Score now")} className="m2-num">{f1(f?.current_score ?? null)}</td>
                 <td data-label={t("Last 4 weeks")}>
                   {f && f.history.length > 1 ? <Sparkline values={f.history.map((h) => h.score)} label={t("{object} score over the last {n} days", { object: formatModuleName(w.module_id), n: int(f.span_days) })} width={72} height={16} /> : f1(null)}
+                  {f ? <span className="m2-under">{TREND[f.trend]()}</span> : null}
                 </td>
-                <td data-label={t("Trend")}>{f ? TREND[f.trend]() : f1(null)}</td>
                 <td data-label={t("In 30 days")} className="m2-num">
-                  {f1(f?.forecast_30d ?? null)} <span className="m2-meta">{range(f?.forecast_30d_low ?? null, f?.forecast_30d_high ?? null)}</span>
+                  {f1(f?.forecast_30d ?? null)}<span className="m2-under">{range(f?.forecast_30d_low ?? null, f?.forecast_30d_high ?? null)}</span>
                 </td>
                 <td data-label={t("In 90 days")} className="m2-num">
-                  {f1(f?.forecast_90d ?? null)} <span className="m2-meta">{range(f?.forecast_90d_low ?? null, f?.forecast_90d_high ?? null)}</span>
+                  {f1(f?.forecast_90d ?? null)}<span className="m2-under">{range(f?.forecast_90d_low ?? null, f?.forecast_90d_high ?? null)}</span>
                 </td>
               </tr>
             );
