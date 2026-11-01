@@ -60,5 +60,6 @@ export function money(n: number, currency: string, digits = 0): string {
  * "000000000000000232" reads "232"); a key with letters stays as it is. The full key stays in the title and the copy.
  */
 export function alphaOut(key: string): string {
-  return /^\d+$/.test(key) ? key.replace(/^0+(?=\d)/, "") : key;
+  // Each numeric value of a FIELD=VALUE key loses its zeros too: MATNR=000232|WERKS=1000 reads MATNR=232|WERKS=1000.
+  return key.replace(/(^|=)0+(?=\d+(?:$|[^\w]))/g, "$1");
 }

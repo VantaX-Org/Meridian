@@ -360,7 +360,7 @@ export function RulesLibrary() {
   const moduleBars = [...byModule.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
-    .map(([m, n]) => ({ key: m, label: labelOf(m), value: n, tone: "crit" as const, text: t("{n} failing {count, plural, one {rule} other {rules}}", { n, count: n }) }));
+    .map(([m, n]) => ({ key: m, label: labelOf(m), value: n, tone: "crit" as const, text: int(n) }));
 
   return (
     <CcPage>

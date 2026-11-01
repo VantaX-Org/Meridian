@@ -47,9 +47,7 @@
 .m2-lineage a.m2-lg:focus-visible rect { stroke: var(--m2-data); stroke-width: 2; }
 
 /* The rules library: failing rules by object beside the board of rules failing the most records */
-.m2-rules-top { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr); gap: var(--m2-s4); align-items: start; }
-.m2-rules-top > :only-child { grid-column: 1 / -1; }
-@media (max-width: 1000px) { .m2-rules-top { grid-template-columns: minmax(0, 1fr); } }
+.m2-rules-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--m2-s4); align-items: start; }
 
 /* ---- the Rules tab ---- */
 .m2-rbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--m2-s3) var(--m2-s5); margin-bottom: var(--m2-s3); }
