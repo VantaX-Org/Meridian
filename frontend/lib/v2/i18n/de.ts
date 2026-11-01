@@ -6708,4 +6708,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Readiness {s}, {n} would not load": "Bereitschaft {s}, {n} nicht ladbar",
   "Open the analysis of {d}": "Analyse vom {d} öffnen",
   "No costed SAP feature waits on this wave.": "Auf diese Welle wartet keine bewertete SAP-Funktion.",
+  "Draft ready to review": "Entwurf zur Prüfung bereit",
+  "Aletheia proposed this wording. Nothing is saved until you press Save.": "Aletheia hat diese Formulierung vorgeschlagen. Erst mit Speichern wird etwas gesichert.",
+  "Draft definition with Aletheia": "Definition mit Aletheia entwerfen",
 };

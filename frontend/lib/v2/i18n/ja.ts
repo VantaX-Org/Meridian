@@ -6708,4 +6708,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Readiness {s}, {n} would not load": "準備度 {s}、{n} 件が読み込めません",
   "Open the analysis of {d}": "{d} の分析を開く",
   "No costed SAP feature waits on this wave.": "このウェーブを待っている、コスト評価済みの SAP 機能はありません。",
+  "Draft ready to review": "確認用の下書きができました",
+  "Aletheia proposed this wording. Nothing is saved until you press Save.": "Aletheia がこの文言を提案しました。保存を押すまで何も保存されません。",
+  "Draft definition with Aletheia": "Aletheia で定義を下書きする",
 };

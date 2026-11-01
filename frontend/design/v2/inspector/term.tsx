@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
-import { reviewTerm, updateTerm } from "@/lib/api/v2/mdm";
+import { draftTermWithAi, reviewTerm, updateTerm } from "@/lib/api/v2/mdm";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { useObjectOwners, useTerm } from "@/lib/v2/mdm-queries";
 import { refreshV2 } from "@/lib/v2/queries";
@@ -43,6 +43,12 @@ export function TermInspector({ id, onClose }: { id: string; onClose: () => void
       await refreshV2(qc);
       setEditing(false);
       return { tone: "ok", title: tr("Term saved"), detail: tr("The change is in the term's history.") };
+    });
+  const draft = () =>
+    void run("draft", async () => {
+      const d = await draftTermWithAi(id);
+      if (d.business_definition) setDefinition(d.business_definition);
+      return { tone: "ok", title: tr("Draft ready to review"), detail: tr("Aletheia proposed this wording. Nothing is saved until you press Save.") };
     });
   const approve = () =>
     void run("approve", async () => {
@@ -92,6 +98,11 @@ export function TermInspector({ id, onClose }: { id: string; onClose: () => void
                   <button type="button" className="m2-btn m2-strong" disabled={name.trim() === "" || pending !== null} onClick={save}>
                     {pending === "save" ? tr("Saving…") : tr("Save")}
                   </button>
+                  {session.can("trigger_ai") ? (
+                    <button type="button" className="m2-btn" disabled={pending !== null} onClick={draft}>
+                      {pending === "draft" ? tr("Drafting…") : tr("Draft definition with Aletheia")}
+                    </button>
+                  ) : null}
                   <button type="button" className="m2-btn" onClick={() => setEditing(false)}>
                     {tr("Cancel")}
                   </button>

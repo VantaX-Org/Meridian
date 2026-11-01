@@ -6707,6 +6707,9 @@ export const en = {
   "Readiness {s}, {n} would not load": "Readiness {s}, {n} would not load",
   "Open the analysis of {d}": "Open the analysis of {d}",
   "No costed SAP feature waits on this wave.": "No costed SAP feature waits on this wave.",
+  "Draft ready to review": "Draft ready to review",
+  "Aletheia proposed this wording. Nothing is saved until you press Save.": "Aletheia proposed this wording. Nothing is saved until you press Save.",
+  "Draft definition with Aletheia": "Draft definition with Aletheia",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

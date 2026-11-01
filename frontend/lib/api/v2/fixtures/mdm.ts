@@ -429,6 +429,9 @@ export function mdmFixtureWrite(method: string, path: string, body: unknown): un
     state.populated = true;
     return { created: 2, linked: 2, objects: 1 };
   }
+  if (method === "POST" && /^\/glossary\/[^/]+\/ai-draft$/.test(path)) {
+    return { business_definition: "A proposed definition, drafted by Aletheia for review.", why_it_matters_business: "", committed: false };
+  }
   const term = /^\/glossary\/([^/]+)(?:\/(review))?$/.exec(path);
   if (term) {
     const id = decodeURIComponent(term[1]);
