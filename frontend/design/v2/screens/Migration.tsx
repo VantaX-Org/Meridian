@@ -69,7 +69,7 @@ const GAP: Record<string, () => string> = {
   check_table_value: () => t("Value not in the check table"),
   target_config_unverified: () => t("Target configuration not verified"),
 };
-const gapText = (g: string) => GAP[g]?.() ?? (g.startsWith("field_status_") ? t("Field status in the target: {kind}", { kind: g.slice(13) }) : g);
+export const gapText = (g: string) => GAP[g]?.() ?? (g.startsWith("field_status_") ? t("Field status in the target: {kind}", { kind: g.slice(13) }) : g);
 const tone = (sev: string) => (sev === "critical" ? "crit" : sev === "high" || sev === "medium" ? "warn" : "data");
 const SEVERITIES = ["critical", "high", "medium", "low"];
 

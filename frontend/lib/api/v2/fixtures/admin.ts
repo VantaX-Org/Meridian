@@ -881,6 +881,13 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     Object.assign(w, { signed_off_by: "u-me", signed_off_at: NOW, updated_at: NOW });
     return clone(w);
   }
+  const wr = /^\/migration\/waves\/([^/]+)\/run$/.exec(path);
+  if (wr && method === "POST") {
+    const w = s.waves.find((x) => x.id === decodeURIComponent(wr[1]));
+    if (!w) throw new AdminNotFound(path);
+    if (!w.source_system_id || w.modules.length === 0) throw new AdminRefused(400, "Set a source system and at least one module first.");
+    return { run_id: "fx-run-1", task_id: "fx-task-1", status: "queued", mode: "wave", modules: [...w.modules] };
+  }
   const wv = /^\/migration\/waves\/([^/]+)$/.exec(path);
   if (wv) {
     const id = decodeURIComponent(wv[1]);

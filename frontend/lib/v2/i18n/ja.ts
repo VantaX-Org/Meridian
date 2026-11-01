@@ -6708,4 +6708,10 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Readiness {s}, {n} would not load": "準備度 {s}、{n} 件が読み込めません",
   "Open the analysis of {d}": "{d} の分析を開く",
   "No costed SAP feature waits on this wave.": "このウェーブを待っている、コスト評価済みの SAP 機能はありません。",
+  "Analysis of {name} queued": "{name} の分析をキューに入れました",
+  "{n, plural, one {# object is} other {# objects are}} being analysed. The verdicts update when it finishes.": "{n} 件のオブジェクトを分析中です。完了すると判定が更新されます。",
+  "Queuing…": "キューに入れています…",
+  "Analyse the whole wave": "ウェーブ全体を分析",
+  "Open the migration analyses": "移行分析を開く",
+  "Readiness cockpit": "準備度コックピット",
 };

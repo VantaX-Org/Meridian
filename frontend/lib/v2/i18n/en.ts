@@ -6707,6 +6707,12 @@ export const en = {
   "Readiness {s}, {n} would not load": "Readiness {s}, {n} would not load",
   "Open the analysis of {d}": "Open the analysis of {d}",
   "No costed SAP feature waits on this wave.": "No costed SAP feature waits on this wave.",
+  "Analysis of {name} queued": "Analysis of {name} queued",
+  "{n, plural, one {# object is} other {# objects are}} being analysed. The verdicts update when it finishes.": "{n, plural, one {# object is} other {# objects are}} being analysed. The verdicts update when it finishes.",
+  "Queuing…": "Queuing…",
+  "Analyse the whole wave": "Analyse the whole wave",
+  "Open the migration analyses": "Open the migration analyses",
+  "Readiness cockpit": "Readiness cockpit",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

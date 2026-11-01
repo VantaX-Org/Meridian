@@ -6708,4 +6708,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Readiness {s}, {n} would not load": "Bereitschaft {s}, {n} nicht ladbar",
   "Open the analysis of {d}": "Analyse vom {d} öffnen",
   "No costed SAP feature waits on this wave.": "Auf diese Welle wartet keine bewertete SAP-Funktion.",
+  "Analysis of {name} queued": "Analyse von {name} eingereiht",
+  "{n, plural, one {# object is} other {# objects are}} being analysed. The verdicts update when it finishes.": "{n, plural, one {# Objekt wird} other {# Objekte werden}} analysiert. Die Urteile werden nach Abschluss aktualisiert.",
+  "Queuing…": "Wird eingereiht…",
+  "Analyse the whole wave": "Ganze Welle analysieren",
+  "Open the migration analyses": "Migrationsanalysen öffnen",
+  "Readiness cockpit": "Bereitschafts-Cockpit",
 };
