@@ -6723,6 +6723,8 @@ export const en = {
   "Who set these values, scrollable": "Who set these values, scrollable",
   "Origin": "Origin",
   "SAP user": "SAP user",
+  "Profile downloading": "Profile downloading",
+  "Export the field profile": "Export the field profile",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -6724,4 +6724,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Who set these values, scrollable": "Wer diese Werte gesetzt hat, scrollbar",
   "Origin": "Herkunft",
   "SAP user": "SAP-Benutzer",
+  "Profile downloading": "Profil wird heruntergeladen",
+  "Export the field profile": "Feldprofil exportieren",
 };

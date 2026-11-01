@@ -4,11 +4,14 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { acceptMinedRule, getProfile, type Dependency, type FieldStats, type Severity, type TableProfile } from "@/lib/api/v2/profile";
 import { useFixture } from "@/lib/api/v2/fixture";
+import { v2Download } from "@/lib/api/v2/download";
+import { errorSentence } from "@/lib/api/v2/client";
 import { useRunParam, useV2Session } from "@/lib/v2/hooks";
 import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { f1, int, moduleFromSlug } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { ResultFrame, useOutcome } from "../../inspector/shared";
+import { useToast } from "../../Toast";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../../parts";
 import { ScrollFrame } from "./ScrollFrame";
 
@@ -169,6 +172,36 @@ function Dependencies({ deps, module, texts, versionId }: { deps: Dependency[]; 
   );
 }
 
+/** Saves the field profile of the object as an Excel file (GET /systems/{id}/versions/{v}/profile/export). */
+function ProfileExport({ systemId, versionId, module }: { systemId: string | undefined; versionId: string; module: string }) {
+  const session = useV2Session();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  return (
+    <p className="m2-prov">
+      <button
+        type="button"
+        className="m2-btn"
+        disabled={busy || !systemId || !session.can("export")}
+        onClick={async () => {
+          if (session.fixture) return toast.show(t("Fixture mode: no file is produced"));
+          setBusy(true);
+          try {
+            await v2Download(`/systems/${encodeURIComponent(systemId ?? "")}/versions/${encodeURIComponent(versionId)}/profile/export`, { object: module, format: "xlsx" }, "profile.xlsx");
+            toast.show(t("Profile downloading"));
+          } catch (err) {
+            toast.show(errorSentence(err, t("The export failed.")), "error");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {t("Export the field profile")}
+      </button>
+    </p>
+  );
+}
+
 /** The Profile tab: what the run found in each field the object reads, and the dependencies mined between them. */
 export function ProfileTab({ module: moduleSegment }: { system: string; module: string }) {
   const run = useRunParam();
@@ -205,6 +238,7 @@ export function ProfileTab({ module: moduleSegment }: { system: string; module: 
       {p.tables.map((tp) => (
         <TableBlock key={tp.table} tp={tp} />
       ))}
+      <ProfileExport systemId={L.data?.cells.find((c) => c.module === apiModule && c.run_id === versionId)?.system_id} versionId={versionId} module={apiModule} />
       <Dependencies deps={p.dependencies} module={apiModule} texts={texts} versionId={versionId} />
       <p className="m2-prov">{t("Counts are of the rows read in this run. Values are withheld for personal data and for free text, where a list of values says nothing.")}</p>
     </div>

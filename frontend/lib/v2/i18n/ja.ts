@@ -6724,4 +6724,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Who set these values, scrollable": "これらの値を設定した人（スクロール可）",
   "Origin": "発生元",
   "SAP user": "SAP ユーザー",
+  "Profile downloading": "プロファイルをダウンロード中",
+  "Export the field profile": "項目プロファイルをエクスポート",
 };
