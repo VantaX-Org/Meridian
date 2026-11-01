@@ -138,6 +138,31 @@ def module_source_tables(module: str, frames) -> list[str]:
     return [t for t, p in plans.items() if p.purpose == "data" and t in frames.frames]
 
 
+def _dest_dqs(session, tenant_id, version_id, module, target_type, target_values, mappings, gaps, frames,
+              tables, source_dict, target_dict) -> dict | None:
+    """The module's projected DQS in the target shape (dest_score.project) from the source version's findings;
+    None when it cannot be computed, so the readiness run never fails on it."""
+    from api.services.migration.dest_score import project
+    from api.services.simulate_fix import rebuild
+
+    try:
+        findings = [dict(r) for r in session.execute(text(
+            "SELECT check_id, severity, dimension, affected_count, total_count, pass_rate, details, finding_type "
+            "FROM findings WHERE version_id = :v AND tenant_id = :t AND module = :m"),
+            {"v": str(version_id), "t": str(tenant_id), "m": module}).mappings().all()]
+        raw_cfg = session.execute(text("SELECT dqs_weights FROM tenants WHERE id = :t"),
+                                  {"t": str(tenant_id)}).scalar() or {}
+        return project(module, target_type=target_type, target_values=target_values, mappings=mappings, gaps=gaps,
+                       source_results=rebuild(findings, module),
+                       table_records={t: len(frames.frames[t]) for t in tables if t in frames.frames},
+                       source_tables=tables, source_dict=source_dict, target_dict=target_dict,
+                       tenant_id=str(tenant_id), raw_cfg=raw_cfg)
+    except Exception:
+        logger.exception("migration: projected destination DQS failed for %s", module)
+        session.rollback()
+        return None
+
+
 def sim_owners(modules: list[str], frames) -> dict[str, str]:
     """Source table -> the one module of the run that records its S/4 load findings: the first
     module that reads the table natively, else the first that reads it at all (the load-sim
@@ -221,9 +246,10 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                     session.commit()
                     mappings = seed
                 value_maps = load_value_maps(session, module, source_system_id, dest_system_id)
+                target_values: dict = {}
                 gaps, res = analyze(module, frames, tables, mappings, target_dict, value_maps,
                                     target_config, None, bool(dest_system_id) and not dry_run,
-                                    config_basis=config_basis, field_status=field_status)
+                                    config_basis=config_basis, field_status=field_status, target_out=target_values)
                 sim: list["Gap"] = []
                 if dry_run:
                     from api.services.migration import load_sim
@@ -255,6 +281,9 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                                    # the findings the cockpit's Blockers tab lists (cockpit.BLOCKING_GAP_WHERE)
                                    "blocking_gaps": sum(1 for g in gaps if g.severity in BLOCKING_SEVERITIES),
                                    "source_tables": tables,
+                                   "dest_dqs": _dest_dqs(session, tenant_id, version_id, module, target_type,
+                                                         target_values, mappings, gaps, frames, tables,
+                                                         source_dict, target_dict),
                                    **({"mode": "s4_dry_run", "s4_load": _count_rules(sim)} if dry_run else {})}
 
             verdict = "no-go" if "no-go" in verdicts else ("conditional" if "conditional" in verdicts else "go")

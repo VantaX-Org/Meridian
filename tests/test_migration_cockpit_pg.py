@@ -60,7 +60,7 @@ def seeded():
         c.execute(text("INSERT INTO migration_gap_findings (tenant_id, run_id, module, field, gap_type, severity) "
                        "VALUES (:t, :r, 'accounts_payable', 'LFA1.ZZOLD', 'unmapped_field', 'medium')"),
                   {"t": tid, "r": r2})
-    yield {"tid": tid, "wid": wid, "vid": vid, "r2": r2, "engine": engine, "prd": prd}
+    yield {"tid": tid, "wid": wid, "vid": vid, "r2": r2, "engine": engine, "prd": prd, "s4d": s4d}
     with engine.begin() as c:
         c.execute(text("DELETE FROM audit_log WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM record_issues WHERE tenant_id = :t"), {"t": tid})
@@ -200,3 +200,38 @@ async def test_blocker_count_is_the_blockers_tab_gap_set(seeded, monkeypatch):
     assert tab == {"accounts_payable": 4}
     assert {(x["gap_type"], x["severity"]) for x in b["blockers"]} == {("value_unmapped", "critical"),
                                                                         ("target_key_exists", "high")}
+
+
+@pytest.mark.anyio
+async def test_destination_scores_projected_and_measured_are_tenant_scoped(seeded, monkeypatch):
+    """Projected DQS comes from the run's gap_summary; measured DQS from the target system's own latest analysis
+    in this tenant only: another tenant's newer analysis tagged with the same system id is never read."""
+    other = str(uuid.uuid4())
+    dest = {"composite_score": 64.5, "contributors": [{"check_id": "value_unmapped:BUT000.BU_GROUP", "kind": "gap",
+                                                      "severity": "critical", "impact": -100.0}]}
+    with seeded["engine"].begin() as c:
+        c.execute(text("UPDATE migration_runs SET gap_summary = jsonb_set(gap_summary, '{accounts_payable,dest_dqs}', "
+                       "CAST(:d AS jsonb)) WHERE id = :r"), {"r": seeded["r2"], "d": json.dumps(dest)})
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, :t)"), {"t": other})
+        for v, t, ago, score in ((str(uuid.uuid4()), seeded["tid"], "2 days", 88.0),
+                                 (str(uuid.uuid4()), other, "1 minute", 11.0)):
+            c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, run_at, metadata, dqs_summary) "
+                           "VALUES (:v, :t, 'complete', now() - CAST(:ago AS interval), CAST(:m AS jsonb), "
+                           "CAST(:q AS jsonb))"),
+                      {"v": v, "t": t, "ago": ago, "m": json.dumps({"system_id": seeded["s4d"]}),
+                       "q": json.dumps({"accounts_payable": {"composite_score": score}})})
+    try:
+        async with await _client(monkeypatch, seeded["tid"]) as c:
+            r = await c.get(f"/api/v1/migration/waves/{seeded['wid']}/cockpit",
+                            headers={**H, "X-User-Role": "viewer"})
+        assert r.status_code == 200, r.text
+        objs = {o["module"]: o for o in r.json()["objects"]}
+        assert objs["accounts_payable"]["dest_dqs_projected"] == 64.5
+        assert objs["accounts_payable"]["dest_dqs_actual"] == 88.0
+        assert objs["accounts_payable"]["dest_contributors"][0]["check_id"] == "value_unmapped:BUT000.BU_GROUP"
+        assert objs["material_master"]["dest_dqs_projected"] is None
+        assert objs["material_master"]["dest_dqs_actual"] is None
+    finally:
+        with seeded["engine"].begin() as c:
+            c.execute(text("DELETE FROM analysis_versions WHERE tenant_id = :t"), {"t": other})
+            c.execute(text("DELETE FROM tenants WHERE id = :t"), {"t": other})
