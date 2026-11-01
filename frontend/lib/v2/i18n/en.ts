@@ -6573,6 +6573,11 @@ export const en = {
   "no schedule is on": "no schedule is on",
   "Reports are built from stored runs, so a number in a report matches the run it names.": "Reports are built from stored runs, so a number in a report matches the run it names.",
   "{label}, records over the last {count} extractions": "{label}, records over the last {count} extractions",
+  "Overdue per person": "Overdue per person",
+  "Nobody has work past its due date.": "Nobody has work past its due date.",
+  "Records assigned to the person that are not yet signed off": "Records assigned to the person that are not yet signed off",
+  "Fix batches that wait for their approval": "Fix batches that wait for their approval",
+  "Their open records past the due date": "Their open records past the due date",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

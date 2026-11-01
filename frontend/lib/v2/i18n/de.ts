@@ -6574,4 +6574,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "no schedule is on": "kein Zeitplan ist aktiv",
   "Reports are built from stored runs, so a number in a report matches the run it names.": "Berichte entstehen aus gespeicherten Läufen, daher stimmt jede Zahl in einem Bericht mit dem genannten Lauf überein.",
   "{label}, records over the last {count} extractions": "{label}, Datensätze über die letzten {count} Extraktionen",
+  "Overdue per person": "Überfällig pro Person",
+  "Nobody has work past its due date.": "Niemand hat Arbeit über dem Fälligkeitsdatum.",
+  "Records assigned to the person that are not yet signed off": "Der Person zugewiesene Datensätze, die noch nicht freigegeben sind",
+  "Fix batches that wait for their approval": "Korrekturstapel, die auf ihre Freigabe warten",
+  "Their open records past the due date": "Ihre offenen Datensätze über dem Fälligkeitsdatum",
 };

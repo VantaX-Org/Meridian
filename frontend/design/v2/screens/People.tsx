@@ -21,10 +21,10 @@ import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 const n = (x: number): string => whole(x);
 const slaNote = (): string => t("Share of their open work that is not yet past its due date.");
 
-function Head({ label, k, sort, reverse, set, right }: { label: string; k: PeopleSort; sort: PeopleSort; reverse: boolean; set: (k: PeopleSort) => void; right?: boolean }) {
+function Head({ label, k, sort, reverse, set, right, title }: { label: string; k: PeopleSort; sort: PeopleSort; reverse: boolean; set: (k: PeopleSort) => void; right?: boolean; title?: string }) {
   const on = sort === k;
   return (
-    <th scope="col" className={right ? "m2-r" : undefined} aria-sort={on ? (reverse ? "ascending" : "descending") : "none"}>
+    <th scope="col" className={right ? "m2-r" : undefined} aria-sort={on ? (reverse ? "ascending" : "descending") : "none"} title={title}>
       <button type="button" className="m2-sortbtn" aria-pressed={on} onClick={() => set(k)}>
         {label}
       </button>
@@ -75,9 +75,20 @@ function PeopleOverview({ rows, unassigned }: { rows: readonly Person[]; unassig
         </>
       ),
       value: p.open_work,
-      tone: p.overdue > 0 ? ("crit" as const) : ("data" as const),
-      text: p.overdue > 0 ? t("{open} open, {late} overdue", { open: int(p.open_work), late: int(p.overdue) }) : t("{open} open", { open: int(p.open_work) }),
+      tone: "data" as const,
+      text: int(p.open_work),
     }));
+  const lateBars = late.slice(0, 10).map((p) => ({
+    key: p.id,
+    label: (
+      <>
+        {p.name} <span className="m2-meta">{roleWord(p.role)}</span>
+      </>
+    ),
+    value: p.overdue,
+    tone: "crit" as const,
+    text: int(p.overdue),
+  }));
   return (
     <>
       <CcBanner
@@ -109,18 +120,19 @@ function PeopleOverview({ rows, unassigned }: { rows: readonly Person[]; unassig
         }
       />
       {bars.length > 0 ? (
-        <section className="m2-cc-card" aria-label={t("Open work per person")} data-testid="people-workload">
-          <h3>{t("Open work per person")}</h3>
-          <CcBanner_legend />
-          <CcHBars rows={bars} label={t("Open work per person")} />
-        </section>
+        <div className="m2-cc-split">
+          <section className="m2-cc-card" aria-label={t("Open work per person")} data-testid="people-workload">
+            <h3>{t("Open work per person")}</h3>
+            <CcHBars rows={bars} label={t("Open work per person")} />
+          </section>
+          <section className="m2-cc-card" aria-label={t("Overdue per person")} data-testid="people-overdue">
+            <h3>{t("Overdue per person")}</h3>
+            {lateBars.length > 0 ? <CcHBars rows={lateBars} label={t("Overdue per person")} /> : <p className="m2-cc-lede">{t("Nobody has work past its due date.")}</p>}
+          </section>
+        </div>
       ) : null}
     </>
   );
-}
-
-function CcBanner_legend() {
-  return <p className="m2-cc-lede">{t("Red bars belong to people with overdue work.")}</p>;
 }
 
 /** People: the owners and stewards of the data with their open work, approvals waiting and SLA. Click a row to open the person. */
@@ -179,7 +191,7 @@ export function PeopleCanvas() {
         {unassigned != null && summary ? <>{" "}{t("{unassigned} of the {total} open records are assigned to nobody.", { unassigned: int(unassigned), total: int(summary.totals.open) })}</> : null}
       </p>
       <p className="m2-prov">
-        {t("Counts are read from the work assigned in the latest state. Open counts the records assigned to the person that are not yet signed off; To approve counts the fix batches that wait for their approval; Overdue counts their open records past the due date; Total counts every open record, assigned or not.")}{" "}<V2Link href={hrefFor({ kind: "triage", id: "" })}>{t("Triage and SLA")}</V2Link>
+        {t("Counts are read from the work assigned in the latest state.")}{" "}<V2Link href={hrefFor({ kind: "triage", id: "" })}>{t("Triage and SLA")}</V2Link>
       </p>
       <PeopleActions />
       {phone ? (
@@ -217,9 +229,9 @@ export function PeopleCanvas() {
               <tr>
                 <Head label={PEOPLE_SORT_LABEL.name} k="name" sort={sort} reverse={reverse} set={choose} />
                 <th scope="col">{t("Objects")}</th>
-                <Head label={PEOPLE_SORT_LABEL.open} k="open" sort={sort} reverse={reverse} set={choose} right />
-                <Head label={PEOPLE_SORT_LABEL.approvals} k="approvals" sort={sort} reverse={reverse} set={choose} right />
-                <Head label={PEOPLE_SORT_LABEL.overdue} k="overdue" sort={sort} reverse={reverse} set={choose} right />
+                <Head label={PEOPLE_SORT_LABEL.open} k="open" sort={sort} reverse={reverse} set={choose} right title={t("Records assigned to the person that are not yet signed off")} />
+                <Head label={PEOPLE_SORT_LABEL.approvals} k="approvals" sort={sort} reverse={reverse} set={choose} right title={t("Fix batches that wait for their approval")} />
+                <Head label={PEOPLE_SORT_LABEL.overdue} k="overdue" sort={sort} reverse={reverse} set={choose} right title={t("Their open records past the due date")} />
                 <Head label={PEOPLE_SORT_LABEL.sla} k="sla" sort={sort} reverse={reverse} set={choose} right />
                 <Head label={PEOPLE_SORT_LABEL.breaches} k="breaches" sort={sort} reverse={reverse} set={choose} right />
                 <Head label={PEOPLE_SORT_LABEL.last} k="last" sort={sort} reverse={reverse} set={choose} />

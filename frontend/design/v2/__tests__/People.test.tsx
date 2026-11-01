@@ -54,6 +54,12 @@ describe("the People canvas", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("People");
     expect(await screen.findByTestId("people-sentence")).toHaveTextContent(/^4 of 6 people hold open work: 270 records, 34 overdue\. 2 batches wait for your approval\. [\d,]+ of the [\d,]+ open records are assigned to nobody\.$/);
     expect(within(t).getAllByRole("columnheader").map(text)).toEqual(["Person", "Objects", "Open work", "Approvals waiting", "Overdue", "SLA met", "Breaches this month", "Last action"]);
+    // Two charts side by side: everyone's open work, and only the overdue, both on bars of their own.
+    expect(within(screen.getByTestId("people-workload")).getAllByRole("listitem")).toHaveLength(4);
+    const overdue = within(screen.getByTestId("people-overdue")).getAllByRole("listitem");
+    expect(overdue.length).toBeGreaterThan(0);
+    expect(text(overdue[0])).toContain("A. Naidoo");
+    expect(text(overdue[0])).toContain("31");
     const naidoo = within(t).getByRole("link", { name: "A. Naidoo" }).closest("tr") as HTMLElement;
     const cells = within(naidoo).getAllByRole("cell").map(text);
     expect(text(within(naidoo).getByRole("rowheader"))).toContain("Data steward");

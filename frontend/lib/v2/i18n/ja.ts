@@ -6574,4 +6574,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "no schedule is on": "有効なスケジュールはありません",
   "Reports are built from stored runs, so a number in a report matches the run it names.": "レポートは保存済みの実行から作成されるため、レポート内の数値は記載された実行と一致します。",
   "{label}, records over the last {count} extractions": "{label}、直近 {count} 回の抽出のレコード数",
+  "Overdue per person": "担当者別の期限超過",
+  "Nobody has work past its due date.": "期限を過ぎた作業を持つ人はいません。",
+  "Records assigned to the person that are not yet signed off": "担当者に割り当てられ、まだ承認されていないレコード",
+  "Fix batches that wait for their approval": "担当者の承認を待つ修正バッチ",
+  "Their open records past the due date": "担当者の期限超過の未完了レコード",
 };
