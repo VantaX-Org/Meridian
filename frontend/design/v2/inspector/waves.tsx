@@ -15,6 +15,7 @@ import { Confirm, useDone } from "../admin/kit";
 import { ResultFrame, useOutcome } from "./shared";
 import { WaveGateEditor } from "./governance";
 import { CertificateBlock } from "../screens/step9/Certificate";
+import { WaveCockpitBlock } from "./wave-cockpit";
 import { t } from "@/lib/v2/i18n";
 
 export const STAGES: { value: WaveStage; label: string }[] = [
@@ -124,6 +125,10 @@ export function WavesPanel({ id = "", onClose }: { id?: string; onClose: () => v
             </button>
           ) : null}
           {w.id === chosen ? null : gate}
+          <details className="m2-ct" data-testid="wave-cockpit-details">
+            <summary>{t("Readiness cockpit")}</summary>
+            <WaveCockpitBlock wave={w} />
+          </details>
           <details className="m2-ct" data-testid="wave-certificate">
             <summary>{t("Readiness certificate")}</summary>
             <CertificateBlock waveId={w.id} waveName={w.name} />

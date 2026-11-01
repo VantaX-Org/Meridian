@@ -322,8 +322,27 @@ function wave(id: string, name: string, modules: string[], date: string | null, 
   };
 }
 
+/** A wave's readiness cockpit: every third object blocked, every third at risk, the rest ready. A never-analysed wave has none. */
+function waveCockpit(w: MigrationWave) {
+  const verdicts = ["go", "at_risk", "no_go"] as const;
+  const objects = w.last_run_id
+    ? w.modules.map((m, i) => {
+        const verdict = verdicts[i % 3];
+        const records = 1200 + i * 300;
+        const blocked = verdict === "go" ? 0 : verdict === "at_risk" ? 40 : 310;
+        return { module: m, label: m, verdict, score: [98, 91, 72][i % 3], records, records_blocked: blocked, blocker_count: verdict === "go" ? 0 : 1, dqs: [96, 90, 78][i % 3] };
+      })
+    : [];
+  const blockers = objects.filter((o) => o.blocker_count > 0).map((o) => ({ module: o.module, label: o.label, gap_type: "value_unmapped", field: "MARA.MTART", severity: o.verdict === "no_go" ? "critical" : "high", records: o.records_blocked, gaps: o.records_blocked }));
+  const blocked = objects.reduce((n, o) => n + o.records_blocked, 0);
+  return {
+    wave: clone(w), run_id: w.last_run_id, source_version_id: null, dest_system_type: "s4hana", verdict: w.last_verdict ?? "no_go", threshold: w.min_readiness, score: w.last_score,
+    records_total: objects.reduce((n, o) => n + o.records, 0), records_blocked: blocked, objects, trend: [], blockers,
+  };
+}
+
 let S: State | null = null;
-const st = (): State => (S ??= build());
+const st =(): State => (S ??= build());
 
 /** Test seam and `?fixture=1` reload: forget every change and start from the demo tenant again. */
 export function resetAdminFixture(): void {
@@ -534,6 +553,12 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
   if (path === "/reports/schedules") return clone(s.schedules);
   if (path === "/reports/schedules/options") return scheduleOptions();
   if (path === "/migration/waves") return { waves: clone(s.waves) };
+  const wc = /^\/migration\/waves\/([^/]+)\/cockpit$/.exec(path);
+  if (wc) {
+    const w = s.waves.find((x) => x.id === decodeURIComponent(wc[1]));
+    if (!w) throw new AdminNotFound(path);
+    return waveCockpit(w);
+  }
   return NONE_ADMIN;
 }
 
@@ -880,6 +905,21 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     if (w.signed_off_at) throw new AdminRefused(409, "This wave is already signed off.");
     Object.assign(w, { signed_off_by: "u-me", signed_off_at: NOW, updated_at: NOW });
     return clone(w);
+  }
+  const wr = /^\/migration\/waves\/([^/]+)\/run$/.exec(path);
+  if (wr && method === "POST") {
+    const w = s.waves.find((x) => x.id === decodeURIComponent(wr[1]));
+    if (!w) throw new AdminNotFound(path);
+    if (!w.source_system_id || w.modules.length === 0) throw new AdminRefused(400, "Set a source system and at least one module first.");
+    return { run_id: "fx-run-1", task_id: "fx-task-1", status: "queued", mode: "wave", modules: [...w.modules] };
+  }
+  const wf = /^\/migration\/waves\/([^/]+)\/blockers\/fix-batch$/.exec(path);
+  if (wf && method === "POST") {
+    const w = s.waves.find((x) => x.id === decodeURIComponent(wf[1]));
+    if (!w) throw new AdminNotFound(path);
+    if (!w.last_run_id) throw new AdminNotFound(path);
+    if (!b.module || !b.gap_type) throw new AdminRefused(422, "A module and a gap type are required.");
+    return { id: nextId("batch"), status: "draft", items: 40, with_proposal: 32, auto_approvable: 12 };
   }
   const wv = /^\/migration\/waves\/([^/]+)$/.exec(path);
   if (wv) {

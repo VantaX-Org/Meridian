@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { landscapeFixture } from "@/lib/api/v2/fixtures";
 import type { MigrationWave } from "@/types/api";
-import { daysUntil, groupByWave, nextWave, reassign, sortWaves, waveOf } from "./waves";
+import { cockpitVerdict, daysUntil, groupByWave, nextWave, reassign, sortWaves, waveOf } from "./waves";
 
 const wave = (id: string, name: string, modules: string[], target_date: string | null, signed = false): MigrationWave => ({
   id, name, source_system_id: null, target_system_id: null, target_release: "2025", modules, target_date, stage: "plan", min_readiness: 95, min_dqs: null,
@@ -67,5 +67,13 @@ describe("waves", () => {
     expect(reassign([W1, W2, W3], { controlling: "" })).toEqual({ w1: ["fi_gl", "asset_accounting", "accounts_payable"] });
     expect(reassign([W1, W2, W3], { controlling: "w1" })).toEqual({});
     expect(reassign([W1, W2, W3], { hcm: "w2" })).toEqual({ w2: ["material_master", "business_partner", "hcm"] });
+  });
+});
+
+describe("cockpitVerdict", () => {
+  it("maps the API verdicts to the mark and the heat band", () => {
+    expect(cockpitVerdict("go")).toEqual({ verdict: "go", band: 0 });
+    expect(cockpitVerdict("at_risk")).toEqual({ verdict: "at-risk", band: 2 });
+    expect(cockpitVerdict("no_go")).toEqual({ verdict: "no-go", band: 3 });
   });
 });
