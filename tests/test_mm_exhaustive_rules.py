@@ -115,6 +115,48 @@ MARD2 = frame("MARD", MATNR=["M1", "M2"], WERKS=["P1", "P1"], LGORT=["L9", "L2"]
 Z = ["0", "0"]
 
 
+
+def mara(**cols):
+    return frame("MARA", **{"MATNR": ["M1", "M2"], **cols})
+
+
+def mbew(**cols):
+    return frame("MBEW", **{"MATNR": ["M1", "M2"], "BWKEY": ["P1", "P1"], "BWTAR": ["", ""], **cols})
+
+
+def mvke(**cols):
+    return frame("MVKE", **{"MATNR": ["M1", "M2"], "VKORG": ["S1", "S1"], "VTWEG": ["01", "01"], **cols})
+
+
+def mard(**cols):
+    return frame("MARD", **{"MATNR": ["M1", "M2"], "WERKS": ["P1", "P1"], "LGORT": ["L1", "L1"], **cols})
+
+
+# Referential rules MM998+: (rule, maker, field, check table reference key). Row 1 is unknown, row 2 is configured.
+REF4 = [
+    ("MM998", marc, "PERIV", "T009.PERIV"), ("MM999", marc, "DISGR", "T438M.MTART"),
+    ("MM1000", marc, "LFRHY", "T439G.MRPPP"), ("MM1001", marc, "RDPRF", "RDPR.RDPRF"),
+    ("MM1002", marc, "AUFTL", "T439P.AUFTL"), ("MM1003", marc, "STLAN", "T416.STLAN"),
+    ("MM1004", marc, "PLNTY", "TCA01.PLNTY"), ("MM1005", marc, "SOBSK", "T460A.SOBSL"),
+    ("MM1006", marc, "VRBWK", "T001W.WERKS"), ("MM1007", marc, "VRBMT", "MARA.MATNR"),
+    ("MM1008", marc, "STDPD", "MARA.MATNR"), ("MM1009", marc, "MFRGR", "TMFG.MFRGR"),
+    ("MM1010", marc, "LOGGR", "TLOG.LOGGR"), ("MM1011", marc, "FPRFM", "TMFPF.FPRFM"),
+    ("MM1012", marc, "MEGRU", "TWMEG.MEGRU"), ("MM1013", marc, "STEUC", "T604F.STEUC"),
+    ("MM1014", marc, "VSPVB", "PVBE.PRVBE"), ("MM1015", marc, "MDACH", "T46AC.MDACH"),
+    ("MM1016", marc, "OCMPF", "TCO48.GPROFILE"), ("MM1017", marc, "BWSCL", "TMBW1.BWSCL"),
+    ("MM1026", mara, "PMATA", "MARA.MATNR"), ("MM1027", mara, "RBNRM", "T352B.RBNR"),
+    ("MM1028", mara, "KOSCH", "T190S.KOSCH"), ("MM1029", mara, "MPROF", "TMPPF.MPROF"),
+    ("MM1030", mara, "HUTYP", "THUTYP.HUTYP"), ("MM1031", mara, "HUTYP_DFLT", "THUTYP.HUTYP"),
+    ("MM1032", mara, "QQTIMEUOM", "T006.MSEHI"), ("MM1033", mara, "ADPROF", "TAPROF.ADPROF"),
+    ("MM1034", mara, "MEDIUM", "T372M.MEDIU"), ("MM1035", mara, "CWQPROC", "TCWQPROC.CWQPROC"),
+    ("MM1036", mara, "CWQTOLGR", "TCWQTOLGR.CWQTOLGR"), ("MM1037", mara, "BWSCL", "TMBW1.BWSCL"),
+    ("MM1038", mara, "RMATP", "MARA.MATNR"), ("MM1043", mbew, "OKLAS", "T025.BKLAS"),
+    ("MM1044", mbew, "VJBKL", "T025.BKLAS"), ("MM1045", mbew, "BWVA1", "TCK05.BWVAR"),
+    ("MM1046", mbew, "BWVA2", "TCK05.BWVAR"), ("MM1047", mbew, "BWVA3", "TCK05.BWVAR"),
+    ("MM1054", mvke, "RDPRF", "RDPR.RDPRF"), ("MM1055", mvke, "MEGRU", "TWMEG.MEGRU"),
+    ("MM1060", mard, "HERKL", "T005.LAND1"),
+]
+
 CASES = {
     "MM900": {"KSSK": kssk(STATU=["", "1"])},
     "MM901": {"KSSK": kssk(OBJEK=["M1", "M1", "M2"], MAFID=["O"] * 3, KLART=["001"] * 3,
@@ -230,7 +272,33 @@ CASES = {
     "MM995": {"MKAL": mkal(PLTYG=["N", "N"], PLNNG=["G9", "G1"], ALNAG=["01", "01"]), "PLKO": plko()},
     "MM996": {"MKAL": mkal(PLTYM=["N", "N"], PLNNM=["G9", "G1"], ALNAM=["01", "01"]), "PLKO": plko()},
     "MM997": {"MKAL": mkal(MATKO=["X9", "M1"]), "MARA": frame("MARA", MATNR=["M1", "M2"])},
+    "MM1018": {"MARC": marc(PERKZ=["P", "P"], PERIV=["", "K4"])},
+    "MM1019": {"MARC": marc(VRBMT=["M9", "M9"], VRBDT=["20200101", "99991231"])},
+    "MM1020": {"MARC": marc(STLAL=["01", "01"], STLAN=["", "1"])},
+    "MM1021": {"MARC": marc(PLNNR=["G1", "G1"], PLNTY=["", "N"])},
+    "MM1022": {"MARC": marc(APLAL=["01", "01"], PLNNR=["", "G1"])},
+    "MM1023": {"MARC": marc(STLAN=["1", "1"], STLAL=["02", "01"]), "MAST": mast()},
+    "MM1024": {"MARC": marc(PLNTY=["N", "N"], PLNNR=["G9", "G1"], APLAL=["01", "01"]), "PLKO": plko()},
+    "MM1025": {"MARC": marc(LFMON=["13", "01"], LFGJA=["2026", "2026"])},
+    "MM1039": {"MARA": mara(QQTIME=[5, 5], QQTIMEUOM=["", "TAG"])},
+    "MM1040": {"MARA": mara(INHBR=[1.0, 3.0], INHAL=[2.0, 2.0])},
+    "MM1041": {"MARA": mara(INHAL=[2.0, 2.0], INHME=["", "L"])},
+    "MM1042": {"MARA": mara(MAXL=[1.0, 1.0], MAXB=[0.0, 0.0], MAXH=[0.0, 0.0], MAXDIM_UOM=["", "M"])},
+    "MM1048": {"MBEW": mbew(PDATZ=["2026", ""], PPRDZ=["", ""])},
+    "MM1049": {"MBEW": mbew(PDATL=["", "2026"], PPRDL=["011", "011"])},
+    "MM1050": {"MBEW": mbew(PDATV=["2025", "2025"], PPRDV=["000", "012"])},
+    "MM1051": {"MBEW": mbew(KALKZ=["X", "X"], PDATZ=["", "2026"], PPRDZ=["", "012"])},
+    "MM1052": {"MBEW": mbew(KALKL=["X", ""], PDATL=["", ""], PPRDL=["", ""])},
+    "MM1053": {"MBEW": mbew(KALKV=["X", "X"], PDATV=["0000", "2025"], PPRDV=["000", "012"])},
+    "MM1056": {"MVKE": mvke(LDVFL=["20260201", "20260101"], LDBFL=["20260101", "20261231"])},
+    "MM1057": {"MVKE": mvke(LDVZL=["20260201", "20260101"], LDBZL=["20260101", "20261231"])},
+    "MM1058": {"MVKE": mvke(VDVFL=["20260201", "20260101"], VDBFL=["20260101", "20261231"])},
+    "MM1059": {"MVKE": mvke(VDVZL=["20260201", "20260101"], VDBZL=["20260101", "20261231"])},
+    "MM1061": {"MARD": mard(LFMON=["00", "12"], LFGJA=["2026", "2026"])},
+    "MM1062": {"MARD": mard(ERSDA=["29991231", "20200101"])},
 }
+CASES.update({rid: ({mk().columns[0].split(".")[0]: mk(**{f: ["ZZ9", "OK"]})}, {ref: {"OK"}})
+              for rid, mk, f, ref in REF4})
 EXPECT = {"MM901": (2, 3), "MM908": (2, 3), "MM916": (2, 3), "MM917": (2, 3), "MM920": (2, 3), "MM954": (1, 3)}
 
 
@@ -252,7 +320,7 @@ def test_schema_contract():
 
 
 def test_every_new_rule_has_a_fixture():
-    assert sorted(CASES) == [r["id"] for r in NEW]
+    assert sorted(CASES, key=lambda i: int(i[2:])) == [r["id"] for r in NEW]
 
 
 @pytest.mark.parametrize("rid", sorted(CASES))
