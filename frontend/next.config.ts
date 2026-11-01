@@ -21,6 +21,8 @@ const q = (source: string, key: string, value: string | undefined, destination: 
  * Rules with `has` come before the plain rule for the same address, because the first rule that matches wins.
  */
 export const REDIRECTS: Redirect[] = [
+  // /attention, /insights, /issues, /mining, /mdm and /migration are live Meridian 2 pages again (the map links to
+  // them), so they are not redirected; their old sub-pages still are.
   // Meridian 2 lived under /v2 while both interfaces shipped. Kept for a release so bookmarks and share links still open.
   r("/v2", "/"),
   r("/v2/:path*", "/:path*"),
@@ -29,7 +31,6 @@ export const REDIRECTS: Redirect[] = [
   r("/home", "/"),
   r("/home/:persona", "/"),
   r("/dashboard", "/"),
-  r("/insights", "/"),
   r("/insights/exec", "/"),
   r("/design", "/"),
   r("/search", "/"),
@@ -37,7 +38,6 @@ export const REDIRECTS: Redirect[] = [
   r("/help", "/?open=help"),
   r("/docs", "/?open=help"),
   r("/me/preferences", "/?open=preferences"),
-  r("/attention", "/work"),
   r("/command-centre", "/runs"),
 
   // Fix work, cleaning and remediation: the Work ledger with the same filter.
@@ -56,7 +56,6 @@ export const REDIRECTS: Redirect[] = [
   r("/fix/:id", "/work?filter=proposed"),
   r("/cleaning", "/work?filter=proposed"),
   r("/remediation", "/work?filter=approvals"),
-  r("/issues", "/work?assigned=me"),
 
   // The inbox, approvals and exceptions: the inbox panel, or the ledger's chip for the same rows.
   q("/inbox", "kind", "approvals", "/work?filter=approvals"),
@@ -125,7 +124,6 @@ export const REDIRECTS: Redirect[] = [
   r("/config-impact", "/"),
   r("/business-process", "/"),
   r("/lineage", "/"),
-  r("/mining", "/rules?view=drafts"),
   r("/relationships", "/"),
   r("/dedup", "/"),
 
@@ -137,7 +135,6 @@ export const REDIRECTS: Redirect[] = [
   r("/process/:l1", "/"),
 
   // Master data: the Glossary and Golden records tabs of an object; one term or golden record opens in the inspector.
-  r("/mdm", "/"),
   r("/mdm/glossary", "/"),
   r("/mdm/glossary/:id", "/?open=term%3A:id"),
   q("/mdm/golden/merge", "id", "(?<id>[^&]+)", "/?open=golden%3A:id"),
@@ -157,7 +154,6 @@ export const REDIRECTS: Redirect[] = [
   r("/match-rules/tuning", "/"),
 
   // Migration: the landscape's Waves view and the waves panel (gates, sign-off, certificate).
-  r("/migration", "/?view=waves&open=waves"),
   r("/migration/dry-run", "/?view=waves&open=waves"),
   r("/migration/:waveId", "/?view=waves&open=waves"),
 

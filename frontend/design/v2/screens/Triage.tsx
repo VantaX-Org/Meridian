@@ -15,7 +15,7 @@ import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { CcBanner, CcDelta, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
@@ -65,12 +65,12 @@ export function Triage() {
     retry,
   });
 
-  if (metrics.isPending || queue.isPending) return <CcPage><WorkTabs current="triage" /><Skeleton width="100%" height={320} /></CcPage>;
+  if (metrics.isPending || queue.isPending) return <CcPage><PageTitle sub={t("Triage")}>{t("Work")}</PageTitle><WorkTabs current="triage" /><Skeleton width="100%" height={320} /></CcPage>;
   const failed = metrics.isError ? metrics : queue.isError ? queue : null;
   if (failed) {
     return (
       <CcPage>
-        <WorkTabs current="triage" />
+        <PageTitle sub={t("Triage")}>{t("Work")}</PageTitle><WorkTabs current="triage" />
         {status(failed.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read the triage queue.")}</EmptyFrame>
         ) : (
@@ -89,7 +89,7 @@ export function Triage() {
 
   return (
     <CcPage>
-      <WorkTabs current="triage" />
+      <PageTitle sub={t("Triage")}>{t("Work")}</PageTitle><WorkTabs current="triage" />
       <CcBanner
         eyebrow={t("Triage")}
         headline={t("{n} items waiting, {m} past their SLA", { n: int(open), m: int(breached) })}

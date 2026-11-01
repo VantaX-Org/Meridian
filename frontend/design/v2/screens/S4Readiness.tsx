@@ -7,7 +7,7 @@ import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
 import { DqWord } from "../inspector/step";
 import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
-import { CcBanner, CcPage } from "./cc-parts";
+import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { pctOf, retry, Section, status, Table, useRuleName } from "./WorkAnalytics";
 
 /**
@@ -90,12 +90,22 @@ function AreaPanel({ rows }: { rows: S4Area[] }) {
   const q = { isPending: false, isError: false, error: null, data: sorted, refetch: () => undefined };
   return (
     <Section q={q} title={title} meta={t("Worst first, each with the SAP simplification item it answers")} testId="s4-areas">
-      {(d) => d.length === 0 ? <EmptyFrame>{t("No conversion-readiness rule has run yet.")}</EmptyFrame> : (
+      {(d) => d.length === 0 ? <EmptyFrame>{t("No conversion-readiness rule has run yet.")}</EmptyFrame> : (<>
+        {d.some((a) => a.failing_records > 0) ? (
+          <CcHBars
+            label={t("Records to fix by area")}
+            testId="s4-area-bars"
+            rows={d.filter((a) => a.status !== "not_evaluated").map((a) => ({
+              key: a.area, label: a.label, value: a.failing_records, text: int(a.failing_records),
+              tone: a.status === "red" ? "crit" : a.status === "amber" ? "warn" : "pass",
+            }))}
+          />
+        ) : null}
         <Table title={title} head={[t("Area"), t("Simplification item"), t("Status"), t("Rules run"), t("Blocking"), t("Warnings"), t("Records to fix")]}>
           {d.map((a) => (
             <tr key={a.area}>
               <th scope="row" className="m2-card-lead">{a.label}</th>
-              <td data-label={t("Simplification item")} className="m2-meta">{a.simplification_item ?? f1(null)}</td>
+              <td data-label={t("Simplification item")} className="m2-meta m2-wrap">{a.simplification_item ?? f1(null)}</td>
               <td data-label={t("Status")}><Word s={a.status} /></td>
               <td data-label={t("Rules run")} className="m2-num">{t("{a} of {b}", { a: int(a.evaluated), b: int(a.rules) })}</td>
               <td data-label={t("Blocking")} className="m2-num">{int(a.blocking_failing)}</td>
@@ -104,7 +114,7 @@ function AreaPanel({ rows }: { rows: S4Area[] }) {
             </tr>
           ))}
         </Table>
-      )}
+      </>)}
     </Section>
   );
 }

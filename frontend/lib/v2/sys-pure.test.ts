@@ -163,5 +163,8 @@ describe("SAP keys as SAP shows them", () => {
     expect(alphaOut("0000")).toBe("0");
     expect(alphaOut("00A-17")).toBe("00A-17");
     expect(alphaOut("1000")).toBe("1000");
+    expect(alphaOut("MATNR=000000000000000232")).toBe("MATNR=232");
+    expect(alphaOut("MATNR=000232|WERKS=0100")).toBe("MATNR=232|WERKS=100");
+    expect(alphaOut("MATNR=00A-17")).toBe("MATNR=00A-17");
   });
 });

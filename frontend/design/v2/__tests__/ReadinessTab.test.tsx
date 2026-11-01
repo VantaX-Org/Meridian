@@ -73,10 +73,10 @@ describe("blocked and degraded features", () => {
     const list = h.parentElement?.querySelector("ul") as HTMLElement;
     await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(3));
     const items = within(list).getAllByRole("listitem");
-    expect(norm(items[0])).toBe("Migration cockpit: material loadMM142, MM003");
+    expect(norm(items[0])).toBe("Migration cockpit: material loadMM142Base unit of measure MEINS must reference a valid entry in T006MM003Material type is mandatory - determines procurement and storage behaviour");
     expect(within(items[0]).getByRole("link", { name: "Migration cockpit: material load" })).toHaveAttribute("href", expect.stringContaining("open=feature%3A"));
     expect(within(items[0]).getByRole("link", { name: "MM003" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM003"));
-    expect(norm(items[1])).toBe("Material ledger actual costingMM142");
+    expect(norm(items[1])).toBe("Material ledger actual costingMM142Base unit of measure MEINS must reference a valid entry in T006");
     expect(norm(h)).toContain("3");
   });
 
@@ -86,11 +86,11 @@ describe("blocked and degraded features", () => {
     const list = h.parentElement?.querySelector("ul") as HTMLElement;
     await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(5));
     expect(within(list).getAllByRole("listitem").map(norm)).toEqual([
-      "MRP LiveMM023",
-      "Advanced available-to-promiseMM015",
-      "Source of supply determinationMM302",
-      "Product complianceMM007",
-      "Inventory valuation by plantMM035",
+      "MRP LiveMM023MRP type (plant level) must exist in T438A",
+      "Advanced available-to-promiseMM015Gross weight is recommended for shipping and transportation planning",
+      "Source of supply determinationMM302Externally procured, MRP-planned material has no purchasing group",
+      "Product complianceMM007Material group is required for reporting and procurement",
+      "Inventory valuation by plantMM035Valuation class is mandatory for FI account determination",
     ]);
   });
 

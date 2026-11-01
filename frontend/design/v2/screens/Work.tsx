@@ -59,7 +59,9 @@ import { FixOrderHint } from "./object/Related";
 import { WorkTabs } from "./WorkTabs";
 import { AletheiaDock } from "./CommandCentre";
 import { FixPipeline, RuleBoard } from "./Cockpit";
-import { WorkBanner, WorkBreakdown, type Bar } from "./work-banner";
+import { RuleSpark, WorkBanner, WorkBreakdown, type Bar } from "./work-banner";
+import { useTimeline } from "@/lib/v2/runs-queries";
+import { Sparkline } from "../charts";
 import { t as tr, lc } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
 import { formatDate } from "@/lib/format";
@@ -442,9 +444,14 @@ export function WorkCanvas() {
   const fig = state.module ? { open: objs[0]?.open ?? 0, critical: objs[0]?.critical ?? 0, proposed: objs[0]?.proposed ?? 0 } : { open: summary?.totals.open ?? 0, critical: summary?.totals.critical ?? 0, proposed: summary?.totals.proposed ?? 0 };
   const waiting = counts.get("approvals") ?? 0;
   const topRule = (groupsQ.data?.groups ?? []).filter((g) => g.open > 0 && (!state.module || g.module === state.module)).sort((a, b) => b.open - a.open)[0];
+  const timeline = useTimeline(null, 8).data?.runs ?? [];
+  const objectSpark = (module: string) => {
+    const scores = timeline.map((r) => r.objects[module]?.score ?? null);
+    return timeline.length > 1 && scores.some((v) => v != null) ? <Sparkline values={scores} width={64} height={14} label={tr("{name} score over the last {n} runs", { name: objectName(module, labels), n: timeline.length })} /> : null;
+  };
   const bars: Bar[] = state.module
-    ? (groupsQ.data?.groups ?? []).filter((g) => g.open > 0 && g.module === state.module).sort((a, b) => b.open - a.open).slice(0, 6).map((g) => ({ key: g.check_id, label: <Coded code={g.check_id} text={g.message} />, n: g.open, active: state.rule === g.check_id, onPick: () => go({ rule: state.rule === g.check_id ? null : g.check_id, group: false }) }))
-    : [...(summary?.objects ?? [])].filter((o) => o.open > 0).sort((a, b) => b.open - a.open).slice(0, 8).map((o) => ({ key: o.module, label: objectName(o.module, labels), n: o.open, active: false, onPick: () => go({ module: o.module }) }));
+    ? (groupsQ.data?.groups ?? []).filter((g) => g.open > 0 && g.module === state.module).sort((a, b) => b.open - a.open).slice(0, 6).map((g) => ({ key: g.check_id, label: <Coded code={g.check_id} text={g.message} />, n: g.open, active: state.rule === g.check_id, onPick: () => go({ rule: state.rule === g.check_id ? null : g.check_id, group: false }), spark: <RuleSpark id={g.check_id} /> }))
+    : [...(summary?.objects ?? [])].filter((o) => o.open > 0).sort((a, b) => b.open - a.open).slice(0, 8).map((o) => ({ key: o.module, label: objectName(o.module, labels), n: o.open, active: false, onPick: () => go({ module: o.module }), spark: objectSpark(o.module) }));
   // One action, chosen by the data: accept what is ready, else approve what waits, else start on the biggest rule.
   const action =
     session.persona === "steward" && can.apply && topGroup && state.chip !== "approvals" && state.chip !== "exceptions" ? (

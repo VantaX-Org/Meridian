@@ -11,6 +11,8 @@ import { batchLabel } from "@/lib/v2/batches";
 import { ChartFrame, ChartTable, DeltaBar, TrendChart, niceTicks } from "../charts";
 import { WorkTabs } from "./WorkTabs";
 import { CcBanner, CcPage } from "./cc-parts";
+import { Panel } from "./Mining";
+import { ScrollFrame } from "./object/ScrollFrame";
 import "../approvals.css";
 
 /** Post-clean monitoring: per system, the records that failed a rule they passed at the last run, and what has been fixed since. */
@@ -22,7 +24,7 @@ export function WorkMonitor() {
   return (
     <CcPage>
       <div data-testid="work-monitor">
-        <PageTitle>{t("Work")}</PageTitle>
+        <PageTitle sub={t("Monitor")}>{t("Work")}</PageTitle>
         <WorkTabs current="monitor" />
         {q.isPending ? (
           <Skeleton width={420} height={16} />
@@ -37,12 +39,14 @@ export function WorkMonitor() {
               label={t("Monitor")}
               eyebrow={t("Monitor")}
               verdict={back > 0 ? "at-risk" : "go"}
-              headline={t("{back} records failed a rule again since the last run, {fixed} were fixed.", { back: int(back), fixed: int(fixed) })}
+              headline={t("{back} records failed a rule again since the last run.", { back: int(back) })}
+              why={t("{fixed} records were fixed in the same period.", { fixed: int(fixed) })}
               figs={[
                 { label: t("Failing again"), value: int(back) },
                 { label: t("Fixed since"), value: int(fixed) },
               ]}
             />
+            <ScrollFrame label={t("Monitor")}>
             <table className="m2-tbl" data-testid="monitor-table">
               <thead>
                 <tr>
@@ -61,6 +65,7 @@ export function WorkMonitor() {
                 ))}
               </tbody>
             </table>
+            </ScrollFrame>
             <Trend />
           </>
         )}
@@ -91,7 +96,7 @@ function Row({ i }: { i: MonitorItem }) {
                   <Mono>{c.check_id}</Mono>
                 </V2Link>{" "}
                 {c.name ? <span>{c.name}</span> : null}{" "}
-                <span className="m2-meta">{int(c.new)}</span>
+                <span className="m2-meta">{t("{n} records", { n: int(c.new) })}</span>
               </div>
             ))
           : "—"}
@@ -134,6 +139,8 @@ function Trend() {
         <TrendChart points={points} domain={[0, ticks[ticks.length - 1]]} ticks={ticks} label={t("Records failing again after a clean, by week")} yLabel={t("records")} format={int} />
       </ChartFrame>
       {rules.length ? (
+        <Panel title={t("Drift by rule")} meta={t("Records failing again, before and after the last clean")} testId="drift-panel">
+        <ScrollFrame label={t("Drift by rule")}>
         <table className="m2-tbl" data-testid="drift-table">
           <caption className="m2-sr">{t("Drift by rule")}</caption>
           <thead>
@@ -164,8 +171,12 @@ function Trend() {
             })}
           </tbody>
         </table>
+        </ScrollFrame>
+        </Panel>
       ) : null}
       {d?.batches.length ? (
+        <Panel title={t("Still clean, by batch")} meta={t("Of the records each batch fixed, the share that has not failed again")} testId="cohort-panel">
+        <ScrollFrame label={t("Still clean, by batch")}>
         <table className="m2-tbl" data-testid="cohort-table">
           <caption className="m2-sr">{t("Still clean, by batch")}</caption>
           <thead>
@@ -187,6 +198,8 @@ function Trend() {
             ))}
           </tbody>
         </table>
+        </ScrollFrame>
+        </Panel>
       ) : null}
     </>
   );

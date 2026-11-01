@@ -31,6 +31,7 @@ function lift<T>(fn: () => Promise<T>, empty: T) {
   };
 }
 
+const signed = (d: number | null) => (d == null ? f1(null) : (d > 0 ? "+" : "") + f1(d));
 const diff = (a: number | null | undefined, b: number | null | undefined) => (a == null || b == null ? null : Math.round((a - b) * 10) / 10);
 
 export function ScoreLens() {
@@ -121,7 +122,7 @@ function RunsPanel({ runs }: { runs: ScoreHistory["history"] }) {
                 <th scope="row" className="m2-card-lead">{formatDate(r.run_at, "date")}</th>
                 <td data-label={t("As scored then")} className="m2-num">{f1(r.at_the_time.composite)}</td>
                 <td data-label={t("Today's weights")} className="m2-num">{f1(r.under_current.composite)}</td>
-                <td data-label={t("Change from the weights")} className="m2-num"><DeltaBar d={c} /></td>
+                <td data-label={t("Change from the weights")} className="m2-num"><span className="m2-dbar-fig"><DeltaBar d={c} />{signed(c)}</span></td>
                 <td data-label={t("Weights used then")} className="m2-meta">{r.scoring_recorded ? t("Recorded with the run") : t("Not recorded, default weights assumed")}</td>
               </tr>
             );
@@ -144,13 +145,14 @@ function ModulesPanel({ modules }: { modules: ScoreHistory["modules"] }) {
             const latest = series[0];
             const first = series[series.length - 1];
             const name = formatModuleName(m);
+            const sinceFirst = series.length > 1 ? diff(latest?.composite, first?.composite) : null;
             return (
               <tr key={m}>
                 <th scope="row" className="m2-card-lead">{name} <span className="m2-mono m2-meta">{m}</span></th>
                 <td data-label={t("Trend")}>{series.length > 1 ? <Sparkline values={[...series].reverse().map((s) => s.composite)} label={t("{name} over {n} runs", { name, n: int(series.length) })} width={120} height={24} /> : f1(null)}</td>
                 <td data-label={t("Latest")} className="m2-num">{f1(latest?.composite ?? null)}</td>
                 <td data-label={t("As scored then")} className="m2-num">{f1(latest?.at_the_time ?? null)}</td>
-                <td data-label={t("Since the first run")} className="m2-num"><DeltaBar d={series.length > 1 ? diff(latest?.composite, first?.composite) : null} /></td>
+                <td data-label={t("Since the first run")} className="m2-num"><span className="m2-dbar-fig"><DeltaBar d={sinceFirst} />{signed(sinceFirst)}</span></td>
               </tr>
             );
           })}

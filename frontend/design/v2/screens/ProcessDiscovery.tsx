@@ -170,7 +170,6 @@ function Catalogue({ systemId, rows, runId, onOpen }: { systemId: string; rows: 
               <th scope="col">{t("Automated")}</th>
               <th scope="col">{t("Fitness")}</th>
               <th scope="col">{t("DQ defects")}</th>
-              <th scope="col">{t("State")}</th>
               <th scope="col"><span className="m2-sr">{t("Actions")}</span></th>
             </tr>
           </thead>
@@ -182,6 +181,7 @@ function Catalogue({ systemId, rows, runId, onOpen }: { systemId: string; rows: 
                 <tr key={r.l1} aria-current={lr?.id === runId ? "true" : undefined}>
                   <th scope="row" className="m2-card-lead">
                     <Mono>{r.l1}</Mono> {r.name}
+                    <span className="m2-under">{state}</span>
                   </th>
                   <td data-label={t("Cases")}>{lr ? int(lr.cases) : <Dash why={t("Not mined")} />}</td>
                   <td data-label={t("Variants")}>{lr ? int(lr.variants) : DASH}</td>
@@ -189,13 +189,12 @@ function Catalogue({ systemId, rows, runId, onOpen }: { systemId: string; rows: 
                   <td data-label={t("Automated")}>{pct(lr?.automation_rate)}</td>
                   <td data-label={t("Fitness")}>{fit(lr?.fitness)}</td>
                   <td data-label={t("DQ defects")}>{r.dq_defects === null ? DASH : int(r.dq_defects)}</td>
-                  <td data-label={t("State")}>{state}</td>
                   <td data-label={t("Actions")}>
                     {lr ? (
-                      <button type="button" className="m2-btn" onClick={() => onOpen(lr.id)} data-testid={`pd-open-${r.l1}`}>{t("Open flow")}</button>
+                      <button type="button" className="m2-btn m2-sm" onClick={() => onOpen(lr.id)} data-testid={`pd-open-${r.l1}`}>{t("Open flow")}</button>
                     ) : null}{" "}
                     {!r.reason && !r.in_progress && can("run_process_discovery") ? (
-                      <button type="button" className="m2-btn" disabled={start.isPending} onClick={() => start.mutate(r.l1)} data-testid={`pd-run-${r.l1}`}>{lr ? t("Mine again") : t("Mine")}</button>
+                      <button type="button" className="m2-btn m2-sm" disabled={start.isPending} onClick={() => start.mutate(r.l1)} data-testid={`pd-run-${r.l1}`}>{lr ? t("Mine again") : t("Mine")}</button>
                     ) : null}
                   </td>
                 </tr>

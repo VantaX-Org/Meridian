@@ -56,7 +56,7 @@ function FilterBar({ f, set, modules }: { f: LibFilters; set: (f: LibFilters) =>
   );
   const opts = (list: readonly string[]) => list.map((value) => ({ value, label: labelOf(value) }));
   return (
-    <div className="m2-filters" role="search" aria-label={t("Filter the rules")}>
+    <div className="m2-filters" data-dense="" role="search" aria-label={t("Filter the rules")}>
       <Field label={t("Search")}>{(p) => <input {...p} type="search" value={f.search} placeholder={t("Code, name or object")} onChange={(e) => set({ ...f, search: e.target.value })} />}</Field>
       {sel(t("Object"), "module", modules.map((m) => ({ value: m, label: labelOf(m) })))}
       {sel(t("Dimension"), "dimension", opts(DIMENSIONS))}
@@ -360,7 +360,7 @@ export function RulesLibrary() {
   const moduleBars = [...byModule.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
-    .map(([m, n]) => ({ key: m, label: labelOf(m), value: n, tone: "crit" as const, text: t("{n} failing {count, plural, one {rule} other {rules}}", { n, count: n }) }));
+    .map(([m, n]) => ({ key: m, label: labelOf(m), value: n, tone: "crit" as const, text: int(n) }));
 
   return (
     <CcPage>
@@ -391,13 +391,15 @@ export function RulesLibrary() {
               ) : undefined
             }
           />
-          {moduleBars.length > 0 ? (
-            <section className="m2-cc-card" aria-label={t("Failing rules by object")} data-testid="rules-by-object">
-              <h3>{t("Failing rules by object")}</h3>
-              <CcHBars rows={moduleBars} label={t("Failing rules by object")} />
-            </section>
-          ) : null}
-          <RuleBoard label={labelOf} />
+          <div className="m2-rules-top">
+            {moduleBars.length > 0 ? (
+              <section className="m2-cc-card" aria-label={t("Failing rules by object")} data-testid="rules-by-object">
+                <h3>{t("Failing rules by object")}</h3>
+                <CcHBars rows={moduleBars} label={t("Failing rules by object")} />
+              </section>
+            ) : null}
+            <RuleBoard label={labelOf} />
+          </div>
         </>
       ) : null}
       <p className="m2-statusline" data-testid="rules-status-line">
@@ -405,7 +407,7 @@ export function RulesLibrary() {
         {rows.length ? <span>{t("{filterCount} enabled", { filterCount: rows.filter((r) => r.enabled).length })}</span> : null}
         {suppressed.size ? <span>{t("{size} suppressed", { size: suppressed.size })}</span> : null}
       </p>
-      <div className="m2-rbar" style={{ marginTop: "var(--m2-s4)" }}>
+      <div className="m2-rbar">
         <div className="m2-segs" role="group" aria-label={t("Show")}>
           {segs.filter((s) => s.show).map((s) => (
             <button key={s.key} type="button" className="m2-seg" aria-pressed={view === s.key} onClick={() => setView(s.key)}>{s.label}</button>
@@ -414,7 +416,7 @@ export function RulesLibrary() {
         {canManage ? (
           <button
             type="button"
-            className="m2-btn m2-strong"
+            className="m2-btn"
             onClick={() => {
               setView("drafts");
               setEditing("new");

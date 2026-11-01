@@ -38,6 +38,7 @@
 .m2-root .m2-views a[aria-current="page"] { background: var(--m2-inverse); color: var(--m2-on-inverse) !important; font-weight: 500; }
 .m2-root .m2-rfilters { display: flex; flex-wrap: wrap; gap: var(--m2-s3); align-items: center; margin: var(--m2-s3) 0; font-size: var(--m2-fs-13); color: var(--m2-meta); }
 .m2-root .m2-rfilters label { display: inline-flex; gap: var(--m2-s2); align-items: center; }
+.m2-root .m2-rfilters > .m2-views { margin-right: var(--m2-s3); }
 
 /* Table cells that carry a link, a mark and a word */
 .m2-root .m2-tbl td a, .m2-root .m2-tbl th a { color: var(--m2-fg); }
@@ -76,6 +77,8 @@
 .m2-root .m2-pick li { border-bottom: 1px solid var(--m2-rule); }
 .m2-root .m2-pick li:last-child { border-bottom: 0; }
 .m2-root .m2-pick label { display: grid; grid-template-columns: auto 1fr auto; gap: var(--m2-s2); align-items: center; padding: var(--m2-s2) var(--m2-s3); cursor: pointer; font-size: var(--m2-fs-13); }
+.m2-root .m2-pick label[data-bar] { grid-template-columns: auto minmax(0, 1fr) minmax(96px, 160px) 6em auto; }
+.m2-root .m2-pick .m2-cc-hval, .m2-root .m2-pick .m2-meta { white-space: nowrap; }
 .m2-root .m2-pick label:hover { background: var(--m2-hover); }
 .m2-root .m2-check { display: flex; gap: var(--m2-s2); align-items: center; font-size: var(--m2-fs-13); margin: var(--m2-s2) 0; }
 
@@ -89,5 +92,11 @@
   .m2-only-narrow { display: block; }
   .m2-root .m2-tlpop { left: 8px !important; right: 8px; width: auto; }
 }
+/* The scoped ledger on the Records tab and the rule canvas */
+.m2-root .m2-ledger { display: grid; gap: var(--m2-s3); justify-items: start; }
+.m2-root .m2-ledger-h { display: flex; justify-content: space-between; align-items: center; gap: var(--m2-s3); width: 100%; font-size: var(--m2-fs-13); font-variant-numeric: tabular-nums; }
+.m2-root .m2-ledger-scroll { width: 100%; overflow: auto; border: 1px solid var(--m2-line); border-radius: var(--m2-r2); }
+.m2-root .m2-ledger-risk { display: inline-grid; grid-template-columns: 72px auto; gap: var(--m2-s2); align-items: center; }
+.m2-root .m2-ledger-risk .m2-cc-track { width: 72px; height: 6px; }
 .m2-root .m2-runshape { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--m2-s6) var(--m2-s8); align-items: start; }
 @media (max-width: 900px) { .m2-root .m2-runshape { grid-template-columns: minmax(0, 1fr); } }

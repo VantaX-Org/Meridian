@@ -6,6 +6,8 @@ import { useOpenItem } from "@/lib/v2/hooks";
 import { VerdictMark } from "../marks";
 import { V2Link } from "../parts";
 import { t } from "@/lib/v2/i18n";
+import { formatDate } from "@/lib/format";
+import type { WorkflowTask } from "@/lib/api/v2/requests";
 
 /** What an action answered, kept in the frame it was started from. */
 export interface Outcome {
@@ -106,4 +108,25 @@ export function useOutcome(scope?: string): { outcome: Outcome | null; pending: 
   );
   const clear = useCallback(() => put(null, true), [put]);
   return { outcome: scope ? shared : local, pending, run, clear };
+}
+
+const TASK_WORD = (s: string): string => ({ pending: t("Waiting"), approved: t("Approved"), rejected: t("Rejected"), skipped: t("Skipped"), cancelled: t("Cancelled") })[s] ?? s;
+
+/** The steps of an approval workflow: each step, its state, who decided it and when, or when it falls due. */
+export function WorkflowSteps({ tasks, testId }: { tasks: WorkflowTask[]; testId: string }) {
+  return (
+    <ol className="m2-trail" data-testid={testId}>
+      {tasks.map((s) => (
+        <li key={s.id}>
+          <div>
+            {`${s.step_name}: ${TASK_WORD(s.status)}`}
+            {s.decided_by_label ? t(" by {user}", { user: s.decided_by_label }) : ""}
+          </div>
+          {s.comment ? <p className="m2-tr-note">{s.comment}</p> : null}
+          {s.skip_reason ? <p className="m2-tr-note">{s.skip_reason}</p> : null}
+          <div className="m2-tr-at">{s.decided_at ? formatDate(s.decided_at, "datetime") : s.due_at ? t("Due {due}", { due: formatDate(s.due_at, "datetime") }) : "—"}</div>
+        </li>
+      ))}
+    </ol>
+  );
 }

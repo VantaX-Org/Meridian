@@ -5,7 +5,7 @@
  */
 
 /* ---- forms ---- */
-.m2-fld { display: grid; gap: var(--m2-s1); min-width: 0; }
+.m2-fld { display: grid; gap: var(--m2-s1); align-content: start; min-width: 0; }
 .m2-fld > label { font-size: var(--m2-fs-12); color: var(--m2-meta); }
 .m2-fld input, .m2-fld select, .m2-fld textarea, .m2-ctl { height: 32px; padding: 0 var(--m2-s2); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-fg); font: inherit; font-size: var(--m2-fs-13); min-width: 0; width: 100%; }
 .m2-fld textarea { height: auto; min-height: 72px; padding: var(--m2-s2); }
@@ -40,6 +40,10 @@
 .m2-lib { display: grid; gap: var(--m2-s3); }
 .m2-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--m2-s3); align-items: end; margin-bottom: var(--m2-s3); }
 .m2-filters .m2-fld { max-width: 260px; }
+/* The rules library: search wide, the five selects in the same row, so the filters take one line, not three */
+.m2-filters[data-dense] { grid-template-columns: minmax(160px, 1.6fr) repeat(5, minmax(96px, 1fr)); }
+.m2-filters[data-dense] .m2-fld { max-width: none; }
+@media (max-width: 900px) { .m2-filters[data-dense] { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); } }
 
 /* ---- the survivorship editor ---- */
 .m2-sv { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--m2-line); }

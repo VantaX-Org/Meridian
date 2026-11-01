@@ -16,7 +16,7 @@ import { Coded, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts"
 import { BatchButtons, ReassignMenu, day, money, useBatchControls } from "../screens/batch-parts";
 import { KeyText, keyValue } from "../screens/work-parts";
 import { useToast } from "../Toast";
-import { ResultFrame, useOutcome } from "./shared";
+import { ResultFrame, WorkflowSteps, useOutcome } from "./shared";
 import { CollabSections } from "./collab";
 import { DelegationBanner } from "./delegation";
 import { LiveWriteback } from "./writeback";
@@ -103,6 +103,19 @@ function Trail({ id }: { id: string }) {
   );
 }
 
+/** The batch's approval workflow: which step waits and who decided each one. Shown once the first decision starts it. */
+function Steps({ id }: { id: string }) {
+  const q = useBatch(id);
+  const tasks = q.data?.workflow?.tasks ?? [];
+  if (tasks.length === 0) return null;
+  return (
+    <>
+      <h3>{tr("Approval steps")}</h3>
+      <WorkflowSteps tasks={tasks} testId="batch-steps" />
+    </>
+  );
+}
+
 function BatchBody({ b }: { b: BatchRow }) {
   const toast = useToast();
   const { outcome, run, clear } = useOutcome();
@@ -185,6 +198,8 @@ function BatchBody({ b }: { b: BatchRow }) {
 
       <h3>{tr("Records")}</h3>
       <Records id={b.id} total={b.records} />
+
+      <Steps id={b.id} />
 
       <h3>{tr("Approval trail")}</h3>
       <Trail id={b.id} />

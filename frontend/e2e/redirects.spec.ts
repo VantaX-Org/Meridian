@@ -39,7 +39,6 @@ const SAMPLE: [string, string][] = [
   ["/systems", "/"],
   ["/systems/S1", "/s/S1"],
   ["/mdm/golden/G1", "/?open=golden%3AG1"],
-  ["/migration", "/?view=waves&open=waves"],
   ["/admin/jobs", "/admin/system"],
   ["/admin/sign-in", "/admin/signin"],
   ["/help", "/?open=help"],

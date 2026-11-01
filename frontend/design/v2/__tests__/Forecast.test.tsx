@@ -33,7 +33,8 @@ describe("Forecast and plan", () => {
   it("names rules beside their ids, plans sprints, and counts only open queue stages", async () => {
     renderWithQuery(<Forecast />);
     const actions = await screen.findByTestId("fc-actions");
-    expect(await within(actions).findByText("MM142")).toBeInTheDocument();
+    const named = await within(actions).findByText("Base unit of measure MEINS must reference a valid entry in T006");
+    expect(named.closest("th")!.textContent).toContain("MM142");
     expect(within(actions).getByText("Merge suggested for vendors 100234 and 100871")).toBeInTheDocument();
     const sprints = await screen.findByTestId("fc-sprints");
     expect(within(sprints).getByText("Sprint 1").closest("tr")!.textContent).toMatch(/82\.4 to 85\.1/);

@@ -64,7 +64,11 @@ describe("the reports canvas", () => {
     expect(monthly).toContain("Partly delivered");
     expect(paused).toContain("Paused");
     expect(paused).toContain("Failed");
-    expect(screen.getByText(/6 reports made, 2 of 3 schedules are on/)).toBeInTheDocument();
+    const banner = screen.getByTestId("reports-banner");
+    expect(banner).toHaveTextContent(/Reports made\s*6/);
+    expect(banner).toHaveTextContent(/Schedules on\s*2\s*of 3 in all/);
+    expect(banner).toHaveTextContent(/Next delivery.*Board pack for the steering committee/);
+    expect(screen.getAllByRole("button", { name: "Schedule a report" })).toHaveLength(1);
   });
 
   it("leads with the failed schedule and charts the reports made per kind, each with its description", async () => {
