@@ -6740,6 +6740,16 @@ export const en = {
   "Delete view": "Delete view",
   "Deleted the view {name}": "Deleted the view {name}",
   "The view could not be deleted.": "The view could not be deleted.",
+  "What the latest run puts at risk": "What the latest run puts at risk",
+  "The KPIs, processes and S/4HANA features behind the failing rules": "The KPIs, processes and S/4HANA features behind the failing rules",
+  "Reaches": "Reaches",
+  "Worst severity": "Worst severity",
+  "Cost at risk": "Cost at risk",
+  "Blocks the feature": "Blocks the feature",
+  "Degrades the feature": "Degrades the feature",
+  "Cosmetic": "Cosmetic",
+  "No failing rule reaches a KPI, process or feature in this run.": "No failing rule reaches a KPI, process or feature in this run.",
+  "{n, plural, one {# failing rule is} other {# failing rules are}} not placed behind any KPI by the lineage model:": "{n, plural, one {# failing rule is} other {# failing rules are}} not placed behind any KPI by the lineage model:",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
