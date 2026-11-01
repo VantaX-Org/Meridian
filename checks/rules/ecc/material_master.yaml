@@ -13061,7 +13061,7 @@ rules:
     __other__: Open the material in CL20N or MM02 (classification view) and save the assignment with a valid status.
   record_fix_template: 'Object {KSSK.OBJEK}, class type {KSSK.KLART}, class {KSSK.CLINT}: classification status is blank.'
 - id: MM901
-  field: KSSK.STDCL
+  field: KSSK.OBJEK
   check_class: uniqueness_check
   grain: KSSK
   applies_when:
