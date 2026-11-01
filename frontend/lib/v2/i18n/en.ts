@@ -6591,6 +6591,10 @@ export const en = {
   "No material has an open finding.": "No material has an open finding.",
   "Open issues": "Open issues",
   "Top issue": "Top issue",
+  "{back} records failed a rule again since the last run.": "{back} records failed a rule again since the last run.",
+  "{fixed} records were fixed in the same period.": "{fixed} records were fixed in the same period.",
+  "Records failing again, before and after the last clean": "Records failing again, before and after the last clean",
+  "Of the records each batch fixed, the share that has not failed again": "Of the records each batch fixed, the share that has not failed again",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

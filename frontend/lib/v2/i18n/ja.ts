@@ -6592,4 +6592,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "No material has an open finding.": "未解決の指摘がある品目はありません。",
   "Open issues": "未解決の問題",
   "Top issue": "最重要の問題",
+  "{back} records failed a rule again since the last run.": "{back}件のレコードが前回の実行以降に再びルールに違反しました。",
+  "{fixed} records were fixed in the same period.": "同じ期間に{fixed}件のレコードが修正されました。",
+  "Records failing again, before and after the last clean": "前回のクレンジング前後に再び違反したレコード",
+  "Of the records each batch fixed, the share that has not failed again": "各バッチで修正したレコードのうち、再び違反していない割合",
 };

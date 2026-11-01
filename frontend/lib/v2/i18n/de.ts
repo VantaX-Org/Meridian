@@ -6592,4 +6592,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "No material has an open finding.": "Kein Material hat einen offenen Befund.",
   "Open issues": "Offene Probleme",
   "Top issue": "Wichtigstes Problem",
+  "{back} records failed a rule again since the last run.": "{back} Datensätze haben seit dem letzten Lauf erneut eine Regel verletzt.",
+  "{fixed} records were fixed in the same period.": "{fixed} Datensätze wurden im selben Zeitraum behoben.",
+  "Records failing again, before and after the last clean": "Erneut fehlerhafte Datensätze vor und nach der letzten Bereinigung",
+  "Of the records each batch fixed, the share that has not failed again": "Anteil der je Charge behobenen Datensätze, die nicht erneut fehlgeschlagen sind",
 };
