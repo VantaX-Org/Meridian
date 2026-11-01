@@ -201,6 +201,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     if (method === "DELETE" && sla) return ap.deletePolicyFixture(decodeURIComponent(sla[1]));
     if (method === "PUT" && path === "/triage/settings") return ap.putSettingsFixture(body as never);
     if (method === "PUT" && path === "/views") return wf.putViewFixture(body as never);
+    const delView = /^\/views\/([^/]+)$/.exec(path);
+    if (method === "DELETE" && delView) return wf.deleteViewFixture(decodeURIComponent(delView[1]));
     const mdm = mdmFixtureWrite(method, path, body);
     if (mdm !== undefined) return mdm;
     const ent = enterpriseFixtureWrite(method, path, body);

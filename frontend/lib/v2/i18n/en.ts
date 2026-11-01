@@ -6734,6 +6734,12 @@ export const en = {
   "Nothing has happened to this approval yet.": "Nothing has happened to this approval yet.",
   "Hide approval detail": "Hide approval detail",
   "Show approval detail": "Show approval detail",
+  "Delete this view…": "Delete this view…",
+  "Delete this view": "Delete this view",
+  "The saved view {name} is removed for you. The records it showed are not touched.": "The saved view {name} is removed for you. The records it showed are not touched.",
+  "Delete view": "Delete view",
+  "Deleted the view {name}": "Deleted the view {name}",
+  "The view could not be deleted.": "The view could not be deleted.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

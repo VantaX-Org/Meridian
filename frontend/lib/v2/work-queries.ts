@@ -4,7 +4,7 @@ import { useInfiniteQuery, useQueries, useQuery, useQueryClient } from "@tanstac
 import { useCallback } from "react";
 import { useFixture } from "@/lib/api/v2/fixture";
 import type { WorkRow } from "@/lib/api/v2/types";
-import { getGroups, getLinks, getRecord, getSummary, getViews, getWork, putView, type WorkFilters } from "@/lib/api/v2/work";
+import { getGroups, getLinks, getRecord, getSummary, deleteView, getViews, getWork, putView, type WorkFilters } from "@/lib/api/v2/work";
 import { SERVER_SORT, type SortKey } from "./work";
 
 const STALE = 15_000;
@@ -96,7 +96,14 @@ export function useWorkViews() {
     },
     [qc, fx],
   );
-  return { ...q, save };
+  const remove = useCallback(
+    async (id: string) => {
+      await deleteView(id);
+      await qc.invalidateQueries({ queryKey: workKeys.views(fx) });
+    },
+    [qc, fx],
+  );
+  return { ...q, save, remove };
 }
 
 export type { WorkRow };

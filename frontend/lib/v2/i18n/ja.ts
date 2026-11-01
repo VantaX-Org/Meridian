@@ -6735,4 +6735,10 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Nothing has happened to this approval yet.": "この承認にはまだ何も起きていません。",
   "Hide approval detail": "承認の詳細を隠す",
   "Show approval detail": "承認の詳細を表示",
+  "Delete this view…": "このビューを削除…",
+  "Delete this view": "このビューを削除",
+  "The saved view {name} is removed for you. The records it showed are not touched.": "保存済みビュー {name} を削除します。表示されていたレコードは変更されません。",
+  "Delete view": "ビューを削除",
+  "Deleted the view {name}": "ビュー {name} を削除しました",
+  "The view could not be deleted.": "ビューを削除できませんでした。",
 };

@@ -6735,4 +6735,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Nothing has happened to this approval yet.": "Zu dieser Freigabe ist noch nichts geschehen.",
   "Hide approval detail": "Freigabedetails ausblenden",
   "Show approval detail": "Freigabedetails anzeigen",
+  "Delete this view…": "Diese Ansicht löschen…",
+  "Delete this view": "Diese Ansicht löschen",
+  "The saved view {name} is removed for you. The records it showed are not touched.": "Die gespeicherte Ansicht {name} wird für Sie entfernt. Die angezeigten Datensätze bleiben unverändert.",
+  "Delete view": "Ansicht löschen",
+  "Deleted the view {name}": "Ansicht {name} gelöscht",
+  "The view could not be deleted.": "Die Ansicht konnte nicht gelöscht werden.",
 };

@@ -43,6 +43,7 @@ import { PAGE, allWorkRows, useGroupRows, useWorkGroups, useWorkRows, useWorkSum
 import { Grid, type GridColumn, type GridHandle } from "../Grid";
 import { IconChevron, IconClose, SeverityMark } from "../marks";
 import { MenuButton, type MenuEntry } from "../Menu";
+import { Confirm } from "../admin/kit";
 import { Coded, Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, V2Link } from "../parts";
 import { usePhone } from "@/lib/v2/hooks";
 import { useToast } from "../Toast";
@@ -264,6 +265,7 @@ export function WorkCanvas() {
     else run();
   }, [setBulk]);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [imp, setImp] = useState<{ name: string; busy: boolean; result?: ImportResult; error?: string } | null>(null);
   const chipsRef = useRef<HTMLDivElement>(null);
@@ -566,6 +568,9 @@ export function WorkCanvas() {
     { kind: "separator" },
     { kind: "item", id: "reset", label: tr("Reset to the default view"), onSelect: () => goView(null) },
     { kind: "item", id: "save", label: tr("Save current view…"), onSelect: () => setSaving(true) },
+    ...(view && !view.builtin && view.mine !== false && !pastRun
+      ? [{ kind: "item", id: "delete-view", label: tr("Delete this view…"), onSelect: () => setDeleting(true) } as MenuEntry]
+      : []),
   ];
 
   // The strip of filters in force beyond the chip, each one removable.
@@ -968,6 +973,25 @@ export function WorkCanvas() {
             const r = reason;
             setReason(null);
             void actions.decide(r.rows, r.kind, { note }).then((ok) => ok && r.clear?.());
+          }}
+        />
+      ) : null}
+      {deleting && view ? (
+        <Confirm
+          title={tr("Delete this view")}
+          body={tr("The saved view {name} is removed for you. The records it showed are not touched.", { name: view.name })}
+          confirm={tr("Delete view")}
+          danger
+          onCancel={() => setDeleting(false)}
+          onConfirm={() => {
+            setDeleting(false);
+            void viewsQ
+              .remove(view.id)
+              .then(() => {
+                toast.show(tr("Deleted the view {name}", { name: view.name }));
+                goView(null);
+              })
+              .catch((err) => toast.show(errorSentence(err, tr("The view could not be deleted.")), "error"));
           }}
         />
       ) : null}

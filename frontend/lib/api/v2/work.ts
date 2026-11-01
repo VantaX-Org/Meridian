@@ -112,6 +112,8 @@ export interface SavedView {
 export const getViews = (route: string): Promise<{ route: string; views: SavedView[] }> => v2Get("/views", { route });
 export const putView = (view: { route: string; name: string; filters: Record<string, string>; columns: string[] | null; density: "compact" | "comfortable" | null }): Promise<SavedView> =>
   v2Send<SavedView>("PUT", "/views", view);
+/** DELETE /views/{id}: drops one of the caller's own saved views. A built-in view answers 409. */
+export const deleteView = (id: string): Promise<void> => v2Send<void>("DELETE", `/views/${encodeURIComponent(id)}`);
 
 // Record links ------------------------------------------------------------------------------------------------
 
