@@ -55,3 +55,32 @@ export async function uploadKnownIssues(systemId: string, csv: string): Promise<
   const { data } = await client.post<KnownIssuesResult>(`/api/v1${path}`, csv, { headers: { "Content-Type": "text/csv" } });
   return data;
 }
+
+/** One context value a tuning proposal excludes: the record-key field, the rule column it maps to, and its verdicts. */
+export interface TuningExclusion { field: string; column: string; value: string; false_positive: number; real: number }
+/** A self-tuning proposal for a rule below target precision (GET /rule-tuning, checks/self_tune.py). */
+export interface TuningProposal {
+  rule_id: string;
+  message: string;
+  module: string;
+  reviewed: number;
+  precision_before: number;
+  precision_after: number;
+  kind: "exclude" | "severity";
+  exclusions: TuningExclusion[];
+  severity_from?: string;
+  severity_to?: string;
+  records_excluded: number;
+  fp_removed: number;
+  real_lost: number;
+  rationale: string;
+  /** Unified diff of the rule as it runs now against the proposal. */
+  diff: string;
+  /** A draft or in-review version already waiting; no new draft until it is decided. */
+  pending: { version: number; state: string } | null;
+}
+export interface RuleTuning { target_precision: number; proposals: TuningProposal[] }
+export interface DraftedVersion { rule_id: string; version: number; state: string }
+
+export const getRuleTuning = (): Promise<RuleTuning> => v2Get("/rule-tuning");
+export const draftTunedVersion = (ruleId: string): Promise<DraftedVersion> => v2Send("POST", `/rule-tuning/${enc(ruleId)}/draft`);

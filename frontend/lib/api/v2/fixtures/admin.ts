@@ -347,6 +347,7 @@ const st =(): State => (S ??= build());
 /** Test seam and `?fixture=1` reload: forget every change and start from the demo tenant again. */
 export function resetAdminFixture(): void {
   S = null;
+  tunedDraft = null;
 }
 
 const text = (v: unknown): string => (v === undefined || v === null ? "" : String(v));
@@ -452,8 +453,36 @@ function scheduleOptions() {
   };
 }
 
-/** A read in the admin area, or NONE_ADMIN when the path is not one of its own. */
 let pilotKnown = 0;
+/** The self-tuning proposals (GET /rule-tuning): MM228 false positives concentrate on plant 1000 and, from the stored context, material type DIEN. A draft marks it pending. */
+let tunedDraft: number | null = null;
+function ruleTuning() {
+  return {
+    target_precision: 0.9,
+    proposals: [
+      {
+        rule_id: "MM228",
+        message: "Source list is mandatory for the material at the plant, but no source list exists",
+        module: "material_master",
+        reviewed: 30,
+        precision_before: 0.6,
+        precision_after: 0.9474,
+        kind: "exclude",
+        exclusions: [
+          { field: "WERKS", column: "MARC.WERKS", value: "1000", false_positive: 7, real: 0 },
+          { field: "MTART", column: "MARA.MTART", value: "DIEN", false_positive: 4, real: 0 },
+        ],
+        records_excluded: 11,
+        fp_removed: 11,
+        real_lost: 0,
+        rationale: "11 of the 12 false positives stewards marked sit on WERKS=1000, MTART=DIEN, where at least 90% of reviewed issues were false positives. Excluding them loses 0 real issue(s) and raises precision from 60% to 95%.",
+        diff: "--- current\n+++ proposed\n@@ -1,6 +1,12 @@\n applies_when:\n+  MARA.MTART:\n+    not_in:\n+    - DIEN\n   MARC.KORDB:\n   - X\n+  MARC.WERKS:\n+    not_in:\n+    - '1000'\n check_class: exists_check\n dimension: consistency\n field: MARC.KORDB",
+        pending: tunedDraft === null ? null : { version: tunedDraft, state: "draft" },
+      },
+    ],
+  };
+}
+/** A read in the admin area, or NONE_ADMIN when the path is not one of its own. */
 /** The pilot scorecard: a few rules with reviewer verdicts, and recall against whatever known-issues list was uploaded. */
 function pilotScorecard() {
   const rule = (check_id: string, module: string, severity: string, message: string, flagged: number, fp: number, real: number) => {
@@ -564,6 +593,7 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
       rules: [exact("MM001", "material_master", "null_check"), exact("MM002", "material_master", "regex_check"), exact("EC001", "employee_central", "null_check"), exact("SDCM001", "sd_customer_master", "null_check"), exact("BP003", "business_partner", "null_check"), exact("BP207", "business_partner", "uniqueness_check", 20)],
     };
   }
+  if (path === "/rule-tuning") return ruleTuning();
   const ref = /^\/systems\/([^/]+)\/reference$/.exec(path);
   if (ref) return clone(s.reference[decodeURIComponent(ref[1])] ?? []);
   if (path === "/audit") {
@@ -866,6 +896,11 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
       }
     });
     return { reset_count: n, module: text(params.module) || "all" };
+  }
+  const tune = /^\/rule-tuning\/([^/]+)\/draft$/.exec(path);
+  if (method === "POST" && tune) {
+    tunedDraft = 2;
+    return { rule_id: decodeURIComponent(tune[1]), version: tunedDraft, state: "draft" };
   }
   if (method === "POST" && /^\/systems\/[^/]+\/pilot\/known-issues$/.test(path)) {
     const rows = text(body).split(/\r?\n/).filter((l) => l.trim() && !/^object\s*,/i.test(l));

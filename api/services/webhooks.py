@@ -50,7 +50,7 @@ TIMEOUT_SECONDS = 10
 FORBIDDEN_KEYS = frozenset({
     "record_key", "record_keys", "value", "values", "current_value", "proposed_value", "previous_value",
     "new_value", "old_value", "field_values", "sample", "samples", "sample_keys", "sample_values",
-    "element_value", "failing_record_values", "config_data",
+    "element_value", "failing_record_values", "failing_record_context", "config_data",
 })
 MAX_STRING = 300
 

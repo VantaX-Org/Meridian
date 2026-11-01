@@ -118,7 +118,11 @@ export const useRuleAccuracy = () => {
   const f = useFixture();
   return useQuery({ queryKey: k(f, "rule-accuracy"), queryFn: pilot.getRuleAccuracy, staleTime: Infinity, retry: false });
 };
-export const useAudit =(q: AuditListParams, enabled = true) => {
+export const useRuleTuning = () => {
+  const f = useFixture();
+  return useRead(k(f, "tuning"), pilot.getRuleTuning, true);
+};
+export const useAudit = (q: AuditListParams, enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "audit", q), () => api.listAudit(q), enabled);
 };

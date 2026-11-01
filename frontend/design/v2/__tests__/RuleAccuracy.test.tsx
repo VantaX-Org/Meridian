@@ -69,7 +69,30 @@ describe("Admin: rule accuracy", () => {
     h.allowed = ["view"];
     renderWithQuery(<RuleAccuracySection />);
     await screen.findByRole("table", { name: "Accuracy by rule" });
-    expect(screen.getByTestId("needs-permission")).toHaveTextContent("manage systems");
+    const needs = screen.getAllByTestId("needs-permission").map(norm).join(" ");
+    expect(needs).toContain("manage systems");
+    expect(needs).toContain("manage rules");
     expect(screen.queryByRole("button", { name: "Upload the list" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Draft tuned version" })).toBeNull();
+  });
+
+  it("shows the self-tuning proposal with its evidence and diff, and drafts it as a version", async () => {
+    const spy = vi.spyOn(pilotApi, "draftTunedVersion");
+    renderWithQuery(<RuleAccuracySection />);
+    const sec = await screen.findByRole("region", { name: "MM228" });
+    const text = norm(sec);
+    expect(text).toContain("Source list is mandatory for the material at the plant");
+    expect(text).toContain("MARC.WERKS=1000");
+    expect(text).toContain("Plant");
+    expect(text).toContain("MARA.MTART=DIEN");
+    expect(text).toContain("Material type");
+    expect(text).toContain("60.0% to 94.7%");
+    expect(within(sec).getByLabelText("Changes to MM228")).toHaveTextContent("not_in:");
+    expect(within(sec).getByRole("link", { name: "Review the rule's versions" }).getAttribute("href")).toContain("/r/MM228");
+    fireEvent.click(within(sec).getByRole("button", { name: "Draft tuned version" }));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith("MM228"));
+    expect(await screen.findByTestId("action-result")).toHaveTextContent("Tuned version drafted");
+    expect(await within(sec).findByText(/Version 2 is/)).toBeInTheDocument();
+    expect(within(sec).getByRole("button", { name: "Draft tuned version" })).toBeDisabled();
   });
 });

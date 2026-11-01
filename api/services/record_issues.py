@@ -73,9 +73,10 @@ def _copy(session, table: str, columns: tuple[str, ...], rows: Iterable[tuple], 
     return n
 
 
-def _keyed_values(r) -> dict[str, dict | None]:
-    """record_key → the rule's (masked) column values; first occurrence of a key wins."""
-    values = r.failing_record_values or []
+def _keyed_values(r, attr: str = "failing_record_values") -> dict[str, dict | None]:
+    """record_key → the rule's (masked) column values, or with ``attr="failing_record_context"``
+    its classification codes; first occurrence of a key wins."""
+    values = getattr(r, attr, None) or []
     out: dict[str, dict | None] = {}
     for i, k in enumerate(r.failing_record_keys):
         out.setdefault(k, values[i] if i < len(values) else None)
@@ -114,20 +115,25 @@ def store_records(session, tenant_id: str, version_id: str, results) -> int:
     earlier pass of the same checks on this version stored (a resumed run re-stores a rule)."""
     session.execute(text(
         "CREATE TEMP TABLE IF NOT EXISTS tmp_finding_records "
-        "(check_id text, module text, grain text, record_key text, field_values text) ON COMMIT DROP"))
+        "(check_id text, module text, grain text, record_key text, field_values text, context text) ON COMMIT DROP"))
     session.execute(text("TRUNCATE tmp_finding_records"))
-    failing = _copy(session, "tmp_finding_records", ("check_id", "module", "grain", "record_key", "field_values"), (
-        (r.check_id, r.module, r.grain, k, json.dumps(v) if v else None)
-        for r in results if r.failing_record_keys
-        for k, v in _keyed_values(r).items()
-    ))
+
+    def rows(r):
+        ctx = _keyed_values(r, "failing_record_context")
+        for k, v in _keyed_values(r).items():
+            c = ctx.get(k)
+            yield r.check_id, r.module, r.grain, k, json.dumps(v) if v else None, json.dumps(c) if c else None
+
+    failing = _copy(session, "tmp_finding_records",
+                    ("check_id", "module", "grain", "record_key", "field_values", "context"),
+                    (row for r in results if r.failing_record_keys for row in rows(r)))
     p = {"tid": tenant_id, "vid": version_id}
     session.execute(text("DELETE FROM finding_records WHERE version_id = :vid AND check_id = ANY(:ids)"),
                     {**p, "ids": [r.check_id for r in results]})
     session.execute(text("""
-        INSERT INTO finding_records (tenant_id, version_id, check_id, module, grain, record_key, field_values)
+        INSERT INTO finding_records (tenant_id, version_id, check_id, module, grain, record_key, field_values, context)
         SELECT CAST(:tid AS uuid), CAST(:vid AS uuid), check_id, module, NULLIF(grain, ''), record_key,
-               CAST(field_values AS jsonb)
+               CAST(field_values AS jsonb), CAST(context AS jsonb)
         FROM tmp_finding_records
         ON CONFLICT DO NOTHING
     """), p)
@@ -260,15 +266,17 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
 
         upsert = session.execute(text("""
             INSERT INTO record_issues (tenant_id, scope, module, check_id, record_key, grain, severity,
-                                       first_seen_version, last_seen_version)
-            SELECT fr.tenant_id, :scope, fr.module, fr.check_id, fr.record_key, fr.grain, f.severity, :vid, :vid
+                                       first_seen_version, last_seen_version, context)
+            SELECT fr.tenant_id, :scope, fr.module, fr.check_id, fr.record_key, fr.grain, f.severity, :vid, :vid,
+                   fr.context
               FROM finding_records fr
               JOIN findings f ON f.version_id = fr.version_id AND f.check_id = fr.check_id
              WHERE fr.version_id = :vid AND fr.record_key NOT LIKE :unstable
                AND fr.check_id = ANY(:batch)
             ON CONFLICT (tenant_id, scope, check_id, record_key) DO UPDATE
                SET last_seen_version = EXCLUDED.last_seen_version, last_seen_at = now(),
-                   severity = EXCLUDED.severity, module = EXCLUDED.module
+                   severity = EXCLUDED.severity, module = EXCLUDED.module,
+                   context = COALESCE(EXCLUDED.context, record_issues.context)
             RETURNING (xmax = 0) AS created
         """), {**bp, "unstable": _UNSTABLE}).fetchall()
         created += sum(1 for (c,) in upsert if c)
