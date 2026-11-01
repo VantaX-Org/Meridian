@@ -19,7 +19,9 @@ The `/v2` addresses are kept for one release, so links shared before October 202
 
 Administration kept its addresses: `/admin/users`, `/admin/roles`, `/admin/settings`, `/admin/licence`,
 `/admin/billing`, `/admin/mappings`, `/admin/reference`, `/admin/audit`, `/admin/alerts` and
-`/admin/notifications` open the same section as before, and `/rules` and `/runs` are the rules library and the runs. The redirects are defined in `frontend/next.config.ts`;
+`/admin/notifications` open the same section as before, and `/rules` and `/runs` are the rules library and the runs.
+`/attention`, `/insights`, `/issues`, `/mining`, `/mdm` and `/migration` are live pages of the map again (Action centre,
+Cost and causes, Issues, Data mining, MDM health, Migration), so they are not redirected; their old sub-pages still are. The redirects are defined in `frontend/next.config.ts`;
 `frontend/__tests__/legacy-redirects.test.ts` checks that each of the 78 routes the old interface served opens a page,
 and `frontend/e2e/redirects.spec.ts` follows a sample of them in the browser.
 
@@ -43,7 +45,6 @@ Home pages, per persona, and pages that were a way to get somewhere: the landsca
 | `/home` | always | `/` |
 | `/home/:persona` | always | `/` |
 | `/dashboard` | always | `/` |
-| `/insights` | always | `/` |
 | `/insights/exec` | always | `/` |
 | `/design` | always | `/` |
 | `/search` | always | `/` |
@@ -51,7 +52,6 @@ Home pages, per persona, and pages that were a way to get somewhere: the landsca
 | `/help` | always | `/?open=help` |
 | `/docs` | always | `/?open=help` |
 | `/me/preferences` | always | `/?open=preferences` |
-| `/attention` | always | `/work` |
 | `/command-centre` | always | `/runs` |
 
 ### Fix work, cleaning and remediation
@@ -75,7 +75,6 @@ Fix work, cleaning and remediation: the Work ledger with the same filter.
 | `/fix/:id` | always | `/work?filter=proposed` |
 | `/cleaning` | always | `/work?filter=proposed` |
 | `/remediation` | always | `/work?filter=approvals` |
-| `/issues` | always | `/work?assigned=me` |
 
 ### The inbox, approvals and exceptions
 
@@ -159,7 +158,6 @@ Insights: each view is a tab of an object, the rules library, the runs or People
 | `/config-impact` | always | `/` |
 | `/business-process` | always | `/` |
 | `/lineage` | always | `/` |
-| `/mining` | always | `/rules?view=drafts` |
 | `/relationships` | always | `/` |
 | `/dedup` | always | `/` |
 
@@ -181,7 +179,6 @@ Master data: the Glossary and Golden records tabs of an object; one term or gold
 
 | Old address | When | New address |
 |---|---|---|
-| `/mdm` | always | `/` |
 | `/mdm/glossary` | always | `/` |
 | `/mdm/glossary/:id` | always | `/?open=term%3A:id` |
 | `/mdm/golden/merge` | `?id=…` | `/?open=golden%3A:id` |
@@ -206,7 +203,6 @@ Migration: the landscape's Waves view and the waves panel (gates, sign-off, cert
 
 | Old address | When | New address |
 |---|---|---|
-| `/migration` | always | `/?view=waves&open=waves` |
 | `/migration/dry-run` | always | `/?view=waves&open=waves` |
 | `/migration/:waveId` | always | `/?view=waves&open=waves` |
 
