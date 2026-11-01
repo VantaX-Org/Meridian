@@ -223,6 +223,11 @@ rules:
       S (suspended), or R (retired). Update via Admin Center > Employment Information.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: STATUS ''{actual_value}'' is invalid. Set to a valid lifecycle
     state via Admin Center > Employment Information.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: EC015
   field: EMPEMPLOYMENT.COST_CENTER
   check_class: null_check
@@ -317,6 +322,11 @@ rules:
       > Email Information.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: EMAIL_TYPE ''{actual_value}'' is invalid. Set to B or P
     via Admin Center > Email Information.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: EC020
   field: PERPHONE.PHONE_TYPE
   check_class: domain_value_check
@@ -341,6 +351,11 @@ rules:
       Center > Phone Information.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: PHONE_TYPE ''{actual_value}'' is invalid. Set to B/C/H
     via Admin Center > Phone Information.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: EC021
   field: PERINFO.GENDER
   check_class: domain_value_check
@@ -368,6 +383,11 @@ rules:
       Information.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: GENDER ''{actual_value}'' is invalid. Set to M/F/O/U via
     Admin Center > Personal Information.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: EC022
   field: PERINFO.DATE_OF_BIRTH
   check_class: null_check
@@ -829,6 +849,11 @@ rules:
     __other__: Nationality '{invalid_value}' is not an active Country code. Use the ISO-3 country code (e.g. ZAF,
       USA, DEU) via People Profile > Personal Information.
   record_fix_template: 'Person {PERINFO.PERSON_ID}: nationality ''{actual_value}'' is not a Country code.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: EC053
   field: PERADDRESS.COUNTRY
   check_class: referential_check
@@ -845,6 +870,11 @@ rules:
     __other__: Country '{invalid_value}' is not an active Country code. Correct the address country via People Profile
       > Addresses, using the ISO-3 code.
   record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address country ''{actual_value}'' is not a Country code.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: EC054
   field: PERINFO.SALUTATION
   check_class: referential_check
@@ -1058,6 +1088,14 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
     - CAN
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ' '
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: EC066
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -1079,6 +1117,14 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
     - GBR
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ' '
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: EC067
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -1160,6 +1206,14 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
     - NLD
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ' '
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: EC070
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -1210,6 +1264,12 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
     - IND
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[\s.-]'
+      repl: ''
+    confidence: medium
 - id: EC072
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -1261,6 +1321,15 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
     - BRA
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[\s.]'
+      repl: ''
+    - op: regex_replace
+      pattern: ^(\d{5})(\d{3})$
+      repl: \1-\2
+    confidence: high
 - id: EC074
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -1281,6 +1350,15 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
     - JPN
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s
+      repl: ''
+    - op: regex_replace
+      pattern: ^(\d{3})(\d{4})$
+      repl: \1-\2
+    confidence: high
 - id: HCM001
   field: PA0000.MASSN
   check_class: null_check
@@ -1310,6 +1388,11 @@ rules:
     __other__: Replace the value with one defined in T529A, or configure it.
   record_fix_template: 'Employee {PA0000.PERNR} ({PA0000.BEGDA}-{PA0000.ENDDA}): action type is not defined in configuration
     (T529A).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: HCM003
   field: PA0001.BUKRS
   check_class: null_check
@@ -1427,6 +1510,11 @@ rules:
     __other__: Replace the value with one defined in T500P, or configure it.
   record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): personnel area is not defined in
     configuration (T500P).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: HCM011
   field: PA0001.PERSG
   check_class: referential_check
@@ -1443,6 +1531,11 @@ rules:
     __other__: Replace the value with one defined in T501, or configure it.
   record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): employee group is not defined in
     configuration (T501).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: HCM012
   field: PA0001.PERSK
   check_class: referential_check
@@ -1459,6 +1552,11 @@ rules:
     __other__: Replace the value with one defined in T503K, or configure it.
   record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): employee subgroup is not defined
     in configuration (T503K).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: HCM013
   field: PA0001.ABKRS
   check_class: referential_check
@@ -1475,6 +1573,11 @@ rules:
     __other__: Replace the value with one defined in T549A, or configure it.
   record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): payroll area is not defined in
     configuration (T549A).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: HCM014
   field: PA0001.BTRTL
   check_class: referential_check
@@ -1491,6 +1594,11 @@ rules:
     __other__: Replace the value with one defined in T001P, or configure it.
   record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): personnel subarea is not defined
     in configuration (T001P).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: HCM015
   field: PA0002.GBDAT
   check_class: null_check
@@ -1562,6 +1670,11 @@ rules:
     __other__: Replace the value with one defined in T005, or configure it.
   record_fix_template: 'Employee {PA0002.PERNR} ({PA0002.BEGDA}-{PA0002.ENDDA}): nationality is not defined in configuration
     (T005).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: HCM020
   field: PA0002.NACHN
   check_class: uniqueness_check
@@ -2106,6 +2219,12 @@ rules:
     __other__: Correct the SIN from the employee's SIN confirmation letter in National ID Information.
   record_fix_template: 'Person {PERINFO.PERSON_ID}: Canadian Social Insurance Number is not 9 digits. Correct the
     record.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[\s.]'
+      repl: ''
+    confidence: medium
 - id: EC091
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -2146,6 +2265,12 @@ rules:
   fix_map:
     __other__: Correct the CPF from the employee's documents in National ID Information.
   record_fix_template: 'Person {PERINFO.PERSON_ID}: Brazilian CPF is not 11 digits. Correct the record.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s
+      repl: ''
+    confidence: medium
 - id: EC093
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -3476,6 +3601,15 @@ rules:
     __other__: Correct the postal code to the ESP format.
   record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code {PERADDRESS.ZIPCODE} is not a valid ESP postal
     code.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    - op: pad_left
+      width: 5
+      char: '0'
+    confidence: medium
 - id: EC162
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -3494,6 +3628,15 @@ rules:
     __other__: Correct the postal code to the ITA format.
   record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code {PERADDRESS.ZIPCODE} is not a valid ITA postal
     code.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    - op: pad_left
+      width: 5
+      char: '0'
+    confidence: medium
 - id: EC163
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -3512,6 +3655,12 @@ rules:
     __other__: Correct the postal code to the CHE format.
   record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code {PERADDRESS.ZIPCODE} is not a valid CHE postal
     code.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    confidence: medium
 - id: EC164
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -5513,6 +5662,14 @@ rules:
   record_fix_template: 'Employee {EMPJOBHIST.USERID}: job history record on {EMPJOBHIST.START_DATE} has no time
     zone.'
   id: EC270
+  auto_fix:
+    steps:
+    - op: lookup
+      table: FOLOCATION
+      match:
+        EXTERNAL_CODE: EMPJOBHIST.LOCATION
+      value: TIMEZONE
+    confidence: medium
 - field: EMPJOBHIST.START_DATE
   check_class: interval_check
   group_by:
@@ -5748,6 +5905,12 @@ rules:
     __blank__: Set the time zone on the user account.
   record_fix_template: User account {USERACCOUNT.USER_ID} has no time zone.
   id: EC286
+  auto_fix:
+    when: '`EMPJOBHIST.TIMEZONE`.notna()'
+    steps:
+    - op: copy
+      from: EMPJOBHIST.TIMEZONE
+    confidence: medium
 - field: USERACCOUNT.DEFAULT_LOCALE
   grain: USERACCOUNT
   check_class: null_check
@@ -7332,6 +7495,14 @@ rules:
     __blank__: Set the country of company on the job history record.
   record_fix_template: 'Employee {EMPJOBHIST.USERID}: active job history record has no country of company.'
   id: EC384
+  auto_fix:
+    steps:
+    - op: lookup
+      table: FOCOMPANY
+      match:
+        EXTERNAL_CODE: EMPJOBHIST.COMPANY
+      value: COUNTRY
+    confidence: high
 - field: EMPJOBHIST.COUNTRY_OF_COMPANY
   check_class: regex_check
   pattern: ^[A-Z]{3}$
@@ -7414,6 +7585,11 @@ rules:
     __other__: Deactivate the user account to match the employment status.
   record_fix_template: 'User {USERACCOUNT.USER_ID}: account is active but employment status is {EMPEMPLOYMENT.STATUS}.'
   id: EC390
+  auto_fix:
+    steps:
+    - op: set
+      value: I
+    confidence: medium
 - field: USERACCOUNT.STATUS
   check_class: cross_field_check
   fail_when: (`USERACCOUNT.STATUS` == 'I') & (`EMPEMPLOYMENT.STATUS`.isin(['A']))
@@ -7427,6 +7603,11 @@ rules:
     __other__: Reactivate the user account to match the active employment.
   record_fix_template: 'User {USERACCOUNT.USER_ID}: account is inactive but employment status is active.'
   id: EC391
+  auto_fix:
+    steps:
+    - op: set
+      value: A
+    confidence: medium
 - field: USERACCOUNT.DEPARTMENT
   check_class: cross_field_check
   fail_when: '`USERACCOUNT.DEPARTMENT`.notna() & `EMPEMPLOYMENT.DEPARTMENT`.notna() & (`USERACCOUNT.DEPARTMENT`
@@ -7446,6 +7627,11 @@ rules:
   record_fix_template: 'User {USERACCOUNT.USER_ID}: account department {USERACCOUNT.DEPARTMENT} differs from employment
     department {EMPEMPLOYMENT.DEPARTMENT}.'
   id: EC393
+  auto_fix:
+    steps:
+    - op: copy
+      from: EMPEMPLOYMENT.DEPARTMENT
+    confidence: medium
 - field: USERACCOUNT.DIVISION
   check_class: cross_field_check
   fail_when: '`USERACCOUNT.DIVISION`.notna() & `EMPEMPLOYMENT.DIVISION`.notna() & (`USERACCOUNT.DIVISION` != `EMPEMPLOYMENT.DIVISION`)'
@@ -7464,6 +7650,11 @@ rules:
   record_fix_template: 'User {USERACCOUNT.USER_ID}: account division {USERACCOUNT.DIVISION} differs from employment
     division {EMPEMPLOYMENT.DIVISION}.'
   id: EC394
+  auto_fix:
+    steps:
+    - op: copy
+      from: EMPEMPLOYMENT.DIVISION
+    confidence: medium
 - field: USERACCOUNT.LOCATION
   check_class: cross_field_check
   fail_when: '`USERACCOUNT.LOCATION`.notna() & `EMPEMPLOYMENT.LOCATION`.notna() & (`USERACCOUNT.LOCATION` != `EMPEMPLOYMENT.LOCATION`)'
@@ -7482,6 +7673,11 @@ rules:
   record_fix_template: 'User {USERACCOUNT.USER_ID}: account location {USERACCOUNT.LOCATION} differs from employment
     location {EMPEMPLOYMENT.LOCATION}.'
   id: EC395
+  auto_fix:
+    steps:
+    - op: copy
+      from: EMPEMPLOYMENT.LOCATION
+    confidence: medium
 - field: USERACCOUNT.TIMEZONE
   check_class: cross_field_check
   fail_when: '`USERACCOUNT.TIMEZONE`.notna() & `EMPJOBHIST.TIMEZONE`.notna() & (`USERACCOUNT.TIMEZONE` != `EMPJOBHIST.TIMEZONE`)'
@@ -7499,6 +7695,11 @@ rules:
   record_fix_template: 'User {USERACCOUNT.USER_ID}: account time zone {USERACCOUNT.TIMEZONE} differs from job time
     zone {EMPJOBHIST.TIMEZONE}.'
   id: EC396
+  auto_fix:
+    steps:
+    - op: copy
+      from: EMPJOBHIST.TIMEZONE
+    confidence: medium
 - field: USERACCOUNT.USERNAME
   grain: USERACCOUNT
   check_class: cross_field_check
@@ -8069,6 +8270,11 @@ rules:
     __other__: Correct the user account status to A (active) or I (inactive).
   record_fix_template: 'User {USERACCOUNT.USER_ID}: status {USERACCOUNT.STATUS} is not A or I.'
   id: EC432
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - field: POSITION.PAY_GRADE
   check_class: null_check
   grain: POSITION
