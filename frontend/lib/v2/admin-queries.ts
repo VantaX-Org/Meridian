@@ -3,6 +3,7 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import * as api from "@/lib/api/v2/admin";
+import * as pilot from "@/lib/api/v2/pilot";
 import * as rep from "@/lib/api/v2/reports";
 import type { AuditListParams } from "@/lib/api/audit";
 
@@ -107,6 +108,10 @@ export const useMappings = (q: { module?: string; search?: string } = {}, enable
 export const useReference = (systemId: string) => {
   const f = useFixture();
   return useRead(k(f, "reference", systemId), () => api.getReferenceLists(systemId), !!systemId);
+};
+export const useScorecard = (systemId: string) => {
+  const f = useFixture();
+  return useRead(k(f, "scorecard", systemId), () => pilot.getScorecard(systemId), !!systemId);
 };
 export const useAudit = (q: AuditListParams, enabled = true) => {
   const f = useFixture();

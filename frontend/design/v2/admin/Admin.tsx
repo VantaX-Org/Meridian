@@ -1,5 +1,6 @@
 "use client";
 
+import { RuleAccuracySection } from "./accuracy";
 import { usePathname } from "next/navigation";
 import { ADMIN_SECTIONS, canAdminister, isAdminSlug, visibleSections, type AdminSlug } from "@/lib/v2/admin-sections";
 import { EmptyFrame, V2Link } from "../parts";
@@ -261,6 +262,8 @@ function Section({ slug }: { slug: AdminSlug }) {
       return <DelegationsSection />;
     case "workflows":
       return <WorkflowsSection />;
+    case "ruleaccuracy":
+      return <RuleAccuracySection />;
   }
 }
 
