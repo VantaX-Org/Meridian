@@ -13,6 +13,7 @@ import { Fact, InspectorFrame } from "../Inspector";
 import { FactList, Sec } from "./mdm-parts";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { RULE_LABEL, confidencePct, shortKey } from "../screens/object/GoldenTab";
+import { FieldHistory, PromoteAction, SendToSap } from "./golden-writeback";
 import { ResultFrame, useOutcome } from "./shared";
 import { t } from "@/lib/v2/i18n";
 
@@ -147,6 +148,7 @@ function GoldenBody({ id, onClose }: { id: string; onClose: () => void }) {
             )}
           </Sec>
           <Sec title={t("Actions")}>
+            {r.status === "pending_review" ? <PromoteAction id={id} /> : null}
             {canSplit ? (
               <div className="m2-aform">
                 <label>
@@ -166,6 +168,7 @@ function GoldenBody({ id, onClose }: { id: string; onClose: () => void }) {
               </>
             )}
           </Sec>
+          <SendToSap id={id} status={r.status} />
           <Sec title={t("History")}>
             {events.isPending ? (
               <Skeleton width="100%" height={50} />
@@ -188,6 +191,7 @@ function GoldenBody({ id, onClose }: { id: string; onClose: () => void }) {
               </ul>
             )}
           </Sec>
+          <FieldHistory id={id} />
         </>
       )}
     </InspectorFrame>

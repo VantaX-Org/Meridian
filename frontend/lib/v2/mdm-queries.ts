@@ -15,6 +15,7 @@ import {
   getProcessDocument,
   getSurvivorship,
 } from "@/lib/api/v2/mdm";
+import { getGoldenHistory, getWritebackPreview, getWritebackRequests } from "@/lib/api/v2/golden-writeback";
 
 /** Query keys of the Golden records, Glossary and Processes tabs. The fixture flag is part of every key. */
 export const mdmKeys = {
@@ -29,6 +30,9 @@ export const mdmKeys = {
   glossary: (f: boolean, module: string, search: string) => ["v2", "mdm", "glossary", f, module, search] as const,
   term: (f: boolean, id: string) => ["v2", "mdm", "term", f, id] as const,
   owners: (f: boolean) => ["v2", "mdm", "owners", f] as const,
+  history: (f: boolean, id: string) => ["v2", "mdm", "golden-history", f, id] as const,
+  wbPreview: (f: boolean, id: string) => ["v2", "mdm", "wb-preview", f, id] as const,
+  wbRequests: (f: boolean, id: string) => ["v2", "mdm", "wb-requests", f, id] as const,
   process: (f: boolean, run: string, module: string) => ["v2", "mdm", "process", f, run, module] as const,
 };
 
@@ -88,4 +92,28 @@ export function useObjectOwners() {
 export function useProcessDocument(run: string | null | undefined, module: string, enabled = true) {
   const f = useFixture();
   return useQuery({ queryKey: mdmKeys.process(f, run ?? "", module), queryFn: () => getProcessDocument(run as string, module), staleTime: STALE, retry: false, enabled: enabled && Boolean(run) });
+}
+
+/** The field-level audit trail of a golden record. */
+export function useGoldenHistory(id: string) {
+  const f = useFixture();
+  return useQuery({ queryKey: mdmKeys.history(f, id), queryFn: () => getGoldenHistory(id), staleTime: STALE, retry: false });
+}
+
+/** What a write-back of the record would send and where. Never contacts SAP. */
+export function useWritebackPreview(id: string, enabled = true) {
+  const f = useFixture();
+  return useQuery({ queryKey: mdmKeys.wbPreview(f, id), queryFn: () => getWritebackPreview(id), staleTime: STALE, retry: false, enabled });
+}
+
+/** The record's write-back requests; polls while the simulation or the write is running. */
+export function useWritebackRequests(id: string) {
+  const f = useFixture();
+  return useQuery({
+    queryKey: mdmKeys.wbRequests(f, id),
+    queryFn: () => getWritebackRequests(id),
+    staleTime: 0,
+    retry: false,
+    refetchInterval: (q) => (q.state.data?.some((r) => r.status === "simulating" || r.status === "applying") ? 3_000 : false),
+  });
 }

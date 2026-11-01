@@ -4,6 +4,7 @@ import type { RuleRow, RunList } from "../types";
 import type { BusinessProcessL1, GlossaryStatus, GlossaryTermDetail, GlossaryTermSummary, MasterRecordDetail, MasterRecordSummary } from "@/types/api";
 import type { PairSide, ReviewPair, ReviewPairDetail } from "@/lib/api/match-review";
 import type { ExplainResponse, MergeEvent } from "@/lib/api/merge-explain";
+import type { WritebackPreview, WritebackRequest } from "@/lib/api/v2/golden-writeback";
 import type { SurvivorshipRule } from "@/lib/api/survivorship";
 
 /**
@@ -35,9 +36,13 @@ const state = {
   termEdits: new Map<string, { business_name?: string; business_definition?: string; status?: GlossaryStatus }>(),
   reviewed: new Set<string>(),
   populated: false,
+  promoted: new Set<string>(),
+  writeback: new Map<string, WritebackRequest[]>(),
 };
 
 export function resetMdmFixture(): void {
+  state.promoted.clear();
+  state.writeback.clear();
   state.splitKeys.clear();
   state.decidedPairs.clear();
   state.termEdits.clear();
@@ -100,7 +105,7 @@ function goldenDetail(id: string): MasterRecordDetail {
     golden_fields: { "MARA-MATNR": pad(101 + i), "MAKT-MAKTX": nameOf(i), "MARA-MEINS": unit, "MARA-MTART": i % 4 === 0 ? "HALB" : "ROH", "MARA-MATKL": ["0420", "0430", "0510", "0610"][i % 4], "MARA-BRGEW": (0.012 + (i % 7) * 0.004).toFixed(3) },
     source_contributions: {},
     overall_confidence: s.overall_confidence,
-    status: s.status,
+    status: state.promoted.has(id) ? "golden" : s.status,
     promoted_at: s.promoted_at,
     promoted_by: "A. Naidoo",
     created_at: s.created_at,
@@ -368,12 +373,78 @@ function processes(): BusinessProcessL1[] {
   ];
 }
 
+/* ---- audit trail and write-back to SAP ---- */
+
+const FIXTURE_USER = "u-me";
+const NOT_WRITABLE = new Set(["MARA-MATNR"]);
+
+function goldenHistory(id: string): unknown {
+  const d = goldenDetail(id);
+  const rows = [
+    { id: `h-${id}-3`, changed_at: iso(21), changed_by: "A. Naidoo", change_type: "updated", previous_fields: { "MARA-BRGEW": "0.010" }, new_fields: { "MARA-BRGEW": d.golden_fields["MARA-BRGEW"] }, ai_was_involved: false, ai_recommendation_accepted: null },
+    { id: `h-${id}-2`, changed_at: iso(14), changed_by: "A. Naidoo", change_type: "promoted", previous_fields: d.golden_fields, new_fields: d.golden_fields, ai_was_involved: true, ai_recommendation_accepted: true },
+    { id: `h-${id}-1`, changed_at: iso(9), changed_by: null, change_type: "created", previous_fields: null, new_fields: d.golden_fields, ai_was_involved: false, ai_recommendation_accepted: null },
+  ];
+  return d.status === "golden" ? rows : rows.filter((r) => r.change_type !== "promoted");
+}
+
+function writebackPreview(id: string): WritebackPreview {
+  const d = goldenDetail(id);
+  return {
+    record_id: id,
+    domain: MM,
+    sap_object_key: d.sap_object_key,
+    golden_fields: d.golden_fields,
+    writeback_supported: true,
+    live_enabled: true,
+    message: "",
+    targets: [{ system_id: "sys-ecc", system_name: "ECC production", system_type: "ecc", supported: true, method: "rfc_bapi", bapi: "BAPI_MATERIAL_SAVEDATA", reason: null, fields: Object.entries(d.golden_fields).map(([field, golden_value]) => ({ field, golden_value, target: field, supported: !NOT_WRITABLE.has(field), reason: NOT_WRITABLE.has(field) ? "The material number is the key and is never written." : null })) }],
+    unresolved_sources: [],
+  };
+}
+
+function wbList(id: string): WritebackRequest[] {
+  if (!state.writeback.has(id)) {
+    const seeded: WritebackRequest[] = id === "gr-0" ? [wbRequest(id, "wr-0", "pending_approval", "u-merwe")] : [];
+    state.writeback.set(id, seeded);
+  }
+  return state.writeback.get(id) ?? [];
+}
+
+function wbRequest(id: string, rid: string, status: string, by: string): WritebackRequest {
+  const t0 = writebackPreview(id).targets[0];
+  const fields = t0.fields.map((f) => (!f.supported ? { ...f, result: "unsupported" as const } : f.field === "MAKT-MAKTX" ? { ...f, result: "would_change" as const, current_value: "Hex bolt M8 (old text)" } : { ...f, result: "unchanged" as const, current_value: f.golden_value }));
+  const counts: Record<string, number> = {};
+  for (const f of fields) counts[f.result] = (counts[f.result] ?? 0) + 1;
+  return { id: rid, master_record_id: id, status, requested_by: by, approved_by: null, rejected_by: null, targets: [{ ...t0, fields }], error: null, counts, created_at: iso(22), simulated_at: iso(22), decided_at: null, applied_at: null };
+}
+
+function wbWrite(id: string, action: string, rid?: string): WritebackRequest {
+  const list = wbList(id);
+  if (action === "create") {
+    const r = wbRequest(id, `wr-${id}-${list.length + 1}`, "simulated", FIXTURE_USER);
+    list.unshift(r);
+    return r;
+  }
+  const r = rid ? list.find((x) => x.id === rid) : list[0];
+  if (!r) throw new FixtureNotFound(`/master-records/${id}/writeback`);
+  if (action === "submit") r.status = "pending_approval";
+  if (action === "approve") Object.assign(r, { status: "approved", approved_by: FIXTURE_USER, decided_at: iso(23) });
+  if (action === "reject") Object.assign(r, { status: "rejected", rejected_by: FIXTURE_USER, decided_at: iso(23) });
+  return r;
+}
+
 /* ---- the contract ---- */
 
 /** A GET behind the three tabs, or undefined for any other path. */
 export function mdmFixture(path: string, params: Params): unknown {
   if (path === "/master-records") return goldenList(params);
-  const gr = /^\/master-records\/([^/]+)(?:\/(explain|merge-events))?$/.exec(path);
+  const wb = /^\/master-records\/([^/]+)\/(history|writeback\/preview|writeback\/requests)$/.exec(path);
+  if (wb) {
+    const id = decodeURIComponent(wb[1]);
+    return wb[2] === "history" ? goldenHistory(id) : wb[2] === "writeback/preview" ? writebackPreview(id) : { requests: wbList(id) };
+  }
+  const gr =/^\/master-records\/([^/]+)(?:\/(explain|merge-events))?$/.exec(path);
   if (gr) {
     const id = decodeURIComponent(gr[1]);
     return gr[2] === "explain" ? goldenExplain(id) : gr[2] === "merge-events" ? goldenEvents(id) : goldenDetail(id);
@@ -415,6 +486,13 @@ export function mdmFixtureWrite(method: string, path: string, body: unknown): un
     for (const p of pairs) pairDetail(p.match_score_id);
     return { created: pairs.map((p) => `sq-${p.match_score_id}`) };
   }
+  const promote = /^\/master-records\/([^/]+)\/promote$/.exec(path);
+  if (method === "POST" && promote) {
+    state.promoted.add(decodeURIComponent(promote[1]));
+    return { status: "golden", promoted_at: iso(23), related_reviews_queued: 2 };
+  }
+  const wbw = /^\/master-records\/([^/]+)\/writeback\/(requests|approve|reject|requests\/([^/]+)\/submit)$/.exec(path);
+  if (method === "POST" && wbw) return wbWrite(decodeURIComponent(wbw[1]), wbw[2] === "requests" ? "create" : wbw[3] ? "submit" : wbw[2], wbw[3] ? decodeURIComponent(wbw[3]) : undefined);
   const unmerge = /^\/master-records\/([^/]+)\/unmerge$/.exec(path);
   if (method === "POST" && unmerge) {
     const id = decodeURIComponent(unmerge[1]);
