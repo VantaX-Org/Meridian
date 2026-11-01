@@ -8,13 +8,13 @@ scrutiny.
 
 | claim | evidence |
 |---|---|
-| **8,380 validation rules** | `checks/rules/**/*.yaml`, counted now (5,623 hand-authored + 2,757 DDIC-derived); machine-checked against the tree by `tests/checks/test_claim_hygiene.py` — these numbers cannot go stale silently |
-| 5,623 hand-authored + 2,757 DDIC-derived | `checks/rules/<cat>/<module>.yaml` + `<module>.generated.yaml` |
+| **8,547 validation rules** | `checks/rules/**/*.yaml`, counted now (5,790 hand-authored + 2,757 DDIC-derived); machine-checked against the tree by `tests/checks/test_claim_hygiene.py` — these numbers cannot go stale silently |
+| 5,790 hand-authored + 2,757 DDIC-derived | `checks/rules/<cat>/<module>.yaml` + `<module>.generated.yaml` |
 | **45 modules** | the packs on disk |
 | **21 check classes** | `checks/runner.py::REGISTRY` |
 | **6 DQS dimensions** (DAMA DMBOK) | `api/services/scoring.py::DEFAULT_WEIGHTS` |
-| every rule **proved** to fail ≥1 and pass ≥1 record | `tests/checks/test_rule_proofs.py` — 10,109 cases |
-| every rule field **resolves** in the SAP dictionary | `tests/checks/test_rule_integrity.py` — 1,955 cases |
+| every rule **proved** to fail ≥1 and pass ≥1 record | `tests/checks/test_rule_proofs.py` — 10,276 cases |
+| every rule field **resolves** in the SAP dictionary | `tests/checks/test_rule_integrity.py` — 2,005 cases |
 | rules reconciled against a curated dictionary | `checks/rule_reconciler.py` — 0 drift across its curated 31-table dictionary; it does **not** yet cover the 587-table bundle the engine runs on (repointing is the open item, not a claim) |
 | runs **entirely inside the customer boundary** | no egress in the data path; self-hosted compose |
 
@@ -74,7 +74,7 @@ rates Syniti "Innovative" — not a leader.
 
 ## The honest one-line positioning
 
-> A customer-deployed SAP data-quality engine whose **8,380 rules are each proved against
+> A customer-deployed SAP data-quality engine whose **8,547 rules are each proved against
 > fixtures and reconciled against the customer's own data dictionary** — with no data
 > leaving the customer's environment.
 
