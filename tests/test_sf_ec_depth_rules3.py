@@ -216,6 +216,51 @@ CASES.append((next(r["id"] for r in NEW if r["message"] == "Israeli ID number is
               {PI: frame(PI, PERSON_ID=["p1", "p2"], NATIONAL_ID=["18", "000000018"],
                          NATIONAL_ID_COUNTRY=["ISR", "ISR"])}, 1, [PI]))
 
+# national ID vs date of birth and gender: (countries, male number, female number), both synthetic and
+# both encoding 30 July 1985. Check digits are not valid; these rules read only the encoded date and sex.
+NID_PERSONAL = [
+    ("POL", "85073012315", "85073012325"), ("ROU", "1850730123456", "2850730123456"),
+    ("CHN", "110105198507301234", "110105198507301244"), ("SWE", "850730-1235", "850730-1245"),
+    ("NOR", "30078512345", "30078512445"), ("FIN", "300785-123A", "300785-124A"),
+    ("BEL", "85.07.30-123.45", "85.07.30-124.45"), ("ITA", "RSSMRA85L30A562S", "RSSMRA85L70A562S"),
+    ("MEX", "HEGG850730HVZRRL04", "HEGG850730MVZRRL04"), ("FRA", "185077512345678", "285077512345678"),
+    ("KOR", "850730-1234567", "850730-2234567"), ("DNK", "300785-1231", "300785-1232"),
+    ("CZE", "850730/1234", "855730/1234"), ("BGR", "8507301206", "8507301216"),
+    ("GRC", "30078512345", None), ("AUT", "1234300785", None),
+]
+_DOB_RULES = {r["applies_when"]["PERINFO.NATIONAL_ID_COUNTRY"][0]: r["id"] for r in NEW
+              if r["field"] == "PERINFO.NATIONAL_ID" and r["check_class"] == "cross_field_check"}
+_SEX_RULES = {(r["applies_when"]["PERINFO.NATIONAL_ID_COUNTRY"][0], r["applies_when"]["PERINFO.GENDER"][0]): r["id"]
+              for r in NEW if r["field"] == "PERINFO.NATIONAL_ID" and "PERINFO.GENDER" in (r.get("applies_when") or {})}
+for _cc, _m, _f in NID_PERSONAL:
+    # wrong birth date, matching birth date, another country's number
+    CASES.append((_DOB_RULES[_cc], {PI: frame(PI, PERSON_ID=["p1", "p2", "p3"], NATIONAL_ID=[_m, _f or _m, _m],
+                                              DATE_OF_BIRTH=["19700615", "19850730", "19700615"],
+                                              NATIONAL_ID_COUNTRY=[_cc, _cc, "ATA"])}, 1, [PI]))
+    if _f is None:
+        continue
+    for _g, _wrong, _right in (("F", _m, _f), ("M", _f, _m)):
+        # other sex's number, own sex's number, other sex's number on the other gender (out of scope)
+        CASES.append((_SEX_RULES[(_cc, _g)], {PI: frame(PI, PERSON_ID=["p1", "p2", "p3"],
+                                                        NATIONAL_ID=[_wrong, _right, _wrong],
+                                                        GENDER=[_g, _g, "M" if _g == "F" else "F"],
+                                                        NATIONAL_ID_COUNTRY=[_cc, _cc, _cc])}, 1, [PI]))
+
+
+@pytest.mark.parametrize("cc,nid,dob,bad", [
+    ("POL", "05230112345", "20050301", False), ("POL", "05030112345", "20050301", True),
+    ("BGR", "0543011206", "20050301", False), ("BGR", "0503011206", "20050301", True),
+    ("CZE", "047730/1234", "20040730", False), ("CZE", "852730/1234", "19850730", False),
+    ("SWE", "19850730-1235", "19850730", False), ("SWE", "850790-1235", "19850730", False),
+    ("NOR", "70078512345", "19850730", False), ("BEL", "85270712345", "19850730", False),
+    ("ITA", "RSSMRA86L30A562S", "19850730", True), ("FRA", "185137512345678", "19850730", False),
+    ("POL", "85073012315", None, False),
+])
+def test_nid_birth_date_edge_cases(cc, nid, dob, bad):
+    """Century offsets pass; D/H/coordination/bis numbers and unknown months are not checked; no DOB, no finding."""
+    tables = {PI: frame(PI, PERSON_ID=["p1"], NATIONAL_ID=[nid], DATE_OF_BIRTH=[dob], NATIONAL_ID_COUNTRY=[cc])}
+    assert fire(_DOB_RULES[cc], tables) == int(bad)
+
 
 def clean(tables, slice_tables):
     return {t: (df.iloc[1:].reset_index(drop=True) if t in slice_tables else df) for t, df in tables.items()}

@@ -242,6 +242,11 @@ _FORMAT_SAMPLES = {"gtin": "4006381333931", "ean": "4006381333931", "iban": "GB8
                    "ie_ppsn": "1234567T", "ro_cnp": "1800101221144", "jp_mynumber": "123456789018",
                    "nz_ird": "49091850", "at_svnr": "1237010180", "cz_rc": "7103192745",
                    "th_pid": "1101700207030", "hr_oib": "69435151530", "bg_egn": "7523169263"}
+_NID_BY_COUNTRY = {"POL": "44051401359", "ROU": "1800101221144", "CHN": "11010519491231002X",
+                   "SWE": "811218-9876", "NOR": "01010101006", "FIN": "131052-308T", "BEL": "85073003328",
+                   "ITA": "RSSMRA85T10A562S", "MEX": "HEGG560427MVZRRL04", "FRA": "255081416802538",
+                   "KOR": "850730-1234567", "DNK": "300785-1231", "CZE": "7103192745", "SVK": "7103192745",
+                   "BGR": "8507301206", "GRC": "30078512345", "AUT": "1237010180"}
 # a cross_field_check comparing a slice of a column (IBAN prefix at [0:2], or a BIC/SWIFT
 # country code at [4:6], etc.) mapped through ``@iso_alpha3`` (an alpha-2 -> alpha-3 country
 # map, checks/types/cross_field_check.py) to a plain Country-FO field: neither generic char
@@ -338,6 +343,10 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
         if c == rule.get("split_field"):
             vals += [str(v) for v in rule["left_values"][:1] + rule["right_values"][:1]]
         if c == rule.get("field"):
+            # a national ID compared with the birth date (cross_field_check): a well-formed
+            # specimen for the rule's country, or no generated record ever parses as a date
+            for cc in (rule.get("applies_when") or {}).get("PERINFO.NATIONAL_ID_COUNTRY") or []:
+                vals += [_NID_BY_COUNTRY[cc]] if cc in _NID_BY_COUNTRY else []
             vals += [str(v) for v in (rule.get("allowed_values") or [])][:4]
             vals += [str(v) for v in (rule.get("reference_values") or [])][:4]
             if rule.get("format"):
@@ -385,6 +394,8 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             if ".round(" in expr:
                 vals.append("1.004")  # a value whose cents aren't a whole number, for precision/rounding checks
         vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]
+        if _kind(dictionary, c) == "date" and f"`{c}`.dt." in expr:
+            vals.insert(0, "20000101")  # date parts are compared: a real date ahead of the expression's literals
         out[c] = list(dict.fromkeys(vals))[:10]
     return out
 

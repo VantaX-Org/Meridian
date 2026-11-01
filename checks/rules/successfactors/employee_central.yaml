@@ -10155,3 +10155,871 @@ rules:
   fix_map:
     __other__: Re-enter the number from the employee's identity document in National ID Information.
   record_fix_template: 'Person {PERINFO.PERSON_ID}: Greek AMKA fails its check digit. Correct the record.'
+- id: EC547
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.strftime('%y')
+    + (`PERINFO.DATE_OF_BIRTH`.dt.month + 20 * (`PERINFO.DATE_OF_BIRTH`.dt.year >= 2000)).astype('Int64').astype('string[python]').fillna('').str.zfill(2)
+    + `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d'))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}')
+    & (`PERINFO.DATE_OF_BIRTH`.dt.year >= 1900) & (`PERINFO.DATE_OF_BIRTH`.dt.year < 2100)) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - POL
+  severity: high
+  dimension: consistency
+  message: Polish PESEL does not match the date of birth
+  why_it_matters: Digits 1-6 of a PESEL are the date of birth as YYMMDD, with 20 added to the month for people born
+    from 2000. A different date of birth means either the number or the birth date belongs to someone else or was
+    mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: ZUS registration (ZUA) and PIT-11 forms are rejected when PESEL and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Polish PESEL does not match the date of birth.'
+- id: EC548
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{9}[13579]\d$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - POL
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Polish PESEL encodes a male but the person is recorded as female
+  why_it_matters: The 10th digit of a PESEL is odd for men and even for women. A mismatch with the recorded gender
+    means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: ZUS registration (ZUA) and PIT-11 forms are rejected when PESEL and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Polish PESEL sex code does not match the recorded gender.'
+- id: EC549
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{9}[02468]\d$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - POL
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Polish PESEL encodes a female but the person is recorded as male
+  why_it_matters: The 10th digit of a PESEL is odd for men and even for women. A mismatch with the recorded gender
+    means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: ZUS registration (ZUA) and PIT-11 forms are rejected when PESEL and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Polish PESEL sex code does not match the recorded gender.'
+- id: EC550
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(1, 7) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{13}')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ROU
+  severity: high
+  dimension: consistency
+  message: Romanian CNP does not match the date of birth
+  why_it_matters: Digits 2-7 of a CNP are the date of birth as YYMMDD. A different date of birth means either the
+    number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: D112 declarations to ANAF are rejected when the CNP and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Romanian CNP does not match the date of birth.'
+- id: EC551
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?![1357]\d{12}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ROU
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Romanian CNP encodes a male but the person is recorded as female
+  why_it_matters: 'The first digit of a CNP gives sex and century: 1, 3, 5, 7 for men and 2, 4, 6, 8 for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.'
+  rule_authority: best_practice
+  sap_impact: D112 declarations to ANAF are rejected when the CNP and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Romanian CNP sex code does not match the recorded gender.'
+- id: EC552
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?![2468]\d{12}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ROU
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Romanian CNP encodes a female but the person is recorded as male
+  why_it_matters: 'The first digit of a CNP gives sex and century: 1, 3, 5, 7 for men and 2, 4, 6, 8 for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.'
+  rule_authority: best_practice
+  sap_impact: D112 declarations to ANAF are rejected when the CNP and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Romanian CNP sex code does not match the recorded gender.'
+- id: EC553
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(6, 14) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%Y%m%d')) & `PERINFO.NATIONAL_ID`.str.fullmatch('[0-9]{17}[0-9X]'))
+    & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHN
+  severity: high
+  dimension: consistency
+  message: Chinese resident ID does not match the date of birth
+  why_it_matters: Characters 7-14 of a resident identity number are the date of birth as YYYYMMDD. A different date
+    of birth means either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Individual income tax filing and social insurance registration reject mismatched personal data.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Chinese resident ID does not match the date of birth.'
+- id: EC554
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{16}[13579][\dX]$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHN
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Chinese resident ID encodes a male but the person is recorded as female
+  why_it_matters: The 17th digit of a resident identity number is odd for men and even for women. A mismatch with
+    the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Individual income tax filing and social insurance registration reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Chinese resident ID sex code does not match the recorded gender.'
+- id: EC555
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{16}[02468][\dX]$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHN
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Chinese resident ID encodes a female but the person is recorded as male
+  why_it_matters: The 17th digit of a resident identity number is odd for men and even for women. A mismatch with
+    the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Individual income tax filing and social insurance registration reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Chinese resident ID sex code does not match the recorded gender.'
+- id: EC556
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(-10).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('([0-9]{2})?[0-9]{10}') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]',
+    '', regex=True).str.slice(-10).str.slice(4, 5) <= '3')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SWE
+  severity: high
+  dimension: consistency
+  message: Swedish personnummer does not match the date of birth
+  why_it_matters: The first six digits of the ten-digit personnummer are the date of birth as YYMMDD (coordination
+    numbers, with 60 added to the day, are not checked). A different date of birth means either the number or the
+    birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: AGI employer declarations are rejected by Skatteverket when the personnummer and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Swedish personnummer does not match the date of birth.'
+- id: EC557
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!.*[13579]\d$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SWE
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Swedish personnummer encodes a male but the person is recorded as female
+  why_it_matters: The ninth digit of the ten-digit personnummer is odd for men and even for women. A mismatch with
+    the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: AGI employer declarations are rejected by Skatteverket when the personnummer and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Swedish personnummer sex code does not match the recorded gender.'
+- id: EC558
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!.*[02468]\d$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SWE
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Swedish personnummer encodes a female but the person is recorded as male
+  why_it_matters: The ninth digit of the ten-digit personnummer is odd for men and even for women. A mismatch with
+    the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: AGI employer declarations are rejected by Skatteverket when the personnummer and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Swedish personnummer sex code does not match the recorded gender.'
+- id: EC559
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-3][0-9][01][0-9]{8}')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NOR
+  severity: high
+  dimension: consistency
+  message: Norwegian fødselsnummer does not match the date of birth
+  why_it_matters: The first six digits of a fødselsnummer are the date of birth as DDMMYY (D-numbers and H-numbers,
+    with 4 added to the day or month digit, are not checked). A different date of birth means either the number
+    or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: A-melding reports are rejected by Skatteetaten when the fødselsnummer and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Norwegian fødselsnummer does not match the date of birth.'
+- id: EC560
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{8}[13579]\d{2}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NOR
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Norwegian fødselsnummer encodes a male but the person is recorded as female
+  why_it_matters: The ninth digit of a fødselsnummer is odd for men and even for women. A mismatch with the recorded
+    gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: A-melding reports are rejected by Skatteetaten when the fødselsnummer and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Norwegian fødselsnummer sex code does not match the recorded
+    gender.'
+- id: EC561
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{8}[02468]\d{2}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NOR
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Norwegian fødselsnummer encodes a female but the person is recorded as male
+  why_it_matters: The ninth digit of a fødselsnummer is odd for men and even for women. A mismatch with the recorded
+    gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: A-melding reports are rejected by Skatteetaten when the fødselsnummer and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Norwegian fødselsnummer sex code does not match the recorded
+    gender.'
+- id: EC562
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y')) & `PERINFO.NATIONAL_ID`.str.fullmatch('[0-9]{6}[-+A-FU-Y][0-9]{3}[0-9A-Y]'))
+    & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FIN
+  severity: high
+  dimension: consistency
+  message: Finnish henkilötunnus does not match the date of birth
+  why_it_matters: The first six characters of a henkilötunnus are the date of birth as DDMMYY. A different date
+    of birth means either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Incomes Register earnings reports are rejected when the henkilötunnus and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Finnish henkilötunnus does not match the date of birth.'
+- id: EC563
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}.\d{2}[13579].$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FIN
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Finnish henkilötunnus encodes a male but the person is recorded as female
+  why_it_matters: The individual number (characters 8-10) of a henkilötunnus is odd for men and even for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Incomes Register earnings reports are rejected when the henkilötunnus and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Finnish henkilötunnus sex code does not match the recorded gender.'
+- id: EC564
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}.\d{2}[02468].$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FIN
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Finnish henkilötunnus encodes a female but the person is recorded as male
+  why_it_matters: The individual number (characters 8-10) of a henkilötunnus is odd for men and even for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Incomes Register earnings reports are rejected when the henkilötunnus and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Finnish henkilötunnus sex code does not match the recorded gender.'
+- id: EC565
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]',
+    '', regex=True).str.slice(2, 4) <= '12') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2,
+    4) != '00') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 6) != '00')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BEL
+  severity: high
+  dimension: consistency
+  message: Belgian national register number does not match the date of birth
+  why_it_matters: The first six digits of a national register number are the date of birth as YYMMDD (bis numbers,
+    with 20 or 40 added to the month, and unknown dates written 00 are not checked). A different date of birth means
+    either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: DmfA declarations are rejected when the national register number and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Belgian national register number does not match the date of
+    birth.'
+- id: EC566
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{2}\.?[01]\d\.?\d{2}-?\d{2}[13579]\.?\d{2}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BEL
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Belgian national register number encodes a male but the person is recorded as female
+  why_it_matters: The three-digit sequence (digits 7-9) of a national register number is odd for men and even for
+    women. A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: DmfA declarations are rejected when the national register number and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Belgian national register number sex code does not match the
+    recorded gender.'
+- id: EC567
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{2}\.?[01]\d\.?\d{2}-?\d{2}[02468]\.?\d{2}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BEL
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Belgian national register number encodes a female but the person is recorded as male
+  why_it_matters: The three-digit sequence (digits 7-9) of a national register number is odd for men and even for
+    women. A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: DmfA declarations are rejected when the national register number and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Belgian national register number sex code does not match the
+    recorded gender.'
+- id: EC568
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: (((`PERINFO.NATIONAL_ID`.str.slice(6, 8) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y')) | ((`PERINFO.NATIONAL_ID`.str.slice(9,
+    11) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d')) & (`PERINFO.NATIONAL_ID`.str.slice(9, 11) != (`PERINFO.DATE_OF_BIRTH`.dt.day
+    + 40).astype('Int64').astype('string[python]').fillna('')))) & `PERINFO.NATIONAL_ID`.str.fullmatch('[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]'))
+    & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ITA
+  severity: high
+  dimension: consistency
+  message: Italian codice fiscale does not match the date of birth
+  why_it_matters: Characters 7-8 of a codice fiscale are the year of birth and characters 10-11 the day of birth
+    (plus 40 for women). A different date of birth means either the number or the birth date belongs to someone
+    else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Certificazione Unica is rejected by the Agenzia delle Entrate when the codice fiscale and personal
+    data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Italian codice fiscale does not match the date of birth.'
+- id: EC569
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?![A-Z]{6}\d{2}[A-Z][0-3]\d[A-Z0-9]{5}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ITA
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Italian codice fiscale encodes a male but the person is recorded as female
+  why_it_matters: The day of birth in a codice fiscale (characters 10-11) is 01-31 for men and 41-71 for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Certificazione Unica is rejected by the Agenzia delle Entrate when the codice fiscale and personal
+    data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Italian codice fiscale sex code does not match the recorded
+    gender.'
+- id: EC570
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?![A-Z]{6}\d{2}[A-Z][4-7]\d[A-Z0-9]{5}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ITA
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Italian codice fiscale encodes a female but the person is recorded as male
+  why_it_matters: The day of birth in a codice fiscale (characters 10-11) is 01-31 for men and 41-71 for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Certificazione Unica is rejected by the Agenzia delle Entrate when the codice fiscale and personal
+    data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Italian codice fiscale sex code does not match the recorded
+    gender.'
+- id: EC571
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(4, 10) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d')) & `PERINFO.NATIONAL_ID`.str.fullmatch('[A-Z]{4}[0-9]{6}[HMX][A-Z0-9]{7}'))
+    & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - MEX
+  severity: high
+  dimension: consistency
+  message: Mexican CURP does not match the date of birth
+  why_it_matters: Characters 5-10 of a CURP are the date of birth as YYMMDD. A different date of birth means either
+    the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: IMSS affiliation and CFDI payroll receipts are rejected when the CURP and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Mexican CURP does not match the date of birth.'
+- id: EC572
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?![A-Z]{4}\d{6}H[A-Z0-9]{7}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - MEX
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Mexican CURP encodes a male but the person is recorded as female
+  why_it_matters: Character 11 of a CURP is H for men and M for women. A mismatch with the recorded gender means
+    the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: IMSS affiliation and CFDI payroll receipts are rejected when the CURP and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Mexican CURP sex code does not match the recorded gender.'
+- id: EC573
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?![A-Z]{4}\d{6}M[A-Z0-9]{7}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - MEX
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Mexican CURP encodes a female but the person is recorded as male
+  why_it_matters: Character 11 of a CURP is H for men and M for women. A mismatch with the recorded gender means
+    the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: IMSS affiliation and CFDI payroll receipts are rejected when the CURP and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Mexican CURP sex code does not match the recorded gender.'
+- id: EC574
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: (((`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(1, 3) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y'))
+    | ((`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(3, 5) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%m'))
+    & (`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(3, 5) <= '12'))) & `PERINFO.NATIONAL_ID`.str.replace('[
+    .-]', '', regex=True).str.fullmatch('[12][0-9]{4}[0-9AB]{2}[0-9]{6}([0-9]{2})?')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FRA
+  severity: high
+  dimension: consistency
+  message: French NIR does not match the date of birth
+  why_it_matters: Digits 2-5 of a NIR are the year and month of birth as YYMM (months above 12 mean an unknown month
+    and are not checked). A different date of birth means either the number or the birth date belongs to someone
+    else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: DSN returns are rejected by URSSAF when the NIR and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: French NIR does not match the date of birth.'
+- id: EC575
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!1.*$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FRA
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: French NIR encodes a male but the person is recorded as female
+  why_it_matters: The first digit of a NIR is 1 for men and 2 for women. A mismatch with the recorded gender means
+    the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: DSN returns are rejected by URSSAF when the NIR and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: French NIR sex code does not match the recorded gender.'
+- id: EC576
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!2.*$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FRA
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: French NIR encodes a female but the person is recorded as male
+  why_it_matters: The first digit of a NIR is 1 for men and 2 for women. A mismatch with the recorded gender means
+    the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: DSN returns are rejected by URSSAF when the NIR and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: French NIR sex code does not match the recorded gender.'
+- id: EC577
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{13}')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - KOR
+  severity: high
+  dimension: consistency
+  message: Korean resident registration number does not match the date of birth
+  why_it_matters: The first six digits of a resident registration number are the date of birth as YYMMDD. A different
+    date of birth means either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Year-end tax settlement and social insurance reports reject mismatched personal data.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Korean resident registration number does not match the date
+    of birth.'
+- id: EC578
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}-?[13579]\d{6}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - KOR
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Korean resident registration number encodes a male but the person is recorded as female
+  why_it_matters: The seventh digit of a resident registration number is odd (1, 3, 5, 7, 9) for men and even (2,
+    4, 6, 8, 0) for women. A mismatch with the recorded gender means the number or the gender was entered for the
+    wrong person.
+  rule_authority: best_practice
+  sap_impact: Year-end tax settlement and social insurance reports reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Korean resident registration number sex code does not match
+    the recorded gender.'
+- id: EC579
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}-?[24680]\d{6}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - KOR
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Korean resident registration number encodes a female but the person is recorded as male
+  why_it_matters: The seventh digit of a resident registration number is odd (1, 3, 5, 7, 9) for men and even (2,
+    4, 6, 8, 0) for women. A mismatch with the recorded gender means the number or the gender was entered for the
+    wrong person.
+  rule_authority: best_practice
+  sap_impact: Year-end tax settlement and social insurance reports reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Korean resident registration number sex code does not match
+    the recorded gender.'
+- id: EC580
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - DNK
+  severity: high
+  dimension: consistency
+  message: Danish CPR number does not match the date of birth
+  why_it_matters: The first six digits of a CPR number are the date of birth as DDMMYY. A different date of birth
+    means either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: eIndkomst reports are rejected by Skattestyrelsen when the CPR number and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Danish CPR number does not match the date of birth.'
+- id: EC581
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}-?\d{3}[13579]$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - DNK
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Danish CPR number encodes a male but the person is recorded as female
+  why_it_matters: The last digit of a CPR number is odd for men and even for women. A mismatch with the recorded
+    gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: eIndkomst reports are rejected by Skattestyrelsen when the CPR number and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Danish CPR number sex code does not match the recorded gender.'
+- id: EC582
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}-?\d{3}[02468]$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - DNK
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Danish CPR number encodes a female but the person is recorded as male
+  why_it_matters: The last digit of a CPR number is odd for men and even for women. A mismatch with the recorded
+    gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: eIndkomst reports are rejected by Skattestyrelsen when the CPR number and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Danish CPR number sex code does not match the recorded gender.'
+- id: EC583
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: (((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 2) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y'))
+    | (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d'))
+    | ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2, 4) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%m'))
+    & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2, 4) != (`PERINFO.DATE_OF_BIRTH`.dt.month
+    + 20).astype('Int64').astype('string[python]').fillna('')) & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '',
+    regex=True).str.slice(2, 4) != (`PERINFO.DATE_OF_BIRTH`.dt.month + 50).astype('Int64').astype('string[python]').fillna(''))
+    & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2, 4) != (`PERINFO.DATE_OF_BIRTH`.dt.month
+    + 70).astype('Int64').astype('string[python]').fillna('')))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '',
+    regex=True).str.fullmatch('[0-9]{9,10}')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CZE
+    - SVK
+  severity: high
+  dimension: consistency
+  message: Czech/Slovak birth number does not match the date of birth
+  why_it_matters: A rodné číslo starts with the date of birth as YYMMDD; women have 50 added to the month and numbers
+    issued since 2004 may add a further 20. A different date of birth means either the number or the birth date
+    belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Social and health insurance reports reject mismatched personal data.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Czech/Slovak birth number does not match the date of birth.'
+- id: EC584
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{2}[0-3]\d{3}/?\d{3,4}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CZE
+    - SVK
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Czech/Slovak birth number encodes a male but the person is recorded as female
+  why_it_matters: The month in a rodné číslo (digits 3-4) is 01-12 or 21-32 for men and 51-62 or 71-82 for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Social and health insurance reports reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Czech/Slovak birth number sex code does not match the recorded
+    gender.'
+- id: EC585
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{2}[5-8]\d{3}/?\d{3,4}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CZE
+    - SVK
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Czech/Slovak birth number encodes a female but the person is recorded as male
+  why_it_matters: The month in a rodné číslo (digits 3-4) is 01-12 or 21-32 for men and 51-62 or 71-82 for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Social and health insurance reports reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Czech/Slovak birth number sex code does not match the recorded
+    gender.'
+- id: EC586
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.strftime('%y')
+    + (`PERINFO.DATE_OF_BIRTH`.dt.month + 40 * (`PERINFO.DATE_OF_BIRTH`.dt.year >= 2000)).astype('Int64').astype('string[python]').fillna('').str.zfill(2)
+    + `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d'))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}')
+    & (`PERINFO.DATE_OF_BIRTH`.dt.year >= 1900) & (`PERINFO.DATE_OF_BIRTH`.dt.year < 2100)) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BGR
+  severity: high
+  dimension: consistency
+  message: Bulgarian EGN does not match the date of birth
+  why_it_matters: An EGN starts with the date of birth as YYMMDD, with 40 added to the month for people born from
+    2000. A different date of birth means either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: NRA social insurance declarations reject mismatched personal data.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Bulgarian EGN does not match the date of birth.'
+- id: EC587
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{8}[02468]\d$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BGR
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Bulgarian EGN encodes a male but the person is recorded as female
+  why_it_matters: The ninth digit of an EGN is even for men and odd for women. A mismatch with the recorded gender
+    means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: NRA social insurance declarations reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Bulgarian EGN sex code does not match the recorded gender.'
+- id: EC588
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{8}[13579]\d$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BGR
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Bulgarian EGN encodes a female but the person is recorded as male
+  why_it_matters: The ninth digit of an EGN is even for men and odd for women. A mismatch with the recorded gender
+    means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: NRA social insurance declarations reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Bulgarian EGN sex code does not match the recorded gender.'
+- id: EC589
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - GRC
+  severity: high
+  dimension: consistency
+  message: Greek AMKA does not match the date of birth
+  why_it_matters: The first six digits of an AMKA are the date of birth as DDMMYY. A different date of birth means
+    either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: e-EFKA APD returns reject mismatched personal data.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Greek AMKA does not match the date of birth.'
+- id: EC590
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 10) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]',
+    '', regex=True).str.slice(6, 8) <= '12')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - AUT
+  severity: high
+  dimension: consistency
+  message: Austrian social insurance number does not match the date of birth
+  why_it_matters: The last six digits of a Sozialversicherungsnummer are the date of birth as DDMMYY (months above
+    12 mean the date was unknown at issue and are not checked). A different date of birth means either the number
+    or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: ELDA registrations are rejected when the social insurance number and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Austrian social insurance number does not match the date of
+    birth.'
