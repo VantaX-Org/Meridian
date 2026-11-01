@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { MigrationWave, WaveBlocker, WaveVerdict } from "@/types/api";
+import type { DestScoreContributor, MigrationWave, WaveBlocker, WaveVerdict } from "@/types/api";
 import * as rep from "@/lib/api/v2/reports";
 import { useWaveCockpit } from "@/lib/v2/admin-queries";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
@@ -19,6 +19,12 @@ const VERDICT_WORD: Record<WaveVerdict, () => string> = {
   go: () => t("Ready"),
   at_risk: () => t("At risk"),
   no_go: () => t("Blocked"),
+};
+
+const MOVE_WORD: Record<DestScoreContributor["kind"], () => string> = {
+  dropped: () => t("Field not migrated"),
+  target: () => t("Target rule"),
+  gap: () => t("Migration gap"),
 };
 
 /**
@@ -41,6 +47,7 @@ export function WaveCockpitBlock({ wave }: { wave: MigrationWave }) {
       };
     });
   const c = cockpit.data;
+  const moves = (c?.objects ?? []).flatMap((o) => (o.dest_contributors ?? []).map((x) => ({ module: o.module, x })));
   const canExport = session.can("export");
   const canFix = session.can("apply") && !session.shared && !session.viewAs;
   const { hrefFor } = useOpenItem();
@@ -101,7 +108,9 @@ export function WaveCockpitBlock({ wave }: { wave: MigrationWave }) {
                   <th scope="col">{t("Object")}</th>
                   <th scope="col">{t("Verdict")}</th>
                   <th scope="col">{t("Readiness")}</th>
-                  <th scope="col">{t("Quality score")}</th>
+                  <th scope="col">{t("Quality score at source")}</th>
+                  <th scope="col">{t("Projected in target")}</th>
+                  <th scope="col">{t("Measured in target")}</th>
                   <th scope="col">{t("Records")}</th>
                   <th scope="col">{t("Blocked")}</th>
                   <th scope="col">{t("Blockers")}</th>
@@ -118,6 +127,8 @@ export function WaveCockpitBlock({ wave }: { wave: MigrationWave }) {
                       </td>
                       <td>{o.score == null ? <Dash /> : f1(o.score)}</td>
                       <td>{o.dqs == null ? <Dash /> : f1(o.dqs)}</td>
+                      <td>{o.dest_dqs_projected == null ? <Dash /> : f1(o.dest_dqs_projected)}</td>
+                      <td>{o.dest_dqs_actual == null ? <Dash /> : f1(o.dest_dqs_actual)}</td>
                       <td>{int(o.records)}</td>
                       <td>{int(o.records_blocked)}</td>
                       <td>{int(o.blocker_count)}</td>
@@ -127,6 +138,45 @@ export function WaveCockpitBlock({ wave }: { wave: MigrationWave }) {
               </tbody>
             </table>
           </div>
+          <h4>{t("What moves the quality score in the target")}</h4>
+          {moves.length === 0 ? (
+            <EmptyFrame>
+              {c.objects.some((o) => o.dest_dqs_projected != null)
+                ? t("No rule or gap moves the quality score between source and target.")
+                : t("The quality score in the target shape is projected on the next analysis of the wave.")}
+            </EmptyFrame>
+          ) : (
+            <div className="m2-frame" tabIndex={0} style={{ maxHeight: 240 }}>
+              <table className="m2-tbl" aria-label={t("Rules and gaps that move the quality score in the target")}>
+                <thead>
+                  <tr>
+                    <th scope="col">{t("Object")}</th>
+                    <th scope="col">{t("Rule")}</th>
+                    <th scope="col">{t("Field")}</th>
+                    <th scope="col">{t("Severity")}</th>
+                    <th scope="col">{t("Change")}</th>
+                    <th scope="col">{t("Records")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {moves.map(({ module, x }) => (
+                    <tr key={`${module}:${x.check_id}`}>
+                      <th scope="row">{moduleText(module)}</th>
+                      <td>
+                        <Coded code={x.check_id.split(":")[0]} text={x.description} first />
+                      </td>
+                      <td>{x.field ? <Coded code={x.field} text={x.field_description} first /> : <Dash />}</td>
+                      <td>
+                        <Sev severity={x.severity} />
+                      </td>
+                      <td>{MOVE_WORD[x.kind]()}</td>
+                      <td>{int(x.dest_affected ?? x.source_affected ?? 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           <h4>{t("Blockers")}</h4>
           {c.blockers.length === 0 ? (
             <EmptyFrame>{t("Nothing blocks this wave.")}</EmptyFrame>

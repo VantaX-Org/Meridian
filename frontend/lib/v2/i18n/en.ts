@@ -6938,6 +6938,16 @@ export const en = {
   "Cosmetic": "Cosmetic",
   "No failing rule reaches a KPI, process or feature in this run.": "No failing rule reaches a KPI, process or feature in this run.",
   "{n, plural, one {# failing rule is} other {# failing rules are}} not placed behind any KPI by the lineage model:": "{n, plural, one {# failing rule is} other {# failing rules are}} not placed behind any KPI by the lineage model:",
+  "Field not migrated": "Field not migrated",
+  "Target rule": "Target rule",
+  "Migration gap": "Migration gap",
+  "Quality score at source": "Quality score at source",
+  "Projected in target": "Projected in target",
+  "Measured in target": "Measured in target",
+  "What moves the quality score in the target": "What moves the quality score in the target",
+  "No rule or gap moves the quality score between source and target.": "No rule or gap moves the quality score between source and target.",
+  "The quality score in the target shape is projected on the next analysis of the wave.": "The quality score in the target shape is projected on the next analysis of the wave.",
+  "Rules and gaps that move the quality score in the target": "Rules and gaps that move the quality score in the target",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
