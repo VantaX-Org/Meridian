@@ -104,6 +104,7 @@ export interface TaskRow extends WorkflowTask { object_kind: string; object_id: 
 export const listDefinitions = () => v2Get<{ items: WorkflowDefinition[] }>("/workflows/definitions");
 export const getFacts = () => v2Get<Facts>("/workflows/facts");
 export const newVersion = (id: string, definition: Record<string, unknown>, activate: boolean) => v2Send<WorkflowDefinition>("POST", `/workflows/definitions/${enc(id)}/versions`, { definition, activate });
+export const createDefinition = (body: { name: string; description: string | null; object_kind: string; definition: Record<string, unknown>; activate: boolean }) => v2Send<WorkflowDefinition>("POST", "/workflows/definitions", body);
 export const activateDefinition = (id: string) => v2Send<WorkflowDefinition>("POST", `/workflows/definitions/${enc(id)}/activate`);
 export const dryRun = (definition: Record<string, unknown>, object_kind: string, facts: Record<string, unknown>) => v2Send<DryRun>("POST", "/workflows/definitions/validate", { definition, object_kind, facts, payload: {} });
 export const listTasks = (object_kind: string) => v2Get<{ items: TaskRow[] }>("/workflows/tasks", { scope: "mine", object_kind });

@@ -6651,4 +6651,11 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Follow them in the job line.": "ジョブ行で進行を確認できます。",
   "Run every schedule now": "すべてのスケジュールを今すぐ実行",
   "Running schedules needs the trigger_sync permission.": "スケジュールの実行には trigger_sync 権限が必要です。",
+  "New workflow": "新しいワークフロー",
+  "Saved as version 1. Activate it to use it for new approvals.": "バージョン 1 として保存されます。新しい承認に使うには有効にしてください。",
+  "What it approves": "承認の対象",
+  "Activate it when saved": "保存時に有効にする",
+  "Workflow {name} created.": "ワークフロー {name} を作成しました。",
+  "Create workflow": "ワークフローを作成",
+  "Data owner approves": "データオーナーが承認",
 };

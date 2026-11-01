@@ -6651,4 +6651,11 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Follow them in the job line.": "Verfolgen Sie sie in der Jobzeile.",
   "Run every schedule now": "Alle Zeitpläne jetzt ausführen",
   "Running schedules needs the trigger_sync permission.": "Zeitpläne auszuführen erfordert die Berechtigung trigger_sync.",
+  "New workflow": "Neuer Workflow",
+  "Saved as version 1. Activate it to use it for new approvals.": "Wird als Version 1 gespeichert. Aktivieren Sie ihn, um ihn für neue Genehmigungen zu verwenden.",
+  "What it approves": "Was er genehmigt",
+  "Activate it when saved": "Beim Speichern aktivieren",
+  "Workflow {name} created.": "Workflow {name} angelegt.",
+  "Create workflow": "Workflow anlegen",
+  "Data owner approves": "Dateneigentümer genehmigt",
 };

@@ -6650,6 +6650,13 @@ export const en = {
   "Follow them in the job line.": "Follow them in the job line.",
   "Run every schedule now": "Run every schedule now",
   "Running schedules needs the trigger_sync permission.": "Running schedules needs the trigger_sync permission.",
+  "New workflow": "New workflow",
+  "Saved as version 1. Activate it to use it for new approvals.": "Saved as version 1. Activate it to use it for new approvals.",
+  "What it approves": "What it approves",
+  "Activate it when saved": "Activate it when saved",
+  "Workflow {name} created.": "Workflow {name} created.",
+  "Create workflow": "Create workflow",
+  "Data owner approves": "Data owner approves",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
