@@ -630,6 +630,8 @@ export interface User {
   invite_expires_at?: string | null;
   locked_until?: string | null;
   password_changed_at?: string | null;
+  /** Who the user reports to: the approver when a workflow step goes to the requester's manager. */
+  manager_id?: string | null;
 }
 
 export interface UserListResponse {

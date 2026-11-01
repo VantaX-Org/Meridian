@@ -22,6 +22,8 @@ import { UserStatusWord, roleNames } from "../admin/users";
 import { keyRoles } from "../admin/apikeys";
 import { ResultFrame, useOutcome } from "./shared";
 import { t } from "@/lib/v2/i18n";
+import { useToast } from "../Toast";
+import { errorSentence } from "@/lib/api/v2/client";
 import { labelText, moduleText, roleText, userStatusText } from "@/lib/v2/labels";
 
 /* ── A scope picker shared by grants and API keys ── */
@@ -274,6 +276,39 @@ function EffectiveBlock({ userId }: { userId: string }) {
   );
 }
 
+/** Who the user reports to. A workflow step assigned to "the requester's manager" goes to this person. */
+function ManagerPicker({ user, disabled }: { user: User; disabled: boolean }) {
+  const qc = useQueryClient();
+  const users = useUsers();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const others = (users.data?.users ?? []).filter((u) => u.id !== user.id && u.is_active);
+  return (
+    <select
+      aria-label={t("Reports to")}
+      value={user.manager_id ?? ""}
+      disabled={disabled || busy}
+      onChange={async (e) => {
+        setBusy(true);
+        try {
+          await api.setUserManager(user.id, e.target.value || null);
+          await refreshAdmin(qc, "users");
+          toast.show(t("Manager saved"));
+        } catch (err) {
+          toast.show(errorSentence(err, t("The manager could not be saved.")), "error");
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <option value="">{t("No one")}</option>
+      {others.map((u) => (
+        <option key={u.id} value={u.id}>{`${u.name} (${u.email})`}</option>
+      ))}
+    </select>
+  );
+}
+
 function UserBody({ user }: { user: User }) {
   const qc = useQueryClient();
   const can = useCan();
@@ -313,6 +348,9 @@ function UserBody({ user }: { user: User }) {
         {status === "invited" || status === "invite_expired" ? <Fact label={t("Invitation")}>{`${user.invite_status ? labelText(user.invite_status) : t("Sent")}${user.invite_expires_at ? `, ${isPast(user.invite_expires_at) ? "expired" : "expires"} ${formatDate(user.invite_expires_at)}` : ""}`}</Fact> : null}
         {user.locked_until && !isPast(user.locked_until) ? <Fact label={t("Locked until")}>{formatDate(user.locked_until, "datetime")}</Fact> : null}
         <Fact label={t("Password changed")}>{user.password_changed_at ? formatDate(user.password_changed_at) : t("Not yet")}</Fact>
+        <Fact label={t("Reports to")}>
+          <ManagerPicker user={user} disabled={!edit || pending !== null} />
+        </Fact>
       </Facts>
       <Actions>
         {user.is_active ? (

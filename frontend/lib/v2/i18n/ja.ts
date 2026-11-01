@@ -6631,4 +6631,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Edit the key": "キーを編集",
   "Key updated": "キーを更新しました",
   "Save the changes": "変更を保存",
+  "Reports to": "上長",
+  "Manager saved": "上長を保存しました",
+  "The manager could not be saved.": "上長を保存できませんでした。",
 };

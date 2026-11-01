@@ -37,6 +37,7 @@ export type { BulkAction, User, UserStatus, ApiKey, ApiKeyCreated, AuditListResp
 
 export interface UserQuery { q?: string; status?: UserStatus; role?: string; system_id?: string }
 export const listUsers = (q: UserQuery = {}): Promise<UserListResponse> => v2Get("/users", { ...q });
+export const setUserManager = (id: string, manager_id: string | null): Promise<{ id: string; manager_id: string | null }> => v2Send("PUT", `/users/${enc(id)}/manager`, { manager_id });
 export const setUserActive = (id: string, is_active: boolean): Promise<User> => v2Send("PUT", `/users/${enc(id)}`, { is_active });
 export const inviteUser = (body: { email: string; name?: string; grants: { role_key: string; system_id?: string | null; module?: string | null }[] }): Promise<{ id: string; email: string; role: string; status: string }> =>
   v2Send("POST", "/users/invite", body);

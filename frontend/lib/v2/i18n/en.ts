@@ -6630,6 +6630,9 @@ export const en = {
   "Edit the key": "Edit the key",
   "Key updated": "Key updated",
   "Save the changes": "Save the changes",
+  "Reports to": "Reports to",
+  "Manager saved": "Manager saved",
+  "The manager could not be saved.": "The manager could not be saved.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

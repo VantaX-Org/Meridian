@@ -173,7 +173,7 @@ async def require_seats(db: AsyncSession, tenant: Tenant, needed: int = 1) -> No
 _USER_COLUMNS = (
     "u.id, u.tenant_id, u.email, u.name, u.role, u.permissions, u.is_active, u.last_login, u.created_at, "
     "u.must_change_password, u.invited_at, u.invite_sent_at, u.invite_status, u.invite_expires_at, "
-    "u.locked_until, u.password_changed_at, (u.password_hash IS NOT NULL) AS has_password"
+    "u.locked_until, u.password_changed_at, u.manager_id, (u.password_hash IS NOT NULL) AS has_password"
 )
 
 

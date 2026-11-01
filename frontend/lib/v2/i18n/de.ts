@@ -6631,4 +6631,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Edit the key": "Schlüssel bearbeiten",
   "Key updated": "Schlüssel aktualisiert",
   "Save the changes": "Änderungen speichern",
+  "Reports to": "Berichtet an",
+  "Manager saved": "Vorgesetzter gespeichert",
+  "The manager could not be saved.": "Der Vorgesetzte konnte nicht gespeichert werden.",
 };
