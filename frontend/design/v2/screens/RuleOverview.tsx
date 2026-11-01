@@ -7,6 +7,7 @@ import { t as tr } from "@/lib/v2/i18n";
 import { RuleAuthority, RuleHistory, type RuleView } from "../inspector/rule";
 import { Mono } from "../parts";
 import { LedgerSlot } from "./object/LedgerSlot";
+import { RuleRootCause } from "./RuleRootCause";
 
 /**
  * The rule canvas Overview: why the rule exists, its trend over runs, and the failing records of its newest run counted
@@ -27,6 +28,7 @@ export function RuleOverview({ view }: { view: RuleView }) {
           <RuleHistory view={view} limit={30} />
         </div>
       </div>
+      <RuleRootCause view={view} />
       <section className="m2-sec" aria-label={tr("Failing records")}>
         <div className="m2-sechead"><h2 className="m2-h2">{tr("Failing records")}</h2></div>
         {by?.groups.map((g) => (

@@ -251,6 +251,33 @@ export async function getRuleFailuresBy(checkId: string): Promise<{ total: numbe
   return v2Get<{ total: number; groups: FailureGroup[] }>(`/rules/${encodeURIComponent(checkId)}/failures-by`);
 }
 
+/* ---- GET /versions/{v}/findings/{check_id}/root-cause ---- */
+
+export interface RootCauseOrigin {
+  origin: "interface" | "dialog" | "migration" | "unknown";
+  username: string;
+  tcode: string;
+  records: number;
+  share: number;
+}
+export interface RootCause {
+  version_id: string;
+  check_id: string;
+  /** not_computed until the worker has run; then computed, not_applicable or unavailable. */
+  status: "not_computed" | "computed" | "not_applicable" | "unavailable";
+  field: string | null;
+  analysed: number;
+  total: number;
+  origins: RootCauseOrigin[];
+  summary: string;
+  detail: string;
+}
+
+/** Who last set the failing values of a rule in a run, grouped by origin, from SAP change documents. */
+export async function getFindingRootCause(versionId: string, checkId: string): Promise<RootCause> {
+  return v2Get<RootCause>(`/versions/${encodeURIComponent(versionId)}/findings/${encodeURIComponent(checkId)}/root-cause`);
+}
+
 /* ---- GET /runs/timeline, /runs/{a}/vs/{b}/summary, /versions/compare ---- */
 
 export interface TimelineObject {

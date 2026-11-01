@@ -62,6 +62,17 @@ describe("the rule canvas /r/{check_id}", () => {
     expect(filters()).toEqual({ check_id: "MM142" });
   });
 
+  it("Overview says who set the failing values: origin, SAP user, transaction, records and share", async () => {
+    renderWithQuery(<RuleCanvas id="MM142" />);
+    const rows = await screen.findAllByTestId("root-cause-origin");
+    expect(rows.map((r) => Array.from(r.querySelectorAll("td")).map((c) => c.textContent))).toEqual([
+      ["Interface or batch user", "RFC_INTERFACE", "—", "2,184", "60.0%"],
+      ["Person in a dialog transaction", "TVDMERWE", "MM02", "1,092", "30.0%"],
+      ["Migration load before go-live", "MIGRATION", "LSMW", "364", "10.0%"],
+    ]);
+    expect(screen.getByTestId("root-cause-sentence")).toHaveTextContent(/60% of failing/);
+  });
+
   it("Definition shows the definition, authority, versions, scope, contract and the role's actions", async () => {
     setUrl("/r/MM142?fixture=1&tab=definition");
     renderWithQuery(<RuleCanvas id="MM142" />);

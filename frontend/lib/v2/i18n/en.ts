@@ -6710,6 +6710,19 @@ export const en = {
   "Draft ready to review": "Draft ready to review",
   "Aletheia proposed this wording. Nothing is saved until you press Save.": "Aletheia proposed this wording. Nothing is saved until you press Save.",
   "Draft definition with Aletheia": "Draft definition with Aletheia",
+  "Interface or batch user": "Interface or batch user",
+  "Person in a dialog transaction": "Person in a dialog transaction",
+  "Migration load before go-live": "Migration load before go-live",
+  "No change document": "No change document",
+  "Who set these values": "Who set these values",
+  "This rule has no run yet.": "This rule has no run yet.",
+  "Who set the values of this rule could not be read.": "Who set the values of this rule could not be read.",
+  "Not worked out for this run. It is read from SAP change documents after an analysis of a connected SAP system.": "Not worked out for this run. It is read from SAP change documents after an analysis of a connected SAP system.",
+  "Not available for this rule.": "Not available for this rule.",
+  "{analysed} of {total} failing records traced.": "{analysed} of {total} failing records traced.",
+  "Who set these values, scrollable": "Who set these values, scrollable",
+  "Origin": "Origin",
+  "SAP user": "SAP user",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
