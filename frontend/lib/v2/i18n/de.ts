@@ -6628,4 +6628,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Version sent back to draft": "Version zurück in den Entwurf",
   "Version sent for review": "Version zur Prüfung gesendet",
   "Why the change": "Grund der Änderung",
+  "Edit the key": "Schlüssel bearbeiten",
+  "Key updated": "Schlüssel aktualisiert",
+  "Save the changes": "Änderungen speichern",
 };

@@ -4,7 +4,7 @@
  * here invents a field.
  */
 import type { User, UserListResponse, UserStatus, HealthResponse, TenantSettings, ExceptionBilling, CostModel } from "@/types/api";
-import type { ApiKey, ApiKeyCreated, CreateApiKeyBody } from "@/lib/api/api-keys";
+import type { ApiKey, ApiKeyCreated, ApiKeyGrantInput, CreateApiKeyBody } from "@/lib/api/api-keys";
 import type { AuditListParams, AuditListResponse, AuditSummaryRow, LlmAuditResponse } from "@/lib/api/audit";
 import type { FieldMapping, FieldMappingsListResponse } from "@/lib/api/field-mappings";
 import type { LicenceManifest } from "@/lib/api/licence";
@@ -81,6 +81,7 @@ export const testSso = (issuer?: string): Promise<SsoTestResult> => v2Send("POST
 export const listApiKeys = (): Promise<ApiKey[]> => v2Get("/admin/api-keys");
 export const createApiKey = (body: CreateApiKeyBody): Promise<ApiKeyCreated> => v2Send("POST", "/admin/api-keys", body);
 export const revokeApiKey = (id: string): Promise<ApiKey> => v2Send("POST", `/admin/api-keys/${enc(id)}/revoke`);
+export const updateApiKey = (id: string, body: { name?: string; scopes?: ApiKeyGrantInput[]; expires_at?: string | null }): Promise<ApiKey> => v2Send("PATCH", `/admin/api-keys/${enc(id)}`, body);
 export const deleteApiKey = (id: string): Promise<{ id: string; status: string }> => v2Send("DELETE", `/admin/api-keys/${enc(id)}`);
 
 /* ── Licence, billing, platform version ── */

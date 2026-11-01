@@ -6627,6 +6627,9 @@ export const en = {
   "Version sent back to draft": "Version sent back to draft",
   "Version sent for review": "Version sent for review",
   "Why the change": "Why the change",
+  "Edit the key": "Edit the key",
+  "Key updated": "Key updated",
+  "Save the changes": "Save the changes",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

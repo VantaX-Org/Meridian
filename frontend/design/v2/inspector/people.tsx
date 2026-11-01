@@ -649,6 +649,84 @@ export function RoleInspector({ id, onClose }: { id: string; onClose: () => void
 
 /* ── API key ── */
 
+/** The roles an API key acts with, one scope per row. */
+function GrantList({ grants, onChange, roles }: { grants: Scope[]; onChange: (g: Scope[]) => void; roles: Role[] }) {
+  return (
+    <>
+      <h3>{t("Roles the key acts with")}</h3>
+      {grants.map((g, i) => (
+        <div key={i} style={{ marginBottom: "var(--m2-s3)" }}>
+          <ScopeFields scope={g} onChange={(s) => onChange(grants.map((x, j) => (j === i ? s : x)))} roles={roles} />
+          {grants.length > 1 ? (
+            <button type="button" className="m2-linkbtn" onClick={() => onChange(grants.filter((_, j) => j !== i))}>
+              {t("Remove this role")}
+            </button>
+          ) : null}
+        </div>
+      ))}
+      <button type="button" className="m2-btn m2-sm" onClick={() => onChange([...grants, { role: "", system: "", module: "" }])}>
+        {t("Add another role")}
+      </button>
+    </>
+  );
+}
+
+const keyGrants = (gs: Scope[]) => gs.map((g) => ({ role_key: g.role, system_id: g.system || null, module: g.module || null }));
+
+/** Changes a key's name, expiry and roles. Only the fields that changed are sent; the secret stays as it is. */
+function EditKey({ k, onDone }: { k: ApiKey; onDone: () => void }) {
+  const qc = useQueryClient();
+  const roles = useRoles();
+  const first: Scope[] = k.grants.map((g) => ({ role: g.role_key, system: g.system_id ?? "", module: g.module ?? "" }));
+  const firstExpiry = k.expires_at ? k.expires_at.slice(0, 10) : "";
+  const [name, setName] = useState(k.name);
+  const [expires, setExpires] = useState(firstExpiry);
+  const [grants, setGrants] = useState<Scope[]>(first.length ? first : [{ role: "viewer", system: "", module: "" }]);
+  const { outcome, pending, run } = useOutcome();
+  const grantsChanged = JSON.stringify(grants) !== JSON.stringify(first);
+  const changed = name.trim() !== k.name || expires !== firstExpiry || grantsChanged;
+  return (
+    <section aria-label={t("Edit the key")}>
+      <div className="m2-aform">
+        <label>
+          {t("Name")}
+          <input value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <label>
+          {t("Expires (optional)")}
+          <input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
+        </label>
+      </div>
+      <GrantList grants={grants} onChange={setGrants} roles={roles.data ?? []} />
+      {outcome ? <ResultFrame outcome={outcome} /> : null}
+      <Actions>
+        <button
+          type="button"
+          className="m2-btn m2-next"
+          disabled={!changed || !name.trim() || grants.some((g) => !g.role) || pending !== null}
+          onClick={() =>
+            void run("edit", async () => {
+              await api.updateApiKey(k.id, {
+                ...(name.trim() !== k.name ? { name: name.trim() } : {}),
+                ...(expires !== firstExpiry ? { expires_at: expires ? `${expires}T23:59:59Z` : null } : {}),
+                ...(grantsChanged ? { scopes: keyGrants(grants) } : {}),
+              });
+              await refreshAdmin(qc, "apikeys");
+              onDone();
+              return { tone: "ok", title: t("Key updated") };
+            })
+          }
+        >
+          {pending === "edit" ? t("Saving…") : t("Save the changes")}
+        </button>
+        <button type="button" className="m2-btn" disabled={pending !== null} onClick={onDone}>
+          {t("Cancel")}
+        </button>
+      </Actions>
+    </section>
+  );
+}
+
 function NewKey({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const { openItem } = useOpenItem();
@@ -671,20 +749,7 @@ function NewKey({ onClose }: { onClose: () => void }) {
           <input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
         </label>
       </div>
-      <h3>{t("Roles the key acts with")}</h3>
-      {grants.map((g, i) => (
-        <div key={i} style={{ marginBottom: "var(--m2-s3)" }}>
-          <ScopeFields scope={g} onChange={(s) => setGrants(grants.map((x, j) => (j === i ? s : x)))} roles={roles.data ?? []} />
-          {grants.length > 1 ? (
-            <button type="button" className="m2-linkbtn" onClick={() => setGrants(grants.filter((_, j) => j !== i))}>
-              {t("Remove this role")}
-            </button>
-          ) : null}
-        </div>
-      ))}
-      <button type="button" className="m2-btn m2-sm" onClick={() => setGrants([...grants, { role: "", system: "", module: "" }])}>
-        {t("Add another role")}
-      </button>
+      <GrantList grants={grants} onChange={setGrants} roles={roles.data ?? []} />
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {made ? (
         <div role="status">
@@ -711,7 +776,7 @@ function NewKey({ onClose }: { onClose: () => void }) {
           disabled={!name.trim() || grants.some((g) => !g.role) || pending !== null || made !== null}
           onClick={() =>
             void run("create", async () => {
-              const k = await api.createApiKey({ name: name.trim(), grants: grants.map((g) => ({ role_key: g.role, system_id: g.system || null, module: g.module || null })), expires_at: expires ? `${expires}T23:59:59Z` : null });
+              const k = await api.createApiKey({ name: name.trim(), grants: keyGrants(grants), expires_at: expires ? `${expires}T23:59:59Z` : null });
               await refreshAdmin(qc, "apikeys");
               setMade({ id: k.id, key: k.key });
               return { tone: "ok", title: t("Key {name} created", { name: k.name }), detail: t("Copy it now: it cannot be shown again.") };
@@ -731,7 +796,9 @@ function KeyBody({ k }: { k: ApiKey }) {
   const can = useCan();
   const { outcome, pending, run } = useOutcome();
   const [ask, setAsk] = useState<"revoke" | "delete" | null>(null);
+  const [editing, setEditing] = useState(false);
   const edit = can("manage_users");
+  if (editing) return <EditKey k={k} onDone={() => setEditing(false)} />;
   return (
     <>
       <Facts>
@@ -747,6 +814,11 @@ function KeyBody({ k }: { k: ApiKey }) {
       </Facts>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Actions>
+        {k.status === "active" ? (
+          <button type="button" className="m2-btn" disabled={!edit || pending !== null} onClick={() => setEditing(true)}>
+            {t("Edit the key")}
+          </button>
+        ) : null}
         {k.status === "active" ? (
           <button type="button" className="m2-btn m2-crit" disabled={!edit || pending !== null} onClick={() => setAsk("revoke")}>
             {t("Revoke the key")}

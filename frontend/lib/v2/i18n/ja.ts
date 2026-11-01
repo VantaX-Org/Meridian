@@ -6628,4 +6628,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Version sent back to draft": "バージョンを下書きに戻しました",
   "Version sent for review": "バージョンをレビューに送りました",
   "Why the change": "変更の理由",
+  "Edit the key": "キーを編集",
+  "Key updated": "キーを更新しました",
+  "Save the changes": "変更を保存",
 };
