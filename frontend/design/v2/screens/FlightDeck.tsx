@@ -104,7 +104,7 @@ export function FlightDeck() {
         eyebrow={wave.name}
         headline={headline}
         verdict={course === "on" ? "go" : course === "off" ? "no-go" : undefined}
-        why={cost == null ? why : `${why} ${t("Waiting costs {money} a month.", { money: moneyCompactText(cost, money?.currency) })}`}
+        why={cost == null ? why : `${why} ${cost === 0 ? t("No costed SAP feature waits on this wave.") : t("Waiting costs {money} a month.", { money: moneyCompactText(cost, money?.currency) })}`}
         figs={[
           { label: t("Days to go-live"), value: toGoLive == null ? DASH : int(Math.max(0, toGoLive)), note: wave.target_date ? formatDate(wave.target_date, "date") : t("no date set") },
           { label: t("Readiness today"), value: wave.last_score == null ? DASH : f1(wave.last_score), note: wave.last_verdict ? VERDICT_LABEL[wave.last_verdict.replace("_", "-") as Verdict] : t("not measured") },

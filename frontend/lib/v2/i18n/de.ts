@@ -6705,4 +6705,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{n, plural, one {once} other {# times}}": "{n, plural, one {einmal} other {# Mal}}",
   "Readiness {s}, {n} would not load": "Bereitschaft {s}, {n} nicht ladbar",
   "Open the analysis of {d}": "Analyse vom {d} öffnen",
+  "No costed SAP feature waits on this wave.": "Auf diese Welle wartet keine bewertete SAP-Funktion.",
 };

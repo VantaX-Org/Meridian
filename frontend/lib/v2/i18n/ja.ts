@@ -6705,4 +6705,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{n, plural, one {once} other {# times}}": "{n, plural, other {# 回}}",
   "Readiness {s}, {n} would not load": "準備度 {s}、{n} 件が読み込めません",
   "Open the analysis of {d}": "{d} の分析を開く",
+  "No costed SAP feature waits on this wave.": "このウェーブを待っている、コスト評価済みの SAP 機能はありません。",
 };

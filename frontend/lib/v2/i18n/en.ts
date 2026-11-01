@@ -6704,6 +6704,7 @@ export const en = {
   "{n, plural, one {once} other {# times}}": "{n, plural, one {once} other {# times}}",
   "Readiness {s}, {n} would not load": "Readiness {s}, {n} would not load",
   "Open the analysis of {d}": "Open the analysis of {d}",
+  "No costed SAP feature waits on this wave.": "No costed SAP feature waits on this wave.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
