@@ -23,7 +23,7 @@ import { t as tr, lc } from "@/lib/v2/i18n";
 import { baselineRefusalOf, type BaselineRefusal } from "@/lib/api/v2/step9";
 import { breachWords } from "@/lib/v2/step9";
 import { moduleText } from "@/lib/v2/labels";
-import { ObjectChangeBars } from "./Compare";
+import { ObjectChangeBars, measuredChange } from "./Compare";
 import { CcBanner, CcPage } from "./cc-parts";
 import { WhatIf } from "./WhatIf";
 import "../basis.css";
@@ -320,8 +320,10 @@ function SincePrevious({ id, prevId, prevAt }: { id: string; prevId: string; pre
   const q = useCompareSummary(prevId, id);
   const S = q.data;
   if (!S) return null;
-  const up = S.objects.filter((o) => (o.score_change ?? 0) > 0).length;
-  const dn = S.objects.filter((o) => (o.score_change ?? 0) < 0).length;
+  // Count from the measured scores, as the bars below do, so the sentence and the chart agree.
+  const deltas = S.objects.map(measuredChange);
+  const up = deltas.filter((d) => d != null && d > 0).length;
+  const dn = deltas.filter((d) => d != null && d < 0).length;
   return (
     <section className="m2-cc-card" aria-label={tr("Since the run before")} data-testid="run-since">
       <h3>{tr("Since the run before, on {run_at}", { run_at: formatDate(prevAt, "date") })}</h3>

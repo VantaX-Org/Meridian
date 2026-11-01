@@ -94,9 +94,12 @@ export function CcDelta({ rows, label, testId }: { rows: CcDeltaRow[]; label: st
   const max = Math.max(1, ...rows.map((r) => Math.abs(r.delta ?? 0)));
   return (
     <div data-testid={testId}>
-      <div className="m2-cc-legend" aria-hidden="true">
-        <span>{t("Worse")}</span>
-        <span>{t("Better")}</span>
+      <div className="m2-cc-dlegend" aria-hidden="true">
+        <span />
+        <span>
+          <span>{t("Worse")}</span>
+          <span>{t("Better")}</span>
+        </span>
       </div>
       <ul className="m2-cc-hbars m2-cc-delta" aria-label={label}>
         {rows.map((r) => {

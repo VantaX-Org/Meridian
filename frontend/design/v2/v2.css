@@ -761,6 +761,10 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-hspark { display: flex; justify-content: flex-end; }
 .m2-cc-delta .m2-cc-track::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--m2-ink-3); }
 .m2-cc-legend + .m2-cc-hbars { margin-top: var(--m2-s2); }
+/* The delta legend sits over the track: worse at its left end, better at its right. */
+.m2-cc-dlegend { display: grid; grid-template-columns: minmax(120px, 30%) minmax(0, 1fr) minmax(64px, auto); gap: var(--m2-s3); margin-bottom: var(--m2-s2); font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
+.m2-cc-dlegend > span:last-child { display: flex; justify-content: space-between; }
+@media (max-width: 900px) { .m2-cc-dlegend { grid-template-columns: minmax(0, 1fr); } .m2-cc-dlegend > span:first-child { display: none; } }
 .m2-cc-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--m2-s4); }
 /* Inside a half-width panel the three-column row leaves the bar a few pixels wide, so the label takes its own line and the bar runs the width of the panel. */
 .m2-cc-split .m2-cc-hbars li { grid-template-columns: minmax(0, 1fr) minmax(64px, auto); row-gap: var(--m2-s1); }
