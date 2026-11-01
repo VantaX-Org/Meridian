@@ -866,7 +866,7 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 .m2-cf-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--m2-s1); counter-reset: cf; }
 .m2-cf-step { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name wait" "vol vol" "num num"; gap: var(--m2-s1) var(--m2-s2); padding: var(--m2-s1) var(--m2-s2); border-radius: var(--m2-r1); font-size: var(--m2-fs-13); }
 .m2-cf-step[data-worst] { background: var(--m2-crit-bg); }
-.m2-cf-step[data-missing] { color: var(--m2-ink-3); border-left-style: dashed; }
+.m2-cf-step[data-missing] { color: var(--m2-ink-3); border: 1px dashed var(--m2-line-2); }
 .m2-cf-name { grid-area: name; min-width: 0; overflow-wrap: anywhere; }
 .m2-cf-wait { grid-area: wait; color: var(--m2-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .m2-cf-num { grid-area: num; color: var(--m2-ink-2); font-variant-numeric: tabular-nums; }
