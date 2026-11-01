@@ -1,5 +1,5 @@
 import type { Landscape, LandscapeCell, Verdict } from "@/lib/api/v2/types";
-import type { MigrationWave } from "@/types/api";
+import type { MigrationWave, WaveVerdict } from "@/types/api";
 
 /**
  * Migration waves on the landscape. A wave lists the objects (modules) it moves; an object belongs to the first wave
@@ -76,3 +76,8 @@ export function reassign(waves: readonly MigrationWave[], choice: Readonly<Recor
 
 /** The ISO date `days` from today (fractions round to the nearest day). */
 export const dayFromToday = (days: number, now: number = Date.now()): string => new Date(now + Math.round(days) * 86_400_000).toISOString().slice(0, 10);
+
+/** The v2 verdict and heat band (0 pass, 2 warn, 3 critical) for a cockpit verdict the API spells with underscores. */
+export function cockpitVerdict(v: WaveVerdict): { verdict: Verdict; band: 0 | 2 | 3 } {
+  return v === "go" ? { verdict: "go", band: 0 } : v === "at_risk" ? { verdict: "at-risk", band: 2 } : { verdict: "no-go", band: 3 };
+}

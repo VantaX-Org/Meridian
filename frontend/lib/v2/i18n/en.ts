@@ -6713,6 +6713,12 @@ export const en = {
   "Analyse the whole wave": "Analyse the whole wave",
   "Open the migration analyses": "Open the migration analyses",
   "Readiness cockpit": "Readiness cockpit",
+  "The wave cockpit could not be read.": "The wave cockpit could not be read.",
+  "This wave has not been analysed yet. Analyse the whole wave to see each object's verdict.": "This wave has not been analysed yet. Analyse the whole wave to see each object's verdict.",
+  "Readiness {score} against a threshold of {threshold}. {blocked} of {total} records are blocked.": "Readiness {score} against a threshold of {threshold}. {blocked} of {total} records are blocked.",
+  "Quality score": "Quality score",
+  "Nothing blocks this wave.": "Nothing blocks this wave.",
+  "Blockers of the wave": "Blockers of the wave",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

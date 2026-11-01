@@ -6714,4 +6714,10 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Analyse the whole wave": "ウェーブ全体を分析",
   "Open the migration analyses": "移行分析を開く",
   "Readiness cockpit": "準備度コックピット",
+  "The wave cockpit could not be read.": "ウェーブのコックピットを読み込めませんでした。",
+  "This wave has not been analysed yet. Analyse the whole wave to see each object's verdict.": "このウェーブはまだ分析されていません。ウェーブ全体を分析すると、オブジェクトごとの判定が表示されます。",
+  "Readiness {score} against a threshold of {threshold}. {blocked} of {total} records are blocked.": "準備度 {score}、しきい値 {threshold}。{total} 件中 {blocked} 件のレコードがブロックされています。",
+  "Quality score": "品質スコア",
+  "Nothing blocks this wave.": "このウェーブをブロックしているものはありません。",
+  "Blockers of the wave": "ウェーブのブロッカー",
 };

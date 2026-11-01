@@ -154,3 +154,7 @@ export const useWaves = (enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "waves"), rep.getWaves, enabled);
 };
+export const useWaveCockpit = (id: string, enabled = true) => {
+  const f = useFixture();
+  return useRead(k(f, "waves", id, "cockpit"), () => rep.getWaveCockpit(id), enabled);
+};

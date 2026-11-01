@@ -6714,4 +6714,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Analyse the whole wave": "Ganze Welle analysieren",
   "Open the migration analyses": "Migrationsanalysen öffnen",
   "Readiness cockpit": "Bereitschafts-Cockpit",
+  "The wave cockpit could not be read.": "Das Wellen-Cockpit konnte nicht gelesen werden.",
+  "This wave has not been analysed yet. Analyse the whole wave to see each object's verdict.": "Diese Welle wurde noch nicht analysiert. Analysieren Sie die ganze Welle, um das Urteil je Objekt zu sehen.",
+  "Readiness {score} against a threshold of {threshold}. {blocked} of {total} records are blocked.": "Bereitschaft {score} bei einem Schwellenwert von {threshold}. {blocked} von {total} Datensätzen sind blockiert.",
+  "Quality score": "Qualitätswert",
+  "Nothing blocks this wave.": "Nichts blockiert diese Welle.",
+  "Blockers of the wave": "Blocker der Welle",
 };
