@@ -6,6 +6,8 @@
  * GET /objects/{module}/monitor.
  */
 import { v2Get, v2Send } from "./client";
+import { fixtureActive } from "./fixture";
+import { fixtureAction } from "./fixtures/runs";
 import { v2Download } from "./download";
 
 export type ExportFormat = "csv" | "xlsx";
@@ -52,7 +54,8 @@ export interface CancelledJob {
   tasks_revoked: boolean | null;
 }
 
-export const cancelJob = (id: string): Promise<CancelledJob> => v2Send<CancelledJob>("POST", `/jobs/${encodeURIComponent(id)}/cancel`);
+export const cancelJob = (id: string): Promise<CancelledJob> =>
+  fixtureActive() ? Promise.resolve().then(() => fixtureAction("cancel", { id }) as CancelledJob) : v2Send<CancelledJob>("POST", `/jobs/${encodeURIComponent(id)}/cancel`);
 
 // ── Record-level compare ──────────────────────────────────────────────────────
 

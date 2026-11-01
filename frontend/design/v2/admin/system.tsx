@@ -19,7 +19,7 @@ import { DiagnosticsBlock } from "./enterprise";
 import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
 
-const JOB_TONE: Record<Job["status"], "go" | "at-risk" | "no-go" | "neutral"> = { queued: "neutral", running: "at-risk", completed: "go", failed: "no-go" };
+const JOB_TONE: Record<Job["status"], "go" | "at-risk" | "no-go" | "neutral"> = { queued: "neutral", running: "at-risk", completed: "go", failed: "no-go", cancelled: "neutral" };
 const DOCTOR_TONE = { ok: "go", warn: "at-risk", fail: "no-go" } as const;
 const DOCTOR_WORD = { get ok() { return t("Passing"); }, get warn() { return t("Warning"); }, get fail() { return t("Failing"); } } as const;
 

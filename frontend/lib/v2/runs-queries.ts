@@ -18,6 +18,7 @@ import {
   getVersionsPage,
   type VersionsQuery,
 } from "@/lib/api/v2/runs";
+import { getRunSteps } from "@/lib/api/v2/run-ops";
 import { JOBS_QUERY_OPTIONS } from "@/hooks/use-jobs";
 
 /** Query keys of the step 3 reads. Every key starts with "v2" and carries the fixture flag, like the landscape keys. */
@@ -50,6 +51,11 @@ export function useCompareSummary(a: string, b: string) {
 export function useVersionChanges(a: string, b: string) {
   const fixture = useFixture();
   return useQuery({ queryKey: runKeys.changes(fixture, a, b), queryFn: () => getVersionCompare(a, b), staleTime: 30_000, retry: false });
+}
+
+export function useRunSteps(id: string) {
+  const fixture = useFixture();
+  return useQuery({ queryKey: ["v2", "run-steps", fixture, id] as const, queryFn: () => getRunSteps(id), staleTime: 15_000, retry: false });
 }
 
 export function useVersionHead(id: string) {

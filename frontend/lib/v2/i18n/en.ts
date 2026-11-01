@@ -6713,6 +6713,16 @@ export const en = {
   "Exporting runs needs the export permission": "Exporting runs needs the export permission",
   "Runs downloading": "Runs downloading",
   "The browser saves the file when it is ready. It follows the system filter and the archived switch, up to 100 runs.": "The browser saves the file when it is ready. It follows the system filter and the archived switch, up to 100 runs.",
+  "Steps": "Steps",
+  "How long each step of the analysis took": "How long each step of the analysis took",
+  "Steps downloading": "Steps downloading",
+  "Export steps": "Export steps",
+  "Exporting steps needs the export permission": "Exporting steps needs the export permission",
+  "Export steps to Excel": "Export steps to Excel",
+  "Export steps to CSV": "Export steps to CSV",
+  "The steps of this run could not be read.": "The steps of this run could not be read.",
+  "No step timings are kept for this run.": "No step timings are kept for this run.",
+  "Step duration": "Step duration",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

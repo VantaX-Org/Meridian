@@ -26,6 +26,7 @@ import { moduleText } from "@/lib/v2/labels";
 import { ObjectChangeBars, measuredChange } from "./Compare";
 import { CcBanner, CcPage } from "./cc-parts";
 import { WhatIf } from "./WhatIf";
+import { RunSteps } from "./RunSteps";
 import "../basis.css";
 
 /**
@@ -590,6 +591,8 @@ export function RunCanvas({ id }: { id: string }) {
       <ProveThree run={id} modules={[...new Set(cells.map((c) => c.module))]} />
 
       <WhatIf run={id} canRun={canChange} />
+
+      <RunSteps runId={id} />
 
       <RunJobs runId={id} />
     </CcPage>

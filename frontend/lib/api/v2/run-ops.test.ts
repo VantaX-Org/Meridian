@@ -48,6 +48,14 @@ describe("run-side clients ask the endpoints the backend serves", () => {
     expect(calls[4][0]).toBe("/api/v1/objects/material_master/monitor");
   });
 
+  it("fixture mode answers steps, with the failed run stopping at its error", async () => {
+    window.sessionStorage.setItem("mn_v2_fixture", "1");
+    const ok = await getRunSteps("f0000000-0000-4000-8000-0000000000f1");
+    expect(ok.steps.at(-1)?.status).toBe("failed");
+    expect(ok.steps.at(-1)?.error_detail).toBeTruthy();
+    window.sessionStorage.removeItem("mn_v2_fixture");
+  });
+
   it("cancels a job with a POST and no body", async () => {
     const req = vi.spyOn(apiClient, "request").mockResolvedValue({ data: { id: "j1", status: "cancelled", tasks_revoked: true } });
     const out = await cancelJob("j1");
