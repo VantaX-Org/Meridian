@@ -22,3 +22,30 @@ The direction every fix follows is the data cockpit: dense, one primary action p
 12. Runs, Compare (`/runs/compare`, baseline `runs-compare`). Already a good cockpit screen: diverging delta bars, one banner. Keep.
 
 Not audited by picture (no baseline, code read only): Atlas, Attention, Value, Insights, Forecast, Issues, Links, Mining, Migration, Cleansing, S/4 readiness, Score lens, Work monitor, Work analytics, Triage, Exceptions, Requests, Config, Materials, MDM health, Flight deck, Basis home, Status, Welcome. Each already uses `CcPage` and `CcBanner`; they follow the list above once a baseline exists.
+
+## Pass 2
+
+Date: 2026-11-01, same branch. This pass had fresh 1440 light screenshots of twenty screens on fixture data, taken with the Aletheia dock open. Each screen was judged from its picture and its code; the fixes are the commits listed per screen. Three fixes are shared and reach screens beyond the one they were found on: the rule-name lookup (`d81e029e`) keyed its map on the rule's database id, so no screen using it ever showed a rule's text beside its code; a banner with exactly three figures now lays them out in one row (`d49adf40`); and bars inside a half-width split panel put the label on its own line so the bar has the panel's width (`0a69d3d8`).
+
+Sidebar entries. Six map entries (Action centre, Cost and causes, Issues, Data mining, MDM health, Migration) went to Work, the landscape or the rules library under a different title because the cut-over redirect table still captured their exact addresses, even though each has its own Meridian 2 screen. The labels were right and the destinations wrong, so the six exact-address redirects are removed and each entry opens its own screen (`be0f42ae`). Sub-page redirects stay.
+
+- Go-live (`/`). What-if list showed bare rule codes with a count; five banner figures in a two-column grid left Cost of waiting alone on a third row. Rules are named from the library, the banner keeps four figures and the cost reads as a second sentence under the headline (`1efa3740`).
+- Atlas. Below 70 sat alone on a second row of figures. Fixed by the shared three-figure banner rule (`d49adf40`); otherwise strong.
+- S/4HANA readiness. Rule codes without text (the shared lookup bug), no chart of records to fix, simplification item column clipped past the frame. Rule names fixed at the root, a toned records-to-fix bar per measured area added, the column wraps (`d81e029e`).
+- Value delivered. Loss table clipped its money columns; the month record was a 32-pixel sparkline. Text cells wrap, a bar per kind of loss shows annual risk, one toned bar per month replaces the sparkline (`d2aaac4e`).
+- Forecast and plan. The 30-day and 90-day forecasts sat past the right edge. Signal wraps, trend word moves under the sparkline, ranges sit under their figures, lead rule cell capped (`6c35c903`).
+- Cleansing. Strong: banner with one action, toned bars, every code with its text. No change.
+- Score lens. Delta bars in the run and module tables carried no figure. Each bar now shows its signed change (`e954a9ab`).
+- Links. Strong: the relationship table and bars already read well at 1440. No change.
+- Material 360. Before a number is typed the screen was a search box and a sentence. It now lists the twelve materials with the most serious open findings, each with name, severity, open count and top issue; a click opens the material (`5f6c982e`).
+- Process discovery. Nine columns pushed state and actions past the frame. State sits under the process name and the actions use the small button, so every column shows (`1db59a03`).
+- Rule detail. Strong: code with text, failing-records chart, one action. No change.
+- Run detail. Not judged: the screenshot shows the error frame because the id in its address is not one the fixture serves (`lib/api/v2/fixtures/runs.ts` only knows the ids in `RUNS`). The code was read and is unchanged; a new picture with a fixture id is needed.
+- Requests. Strong. No change.
+- Configuration. The 2+1 figure layout is fixed by the shared three-figure rule; the three-line headline is acceptable. No change.
+- Work monitor. The monitor table ran past the page edge so the batch column was clipped; the headline was a four-line sentence. The three tables sit in scroll frames, drift and cohort tables get a visible title and explanation, the headline names one figure and the fixed count moves beneath it (`c6d1dce3`). Analytics, exceptions and triage had no page title above their tabs; all five Work views now carry the Work title with the view named beside it (`0f91f43c`).
+- Work analytics. Bare rule codes, fixed by the shared lookup (`d81e029e`); missing page title fixed in `0f91f43c`.
+- Triage. Backlog-burn and owner bars a few pixels wide in half-width panels. Fixed by the shared split-panel rule (`0a69d3d8`).
+- Exceptions. Severity bars all the same blue; third figure label wrapped and dropped its number. Critical is red and high amber, the period moves into the note (`b5fe758c`).
+- Basis home (`/admin`). Strong: banner with one action and real role bars. No change.
+- Status. Strong: the 30-day strip colours only degraded and down days, the sentence under it gives both counts. No change.
