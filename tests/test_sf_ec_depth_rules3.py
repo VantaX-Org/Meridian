@@ -247,6 +247,55 @@ for _cc, _m, _f in NID_PERSONAL:
                                                         NATIONAL_ID_COUNTRY=[_cc, _cc, _cc])}, 1, [PI]))
 
 
+# EMPEMPLOYMENT dates, PERINFO names/birth, PERADDRESS line 2 (EC591 onward); first row is the bad one
+PA = "PERADDRESS"
+
+
+def _ee(**cols):
+    return {EE: frame(EE, USERID=[f"u{i + 1}" for i in range(len(next(iter(cols.values()))))], **cols)}
+
+
+def _ee_pi(field, vals, pi_field="DATE_OF_BIRTH", pi_val="19850730"):
+    return {EE: frame(EE, USERID=["u1", "u2"], PERSON_ID=["p1", "p2"], **{field: vals}),
+            PI: frame(PI, PERSON_ID=["p1", "p2"], **{pi_field: [pi_val, pi_val]})}
+
+
+def _pi(**cols):
+    return {PI: frame(PI, PERSON_ID=[f"p{i + 1}" for i in range(len(next(iter(cols.values()))))], **cols)}
+
+
+CASES += [
+    ("EC591", _ee(SERVICE_DATE=["29990101", "20100101"]), 1, [EE]),
+    ("EC592", _ee(SERVICE_DATE=["20200101", "20100101"], END_DATE=["20150101", "20150101"]), 1, [EE]),
+    ("EC593", _ee(SENIORITY_DATE=["20200101", "20100101"], END_DATE=["20150101", "20150101"]), 1, [EE]),
+    ("EC594", _ee_pi("ORIGINAL_START_DATE", ["19800101", "20100101"]), 1, [EE]),
+    ("EC595", _ee_pi("SERVICE_DATE", ["19850730", "20100101"]), 1, [EE]),
+    ("EC596", _ee_pi("SENIORITY_DATE", ["19700101", "20100101"]), 1, [EE]),
+    ("EC597", _ee(LAST_DATE_WORKED=["20090101", "20200101"], START_DATE=["20100101", "20100101"]), 1, [EE]),
+    ("EC598", _ee(PAYROLL_END_DATE=["20090101", "20200101"], START_DATE=["20100101", "20100101"]), 1, [EE]),
+    ("EC599", _ee(PAYROLL_END_DATE=["20200101", None, "20200101"], STATUS=["A", "A", "T"]), 1, [EE]),
+    ("EC600", _ee_pi("END_DATE", ["20250101", "20200101"], "DATE_OF_DEATH", "20200101"), 1, [EE]),
+    ("EC601", _ee(OK_TO_REHIRE=[None, "true", None], STATUS=["T", "T", "A"]), 1, [EE]),
+    ("EC602", _ee(OK_TO_REHIRE=["false", None, "false"], STATUS=["A", "A", "T"]), 1, [EE]),
+    ("EC603", _ee(JOB_END_DATE=["20090101", "20200101"], JOB_START_DATE=["20100101", "20100101"]), 1, [EE]),
+    ("EC604", _ee(CREATED_DATE=["29990101", "20100101"]), 1, [EE]),
+    ("EC605", _pi(NATIONALITY=["ZAF", "ZAF"], SECOND_NATIONALITY=["ZAF", "GBR"]), 1, [PI]),
+    ("EC606", _pi(PLACE_OF_BIRTH=["Sample Town 2", "Sample Town"]), 1, [PI]),
+    ("EC607", _pi(PLACE_OF_BIRTH=["Sample Town", "Sample Town", None], COUNTRY_OF_BIRTH=[None, "ZAF", None]), 1, [PI]),
+    ("EC608", _pi(MIDDLENAME=["Ann2", "Ann-Lee"]), 1, [PI]),
+    ("EC609", _pi(MIDDLENAME=["Ann  Lee", "Ann Lee"]), 1, [PI]),
+    ("EC610", _pi(PREFERRED_NAME=["Sam#", "Sam"]), 1, [PI]),
+    ("EC611", _pi(PREFERRED_NAME=["Sam  Lee", "Sam Lee"]), 1, [PI]),
+    ("EC612", _pi(MIDDLENAME=[" NMN ", "Ann"]), 1, [PI]),
+    ("EC613", _pi(PREFERRED_NAME=["Dummy", "Sam"]), 1, [PI]),
+    ("EC614", _pi(PERSON_UUID=["U1", "U1", "U2", None]), 2, [PI]),
+    ("EC615", {PA: frame(PA, PERSON_ID=["p1", "p2"], ADDRESS_LINE1=["1 Main Rd", "1 Main Rd"],
+                         ADDRESS_LINE2=["1 main rd ", "Unit 4"])}, 1, [PA]),
+    ("EC616", {PA: frame(PA, PERSON_ID=["p1", "p2"], CITY=["Sampleton", "Sampleton"],
+                         ADDRESS_LINE2=["SAMPLETON", "Unit 4"])}, 1, [PA]),
+]
+
+
 @pytest.mark.parametrize("cc,nid,dob,bad", [
     ("POL", "05230112345", "20050301", False), ("POL", "05030112345", "20050301", True),
     ("BGR", "0543011206", "20050301", False), ("BGR", "0503011206", "20050301", True),

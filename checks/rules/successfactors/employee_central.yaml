@@ -11023,3 +11023,430 @@ rules:
     __other__: Compare both values with the identity document and correct the wrong one.
   record_fix_template: 'Person {PERINFO.PERSON_ID}: Austrian social insurance number does not match the date of
     birth.'
+- id: EC591
+  field: EMPEMPLOYMENT.SERVICE_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.SERVICE_DATE` > @today'
+  severity: medium
+  dimension: validity
+  message: Service date lies in the future
+  why_it_matters: The service date is the date from which length of service is counted (hire or recognised prior
+    service, moved later by unpaid breaks). A date after today means a typing error in the year.
+  rule_authority: best_practice
+  sap_impact: Service awards, service-based leave entitlement and notice periods treat the employee as having no
+    service.
+  fix_map:
+    __other__: Correct the service date in Employment Details.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: service date {EMPEMPLOYMENT.SERVICE_DATE} is in the future.'
+- id: EC592
+  field: EMPEMPLOYMENT.SERVICE_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.SERVICE_DATE` > `EMPEMPLOYMENT.END_DATE`'
+  severity: medium
+  dimension: consistency
+  message: Service date is after the employment end date
+  why_it_matters: Service is counted from the service date until the employment ends. A service date after the termination
+    date gives a negative length of service; one of the two dates was changed alone.
+  rule_authority: best_practice
+  sap_impact: Severance, long-service payouts and final leave entitlement are calculated on a negative service length.
+  fix_map:
+    __other__: Correct the service date or the termination date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: service date {EMPEMPLOYMENT.SERVICE_DATE} is after the
+    end date {EMPEMPLOYMENT.END_DATE}.'
+- id: EC593
+  field: EMPEMPLOYMENT.SENIORITY_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.SENIORITY_DATE` > `EMPEMPLOYMENT.END_DATE`'
+  severity: medium
+  dimension: consistency
+  message: Seniority date is after the employment end date
+  why_it_matters: Seniority counts from the seniority date until the employment ends. A seniority date after the
+    termination date gives negative seniority; one of the two dates was changed alone.
+  rule_authority: best_practice
+  sap_impact: Seniority-based severance and layoff ranking use a negative seniority for the leaver.
+  fix_map:
+    __other__: Correct the seniority date or the termination date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: seniority date {EMPEMPLOYMENT.SENIORITY_DATE} is after
+    the end date {EMPEMPLOYMENT.END_DATE}.'
+- id: EC594
+  field: EMPEMPLOYMENT.ORIGINAL_START_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.ORIGINAL_START_DATE` <= `PERINFO.DATE_OF_BIRTH`'
+  severity: high
+  dimension: consistency
+  message: Original start date is on or before the person's date of birth
+  why_it_matters: Original start date marks the start of the person's working relationship with the company. It
+    cannot fall on or before the day the person was born; the year was mistyped or a default date was loaded. The
+    employment start date has its own check (EC059).
+  rule_authority: best_practice
+  sap_impact: Service and seniority based entitlements (leave, awards, severance, pension vesting) are calculated
+    from an impossible date.
+  fix_map:
+    __other__: Correct the original start date from the employment history, or correct the date of birth from the
+      identity document.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: original start date {EMPEMPLOYMENT.ORIGINAL_START_DATE}
+    is on or before the date of birth.'
+- id: EC595
+  field: EMPEMPLOYMENT.SERVICE_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.SERVICE_DATE` <= `PERINFO.DATE_OF_BIRTH`'
+  severity: high
+  dimension: consistency
+  message: Service date is on or before the person's date of birth
+  why_it_matters: Service date marks the start of the person's working relationship with the company. It cannot
+    fall on or before the day the person was born; the year was mistyped or a default date was loaded. The employment
+    start date has its own check (EC059).
+  rule_authority: best_practice
+  sap_impact: Service and seniority based entitlements (leave, awards, severance, pension vesting) are calculated
+    from an impossible date.
+  fix_map:
+    __other__: Correct the service date from the employment history, or correct the date of birth from the identity
+      document.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: service date {EMPEMPLOYMENT.SERVICE_DATE} is on or before
+    the date of birth.'
+- id: EC596
+  field: EMPEMPLOYMENT.SENIORITY_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.SENIORITY_DATE` <= `PERINFO.DATE_OF_BIRTH`'
+  severity: high
+  dimension: consistency
+  message: Seniority date is on or before the person's date of birth
+  why_it_matters: Seniority date marks the start of the person's working relationship with the company. It cannot
+    fall on or before the day the person was born; the year was mistyped or a default date was loaded. The employment
+    start date has its own check (EC059).
+  rule_authority: best_practice
+  sap_impact: Service and seniority based entitlements (leave, awards, severance, pension vesting) are calculated
+    from an impossible date.
+  fix_map:
+    __other__: Correct the seniority date from the employment history, or correct the date of birth from the identity
+      document.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: seniority date {EMPEMPLOYMENT.SENIORITY_DATE} is on or
+    before the date of birth.'
+- id: EC597
+  field: EMPEMPLOYMENT.LAST_DATE_WORKED
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.LAST_DATE_WORKED` < `EMPEMPLOYMENT.START_DATE`'
+  severity: medium
+  dimension: validity
+  message: Last date worked is before the employment start date
+  why_it_matters: The last date worked lies inside the employment, between the start and the end date. A date before
+    the start date is a typing error in the termination.
+  rule_authority: best_practice
+  sap_impact: Final pay and leave payout are calculated for a negative working period.
+  fix_map:
+    __other__: Correct the last date worked in the termination details.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: last date worked {EMPEMPLOYMENT.LAST_DATE_WORKED} is before
+    the start date {EMPEMPLOYMENT.START_DATE}.'
+- id: EC598
+  field: EMPEMPLOYMENT.PAYROLL_END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.PAYROLL_END_DATE` < `EMPEMPLOYMENT.START_DATE`'
+  severity: medium
+  dimension: validity
+  message: Payroll end date is before the employment start date
+  why_it_matters: Payroll runs from the start of the employment to the payroll end date. A payroll end date before
+    the start date stops payroll before the first day of work.
+  rule_authority: best_practice
+  sap_impact: The employee is excluded from every payroll run; payroll (Employee Central Payroll) does not pay any
+    period.
+  fix_map:
+    __other__: Correct the payroll end date in the termination details.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: payroll end date {EMPEMPLOYMENT.PAYROLL_END_DATE} is before
+    the start date {EMPEMPLOYMENT.START_DATE}.'
+- id: EC599
+  field: EMPEMPLOYMENT.PAYROLL_END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.PAYROLL_END_DATE`.notna()'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Active employee has a payroll end date
+  why_it_matters: The payroll end date is captured on termination. On an active employee it is a leftover of a cancelled
+    termination or a rehire, and payroll stops paying the employee after that date.
+  rule_authority: best_practice
+  sap_impact: Payroll stops at the payroll end date although the employee still works; pay is missed from then on.
+  fix_map:
+    __other__: Clear the payroll end date, or complete the termination.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: active but has a payroll end date {EMPEMPLOYMENT.PAYROLL_END_DATE}.'
+- id: EC600
+  field: EMPEMPLOYMENT.END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.END_DATE` > `PERINFO.DATE_OF_DEATH`'
+  severity: medium
+  dimension: consistency
+  message: Employment ends after the person's date of death
+  why_it_matters: Employment ends at the latest on the date of death (termination with a death event reason). An
+    end date after the date of death keeps the employment, payroll and benefits open for a deceased person.
+  rule_authority: best_practice
+  sap_impact: Pay, benefits and system access continue after death and must be recovered from the estate.
+  fix_map:
+    __other__: Verify the date of death and set the termination date to it, or remove a wrongly entered date of
+      death.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: employment ends {EMPEMPLOYMENT.END_DATE}, after the recorded
+    date of death.'
+- id: EC601
+  field: EMPEMPLOYMENT.OK_TO_REHIRE
+  check_class: null_check
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - T
+  severity: medium
+  dimension: completeness
+  message: Terminated employee has no rehire eligibility recorded
+  why_it_matters: The OK to rehire flag is captured on termination. SuccessFactors uses it to warn recruiters and
+    HR when a former employee is rehired or applies again; blank means the decision was never recorded.
+  rule_authority: best_practice
+  sap_impact: A former employee who must not be rehired can be rehired without any warning.
+  fix_map:
+    __other__: Record whether the employee is eligible for rehire in the termination details.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: terminated without a rehire eligibility decision.'
+- id: EC602
+  field: EMPEMPLOYMENT.OK_TO_REHIRE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.OK_TO_REHIRE`.notna()'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: consistency
+  message: Active employee has a rehire eligibility flag
+  why_it_matters: The OK to rehire flag belongs to the termination details. On an active employee it is a leftover
+    of a cancelled termination and is carried forward into the next real termination unchecked.
+  rule_authority: best_practice
+  sap_impact: A later termination keeps the old rehire decision instead of a new one.
+  fix_map:
+    __other__: Clear the rehire flag, or complete the termination.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: active but has a rehire eligibility flag.'
+- id: EC603
+  field: EMPEMPLOYMENT.JOB_END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.JOB_END_DATE` < `EMPEMPLOYMENT.JOB_START_DATE`'
+  severity: high
+  dimension: validity
+  message: Current job record ends before it starts
+  why_it_matters: An EmpJob record is valid from its start date to its end date. An end date before the start date
+    gives the record no valid day, so the employee has no job data for that slice.
+  rule_authority: sap_hard_constraint
+  sap_impact: Org, pay and time data for the employee resolve to no record; payroll replication and reports skip
+    the employee.
+  fix_map:
+    __other__: Correct the job record dates in Job History.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: job record from {EMPEMPLOYMENT.JOB_START_DATE} ends on
+    {EMPEMPLOYMENT.JOB_END_DATE}.'
+- id: EC604
+  field: EMPEMPLOYMENT.CREATED_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.CREATED_DATE` > @today'
+  severity: medium
+  dimension: validity
+  message: Employment record creation time lies in the future
+  why_it_matters: createdDateTime is stamped by the system when the employment is saved. A future value means the
+    record was loaded with a wrong audit date or a server clock was wrong.
+  rule_authority: best_practice
+  sap_impact: Audit trails, delta extraction and data-retention purges ordered by creation time handle the record
+    wrongly.
+  fix_map:
+    __other__: Report the record to the SuccessFactors administrator; correct the source of the load.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: employment created on {EMPEMPLOYMENT.CREATED_DATE}, which
+    is in the future.'
+- id: EC605
+  field: PERINFO.SECOND_NATIONALITY
+  check_class: cross_field_check
+  fail_when: '`PERINFO.SECOND_NATIONALITY` == `PERINFO.NATIONALITY`'
+  severity: low
+  dimension: consistency
+  message: Second nationality is the same as the first nationality
+  why_it_matters: The second nationality records an additional citizenship. Repeating the first nationality adds
+    nothing and usually means the real second nationality was not entered.
+  rule_authority: best_practice
+  sap_impact: Work-permit and tax-treaty checks miss the person's real second citizenship.
+  fix_map:
+    __other__: Enter the real second nationality or clear the field.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: second nationality {PERINFO.SECOND_NATIONALITY} repeats the
+    first nationality.'
+- id: EC606
+  field: PERINFO.PLACE_OF_BIRTH
+  check_class: regex_check
+  pattern: ^[^0-9]*$
+  severity: low
+  dimension: accuracy
+  message: Place of birth contains digits
+  why_it_matters: A place of birth is a town or city name. Digits mean a date, postal code or ID was typed into
+    the field.
+  rule_authority: best_practice
+  sap_impact: Identity documents and statutory forms that print the place of birth (for example social insurance
+    registration) carry a wrong value.
+  fix_map:
+    __other__: Correct the place of birth from the identity document.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: place of birth contains digits.'
+- id: EC607
+  field: PERINFO.COUNTRY_OF_BIRTH
+  check_class: null_check
+  applies_when:
+    PERINFO.PLACE_OF_BIRTH:
+      populated: true
+  severity: low
+  dimension: completeness
+  message: Place of birth is recorded but the country of birth is blank
+  why_it_matters: A place name alone is ambiguous (many towns share a name). Statutory registrations that ask for
+    the place of birth also ask for its country.
+  rule_authority: best_practice
+  sap_impact: Social insurance and tax registrations that need the country of birth are returned for completion.
+  fix_map:
+    __other__: Enter the country of birth.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: place of birth recorded without a country of birth.'
+- id: EC608
+  field: PERINFO.MIDDLENAME
+  check_class: regex_check
+  pattern: ^[^0-9!@#$%^&*()_+=\[\]{};:"\\|<>/?~]*$
+  severity: medium
+  dimension: accuracy
+  message: Middle name contains digits or symbols
+  why_it_matters: 'Personal names contain letters, spaces, hyphens, apostrophes and periods. Digits or symbols such
+    as @ # / mean an ID, an e-mail or a note was typed into the name field.'
+  rule_authority: best_practice
+  sap_impact: Letters, org charts and directory entries show the wrong name.
+  fix_map:
+    __other__: Correct the name and move any other information to its own field.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: middle name contains digits or symbols.'
+- id: EC609
+  field: PERINFO.MIDDLENAME
+  check_class: regex_check
+  pattern: ^(?!.*\s{2}).*$
+  auto_fix:
+    steps:
+    - op: collapse_spaces
+    - op: strip
+    confidence: high
+  severity: low
+  dimension: validity
+  message: Middle name contains repeated spaces
+  why_it_matters: Double spaces inside a name come from concatenated legacy fields or copy-paste. Searches, duplicate
+    checks and generated documents treat the name as different from the clean spelling.
+  rule_authority: best_practice
+  sap_impact: Duplicate-person detection misses the record; generated letters show the extra space.
+  fix_map:
+    __other__: Collapse the repeated spaces to one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: middle name contains repeated spaces.'
+- id: EC610
+  field: PERINFO.PREFERRED_NAME
+  check_class: regex_check
+  pattern: ^[^0-9!@#$%^&*()_+=\[\]{};:"\\|<>/?~]*$
+  severity: medium
+  dimension: accuracy
+  message: Preferred name contains digits or symbols
+  why_it_matters: 'Personal names contain letters, spaces, hyphens, apostrophes and periods. Digits or symbols such
+    as @ # / mean an ID, an e-mail or a note was typed into the name field.'
+  rule_authority: best_practice
+  sap_impact: Letters, org charts and directory entries show the wrong name.
+  fix_map:
+    __other__: Correct the name and move any other information to its own field.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: preferred name contains digits or symbols.'
+- id: EC611
+  field: PERINFO.PREFERRED_NAME
+  check_class: regex_check
+  pattern: ^(?!.*\s{2}).*$
+  auto_fix:
+    steps:
+    - op: collapse_spaces
+    - op: strip
+    confidence: high
+  severity: low
+  dimension: validity
+  message: Preferred name contains repeated spaces
+  why_it_matters: Double spaces inside a name come from concatenated legacy fields or copy-paste. Searches, duplicate
+    checks and generated documents treat the name as different from the clean spelling.
+  rule_authority: best_practice
+  sap_impact: Duplicate-person detection misses the record; generated letters show the extra space.
+  fix_map:
+    __other__: Collapse the repeated spaces to one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: preferred name contains repeated spaces.'
+- id: EC612
+  field: PERINFO.MIDDLENAME
+  check_class: cross_field_check
+  fail_when: '`PERINFO.MIDDLENAME`.str.strip().str.lower().isin([''nmn'', ''nmi'', ''none'', ''n/a'', ''na'', ''-'',
+    ''.'', ''unknown'', ''test'', ''xxx''])'
+  severity: low
+  dimension: accuracy
+  message: Middle name is a placeholder (NMN, NMI, NONE, N/A ...)
+  why_it_matters: Placeholders such as NMN (no middle name), NMI (no middle initial), NONE or a single dash are
+    typed to get past a required field in a legacy system. In SuccessFactors the middle name is optional and is
+    left blank when the person has none.
+  rule_authority: best_practice
+  sap_impact: Letters, payslips and tax certificates print the placeholder as part of the person's name.
+  fix_map:
+    __other__: Clear the middle name.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: middle name is a placeholder.'
+- id: EC613
+  field: PERINFO.PREFERRED_NAME
+  check_class: cross_field_check
+  fail_when: '`PERINFO.PREFERRED_NAME`.str.strip().str.lower().isin([''test'', ''dummy'', ''xxx'', ''unknown'',
+    ''tbd'', ''n/a'', ''na'', ''none'', ''-'', ''.''])'
+  severity: medium
+  dimension: accuracy
+  message: Preferred name is a placeholder (TEST, UNKNOWN, N/A ...)
+  why_it_matters: The preferred name is the name shown in the people profile, org chart and e-mails. A placeholder
+    is shown to everyone instead of the person's real name.
+  rule_authority: best_practice
+  sap_impact: The org chart, directory and notifications display the placeholder as the person's name.
+  fix_map:
+    __other__: Clear the preferred name or enter the name the person wants to be called.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: preferred name is a placeholder.'
+- id: EC614
+  field: PERINFO.PERSON_UUID
+  check_class: uniqueness_check
+  fields:
+  - PERINFO.PERSON_UUID
+  applies_when:
+    PERINFO.PERSON_UUID:
+      populated: true
+  severity: high
+  dimension: uniqueness
+  message: Person UUID is shared by more than one person
+  why_it_matters: perPersonUuid is the system-generated surrogate key of PerPerson and is unique per person. The
+    same UUID on two person IDs means rows were copied between persons in a load or an integration mapped two people
+    to one key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Integrations keyed on the person UUID (Employee Central Payroll, identity provisioning) merge two
+    people into one record.
+  fix_map:
+    __other__: Find which person the UUID really belongs to and have the SuccessFactors administrator correct the
+      other person record.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: person UUID is also held by another person.'
+- id: EC615
+  field: PERADDRESS.ADDRESS_LINE2
+  check_class: cross_field_check
+  fail_when: '`PERADDRESS.ADDRESS_LINE2`.str.strip().str.lower() == `PERADDRESS.ADDRESS_LINE1`.str.strip().str.lower()'
+  severity: low
+  dimension: accuracy
+  message: Address line 2 repeats address line 1
+  why_it_matters: The second address line holds extra detail (building, floor, suburb). A copy of the first line
+    prints the street twice on every letter and payslip.
+  rule_authority: best_practice
+  sap_impact: Printed address labels carry the street twice; postal address validation in payroll and benefits interfaces
+    may reject the address.
+  fix_map:
+    __other__: Clear address line 2 or enter the real additional detail.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address line 2 repeats address line 1.'
+- id: EC616
+  field: PERADDRESS.ADDRESS_LINE2
+  check_class: cross_field_check
+  fail_when: '`PERADDRESS.ADDRESS_LINE2`.str.strip().str.lower() == `PERADDRESS.CITY`.str.strip().str.lower()'
+  severity: low
+  dimension: accuracy
+  message: Address line 2 repeats the city
+  why_it_matters: The city has its own field. Putting it again into address line 2 prints the city twice and is
+    a sign of a legacy address mapped line by line into SuccessFactors.
+  rule_authority: best_practice
+  sap_impact: Printed address labels carry the city twice; address matching in downstream interfaces fails.
+  fix_map:
+    __other__: Clear address line 2 or enter the real additional detail.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address line 2 repeats the city.'
