@@ -33,6 +33,8 @@ export interface DuplicatePair {
   match_score: number;
   id_field?: string | null;
   matched_fields?: string[] | null;
+  /** The dictionary text of each matched field the dictionary knows, keyed by field name. */
+  field_texts?: Record<string, string>;
   detected_at: string;
 }
 
@@ -41,6 +43,8 @@ export interface AnomalyItem {
   version_id: string;
   module_id: string;
   field_name: string;
+  /** The field's dictionary text; null when the dictionary does not know it. */
+  field_description?: string | null;
   field_value?: number | null;
   record_index?: number | null;
   record_key?: string | null;
@@ -58,6 +62,8 @@ export interface RelationshipItem {
   module_id: string;
   field_a: string;
   field_b: string;
+  field_a_description?: string | null;
+  field_b_description?: string | null;
   relationship_type: string;
   strength_score: number;
   detected_at: string;
@@ -72,7 +78,9 @@ export interface MiningPattern {
   occurrences: number;
   first_seen: string;
   last_seen: string;
-  confidence: number;
+  confidence: number | null;
+  /** The mined field's dictionary text, anomaly patterns only. */
+  field_description?: string | null;
   trend: unknown[];
   promoted_to_rule: boolean;
 }

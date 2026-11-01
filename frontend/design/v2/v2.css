@@ -603,7 +603,9 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-figs:has(> div:nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .m2-cc-figs > div { display: flex; flex-direction: column; gap: var(--m2-s1); padding-left: var(--m2-s4); border-left: 1px solid var(--m2-line); }
 .m2-cc-figs dt { font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
-.m2-cc-figs dd { margin: 0; white-space: nowrap; font-size: clamp(var(--m2-fs-24), 2.2vw, calc(var(--m2-fs-24) * 1.5)); line-height: 1.1; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Each figure sizes to its own cell, so a long number never runs into the next one. */
+.m2-cc-figs > div { container-type: inline-size; }
+.m2-cc-figs dd { margin: 0; white-space: nowrap; font-size: max(var(--m2-fs-16), min(clamp(var(--m2-fs-24), 2.2vw, calc(var(--m2-fs-24) * 1.5)), 16cqi)); line-height: 1.1; font-weight: 600; font-variant-numeric: tabular-nums; }
 .m2-cc-figs dd small { font-size: var(--m2-fs-16); color: var(--m2-ink-3); font-weight: 500; }
 .m2-cc-figs > div > dd.m2-cc-note { white-space: normal; font-size: var(--m2-fs-12); line-height: 1.4; font-weight: 400; color: var(--m2-ink-3); }
 .m2-cc-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--m2-s3); flex-wrap: wrap; }
@@ -633,7 +635,14 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-weeks { width: 100%; height: 48px; }
 .m2-cc-wfix { fill: var(--m2-pass); }
 .m2-cc-wback { fill: var(--m2-crit); }
-@media (max-width: 1200px) { .m2-cc { grid-template-columns: minmax(0, 1fr); } .m2-cc-dock { position: static; max-height: 480px; } }
+/* Beside the docked Aletheia the page is narrow, so table text wraps inside its cell and only figures stay on one line. */
+.m2-cc-main .m2-tbl th, .m2-cc-main .m2-tbl td { white-space: normal; height: auto; padding-top: var(--m2-s2); padding-bottom: var(--m2-s2); line-height: var(--m2-lh-13); }
+.m2-cc-main .m2-tbl .m2-r { white-space: nowrap; }
+.m2-cc-main .m2-tbl td.m2-wrap { min-width: 160px; }
+.m2-cc-main .m2-tbl .m2-cd { flex-wrap: wrap; }
+.m2-cc-main .m2-tbl .m2-cd > .m2-cdt { white-space: normal; overflow-wrap: anywhere; }
+.m2-cc-main .m2-tbl .m2-cd > .m2-cdc { max-width: none; }
+@media (max-width: 1360px) { .m2-cc { grid-template-columns: minmax(0, 1fr); } .m2-cc-dock { position: static; max-height: 480px; } }
 @media (max-width: 900px) { .m2-cc-banner, .m2-cc-row { grid-template-columns: minmax(0, 1fr); } }
 
 /* Data cockpit: the readiness matrix, fix pipeline, value at risk and the failing rules */
@@ -761,6 +770,10 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-hspark { display: flex; justify-content: flex-end; }
 .m2-cc-delta .m2-cc-track::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--m2-ink-3); }
 .m2-cc-legend + .m2-cc-hbars { margin-top: var(--m2-s2); }
+/* The delta legend sits over the track: worse at its left end, better at its right. */
+.m2-cc-dlegend { display: grid; grid-template-columns: minmax(120px, 30%) minmax(0, 1fr) minmax(64px, auto); gap: var(--m2-s3); margin-bottom: var(--m2-s2); font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
+.m2-cc-dlegend > span:last-child { display: flex; justify-content: space-between; }
+@media (max-width: 900px) { .m2-cc-dlegend { grid-template-columns: minmax(0, 1fr); } .m2-cc-dlegend > span:first-child { display: none; } }
 .m2-cc-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--m2-s4); }
 /* Inside a half-width panel the three-column row leaves the bar a few pixels wide, so the label takes its own line and the bar runs the width of the panel. */
 .m2-cc-split .m2-cc-hbars li { grid-template-columns: minmax(0, 1fr) minmax(64px, auto); row-gap: var(--m2-s1); }
@@ -846,7 +859,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-at-sysname { margin: 0 0 var(--m2-s2); font-size: var(--m2-fs-14); font-weight: 600; }
 .m2-at-sys[data-ran="true"] .m2-at-sysname { text-decoration: underline; text-underline-offset: 4px; }
 .m2-at-tiles { display: flex; flex-wrap: wrap; gap: var(--m2-s1); }
-a.m2-at-tile { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "name score" "code delta"; gap: 0 var(--m2-s2); min-height: 72px; padding: var(--m2-s2) var(--m2-s3); border: 1px solid var(--m2-line); border-radius: var(--m2-r1); color: var(--m2-fg); text-decoration: none; background: var(--m2-sheet); }
+a.m2-at-tile { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "name score" "code delta" "cap cap"; gap: 0 var(--m2-s2); min-height: 72px; padding: var(--m2-s2) var(--m2-s3); border: 1px solid var(--m2-line); border-radius: var(--m2-r1); color: var(--m2-fg); text-decoration: none; background: var(--m2-sheet); }
 .m2-at-tile:hover { border-color: var(--m2-fg); }
 a.m2-at-tile[data-band="0"] { background: var(--m2-pass-bg); color: var(--m2-pass-ink); }
 a.m2-at-tile[data-band="2"] { background: var(--m2-warn-bg); color: var(--m2-warn-ink); }
@@ -855,6 +868,7 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 .m2-at-name { grid-area: name; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .m2-at-code { grid-area: code; font-size: var(--m2-fs-12); opacity: 0.8; }
 .m2-at-score { grid-area: score; font-size: var(--m2-fs-20); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.m2-at-cap { grid-area: cap; font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
 .m2-at-delta { grid-area: delta; font-size: var(--m2-fs-12); font-variant-numeric: tabular-nums; text-align: right; }
 
 /* Configuration: process chains, one row per step, the bar sized by volume with the exception share inside it. */

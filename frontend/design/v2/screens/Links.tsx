@@ -73,10 +73,10 @@ export function Links() {
     setQuery({ domain: draft.domain, key: draft.domain ? draft.key.trim() : "" });
   };
 
-  if (links.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (links.isPending) return <CcPage title={t("Record links")}><Skeleton width="100%" height={320} /></CcPage>;
   if (links.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("Record links")}>
         {status(links.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read the record links.")}</EmptyFrame>
         ) : (
@@ -93,7 +93,7 @@ export function Links() {
   const filtered = query.domain !== "";
 
   return (
-    <CcPage>
+    <CcPage title={t("Record links")}>
       <CcBanner
         eyebrow={t("Links between records")}
         headline={

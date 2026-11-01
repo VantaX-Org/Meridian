@@ -22,6 +22,9 @@ import { Coded, Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { CollabSections } from "./collab";
 import { t as tr, lc, tx } from "@/lib/v2/i18n";
 import { labelText, moneyCompactText } from "@/lib/v2/labels";
+import { createRuleVersion, getRuleVersionDiff, transitionRuleVersion, type RuleVersionState } from "@/lib/api/v2/rulelib";
+import { errorSentence } from "@/lib/api/v2/client";
+import { useToast } from "../Toast";
 
 /**
  * Everything the rule inspector and the rule canvas say about one rule, read from GET /rules/{id}/scope, the receipts
@@ -332,6 +335,23 @@ const STATE_WORD: Record<string, string> = { get draft() { return tr("Draft"); }
 
 export function RuleVersions({ view }: { view: RuleView }) {
   const s = view.scope;
+  const session = useV2Session();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [open, setOpen] = useState<number | "new" | null>(null);
+  const canAuthor = session.can("manage_rules");
+  const canReview = session.can("approve") || session.can("review_ai_rules");
+  const done = (msg: string) => {
+    void qc.invalidateQueries({ queryKey: ["v2", "rule-scope"] });
+    toast.show(msg);
+    setOpen(null);
+  };
+  const move = useMutation({
+    mutationFn: ({ v, to }: { v: number; to: RuleVersionState }) => transitionRuleVersion(view.id, v, to),
+    onSuccess: (_d, { to }) => done(to === "active" ? tr("Version approved. It applies from the next analysis run.") : to === "in_review" ? tr("Version sent for review") : to === "retired" ? tr("Version retired") : tr("Version sent back to draft")),
+    onError: (err) => toast.show(errorSentence(err, tr("The version could not be moved.")), "error"),
+  });
+  const act = (v: number, to: RuleVersionState) => (session.fixture ? toast.show(tr("Fixture mode: nothing is saved")) : move.mutate({ v, to }));
   return (
     <Sec title={tr("Versions")}>
       {s.versions.length === 0 ? <p className="m2-rp m2-meta">{s.shipped ? tr("No tenant version yet; the shipped definition runs.") : tr("No version is stored for this rule.")}</p> : (
@@ -339,13 +359,116 @@ export function RuleVersions({ view }: { view: RuleView }) {
           {s.versions.map((v) => (
             <li key={v.version}>
               <span className="m2-d">{v.created_at ? formatDate(v.created_at, "date") : ""}</span>
-              <span>{tr("Version {version}, {STATE_WORD}{value}{value2}", { version: v.version, STATE_WORD: lc(STATE_WORD[v.state] ?? v.state), value: v.note ? `: ${v.note}` : "", value2: v.author ? tr(". By {author}.", { author: v.author }) : "" })}</span>
+              <span>
+                {tr("Version {version}, {STATE_WORD}{value}{value2}", { version: v.version, STATE_WORD: lc(STATE_WORD[v.state] ?? v.state), value: v.note ? `: ${v.note}` : "", value2: v.author ? tr(". By {author}.", { author: v.author }) : "" })}
+                {v.approved_by ? <span className="m2-meta"> {tr("Approved by {who}.", { who: v.approved_by })}</span> : null}
+                <span className="m2-acts">
+                  <button type="button" className="m2-btn m2-sm" aria-expanded={open === v.version} onClick={() => setOpen(open === v.version ? null : v.version)}>{tr("Show changes")}</button>
+                  {v.state === "draft" && canAuthor ? <button type="button" className="m2-btn m2-sm" disabled={move.isPending} onClick={() => act(v.version, "in_review")}>{tr("Send for review")}</button> : null}
+                  {v.state === "in_review" && canReview ? (
+                    <>
+                      <button type="button" className="m2-btn m2-sm m2-strong" disabled={move.isPending} onClick={() => act(v.version, "active")}>{tr("Approve")}</button>
+                      <button type="button" className="m2-btn m2-sm" disabled={move.isPending} onClick={() => act(v.version, "draft")}>{tr("Send back")}</button>
+                    </>
+                  ) : null}
+                  {v.state === "active" && canAuthor ? <button type="button" className="m2-btn m2-sm" disabled={move.isPending} onClick={() => act(v.version, "retired")}>{tr("Retire")}</button> : null}
+                </span>
+                {open === v.version ? <VersionDiff id={view.id} version={v.version} /> : null}
+              </span>
             </li>
           ))}
         </ul>
       )}
       {s.shipped ? <p className="m2-prov">{tr("Shipped definition {source}, content hash {hash}, Meridian {app_version}.", { source: s.shipped.source, hash: s.shipped.hash, app_version: s.shipped.app_version })}</p> : null}
+      {canAuthor && s.shipped ? (
+        open === "new" ? <NewVersionForm view={view} onDone={() => done(tr("Draft saved. Send it for review to apply it."))} /> : (
+          <p className="m2-prov">
+            <button type="button" className="m2-btn m2-sm" onClick={() => setOpen("new")}>{tr("New version")}</button> {tr("A new version is a draft. A reviewer other than the author approves it; it applies from the next analysis run.")}
+          </p>
+        )
+      ) : null}
     </Sec>
+  );
+}
+
+function VersionDiff({ id, version }: { id: string; version: number }) {
+  const fixture = useFixture();
+  const q = useQuery({ queryKey: ["v2", "rule-version-diff", fixture, id, version], queryFn: () => getRuleVersionDiff(id, version), enabled: !fixture, retry: false });
+  if (fixture) return <p className="m2-prov">{tr("Fixture mode: the change is not stored.")}</p>;
+  if (q.isError) return <p role="alert" className="m2-prov">{tr("The change could not be read.")}</p>;
+  if (!q.data) return <Skeleton width="100%" height={60} />;
+  return (
+    <>
+      <p className="m2-prov">{tr("{from} to {to}", { from: q.data.from, to: q.data.to })}</p>
+      <pre className="m2-code" tabIndex={0} aria-label={tr("Changes in version {version}", { version })}>{q.data.diff || tr("No change to the effective rule.")}</pre>
+    </>
+  );
+}
+
+const SEVERITIES = ["critical", "high", "medium", "low"] as const;
+
+/** Draft a tenant override of a shipped rule: severity, message and the rule's own parameters. */
+function NewVersionForm({ view, onDone }: { view: RuleView; onDone: () => void }) {
+  const d = view.scope.definition;
+  const session = useV2Session();
+  const toast = useToast();
+  const [severity, setSeverity] = useState(d.severity ?? "");
+  const [message, setMessage] = useState(d.message ?? "");
+  const [params, setParams] = useState<Record<string, string>>(() => Object.fromEntries(Object.entries(d.params).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)])));
+  const [note, setNote] = useState("");
+  const [bad, setBad] = useState<string | null>(null);
+  const m = useMutation({
+    mutationFn: (body: Record<string, unknown>) => createRuleVersion(view.id, body, note.trim()),
+    onSuccess: onDone,
+    onError: (err) => toast.show(errorSentence(err, tr("The draft could not be saved.")), "error"),
+  });
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const body: Record<string, unknown> = {};
+    if (severity && severity !== d.severity) body.severity = severity;
+    if (message.trim() && message.trim() !== (d.message ?? "")) body.message = message.trim();
+    for (const [k, text] of Object.entries(params)) {
+      const was = d.params[k];
+      let v: unknown = text;
+      if (typeof was !== "string") {
+        try {
+          v = JSON.parse(text);
+        } catch {
+          return setBad(tr("{key} is not a valid value.", { key: k }));
+        }
+      }
+      if (JSON.stringify(v) !== JSON.stringify(was)) body[k] = v;
+    }
+    if (!Object.keys(body).length) return setBad(tr("Nothing differs from the running definition."));
+    setBad(null);
+    if (session.fixture) return toast.show(tr("Fixture mode: nothing is saved"));
+    m.mutate(body);
+  };
+  return (
+    <form className="m2-aform" onSubmit={submit} aria-label={tr("New version of {id}", { id: view.id })}>
+      <label>
+        {tr("Severity")}
+        <select value={severity} onChange={(e) => setSeverity(e.target.value)}>
+          {SEVERITIES.map((x) => <option key={x} value={x}>{labelText(x)}</option>)}
+        </select>
+      </label>
+      <label>
+        {tr("Message")}
+        <input value={message} onChange={(e) => setMessage(e.target.value)} maxLength={500} />
+      </label>
+      {Object.keys(params).map((k) => (
+        <label key={k}>
+          <Mono>{k}</Mono>
+          <input value={params[k]} onChange={(e) => setParams({ ...params, [k]: e.target.value })} />
+        </label>
+      ))}
+      <label>
+        {tr("Why the change")}
+        <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} />
+      </label>
+      {bad ? <p role="alert" className="m2-prov">{bad}</p> : null}
+      <button type="submit" className="m2-btn m2-sm" disabled={m.isPending}>{tr("Save draft")}</button>
+    </form>
   );
 }
 

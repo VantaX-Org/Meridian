@@ -4,7 +4,7 @@
  *
  *   /change-requests (GET, POST), /change-requests/{id} (GET), /validate, /submit, /decide, /cancel, /retry,
  *   /comments, /attachments, GET /change-requests/{id}/export
- *   GET /workflows/definitions, /workflows/facts, /workflows/tasks; POST /workflows/definitions/validate,
+ *   GET /workflows/definitions, /workflows/facts, /workflows/tasks; POST /workflows/definitions, /workflows/definitions/validate,
  *   /workflows/definitions/{id}/versions, /activate, /workflows/tasks/{id}/decide
  *
  * The demo user (u-me) requested CR-1002 to CR-1004; R. Govender's CR-1001 waits for the demo user's approval, and so
@@ -224,6 +224,19 @@ export function requestsWrite(method: string, path: string, body: unknown): unkn
     return out;
   }
   if (path === "/workflows/definitions/validate") return dryRun(b as Parameters<typeof dryRun>[0]);
+  if (path === "/workflows/definitions") {
+    const check = dryRun({ definition: b.definition as Parameters<typeof dryRun>[0]["definition"] });
+    if (!check.valid) fail(422, check.problems.join(" "));
+    const name = String(b.name ?? "").trim();
+    const key = (b.key as string | undefined) || name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "workflow";
+    if (state.defs.some((d) => d.key === key)) fail(409, `A workflow with the key ${key} exists; add a version to it.`);
+    const made = def(`WD-${state.seq++}`, key, name, String(b.object_kind), 1, false, b.definition as Record<string, unknown>, NOW);
+    made.description = (b.description as string | undefined) ?? null;
+    made.created_by_label = ME_LABEL;
+    state.defs = [...state.defs, made];
+    if (b.activate) state.defs = state.defs.map((x) => (x.id === made.id ? { ...x, active: true, activated_at: NOW, activated_by_label: ME_LABEL } : x.key === key ? { ...x, active: false } : x));
+    return clone(state.defs.find((x) => x.id === made.id) as WorkflowDefinition);
+  }
   const ver = /^\/workflows\/definitions\/([^/]+)\/(versions|activate)$/.exec(path);
   if (ver) {
     const base = state.defs.find((d) => d.id === decodeURIComponent(ver[1]));

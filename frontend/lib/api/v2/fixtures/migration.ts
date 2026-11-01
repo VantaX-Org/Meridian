@@ -13,13 +13,13 @@ const S4 = "a1b2c3d4-0002-4000-8000-000000000002";
 const runs = [
   {
     id: "mig-0002", mode: "source_to_destination", source_system_id: ECC, dest_system_id: S4, source_version_id: "v-mm",
-    target_release: "s4hana", target_connected: true, modules: ["material_master", "business_partner"], status: "completed",
+    target_release: "s4hana", target_connected: true, modules: ["material_master", "business_partner"], status: "analysed",
     readiness_verdict: "no-go", readiness_score: 87.4, critical_count: 3, records_total: 48_210, records_blocked: 6_071,
     error_detail: null, created_at: "2026-10-30T06:12:00Z", completed_at: "2026-10-30T06:41:00Z",
   },
   {
     id: "mig-0001", mode: "s4_dry_run", source_system_id: ECC, dest_system_id: null, source_version_id: "v-mm",
-    target_release: "s4hana", target_connected: false, modules: ["material_master"], status: "completed",
+    target_release: "s4hana", target_connected: false, modules: ["material_master"], status: "analysed",
     readiness_verdict: "conditional", readiness_score: 92.1, critical_count: 0, records_total: 31_500, records_blocked: 2_488,
     error_detail: null, created_at: "2026-10-22T09:03:00Z", completed_at: "2026-10-22T09:20:00Z",
   },

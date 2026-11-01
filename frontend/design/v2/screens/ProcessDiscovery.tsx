@@ -81,10 +81,10 @@ export function ProcessDiscovery() {
   const catalogue = useQuery({ queryKey: ["discovery", fixture, systemId, "catalogue"], queryFn: () => getCatalogue(systemId), enabled: !!systemId, staleTime: 60_000, retry });
   const health = useQuery({ queryKey: ["discovery", fixture, systemId, "health"], queryFn: () => getDiscoveryHealth(systemId), enabled: !!systemId, staleTime: 60_000, retry });
 
-  if (landscape.isPending || (systemId && catalogue.isPending)) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
-  if (landscape.isError) return <CcPage><ErrorFrame onRetry={() => void landscape.refetch()}>{t("The process discovery data could not be read.")}</ErrorFrame></CcPage>;
-  if (!systemId) return <CcPage><EmptyFrame>{t("No system is connected. Connect a system to mine its processes.")}</EmptyFrame></CcPage>;
-  if (catalogue.isError) return <CcPage><ErrorFrame onRetry={() => void catalogue.refetch()}>{t("The process discovery data could not be read.")}</ErrorFrame></CcPage>;
+  if (landscape.isPending || (systemId && catalogue.isPending)) return <CcPage title={t("Process discovery")}><Skeleton width="100%" height={320} /></CcPage>;
+  if (landscape.isError) return <CcPage title={t("Process discovery")}><ErrorFrame onRetry={() => void landscape.refetch()}>{t("The process discovery data could not be read.")}</ErrorFrame></CcPage>;
+  if (!systemId) return <CcPage title={t("Process discovery")}><EmptyFrame>{t("No system is connected. Connect a system to mine its processes.")}</EmptyFrame></CcPage>;
+  if (catalogue.isError) return <CcPage title={t("Process discovery")}><ErrorFrame onRetry={() => void catalogue.refetch()}>{t("The process discovery data could not be read.")}</ErrorFrame></CcPage>;
 
   const rows = catalogue.data ?? [];
   const system = systems.find((s) => s.id === systemId);
@@ -97,7 +97,7 @@ export function ProcessDiscovery() {
   const selected = rows.find((r) => r.last_run?.id === runId) ?? null;
 
   return (
-    <CcPage>
+    <CcPage title={t("Process discovery")}>
       <div className="m2-cc-split">
         <label className="m2-meta">
           {t("System")}{" "}

@@ -84,7 +84,7 @@ export function Material() {
   const [draft, setDraft] = useState(m);
   const submit = (e: FormEvent) => { e.preventDefault(); setM(draft.trim()); };
   return (
-    <CcPage>
+    <CcPage title={t("Material 360")}>
       <form className="m2-rfilters" onSubmit={submit} aria-label={t("Find a material")} data-testid="material-search">
         <label>
           {t("Material number")}

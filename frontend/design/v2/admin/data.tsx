@@ -56,6 +56,7 @@ export function MappingsSection() {
   const [search, setSearch] = useState("");
   const [object, setObject] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [adding, setAdding] = useState(false);
   const { outcome, pending, run } = useOutcome();
   const write = can("manage_field_mappings");
   const all = useMappings({});
@@ -71,14 +72,20 @@ export function MappingsSection() {
       lead={t("{value}Name the column in your files that holds each standard SAP field, then save the row. Open a row to edit it.", { value: rows.length ? t("{mapped} of {rowsCount} standard fields are mapped. ", { mapped, rowsCount: rows.length }) : "" })}
       actions={
         write && selfService ? (
-          <button type="button" className="m2-btn" disabled={custom === 0 || pending !== null} onClick={() => setResetting(true)}>
-            {object ? t("Reset {object} to defaults", { object: moduleText(object) }) : t("Reset all to defaults")}
-          </button>
+          <>
+            <button type="button" className="m2-btn" disabled={adding} onClick={() => setAdding(true)}>
+              {t("Add a mapping")}
+            </button>
+            <button type="button" className="m2-btn" disabled={custom === 0 || pending !== null} onClick={() => setResetting(true)}>
+              {object ? t("Reset {object} to defaults", { object: moduleText(object) }) : t("Reset all to defaults")}
+            </button>
+          </>
         ) : undefined
       }
     >
       {!write ? <Note>{t("Read only for your role. Changing mappings needs the manage field mappings permission.")}</Note> : !selfService ? <Note tone="warn">{t("Field mapping self-service is not part of this licence, so mappings are read only.")}</Note> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
+      {adding ? <NewMapping objects={objects} initial={object} onDone={(m) => (setAdding(false), m ? openItem({ kind: "mapping", id: m.id }) : undefined)} /> : null}
       <Block>
         <ToolGrid<FieldMapping>
           toolsTitle={t("Field mappings")}
@@ -130,6 +137,85 @@ export function MappingsSection() {
         />
       ) : null}
     </AdminPage>
+  );
+}
+
+const DATA_TYPES = ["string", "number", "date", "boolean"] as const;
+
+/** Adds a mapping for a field the standard catalogue does not hold, or one that was deleted. */
+function NewMapping({ objects, initial, onDone }: { objects: string[]; initial: string; onDone: (m: FieldMapping | null) => void }) {
+  const qc = useQueryClient();
+  const [module, setModule] = useState(initial);
+  const [field, setField] = useState("");
+  const [label, setLabel] = useState("");
+  const [col, setCol] = useState("");
+  const [type, setType] = useState<string>("string");
+  const [notes, setNotes] = useState("");
+  const { outcome, pending, run } = useOutcome();
+  const ready = module.trim() !== "" && field.trim() !== "";
+  return (
+    <Block title={t("Add a mapping")}>
+      <div className="m2-aform">
+        <label>
+          {t("Object")}
+          <input value={module} list="m2-mapping-objects" onChange={(e) => setModule(e.target.value)} placeholder="material_master" />
+          <datalist id="m2-mapping-objects">
+            {objects.map((o) => (
+              <option key={o} value={o}>
+                {moduleText(o)}
+              </option>
+            ))}
+          </datalist>
+        </label>
+        <label>
+          {t("Standard field")}
+          <input value={field} onChange={(e) => setField(e.target.value)} placeholder="MARA.MATNR" />
+        </label>
+        <label>
+          {t("Meaning")}
+          <input value={label} onChange={(e) => setLabel(e.target.value)} />
+        </label>
+        <label>
+          {t("Column header in your file")}
+          <input value={col} onChange={(e) => setCol(e.target.value)} />
+        </label>
+        <label>
+          {t("Type")}
+          <select value={type} onChange={(e) => setType(e.target.value)}>
+            {DATA_TYPES.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t("Notes")}
+          <input value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </label>
+      </div>
+      {outcome ? <ResultFrame outcome={outcome} /> : null}
+      <div className="m2-adm-acts">
+        <button
+          type="button"
+          className="m2-btn m2-strong"
+          disabled={!ready || pending !== null}
+          onClick={() =>
+            void run("add", async () => {
+              const m = await api.createFieldMapping({ module: module.trim(), standard_field: field.trim(), standard_label: label.trim() || undefined, customer_field: col.trim() || undefined, data_type: type, is_mapped: col.trim() !== "", notes: notes.trim() || undefined });
+              await refreshAdmin(qc, "mappings");
+              onDone(m);
+              return { tone: "ok", title: t("Mapping added") };
+            })
+          }
+        >
+          {pending === "add" ? t("Saving…") : t("Add the mapping")}
+        </button>
+        <button type="button" className="m2-btn" disabled={pending !== null} onClick={() => onDone(null)}>
+          {t("Cancel")}
+        </button>
+      </div>
+    </Block>
   );
 }
 

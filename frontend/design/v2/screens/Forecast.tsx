@@ -69,10 +69,10 @@ export function Forecast() {
   const pred = usePlan("predictive", getPredictive, { forecasts: [], early_warnings: [], runs_seen: 0, days_seen: 0, reason: "no_history" as const });
   const plan = usePlan("prescriptive", getPrescriptive, null);
 
-  if (pred.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (pred.isPending) return <CcPage title={t("Forecast and plan")}><Skeleton width="100%" height={320} /></CcPage>;
   if (pred.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("Forecast and plan")}>
         {status(pred.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read the forecast.")}</EmptyFrame>
         ) : (
@@ -94,7 +94,7 @@ export function Forecast() {
         ? t("Every object holds above its floor")
         : t("No object has enough history to forecast");
   return (
-    <CcPage>
+    <CcPage title={t("Forecast and plan")}>
       <CcBanner
         eyebrow={t("Forecast and plan")}
         verdict={red.length ? "no-go" : amber.length ? "at-risk" : p.early_warnings.length ? "go" : undefined}

@@ -50,9 +50,9 @@ export function Atlas() {
     return () => window.clearInterval(id);
   }, [playing, last]);
 
-  if (landscape.isPending || timelines.some((q) => q.isPending)) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
-  if (landscape.isError) return <CcPage><ErrorFrame onRetry={() => void landscape.refetch()}>{t("The landscape could not be read.")}</ErrorFrame></CcPage>;
-  if (!frames.length) return <CcPage><EmptyFrame>{t("Run an analysis to see the landscape atlas.")}</EmptyFrame></CcPage>;
+  if (landscape.isPending || timelines.some((q) => q.isPending)) return <CcPage title={t("Landscape atlas")}><Skeleton width="100%" height={320} /></CcPage>;
+  if (landscape.isError) return <CcPage title={t("Landscape atlas")}><ErrorFrame onRetry={() => void landscape.refetch()}>{t("The landscape could not be read.")}</ErrorFrame></CcPage>;
+  if (!frames.length) return <CcPage title={t("Landscape atlas")}><EmptyFrame>{t("Run an analysis to see the landscape atlas.")}</EmptyFrame></CcPage>;
 
   const l = landscape.data;
   const frame = frames[idx];
@@ -68,7 +68,7 @@ export function Atlas() {
   };
 
   return (
-    <CcPage>
+    <CcPage title={t("Landscape atlas")}>
       <CcBanner
         testId="atlas"
         label={t("Landscape atlas")}
@@ -78,7 +78,7 @@ export function Atlas() {
         figs={[
           { label: t("Run"), value: `${int(idx + 1)}/${int(frames.length)}`, note: formatDate(frame.run.run_at, "date") },
           { label: t("Records checked"), value: frame.run.records_checked == null ? DASH : int(frame.run.records_checked), note: system?.name },
-          { label: t("Below 70"), value: int(scores.filter((s) => s < 70).length), note: t("objects") },
+          { label: t("Capped"), value: int(frame.measured.size), note: t("by critical rules") },
         ]}
         action={
           playing ? (
@@ -160,6 +160,7 @@ function SystemBlock({ system, landscape, frame }: { system: LandscapeSystem; la
           const key = atlasKey(system.id, c.module);
           const score = frame.scores.get(key) ?? null;
           const d = frame.delta.get(key) ?? null;
+          const raw = frame.measured.get(key);
           const share = (c.records_checked ?? total / cells.length) / total;
           const moved = d == null || Math.abs(d) < 0.05 ? undefined : d > 0 ? "up" : "down";
           return (
@@ -176,6 +177,7 @@ function SystemBlock({ system, landscape, frame }: { system: LandscapeSystem; la
               <Mono className="m2-at-code">{c.module}</Mono>
               <span className="m2-at-score">{score == null ? DASH : f1(score)}</span>
               <span className="m2-at-delta">{moved ? signed(d) : ""}</span>
+              {raw != null ? <span className="m2-at-cap">{t("Capped by critical rules, measured {score}", { score: f1(raw) })}</span> : null}
             </V2Link>
           );
         })}

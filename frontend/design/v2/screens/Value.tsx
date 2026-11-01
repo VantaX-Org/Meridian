@@ -47,10 +47,10 @@ export function Value() {
     retry,
   });
 
-  if (q.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (q.isPending) return <CcPage title={t("Value delivered")}><Skeleton width="100%" height={320} /></CcPage>;
   if (q.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("Value delivered")}>
         {status(q.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read the value delivered.")}</EmptyFrame>
         ) : (
@@ -69,7 +69,7 @@ export function Value() {
       ? t("{amount} a year taken off the risk", { amount: money(roi.risk_mitigated, cur) })
       : t("Returns {n} times its cost", { n: f1(roi.roi_multiple) });
   return (
-    <CcPage>
+    <CcPage title={t("Value delivered")}>
       <CcBanner
         eyebrow={t("Value delivered")}
         verdict={roi.roi_multiple == null ? undefined : roi.roi_multiple >= 1 ? "go" : "at-risk"}
@@ -91,6 +91,9 @@ export function Value() {
   );
 }
 
+/** The backend's pricing formula ("affected_count × 5,000 USD") in words: "Failing records × 5,000 USD". */
+const priced = (method: string) => method.replace(/\baffected_count\b/, t("Failing records")).replace(/^count\b/, t("Findings"));
+
 function ImpactPanel({ rows }: { rows: ImpactCategory[] }) {
   const title = t("Where the risk sits");
   const sorted = [...rows].sort((a, b) => b.annual_risk - a.annual_risk);
@@ -103,17 +106,19 @@ function ImpactPanel({ rows }: { rows: ImpactCategory[] }) {
           testId="val-impact-bars"
           rows={d.filter((i) => i.annual_risk > 0).map((i) => ({ key: i.category, label: CATEGORY[i.category]?.name() ?? i.category, value: i.annual_risk, text: money(i.annual_risk, i.currency), tone: i.mitigated >= i.annual_risk ? "pass" : "crit" }))}
         />
-        <Table title={title} head={[t("Loss"), t("What counts"), t("Sources"), t("Annual risk"), t("Mitigated"), t("How it is priced")]}>
+        <Table title={title} head={[t("Loss"), t("What counts"), t("Sources"), t("Annual risk"), t("Mitigated")]}>
           {d.map((i) => {
             const c = CATEGORY[i.category];
             return (
               <tr key={i.category}>
                 <th scope="row" className="m2-card-lead">{c ? c.name() : i.category}</th>
-                <td data-label={t("What counts")} className="m2-wrap">{c ? c.what() : f1(null)}</td>
+                <td data-label={t("What counts")} className="m2-wrap">
+                  {c ? c.what() : f1(null)}
+                  {i.calculation_method ? <div className="m2-meta">{priced(i.calculation_method)}</div> : null}
+                </td>
                 <td data-label={t("Sources")} className="m2-num">{int(i.finding_count)}</td>
                 <td data-label={t("Annual risk")} className="m2-num">{money(i.annual_risk, i.currency)}</td>
                 <td data-label={t("Mitigated")} className="m2-num">{money(i.mitigated, i.currency)}</td>
-                <td data-label={t("How it is priced")} className="m2-meta m2-wrap">{i.calculation_method}</td>
               </tr>
             );
           })}

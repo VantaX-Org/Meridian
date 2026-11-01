@@ -2,6 +2,10 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
+import type { NotificationDelivery } from "@/lib/api/notifications";
+import { errorSentence } from "@/lib/api/v2/work";
 import { useRole } from "@/hooks/use-role";
 import { useAuroraPrefs } from "@/hooks/use-theme";
 import { usePreferences } from "@/hooks/use-preferences";
@@ -187,6 +191,7 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
         <V2Link href="/work?open=triage">{tr("Inbox and triage settings")}</V2Link>
         {tr(" decide what reaches your inbox and who covers it.")}
       </p>
+      <DeliveryLog />
       <SubscriptionsBlock />
       <Actions>
         <button type="button" className="m2-btn" onClick={onClose}>
@@ -194,6 +199,81 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
         </button>
       </Actions>
     </InspectorFrame>
+  );
+}
+
+const CHANNEL_TEXT: Record<NotificationDelivery["channel"], () => string> = { email: () => tr("Email"), in_app: () => tr("In Meridian") };
+const KIND_TEXT: Record<NotificationDelivery["kind"], () => string> = { critical: () => tr("Critical finding"), digest: () => tr("Digest"), test: () => tr("Test message") };
+const STATUS_TEXT: Record<NotificationDelivery["status"], () => string> = {
+  sent: () => tr("Sent"),
+  failed: () => tr("Failed"),
+  no_backend: () => tr("No mail server set up"),
+  skipped: () => tr("Skipped"),
+};
+
+/** The person's own test message and the last 20 things Meridian sent them, with why any failed. */
+function DeliveryLog() {
+  const fixture = useFixture();
+  const qc = useQueryClient();
+  const key = ["v2", "admin", fixture, "me", "deliveries"];
+  const log = useQuery({ queryKey: key, queryFn: () => api.getMyDeliveries(20) });
+  const [note, setNote] = useState<string | null>(null);
+  const test = useMutation({
+    mutationFn: api.sendTestNotification,
+    onSuccess: (r) => {
+      setNote(
+        r.email === "sent" || r.email === "sent_unrecorded"
+          ? tr("Sent. Check your inbox and the bell.")
+          : r.email === "no_backend"
+            ? tr("Sent to the bell. No mail server is set up, so no email went out.")
+            : tr("Sent to the bell. The email failed; the log below says why."),
+      );
+      void qc.invalidateQueries({ queryKey: key });
+    },
+    onError: (err) => setNote(isAxiosError(err) && err.response?.status === 429 ? tr("Three test messages an hour is the limit. Try again later.") : errorSentence(err, tr("The test message could not be sent."))),
+  });
+  const items = log.data?.items ?? [];
+  return (
+    <section aria-label={tr("Delivery log")} data-testid="delivery-log">
+      <h3>{tr("Delivery log")}</h3>
+      <p className="m2-prov">
+        <button type="button" className="m2-btn" disabled={test.isPending} onClick={() => test.mutate()}>
+          {tr("Send me a test message")}
+        </button>
+      </p>
+      {note ? <p className="m2-prov" role="status">{note}</p> : null}
+      {log.isLoading ? (
+        <Skeleton width="100%" height={60} />
+      ) : log.isError ? (
+        <p className="m2-prov">{tr("The delivery log could not be read.")}</p>
+      ) : !items.length ? (
+        <p className="m2-prov">{tr("Nothing has been sent to you yet.")}</p>
+      ) : (
+        <table className="m2-tbl">
+          <thead>
+            <tr>
+              <th scope="col">{tr("When")}</th>
+              <th scope="col">{tr("Channel")}</th>
+              <th scope="col">{tr("Kind")}</th>
+              <th scope="col">{tr("Status")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((d) => (
+              <tr key={d.id}>
+                <td>{formatDate(d.created_at, "datetime")}</td>
+                <td>{CHANNEL_TEXT[d.channel]?.() ?? d.channel}</td>
+                <td>{KIND_TEXT[d.kind]?.() ?? d.kind}</td>
+                <td>
+                  {STATUS_TEXT[d.status]?.() ?? d.status}
+                  {d.error ? <div className="m2-meta">{d.error}</div> : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
   );
 }
 

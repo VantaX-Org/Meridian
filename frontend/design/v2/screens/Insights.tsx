@@ -73,10 +73,10 @@ export function Insights() {
   const impact = useInsight("impact", getImpact, { rows: [] });
   const causes = useInsight("root-causes", getCauseClusters, { clusters: [] });
 
-  if (cost.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (cost.isPending) return <CcPage title={t("Cost and causes")}><Skeleton width="100%" height={320} /></CcPage>;
   if (cost.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("Cost and causes")}>
         {status(cost.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read what bad data costs.")}</EmptyFrame>
         ) : (
@@ -92,7 +92,7 @@ export function Insights() {
   const areas = [...new Set([...risk.map((r) => r.l1), ...lost.map((r) => r.l1)])];
   const top = risk[0];
   return (
-    <CcPage>
+    <CcPage title={t("Cost and causes")}>
       <CcBanner
         eyebrow={t("Cost and causes")}
         headline={top && top.value_at_risk > 0 ? t("{area} carries the most value at risk", { area: area(top.l1) }) : t("No priced SAP feature is at risk")}

@@ -188,7 +188,7 @@ for (const size of SIZES) {
         await page.getByRole("menuitem", { name: "Triage and SLA" }).click();
         const insp = page.getByTestId("inspector");
         await expect(insp.getByRole("heading", { level: 2, name: "Triage and SLA" })).toBeVisible(NAV);
-        await expect(insp.getByLabel("Critical")).toHaveValue("1");
+        await expect(insp.getByRole("textbox", { name: "Critical" })).toHaveValue("1");
         expect(await noSideScroll(page)).toBe(true);
         await page.waitForLoadState("networkidle");
         await shot(page, "people-triage");

@@ -21,6 +21,7 @@ that already has `app.tenant_id` set by the tenant middleware.
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -31,9 +32,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services.current_state import current_pairs
 from api.services.rbac import require_permission
+from sap.data_dictionary import DATA_DICTIONARY
+from sap.extraction_registry import SYSTEM_EXTRACTIONS
 
 router = APIRouter(prefix="/api/v1", tags=["mining"])
 logger = logging.getLogger("meridian.mining_api")
+
+
+@lru_cache(maxsize=4096)
+def field_text(field: Optional[str], module: Optional[str]) -> Optional[str]:
+    """The dictionary text of a field mined on ``module`` (``PLIFZ`` or ``MARC.PLIFZ``); None when unknown.
+
+    A bare name is looked up only in the tables the module extracts, so NAME1 on the customer master reads as the
+    customer's name, not the vendor's.
+    """
+    if not field:
+        return None
+    table, _, name = field.upper().rpartition(".")
+    names = [table] if table else [
+        t.source.upper() for targets in SYSTEM_EXTRACTIONS.values() for t in targets.get(module or "", [])
+    ]
+    return next((DATA_DICTIONARY[t][name]["description"] for t in names if name in DATA_DICTIONARY.get(t, {})), None)
 
 
 # ── Request / response models ────────────────────────────────────────────────
@@ -63,6 +82,8 @@ class DuplicatePair(BaseModel):
     match_score: float
     id_field: Optional[str] = None
     matched_fields: Optional[list[str]] = None
+    # The dictionary text of each matched field the dictionary knows, keyed by field name.
+    field_texts: dict[str, str] = Field(default_factory=dict)
     detected_at: str
 
 
@@ -71,6 +92,8 @@ class AnomalyItem(BaseModel):
     version_id: str
     module_id: str
     field_name: str
+    # The field's dictionary text ("Planned delivery time in days"); None when the dictionary does not know it.
+    field_description: Optional[str] = None
     field_value: Optional[float] = None
     record_index: Optional[int] = None
     # The record the outlier sits on, keyed as the record page and Fix work key it; None for rows mined before 095.
@@ -90,6 +113,9 @@ class RelationshipItem(BaseModel):
     module_id: str
     field_a: str
     field_b: str
+    # The two fields' dictionary texts; None when the dictionary does not know one.
+    field_a_description: Optional[str] = None
+    field_b_description: Optional[str] = None
     relationship_type: str
     strength_score: float
     detected_at: str
@@ -196,6 +222,7 @@ async def list_duplicates(
             id=r[0], version_id=r[1], module_id=r[2],
             record_a=r[3], record_b=r[4], match_score=float(r[5]),
             id_field=r[6], matched_fields=r[7], detected_at=r[8],
+            field_texts={f: d for f in (r[7] or []) if (d := field_text(f, r[2]))},
         )
         for r in rows
     ]
@@ -246,7 +273,7 @@ async def list_anomalies(
     rows = result.fetchall()
     return [
         AnomalyItem(
-            id=r[0], version_id=r[1], module_id=r[2], field_name=r[3],
+            id=r[0], version_id=r[1], module_id=r[2], field_name=r[3], field_description=field_text(r[3], r[2]),
             field_value=r[4], record_index=r[5], detection_method=r[6],
             z_score=r[7], severity=r[8], detected_at=r[9], record_key=r[10],
             lower_bound=r[11], upper_bound=r[12],
@@ -294,6 +321,7 @@ async def list_relationships(
         RelationshipItem(
             id=r[0], version_id=r[1], module_id=r[2],
             field_a=r[3], field_b=r[4], relationship_type=r[5],
+            field_a_description=field_text(r[3], r[2]), field_b_description=field_text(r[4], r[2]),
             strength_score=float(r[6]), detected_at=r[7],
         )
         for r in rows
@@ -365,7 +393,10 @@ class MiningPattern(BaseModel):
     occurrences: int
     first_seen: str
     last_seen: str
-    confidence: float
+    # None when no outlier in the group carries a z-score, so there is nothing to measure.
+    confidence: Optional[float]
+    # The mined field's dictionary text, anomaly patterns only.
+    field_description: Optional[str] = None
     trend: list = Field(default_factory=list)
     promoted_to_rule: bool = False
 
@@ -508,7 +539,7 @@ async def mining_patterns(
                            MAX(CASE severity
                                WHEN 'critical' THEN 4 WHEN 'high' THEN 3
                                WHEN 'medium' THEN 2 ELSE 1 END) AS sev_rank,
-                           AVG(LEAST(ABS(COALESCE(z_score, 0)) / 5.0, 1.0)) AS confidence
+                           AVG(LEAST(ABS(z_score) / 5.0, 1.0)) AS confidence
                     FROM data_anomalies
                     WHERE {' AND '.join(clauses)}
                     GROUP BY module_id, field_name
@@ -528,7 +559,8 @@ async def mining_patterns(
                     occurrences=int(r[2]),
                     first_seen=r[3] or "",
                     last_seen=r[4] or "",
-                    confidence=round(float(r[6] or 0.0), 3),
+                    confidence=None if r[6] is None else round(float(r[6]), 3),
+                    field_description=field_text(r[1], r[0]),
                 )
             )
 

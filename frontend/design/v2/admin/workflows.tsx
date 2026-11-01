@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
 import { errorSentence } from "@/lib/api/v2/client";
-import { activateDefinition, dryRun, newVersion, type DryRun, type WorkflowDefinition } from "@/lib/api/v2/requests";
+import { activateDefinition, createDefinition, dryRun, newVersion, type DryRun, type WorkflowDefinition } from "@/lib/api/v2/requests";
 import { useDefinitions, useFacts } from "@/lib/v2/requests-queries";
 import { int } from "@/lib/v2/score";
 import { t as tr } from "@/lib/v2/i18n";
@@ -170,6 +170,87 @@ function Workflow({ versions }: { versions: WorkflowDefinition[] }) {
   );
 }
 
+const starter = () => ({ steps: [{ name: tr("Data owner approves"), assignee: { rule: "data_owner" }, quorum: "any", sla_hours: 48, requester_may_approve: false }] });
+
+/** A new workflow: its name, what it approves, and version 1 of its definition. */
+function NewWorkflow() {
+  const qc = useQueryClient();
+  const done = useDone();
+  const facts = useFacts();
+  const kinds = facts.data?.object_kinds ?? ["change_request", "fix_batch"];
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [kind, setKind] = useState(kinds[0]);
+  const [text, setText] = useState(() => pretty(starter()));
+  const [activate, setActivate] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const def = parseObject(text);
+  if (!open) {
+    return (
+      <div className="m2-adm-acts">
+        <button type="button" className="m2-btn" onClick={() => setOpen(true)}>
+          {tr("New workflow")}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <Block title={tr("New workflow")} hint={tr("Saved as version 1. Activate it to use it for new approvals.")}>
+      <Fld label={tr("Name")}>
+        <input value={name} maxLength={200} onChange={(e) => setName(e.target.value)} />
+      </Fld>
+      <Fld label={tr("What it approves")}>
+        <select value={kind} onChange={(e) => setKind(e.target.value)}>
+          {kinds.map((k) => (
+            <option key={k} value={k}>
+              {k.replace(/_/g, " ")}
+            </option>
+          ))}
+        </select>
+      </Fld>
+      <Fld label={tr("Description")} wide>
+        <input value={description} maxLength={2000} onChange={(e) => setDescription(e.target.value)} />
+      </Fld>
+      <Fld label={tr("Definition")} error={"error" in def ? def.error : null} wide mono>
+        <textarea rows={10} value={text} spellCheck={false} onChange={(e) => setText(e.target.value)} />
+      </Fld>
+      <Sw checked={activate} onChange={setActivate} label={tr("Activate it when saved")} />
+      <div className="m2-adm-acts">
+        <button type="button" className="m2-btn" disabled={busy} onClick={() => setOpen(false)}>
+          {tr("Cancel")}
+        </button>
+        <button
+          type="button"
+          className="m2-btn m2-strong"
+          disabled={busy || !name.trim() || "error" in def}
+          onClick={async () => {
+            if ("error" in def) return;
+            setBusy(true);
+            setError(null);
+            try {
+              await createDefinition({ name: name.trim(), description: description.trim() || null, object_kind: kind, definition: def.value, activate });
+              await qc.invalidateQueries({ queryKey: ["v2", "workflow-definitions"] });
+              done(tr("Workflow {name} created.", { name: name.trim() }));
+              setOpen(false);
+              setName("");
+              setDescription("");
+            } catch (e) {
+              setError(errorSentence(e, tr("The workflow could not be saved.")));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {tr("Create workflow")}
+        </button>
+      </div>
+      {error ? <Note tone="bad">{error}</Note> : null}
+    </Block>
+  );
+}
+
 /** /admin/workflows: the approval workflows, their versions, a version editor with a dry run, and activation. */
 export function WorkflowsSection() {
   const can = useCan();
@@ -183,6 +264,7 @@ export function WorkflowsSection() {
   }
   return (
     <AdminPage title={tr("Approval workflows")} lead={tr("Who approves fix batches and change requests, in which order, and when a step applies. Each change is a new version; activate one to use it.")}>
+      <NewWorkflow />
       <Loaded q={q} what={tr("The workflows")}>
         {(d) => {
           const keys = [...new Set(d.items.map((x) => x.key))];

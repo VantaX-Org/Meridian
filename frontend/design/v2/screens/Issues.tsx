@@ -89,10 +89,10 @@ export function Issues() {
     setPicked(new Set());
   };
 
-  if (list.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (list.isPending) return <CcPage title={t("Issues")}><Skeleton width="100%" height={320} /></CcPage>;
   if (list.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("Issues")}>
         {status(list.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read the record issues.")}</EmptyFrame>
         ) : (
@@ -109,7 +109,7 @@ export function Issues() {
   const togglePage = () => setPicked(shown.length === items.length ? new Set() : new Set(items.map((i) => i.id)));
 
   return (
-    <CcPage>
+    <CcPage title={t("Issues")}>
       <CcBanner
         eyebrow={t("Record issues")}
         headline={t("{n} issues still to close", { n: int(active) })}

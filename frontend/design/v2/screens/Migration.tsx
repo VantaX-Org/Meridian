@@ -1,7 +1,8 @@
 "use client";
+import "../runs.css";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
@@ -36,6 +37,15 @@ const VERDICT_TEXT: Record<string, () => string> = {
   go: () => t("Ready to load"),
   conditional: () => t("Ready with conditions"),
   "no-go": () => t("Not ready to load"),
+};
+// migration_runs.status: queued|running|analysed|exported|failed (db/schema.py). An exported run was analysed first.
+const analysed = (r: { status: string }) => r.status === "analysed" || r.status === "exported";
+const STATUS_TEXT: Record<string, () => string> = {
+  queued: () => t("Queued"),
+  running: () => t("Running"),
+  analysed: () => t("Analysed"),
+  exported: () => t("Exported"),
+  failed: () => t("Failed"),
 };
 const MODE: Record<MigrationMode, () => string> = {
   source_to_destination: () => t("Source to target system"),
@@ -105,14 +115,21 @@ function Field({ name, def }: { name: string | null; def?: FieldDef | null }) {
 
 export function Migration() {
   const runs = useMig(["runs"], getMigrationRuns);
+  const busy = runs.data?.runs.some((r) => r.status === "queued" || r.status === "running") ?? false;
+  const { refetch } = runs;
+  useEffect(() => {
+    if (!busy) return;
+    const id = setInterval(() => void refetch(), 10_000);
+    return () => clearInterval(id);
+  }, [busy, refetch]);
   const [picked, setPicked] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const { can } = useV2Session();
 
-  if (runs.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (runs.isPending) return <CcPage title={t("Migration")}><Skeleton width="100%" height={320} /></CcPage>;
   if (runs.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("Migration")}>
         {status(runs.error) === 403 ? <EmptyFrame>{t("Your role cannot read the migration analyses.")}</EmptyFrame> : (
           <ErrorFrame onRetry={() => void runs.refetch()}>{t("The migration analyses could not be read.")}</ErrorFrame>
         )}
@@ -120,13 +137,13 @@ export function Migration() {
     );
   }
   const list = runs.data.runs;
-  const latest = list.find((r) => r.status === "completed") ?? null;
+  const latest = list.find((r) => analysed(r)) ?? null;
   const current = list.find((r) => r.id === picked) ?? latest;
   const startBtn = can("analyse") ? (
     <button type="button" className="m2-btn m2-next" aria-expanded={starting} onClick={() => setStarting((s) => !s)}>{t("Start an analysis")}</button>
   ) : undefined;
   return (
-    <CcPage>
+    <CcPage title={t("Migration")}>
       {latest ? (
         <CcBanner
           eyebrow={t("Migration analysis of {date}", { date: formatDate(latest.completed_at ?? latest.created_at, "date") })}
@@ -148,23 +165,21 @@ export function Migration() {
       {starting ? <StartForm onDone={() => setStarting(false)} /> : null}
       <Panel title={t("Analyses")} meta={t("{n} analyses, newest first", { n: int(list.length) })} testId="mig-runs">
         {list.length === 0 ? <EmptyFrame>{t("No analysis has been started.")}</EmptyFrame> : (
-          <Table title={t("Analyses")} head={[t("Started"), t("Kind"), t("Objects"), t("Status"), t("Verdict"), t("Readiness"), t("Would not load"), ""]}>
+          <Table title={t("Analyses")} head={[t("Started"), t("Objects"), t("Status")]}>
             {list.map((r) => (
               <tr key={r.id} aria-current={r.id === current?.id ? "true" : undefined}>
-                <th scope="row" className="m2-card-lead">{formatDate(r.created_at, "datetime")}</th>
-                <td data-label={t("Kind")}>{MODE[r.mode]?.() ?? r.mode}</td>
+                <th scope="row" className="m2-card-lead">{analysed(r) ? (
+                  <button type="button" className="m2-rowlink" aria-pressed={r.id === current?.id} aria-label={t("Open the analysis of {d}", { d: formatDate(r.created_at, "datetime") })} onClick={() => setPicked(r.id)}>{formatDate(r.created_at, "datetime")}</button>
+                ) : formatDate(r.created_at, "datetime")}<div className="m2-meta">{MODE[r.mode]?.() ?? r.mode}</div></th>
                 <td data-label={t("Objects")}>{r.modules.map(formatModuleName).join(", ")}</td>
-                <td data-label={t("Status")}>{r.status === "failed" && r.error_detail ? <>{r.status} <span className="m2-meta">{r.error_detail}</span></> : r.status}</td>
-                <td data-label={t("Verdict")}>{r.readiness_verdict ? VERDICT_TEXT[r.readiness_verdict]() : f1(null)}</td>
-                <td data-label={t("Readiness")} className="m2-num">{f1(r.readiness_score)}</td>
-                <td data-label={t("Would not load")} className="m2-num">{int(r.records_blocked)}</td>
-                <td>{r.status === "completed" ? <button type="button" className="m2-btn" aria-pressed={r.id === current?.id} onClick={() => setPicked(r.id)}>{t("Open")}</button> : null}</td>
+                <td data-label={t("Status")}>{analysed(r) && r.readiness_verdict ? VERDICT_TEXT[r.readiness_verdict]() : STATUS_TEXT[r.status]?.() ?? r.status}{r.status === "failed" && r.error_detail ? <div className="m2-meta">{r.error_detail}</div> : null}
+                  {analysed(r) ? <div className="m2-meta">{t("Readiness {s}, {n} would not load", { s: f1(r.readiness_score), n: int(r.records_blocked) })}</div> : null}</td>
               </tr>
             ))}
           </Table>
         )}
       </Panel>
-      {current && current.status === "completed" ? <RunDetail run={current} /> : null}
+      {current && analysed(current) ? <RunDetail run={current} /> : null}
       <FieldMapPanel modules={current?.modules ?? []} />
     </CcPage>
   );
@@ -454,7 +469,7 @@ function ValueMap({ module, field }: { module: string; field: string }) {
   const toast = useToast();
   const qc = useQueryClient();
   const runs = useMig(["runs"], getMigrationRuns);
-  const runId = runs.data?.runs.find((r) => r.status === "completed" && r.modules.includes(module))?.id ?? null;
+  const runId = runs.data?.runs.find((r) => analysed(r) && r.modules.includes(module))?.id ?? null;
   const saved = useMig(["value-map", module, field], () => getValueMap(module, field));
   const cands = useMig(["candidates", runId, field], () => getValueCandidates(runId!, field), runId !== null);
   const [draft, setDraft] = useState<Record<string, string>>({});

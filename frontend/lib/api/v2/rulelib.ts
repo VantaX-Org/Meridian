@@ -48,3 +48,16 @@ export const createDraft = (body: RuleAuthoringBody): Promise<SavedDraft> => v2S
 export const updateDraft = (id: string, body: RuleAuthoringBody): Promise<SavedDraft> => v2Send("PUT", `/rule-authoring/drafts/${encodeURIComponent(id)}`, body);
 export const deleteDraft = (id: string): Promise<void> => v2Send<void>("DELETE", `/rule-authoring/drafts/${encodeURIComponent(id)}`);
 export const publishDraftById = (id: string): Promise<PublishedDraftRule> => v2Send("POST", `/rule-authoring/drafts/${encodeURIComponent(id)}/publish`);
+
+/* ---- Tenant versions of a rule: draft, review, approve, retire (applies from the next analysis run) ---- */
+export type RuleVersionState = "draft" | "in_review" | "active" | "retired";
+export interface RuleVersionDiff {
+  rule_id: string;
+  from: string;
+  to: string;
+  diff: string;
+}
+export const createRuleVersion = (id: string, body: Record<string, unknown>, note: string): Promise<unknown> => v2Send("POST", `/rules/${encodeURIComponent(id)}/versions`, { body, note: note || null });
+export const getRuleVersionDiff = (id: string, version: number): Promise<RuleVersionDiff> => v2Get(`/rules/${encodeURIComponent(id)}/versions/${version}/diff`);
+export const transitionRuleVersion = (id: string, version: number, to: RuleVersionState, note?: string): Promise<unknown> =>
+  v2Send("POST", `/rules/${encodeURIComponent(id)}/versions/${version}/transition`, { to, note: note || null });

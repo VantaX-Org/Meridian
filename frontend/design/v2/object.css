@@ -126,7 +126,9 @@
   .m2-aform input, .m2-aform select, .m2-cmp select, .m2-dec select { height: 36px; }
 }
 
-/* Phone: a segmented control wraps onto a second line inside its frame instead of scrolling out of sight. */
+/* Phone, or the narrow page beside the docked Aletheia: a segmented control wraps onto a second line instead of scrolling out of sight. */
+.m2-cc-main .m2-segs { flex-wrap: wrap; overflow: visible; }
+.m2-cc-main .m2-segs > :is(button, a).m2-seg { flex: 1 0 auto; border-bottom: 1px solid var(--m2-line); }
 @media (max-width: 760px) {
   .m2-segs { flex-wrap: wrap; overflow: visible; width: 100%; }
   .m2-segs > :is(button, a).m2-seg { flex: 1 0 auto; border-bottom: 1px solid var(--m2-line); }

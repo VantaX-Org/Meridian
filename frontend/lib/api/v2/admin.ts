@@ -4,12 +4,12 @@
  * here invents a field.
  */
 import type { User, UserListResponse, UserStatus, HealthResponse, TenantSettings, ExceptionBilling, CostModel } from "@/types/api";
-import type { ApiKey, ApiKeyCreated, CreateApiKeyBody } from "@/lib/api/api-keys";
+import type { ApiKey, ApiKeyCreated, ApiKeyGrantInput, CreateApiKeyBody } from "@/lib/api/api-keys";
 import type { AuditListParams, AuditListResponse, AuditSummaryRow, LlmAuditResponse } from "@/lib/api/audit";
 import type { FieldMapping, FieldMappingsListResponse } from "@/lib/api/field-mappings";
 import type { LicenceManifest } from "@/lib/api/licence";
 import type { AccessRequest, EffectivePermissions } from "@/lib/api/me";
-import type { AlertChannel, AlertChannelCreate, AlertChannelUpdate } from "@/lib/api/notifications";
+import type { AlertChannel, AlertChannelCreate, AlertChannelUpdate, NotificationDelivery } from "@/lib/api/notifications";
 import type { Preferences, PreferencesPatch } from "@/lib/preferences";
 import type {
   PurgeLogEntry, PurgeResult, RetentionPolicy, RetentionPreviewItem, RetentionResponse, TenantPurgeRequest,
@@ -37,6 +37,7 @@ export type { BulkAction, User, UserStatus, ApiKey, ApiKeyCreated, AuditListResp
 
 export interface UserQuery { q?: string; status?: UserStatus; role?: string; system_id?: string }
 export const listUsers = (q: UserQuery = {}): Promise<UserListResponse> => v2Get("/users", { ...q });
+export const setUserManager = (id: string, manager_id: string | null): Promise<{ id: string; manager_id: string | null }> => v2Send("PUT", `/users/${enc(id)}/manager`, { manager_id });
 export const setUserActive = (id: string, is_active: boolean): Promise<User> => v2Send("PUT", `/users/${enc(id)}`, { is_active });
 export const inviteUser = (body: { email: string; name?: string; grants: { role_key: string; system_id?: string | null; module?: string | null }[] }): Promise<{ id: string; email: string; role: string; status: string }> =>
   v2Send("POST", "/users/invite", body);
@@ -81,6 +82,7 @@ export const testSso = (issuer?: string): Promise<SsoTestResult> => v2Send("POST
 export const listApiKeys = (): Promise<ApiKey[]> => v2Get("/admin/api-keys");
 export const createApiKey = (body: CreateApiKeyBody): Promise<ApiKeyCreated> => v2Send("POST", "/admin/api-keys", body);
 export const revokeApiKey = (id: string): Promise<ApiKey> => v2Send("POST", `/admin/api-keys/${enc(id)}/revoke`);
+export const updateApiKey = (id: string, body: { name?: string; scopes?: ApiKeyGrantInput[]; expires_at?: string | null }): Promise<ApiKey> => v2Send("PATCH", `/admin/api-keys/${enc(id)}`, body);
 export const deleteApiKey = (id: string): Promise<{ id: string; status: string }> => v2Send("DELETE", `/admin/api-keys/${enc(id)}`);
 
 /* ── Licence, billing, platform version ── */
@@ -166,6 +168,9 @@ export async function executeTenantPurge(token: string): Promise<string> {
 export const listFieldMappings = (q: { module?: string; is_mapped?: boolean; search?: string } = {}): Promise<FieldMappingsListResponse> => v2Get("/field-mappings", q);
 export const updateFieldMapping = (id: string, body: { customer_field?: string; customer_label?: string; data_type?: string; is_mapped?: boolean; notes?: string }): Promise<FieldMapping> =>
   v2Send("PUT", `/field-mappings/${enc(id)}`, body);
+export interface FieldMappingCreate { module: string; standard_field: string; standard_label?: string; customer_field?: string; customer_label?: string; data_type: string; is_mapped: boolean; notes?: string }
+export const createFieldMapping = (body: FieldMappingCreate): Promise<FieldMapping> => v2Send("POST", "/field-mappings", body);
+export const deleteFieldMapping = (id: string): Promise<{ id: string; status: string }> => v2Send("DELETE", `/field-mappings/${enc(id)}`);
 export const resetFieldMappings = (module?: string): Promise<{ reset_count: number; module: string }> => v2Send("POST", "/field-mappings/reset", undefined, { module });
 
 /* ── Reference data ── */
@@ -201,6 +206,7 @@ export const testChannel = (id: string): Promise<{ delivered: boolean }> => v2Se
 
 export const getMyPreferences = (): Promise<Preferences> => v2Get("/me/preferences");
 export const patchMyPreferences = (patch: PreferencesPatch): Promise<Preferences> => v2Send("PATCH", "/me/preferences", patch);
+export const getMyDeliveries = (limit = 20): Promise<{ items: NotificationDelivery[] }> => v2Get("/me/notifications/deliveries", { limit });
 export const sendTestNotification = (): Promise<{ email: "sent" | "no_backend" | "failed" | "sent_unrecorded"; in_app: boolean }> => v2Send("POST", "/me/notifications/test");
 
 /* ── Runs and jobs: start things, and schedule them ── */
@@ -214,6 +220,11 @@ export async function startExtraction(systemId: string, objects: string[], analy
   return startDownload(systemId, { objects, scope, analyse, ...(delta ? { delta: true } : {}) });
 }
 
+/** One run of a schedule, as GET /systems/{id}/runs answers it. */
+export interface SyncRun { id: string; profile_id: string; started_at: string; completed_at: string | null; rows_extracted: number; findings_delta: number; golden_records_updated: number; status: string; error_detail: string | null; ai_quality_score: number | null }
+export const listSyncRuns = (systemId: string, limit = 20): Promise<SyncRun[]> => v2Get(`/systems/${enc(systemId)}/runs`, { limit });
+/** POST /systems/{id}/sync: run every active schedule of the system now. */
+export const syncSystem = (systemId: string): Promise<{ status: string; profile_count: number; job_ids: string[] }> => v2Send("POST", `/systems/${enc(systemId)}/sync`);
 export const listProfiles = (systemId: string): Promise<SyncProfile[]> => v2Get(`/systems/${enc(systemId)}/profiles`);
 export const createProfile = (systemId: string, body: { system_id: string; domain: string; tables: string[]; schedule_cron: string; active: boolean; extraction_mode: "full" | "delta" }): Promise<SyncProfile> =>
   v2Send("POST", `/systems/${enc(systemId)}/profiles`, body);

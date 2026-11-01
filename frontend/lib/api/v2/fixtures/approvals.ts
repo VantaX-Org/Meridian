@@ -1,6 +1,6 @@
 import type { Notification } from "@/types/api";
 import type { NextStep, Person } from "../people";
-import type { AssignableUser, Digest, SlaPolicy } from "../triage";
+import type { AssignableUser, Digest, SlaPolicy, TriageSettings } from "../triage";
 import { batchesFixture } from "./work-fixture";
 
 /**
@@ -135,6 +135,21 @@ export function putPolicyFixture(body: Omit<SlaPolicy, "id" | "is_default">): Sl
   policies = policies.map((p) => (p.severity === body.severity && p.module === body.module ? row : p));
   return row;
 }
+export function deletePolicyFixture(id: string): null {
+  const p = policies.find((x) => x.id === id) ?? fail(404, "Policy not found");
+  const base = buildPolicies().find((x) => x.severity === p.severity)!;
+  policies = p.module == null ? policies.map((x) => (x === p ? { ...base, id: null, is_default: true } : x)) : policies.filter((x) => x !== p);
+  return null;
+}
+const buildSettings = (): TriageSettings => ({ timezone: "Africa/Johannesburg", work_days: [1, 2, 3, 4, 5], work_start: "08:00:00", work_end: "17:00:00", holidays: ["2026-12-25", "2026-12-26"], fallback_user_id: null });
+let settings = buildSettings();
+export const settingsFixture = (): TriageSettings => settings;
+export function putSettingsFixture(body: TriageSettings): TriageSettings {
+  if (!body.work_days?.length) fail(422, "work_days must be ISO weekdays 1..7, at least one");
+  if (body.work_start >= body.work_end) fail(422, "work_end must be after work_start");
+  settings = { ...body, work_days: [...new Set(body.work_days)].sort(), holidays: [...new Set(body.holidays)].sort() };
+  return settings;
+}
 export const preferencesFixture = (): { notifications: { digest: Digest } } => ({ notifications: { digest } });
 export function patchPreferencesFixture(body: { notifications?: { digest?: Digest } }): { notifications: { digest: Digest } } {
   if (body.notifications?.digest) digest = body.notifications.digest;
@@ -144,5 +159,6 @@ export function patchPreferencesFixture(body: { notifications?: { digest?: Diges
 export function resetApprovalsFixture(): void {
   notifications = buildNotifications();
   policies = buildPolicies();
+  settings = buildSettings();
   digest = "weekly";
 }

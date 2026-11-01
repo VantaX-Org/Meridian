@@ -402,6 +402,23 @@ function validateDoc(doc: ProcessModelDocument): { path: string; message: string
   return errors;
 }
 
+/** Sync runs of a system, shaped like GET /systems/{id}/runs: one finished run per schedule, the first failed. */
+function syncRunsFor(id: string) {
+  return profilesFor(id).map((p, i) => ({
+    id: `sr-${p.id}`,
+    profile_id: p.id,
+    started_at: `2026-10-${String(30 - i).padStart(2, "0")}T02:00:00Z`,
+    completed_at: i === 0 ? null : `2026-10-${String(30 - i).padStart(2, "0")}T02:14:00Z`,
+    rows_extracted: i === 0 ? 0 : 48210 - i * 3100,
+    findings_delta: i === 0 ? 0 : 12 - i * 9,
+    golden_records_updated: i === 0 ? 0 : 140 + i,
+    status: i === 0 ? "failed" : "completed",
+    error_detail: i === 0 ? "RFC_READ_TABLE timed out after 600 seconds" : null,
+    ai_quality_score: null,
+    anomaly_flags: null,
+  }));
+}
+
 /* ---- the router: reads ---- */
 
 /** The answer to one step 6b read, or NOT_MINE when the path is not one of this step's. */
@@ -412,6 +429,8 @@ export function sys6bRead(path: string, params: Params): unknown {
     const id = decodeURIComponent(sys[1]);
     return sys[2] === "objects" ? objectsFor(id) : profilesFor(id).map((p) => ({ ...p }));
   }
+  const runs = /^\/systems\/([^/]+)\/runs$/.exec(path);
+  if (runs) return syncRunsFor(decodeURIComponent(runs[1]));
   const cfg = /^\/connectivity\/config-load\/([^/]+)$/.exec(path);
   if (cfg) return configLoad(decodeURIComponent(cfg[1]));
   if (/^\/connectivity\/config-load\/[^/]+\/items$/.test(path)) return configItems(String(params.object ?? ""));
@@ -518,6 +537,12 @@ export function sys6bWrite(method: string, path: string, body: unknown): unknown
       st.deleted.add(id);
       return null;
     }
+  }
+  const sy = /^\/systems\/([^/]+)\/sync$/.exec(path);
+  if (method === "POST" && sy) {
+    const active = profilesFor(decodeURIComponent(sy[1])).filter((p) => p.active);
+    if (!active.length) throw detail(404, "No active sync profiles found");
+    return { status: "enqueued", profile_count: active.length, job_ids: active.map((p) => `job-sync-${p.id}`) };
   }
   const pr = /^\/systems\/([^/]+)\/profiles(?:\/([^/]+))?$/.exec(path);
   if (pr) {
