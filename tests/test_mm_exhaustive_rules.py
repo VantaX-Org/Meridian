@@ -59,6 +59,32 @@ def stko(**cols):
     return frame("STKO", **{**base, **cols})
 
 
+def mcha(**cols):
+    base = {"MATNR": ["M1", "M2"], "WERKS": ["P1", "P1"], "CHARG": ["B1", "B2"]}
+    return frame("MCHA", **{**base, **cols})
+
+
+def mchb(**cols):
+    base = {"MATNR": ["M1", "M2"], "WERKS": ["P1", "P1"], "LGORT": ["L1", "L1"], "CHARG": ["B1", "B2"]}
+    return frame("MCHB", **{**base, **cols})
+
+
+def eord(**cols):
+    base = {"MATNR": ["M1", "M2"], "WERKS": ["P1", "P1"], "ZEORD": ["1", "1"]}
+    return frame("EORD", **{**base, **cols})
+
+
+def qinf(**cols):
+    base = {"MATNR": ["M1", "M2"], "ZAEHL": ["1", "2"], "LIEFERANT": ["V1", "V1"], "WERK": ["P1", "P1"],
+            "LOEKZ": ["", ""]}
+    return frame("QINF", **{**base, **cols})
+
+
+def marc(**cols):
+    base = {"MATNR": ["M1", "M2"], "WERKS": ["P1", "P1"]}
+    return frame("MARC", **{**base, **cols})
+
+
 CASES = {
     "MM900": {"KSSK": kssk(STATU=["", "1"])},
     "MM901": {"KSSK": kssk(OBJEK=["M1", "M1", "M2"], MAFID=["O"] * 3, KLART=["001"] * 3,
@@ -95,8 +121,42 @@ CASES = {
     "MM926": {"STKO": stko(STLST=["", "1"])},
     "MM927": {"STKO": stko(DATUV=["", "20200101"])},
     "MM928": {"STKO": stko(STLAL=["", "01"])},
+    "MM929": {"MCHA": mcha(), "MARC": marc(MATNR=["M2", "M3"])},
+    "MM930": {"MCHA": mcha(HSDAT=["20240101", "20240101"], VFDAT=["20231231", "20250101"])},
+    "MM931": {"MCHA": mcha(ERSDA=["20240101", "20240101"], LAEDA=["20231231", "20240201"])},
+    "MM932": {"MCHA": mcha(HSDAT=["20240101", "20240101"], LWEDT=["20231231", "20240201"])},
+    "MM933": {"MCHA": mcha(HSDAT=["29990101", "20240101"])},
+    "MM934": {"MCHA": mcha(LWEDT=["29990101", "20240101"])},
+    "MM935": {"MCHA": mcha(VERAB=["20250201", "20240101"], VFDAT=["20250101", "20250101"])},
+    "MM936": {"MCHA": mcha(VLCHA=["B9", "B9"], VLMAT=["", "M9"])},
+    "MM937": {"MCHA": mcha(LIFNR=["V9", "V1"]), "LFA1": frame("LFA1", LIFNR=["V1"])},
+    "MM938": {"MCHA": mcha(VFDAT=["20200101", "20200101"], ZUSTD=["", "X"])},
+    "MM939": {"MCHA": mcha(QNDAT=["20200101", "29990101"], ZUSTD=["", ""])},
+    "MM940": {"MCHA": mcha(CHAME=["KG", "EA"]), "MARM": frame("MARM", MATNR=["M1", "M2"], MEINH=["EA", "EA"])},
+    "MM941": {"MCHB": mchb(), "MCHA": mcha(MATNR=["M2"], WERKS=["P1"], CHARG=["B2"])},
+    "MM942": {"MCHB": mchb(), "MARD": frame("MARD", MATNR=["M2"], WERKS=["P1"], LGORT=["L1"])},
+    "MM943": {"MCHB": mchb(CEINM=[-1.0, 0.0], CINSM=[0.0, 0.0], CSPEM=[0.0, 0.0], CRETM=[0.0, 0.0],
+                           CUMLM=[0.0, 5.0])},
+    "MM944": {"MCHB": mchb(LVORM=["X", "X"], CLABS=[5.0, 0.0], CINSM=[0.0, 0.0], CSPEM=[0.0, 0.0],
+                           CEINM=[0.0, 0.0], CRETM=[0.0, 0.0]), "MCHA": mcha(LVORM=["", ""])},
+    "MM945": {"MCHB": mchb(), "MARC": marc(XCHAR=["", "X"])},
+    "MM946": {"MCHB": mchb(CHDLL=["29990101", "20240101"])},
+    "MM947": {"MCHB": mchb(ERSDA=["20240101", "20240101"], LAEDA=["20231231", "20240201"])},
+    "MM948": {"MCHB": mchb(CLABS=[5.0, 0.0]), "MCHA": mcha(VFDAT=["20200101", "20200101"])},
+    "MM949": {"EORD": eord(), "MARC": marc(MATNR=["M2", "M3"])},
+    "MM950": {"EORD": eord(NOTKZ=["", ""]), "MARC": marc(LVORM=["X", ""])},
+    "MM951": {"EORD": eord(LIFNR=["V1", "V1"], RESWK=["P2", ""])},
+    "MM952": {"EORD": eord(RESWK=["P1", "P2"])},
+    "MM953": {"EORD": eord(EMATN=["X9", "M1"]), "MARA": frame("MARA", MATNR=["M1", "M2"])},
+    "MM954": {"EORD": eord(MATNR=["M1", "M1", "M2"], WERKS=["P1"] * 3, ZEORD=["1", "2", "1"],
+                           VDATU=["20240101", "20240601", "20240101"], BDATU=["20241231", "20251231", "20241231"],
+                           FLIFN=["X"] * 3, NOTKZ=[""] * 3)},
+    "MM955": {"EORD": eord(VDATU=["20240601", "20240101"], BDATU=["20240101", "20241231"])},
+    "MM956": {"EORD": eord(MEINS=["KG", "EA"]), "MARM": frame("MARM", MATNR=["M1", "M2"], MEINH=["EA", "EA"])},
+    "MM957": {"QINF": qinf(), "MARC": marc(MATNR=["M2", "M3"])},
+    "MM958": {"QINF": qinf(), "MARC": marc(LVORM=["X", ""])},
 }
-EXPECT = {"MM901": (2, 3), "MM908": (2, 3), "MM916": (2, 3), "MM917": (2, 3), "MM920": (2, 3)}
+EXPECT = {"MM901": (2, 3), "MM908": (2, 3), "MM916": (2, 3), "MM917": (2, 3), "MM920": (2, 3), "MM954": (1, 3)}
 
 
 def test_ids_contiguous_from_900():
