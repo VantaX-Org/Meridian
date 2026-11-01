@@ -186,6 +186,36 @@ CASES = [
                          PLANNED_END_DATE=["20260101", "20220101"])}, 1, [GA]),
 ]
 
+# national IDs: (country, published specimen that passes, same number with one character changed).
+# The third row is another country's malformed number, which the country's rule must ignore.
+NID_SPECIMENS = [
+    ("CAN", "046 454 286", "046 454 287"), ("BRA", "111.444.777-35", "111.444.777-36"),
+    ("NLD", "111222333", "111222334"), ("ESP", "X1234567L", "X1234567M"),
+    ("CHN", "11010519491231002X", "110105194912310021"), ("IND", "234123412346", "234123412347"),
+    ("FRA", "255081416802538", "255081416802539"), ("ITA", "RSSMRA85T10A562S", "RSSMRA85T10A562T"),
+    ("AUS", "123456782", "123456783"), ("MEX", "HEGG560427MVZRRL04", "HEGG560427MVZRRL05"),
+    ("SGP", "S1234567D", "S1234567E"), ("SWE", "811218-9876", "811218-9877"),
+    ("NOR", "01010101006", "01010101007"), ("FIN", "131052-308T", "131052-308U"),
+    ("POL", "44051401359", "44051401358"), ("BEL", "85.07.30-033.28", "85.07.30-033.29"),
+    ("TUR", "10000000146", "10000000147"), ("CHL", "12.345.678-5", "12.345.678-K"),
+    ("CHE", "756.9217.0769.85", "756.9217.0769.86"), ("IRL", "1234567T", "1234567A"),
+    ("ROU", "1800101221144", "1800101221145"), ("JPN", "123456789018", "123456789019"),
+    ("NZL", "49091850", "49091851"), ("AUT", "1237010180", "1238010180"),
+    ("CZE", "7103192745", "7103192746"), ("SVK", "7103192745", "7103192746"),
+    ("ISR", "000000018", "000000019"), ("THA", "1101700207030", "1101700207031"),
+    ("HRV", "69435151530", "69435151531"), ("BGR", "7523169263", "7523169264"),
+    ("GRC", "12345678903", "12345678904"),
+]
+_NID_RULES = {(r["applies_when"]["PERINFO.NATIONAL_ID_COUNTRY"][0], r["check_class"]): r["id"] for r in NEW
+              if r["field"] == "PERINFO.NATIONAL_ID" and r["check_class"] == "format_check"}
+for _cc, _good, _bad in NID_SPECIMENS:
+    CASES.append((_NID_RULES[(_cc, "format_check")],
+                  {PI: frame(PI, PERSON_ID=["p1", "p2", "p3"], NATIONAL_ID=[_bad, _good, "?"],
+                             NATIONAL_ID_COUNTRY=[_cc, _cc, "ATA"])}, 1, [PI]))
+CASES.append((next(r["id"] for r in NEW if r["message"] == "Israeli ID number is not 9 digits"),
+              {PI: frame(PI, PERSON_ID=["p1", "p2"], NATIONAL_ID=["18", "000000018"],
+                         NATIONAL_ID_COUNTRY=["ISR", "ISR"])}, 1, [PI]))
+
 
 def clean(tables, slice_tables):
     return {t: (df.iloc[1:].reset_index(drop=True) if t in slice_tables else df) for t, df in tables.items()}

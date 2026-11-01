@@ -8648,7 +8648,7 @@ rules:
   sap_impact: The address is not shown on any profile and is dropped by identity provisioning.
   fix_map:
     __other__: Link the e-mail address to its person or delete the orphaned row.
-  record_fix_template: 'E-mail record of type {PEREMAIL.EMAIL_TYPE}: no person ID is recorded.'
+  record_fix_template: 'E-mail record: no person ID is recorded.'
 - id: EC465
   field: PEREMAIL.PERSON_ID
   check_class: exists_check
@@ -8681,7 +8681,7 @@ rules:
   sap_impact: Imports of PerEmail fail on the duplicate key and integrations pick an arbitrary one of the two addresses.
   fix_map:
     __other__: Keep one address per e-mail type; move the other to a different type or delete it.
-  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: more than one e-mail address of type {PEREMAIL.EMAIL_TYPE}.'
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: more than one e-mail address of the same type.'
 - id: EC467
   field: PEREMAIL.EMAIL_ADDRESS
   check_class: uniqueness_check
@@ -8700,8 +8700,7 @@ rules:
   fix_map:
     __other__: Keep the address under its correct type and record the real address for the other type, or delete
       it.
-  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: e-mail address {PEREMAIL.EMAIL_ADDRESS} is recorded under more
-    than one type.'
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: e-mail address is recorded under more than one type.'
 - id: EC468
   field: PEREMAIL.EMAIL_ADDRESS
   check_class: regex_check
@@ -8715,13 +8714,15 @@ rules:
   sap_impact: Mail to the address bounces and identity provisioning rejects it as a login.
   fix_map:
     __other__: Correct the misplaced dot or hyphen in the e-mail address.
-  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: e-mail address {PEREMAIL.EMAIL_ADDRESS} has a dot or hyphen
-    in an invalid position.'
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: e-mail address has a dot or hyphen in an invalid position.'
 - id: EC469
   field: PEREMAIL.EMAIL_ADDRESS
   check_class: cross_field_check
-  fail_when: '`PEREMAIL.EMAIL_ADDRESS`.str.lower().str.strip().str.contains(''@(?:gmail[.]com|googlemail[.]com|yahoo[.][a-z.]+|ymail[.]com|hotmail[.][a-z.]+|outlook[.]com|live[.][a-z.]+|msn[.]com|aol[.]com|icloud[.]com|me[.]com|gmx[.][a-z.]+|protonmail[.]com|proton[.]me)$'',
-    regex=True, na=False)'
+  fail_when: '`PEREMAIL.EMAIL_ADDRESS`.str.lower().str.replace(''^.*@'', '''', regex=True).isin([''gmail.com'',
+    ''googlemail.com'', ''yahoo.com'', ''yahoo.co.uk'', ''yahoo.co.in'', ''yahoo.fr'', ''yahoo.de'', ''ymail.com'',
+    ''hotmail.com'', ''hotmail.co.uk'', ''hotmail.fr'', ''hotmail.de'', ''outlook.com'', ''live.com'', ''live.co.uk'',
+    ''msn.com'', ''aol.com'', ''icloud.com'', ''me.com'', ''gmx.de'', ''gmx.net'', ''gmx.com'', ''protonmail.com'',
+    ''proton.me''])'
   applies_when:
     PEREMAIL.EMAIL_TYPE:
     - B
@@ -8736,8 +8737,7 @@ rules:
   fix_map:
     __other__: Record the company mailbox as the business e-mail and move the free-mail address to the personal
       type.
-  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: business e-mail address {PEREMAIL.EMAIL_ADDRESS} is on a public
-    free-mail domain.'
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: business e-mail address is on a public free-mail domain.'
 - id: EC470
   field: USERACCOUNT.EMAIL
   check_class: exists_check
@@ -8758,8 +8758,7 @@ rules:
     the wrong mailbox.
   fix_map:
     __other__: Set the person's primary e-mail in Employee Central and let it sync to the user account.
-  record_fix_template: 'User {USERACCOUNT.USER_ID}: e-mail {USERACCOUNT.EMAIL} is not a primary e-mail address in
-    Employee Central.'
+  record_fix_template: 'User {USERACCOUNT.USER_ID}: e-mail is not a primary e-mail address in Employee Central.'
 - id: EC471
   field: PERPHONE.PERSON_ID
   check_class: null_check
@@ -8771,7 +8770,7 @@ rules:
   sap_impact: The number is shown on no profile and is dropped by any person-level interface.
   fix_map:
     __other__: Link the phone number to its person or delete the orphaned row.
-  record_fix_template: 'Phone record of type {PERPHONE.PHONE_TYPE}: no person ID is recorded.'
+  record_fix_template: 'Phone record: no person ID is recorded.'
 - id: EC472
   field: PERPHONE.PERSON_ID
   check_class: exists_check
@@ -8816,7 +8815,7 @@ rules:
   sap_impact: The PerPhone import fails on the duplicate key and integrations pick one of the numbers at random.
   fix_map:
     __other__: Keep one number per phone type; move the other to a different type or delete it.
-  record_fix_template: 'Person {PERPHONE.PERSON_ID}: more than one phone number of type {PERPHONE.PHONE_TYPE}.'
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: more than one phone number of the same type.'
 - id: EC475
   field: PERPHONE.PHONE_NUMBER
   check_class: uniqueness_check
@@ -8833,8 +8832,7 @@ rules:
   sap_impact: The profile looks complete while the person can only be reached on one line.
   fix_map:
     __other__: Keep the number under its correct type and record the real number for the other type, or delete it.
-  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number {PERPHONE.PHONE_NUMBER} is recorded under more
-    than one type.'
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number is recorded under more than one type.'
 - id: EC476
   field: PERPHONE.PHONE_NUMBER
   check_class: uniqueness_check
@@ -8855,8 +8853,7 @@ rules:
   sap_impact: Text-message based MFA, alerts and on-call notifications reach the wrong person.
   fix_map:
     __other__: Confirm whose mobile number it is and correct the other person's record.
-  record_fix_template: 'Person {PERPHONE.PERSON_ID}: mobile number {PERPHONE.PHONE_NUMBER} is also recorded for
-    another person.'
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: mobile number is also recorded for another person.'
 - id: EC477
   field: PERPHONE.COUNTRY_CODE
   check_class: null_check
@@ -8872,7 +8869,7 @@ rules:
   sap_impact: Calls and text messages from other countries or from cloud services cannot reach the number.
   fix_map:
     __other__: Record the international dialling code of the phone number.
-  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number of type {PERPHONE.PHONE_TYPE} has no country code.'
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: a phone number has no country code.'
 - id: EC478
   field: PERPHONE.PHONE_NUMBER
   check_class: cross_field_check
@@ -8887,8 +8884,8 @@ rules:
   sap_impact: Click-to-call, SMS gateways and directory exports produce an undialable number.
   fix_map:
     __other__: Remove the international prefix from the phone number and keep it only in the country code.
-  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number {PERPHONE.PHONE_NUMBER} starts with an international
-    prefix although country code {PERPHONE.COUNTRY_CODE} is set.'
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number starts with an international prefix although country
+    code {PERPHONE.COUNTRY_CODE} is set.'
 - id: EC479
   field: PERPHONE.AREA_CODE
   check_class: regex_check
@@ -9589,3 +9586,572 @@ rules:
     __other__: Correct the planned end date or convert the move to a permanent transfer.
   record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment runs from {EMPGLOBALASSIGNMENT.START_DATE}
     to {EMPGLOBALASSIGNMENT.PLANNED_END_DATE}.'
+- id: EC515
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: ca_sin
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CAN
+  severity: high
+  dimension: validity
+  message: Canadian SIN fails its check digit
+  why_it_matters: The ninth digit of a Social Insurance Number is a Luhn check digit over the first eight. A failed
+    check means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: T4 slips and Records of Employment are rejected by the CRA and Service Canada.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Canadian SIN fails its check digit. Correct the record.'
+- id: EC516
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: br_cpf
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BRA
+  severity: high
+  dimension: validity
+  message: Brazilian CPF fails its check digit
+  why_it_matters: The last two digits of a CPF are mod-11 check digits; a CPF made of one repeated digit is never
+    issued. A failed check means at least one character was typed or transposed wrongly, even when the length and
+    layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: eSocial events and the DIRF/EFD-Reinf returns are rejected by the Receita Federal.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Brazilian CPF fails its check digit. Correct the record.'
+- id: EC517
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: nl_bsn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NLD
+  severity: high
+  dimension: validity
+  message: Dutch BSN fails its check digit
+  why_it_matters: A BSN must pass the eleven-test (weights 9 to 2 with the last digit weighted -1, total divisible
+    by 11). A failed check means at least one character was typed or transposed wrongly, even when the length and
+    layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll tax returns (loonaangifte) are rejected by the Belastingdienst.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Dutch BSN fails its check digit. Correct the record.'
+- id: EC518
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: es_dni
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ESP
+  severity: high
+  dimension: validity
+  message: Spanish DNI/NIE fails its check digit
+  why_it_matters: The letter of a DNI or NIE is selected by the number modulo 23 (X, Y, Z of an NIE count as 0,
+    1, 2). A failed check means at least one character was typed or transposed wrongly, even when the length and
+    layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Social security affiliation (Sistema RED) and modelo 111/190 tax returns are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Spanish DNI/NIE fails its check digit. Correct the record.'
+- id: EC519
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: cn_rid
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHN
+  severity: high
+  dimension: validity
+  message: Chinese resident ID fails its check digit
+  why_it_matters: The 18th character of a resident identity number is an ISO 7064 MOD 11-2 check character (0-9
+    or X). A failed check means at least one character was typed or transposed wrongly, even when the length and
+    layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Individual income tax filing and social insurance registration reject the employee.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Chinese resident ID fails its check digit. Correct the record.'
+- id: EC520
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: in_national
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - IND
+  severity: high
+  dimension: validity
+  message: Indian national ID fails its check digit
+  why_it_matters: A 12-digit Aadhaar number ends in a Verhoeff check digit and never starts with 0 or 1; a PAN has
+    the layout AAAAA9999A. A failed check means at least one character was typed or transposed wrongly, even when
+    the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Form 16 and the quarterly TDS returns (24Q) are rejected by the Income Tax Department.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Indian national ID fails its check digit. Correct the record.'
+- id: EC521
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: fr_nir
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FRA
+  severity: high
+  dimension: validity
+  message: French NIR fails its check digit
+  why_it_matters: The two-digit key of a NIR (social security number) is 97 minus the 13-character number modulo
+    97, with Corsican departments 2A and 2B counted as 19 and 18. A failed check means at least one character was
+    typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: DSN (declaration sociale nominative) returns are rejected by URSSAF.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: French NIR fails its check digit. Correct the record.'
+- id: EC522
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: it_cf
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ITA
+  severity: high
+  dimension: validity
+  message: Italian codice fiscale fails its check digit
+  why_it_matters: The 16th character of a codice fiscale is a check letter computed from the odd and even position
+    tables. A failed check means at least one character was typed or transposed wrongly, even when the length and
+    layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Certificazione Unica and modello 770 returns are rejected by the Agenzia delle Entrate.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Italian codice fiscale fails its check digit. Correct the record.'
+- id: EC523
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: au_tfn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - AUS
+  severity: high
+  dimension: validity
+  message: Australian TFN fails its check digit
+  why_it_matters: A Tax File Number passes a weighted sum modulo 11 (weights 1,4,3,7,5,8,6,9,10 for nine digits).
+    A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Single Touch Payroll reports are rejected by the ATO and the employee is taxed at the no-TFN rate.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Australian TFN fails its check digit. Correct the record.'
+- id: EC524
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: mx_curp
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - MEX
+  severity: high
+  dimension: validity
+  message: Mexican CURP fails its check digit
+  why_it_matters: The 18th character of a CURP is a check digit over the first 17 characters (weights 18 to 2, modulo
+    10). A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: IMSS affiliation and CFDI payroll receipts (nómina) are rejected by the SAT.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Mexican CURP fails its check digit. Correct the record.'
+- id: EC525
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: sg_nric
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SGP
+  severity: high
+  dimension: validity
+  message: Singapore NRIC/FIN fails its check digit
+  why_it_matters: The final letter of an NRIC or FIN is a check letter from the weighted digits (S, T, F and G series).
+    A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: CPF contributions and IR8A submissions to IRAS are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Singapore NRIC/FIN fails its check digit. Correct the record.'
+- id: EC526
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: se_pnr
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SWE
+  severity: high
+  dimension: validity
+  message: Swedish personnummer fails its check digit
+  why_it_matters: A personnummer is (YY)YYMMDD, a separator and four digits; the last digit is a Luhn check digit
+    over the ten-digit form. A failed check means at least one character was typed or transposed wrongly, even when
+    the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: AGI employer declarations (arbetsgivardeklaration) are rejected by Skatteverket.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Swedish personnummer fails its check digit. Correct the record.'
+- id: EC527
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: no_fnr
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NOR
+  severity: high
+  dimension: validity
+  message: Norwegian fødselsnummer fails its check digit
+  why_it_matters: A fødselsnummer or D-number has 11 digits; the last two are mod-11 check digits. A failed check
+    means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: A-melding payroll reports are rejected by Skatteetaten.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Norwegian fødselsnummer fails its check digit. Correct the record.'
+- id: EC528
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: fi_hetu
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FIN
+  severity: high
+  dimension: validity
+  message: Finnish henkilötunnus fails its check digit
+  why_it_matters: A henkilötunnus is DDMMYY, a century sign, three digits and a check character (number modulo 31).
+    A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Incomes Register (Tulorekisteri) earnings reports are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Finnish henkilötunnus fails its check digit. Correct the record.'
+- id: EC529
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: pl_pesel
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - POL
+  severity: high
+  dimension: validity
+  message: Polish PESEL fails its check digit
+  why_it_matters: A PESEL has 11 digits; the last is a check digit with weights 1,3,7,9 repeated. A failed check
+    means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: ZUS social insurance declarations and PIT-11 tax forms are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Polish PESEL fails its check digit. Correct the record.'
+- id: EC530
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: be_nn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BEL
+  severity: high
+  dimension: validity
+  message: Belgian national register number fails its check digit
+  why_it_matters: A national register number has 11 digits; the last two are 97 minus the first nine modulo 97 (with
+    a 2 prefixed for people born from 2000). A failed check means at least one character was typed or transposed
+    wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: DmfA social security declarations and Belcotax 281.10 forms are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Belgian national register number fails its check digit. Correct
+    the record.'
+- id: EC531
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: tr_tckn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - TUR
+  severity: high
+  dimension: validity
+  message: Turkish T.C. Kimlik No fails its check digit
+  why_it_matters: A T.C. Kimlik number has 11 digits, never starts with 0, and its last two digits are check digits.
+    A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: SGK social security notifications and the muhtasar tax return are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Turkish T.C. Kimlik No fails its check digit. Correct the record.'
+- id: EC532
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: cl_rut
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHL
+  severity: high
+  dimension: validity
+  message: Chilean RUT fails its check digit
+  why_it_matters: A RUT/RUN ends in a check character (0-9 or K) computed modulo 11 with weights 2 to 7. A failed
+    check means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Previred contribution files and the Libro de Remuneraciones Electrónico are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Chilean RUT fails its check digit. Correct the record.'
+- id: EC533
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: ch_ahv
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHE
+  severity: high
+  dimension: validity
+  message: Swiss AHV/AVS number fails its check digit
+  why_it_matters: An AHV/AVS number is 756 followed by 10 digits, the last being an EAN-13 check digit. A failed
+    check means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: ELM salary declarations (Swissdec) to the compensation fund are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Swiss AHV/AVS number fails its check digit. Correct the record.'
+- id: EC534
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: ie_ppsn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - IRL
+  severity: high
+  dimension: validity
+  message: Irish PPSN fails its check digit
+  why_it_matters: A PPS number is seven digits, a check letter (weighted sum modulo 23) and an optional second letter.
+    A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue PAYE Modernisation payroll submissions are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Irish PPSN fails its check digit. Correct the record.'
+- id: EC535
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: ro_cnp
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ROU
+  severity: high
+  dimension: validity
+  message: Romanian CNP fails its check digit
+  why_it_matters: A CNP has 13 digits; the last is a check digit with weights 279146358279 modulo 11. A failed check
+    means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: D112 social contribution declarations to ANAF are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Romanian CNP fails its check digit. Correct the record.'
+- id: EC536
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: jp_mynumber
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - JPN
+  severity: high
+  dimension: validity
+  message: Japanese My Number fails its check digit
+  why_it_matters: An Individual Number (My Number) has 12 digits; the last is a check digit modulo 11 over the first
+    11. A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Year-end adjustment and withholding slips submitted to the tax office are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Japanese My Number fails its check digit. Correct the record.'
+- id: EC537
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: nz_ird
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NZL
+  severity: high
+  dimension: validity
+  message: New Zealand IRD number fails its check digit
+  why_it_matters: An IRD number has 8 or 9 digits within the issued range and ends in a mod-11 check digit. A failed
+    check means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employment information filings are rejected by Inland Revenue and the employee is taxed at the no-notification
+    rate.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: New Zealand IRD number fails its check digit. Correct the record.'
+- id: EC538
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: at_svnr
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - AUT
+  severity: high
+  dimension: validity
+  message: Austrian social insurance number fails its check digit
+  why_it_matters: A Sozialversicherungsnummer has 10 digits; the fourth is a mod-11 check digit and the last six
+    are the date of birth. A failed check means at least one character was typed or transposed wrongly, even when
+    the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: ELDA registrations and the mBGM monthly contribution report are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Austrian social insurance number fails its check digit. Correct
+    the record.'
+- id: EC539
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: cz_rc
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CZE
+  severity: high
+  dimension: validity
+  message: Czech birth number fails its check digit
+  why_it_matters: A rodné číslo issued from 1954 has 10 digits and is divisible by 11 (9 digits before 1954). A
+    failed check means at least one character was typed or transposed wrongly, even when the length and layout look
+    right.
+  rule_authority: sap_hard_constraint
+  sap_impact: ELDP pension records and social and health insurance reports are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Czech birth number fails its check digit. Correct the record.'
+- id: EC540
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: cz_rc
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SVK
+  severity: high
+  dimension: validity
+  message: Slovak birth number fails its check digit
+  why_it_matters: A rodné číslo issued from 1954 has 10 digits and is divisible by 11 (9 digits before 1954). A
+    failed check means at least one character was typed or transposed wrongly, even when the length and layout look
+    right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Social insurance (Sociálna poisťovňa) monthly reports are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Slovak birth number fails its check digit. Correct the record.'
+- id: EC541
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: luhn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ISR
+  severity: high
+  dimension: validity
+  message: Israeli ID number fails its check digit
+  why_it_matters: The ninth digit of a Teudat Zehut number is a Luhn check digit over the first eight. A failed
+    check means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Form 102 and Form 126 returns are rejected by the Israel Tax Authority.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Israeli ID number fails its check digit. Correct the record.'
+- id: EC542
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^\d{9}$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ISR
+  severity: high
+  dimension: validity
+  message: Israeli ID number is not 9 digits
+  why_it_matters: A Teudat Zehut number has exactly 9 digits, including leading zeros.
+  rule_authority: sap_hard_constraint
+  sap_impact: Form 102 and Form 126 returns are rejected by the Israel Tax Authority.
+  fix_map:
+    __other__: Correct the ID number from the employee's identity card in National ID Information (digits only,
+      keep leading zeros).
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Israeli ID number is not 9 digits. Correct the record.'
+- id: EC543
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: th_pid
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - THA
+  severity: high
+  dimension: validity
+  message: Thai personal ID number fails its check digit
+  why_it_matters: The 13th digit of a Thai personal identification number is a check digit (weights 13 to 2, modulo
+    11). A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Social Security Office contribution files (SSO 1-10) and PND 1 withholding returns are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Thai personal ID number fails its check digit. Correct the record.'
+- id: EC544
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: hr_oib
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - HRV
+  severity: high
+  dimension: validity
+  message: Croatian OIB fails its check digit
+  why_it_matters: The 11th digit of an OIB (personal identification number) is an ISO 7064 MOD 11,10 check digit.
+    A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: JOPPD payroll reports are rejected by the Tax Administration (Porezna uprava).
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Croatian OIB fails its check digit. Correct the record.'
+- id: EC545
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: bg_egn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BGR
+  severity: high
+  dimension: validity
+  message: Bulgarian EGN fails its check digit
+  why_it_matters: The 10th digit of an EGN is a check digit (weights 2,4,8,5,10,9,7,3,6, modulo 11, 10 counting
+    as 0). A failed check means at least one character was typed or transposed wrongly, even when the length and
+    layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Declaration 1 and Declaration 6 social insurance returns to the NRA are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Bulgarian EGN fails its check digit. Correct the record.'
+- id: EC546
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: luhn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - GRC
+  severity: high
+  dimension: validity
+  message: Greek AMKA fails its check digit
+  why_it_matters: An AMKA (social security number) has 11 digits; the last is a Luhn check digit. A failed check
+    means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: APD (Analytical Periodic Declaration) social insurance returns to e-EFKA are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Greek AMKA fails its check digit. Correct the record.'

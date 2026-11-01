@@ -231,7 +231,17 @@ _PLACEMENT_SAMPLES = {"misplaced": ["ap@example.co.za", "www.acme.com", "0115551
                       "date_range": ["20991231", "20200101"], "change_before_create": ["20200101", "20210101"],
                       "vat_checksum": ["DE136695977", "DE136695976", "AU", "51824753557", "51824753556"]}
 _FORMAT_SAMPLES = {"gtin": "4006381333931", "ean": "4006381333931", "iban": "GB82WEST12345698765432",
-                   "luhn": "4539148803436467", "email": "ap@example.co.za", "date": TODAY}
+                   "luhn": "4539148803436467", "email": "ap@example.co.za", "date": TODAY,
+                   # national-identifier specimens (checks/types/format_check.py self-check)
+                   "ca_sin": "046454286", "nl_bsn": "111222333", "br_cpf": "11144477735", "es_dni": "12345678Z",
+                   "cn_rid": "11010519491231002X", "it_cf": "RSSMRA85T10A562S", "fr_nir": "255081416802538",
+                   "au_tfn": "123456782", "mx_curp": "HEGG560427MVZRRL04", "sg_nric": "S1234567D",
+                   "in_national": "234123412346", "se_pnr": "811218-9876", "no_fnr": "01010101006",
+                   "fi_hetu": "131052-308T", "pl_pesel": "44051401359", "be_nn": "85073003328",
+                   "tr_tckn": "10000000146", "cl_rut": "12345678-5", "ch_ahv": "7569217076985",
+                   "ie_ppsn": "1234567T", "ro_cnp": "1800101221144", "jp_mynumber": "123456789018",
+                   "nz_ird": "49091850", "at_svnr": "1237010180", "cz_rc": "7103192745",
+                   "th_pid": "1101700207030", "hr_oib": "69435151530", "bg_egn": "7523169263"}
 # a cross_field_check comparing a slice of a column (IBAN prefix at [0:2], or a BIC/SWIFT
 # country code at [4:6], etc.) mapped through ``@iso_alpha3`` (an alpha-2 -> alpha-3 country
 # map, checks/types/cross_field_check.py) to a plain Country-FO field: neither generic char
