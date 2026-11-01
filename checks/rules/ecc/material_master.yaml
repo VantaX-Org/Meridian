@@ -14230,3 +14230,840 @@ rules:
     __other__: Flag the quality info record for deletion in QI02.
   record_fix_template: 'Quality info record of material {QINF.MATNR}, vendor {QINF.LIEFERANT}, plant {QINF.WERK}: material
     is flagged for deletion in the plant.'
+- id: MM959
+  field: MDMA.EISBE
+  check_class: cross_field_check
+  grain: MDMA
+  fail_when: (`MDMA.MABST` > 0) & (`MDMA.EISBE` > `MDMA.MABST`)
+  severity: medium
+  dimension: consistency
+  message: MRP area safety stock is above the maximum stock level
+  why_it_matters: MRP plans an MRP area with the values of its own segment (MDMA), not the plant view. A safety stock above
+    the maximum stock level cannot be held without breaching the maximum.
+  rule_authority: best_practice
+  sap_impact: Replenish-to-maximum lots in the MRP area never reach the safety stock, so MRP raises an exception message on
+    every run.
+  fix_map:
+    __other__: Correct the MRP area segment in MM02 (MRP 1 view, button MRP areas).
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: safety stock {actual_value} above
+    maximum stock {MDMA.MABST}.'
+- id: MM960
+  field: MDMA.MINBE
+  check_class: cross_field_check
+  grain: MDMA
+  fail_when: (`MDMA.MINBE` > 0) & `MDMA.DISMM`.notna() & ~`MDMA.DISMM`.isin(['VB', 'VM', 'V1', 'V2'])
+  severity: low
+  dimension: consistency
+  message: MRP area reorder point is maintained but the MRP type is not reorder-point planning
+  why_it_matters: The reorder point (MDMA-MINBE) is only read by reorder-point MRP types (VB, VM, V1, V2). With any other
+    MRP type it is ignored and suggests a planning procedure the MRP area does not use.
+  rule_authority: best_practice
+  sap_impact: Planners expect reorder-point replenishment that MRP never triggers for the MRP area.
+  fix_map:
+    __other__: Clear the reorder point or switch the MRP area to a reorder-point MRP type.
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: reorder point {actual_value} with
+    MRP type {MDMA.DISMM}.'
+- id: MM961
+  field: MDMA.EISBE
+  check_class: cross_field_check
+  grain: MDMA
+  fail_when: (`MDMA.EISBE` > 0) & (`MDMA.DISMM` == 'ND')
+  severity: low
+  dimension: consistency
+  message: MRP area safety stock is maintained although the MRP area is not planned (MRP type ND)
+  why_it_matters: MRP type ND excludes the MRP area from planning, so its safety stock (MDMA-EISBE) is never replenished.
+  rule_authority: best_practice
+  sap_impact: Stock availability and coverage reports show a safety stock that MRP does not protect.
+  fix_map:
+    __other__: Clear the safety stock or give the MRP area a planning MRP type.
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: safety stock {actual_value} with
+    MRP type ND.'
+- id: MM962
+  field: MDMA.SHZET
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.SHFLG:
+      blank: true
+  fail_when: (`MDMA.SHZET`.notna() & (`MDMA.SHZET`.str.lstrip('0') != ''))
+  severity: low
+  dimension: consistency
+  message: MRP area safety time is entered without a safety time indicator
+  why_it_matters: Safety time days (MDMA-SHZET) only take effect when the safety time indicator (MDMA-SHFLG) is set for the
+    MRP area. Without it the days are ignored.
+  rule_authority: best_practice
+  sap_impact: MRP schedules receipts in the MRP area without the intended safety time buffer.
+  fix_map:
+    __other__: Set the safety time indicator or clear the safety time in the MRP area segment.
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: safety time {actual_value} days
+    with no safety time indicator.'
+- id: MM963
+  field: MDMA.SHFLG
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.SHFLG:
+      populated: true
+  fail_when: (`MDMA.SHZET`.isna() | (`MDMA.SHZET`.str.lstrip('0') == ''))
+  severity: low
+  dimension: consistency
+  message: MRP area safety time indicator is set without any safety time
+  why_it_matters: The safety time indicator (MDMA-SHFLG) tells MRP to apply the safety time days (MDMA-SHZET). With zero days
+    it changes nothing and misleads the planner.
+  rule_authority: best_practice
+  sap_impact: The MRP area looks buffered by safety time but MRP schedules with no buffer.
+  fix_map:
+    __other__: Enter the safety time days or clear the indicator in the MRP area segment.
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: safety time indicator {actual_value}
+    with no safety time days.'
+- id: MM964
+  field: MDMA.FXHOR
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISMM:
+    - ND
+  fail_when: (`MDMA.FXHOR`.notna() & (`MDMA.FXHOR`.str.lstrip('0') != ''))
+  severity: low
+  dimension: consistency
+  message: MRP area planning time fence is set although the MRP area is not planned
+  why_it_matters: The planning time fence (MDMA-FXHOR) firms proposals inside the fence. With MRP type ND there are no proposals
+    to firm.
+  rule_authority: best_practice
+  sap_impact: The MRP area carries planning parameters that suggest it is planned when it is not.
+  fix_map:
+    __other__: Clear the planning time fence or give the MRP area a planning MRP type.
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: planning time fence {actual_value}
+    days with MRP type ND.'
+- id: MM965
+  field: MDMA.FXHOR
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISMM:
+    - P1
+    - P2
+    - P3
+    - P4
+  fail_when: '`MDMA.FXHOR`.fillna('''').str.lstrip(''0'') == '''''
+  severity: medium
+  dimension: completeness
+  message: MRP area with a planning time fence MRP type has no planning time fence
+  why_it_matters: MRP types P1 to P4 firm proposals inside the planning time fence (MDMA-FXHOR). A zero fence turns them into
+    plain MRP for the MRP area.
+  rule_authority: best_practice
+  sap_impact: Proposals inside the frozen horizon are rescheduled and changed on every MRP run.
+  fix_map:
+    __other__: Enter the planning time fence in the MRP area segment or use MRP type PD.
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: MRP type {MDMA.DISMM} with no planning
+    time fence.'
+- id: MM966
+  field: MDMA.BSTRF
+  check_class: cross_field_check
+  grain: MDMA
+  fail_when: (`MDMA.BSTRF` > 0) & (`MDMA.BSTMA` > 0) & (`MDMA.BSTRF` > `MDMA.BSTMA`)
+  severity: medium
+  dimension: consistency
+  message: MRP area rounding value is larger than the maximum lot size
+  why_it_matters: MRP rounds every lot up to a multiple of the rounding value (MDMA-BSTRF). A rounding value above the maximum
+    lot size (MDMA-BSTMA) makes every rounded lot exceed the maximum.
+  rule_authority: best_practice
+  sap_impact: MRP splits or caps lots inconsistently in the MRP area and raises exception messages.
+  fix_map:
+    __other__: Correct the MRP area segment in MM02 (MRP 1 view, button MRP areas).
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: rounding value {actual_value} above
+    maximum lot size {MDMA.BSTMA}.'
+- id: MM967
+  field: MDMA.BSTFE
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISLS:
+    - FX
+  fail_when: (`MDMA.BSTRF` > 0) & (`MDMA.BSTFE` > 0) & ((`MDMA.BSTFE` % `MDMA.BSTRF`) != 0)
+  severity: low
+  dimension: consistency
+  message: MRP area fixed lot size is not a multiple of the rounding value
+  why_it_matters: With fixed lot size (FX) MRP still rounds each lot to the rounding value (MDMA-BSTRF). A fixed lot that
+    is not a multiple is rounded up and never ordered at the fixed size.
+  rule_authority: best_practice
+  sap_impact: Planned orders and requisitions in the MRP area differ from the agreed fixed lot.
+  fix_map:
+    __other__: Correct the MRP area segment in MM02 (MRP 1 view, button MRP areas).
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: fixed lot size {actual_value}, rounding
+    value {MDMA.BSTRF}.'
+- id: MM968
+  field: MDMA.BSTFE
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISLS:
+    - EX
+    - TB
+    - WB
+    - MB
+    - PB
+    - HB
+  fail_when: '`MDMA.BSTFE` > 0'
+  severity: low
+  dimension: consistency
+  message: MRP area fixed lot size is maintained but the lot-sizing procedure is not fixed lot size
+  why_it_matters: The fixed lot size (MDMA-BSTFE) is read only by lot-sizing procedure FX. With any other procedure it is
+    ignored.
+  rule_authority: best_practice
+  sap_impact: Planners expect fixed lots in the MRP area that MRP never creates.
+  fix_map:
+    __other__: Clear the fixed lot size or change the lot-sizing procedure to FX.
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: fixed lot size {actual_value} with
+    lot-sizing procedure {MDMA.DISLS}.'
+- id: MM969
+  field: MDMA.MABST
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISLS:
+    - EX
+    - TB
+    - WB
+    - MB
+    - PB
+    - FX
+  fail_when: '`MDMA.MABST` > 0'
+  severity: low
+  dimension: consistency
+  message: MRP area maximum stock level is maintained but the lot-sizing procedure is not replenish to maximum
+  why_it_matters: The maximum stock level (MDMA-MABST) is read only by lot-sizing procedure HB. With any other procedure it
+    is ignored.
+  rule_authority: best_practice
+  sap_impact: Planners expect stock in the MRP area to be capped at a maximum that MRP does not apply.
+  fix_map:
+    __other__: Clear the maximum stock level or change the lot-sizing procedure to HB.
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: maximum stock {actual_value} with
+    lot-sizing procedure {MDMA.DISLS}.'
+- id: MM970
+  field: MDMA.BSTMI
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISLS:
+    - HB
+  fail_when: (`MDMA.MABST` > 0) & (`MDMA.BSTMI` > `MDMA.MABST`)
+  severity: medium
+  dimension: consistency
+  message: MRP area minimum lot size is above the maximum stock level (replenish to maximum)
+  why_it_matters: With replenish to maximum (HB) MRP fills up to the maximum stock level (MDMA-MABST). A minimum lot above
+    that level forces every receipt past the maximum.
+  rule_authority: best_practice
+  sap_impact: Stock in the MRP area is pushed above its maximum on every replenishment.
+  fix_map:
+    __other__: Correct the MRP area segment in MM02 (MRP 1 view, button MRP areas).
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: minimum lot size {actual_value}
+    above maximum stock {MDMA.MABST}.'
+- id: MM971
+  field: MDMA.MABST
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISLS:
+    - HB
+    MDMA.DISMM:
+    - VB
+    - VM
+  fail_when: (`MDMA.MABST` > 0) & (`MDMA.MINBE` > `MDMA.MABST`)
+  severity: high
+  dimension: consistency
+  message: MRP area maximum stock level is below the reorder point (replenish to maximum)
+  why_it_matters: Reorder-point planning with replenish to maximum triggers when stock falls below the reorder point (MDMA-MINBE)
+    and fills up to the maximum (MDMA-MABST). A maximum below the reorder point leaves nothing to fill.
+  rule_authority: best_practice
+  sap_impact: MRP triggers a requirement for the MRP area but calculates a zero or negative lot.
+  fix_map:
+    __other__: Correct the MRP area segment in MM02 (MRP 1 view, button MRP areas).
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: maximum stock {actual_value} below
+    reorder point {MDMA.MINBE}.'
+- id: MM972
+  field: MDMA.EISBE
+  check_class: cross_field_check
+  grain: MDMA
+  fail_when: (`MDMA.EISBE` < 0) | (`MDMA.MINBE` < 0) | (`MDMA.BSTMI` < 0) | (`MDMA.BSTMA` < 0) | (`MDMA.BSTFE` < 0) | (`MDMA.BSTRF`
+    < 0) | (`MDMA.MABST` < 0) | (`MDMA.PLIFZ` < 0)
+  severity: high
+  dimension: validity
+  message: MRP area holds a negative quantity or delivery time
+  why_it_matters: Safety stock, reorder point, lot sizes, rounding value, maximum stock and planned delivery time of the MRP
+    area segment are non-negative by definition. MM02 rejects negative values; they come from a load or a conversion error.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP calculates wrong net requirements and dates for the MRP area.
+  fix_map:
+    __other__: Correct the MRP area segment in MM02 (MRP 1 view, button MRP areas).
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: safety stock {MDMA.EISBE}, reorder
+    point {MDMA.MINBE}, lot sizes {MDMA.BSTMI} to {MDMA.BSTMA}, fixed {MDMA.BSTFE}, rounding {MDMA.BSTRF}, maximum {MDMA.MABST},
+    delivery time {MDMA.PLIFZ}.'
+- id: MM973
+  field: MDMA.PLIFZ
+  check_class: cross_field_check
+  grain: MDMA
+  fail_when: '`MDMA.PLIFZ` > 365'
+  severity: medium
+  dimension: accuracy
+  message: MRP area planned delivery time is longer than a year
+  why_it_matters: The planned delivery time of the MRP area (MDMA-PLIFZ) sets when MRP releases requisitions. More than 365
+    days is almost always a keying error (hours, or an extra digit).
+  rule_authority: best_practice
+  sap_impact: MRP schedules requisitions in the MRP area far too early and inflates coverage.
+  fix_map:
+    __other__: Correct the MRP area segment in MM02 (MRP 1 view, button MRP areas).
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: planned delivery time {actual_value}
+    days.'
+- id: MM974
+  field: MDMA.AUSSS
+  check_class: cross_field_check
+  grain: MDMA
+  fail_when: '`MDMA.AUSSS` >= 100'
+  severity: high
+  dimension: accuracy
+  message: MRP area assembly scrap is 100 percent or more
+  why_it_matters: Assembly scrap (MDMA-AUSSS) raises every planned order of the MRP area. At 100 percent or more MRP orders
+    at least double the requirement.
+  rule_authority: best_practice
+  sap_impact: Planned orders and component requirements in the MRP area are at least doubled.
+  fix_map:
+    __other__: Correct the MRP area segment in MM02 (MRP 1 view, button MRP areas).
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: assembly scrap {actual_value} percent.'
+- id: MM975
+  field: MDMA.LGPRO
+  check_class: exists_check
+  grain: MDMA
+  applies_when:
+    MDMA.LGPRO:
+      populated: true
+  fields:
+  - MDMA.MATNR
+  - MDMA.WERKS
+  - MDMA.LGPRO
+  target_table: MARD
+  target_fields:
+  - MATNR
+  - WERKS
+  - LGORT
+  severity: medium
+  dimension: consistency
+  message: MRP area production storage location is not extended for the material
+  why_it_matters: The production storage location of the MRP area (MDMA-LGPRO) receives in-house production. If the material
+    has no storage location data (MARD) there, the goods receipt has nowhere to post.
+  rule_authority: best_practice
+  sap_impact: Goods receipt from production orders of the MRP area fails or creates the storage location segment ad hoc.
+  fix_map:
+    __other__: Extend the material to the storage location (MM01 storage views) or correct the MRP area segment.
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: production storage location {actual_value}
+    not extended.'
+- id: MM976
+  field: MDMA.LGFSB
+  check_class: exists_check
+  grain: MDMA
+  applies_when:
+    MDMA.LGFSB:
+      populated: true
+  fields:
+  - MDMA.MATNR
+  - MDMA.WERKS
+  - MDMA.LGFSB
+  target_table: MARD
+  target_fields:
+  - MATNR
+  - WERKS
+  - LGORT
+  severity: medium
+  dimension: consistency
+  message: MRP area storage location for external procurement is not extended for the material
+  why_it_matters: The default storage location for external procurement of the MRP area (MDMA-LGFSB) is copied into purchase
+    requisitions. If the material has no storage location data (MARD) there, the goods receipt has nowhere to post.
+  rule_authority: best_practice
+  sap_impact: Goods receipts of purchase orders created from the MRP area fail or post to an unplanned location.
+  fix_map:
+    __other__: Extend the material to the storage location (MM01 storage views) or correct the MRP area segment.
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: external procurement storage location
+    {actual_value} not extended.'
+- id: MM977
+  field: MDMA.DISPO
+  check_class: referential_check
+  grain: MDMA
+  severity: high
+  dimension: validity
+  message: MRP controller (MDMA.DISPO) is not defined in the system's configuration (T024D)
+  why_it_matters: MRP controller of the MRP area segment is a key into customizing table T024D. A value that is not configured
+    there cannot be read by MRP when it plans the MRP area.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP exception messages and evaluations for the MRP area reach no controller.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T024D. Correct the value in the MRP area segment (MM02) or create the entry
+      in T024D.'
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: DISPO ''{actual_value}'' is not
+    configured in T024D.'
+- id: MM978
+  field: MDMA.SOBSL
+  check_class: referential_check
+  grain: MDMA
+  severity: high
+  dimension: validity
+  message: Special procurement type (MDMA.SOBSL) is not defined in the system's configuration (T460A)
+  why_it_matters: Special procurement type of the MRP area segment is a key into customizing table T460A. A value that is
+    not configured there cannot be read by MRP when it plans the MRP area.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP cannot determine how the MRP area is supplied (stock transfer, subcontracting, phantom).
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T460A. Correct the value in the MRP area segment (MM02) or create the entry
+      in T460A.'
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: SOBSL ''{actual_value}'' is not
+    configured in T460A.'
+- id: MM979
+  field: MDMA.DISPR
+  check_class: referential_check
+  grain: MDMA
+  severity: high
+  dimension: validity
+  message: MRP profile (MDMA.DISPR) is not defined in the system's configuration (MDIP)
+  why_it_matters: MRP profile of the MRP area segment is a key into customizing table MDIP. A value that is not configured
+    there cannot be read by MRP when it plans the MRP area.
+  rule_authority: sap_hard_constraint
+  sap_impact: The MRP area segment cannot be maintained or defaulted from its profile.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in MDIP. Correct the value in the MRP area segment (MM02) or create the entry in
+      MDIP.'
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: DISPR ''{actual_value}'' is not
+    configured in MDIP.'
+- id: MM980
+  field: MDMA.SHFLG
+  check_class: domain_value_check
+  grain: MDMA
+  severity: low
+  dimension: validity
+  message: MRP area safety time indicator holds a value outside its domain
+  why_it_matters: The safety time indicator (MDMA-SHFLG) of an MRP area segment is a fixed-value field. SAP accepts only blank,
+    1 or 2 (domain fixed values). Any other value comes from a load and is rejected by MM02 and the S/4HANA migration cockpit.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field, or MRP reads the indicator as not set for the MRP area.
+  fix_map:
+    __other__: Set safety time indicator to an allowed value in the MRP area segment (MM02, MRP 1, MRP areas).
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: safety time indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: MM981
+  field: MDMA.AUTRU
+  check_class: domain_value_check
+  grain: MDMA
+  severity: low
+  dimension: validity
+  message: MRP area reset forecast model indicator holds a value outside its domain
+  why_it_matters: The reset forecast model indicator (MDMA-AUTRU) of an MRP area segment is a fixed-value field. SAP accepts
+    only X or blank (domain fixed values). Any other value comes from a load and is rejected by MM02 and the S/4HANA migration
+    cockpit.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field, or MRP reads the indicator as not set for the MRP area.
+  fix_map:
+    __other__: Set reset forecast model indicator to an allowed value in the MRP area segment (MM02, MRP 1, MRP areas).
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: reset forecast model indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: MM982
+  field: MDMA.AHDIS
+  check_class: domain_value_check
+  grain: MDMA
+  severity: low
+  dimension: validity
+  message: MRP area dependent requirements MRP indicator holds a value outside its domain
+  why_it_matters: The dependent requirements MRP indicator (MDMA-AHDIS) of an MRP area segment is a fixed-value field. SAP
+    accepts only blank or 1 (domain fixed values). Any other value comes from a load and is rejected by MM02 and the S/4HANA
+    migration cockpit.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field, or MRP reads the indicator as not set for the MRP area.
+  fix_map:
+    __other__: Set dependent requirements MRP indicator to an allowed value in the MRP area segment (MM02, MRP 1, MRP areas).
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: dependent requirements MRP indicator
+    ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: MM983
+  field: MDMA.APOKZ
+  check_class: domain_value_check
+  grain: MDMA
+  severity: low
+  dimension: validity
+  message: MRP area APO relevance indicator holds a value outside its domain
+  why_it_matters: The APO relevance indicator (MDMA-APOKZ) of an MRP area segment is a fixed-value field. SAP accepts only
+    blank, 1, 2 or 3 (domain fixed values). Any other value comes from a load and is rejected by MM02 and the S/4HANA migration
+    cockpit.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field, or MRP reads the indicator as not set for the MRP area.
+  fix_map:
+    __other__: Set APO relevance indicator to an allowed value in the MRP area segment (MM02, MRP 1, MRP areas).
+  record_fix_template: 'Material {MDMA.MATNR}, plant {MDMA.WERKS}, MRP area {MDMA.BERID}: APO relevance indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: MM984
+  field: EINA.KOLIF
+  check_class: exists_check
+  grain: EINA
+  applies_when:
+    EINA.KOLIF:
+      populated: true
+  fields:
+  - EINA.KOLIF
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  severity: medium
+  dimension: consistency
+  message: Info record prior vendor does not exist
+  why_it_matters: The prior vendor (EINA-KOLIF) is a vendor account (check table LFA1). A prior vendor that does not exist
+    is left over from a deletion or a failed migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Vendor history and vendor-change evaluations point at an account that cannot be resolved.
+  fix_map:
+    __other__: Correct or clear the prior vendor in ME12.
+  record_fix_template: 'Info record {EINA.INFNR} (vendor {EINA.LIFNR}, material {EINA.MATNR}): prior vendor {actual_value}
+    does not exist.'
+- id: MM985
+  field: EINA.LMEIN
+  check_class: exists_check
+  grain: EINA
+  applies_when:
+    EINA.MATNR:
+      populated: true
+    EINA.LMEIN:
+      populated: true
+  fields:
+  - EINA.MATNR
+  - EINA.LMEIN
+  target_table: MARA
+  target_fields:
+  - MATNR
+  - MEINS
+  severity: high
+  dimension: consistency
+  message: Info record base unit differs from the base unit of the material
+  why_it_matters: The info record stores a copy of the material base unit (EINA-LMEIN) to convert the order unit. If the material
+    base unit (MARA-MEINS) was changed later, the stored conversion refers to the old unit.
+  rule_authority: best_practice
+  sap_impact: Purchase orders from the info record convert order quantities into the wrong base quantity; goods receipt and
+    invoice quantities do not match stock.
+  fix_map:
+    __other__: Update the info record (ME12) so its unit conversion refers to the current base unit.
+  record_fix_template: 'Info record {EINA.INFNR} (vendor {EINA.LIFNR}, material {EINA.MATNR}): base unit {actual_value} differs
+    from the material base unit.'
+- id: MM986
+  field: EINA.MEINS
+  check_class: exists_check
+  grain: EINA
+  applies_when:
+    EINA.MATNR:
+      populated: true
+    EINA.MEINS:
+      populated: true
+  fields:
+  - EINA.MATNR
+  - EINA.MEINS
+  - EINA.UMREZ
+  - EINA.UMREN
+  target_table: MARM
+  target_fields:
+  - MATNR
+  - MEINH
+  - UMREZ
+  - UMREN
+  severity: medium
+  dimension: consistency
+  message: Info record order unit conversion does not match the material unit of measure conversion
+  why_it_matters: The order unit conversion of the info record (EINA-UMREZ/UMREN) should match the conversion of the same
+    unit in the material units of measure (MARM). A missing MARM unit or a different factor means purchasing and inventory
+    count the same unit differently.
+  rule_authority: best_practice
+  sap_impact: Purchase order quantities convert to a different base quantity than goods receipts and stock postings, which
+    creates GR/IR quantity differences.
+  fix_map:
+    __other__: Align the info record conversion (ME12) with the material unit of measure (MM02 Additional data) or document
+      the vendor-specific conversion.
+  record_fix_template: 'Info record {EINA.INFNR} (vendor {EINA.LIFNR}, material {EINA.MATNR}): order unit {actual_value} converts
+    {EINA.UMREZ}/{EINA.UMREN}, not matching MARM.'
+- id: MM987
+  field: EINA.URZDT
+  check_class: cross_field_check
+  grain: EINA
+  applies_when:
+    EINA.URZNR:
+      populated: true
+    EINA.LOEKZ:
+      blank: true
+  fail_when: '`EINA.URZDT`.notna() & (`EINA.URZDT` < @today)'
+  severity: medium
+  dimension: timeliness
+  message: Info record vendor certificate has expired
+  why_it_matters: The certificate number (EINA-URZNR) and its validity date (EINA-URZDT) record the origin or quality certificate
+    the vendor supplied. An expired certificate on an active info record means purchasing continues on documentation that
+    no longer holds.
+  rule_authority: best_practice
+  sap_impact: Preference and origin declarations and audits rely on a certificate that is no longer valid.
+  fix_map:
+    __other__: Obtain the renewed certificate from the vendor and update number and validity date in ME12.
+  record_fix_template: 'Info record {EINA.INFNR} (vendor {EINA.LIFNR}, material {EINA.MATNR}): certificate {EINA.URZNR} expired
+    {actual_value}.'
+- id: MM988
+  field: EINE.AMODB
+  check_class: cross_field_check
+  grain: EINE
+  fail_when: '`EINE.AMODV`.notna() & `EINE.AMODB`.notna() & (`EINE.AMODB` < `EINE.AMODV`)'
+  severity: medium
+  dimension: accuracy
+  message: Info record amortization period ends before it starts
+  why_it_matters: The amortization period of the info record runs from EINE-AMODV to EINE-AMODB. An end before the start is
+    a keying or conversion error; no quantity or value can be amortized in it.
+  rule_authority: best_practice
+  sap_impact: Tooling or one-time cost amortization through purchase orders is never settled.
+  fix_map:
+    __other__: Correct the amortization period in ME12 (purchasing organisation data).
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organisation {EINE.EKORG}, plant {EINE.WERKS}: amortization period
+    {EINE.AMODV} to {actual_value}.'
+- id: MM989
+  field: STPO.MEINS
+  check_class: exists_check
+  grain: STPO
+  applies_when:
+    STPO.POSTP:
+    - L
+    STPO.IDNRK:
+      populated: true
+    STPO.MEINS:
+      populated: true
+    STPO.LKENZ:
+      blank: true
+  fields:
+  - STPO.IDNRK
+  - STPO.MEINS
+  target_table: MARM
+  target_fields:
+  - MATNR
+  - MEINH
+  severity: high
+  dimension: consistency
+  message: BOM component unit is not a unit of measure of the component material
+  why_it_matters: A stock item quantity is converted from the item unit (STPO-MEINS) to the base unit of the component through
+    the material units of measure (MARM). CS01 only accepts units maintained for the component; a unit missing from MARM comes
+    from a load or a deleted alternative unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Reservations, backflush and costing cannot convert the component quantity; the BOM explosion fails or the order
+    cannot be released.
+  fix_map:
+    __other__: Maintain the unit for the component (MM02 Additional data, units of measure) or correct the BOM item unit (CS02).
+  record_fix_template: 'BOM {STPO.STLTY}/{STPO.STLNR} item {STPO.POSNR} (component {STPO.IDNRK}): unit {actual_value} not
+    defined for the component.'
+- id: MM990
+  field: STPO.LGORT
+  check_class: exists_check
+  grain: STPO
+  applies_when:
+    STPO.POSTP:
+    - L
+    STPO.LGORT:
+      populated: true
+    STPO.PSWRK:
+      blank: true
+    STPO.LKENZ:
+      blank: true
+  fields:
+  - STPO.IDNRK
+  - MAST.WERKS
+  - STPO.LGORT
+  target_table: MARD
+  target_fields:
+  - MATNR
+  - WERKS
+  - LGORT
+  severity: medium
+  dimension: consistency
+  message: BOM component issue storage location is not extended for the component
+  why_it_matters: The issue storage location of a BOM item (STPO-LGORT) is copied into reservations and used by backflush.
+    If the component has no storage location data (MARD) there, goods issue has nowhere to post.
+  rule_authority: best_practice
+  sap_impact: Backflush and goods issue for production orders fail or post to an unplanned location.
+  fix_map:
+    __other__: Extend the component to the storage location (MM01 storage views) or correct the BOM item (CS02).
+  record_fix_template: 'BOM {STPO.STLTY}/{STPO.STLNR} item {STPO.POSNR} (component {STPO.IDNRK}): issue storage location {actual_value}
+    not extended for the component in plant {MAST.WERKS}.'
+- id: MM991
+  field: MAPL.AEDAT
+  check_class: cross_field_check
+  grain: MAPL
+  fail_when: '`MAPL.AEDAT`.notna() & `MAPL.ANDAT`.notna() & (`MAPL.AEDAT` < `MAPL.ANDAT`)'
+  severity: low
+  dimension: accuracy
+  message: Routing assignment was changed before it was created
+  why_it_matters: SAP stamps the creation date (MAPL-ANDAT) once and the change date (MAPL-AEDAT) on each save, so the change
+    date can never precede creation. The reverse order points to a load that wrote the audit dates by hand.
+  rule_authority: sap_hard_constraint
+  sap_impact: Change-date based selections and audit trails for the routing assignment are unreliable.
+  fix_map:
+    __other__: Correct the dates from the task list change documents.
+  record_fix_template: 'Routing assignment of material {MAPL.MATNR}, plant {MAPL.WERKS}, task list {MAPL.PLNTY}/{MAPL.PLNNR}/{MAPL.PLNAL}:
+    changed {actual_value}, before it was created {MAPL.ANDAT}.'
+- id: MM992
+  field: MKAL.PLNNR
+  check_class: exists_check
+  grain: MKAL
+  applies_when:
+    MKAL.PLNNR:
+      populated: true
+  fields:
+  - MKAL.MATNR
+  - MKAL.WERKS
+  - MKAL.PLNTY
+  - MKAL.PLNNR
+  - MKAL.ALNAL
+  target_table: MAPL
+  target_fields:
+  - MATNR
+  - WERKS
+  - PLNTY
+  - PLNNR
+  - PLNAL
+  severity: high
+  dimension: consistency
+  message: Production version task list is not assigned to the material
+  why_it_matters: The task list of a production version (MKAL-PLNTY/PLNNR/ALNAL) must be assigned to the same material and
+    plant (MAPL). The production version consistency check reports a task list that is not assigned to the material as an
+    error.
+  rule_authority: best_practice
+  sap_impact: Production and planned orders created through the version find no routing for the material, and costing falls
+    back to another version or fails.
+  fix_map:
+    __other__: Assign the material to the task list (CA02, material assignment) or correct the production version (C223).
+  record_fix_template: 'Production version {MKAL.VERID} of material {MKAL.MATNR} in plant {MKAL.WERKS}: task list {MKAL.PLNTY}/{actual_value}/{MKAL.ALNAL}
+    is not assigned to the material.'
+- id: MM993
+  field: MKAL.PLNNG
+  check_class: cross_field_check
+  grain: MKAL
+  fail_when: (`MKAL.PLNNG`.notna() | `MKAL.PLTYG`.notna()) & (`MKAL.PLNNG`.isna() | `MKAL.PLTYG`.isna() | `MKAL.ALNAG`.isna())
+  severity: medium
+  dimension: completeness
+  message: Production version rate-based planning task list is incomplete
+  why_it_matters: A rate-based planning task list is identified by type (MKAL-PLTYG), group (MKAL-PLNNG) and group counter
+    (MKAL-ALNAG). One part without the others cannot be resolved.
+  rule_authority: sap_hard_constraint
+  sap_impact: Rate-based capacity planning for the version finds no task list.
+  fix_map:
+    __other__: Complete or clear the rate-based planning task list in C223.
+  record_fix_template: 'Production version {MKAL.VERID} of material {MKAL.MATNR} in plant {MKAL.WERKS}: rate-based task list
+    {MKAL.PLTYG}/{MKAL.PLNNG}/{MKAL.ALNAG} incomplete.'
+- id: MM994
+  field: MKAL.PLNNM
+  check_class: cross_field_check
+  grain: MKAL
+  fail_when: (`MKAL.PLNNM`.notna() | `MKAL.PLTYM`.notna()) & (`MKAL.PLNNM`.isna() | `MKAL.PLTYM`.isna() | `MKAL.ALNAM`.isna())
+  severity: medium
+  dimension: completeness
+  message: Production version rough-cut planning task list is incomplete
+  why_it_matters: A rough-cut planning task list is identified by type (MKAL-PLTYM), group (MKAL-PLNNM) and group counter
+    (MKAL-ALNAM). One part without the others cannot be resolved.
+  rule_authority: sap_hard_constraint
+  sap_impact: Rough-cut capacity planning for the version finds no task list.
+  fix_map:
+    __other__: Complete or clear the rough-cut planning task list in C223.
+  record_fix_template: 'Production version {MKAL.VERID} of material {MKAL.MATNR} in plant {MKAL.WERKS}: rough-cut task list
+    {MKAL.PLTYM}/{MKAL.PLNNM}/{MKAL.ALNAM} incomplete.'
+- id: MM995
+  field: MKAL.PLNNG
+  check_class: exists_check
+  grain: MKAL
+  applies_when:
+    MKAL.PLNNG:
+      populated: true
+    MKAL.PLTYG:
+      populated: true
+    MKAL.ALNAG:
+      populated: true
+  fields:
+  - MKAL.PLTYG
+  - MKAL.PLNNG
+  - MKAL.ALNAG
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNAL
+  severity: high
+  dimension: consistency
+  message: Production version rate-based planning task list does not exist
+  why_it_matters: The rate-based planning task list of the version (MKAL-PLTYG/PLNNG/ALNAG) must exist as a task list header
+    (PLKO). A missing task list is left over from a deletion or a partial migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Rate-based capacity planning for the version cannot read capacity requirements.
+  fix_map:
+    __other__: Create the task list or correct the production version (C223).
+  record_fix_template: 'Production version {MKAL.VERID} of material {MKAL.MATNR} in plant {MKAL.WERKS}: rate-based task list
+    {MKAL.PLTYG}/{actual_value}/{MKAL.ALNAG} does not exist.'
+- id: MM996
+  field: MKAL.PLNNM
+  check_class: exists_check
+  grain: MKAL
+  applies_when:
+    MKAL.PLNNM:
+      populated: true
+    MKAL.PLTYM:
+      populated: true
+    MKAL.ALNAM:
+      populated: true
+  fields:
+  - MKAL.PLTYM
+  - MKAL.PLNNM
+  - MKAL.ALNAM
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNAL
+  severity: high
+  dimension: consistency
+  message: Production version rough-cut planning task list does not exist
+  why_it_matters: The rough-cut planning task list of the version (MKAL-PLTYM/PLNNM/ALNAM) must exist as a task list header
+    (PLKO). A missing task list is left over from a deletion or a partial migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Rough-cut capacity planning for the version cannot read capacity requirements.
+  fix_map:
+    __other__: Create the task list or correct the production version (C223).
+  record_fix_template: 'Production version {MKAL.VERID} of material {MKAL.MATNR} in plant {MKAL.WERKS}: rough-cut task list
+    {MKAL.PLTYM}/{actual_value}/{MKAL.ALNAM} does not exist.'
+- id: MM997
+  field: MKAL.MATKO
+  check_class: exists_check
+  grain: MKAL
+  applies_when:
+    MKAL.MATKO:
+      populated: true
+  fields:
+  - MKAL.MATKO
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: high
+  dimension: consistency
+  message: Production version other BOM material does not exist
+  why_it_matters: A production version can take its BOM from another material (MKAL-MATKO, check table MARA). A material that
+    does not exist leaves the version without a BOM to explode.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM explosion for planned and production orders of the version fails.
+  fix_map:
+    __other__: Correct or clear the other BOM material in C223.
+  record_fix_template: 'Production version {MKAL.VERID} of material {MKAL.MATNR} in plant {MKAL.WERKS}: other BOM material
+    {actual_value} does not exist.'

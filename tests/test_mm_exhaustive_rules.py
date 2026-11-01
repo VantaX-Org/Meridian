@@ -24,9 +24,9 @@ def frame(table, **cols):
     return pd.DataFrame({f"{table}.{k}": v for k, v in cols.items()})
 
 
-def fire(rid, tables):
+def fire(rid, tables, refs=None):
     frames = TableFrames(tables, DDIC, module="material_master")
-    _, res = run_rule(dict(RULES[rid]), frames, None)
+    _, res = run_rule(dict(RULES[rid]), frames, refs)
     assert res is not None and not res.error, (rid, res and res.error)
     return res.affected_count, res.total_count
 
@@ -83,6 +83,36 @@ def qinf(**cols):
 def marc(**cols):
     base = {"MATNR": ["M1", "M2"], "WERKS": ["P1", "P1"]}
     return frame("MARC", **{**base, **cols})
+
+
+def mdma(**cols):
+    base = {"MATNR": ["M1", "M2"], "WERKS": ["P1", "P1"], "BERID": ["A1", "A1"]}
+    return frame("MDMA", **{**base, **cols})
+
+
+def eina(**cols):
+    base = {"INFNR": ["I1", "I2"], "MATNR": ["M1", "M2"], "LIFNR": ["V1", "V1"], "LOEKZ": ["", ""]}
+    return frame("EINA", **{**base, **cols})
+
+
+def stpo(**cols):
+    base = {"STLTY": ["M", "M"], "STLNR": ["1", "2"], "STLKN": ["1", "1"], "STPOZ": ["1", "1"], "POSNR": ["0010", "0010"],
+            "POSTP": ["L", "L"], "IDNRK": ["C1", "C2"], "LKENZ": ["", ""]}
+    return frame("STPO", **{**base, **cols})
+
+
+def mkal(**cols):
+    base = {"MATNR": ["M1", "M2"], "WERKS": ["P1", "P1"], "VERID": ["0001", "0001"]}
+    return frame("MKAL", **{**base, **cols})
+
+
+def plko(**cols):
+    base = {"PLNTY": ["N"], "PLNNR": ["G1"], "PLNAL": ["01"], "PLNKN": ["1"], "ZAEHL": ["1"]}
+    return frame("PLKO", **{**base, **cols})
+
+
+MARD2 = frame("MARD", MATNR=["M1", "M2"], WERKS=["P1", "P1"], LGORT=["L9", "L2"])
+Z = ["0", "0"]
 
 
 CASES = {
@@ -155,6 +185,51 @@ CASES = {
     "MM956": {"EORD": eord(MEINS=["KG", "EA"]), "MARM": frame("MARM", MATNR=["M1", "M2"], MEINH=["EA", "EA"])},
     "MM957": {"QINF": qinf(), "MARC": marc(MATNR=["M2", "M3"])},
     "MM958": {"QINF": qinf(), "MARC": marc(LVORM=["X", ""])},
+    "MM959": {"MDMA": mdma(EISBE=["50", "5"], MABST=["10", "10"])},
+    "MM960": {"MDMA": mdma(MINBE=["5", "5"], DISMM=["PD", "VB"])},
+    "MM961": {"MDMA": mdma(EISBE=["5", "5"], DISMM=["ND", "PD"])},
+    "MM962": {"MDMA": mdma(SHZET=["02", "00"], SHFLG=["", ""])},
+    "MM963": {"MDMA": mdma(SHZET=["00", "02"], SHFLG=["1", "1"])},
+    "MM964": {"MDMA": mdma(FXHOR=["005", "000"], DISMM=["ND", "ND"])},
+    "MM965": {"MDMA": mdma(FXHOR=["000", "010"], DISMM=["P1", "P1"])},
+    "MM966": {"MDMA": mdma(BSTRF=["100", "10"], BSTMA=["50", "50"])},
+    "MM967": {"MDMA": mdma(BSTRF=["10", "10"], BSTFE=["25", "30"], DISLS=["FX", "FX"])},
+    "MM968": {"MDMA": mdma(BSTFE=["5", "0"], DISLS=["EX", "EX"])},
+    "MM969": {"MDMA": mdma(MABST=["5", "0"], DISLS=["EX", "EX"])},
+    "MM970": {"MDMA": mdma(MABST=["10", "10"], BSTMI=["20", "5"], DISLS=["HB", "HB"])},
+    "MM971": {"MDMA": mdma(MABST=["10", "50"], MINBE=["20", "20"], DISLS=["HB", "HB"], DISMM=["VB", "VB"])},
+    "MM972": {"MDMA": mdma(EISBE=["-1", "1"], MINBE=Z, BSTMI=Z, BSTMA=Z, BSTFE=Z, BSTRF=Z, MABST=Z, PLIFZ=Z)},
+    "MM973": {"MDMA": mdma(PLIFZ=["400", "10"])},
+    "MM974": {"MDMA": mdma(AUSSS=["100", "5"])},
+    "MM975": {"MDMA": mdma(LGPRO=["L1", "L2"]), "MARD": MARD2},
+    "MM976": {"MDMA": mdma(LGFSB=["L1", "L2"]), "MARD": MARD2},
+    "MM977": ({"MDMA": mdma(DISPO=["ZZZ", "001"])}, {"T024D.DISPO": {"001"}}),
+    "MM978": ({"MDMA": mdma(SOBSL=["99", "10"])}, {"T460A.SOBSL": {"10"}}),
+    "MM979": ({"MDMA": mdma(DISPR=["ZZZZ", "0001"])}, {"MDIP.DISPR": {"0001"}}),
+    "MM980": {"MDMA": mdma(SHFLG=["Y", "1"])},
+    "MM981": {"MDMA": mdma(AUTRU=["Y", "X"])},
+    "MM982": {"MDMA": mdma(AHDIS=["X", "1"])},
+    "MM983": {"MDMA": mdma(APOKZ=["9", "1"])},
+    "MM984": {"EINA": eina(KOLIF=["V9", "V1"]), "LFA1": frame("LFA1", LIFNR=["V1"])},
+    "MM985": {"EINA": eina(LMEIN=["KG", "EA"]), "MARA": frame("MARA", MATNR=["M1", "M2"], MEINS=["EA", "EA"])},
+    "MM986": {"EINA": eina(MEINS=["BOX", "BOX"], UMREZ=["10", "12"], UMREN=["1", "1"]),
+              "MARM": frame("MARM", MATNR=["M1", "M2"], MEINH=["BOX", "BOX"], UMREZ=["12", "12"], UMREN=["1", "1"])},
+    "MM987": {"EINA": eina(URZNR=["C1", "C2"], URZDT=["20200101", "20991231"])},
+    "MM988": {"EINE": frame("EINE", INFNR=["I1", "I2"], EKORG=["E1", "E1"], ESOKZ=["0", "0"], WERKS=["P1", "P1"],
+                            AMODV=["20240601", "20240101"], AMODB=["20240101", "20241231"])},
+    "MM989": {"STPO": stpo(MEINS=["KG", "EA"]), "MARM": frame("MARM", MATNR=["C1", "C2"], MEINH=["EA", "EA"])},
+    "MM990": {"STPO": stpo(LGORT=["L1", "L2"], PSWRK=["", ""]), "MAST": mast(), "STKO": stko(),
+              "MARD": frame("MARD", MATNR=["C1", "C2"], WERKS=["P1", "P1"], LGORT=["L9", "L2"])},
+    "MM991": {"MAPL": frame("MAPL", MATNR=["M1", "M2"], WERKS=["P1", "P1"], PLNTY=["N", "N"], PLNNR=["R1", "R2"],
+                            PLNAL=["01", "01"], ANDAT=["20240601", "20240101"], AEDAT=["20240101", "20240601"])},
+    "MM992": {"MKAL": mkal(PLNTY=["N", "N"], PLNNR=["R1", "R1"], ALNAL=["01", "01"]),
+              "MAPL": frame("MAPL", MATNR=["M1", "M3"], WERKS=["P1", "P1"], PLNTY=["N", "N"], PLNNR=["R1", "R1"],
+                            PLNAL=["01", "01"])},
+    "MM993": {"MKAL": mkal(PLNNG=["G1", "G1"], PLTYG=["", "N"], ALNAG=["", "01"])},
+    "MM994": {"MKAL": mkal(PLNNM=["G1", "G1"], PLTYM=["", "N"], ALNAM=["", "01"])},
+    "MM995": {"MKAL": mkal(PLTYG=["N", "N"], PLNNG=["G9", "G1"], ALNAG=["01", "01"]), "PLKO": plko()},
+    "MM996": {"MKAL": mkal(PLTYM=["N", "N"], PLNNM=["G9", "G1"], ALNAM=["01", "01"]), "PLKO": plko()},
+    "MM997": {"MKAL": mkal(MATKO=["X9", "M1"]), "MARA": frame("MARA", MATNR=["M1", "M2"])},
 }
 EXPECT = {"MM901": (2, 3), "MM908": (2, 3), "MM916": (2, 3), "MM917": (2, 3), "MM920": (2, 3), "MM954": (1, 3)}
 
@@ -182,4 +257,6 @@ def test_every_new_rule_has_a_fixture():
 
 @pytest.mark.parametrize("rid", sorted(CASES))
 def test_rule_fires(rid):
-    assert fire(rid, CASES[rid]) == EXPECT.get(rid, (1, 2))
+    case = CASES[rid]
+    tables, refs = case if isinstance(case, tuple) else (case, None)
+    assert fire(rid, tables, refs) == EXPECT.get(rid, (1, 2))
