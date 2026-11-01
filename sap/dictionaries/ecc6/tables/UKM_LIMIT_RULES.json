@@ -1,0 +1,100 @@
+{
+ "table": "UKM_LIMIT_RULES",
+ "description": "SAP Credit Management: Rules for Calc. Score and Credit Lim.",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "LIMIT_RULE",
+   "key": true,
+   "data_element": "UKM_LIMIT_RULE",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Rule for Calculating Score and Credit Limit",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "DEFAULT_RULE",
+   "key": false,
+   "data_element": "UKM_DEFAULT_RULE",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Default for New Partner Created",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "SCORING_RULE",
+   "key": false,
+   "data_element": "UKM_FORMULA",
+   "domain": "UKM_FORMULA",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Formula in Credit Management",
+   "check_table": "UKM_FORMULAS"
+  },
+  {
+   "pos": 5,
+   "name": "VALID_DAYS",
+   "key": false,
+   "data_element": "UKM_VALID_DAYS",
+   "domain": "UKM_VALID_DAYS",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Validity in Days",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "TRACE",
+   "key": false,
+   "data_element": "UKM_XTRACE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Trace",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "BW_SCORING",
+   "key": false,
+   "data_element": "UKM_BW_SCORING",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Score Calculated in BW",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "SCORING_RULE",
+   "foreign_table": "UKM_FORMULAS",
+   "foreign_field": "FORMULA"
+  }
+ ]
+}
