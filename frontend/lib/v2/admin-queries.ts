@@ -113,6 +113,10 @@ export const useScorecard = (systemId: string) => {
   const f = useFixture();
   return useRead(k(f, "scorecard", systemId), () => pilot.getScorecard(systemId), !!systemId);
 };
+export const useRuleTuning = () => {
+  const f = useFixture();
+  return useRead(k(f, "tuning"), pilot.getRuleTuning, true);
+};
 export const useAudit = (q: AuditListParams, enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "audit", q), () => api.listAudit(q), enabled);

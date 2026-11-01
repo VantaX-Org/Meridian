@@ -100,6 +100,9 @@ class CheckResult(BaseModel):
     # The rule's column values of each failing record, parallel to failing_record_keys.
     # Privacy-sensitive columns (checks.profiling.is_sensitive) are never kept: MASKED.
     failing_record_values: Optional[list[dict]] = None
+    # Classification codes around each failing record (checks.record_context), parallel to
+    # failing_record_keys; codes only, for checks/self_tune.py exclusions.
+    failing_record_context: Optional[list[dict]] = None
     grain: Optional[str] = None  # table whose records were evaluated (e.g. LFB1)
     # Cost of poor data quality (checks/cost.py): amount at risk and how it was computed.
     cost_at_risk: Optional[float] = None
@@ -313,6 +316,7 @@ class BaseCheck(ABC):
             )
         if affected > MAX_FAILING_KEYS:
             details["failing_keys_truncated"] = True
+        from checks import record_context
         from checks.cost import price
         cost, formula = price(self.rule.get("_cost"), affected, failing_df)
 
@@ -330,6 +334,7 @@ class BaseCheck(ABC):
             details=safe_json(details),
             failing_record_keys=[str(k) for k in all_keys.head(MAX_FAILING_KEYS)] if affected else [],
             failing_record_values=failing_values(failing_df.head(MAX_FAILING_KEYS), self.columns()) if affected else [],
+            failing_record_context=record_context.snapshot(failing_df.head(MAX_FAILING_KEYS), self.rule) if affected else [],
             grain=grain,
             cost_at_risk=cost,
             cost_formula=formula,
