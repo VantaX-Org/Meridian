@@ -16,7 +16,7 @@ import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
@@ -96,12 +96,12 @@ export function Exceptions() {
     setPage(1);
   };
 
-  if (metrics.isPending || list.isPending) return <CcPage><WorkTabs current="exceptions" /><Skeleton width="100%" height={320} /></CcPage>;
+  if (metrics.isPending || list.isPending) return <CcPage><PageTitle sub={t("Exceptions")}>{t("Work")}</PageTitle><WorkTabs current="exceptions" /><Skeleton width="100%" height={320} /></CcPage>;
   const failed = metrics.isError ? metrics : list.isError ? list : null;
   if (failed) {
     return (
       <CcPage>
-        <WorkTabs current="exceptions" />
+        <PageTitle sub={t("Exceptions")}>{t("Work")}</PageTitle><WorkTabs current="exceptions" />
         {status(failed.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read the exceptions.")}</EmptyFrame>
         ) : (
@@ -116,7 +116,7 @@ export function Exceptions() {
 
   return (
     <CcPage>
-      <WorkTabs current="exceptions" />
+      <PageTitle sub={t("Exceptions")}>{t("Work")}</PageTitle><WorkTabs current="exceptions" />
       <CcBanner
         eyebrow={t("Exceptions")}
         headline={t("{n} exceptions still open", { n: int(m.open_count) })}

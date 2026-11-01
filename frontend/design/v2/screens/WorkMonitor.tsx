@@ -24,7 +24,7 @@ export function WorkMonitor() {
   return (
     <CcPage>
       <div data-testid="work-monitor">
-        <PageTitle>{t("Work")}</PageTitle>
+        <PageTitle sub={t("Monitor")}>{t("Work")}</PageTitle>
         <WorkTabs current="monitor" />
         {q.isPending ? (
           <Skeleton width={420} height={16} />

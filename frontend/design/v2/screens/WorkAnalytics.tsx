@@ -12,7 +12,7 @@ import { useRuleList } from "@/lib/v2/sys-queries";
 import { ChartFrame, ChartTable, niceTicks, Sparkline, TrendChart } from "../charts";
 import { Fact, Facts } from "../Inspector";
 import { Sev } from "../inspector/rule";
-import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { Coded, EmptyFrame, ErrorFrame, PageTitle, Skeleton } from "../parts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -58,11 +58,11 @@ export function useRuleName() {
 export function WorkAnalytics() {
   const burn = useAnalytics("burndown", getBurndown);
 
-  if (burn.isPending) return <CcPage><WorkTabs current="analytics" /><Skeleton width="100%" height={320} /></CcPage>;
+  if (burn.isPending) return <CcPage><PageTitle sub={t("Analytics")}>{t("Work")}</PageTitle><WorkTabs current="analytics" /><Skeleton width="100%" height={320} /></CcPage>;
   if (burn.isError) {
     return (
       <CcPage>
-        <WorkTabs current="analytics" />
+        <PageTitle sub={t("Analytics")}>{t("Work")}</PageTitle><WorkTabs current="analytics" />
         {status(burn.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read the work analytics.")}</EmptyFrame>
         ) : (
@@ -80,7 +80,7 @@ export function WorkAnalytics() {
   const title = t("Open issues, day by day");
   return (
     <CcPage>
-      <WorkTabs current="analytics" />
+      <PageTitle sub={t("Analytics")}>{t("Work")}</PageTitle><WorkTabs current="analytics" />
       <CcBanner
         eyebrow={t("Work analytics on {date}", { date: formatDate(b.today, "date") })}
         headline={t("{n} issues open", { n: int(b.open_now) })}
