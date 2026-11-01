@@ -76,6 +76,8 @@
 .m2-root .m2-pick li { border-bottom: 1px solid var(--m2-rule); }
 .m2-root .m2-pick li:last-child { border-bottom: 0; }
 .m2-root .m2-pick label { display: grid; grid-template-columns: auto 1fr auto; gap: var(--m2-s2); align-items: center; padding: var(--m2-s2) var(--m2-s3); cursor: pointer; font-size: var(--m2-fs-13); }
+.m2-root .m2-pick label[data-bar] { grid-template-columns: auto minmax(0, 1fr) minmax(96px, 160px) 6em auto; }
+.m2-root .m2-pick .m2-cc-hval, .m2-root .m2-pick .m2-meta { white-space: nowrap; }
 .m2-root .m2-pick label:hover { background: var(--m2-hover); }
 .m2-root .m2-check { display: flex; gap: var(--m2-s2); align-items: center; font-size: var(--m2-fs-13); margin: var(--m2-s2) 0; }
 

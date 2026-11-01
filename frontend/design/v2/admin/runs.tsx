@@ -22,6 +22,7 @@ import { AdminPage, Block, Confirm, Dialog, Fld, Loaded, NeedsPermission, Status
 import { ToolGrid } from "../GridTools";
 import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
+import { int } from "@/lib/v2/score";
 import { RunForecast } from "../screens/step10/Prediction";
 import { getTriggerModules, triggerModules, type ModuleStatus } from "@/lib/api/v2/syncTrigger";
 import { moduleText } from "@/lib/v2/labels";
@@ -66,15 +67,20 @@ function Extraction({ system }: { system: string }) {
   const { outcome, pending, run } = useOutcome("admin-extract");
   const canAnalyse = useCan()("analyse");
   const toggle = (o: string) => setPicked((p) => (p.includes(o) ? p.filter((x) => x !== o) : [...p, o]));
+  const maxRecords = Math.max(1, ...(objects.data?.objects ?? []).map((o) => o.last_download?.records ?? 0));
   return (
     <Block title={t("Start an extraction")} hint={t("Reads the chosen objects from the system into a new stored run. Leave the scope empty to read everything.")}>
-      <ul className="m2-pick" aria-label={t("Objects to extract")} style={{ maxWidth: 520 }}>
+      <ul className="m2-pick" aria-label={t("Objects to extract")} style={{ maxWidth: 720 }}>
         {(objects.data?.objects ?? []).map((o) => (
           <li key={o.object}>
-            <label>
+            <label data-bar="">
               <input type="checkbox" checked={picked.includes(o.object)} disabled={!can} onChange={() => toggle(o.object)} />
               <span>{labelText(o.object)}</span>
-              <span className="m2-meta">{o.last_download ? t("last {at}", { at: formatDate(o.last_download.at) }) : "never"}</span>
+              <span className="m2-cc-track" aria-hidden="true">
+                <span style={{ width: `${((o.last_download?.records ?? 0) / maxRecords) * 100}%` }} />
+              </span>
+              <span className="m2-cc-hval">{o.last_download?.records != null ? t("{n} records", { n: int(o.last_download.records) }) : "—"}</span>
+              <span className="m2-meta">{o.last_download ? t("last {at}", { at: formatDate(o.last_download.at) }) : t("never")}</span>
             </label>
           </li>
         ))}
