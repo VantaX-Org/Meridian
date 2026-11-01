@@ -766,6 +766,10 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-delta .m2-cc-track::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--m2-ink-3); }
 .m2-cc-legend + .m2-cc-hbars { margin-top: var(--m2-s2); }
 .m2-cc-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--m2-s4); }
+/* Inside a half-width panel the three-column row leaves the bar a few pixels wide, so the label takes its own line and the bar runs the width of the panel. */
+.m2-cc-split .m2-cc-hbars li { grid-template-columns: minmax(0, 1fr) minmax(64px, auto); row-gap: var(--m2-s1); }
+.m2-cc-split .m2-cc-hbars[data-spark] li { grid-template-columns: minmax(0, 1fr) minmax(64px, auto) 56px; }
+.m2-cc-split .m2-cc-hbars .m2-cc-hlabel { grid-column: 1 / -1; }
 .m2-cc-lede { margin: 0; font-size: var(--m2-fs-14); color: var(--m2-ink-2); max-width: 70ch; }
 @media (max-width: 900px) { .m2-cc-split { grid-template-columns: minmax(0, 1fr); } .m2-cc-hbars li { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .m2-cc-hbars .m2-cc-hlabel { grid-column: 1 / -1; } }
 .m2-cc-banner { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
