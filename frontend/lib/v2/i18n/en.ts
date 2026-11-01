@@ -6580,6 +6580,10 @@ export const en = {
   "Their open records past the due date": "Their open records past the due date",
   "This tenant uses Meridian's own look; nothing has been customised.": "This tenant uses Meridian's own look; nothing has been customised.",
   "How the top bar reads with these settings, in the light theme.": "How the top bar reads with these settings, in the light theme.",
+  "Other views": "Other views",
+  "Also:": "Also:",
+  "Flight deck": "Flight deck",
+  "Atlas": "Atlas",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

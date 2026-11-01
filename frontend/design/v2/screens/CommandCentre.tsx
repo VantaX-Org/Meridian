@@ -80,21 +80,14 @@ export function GoLiveBanner({ landscape, waves }: { landscape: Landscape; waves
             {t("Sign off the wave")}
           </V2Link>
         )}
-        {wave ? (
-          <V2Link href="/go-live" className="m2-btn">
-            {t("Open the flight deck")}
-          </V2Link>
-        ) : null}
-        <V2Link href="/atlas" className="m2-btn">
-          {t("Open the atlas")}
-        </V2Link>
-        <V2Link href="/config" className="m2-btn">
-          {t("Open the configuration")}
-        </V2Link>
-        <V2Link href="/cleansing" className="m2-btn">
-          {t("Open cleansing")}
-        </V2Link>
       </div>
+      <nav className="m2-cc-also" aria-label={t("Other views")}>
+        <span className="m2-meta">{t("Also:")}</span>
+        {wave ? <V2Link href="/go-live">{t("Flight deck")}</V2Link> : null}
+        <V2Link href="/atlas">{t("Atlas")}</V2Link>
+        <V2Link href="/config">{t("Configuration")}</V2Link>
+        <V2Link href="/cleansing">{t("Cleansing")}</V2Link>
+      </nav>
     </section>
   );
 }

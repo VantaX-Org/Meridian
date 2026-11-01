@@ -6581,4 +6581,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Their open records past the due date": "Ihre offenen Datensätze über dem Fälligkeitsdatum",
   "This tenant uses Meridian's own look; nothing has been customised.": "Dieser Mandant verwendet das Standardaussehen von Meridian; nichts wurde angepasst.",
   "How the top bar reads with these settings, in the light theme.": "So wirkt die Kopfleiste mit diesen Einstellungen im hellen Design.",
+  "Other views": "Weitere Ansichten",
+  "Also:": "Außerdem:",
+  "Flight deck": "Flight Deck",
+  "Atlas": "Atlas",
 };
