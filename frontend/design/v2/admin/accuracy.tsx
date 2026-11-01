@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { uploadKnownIssues, type Scorecard } from "@/lib/api/v2/pilot";
-import { refreshAdmin, useScorecard } from "@/lib/v2/admin-queries";
+import { draftTunedVersion, uploadKnownIssues, type Scorecard } from "@/lib/api/v2/pilot";
+import { refreshAdmin, useRuleTuning, useScorecard } from "@/lib/v2/admin-queries";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { int, pct1 } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { labelText, moduleText } from "@/lib/v2/labels";
-import { Coded, Dash, EmptyFrame } from "../parts";
+import { Coded, Dash, EmptyFrame, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Fld, Kv, Loaded, NeedsPermission, Note, StatusWord, useCan } from "./kit";
 
@@ -99,6 +99,90 @@ function Recall({ card }: { card: Scorecard }) {
   );
 }
 
+/**
+ * Self-tuning proposals (GET /rule-tuning): for each rule below target, the context values its false positives
+ * concentrate on, or a severity step down. Drafting creates a rule version; a person submits and approves it on the rule.
+ */
+function Tuning() {
+  const can = useCan();
+  const qc = useQueryClient();
+  const tuning = useRuleTuning();
+  const { outcome, pending, run } = useOutcome();
+  return (
+    <Block title={t("Self-tuning proposals")} hint={t("Rules below target accuracy, tuned from the false positives reviewers marked. A proposal becomes a draft version; nothing runs until a person approves it on the rule.")}>
+      <Loaded q={tuning} what={t("The tuning proposals")} rows={2}>
+        {(d) =>
+          d.proposals.length === 0 ? (
+            <EmptyFrame>{t("No rule needs tuning, or no pattern in the verdicts explains its false positives.")}</EmptyFrame>
+          ) : (
+            <>
+              {outcome ? <ResultFrame outcome={outcome} /> : null}
+              {d.proposals.map((p) => (
+                <section key={p.rule_id} className="m2-sec" aria-label={p.rule_id}>
+                  <h3 className="m2-h3"><Coded code={p.rule_id} text={p.message} /></h3>
+                  <Kv
+                    rows={[
+                      [t("Object"), moduleText(p.module)],
+                      [
+                        t("Change"),
+                        p.kind === "severity" ? (
+                          t("Severity from {from} to {to}", { from: labelText(p.severity_from), to: labelText(p.severity_to) })
+                        ) : (
+                          <>
+                            {p.exclusions.map((e) => (
+                              <span key={`${e.column}=${e.value}`}>
+                                {t("Exclude")} <Coded code={`${e.column}=${e.value}`} text={e.field === "WERKS" ? t("Plant") : null} />{" "}
+                              </span>
+                            ))}
+                          </>
+                        ),
+                      ],
+                      [t("Accuracy"), t("{before} to {after}", { before: pct1(p.precision_before), after: pct1(p.precision_after) })],
+                      [t("False positives removed"), int(p.fp_removed)],
+                      [t("Real issues lost"), int(p.real_lost)],
+                      [t("Findings reviewed"), int(p.reviewed)],
+                      [
+                        t("Verdict"),
+                        p.pending ? (
+                          <StatusWord tone="at-risk">{t("Version {version} is {state}", { version: p.pending.version, state: labelText(p.pending.state) })}</StatusWord>
+                        ) : (
+                          <StatusWord tone="no-go">{t("Needs tuning")}</StatusWord>
+                        ),
+                      ],
+                    ]}
+                  />
+                  <Note>{p.rationale}</Note>
+                  <pre className="m2-code" tabIndex={0} aria-label={t("Changes to {rule}", { rule: p.rule_id })}>{p.diff}</pre>
+                  <div className="m2-adm-acts">
+                    {can("manage_rules") ? (
+                      <button
+                        type="button"
+                        className="m2-btn"
+                        disabled={p.pending !== null || pending !== null}
+                        onClick={() =>
+                          void run(p.rule_id, async () => {
+                            const v = await draftTunedVersion(p.rule_id);
+                            await refreshAdmin(qc, "tuning");
+                            return { tone: "ok", title: t("Tuned version drafted"), detail: t("Version {version} of {rule} is a draft. Submit and approve it on the rule.", { version: v.version, rule: p.rule_id }) };
+                          })
+                        }
+                      >
+                        {pending === p.rule_id ? t("Drafting…") : t("Draft tuned version")}
+                      </button>
+                    ) : null}
+                    <V2Link href={`/r/${encodeURIComponent(p.rule_id)}?tab=definition`}>{t("Review the rule's versions")}</V2Link>
+                  </div>
+                </section>
+              ))}
+            </>
+          )
+        }
+      </Loaded>
+      {can("manage_rules") ? null : <NeedsPermission what={t("Drafting a tuned version")} permission="manage_rules" />}
+    </Block>
+  );
+}
+
 /** Admin › Rule accuracy: the pilot scorecard of one system, and the upload of its known bad records. */
 export function RuleAccuracySection() {
   const can = useCan();
@@ -134,6 +218,7 @@ export function RuleAccuracySection() {
               </>
             )}
           </Loaded>
+          <Tuning />
           {can("manage_systems") ? (
             <Block title={t("Upload known bad records")} hint={t("A CSV with the columns object, record and an optional note. The record is the key parts joined with a vertical bar. An upload replaces the system's current list.")}>
               <div className="m2-fgrid">
