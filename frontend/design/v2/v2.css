@@ -594,6 +594,9 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-verdict strong > .m2-vm { vertical-align: middle; margin-right: var(--m2-s2); }
 .m2-cc-why { font-size: var(--m2-fs-13); color: var(--m2-ink-2); }
 .m2-cc-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--m2-s4); margin: 0; }
+/* Three figures sit in one row at the 24px size, not two and an orphan. */
+.m2-cc-figs:has(> div:nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.m2-cc-figs:has(> div:nth-child(3):last-child) dd { font-size: var(--m2-fs-24); }
 .m2-cc-figs > div { display: flex; flex-direction: column; gap: var(--m2-s1); padding-left: var(--m2-s4); border-left: 1px solid var(--m2-line); }
 .m2-cc-figs dt { font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
 .m2-cc-figs dd { margin: 0; white-space: nowrap; font-size: clamp(var(--m2-fs-24), 2.2vw, calc(var(--m2-fs-24) * 1.5)); line-height: 1.1; font-weight: 600; font-variant-numeric: tabular-nums; }
