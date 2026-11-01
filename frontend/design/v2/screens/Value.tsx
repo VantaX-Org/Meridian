@@ -8,9 +8,8 @@ import { getGuards, getLineageModel, type GuardStep } from "@/lib/api/v2/lineage
 import { money } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
-import { Sparkline } from "../charts";
 import { EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
-import { CcBanner, CcPage } from "./cc-parts";
+import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { pctOf, retry, Section, status, Table } from "./WorkAnalytics";
 
 /**
@@ -98,23 +97,28 @@ function ImpactPanel({ rows }: { rows: ImpactCategory[] }) {
   const q = { isPending: false, isError: false, error: null, data: sorted, refetch: () => undefined };
   return (
     <Section q={q} title={title} meta={t("Each kind of loss, priced from the latest run")} testId="val-impact">
-      {(d) => d.length === 0 ? <EmptyFrame>{t("No finished run has been priced yet.")}</EmptyFrame> : (
+      {(d) => d.length === 0 ? <EmptyFrame>{t("No finished run has been priced yet.")}</EmptyFrame> : (<>
+        <CcHBars
+          label={t("Annual risk by kind of loss")}
+          testId="val-impact-bars"
+          rows={d.filter((i) => i.annual_risk > 0).map((i) => ({ key: i.category, label: CATEGORY[i.category]?.name() ?? i.category, value: i.annual_risk, text: money(i.annual_risk, i.currency), tone: i.mitigated >= i.annual_risk ? "pass" : "crit" }))}
+        />
         <Table title={title} head={[t("Loss"), t("What counts"), t("Sources"), t("Annual risk"), t("Mitigated"), t("How it is priced")]}>
           {d.map((i) => {
             const c = CATEGORY[i.category];
             return (
               <tr key={i.category}>
                 <th scope="row" className="m2-card-lead">{c ? c.name() : i.category}</th>
-                <td data-label={t("What counts")}>{c ? c.what() : f1(null)}</td>
+                <td data-label={t("What counts")} className="m2-wrap">{c ? c.what() : f1(null)}</td>
                 <td data-label={t("Sources")} className="m2-num">{int(i.finding_count)}</td>
                 <td data-label={t("Annual risk")} className="m2-num">{money(i.annual_risk, i.currency)}</td>
                 <td data-label={t("Mitigated")} className="m2-num">{money(i.mitigated, i.currency)}</td>
-                <td data-label={t("How it is priced")} className="m2-meta">{i.calculation_method}</td>
+                <td data-label={t("How it is priced")} className="m2-meta m2-wrap">{i.calculation_method}</td>
               </tr>
             );
           })}
         </Table>
-      )}
+      </>)}
     </Section>
   );
 }
@@ -127,7 +131,11 @@ function MonthsPanel({ rows, currency }: { rows: ValueData["cost_avoidance_histo
     <Section q={q} title={title} meta={t("Recorded by the monthly report, newest first")} testId="val-months">
       {(d) => d.length === 0 ? <EmptyFrame>{t("No month has been recorded yet. The monthly report records one on the first of each month.")}</EmptyFrame> : (
         <>
-          {d.length > 1 ? <Sparkline values={d.map((m) => m.risk_mitigated_zar)} label={t("Risk mitigated over the last {n} months", { n: int(d.length) })} width={240} height={32} /> : null}
+          <CcHBars
+            label={t("Risk mitigated over the last {n} months", { n: int(Math.min(12, d.length)) })}
+            testId="val-months-bars"
+            rows={d.slice(-12).map((m) => ({ key: m.period, label: m.period, value: m.risk_mitigated_zar, text: money(m.risk_mitigated_zar, currency), tone: m.risk_mitigated_zar >= m.subscription_cost_zar ? "pass" : "warn" }))}
+          />
           <Table title={title} head={[t("Month"), t("Subscription"), t("Risk mitigated"), t("Return to date")]}>
             {[...d].reverse().map((m) => (
               <tr key={m.period}>

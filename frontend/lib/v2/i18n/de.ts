@@ -6587,4 +6587,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Atlas": "Atlas",
   "Waiting costs {money} a month.": "Das Warten kostet {money} pro Monat.",
   "Records to fix by area": "Zu bereinigende Datensätze je Bereich",
+  "Annual risk by kind of loss": "Jahresrisiko je Verlustart",
 };
