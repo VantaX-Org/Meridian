@@ -75,6 +75,13 @@ describe("the Work ledger, fixture mode", () => {
     expect(within(chips).getByRole("button", { name: /To fix/ })).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("draws each object's score over the last runs as a sparkline in the open-records breakdown", async () => {
+    mount();
+    const breakdown = await screen.findByTestId("work-breakdown");
+    const spark = await within(breakdown).findByRole("img", { name: /Material master score over the last \d+ runs/ });
+    expect(spark.closest("button")).toHaveTextContent(/open$/);
+  });
+
   it("draws the grid with the columns of the prototype, keeping leading zeros and showing the headers of the key", async () => {
     mount();
     const grid = await ledger();

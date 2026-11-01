@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { int } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
+import { useRuleHistory } from "@/lib/v2/object-queries";
+import { Sparkline } from "../charts";
 import { Skeleton } from "../parts";
 import { AutoCleaned } from "./CommandCentre";
 
@@ -42,6 +44,16 @@ export interface Bar {
   n: number;
   active: boolean;
   onPick: () => void;
+  /** The last runs of this row as a sparkline; nothing when the backend has no history for it. */
+  spark?: ReactNode;
+}
+
+/** A rule's failing records over its last runs, from the rule history; a dash while there is only one run. */
+export function RuleSpark({ id }: { id: string }) {
+  const h = useRuleHistory(id).data ?? [];
+  const failing = [...h].reverse().map((r) => r.affected_count);
+  if (failing.length < 2) return null;
+  return <Sparkline values={failing} width={64} height={14} domain={[0, Math.max(1, ...failing)]} label={t("{rule} failing records over the last {n} runs", { rule: id, n: failing.length })} />;
 }
 
 /** Open records as horizontal bars. A bar filters the table; next to it, what monitoring has seen. */
@@ -58,6 +70,7 @@ export function WorkBreakdown({ title, bars }: { title: string; bars: Bar[] }) {
                 <button type="button" aria-pressed={b.active} onClick={b.onPick}>
                   <span className="m2-cc-bmsg">{b.label}</span>
                   <span className="m2-cc-bmeta">
+                    {b.spark ? <span className="m2-wk-spark">{b.spark}</span> : null}
                     <span>{t("{n} open", { n: int(b.n) })}</span>
                   </span>
                   <span className="m2-cc-bar">

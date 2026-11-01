@@ -725,6 +725,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-wk-strip { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--m2-s4); }
 .m2-wk-bars button { display: grid; gap: var(--m2-s1); width: 100%; padding: var(--m2-s1) 0; border: 0; background: none; color: var(--m2-fg); font: inherit; text-align: left; cursor: pointer; }
 .m2-wk-bars button:hover .m2-cc-bmsg { text-decoration: underline; }
+.m2-wk-spark { display: inline-flex; align-items: center; }
 .m2-wk-bars button:focus-visible { outline: 2px solid var(--m2-data); outline-offset: 2px; }
 .m2-wk-bars button[aria-pressed="true"] .m2-cc-bmsg { font-weight: 600; }
 .m2-wk-bars button[aria-pressed="true"] .m2-cc-bar > span { background: var(--m2-data); }
