@@ -22,6 +22,7 @@ import { RelatedObjects } from "./object/Related";
 import { AsOfView, PolicyBreaches } from "./step10/ObjectParts";
 import { ObjectContractsBlock } from "./step9/Contracts";
 import { TopFailing } from "./object/TopFailing";
+import { ObjectMonitorStrip } from "./ObjectMonitors";
 import { t as tr, tn } from "@/lib/v2/i18n";
 
 type TabKey = "rules" | "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "profile" | "glossary" | "golden";
@@ -322,6 +323,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
             </div>
           ) : null}
           <ObjectBanner cell={cell} receipt={receipt} label={label} system={systemSegment} module={moduleSegment} cap={<CapSentence capped={cell.capped} cap={cell.cap_level} ids={cell.breaches} />} />
+          <ObjectMonitorStrip module={apiModule} />
           <div className="m2-cc m2-co">
             <div className="m2-cc-main">
               {receipt ? (

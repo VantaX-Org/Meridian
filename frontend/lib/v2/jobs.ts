@@ -25,7 +25,7 @@ export const JOB_KIND_LABEL: Record<JobKind, string> = {
   get process_discovery() { return t("Process discovery"); },
 };
 
-export const JOB_STATUS_LABEL: Record<Job["status"], string> = { get queued() { return t("Queued"); }, get running() { return t("Running"); }, get completed() { return t("Done"); }, get failed() { return t("Failed"); } };
+export const JOB_STATUS_LABEL: Record<Job["status"], string> = { get queued() { return t("Queued"); }, get running() { return t("Running"); }, get completed() { return t("Done"); }, get failed() { return t("Failed"); }, get cancelled() { return t("Cancelled"); } };
 
 /** What the job works on: the object when it names one, several objects counted, else its own label. */
 export function jobObject(job: Job): string {

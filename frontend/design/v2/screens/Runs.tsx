@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
 import { analyseRun, type TimelineRun, type VersionHead } from "@/lib/api/v2/runs";
+import { exportRuns, type ExportFormat } from "@/lib/api/v2/run-ops";
 import type { Job, JobKind } from "@/types/jobs";
 import { useOpenItem, useUrlParam, useV2Href, useV2Session } from "@/lib/v2/hooks";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject, jobSeconds } from "@/lib/v2/jobs";
@@ -268,6 +269,30 @@ function JobsTable({ kind, status }: { kind: string; status: string }) {
   );
 }
 
+/** Export of the runs list (up to 100 runs) as Excel or CSV, following the system filter and the archived switch. */
+export function RunsExport({ system, archived }: { system: string; archived: boolean }) {
+  const session = useV2Session();
+  const { outcome, pending, run } = useOutcome();
+  const allowed = session.can("export");
+  const go = (format: ExportFormat) =>
+    void run(format, async () => {
+      await exportRuns(format, { system_id: system === "all" ? undefined : system, include_archived: archived || undefined });
+      return session.fixture
+        ? { tone: "info", title: t("Fixture mode: no file is produced") }
+        : { tone: "ok", title: t("Runs downloading"), detail: t("The browser saves the file when it is ready. It follows the system filter and the archived switch, up to 100 runs.") };
+    });
+  return (
+    <span className="m2-cta" data-testid="runs-export">
+      {(["xlsx", "csv"] as const).map((f) => (
+        <button key={f} type="button" className="m2-btn" disabled={!allowed || pending !== null} title={allowed ? t("Export runs") : t("Exporting runs needs the export permission")} onClick={() => go(f)}>
+          {f === "xlsx" ? t("Export runs to Excel") : t("Export runs to CSV")}
+        </button>
+      ))}
+      {outcome ? <ResultFrame outcome={outcome} /> : null}
+    </span>
+  );
+}
+
 /**
  * `/runs`: the timeline at full width, the table of runs (or of jobs, every kind, each opening the job inspector),
  * filters by system and status, and "Start a run".
@@ -407,6 +432,7 @@ export function RunsCanvas() {
               <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} />
               {t("Show archived runs")}
             </label>
+            <RunsExport system={system} archived={archived} />
           </div>
           <RunsTable systemFilter={system} statusFilter={status} showArchived={archived} />
         </section>

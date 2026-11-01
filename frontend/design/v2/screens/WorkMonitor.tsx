@@ -10,6 +10,7 @@ import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from
 import { batchLabel } from "@/lib/v2/batches";
 import { ChartFrame, ChartTable, DeltaBar, TrendChart, niceTicks } from "../charts";
 import { WorkTabs } from "./WorkTabs";
+import { ObjectsMonitor } from "./ObjectMonitors";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -69,6 +70,7 @@ export function WorkMonitor() {
             <Trend />
           </>
         )}
+        <ObjectsMonitor />
       </div>
     </CcPage>
   );
