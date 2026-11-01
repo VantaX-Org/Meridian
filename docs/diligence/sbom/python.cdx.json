@@ -1232,7 +1232,7 @@
     },
     {
       "bom-ref": "requirements-L82",
-      "description": "requirements line 82: pyasn1==0.6.4",
+      "description": "requirements line 82: pyasn1==0.6.5",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -1241,9 +1241,9 @@
         }
       ],
       "name": "pyasn1",
-      "purl": "pkg:pypi/pyasn1@0.6.4",
+      "purl": "pkg:pypi/pyasn1@0.6.5",
       "type": "library",
-      "version": "0.6.4"
+      "version": "0.6.5"
     },
     {
       "bom-ref": "requirements-L83",
