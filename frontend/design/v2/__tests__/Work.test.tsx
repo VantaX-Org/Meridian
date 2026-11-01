@@ -422,6 +422,19 @@ describe("the Work ledger, fixture mode", () => {
     expect(byObject.mock.calls[0][0]).toMatchObject({ batch_id: "b-1", policy: "sox", sort: "-age,-value" });
   });
 
+  it("Export register is offered on the Exceptions chip only and saves the signed-off records", async () => {
+    const spy = vi.spyOn(workApi, "exportExceptions").mockResolvedValue({ filename: "signed-off-records.xlsx" });
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "More" }));
+    expect(screen.queryByRole("menuitem", { name: /Export register/ })).toBeNull();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    fireEvent.click(within(screen.getByRole("group", { name: "Filter by state" })).getByRole("button", { name: /Exceptions/ }));
+    await more(/Export register/);
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy.mock.calls[0][0]).toMatchObject({ status: "not_an_issue" });
+    expect(await screen.findByText("Register saved as signed-off-records.xlsx")).toBeInTheDocument();
+  });
+
   it("F10: Approved, Sent to SAP and Fixed are chips; Sent to SAP lists the records under their batch", async () => {
     mount();
     const chips = screen.getByRole("group", { name: "Filter by state" });

@@ -6725,6 +6725,10 @@ export const en = {
   "Your watches could not be read.": "Your watches could not be read.",
   "You watch nothing yet. Use Watch on an object, rule or batch to hear about it.": "You watch nothing yet. Use Watch on an object, rule or batch to hear about it.",
   "Stop watching": "Stop watching",
+  "Register saved as {filename}": "Register saved as {filename}",
+  "The register could not be exported.": "The register could not be exported.",
+  "Export register": "Export register",
+  "Every record signed off as not an issue or an accepted risk, with who signed it off and why": "Every record signed off as not an issue or an accepted risk, with who signed it off and why",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

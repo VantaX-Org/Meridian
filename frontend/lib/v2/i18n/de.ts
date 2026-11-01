@@ -6726,4 +6726,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Your watches could not be read.": "Ihre Beobachtungen konnten nicht gelesen werden.",
   "You watch nothing yet. Use Watch on an object, rule or batch to hear about it.": "Sie beobachten noch nichts. Nutzen Sie Beobachten bei einem Objekt, einer Regel oder einem Stapel.",
   "Stop watching": "Nicht mehr beobachten",
+  "Register saved as {filename}": "Register als {filename} gespeichert",
+  "The register could not be exported.": "Das Register konnte nicht exportiert werden.",
+  "Export register": "Register exportieren",
+  "Every record signed off as not an issue or an accepted risk, with who signed it off and why": "Jeder als unproblematisch oder akzeptiertes Risiko freigegebene Datensatz, mit Freigebendem und Begründung",
 };

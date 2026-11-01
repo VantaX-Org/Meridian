@@ -194,6 +194,9 @@ export const exportFixSheet = (f: ExportQuery): Promise<{ filename: string }> =>
 export const exportFixSheetByObject = (f: ExportQuery): Promise<{ filename: string }> =>
   exportFile("/api/v1/work/export/per-object", f, "records-to-fix-by-object.xlsx");
 
+/** GET /work/exceptions/export: the register of records signed off as not an issue or an accepted risk, under the ledger's filters. */
+export const exportExceptions = (f: ExportQuery): Promise<{ filename: string }> => exportFile("/api/v1/work/exceptions/export", f, "signed-off-records.xlsx");
+
 export interface ImportResult {
   updated: number;
   rows: number;

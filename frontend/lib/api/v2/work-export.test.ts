@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { uploadApiClient } from "@/lib/api/client";
 import { exportQueryOf, readState } from "@/lib/v2/work";
-import { exportFixSheet, exportFixSheetByObject } from "./work";
+import { exportExceptions, exportFixSheet, exportFixSheetByObject } from "./work";
 
 const BATCH = "6f1c2a7e-0d4b-4c8e-9a51-3b2f7d9e1c04";
 
@@ -50,5 +50,13 @@ describe("fix-sheet exports carry the ledger's batch, policy and sort", () => {
     expect(url.searchParams.has("as_of_run")).toBe(false);
     expect(url.searchParams.has("batch_id")).toBe(false);
     expect(url.searchParams.has("policy")).toBe(false);
+  });
+
+  it("GET /work/exceptions/export keeps the filters and names the file by the response", async () => {
+    await exportExceptions(exportQueryOf(readState(new URLSearchParams("filter=exceptions&module=accounts_payable&severity=high"))));
+    const url = urlOf(spy);
+    expect(url.pathname).toBe("/api/v1/work/exceptions/export");
+    expect(url.searchParams.get("module")).toBe("accounts_payable");
+    expect(url.searchParams.get("severity")).toBe("high");
   });
 });

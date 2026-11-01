@@ -6726,4 +6726,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Your watches could not be read.": "ウォッチ一覧を読み込めませんでした。",
   "You watch nothing yet. Use Watch on an object, rule or batch to hear about it.": "まだ何もウォッチしていません。オブジェクト、ルール、バッチで「ウォッチ」を使うと通知を受け取れます。",
   "Stop watching": "ウォッチを解除",
+  "Register saved as {filename}": "台帳を {filename} として保存しました",
+  "The register could not be exported.": "台帳を書き出せませんでした。",
+  "Export register": "台帳を書き出す",
+  "Every record signed off as not an issue or an accepted risk, with who signed it off and why": "問題なしまたはリスク受容として承認したすべてのレコード（承認者と理由つき）",
 };
