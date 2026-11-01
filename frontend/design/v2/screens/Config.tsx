@@ -97,9 +97,9 @@ export function Config() {
     onError: (e) => toast.show(errorSentence(e, t("The configuration could not be read again.")), "error"),
   });
 
-  if (alignment.isPending || inventory.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
-  if (notFound(alignment.error) || notFound(inventory.error)) return <CcPage><EmptyFrame>{t("Run an analysis on an SAP system to read its configuration.")}</EmptyFrame></CcPage>;
-  if (alignment.isError || inventory.isError) return <CcPage><ErrorFrame onRetry={() => { void alignment.refetch(); void inventory.refetch(); }}>{t("The configuration could not be read.")}</ErrorFrame></CcPage>;
+  if (alignment.isPending || inventory.isPending) return <CcPage title={t("Configuration")}><Skeleton width="100%" height={320} /></CcPage>;
+  if (notFound(alignment.error) || notFound(inventory.error)) return <CcPage title={t("Configuration")}><EmptyFrame>{t("Run an analysis on an SAP system to read its configuration.")}</EmptyFrame></CcPage>;
+  if (alignment.isError || inventory.isError) return <CcPage title={t("Configuration")}><ErrorFrame onRetry={() => { void alignment.refetch(); void inventory.refetch(); }}>{t("The configuration could not be read.")}</ErrorFrame></CcPage>;
 
   const findings = [...alignment.data.findings].sort((a, b) => RANK[a.severity] - RANK[b.severity] || b.estimated_impact_zar - a.estimated_impact_zar);
   const currency = alignment.data.currency ?? "ZAR";
@@ -113,7 +113,7 @@ export function Config() {
   const avg = scores.length ? scores.reduce((s, x) => s + x.chs, 0) / scores.length : null;
 
   return (
-    <CcPage>
+    <CcPage title={t("Configuration")}>
       <CcBanner
         testId="config"
         label={t("Configuration")}

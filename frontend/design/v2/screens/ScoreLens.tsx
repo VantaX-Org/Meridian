@@ -40,10 +40,10 @@ export function ScoreLens() {
   const heat = useQuery({ queryKey: ["score-heatmap", fixture], queryFn: lift<Heatmap | null>(getHeatmap, null), staleTime: 60_000, retry });
   const aware = useQuery({ queryKey: ["config-aware-score", fixture], queryFn: lift<ConfigAwareScore | null>(getConfigAwareScore, null), staleTime: 60_000, retry });
 
-  if (hist.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (hist.isPending) return <CcPage title={t("Score lens")}><Skeleton width="100%" height={320} /></CcPage>;
   if (hist.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("Score lens")}>
         {status(hist.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read the score history.")}</EmptyFrame>
         ) : (
@@ -57,7 +57,7 @@ export function ScoreLens() {
   const ca = aware.data ?? null;
   const shift = diff(last?.under_current.composite, last?.at_the_time.composite);
   return (
-    <CcPage>
+    <CcPage title={t("Score lens")}>
       <CcBanner
         eyebrow={t("Score lens")}
         headline={

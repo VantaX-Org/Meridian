@@ -4,12 +4,17 @@ import type { ReactNode } from "react";
 import type { Verdict } from "@/lib/api/v2/types";
 import { t } from "@/lib/v2/i18n";
 import { VerdictMark } from "../marks";
+import { PageTitle } from "../parts";
 import { AletheiaDock } from "./CommandCentre";
 
-/** The Command centre page frame: the content beside the docked Aletheia, stacked below it on narrow screens. */
-export function CcPage({ children }: { children: ReactNode }) {
+/**
+ * The Command centre page frame: the content beside the docked Aletheia, stacked below it on narrow screens. The banner
+ * carries the state, so `title` is a hidden h1 for screen readers and the tab; pages that draw a PageTitle leave it out.
+ */
+export function CcPage({ title, children }: { title?: string; children: ReactNode }) {
   return (
     <div className="m2-cc">
+      {title ? <div className="m2-sr"><PageTitle>{title}</PageTitle></div> : null}
       <div className="m2-cc-main">{children}</div>
       <AletheiaDock />
     </div>

@@ -80,18 +80,18 @@ export function Cleansing() {
   const queue = useCleaning("applied", () => getAppliedCleaning().then((r) => ({ ...r, readAt: Date.now() })));
   const audit = useCleaning("audit", getCleaningAudit);
 
-  if (metrics.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
-  if (metrics.isError) return <CcPage><ErrorFrame onRetry={() => void metrics.refetch()}>{t("The cleansing figures could not be read.")}</ErrorFrame></CcPage>;
+  if (metrics.isPending) return <CcPage title={t("Cleansing")}><Skeleton width="100%" height={320} /></CcPage>;
+  if (metrics.isError) return <CcPage title={t("Cleansing")}><ErrorFrame onRetry={() => void metrics.refetch()}>{t("The cleansing figures could not be read.")}</ErrorFrame></CcPage>;
 
   const weeks = weekly(metrics.data.metrics);
   const now = weeks.at(-1);
-  if (!now) return <CcPage><EmptyFrame>{t("Nothing has been cleansed yet. The figures appear after the weekly cleansing task has run once.")}</EmptyFrame></CcPage>;
+  if (!now) return <CcPage title={t("Cleansing")}><EmptyFrame>{t("Nothing has been cleansed yet. The figures appear after the weekly cleansing task has run once.")}</EmptyFrame></CcPage>;
   const prev = weeks.at(-2);
   const s = now.sums;
   const gain = prev ? cleaned(s) - cleaned(prev.sums) : null;
 
   return (
-    <CcPage>
+    <CcPage title={t("Cleansing")}>
       <CcBanner
         testId="cleansing"
         label={t("Cleansing")}

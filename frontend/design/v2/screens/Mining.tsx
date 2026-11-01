@@ -64,10 +64,10 @@ export function Mining() {
   const links = useMining("relationships", getRelationships);
   const patterns = useMining("patterns", getPatterns);
 
-  if (overview.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (overview.isPending) return <CcPage title={t("Data mining")}><Skeleton width="100%" height={320} /></CcPage>;
   if (overview.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("Data mining")}>
         {status(overview.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read the mining results.")}</EmptyFrame>
         ) : (
@@ -82,7 +82,7 @@ export function Mining() {
   const more = (n: number | undefined, limit: number) => (n == null ? "—" : n >= limit ? t("{n} or more", { n: int(n) }) : int(n));
 
   return (
-    <CcPage>
+    <CcPage title={t("Data mining")}>
       <CcBanner
         testId="mining"
         label={t("Data mining")}

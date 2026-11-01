@@ -126,10 +126,10 @@ export function Migration() {
   const [starting, setStarting] = useState(false);
   const { can } = useV2Session();
 
-  if (runs.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (runs.isPending) return <CcPage title={t("Migration")}><Skeleton width="100%" height={320} /></CcPage>;
   if (runs.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("Migration")}>
         {status(runs.error) === 403 ? <EmptyFrame>{t("Your role cannot read the migration analyses.")}</EmptyFrame> : (
           <ErrorFrame onRetry={() => void runs.refetch()}>{t("The migration analyses could not be read.")}</ErrorFrame>
         )}
@@ -143,7 +143,7 @@ export function Migration() {
     <button type="button" className="m2-btn m2-next" aria-expanded={starting} onClick={() => setStarting((s) => !s)}>{t("Start an analysis")}</button>
   ) : undefined;
   return (
-    <CcPage>
+    <CcPage title={t("Migration")}>
       {latest ? (
         <CcBanner
           eyebrow={t("Migration analysis of {date}", { date: formatDate(latest.completed_at ?? latest.created_at, "date") })}

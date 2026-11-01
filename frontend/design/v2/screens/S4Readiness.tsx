@@ -43,10 +43,10 @@ export function S4Readiness() {
     retry,
   });
 
-  if (q.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (q.isPending) return <CcPage title={t("S/4HANA readiness")}><Skeleton width="100%" height={320} /></CcPage>;
   if (q.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("S/4HANA readiness")}>
         {status(q.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read the S/4HANA readiness.")}</EmptyFrame>
         ) : (
@@ -63,7 +63,7 @@ export function S4Readiness() {
       ? t("Ready to convert")
       : t("{n} blocking rules stand in the way", { n: int(d.blocking_failing) });
   return (
-    <CcPage>
+    <CcPage title={t("S/4HANA readiness")}>
       <CcBanner
         eyebrow={t("S/4HANA readiness")}
         verdict={d.evaluated === 0 ? undefined : d.ready ? (d.warning_failing ? "at-risk" : "go") : "no-go"}

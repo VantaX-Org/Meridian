@@ -47,10 +47,10 @@ export function Value() {
     retry,
   });
 
-  if (q.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (q.isPending) return <CcPage title={t("Value delivered")}><Skeleton width="100%" height={320} /></CcPage>;
   if (q.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("Value delivered")}>
         {status(q.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read the value delivered.")}</EmptyFrame>
         ) : (
@@ -69,7 +69,7 @@ export function Value() {
       ? t("{amount} a year taken off the risk", { amount: money(roi.risk_mitigated, cur) })
       : t("Returns {n} times its cost", { n: f1(roi.roi_multiple) });
   return (
-    <CcPage>
+    <CcPage title={t("Value delivered")}>
       <CcBanner
         eyebrow={t("Value delivered")}
         verdict={roi.roi_multiple == null ? undefined : roi.roi_multiple >= 1 ? "go" : "at-risk"}

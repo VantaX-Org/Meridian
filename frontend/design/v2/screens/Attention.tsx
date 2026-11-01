@@ -73,10 +73,10 @@ export function Attention() {
   const systems = [...new Map([...seen.systems, ...items.flatMap((i): [string, string][] => (i.system_id ? [[i.system_id, i.system_name ?? i.system_id]] : []))])];
   if (kinds.length !== seen.kinds.length || systems.length !== seen.systems.length) setSeen({ kinds, systems });
 
-  if (q.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (q.isPending) return <CcPage title={t("Action centre")}><Skeleton width="100%" height={320} /></CcPage>;
   if (q.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("Action centre")}>
         {status(q.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read what needs attention.")}</EmptyFrame>
         ) : (
@@ -92,7 +92,7 @@ export function Attention() {
   const filtered = kind !== "" || system !== "";
 
   return (
-    <CcPage>
+    <CcPage title={t("Action centre")}>
       <CcBanner
         eyebrow={t("Action centre")}
         headline={total === 0 ? t("Nothing needs you right now") : t("{n} things need you", { n: int(total) })}

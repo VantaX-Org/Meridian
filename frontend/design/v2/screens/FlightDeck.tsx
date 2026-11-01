@@ -54,11 +54,11 @@ export function FlightDeck() {
   const money = useMoney("wave", wave?.id ?? null, !!wave).data;
   const [picked, setPicked] = useState<string | null>(null);
 
-  if (waves.isPending) return <CcPage><Skeleton width="100%" height={240} /></CcPage>;
-  if (waves.isError) return <CcPage><ErrorFrame onRetry={() => void waves.refetch()}>{t("The migration waves could not be read.")}</ErrorFrame></CcPage>;
+  if (waves.isPending) return <CcPage title={t("Go-live flight deck")}><Skeleton width="100%" height={240} /></CcPage>;
+  if (waves.isError) return <CcPage title={t("Go-live flight deck")}><ErrorFrame onRetry={() => void waves.refetch()}>{t("The migration waves could not be read.")}</ErrorFrame></CcPage>;
   if (!wave) {
     return (
-      <CcPage>
+      <CcPage title={t("Go-live flight deck")}>
         <EmptyFrame action={<V2Link href="/?view=waves" className="m2-btn m2-next">{t("Plan a wave")}</V2Link>}>{t("Plan a migration wave with a go-live date to see its runway.")}</EmptyFrame>
       </CcPage>
     );
@@ -97,7 +97,7 @@ export function FlightDeck() {
           : t("Some objects lack the score history, or go-live lies beyond the furthest forecast.");
 
   return (
-    <CcPage>
+    <CcPage title={t("Go-live flight deck")}>
       <CcBanner
         testId="flight-deck"
         label={t("Go-live flight deck")}

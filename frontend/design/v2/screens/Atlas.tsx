@@ -50,9 +50,9 @@ export function Atlas() {
     return () => window.clearInterval(id);
   }, [playing, last]);
 
-  if (landscape.isPending || timelines.some((q) => q.isPending)) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
-  if (landscape.isError) return <CcPage><ErrorFrame onRetry={() => void landscape.refetch()}>{t("The landscape could not be read.")}</ErrorFrame></CcPage>;
-  if (!frames.length) return <CcPage><EmptyFrame>{t("Run an analysis to see the landscape atlas.")}</EmptyFrame></CcPage>;
+  if (landscape.isPending || timelines.some((q) => q.isPending)) return <CcPage title={t("Landscape atlas")}><Skeleton width="100%" height={320} /></CcPage>;
+  if (landscape.isError) return <CcPage title={t("Landscape atlas")}><ErrorFrame onRetry={() => void landscape.refetch()}>{t("The landscape could not be read.")}</ErrorFrame></CcPage>;
+  if (!frames.length) return <CcPage title={t("Landscape atlas")}><EmptyFrame>{t("Run an analysis to see the landscape atlas.")}</EmptyFrame></CcPage>;
 
   const l = landscape.data;
   const frame = frames[idx];
@@ -68,7 +68,7 @@ export function Atlas() {
   };
 
   return (
-    <CcPage>
+    <CcPage title={t("Landscape atlas")}>
       <CcBanner
         testId="atlas"
         label={t("Landscape atlas")}

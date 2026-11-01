@@ -39,10 +39,10 @@ export function MdmHealth() {
   const now = useQuery({ queryKey: ["mdm-health", fixture], queryFn: getMdmHealth, staleTime: 60_000, retry });
   const hist = useQuery({ queryKey: ["mdm-health", fixture, "history"], queryFn: () => getMdmHistory(90), staleTime: 60_000, retry });
 
-  if (now.isPending) return <CcPage><Skeleton width="100%" height={320} /></CcPage>;
+  if (now.isPending) return <CcPage title={t("MDM health")}><Skeleton width="100%" height={320} /></CcPage>;
   if (now.isError) {
     return (
-      <CcPage>
+      <CcPage title={t("MDM health")}>
         {status(now.error) === 403 ? (
           <EmptyFrame>{t("Your role cannot read the MDM health figures.")}</EmptyFrame>
         ) : (
@@ -54,7 +54,7 @@ export function MdmHealth() {
   const s = now.data.latest;
   if (!s) {
     return (
-      <CcPage>
+      <CcPage title={t("MDM health")}>
         <EmptyFrame>{t("No MDM snapshot has been taken yet. The snapshot runs once a day.")}</EmptyFrame>
       </CcPage>
     );
@@ -63,7 +63,7 @@ export function MdmHealth() {
   const first = days.length > 1 ? days[0] : null;
   const change = first ? s.mdm_health_score - first.mdm_health_score : null;
   return (
-    <CcPage>
+    <CcPage title={t("MDM health")}>
       <CcBanner
         eyebrow={t("MDM health on {date}", { date: formatDate(s.snapshot_date, "date") })}
         headline={t("Health {score} out of 100", { score: f1(s.mdm_health_score) })}
