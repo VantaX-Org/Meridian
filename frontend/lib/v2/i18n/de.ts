@@ -6596,4 +6596,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{fixed} records were fixed in the same period.": "{fixed} Datensätze wurden im selben Zeitraum behoben.",
   "Records failing again, before and after the last clean": "Erneut fehlerhafte Datensätze vor und nach der letzten Bereinigung",
   "Of the records each batch fixed, the share that has not failed again": "Anteil der je Charge behobenen Datensätze, die nicht erneut fehlgeschlagen sind",
+  "SAP transactions": "SAP-Transaktionen",
+  "Last 24 hours": "Letzte 24 Stunden",
 };

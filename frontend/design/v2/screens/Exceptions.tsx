@@ -124,7 +124,7 @@ export function Exceptions() {
         figs={[
           { label: t("Within SLA"), value: `${m.sla_compliance_pct.toFixed(1)}%`, note: t("{n} resolved", { n: int(m.resolved_count) }) },
           { label: t("Average time to resolve"), value: t("{n} h", { n: m.avg_resolution_hours.toFixed(1) }) },
-          { label: t("SAP transactions, last 24 hours"), value: sap === undefined ? "—" : int(sap) },
+          { label: t("SAP transactions"), value: sap === undefined ? "—" : int(sap), note: t("Last 24 hours") },
         ]}
         testId="exceptions-banner"
         label={t("Exceptions")}
@@ -132,7 +132,7 @@ export function Exceptions() {
       <Panel title={t("Open exceptions by severity")} meta={t("All {n}", { n: int(m.open_count) })} testId="exceptions-severity">
         <CcHBars
           label={t("Open exceptions by severity")}
-          rows={SEVERITIES.map((s) => ({ key: s, label: SEV_TEXT[s](), value: m.by_severity[s] ?? 0, text: int(m.by_severity[s] ?? 0) }))}
+          rows={SEVERITIES.map((s) => ({ key: s, label: SEV_TEXT[s](), value: m.by_severity[s] ?? 0, text: int(m.by_severity[s] ?? 0), tone: s === "critical" ? "crit" : s === "high" ? "warn" : undefined }))}
         />
       </Panel>
       <div className="m2-rfilters" role="group" aria-label={t("Show exceptions by status")} data-testid="exceptions-tabs">

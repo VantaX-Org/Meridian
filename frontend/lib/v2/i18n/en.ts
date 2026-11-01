@@ -6595,6 +6595,8 @@ export const en = {
   "{fixed} records were fixed in the same period.": "{fixed} records were fixed in the same period.",
   "Records failing again, before and after the last clean": "Records failing again, before and after the last clean",
   "Of the records each batch fixed, the share that has not failed again": "Of the records each batch fixed, the share that has not failed again",
+  "SAP transactions": "SAP transactions",
+  "Last 24 hours": "Last 24 hours",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
