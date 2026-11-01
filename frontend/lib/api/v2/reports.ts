@@ -3,7 +3,7 @@
  * (api/routes/report_library.py, api/routes/reports.py, api/routes/migration.py).
  */
 import type { CatalogueEntry, ReportFilePage, ReportSchedule, ReportScheduleInput, ScheduleOptions } from "@/lib/api/reports";
-import type { MigrationWave, WaveStage } from "@/types/api";
+import type { MigrationWave, WaveCockpit, WaveStage } from "@/types/api";
 import { v2Get, v2Send } from "./client";
 import { v2Download } from "./download";
 
@@ -60,3 +60,24 @@ export const updateWave = (id: string, body: WavePatch): Promise<MigrationWave> 
 export const deleteWave = (id: string): Promise<void> => v2Send("DELETE", `/migration/waves/${enc(id)}`);
 /** POST /migration/waves/{id}/signoff: signs a wave off. Needs approve; the server refuses a wave whose verdict is not go (409). */
 export const signOffWave = (id: string): Promise<MigrationWave> => v2Send("POST", `/migration/waves/${enc(id)}/signoff`);
+
+/** POST /migration/waves/{id}/run: analyses the whole wave (every object in it). Needs analyse; 400 when the wave has no source system or no object. */
+export const runWave = (id: string): Promise<{ run_id: string; task_id: string; status: string; modules: string[] }> => v2Send("POST", `/migration/waves/${enc(id)}/run`);
+
+/** GET /migration/waves/{id}/cockpit: per-object verdict, the top blockers and the wave's one score threshold (null: none set). */
+export type WaveCockpitRead = WaveCockpit & { threshold: number | null };
+export const getWaveCockpit = (id: string): Promise<WaveCockpitRead> => v2Get(`/migration/waves/${enc(id)}/cockpit`);
+
+/** GET /migration/waves/{id}/report.{xlsx|pdf}: the readiness report. Needs export. */
+export type WaveReportFormat = "xlsx" | "pdf";
+export const downloadWaveReport = (id: string, fmt: WaveReportFormat): Promise<string> => v2Download(`/migration/waves/${enc(id)}/report.${fmt}`, undefined, `migration_readiness.${fmt}`);
+
+/** POST /migration/waves/{id}/blockers/fix-batch: drafts a cleaning batch for the open issues on the records one blocker holds. Needs apply. */
+export interface FixBatchDraft {
+  id: string;
+  status: string;
+  items: number;
+  with_proposal: number;
+  auto_approvable: number;
+}
+export const draftBlockerFixBatch = (id: string, body: { module: string; gap_type: string; field: string | null }): Promise<FixBatchDraft> => v2Send("POST", `/migration/waves/${enc(id)}/blockers/fix-batch`, body);

@@ -341,6 +341,20 @@ export function objectFixture(path: string, params: Params): unknown {
     const n = r?.affected_count ?? 0;
     return { total: n, groups: n ? [{ field: "WERKS", values: [["1000", 0.6], ["2000", 0.3], ["3000", 0.1]].map(([v, k]) => ({ value: String(v), records: Math.round(n * Number(k)), part: `WERKS=${v}` })) }] : [] };
   }
+  const rc = /^\/versions\/([^/]+)\/findings\/([^/]+)\/root-cause$/.exec(path);
+  if (rc) {
+    const id = decodeURIComponent(rc[2]);
+    const n = ruleRow(id)?.affected_count ?? 0;
+    const base = { version_id: decodeURIComponent(rc[1]), check_id: id };
+    if (!n) return { ...base, status: "not_computed", field: null, analysed: 0, total: 0, origins: [], summary: "", detail: "" };
+    const field = ruleRow(id)?.field ?? null;
+    const origins = [
+      { origin: "interface", username: "RFC_INTERFACE", tcode: "", records: Math.round(n * 0.6), share: 60 },
+      { origin: "dialog", username: "TVDMERWE", tcode: "MM02", records: Math.round(n * 0.3), share: 30 },
+      { origin: "migration", username: "MIGRATION", tcode: "LSMW", records: Math.round(n * 0.1), share: 10 },
+    ];
+    return { ...base, status: "computed", field, analysed: n, total: n, origins, summary: `60% of failing ${field ?? "field"} values were last set by interface/batch user RFC_INTERFACE.`, detail: "" };
+  }
   const ex = /^\/explain\/([^/]+)$/.exec(path);
   if (ex) return explain(ex[1], params);
   if (path === "/insights/readiness") return readiness();

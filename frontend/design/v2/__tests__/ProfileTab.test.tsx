@@ -10,11 +10,14 @@ vi.mock("next/navigation", async () => (await import("./nav-store")).navigationM
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
 let granted: string[] | "all" = "all";
+let fixtureMode = true;
+const dl = vi.hoisted(() => vi.fn(async (_p: string, _q: unknown, name: string) => name));
+vi.mock("@/lib/api/v2/download", () => ({ v2Download: dl }));
 vi.mock("@/lib/v2/hooks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/v2/hooks")>();
   return {
     ...actual,
-    useV2Session: () => ({ persona: "lead" as const, label: "Programme lead", name: "Test", email: null, fixture: true, can: (a: string) => granted === "all" || granted.includes(a) }),
+    useV2Session: () => ({ persona: "lead" as const, label: "Programme lead", name: "Test", email: null, fixture: fixtureMode, can: (a: string) => granted === "all" || granted.includes(a) }),
   };
 });
 
@@ -23,6 +26,8 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   window.localStorage.clear();
   granted = "all";
+  fixtureMode = true;
+  dl.mockClear();
   resetProfileFixture();
   undo = stubLayout();
   setUrl("/o/ecc-production/material-master/profile?fixture=1");
@@ -72,6 +77,23 @@ describe("the Profile tab", () => {
     tab();
     await screen.findByRole("table", { name: "Mined dependencies" });
     expect(screen.queryByRole("button", { name: "Make it a rule" })).toBeNull();
+  });
+
+  it("exports the field profile as an Excel file for the object's system and run", async () => {
+    fixtureMode = false;
+    tab();
+    const btn = await screen.findByRole("button", { name: "Export the field profile" });
+    await waitFor(() => expect(btn).toBeEnabled());
+    fireEvent.click(btn);
+    await waitFor(() => expect(dl).toHaveBeenCalledTimes(1));
+    expect(dl.mock.calls[0][0]).toMatch(/^\/systems\/[^/]+\/versions\/[^/]+\/profile\/export$/);
+    expect(dl.mock.calls[0][1]).toEqual({ object: "material_master", format: "xlsx" });
+  });
+
+  it("does not offer the export without the export permission", async () => {
+    granted = ["view"];
+    tab();
+    expect(await screen.findByRole("button", { name: "Export the field profile" })).toBeDisabled();
   });
 
   it("says so when the run did not profile the object", async () => {

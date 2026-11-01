@@ -10,12 +10,12 @@ import {
   type AssignableUser, type AssignRule, type BulkAction, type BulkBody, type QueueItem, type Team,
 } from "@/lib/api/v2/triage";
 import { formatDate } from "@/lib/format";
-import { useUrlParam, useV2Session } from "@/lib/v2/hooks";
+import { useOpenItem, useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
-import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton } from "../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { CcBanner, CcDelta, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
@@ -212,6 +212,7 @@ export function Triage() {
 }
 
 function Row({ x, people, teams, pick }: { x: QueueItem; people: AssignableUser[] | undefined; teams: Team[] | undefined; pick: { on: boolean; toggle: () => void } | null }) {
+  const { hrefFor } = useOpenItem();
   const owner = nameOf(x.assigned_to, people);
   const team = x.assigned_team_id ? teams?.find((tm) => tm.id === x.assigned_team_id)?.name ?? x.assigned_team_id : null;
   const label = `${x.module ? moduleText(x.module) : ""} ${x.check_id ?? ""} ${x.ref ?? ""}`.trim();
@@ -228,6 +229,7 @@ function Row({ x, people, teams, pick }: { x: QueueItem; people: AssignableUser[
         <span className="m2-meta">
           {" "}{x.kind === "queue" ? t("Stewardship item") : t("Issue")}
           {x.ref ? <>, <Mono>{x.ref}</Mono></> : null}
+          {x.check_id === "golden_writeback" && x.ref ? <>, <V2Link href={hrefFor({ kind: "golden", id: x.ref })}>{t("Open the golden record to approve")}</V2Link></> : null}
           {x.snoozed_until ? <>, {t("snoozed until {d}", { d: formatDate(x.snoozed_until, "date") })}</> : null}
           {x.sla_paused_at ? <>, {x.status === "waiting_requester" ? t("waiting for the requester") : t("waiting for SAP")}</> : null}
         </span>

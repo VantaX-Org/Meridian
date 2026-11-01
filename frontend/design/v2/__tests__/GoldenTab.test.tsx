@@ -147,7 +147,7 @@ describe("the golden record inspector", () => {
   it("draws facts, fields, source records, actions and history, named by the golden key", async () => {
     const d = await open();
     expect(d).toHaveAccessibleName("MATNR=000000000000000104");
-    expect(within(d).getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Facts", "Fields", "Source records", "Actions", "History"]);
+    expect(within(d).getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Facts", "Fields", "Source records", "Actions", "Send to SAP", "History", "Change history"]);
     const fields = within(d).getByRole("table", { name: /Golden fields/ });
     const rows = within(fields).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(6);

@@ -14,6 +14,7 @@ import { VerdictMark } from "../marks";
 import { Coded, Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { t as tr } from "@/lib/v2/i18n";
 import { CcBanner, CcDelta, CcPage } from "./cc-parts";
+import { CompareRecords } from "./CompareRecords";
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
@@ -362,6 +363,8 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
           labelOf={labelOf}
         />
       ) : null}
+
+      {S && t ? <CompareRecords a={a} b={b} labelOf={labelOf} /> : null}
     </CcPage>
   );
 }

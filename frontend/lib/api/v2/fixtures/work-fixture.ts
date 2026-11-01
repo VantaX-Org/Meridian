@@ -1068,6 +1068,13 @@ export function putViewFixture(body: { route: string; name: string; filters?: Re
   return view;
 }
 
+export function deleteViewFixture(id: string): null {
+  if (id.startsWith("builtin:")) fail(409, "A built-in view cannot be deleted");
+  if (!state.views.some((v) => v.id === id)) fail(404, "View not found");
+  state.views = state.views.filter((v) => v.id !== id);
+  return null;
+}
+
 export function exportFixture(f: WorkFilters, name = "fix-sheet.xlsx"): { filename: string; blob: Blob } {
   const page = workRecords({ ...(f as Params), status: f.status ?? "to_fix", limit: 500 });
   const head = ["Object", "Record", "Name", "Check", "Severity", "Issue", "Field", "Current value", "Suggested value", "New value", "Decision", "Reason"];

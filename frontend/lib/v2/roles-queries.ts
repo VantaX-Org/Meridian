@@ -13,6 +13,7 @@ export const rolesKeys = {
   root: (fx: boolean) => ["v2", "roles", fx] as const,
   comments: (fx: boolean, kind: string, id: string) => ["v2", "roles", fx, "comments", kind, id] as const,
   watch: (fx: boolean, kind: string, id: string) => ["v2", "roles", fx, "watch", kind, id] as const,
+  mine: (fx: boolean) => ["v2", "roles", fx, "watch", "mine"] as const,
   mentions: (fx: boolean) => ["v2", "roles", fx, "mentions"] as const,
   subs: (fx: boolean) => ["v2", "roles", fx, "subs"] as const,
   activity: (fx: boolean, id: string) => ["v2", "roles", fx, "activity", id] as const,
@@ -42,6 +43,10 @@ export function useComments(kind: r.CommentKind, id: string) {
 export function useWatch(kind: r.WatchKind, id: string) {
   const fx = useFixture();
   return useQuery({ queryKey: rolesKeys.watch(fx, kind, id), queryFn: () => r.getWatch(kind, id), enabled: Boolean(id), retry });
+}
+export function useMyWatches() {
+  const fx = useFixture();
+  return useQuery({ queryKey: rolesKeys.mine(fx), queryFn: r.getMyWatches, retry });
 }
 export function useUnreadMentions() {
   const fx = useFixture();

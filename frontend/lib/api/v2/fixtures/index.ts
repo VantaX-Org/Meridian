@@ -201,6 +201,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     if (method === "DELETE" && sla) return ap.deletePolicyFixture(decodeURIComponent(sla[1]));
     if (method === "PUT" && path === "/triage/settings") return ap.putSettingsFixture(body as never);
     if (method === "PUT" && path === "/views") return wf.putViewFixture(body as never);
+    const delView = /^\/views\/([^/]+)$/.exec(path);
+    if (method === "DELETE" && delView) return wf.deleteViewFixture(decodeURIComponent(delView[1]));
     const mdm = mdmFixtureWrite(method, path, body);
     if (mdm !== undefined) return mdm;
     const ent = enterpriseFixtureWrite(method, path, body);
@@ -258,6 +260,19 @@ function lineageRead(path: string, params: Params): unknown {
     const g = guards.guards[String(params.node ?? "")];
     if (!g) throw new FixtureNotFound(path);
     return { ...(g as object), version_id: null };
+  }
+  const imp = /^\/lineage\/impact\/([^/]+)$/.exec(path);
+  if (imp) {
+    type N = { id: string; label: string };
+    const m = guards.model as { model_version: number; kpis: N[]; processes: N[]; features: N[] };
+    const row = (n: N, type: string, findings: number, records: number, sev: string, impact: string | null, hops: number, cost: number) => ({ ...n, type, findings, check_ids: [`FX-${n.id.slice(-4)}`], records_affected: records, max_records: records, worst_severity: sev, worst_impact: impact, min_hops: hops, cost_at_risk: cost });
+    return {
+      version_id: decodeURIComponent(imp[1]), model_version: m.model_version, cost_available: true,
+      kpis: m.kpis.slice(0, 2).map((n, i) => row(n, "kpi", 3 - i, 420 - i * 150, i ? "medium" : "critical", null, 3, 180000 - i * 60000)),
+      processes: m.processes.filter((n) => !n.id.includes("-")).slice(0, 2).map((n, i) => row(n, "process", 2 + i, 310 - i * 90, i ? "high" : "critical", null, 2, 95000 - i * 30000)),
+      features: m.features.slice(0, 2).map((n, i) => row(n, "feature", 1 + i, 260 - i * 100, "high", i ? "degraded" : "full_block", 1, 70000 - i * 25000)),
+      unmapped_checks: ["FX-ORPHAN-1"],
+    };
   }
   const blast = /^\/lineage\/blast-radius\/([^/]+)\/([^/]+)$/.exec(path);
   if (blast) {
@@ -422,6 +437,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     if (path === "/writeback/approvals") return { approvals: [], live_enabled: false };
     if (path === "/people") return ap.peopleFixture();
     if (path === "/people/next") return ap.nextFixture();
+    const steward = /^\/analytics\/operational\/team\/([^/]+)$/.exec(path);
+    if (steward) return ap.stewardFixture(decodeURIComponent(steward[1]));
     if (path === "/notifications") return ap.notificationsFixture(Number(params.limit ?? 50));
     if (path === "/notifications/unread-count") return ap.unreadFixture();
     if (path === "/triage/sla-policies") return ap.policiesFixture();

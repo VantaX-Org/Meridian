@@ -42,3 +42,31 @@ export const getNextSteps = (): Promise<{ items: NextStep[] }> => v2Get("/people
 
 /** POST /people/{id}/remind: an inbox notice (and email) about their overdue work, once a day. */
 export const remindPerson = (id: string): Promise<{ user_id: string; status: string }> => v2Send("POST", `/people/${encodeURIComponent(id)}/remind`);
+
+/** One period of GET /analytics/operational/team/{user_id} (a steward's counts for a month or week). */
+export interface StewardPeriod {
+  period: string;
+  items_processed: number;
+  items_approved: number;
+  items_rejected: number;
+  items_applied: number;
+  total_review_hours: number;
+  exceptions_resolved: number;
+  dqs_impact: number | null;
+}
+
+export interface StewardMetrics {
+  user_id: string;
+  periods: StewardPeriod[];
+  summary: { total_processed: number; total_approved: number; total_rejected: number; total_review_hours: number; approval_rate: number; avg_review_hours: number };
+}
+
+/** A steward's throughput by period. Null when no metric is recorded yet (the API answers 404 then). */
+export async function getStewardMetrics(userId: string): Promise<StewardMetrics | null> {
+  try {
+    return await v2Get<StewardMetrics>(`/analytics/operational/team/${encodeURIComponent(userId)}`);
+  } catch (e) {
+    if ((e as { response?: { status?: number } }).response?.status === 404) return null;
+    throw e;
+  }
+}

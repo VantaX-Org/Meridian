@@ -6,13 +6,15 @@ import { Inspector } from "../Inspector";
 import { ProcessDesigner } from "../screens/ProcessDesigner";
 import { setUrl } from "./nav-store";
 
-const h = vi.hoisted(() => ({ allowed: new Set<string>() }));
+const h = vi.hoisted(() => ({ allowed: new Set<string>(), fixture: true }));
+const dl = vi.hoisted(() => vi.fn(async (_p: string, _q: unknown, name: string) => name));
+vi.mock("@/lib/api/v2/download", () => ({ v2Download: dl }));
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 vi.mock("@/lib/v2/hooks", async (orig) => {
   const m = await orig<typeof import("@/lib/v2/hooks")>();
-  return { ...m, useV2Session: () => ({ persona: "steward", label: "Data steward", name: "", email: null, fixture: true, can: (a: string) => h.allowed.has(a) }) };
+  return { ...m, useV2Session: () => ({ persona: "steward", label: "Data steward", name: "", email: null, fixture: h.fixture, can: (a: string) => h.allowed.has(a) }) };
 });
 vi.mock("@/lib/api/v2/client", async (orig) => {
   const m = await orig<typeof import("@/lib/api/v2/client")>();
@@ -26,6 +28,8 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   resetWorkFixture();
   sent.mockClear();
+  dl.mockClear();
+  h.fixture = true;
 });
 
 const bodyOf = (method: string, path: string) => sent.mock.calls.find((c) => c[0] === method && c[1] === path)?.[2] as Record<string, unknown> | undefined;
@@ -135,6 +139,19 @@ describe("the process designer", () => {
     expect(screen.getByRole("button", { name: /^Sourcing/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Post goods receipt/ })).toBeInTheDocument();
     expect(screen.getByText(/Draft, version 1/)).toBeInTheDocument();
+  });
+
+  it("exports the model to PowerPoint for anyone who may export", async () => {
+    h.allowed = new Set(["export"]);
+    h.fixture = false;
+    await render();
+    fireEvent.click(screen.getByRole("button", { name: "Export to PowerPoint" }));
+    await waitFor(() => expect(dl).toHaveBeenCalledWith("/process-designer/models/pm-1/export/pptx", {}, "process-model.pptx"));
+  });
+
+  it("disables the PowerPoint export without an export permission", async () => {
+    await render();
+    expect(screen.getByRole("button", { name: "Export to PowerPoint" })).toBeDisabled();
   });
 
   it("renames a step and saves a new version", async () => {

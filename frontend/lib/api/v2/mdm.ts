@@ -126,3 +126,8 @@ export function getProcessDocument(run: string, module: string): Promise<Process
 export function proposeMerges(pairs: { match_score_id: string; priority: number; due_at?: string }[]): Promise<{ created: string[] }> {
   return v2Send<{ created: string[] }>("POST", "/insights/duplicates/merge-proposals", { pairs });
 }
+
+/** POST /glossary/{id}/ai-draft (trigger_ai): a proposed wording from Aletheia. Nothing is saved; the owner reviews it first. */
+export function draftTermWithAi(id: string): Promise<{ business_definition: string; why_it_matters_business: string; committed: boolean }> {
+  return v2Send("POST", `/glossary/${encodeURIComponent(id)}/ai-draft`);
+}

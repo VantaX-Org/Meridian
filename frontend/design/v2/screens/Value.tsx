@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getValue, type ImpactCategory, type Value as ValueData } from "@/lib/api/v2/analytics";
-import { getGuards, getLineageModel, type GuardStep } from "@/lib/api/v2/lineage";
+import { getGuards, getImpact, getLineageModel, type GuardStep, type ImpactRow } from "@/lib/api/v2/lineage";
 import { money } from "@/lib/v2/format";
+import { useRunList } from "@/lib/v2/queries";
 import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
 import { EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
@@ -87,6 +88,7 @@ export function Value() {
       <ImpactPanel rows={impacts} />
       <MonthsPanel rows={months} currency={cur} />
       <GuardsPanel />
+      <RunImpactPanel currency={cur} />
     </CcPage>
   );
 }
@@ -208,6 +210,54 @@ function GuardsPanel() {
           )}
         </>
       )}
+    </Section>
+  );
+}
+
+const SEVERITY: Record<string, () => string> = { low: () => t("Low"), medium: () => t("Medium"), high: () => t("High"), critical: () => t("Critical") };
+const KIND: Record<string, () => string> = { full_block: () => t("Blocks the feature"), degraded: () => t("Degrades the feature"), cosmetic: () => t("Cosmetic") };
+
+/**
+ * What the latest run's failing checks reach: the KPIs, processes and S/4HANA features behind them, with findings,
+ * records affected, the worst severity and, when the findings are priced, the cost at risk (api/routes/lineage.py /impact).
+ */
+function RunImpactPanel({ currency }: { currency: string }) {
+  const f = useFixture();
+  const runs = useRunList();
+  const vid = runs.data?.versions[0]?.id ?? null;
+  const q = useQuery({ queryKey: ["v2", "lineage", "impact", f, vid], queryFn: () => getImpact(vid as string), enabled: vid !== null, staleTime: 60_000, retry });
+  const title = t("What the latest run puts at risk");
+  const none = vid === null && !runs.isPending && !runs.isError;
+  const sq = none ? { isPending: false, isError: false, error: null, data: null, refetch: () => undefined } : runs.isError ? { isPending: false, isError: true, error: runs.error, data: null, refetch: () => void runs.refetch() } : q;
+  return (
+    <Section q={sq} title={title} meta={t("The KPIs, processes and S/4HANA features behind the failing rules")} testId="val-run-impact">
+      {() => {
+        if (!q.data) return <EmptyFrame>{t("No finished run has been priced yet.")}</EmptyFrame>;
+        const d = q.data;
+        const groups: [string, ImpactRow[]][] = [[t("KPIs"), d.kpis], [t("Processes"), d.processes], [t("S/4HANA features"), d.features]];
+        const rows = groups.flatMap(([g, r]) => r.map((x) => ({ g, x })));
+        return rows.length === 0 ? <EmptyFrame>{t("No failing rule reaches a KPI, process or feature in this run.")}</EmptyFrame> : (
+          <>
+            <Table title={title} head={[t("Reaches"), t("Kind"), t("Findings"), t("Records affected"), t("Worst severity"), t("Cost at risk")]}>
+              {rows.map(({ g, x }) => (
+                <tr key={x.id}>
+                  <th scope="row" className="m2-card-lead">{x.label}</th>
+                  <td data-label={t("Kind")}>{g}{x.worst_impact ? <div className="m2-meta">{KIND[x.worst_impact]?.() ?? x.worst_impact}</div> : null}</td>
+                  <td data-label={t("Findings")} className="m2-num">{int(x.findings)}</td>
+                  <td data-label={t("Records affected")} className="m2-num">{int(x.records_affected)}</td>
+                  <td data-label={t("Worst severity")}>{x.worst_severity ? (SEVERITY[x.worst_severity]?.() ?? x.worst_severity) : f1(null)}</td>
+                  <td data-label={t("Cost at risk")} className="m2-num">{d.cost_available && x.cost_at_risk != null ? money(x.cost_at_risk, currency) : f1(null)}</td>
+                </tr>
+              ))}
+            </Table>
+            {d.unmapped_checks.length ? (
+              <p className="m2-meta" data-testid="val-run-impact-unmapped">
+                {t("{n, plural, one {# failing rule is} other {# failing rules are}} not placed behind any KPI by the lineage model:", { n: d.unmapped_checks.length })} <Mono>{d.unmapped_checks.join(", ")}</Mono>
+              </p>
+            ) : null}
+          </>
+        );
+      }}
     </Section>
   );
 }

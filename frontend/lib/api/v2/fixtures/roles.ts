@@ -232,6 +232,7 @@ export function rolesFixtureResponse(path: string, params: Params): unknown {
     return { target_kind: kind, target_id: id, comments: s.comments.filter((c) => c.target_kind === kind && c.target_id === id) };
   }
   if (path === "/comments/mentions/unread") return { count: s.mentions };
+  if (path === "/watches/mine") return { watches: s.watches.map((w) => ({ target_kind: w.target_kind, target_id: w.target_id, events: w.events, created_at: "2026-10-12T09:30:00Z" })) };
   if (path === "/watches") {
     const hit = s.watches.find((w) => w.target_kind === params.target_kind && w.target_id === params.target_id);
     return hit ?? { target_kind: params.target_kind, target_id: params.target_id, watching: false, events: [] };

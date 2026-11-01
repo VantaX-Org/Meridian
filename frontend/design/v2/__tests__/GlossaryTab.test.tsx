@@ -142,6 +142,25 @@ describe("the term inspector", () => {
     expect(update).toHaveBeenCalledWith("gt-meins", expect.objectContaining({ business_name: "Base unit" }));
   });
 
+  it("drafts a definition with Aletheia into the form without saving it", async () => {
+    const draft = vi.spyOn(mdm, "draftTermWithAi");
+    const update = vi.spyOn(mdm, "updateTerm");
+    const d = await open();
+    fireEvent.click(within(d).getByRole("button", { name: "Edit" }));
+    fireEvent.click(within(d).getByRole("button", { name: "Draft definition with Aletheia" }));
+    expect(await within(d).findByTestId("action-result")).toHaveTextContent("Draft ready to review");
+    expect(draft).toHaveBeenCalledWith("gt-meins");
+    expect(within(d).getByRole("textbox", { name: "Definition" })).toHaveValue("A proposed definition, drafted by Aletheia for review.");
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("without the AI permission there is no draft button", async () => {
+    granted = ["approve"];
+    const d = await open();
+    fireEvent.click(within(d).getByRole("button", { name: "Edit" }));
+    expect(within(d).queryByRole("button", { name: "Draft definition with Aletheia" })).toBeNull();
+  });
+
   it("approves a term under review: it becomes active and is marked reviewed", async () => {
     const update = vi.spyOn(mdm, "updateTerm");
     const review = vi.spyOn(mdm, "reviewTerm");

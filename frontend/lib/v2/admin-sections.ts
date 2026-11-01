@@ -4,7 +4,7 @@ export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "lice
 /** Step 10: policy packs and scheduled digests. */
 export type Step10Slug = "policypacks" | "digests";
 /** Step 6c, the role capability audit (design/v2/admin/capabilities.tsx). */
-export type CapabilitySlug = "stewardship" | "configbundle" | "viewas" | "rulesio" | "sharelinks" | "delegations";
+export type CapabilitySlug = "stewardship" | "configbundle" | "viewas" | "rulesio" | "sharelinks" | "delegations" | "ruleaccuracy";
 
 export interface AdminSection {
   slug: AdminSlug;
@@ -33,6 +33,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { slug: "configbundle", get label() { return t("Configuration bundle"); }, get group() { return t("Tenant"); }, get lead() { return t("Export the tenant's configuration as one file, and import one with a diff first."); }, needs: ["manage_settings"] },
   { slug: "mappings", get label() { return t("Field mappings"); }, get group() { return t("Data"); }, get lead() { return t("Which column in your files holds each standard SAP field."); }, needs: ["manage_field_mappings", "manage_settings", "view"] },
   { slug: "reference", get label() { return t("Reference data"); }, get group() { return t("Data"); }, get lead() { return t("Postal code and bank code lists that address and bank rules compare against."); }, needs: ["manage_systems", "manage_settings", "view"] },
+  { slug: "ruleaccuracy", get label() { return t("Rule accuracy"); }, get group() { return t("Data"); }, get lead() { return t("How often each rule is right, from reviewer verdicts, and how many known bad records the rules caught."); }, needs: ["view"] },
   { slug: "matchrules", get label() { return t("Match rules"); }, get group() { return t("Data"); }, get lead() { return t("The field comparisons that decide when two records are the same, per object."); }, needs: ["manage_rules"] },
   { slug: "rulesio", get label() { return t("Rules import and export"); }, get group() { return t("Data"); }, get lead() { return t("Every rule as YAML or Excel, and many rules back in as drafts."); }, needs: ["manage_rules", "export"] },
   { slug: "policypacks", get label() { return t("Policy packs"); }, get group() { return t("Data"); }, get lead() { return t("GxP, SOX and GDPR field classes, the authority each answers to, and the rules that evidence them."); }, needs: ["manage_rules", "view"] },

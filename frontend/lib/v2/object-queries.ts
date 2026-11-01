@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
+import { queryKeys } from "@/lib/query-keys";
 import {
   getChangedChecks,
   getCompareSummary,
@@ -9,6 +10,7 @@ import {
   getDraftsFor,
   getExplain,
   getLearnedFor,
+  getFindingRootCause,
   getReadiness,
   getRuleFailuresBy,
   getRuleHistory,
@@ -111,4 +113,10 @@ export function useDrafts(module: string, enabled: boolean) {
 export function useStewards(enabled: boolean) {
   const f = useFixture();
   return useQuery({ queryKey: objKeys.stewards(f), queryFn: getStewards, staleTime: 5 * 60_000, retry: false, enabled });
+}
+
+/** Who set the failing values of a rule in a run; reads only once a run is known. */
+export function useFindingRootCause(id: string, run: string | null | undefined) {
+  const f = useFixture();
+  return useQuery({ queryKey: [...queryKeys.findingRootCause(id, run ?? ""), f] as const, queryFn: () => getFindingRootCause(run ?? "", id), staleTime: STALE, retry: false, enabled: Boolean(run) });
 }

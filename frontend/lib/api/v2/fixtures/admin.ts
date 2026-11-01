@@ -322,8 +322,27 @@ function wave(id: string, name: string, modules: string[], date: string | null, 
   };
 }
 
+/** A wave's readiness cockpit: every third object blocked, every third at risk, the rest ready. A never-analysed wave has none. */
+function waveCockpit(w: MigrationWave) {
+  const verdicts = ["go", "at_risk", "no_go"] as const;
+  const objects = w.last_run_id
+    ? w.modules.map((m, i) => {
+        const verdict = verdicts[i % 3];
+        const records = 1200 + i * 300;
+        const blocked = verdict === "go" ? 0 : verdict === "at_risk" ? 40 : 310;
+        return { module: m, label: m, verdict, score: [98, 91, 72][i % 3], records, records_blocked: blocked, blocker_count: verdict === "go" ? 0 : 1, dqs: [96, 90, 78][i % 3] };
+      })
+    : [];
+  const blockers = objects.filter((o) => o.blocker_count > 0).map((o) => ({ module: o.module, label: o.label, gap_type: "value_unmapped", field: "MARA.MTART", severity: o.verdict === "no_go" ? "critical" : "high", records: o.records_blocked, gaps: o.records_blocked }));
+  const blocked = objects.reduce((n, o) => n + o.records_blocked, 0);
+  return {
+    wave: clone(w), run_id: w.last_run_id, source_version_id: null, dest_system_type: "s4hana", verdict: w.last_verdict ?? "no_go", threshold: w.min_readiness, score: w.last_score,
+    records_total: objects.reduce((n, o) => n + o.records, 0), records_blocked: blocked, objects, trend: [], blockers,
+  };
+}
+
 let S: State | null = null;
-const st = (): State => (S ??= build());
+const st =(): State => (S ??= build());
 
 /** Test seam and `?fixture=1` reload: forget every change and start from the demo tenant again. */
 export function resetAdminFixture(): void {
@@ -434,6 +453,37 @@ function scheduleOptions() {
 }
 
 /** A read in the admin area, or NONE_ADMIN when the path is not one of its own. */
+let pilotKnown = 0;
+/** The pilot scorecard: a few rules with reviewer verdicts, and recall against whatever known-issues list was uploaded. */
+function pilotScorecard() {
+  const rule = (check_id: string, module: string, severity: string, message: string, flagged: number, fp: number, real: number) => {
+    const reviewed = fp + real;
+    const rated = reviewed >= 10;
+    const precision = rated ? real / reviewed : null;
+    return { check_id, module, severity, message, flagged, open: flagged - reviewed, false_positive: fp, real, reviewed, precision, rated, needs_tuning: precision !== null && precision < 0.9 };
+  };
+  const rules = [
+    rule("MM142", "material_master", "high", "Material has no base unit of measure", 3640, 9, 11),
+    rule("MM031", "material_master", "medium", "Material group is not in the standard list", 812, 1, 24),
+    rule("BP207", "business_partner", "low", "Postal code does not match the country format", 96, 0, 4),
+  ].sort((a, b) => Number(b.needs_tuning) - Number(a.needs_tuning));
+  const reviewed = rules.reduce((n, r) => n + r.reviewed, 0);
+  const falsePositives = rules.reduce((n, r) => n + r.false_positive, 0);
+  const caught = Math.floor(pilotKnown * 0.8);
+  return {
+    precision: { reviewed, false_positives: falsePositives, precision: (reviewed - falsePositives) / reviewed, min_reviewed_per_rule: 10, target: 0.9 },
+    rules,
+    recall: {
+      known: pilotKnown,
+      caught,
+      recall: pilotKnown ? caught / pilotKnown : null,
+      missed: pilotKnown ? [{ module: "material_master", record_ref: "MARA|000000000000100234", note: "Wrong base unit, found by the plant" }] : [],
+      missed_total: pilotKnown - caught,
+      objects_not_analysed: pilotKnown ? ["business_partner"] : [],
+    },
+  };
+}
+
 export function adminFixtureResponse(path: string, params: Record<string, unknown>): unknown {
   const s = st();
   if (path === "/users") {
@@ -498,6 +548,7 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
     const list = s.mappings.filter((m) => (!params.module || m.module === params.module) && (params.is_mapped === undefined || String(m.is_mapped) === String(params.is_mapped)) && (!params.search || `${m.standard_field} ${m.standard_label ?? ""} ${m.customer_field ?? ""}`.toLowerCase().includes(text(params.search).toLowerCase())));
     return { mappings: clone(list), total: list.length, self_service_enabled: true };
   }
+  if (/^\/systems\/[^/]+\/pilot\/scorecard$/.test(path)) return clone(pilotScorecard());
   const ref = /^\/systems\/([^/]+)\/reference$/.exec(path);
   if (ref) return clone(s.reference[decodeURIComponent(ref[1])] ?? []);
   if (path === "/audit") {
@@ -534,6 +585,12 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
   if (path === "/reports/schedules") return clone(s.schedules);
   if (path === "/reports/schedules/options") return scheduleOptions();
   if (path === "/migration/waves") return { waves: clone(s.waves) };
+  const wc = /^\/migration\/waves\/([^/]+)\/cockpit$/.exec(path);
+  if (wc) {
+    const w = s.waves.find((x) => x.id === decodeURIComponent(wc[1]));
+    if (!w) throw new AdminNotFound(path);
+    return waveCockpit(w);
+  }
   return NONE_ADMIN;
 }
 
@@ -795,6 +852,11 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     });
     return { reset_count: n, module: text(params.module) || "all" };
   }
+  if (method === "POST" && /^\/systems\/[^/]+\/pilot\/known-issues$/.test(path)) {
+    const rows = text(body).split(/\r?\n/).filter((l) => l.trim() && !/^object\s*,/i.test(l));
+    pilotKnown = rows.filter((l) => l.split(",").length >= 2).length;
+    return { records: pilotKnown, rejected: rows.length - pilotKnown };
+  }
   const refUp = /^\/systems\/([^/]+)\/reference\/(postal-codes|bic)$/.exec(path);
   if (refUp && method === "POST") {
     const id = decodeURIComponent(refUp[1]);
@@ -880,6 +942,21 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     if (w.signed_off_at) throw new AdminRefused(409, "This wave is already signed off.");
     Object.assign(w, { signed_off_by: "u-me", signed_off_at: NOW, updated_at: NOW });
     return clone(w);
+  }
+  const wr = /^\/migration\/waves\/([^/]+)\/run$/.exec(path);
+  if (wr && method === "POST") {
+    const w = s.waves.find((x) => x.id === decodeURIComponent(wr[1]));
+    if (!w) throw new AdminNotFound(path);
+    if (!w.source_system_id || w.modules.length === 0) throw new AdminRefused(400, "Set a source system and at least one module first.");
+    return { run_id: "fx-run-1", task_id: "fx-task-1", status: "queued", mode: "wave", modules: [...w.modules] };
+  }
+  const wf = /^\/migration\/waves\/([^/]+)\/blockers\/fix-batch$/.exec(path);
+  if (wf && method === "POST") {
+    const w = s.waves.find((x) => x.id === decodeURIComponent(wf[1]));
+    if (!w) throw new AdminNotFound(path);
+    if (!w.last_run_id) throw new AdminNotFound(path);
+    if (!b.module || !b.gap_type) throw new AdminRefused(422, "A module and a gap type are required.");
+    return { id: nextId("batch"), status: "draft", items: 40, with_proposal: 32, auto_approvable: 12 };
   }
   const wv = /^\/migration\/waves\/([^/]+)$/.exec(path);
   if (wv) {

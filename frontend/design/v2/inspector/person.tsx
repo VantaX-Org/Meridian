@@ -4,12 +4,13 @@ import "../approvals.css";
 import { useMemo } from "react";
 import { formatDate } from "@/lib/format";
 import { getWork } from "@/lib/api/v2/work";
-import { objectHref, objectsLine, roleWord, slaMet, slaWord, workByObject } from "@/lib/v2/people";
-import { useBatches, usePeople, usePersonWork } from "@/lib/v2/approvals-queries";
+import { objectHref, objectsLine, roleWord, slaMet, slaWord, stewardSeries, workByObject } from "@/lib/v2/people";
+import { useBatches, usePeople, usePersonWork, useStewardMetrics } from "@/lib/v2/approvals-queries";
 import { useLandscape } from "@/lib/v2/queries";
 import { int } from "@/lib/v2/score";
 import { useOpenItem } from "@/lib/v2/hooks";
 import type { RowRef } from "@/lib/v2/work-actions";
+import { TrendChart } from "../charts/TrendChart";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { BatchButtons, ReassignMenu, day, money, useBatchControls } from "../screens/batch-parts";
@@ -26,6 +27,9 @@ function PersonBody({ id }: { id: string }) {
   const landscape = useLandscape(null).data;
   const work = usePersonWork(id, Boolean(p?.is_me), Boolean(p));
   const batches = useBatches();
+  const metrics = useStewardMetrics(id, Boolean(p));
+  const series = useMemo(() => stewardSeries(metrics.data?.periods ?? []), [metrics.data]);
+  const top = Math.max(1, ...series.map((s) => s.processed));
   const { hrefFor } = useOpenItem();
   const { outcome, run, clear } = useOutcome();
   const controls = useBatchControls((o) => {
@@ -60,6 +64,43 @@ function PersonBody({ id }: { id: string }) {
         <Fact label={t("Breaches this month")}>{int(p.breaches_this_month)}</Fact>
         <Fact label={t("Last action")}>{p.last_action_at ? formatDate(p.last_action_at, "datetime") : <Dash why={t("No action is recorded")} />}</Fact>
       </Facts>
+
+      <h3>{t("Throughput and approval rate")}</h3>
+      {metrics.isLoading ? (
+        <Skeleton width="100%" height={120} />
+      ) : metrics.isError ? (
+        <ErrorFrame onRetry={() => void metrics.refetch()}>{t("Their throughput could not be read.")}</ErrorFrame>
+      ) : series.length === 0 || !metrics.data ? (
+        <EmptyFrame>{t("No throughput is recorded for {name} yet.", { name: p.name })}</EmptyFrame>
+      ) : (
+        <div data-testid="person-throughput">
+          <Facts>
+            <Fact label={t("Records processed")}>{int(metrics.data.summary.total_processed)}</Fact>
+            <Fact label={t("Approval rate")}>{`${metrics.data.summary.approval_rate}%`}</Fact>
+            <Fact label={t("Average review time")}>{t("{hours} hours", { hours: metrics.data.summary.avg_review_hours })}</Fact>
+          </Facts>
+          <TrendChart
+            points={series.map((s) => ({ id: s.period, label: s.period, title: t("{period}: {n} records processed", { period: s.period, n: int(s.processed) }), value: s.processed }))}
+            domain={[0, top]}
+            ticks={[0, Math.round(top / 2), top]}
+            label={t("Records processed per period")}
+            yLabel={t("Records processed")}
+            format={int}
+            height={160}
+            testId="person-throughput-trend"
+          />
+          <TrendChart
+            points={series.map((s) => ({ id: s.period, label: s.period, title: s.rate == null ? t("{period}: nothing decided", { period: s.period }) : t("{period}: {rate}% approved", { period: s.period, rate: s.rate }), value: s.rate }))}
+            domain={[0, 100]}
+            ticks={[0, 50, 100]}
+            label={t("Share of decided records approved, per period")}
+            yLabel={t("Approval rate")}
+            format={(v) => `${v}%`}
+            height={160}
+            testId="person-approval-trend"
+          />
+        </div>
+      )}
 
       <h3>{t("Their objects")}</h3>
       {p.objects_owned.length === 0 ? (

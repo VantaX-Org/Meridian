@@ -25,7 +25,7 @@ import { APP_VERSION } from "@/lib/version";
 import { Actions, InspectorFrame } from "../Inspector";
 import { EmptyFrame, Skeleton, V2Link } from "../parts";
 import { copyText } from "../admin/kit";
-import { SubscriptionsBlock } from "./collab";
+import { SubscriptionsBlock, WatchListBlock } from "./collab";
 
 /* ── Preferences ── */
 
@@ -193,6 +193,7 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
       </p>
       <DeliveryLog />
       <SubscriptionsBlock />
+      <WatchListBlock />
       <Actions>
         <button type="button" className="m2-btn" onClick={onClose}>
           {tr("Done")}

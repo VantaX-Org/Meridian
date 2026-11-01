@@ -7,7 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import type { WorkGroup } from "@/lib/api/work";
 import type { WorkRow } from "@/lib/api/v2/types";
-import { errorSentence, exportFixSheet, exportFixSheetByObject, importFixSheet, type ImportResult } from "@/lib/api/v2/work";
+import { errorSentence, exportExceptions, exportFixSheet, exportFixSheetByObject, importFixSheet, type ImportResult } from "@/lib/api/v2/work";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { ledgerRegistry, type LedgerTarget } from "@/lib/v2/keys";
 import { refreshV2, useLandscape, useStatus } from "@/lib/v2/queries";
@@ -43,6 +43,7 @@ import { PAGE, allWorkRows, useGroupRows, useWorkGroups, useWorkRows, useWorkSum
 import { Grid, type GridColumn, type GridHandle } from "../Grid";
 import { IconChevron, IconClose, SeverityMark } from "../marks";
 import { MenuButton, type MenuEntry } from "../Menu";
+import { Confirm } from "../admin/kit";
 import { Coded, Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, V2Link } from "../parts";
 import { usePhone } from "@/lib/v2/hooks";
 import { useToast } from "../Toast";
@@ -264,6 +265,7 @@ export function WorkCanvas() {
     else run();
   }, [setBulk]);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [imp, setImp] = useState<{ name: string; busy: boolean; result?: ImportResult; error?: string } | null>(null);
   const chipsRef = useRef<HTMLDivElement>(null);
@@ -344,6 +346,15 @@ export function WorkCanvas() {
       toast.show(tr("Fix sheet saved as {filename}", { filename }));
     } catch (err) {
       toast.show(errorSentence(err, tr("The fix sheet could not be exported.")), "error");
+    }
+  }, [state, toast]);
+
+  const doExportRegister = useCallback(async () => {
+    try {
+      const { filename } = await exportExceptions(exportQueryOf(state));
+      toast.show(tr("Register saved as {filename}", { filename }));
+    } catch (err) {
+      toast.show(errorSentence(err, tr("The register could not be exported.")), "error");
     }
   }, [state, toast]);
 
@@ -557,6 +568,9 @@ export function WorkCanvas() {
     { kind: "separator" },
     { kind: "item", id: "reset", label: tr("Reset to the default view"), onSelect: () => goView(null) },
     { kind: "item", id: "save", label: tr("Save current view…"), onSelect: () => setSaving(true) },
+    ...(view && !view.builtin && view.mine !== false && !pastRun
+      ? [{ kind: "item", id: "delete-view", label: tr("Delete this view…"), onSelect: () => setDeleting(true) } as MenuEntry]
+      : []),
   ];
 
   // The strip of filters in force beyond the chip, each one removable.
@@ -701,6 +715,9 @@ export function WorkCanvas() {
   const moreEntries: MenuEntry[] = [
     { kind: "item", id: "export-sheet", label: tr("Export fix sheet"), kbd: "e", disabled: pastRun, onSelect: () => void doExport() },
     { kind: "item", id: "export-object", label: tr("Export by object"), sub: tr("One sheet per object, with each record's value at risk"), disabled: pastRun, onSelect: () => void doExport(true) },
+    ...(state.chip === "exceptions" && session.can("export")
+      ? [{ kind: "item", id: "export-register", label: tr("Export register"), sub: tr("Every record signed off as not an issue or an accepted risk, with who signed it off and why"), disabled: pastRun, onSelect: () => void doExportRegister() } as MenuEntry]
+      : []),
     ...(can.apply ? [{ kind: "item", id: "import", label: tr("Import filled sheet"), onSelect: () => setImportOpen((v) => !v) } as MenuEntry] : []),
   ];
   const toolbar = (
@@ -956,6 +973,25 @@ export function WorkCanvas() {
             const r = reason;
             setReason(null);
             void actions.decide(r.rows, r.kind, { note }).then((ok) => ok && r.clear?.());
+          }}
+        />
+      ) : null}
+      {deleting && view ? (
+        <Confirm
+          title={tr("Delete this view")}
+          body={tr("The saved view {name} is removed for you. The records it showed are not touched.", { name: view.name })}
+          confirm={tr("Delete view")}
+          danger
+          onCancel={() => setDeleting(false)}
+          onConfirm={() => {
+            setDeleting(false);
+            void viewsQ
+              .remove(view.id)
+              .then(() => {
+                toast.show(tr("Deleted the view {name}", { name: view.name }));
+                goView(null);
+              })
+              .catch((err) => toast.show(errorSentence(err, tr("The view could not be deleted.")), "error"));
           }}
         />
       ) : null}

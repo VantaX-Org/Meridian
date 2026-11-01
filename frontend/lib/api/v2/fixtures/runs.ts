@@ -41,12 +41,16 @@ const BASELINE_DEFAULT = RUNS[2].id; // 2 Oct
 const state: { baseline: string | null; archived: Set<string>; retried: Set<string>; tested: Record<string, boolean>; started: Job[] } = { baseline: BASELINE_DEFAULT, archived: new Set(), retried: new Set(), tested: {}, started: [] };
 
 /** Puts the fixture session back as it started: tests call this between cases. */
+/** Jobs a fixture session cancelled. */
+const cancelled = new Set<string>();
+
 export function resetRunsFixture(): void {
   state.baseline = BASELINE_DEFAULT;
   state.archived = new Set();
   state.retried = new Set();
   state.tested = {};
   state.started = [];
+  cancelled.clear();
 }
 
 // ── Per-object history ───────────────────────────────────────────────────────────────────────
@@ -438,7 +442,8 @@ function jobs(): Job[] {
       system_id: ECC.id,
     },
   );
-  return list;
+  const now = Math.floor(Date.now() / 1000);
+  return list.map((j) => (cancelled.has(j.id) ? { ...j, status: "cancelled" as const, message: "Cancelled", finished_at: now, updated_at: now } : j));
 }
 
 /** A job a fixture write started: queued, nothing read yet. */
@@ -593,7 +598,7 @@ export function runsFixtureResponse(path: string, params: Params): unknown {
   }
   const cfg = /^\/connectivity\/config-load\/([^/]+)$/.exec(path);
   if (cfg) return configLoadOf(decodeURIComponent(cfg[1]));
-  return NONE;
+  return runOpsFixtureResponse(path, params);
 }
 
 /** What each write answers in fixture mode, with the state change it would make. */
@@ -623,6 +628,14 @@ export function fixtureAction(name: string, args: Record<string, unknown>): unkn
     }
     case "download":
       return { ok: true };
+    case "cancel": {
+      const id = String(args.id);
+      const j = jobs().find((x) => x.id === id);
+      if (!j) throw new FixtureNotFound(`/jobs/${id}/cancel`);
+      if (j.status !== "queued" && j.status !== "running") throw Object.assign(new Error("This job has already finished"), { status: 409, response: { status: 409, data: { detail: "This job has already finished" } } });
+      cancelled.add(id);
+      return { id, status: "cancelled", cancelled_by_label: "Fixture user", cancelled_at: Math.floor(Date.now() / 1000), tasks_revoked: null };
+    }
     case "retry": {
       const id = String(args.id);
       state.retried.add(id);
@@ -650,4 +663,102 @@ export function fixtureAction(name: string, args: Record<string, unknown>): unkn
     default:
       throw new FixtureNotFound(`action ${name}`);
   }
+}
+
+// ── Run steps, record-level compare and the objects monitor ──────────────────────────────────
+
+/** GET /runs/{id}/steps: the analysis steps with their timings; the failed run stops at the checks with its error. */
+function stepsOf(id: string) {
+  const run = id === FAILED_RUN ? { run_at: "2026-10-15T09:12:00Z" } : RUNS.find((r) => r.id === id);
+  if (!run) throw new FixtureNotFound(`/runs/${id}/steps`);
+  const plan: [string, number][] = [["Load data", 41_000], ["Run checks", 512_000], ["Insights", 96_000], ["Build report", 28_000]];
+  let at = Date.parse(run.run_at);
+  const steps = [];
+  for (const [i, [name, ms]] of plan.entries()) {
+    const broken = id === FAILED_RUN && i === 1;
+    if (id === FAILED_RUN && i > 1) break;
+    steps.push({ step_number: i + 1, step_name: name, status: broken ? "failed" : "completed", started_at: new Date(at).toISOString(), finished_at: new Date(at + ms).toISOString(), duration_ms: ms, error_detail: broken ? "Rule MM-014 could not run: column MARC.DISMM is missing from the stored data." : null });
+    at += ms;
+  }
+  return { version_id: id, steps };
+}
+
+/** GET /versions/compare/records: counts of records newly failing, fixed and still failing per check, from the check changes. */
+function compareRecords(v2: string, v1: string | undefined) {
+  const ka = v1 ? numberOf(v1) : Math.max(1, numberOf(v2) - 1);
+  const kb = numberOf(v2);
+  const all = changesFor(ka, kb);
+  const rows = KIND_ORDER.flatMap((kind) =>
+    all[kind].map((c, i) => ({
+      check_id: c.check_id,
+      module: c.module,
+      severity: c.severity,
+      new: kind === "newly_failing" ? c.v2_affected : 0,
+      resolved: kind === "fixed" ? c.v1_affected : 0,
+      persisting: kind === "worse" || kind === "better" ? Math.min(c.v1_affected, c.v2_affected) : 0,
+      comparable: i % 9 !== 8,
+    })),
+  );
+  rows.sort((a, b) => b.new - a.new || b.persisting - a.persisting || a.check_id.localeCompare(b.check_id));
+  const totals = rows.filter((r) => r.comparable).reduce((t, r) => ({ new: t.new + r.new, resolved: t.resolved + r.resolved, persisting: t.persisting + r.persisting }), { new: 0, resolved: 0, persisting: 0 });
+  return { v1: v1 ?? RUNS[RUNS.length - ka].id, v2, totals, checks: rows };
+}
+
+function compareKeys(checkId: string, params: Params) {
+  const v2 = String(params.v2);
+  const v1 = params.v1 ? String(params.v1) : undefined;
+  const change = (["new", "resolved", "persisting"].includes(String(params.change)) ? String(params.change) : "new") as "new" | "resolved" | "persisting";
+  const row = compareRecords(v2, v1).checks.find((c) => c.check_id === checkId);
+  if (!row) throw new FixtureNotFound(`/versions/compare/records/${checkId}`);
+  const seed = [...checkId].reduce((n, ch) => n + ch.charCodeAt(0), 0);
+  const keys = Array.from({ length: Math.min(row[change], 2500) }, (_, i) => String(1_000_000 + ((seed * 7919 + i * 104_729) % 8_999_999)).padStart(10, "0"));
+  const q = String(params.search ?? "").toLowerCase();
+  const hits = q ? keys.filter((k) => k.includes(q)) : keys;
+  const offset = Number(params.offset ?? 0);
+  return { v1: v1 ?? "", v2, change, record_keys: hits.slice(offset, offset + Number(params.limit ?? 100)) };
+}
+
+const FRESH: Record<string, "fresh" | "due" | "stale" | "failed" | "paused" | "manual"> = { material_master: "fresh", business_partner: "fresh", accounts_payable: "due", accounts_receivable: "stale", fi_gl: "paused", asset_accounting: "manual" };
+
+function monitorOf(module: string) {
+  const i = MODULES.indexOf(module);
+  if (i < 0) throw new FixtureNotFound(`/objects/${module}/monitor`);
+  const freshness = FRESH[module] ?? (i % 5 === 4 ? "failed" : "fresh");
+  const manual = freshness === "manual";
+  const counts = countsFor(module, 6, 8);
+  const rules = changesFor(6, 8);
+  const failing = rules.newly_failing.filter((c) => c.module === module);
+  const fixed = rules.fixed.filter((c) => c.module === module);
+  return {
+    module,
+    system_id: ECC.id,
+    last_run_at: RUNS[0].run_at,
+    last_version_id: RUNS[0].id,
+    trigger: manual ? "manual" : "scheduled",
+    requested_by_label: manual ? "Fixture user" : null,
+    cadence: { cron: manual ? null : "0 5 * * 1", active: manual ? null : freshness !== "paused", interval_seconds: manual ? null : 604_800, profile_id: manual ? null : "prof-ecc-weekly" },
+    next_run_at: manual || freshness === "paused" ? null : "2026-10-23T05:00:00Z",
+    freshness,
+    baseline: { kind: "pinned" as const, version_id: BASELINE_DEFAULT, run_at: RUNS.find((r) => r.id === BASELINE_DEFAULT)?.run_at ?? null },
+    drift: {
+      new_failing: counts.newly_failing * 41,
+      recovered: counts.fixed * 37,
+      newly_failing_rules: failing.map((c) => ({ check_id: c.check_id, severity: c.severity, new: c.v2_affected })),
+      recovered_rules: fixed.map((c) => ({ check_id: c.check_id })),
+      newly_failing_rule_count: failing.length,
+      recovered_rule_count: fixed.length,
+    },
+  };
+}
+
+function runOpsFixtureResponse(path: string, params: Params): unknown {
+  const steps = /^\/runs\/([^/]+)\/steps$/.exec(path);
+  if (steps) return stepsOf(decodeURIComponent(steps[1]));
+  if (path === "/versions/compare/records") return compareRecords(String(params.v2), params.v1 ? String(params.v1) : undefined);
+  const keys = /^\/versions\/compare\/records\/([^/]+)$/.exec(path);
+  if (keys) return compareKeys(decodeURIComponent(keys[1]), params);
+  if (path === "/objects/monitor") return { objects: MODULES.map(monitorOf) };
+  const one = /^\/objects\/([^/]+)\/monitor$/.exec(path);
+  if (one) return monitorOf(decodeURIComponent(one[1]));
+  return NONE;
 }

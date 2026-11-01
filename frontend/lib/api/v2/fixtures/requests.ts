@@ -172,6 +172,12 @@ export function requestsRead(path: string, params: Record<string, unknown>): unk
   if (path === "/change-requests") return { items: clone(listed(params)) };
   const one = /^\/change-requests\/([^/]+)$/.exec(path);
   if (one) return clone(find(decodeURIComponent(one[1])));
+  const inst = /^\/workflows\/instances\/([^/]+)$/.exec(path);
+  if (inst) {
+    const d = state.details.find((x) => x.workflow?.id === decodeURIComponent(inst[1]));
+    if (!d || !d.workflow) fail(404, "Workflow not found.");
+    return clone({ ...d.workflow, object_kind: "change_request", object_id: d.request.id, history: d.history });
+  }
   if (path === "/workflows/definitions") return { items: clone(state.defs) };
   if (path === "/workflows/facts") return facts();
   if (path === "/workflows/tasks") return { items: clone(state.tasks.filter((t) => !params.object_kind || t.object_kind === params.object_kind)) };

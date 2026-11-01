@@ -152,3 +152,20 @@ describe("Compare canvas", () => {
     expect(alert).toHaveTextContent("These two runs could not be compared");
   });
 });
+
+describe("Compare records", () => {
+  it("counts records per rule, dashes the rules that cannot be compared, and drills into one rule's keys", async () => {
+    renderWithQuery(<CompareCanvas a={A} b={B} />);
+    const section = await screen.findByTestId("compare-records");
+    const rows = await within(section).findAllByTestId("compare-records-row");
+    const open = rows.find((r) => r.getAttribute("data-comparable") === "true");
+    expect(open).toBeTruthy();
+    const skipped = rows.find((r) => r.getAttribute("data-comparable") === "false");
+    if (skipped) expect(within(skipped).getByText("Not comparable")).toBeTruthy();
+    fireEvent.click(within(open as HTMLElement).getByRole("button", { name: "See records" }));
+    const list = await screen.findByTestId("compare-record-list");
+    await waitFor(() => expect(within(list).getByTestId("compare-record-keys").children.length).toBeGreaterThan(0));
+    fireEvent.change(within(list).getByRole("searchbox"), { target: { value: "zzzzzz" } });
+    await within(list).findByText("No record key matches the search.");
+  });
+});
