@@ -913,6 +913,14 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     if (!w.source_system_id || w.modules.length === 0) throw new AdminRefused(400, "Set a source system and at least one module first.");
     return { run_id: "fx-run-1", task_id: "fx-task-1", status: "queued", mode: "wave", modules: [...w.modules] };
   }
+  const wf = /^\/migration\/waves\/([^/]+)\/blockers\/fix-batch$/.exec(path);
+  if (wf && method === "POST") {
+    const w = s.waves.find((x) => x.id === decodeURIComponent(wf[1]));
+    if (!w) throw new AdminNotFound(path);
+    if (!w.last_run_id) throw new AdminNotFound(path);
+    if (!b.module || !b.gap_type) throw new AdminRefused(422, "A module and a gap type are required.");
+    return { id: nextId("batch"), status: "draft", items: 40, with_proposal: 32, auto_approvable: 12 };
+  }
   const wv = /^\/migration\/waves\/([^/]+)$/.exec(path);
   if (wv) {
     const id = decodeURIComponent(wv[1]);

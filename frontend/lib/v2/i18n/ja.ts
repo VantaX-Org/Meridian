@@ -6723,4 +6723,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Readiness report saved": "準備度レポートを保存しました",
   "Download the report as Excel": "レポートを Excel でダウンロード",
   "Download the report as PDF": "レポートを PDF でダウンロード",
+  "Fix batch drafted for {gap}": "{gap} の修正バッチを下書きしました",
+  "{n, plural, one {# record is} other {# records are}} in the batch, {p} with a proposed fix. Review it before anything is changed.": "バッチには {n} 件のレコードがあり、{p} 件に修正案があります。変更前に内容を確認してください。",
+  "Open the fix batch": "修正バッチを開く",
+  "Draft a fix batch": "修正バッチを下書きする",
 };

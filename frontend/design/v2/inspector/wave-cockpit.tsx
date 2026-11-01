@@ -1,9 +1,10 @@
 "use client";
 
-import type { MigrationWave, WaveVerdict } from "@/types/api";
+import { useState } from "react";
+import type { MigrationWave, WaveBlocker, WaveVerdict } from "@/types/api";
 import * as rep from "@/lib/api/v2/reports";
 import { useWaveCockpit } from "@/lib/v2/admin-queries";
-import { useV2Session } from "@/lib/v2/hooks";
+import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { f1, int } from "@/lib/v2/score";
@@ -32,6 +33,7 @@ export function WaveCockpitBlock({ wave }: { wave: MigrationWave }) {
   const analyse = () =>
     void run("analyse", async () => {
       const r = await rep.runWave(wave.id);
+      setBatch(null);
       return {
         tone: "ok",
         title: t("Analysis of {name} queued", { name: wave.name }),
@@ -40,6 +42,19 @@ export function WaveCockpitBlock({ wave }: { wave: MigrationWave }) {
     });
   const c = cockpit.data;
   const canExport = session.can("export");
+  const canFix = session.can("apply") && !session.shared && !session.viewAs;
+  const { hrefFor } = useOpenItem();
+  const [batch, setBatch] = useState<string | null>(null);
+  const draft = (b: WaveBlocker) =>
+    void run(`fix:${b.module}:${b.gap_type}:${b.field ?? ""}`, async () => {
+      const r = await rep.draftBlockerFixBatch(wave.id, { module: b.module, gap_type: b.gap_type, field: b.field });
+      setBatch(r.id);
+      return {
+        tone: "ok",
+        title: t("Fix batch drafted for {gap}", { gap: gapText(b.gap_type) }),
+        detail: t("{n, plural, one {# record is} other {# records are}} in the batch, {p} with a proposed fix. Review it before anything is changed.", { n: r.items, p: r.with_proposal }),
+      };
+    });
   const download = (fmt: rep.WaveReportFormat) =>
     void run(`report:${fmt}`, async () => {
       const name = await rep.downloadWaveReport(wave.id, fmt);
@@ -62,7 +77,7 @@ export function WaveCockpitBlock({ wave }: { wave: MigrationWave }) {
       {outcome ? (
         <ResultFrame outcome={outcome}>
           <span>
-            <V2Link href="/migration">{t("Open the migration analyses")}</V2Link>
+            {batch ? <V2Link href={hrefFor({ kind: "batch", id: batch })}>{t("Open the fix batch")}</V2Link> : <V2Link href="/migration">{t("Open the migration analyses")}</V2Link>}
           </span>
         </ResultFrame>
       ) : null}
@@ -126,6 +141,7 @@ export function WaveCockpitBlock({ wave }: { wave: MigrationWave }) {
                     <th scope="col">{t("Severity")}</th>
                     <th scope="col">{t("Records")}</th>
                     <th scope="col">{t("Gaps")}</th>
+                    {canFix ? <th scope="col">{t("Fix")}</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -139,6 +155,13 @@ export function WaveCockpitBlock({ wave }: { wave: MigrationWave }) {
                       </td>
                       <td>{int(b.records)}</td>
                       <td>{int(b.gaps)}</td>
+                      {canFix ? (
+                        <td>
+                          <button type="button" className="m2-btn m2-sm" disabled={pending !== null} onClick={() => draft(b)}>
+                            {pending === `fix:${b.module}:${b.gap_type}:${b.field ?? ""}` ? t("Drafting…") : t("Draft a fix batch")}
+                          </button>
+                        </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>

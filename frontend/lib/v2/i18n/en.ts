@@ -6722,6 +6722,10 @@ export const en = {
   "Readiness report saved": "Readiness report saved",
   "Download the report as Excel": "Download the report as Excel",
   "Download the report as PDF": "Download the report as PDF",
+  "Fix batch drafted for {gap}": "Fix batch drafted for {gap}",
+  "{n, plural, one {# record is} other {# records are}} in the batch, {p} with a proposed fix. Review it before anything is changed.": "{n, plural, one {# record is} other {# records are}} in the batch, {p} with a proposed fix. Review it before anything is changed.",
+  "Open the fix batch": "Open the fix batch",
+  "Draft a fix batch": "Draft a fix batch",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

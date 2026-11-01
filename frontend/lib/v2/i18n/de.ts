@@ -6723,4 +6723,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Readiness report saved": "Bereitschaftsbericht gespeichert",
   "Download the report as Excel": "Bericht als Excel herunterladen",
   "Download the report as PDF": "Bericht als PDF herunterladen",
+  "Fix batch drafted for {gap}": "Korrekturstapel für {gap} entworfen",
+  "{n, plural, one {# record is} other {# records are}} in the batch, {p} with a proposed fix. Review it before anything is changed.": "{n, plural, one {# Datensatz ist} other {# Datensätze sind}} im Stapel, {p} mit einem Korrekturvorschlag. Prüfen Sie ihn, bevor etwas geändert wird.",
+  "Open the fix batch": "Korrekturstapel öffnen",
+  "Draft a fix batch": "Korrekturstapel entwerfen",
 };
