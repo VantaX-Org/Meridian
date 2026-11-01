@@ -7,7 +7,7 @@ import type { CellVerdict, ImpactResult } from "@/lib/api/v2/object";
 import type { Receipt, Verdict } from "@/lib/api/v2/types";
 import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
 import { useConfigImpact, useReadiness } from "@/lib/v2/object-queries";
-import { useLandscape, useReceipt } from "@/lib/v2/queries";
+import { useLandscape, useObjectRules, useReceipt } from "@/lib/v2/queries";
 import { f1, int, moduleFromSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { SeverityMark, VerdictMark, type SeverityKey } from "../../marks";
 import { Ruler } from "../../Ruler";
@@ -48,7 +48,7 @@ function CapStatement({ receipt }: { receipt: Receipt }) {
   );
 }
 
-function FeatureList({ title, results, module, empty }: { title: string; results: ImpactResult[]; module: string; empty: string }) {
+function FeatureList({ title, results, module, empty, names }: { title: string; results: ImpactResult[]; module: string; empty: string; names: Map<string, string> }) {
   const { hrefFor } = useOpenItem();
   return (
     <div>
@@ -59,18 +59,16 @@ function FeatureList({ title, results, module, empty }: { title: string; results
       {results.length === 0 ? (
         <p className="m2-rp m2-meta">{empty}</p>
       ) : (
-        <ul className="m2-flist">
+        <ul className="m2-flist m2-flist-stack">
           {results.map((r) => (
             <li key={r.feature}>
               <V2Link href={hrefFor({ kind: "feature", id: r.feature })}>{r.feature}</V2Link>
-              <span className="m2-meta">
-                {rulesOf(r, module).map((id, i) => (
-                  <span key={id}>
-                    {i > 0 ? ", " : ""}
-                    <V2Link href={hrefFor({ kind: "rule", id })} className="m2-mono">{id}</V2Link>
-                  </span>
-                ))}
-              </span>
+              {rulesOf(r, module).map((id) => (
+                <span key={id} className="m2-meta m2-frule">
+                  <V2Link href={hrefFor({ kind: "rule", id })} className="m2-mono">{id}</V2Link>
+                  <span>{names.get(id) ?? "—"}</span>
+                </span>
+              ))}
             </li>
           ))}
         </ul>
@@ -124,7 +122,7 @@ function ByObject({ module, waves }: { module: string; waves: Set<string> }) {
 }
 
 /** The rules of this object behind blocked or degraded features, worst first, with the features each one holds back. */
-function Blockers({ results, module }: { results: ImpactResult[]; module: string }) {
+function Blockers({ results, module, names }: { results: ImpactResult[]; module: string; names: Map<string, string> }) {
   const { hrefFor } = useOpenItem();
   const by = new Map<string, { count: number; severity?: string; features: string[] }>();
   for (const r of results) {
@@ -154,6 +152,7 @@ function Blockers({ results, module }: { results: ImpactResult[]; module: string
               <th scope="row">
                 {e.severity ? <><SeverityMark severity={e.severity as SeverityKey} />{" "}</> : null}
                 <V2Link href={hrefFor({ kind: "rule", id })} className="m2-mono">{id}</V2Link>
+                <span className="m2-meta m2-frule-name">{names.get(id) ?? "—"}</span>
               </th>
               <td>{e.features.join(", ")}</td>
               <td className="m2-r">{int(e.count)}</td>
@@ -172,6 +171,8 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
   const L = useLandscape(run);
   const label = `${L.data?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ")}`;
   const receiptQ = useReceipt(apiModule, run);
+  const rulesQ = useObjectRules(apiModule, run);
+  const names = useMemo(() => new Map((rulesQ.data ?? []).map((r) => [r.check_id, r.name])), [rulesQ.data]);
   const readinessQ = useReadiness();
   const impactQ = useConfigImpact(receiptQ.data?.run_id);
   const receipt = receiptQ.data;
@@ -263,10 +264,10 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
         ) : (
           <>
             <div className="m2-chg">
-              <FeatureList title={t("Blocked in S/4HANA")} results={blocked} module={apiModule} empty={t("No S/4 feature is blocked by a rule of this object.")} />
-              <FeatureList title={t("Degraded in S/4HANA")} results={degraded} module={apiModule} empty={t("No S/4 feature is degraded by a rule of this object.")} />
+              <FeatureList title={t("Blocked in S/4HANA")} results={blocked} module={apiModule} names={names} empty={t("No S/4 feature is blocked by a rule of this object.")} />
+              <FeatureList title={t("Degraded in S/4HANA")} results={degraded} module={apiModule} names={names} empty={t("No S/4 feature is degraded by a rule of this object.")} />
             </div>
-            <Blockers results={mine} module={apiModule} />
+            <Blockers results={mine} module={apiModule} names={names} />
             <p className="m2-prov">{t("Mapped from the rules that fail by the feature impact rules, for the rules of this object in this run.")}</p>
           </>
         )}

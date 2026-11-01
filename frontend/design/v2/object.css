@@ -107,6 +107,11 @@
 .m2-flist { list-style: none; margin: 0; padding: 0; font-size: var(--m2-fs-13); }
 .m2-flist li { display: flex; justify-content: space-between; gap: var(--m2-s3); padding: var(--m2-s2) 0; border-bottom: 1px solid var(--m2-line); }
 .m2-flist li .m2-meta { text-align: right; }
+/* Readiness: each feature stacks its rules, every code with its name beside it. */
+.m2-flist-stack li { flex-direction: column; align-items: stretch; gap: var(--m2-s1); }
+.m2-flist-stack li .m2-frule { display: flex; gap: var(--m2-s3); text-align: left; }
+.m2-frule .m2-mono { flex: none; }
+.m2-frule-name { display: block; font-weight: 400; }
 
 @media (max-width: 900px) {
   .m2-rungrid, .m2-rcols, .m2-chg { grid-template-columns: minmax(0, 1fr); }
