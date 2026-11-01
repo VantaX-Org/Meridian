@@ -6699,6 +6699,7 @@ export const en = {
   "The test message could not be sent.": "The test message could not be sent.",
   "Send me a test message": "Send me a test message",
   "Nothing has been sent to you yet.": "Nothing has been sent to you yet.",
+  "{d, plural, one {# duplicate pair} other {# duplicate pairs}}, {o, plural, one {# outlier} other {# outliers}}": "{d, plural, one {# duplicate pair} other {# duplicate pairs}}, {o, plural, one {# outlier} other {# outliers}}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

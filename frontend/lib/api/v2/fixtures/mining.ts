@@ -48,20 +48,30 @@ const LINKS: [string, string, string, string, number][] = [
   ["sd_customer_master", "KTOKD", "AKONT", "functional_dependency", 0.62],
 ];
 
+// The dictionary texts the route attaches (api/routes/mining.py field_text); fields it does not know are left out.
+const TEXTS: Record<string, Record<string, string>> = {
+  material_master: { MAKTX: "Material description", MEINS: "Base unit of measure", MATKL: "Material group", BRGEW: "Gross weight", GEWEI: "Weight unit", NTGEW: "Net weight", PLIFZ: "Planned delivery time (days)", MTART: "Material type", SPART: "Division" },
+  business_partner: { STREET: "Street and house number", CITY1: "City", COUNTRY: "Country key", REGION: "Region (state / province / canton)" },
+  sd_customer_master: { NAME1: "Customer name 1", LAND1: "Country key", KTOKD: "Customer account group" },
+};
+const text = (module: string, field: string): string | null => TEXTS[module]?.[field] ?? null;
+
 const duplicates = (): DuplicatePair[] =>
   DUPES.map(([module_id, record_a, record_b, match_score, id_field, matched_fields], i) => ({
     id: `dup-${i + 1}`, version_id: RUN, module_id, record_a, record_b, match_score, id_field, matched_fields, detected_at: AT,
+    field_texts: Object.fromEntries(matched_fields.flatMap((f) => (text(module_id, f) ? [[f, text(module_id, f)!]] : []))),
   }));
 
 const anomalies = (): AnomalyItem[] =>
   OUTLIERS.map(([module_id, field_name, record_key, field_value, detection_method, z_score, lower_bound, upper_bound, severity], i) => ({
-    id: `anom-${i + 1}`, version_id: RUN, module_id, field_name, field_value, record_index: 1_000 + i, record_key,
+    id: `anom-${i + 1}`, version_id: RUN, module_id, field_name, field_description: text(module_id, field_name), field_value, record_index: 1_000 + i, record_key,
     detection_method, z_score, lower_bound, upper_bound, severity, detected_at: AT,
   }));
 
 const relationships = (): RelationshipItem[] =>
   LINKS.map(([module_id, field_a, field_b, relationship_type, strength_score], i) => ({
     id: `rel-${i + 1}`, version_id: RUN, module_id, field_a, field_b, relationship_type, strength_score, detected_at: AT,
+    field_a_description: text(module_id, field_a), field_b_description: text(module_id, field_b),
   }));
 
 const RANK: Record<Severity, number> = { low: 1, medium: 2, high: 3, critical: 4 };
@@ -79,6 +89,7 @@ function patterns(): MiningPattern[] {
       id: `anomaly:${key}`, name: `Anomalous values in ${rows[0].field_name}`, module: rows[0].module_id, pattern_type: "anomaly",
       severity: (Object.keys(RANK) as Severity[]).find((k) => RANK[k] === top) ?? "low", occurrences: rows.length,
       first_seen: AT, last_seen: AT, confidence: Math.round(conf * 1000) / 1000, trend: [], promoted_to_rule: false,
+      field_description: rows[0].field_description,
     });
   }
   const byObject = new Map<string, DuplicatePair[]>();

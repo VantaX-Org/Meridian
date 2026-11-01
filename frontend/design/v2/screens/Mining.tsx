@@ -110,7 +110,7 @@ export function Mining() {
                   key: r.module,
                   label: <span>{moduleText(r.module)} <Mono>{r.module}</Mono></span>,
                   value: r.dupes + r.outliers,
-                  text: t("{d} duplicate pairs, {o} outliers", { d: int(r.dupes), o: int(r.outliers) }),
+                  text: t("{d, plural, one {# duplicate pair} other {# duplicate pairs}}, {o, plural, one {# outlier} other {# outliers}}", { d: r.dupes, o: r.outliers }),
                   tone: "warn",
                 }))}
               />
@@ -142,7 +142,7 @@ export function Mining() {
                       <th scope="row" className="m2-card-lead"><Mono>{d.record_a}</Mono></th>
                       <td data-label={t("Looks like")}><Mono>{d.record_b}</Mono></td>
                       <td data-label={t("Match")}>{pct1(d.match_score)}</td>
-                      <td data-label={t("Same values in")}>{d.matched_fields?.length ? <Fields codes={d.matched_fields} /> : <Dash />}</td>
+                      <td data-label={t("Same values in")}>{d.matched_fields?.length ? <Fields codes={d.matched_fields} texts={d.field_texts} /> : <Dash />}</td>
                       <td data-label={t("Found")}>{formatDate(d.detected_at, "date")}</td>
                     </tr>
                   ))}
@@ -173,7 +173,7 @@ export function Mining() {
                   {rows.map((a) => (
                     <tr key={a.id}>
                       <td data-label={t("Object")}>{moduleText(a.module_id)}</td>
-                      <th scope="row" className="m2-card-lead"><Mono>{a.field_name}</Mono> {labelText(a.field_name)}</th>
+                      <th scope="row" className="m2-card-lead"><FieldName code={a.field_name} text={a.field_description} /></th>
                       <td data-label={t("Record")}>{a.record_key ? <Mono>{a.record_key}</Mono> : <Dash />}</td>
                       <td data-label={t("Value")}>{a.field_value == null ? <Dash /> : int(a.field_value)}</td>
                       <td data-label={t("Usual")}>{usual(a)}</td>
@@ -206,8 +206,8 @@ export function Mining() {
                   {[...rows].sort((a, b) => b.strength_score - a.strength_score).map((r) => (
                     <tr key={r.id}>
                       <td data-label={t("Object")}>{moduleText(r.module_id)}</td>
-                      <th scope="row" className="m2-card-lead"><Mono>{r.field_a}</Mono> {labelText(r.field_a)}</th>
-                      <td data-label={t("With field")}><Mono>{r.field_b}</Mono> {labelText(r.field_b)}</td>
+                      <th scope="row" className="m2-card-lead"><FieldName code={r.field_a} text={r.field_a_description} /></th>
+                      <td data-label={t("With field")}><FieldName code={r.field_b} text={r.field_b_description} /></td>
                       <td data-label={t("Relationship")}>{LINK[r.relationship_type]?.() ?? labelText(r.relationship_type)}</td>
                       <td data-label={t("Strength")}>{pct1(r.strength_score)}</td>
                     </tr>
@@ -229,10 +229,15 @@ function usual(a: AnomalyItem): ReactNode {
   return <Dash />;
 }
 
-function Fields({ codes }: { codes: string[] }) {
+/** A field by its dictionary text with the SAP name beside it; the bare SAP name when the dictionary does not know it. */
+function FieldName({ code, text }: { code: string; text?: string | null }) {
+  return text ? <>{text} <span className="m2-meta"><Mono>{code}</Mono></span></> : <Mono>{code}</Mono>;
+}
+
+function Fields({ codes, texts }: { codes: string[]; texts?: Record<string, string> }) {
   return (
     <ul className="m2-cl-changes">
-      {codes.map((c) => <li key={c}><Mono>{c}</Mono> {labelText(c)}</li>)}
+      {codes.map((c) => <li key={c}><FieldName code={c} text={texts?.[c]} /></li>)}
     </ul>
   );
 }
@@ -247,7 +252,6 @@ function Patterns({ query }: { query: ReturnType<typeof useMining<{ patterns: Mi
               <thead>
                 <tr>
                   <th scope="col">{t("Pattern")}</th>
-                  <th scope="col">{t("Object")}</th>
                   <th scope="col">{t("Severity")}</th>
                   <th scope="col">{t("Found")}</th>
                   <th scope="col">{t("Confidence")}</th>
@@ -259,9 +263,9 @@ function Patterns({ query }: { query: ReturnType<typeof useMining<{ patterns: Mi
                   return (
                     <tr key={p.id}>
                       <th scope="row" className="m2-card-lead">
-                        {field ? <>{t("Outliers in")} <Mono>{field}</Mono> {labelText(field)}</> : t("Duplicate records")}
+                        {field ? <>{t("Outliers in")} {p.field_description ?? <Mono>{field}</Mono>}</> : t("Duplicate records")}
+                        <div className="m2-meta">{moduleText(p.module)}{field && p.field_description ? <> <Mono>{field}</Mono></> : null}</div>
                       </th>
-                      <td data-label={t("Object")}>{moduleText(p.module)}</td>
                       <td data-label={t("Severity")}><Sev severity={p.severity} /></td>
                       <td data-label={t("Found")}>{t("{n} times", { n: int(p.occurrences) })}</td>
                       <td data-label={t("Confidence")}>{pct1(p.confidence)}</td>
