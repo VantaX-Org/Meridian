@@ -6725,6 +6725,8 @@ export const en = {
   "SAP user": "SAP user",
   "Profile downloading": "Profile downloading",
   "Export the field profile": "Export the field profile",
+  "Deck downloading": "Deck downloading",
+  "Export to PowerPoint": "Export to PowerPoint",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -6726,4 +6726,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "SAP user": "SAP ユーザー",
   "Profile downloading": "プロファイルをダウンロード中",
   "Export the field profile": "項目プロファイルをエクスポート",
+  "Deck downloading": "スライドをダウンロード中",
+  "Export to PowerPoint": "PowerPoint にエクスポート",
 };

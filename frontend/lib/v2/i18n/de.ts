@@ -6726,4 +6726,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "SAP user": "SAP-Benutzer",
   "Profile downloading": "Profil wird heruntergeladen",
   "Export the field profile": "Feldprofil exportieren",
+  "Deck downloading": "Präsentation wird heruntergeladen",
+  "Export to PowerPoint": "Nach PowerPoint exportieren",
 };
