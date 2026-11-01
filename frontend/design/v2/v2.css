@@ -264,6 +264,8 @@
 .m2-tbl td { padding: 0 var(--m2-s3); height: 32px; border-bottom: 1px solid var(--m2-rule); white-space: nowrap; background: var(--m2-sheet); }
 .m2-tbl tbody tr:last-child td, .m2-tbl tbody tr:last-child th { border-bottom: 0; }
 .m2-tbl th.m2-r, .m2-tbl td.m2-r { text-align: right; }
+/* A long text cell wraps instead of pushing the table past the frame. */
+.m2-tbl td.m2-wrap { white-space: normal; min-width: 220px; line-height: var(--m2-lh-12); padding-top: var(--m2-s2); padding-bottom: var(--m2-s2); }
 .m2-tbl tbody th { font-size: var(--m2-fs-13); color: var(--m2-fg); font-weight: 400; border-bottom: 1px solid var(--m2-rule); background: var(--m2-sheet); }
 .m2-tbl tbody tr:hover td, .m2-tbl tbody tr:hover th { background: var(--m2-hover); }
 .m2-mx { table-layout: fixed; min-width: 760px; }

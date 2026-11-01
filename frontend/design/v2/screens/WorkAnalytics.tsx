@@ -45,7 +45,11 @@ function useAnalytics<T>(key: string, fn: () => Promise<T>) {
 /** The rule name beside a check id, from the rule library. */
 export function useRuleName() {
   const rules = useRuleList();
-  const names = new Map((rules.data?.rules ?? []).map((r) => [r.id, r.name]));
+  // A rule's name is "CHECK_ID: text" and its id a database key, so the code is the part before the colon.
+  const names = new Map((rules.data?.rules ?? []).map((r) => {
+    const i = r.name.indexOf(":");
+    return i > 0 ? [r.name.slice(0, i), r.name.slice(i + 1).trim()] : [r.name, r.name];
+  }));
   return function RuleName(id: string) {
     return <Coded code={id} text={names.get(id)} first />;
   };

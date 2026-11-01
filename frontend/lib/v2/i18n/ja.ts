@@ -6586,4 +6586,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Flight deck": "フライトデッキ",
   "Atlas": "アトラス",
   "Waiting costs {money} a month.": "待機のコストは月あたり{money}です。",
+  "Records to fix by area": "領域別の修正対象レコード",
 };
