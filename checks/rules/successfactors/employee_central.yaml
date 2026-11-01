@@ -8395,3 +8395,531 @@ rules:
   fix_map:
     __other__: Flag one of the person's active employments as primary.
   record_fix_template: 'Person {PERINFO.PERSON_ID}: no active employment is flagged as primary.'
+- id: EC450
+  field: PEREMERGENCY.PERSON_ID
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Emergency contact record has no person reference
+  why_it_matters: PerEmergencyContacts is keyed by personIdExternal; a row without it belongs to nobody and cannot
+    be shown on any people profile.
+  rule_authority: sap_hard_constraint
+  sap_impact: The contact is invisible in Employee Central and is dropped by any person-level interface.
+  fix_map:
+    __other__: Link the emergency contact to the person it belongs to, or delete the orphaned row.
+  record_fix_template: 'Emergency contact {PEREMERGENCY.NAME}: no person ID is recorded.'
+- id: EC451
+  field: PEREMERGENCY.PERSON_ID
+  check_class: exists_check
+  target_table: PERINFO
+  target_fields:
+  - PERSON_ID
+  severity: high
+  dimension: consistency
+  message: Emergency contact belongs to a person who does not exist
+  why_it_matters: Every PerEmergencyContacts row hangs off a PerPerson; a person ID that is not in the person extract
+    is an orphan left behind by a deleted or merged person, or a mistyped key in a data load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphaned emergency contacts survive in the database, fail re-imports and leak personal data of people
+    who are no longer on file.
+  fix_map:
+    __other__: Re-link the contact to the correct person or purge it under the data-retention policy.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact exists but the person is not on file.'
+- id: EC452
+  field: PEREMERGENCY.NAME
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Emergency contact has no name
+  why_it_matters: Name is the business key of an emergency contact in SuccessFactors; a nameless contact cannot
+    be told apart from the person's other contacts and a responder does not know who they are calling.
+  rule_authority: sap_hard_constraint
+  sap_impact: The contact cannot be maintained on the people profile and is unusable in an incident.
+  fix_map:
+    __other__: Record the emergency contact's full name.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: an emergency contact has no name.'
+- id: EC453
+  field: PEREMERGENCY.NAME
+  check_class: regex_check
+  pattern: ^[^0-9]*$
+  severity: low
+  dimension: accuracy
+  message: Emergency contact name contains digits
+  why_it_matters: A person's name does not contain digits; digits in the name field are almost always a phone number
+    or an ID typed into the wrong field.
+  rule_authority: best_practice
+  sap_impact: The contact is mislabelled and the number typed into the name is not dialled from the phone field.
+  fix_map:
+    __other__: Move the digits to the field they belong to and keep only the contact's name.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact name {PEREMERGENCY.NAME} contains digits.'
+- id: EC454
+  field: PEREMERGENCY.NAME
+  check_class: cross_field_check
+  fail_when: '`PEREMERGENCY.NAME`.str.strip().str.lower().isin([''test'', ''dummy'', ''xxx'', ''unknown'', ''tbd'',
+    ''n/a'', ''na'', ''none'', ''-'', ''.''])'
+  severity: medium
+  dimension: accuracy
+  message: Emergency contact name is a placeholder (TEST, UNKNOWN, N/A ...)
+  why_it_matters: Placeholder names are entered to get past the required-field check during hire; the record looks
+    complete but holds no usable contact.
+  rule_authority: best_practice
+  sap_impact: In an incident there is no real person to call even though the profile shows a contact.
+  fix_map:
+    __other__: Ask the employee for a real emergency contact and replace the placeholder.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact name {PEREMERGENCY.NAME} is a placeholder.'
+- id: EC455
+  field: PEREMERGENCY.PRIMARY_FLAG
+  check_class: domain_value_check
+  allowed_values:
+  - Y
+  - N
+  severity: medium
+  dimension: validity
+  message: Emergency contact primary flag is not Y or N
+  why_it_matters: PerEmergencyContacts.primaryFlag only accepts Y or N; any other value (true, 1, yes) is a load
+    error and the contact is treated as non-primary by the UI and integrations.
+  rule_authority: sap_hard_constraint
+  sap_impact: The intended primary contact is not shown as primary and the import that wrote it fails on re-load.
+  valid_values_with_labels:
+    Y: Primary emergency contact
+    N: Other emergency contact
+  fix_map:
+    __other__: Set the primary flag to Y for the primary contact and N for all others.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} has primary flag
+    {PEREMERGENCY.PRIMARY_FLAG}.'
+- id: EC456
+  field: PEREMERGENCY.PERSON_ID
+  check_class: exists_check
+  dedupe_on:
+  - PEREMERGENCY.PERSON_ID
+  target_table: PEREMERGENCY
+  target_fields:
+  - PERSON_ID
+  target_when:
+    PRIMARY_FLAG:
+    - Y
+  severity: low
+  dimension: completeness
+  message: Person has emergency contacts but none is flagged as primary
+  why_it_matters: When a person has emergency contacts, one of them should be the primary one; without it the first
+    contact to call is not defined. The join fans out to one row per contact, so findings are deduped to one per
+    person.
+  rule_authority: best_practice
+  sap_impact: Responders and HR have to guess which of several contacts to call first.
+  fix_map:
+    __other__: Flag one of the person's emergency contacts as primary (Y).
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: no emergency contact is flagged as primary.'
+- id: EC457
+  field: PEREMERGENCY.NAME
+  check_class: uniqueness_check
+  fields:
+  - PEREMERGENCY.PERSON_ID
+  - PEREMERGENCY.NAME
+  normalize: name
+  severity: low
+  dimension: uniqueness
+  message: The same emergency contact is recorded twice for one person
+  why_it_matters: SuccessFactors identifies an emergency contact by person and name; two rows with the same name
+    for one person are a duplicate created by a repeated import or a re-hire, and they drift apart when only one
+    is updated.
+  rule_authority: sap_hard_constraint
+  sap_impact: Updates go to one copy while the stale copy (old phone number) is still shown and exported.
+  fix_map:
+    __other__: Merge the duplicate contacts into one record holding the current details.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} is recorded more
+    than once.'
+- id: EC458
+  field: PEREMERGENCY.RELATIONSHIP
+  check_class: referential_check
+  severity: low
+  dimension: accuracy
+  message: Emergency contact relationship is not a value of the tenant's 'relation' picklist
+  why_it_matters: The relationship field is a picklist; a value outside it was loaded by import or comes from a
+    retired picklist option and does not render on the profile.
+  rule_authority: sap_hard_constraint
+  sap_impact: The relationship shows blank or as a raw code, and the import fails when the record is re-loaded.
+  fix_map:
+    __other__: Map the relationship to a current value of the relation picklist.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact relationship {PEREMERGENCY.RELATIONSHIP}
+    is not in the relation picklist.'
+- id: EC459
+  field: PEREMERGENCY.PHONE
+  check_class: regex_check
+  pattern: ^\D*(\d\D*){6,15}$
+  severity: low
+  dimension: validity
+  message: Emergency contact phone number has fewer than 6 or more than 15 digits
+  why_it_matters: ITU-T E.164 caps an international number at 15 digits and no dialable number is shorter than 6;
+    a count outside that range means digits were dropped, doubled or two numbers were typed into one field.
+  rule_authority: best_practice
+  sap_impact: The number cannot be dialled when the contact is needed.
+  fix_map:
+    __other__: Correct the emergency contact's phone number.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} phone number has
+    an invalid digit count.'
+- id: EC460
+  field: PEREMERGENCY.PHONE
+  check_class: regex_check
+  pattern: ^(?!.*(0000000|1111111|9999999|1234567|0123456)).*$
+  severity: medium
+  dimension: accuracy
+  message: Emergency contact phone number is a placeholder (0000000, 1234567, 9999999 ...)
+  why_it_matters: Placeholder numbers satisfy the required-field check on hire but reach nobody.
+  rule_authority: best_practice
+  sap_impact: The profile shows a reachable contact that cannot actually be called.
+  fix_map:
+    __other__: Ask the employee for the contact's real number and replace the placeholder.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} phone number is a
+    placeholder.'
+- id: EC461
+  field: PEREMERGENCY.EMAIL
+  check_class: regex_check
+  pattern: ^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$
+  auto_fix:
+    steps:
+    - op: strip
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    confidence: medium
+  severity: low
+  dimension: validity
+  message: Emergency contact e-mail address format is invalid
+  why_it_matters: An e-mail address that is not local@domain.tld cannot receive mail; incident notifications sent
+    to it bounce.
+  rule_authority: best_practice
+  sap_impact: Mass notification and incident tooling cannot reach the contact by e-mail.
+  fix_map:
+    __other__: Correct the emergency contact's e-mail address or clear it.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} e-mail address is
+    not a valid format.'
+- id: EC462
+  field: PEREMERGENCY.PHONE
+  check_class: exists_check
+  fields:
+  - PEREMERGENCY.PERSON_ID
+  - PEREMERGENCY.PHONE
+  target_table: PERPHONE
+  target_fields:
+  - PERSON_ID
+  - PHONE_NUMBER
+  negate: true
+  severity: medium
+  dimension: accuracy
+  message: Emergency contact phone number is the employee's own phone number
+  why_it_matters: An emergency contact exists to reach someone other than the employee; when its number is one of
+    the person's own phone numbers, the employee typed their own number to get past the required field.
+  rule_authority: best_practice
+  sap_impact: When the employee is the one in the emergency, the only number on file rings the employee's own phone.
+  fix_map:
+    __other__: Replace the number with the emergency contact's own phone number.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} has the employee''s
+    own phone number.'
+- id: EC463
+  field: PEREMERGENCY.EMAIL
+  check_class: exists_check
+  fields:
+  - PEREMERGENCY.PERSON_ID
+  - PEREMERGENCY.EMAIL
+  target_table: PEREMAIL
+  target_fields:
+  - PERSON_ID
+  - EMAIL_ADDRESS
+  negate: true
+  severity: low
+  dimension: accuracy
+  message: Emergency contact e-mail address is the employee's own e-mail address
+  why_it_matters: An emergency contact's e-mail must reach someone other than the employee; an address equal to
+    one of the person's own e-mail addresses was copied in to satisfy the form.
+  rule_authority: best_practice
+  sap_impact: Incident notifications for the employee go back to the employee instead of the contact.
+  fix_map:
+    __other__: Replace the address with the emergency contact's own e-mail address or clear it.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} has the employee''s
+    own e-mail address.'
+- id: EC464
+  field: PEREMAIL.PERSON_ID
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: E-mail record has no person reference
+  why_it_matters: PerEmail is keyed by personIdExternal and e-mail type; a row without the person belongs to nobody.
+  rule_authority: sap_hard_constraint
+  sap_impact: The address is not shown on any profile and is dropped by identity provisioning.
+  fix_map:
+    __other__: Link the e-mail address to its person or delete the orphaned row.
+  record_fix_template: 'E-mail record of type {PEREMAIL.EMAIL_TYPE}: no person ID is recorded.'
+- id: EC465
+  field: PEREMAIL.PERSON_ID
+  check_class: exists_check
+  target_table: PERINFO
+  target_fields:
+  - PERSON_ID
+  severity: high
+  dimension: consistency
+  message: E-mail address belongs to a person who does not exist
+  why_it_matters: Every PerEmail row hangs off a PerPerson; a person ID missing from the person extract is an orphan
+    from a deleted or merged person or a mistyped load key.
+  rule_authority: sap_hard_constraint
+  sap_impact: The address can still be matched by single sign-on or mail routing to a person who is no longer on
+    file.
+  fix_map:
+    __other__: Re-link the address to the correct person or purge it.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: e-mail address exists but the person is not on file.'
+- id: EC466
+  field: PEREMAIL.EMAIL_TYPE
+  check_class: uniqueness_check
+  fields:
+  - PEREMAIL.PERSON_ID
+  - PEREMAIL.EMAIL_TYPE
+  severity: high
+  dimension: uniqueness
+  message: Person has more than one e-mail address of the same type
+  why_it_matters: PerEmail is keyed by person and e-mail type, so SuccessFactors holds one address per type per
+    person; a second row of the same type is a duplicate from an import and only one of them is the real one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports of PerEmail fail on the duplicate key and integrations pick an arbitrary one of the two addresses.
+  fix_map:
+    __other__: Keep one address per e-mail type; move the other to a different type or delete it.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: more than one e-mail address of type {PEREMAIL.EMAIL_TYPE}.'
+- id: EC467
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: uniqueness_check
+  fields:
+  - PEREMAIL.PERSON_ID
+  - PEREMAIL.EMAIL_ADDRESS
+  case_insensitive: true
+  severity: low
+  dimension: uniqueness
+  message: The same e-mail address is recorded twice for one person
+  why_it_matters: Recording one address under two e-mail types (for example business and personal) adds nothing
+    and hides the fact that the second address is missing. Mail addresses are compared case-insensitively.
+  rule_authority: best_practice
+  sap_impact: Notifications meant to go to a personal address (after termination, for example) go to the business
+    mailbox.
+  fix_map:
+    __other__: Keep the address under its correct type and record the real address for the other type, or delete
+      it.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: e-mail address {PEREMAIL.EMAIL_ADDRESS} is recorded under more
+    than one type.'
+- id: EC468
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: regex_check
+  pattern: ^(?!\.)(?!.*\.@)(?!.*@[.-])(?!.*-\.)(?!.*\.-)(?!.*[.-]$).*$
+  severity: medium
+  dimension: validity
+  message: E-mail address has a dot or hyphen in an invalid position
+  why_it_matters: RFC 5322/5321 forbid a local part that starts or ends with a dot and a domain label that starts
+    or ends with a dot or hyphen; such addresses pass a loose format check but are rejected by mail servers.
+  rule_authority: sap_hard_constraint
+  sap_impact: Mail to the address bounces and identity provisioning rejects it as a login.
+  fix_map:
+    __other__: Correct the misplaced dot or hyphen in the e-mail address.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: e-mail address {PEREMAIL.EMAIL_ADDRESS} has a dot or hyphen
+    in an invalid position.'
+- id: EC469
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: cross_field_check
+  fail_when: '`PEREMAIL.EMAIL_ADDRESS`.str.lower().str.strip().str.contains(''@(?:gmail[.]com|googlemail[.]com|yahoo[.][a-z.]+|ymail[.]com|hotmail[.][a-z.]+|outlook[.]com|live[.][a-z.]+|msn[.]com|aol[.]com|icloud[.]com|me[.]com|gmx[.][a-z.]+|protonmail[.]com|proton[.]me)$'',
+    regex=True, na=False)'
+  applies_when:
+    PEREMAIL.EMAIL_TYPE:
+    - B
+  severity: medium
+  dimension: accuracy
+  message: Business e-mail address is on a public free-mail domain
+  why_it_matters: A business e-mail is the company mailbox used for single sign-on, workflow notifications and the
+    User record; a public free-mail address (gmail, yahoo, hotmail, outlook.com ...) under the business type is
+    a personal address entered under the wrong type.
+  rule_authority: best_practice
+  sap_impact: Workflow notifications with company data go to a private mailbox, and SSO keyed on e-mail fails.
+  fix_map:
+    __other__: Record the company mailbox as the business e-mail and move the free-mail address to the personal
+      type.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: business e-mail address {PEREMAIL.EMAIL_ADDRESS} is on a public
+    free-mail domain.'
+- id: EC470
+  field: USERACCOUNT.EMAIL
+  check_class: exists_check
+  grain: USERACCOUNT
+  target_table: PEREMAIL
+  target_fields:
+  - EMAIL_ADDRESS
+  target_when:
+    IS_PRIMARY:
+    - 'true'
+  severity: low
+  dimension: consistency
+  message: User account e-mail is not any person's primary e-mail address
+  why_it_matters: Employee Central keeps User.email in step with the person's primary PerEmail address; a user e-mail
+    that no person holds as primary was changed in the User record directly or the sync from PerEmail stopped.
+  rule_authority: best_practice
+  sap_impact: Notifications and SSO use the User e-mail while the profile shows another address, so mail goes to
+    the wrong mailbox.
+  fix_map:
+    __other__: Set the person's primary e-mail in Employee Central and let it sync to the user account.
+  record_fix_template: 'User {USERACCOUNT.USER_ID}: e-mail {USERACCOUNT.EMAIL} is not a primary e-mail address in
+    Employee Central.'
+- id: EC471
+  field: PERPHONE.PERSON_ID
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Phone record has no person reference
+  why_it_matters: PerPhone is keyed by personIdExternal and phone type; a row without the person belongs to nobody.
+  rule_authority: sap_hard_constraint
+  sap_impact: The number is shown on no profile and is dropped by any person-level interface.
+  fix_map:
+    __other__: Link the phone number to its person or delete the orphaned row.
+  record_fix_template: 'Phone record of type {PERPHONE.PHONE_TYPE}: no person ID is recorded.'
+- id: EC472
+  field: PERPHONE.PERSON_ID
+  check_class: exists_check
+  target_table: PERINFO
+  target_fields:
+  - PERSON_ID
+  severity: high
+  dimension: consistency
+  message: Phone number belongs to a person who does not exist
+  why_it_matters: Every PerPhone row hangs off a PerPerson; a person ID missing from the person extract is an orphan
+    left by a deleted or merged person or a mistyped load key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphaned personal data stays in the system and the record fails on re-import.
+  fix_map:
+    __other__: Re-link the number to the correct person or purge it.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number exists but the person is not on file.'
+- id: EC473
+  field: PERPHONE.PHONE_TYPE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Phone number has no phone type
+  why_it_matters: Phone type is part of the PerPhone key; without it the number cannot be maintained on the profile
+    and an interface does not know whether it is a business, mobile or home number.
+  rule_authority: sap_hard_constraint
+  sap_impact: The number cannot be edited in the UI and the PerPhone import rejects the row.
+  fix_map:
+    __other__: Set the phone type (business, cell, home ...).
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: a phone number has no phone type.'
+- id: EC474
+  field: PERPHONE.PHONE_TYPE
+  check_class: uniqueness_check
+  fields:
+  - PERPHONE.PERSON_ID
+  - PERPHONE.PHONE_TYPE
+  severity: high
+  dimension: uniqueness
+  message: Person has more than one phone number of the same type
+  why_it_matters: PerPhone is keyed by person and phone type, so a person holds one number per type; a second row
+    of the same type is a duplicate load and only one of the two is current.
+  rule_authority: sap_hard_constraint
+  sap_impact: The PerPhone import fails on the duplicate key and integrations pick one of the numbers at random.
+  fix_map:
+    __other__: Keep one number per phone type; move the other to a different type or delete it.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: more than one phone number of type {PERPHONE.PHONE_TYPE}.'
+- id: EC475
+  field: PERPHONE.PHONE_NUMBER
+  check_class: uniqueness_check
+  fields:
+  - PERPHONE.PERSON_ID
+  - PERPHONE.PHONE_NUMBER
+  normalize: alnum
+  severity: low
+  dimension: uniqueness
+  message: The same phone number is recorded twice for one person
+  why_it_matters: One number recorded under two phone types adds nothing and hides that the other number is missing.
+    Numbers are compared on their digits only.
+  rule_authority: best_practice
+  sap_impact: The profile looks complete while the person can only be reached on one line.
+  fix_map:
+    __other__: Keep the number under its correct type and record the real number for the other type, or delete it.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number {PERPHONE.PHONE_NUMBER} is recorded under more
+    than one type.'
+- id: EC476
+  field: PERPHONE.PHONE_NUMBER
+  check_class: uniqueness_check
+  fields:
+  - PERPHONE.PHONE_NUMBER
+  normalize: alnum
+  unique_across: PERPHONE.PERSON_ID
+  applies_when:
+    PERPHONE.PHONE_TYPE:
+    - C
+  severity: low
+  dimension: uniqueness
+  message: The same mobile number is recorded for more than one person
+  why_it_matters: A cell phone (type C) belongs to one person, unlike a shared business switchboard number; the
+    same mobile on two people is a copy-paste error or a duplicated person. Numbers are compared on their digits
+    only.
+  rule_authority: best_practice
+  sap_impact: Text-message based MFA, alerts and on-call notifications reach the wrong person.
+  fix_map:
+    __other__: Confirm whose mobile number it is and correct the other person's record.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: mobile number {PERPHONE.PHONE_NUMBER} is also recorded for
+    another person.'
+- id: EC477
+  field: PERPHONE.COUNTRY_CODE
+  check_class: null_check
+  applies_when:
+    PERPHONE.PHONE_NUMBER:
+      populated: true
+  severity: medium
+  dimension: completeness
+  message: Phone number has no country dialling code
+  why_it_matters: Without the country code the number is only dialable from inside its own country; global teams,
+    travel tools and SMS gateways need the full international number.
+  rule_authority: best_practice
+  sap_impact: Calls and text messages from other countries or from cloud services cannot reach the number.
+  fix_map:
+    __other__: Record the international dialling code of the phone number.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number of type {PERPHONE.PHONE_TYPE} has no country code.'
+- id: EC478
+  field: PERPHONE.PHONE_NUMBER
+  check_class: cross_field_check
+  fail_when: (`PERPHONE.COUNTRY_CODE`.astype('string').fillna('').str.strip() != '') & `PERPHONE.PHONE_NUMBER`.astype('string').str.match('^
+    *(?:[+]|00)', na=False)
+  severity: medium
+  dimension: consistency
+  message: Phone number repeats the international prefix that is already in the country code
+  why_it_matters: SuccessFactors builds the dialable number from country code, area code and number; a number that
+    itself starts with + or 00 while the country code is filled is dialled with the prefix twice.
+  rule_authority: best_practice
+  sap_impact: Click-to-call, SMS gateways and directory exports produce an undialable number.
+  fix_map:
+    __other__: Remove the international prefix from the phone number and keep it only in the country code.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number {PERPHONE.PHONE_NUMBER} starts with an international
+    prefix although country code {PERPHONE.COUNTRY_CODE} is set.'
+- id: EC479
+  field: PERPHONE.AREA_CODE
+  check_class: regex_check
+  pattern: ^\d{1,5}$
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[\s()\-.]'
+      repl: ''
+    confidence: medium
+  severity: low
+  dimension: validity
+  message: Phone area code is not 1 to 5 digits
+  why_it_matters: Area (trunk) codes are short digit strings; letters, brackets or long values mean the whole number
+    or the country code was typed into the area code field.
+  rule_authority: best_practice
+  sap_impact: The composed number is undialable.
+  fix_map:
+    __other__: Keep only the area code digits in the area code field.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: area code {PERPHONE.AREA_CODE} is not 1 to 5 digits.'
+- id: EC480
+  field: PERPHONE.EXTENSION
+  check_class: regex_check
+  pattern: ^\d{1,6}$
+  severity: low
+  dimension: validity
+  message: Phone extension is not 1 to 6 digits
+  why_it_matters: An extension is a short digit string dialled after the number; any other content (x123, a full
+    number, text) cannot be dialled by click-to-call or a PBX directory.
+  rule_authority: best_practice
+  sap_impact: Directory and click-to-call integrations fail for the number.
+  fix_map:
+    __other__: Keep only the extension digits.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: extension {PERPHONE.EXTENSION} is not 1 to 6 digits.'
