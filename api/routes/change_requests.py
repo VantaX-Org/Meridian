@@ -528,7 +528,7 @@ async def list_derivations(db: AsyncSession = Depends(get_db), tenant: Tenant = 
     """The rules that set a field of a request from other fields of it, applied in the order they were made."""
     await _rls(db, tenant)
     rows = (await db.execute(text(
-        "SELECT id::text AS id, object, when_field, when_values, target_field, value, updated_at FROM request_derivations "
+        "SELECT id::text AS id, object, when_field, when_values, target_field, value, created_at AS updated_at FROM request_derivations "
         "WHERE tenant_id = :t ORDER BY object, created_at, id"), {"t": str(tenant.id)})).mappings()
     return {"items": [dict(r) for r in rows]}
 
