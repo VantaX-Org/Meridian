@@ -18,7 +18,7 @@ EXPECTED_COUNTS = {
     "hcm": 117,
     "controlling": 102,
     "mm_purchasing": 264,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
-    "sd_customer_master": 290,
+    "sd_customer_master": 357,
     "sd_sales_orders": 208,
     "production_planning": 278,
     "project_system": 165,
