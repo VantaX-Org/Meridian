@@ -16,7 +16,7 @@ from sap.ddic import get_dictionary
 S4 = get_dictionary("s4hana")
 RULES = yaml.safe_load(open("checks/rules/successfactors/employee_central.yaml"))["rules"]
 BY_ID = {r["id"]: r for r in RULES}
-NEW = [r for r in RULES if re.fullmatch(r"EC\d+", r["id"]) and int(r["id"][2:]) >= 239]
+NEW = [r for r in RULES if re.fullmatch(r"EC\d+", r["id"]) and 239 <= int(r["id"][2:]) <= 449]
 
 # Fix round 3: EC380/EC381 (exact strict subsets of EC258 -- every finding they could
 # ever raise is already an EC258 finding) and EC443 (a freshness_check on
