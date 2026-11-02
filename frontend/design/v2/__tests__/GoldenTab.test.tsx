@@ -112,6 +112,34 @@ describe("the Golden records tab", () => {
     expect(within(sec).getByRole("link", { name: "Edit the rules" })).toHaveAttribute("href", expect.stringContaining("open=survivorship%3Amaterial_master"));
   });
 
+  it("shows the match profile: passes, learned weights with field descriptions, and the calibration preview", async () => {
+    tab();
+    const sec = await screen.findByRole("region", { name: "Match profile and calibration" });
+    expect(within(sec).getByRole("list", { name: "How candidate pairs are found" })).toBeInTheDocument();
+    const tbl = await within(sec).findByRole("table", { name: "Rule weights learned from steward decisions" });
+    expect(within(tbl).getAllByRole("row").length).toBeGreaterThan(1);
+    expect(norm(tbl)).toContain("Manufacturer part number");
+    expect(within(sec).getByRole("button", { name: "Apply the recommended weights" })).toBeInTheDocument();
+  });
+
+  it("without the approve permission the recommended weights cannot be applied", async () => {
+    granted = [];
+    tab();
+    const sec = await screen.findByRole("region", { name: "Match profile and calibration" });
+    await within(sec).findByRole("table", { name: "Rule weights learned from steward decisions" });
+    expect(within(sec).queryByRole("button", { name: "Apply the recommended weights" })).toBeNull();
+  });
+
+  it("lists the SAP consolidation pack with what to set on each merged-away record", async () => {
+    tab();
+    const sec = await screen.findByRole("region", { name: "SAP consolidation pack" });
+    expect(within(sec).getByRole("list", { name: "What the pack sets in SAP" })).toBeInTheDocument();
+    const tbl = within(sec).getByRole("table", { name: "Merged-away records and their survivors" });
+    expect(within(tbl).getAllByRole("row").length).toBeGreaterThan(1);
+    expect(within(sec).getByRole("button", { name: "Download Excel" })).toBeEnabled();
+    expect(within(sec).getByText(/Meridian never writes these to SAP/)).toBeInTheDocument();
+  });
+
   it("is a designed empty state, with what would put rows here, for an object without golden records", async () => {
     tab("mm_purchasing");
     const empty = await screen.findByTestId("empty-frame");
@@ -194,13 +222,22 @@ describe("the pair inspector", () => {
   it("shows the two records side by side with a pick per field that differs", async () => {
     const d = await open();
     expect(d).toHaveAccessibleName("Possible duplicate");
-    expect(within(d).getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Facts", "Side by side", "Actions"]);
+    expect(within(d).getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Facts", "Why they match", "Side by side", "Actions"]);
     const t = within(d).getByRole("table", { name: /side by side/ });
     const rows = within(t).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(6);
     expect(within(t).getAllByRole("radio")).toHaveLength(8); // four fields differ, two radios each
     expect(norm(rows[2])).toContain("ROH (same)");
     expect(within(d).getByText("Match score")).toBeInTheDocument();
+  });
+
+  it("explains the score field by field: both values, similarity against the threshold, and the points each field adds", async () => {
+    const d = await open();
+    const why = within(d).getByRole("table", { name: "Why the two records match, field by field" });
+    expect(within(why).getAllByRole("columnheader").map((h) => norm(h))).toEqual(["Field", "Record A", "Record B", "Similarity", "Adds"]);
+    expect(within(why).getAllByRole("row").length).toBeGreaterThan(1);
+    expect(norm(why)).toMatch(/meets|below/);
+    expect(within(d).getByText(/no model sees the values/)).toBeInTheDocument();
   });
 
   it("merges with the survivor's key and the picked values as overrides", async () => {

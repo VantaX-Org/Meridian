@@ -13,6 +13,7 @@ import { Fact, InspectorFrame } from "../Inspector";
 import { FactList, Sec } from "./mdm-parts";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { RULE_LABEL, confidencePct, shortKey } from "../screens/object/GoldenTab";
+import { COMPARATOR_LABEL } from "../screens/object/MatchDepth";
 import { FieldHistory, PromoteAction, SendToSap } from "./golden-writeback";
 import { ResultFrame, useOutcome } from "./shared";
 import { t } from "@/lib/v2/i18n";
@@ -27,6 +28,59 @@ const EVENT_WORD: Record<string, string> = {
   get pair_reject() { return t("Marked not a duplicate"); },
   get pair_clear() { return t("Decision cleared"); },
 };
+
+const SKIP_REASON: Record<string, string> = {
+  get missing_value() { return t("Empty on one side, not counted"); },
+  get semantic_scoring_failed() { return t("Could not be compared, not counted"); },
+  get unknown_comparator() { return t("No comparison for this field, not counted"); },
+};
+
+/** Per field: how the two values compared, the rule's weight and what it added to the score (api/services/merge_explain.py). */
+function WhyTheyMatch({ e }: { e: NonNullable<ReviewPairDetail["explanation"]> }) {
+  return (
+    <>
+      <table className="m2-tbl m2-pickt" aria-label={t("Why the two records match, field by field")}>
+        <thead>
+          <tr>
+            <th scope="col">{t("Field")}</th>
+            <th scope="col">{t("Record A")}</th>
+            <th scope="col">{t("Record B")}</th>
+            <th scope="col" className="m2-num">{t("Similarity")}</th>
+            <th scope="col" className="m2-num">{t("Adds")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {e.attributes.map((a) => (
+            <tr key={a.field} data-skipped={a.skipped ? "true" : undefined}>
+              <th scope="row" className="m2-fcell">
+                {fieldLabel(a.field.replace(".", "-"))}
+                <span className="m2-meta">{COMPARATOR_LABEL[a.comparator] ?? a.comparator}</span>
+              </th>
+              <td>{a.value_a}</td>
+              <td>{a.value_b}</td>
+              <td className="m2-num">
+                {a.skipped ? (
+                  <span className="m2-meta">{SKIP_REASON[a.reason ?? ""] ?? a.reason}</span>
+                ) : (
+                  <>
+                    {(a.similarity ?? 0).toFixed(2)}
+                    {a.threshold != null ? (
+                      <span className="m2-meta">{a.threshold_met ? t("meets {value}", { value: a.threshold.toFixed(2) }) : t("below {value}", { value: a.threshold.toFixed(2) })}</span>
+                    ) : null}
+                  </>
+                )}
+              </td>
+              <td className="m2-num">{t("{contribution} of {weight}", { contribution: a.contribution.toFixed(1), weight: int(a.weight) })}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="m2-prov">
+        {t("Score {total} from {weight} points of weight. Personal values are masked. Every comparison is a fixed rule; no model sees the values.", { total: e.total.toFixed(2), weight: int(e.weight_total) })}
+      </p>
+    </>
+  );
+}
 
 function fieldLabel(field: string): ReactNode {
   const d = describeField(field);
@@ -276,6 +330,11 @@ function PairBody({ pairId, onClose }: { pairId: string; onClose: () => void }) 
               <Fact label={t("Fields that differ")}>{t("{differingCount} of {namesCount}", { differingCount: differing.length, namesCount: names.length })}</Fact>
             </FactList>
           </Sec>
+          {d.explanation ? (
+            <Sec title={t("Why they match")}>
+              <WhyTheyMatch e={d.explanation} />
+            </Sec>
+          ) : null}
           <Sec title={t("Side by side")}>
             <table className="m2-tbl m2-pickt" aria-label={t("The two records side by side, pick a value per field")}>
               <thead>

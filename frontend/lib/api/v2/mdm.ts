@@ -1,4 +1,5 @@
 import { v2Get, v2Send } from "./client";
+import { v2Download } from "./download";
 import type { MasterRecordDetail, MasterRecordListResponse, MasterRecordSummary, GlossaryListResponse, GlossaryTermDetail, GlossaryTermSummary, BusinessProcessL1 } from "@/types/api";
 import type { ReviewPairDetail, ReviewPairList, PairMergeResult } from "@/lib/api/match-review";
 import type { ExplainResponse, MergeEvent, PairDecisionResult, UnmergeResult } from "@/lib/api/merge-explain";
@@ -130,4 +131,88 @@ export function proposeMerges(pairs: { match_score_id: string; priority: number;
 /** POST /glossary/{id}/ai-draft (trigger_ai): a proposed wording from Aletheia. Nothing is saved; the owner reviews it first. */
 export function draftTermWithAi(id: string): Promise<{ business_definition: string; why_it_matters_business: string; committed: boolean }> {
   return v2Send("POST", `/glossary/${encodeURIComponent(id)}/ai-draft`);
+}
+
+/* Match profile, weight calibration and the consolidation pack (api/routes/match_depth.py). */
+
+export interface CalibrationField {
+  field: string;
+  match_type: string;
+  threshold: number;
+  current_weight: number;
+  accepted_with_value: number;
+  accepted_agree: number;
+  rejected_with_value: number;
+  rejected_agree: number;
+  /** Share of accepted pairs where the field agrees. */
+  m: number;
+  /** Share of rejected pairs where the field agrees. */
+  u: number;
+  agreement_weight: number;
+  disagreement_weight: number;
+  recommended_weight: number;
+}
+
+export interface TuningPreview {
+  pairs: number;
+  pairs_newly_linked: number;
+  pairs_unlinked: number;
+  band_moves: Record<string, number>;
+  clusters_before: number;
+  clusters_after: number;
+  clusters_that_would_merge: number;
+  clusters_that_would_split: number;
+  applied: boolean;
+}
+
+export interface MatchCalibration {
+  domain: string;
+  id_field: string;
+  /** How candidate pairs are found: key = equal normalised identifier, neighbour = sorted name window, blocked = name within a group. */
+  passes: { name: string; kind: string; fields: string[] }[];
+  rules_stored: boolean;
+  missing_profile_rules: { field: string; match_type: string; weight: number; threshold: number }[];
+  status: "ready" | "insufficient";
+  accepted: number;
+  rejected: number;
+  min_decisions: number;
+  fields: CalibrationField[];
+  preview: TuningPreview | null;
+}
+
+export interface CalibrationApplied {
+  domain: string;
+  reason: string;
+  changed: { field: string; before: number; after: number }[];
+  added: string[];
+  accepted: number;
+  rejected: number;
+}
+
+export interface ConsolidationPack {
+  domain: string;
+  merged: number;
+  survivors: number;
+  actions: { table: string; field: string; value: string | null; action: string }[];
+  total_rows: number;
+  rows: { loser_key: string; survivor_key: string; table: string | null; field: string | null; value: string | null; action: string; merged_at: string | null }[];
+}
+
+/** GET /match-calibration: the object's match profile and the m and u of each rule from steward decisions. */
+export function getMatchCalibration(domain: string): Promise<MatchCalibration> {
+  return v2Get<MatchCalibration>("/match-calibration", { domain });
+}
+
+/** POST /match-calibration/apply: write the recommended weights, and the profile's missing rules when asked. Audited. */
+export function applyMatchCalibration(body: { domain: string; reason: string; add_profile_rules: boolean }): Promise<CalibrationApplied> {
+  return v2Send<CalibrationApplied>("POST", "/match-calibration/apply", body);
+}
+
+/** GET /consolidation-pack: each merged-away record, its survivor and the SAP flags that retire it. */
+export function getConsolidationPack(domain: string, limit = 50): Promise<ConsolidationPack> {
+  return v2Get<ConsolidationPack>("/consolidation-pack", { domain, limit });
+}
+
+export function downloadConsolidationPack(domain: string, format: "csv" | "xlsx"): Promise<string> {
+  return v2Download("/consolidation-pack", { domain, format }, `consolidation-pack-${domain}.${format}`);
 }

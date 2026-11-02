@@ -14,6 +14,8 @@ import {
   getObjectOwners,
   getProcessDocument,
   getSurvivorship,
+  getMatchCalibration,
+  getConsolidationPack,
 } from "@/lib/api/v2/mdm";
 import { getGoldenHistory, getWritebackPreview, getWritebackRequests } from "@/lib/api/v2/golden-writeback";
 
@@ -34,6 +36,8 @@ export const mdmKeys = {
   wbPreview: (f: boolean, id: string) => ["v2", "mdm", "wb-preview", f, id] as const,
   wbRequests: (f: boolean, id: string) => ["v2", "mdm", "wb-requests", f, id] as const,
   process: (f: boolean, run: string, module: string) => ["v2", "mdm", "process", f, run, module] as const,
+  calibration: (f: boolean, module: string) => ["v2", "mdm", "calibration", f, module] as const,
+  pack: (f: boolean, module: string) => ["v2", "mdm", "consolidation-pack", f, module] as const,
 };
 
 const STALE = 30_000;
@@ -72,6 +76,16 @@ export function useMatchPair(id: string) {
 export function useSurvivorship(module: string) {
   const f = useFixture();
   return useQuery({ queryKey: mdmKeys.survivorship(f, module), queryFn: () => getSurvivorship(module), staleTime: 5 * 60_000, retry: false });
+}
+
+export function useMatchCalibration(module: string) {
+  const f = useFixture();
+  return useQuery({ queryKey: mdmKeys.calibration(f, module), queryFn: () => getMatchCalibration(module), staleTime: STALE, retry: false });
+}
+
+export function useConsolidationPack(module: string) {
+  const f = useFixture();
+  return useQuery({ queryKey: mdmKeys.pack(f, module), queryFn: () => getConsolidationPack(module), staleTime: STALE, retry: false });
 }
 
 export function useGlossary(module: string, search: string) {
