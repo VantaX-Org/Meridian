@@ -3434,3 +3434,42 @@ rules:
     fix_map:
       __other__: Load a compensation record for this active employee, or correct their employment status if they should not be active.
     record_fix_template: 'Employee {actual_value}: is active but has no compensation record. Load one.'
+  - id: COMP252
+    field: COMPINFO.EFFECTIVE_DATE
+    check_class: cross_field_check
+    fail_when: (`EMPEMPLOYMENT.STATUS` == 'A') & (`COMPINFO.END_DATE`.isna() | (`COMPINFO.END_DATE` >= @today)) & ((@today - `COMPINFO.EFFECTIVE_DATE`).dt.days > 1095)
+    severity: medium
+    dimension: timeliness
+    message: Active employee's current compensation record has not changed in over three years
+    why_it_matters: Most organisations run an annual merit or pay review, so the current EmpCompensation record of an
+      active employee is normally replaced at least once in three years. A current record that is older than that
+      means either the employee has been missed by every review cycle, or later changes were made outside
+      SuccessFactors and never loaded. Either way the salary, pay grade and compa-ratio the system reports are stale,
+      and the next compensation planning cycle starts from the wrong base.
+    rule_authority: best_practice
+    sap_impact: Compensation planning worksheets, compa-ratio and range-penetration reporting, and the payroll
+      replication from Employee Central all read a salary that may no longer be paid.
+    fix_map:
+      __other__: Confirm with HR whether the employee was deliberately excluded from recent review cycles. If pay
+        has changed, enter the change in Employee Central with the correct effective date and event reason.
+    record_fix_template: 'Employee {COMPINFO.USERID}: current compensation record effective {COMPINFO.EFFECTIVE_DATE}
+      has not changed in over three years. Confirm the salary is still current.'
+  - id: COMP253
+    field: COMPINFO.PAYCOMP_END_DATE
+    check_class: cross_field_check
+    fail_when: (`EMPEMPLOYMENT.STATUS` == 'A') & `COMPINFO.PAYCOMP_END_DATE`.notna() & (`COMPINFO.PAYCOMP_END_DATE` < @today) & (`COMPINFO.END_DATE`.isna() | (`COMPINFO.END_DATE` >= @today))
+    severity: low
+    dimension: timeliness
+    message: Recurring pay component has lapsed on an active employee's current compensation record
+    why_it_matters: A recurring pay component (EmpPayCompRecurring) whose end date has passed stops paying, while
+      the compensation record it belongs to is still current. That is correct for a temporary allowance that was
+      meant to stop, but when the component should continue it means the renewal was never entered, and the
+      employee's pay silently drops from the day after the end date.
+    rule_authority: best_practice
+    sap_impact: The component is no longer replicated to payroll, so the employee is not paid it. Total target
+      compensation on the current record understates what HR believes the employee earns.
+    fix_map:
+      __other__: Confirm whether the component was meant to stop. If it should continue, extend the end date or
+        add a new recurring pay component from the day after the lapse.
+    record_fix_template: 'Employee {COMPINFO.USERID}: recurring pay component {COMPINFO.PAY_TYPE} ended
+      {COMPINFO.PAYCOMP_END_DATE} on a current compensation record. Confirm it was meant to stop.'
