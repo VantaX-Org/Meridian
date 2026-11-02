@@ -337,16 +337,66 @@ def valid_th_pid(s: str) -> bool:
         (11 - _weighted(v, list(range(13, 1, -1))) % 11) % 10 == int(v[12])
 
 
+def _mod11_10(digits: str) -> int:
+    """ISO 7064 MOD 11,10 check digit over a digit string."""
+    a = 10
+    for d in digits:
+        a = (a + int(d)) % 10 or 10
+        a = a * 2 % 11
+    return (11 - a) % 10
+
+
 def valid_hr_oib(s: str) -> bool:
     """Croatia OIB: 11 digits, ISO 7064 MOD 11,10 check digit."""
     v = _plain(s)
-    if not re.fullmatch(r"\d{11}", v):
+    return bool(re.fullmatch(r"\d{11}", v)) and _mod11_10(v[:10]) == int(v[10])
+
+
+def valid_fr_siren(s: str) -> bool:
+    """France SIREN: 9 digits, Luhn."""
+    v = _plain(s)
+    return bool(re.fullmatch(r"\d{9}", v)) and valid_luhn(v)
+
+
+def valid_fr_siret(s: str) -> bool:
+    """France SIRET: SIREN + 5-digit establishment number, 14 digits, Luhn.
+    La Poste (SIREN 356000000) is the published exception: digit sum mod 5."""
+    v = _plain(s)
+    if not re.fullmatch(r"\d{14}", v):
         return False
-    a = 10
-    for d in v[:10]:
-        a = (a + int(d)) % 10 or 10
-        a = a * 2 % 11
-    return (11 - a) % 10 == int(v[10])
+    if v.startswith("356000000"):
+        return sum(int(d) for d in v) % 5 == 0
+    return valid_luhn(v)
+
+
+def valid_de_ustid(s: str) -> bool:
+    """Germany USt-IdNr: optional DE prefix, 9 digits, ISO 7064 MOD 11,10."""
+    v = _plain(s).removeprefix("DE")
+    return bool(re.fullmatch(r"[1-9]\d{8}", v)) and _mod11_10(v[:8]) == int(v[8])
+
+
+def valid_pl_nip(s: str) -> bool:
+    """Poland NIP: optional PL prefix, 10 digits, weights 6,5,7,2,3,4,5,6,7 mod 11
+    (a remainder of 10 is never issued)."""
+    v = _plain(s).removeprefix("PL")
+    if not re.fullmatch(r"\d{10}", v):
+        return False
+    r = _weighted(v, [6, 5, 7, 2, 3, 4, 5, 6, 7]) % 11
+    return r != 10 and r == int(v[9])
+
+
+_USCC = "0123456789ABCDEFGHJKLMNPQRTUWXY"
+
+
+def valid_cn_uscc(s: str) -> bool:
+    """China Unified Social Credit Code (GB 32100-2015): 18 characters from a
+    31-character set, check character = (31 - weighted sum mod 31) mod 31."""
+    v = _plain(s)
+    if len(v) != 18 or any(c not in _USCC for c in v):
+        return False
+    w = [1, 3, 9, 27, 19, 26, 16, 17, 20, 29, 25, 13, 8, 24, 10, 30, 28]
+    total = sum(_USCC.index(c) * x for c, x in zip(v, w))
+    return _USCC[(31 - total % 31) % 31] == v[17]
 
 
 def valid_bg_egn(s: str) -> bool:
@@ -390,6 +440,11 @@ VALIDATORS = {
     "th_pid": valid_th_pid,
     "hr_oib": valid_hr_oib,
     "bg_egn": valid_bg_egn,
+    "fr_siren": valid_fr_siren,
+    "fr_siret": valid_fr_siret,
+    "de_ustid": valid_de_ustid,
+    "pl_nip": valid_pl_nip,
+    "cn_uscc": valid_cn_uscc,
 }
 
 
@@ -435,6 +490,10 @@ if __name__ == "__main__":
         ("nz_ird", "49091850", "49091851"), ("at_svnr", "1237010180", "1238010180"),
         ("cz_rc", "7103192745", "7103192746"), ("th_pid", "1101700207030", "1101700207031"),
         ("hr_oib", "69435151530", "69435151531"), ("bg_egn", "7523169263", "7523169264"),
+        # synthetic numbers built for these tests, not issued identifiers
+        ("fr_siren", "123 456 782", "123 456 783"), ("fr_siret", "123 456 782 00010", "123 456 782 00011"),
+        ("fr_siret", "35600000000015", "35600000000016"), ("de_ustid", "DE123456788", "DE123456789"),
+        ("pl_nip", "PL 123-456-32-18", "123-456-32-17"), ("cn_uscc", "91350100M00012345T", "91350100M00012345U"),
     ]:
         assert VALIDATORS[fmt](good), (fmt, good)
         assert not VALIDATORS[fmt](bad), (fmt, bad)
