@@ -61,7 +61,7 @@ const pct = (x: number): string => `${Math.round(x * 100)}%`;
 
 function MuBar({ m, u }: { m: number; u: number }) {
   return (
-    <span className="m2-mu" aria-label={t("Agrees on {m} of true matches and {u} of non-matches", { m: pct(m), u: pct(u) })}>
+    <span className="m2-mu" role="img" aria-label={t("Agrees on {m} of true matches and {u} of non-matches", { m: pct(m), u: pct(u) })}>
       <span className="m2-mu-m" style={{ width: `${Math.round(m * 100)}%` }} />
       <span className="m2-mu-u" style={{ width: `${Math.round(u * 100)}%` }} />
     </span>
