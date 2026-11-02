@@ -17,9 +17,9 @@
    "rules": 876
   },
   "sd_customer_master": {
-   "benchmarked": 257,
-   "perfect": 257,
-   "rules": 554
+   "benchmarked": 259,
+   "perfect": 259,
+   "rules": 557
   }
  },
  "records_per_rule": 40,
@@ -20239,6 +20239,41 @@
    "module": "sd_customer_master",
    "reason": "exists_check needs reference data or a second dataset",
    "rule_id": "SDCM835"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "uniqueness_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 20,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM836",
+   "true_positives": 20
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "uniqueness_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 20,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM837",
+   "true_positives": 20
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "uniqueness_check",
+   "module": "sd_customer_master",
+   "reason": "name normalisation is a fuzzy key",
+   "rule_id": "SDCM838"
   },
   {
    "benchmarkable": true,

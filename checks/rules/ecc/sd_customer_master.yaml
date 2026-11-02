@@ -12331,3 +12331,69 @@ rules:
     fix_map:
       __other__: Maintain the e-mail address in XD02 > Address, or reload the address communication data.
     record_fix_template: 'Address {ADRC.ADDRNUMBER}: e-mail flag set, no e-mail address.'
+  - id: SDCM836
+    field: KNA1.STCD1
+    check_class: uniqueness_check
+    fields:
+    - KNA1.LAND1
+    - KNA1.STCD1
+    normalize: alnum
+    applies_when:
+      KNA1.LOEVM:
+        blank: true
+    severity: medium
+    dimension: uniqueness
+    message: The same tax number 1 is held by more than one active customer in the same country
+    why_it_matters: A tax number identifies one legal entity. Two active customer accounts with the same country and tax number
+      are usually a duplicate account for one customer (or a branch that needs a deliberate link), which splits credit
+      exposure, open items and rebate or pricing history.
+    rule_authority: best_practice
+    sap_impact: Credit exposure, receivables and sales history are split across the duplicate accounts; tax reporting and
+      e-invoicing see one tax registration under several customers; the S/4HANA business partner conversion creates duplicate
+      partners.
+    fix_map:
+      __other__: Compare the accounts in XD03 / VD03. If they are the same customer, merge them (MDG or the customer merge
+        tool) or block and mark one for deletion; if they are separate branches, correct the wrong tax number.
+    record_fix_template: 'Customer {KNA1.KUNNR}: tax number 1 is also held by another active customer in the same country.'
+  - id: SDCM837
+    field: KNA1.STCEG
+    check_class: uniqueness_check
+    fields:
+    - KNA1.STCEG
+    normalize: alnum
+    applies_when:
+      KNA1.LOEVM:
+        blank: true
+    severity: medium
+    dimension: uniqueness
+    message: The same VAT registration number is held by more than one active customer
+    why_it_matters: A VAT registration number is issued to one taxable entity. The same number on two active customer accounts
+      is a duplicate customer or a keying error, and breaks intra-EU sales listings and VAT validation.
+    rule_authority: best_practice
+    sap_impact: EC sales lists and VAT validation attach several customers to one registration; duplicate partners are created
+      at S/4HANA conversion.
+    fix_map:
+      __other__: Compare the accounts in XD03 / VD03; merge the duplicates or correct the wrong VAT registration number.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number is also held by another active customer.'
+  - id: SDCM838
+    field: KNA1.NAME1
+    check_class: uniqueness_check
+    fields:
+    - KNA1.NAME1
+    - KNA1.PSTLZ
+    - KNA1.ORT01
+    normalize: name
+    applies_when:
+      KNA1.LOEVM:
+        blank: true
+    severity: medium
+    dimension: uniqueness
+    message: Possible duplicate customer, same name, postal code and city
+    why_it_matters: Two active customer accounts with the same name at the same postal code and city are very likely one
+      customer entered twice. Duplicates split orders, open items and credit exposure.
+    rule_authority: best_practice
+    sap_impact: Orders, invoices and credit exposure are split across the accounts; dunning and statements go out twice; duplicate
+      business partners are created at S/4HANA conversion.
+    fix_map:
+      __other__: Compare the accounts in XD03 / VD03 and merge or block the duplicate (MDG or the customer merge tool).
+    record_fix_template: 'Customer {KNA1.KUNNR}: possible duplicate, same name, postal code and city as another active customer.'
