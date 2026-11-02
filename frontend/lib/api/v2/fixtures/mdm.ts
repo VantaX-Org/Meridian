@@ -38,9 +38,11 @@ const state = {
   populated: false,
   promoted: new Set<string>(),
   writeback: new Map<string, WritebackRequest[]>(),
+  calibrated: false,
 };
 
 export function resetMdmFixture(): void {
+  state.calibrated = false;
   state.promoted.clear();
   state.writeback.clear();
   state.splitKeys.clear();
@@ -218,7 +220,85 @@ function pairDetail(id: string): ReviewPairDetail {
       "MARC-WERKS": b ? "3000" : "3000",
     },
   });
-  return { ...item, record_a: side(item.a, false), record_b: side(item.b, true), default_survivor: item.a };
+  const attr = (field: string, comparator: string, a: string, b: string, similarity: number | null, weight: number, threshold: number) => ({
+    field, comparator, value_a: a, value_b: b, similarity, weight, threshold,
+    contribution: similarity === null ? 0 : Math.round(similarity * weight * 100) / 100,
+    threshold_met: similarity !== null && similarity >= threshold, skipped: similarity === null,
+    ...(similarity === null ? { reason: "missing_value" } : {}),
+  });
+  const attributes = [
+    attr("MAKT.MAKTX", "desc_tokens", nm, `${nm} zinc plated`, 0.86, 35, 0.85),
+    attr("MARA.MFRPN", "part_number", `PN-${4400 + p}`, `PN ${4400 + p}`, 1, 20, 1),
+    attr("MARA.MFRNR", "code_exact", "", "", null, 10, 1),
+    attr("MARA.MEINS", "code_exact", "EA", "PCS", 0, 10, 1),
+    attr("MARA.MATKL", "code_exact", "0420", "0430", 0, 10, 1),
+    attr("MARA.MTART", "code_exact", "ROH", "ROH", 1, 5, 1),
+  ];
+  const weightTotal = attributes.filter((a) => !a.skipped).reduce((s, a) => s + a.weight, 0);
+  const explanation = {
+    attributes, total: item.total, weight_total: weightTotal, band: "steward_review" as const, auto_action: "steward_review",
+    fired: "review_floor", rules_met: ["MAKT.MAKTX", "MARA.MFRPN", "MARA.MTART"], rules_failed: ["MARA.MEINS", "MARA.MATKL"],
+    thresholds: { auto_merge: 0.95, review_floor: 0.3 },
+  };
+  return { ...item, explanation, record_a: side(item.a, false), record_b: side(item.b, true), default_survivor: item.a };
+}
+
+/* ---- match profile, calibration and the consolidation pack ---- */
+
+// Synthetic m and u for the material profile's rules, as 14 accepted and 11 rejected steward decisions would give.
+const CAL_SEED: [string, string, number, number, number, number][] = [
+  ["MAKT.MAKTX", "desc_tokens", 0.85, 35, 0.93, 0.27],
+  ["MARA.MFRPN", "part_number", 1, 20, 0.88, 0.04],
+  ["MARA.MFRNR", "code_exact", 1, 10, 0.9, 0.61],
+  ["MARA.BISMT", "part_number", 1, 10, 0.5, 0.08],
+  ["MARA.MEINS", "code_exact", 1, 10, 0.71, 0.55],
+  ["MARA.MATKL", "code_exact", 1, 10, 0.64, 0.36],
+  ["MARA.MTART", "code_exact", 1, 5, 0.96, 0.91],
+];
+
+function calibration(domain: string): unknown {
+  const passes = domain === MM ? [
+    { name: "manufacturer_part", kind: "key", fields: ["MARA.MFRPN"] },
+    { name: "old_material_number", kind: "key", fields: ["MARA.BISMT"] },
+    { name: "description_and_unit", kind: "key", fields: ["MAKT.MAKTX", "MARA.MEINS"] },
+    { name: "description_neighbours", kind: "neighbour", fields: ["MAKT.MAKTX"] },
+    { name: "name_in_group", kind: "blocked", fields: ["MAKT.MAKTX", "MARA.MATKL", "MARA.MTART"] },
+  ] : [];
+  const r2 = (x: number): number => Math.round(x * 100) / 100;
+  const fields = (domain === MM ? CAL_SEED : []).map(([field, match_type, threshold, weight, m, u]) => {
+    const agreement = r2(Math.log2(m / u));
+    const recommended = Math.max(1, Math.round(agreement * 10));
+    return {
+      field, match_type, threshold, current_weight: state.calibrated ? recommended : weight,
+      accepted_with_value: 14, accepted_agree: Math.round(m * 14), rejected_with_value: 11, rejected_agree: Math.round(u * 11),
+      m, u, agreement_weight: Math.max(0, agreement), disagreement_weight: r2(Math.log2((1 - m) / (1 - u))), recommended_weight: recommended,
+    };
+  });
+  return {
+    domain, id_field: domain === MM ? "MARA.MATNR" : "", passes, rules_stored: true, missing_profile_rules: [],
+    status: domain === MM ? "ready" : "insufficient", accepted: domain === MM ? 14 : 0, rejected: domain === MM ? 11 : 0, min_decisions: 10,
+    fields,
+    preview: domain === MM && !state.calibrated ? {
+      pairs: 148, pairs_newly_linked: 9, pairs_unlinked: 4, band_moves: { "steward_review>auto_merge": 6, "steward_review>auto_dismiss": 4 },
+      clusters_before: 61, clusters_after: 57, clusters_that_would_merge: 5, clusters_that_would_split: 1, applied: false,
+    } : null,
+  };
+}
+
+const PACK_MERGED: [number, number][] = [[6001, 5001], [6002, 5001], [6014, 5014]];
+
+function consolidationPack(domain: string): unknown {
+  const merged = domain === MM ? PACK_MERGED : [];
+  const actions = domain === MM ? [
+    { table: "MARA", field: "LVORM", value: "X", action: "flag_for_deletion" },
+    { table: "MARA", field: "BISMT", value: "{survivor}", action: "point_to_survivor" },
+    { table: "MARA", field: "MSTAE", value: null, action: "cross_plant_status_block" },
+  ] : [];
+  const rows = merged.flatMap(([l, s]) => actions.map((a) => ({
+    loser_key: `MATNR=${pad(l)}`, survivor_key: `MATNR=${pad(s)}`, table: a.table, field: a.field, action: a.action,
+    value: a.value === "{survivor}" ? `MATNR=${pad(s)}` : a.value, merged_at: iso(14 + (l % 3)),
+  })));
+  return { domain, merged: merged.length, survivors: new Set(merged.map(([, s]) => s)).size, actions, total_rows: rows.length, rows };
 }
 
 /* ---- glossary ---- */
@@ -453,6 +533,8 @@ export function mdmFixture(path: string, params: Params): unknown {
   const pair = /^\/match-scores\/([^/]+)$/.exec(path);
   if (pair) return pairDetail(decodeURIComponent(pair[1]));
   if (path === "/survivorship-rules") return { rules: params.domain === MM ? SURVIVORSHIP : [], total: params.domain === MM ? SURVIVORSHIP.length : 0 };
+  if (path === "/match-calibration") return calibration(String(params.domain ?? ""));
+  if (path === "/consolidation-pack") return consolidationPack(String(params.domain ?? ""));
   if (path === "/glossary") return glossaryList(params);
   const term = /^\/glossary\/([^/]+)$/.exec(path);
   if (term) return termDetail(decodeURIComponent(term[1]));
@@ -502,6 +584,12 @@ export function mdmFixtureWrite(method: string, path: string, body: unknown): un
     state.splitKeys.set(id, set);
     const left = members(idx(id));
     return { golden_record_id: id, event_id: `ev-split-${id}`, split_keys: keys, remaining_keys: left, do_not_match_pairs: keys.length, golden_fields: {} };
+  }
+  if (method === "POST" && path === "/match-calibration/apply") {
+    const before = calibration(MM) as { fields: { field: string; current_weight: number; recommended_weight: number }[] };
+    state.calibrated = true;
+    const changed = before.fields.filter((f) => f.current_weight !== f.recommended_weight).map((f) => ({ field: f.field, before: f.current_weight, after: f.recommended_weight }));
+    return { domain: String(b.domain ?? MM), reason: String(b.reason ?? ""), changed, added: [], accepted: 14, rejected: 11 };
   }
   if (method === "POST" && path === "/glossary/populate") {
     state.populated = true;
