@@ -5,13 +5,14 @@
  *   /change-requests (GET, POST), /change-requests/{id} (GET), /validate, /submit, /decide, /cancel, /retry,
  *   /comments, /attachments, GET /change-requests/{id}/export, GET /change-requests/{id}/field-history, GET /change-requests/{id}/preview,
  *   GET and PUT /change-requests/defaults, DELETE /change-requests/defaults/{id}
+ *   GET and PUT /change-requests/derivations and /change-requests/critical-fields, DELETE on {id} of each
  *   GET /workflows/definitions, /workflows/facts, /workflows/tasks; POST /workflows/definitions, /workflows/definitions/validate,
  *   /workflows/definitions/{id}/versions, /activate, /workflows/tasks/{id}/decide
  *
  * The demo user (u-me) requested CR-1002 to CR-1004; R. Govender's CR-1001 waits for the demo user's approval, and so
  * does the first step of batch B-241. Writes change the state until the fixture is reset.
  */
-import type { ChangeRequest, DryRun, EntryDefault, Facts, FieldChange, Precheck, RequestDetail, TaskRow, WorkflowDefinition, WorkflowEvent } from "../requests";
+import type { ChangeRequest, CriticalField, Derivation, DryRun, EntryDefault, Facts, FieldChange, Precheck, RequestDetail, TaskRow, WorkflowDefinition, WorkflowEvent } from "../requests";
 import * as wf from "./work-fixture";
 
 export const NONE_REQ = Symbol("no-requests-fixture");
@@ -44,7 +45,7 @@ const precheck = (failures: Precheck["failures"], duplicates: Precheck["duplicat
 
 const req = (r: Partial<ChangeRequest> & Pick<ChangeRequest, "id" | "kind" | "object" | "status" | "title" | "payload">): ChangeRequest => ({
   target_system_id: ECC, object_key: null, record_count: 0, requester_id: ME, requester_label: ME_LABEL, workflow_instance_id: null, precheck: null, validated_at: null, sap_key: null, sap_result: null,
-  sap_phase: null, sap_attempts: 0, delivery: null, has_export: false, reason: null, created_at: "2026-10-18T08:00:00Z", updated_at: "2026-10-18T08:00:00Z", submitted_at: null, decided_at: null, completed_at: null, due_at: null, waiting_step: null, age_hours: null, overdue: false, ...r,
+  sap_phase: null, sap_attempts: 0, delivery: null, has_export: false, reason: null, created_at: "2026-10-18T08:00:00Z", updated_at: "2026-10-18T08:00:00Z", submitted_at: null, decided_at: null, completed_at: null, due_at: null, waiting_step: null, age_hours: null, overdue: false, critical_fields: [], ...r,
 });
 
 const ev = (id: string, action: string, actor: string | null, at: string, to: string | null = null, detail: Record<string, unknown> | null = null): WorkflowEvent => ({ id, action, from_status: null, to_status: to, actor_label: actor, detail, created_at: at });
@@ -54,6 +55,8 @@ interface State {
   details: RequestDetail[];
   tasks: TaskRow[];
   defaults: EntryDefault[];
+  derivations: Derivation[];
+  criticalFields: CriticalField[];
   fields: Record<string, FieldChange[]>;
   /** The record keys each mass change draft names. */
   keys: Record<string, string[]>;
@@ -86,7 +89,7 @@ function initial(): State {
   const cr1 = req({
     id: "CR-1001", kind: "create", object: "material", status: "in_approval", title: "New spare part: hydraulic seal kit", requester_id: "u-rg", requester_label: "R. Govender",
     payload: { "MARA.MTART": "ERSA", "MARA.MBRSH": "M", "MARA.MEINS": "EA", "MAKT.MAKTX": "Hydraulic seal kit 80 mm", "MAKT.SPRAS": "EN", "MARC.WERKS": "1000" },
-    workflow_instance_id: "WI-1001", precheck: precheck([{ check_id: "MM022", severity: "high", dimension: "completeness", field: "MARA.MATKL", message: "Material group is blank." }], [{ master_record_id: "MR-88120", domain: "material", sap_object_key: "MATNR=100-4471", score: 0.91, band: "likely", attributes: [{ field: "MAKT.MAKTX", similarity: 0.93, value: "Hydraulic seal kit 80mm" }] }]),
+    critical_fields: ["MARA.MTART"], workflow_instance_id: "WI-1001", precheck: precheck([{ check_id: "MM022", severity: "high", dimension: "completeness", field: "MARA.MATKL", message: "Material group is blank." }], [{ master_record_id: "MR-88120", domain: "material", sap_object_key: "MATNR=100-4471", score: 0.91, band: "likely", attributes: [{ field: "MAKT.MAKTX", similarity: 0.93, value: "Hydraulic seal kit 80mm" }] }]),
     validated_at: "2026-10-18T09:00:00Z", submitted_at: "2026-10-18T09:05:00Z", created_at: "2026-10-18T08:40:00Z", updated_at: "2026-10-18T09:05:00Z",
     due_at: "2026-10-22T09:05:00Z", waiting_step: "Four-eyes approval", age_hours: 46.9,
   });
@@ -113,6 +116,8 @@ function initial(): State {
     seq: 1005,
     keys: {},
     defaults: [{ id: "D-1", object: "material", field: "MARA.MEINS", value: "EA", updated_at: "2026-10-01T09:00:00Z" }],
+    derivations: [{ id: "V-1", object: "material", when_field: "MARA.MTART", when_values: ["ROH"], target_field: "MARC.BESKZ", value: "F", updated_at: "2026-10-02T09:00:00Z" }],
+    criticalFields: [{ id: "C-1", object: "material", field: "MARA.MTART", updated_at: "2026-10-02T09:00:00Z" }],
     fields: {
       "CR-1001": [
         fc("F-1", "MARA.MTART", "set", null, "ERSA", "R. Govender", "2026-10-18T08:40:00Z"),
@@ -184,6 +189,21 @@ function withDefaults(object: string, kind: unknown, payload: Record<string, str
   return { payload: { ...payload, ...Object.fromEntries(filled.map((d) => [d.field, d.value])) }, filled: filled.map((d) => d.field) };
 }
 
+/** Derivation rules run in order on a new request; a value that already holds is not a derivation. */
+function withDerivations(object: string, payload: Record<string, string>): { payload: Record<string, string>; derived: string[] } {
+  const out = { ...payload };
+  const derived: string[] = [];
+  for (const d of state.derivations.filter((x) => x.object === object)) {
+    if (d.when_values.includes(out[d.when_field] ?? "") && out[d.target_field] !== d.value) {
+      out[d.target_field] = d.value;
+      derived.push(d.target_field);
+    }
+  }
+  return { payload: out, derived };
+}
+
+const criticalOf = (object: string, payload: Record<string, string>) => state.criticalFields.filter((c) => c.object === object && c.field in payload).map((c) => c.field);
+
 function facts(): Facts {
   return {
     facts: { object_kind: "string", kind: "string", object: "string", modules: "list", fields: "list", policy_classes: "list", value_at_risk: "number", records: "number", target_system_id: "string", rule_failures: "number", critical_failures: "number", duplicates: "number" },
@@ -217,6 +237,8 @@ function dryRun(body: { definition?: { steps?: { name?: string; quorum?: string;
 export function requestsRead(path: string, params: Record<string, unknown>): unknown {
   if (path === "/change-requests") return { items: clone(listed(params)) };
   if (path === "/change-requests/defaults") return { items: clone(state.defaults) };
+  if (path === "/change-requests/derivations") return { items: clone(state.derivations) };
+  if (path === "/change-requests/critical-fields") return { items: clone(state.criticalFields) };
   const hist = /^\/change-requests\/([^/]+)\/field-history$/.exec(path);
   if (hist) {
     const id = find(decodeURIComponent(hist[1])).request.id;
@@ -273,6 +295,32 @@ export function requestsWrite(method: string, path: string, body: unknown): unkn
     state.defaults = [...state.defaults.filter((d) => d.id !== row.id), row];
     return clone(row);
   }
+  if (method === "PUT" && path === "/change-requests/derivations") {
+    const ok = (f: string) => /^[A-Z0-9_]+\.[A-Z0-9_]+$/.test(f);
+    const when_field = String(b.when_field ?? "").trim().toUpperCase();
+    const target_field = String(b.target_field ?? "").trim().toUpperCase();
+    const when_values = ((b.when_values ?? []) as string[]).map((v) => String(v).trim()).filter(Boolean);
+    if (!ok(when_field) || !ok(target_field) || when_values.length === 0 || !String(b.value ?? "").trim()) fail(422, "The rule is not valid.");
+    const row: Derivation = { id: `V-${state.seq++}`, object: b.object as Derivation["object"], when_field, when_values, target_field, value: String(b.value), updated_at: NOW };
+    state.derivations = [...state.derivations, row];
+    return clone(row);
+  }
+  if (method === "PUT" && path === "/change-requests/critical-fields") {
+    const field = String(b.field ?? "").trim().toUpperCase();
+    if (!/^[A-Z0-9_]+\.[A-Z0-9_]+$/.test(field)) fail(422, "The field is not valid.");
+    const row: CriticalField = { id: state.criticalFields.find((c) => c.object === b.object && c.field === field)?.id ?? `C-${state.seq++}`, object: b.object as CriticalField["object"], field, updated_at: NOW };
+    state.criticalFields = [...state.criticalFields.filter((c) => c.id !== row.id), row];
+    return clone(row);
+  }
+  const delRule = /^\/change-requests\/(derivations|critical-fields)\/([^/]+)$/.exec(path);
+  if (method === "DELETE" && delRule) {
+    const id = decodeURIComponent(delRule[2]);
+    const list = delRule[1] === "derivations" ? state.derivations : state.criticalFields;
+    if (!list.some((d) => d.id === id)) fail(404, "Rule not found.");
+    if (delRule[1] === "derivations") state.derivations = state.derivations.filter((d) => d.id !== id);
+    else state.criticalFields = state.criticalFields.filter((d) => d.id !== id);
+    return { deleted: id };
+  }
   const del = /^\/change-requests\/defaults\/([^/]+)$/.exec(path);
   if (method === "DELETE" && del) {
     const id = decodeURIComponent(del[1]);
@@ -285,14 +333,16 @@ export function requestsWrite(method: string, path: string, body: unknown): unkn
     const id = `CR-${state.seq++}`;
     const given = (b.payload ?? {}) as Record<string, string>;
     if (Object.keys(given).length === 0) fail(422, "Propose at least one field.");
-    const { payload, filled } = withDefaults(String(b.object), b.kind, given);
-    state.fields[id] = Object.entries(payload).map(([field, v], i) => ({ id: `F-${state.seq++}-${i}`, field, action: filled.includes(field) ? "defaulted" : "set", old_value: null, new_value: v, actor_label: ME_LABEL, created_at: NOW }));
+    const filledIn = withDefaults(String(b.object), b.kind, given);
+    const { payload, derived } = withDerivations(String(b.object), filledIn.payload);
+    const filled = filledIn.filled;
+    state.fields[id] = Object.entries(payload).map(([field, v], i) => ({ id: `F-${state.seq++}-${i}`, field, action: derived.includes(field) ? "derived" : filled.includes(field) ? "defaulted" : "set", old_value: null, new_value: v, actor_label: ME_LABEL, created_at: NOW }));
     if (b.kind === "change" && !String(b.object_key ?? "").trim()) fail(422, "A change names the record it changes (object_key).");
     const keys = b.kind === "mass_change" ? [...new Set(((b.record_keys ?? []) as string[]).map((k) => k.trim()).filter(Boolean))] : [];
     if (b.kind === "mass_change" && keys.length === 0) fail(422, "A mass change names the records it changes (record_keys).");
     if (keys.length > 10000) fail(422, "At most 10000 records in one mass change.");
     state.keys[id] = keys;
-    const r = req({ id, kind: b.kind as ChangeRequest["kind"], object: b.object as ChangeRequest["object"], status: "draft", title: (b.title as string) || null, payload, record_count: keys.length, object_key: (b.object_key as string) || null, target_system_id: (b.target_system_id as string) || ECC, created_at: NOW, updated_at: NOW });
+    const r = req({ id, kind: b.kind as ChangeRequest["kind"], object: b.object as ChangeRequest["object"], status: "draft", title: (b.title as string) || null, payload, record_count: keys.length, object_key: (b.object_key as string) || null, target_system_id: (b.target_system_id as string) || ECC, critical_fields: criticalOf(String(b.object), payload), created_at: NOW, updated_at: NOW });
     state.details = [{ request: r, workflow: null, history: [], comments: [], attachments: [] }, ...state.details];
     return clone(r);
   }

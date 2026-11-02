@@ -63,6 +63,7 @@ FACTS: dict[str, str] = {
     "rule_failures": "change requests: Meridian rules the proposed record fails",
     "critical_failures": "change requests: critical rules the proposed record fails",
     "duplicates": "change requests: likely duplicates found among the master records",
+    "critical_fields": "change requests: the tenant's critical fields (TABLE.FIELD) the request touches",
 }
 INSTANCE_DONE = ("approved", "rejected", "cancelled", "withdrawn")
 EVENTS = ("workflow.started", "workflow.step_waiting", "workflow.step_decided", "workflow.escalated",
@@ -526,8 +527,13 @@ def _wh_base(inst: dict) -> dict:
             "workflow": inst["definition_key"], "version": inst["definition_version"]}
 
 
+# The extra step of a change request that touches a critical field: appended after the definition's steps, four-eyes.
+CRITICAL_STEP = Step.model_validate({**_FOUR_EYES, "name": "Critical field approval"})
+
+
 def _activate(session, tid: str, inst: dict, defn: Definition, task: dict) -> None:
-    step = defn.steps[task["step_index"]]
+    i = task["step_index"]
+    step = defn.steps[i] if i < len(defn.steps) else CRITICAL_STEP
     users, note = assignees(session, tid, step, inst["facts"], inst["requester_id"])
     due = datetime.now(timezone.utc) + timedelta(hours=step.sla_hours) if step.sla_hours else None
     session.execute(text(
@@ -582,6 +588,15 @@ def start(session, tid: str, kind: str, object_id: str, requester_id: Optional[s
                   detail={"step": s["name"], "reason": s["reason"]})
     _webhook(session, tid, "workflow.started", {**_wh_base(inst), "steps": sum(1 for s in steps if s["applies"]),
                                                 "skipped": sum(1 for s in steps if not s["applies"])})
+    if kind == "change_request" and facts.get("critical_fields"):
+        session.execute(text(
+            "INSERT INTO workflow_tasks (tenant_id, instance_id, step_index, step_name, assignee_rule, quorum, "
+            "requester_may_approve, status, sla_hours, escalate) VALUES (CAST(:t AS uuid), CAST(:i AS uuid), :x, :n, "
+            "CAST(:r AS jsonb), 'any', false, 'waiting', NULL, true)"),
+            {"t": tid, "i": iid, "x": len(defn.steps), "n": CRITICAL_STEP.name,
+             "r": json.dumps({"assignee": CRITICAL_STEP.assignee.model_dump(mode="json"), "fallback": None})})
+        event(session, tid, kind, object_id, "critical_step_added", instance_id=iid,
+              detail={"fields": facts["critical_fields"][:20]})
     _advance(session, tid, inst, defn)
     if notify:
         flush_notifications(session, tid, iid)

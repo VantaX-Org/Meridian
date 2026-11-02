@@ -99,7 +99,7 @@ export function PrecheckView({ p }: { p: Precheck }) {
   );
 }
 
-const actionWord = (a: FieldAction): string => ({ set: tr("Set"), changed: tr("Changed"), removed: tr("Removed"), defaulted: tr("Defaulted") })[a] ?? a;
+const actionWord = (a: FieldAction): string => ({ set: tr("Set"), changed: tr("Changed"), removed: tr("Removed"), defaulted: tr("Defaulted"), derived: tr("Derived") })[a] ?? a;
 
 /** Every field of the request that was set, changed, removed or filled by a default: old and new value, who, when. */
 function FieldHistory({ id }: { id: string }) {
@@ -247,6 +247,17 @@ function RequestBody({ d }: { d: RequestDetail }) {
         {r.waiting_step ? <Fact label={tr("Waiting for")}>{r.waiting_step}</Fact> : null}
         {r.due_at ? <Fact label={tr("Due")}>{`${formatDate(r.due_at, "datetime")}${r.overdue ? ` ${tr("Overdue")}` : ""}`}</Fact> : null}
         {r.age_hours != null ? <Fact label={tr("Age")}>{ageWord(r.age_hours)}</Fact> : null}
+        {r.critical_fields?.length ? (
+          <Fact label={tr("Critical fields")}>
+            <span data-testid="request-critical">
+              {r.critical_fields.map((f) => (
+                <div key={f}>
+                  <Coded code={f} text={describeField(f)} />
+                </div>
+              ))}
+            </span>
+          </Fact>
+        ) : null}
         {r.decided_at ? <Fact label={tr("Decided")}>{formatDate(r.decided_at, "datetime")}</Fact> : null}
         {r.sap_key ? (
           <Fact label={tr("SAP key")}>

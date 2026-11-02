@@ -84,6 +84,7 @@ class RequestOut(BaseModel):
     waiting_step: Optional[str] = None
     age_hours: Optional[float] = Field(None, description="open requests: hours since submitted (draft: since created)")
     overdue: bool = False
+    critical_fields: list[str] = Field([], description="the tenant's critical fields (TABLE.FIELD) the request touches")
 
     @model_validator(mode="after")
     def _ageing(self) -> "RequestOut":
@@ -217,6 +218,7 @@ async def create_request(body: RequestCreate, request: Request, db: AsyncSession
     payload, defaulted = crs.normalise(body.payload), []
     if body.kind == "create":
         payload, defaulted = await db.run_sync(lambda s: crs.apply_defaults(s, str(tenant.id), body.object, payload))
+    payload, derived = await db.run_sync(lambda s: crs.apply_derivations(s, str(tenant.id), body.object, payload))
     keys = [k.strip() for k in body.record_keys] if body.kind == "mass_change" and body.record_keys else None
     _problems(body.object, body.kind, payload, body.object_key, keys)
     await _system_ok(db, tenant, body.target_system_id)
@@ -230,7 +232,7 @@ async def create_request(body: RequestCreate, request: Request, db: AsyncSession
          "rk": json.dumps(list(dict.fromkeys(keys))) if keys else None, "u": uid,
          "l": current_user_label()})).scalar()
     await db.run_sync(lambda s: crs.record_changes(s, str(tenant.id), cid, {}, payload, uid, current_user_label(),
-                                                   defaulted))
+                                                   defaulted, derived))
     await db.run_sync(lambda s: workflow.event(s, str(tenant.id), crs.KIND, cid, "drafted", to_status="draft",
                                                actor_id=uid, actor_label=current_user_label()))
     cr = await _load(db, tenant, uuid.UUID(cid))
@@ -249,8 +251,11 @@ async def update_request(request_id: uuid.UUID, body: RequestUpdate, request: Re
         raise HTTPException(status_code=409, detail=f"The request is {cr['status']}; only a draft is edited.")
     payload = crs.normalise(body.payload) if body.payload is not None else cr["payload"]
     defaulted: list[str] = []
+    derived: list[str] = []
     if cr["kind"] == "create" and body.payload is not None:
         payload, defaulted = await db.run_sync(lambda s: crs.apply_defaults(s, str(tenant.id), cr["object"], payload))
+    if body.payload is not None:
+        payload, derived = await db.run_sync(lambda s: crs.apply_derivations(s, str(tenant.id), cr["object"], payload))
     key = body.object_key if body.object_key is not None else cr["object_key"]
     keys = ([k.strip() for k in body.record_keys] if body.record_keys is not None else cr.get("record_keys")) \
         if cr["kind"] == "mass_change" else None
@@ -266,7 +271,7 @@ async def update_request(request_id: uuid.UUID, body: RequestUpdate, request: Re
          "s": str(body.target_system_id) if body.target_system_id else None, "i": str(request_id),
          "t": str(tenant.id)})
     await db.run_sync(lambda s: crs.record_changes(s, str(tenant.id), cr["id"], cr["payload"], payload, uid,
-                                                   current_user_label(), defaulted))
+                                                   current_user_label(), defaulted, derived))
     await db.run_sync(lambda s: workflow.event(s, str(tenant.id), crs.KIND, cr["id"], "edited", actor_id=uid,
                                                actor_label=current_user_label(),
                                                detail={"fields": sorted(payload)}))
@@ -510,6 +515,107 @@ async def delete_default(default_id: uuid.UUID, db: AsyncSession = Depends(get_d
     return {"deleted": str(default_id)}
 
 
+class DerivationBody(BaseModel):
+    object: Obj
+    when_field: str = Field(min_length=3, max_length=60, description="TABLE.FIELD the condition reads")
+    when_values: list[str] = Field(min_length=1, max_length=50, description="the condition holds when the field is one of these")
+    target_field: str = Field(min_length=3, max_length=60, description="TABLE.FIELD set when it holds")
+    value: str = Field(min_length=1, max_length=500)
+
+
+@router.get("/derivations", dependencies=[Depends(require_permission("mdm.read"))])
+async def list_derivations(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
+    """The rules that set a field of a request from other fields of it, applied in the order they were made."""
+    await _rls(db, tenant)
+    rows = (await db.execute(text(
+        "SELECT id::text AS id, object, when_field, when_values, target_field, value, created_at AS updated_at FROM request_derivations "
+        "WHERE tenant_id = :t ORDER BY object, created_at, id"), {"t": str(tenant.id)})).mappings()
+    return {"items": [dict(r) for r in rows]}
+
+
+@router.put("/derivations", dependencies=[Depends(require_permission("manage_workflows"))])
+async def put_derivation(body: DerivationBody, request: Request, db: AsyncSession = Depends(get_db),
+                         tenant: Tenant = Depends(get_tenant)) -> dict:
+    """Add a derivation (the same condition and target replaces the value). Both fields must pass the SAP field check."""
+    wf, tf = body.when_field.strip().upper(), body.target_field.strip().upper()
+    vals = sorted({v.strip() for v in body.when_values if v.strip()})
+    if not vals:
+        raise HTTPException(status_code=422, detail="Give at least one value to match.")
+    if wf == tf:
+        raise HTTPException(status_code=422, detail="A rule cannot set the field it reads.")
+    problems = crs.check_payload(body.object, "create", {wf: vals[0], tf: body.value}, None)
+    if problems:
+        raise HTTPException(status_code=422, detail={"detail": "The derivation is not valid.", "problems": problems})
+    await _rls(db, tenant)
+    row = (await db.execute(text(
+        "INSERT INTO request_derivations (tenant_id, object, when_field, when_values, target_field, value, updated_by) "
+        "VALUES (:t, :o, :w, CAST(:vs AS jsonb), :tf, :v, CAST(:u AS uuid)) "
+        "ON CONFLICT (tenant_id, object, when_field, when_values, target_field) DO UPDATE SET value = EXCLUDED.value, "
+        "updated_by = EXCLUDED.updated_by "
+        "RETURNING id::text AS id, object, when_field, when_values, target_field, value, created_at AS updated_at"),
+        {"t": str(tenant.id), "o": body.object, "w": wf, "vs": json.dumps(vals), "tf": tf, "v": body.value,
+         "u": current_user_id(request)})).mappings().one()
+    await db.commit()
+    return dict(row)
+
+
+@router.delete("/derivations/{derivation_id}", dependencies=[Depends(require_permission("manage_workflows"))])
+async def delete_derivation(derivation_id: uuid.UUID, db: AsyncSession = Depends(get_db),
+                            tenant: Tenant = Depends(get_tenant)) -> dict:
+    await _rls(db, tenant)
+    res = await db.execute(text("DELETE FROM request_derivations WHERE id = :i AND tenant_id = :t"),
+                           {"i": str(derivation_id), "t": str(tenant.id)})
+    if not res.rowcount:
+        raise HTTPException(status_code=404, detail="Derivation not found.")
+    await db.commit()
+    return {"deleted": str(derivation_id)}
+
+
+class CriticalBody(BaseModel):
+    object: Obj
+    field: str = Field(min_length=3, max_length=60, description="TABLE.FIELD")
+
+
+@router.get("/critical-fields", dependencies=[Depends(require_permission("mdm.read"))])
+async def list_critical_fields(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
+    """The fields whose change needs the extra critical field approval step."""
+    await _rls(db, tenant)
+    rows = (await db.execute(text("SELECT id::text AS id, object, field, created_at AS updated_at FROM "
+                                  "request_critical_fields WHERE tenant_id = :t ORDER BY object, field"),
+                             {"t": str(tenant.id)})).mappings()
+    return {"items": [dict(r) for r in rows]}
+
+
+@router.put("/critical-fields", dependencies=[Depends(require_permission("manage_workflows"))])
+async def put_critical_field(body: CriticalBody, request: Request, db: AsyncSession = Depends(get_db),
+                             tenant: Tenant = Depends(get_tenant)) -> dict:
+    """Mark a field critical. It must pass the SAP field check."""
+    field = body.field.strip().upper()
+    problems = crs.check_payload(body.object, "create", {field: "X"}, None)
+    if problems:
+        raise HTTPException(status_code=422, detail={"detail": "The field is not valid.", "problems": problems})
+    await _rls(db, tenant)
+    row = (await db.execute(text(
+        "INSERT INTO request_critical_fields (tenant_id, object, field, updated_by) VALUES (:t, :o, :f, "
+        "CAST(:u AS uuid)) ON CONFLICT (tenant_id, object, field) DO UPDATE SET updated_by = EXCLUDED.updated_by "
+        "RETURNING id::text AS id, object, field, created_at AS updated_at"),
+        {"t": str(tenant.id), "o": body.object, "f": field, "u": current_user_id(request)})).mappings().one()
+    await db.commit()
+    return dict(row)
+
+
+@router.delete("/critical-fields/{field_id}", dependencies=[Depends(require_permission("manage_workflows"))])
+async def delete_critical_field(field_id: uuid.UUID, db: AsyncSession = Depends(get_db),
+                                tenant: Tenant = Depends(get_tenant)) -> dict:
+    await _rls(db, tenant)
+    res = await db.execute(text("DELETE FROM request_critical_fields WHERE id = :i AND tenant_id = :t"),
+                           {"i": str(field_id), "t": str(tenant.id)})
+    if not res.rowcount:
+        raise HTTPException(status_code=404, detail="Critical field not found.")
+    await db.commit()
+    return {"deleted": str(field_id)}
+
+
 @router.get("/{request_id}/field-history", dependencies=[Depends(require_permission("mdm.read"))])
 async def field_history(request_id: uuid.UUID, db: AsyncSession = Depends(get_db),
                         tenant: Tenant = Depends(get_tenant)) -> dict:
@@ -579,6 +685,9 @@ async def list_requests(
             inst = {"id": cr["workflow_instance_id"], "requester_id": cr["requester_id"]}
             return workflow.eligibility(s, tid, inst, task, uid, actions)[0]
         rows = [cr for cr in rows if await db.run_sync(lambda s, cr=cr: mine(s, cr))]
+    crit = await db.run_sync(lambda s: crs.critical_set(s, tid))
+    for r in rows:
+        r["critical_fields"] = crs.critical_hits(r, crit)
     return RequestList(items=[RequestOut(**r) for r in rows])
 
 

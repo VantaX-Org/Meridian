@@ -16,7 +16,8 @@ from tests import workflow_seed as seed
 pytestmark = pytest.mark.skipif(not os.getenv("MERIDIAN_TEST_DB_URL"), reason="requires MERIDIAN_TEST_DB_URL")
 
 TABLES = ("workflow_definitions", "workflow_instances", "workflow_tasks", "workflow_events", "change_requests",
-          "change_request_attachments", "change_request_comments", "change_request_field_changes", "request_defaults")
+          "change_request_attachments", "change_request_comments", "change_request_field_changes", "request_defaults", "request_derivations",
+          "request_critical_fields")
 ROLE, PW = "meridian_wf_rls_app", "wf_rls_app_pw"
 
 
@@ -64,6 +65,10 @@ def _rows(owner, tid: str) -> None:
                        "VALUES (:t, :r, 'MARA.MEINS', 'set')"), {"t": tid, "r": cr})
         c.execute(text("INSERT INTO request_defaults (tenant_id, object, field, value) "
                        "VALUES (:t, 'material', 'MARA.MEINS', 'EA')"), {"t": tid})
+        c.execute(text("INSERT INTO request_derivations (tenant_id, object, when_field, when_values, target_field, "
+                       "value) VALUES (:t, 'material', 'MARA.MTART', '[\"ROH\"]', 'MARC.BESKZ', 'F')"), {"t": tid})
+        c.execute(text("INSERT INTO request_critical_fields (tenant_id, object, field) "
+                       "VALUES (:t, 'material', 'MARA.MTART')"), {"t": tid})
 
 
 @pytest.fixture

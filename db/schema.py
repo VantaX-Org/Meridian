@@ -3363,7 +3363,7 @@ class ChangeRequestFieldChange(Base):
     request_id = Column(UUID(as_uuid=True), ForeignKey("change_requests.id", ondelete="CASCADE"), nullable=False)
     field = Column(Text, nullable=False)
     record_key = Column(Text, nullable=True)  # mass_change: the record this row belongs to (migration 125)
-    action = Column(Text, nullable=False)  # set | changed | removed | defaulted
+    action = Column(Text, nullable=False)  # set | changed | removed | defaulted | derived
     old_value = Column(Text, nullable=True)
     new_value = Column(Text, nullable=True)
     actor_id = Column(UUID(as_uuid=True), nullable=True)
@@ -3386,6 +3386,38 @@ class RequestDefault(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (UniqueConstraint("tenant_id", "object", "field", name="uq_request_defaults"),)
+
+
+class RequestDerivation(Base):
+    """When ``when_field`` of a request is one of ``when_values``, set ``target_field`` to ``value`` (migration 126)."""
+    __tablename__ = "request_derivations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    object = Column(Text, nullable=False)
+    when_field = Column(Text, nullable=False)
+    when_values = Column(JSONB, nullable=False)
+    target_field = Column(Text, nullable=False)
+    value = Column(Text, nullable=False)
+    updated_by = Column(UUID(as_uuid=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "object", "when_field", "when_values", "target_field",
+                                       name="uq_request_derivations"),)
+
+
+class RequestCriticalField(Base):
+    """A TABLE.FIELD whose change needs an extra approval step (migration 126)."""
+    __tablename__ = "request_critical_fields"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    object = Column(Text, nullable=False)
+    field = Column(Text, nullable=False)
+    updated_by = Column(UUID(as_uuid=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "object", "field", name="uq_request_critical_fields"),)
 
 
 class ChangeRequestAttachment(Base):

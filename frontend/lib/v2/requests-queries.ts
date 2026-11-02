@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { getFacts, getFieldHistory, getMassPreview, getRequest, getWorkflowInstance, listDefaults, listDefinitions, listRequests, listTasks, type RequestFilter } from "@/lib/api/v2/requests";
+import { getFacts, getFieldHistory, getMassPreview, getRequest, getWorkflowInstance, listCriticalFields, listDefaults, listDefinitions, listDerivations, listRequests, listTasks, type RequestFilter } from "@/lib/api/v2/requests";
 
 const STALE = 15_000;
 
@@ -55,4 +55,16 @@ export function useMassPreview(id: string | null) {
 export function useEntryDefaults() {
   const fx = useFixture();
   return useQuery({ queryKey: ["v2", "request-defaults", fx], queryFn: listDefaults, staleTime: STALE, retry: false });
+}
+
+/** The tenant derivation rules (a field set from other fields of the request). */
+export function useDerivations() {
+  const fx = useFixture();
+  return useQuery({ queryKey: ["v2", "request-derivations", fx], queryFn: listDerivations, staleTime: STALE, retry: false });
+}
+
+/** The tenant critical fields (a change to one adds an approval step). */
+export function useCriticalFields() {
+  const fx = useFixture();
+  return useQuery({ queryKey: ["v2", "request-critical-fields", fx], queryFn: listCriticalFields, staleTime: STALE, retry: false });
 }
