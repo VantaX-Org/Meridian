@@ -19,7 +19,7 @@
   "sd_customer_master": {
    "benchmarked": 259,
    "perfect": 259,
-   "rules": 557
+   "rules": 567
   }
  },
  "records_per_rule": 40,
@@ -20274,6 +20274,76 @@
    "module": "sd_customer_master",
    "reason": "name normalisation is a fuzzy key",
    "rule_id": "SDCM838"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "value_placement_check",
+   "module": "sd_customer_master",
+   "reason": "value_placement_check needs reference data or a second dataset",
+   "rule_id": "SDCM839"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "value_placement_check",
+   "module": "sd_customer_master",
+   "reason": "value_placement_check needs reference data or a second dataset",
+   "rule_id": "SDCM840"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "value_placement_check",
+   "module": "sd_customer_master",
+   "reason": "value_placement_check needs reference data or a second dataset",
+   "rule_id": "SDCM841"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "value_placement_check",
+   "module": "sd_customer_master",
+   "reason": "value_placement_check needs reference data or a second dataset",
+   "rule_id": "SDCM842"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "value_placement_check",
+   "module": "sd_customer_master",
+   "reason": "value_placement_check needs reference data or a second dataset",
+   "rule_id": "SDCM843"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "value_placement_check",
+   "module": "sd_customer_master",
+   "reason": "value_placement_check needs reference data or a second dataset",
+   "rule_id": "SDCM844"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "value_placement_check",
+   "module": "sd_customer_master",
+   "reason": "value_placement_check needs reference data or a second dataset",
+   "rule_id": "SDCM845"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "value_placement_check",
+   "module": "sd_customer_master",
+   "reason": "value_placement_check needs reference data or a second dataset",
+   "rule_id": "SDCM846"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "value_placement_check",
+   "module": "sd_customer_master",
+   "reason": "value_placement_check needs reference data or a second dataset",
+   "rule_id": "SDCM847"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "value_placement_check",
+   "module": "sd_customer_master",
+   "reason": "value_placement_check needs reference data or a second dataset",
+   "rule_id": "SDCM848"
   },
   {
    "benchmarkable": true,

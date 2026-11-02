@@ -12397,3 +12397,253 @@ rules:
     fix_map:
       __other__: Compare the accounts in XD03 / VD03 and merge or block the duplicate (MDG or the customer merge tool).
     record_fix_template: 'Customer {KNA1.KUNNR}: possible duplicate, same name, postal code and city as another active customer.'
+  - id: SDCM839
+    field: KNA1.STCD1
+    check_class: value_placement_check
+    family: tax_checkdigit
+    fields:
+    - KNA1.STCD1
+    - KNA1.LAND1
+    applies_when:
+      KNA1.LAND1:
+      - ES
+    grain: KNA1
+    severity: high
+    dimension: accuracy
+    message: Spanish NIF/NIE/CIF in tax number 1 is well-formed but its control letter (DNI/NIE modulo 23, CIF control character) is wrong
+    why_it_matters: 'The Spanish NIF/NIE/CIF carries a control letter (DNI/NIE modulo 23, CIF control character) computed from the other characters by the
+      tax authority''s published algorithm. A number that has the right format but a wrong
+      check digit was mistyped or invented: it identifies no registered taxpayer, so
+      e-invoices, withholding certificates and tax returns citing it are rejected, and the
+      format rule alone cannot see it.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information from the
+        customer's registration certificate; do not recompute the check digit.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Spanish NIF/NIE/CIF in STCD1 fails its check digit.'
+  - id: SDCM840
+    field: KNA1.STCD1
+    check_class: value_placement_check
+    family: tax_checkdigit
+    fields:
+    - KNA1.STCD1
+    - KNA1.LAND1
+    applies_when:
+      KNA1.LAND1:
+      - IT
+    grain: KNA1
+    severity: high
+    dimension: accuracy
+    message: Italian codice fiscale in tax number 1 is well-formed but its control character is wrong
+    why_it_matters: 'The Italian codice fiscale carries a control character computed from the other characters by the
+      tax authority''s published algorithm. A number that has the right format but a wrong
+      check digit was mistyped or invented: it identifies no registered taxpayer, so
+      e-invoices, withholding certificates and tax returns citing it are rejected, and the
+      format rule alone cannot see it.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information from the
+        customer's registration certificate; do not recompute the check digit.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Italian codice fiscale in STCD1 fails its check digit.'
+  - id: SDCM841
+    field: KNA1.STCD2
+    check_class: value_placement_check
+    family: tax_checkdigit
+    fields:
+    - KNA1.STCD2
+    - KNA1.LAND1
+    applies_when:
+      KNA1.LAND1:
+      - IT
+    grain: KNA1
+    severity: high
+    dimension: accuracy
+    message: Italian partita IVA in tax number 2 is well-formed but its Luhn check digit is wrong
+    why_it_matters: 'The Italian partita IVA carries a Luhn check digit computed from the other characters by the
+      tax authority''s published algorithm. A number that has the right format but a wrong
+      check digit was mistyped or invented: it identifies no registered taxpayer, so
+      e-invoices, withholding certificates and tax returns citing it are rejected, and the
+      format rule alone cannot see it.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information from the
+        customer's registration certificate; do not recompute the check digit.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Italian partita IVA in STCD2 fails its check digit.'
+  - id: SDCM842
+    field: KNA1.STCD1
+    check_class: value_placement_check
+    family: tax_checkdigit
+    fields:
+    - KNA1.STCD1
+    - KNA1.LAND1
+    applies_when:
+      KNA1.LAND1:
+      - PT
+    grain: KNA1
+    severity: high
+    dimension: accuracy
+    message: Portuguese NIF in tax number 1 is well-formed but its modulo-11 check digit is wrong
+    why_it_matters: 'The Portuguese NIF carries a modulo-11 check digit computed from the other characters by the
+      tax authority''s published algorithm. A number that has the right format but a wrong
+      check digit was mistyped or invented: it identifies no registered taxpayer, so
+      e-invoices, withholding certificates and tax returns citing it are rejected, and the
+      format rule alone cannot see it.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information from the
+        customer's registration certificate; do not recompute the check digit.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Portuguese NIF in STCD1 fails its check digit.'
+  - id: SDCM843
+    field: KNA1.STCD1
+    check_class: value_placement_check
+    family: tax_checkdigit
+    fields:
+    - KNA1.STCD1
+    - KNA1.LAND1
+    applies_when:
+      KNA1.LAND1:
+      - AR
+    grain: KNA1
+    severity: high
+    dimension: accuracy
+    message: Argentine CUIT in tax number 1 is well-formed but its modulo-11 verification digit is wrong
+    why_it_matters: 'The Argentine CUIT carries a modulo-11 verification digit computed from the other characters by the
+      tax authority''s published algorithm. A number that has the right format but a wrong
+      check digit was mistyped or invented: it identifies no registered taxpayer, so
+      e-invoices, withholding certificates and tax returns citing it are rejected, and the
+      format rule alone cannot see it.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information from the
+        customer's registration certificate; do not recompute the check digit.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Argentine CUIT in STCD1 fails its check digit.'
+  - id: SDCM844
+    field: KNA1.STCD1
+    check_class: value_placement_check
+    family: tax_checkdigit
+    fields:
+    - KNA1.STCD1
+    - KNA1.LAND1
+    applies_when:
+      KNA1.LAND1:
+      - CL
+    grain: KNA1
+    severity: high
+    dimension: accuracy
+    message: Chilean RUT in tax number 1 is well-formed but its modulo-11 verification digit (DV) is wrong
+    why_it_matters: 'The Chilean RUT carries a modulo-11 verification digit (DV) computed from the other characters by the
+      tax authority''s published algorithm. A number that has the right format but a wrong
+      check digit was mistyped or invented: it identifies no registered taxpayer, so
+      e-invoices, withholding certificates and tax returns citing it are rejected, and the
+      format rule alone cannot see it.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information from the
+        customer's registration certificate; do not recompute the check digit.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Chilean RUT in STCD1 fails its check digit.'
+  - id: SDCM845
+    field: KNA1.STCD1
+    check_class: value_placement_check
+    family: tax_checkdigit
+    fields:
+    - KNA1.STCD1
+    - KNA1.LAND1
+    applies_when:
+      KNA1.LAND1:
+      - CO
+    grain: KNA1
+    severity: high
+    dimension: accuracy
+    message: Colombian NIT in tax number 1 is well-formed but its DIAN verification digit is wrong
+    why_it_matters: 'The Colombian NIT carries a DIAN verification digit computed from the other characters by the
+      tax authority''s published algorithm. A number that has the right format but a wrong
+      check digit was mistyped or invented: it identifies no registered taxpayer, so
+      e-invoices, withholding certificates and tax returns citing it are rejected, and the
+      format rule alone cannot see it.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information from the
+        customer's registration certificate; do not recompute the check digit.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Colombian NIT in STCD1 fails its check digit.'
+  - id: SDCM846
+    field: KNA1.STCD1
+    check_class: value_placement_check
+    family: tax_checkdigit
+    fields:
+    - KNA1.STCD1
+    - KNA1.LAND1
+    applies_when:
+      KNA1.LAND1:
+      - PE
+    grain: KNA1
+    severity: high
+    dimension: accuracy
+    message: Peruvian RUC in tax number 1 is well-formed but its modulo-11 check digit is wrong
+    why_it_matters: 'The Peruvian RUC carries a modulo-11 check digit computed from the other characters by the
+      tax authority''s published algorithm. A number that has the right format but a wrong
+      check digit was mistyped or invented: it identifies no registered taxpayer, so
+      e-invoices, withholding certificates and tax returns citing it are rejected, and the
+      format rule alone cannot see it.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information from the
+        customer's registration certificate; do not recompute the check digit.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Peruvian RUC in STCD1 fails its check digit.'
+  - id: SDCM847
+    field: KNA1.STCD1
+    check_class: value_placement_check
+    family: tax_checkdigit
+    fields:
+    - KNA1.STCD1
+    - KNA1.LAND1
+    applies_when:
+      KNA1.LAND1:
+      - RU
+    grain: KNA1
+    severity: high
+    dimension: accuracy
+    message: Russian INN in tax number 1 is well-formed but its control digits is wrong
+    why_it_matters: 'The Russian INN carries a control digits computed from the other characters by the
+      tax authority''s published algorithm. A number that has the right format but a wrong
+      check digit was mistyped or invented: it identifies no registered taxpayer, so
+      e-invoices, withholding certificates and tax returns citing it are rejected, and the
+      format rule alone cannot see it.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information from the
+        customer's registration certificate; do not recompute the check digit.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Russian INN in STCD1 fails its check digit.'
+  - id: SDCM848
+    field: KNA1.STCD2
+    check_class: value_placement_check
+    family: tax_checkdigit
+    fields:
+    - KNA1.STCD2
+    - KNA1.LAND1
+    applies_when:
+      KNA1.LAND1:
+      - BR
+    grain: KNA1
+    severity: high
+    dimension: accuracy
+    message: Brazilian CPF in tax number 2 is well-formed but its two modulo-11 check digits is wrong
+    why_it_matters: 'The Brazilian CPF carries a two modulo-11 check digits computed from the other characters by the
+      tax authority''s published algorithm. A number that has the right format but a wrong
+      check digit was mistyped or invented: it identifies no registered taxpayer, so
+      e-invoices, withholding certificates and tax returns citing it are rejected, and the
+      format rule alone cannot see it.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information from the
+        customer's registration certificate; do not recompute the check digit.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Brazilian CPF in STCD2 fails its check digit.'

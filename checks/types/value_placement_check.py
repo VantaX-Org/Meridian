@@ -72,6 +72,13 @@ class ValuePlacementCheck(BaseCheck):
                 s = (country + s).where(country.isin(self.rule["countries"]) & s.ne(""), "")
             st = s.map(lambda v: vat_status(v) if v else "n/a")
             return Evaluation(st.ne("n/a"), st.eq("bad"), invalid_values_field=self.rule["field"])
+        if family == "tax_checkdigit":  # national tax number judged by the record's country
+            from checks.value_placement import tax_id_status
+            col, land = self.rule["fields"]
+            tax = self.rule["field"].split(".")[1]
+            st = pd.Series([tax_id_status(c, tax, v) if v else "n/a"
+                            for c, v in zip(_text(df, land).str.upper(), _text(df, col))], index=df.index)
+            return Evaluation(st.ne("n/a"), st.eq("bad"), invalid_values_field=col)
         if family == "date_range":
             d = _parse_dates(df[self.rule["field"]])
             populated = ~is_blank(df[self.rule["field"]])
