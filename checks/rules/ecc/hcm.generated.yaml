@@ -978,40 +978,6 @@ rules:
     __other__: PA0185.DATEU '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0185.DATEU points at a check table T538A.ZEINH entry that does not exist.
-- id: DXRce7fe2d5
-  enabled: false
-  field: UKMBP_CMS_SGM.COORDINATOR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Credit Analyst must exist in the check table USR02.BNAME
-  why_it_matters: COORDINATOR (Credit Analyst) is defined in the SAP Data Dictionary with check table USR02.BNAME on domain
-    XUBNAME. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read COORDINATOR resolve it through check table USR02.BNAME; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: UKMBP_CMS_SGM.COORDINATOR '{invalid_value}' is not defined in the check table USR02.BNAME. Correct it there
-      or add the missing entry.
-  record_fix_template: UKMBP_CMS_SGM.COORDINATOR points at a check table USR02.BNAME entry that does not exist.
-- id: DXR90511ebb
-  enabled: false
-  field: UKMBP_CMS_SGM.BLOCK_REASON
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Reason for Block in Credit Management must exist in the check table UKM_BL_REASON.BLOCK_REASON
-  why_it_matters: BLOCK_REASON (Reason for Block in Credit Management) is defined in the SAP Data Dictionary with check table
-    UKM_BL_REASON.BLOCK_REASON on domain UKM_BLOCK_REASON. A value outside that table is not a value SAP recognises, so the
-    record is inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BLOCK_REASON resolve it through check table UKM_BL_REASON.BLOCK_REASON; an unknown value
-    leaves the record unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: UKMBP_CMS_SGM.BLOCK_REASON '{invalid_value}' is not defined in the check table UKM_BL_REASON.BLOCK_REASON.
-      Correct it there or add the missing entry.
-  record_fix_template: UKMBP_CMS_SGM.BLOCK_REASON points at a check table UKM_BL_REASON.BLOCK_REASON entry that does not exist.
 - id: DXVe1947f3a
   enabled: false
   field: USR02.USTYP
