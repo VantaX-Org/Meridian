@@ -7,19 +7,19 @@
    "rules": 155
   },
   "employee_central": {
-   "benchmarked": 302,
-   "perfect": 302,
-   "rules": 626
+   "benchmarked": 314,
+   "perfect": 314,
+   "rules": 654
   },
   "material_master": {
-   "benchmarked": 232,
-   "perfect": 232,
-   "rules": 853
+   "benchmarked": 233,
+   "perfect": 233,
+   "rules": 876
   },
   "sd_customer_master": {
-   "benchmarked": 244,
-   "perfect": 244,
-   "rules": 518
+   "benchmarked": 257,
+   "perfect": 257,
+   "rules": 554
   }
  },
  "records_per_rule": 40,
@@ -7620,6 +7620,174 @@
    "rule_id": "MM1073"
   },
   {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "condition not modelled: `MARA.LVORM`.fillna('').str.strip() != 'X'",
+   "rule_id": "MM1074"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "condition not modelled: `MARA.XCHPF`.fillna('').str.strip() != 'X'",
+   "rule_id": "MM1075"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "domain_value_check",
+   "module": "material_master",
+   "reason": "allowed values come from the DDIC domain or live configuration",
+   "rule_id": "MM1076"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "condition not modelled: ~(`MARC.BASMG` > 0)",
+   "rule_id": "MM1077"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "a field appears in more than one condition",
+   "rule_id": "MM1078"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "a field appears in more than one condition",
+   "rule_id": "MM1079"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "a field appears in more than one condition",
+   "rule_id": "MM1080"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "material_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "MM1081"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1082",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "domain_value_check",
+   "module": "material_master",
+   "reason": "allowed values come from the DDIC domain or live configuration",
+   "rule_id": "MM1083"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "material_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "MM1084"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1085"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "material_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "MM1086"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "material_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "MM1087"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "MM1088"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "material_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "MM1089"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "domain_value_check",
+   "module": "material_master",
+   "reason": "allowed values come from the DDIC domain or live configuration",
+   "rule_id": "MM1090"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "domain_value_check",
+   "module": "material_master",
+   "reason": "allowed values come from the DDIC domain or live configuration",
+   "rule_id": "MM1091"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "domain_value_check",
+   "module": "material_master",
+   "reason": "allowed values come from the DDIC domain or live configuration",
+   "rule_id": "MM1092"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "domain_value_check",
+   "module": "material_master",
+   "reason": "allowed values come from the DDIC domain or live configuration",
+   "rule_id": "MM1093"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "domain_value_check",
+   "module": "material_master",
+   "reason": "allowed values come from the DDIC domain or live configuration",
+   "rule_id": "MM1094"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "domain_value_check",
+   "module": "material_master",
+   "reason": "allowed values come from the DDIC domain or live configuration",
+   "rule_id": "MM1095"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "condition not modelled: `MARC.KZKUP`.fillna('').str.strip() != 'X'",
+   "rule_id": "MM1096"
+  },
+  {
    "benchmarkable": true,
    "check_class": "null_check",
    "f1": 1.0,
@@ -14116,6 +14284,286 @@
    "rule_id": "EC616"
   },
   {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC617"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "EC618"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "a field appears in more than one condition",
+   "rule_id": "EC619"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "a field appears in more than one condition",
+   "rule_id": "EC620"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC621",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "regex_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC622",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC623",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC624",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "EC625"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "EC626"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "character comparison COMPINFO.PAY_RANGE_CURRENCY/COMPINFO.CURRENCY not modelled",
+   "rule_id": "EC627"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "character comparison COMPINFO.PAY_RANGE_CURRENCY/COMPINFO.CURRENCY not modelled",
+   "rule_id": "EC628"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC629"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "EC630"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC631",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "domain_value_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC632",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "condition not modelled: `COMPINFO.PAY_COMPONENT_RECURRING`.str.lower() == 'false'",
+   "rule_id": "EC633"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "condition not modelled: `COMPINFO.PAY_COMPONENT_CAN_OVERRIDE`.str.lower() == 'false'",
+   "rule_id": "EC634"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC635",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "EC636"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC637",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "EC638"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "regex_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC639",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC640",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC641"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "character comparison EMPJOBHIST.PAY_GRADE/EMPEMPLOYMENT.PAY_GRADE not modelled",
+   "rule_id": "EC642"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC643",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC644",
+   "true_positives": 10
+  },
+  {
    "benchmarkable": true,
    "check_class": "null_check",
    "f1": 1.0,
@@ -19448,6 +19896,349 @@
    "records": 40,
    "rule_id": "SDCM460",
    "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM800",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "sd_customer_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "SDCM801"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "sd_customer_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "SDCM802"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "sd_customer_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "SDCM803"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "sd_customer_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "SDCM804"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "domain_value_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM805",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM806",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM807",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "sd_customer_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "SDCM808"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "sd_customer_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "SDCM809"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "sd_customer_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "SDCM810"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "sd_customer_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "SDCM811"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM812",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "sd_customer_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "SDCM813"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "sd_customer_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "SDCM814"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "sd_customer_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "SDCM815"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM816",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM817",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "sd_customer_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "SDCM818"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "sd_customer_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "SDCM819"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "sd_customer_master",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "SDCM820"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "sd_customer_master",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "SDCM821"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "sd_customer_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "SDCM822"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "sd_customer_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "SDCM823"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM824",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "domain_value_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM825",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "uniqueness_check",
+   "module": "sd_customer_master",
+   "reason": "scope and check share field KNBK.BVTYP",
+   "rule_id": "SDCM826"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM827",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM828",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "sd_customer_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "SDCM829"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "referential_check",
+   "module": "sd_customer_master",
+   "reason": "referential_check needs reference data or a second dataset",
+   "rule_id": "SDCM830"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "domain_value_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM831",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM832",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "sd_customer_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "SDCM833"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "sd_customer_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "SDCM834"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "sd_customer_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "SDCM835"
   },
   {
    "benchmarkable": true,

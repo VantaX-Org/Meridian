@@ -16784,3 +16784,409 @@ rules:
     __other__: '''{invalid_value}'' is not in STXFADM. Correct the value in the basic data views (MM02) or create the entry
       in STXFADM.'
   record_fix_template: 'Material {MARA.MATNR}: PS_SMARTFORM ''{actual_value}'' is not found in STXFADM.'
+- id: MM1074
+  field: MARA.LIQDT
+  check_class: cross_field_check
+  grain: MARA
+  fail_when: (`MARA.LIQDT`.notna()) & (`MARA.LVORM`.fillna('').str.strip() != 'X')
+  severity: medium
+  dimension: lifecycle
+  message: Material carries a deletion date but is not flagged for deletion
+  why_it_matters: The deletion date (LIQDT) records when the material is due to be removed. Without the client-level deletion
+    flag (LVORM) archiving never picks the material up, so the date is either a stale remnant or a deletion that was never
+    completed.
+  rule_authority: best_practice
+  sap_impact: Archiving (SARA, object MM_MATNR) ignores the material; it stays active in purchasing, sales and MRP after its
+    planned end of life and is carried into the S/4HANA conversion.
+  fix_map:
+    __other__: Either flag the material for deletion (MM06) or clear the deletion date in MM02 if the material stays active.
+  record_fix_template: 'Material {MARA.MATNR}: deletion date {actual_value} but deletion flag is not set.'
+- id: MM1075
+  field: MARA.XGCHP
+  check_class: cross_field_check
+  grain: MARA
+  fail_when: (`MARA.XGCHP` == 'X') & (`MARA.XCHPF`.fillna('').str.strip() != 'X')
+  severity: medium
+  dimension: consistency
+  message: Approved batch record is required but the material is not batch managed
+  why_it_matters: The approved batch record indicator (XGCHP) demands a released batch record before the batch usage decision.
+    A batch record only exists for batches, so the indicator is meaningless unless batch management (XCHPF) is active.
+  rule_authority: best_practice
+  sap_impact: Batch record approval (GMP) is never enforced because no batches are created; regulated materials go out
+    without the record the indicator was meant to guarantee.
+  fix_map:
+    __other__: Activate batch management (MM02, Purchasing/Plant data) or remove the approved batch record indicator.
+  record_fix_template: 'Material {MARA.MATNR}: approved batch record required ({actual_value}) without batch management.'
+- id: MM1076
+  field: MARA.KZEFF
+  check_class: domain_value_check
+  grain: MARA
+  severity: low
+  dimension: validity
+  message: Effectivity parameter indicator holds a value outside its domain
+  why_it_matters: KZEFF (assign effectivity parameter values / override change numbers) is an XFELD flag. SAP accepts only
+    blank or X; any other value comes from a load and is rejected by MM02 and the migration cockpit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Engineering change management reads the flag as not set, and the S/4HANA migration load fails on the field.
+  fix_map:
+    __other__: Set the effectivity indicator to blank or X in MM02 (basic data).
+  record_fix_template: 'Material {MARA.MATNR}: effectivity indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: MM1077
+  field: MARC.BASMG
+  check_class: cross_field_check
+  grain: MARC
+  fail_when: (`MARC.DZEIT` > 0) & ~(`MARC.BASMG` > 0)
+  severity: medium
+  dimension: consistency
+  message: In-house production time is maintained without a base quantity
+  why_it_matters: The lot-size dependent in-house production time is scheduled per base quantity (BASMG). With a production
+    time (DZEIT) but no base quantity, MRP cannot scale lead time to the order quantity.
+  rule_authority: best_practice
+  sap_impact: Planned order dates are computed from the fixed time only; lead time is understated for large lots and MRP
+    schedules late.
+  fix_map:
+    __other__: Maintain the base quantity in MM02 (Work scheduling view) or clear the in-house production time.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: base quantity ''{actual_value}'' with in-house production
+    time {MARC.DZEIT} days.'
+- id: MM1078
+  field: MARC.WZEIT
+  check_class: cross_field_check
+  grain: MARC
+  applies_when:
+    MARC.BESKZ:
+    - F
+  fail_when: (`MARC.WZEIT` > 0) & (`MARC.PLIFZ` > 0) & (`MARC.WZEIT` < `MARC.PLIFZ`)
+  severity: low
+  dimension: consistency
+  message: Total replenishment lead time is shorter than the planned delivery time
+  why_it_matters: For an externally procured material the total replenishment lead time (WZEIT) covers the whole chain,
+    so it cannot be shorter than the planned delivery time (PLIFZ) alone.
+  rule_authority: best_practice
+  sap_impact: Availability check (ATP) promises replenishment earlier than the vendor can deliver; sales orders get dates
+    that cannot be met.
+  fix_map:
+    __other__: Raise the total replenishment lead time in MM02 (MRP 3) to at least the planned delivery time.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: total replenishment lead time {actual_value} days below
+    planned delivery time {MARC.PLIFZ}.'
+- id: MM1079
+  field: MARC.MINLS
+  check_class: cross_field_check
+  grain: MARC
+  fail_when: (`MARC.MINLS` > 0) & (`MARC.MAXLS` > 0) & (`MARC.MINLS` > `MARC.MAXLS`)
+  severity: medium
+  dimension: consistency
+  message: Supply demand match minimum lot size is above the maximum lot size
+  why_it_matters: The supply demand match lot sizes bound every lot between MINLS and MAXLS. A minimum above the maximum leaves
+    no valid lot size.
+  rule_authority: best_practice
+  sap_impact: Supply demand match cannot create a valid lot; planning results are truncated or rejected.
+  fix_map:
+    __other__: Correct the minimum or maximum supply demand match lot size in MM02.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: minimum lot size {actual_value} above maximum {MARC.MAXLS}.'
+- id: MM1080
+  field: MARC.MAXLS
+  check_class: cross_field_check
+  grain: MARC
+  fail_when: (`MARC.MAXLS` > 0) & (`MARC.BSTMA` > 0) & (`MARC.MAXLS` > `MARC.BSTMA`)
+  severity: low
+  dimension: consistency
+  message: Supply demand match maximum lot size exceeds the MRP maximum lot size
+  why_it_matters: The supply demand match maximum (MAXLS) and the MRP maximum lot size (BSTMA) limit the same receipts. A
+    supply demand match maximum above the MRP maximum allows lots that MRP itself would split.
+  rule_authority: best_practice
+  sap_impact: Supply demand match and MRP propose different lot sizes for the same material and plant.
+  fix_map:
+    __other__: Align the supply demand match maximum lot size with the MRP maximum lot size (MM02, MRP 1).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: supply demand match maximum {actual_value} above MRP maximum
+    {MARC.BSTMA}.'
+- id: MM1081
+  field: MARC.QZGTP
+  check_class: referential_check
+  grain: MARC
+  severity: medium
+  dimension: validity
+  message: Certificate type (MARC.QZGTP) is not defined in the system's configuration (TQ05)
+  why_it_matters: Certificate type is a key into the system's own configuration (TQ05). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt certificate processing cannot determine the certificate type; certificate confirmation fails.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TQ05. Correct the value via MM02 (Quality management view) or create the certificate
+      type in QM customizing.'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: certificate type ''{actual_value}'' is not configured (TQ05).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM1082
+  field: MBEW.OWNPR
+  check_class: cross_field_check
+  grain: MBEW
+  applies_when:
+    MBEW.BWTAR:
+      blank: true
+  fail_when: (`MBEW.OWNPR` == 'X') & (`MARC.BESKZ` == 'F')
+  severity: low
+  dimension: consistency
+  message: Valuation says produced in-house but the plant procures externally only
+  why_it_matters: The produced in-house indicator (OWNPR) steers origin and cost determination in the accounting view. A
+    plant whose procurement type is external only (BESKZ F) never produces the material.
+  rule_authority: best_practice
+  sap_impact: Material ledger and product costing treat a purchased material as own production; origin groups and
+    variance analysis are misleading.
+  fix_map:
+    __other__: Clear the produced in-house indicator (MM02, Costing 1) or correct the procurement type.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: produced in-house ''{actual_value}'' but procurement
+    type is {MARC.BESKZ}.'
+- id: MM1083
+  field: MVKE.SKTOF
+  check_class: domain_value_check
+  grain: MVKE
+  severity: low
+  dimension: validity
+  message: Cash discount indicator holds a value outside its domain
+  why_it_matters: SKTOF is an XFELD flag. SAP accepts only blank or X; any other value comes from a load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing reads the cash discount indicator as not set, and the S/4HANA migration load fails on the field.
+  fix_map:
+    __other__: Set the cash discount indicator to blank or X in MM02 (Sales org 2).
+  record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}, channel {MVKE.VTWEG}: cash discount indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: MM1084
+  field: MKAL.ALORT
+  check_class: referential_check
+  grain: MKAL
+  severity: medium
+  dimension: validity
+  message: Repetitive manufacturing receiving storage location (MKAL.ALORT) is not defined in the system's configuration (T001L)
+  why_it_matters: The receiving storage location is a key into the system's own configuration (T001L). A value that is not
+    configured there cannot be posted to.
+  rule_authority: sap_hard_constraint
+  sap_impact: Repetitive manufacturing backflush (MFBF) fails to post the goods receipt for the production version.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T001L. Correct the value in the production version (C223) or create the storage
+      location (OX09).'
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: receiving storage location
+    ''{actual_value}'' is not configured (T001L).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM1085
+  field: MKAL.ALORT
+  check_class: exists_check
+  grain: MKAL
+  applies_when:
+    MKAL.ALORT:
+      populated: true
+  fields:
+  - MKAL.MATNR
+  - MKAL.WERKS
+  - MKAL.ALORT
+  target_table: MARD
+  target_fields:
+  - MATNR
+  - WERKS
+  - LGORT
+  severity: medium
+  dimension: consistency
+  message: Repetitive manufacturing receiving storage location is not extended for the material
+  why_it_matters: Repetitive manufacturing receipts for the version post to ALORT. The material must have a storage location
+    segment there (MARD); a configured location alone is not enough.
+  rule_authority: best_practice
+  sap_impact: Backflush fails or creates the storage location segment on the fly without its MRP and stock settings.
+  fix_map:
+    __other__: Extend the material to the storage location (MM01) or change the receiving storage location in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: receiving storage location
+    {actual_value} not extended (MARD).'
+- id: MM1086
+  field: MKAL.VERTO
+  check_class: referential_check
+  grain: MKAL
+  severity: low
+  dimension: validity
+  message: Distribution key for quantity produced (MKAL.VERTO) is not defined in the system's configuration (T437V)
+  why_it_matters: The distribution key is a key into the system's own configuration (T437V). A value that is not configured
+    there cannot be interpreted when the run schedule quantity is spread over the period.
+  rule_authority: sap_hard_constraint
+  sap_impact: Run schedule quantities cannot be distributed; capacity and material staging for the version are wrong.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T437V. Correct the value in the production version (C223) or create the distribution
+      key in customizing.'
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: distribution key ''{actual_value}''
+    is not configured (T437V).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM1087
+  field: MKAL.SOBSL
+  check_class: referential_check
+  grain: MKAL
+  severity: medium
+  dimension: validity
+  message: Production version special procurement type (MKAL.SOBSL) is not defined in the system's configuration (T460A)
+  why_it_matters: The special procurement type is a key into the system's own configuration (T460A). A value that is not
+    configured there cannot be interpreted by MRP for the version.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP cannot determine the procurement path for orders created with the production version.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T460A. Correct the value in the production version (C223) or create the special
+      procurement type (OMD9).'
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: special procurement type
+    ''{actual_value}'' is not configured (T460A).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM1088
+  field: MKAL.EWAHR
+  check_class: cross_field_check
+  grain: MKAL
+  fail_when: (`MKAL.EWAHR` < 0) | (`MKAL.EWAHR` > 100)
+  severity: medium
+  dimension: validity
+  message: Production version usage probability is outside 0 to 100 percent
+  why_it_matters: The usage probability (EWAHR, domain CK_EWAHR) is a percentage between 0 and 100. Any other value comes
+    from a load and distorts how quantity-based versions share planned requirements.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP and costing weigh the production versions wrongly; the migration load fails on the field.
+  fix_map:
+    __other__: Enter a usage probability between 0 and 100 in the production version (C223).
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: usage probability {actual_value}.'
+- id: MM1089
+  field: QMAT.AUFNR_CO
+  check_class: referential_check
+  grain: QMAT
+  severity: low
+  dimension: validity
+  message: Appraisal cost order (QMAT.AUFNR_CO) does not exist (AUFK)
+  why_it_matters: Inspection appraisal costs settle to the order in AUFNR_CO. An order number that does not exist in AUFK
+    cannot receive the costs.
+  rule_authority: sap_hard_constraint
+  sap_impact: Inspection lots for the inspection type cannot record appraisal costs; confirmation of inspection work fails.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in AUFK. Assign an existing QM order in the inspection setup (MM02, Quality management).'
+  record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: appraisal cost order ''{actual_value}''
+    does not exist.'
+- id: MM1090
+  field: MARA.CMREL
+  check_class: domain_value_check
+  grain: MARA
+  severity: low
+  dimension: validity
+  message: Configuration management relevance holds a value outside its domain
+  why_it_matters: CMREL (domain DO_CM_RELEVANCE_FLAG) accepts only blank or 1. Any other value comes from a load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Configuration management reads the material as not relevant; the migration load fails on the field.
+  fix_map:
+    __other__: Set configuration management relevance to blank or 1 in MM02.
+  record_fix_template: 'Material {MARA.MATNR}: configuration management relevance ''{actual_value}''.'
+- id: MM1091
+  field: MARC.KZPSP
+  check_class: domain_value_check
+  grain: MARC
+  severity: low
+  dimension: validity
+  message: Cross-project material indicator holds a value outside its domain
+  why_it_matters: KZPSP (domain KZPSP) accepts only blank (check project segments only) or 1 (check plant and all project
+    segments). Any other value comes from a load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Availability check for project stock reads the indicator as blank; the migration load fails on the field.
+  fix_map:
+    __other__: Set the cross-project material indicator to blank or 1 in MM02 (MRP 3).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: cross-project indicator ''{actual_value}''.'
+- id: MM1092
+  field: MARC.UCHKZ
+  check_class: domain_value_check
+  grain: MARC
+  severity: low
+  dimension: validity
+  message: Original batch management indicator holds a value outside its domain
+  why_it_matters: UCHKZ (domain UCHKZ) accepts only blank (not allowed) or 1 (allowed). Any other value comes from a load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Original batch management reads the indicator as not allowed; the migration load fails on the field.
+  fix_map:
+    __other__: Set the original batch management indicator to blank or 1 in MM02.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: original batch indicator ''{actual_value}''.'
+- id: MM1093
+  field: MLGN.L2SKR
+  check_class: domain_value_check
+  grain: MLGN
+  severity: low
+  dimension: validity
+  message: 2-step picking relevance holds a value outside its domain
+  why_it_matters: L2SKR (domain LVS_2SKREL) accepts only blank (not relevant) or 2 (2-step picking). Any other value comes
+    from a load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Warehouse management treats the material as not relevant for 2-step picking; the migration load fails on the
+    field.
+  fix_map:
+    __other__: Set 2-step picking relevance to blank or 2 in MM02 (Warehouse management 1).
+  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: 2-step picking relevance ''{actual_value}''.'
+- id: MM1094
+  field: MARA.MATFI
+  check_class: domain_value_check
+  grain: MARA
+  severity: low
+  dimension: validity
+  message: Material locked indicator holds a value outside its domain
+  why_it_matters: MATFI is an XFELD flag. SAP accepts only blank or X; any other value comes from a load.
+  rule_authority: sap_hard_constraint
+  sap_impact: The lock is read as not set, so changes the lock was meant to stop go through; the migration load fails on
+    the field.
+  fix_map:
+    __other__: Set the material locked indicator to blank or X.
+  record_fix_template: 'Material {MARA.MATNR}: locked indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: MM1095
+  field: MARA.KZNFM
+  check_class: domain_value_check
+  grain: MARA
+  severity: low
+  dimension: validity
+  message: Follow-up material indicator holds a value outside its domain
+  why_it_matters: KZNFM is an XFELD flag. SAP accepts only blank or X; any other value comes from a load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Discontinuation logic reads the flag as not set; the migration load fails on the field.
+  fix_map:
+    __other__: Set the follow-up material indicator to blank or X.
+  record_fix_template: 'Material {MARA.MATNR}: follow-up material indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: MM1096
+  field: MARC.FXPRU
+  check_class: cross_field_check
+  grain: MARC
+  fail_when: (`MARC.FXPRU` == 'X') & (`MARC.KZKUP`.fillna('').str.strip() != 'X')
+  severity: low
+  dimension: consistency
+  message: Fixed-price co-product is set on a material that is not a co-product
+  why_it_matters: The fixed-price co-product indicator (FXPRU) values a co-product at a fixed price in the joint production
+    apportionment. It only has meaning when the material can be a co-product (KZKUP).
+  rule_authority: best_practice
+  sap_impact: Costing ignores the indicator, so the expected fixed-price valuation of the co-product never happens.
+  fix_map:
+    __other__: Set the co-product indicator (MM02, MRP 2 / Costing 1) or clear the fixed-price co-product indicator.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: fixed-price co-product ''{actual_value}'' without the co-product
+    indicator.'

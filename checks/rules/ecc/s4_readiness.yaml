@@ -322,6 +322,8 @@ areas:
       - MM460
       - MM456
       - MM233
+      - MM1075
+      - MM1092
   warehouse_ewm:
     label: Warehouse Management to EWM
     simplification_item: Warehouse Management (LE-WM) in Compatibility Scope, replaced by SAP EWM

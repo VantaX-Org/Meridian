@@ -11656,3 +11656,489 @@ rules:
   fix_map:
     __other__: Clear address line 2 or enter the real additional detail.
   record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address line 2 repeats the city.'
+- id: EC617
+  field: COMPINFO.USERID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  severity: high
+  dimension: consistency
+  message: Compensation record belongs to a user with no employment
+  why_it_matters: Compensation Information (EmpCompensation) hangs off an employment. A compensation row whose user
+    ID has no EmpEmployment record is an orphan left by a deleted or mis-keyed employment or a migration that loaded
+    pay before the hire.
+  rule_authority: sap_hard_constraint
+  sap_impact: The pay row is never replicated to payroll and distorts salary totals in compensation reporting.
+  fix_map:
+    __other__: Find the employment the pay belongs to and correct the user ID, or delete the orphaned compensation row.
+  record_fix_template: 'Compensation row for user {COMPINFO.USERID} effective {COMPINFO.EFFECTIVE_DATE}: no employment
+    exists for this user.'
+- id: EC618
+  field: COMPINFO.EFFECTIVE_DATE
+  check_class: cross_field_check
+  fail_when: '(`COMPINFO.EFFECTIVE_DATE` < `EMPEMPLOYMENT.START_DATE`) & (`EMPEMPLOYMENT.ORIGINAL_START_DATE`.isna()
+    | (`COMPINFO.EFFECTIVE_DATE` < `EMPEMPLOYMENT.ORIGINAL_START_DATE`))'
+  grain: COMPINFO
+  severity: medium
+  dimension: consistency
+  message: Compensation takes effect before the employee was hired
+  why_it_matters: Pay belongs to an employment and cannot take effect before the hire. The check uses the original
+    start date when one is held, so pay kept from an earlier employment of a rehire is not flagged.
+  rule_authority: best_practice
+  sap_impact: Retroactive payroll may pay for days before the hire; salary history starts too early.
+  fix_map:
+    __other__: Move the compensation effective date to the hire date or later, or correct the hire date.
+  record_fix_template: 'Employee {COMPINFO.USERID}: compensation effective {COMPINFO.EFFECTIVE_DATE} is before the
+    hire date {EMPEMPLOYMENT.START_DATE}.'
+- id: EC619
+  field: COMPINFO.END_DATE
+  check_class: cross_field_check
+  fail_when: '`COMPINFO.END_DATE`.notna() & (`COMPINFO.END_DATE` < `COMPINFO.EFFECTIVE_DATE`)'
+  severity: high
+  dimension: validity
+  message: Compensation record ends before it starts
+  why_it_matters: An effective-dated compensation record must end on or after its own effective date. An end date
+    before the start comes from a manual edit or a load that swapped the two dates.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record has no valid period, so payroll replication and salary history skip or misplace it.
+  fix_map:
+    __other__: Correct the end date or the effective date so the period is valid.
+  record_fix_template: 'Employee {COMPINFO.USERID}: compensation from {COMPINFO.EFFECTIVE_DATE} ends earlier, on
+    {COMPINFO.END_DATE}.'
+- id: EC620
+  field: COMPINFO.PAYCOMP_END_DATE
+  check_class: cross_field_check
+  fail_when: '`COMPINFO.PAYCOMP_END_DATE`.notna() & (`COMPINFO.PAYCOMP_END_DATE` < `COMPINFO.EFFECTIVE_DATE_COMP`)'
+  severity: high
+  dimension: validity
+  message: Recurring pay component ends before it starts
+  why_it_matters: A recurring pay component (EmpPayCompRecurring) must end on or after its own start date. A reversed
+    period means the component is either never paid or paid for a period that does not exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: The pay component is dropped or mis-dated in the replication to payroll (infotype 0008).
+  fix_map:
+    __other__: Correct the pay component start or end date so the period is valid.
+  record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} starts {COMPINFO.EFFECTIVE_DATE_COMP}
+    but ends {COMPINFO.PAYCOMP_END_DATE}.'
+- id: EC621
+  field: COMPINFO.PAY_TYPE
+  check_class: null_check
+  applies_when:
+    COMPINFO.SALARY:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Pay amount has no pay component
+  why_it_matters: Every recurring amount is held against a pay component that says what the money is (base salary,
+    allowance). An amount without a pay component cannot be classified, taxed or replicated.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll replication cannot map the amount to a wage type, so the employee is under- or over-paid.
+  fix_map:
+    __blank__: Assign the pay component the amount belongs to.
+  record_fix_template: 'Employee {COMPINFO.USERID}: compensation record effective {COMPINFO.EFFECTIVE_DATE} has
+    no pay component.'
+- id: EC622
+  field: COMPINFO.CURRENCY
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: high
+  dimension: validity
+  message: Pay component currency is not a 3-letter ISO currency code
+  why_it_matters: SuccessFactors currencies are ISO 4217 codes. Any other value cannot be converted or mapped to the
+    payroll currency.
+  rule_authority: sap_hard_constraint
+  sap_impact: Currency conversion and payroll replication fail for the pay component.
+  fix_map:
+    __other__: Enter the ISO 4217 currency code of the pay component.
+  record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} has currency {COMPINFO.CURRENCY}.'
+- id: EC623
+  field: COMPINFO.COMP_FREQUENCY
+  check_class: null_check
+  applies_when:
+    COMPINFO.SALARY:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Pay amount has no frequency
+  why_it_matters: The frequency says whether an amount is per year, month or hour. Without it the amount cannot be
+    annualised or compared with the pay range.
+  rule_authority: sap_hard_constraint
+  sap_impact: Annual salary, compa-ratio and range penetration cannot be calculated; payroll cannot prorate the amount.
+  fix_map:
+    __blank__: Enter the frequency of the pay component.
+  record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} amount has
+    no frequency.'
+- id: EC624
+  field: COMPINFO.PAY_GROUP
+  check_class: null_check
+  applies_when:
+    COMPINFO.PAYROLL_SYSTEM_ID:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Employee assigned to a payroll system has no pay group
+  why_it_matters: The pay group decides which payroll run pays the employee. A payroll system without a pay group
+    leaves the employee outside every run.
+  rule_authority: best_practice
+  sap_impact: The employee is replicated to payroll without a payroll area and is not paid.
+  fix_map:
+    __blank__: Assign the pay group for the employee's payroll system.
+  record_fix_template: 'Employee {COMPINFO.USERID}: payroll system {COMPINFO.PAYROLL_SYSTEM_ID} but no pay group.'
+- id: EC625
+  field: COMPINFO.PAY_RANGE_MID
+  check_class: cross_field_check
+  fail_when: (`COMPINFO.PAY_RANGE_MID` < `COMPINFO.PAY_RANGE_MIN`) | (`COMPINFO.PAY_RANGE_MID` > `COMPINFO.PAY_RANGE_MAX`)
+    | (`COMPINFO.PAY_RANGE_MIN` > `COMPINFO.PAY_RANGE_MAX`)
+  severity: high
+  dimension: validity
+  message: Pay range minimum, midpoint and maximum are out of order
+  why_it_matters: A pay range runs minimum up to midpoint up to maximum. Any other order breaks every measure built
+    on the range.
+  rule_authority: sap_hard_constraint
+  sap_impact: Compa-ratio, range penetration and merit guidelines give wrong results for everyone in the range.
+  fix_map:
+    __other__: Correct the pay range in the pay range foundation object.
+  record_fix_template: 'Employee {COMPINFO.USERID}: pay range min {COMPINFO.PAY_RANGE_MIN}, mid {COMPINFO.PAY_RANGE_MID},
+    max {COMPINFO.PAY_RANGE_MAX} are out of order.'
+- id: EC626
+  field: COMPINFO.ANNUAL_SALARY
+  check_class: cross_field_check
+  fail_when: (`COMPINFO.PAY_RANGE_FREQUENCY` == 'ANN') & (`COMPINFO.PAY_RANGE_CURRENCY` == `COMPINFO.CURRENCY`) &
+    ((`COMPINFO.ANNUAL_SALARY` < `COMPINFO.PAY_RANGE_MIN`) | (`COMPINFO.ANNUAL_SALARY` > `COMPINFO.PAY_RANGE_MAX`))
+  severity: low
+  dimension: consistency
+  message: Annual salary lies outside the employee's pay range
+  why_it_matters: Pay below the minimum or above the maximum is green- or red-circled pay that needs a reason. Only
+    annual ranges in the same currency as the pay are compared, so no conversion is assumed.
+  rule_authority: best_practice
+  sap_impact: Merit guidelines give zero or catch-up increases; pay-equity reporting shows the employee as an outlier.
+  fix_map:
+    __other__: Review the salary or the pay grade, or record why the employee is outside the range.
+  record_fix_template: 'Employee {COMPINFO.USERID}: annual salary {COMPINFO.ANNUAL_SALARY} is outside the range {COMPINFO.PAY_RANGE_MIN}
+    to {COMPINFO.PAY_RANGE_MAX}.'
+- id: EC627
+  field: COMPINFO.COMPA_RATIO
+  check_class: cross_field_check
+  fail_when: (`COMPINFO.PAY_RANGE_FREQUENCY` == 'ANN') & (`COMPINFO.PAY_RANGE_CURRENCY` == `COMPINFO.CURRENCY`) &
+    (`COMPINFO.PAY_RANGE_MID` > 0) & ((`COMPINFO.COMPA_RATIO` - `COMPINFO.ANNUAL_SALARY` / `COMPINFO.PAY_RANGE_MID`).abs()
+    > 0.02)
+  severity: medium
+  dimension: accuracy
+  message: Stored compa-ratio differs from annual salary over range midpoint by more than 0.02
+  why_it_matters: Compa-ratio is annual salary divided by the pay range midpoint. Tolerance is 0.02 (absolute) to
+    allow for rounding; a larger gap means the stored value was not recalculated. Only annual ranges in the pay currency
+    are compared.
+  rule_authority: best_practice
+  sap_impact: Merit matrices and pay-equity analysis use a stale compa-ratio.
+  fix_map:
+    __other__: Recalculate the compa-ratio from the current annual salary and range midpoint.
+  record_fix_template: 'Employee {COMPINFO.USERID}: compa-ratio {COMPINFO.COMPA_RATIO} but annual salary {COMPINFO.ANNUAL_SALARY}
+    over midpoint {COMPINFO.PAY_RANGE_MID} gives a different value.'
+- id: EC628
+  field: COMPINFO.RANGE_PENETRATION
+  check_class: cross_field_check
+  fail_when: (`COMPINFO.PAY_RANGE_FREQUENCY` == 'ANN') & (`COMPINFO.PAY_RANGE_CURRENCY` == `COMPINFO.CURRENCY`) &
+    (`COMPINFO.PAY_RANGE_MAX` > `COMPINFO.PAY_RANGE_MIN`) & (((`COMPINFO.ANNUAL_SALARY` - `COMPINFO.PAY_RANGE_MIN`)
+    / (`COMPINFO.PAY_RANGE_MAX` - `COMPINFO.PAY_RANGE_MIN`) - `COMPINFO.RANGE_PENETRATION`).abs() > 0.02)
+  severity: medium
+  dimension: accuracy
+  message: Stored range penetration differs from the recalculated position in range by more than 0.02
+  why_it_matters: Range penetration is (annual salary - minimum) / (maximum - minimum), 0 at the minimum and 1 at
+    the maximum. Tolerance is 0.02 (absolute) to allow for rounding; a larger gap means the stored value is stale.
+    Only annual ranges in the pay currency are compared.
+  rule_authority: best_practice
+  sap_impact: Merit guidelines keyed on range position give the wrong increase.
+  fix_map:
+    __other__: Recalculate range penetration from the current annual salary and pay range.
+  record_fix_template: 'Employee {COMPINFO.USERID}: range penetration {COMPINFO.RANGE_PENETRATION} does not match
+    salary {COMPINFO.ANNUAL_SALARY} in range {COMPINFO.PAY_RANGE_MIN} to {COMPINFO.PAY_RANGE_MAX}.'
+- id: EC629
+  field: COMPINFO.EVENT_REASON
+  check_class: exists_check
+  target_table: FOEVENTREASON
+  target_fields:
+  - EXTERNAL_CODE
+  severity: medium
+  dimension: consistency
+  message: Compensation change uses an event reason that does not exist
+  why_it_matters: Every compensation change carries an event reason from the FOEventReason foundation object. A code
+    that is not there was loaded from a legacy system or belongs to a deleted reason.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pay-change reporting cannot classify the change and payroll replication cannot map the action reason.
+  fix_map:
+    __other__: Replace the event reason with a valid code from the event reason foundation object.
+  record_fix_template: 'Employee {COMPINFO.USERID}: compensation effective {COMPINFO.EFFECTIVE_DATE} uses unknown
+    event reason {COMPINFO.EVENT_REASON}.'
+- id: EC630
+  field: COMPINFO.PAY_SCALE_LEVEL
+  check_class: cross_field_check
+  fail_when: (`COMPINFO.PAY_SCALE_TYPE`.notna() | `COMPINFO.PAY_SCALE_AREA`.notna() | `COMPINFO.PAY_SCALE_LEVEL`.notna())
+    & (`COMPINFO.PAY_SCALE_TYPE`.isna() | `COMPINFO.PAY_SCALE_AREA`.isna())
+  severity: medium
+  dimension: completeness
+  message: Compensation pay scale is incomplete
+  why_it_matters: Pay scale type and area are set together in SAP basic pay (infotype 0008, TRFAR and TRFGB), and
+    a pay scale level needs both. A partial pay scale cannot be valued.
+  rule_authority: sap_hard_constraint
+  sap_impact: Infotype 0008 replication fails or the collective agreement amount cannot be read for the employee.
+  fix_map:
+    __other__: Complete the pay scale type and area, or clear the partial pay scale.
+  record_fix_template: 'Employee {COMPINFO.USERID}: pay scale type {COMPINFO.PAY_SCALE_TYPE}, area {COMPINFO.PAY_SCALE_AREA},
+    level {COMPINFO.PAY_SCALE_LEVEL} is incomplete.'
+- id: EC631
+  field: COMPINFO.PAY_GRADE_STATUS
+  check_class: cross_field_check
+  fail_when: '`COMPINFO.PAY_GRADE`.notna() & (`COMPINFO.PAY_GRADE_STATUS` == ''I'')'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+    COMPINFO.END_DATE:
+      open_ended: true
+  severity: medium
+  dimension: consistency
+  message: Current compensation of an active employee uses an inactive pay grade
+  why_it_matters: Foundation objects are set inactive (status I) when they are retired. Current pay of an active employee
+    that still points at a retired pay grade has not been moved to the replacement.
+  rule_authority: best_practice
+  sap_impact: The next compensation change fails validation; merit planning and payroll mapping use retired values.
+  fix_map:
+    __other__: Move the employee to the active pay grade that replaced the inactive one.
+  record_fix_template: 'Employee {COMPINFO.USERID}: current pay uses inactive pay grade {COMPINFO.PAY_GRADE}.'
+- id: EC632
+  field: COMPINFO.PAY_COMPONENT_TYPE
+  check_class: domain_value_check
+  allowed_values:
+  - AMOUNT
+  - PERCENTAGE
+  - NUMBER
+  valid_values_with_labels:
+    AMOUNT: Amount
+    PERCENTAGE: Percentage
+    NUMBER: Number
+  severity: medium
+  dimension: validity
+  message: Pay component type is not amount, percentage or number
+  why_it_matters: The pay component type says how the value is read. Any other value cannot be interpreted.
+  rule_authority: sap_hard_constraint
+  sap_impact: The pay component value cannot be annualised or replicated to payroll.
+  fix_map:
+    __other__: Correct the pay component type in the pay component foundation object.
+  record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} has type {COMPINFO.PAY_COMPONENT_TYPE}.'
+- id: EC633
+  field: COMPINFO.PAY_COMPONENT_RECURRING
+  check_class: cross_field_check
+  fail_when: '`COMPINFO.PAY_COMPONENT_RECURRING`.str.lower() == ''false'''
+  severity: medium
+  dimension: consistency
+  message: Non-recurring pay component is held as recurring pay
+  why_it_matters: Compensation Information holds recurring pay components. A component defined as non-recurring belongs
+    in spot bonus or one-time payments, not in recurring pay.
+  rule_authority: sap_hard_constraint
+  sap_impact: A one-time payment is paid every period and inflates annual salary.
+  fix_map:
+    __other__: Remove the component from recurring pay and enter it as a one-time payment.
+  record_fix_template: 'Employee {COMPINFO.USERID}: non-recurring pay component {COMPINFO.PAY_TYPE} is held as recurring
+    pay.'
+- id: EC634
+  field: COMPINFO.PAY_COMPONENT_DEFAULT
+  check_class: cross_field_check
+  fail_when: (`COMPINFO.PAY_COMPONENT_CAN_OVERRIDE`.str.lower() == 'false') & (`COMPINFO.SALARY` != `COMPINFO.PAY_COMPONENT_DEFAULT`)
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Pay component amount was changed although its default may not be overridden
+  why_it_matters: A pay component that cannot be overridden must carry its default value. A different amount came in
+    through an import or API that bypassed the UI lock.
+  rule_authority: best_practice
+  sap_impact: The employee is paid a value the pay component configuration forbids.
+  fix_map:
+    __other__: Reset the amount to the pay component default, or allow overrides on the pay component if intended.
+  record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} amount differs
+    from fixed default {COMPINFO.PAY_COMPONENT_DEFAULT}.'
+- id: EC635
+  field: COMPINFO.ANNUALIZATION_FACTOR
+  check_class: cross_field_check
+  fail_when: '`COMPINFO.ANNUALIZATION_FACTOR` <= 0'
+  severity: high
+  dimension: validity
+  message: Pay frequency annualisation factor is zero or negative
+  why_it_matters: The annualisation factor is the number of pay periods per year of the frequency. Zero or a negative
+    number makes every annual figure built on it zero or negative.
+  rule_authority: sap_hard_constraint
+  sap_impact: Annual salary, compa-ratio and range penetration are wrong for every employee paid at this frequency.
+  fix_map:
+    __other__: Correct the annualisation factor on the frequency foundation object.
+  record_fix_template: 'Employee {COMPINFO.USERID}: frequency {COMPINFO.COMP_FREQUENCY} has annualisation factor {COMPINFO.ANNUALIZATION_FACTOR}.'
+- id: EC636
+  field: PAYMENTINFO.EFFECTIVE_DATE
+  check_class: cross_field_check
+  fail_when: '(`PAYMENTINFO.EFFECTIVE_DATE` < `EMPEMPLOYMENT.START_DATE`) & (`EMPEMPLOYMENT.ORIGINAL_START_DATE`.isna()
+    | (`PAYMENTINFO.EFFECTIVE_DATE` < `EMPEMPLOYMENT.ORIGINAL_START_DATE`))'
+  grain: PAYMENTINFO
+  severity: low
+  dimension: consistency
+  message: Payment information takes effect before the employee was hired
+  why_it_matters: Bank details are captured at or after hire. An earlier date points to a migration default date.
+    The original start date is honoured when held, so bank details kept from a rehire's earlier employment are not
+    flagged.
+  rule_authority: best_practice
+  sap_impact: Bank details replicated to payroll (infotype 0009) carry a validity start before the employment.
+  fix_map:
+    __other__: Move the payment information effective date to the hire date or later.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment information effective {PAYMENTINFO.EFFECTIVE_DATE}
+    is before the hire date {EMPEMPLOYMENT.START_DATE}.'
+- id: EC637
+  field: PAYMENTINFO.EXTERNAL_CODE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Payment information detail has no external code
+  why_it_matters: The external code is part of the key of a payment information detail. A detail without it cannot
+    be updated or deleted through the API.
+  rule_authority: sap_hard_constraint
+  sap_impact: Upserts of bank details create duplicates instead of updating the record.
+  fix_map:
+    __blank__: Reload the payment information detail with its external code.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment information effective {PAYMENTINFO.EFFECTIVE_DATE}
+    has no external code.'
+- id: EC638
+  field: PAYMENTINFO.PAYMENT_METHOD
+  check_class: cross_field_check
+  fail_when: '`PAYMENTINFO.PAYMENT_METHOD`.isna() & (`PAYMENTINFO.IBAN`.notna() | `PAYMENTINFO.ACCOUNT_NUMBER`.notna())'
+  severity: high
+  dimension: completeness
+  message: Bank account is held without a payment method
+  why_it_matters: The payment method says how the employee is paid (bank transfer, cheque). Bank details without one
+    cannot be used by payroll.
+  rule_authority: sap_hard_constraint
+  sap_impact: Bank details replicate to infotype 0009 without a payment method, so the payment run skips the employee.
+  fix_map:
+    __other__: Set the payment method on the payment information detail.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account held without a payment method.'
+- id: EC639
+  field: PAYMENTINFO.CURRENCY
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: high
+  dimension: validity
+  message: Payment currency is not a 3-letter ISO currency code
+  why_it_matters: The payment currency is an ISO 4217 code. Any other value cannot be mapped to the bank transfer
+    currency.
+  rule_authority: sap_hard_constraint
+  sap_impact: Bank details replication or the payment run fails for the employee.
+  fix_map:
+    __other__: Enter the ISO 4217 currency code of the payment.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment currency {PAYMENTINFO.CURRENCY} is not an ISO code.'
+- id: EC640
+  field: PERINFO.NATIONAL_ID_CARD_TYPE
+  check_class: null_check
+  applies_when:
+    PERINFO.NATIONAL_ID:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: National ID is held without a card type
+  why_it_matters: The card type is part of the key of a national ID (PerNationalId) and says which document the number
+    comes from. A number without it cannot be validated or reported.
+  rule_authority: sap_hard_constraint
+  sap_impact: National ID upserts fail or create duplicates; tax and social-security interfaces cannot pick the right
+    number.
+  fix_map:
+    __blank__: Enter the card type of the national ID.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: national ID held without a card type.'
+- id: EC641
+  field: EMPEMPLOYMENT.SEQ_NUMBER
+  check_class: exists_check
+  fields:
+  - EMPEMPLOYMENT.USERID
+  - EMPEMPLOYMENT.JOB_START_DATE
+  - EMPEMPLOYMENT.SEQ_NUMBER
+  target_table: EMPJOBHIST
+  target_fields:
+  - USERID
+  - START_DATE
+  - SEQ_NUMBER
+  severity: medium
+  dimension: consistency
+  message: Current job record is missing from job history
+  why_it_matters: The current job record (start date and sequence number) is one row of the job history. If job history
+    has no row with that start date and sequence number, the two were loaded or changed separately.
+  rule_authority: best_practice
+  sap_impact: Reports on current job and on job history disagree; the job record cannot be found by its key.
+  fix_map:
+    __other__: Reconcile the current job record with job history.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: current job from {EMPEMPLOYMENT.JOB_START_DATE} sequence {EMPEMPLOYMENT.SEQ_NUMBER}
+    is not in job history.'
+- id: EC642
+  field: EMPEMPLOYMENT.PAY_GRADE
+  check_class: cross_field_check
+  fail_when: '`EMPJOBHIST.PAY_GRADE`.notna() & `EMPEMPLOYMENT.PAY_GRADE`.notna() & (`EMPJOBHIST.PAY_GRADE` != `EMPEMPLOYMENT.PAY_GRADE`)'
+  grain: EMPJOBHIST
+  applies_when:
+    EMPJOBHIST.END_DATE:
+      open_ended: true
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Current employment pay grade does not match the latest job history record
+  why_it_matters: Compensation reads the pay grade of the current job to pick the pay range. A pay grade that differs
+    from the latest job history row means pay is measured against the wrong range.
+  rule_authority: best_practice
+  sap_impact: Compa-ratio, range penetration and merit guidelines use the wrong pay range.
+  fix_map:
+    __other__: Reconcile the pay grade between the current employment record and the job history.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: current pay grade {EMPEMPLOYMENT.PAY_GRADE} differs from
+    the latest job history record.'
+- id: EC643
+  field: COMPINFO.PAY_RANGE_STATUS
+  check_class: cross_field_check
+  fail_when: '`COMPINFO.PAY_RANGE_STATUS` == ''I'''
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+    COMPINFO.END_DATE:
+      open_ended: true
+  severity: medium
+  dimension: consistency
+  message: Current compensation of an active employee uses an inactive pay range
+  why_it_matters: Foundation objects are set inactive (status I) when they are retired. Current pay of an active employee
+    that still points at a retired pay range is measured against minimum, midpoint and maximum values nobody maintains.
+  rule_authority: best_practice
+  sap_impact: Compa-ratio, range penetration and merit guidelines are calculated against a retired range.
+  fix_map:
+    __other__: Re-derive the pay range (grade, country, pay group) so the active range is picked up.
+  record_fix_template: 'Employee {COMPINFO.USERID}: current pay uses an inactive pay range.'
+- id: EC644
+  field: COMPINFO.PAY_COMPONENT_STATUS
+  check_class: cross_field_check
+  fail_when: '`COMPINFO.PAY_COMPONENT_STATUS` == ''I'''
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+    COMPINFO.END_DATE:
+      open_ended: true
+  severity: high
+  dimension: consistency
+  message: Current compensation of an active employee uses an inactive pay component
+  why_it_matters: Foundation objects are set inactive (status I) when they are retired. A current pay component row of an
+    active employee that still points at a retired pay component cannot be edited and is usually no longer mapped to a
+    wage type.
+  rule_authority: best_practice
+  sap_impact: Replication to payroll fails because the pay component has no active wage type mapping.
+  fix_map:
+    __other__: Replace the inactive pay component with its successor in Compensation Information.
+  record_fix_template: 'Employee {COMPINFO.USERID}: current pay component {COMPINFO.PAY_TYPE} is inactive.'

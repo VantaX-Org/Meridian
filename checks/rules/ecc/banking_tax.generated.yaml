@@ -82,26 +82,6 @@ rules:
   fix_map:
     __other__: 'BNKA.SDD_RTRANS ''{invalid_value}'' is not in domain SDD_RTRANS. Set it to one of: 0, 1, 2, 3, 9.'
   record_fix_template: 'BNKA.SDD_RTRANS is {actual_value}; expected one of: 0, 1, 2, 3, 9.'
-- id: DXV4037ae2d
-  enabled: false
-  field: KNBK.EBPP_BVSTATUS
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Status of Bank Details in Biller Direct must be a value of domain EBPP_BVSTATUS (e.g. A, B, C, D)
-  why_it_matters: Domain EBPP_BVSTATUS fixes the permitted values of EBPP_BVSTATUS (Status of Bank Details in Biller Direct)
-    in the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently
-    by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: EBPP_BVSTATUS will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - A
-  - B
-  - C
-  - D
-  fix_map:
-    __other__: 'KNBK.EBPP_BVSTATUS ''{invalid_value}'' is not in domain EBPP_BVSTATUS. Set it to one of: A, B, C, D.'
-  record_fix_template: 'KNBK.EBPP_BVSTATUS is {actual_value}; expected one of: A, B, C, D.'
 - id: DXRf2b771de
   enabled: false
   field: LFBW.QSREC
