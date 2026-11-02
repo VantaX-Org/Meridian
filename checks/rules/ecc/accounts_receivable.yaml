@@ -2864,3 +2864,71 @@ rules:
     s4_area: credit_management
     s4_impact: warning
     simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+  - id: AR272
+    field: BSID.WSKTO
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: '`BSID.WSKTO` > `BSID.WRBTR`'
+    severity: medium
+    dimension: accuracy
+    message: Cash discount amount is larger than the item amount in document currency
+    why_it_matters: A cash discount is a share of the invoice amount; it cannot exceed the amount it is a discount on. A larger discount means the discount or the item amount was changed or loaded wrongly, and a payment taking it would settle the item for less than nothing.
+    rule_authority: sap_business_convention
+    s4_area: finance
+    s4_impact: warning
+    simplification_item: Data Model Changes in Financials - Universal Journal
+    sap_impact: The payment program and incoming payment clearing deduct the discount as stored, leaving a residual or an over-clearing on the account.
+    fix_map:
+      __other__: Compare the item in FB03 with the payment terms; correct the discount amount (FB02 where allowed) or reverse and re-post the document.
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}: cash discount {BSID.WSKTO} exceeds {BSID.WRBTR}.'
+  - id: AR273
+    field: BSID.SKNTO
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: '`BSID.SKNTO` > `BSID.DMBTR`'
+    severity: medium
+    dimension: accuracy
+    message: Cash discount amount is larger than the item amount in company-code currency
+    why_it_matters: The local-currency cash discount is the translated document discount and is bounded by the local item amount in the same way. A larger value means the translation or the load of one of the two amounts is wrong.
+    rule_authority: sap_business_convention
+    s4_area: finance
+    s4_impact: warning
+    simplification_item: Data Model Changes in Financials - Universal Journal
+    sap_impact: Clearing in company-code currency posts a discount larger than the item, producing a wrong cash discount expense or revenue.
+    fix_map:
+      __other__: Check the exchange rate and both amounts in FB03; reverse and re-post the document if the stored amounts are wrong.
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}: local cash discount {BSID.SKNTO} exceeds {BSID.DMBTR}.'
+  - id: AR274
+    field: BSID.SKFBT
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: '`BSID.SKFBT` > `BSID.WRBTR`'
+    severity: medium
+    dimension: accuracy
+    message: Amount eligible for cash discount is larger than the item amount
+    why_it_matters: The amount eligible for cash discount is the part of the gross amount the discount is computed on (the gross amount less any excluded parts such as tax). It can be equal to the item amount or smaller, never larger; a larger base inflates every discount computed from it.
+    rule_authority: sap_business_convention
+    s4_area: finance
+    s4_impact: warning
+    simplification_item: Data Model Changes in Financials - Universal Journal
+    sap_impact: The payment program computes the discount on an inflated base and takes more discount than the terms allow.
+    fix_map:
+      __other__: Correct the discount base in FB02 if the document allows it, otherwise reverse and re-post with the right base.
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}: discount base {BSID.SKFBT} exceeds {BSID.WRBTR}.'
+  - id: AR275
+    field: BSID.WMWST
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: '`BSID.WMWST` > `BSID.WRBTR`'
+    severity: medium
+    dimension: accuracy
+    message: Tax amount on the item is larger than the item amount in document currency
+    why_it_matters: Where a customer or vendor line carries a tax amount, it is the tax portion contained in that line's gross amount, so it cannot exceed it. A larger tax amount means the tax or the gross amount was loaded wrongly.
+    rule_authority: sap_business_convention
+    s4_area: finance
+    s4_impact: warning
+    simplification_item: Data Model Changes in Financials - Universal Journal
+    sap_impact: Tax adjustment on cash discount and the tax reports read a tax portion larger than the invoice itself.
+    fix_map:
+      __other__: Compare the line with the tax lines of the document in FB03; reverse and re-post the document with consistent amounts.
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}: tax amount {BSID.WMWST} exceeds {BSID.WRBTR}.'

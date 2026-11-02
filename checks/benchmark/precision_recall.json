@@ -4,7 +4,7 @@
   "business_partner": {
    "benchmarked": 72,
    "perfect": 72,
-   "rules": 155
+   "rules": 157
   },
   "employee_central": {
    "benchmarked": 314,
@@ -21933,6 +21933,20 @@
    "records": 40,
    "rule_id": "BP296",
    "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "business_partner",
+   "reason": "condition not modelled: `BUT000.VALID_TO` < (@today.dt.year * 1e10 + @today.dt.month",
+   "rule_id": "BP297"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "business_partner",
+   "reason": "condition not modelled: `BUT020.ADDR_VALID_TO` < (@today.dt.year * 1e10 + @today.dt.",
+   "rule_id": "BP298"
   }
  ]
 }
