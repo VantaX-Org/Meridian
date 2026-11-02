@@ -4,7 +4,7 @@
  * bound also catches. Fields with no known table get no proposal, as the route answers an unqualified field.
  */
 import type { AnomalyItem } from "../mining";
-import type { AnomalyRuleProposal } from "../anomaly-rules";
+import type { AnomalyRuleProposal, FieldShift } from "../anomaly-rules";
 import { miningRead } from "./mining";
 
 export const NONE_ANOMALY_RULES = Symbol("not an anomaly rule path");
@@ -51,6 +51,29 @@ function propose(id: string): AnomalyRuleProposal {
     grounding: { ...grounding, rule_hits: hits, population: POPULATION },
     confidence: { basis: "template", level: "high" },
   };
+}
+
+const counts = (rows: number, blank: number, distinct: number) => ({ rows, blank, blank_pct: Math.round((blank / rows) * 10_000) / 100, distinct });
+const SHIFTS: FieldShift[] = [
+  {
+    id: "shift-1", version_id: "v-fixture-2", prev_version_id: "v-fixture-1", run_number: 12, prev_run_number: 11,
+    module: "material_master", field: "MARA.BRGEW", field_description: "Gross weight", kind: "null_spike", severity: "critical",
+    current: counts(48_210, 31_400, 9_120), previous: counts(47_980, 2_150, 9_870), codes: [], detected_at: "2026-10-30 04:12:00",
+  },
+  {
+    id: "shift-2", version_id: "v-fixture-2", prev_version_id: "v-fixture-1", run_number: 12, prev_run_number: 11,
+    module: "material_master", field: "MARA.MTART", field_description: "Material type", kind: "unexpected_code", severity: "high",
+    current: counts(48_210, 0, 6), previous: counts(47_980, 0, 5), codes: [{ value: "HALB", count: 3_420 }], detected_at: "2026-10-30 04:12:00",
+  },
+  {
+    id: "shift-3", version_id: "v-fixture-4", prev_version_id: "v-fixture-3", run_number: 8, prev_run_number: 7,
+    module: "sd_customer_master", field: "KNVV.VKORG", field_description: "Sales organization", kind: "unexpected_code", severity: "medium",
+    current: counts(12_400, 0, 4), previous: counts(12_390, 0, 3), codes: [{ value: "1000", count: 35 }], detected_at: "2026-10-29 03:40:00",
+  },
+];
+
+export function anomalyRulesRead(path: string): unknown {
+  return path === "/aletheia/anomaly-rules/shifts" ? SHIFTS : NONE_ANOMALY_RULES;
 }
 
 export function anomalyRulesWrite(method: string, path: string, body: unknown): unknown {
