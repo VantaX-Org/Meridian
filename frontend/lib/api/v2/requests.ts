@@ -43,6 +43,8 @@ export interface ChangeRequest {
   age_hours: number | null;
   /** True while in approval and past due_at. */
   overdue: boolean;
+  /** The tenant's critical fields (TABLE.FIELD) the request touches; each adds a critical field approval step. */
+  critical_fields: string[];
 }
 
 export interface PrecheckFailure { check_id: string; severity: string; dimension: string | null; field: string | null; message: string }
@@ -80,7 +82,7 @@ export interface RequestFilter { view: RequestView; status?: string; object?: st
 export interface RequestDraft { kind: RequestKind; object: RequestObject; target_system_id?: string | null; object_key?: string | null; title?: string | null; payload: Record<string, string>; record_keys?: string[] }
 
 /** One field of a request that was set, changed, removed or defaulted (GET /change-requests/{id}/field-history). */
-export type FieldAction = "set" | "changed" | "removed" | "defaulted";
+export type FieldAction = "set" | "changed" | "removed" | "defaulted" | "derived";
 export interface FieldChange { id: string; record_key?: string | null; field: string; action: FieldAction; old_value: string | null; new_value: string | null; actor_label: string | null; created_at: string }
 /** A value filled into an empty field of a new create request (GET /change-requests/defaults). */
 export interface EntryDefault { id: string; object: RequestObject; field: string; value: string; updated_at: string }
@@ -106,6 +108,16 @@ export const getMassPreview = (id: string) => v2Get<MassPreview>(`${cr(id)}/prev
 export const listDefaults =() => v2Get<{ items: EntryDefault[] }>("/change-requests/defaults");
 export const putDefault = (object: RequestObject, field: string, value: string) => v2Send<EntryDefault>("PUT", "/change-requests/defaults", { object, field, value });
 export const deleteDefault = (id: string) => v2Send<{ deleted: string }>("DELETE", `/change-requests/defaults/${enc(id)}`);
+/** A rule that sets target_field to a constant when when_field of the same request holds one of when_values (GET /change-requests/derivations). */
+export interface Derivation { id: string; object: RequestObject; when_field: string; when_values: string[]; target_field: string; value: string; updated_at: string }
+export const listDerivations = () => v2Get<{ items: Derivation[] }>("/change-requests/derivations");
+export const putDerivation = (object: RequestObject, when_field: string, when_values: string[], target_field: string, value: string) => v2Send<Derivation>("PUT", "/change-requests/derivations", { object, when_field, when_values, target_field, value });
+export const deleteDerivation = (id: string) => v2Send<{ deleted: string }>("DELETE", `/change-requests/derivations/${enc(id)}`);
+/** A field whose change needs the extra critical field approval step (GET /change-requests/critical-fields). */
+export interface CriticalField { id: string; object: RequestObject; field: string; updated_at: string }
+export const listCriticalFields = () => v2Get<{ items: CriticalField[] }>("/change-requests/critical-fields");
+export const putCriticalField = (object: RequestObject, field: string) => v2Send<CriticalField>("PUT", "/change-requests/critical-fields", { object, field });
+export const deleteCriticalField = (id: string) => v2Send<{ deleted: string }>("DELETE", `/change-requests/critical-fields/${enc(id)}`);
 export const exportRequest = (id: string) => v2Download(`${cr(id)}/export`, undefined, `change_request_${id}.json`);
 
 export interface WorkflowDefinition {
