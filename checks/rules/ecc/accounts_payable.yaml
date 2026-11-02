@@ -3452,3 +3452,244 @@ rules:
   s4_area: business_partner
   s4_impact: warning
   simplification_item: Business Partner Approach (SAP Note 2265093)
+- id: AP289
+  field: LFA1.STCD1
+  check_class: value_placement_check
+  family: tax_checkdigit
+  fields:
+  - LFA1.STCD1
+  - LFA1.LAND1
+  applies_when:
+    LFA1.LAND1:
+    - ES
+  grain: LFA1
+  severity: high
+  dimension: accuracy
+  message: Spanish NIF/NIE/CIF in tax number 1 is well-formed but its control letter (DNI/NIE modulo 23, CIF control
+    character) is wrong
+  why_it_matters: 'The Spanish NIF/NIE/CIF carries a control letter (DNI/NIE modulo 23, CIF control character) computed
+    from the other characters by the tax authority''s published algorithm. A number that has the right format but
+    a wrong check digit was mistyped or invented: it identifies no registered taxpayer, so e-invoices, withholding
+    certificates and tax returns citing it are rejected, and the format rule alone cannot see it.'
+  rule_authority: regulatory
+  sap_impact: Electronic invoices and statutory tax reports for the vendor are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
+      do not recompute the check digit.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Spanish NIF/NIE/CIF {LFA1.STCD1} fails its check digit.'
+- id: AP290
+  field: LFA1.STCD1
+  check_class: value_placement_check
+  family: tax_checkdigit
+  fields:
+  - LFA1.STCD1
+  - LFA1.LAND1
+  applies_when:
+    LFA1.LAND1:
+    - IT
+  grain: LFA1
+  severity: high
+  dimension: accuracy
+  message: Italian codice fiscale in tax number 1 is well-formed but its control character is wrong
+  why_it_matters: 'The Italian codice fiscale carries a control character computed from the other characters by the
+    tax authority''s published algorithm. A number that has the right format but a wrong check digit was mistyped
+    or invented: it identifies no registered taxpayer, so e-invoices, withholding certificates and tax returns citing
+    it are rejected, and the format rule alone cannot see it.'
+  rule_authority: regulatory
+  sap_impact: Electronic invoices and statutory tax reports for the vendor are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
+      do not recompute the check digit.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Italian codice fiscale {LFA1.STCD1} fails its check digit.'
+- id: AP291
+  field: LFA1.STCD2
+  check_class: value_placement_check
+  family: tax_checkdigit
+  fields:
+  - LFA1.STCD2
+  - LFA1.LAND1
+  applies_when:
+    LFA1.LAND1:
+    - IT
+  grain: LFA1
+  severity: high
+  dimension: accuracy
+  message: Italian partita IVA in tax number 2 is well-formed but its Luhn check digit is wrong
+  why_it_matters: 'The Italian partita IVA carries a Luhn check digit computed from the other characters by the tax
+    authority''s published algorithm. A number that has the right format but a wrong check digit was mistyped or invented:
+    it identifies no registered taxpayer, so e-invoices, withholding certificates and tax returns citing it are rejected,
+    and the format rule alone cannot see it.'
+  rule_authority: regulatory
+  sap_impact: Electronic invoices and statutory tax reports for the vendor are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
+      do not recompute the check digit.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Italian partita IVA {LFA1.STCD2} fails its check digit.'
+- id: AP292
+  field: LFA1.STCD1
+  check_class: value_placement_check
+  family: tax_checkdigit
+  fields:
+  - LFA1.STCD1
+  - LFA1.LAND1
+  applies_when:
+    LFA1.LAND1:
+    - PT
+  grain: LFA1
+  severity: high
+  dimension: accuracy
+  message: Portuguese NIF in tax number 1 is well-formed but its modulo-11 check digit is wrong
+  why_it_matters: 'The Portuguese NIF carries a modulo-11 check digit computed from the other characters by the tax
+    authority''s published algorithm. A number that has the right format but a wrong check digit was mistyped or invented:
+    it identifies no registered taxpayer, so e-invoices, withholding certificates and tax returns citing it are rejected,
+    and the format rule alone cannot see it.'
+  rule_authority: regulatory
+  sap_impact: Electronic invoices and statutory tax reports for the vendor are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
+      do not recompute the check digit.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Portuguese NIF {LFA1.STCD1} fails its check digit.'
+- id: AP293
+  field: LFA1.STCD1
+  check_class: value_placement_check
+  family: tax_checkdigit
+  fields:
+  - LFA1.STCD1
+  - LFA1.LAND1
+  applies_when:
+    LFA1.LAND1:
+    - AR
+  grain: LFA1
+  severity: high
+  dimension: accuracy
+  message: Argentine CUIT in tax number 1 is well-formed but its modulo-11 verification digit is wrong
+  why_it_matters: 'The Argentine CUIT carries a modulo-11 verification digit computed from the other characters by
+    the tax authority''s published algorithm. A number that has the right format but a wrong check digit was mistyped
+    or invented: it identifies no registered taxpayer, so e-invoices, withholding certificates and tax returns citing
+    it are rejected, and the format rule alone cannot see it.'
+  rule_authority: regulatory
+  sap_impact: Electronic invoices and statutory tax reports for the vendor are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
+      do not recompute the check digit.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Argentine CUIT {LFA1.STCD1} fails its check digit.'
+- id: AP294
+  field: LFA1.STCD1
+  check_class: value_placement_check
+  family: tax_checkdigit
+  fields:
+  - LFA1.STCD1
+  - LFA1.LAND1
+  applies_when:
+    LFA1.LAND1:
+    - CL
+  grain: LFA1
+  severity: high
+  dimension: accuracy
+  message: Chilean RUT in tax number 1 is well-formed but its modulo-11 verification digit (DV) is wrong
+  why_it_matters: 'The Chilean RUT carries a modulo-11 verification digit (DV) computed from the other characters
+    by the tax authority''s published algorithm. A number that has the right format but a wrong check digit was mistyped
+    or invented: it identifies no registered taxpayer, so e-invoices, withholding certificates and tax returns citing
+    it are rejected, and the format rule alone cannot see it.'
+  rule_authority: regulatory
+  sap_impact: Electronic invoices and statutory tax reports for the vendor are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
+      do not recompute the check digit.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Chilean RUT {LFA1.STCD1} fails its check digit.'
+- id: AP295
+  field: LFA1.STCD1
+  check_class: value_placement_check
+  family: tax_checkdigit
+  fields:
+  - LFA1.STCD1
+  - LFA1.LAND1
+  applies_when:
+    LFA1.LAND1:
+    - CO
+  grain: LFA1
+  severity: high
+  dimension: accuracy
+  message: Colombian NIT in tax number 1 is well-formed but its DIAN verification digit is wrong
+  why_it_matters: 'The Colombian NIT carries a DIAN verification digit computed from the other characters by the tax
+    authority''s published algorithm. A number that has the right format but a wrong check digit was mistyped or invented:
+    it identifies no registered taxpayer, so e-invoices, withholding certificates and tax returns citing it are rejected,
+    and the format rule alone cannot see it.'
+  rule_authority: regulatory
+  sap_impact: Electronic invoices and statutory tax reports for the vendor are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
+      do not recompute the check digit.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Colombian NIT {LFA1.STCD1} fails its check digit.'
+- id: AP296
+  field: LFA1.STCD1
+  check_class: value_placement_check
+  family: tax_checkdigit
+  fields:
+  - LFA1.STCD1
+  - LFA1.LAND1
+  applies_when:
+    LFA1.LAND1:
+    - PE
+  grain: LFA1
+  severity: high
+  dimension: accuracy
+  message: Peruvian RUC in tax number 1 is well-formed but its modulo-11 check digit is wrong
+  why_it_matters: 'The Peruvian RUC carries a modulo-11 check digit computed from the other characters by the tax
+    authority''s published algorithm. A number that has the right format but a wrong check digit was mistyped or invented:
+    it identifies no registered taxpayer, so e-invoices, withholding certificates and tax returns citing it are rejected,
+    and the format rule alone cannot see it.'
+  rule_authority: regulatory
+  sap_impact: Electronic invoices and statutory tax reports for the vendor are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
+      do not recompute the check digit.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Peruvian RUC {LFA1.STCD1} fails its check digit.'
+- id: AP297
+  field: LFA1.STCD1
+  check_class: value_placement_check
+  family: tax_checkdigit
+  fields:
+  - LFA1.STCD1
+  - LFA1.LAND1
+  applies_when:
+    LFA1.LAND1:
+    - RU
+  grain: LFA1
+  severity: high
+  dimension: accuracy
+  message: Russian INN in tax number 1 is well-formed but its control digits is wrong
+  why_it_matters: 'The Russian INN carries a control digits computed from the other characters by the tax authority''s
+    published algorithm. A number that has the right format but a wrong check digit was mistyped or invented: it identifies
+    no registered taxpayer, so e-invoices, withholding certificates and tax returns citing it are rejected, and the
+    format rule alone cannot see it.'
+  rule_authority: regulatory
+  sap_impact: Electronic invoices and statutory tax reports for the vendor are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
+      do not recompute the check digit.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Russian INN {LFA1.STCD1} fails its check digit.'
+- id: AP298
+  field: LFA1.STCD2
+  check_class: value_placement_check
+  family: tax_checkdigit
+  fields:
+  - LFA1.STCD2
+  - LFA1.LAND1
+  applies_when:
+    LFA1.LAND1:
+    - BR
+  grain: LFA1
+  severity: high
+  dimension: accuracy
+  message: Brazilian CPF in tax number 2 is well-formed but its two modulo-11 check digits is wrong
+  why_it_matters: 'The Brazilian CPF carries a two modulo-11 check digits computed from the other characters by the
+    tax authority''s published algorithm. A number that has the right format but a wrong check digit was mistyped
+    or invented: it identifies no registered taxpayer, so e-invoices, withholding certificates and tax returns citing
+    it are rejected, and the format rule alone cannot see it.'
+  rule_authority: regulatory
+  sap_impact: Electronic invoices and statutory tax reports for the vendor are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
+      do not recompute the check digit.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Brazilian CPF {LFA1.STCD2} fails its check digit.'

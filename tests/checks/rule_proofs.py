@@ -347,7 +347,7 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             # defaults key/join columns to "K{i}".
         if rule.get("check_class") == "value_placement_check" and c in (rule.get("fields") or [rule["field"]]):
             vals += _PLACEMENT_SAMPLES[rule["family"]] if rule["family"] != "tax_checkdigit" else \
-                _TAX_ID_SAMPLES[rule["applies_when"]["KNA1.LAND1"][0], rule["field"].split(".")[1]]
+                _TAX_ID_SAMPLES[rule["applies_when"][rule["fields"][1]][0], rule["field"].split(".")[1]]
         if c == rule.get("split_field"):
             vals += [str(v) for v in rule["left_values"][:1] + rule["right_values"][:1]]
         if c == rule.get("field"):
