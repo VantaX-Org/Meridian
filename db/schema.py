@@ -3398,12 +3398,14 @@ class RequestDerivation(Base):
     when_field = Column(Text, nullable=False)
     when_values = Column(JSONB, nullable=False)
     target_field = Column(Text, nullable=False)
-    value = Column(Text, nullable=False)
+    value = Column(Text, nullable=True)  # constant; exactly one of value and source_field (migration 127)
+    source_field = Column(Text, nullable=True)  # copy this field of the request into target_field
     updated_by = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (UniqueConstraint("tenant_id", "object", "when_field", "when_values", "target_field",
-                                       name="uq_request_derivations"),)
+                                       name="uq_request_derivations"),
+                      CheckConstraint("(value IS NULL) <> (source_field IS NULL)", name="ck_request_derivations_one_action"))
 
 
 class RequestCriticalField(Base):

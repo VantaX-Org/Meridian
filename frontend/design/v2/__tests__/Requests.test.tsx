@@ -99,6 +99,23 @@ describe("Requests", () => {
     await waitFor(() => expect(crit.textContent).toContain("MARA-MTART"));
   });
 
+  it("saves a copy-from-field derivation and shows the source field with its description", async () => {
+    setUrl("/requests?fixture=1&view=all");
+    renderWithQuery(<RequestsCanvas />);
+    fireEvent.click(await screen.findByRole("button", { name: "Derivations and critical fields" }));
+    const rules = await screen.findByTestId("derivation-rules");
+    await waitFor(() => expect(rules.textContent).toContain("MARC-BESKZ"));
+    const input = (label: string) => Array.from(rules.querySelectorAll("label")).find((l) => l.textContent?.startsWith(label))!.querySelector("input")!;
+    fireEvent.change(input("When field, as"), { target: { value: "MARA.MTART" } });
+    fireEvent.change(input("Is one of"), { target: { value: "FERT" } });
+    fireEvent.change(input("Set field, as"), { target: { value: "MARA.MEINS" } });
+    fireEvent.change(screen.getByDisplayValue("Constant value"), { target: { value: "copy" } });
+    fireEvent.change(input("Source field, as"), { target: { value: "MARA.MATKL" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save rule" }));
+    await waitFor(() => expect(rules.textContent).toContain("Copy of"));
+    expect(rules.textContent).toContain("MARA-MATKL");
+  });
+
   it("flags the critical fields a request touches in the inspector", async () => {
     setUrl("/requests?fixture=1");
     renderWithQuery(<RequestInspector id="CR-1001" onClose={() => undefined} />);

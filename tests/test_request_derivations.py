@@ -32,14 +32,37 @@ class Rows:
 
 
 def test_derivations_set_the_target_when_the_condition_holds_in_order_and_mark_only_real_changes():
-    rules = [("MARA.MTART", ["ROH"], "MARC.BESKZ", "F"), ("MARC.BESKZ", ["F"], "MARC.DISMM", "PD"),
-             ("MARA.MBRSH", ["M"], "MARA.MEINS", "EA")]
+    rules = [("MARA.MTART", ["ROH"], "MARC.BESKZ", "F", None), ("MARC.BESKZ", ["F"], "MARC.DISMM", "PD", None),
+             ("MARA.MBRSH", ["M"], "MARA.MEINS", "EA", None)]
     out, derived = crs.apply_derivations(Rows(rules), "t", "material",
                                          {"MARA.MTART": "ROH", "MARA.MBRSH": "M", "MARA.MEINS": "EA"})
     assert out["MARC.BESKZ"] == "F" and out["MARC.DISMM"] == "PD"  # chained: the second sees the first
     assert derived == ["MARC.BESKZ", "MARC.DISMM"]  # MEINS already held EA: not a derivation
     same, none = crs.apply_derivations(Rows(rules), "t", "material", {"MARA.MTART": "ZZZ"})
     assert same == {"MARA.MTART": "ZZZ"} and none == []
+
+
+def test_copy_from_field_copies_the_current_value_and_skips_an_empty_source():
+    rules = [("MARA.MTART", ["ROH"], "MARA.MEINS", None, "MARA.BISMT"), ("MARA.MTART", ["ROH"], "MARA.NORMT", None, "MARA.MATKL")]
+    out, derived = crs.apply_derivations(Rows(rules), "t", "material",
+                                         {"MARA.MTART": "ROH", "MARA.BISMT": " KG", "MARA.MATKL": "  "})
+    assert out["MARA.MEINS"] == " KG" and derived == ["MARA.MEINS"]
+    assert "MARA.NORMT" not in out  # blank source: skipped
+    out, derived = crs.apply_derivations(Rows(rules[:1]), "t", "material", {"MARA.MTART": "ROH", "MARA.MEINS": "KG", "MARA.BISMT": "KG"})
+    assert derived == []  # target already holds the value
+
+
+def test_derivation_body_needs_exactly_one_of_value_and_source_field():
+    from pydantic import ValidationError
+
+    from api.routes.change_requests import DerivationBody
+
+    base = {"object": "material", "when_field": "MARA.MTART", "when_values": ["ROH"], "target_field": "MARA.MEINS"}
+    assert DerivationBody(**base, value="PC").source_field is None
+    assert DerivationBody(**base, source_field="MARA.BISMT").value is None
+    for extra in ({}, {"value": "PC", "source_field": "MARA.BISMT"}):
+        with pytest.raises(ValidationError):
+            DerivationBody(**base, **extra)
 
 
 def test_critical_hits_are_the_touched_fields_of_the_requests_object_only():
@@ -67,6 +90,8 @@ async def test_derivation_rules_are_checked_applied_and_recorded(world, monkeypa
     assert (await call(monkeypatch, w, "requester", "PUT", "/change-requests/derivations", body)).status_code == 403
     bad = await call(monkeypatch, w, "admin", "PUT", "/change-requests/derivations", {**body, "target_field": "MARA.NOPE"})
     assert bad.status_code == 422
+    for extra in ({"value": None}, {"source_field": "MARA.BISMT"}):
+        assert (await call(monkeypatch, w, "admin", "PUT", "/change-requests/derivations", {**body, **extra})).status_code == 422
     ok = await call(monkeypatch, w, "admin", "PUT", "/change-requests/derivations", body)
     assert ok.status_code == 200 and ok.json()["target_field"] == "MARA.MEINS"
     listed = (await call(monkeypatch, w, "requester", "GET", "/change-requests/derivations")).json()["items"]
