@@ -12421,7 +12421,7 @@ rules:
     fix_map:
       __other__: Correct the tax number in XD02 > Control data > Tax information from the
         customer's registration certificate; do not recompute the check digit.
-    record_fix_template: 'Customer {KNA1.KUNNR}: Spanish NIF/NIE/CIF {KNA1.STCD1} fails its check digit.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: Spanish NIF/NIE/CIF in STCD1 fails its check digit.'
   - id: SDCM840
     field: KNA1.STCD1
     check_class: value_placement_check
@@ -12446,7 +12446,7 @@ rules:
     fix_map:
       __other__: Correct the tax number in XD02 > Control data > Tax information from the
         customer's registration certificate; do not recompute the check digit.
-    record_fix_template: 'Customer {KNA1.KUNNR}: Italian codice fiscale {KNA1.STCD1} fails its check digit.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: Italian codice fiscale in STCD1 fails its check digit.'
   - id: SDCM841
     field: KNA1.STCD2
     check_class: value_placement_check
@@ -12471,7 +12471,7 @@ rules:
     fix_map:
       __other__: Correct the tax number in XD02 > Control data > Tax information from the
         customer's registration certificate; do not recompute the check digit.
-    record_fix_template: 'Customer {KNA1.KUNNR}: Italian partita IVA {KNA1.STCD2} fails its check digit.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: Italian partita IVA in STCD2 fails its check digit.'
   - id: SDCM842
     field: KNA1.STCD1
     check_class: value_placement_check
@@ -12496,7 +12496,7 @@ rules:
     fix_map:
       __other__: Correct the tax number in XD02 > Control data > Tax information from the
         customer's registration certificate; do not recompute the check digit.
-    record_fix_template: 'Customer {KNA1.KUNNR}: Portuguese NIF {KNA1.STCD1} fails its check digit.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: Portuguese NIF in STCD1 fails its check digit.'
   - id: SDCM843
     field: KNA1.STCD1
     check_class: value_placement_check
@@ -12521,7 +12521,7 @@ rules:
     fix_map:
       __other__: Correct the tax number in XD02 > Control data > Tax information from the
         customer's registration certificate; do not recompute the check digit.
-    record_fix_template: 'Customer {KNA1.KUNNR}: Argentine CUIT {KNA1.STCD1} fails its check digit.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: Argentine CUIT in STCD1 fails its check digit.'
   - id: SDCM844
     field: KNA1.STCD1
     check_class: value_placement_check
@@ -12546,7 +12546,7 @@ rules:
     fix_map:
       __other__: Correct the tax number in XD02 > Control data > Tax information from the
         customer's registration certificate; do not recompute the check digit.
-    record_fix_template: 'Customer {KNA1.KUNNR}: Chilean RUT {KNA1.STCD1} fails its check digit.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: Chilean RUT in STCD1 fails its check digit.'
   - id: SDCM845
     field: KNA1.STCD1
     check_class: value_placement_check
@@ -12571,7 +12571,7 @@ rules:
     fix_map:
       __other__: Correct the tax number in XD02 > Control data > Tax information from the
         customer's registration certificate; do not recompute the check digit.
-    record_fix_template: 'Customer {KNA1.KUNNR}: Colombian NIT {KNA1.STCD1} fails its check digit.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: Colombian NIT in STCD1 fails its check digit.'
   - id: SDCM846
     field: KNA1.STCD1
     check_class: value_placement_check
@@ -12596,7 +12596,7 @@ rules:
     fix_map:
       __other__: Correct the tax number in XD02 > Control data > Tax information from the
         customer's registration certificate; do not recompute the check digit.
-    record_fix_template: 'Customer {KNA1.KUNNR}: Peruvian RUC {KNA1.STCD1} fails its check digit.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: Peruvian RUC in STCD1 fails its check digit.'
   - id: SDCM847
     field: KNA1.STCD1
     check_class: value_placement_check
@@ -12621,7 +12621,7 @@ rules:
     fix_map:
       __other__: Correct the tax number in XD02 > Control data > Tax information from the
         customer's registration certificate; do not recompute the check digit.
-    record_fix_template: 'Customer {KNA1.KUNNR}: Russian INN {KNA1.STCD1} fails its check digit.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: Russian INN in STCD1 fails its check digit.'
   - id: SDCM848
     field: KNA1.STCD2
     check_class: value_placement_check
@@ -12646,4 +12646,4 @@ rules:
     fix_map:
       __other__: Correct the tax number in XD02 > Control data > Tax information from the
         customer's registration certificate; do not recompute the check digit.
-    record_fix_template: 'Customer {KNA1.KUNNR}: Brazilian CPF {KNA1.STCD2} fails its check digit.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: Brazilian CPF in STCD2 fails its check digit.'

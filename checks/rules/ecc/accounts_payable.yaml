@@ -3476,7 +3476,7 @@ rules:
   fix_map:
     __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
       do not recompute the check digit.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: Spanish NIF/NIE/CIF {LFA1.STCD1} fails its check digit.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Spanish NIF/NIE/CIF in STCD1 fails its check digit.'
 - id: AP290
   field: LFA1.STCD1
   check_class: value_placement_check
@@ -3500,7 +3500,7 @@ rules:
   fix_map:
     __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
       do not recompute the check digit.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: Italian codice fiscale {LFA1.STCD1} fails its check digit.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Italian codice fiscale in STCD1 fails its check digit.'
 - id: AP291
   field: LFA1.STCD2
   check_class: value_placement_check
@@ -3524,7 +3524,7 @@ rules:
   fix_map:
     __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
       do not recompute the check digit.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: Italian partita IVA {LFA1.STCD2} fails its check digit.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Italian partita IVA in STCD2 fails its check digit.'
 - id: AP292
   field: LFA1.STCD1
   check_class: value_placement_check
@@ -3548,7 +3548,7 @@ rules:
   fix_map:
     __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
       do not recompute the check digit.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: Portuguese NIF {LFA1.STCD1} fails its check digit.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Portuguese NIF in STCD1 fails its check digit.'
 - id: AP293
   field: LFA1.STCD1
   check_class: value_placement_check
@@ -3572,7 +3572,7 @@ rules:
   fix_map:
     __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
       do not recompute the check digit.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: Argentine CUIT {LFA1.STCD1} fails its check digit.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Argentine CUIT in STCD1 fails its check digit.'
 - id: AP294
   field: LFA1.STCD1
   check_class: value_placement_check
@@ -3596,7 +3596,7 @@ rules:
   fix_map:
     __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
       do not recompute the check digit.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: Chilean RUT {LFA1.STCD1} fails its check digit.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Chilean RUT in STCD1 fails its check digit.'
 - id: AP295
   field: LFA1.STCD1
   check_class: value_placement_check
@@ -3620,7 +3620,7 @@ rules:
   fix_map:
     __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
       do not recompute the check digit.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: Colombian NIT {LFA1.STCD1} fails its check digit.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Colombian NIT in STCD1 fails its check digit.'
 - id: AP296
   field: LFA1.STCD1
   check_class: value_placement_check
@@ -3644,7 +3644,7 @@ rules:
   fix_map:
     __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
       do not recompute the check digit.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: Peruvian RUC {LFA1.STCD1} fails its check digit.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Peruvian RUC in STCD1 fails its check digit.'
 - id: AP297
   field: LFA1.STCD1
   check_class: value_placement_check
@@ -3668,7 +3668,7 @@ rules:
   fix_map:
     __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
       do not recompute the check digit.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: Russian INN {LFA1.STCD1} fails its check digit.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Russian INN in STCD1 fails its check digit.'
 - id: AP298
   field: LFA1.STCD2
   check_class: value_placement_check
@@ -3692,4 +3692,4 @@ rules:
   fix_map:
     __other__: Correct the tax number in XK02 > Control data > Tax information from the vendor's registration certificate;
       do not recompute the check digit.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: Brazilian CPF {LFA1.STCD2} fails its check digit.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: Brazilian CPF in STCD2 fails its check digit.'

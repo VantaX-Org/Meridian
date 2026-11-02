@@ -64,7 +64,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
 | KNA1 | KUNNR | Customer Number | y | 28 / 28 | SDCM001, SDCM002, SDCM022, SDCM024, SDCM051, SDCM055 +22 more |  |
-| KNA1 | LAND1 | Country Key | y | 57 / 57 | SDCM005, SDCM050, SDCM300, SDCM301, SDCM302, SDCM303 +51 more |  |
+| KNA1 | LAND1 | Country Key | y | 67 / 67 | SDCM005, SDCM050, SDCM300, SDCM301, SDCM302, SDCM303 +61 more |  |
 | KNA1 | NAME1 | Name 1 | y | 8 / 8 | SDCM003, SDCM381, SDCM413, SDCM428, SDCM438, SDCM439 +2 more |  |
 | KNA1 | NAME2 | Name 2 | y | 2 / 2 | SDCM414, SDCM438 |  |
 | KNA1 | ORT01 | City | y | 5 / 5 | SDCM057, SDCM429, SDCM437, SDCM440, SDCM838 |  |
@@ -114,8 +114,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNA1 | RPMKR | Regional market |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | KNA1 | SPERR | Central posting block | y | 2 / 2 | SDCM212, SDCM229 |  |
 | KNA1 | SPRAS | Language Key | y | 1 / 1 | SDCM419 |  |
-| KNA1 | STCD1 | Tax Number 1 | y | 19 / 19 | SDCM006, SDCM356, SDCM357, SDCM364, SDCM366, SDCM367 +13 more |  |
-| KNA1 | STCD2 | Tax Number 2 | y | 4 / 4 | SDCM355, SDCM365, SDCM374, SDCM380 |  |
+| KNA1 | STCD1 | Tax Number 1 | y | 27 / 27 | SDCM006, SDCM356, SDCM357, SDCM364, SDCM366, SDCM367 +21 more |  |
+| KNA1 | STCD2 | Tax Number 2 | y | 6 / 6 | SDCM355, SDCM365, SDCM374, SDCM380, SDCM841, SDCM848 |  |
 | KNA1 | STKZA | Indicator: Business Partner Subject to Equalization Tax? |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
 | KNA1 | STKZU | Liable for VAT |  | 0 / 0 |  | cross-field: STKZU = X requires KNA1.STCEG populated for EU countries (unverified) |
 | KNA1 | TELBX | Telebox number |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
