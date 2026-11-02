@@ -51,6 +51,13 @@ describe("anomaly rules", () => {
     expect(within(code).getByText("3,420 records")).toBeInTheDocument();
   });
 
+  it("proposes a draft rule from a shift", async () => {
+    renderWithQuery(<AnomalyRules />);
+    const btn = await screen.findByTestId("propose-shift-shift-2");
+    fireEvent.click(btn);
+    expect(await within(screen.getByTestId("shift-shift-2")).findByText("Proposed")).toBeDisabled();
+  });
+
   it("says so when no rule fits", async () => {
     renderWithQuery(<AnomalyRules />);
     fireEvent.click(await screen.findByTestId("propose-anom-7")); // credit limit: no known table

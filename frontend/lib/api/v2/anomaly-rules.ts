@@ -73,6 +73,21 @@ export interface FieldShift {
 /** GET /aletheia/anomaly-rules/shifts: each object's latest run that has any. */
 export const getFieldShifts = (): Promise<FieldShift[]> => v2Get("/aletheia/anomaly-rules/shifts");
 
+export interface ShiftDraft {
+  id: string;
+  status: "draft";
+  /** False when the same rule was already a draft. */
+  created: boolean;
+  rule: Record<string, unknown>;
+  rule_yaml: string;
+}
+
+/** POST /aletheia/anomaly-rules/shifts/propose (needs manage_rules): a pending draft built from the shift's profile aggregates. */
+export const proposeShiftRule = (s: Pick<FieldShift, "field" | "kind" | "version_id">): Promise<ShiftDraft> => {
+  const [table, ...rest] = s.field.split(".");
+  return v2Send("POST", "/aletheia/anomaly-rules/shifts/propose", { table, field: rest.join("."), kind: s.kind, version_id: s.version_id });
+};
+
 /** Approve: the proposed YAML becomes a draft, as in the rule workbench. */
 export const approveAnomalyRule = (module: string, ruleYaml: string, rationale: string): Promise<SavedDraft> =>
   v2Send("POST", "/rule-authoring/drafts", { module, rule_yaml: ruleYaml, rationale });

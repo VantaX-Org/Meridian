@@ -7204,6 +7204,8 @@ export const en = {
   "{records} {n, plural, one {record} other {records}}: {found} found, {missing} not found, {changing} would change, {unchanged} already hold the value.": "{records} {n, plural, one {record} other {records}}: {found} found, {missing} not found, {changing} would change, {unchanged} already hold the value.",
   "Preview of the mass change": "Preview of the mass change",
   "Only the first rows are shown.": "Only the first rows are shown.",
+  "Propose rule": "Propose rule",
+  "This draft already exists. Find it in the rule workbench.": "This draft already exists. Find it in the rule workbench.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

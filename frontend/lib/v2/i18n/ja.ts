@@ -7205,4 +7205,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{records} {n, plural, one {record} other {records}}: {found} found, {missing} not found, {changing} would change, {unchanged} already hold the value.": "{records} 件: {found} 件が見つかり、{missing} 件は見つからず、{changing} 件が変更され、{unchanged} 件は既にその値です。",
   "Preview of the mass change": "一括変更のプレビュー",
   "Only the first rows are shown.": "最初の行のみ表示しています。",
+  "Propose rule": "ルールを提案",
+  "This draft already exists. Find it in the rule workbench.": "この下書きは既にあります。ルールワークベンチで確認してください。",
 };
