@@ -21,6 +21,7 @@ from api.services.run_lineage import lineage_sql
 TOP = 6          # findings shown in the band
 MOVERS = 3       # rules shown per object under "what changed"
 SPARK_RUNS = 8   # runs of the lineage in each sparkline
+CROSS_CHECK = "XSYS"  # ledger check_id of the cross-system finding (no rule behind it; the count is the baseline)
 
 
 def score_of(version: Optional[dict], module: str) -> Optional[float]:
@@ -118,8 +119,21 @@ def _proven(s: Session, tid: str, vid: str, check_id: str, currency: str) -> dic
          WHERE tenant_id = :t AND version_id = CAST(:v AS uuid) AND :c = ANY(check_ids)""", t=tid, v=vid, c=check_id)}
 
 
+def cross_findings(cross: dict[str, dict], versions: dict[str, str]) -> list[dict]:
+    """One finding per object that has duplicates in more than one connected system. ``cross``: module -> {pairs,
+    systems: [{a, b, pairs}]} counted from match_scores (see ``insights._cross_systems``); nothing else feeds it."""
+    return [{"id": f"{m}:{CROSS_CHECK}", "module": m, "version_id": versions.get(m), "check_id": CROSS_CHECK,
+             "name": "", "field": None, "severity": None, "dimension": "uniqueness", "affected": c["pairs"],
+             "total": None, "impact": 0, "delta_affected": None, "auto_fix_pct": None, "spark": [],
+             "why": {"origin": {"status": "not_computed", "top": None, "share": None}, "delta_affected": None},
+             "money": {"cost_at_risk": None, "currency": "", "features": []}, "confidence": None,
+             "action": {"kind": "across", "pairs": c["pairs"], "systems": c["systems"]}}
+            for m, c in sorted(cross.items()) if c["pairs"] > 0]
+
+
 def build(s: Session, tid: str, version_ids: list, module: Optional[str], tunable: dict[str, dict],
-          dupes: Optional[dict[str, int]] = None, owned: Optional[set] = None) -> dict:
+          dupes: Optional[dict[str, int]] = None, owned: Optional[set] = None,
+          cross: Optional[dict[str, dict]] = None) -> dict:
     """The band over the current state (every object at the latest finished run of its lineage)."""
     objects = agg.current_objects(s, tid, version_ids, module)
     cost_model = agg.load_cost_model(s, tid)
@@ -166,9 +180,13 @@ def build(s: Session, tid: str, version_ids: list, module: Optional[str], tunabl
                     "confidence": confidence_of(origin, tunable.get(r["check_id"])),
                     "action": action_for({**r, "module": mod}, tunable, dupes, owned)})
     findings = rank(findings)
+    cross = {m: c for m, c in (cross or {}).items() if not module or m == module}
+    findings = cross_findings(cross, {m: v[0] for m, v in now.items()}) + findings
     acted = []
     for a in load_acted(s, tid):
         vid_now, score_now, aff = now.get(a["module"], (None, None, {}))
+        if a["check_id"] == CROSS_CHECK:  # the count now is the pairs still open, 0 once none are
+            aff = {CROSS_CHECK: (cross.get(a["module"]) or {}).get("pairs", 0)}
         p = proof(a, aff.get(a["check_id"], 0 if vid_now else None), score_now, vid_now)
         money = None
         if not p["waiting"]:
@@ -182,12 +200,18 @@ def build(s: Session, tid: str, version_ids: list, module: Optional[str], tunabl
     return {"currency": currency, "findings": findings, "changes": changes, "acted": acted}
 
 
-def baseline(s: Session, tid: str, version_ids: list, module: str, check_id: str) -> Optional[dict]:
-    """The object's current run, its score and the rule's failing records, stored when a person acts."""
+def baseline(s: Session, tid: str, version_ids: list, module: str, check_id: str,
+             cross: Optional[dict[str, dict]] = None) -> Optional[dict]:
+    """The object's current run, its score and the rule's failing records, stored when a person acts. For the
+    cross-system finding the failing records are the open cross-system pairs on the object (``cross``)."""
     obj = next(iter(agg.current_objects(s, tid, version_ids, module)), None)
     if not obj:
         return None
     v = agg.resolve_version(s, tid, obj["version_id"])
+    if check_id == CROSS_CHECK:
+        pairs = (cross or {}).get(module, {}).get("pairs")
+        return None if not pairs else {"version_id": obj["version_id"], "score_before": score_of(v, module),
+                                       "affected_before": pairs}
     f = _one(s, "SELECT affected_count FROM findings WHERE tenant_id = :t AND version_id = CAST(:v AS uuid) "
                 "AND module = :m AND check_id = :c", t=tid, v=obj["version_id"], m=module, c=check_id)
     return {"version_id": obj["version_id"], "score_before": score_of(v, module),

@@ -94,3 +94,20 @@ def test_assistant_found_is_grounded_and_holds_no_origin_name():
     blob = " ".join(f["statement"] for f in out["facts"])
     assert "jsmith" not in blob and "82%" in blob and "+40" in blob and "MARA.MTART" in blob
     assert out["citations"][0]["check_id"] == "MM003"
+
+
+def test_cross_system_findings_come_only_from_the_counts():
+    cross = {"sd_customer_master": {"pairs": 5, "systems": [{"a": "ECC", "b": "S/4", "pairs": 5}]},
+             "material_master": {"pairs": 0, "systems": []}}
+    (f,) = af.cross_findings(cross, {"sd_customer_master": "v1"})
+    assert f["id"] == "sd_customer_master:XSYS" and f["affected"] == 5 and f["version_id"] == "v1"
+    assert f["action"] == {"kind": "across", "pairs": 5, "systems": [{"a": "ECC", "b": "S/4", "pairs": 5}]}
+    assert af.cross_findings({}, {}) == []
+
+
+def test_cross_baseline_is_the_open_pair_count(monkeypatch):
+    monkeypatch.setattr(af.agg, "current_objects", lambda s, t, ids, m: [{"version_id": "v1"}])
+    monkeypatch.setattr(af.agg, "resolve_version", lambda s, t, v: {"dqs_summary": {"m": {"composite_score": 80}}})
+    cross = {"m": {"pairs": 4, "systems": []}}
+    assert af.baseline(None, "t", [], "m", "XSYS", cross) == {"version_id": "v1", "score_before": 80.0, "affected_before": 4}
+    assert af.baseline(None, "t", [], "m", "XSYS", {}) is None  # nothing open: no finding to act on

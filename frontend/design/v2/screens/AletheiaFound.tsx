@@ -115,8 +115,8 @@ export function AletheiaFound({ module }: { module?: string }) {
   );
 }
 
-const ACTION_LABEL = { tune: () => t("Draft tuned version"), cleanse: () => t("Draft cleansing batch"), open: () => t("Open rule"), merge: () => t("Review duplicates"), assign: () => t("Assign owner") };
-const ACTION_TEXT = { tune: () => t("Tuned rule version drafted"), cleanse: () => t("Cleansing batch drafted"), open: () => t("Opened"), merge: () => t("Duplicates reviewed"), assign: () => t("Owner assigned") };
+const ACTION_LABEL = { across: () => t("Review across systems"), tune: () => t("Draft tuned version"), cleanse: () => t("Draft cleansing batch"), open: () => t("Open rule"), merge: () => t("Review duplicates"), assign: () => t("Assign owner") };
+const ACTION_TEXT = { across: () => t("Cross-system duplicates reviewed"), tune: () => t("Tuned rule version drafted"), cleanse: () => t("Cleansing batch drafted"), open: () => t("Opened"), merge: () => t("Duplicates reviewed"), assign: () => t("Owner assigned") };
 
 function why(f: AletheiaFinding): string | null {
   const parts: string[] = [];
@@ -126,6 +126,10 @@ function why(f: AletheiaFinding): string | null {
 }
 
 function FindingRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }) {
+  return f.action.kind === "across" ? <AcrossRow f={f} /> : <ActionRow f={f} queryKey={queryKey} />;
+}
+
+function ActionRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }) {
   const qc = useQueryClient();
   const [done, setDone] = useState(false);
   const act = useMutation({
@@ -193,6 +197,40 @@ function FindingRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }
   );
 }
 
+/** Records of one object that exist in more than one connected system as separate records: the count is the open
+ *  cross-system match pairs (GET /insights/findings, from match_scores), split per pair of systems. The action opens the
+ *  Across systems section of the object's Golden tab and records the action in the proof-of-value ledger. */
+function AcrossRow({ f }: { f: AletheiaFinding }) {
+  const landscape = useLandscape(null);
+  const pairs = f.action.pairs ?? f.affected;
+  const systems = f.action.systems ?? [];
+  const label = moduleText(f.module);
+  return (
+    <tr data-testid="aletheia-across">
+      <th scope="row" className="m2-card-lead">
+        {t("{n} {n2, plural, one {pair} other {pairs}} of {label} records exist in more than one connected system as separate records", { n: int(pairs), n2: pairs, label })}
+        <span className="m2-meta">
+          {" "}
+          {systems.map((s) => t("{a} and {b}: {n}", { a: s.a || DASH, b: s.b || DASH, n: int(s.pairs) })).join("; ")}
+        </span>
+      </th>
+      <td data-label={t("Failing records")} className="m2-num">{int(pairs)}</td>
+      <td data-label={t("Last runs")}><Dash /></td>
+      <td data-label={t("Money at risk")} className="m2-num"><Dash why={t("No cost model covers this rule")} /></td>
+      <td data-label={t("Confidence")} className="m2-num"><Dash why={t("Not measured yet")} /></td>
+      <td data-label={t("Action")}>
+        <V2Link
+          href={`${objectHref(landscape.data, f.module)}/golden#across-systems`}
+          className="m2-btn m2-sm"
+          onClick={() => void markActed({ module: f.module, check_id: f.check_id, action: "across" }).catch(() => undefined)}
+        >
+          {ACTION_LABEL.across()}
+        </V2Link>
+      </td>
+    </tr>
+  );
+}
+
 /** A failing uniqueness rule with match & merge pairs waiting on its object: open the object's golden records tab, where
  *  the review queue decides them, and record the action for the proof of value. */
 function MergeAction({ f }: { f: AletheiaFinding }) {
@@ -255,7 +293,7 @@ function ProofRow({ a }: { a: AletheiaActed }) {
   return (
     <li data-testid="aletheia-proof-row">
       <span className="m2-cc-bmsg">
-        <Mono>{a.check_id}</Mono> {a.name ?? DASH}
+        {a.action === "across" ? t("Duplicates across systems") : <><Mono>{a.check_id}</Mono> {a.name ?? DASH}</>}
       </span>
       <span className="m2-cc-bmeta">
         <span>{moduleText(a.module)}</span>

@@ -7122,6 +7122,11 @@ export const en = {
   "Clusters across systems": "Clusters across systems",
   "The record has no description": "The record has no description",
   "Showing the first {shown} of {total}, largest first.": "Showing the first {shown} of {total}, largest first.",
+  "Review across systems": "Review across systems",
+  "Cross-system duplicates reviewed": "Cross-system duplicates reviewed",
+  "Duplicates across systems": "Duplicates across systems",
+  "{n} {n2, plural, one {pair} other {pairs}} of {label} records exist in more than one connected system as separate records": "{n} {n2, plural, one {pair} other {pairs}} of {label} records exist in more than one connected system as separate records",
+  "{a} and {b}: {n}": "{a} and {b}: {n}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
