@@ -35,6 +35,7 @@ def _audit(session: Any, tenant_id: str, actor: str | None, action: str, request
 def run(session: Any, tenant_id: str, request_id: str, mode: str) -> dict:
     """Simulate or apply one request on a tenant session. Returns {status, counts} or {skipped}."""
     from api.services import golden_writeback as gw
+    from api.services.golden_keys import plain as gk_plain
 
     if mode not in ("simulate", "apply"):
         raise ValueError(f"unknown mode {mode}")
@@ -56,7 +57,7 @@ def run(session: Any, tenant_id: str, request_id: str, mode: str) -> dict:
 
     apply = mode == "apply"
     try:
-        result = gw.execute_targets(targets or [], domain, obj_key, apply,
+        result = gw.execute_targets(targets or [], domain, gk_plain(obj_key), apply,
                                     lambda sid: gw.connect_system(session, tenant_id, sid))
     except Exception as e:  # noqa: BLE001 - any failure must release the claim, then re-raise
         # Not only connector errors: a credential that fails to decrypt or a malformed target would

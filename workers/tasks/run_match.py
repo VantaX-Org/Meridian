@@ -256,9 +256,33 @@ def _text_cols(profile: dict) -> list[str]:
     return [] if p is None else [p["field"]] + ([p["also"]] if p.get("also") else [])
 
 
-def _source(df: pd.DataFrame, i: Hashable, key: str, system: dict, cols: list[str]) -> dict:
+def _source(df: pd.DataFrame, i: Hashable, key: str, system: dict, cols: list[str],
+            record_key: Optional[str] = None) -> dict:
     words = [str(df.at[i, c]).strip() for c in cols if c in df.columns and not pd.isna(df.at[i, c])]
-    return {"key": key, **system, "text": " ".join(w for w in words if w) or None}
+    # record_key: the golden record's system-qualified key, only when it differs from the SAP key
+    return {"key": key, **system, "text": " ".join(w for w in words if w) or None,
+            **({"record_key": record_key} if record_key and record_key != key else {})}
+
+
+def master_keys(df: pd.DataFrame, id_col: str, systems: pd.Series, tenant_id: str, module: str,
+                session: Session) -> dict:
+    """Golden key per row index. A SAP key found in more than one system maps to its system-qualified
+    golden key where build_golden_records created one (golden_keys); every other row keeps its plain key."""
+    from api.services.golden_keys import qualify
+
+    sid = systems.map(lambda s: s["system_id"])
+    keys = df[id_col].astype(str)
+    out = dict(keys)
+    multi = sid.groupby(keys).nunique()
+    dup = keys[keys.map(multi) > 1]
+    if dup.empty:
+        return out
+    qual = {i: qualify(k, sid[i]) for i, k in dup.items()}
+    have = {r[0] for r in session.execute(text(
+        "SELECT sap_object_key FROM master_records WHERE tenant_id = :tid AND domain = :d "
+        "AND sap_object_key = ANY(:keys)"), {"tid": tenant_id, "d": module, "keys": sorted(set(qual.values()))})}
+    out.update({i: q for i, q in qual.items() if q in have})
+    return out
 
 
 def match_frame(df: pd.DataFrame, module: str, tenant_id: str, session: Optional[Session],
@@ -289,8 +313,9 @@ def match_frame(df: pd.DataFrame, module: str, tenant_id: str, session: Optional
 
     found, passes = profile_candidates(df, module)
     candidates = []
+    mkeys = None if systems is None else master_keys(df, id_col, systems, tenant_id, module, session)
     for a, b in found:
-        ida, idb = str(df.at[a, id_col]), str(df.at[b, id_col])
+        ida, idb = (str(df.at[a, id_col]), str(df.at[b, id_col])) if mkeys is None else (mkeys[a], mkeys[b])
         if systems is not None and systems.at[a]["system_id"] == systems.at[b]["system_id"]:
             continue  # a same-system pair belongs to that system's own run_match
         if ida != idb:  # identical keys are cleaning_engine's exact_pk duplicates
@@ -303,8 +328,8 @@ def match_frame(df: pd.DataFrame, module: str, tenant_id: str, session: Optional
     for c in to_score:
         ida, _, idb = c["record_key"].partition("|")
         sources = None if systems is None else [
-            _source(df, c["a"], ida, systems.at[c["a"]], _text_cols(profile)),
-            _source(df, c["b"], idb, systems.at[c["b"]], _text_cols(profile))]
+            _source(df, c["a"], str(df.at[c["a"], id_col]), systems.at[c["a"]], _text_cols(profile), ida),
+            _source(df, c["b"], str(df.at[c["b"], id_col]), systems.at[c["b"]], _text_cols(profile), idb)]
         res = score_candidate_pair(tenant_id, module, _record(df.loc[c["a"]]), _record(df.loc[c["b"]]),
                                    ida, idb, session, dry_run=False, sources=sources)
         queued += res["auto_action"] == "queued"
