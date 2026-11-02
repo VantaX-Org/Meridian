@@ -60,7 +60,9 @@ DUPLICATE_DOMAINS: dict[str, tuple[str, ...]] = {
 }
 MAX_CANDIDATES = 5000
 MAX_DUPLICATES = 10
+MAX_MASS_RECORDS = 10000
 EXPORT_FORMAT = "meridian.change_request.v1"
+MASS_EXPORT = "A mass change goes to SAP with the export load file; Meridian does not write it back"
 LIVE_OFF = ("Live SAP write-back is off on this deployment (MERIDIAN_LIVE_WRITEBACK_ENABLED); the approved record "
             "goes to SAP with the export load file")
 SANDBOX = "Sandbox mode is on: nothing is written to SAP; the approved record goes with the export load file"
@@ -82,7 +84,8 @@ def normalise(payload: dict[str, Any]) -> dict[str, Any]:
     return {str(k).strip().upper(): v for k, v in payload.items()}
 
 
-def check_payload(obj: str, kind: str, payload: dict[str, Any], object_key: Optional[str]) -> list[str]:
+def check_payload(obj: str, kind: str, payload: dict[str, Any], object_key: Optional[str],
+                  record_keys: Optional[list[str]] = None) -> list[str]:
     """Problems with a proposal, as sentences: fields of another object, fields SAP does not have, values longer than
     the field, values that are not plain text or numbers, a change without its record key."""
     from sap.ddic import get_dictionary
@@ -108,6 +111,20 @@ def check_payload(obj: str, kind: str, payload: dict[str, Any], object_key: Opti
             out.append(f"{f}: at most {length} characters.")
     if kind == "change" and not (object_key or "").strip():
         out.append("A change names the record it changes (object_key).")
+    if kind == "mass_change":
+        from sap.bapi_writeback import parse_key
+
+        kf = KEY_FIELD[obj][1]
+        if not record_keys:
+            out.append("A mass change names the records it changes (record_keys).")
+        elif len(record_keys) > MAX_MASS_RECORDS:
+            out.append(f"At most {MAX_MASS_RECORDS} records in one mass change.")
+        else:
+            bad = [k for k in record_keys if not parse_key(k).get(kf)]
+            if bad:
+                out.append(f"{len(bad)} record key(s) lack {kf}, e.g. {bad[0][:60]}.")
+        if any(v is None or str(v).strip() == "" for v in payload.values()):
+            out.append("Give every field a new value; a mass change does not blank fields.")
     if not payload:
         out.append("Propose at least one field.")
     return out
@@ -221,13 +238,15 @@ def facts(cr: dict, precheck: Optional[dict], classes: list[str]) -> dict:
             "fields": fields, "policy_classes": classes,
             "target_system_id": str(cr["target_system_id"]) if cr.get("target_system_id") else None,
             "rule_failures": len(failures), "critical_failures": sum(1 for f in failures if f["severity"] == "critical"),
-            "duplicates": len(pc.get("duplicates") or [])}
+            "duplicates": len(pc.get("duplicates") or []), "records": cr.get("record_count") or 1}
 
 
 def title_of(cr: dict) -> str:
     if cr.get("title"):
         return str(cr["title"])
     what = cr["object"].replace("_", " ")
+    if cr["kind"] == "mass_change":
+        return f"Mass change of {cr.get('record_count') or 0} {what} records"
     return f"New {what}" if cr["kind"] == "create" else f"Change of {what} {cr.get('object_key') or ''}".strip()
 
 
@@ -238,6 +257,7 @@ COLS = ("id::text AS id, kind, object, target_system_id::text AS target_system_i
         "requester_id::text AS requester_id, requester_label, workflow_instance_id::text AS workflow_instance_id, "
         "precheck, validated_at, sap_key, sap_result, sap_phase, sap_attempts, delivery, export IS NOT NULL AS has_export, "
         "reason, created_at, updated_at, submitted_at, decided_at, completed_at, "
+        "COALESCE(jsonb_array_length(record_keys), 0) AS record_count, "
         "(SELECT t.due_at FROM workflow_tasks t WHERE t.tenant_id = change_requests.tenant_id "
         "AND t.instance_id = change_requests.workflow_instance_id AND t.status = 'pending' "
         "ORDER BY t.step_index LIMIT 1) AS due_at, "
@@ -252,7 +272,11 @@ def load(session, tid: str, cr_id: str, lock: bool = False) -> dict:
                           {"i": cr_id, "t": tid}).mappings().first()
     if row is None:
         raise RequestError(404, "Change request not found.")
-    return dict(row)
+    cr = dict(row)
+    if cr["kind"] == "mass_change":  # the keys are up to 10,000 strings: not in the list rows (COLS)
+        cr["record_keys"] = session.execute(text("SELECT record_keys FROM change_requests WHERE id = CAST(:i AS uuid) "
+                                                 "AND tenant_id = CAST(:t AS uuid)"), {"i": cr_id, "t": tid}).scalar() or []
+    return cr
 
 
 def webhook_data(cr: dict, status: str) -> dict:
@@ -295,6 +319,10 @@ def export_file(cr: dict, reason: str) -> dict:
     from sap.bapi_writeback import plan_field
 
     payload = normalise(cr["payload"])
+    if cr["kind"] == "mass_change":
+        return {"format": EXPORT_FORMAT, "change_request_id": cr["id"], "kind": "mass_change", "object": cr["object"],
+                "reason": reason, "fields": [{"field": f, "value": v} for f, v in sorted(payload.items())],
+                "record_keys": cr.get("record_keys") or []}
     doc: dict[str, Any] = {"format": EXPORT_FORMAT, "change_request_id": cr["id"], "kind": cr["kind"],
                            "object": cr["object"], "object_key": cr.get("object_key"),
                            "target_system_id": cr.get("target_system_id"), "reason": reason,
@@ -324,6 +352,11 @@ def after_approval(session, tid: str, cr: dict, actor_id: Optional[str], actor_l
     the export load file and the reason."""
     from api.services.sandbox import held_back_sync
 
+    if cr["kind"] == "mass_change":  # never written to SAP by Meridian: the load file goes, the changes are recorded
+        n = record_mass_changes(session, tid, cr, actor_id, actor_label)
+        return transition(session, tid, cr, "approved", actor_id, actor_label, MASS_EXPORT, notify=True,
+                          decided_at=datetime.now(timezone.utc), delivery="export", reason=MASS_EXPORT,
+                          export=export_file(cr, MASS_EXPORT) | {"records_changed": n})
     reason = None
     if not live_enabled:
         reason = LIVE_OFF
@@ -423,3 +456,68 @@ def record_changes(session, tid: str, cr_id: str, old: dict[str, Any], new: dict
              "n": None if v is None else str(v)[:500], "u": actor_id, "l": actor_label})
         n += 1
     return n
+
+
+# ── mass change: one request, the same fields on many records ────────────────
+
+MASS_DOMAIN = {"material": "material_master", "customer": "sd_customer_master", "vendor": "accounts_payable",
+               "business_partner": "business_partner"}
+MASS_TEXT = {"material": "MAKT.MAKTX", "customer": "KNA1.NAME1", "vendor": "LFA1.NAME1",
+             "business_partner": "BUT000.NAME_ORG1"}
+
+
+def mass_preview(session, tid: str, obj: str, payload: dict[str, Any], keys: list[str]) -> dict:
+    """Per record and field the value now (from Meridian's golden records, null where Meridian holds none) and the
+    value after, with the record's description: {counts, rows}. One row per key and field, in key order. Reads
+    Meridian only, never SAP."""
+    from sap.bapi_writeback import parse_key
+
+    kf, new = KEY_FIELD[obj][1], normalise(payload)
+
+    def forms(k: str) -> list[str]:  # the key as written, and with the number padded as SAP stores it
+        v = parse_key(k).get(kf, "")
+        return [k, f"{kf}={v.zfill(18) if obj == 'material' and v.isdigit() else v}"]
+
+    flat = sorted({c for k in keys for c in forms(k)})
+    golden: dict[str, dict] = {}
+    for i in range(0, len(flat), 2000):
+        for key, g in session.execute(text(
+                "SELECT sap_object_key, golden_fields FROM master_records WHERE tenant_id = CAST(:t AS uuid) "
+                "AND domain = :d AND merged_into IS NULL AND sap_object_key = ANY(:k)"),
+                {"t": tid, "d": MASS_DOMAIN[obj], "k": flat[i:i + 2000]}):
+            golden[key] = g or {}
+
+    def get(g: dict, f: str) -> Any:
+        return g.get(f, g.get(f.split(".")[-1]))
+
+    rows: list[dict] = []
+    found = changing = 0
+    for k in keys:
+        g = next((golden[c] for c in forms(k) if c in golden), None)
+        found += g is not None
+        hit = False
+        for f, v in sorted(new.items()):
+            before = None if g is None else get(g, f)
+            same = before is not None and str(before) == str(v)
+            hit = hit or not same
+            rows.append({"record_key": k, "field": f, "before": None if before is None else str(before),
+                         "after": str(v), "unchanged": same, "known": g is not None,
+                         "text": None if g is None else (get(g, MASS_TEXT[obj]) or None)})
+        changing += hit
+    return {"counts": {"records": len(keys), "found": found, "missing": len(keys) - found, "changing": changing,
+                       "unchanged": len(keys) - changing, "fields": len(new)}, "rows": rows}
+
+
+def record_mass_changes(session, tid: str, cr: dict, actor_id: Optional[str], actor_label: Optional[str]) -> int:
+    """On approval: one change_request_field_changes row per record and field that changes (old value null where
+    Meridian holds none). Returns the number of records that change."""
+    pv = mass_preview(session, tid, cr["object"], cr["payload"], cr.get("record_keys") or [])
+    todo = [{"t": tid, "r": cr["id"], "k": x["record_key"], "f": x["field"],
+             "a": "changed" if x["before"] is not None else "set", "o": x["before"], "n": x["after"][:500],
+             "u": actor_id, "l": actor_label} for x in pv["rows"] if not x["unchanged"]]
+    if todo:
+        session.execute(text(
+            "INSERT INTO change_request_field_changes (tenant_id, request_id, record_key, field, action, old_value, "
+            "new_value, actor_id, actor_label) VALUES (CAST(:t AS uuid), CAST(:r AS uuid), :k, :f, :a, :o, :n, "
+            "CAST(:u AS uuid), :l)"), todo)
+    return pv["counts"]["changing"]

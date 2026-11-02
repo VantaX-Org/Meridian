@@ -7143,6 +7143,13 @@ export const en = {
   "Save default": "Save default",
   "{n} {overdue, plural, one {request is} other {requests are}} past the due time of the waiting approval step.": "{n} {overdue, plural, one {request is} other {requests are}} past the due time of the waiting approval step.",
   "past the step due time": "past the step due time",
+  "Mass change": "Mass change",
+  "Mass change of {n} {count, plural, one {record} other {records}}": "Mass change of {n} {count, plural, one {record} other {records}}",
+  "Record keys, one per line; a bare number takes the key field of the object": "Record keys, one per line; a bare number takes the key field of the object",
+  "Meridian shows each record's current value from its own data. Nothing is written to SAP; an approved mass change leaves a load file.": "Meridian shows each record's current value from its own data. Nothing is written to SAP; an approved mass change leaves a load file.",
+  "{records} {n, plural, one {record} other {records}}: {found} found, {missing} not found, {changing} would change, {unchanged} already hold the value.": "{records} {n, plural, one {record} other {records}}: {found} found, {missing} not found, {changing} would change, {unchanged} already hold the value.",
+  "Preview of the mass change": "Preview of the mass change",
+  "Only the first rows are shown.": "Only the first rows are shown.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

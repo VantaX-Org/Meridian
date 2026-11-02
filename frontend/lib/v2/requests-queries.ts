@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { getFacts, getFieldHistory, getRequest, getWorkflowInstance, listDefaults, listDefinitions, listRequests, listTasks, type RequestFilter } from "@/lib/api/v2/requests";
+import { getFacts, getFieldHistory, getMassPreview, getRequest, getWorkflowInstance, listDefaults, listDefinitions, listRequests, listTasks, type RequestFilter } from "@/lib/api/v2/requests";
 
 const STALE = 15_000;
 
@@ -43,6 +43,12 @@ export function useFacts(enabled = true) {
 export function useFieldHistory(id: string) {
   const fx = useFixture();
   return useQuery({ queryKey: ["v2", "change-request-fields", fx, id], queryFn: () => getFieldHistory(id), staleTime: STALE, retry: false });
+}
+
+/** The per-record before and after of a mass change draft. */
+export function useMassPreview(id: string | null) {
+  const fx = useFixture();
+  return useQuery({ queryKey: ["v2", "change-request-preview", fx, id], queryFn: () => getMassPreview(id as string), staleTime: STALE, retry: false, enabled: id !== null });
 }
 
 /** The tenant's entry defaults for new create requests. */

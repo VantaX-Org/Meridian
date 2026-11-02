@@ -3,7 +3,7 @@
  * every other path answers NONE_REQ and falls through.
  *
  *   /change-requests (GET, POST), /change-requests/{id} (GET), /validate, /submit, /decide, /cancel, /retry,
- *   /comments, /attachments, GET /change-requests/{id}/export, GET /change-requests/{id}/field-history,
+ *   /comments, /attachments, GET /change-requests/{id}/export, GET /change-requests/{id}/field-history, GET /change-requests/{id}/preview,
  *   GET and PUT /change-requests/defaults, DELETE /change-requests/defaults/{id}
  *   GET /workflows/definitions, /workflows/facts, /workflows/tasks; POST /workflows/definitions, /workflows/definitions/validate,
  *   /workflows/definitions/{id}/versions, /activate, /workflows/tasks/{id}/decide
@@ -43,7 +43,7 @@ const def = (id: string, key: string, name: string, kind: string, version: numbe
 const precheck = (failures: Precheck["failures"], duplicates: Precheck["duplicates"] = []): Precheck => ({ problems: [], rules_run: 214, failures, duplicates, checked_at: "2026-10-18T09:00:00Z" });
 
 const req = (r: Partial<ChangeRequest> & Pick<ChangeRequest, "id" | "kind" | "object" | "status" | "title" | "payload">): ChangeRequest => ({
-  target_system_id: ECC, object_key: null, requester_id: ME, requester_label: ME_LABEL, workflow_instance_id: null, precheck: null, validated_at: null, sap_key: null, sap_result: null,
+  target_system_id: ECC, object_key: null, record_count: 0, requester_id: ME, requester_label: ME_LABEL, workflow_instance_id: null, precheck: null, validated_at: null, sap_key: null, sap_result: null,
   sap_phase: null, sap_attempts: 0, delivery: null, has_export: false, reason: null, created_at: "2026-10-18T08:00:00Z", updated_at: "2026-10-18T08:00:00Z", submitted_at: null, decided_at: null, completed_at: null, due_at: null, waiting_step: null, age_hours: null, overdue: false, ...r,
 });
 
@@ -55,7 +55,31 @@ interface State {
   tasks: TaskRow[];
   defaults: EntryDefault[];
   fields: Record<string, FieldChange[]>;
+  /** The record keys each mass change draft names. */
+  keys: Record<string, string[]>;
   seq: number;
+}
+
+/** The materials a mass change preview knows: current value of each field and the description beside the key. */
+const MASS_KNOWN: Record<string, { text: string; fields: Record<string, string> }> = {
+  "MATNR=000000000000000101": { text: "Hex bolt M8 x 40", fields: { "MARC.DISPO": "M02", "MARC.EKGRP": "P10" } },
+  "MATNR=000000000000000102": { text: "Washer 8 mm", fields: { "MARC.DISPO": "N01", "MARC.EKGRP": "P10" } },
+  "MATNR=000000000000000103": { text: "Hydraulic seal kit 80 mm", fields: { "MARC.EKGRP": "P20" } },
+};
+const matnr = (k: string): string => (/^MATNR=(\d+)$/.exec(k) ? `MATNR=${k.slice(6).padStart(18, "0")}` : k);
+
+function massPreview(keys: string[], payload: Record<string, string>): { counts: Record<string, number>; rows: { record_key: string; field: string; before: string | null; after: string; unchanged: boolean; known: boolean; text: string | null }[]; truncated: boolean } {
+  const rows = keys.flatMap((k) => {
+    const m = MASS_KNOWN[matnr(k)];
+    return Object.entries(payload).map(([field, after]) => {
+      const before = m?.fields[field] ?? null;
+      return { record_key: k, field, before, after, unchanged: before === after, known: !!m, text: m?.text ?? null };
+    });
+  });
+  const fields = Object.keys(payload).length;
+  const found = keys.filter((k) => MASS_KNOWN[matnr(k)]).length;
+  const unchanged = fields === 1 ? rows.filter((r) => r.unchanged).length : 0;
+  return { counts: { records: keys.length, found, missing: keys.length - found, changing: keys.length - unchanged, unchanged, fields }, rows, truncated: false };
 }
 
 function initial(): State {
@@ -87,6 +111,7 @@ function initial(): State {
   const fc = (id: string, field: string, action: FieldChange["action"], old_value: string | null, new_value: string | null, who: string | null, at: string): FieldChange => ({ id, field, action, old_value, new_value, actor_label: who, created_at: at });
   return {
     seq: 1005,
+    keys: {},
     defaults: [{ id: "D-1", object: "material", field: "MARA.MEINS", value: "EA", updated_at: "2026-10-01T09:00:00Z" }],
     fields: {
       "CR-1001": [
@@ -197,6 +222,12 @@ export function requestsRead(path: string, params: Record<string, unknown>): unk
     const id = find(decodeURIComponent(hist[1])).request.id;
     return { items: clone(state.fields[id] ?? []) };
   }
+  const prev = /^\/change-requests\/([^/]+)\/preview$/.exec(path);
+  if (prev) {
+    const r = find(decodeURIComponent(prev[1])).request;
+    if (r.kind !== "mass_change") fail(409, "Only a mass change has a preview.");
+    return massPreview(state.keys[r.id] ?? [], r.payload);
+  }
   const one = /^\/change-requests\/([^/]+)$/.exec(path);
   if (one) return clone(find(decodeURIComponent(one[1])));
   const inst = /^\/workflows\/instances\/([^/]+)$/.exec(path);
@@ -257,7 +288,11 @@ export function requestsWrite(method: string, path: string, body: unknown): unkn
     const { payload, filled } = withDefaults(String(b.object), b.kind, given);
     state.fields[id] = Object.entries(payload).map(([field, v], i) => ({ id: `F-${state.seq++}-${i}`, field, action: filled.includes(field) ? "defaulted" : "set", old_value: null, new_value: v, actor_label: ME_LABEL, created_at: NOW }));
     if (b.kind === "change" && !String(b.object_key ?? "").trim()) fail(422, "A change names the record it changes (object_key).");
-    const r = req({ id, kind: b.kind as ChangeRequest["kind"], object: b.object as ChangeRequest["object"], status: "draft", title: (b.title as string) || null, payload, object_key: (b.object_key as string) || null, target_system_id: (b.target_system_id as string) || ECC, created_at: NOW, updated_at: NOW });
+    const keys = b.kind === "mass_change" ? [...new Set(((b.record_keys ?? []) as string[]).map((k) => k.trim()).filter(Boolean))] : [];
+    if (b.kind === "mass_change" && keys.length === 0) fail(422, "A mass change names the records it changes (record_keys).");
+    if (keys.length > 10000) fail(422, "At most 10000 records in one mass change.");
+    state.keys[id] = keys;
+    const r = req({ id, kind: b.kind as ChangeRequest["kind"], object: b.object as ChangeRequest["object"], status: "draft", title: (b.title as string) || null, payload, record_count: keys.length, object_key: (b.object_key as string) || null, target_system_id: (b.target_system_id as string) || ECC, created_at: NOW, updated_at: NOW });
     state.details = [{ request: r, workflow: null, history: [], comments: [], attachments: [] }, ...state.details];
     return clone(r);
   }
@@ -309,7 +344,7 @@ export function requestsWrite(method: string, path: string, body: unknown): unkn
   const r = d.request;
   switch (m[2]) {
     case "validate": {
-      const failures = r.object === "material" && !r.payload["MARA.MATKL"] ? [{ check_id: "MM022", severity: "high", dimension: "completeness", field: "MARA.MATKL", message: "Material group is blank." }] : [];
+      const failures = r.kind !== "mass_change" && r.object === "material" && !r.payload["MARA.MATKL"] ? [{ check_id: "MM022", severity: "high", dimension: "completeness", field: "MARA.MATKL", message: "Material group is blank." }] : [];
       const required = r.object === "material" && r.kind === "create" ? ["MARA.MTART", "MARA.MBRSH", "MARA.MEINS", "MAKT.MAKTX", "MAKT.SPRAS"].filter((f) => !r.payload[f]).map((f) => `${f} is required to create a material`) : [];
       const p: Precheck = { ...precheck(failures), problems: required, checked_at: NOW };
       d.request = { ...r, precheck: p, validated_at: NOW, updated_at: NOW };
