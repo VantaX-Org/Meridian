@@ -16,12 +16,12 @@ MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "
              "sap_impact", "fix_map", "record_fix_template", "s4_area", "s4_impact", "simplification_item"]
 DDIC = get_dictionary("ecc6")
 RULES, NEW, MODULE = {}, [], {}
-for _mod, (_prefix, _start, _) in PACKS.items():
+for _mod, (_prefix, _start, _count) in PACKS.items():
     for _r in yaml.safe_load(open(f"checks/rules/ecc/{_mod}.yaml"))["rules"]:
         RULES[_r["id"]] = _r
         MODULE[_r["id"]] = _mod
         _num = _r["id"][len(_prefix):]
-        if _r["id"].startswith(_prefix) and _num.isdigit() and int(_num) >= _start:
+        if _r["id"].startswith(_prefix) and _num.isdigit() and _start <= int(_num) < _start + _count:
             NEW.append(_r)
 AREAS = yaml.safe_load(open("checks/rules/ecc/s4_readiness.yaml"))["areas"]
 SENSITIVE = re.compile(r"NAME|ORT|CITY|POST|STRAS|STCD|STCEG|BANKN|BANKL|IBAN|BKONT|KOINH|TEL|SMTP")

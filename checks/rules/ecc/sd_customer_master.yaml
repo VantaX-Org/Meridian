@@ -2124,3 +2124,3316 @@ rules:
         date cannot be later than the day it is read.
     record_fix_template: 'Customer {KNVV.KUNNR} sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}:
       creation date {actual_value} is in the future.'
+  - id: SDCM300
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[0-9]{5}$
+    applies_when:
+      KNA1.LAND1:
+      - DE
+      - FR
+      - IT
+      - FI
+      - EE
+      - UA
+      - TR
+      - RS
+      - MX
+      - PE
+      - KR
+      - MY
+      - TH
+      - ID
+      - EG
+      - MA
+      - KE
+      - PK
+      - DZ
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for DE, FR, IT, FI, EE, UA, TR, RS, MX, PE, KR, MY, TH, ID, EG, MA,
+      KE, PK, DZ (five digits)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits) is a typing error, a code from
+      another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business
+      partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM301
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^(0[1-9]|[1-4][0-9]|5[0-2])[0-9]{3}$
+    applies_when:
+      KNA1.LAND1:
+      - ES
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for ES (five digits starting with a province code 01-52)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits starting with a province code 01-52)
+      is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go
+      astray and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM302
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^(GIR 0AA|[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2})$
+    applies_when:
+      KNA1.LAND1:
+      - GB
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for GB (outward code, space, inward code (SW1A 1AA))
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (outward code, space, inward code (SW1A 1AA))
+      is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go
+      astray and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM303
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[1-9][0-9]{3} ?[A-Z]{2}$
+    applies_when:
+      KNA1.LAND1:
+      - NL
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for NL (four digits and two capital letters (1012 AB))
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (four digits and two capital letters (1012 AB))
+      is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go
+      astray and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM304
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[1-9][0-9]{3}$
+    applies_when:
+      KNA1.LAND1:
+      - BE
+      - AT
+      - CH
+      - HU
+      - BG
+      - SI
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for BE, AT, CH, HU, BG, SI (four digits not starting with 0)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (four digits not starting with 0) is a typing
+      error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the
+      S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM305
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^94[89][0-9]$
+    applies_when:
+      KNA1.LAND1:
+      - LI
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for LI (four digits 9485-9499)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (four digits 9485-9499) is a typing error, a
+      code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM306
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[0-9]{4}$
+    applies_when:
+      KNA1.LAND1:
+      - 'NO'
+      - LU
+      - CY
+      - PH
+      - AU
+      - NZ
+      - ZA
+      - DK
+      - BD
+      - TN
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for NO, LU, CY, PH, AU, NZ, ZA, DK, BD, TN (four digits)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (four digits) is a typing error, a code from
+      another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business
+      partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM307
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[0-9]{3} ?[0-9]{2}$
+    applies_when:
+      KNA1.LAND1:
+      - CZ
+      - SK
+      - GR
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for CZ, SK, GR (five digits written 999 99)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits written 999 99) is a typing error,
+      a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM308
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[1-9][0-9]{2} ?[0-9]{2}$
+    applies_when:
+      KNA1.LAND1:
+      - SE
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for SE (five digits written 999 99, not starting with 0)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits written 999 99, not starting with
+      0) is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries
+      go astray and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM309
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[1-9][0-9]{3}-[0-9]{3}$
+    applies_when:
+      KNA1.LAND1:
+      - PT
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for PT (seven digits written 9999-999)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (seven digits written 9999-999) is a typing error,
+      a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM310
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^([AC-FHKNPRTV-Y][0-9]{2}|D6W) ?[0-9AC-FHKNPRTV-Y]{4}$
+    applies_when:
+      KNA1.LAND1:
+      - IE
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for IE (an Eircode (A65 F4E2))
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (an Eircode (A65 F4E2)) is a typing error, a
+      code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM311
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[0-9]{2}-[0-9]{3}$
+    applies_when:
+      KNA1.LAND1:
+      - PL
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for PL (five digits written 99-999)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits written 99-999) is a typing error,
+      a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM312
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^([1-9][0-9]{5}|0[0-9]{5})$
+    applies_when:
+      KNA1.LAND1:
+      - RO
+      - RU
+      - BY
+      - CN
+      - SG
+      - CO
+      - NG
+      - EC
+      - KZ
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for RO, RU, BY, CN, SG, CO, NG, EC, KZ (six digits)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (six digits) is a typing error, a code from another
+      country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business partner
+      conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM313
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[1-5][0-9]{4}$
+    applies_when:
+      KNA1.LAND1:
+      - HR
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for HR (five digits starting with 1-5)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits starting with 1-5) is a typing error,
+      a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM314
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^LV-[0-9]{4}$
+    applies_when:
+      KNA1.LAND1:
+      - LV
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for LV (LV- and four digits)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (LV- and four digits) is a typing error, a code
+      from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business
+      partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM315
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^(LT-)?[0-9]{5}$
+    applies_when:
+      KNA1.LAND1:
+      - LT
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for LT (five digits, optionally prefixed LT-)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits, optionally prefixed LT-) is a typing
+      error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the
+      S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM316
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[A-Z]{3} ?[0-9]{4}$
+    applies_when:
+      KNA1.LAND1:
+      - MT
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for MT (three letters and four digits (VLT 1117))
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (three letters and four digits (VLT 1117)) is
+      a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray
+      and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM317
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[0-9]{3}$
+    applies_when:
+      KNA1.LAND1:
+      - IS
+      - OM
+      - PG
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for IS, OM, PG (three digits)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (three digits) is a typing error, a code from
+      another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business
+      partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM318
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[1-9][0-9]{5}$
+    applies_when:
+      KNA1.LAND1:
+      - IN
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for IN (a six-digit PIN code not starting with 0)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (a six-digit PIN code not starting with 0) is
+      a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray
+      and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM319
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[0-9]{3}-[0-9]{4}$
+    applies_when:
+      KNA1.LAND1:
+      - JP
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for JP (seven digits written 999-9999)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (seven digits written 999-9999) is a typing error,
+      a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM320
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[0-9]{3}([0-9]{2,3})?$
+    applies_when:
+      KNA1.LAND1:
+      - TW
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for TW (three, five or six digits)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (three, five or six digits) is a typing error,
+      a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM321
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[0-9]{5}(-[0-9]{4})?$
+    applies_when:
+      KNA1.LAND1:
+      - US
+      - PR
+      - VI
+      - GU
+      - AS
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: 'Postal code does not have the national format for US, PR, VI, GU, AS (a ZIP code: five digits or ZIP+4 (99999-9999))'
+    why_it_matters: 'The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier''s sorting. A code that does not have the national format (a ZIP code: five digits or ZIP+4 (99999-9999))
+      is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go
+      astray and the S/4HANA business partner conversion rejects the address once the country check is active.'
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM322
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[0-9]{5}(-[0-9]{4})?$
+    applies_when:
+      KNA1.LAND1:
+      - SA
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for SA (five digits, optionally followed by a four-digit extension)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits, optionally followed by a four-digit
+      extension) is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries
+      go astray and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM323
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[ABCEGHJ-NPRSTVXY][0-9][A-Z] [0-9][A-Z][0-9]$
+    applies_when:
+      KNA1.LAND1:
+      - CA
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for CA (A9A 9A9 with a space and a valid first letter)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (A9A 9A9 with a space and a valid first letter)
+      is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go
+      astray and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM324
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[0-9]{5}-[0-9]{3}$
+    applies_when:
+      KNA1.LAND1:
+      - BR
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for BR (a CEP of eight digits written 99999-999)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (a CEP of eight digits written 99999-999) is
+      a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray
+      and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM325
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^([A-HJ-NP-Z][0-9]{4}[A-Z]{3}|[0-9]{4})$
+    applies_when:
+      KNA1.LAND1:
+      - AR
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for AR (a CPA (C1425DKF) or the old four digits)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (a CPA (C1425DKF) or the old four digits) is
+      a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray
+      and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM326
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[0-9]{7}$
+    applies_when:
+      KNA1.LAND1:
+      - CL
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for CL (seven digits)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (seven digits) is a typing error, a code from
+      another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business
+      partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM327
+    field: KNA1.PSTLZ
+    check_class: regex_check
+    pattern: ^[0-9]{7}$
+    applies_when:
+      KNA1.LAND1:
+      - IL
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Postal code does not have the national format for IL (seven digits)
+    why_it_matters: The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (seven digits) is a typing error, a code from
+      another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business
+      partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in XD02/FD02 > Address. Activate the country's postal code check in SPRO > SAP NetWeaver
+        > General Settings > Set Countries > Set country-specific checks (T005) so new entries are validated.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code does not have the national format.'
+  - id: SDCM328
+    field: KNA1.PSTLZ
+    check_class: cross_field_check
+    fail_when: '`KNA1.PSTLZ`.notna()'
+    applies_when:
+      KNA1.LAND1:
+      - AE
+      - QA
+      - HK
+      - MO
+      - AG
+      - BS
+      - BZ
+      - BW
+      - DM
+      - FJ
+      - GD
+      - GY
+      - KN
+      - SR
+      - SC
+      - ZW
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: Postal code entered for a country that has no postal code system
+    why_it_matters: The United Arab Emirates, Qatar, Hong Kong, Macao, Botswana, Zimbabwe and several Caribbean states have
+      no national postal code. A value in the field is a placeholder (00000), a PO box number or a code from another country,
+      and it is printed on the address label where the post office does not expect it.
+    rule_authority: best_practice
+    sap_impact: Address labels carry a meaningless code and duplicate checks that compare postal codes miss matches.
+    fix_map:
+      __other__: Clear the postal code in XD02 and move a PO box number to the PO box field.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: postal code entered although the country has none.'
+  - id: SDCM329
+    field: KNA1.PSTL2
+    check_class: regex_check
+    pattern: ^[0-9]{4,5}$
+    applies_when:
+      KNA1.LAND1:
+      - DE
+      - AT
+      - CH
+      - NL
+      - BE
+      - FR
+      - IT
+      - ES
+      - ZA
+      - AU
+      - NZ
+      - DK
+      - 'NO'
+      - SE
+      - FI
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: PO box postal code does not have the national numeric format
+    why_it_matters: In these countries a PO box postal code (PSTL2) has the same four or five digits as a street postal code.
+      Letters, separators or the wrong length mean the box number or the town was typed into the field, so correspondence and
+      dunning letters sent to the PO box address are returned.
+    rule_authority: iso_standard
+    sap_impact: Correspondence sent to the PO box address is undeliverable.
+    fix_map:
+      __other__: Correct the PO box postal code in XD02 > Address > PO box address.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: PO box postal code has the wrong format.'
+  - id: SDCM330
+    field: KNA1.REGIO
+    check_class: cross_field_check
+    fail_when: '`KNA1.PSTLZ`.str.slice(0, 1).str.upper().isin([''A'', ''B'', ''C'', ''E'', ''G'', ''H'', ''J'', ''K'', ''L'',
+      ''M'', ''N'', ''P'', ''R'', ''S'', ''T'', ''V'', ''X'', ''Y'']) & ~(((`KNA1.PSTLZ`.str.slice(0, 1).str.upper() == ''A'')
+      & (`KNA1.REGIO` == ''NL'')) | ((`KNA1.PSTLZ`.str.slice(0, 1).str.upper() == ''B'') & (`KNA1.REGIO` == ''NS'')) | ((`KNA1.PSTLZ`.str.slice(0,
+      1).str.upper() == ''C'') & (`KNA1.REGIO` == ''PE'')) | ((`KNA1.PSTLZ`.str.slice(0, 1).str.upper() == ''E'') & (`KNA1.REGIO`
+      == ''NB'')) | (`KNA1.PSTLZ`.str.slice(0, 1).str.upper().isin([''G'', ''H'', ''J'']) & (`KNA1.REGIO` == ''QC'')) | (`KNA1.PSTLZ`.str.slice(0,
+      1).str.upper().isin([''K'', ''L'', ''M'', ''N'', ''P'']) & (`KNA1.REGIO` == ''ON'')) | ((`KNA1.PSTLZ`.str.slice(0, 1).str.upper()
+      == ''R'') & (`KNA1.REGIO` == ''MB'')) | ((`KNA1.PSTLZ`.str.slice(0, 1).str.upper() == ''S'') & (`KNA1.REGIO` == ''SK''))
+      | ((`KNA1.PSTLZ`.str.slice(0, 1).str.upper() == ''T'') & (`KNA1.REGIO` == ''AB'')) | ((`KNA1.PSTLZ`.str.slice(0, 1).str.upper()
+      == ''V'') & (`KNA1.REGIO` == ''BC'')) | ((`KNA1.PSTLZ`.str.slice(0, 1).str.upper() == ''X'') & `KNA1.REGIO`.isin([''NT'',
+      ''NU''])) | ((`KNA1.PSTLZ`.str.slice(0, 1).str.upper() == ''Y'') & (`KNA1.REGIO` == ''YT'')))'
+    require_populated: true
+    applies_when:
+      KNA1.LAND1:
+      - CA
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Canadian province does not match the first letter of the postal code
+    why_it_matters: The first letter of a Canadian postal code identifies the province (A Newfoundland, B Nova Scotia, G/H/J
+      Quebec, K-P Ontario, R Manitoba, S Saskatchewan, T Alberta, V British Columbia, X Northwest Territories and Nunavut, Y
+      Yukon). A mismatch means either the region or the postal code is wrong, and the region determines GST/HST/PST/QST.
+    rule_authority: iso_standard
+    sap_impact: Sales tax is calculated for the wrong province and delivery routing uses the wrong region.
+    fix_map:
+      __other__: Check the address with the customer and correct the region or the postal code in XD02.
+    record_fix_template: 'Customer {KNA1.KUNNR}: province {KNA1.REGIO} does not match the postal code.'
+  - id: SDCM331
+    field: KNA1.REGIO
+    check_class: cross_field_check
+    fail_when: (`KNA1.REGIO` == 'NSW') & ~(((`KNA1.PSTLZ` >= '1000') & (`KNA1.PSTLZ` <= '2599')) | ((`KNA1.PSTLZ` >= '2619')
+      & (`KNA1.PSTLZ` <= '2899')) | ((`KNA1.PSTLZ` >= '2921') & (`KNA1.PSTLZ` <= '2999'))) | (`KNA1.REGIO` == 'VIC') & ~(((`KNA1.PSTLZ`
+      >= '3000') & (`KNA1.PSTLZ` <= '3999')) | ((`KNA1.PSTLZ` >= '8000') & (`KNA1.PSTLZ` <= '8999'))) | (`KNA1.REGIO` == 'QLD')
+      & ~(((`KNA1.PSTLZ` >= '4000') & (`KNA1.PSTLZ` <= '4999')) | ((`KNA1.PSTLZ` >= '9000') & (`KNA1.PSTLZ` <= '9999'))) | (`KNA1.REGIO`
+      == 'SA') & ~((`KNA1.PSTLZ` >= '5000') & (`KNA1.PSTLZ` <= '5999')) | (`KNA1.REGIO` == 'WA') & ~((`KNA1.PSTLZ` >= '6000')
+      & (`KNA1.PSTLZ` <= '6999')) | (`KNA1.REGIO` == 'TAS') & ~((`KNA1.PSTLZ` >= '7000') & (`KNA1.PSTLZ` <= '7999')) | (`KNA1.REGIO`
+      == 'NT') & ~((`KNA1.PSTLZ` >= '0800') & (`KNA1.PSTLZ` <= '0999')) | (`KNA1.REGIO` == 'ACT') & ~(((`KNA1.PSTLZ` >= '0200')
+      & (`KNA1.PSTLZ` <= '0299')) | ((`KNA1.PSTLZ` >= '2600') & (`KNA1.PSTLZ` <= '2618')) | ((`KNA1.PSTLZ` >= '2900') & (`KNA1.PSTLZ`
+      <= '2920')))
+    require_populated: true
+    applies_when:
+      KNA1.LAND1:
+      - AU
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Australian state does not match the postcode range
+    why_it_matters: Australia Post allocates postcode ranges by state (NSW 1000-2599, VIC 3000-3999, QLD 4000-4999, SA 5000-5999,
+      WA 6000-6999, TAS 7000-7999, NT 0800-0999, ACT 0200-0299/2600-2618/2900-2920). A state outside its range means the region
+      or the postcode is wrong; payroll tax, freight zones and state reporting use the region.
+    rule_authority: iso_standard
+    sap_impact: Freight zones, state-based reporting and tax determination use the wrong state.
+    fix_map:
+      __other__: Check the address and correct the state or the postcode in XD02.
+    record_fix_template: 'Customer {KNA1.KUNNR}: state {KNA1.REGIO} does not match the postcode range.'
+  - id: SDCM332
+    field: KNA1.REGIO
+    check_class: cross_field_check
+    fail_when: '`KNA1.PSTLZ`.str.slice(0, 2) != `KNA1.REGIO`'
+    require_populated: true
+    applies_when:
+      KNA1.LAND1:
+      - ES
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Spanish province does not match the first two digits of the postal code
+    why_it_matters: In Spain the first two digits of the postal code are the INE province code (28 Madrid, 08 Barcelona), and
+      the SAP regions for Spain (T005S) use the same two-digit code. A mismatch means one of the two is wrong; the province
+      is reported on the Modelo 347 and SII and drives Canary Islands, Ceuta and Melilla tax treatment.
+    rule_authority: iso_standard
+    sap_impact: Tax reports carry the wrong province and Canary Islands/Ceuta/Melilla customers can be taxed as mainland Spain.
+    fix_map:
+      __other__: Check the address and correct the region or the postal code in XD02.
+    record_fix_template: 'Customer {KNA1.KUNNR}: province {KNA1.REGIO} does not match the postal code.'
+  - id: SDCM333
+    field: KNA1.REGIO
+    check_class: cross_field_check
+    fail_when: '`KNA1.PSTLZ`.str.slice(0, 1).str.isdigit() & (`KNA1.REGIO`.isin([''CT'', ''MA'', ''ME'', ''NH'', ''NJ'', ''RI'',
+      ''VT'']) & (`KNA1.PSTLZ`.str.slice(0, 1) != ''0'') | `KNA1.REGIO`.isin([''DE'', ''PA'']) & (`KNA1.PSTLZ`.str.slice(0,
+      1) != ''1'') | `KNA1.REGIO`.isin([''MD'', ''NC'', ''SC'', ''VA'', ''WV'']) & (`KNA1.PSTLZ`.str.slice(0, 1) != ''2'') |
+      `KNA1.REGIO`.isin([''AL'', ''FL'', ''GA'', ''MS'', ''TN'']) & (`KNA1.PSTLZ`.str.slice(0, 1) != ''3'') | `KNA1.REGIO`.isin([''IN'',
+      ''KY'', ''MI'', ''OH'']) & (`KNA1.PSTLZ`.str.slice(0, 1) != ''4'') | `KNA1.REGIO`.isin([''IA'', ''MN'', ''MT'', ''ND'',
+      ''SD'', ''WI'']) & (`KNA1.PSTLZ`.str.slice(0, 1) != ''5'') | `KNA1.REGIO`.isin([''IL'', ''KS'', ''MO'', ''NE'']) & (`KNA1.PSTLZ`.str.slice(0,
+      1) != ''6'') | `KNA1.REGIO`.isin([''AR'', ''LA'', ''OK'']) & (`KNA1.PSTLZ`.str.slice(0, 1) != ''7'') | `KNA1.REGIO`.isin([''AZ'',
+      ''CO'', ''ID'', ''NM'', ''NV'', ''UT'', ''WY'']) & (`KNA1.PSTLZ`.str.slice(0, 1) != ''8'') | `KNA1.REGIO`.isin([''CA'',
+      ''HI'', ''OR'', ''WA'', ''AK'']) & (`KNA1.PSTLZ`.str.slice(0, 1) != ''9''))'
+    require_populated: true
+    applies_when:
+      KNA1.LAND1:
+      - US
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: US state does not match the ZIP code's national area digit
+    why_it_matters: The first digit of a ZIP code is the national area (0 New England, 1 NY/PA/DE, 2 Mid-Atlantic, 3 Southeast,
+      4 IN/KY/MI/OH, 5 Upper Midwest, 6 IL/KS/MO/NE, 7 South Central, 8 Mountain, 9 Pacific). A state outside its area means
+      the state or the ZIP is wrong, and sales tax (Vertex/Avalara jurisdiction) is determined from both. NY, TX, DC and the
+      territories span several areas and are not tested.
+    rule_authority: iso_standard
+    sap_impact: Sales and use tax jurisdiction is determined for the wrong state.
+    fix_map:
+      __other__: Validate the address with the external tax system or USPS and correct the state or ZIP in XD02.
+    record_fix_template: 'Customer {KNA1.KUNNR}: state {KNA1.REGIO} does not match the ZIP code area.'
+  - id: SDCM334
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^(DE|EE|EL|PT)[0-9]{9}$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - DE
+        - EE
+        - EL
+        - PT
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix DE/EE/EL/PT does not have the national length and structure (nine digits)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for DE/EE/EL/PT it is nine digits. A number
+      of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list and the
+      intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM335
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^(DK|FI|HU|LU|MT|SI)[0-9]{8}$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - DK
+        - FI
+        - HU
+        - LU
+        - MT
+        - SI
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix DK/FI/HU/LU/MT/SI does not have the national length and structure (eight digits)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for DK/FI/HU/LU/MT/SI it is eight digits. A
+      number of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list
+      and the intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM336
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^(HR|IT|LV)[0-9]{11}$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - HR
+        - IT
+        - LV
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix HR/IT/LV does not have the national length and structure (eleven digits)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for HR/IT/LV it is eleven digits. A number
+      of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list and the
+      intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM337
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^ATU[0-9]{8}$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - AT
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix AT does not have the national length and structure (U and eight digits)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for AT it is U and eight digits. A number of
+      another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list and the intra-community
+      supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM338
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^BE[01][0-9]{9}$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - BE
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix BE does not have the national length and structure (ten digits starting 0 or
+      1)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for BE it is ten digits starting 0 or 1. A
+      number of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list
+      and the intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM339
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^BG[0-9]{9,10}$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - BG
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix BG does not have the national length and structure (nine or ten digits)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for BG it is nine or ten digits. A number of
+      another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list and the intra-community
+      supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM340
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^CY[0-9]{8}[A-Z]$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - CY
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix CY does not have the national length and structure (eight digits and a check
+      letter)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for CY it is eight digits and a check letter.
+      A number of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list
+      and the intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM341
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^CZ[0-9]{8,10}$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - CZ
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix CZ does not have the national length and structure (eight to ten digits)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for CZ it is eight to ten digits. A number
+      of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list and the
+      intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM342
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^ES[0-9A-Z][0-9]{7}[0-9A-Z]$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - ES
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: 'VAT registration number with prefix ES does not have the national length and structure (nine characters: letter
+      or digit, seven digits, letter or digit)'
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for ES it is nine characters: letter or digit,
+      seven digits, letter or digit. A number of another length or with letters where digits belong is not a registration: VIES
+      rejects it, the EC sales list and the intra-community supply exemption citing it are invalid, and the check-digit test
+      cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM343
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^FR[0-9A-HJ-NP-Z]{2}[0-9]{9}$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - FR
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix FR does not have the national length and structure (a two-character key and
+      the nine-digit SIREN)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for FR it is a two-character key and the nine-digit
+      SIREN. A number of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales
+      list and the intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM344
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^IE([0-9]{7}[A-W][A-I]?|[0-9][A-Z+*][0-9]{5}[A-W])$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - IE
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix IE does not have the national length and structure (seven digits and one or
+      two letters)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for IE it is seven digits and one or two letters.
+      A number of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list
+      and the intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM345
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^LT([0-9]{9}|[0-9]{12})$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - LT
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix LT does not have the national length and structure (nine or twelve digits)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for LT it is nine or twelve digits. A number
+      of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list and the
+      intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM346
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^NL[0-9]{9}B[0-9]{2}$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - NL
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix NL does not have the national length and structure (nine digits, B and two
+      digits)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for NL it is nine digits, B and two digits.
+      A number of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list
+      and the intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM347
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^(PL|SK)[0-9]{10}$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - PL
+        - SK
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix PL/SK does not have the national length and structure (ten digits)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for PL/SK it is ten digits. A number of another
+      length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list and the intra-community
+      supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM348
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^RO[1-9][0-9]{1,9}$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - RO
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix RO does not have the national length and structure (two to ten digits without
+      leading zero)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for RO it is two to ten digits without leading
+      zero. A number of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales
+      list and the intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM349
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^SE[0-9]{10}01$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - SE
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix SE does not have the national length and structure (the ten-digit organisation
+      number followed by 01)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for SE it is the ten-digit organisation number
+      followed by 01. A number of another length or with letters where digits belong is not a registration: VIES rejects it,
+      the EC sales list and the intra-community supply exemption citing it are invalid, and the check-digit test cannot even
+      run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM350
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^(GB|XI)([0-9]{9}|[0-9]{12}|GD[0-4][0-9]{2}|HA[5-9][0-9]{2})$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - GB
+        - XI
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix GB/XI does not have the national length and structure (nine or twelve digits)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for GB/XI it is nine or twelve digits. A number
+      of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list and the
+      intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM351
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^CHE-?[0-9]{3}[.]?[0-9]{3}[.]?[0-9]{3}( ?(MWST|TVA|IVA))?$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - CHE
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix CHE does not have the national length and structure (CHE and the nine-digit
+      UID)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for CHE it is CHE and the nine-digit UID. A
+      number of another length or with letters where digits belong is not a registration: VIES rejects it, the EC sales list
+      and the intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM352
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^NO[0-9]{9}(MVA)?$
+    applies_when:
+      KNA1.STCEG:
+        startswith:
+        - 'NO'
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: VAT registration number with prefix NO does not have the national length and structure (nine digits, optionally
+      followed by MVA)
+    why_it_matters: 'Each tax authority issues VAT numbers in a fixed structure; for NO it is nine digits, optionally followed
+      by MVA. A number of another length or with letters where digits belong is not a registration: VIES rejects it, the EC
+      sales list and the intra-community supply exemption citing it are invalid, and the check-digit test cannot even run.'
+    rule_authority: regulatory
+    sap_impact: Tax-exempt intra-community or export invoices cite an invalid VAT number, the EC sales list is rejected and
+      the exemption can be denied in an audit.
+    fix_map:
+      __other__: Correct the VAT registration number in XD02 > Control data (no spaces, dots or dashes unless the national format
+        requires them) and check it in VIES. Activate the country's tax number check (T005 > Set country-specific checks) so
+        wrong formats are rejected on entry.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number does not have the national format.'
+  - id: SDCM353
+    field: KNA1.STCEG
+    check_class: cross_field_check
+    fail_when: '`KNA1.STCEG`.str.startswith(''GR'')'
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: Greek VAT registration number uses the ISO prefix GR instead of EL
+    why_it_matters: Greece's VAT numbers carry the prefix EL in the EU VAT system, not the ISO country code GR. VIES does not
+      know GR numbers, so every validation, EC sales list line and intra-community invoice citing it fails.
+    rule_authority: regulatory
+    sap_impact: VIES validation and the EC sales list reject the number.
+    fix_map:
+      __other__: Replace the prefix GR with EL in XD02 > Control data > VAT registration number.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Greek VAT number starts with GR instead of EL.'
+  - id: SDCM354
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: ^[A-Z]{2,3}[-.0-9A-Z+*]*$
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: VAT registration number contains spaces, lower-case letters or characters VIES does not accept
+    why_it_matters: VIES and the EC sales list accept the country prefix and the number without spaces or lower-case letters.
+      Blanks, slashes or lower-case prefixes stop SAP's duplicate check and the external validation from matching the number,
+      so the same registration is created twice and the electronic return is rejected.
+    rule_authority: regulatory
+    sap_impact: The EC sales list file and VIES checks reject the number; duplicates are not detected.
+    fix_map:
+      __other__: Remove the spaces and special characters and write the prefix in capitals (XD02 > Control data).
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT registration number contains spaces or invalid characters.'
+  - id: SDCM355
+    field: KNA1.STCEG
+    check_class: cross_field_check
+    fail_when: '`KNA1.STCEG`.str.slice(2).str.replace(''[^0-9]'', '''', regex=True) != `KNA1.STCD2`.str.replace(''[^0-9]'',
+      '''', regex=True)'
+    require_populated: true
+    applies_when:
+      KNA1.LAND1:
+      - IT
+      KNA1.STCEG:
+        startswith:
+        - IT
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Italian VAT number differs from the partita IVA in tax number 2
+    why_it_matters: An Italian VAT registration number is IT followed by the eleven-digit partita IVA, which SAP's Italian localisation
+      stores in tax number 2. Two different numbers mean one belongs to another company; the FatturaPA e-invoice and the esterometro
+      read both.
+    rule_authority: regulatory
+    sap_impact: Electronic invoices to SDI carry conflicting identifiers and are rejected.
+    fix_map:
+      __other__: Verify the partita IVA with the customer and correct tax number 2 or the VAT number in XD02.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT number and partita IVA (tax number 2) differ.'
+  - id: SDCM356
+    field: KNA1.STCEG
+    check_class: cross_field_check
+    fail_when: '`KNA1.STCEG`.str.slice(2) != `KNA1.STCD1`.str.replace(''[^0-9A-Z]'', '''', regex=True)'
+    require_populated: true
+    applies_when:
+      KNA1.LAND1:
+      - ES
+      KNA1.STCEG:
+        startswith:
+        - ES
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Spanish VAT number differs from the NIF in tax number 1
+    why_it_matters: A Spanish VAT registration number is ES followed by the NIF, which the Spanish localisation stores in tax
+      number 1. Different numbers mean one belongs to another party; SII and Modelo 347/349 report both.
+    rule_authority: regulatory
+    sap_impact: SII submissions and Modelo 347/349 carry conflicting identifiers and are rejected.
+    fix_map:
+      __other__: Verify the NIF and correct tax number 1 or the VAT number in XD02.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT number and NIF (tax number 1) differ.'
+  - id: SDCM357
+    field: KNA1.STCEG
+    check_class: cross_field_check
+    fail_when: '`KNA1.STCEG`.str.slice(2) != `KNA1.STCD1`.str.replace(''[^0-9]'', '''', regex=True)'
+    require_populated: true
+    applies_when:
+      KNA1.LAND1:
+      - PT
+      KNA1.STCEG:
+        startswith:
+        - PT
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Portuguese VAT number differs from the NIF in tax number 1
+    why_it_matters: A Portuguese VAT registration number is PT followed by the nine-digit NIF stored in tax number 1. Different
+      numbers mean one belongs to another party; SAF-T PT and the certified invoice carry the NIF.
+    rule_authority: regulatory
+    sap_impact: SAF-T PT and certified invoices carry a NIF that does not match the VAT registration.
+    fix_map:
+      __other__: Verify the NIF and correct tax number 1 or the VAT number in XD02.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VAT number and NIF (tax number 1) differ.'
+  - id: SDCM358
+    field: KNAS.KUNNR
+    check_class: exists_check
+    fields:
+    - KNAS.KUNNR
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    grain: KNAS
+    severity: medium
+    dimension: consistency
+    message: Foreign VAT registration belongs to a customer that does not exist
+    why_it_matters: KNAS holds a customer's VAT numbers in other EU states and hangs off KNA1. A row without its customer is
+      an orphan from an incomplete deletion or legacy load; the CVI synchronisation and the BP tax number migration still read
+      it.
+    rule_authority: sap_hard_constraint
+    sap_impact: The orphan VAT number is migrated or reported for a customer that does not exist.
+    fix_map:
+      __other__: Delete the orphan KNAS rows or create the missing customer.
+    record_fix_template: 'Customer {KNAS.KUNNR}, country {KNAS.LAND1}: customer does not exist.'
+  - id: SDCM359
+    field: KNAS.STCEG
+    check_class: null_check
+    grain: KNAS
+    severity: medium
+    dimension: completeness
+    message: Foreign VAT registration row has no VAT number
+    why_it_matters: A KNAS row says the customer is VAT-registered in another EU state; without the number SAP cannot print
+      it on invoices for deliveries taxed there, and tax determination by destination country has nothing to report.
+    rule_authority: best_practice
+    sap_impact: Invoices and EC sales list lines for that country lack the customer's local VAT number.
+    fix_map:
+      __other__: Enter the VAT number in XD02 > Control data > Other VAT numbers, or delete the row.
+    record_fix_template: 'Customer {KNAS.KUNNR}, country {KNAS.LAND1}: no VAT number.'
+  - id: SDCM360
+    field: KNAS.STCEG
+    check_class: cross_field_check
+    fail_when: (`KNAS.STCEG`.str.slice(0, 2).str.upper() != `KNAS.LAND1`) & ~((`KNAS.LAND1` == 'GR') & (`KNAS.STCEG`.str.slice(0,
+      2).str.upper() == 'EL')) & ~((`KNAS.LAND1` == 'GB') & (`KNAS.STCEG`.str.slice(0, 2).str.upper() == 'XI'))
+    require_populated: true
+    grain: KNAS
+    severity: high
+    dimension: consistency
+    message: Foreign VAT number prefix does not match the country of the registration
+    why_it_matters: Every VAT number starts with the code of the issuing member state (EL for Greece, XI for Northern Ireland).
+      A number filed under another country is either a wrong number or a wrong country, and SAP prints it on invoices for deliveries
+      into that country.
+    rule_authority: regulatory
+    sap_impact: Invoices and the EC sales list cite a VAT number of another country.
+    fix_map:
+      __other__: Move the VAT number to the right country or correct it (XD02 > Control data > Other VAT numbers).
+    record_fix_template: 'Customer {KNAS.KUNNR}, country {KNAS.LAND1}: VAT number prefix does not match the country.'
+  - id: SDCM361
+    field: KNAS.STCEG
+    check_class: regex_check
+    pattern: ^[A-Z]{2}[0-9A-Z+*]{2,13}$
+    grain: KNAS
+    severity: medium
+    dimension: validity
+    message: Foreign VAT registration number is not a two-letter prefix followed by the national number
+    why_it_matters: An EU VAT number is the two-letter member-state prefix and two to thirteen letters or digits, without spaces
+      or punctuation. Anything else is not accepted by VIES or the EC sales list.
+    rule_authority: regulatory
+    sap_impact: VIES validation and the EC sales list reject the number.
+    fix_map:
+      __other__: Correct the VAT number in XD02 > Control data > Other VAT numbers.
+    record_fix_template: 'Customer {KNAS.KUNNR}, country {KNAS.LAND1}: VAT number has the wrong format.'
+  - id: SDCM362
+    field: KNAS.STCEG
+    check_class: uniqueness_check
+    fields:
+    - KNAS.LAND1
+    - KNAS.STCEG
+    normalize: alnum
+    grain: KNAS
+    severity: medium
+    dimension: uniqueness
+    message: Several customers carry the same foreign VAT registration number
+    why_it_matters: A VAT number identifies one taxable person. The same foreign VAT number on several customers means duplicate
+      customers or a number copied onto the wrong account; credit exposure and the EC sales list are split across them.
+    rule_authority: regulatory
+    sap_impact: Duplicate customers survive into the BP conversion and EC sales list totals are split.
+    fix_map:
+      __other__: Merge the duplicates or correct the wrong VAT number (XD02 > Control data > Other VAT numbers).
+    record_fix_template: 'Customer {KNAS.KUNNR}, country {KNAS.LAND1}: VAT number shared with another customer.'
+  - id: SDCM363
+    field: KNAS.LAND1
+    check_class: exists_check
+    fields:
+    - KNAS.LAND1
+    target_table: T005
+    target_fields:
+    - LAND1
+    grain: KNAS
+    severity: medium
+    dimension: validity
+    message: Foreign VAT registration is filed under a country that is not defined
+    why_it_matters: KNAS.LAND1 must be a country in T005. An undefined country cannot be matched to a delivery country, so the
+      number is never printed and cannot be migrated to the BP tax numbers.
+    rule_authority: sap_hard_constraint
+    sap_impact: The VAT number is never used and fails the BP tax number migration.
+    fix_map:
+      __other__: Correct the country of the VAT registration in XD02 or define the country.
+    record_fix_template: 'Customer {KNAS.KUNNR}, country {KNAS.LAND1}: country is not defined.'
+  - id: SDCM364
+    field: KNA1.STCD1
+    check_class: regex_check
+    pattern: ^([A-Z]{6}[0-9LMNPQRSTUV]{2}[A-EHLMPRST][0-9LMNPQRSTUV]{2}[A-Z][0-9LMNPQRSTUV]{3}[A-Z]|[0-9]{11})$
+    applies_when:
+      KNA1.LAND1:
+      - IT
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Italian codice fiscale in tax number 1 does not have the official format
+    why_it_matters: 'For IT customers SAP''s localisation reads the Italian codice fiscale from tax number 1. A value of the
+      wrong length or structure is not an issued number: e-invoices, tax returns and withholding reports citing it are rejected
+      by the tax authority.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information, using the customer's registration document.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Italian codice fiscale has the wrong format.'
+  - id: SDCM365
+    field: KNA1.STCD2
+    check_class: regex_check
+    pattern: ^[0-9]{11}$
+    applies_when:
+      KNA1.LAND1:
+      - IT
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Italian partita IVA in tax number 2 does not have the official format
+    why_it_matters: 'For IT customers SAP''s localisation reads the Italian partita IVA from tax number 2. A value of the wrong
+      length or structure is not an issued number: e-invoices, tax returns and withholding reports citing it are rejected by
+      the tax authority.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information, using the customer's registration document.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Italian partita IVA has the wrong format.'
+  - id: SDCM366
+    field: KNA1.STCD1
+    check_class: regex_check
+    pattern: ^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z]|[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]|[KLM][0-9]{7}[A-Z])$
+    applies_when:
+      KNA1.LAND1:
+      - ES
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Spanish NIF/NIE/CIF in tax number 1 does not have the official format
+    why_it_matters: 'For ES customers SAP''s localisation reads the Spanish NIF/NIE/CIF from tax number 1. A value of the wrong
+      length or structure is not an issued number: e-invoices, tax returns and withholding reports citing it are rejected by
+      the tax authority.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information, using the customer's registration document.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Spanish NIF/NIE/CIF has the wrong format.'
+  - id: SDCM367
+    field: KNA1.STCD1
+    check_class: regex_check
+    pattern: ^([1-35-9][0-9]{8}|45[0-9]{7})$
+    applies_when:
+      KNA1.LAND1:
+      - PT
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Portuguese NIF in tax number 1 does not have the official format
+    why_it_matters: 'For PT customers SAP''s localisation reads the Portuguese NIF from tax number 1. A value of the wrong length
+      or structure is not an issued number: e-invoices, tax returns and withholding reports citing it are rejected by the tax
+      authority.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information, using the customer's registration document.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Portuguese NIF has the wrong format.'
+  - id: SDCM368
+    field: KNA1.STCD1
+    check_class: regex_check
+    pattern: ^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$
+    applies_when:
+      KNA1.LAND1:
+      - MX
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: Mexican RFC in tax number 1 does not have the official format
+    why_it_matters: 'For MX customers SAP''s localisation reads the Mexican RFC from tax number 1. A value of the wrong length
+      or structure is not an issued number: e-invoices, tax returns and withholding reports citing it are rejected by the tax
+      authority.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information, using the customer's registration document.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Mexican RFC has the wrong format.'
+  - id: SDCM369
+    field: KNA1.STCD1
+    check_class: regex_check
+    pattern: ^(20|23|24|27|30|33|34)-?[0-9]{8}-?[0-9]$
+    applies_when:
+      KNA1.LAND1:
+      - AR
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: Argentinian CUIT in tax number 1 does not have the official format
+    why_it_matters: 'For AR customers SAP''s localisation reads the Argentinian CUIT from tax number 1. A value of the wrong
+      length or structure is not an issued number: e-invoices, tax returns and withholding reports citing it are rejected by
+      the tax authority.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information, using the customer's registration document.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Argentinian CUIT has the wrong format.'
+  - id: SDCM370
+    field: KNA1.STCD1
+    check_class: regex_check
+    pattern: ^[0-9]{1,2}[.]?[0-9]{3}[.]?[0-9]{3}-?[0-9K]$
+    applies_when:
+      KNA1.LAND1:
+      - CL
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: Chilean RUT in tax number 1 does not have the official format
+    why_it_matters: 'For CL customers SAP''s localisation reads the Chilean RUT from tax number 1. A value of the wrong length
+      or structure is not an issued number: e-invoices, tax returns and withholding reports citing it are rejected by the tax
+      authority.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information, using the customer's registration document.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Chilean RUT has the wrong format.'
+  - id: SDCM371
+    field: KNA1.STCD1
+    check_class: regex_check
+    pattern: ^[0-9]{6,10}(-?[0-9])?$
+    applies_when:
+      KNA1.LAND1:
+      - CO
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Colombian NIT in tax number 1 does not have the official format
+    why_it_matters: 'For CO customers SAP''s localisation reads the Colombian NIT from tax number 1. A value of the wrong length
+      or structure is not an issued number: e-invoices, tax returns and withholding reports citing it are rejected by the tax
+      authority.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information, using the customer's registration document.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Colombian NIT has the wrong format.'
+  - id: SDCM372
+    field: KNA1.STCD1
+    check_class: regex_check
+    pattern: ^(10|15|17|20)[0-9]{9}$
+    applies_when:
+      KNA1.LAND1:
+      - PE
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: Peruvian RUC in tax number 1 does not have the official format
+    why_it_matters: 'For PE customers SAP''s localisation reads the Peruvian RUC from tax number 1. A value of the wrong length
+      or structure is not an issued number: e-invoices, tax returns and withholding reports citing it are rejected by the tax
+      authority.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information, using the customer's registration document.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Peruvian RUC has the wrong format.'
+  - id: SDCM373
+    field: KNA1.STCD1
+    check_class: regex_check
+    pattern: ^([0-9]{10}|[0-9]{12})$
+    applies_when:
+      KNA1.LAND1:
+      - RU
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Russian INN in tax number 1 does not have the official format
+    why_it_matters: 'For RU customers SAP''s localisation reads the Russian INN from tax number 1. A value of the wrong length
+      or structure is not an issued number: e-invoices, tax returns and withholding reports citing it are rejected by the tax
+      authority.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information, using the customer's registration document.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Russian INN has the wrong format.'
+  - id: SDCM374
+    field: KNA1.STCD2
+    check_class: regex_check
+    pattern: ^([0-9]{11}|[0-9]{3}[.][0-9]{3}[.][0-9]{3}-[0-9]{2})$
+    applies_when:
+      KNA1.LAND1:
+      - BR
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Brazilian CPF in tax number 2 does not have the official format
+    why_it_matters: 'For BR customers SAP''s localisation reads the Brazilian CPF from tax number 2. A value of the wrong length
+      or structure is not an issued number: e-invoices, tax returns and withholding reports citing it are rejected by the tax
+      authority.'
+    rule_authority: regulatory
+    sap_impact: Electronic invoices and statutory tax reports for the customer are rejected.
+    fix_map:
+      __other__: Correct the tax number in XD02 > Control data > Tax information, using the customer's registration document.
+    record_fix_template: 'Customer {KNA1.KUNNR}: Brazilian CPF has the wrong format.'
+  - id: SDCM375
+    field: KNA1.STCD1
+    check_class: regex_check
+    pattern: ^[A-ZÑ&]{4}[0-9]{6}[A-Z0-9]{3}$
+    applies_when:
+      KNA1.LAND1:
+      - MX
+      KNA1.STKZN:
+      - X
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Customer is marked as a natural person but the RFC is not a person's RFC
+    why_it_matters: The natural-person indicator (STKZN) tells the Mexican localisation which tax identifier the customer must
+      have and how CFDI e-invoicing treats it. A person's RFC has four letters and 13 characters; a company RFC has three letters
+      and 12 characters. A mismatch means either the indicator or the RFC is wrong, and the BP conversion creates the wrong
+      partner category (person vs organisation).
+    rule_authority: regulatory
+    sap_impact: Withholding tax, e-invoicing and the BP category are determined for the wrong kind of party.
+    fix_map:
+      __other__: Correct the natural-person indicator or the RFC in XD02 > Control data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: marked as a natural person but the RFC is not a person''s RFC.'
+  - id: SDCM376
+    field: KNA1.STKZN
+    check_class: cross_field_check
+    fail_when: '`KNA1.STCD1`.str.match(''^[0-9]'')'
+    applies_when:
+      KNA1.LAND1:
+      - IT
+      KNA1.STKZN:
+      - X
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Customer is marked as a natural person but tax number 1 is a company codice fiscale
+    why_it_matters: The natural-person indicator (STKZN) tells the Italian localisation which tax identifier the customer must
+      have and how withholding and e-invoicing treat it. A natural person's codice fiscale has 16 characters; an 11-digit number
+      is a company's. A mismatch means either the indicator or the tax number is wrong, and the BP conversion creates the wrong
+      partner category (person vs organisation).
+    rule_authority: regulatory
+    sap_impact: Withholding tax, e-invoicing and the BP category are determined for the wrong kind of party.
+    fix_map:
+      __other__: Correct the natural-person indicator or the tax number in XD02 > Control data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: is marked as a natural person but tax number 1 is a company codice fiscale.'
+  - id: SDCM377
+    field: KNA1.STKZN
+    check_class: cross_field_check
+    fail_when: '`KNA1.STCD1`.str.match(''^[ABCDEFGHJNPQRSUVW]'')'
+    applies_when:
+      KNA1.LAND1:
+      - ES
+      KNA1.STKZN:
+      - X
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Customer is marked as a natural person but tax number 1 is a company CIF
+    why_it_matters: The natural-person indicator (STKZN) tells the Spanish localisation which tax identifier the customer must
+      have and how withholding and e-invoicing treat it. A CIF starting with a letter A-W identifies a legal entity; a natural
+      person has a DNI/NIE. A mismatch means either the indicator or the tax number is wrong, and the BP conversion creates
+      the wrong partner category (person vs organisation).
+    rule_authority: regulatory
+    sap_impact: Withholding tax, e-invoicing and the BP category are determined for the wrong kind of party.
+    fix_map:
+      __other__: Correct the natural-person indicator or the tax number in XD02 > Control data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: is marked as a natural person but tax number 1 is a company CIF.'
+  - id: SDCM378
+    field: KNA1.STKZN
+    check_class: cross_field_check
+    fail_when: '`KNA1.STCD1`.str.match(''^(30|33|34)'')'
+    applies_when:
+      KNA1.LAND1:
+      - AR
+      KNA1.STKZN:
+      - X
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Customer is marked as a natural person but the CUIT is a company's
+    why_it_matters: The natural-person indicator (STKZN) tells the Argentinian localisation which tax identifier the customer
+      must have and how withholding and e-invoicing treat it. A CUIT starting 30, 33 or 34 belongs to a legal entity; persons
+      have 20, 23, 24 or 27. A mismatch means either the indicator or the tax number is wrong, and the BP conversion creates
+      the wrong partner category (person vs organisation).
+    rule_authority: regulatory
+    sap_impact: Withholding tax, e-invoicing and the BP category are determined for the wrong kind of party.
+    fix_map:
+      __other__: Correct the natural-person indicator or the tax number in XD02 > Control data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: is marked as a natural person but the CUIT is a company''s.'
+  - id: SDCM379
+    field: KNA1.STKZN
+    check_class: cross_field_check
+    fail_when: '`KNA1.STCD1`.str.match(''^20'')'
+    applies_when:
+      KNA1.LAND1:
+      - PE
+      KNA1.STKZN:
+      - X
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Customer is marked as a natural person but the RUC is a company's
+    why_it_matters: The natural-person indicator (STKZN) tells the Peruvian localisation which tax identifier the customer must
+      have and how withholding and e-invoicing treat it. A RUC starting 20 belongs to a legal entity; persons have 10, 15 or
+      17. A mismatch means either the indicator or the tax number is wrong, and the BP conversion creates the wrong partner
+      category (person vs organisation).
+    rule_authority: regulatory
+    sap_impact: Withholding tax, e-invoicing and the BP category are determined for the wrong kind of party.
+    fix_map:
+      __other__: Correct the natural-person indicator or the tax number in XD02 > Control data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: is marked as a natural person but the RUC is a company''s.'
+  - id: SDCM380
+    field: KNA1.STKZN
+    check_class: cross_field_check
+    fail_when: '`KNA1.STCD1`.notna() & `KNA1.STCD2`.isna()'
+    applies_when:
+      KNA1.LAND1:
+      - BR
+      KNA1.STKZN:
+      - X
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Customer is marked as a natural person but has a CNPJ and no CPF
+    why_it_matters: The natural-person indicator (STKZN) tells the Brazilian localisation which tax identifier the customer
+      must have and how withholding and e-invoicing treat it. Brazilian persons are identified by a CPF in tax number 2; a CNPJ
+      in tax number 1 belongs to a company. A mismatch means either the indicator or the tax number is wrong, and the BP conversion
+      creates the wrong partner category (person vs organisation).
+    rule_authority: regulatory
+    sap_impact: Withholding tax, e-invoicing and the BP category are determined for the wrong kind of party.
+    fix_map:
+      __other__: Correct the natural-person indicator or the tax number in XD02 > Control data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: is marked as a natural person but has a CNPJ and no CPF.'
+  - id: SDCM381
+    field: KNA1.STKZN
+    check_class: cross_field_check
+    fail_when: '`KNA1.NAME1`.str.upper().str.replace(''[.]'', '''', regex=True).str.contains(''(^| |[(])(GMBH|LTD|LIMITED|PLC|LLC|INC|CORP|CORPORATION|BV|NV|SARL|SAS|SPA|SRL|PTY|KG|OHG|OY|AB|AS|APS|SP
+      Z OO|SRO|KFT|LTDA|SA DE CV)([ ,)]|$)'')'
+    applies_when:
+      KNA1.STKZN:
+      - X
+      KNA1.NAME1:
+        contains_any:
+        - GmbH
+        - GMBH
+        - Ltd
+        - LTD
+        - Limited
+        - LIMITED
+        - PLC
+        - Plc
+        - LLC
+        - Inc
+        - INC
+        - Corp
+        - CORP
+        - BV
+        - B.V.
+        - NV
+        - N.V.
+        - SARL
+        - SAS
+        - SpA
+        - SPA
+        - S.p.A.
+        - Srl
+        - SRL
+        - S.r.l.
+        - Pty
+        - PTY
+        - KG
+        - OHG
+        - Oy
+        - OY
+        - AB
+        - AS
+        - ApS
+        - APS
+        - Sp. z o.o.
+        - SP Z OO
+        - s.r.o.
+        - SRO
+        - Kft
+        - KFT
+        - Ltda
+        - LTDA
+        - de C.V.
+        - DE CV
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Customer marked as a natural person has a company legal form in its name
+    why_it_matters: A name ending in GmbH, Ltd, (Pty) Ltd, Inc, SpA or another legal form identifies a company, but the natural-person
+      indicator tells SAP the customer is a private individual. Country localisations then expect a personal tax ID, withholding
+      treats the customer as a person, and the BP conversion creates a person with the company name as first and last name.
+    rule_authority: best_practice
+    sap_impact: The BP conversion creates a person instead of an organisation and tax treatment follows the wrong party type.
+    fix_map:
+      __other__: Clear the natural-person indicator in XD02 > Control data, or correct the name.
+    record_fix_template: 'Customer {KNA1.KUNNR}: marked as a natural person but the name has a company legal form.'
+  - id: SDCM382
+    field: KNA1.TELF1
+    check_class: regex_check
+    pattern: ^[+]?[(]?[0-9][0-9 ()./-]{3,}[0-9]$
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: First telephone number contains text or is too short to dial
+    why_it_matters: The first telephone number is dialled by people, CTI and the S/4HANA business partner, which normalises
+      it into TELNR_LONG. Letters, words or fewer than five digits ('see e-mail', 'ext 12', '011') cannot be dialled or normalised;
+      extensions belong in the extension field.
+    rule_authority: best_practice
+    sap_impact: Calls, faxes and CTI lookups fail; the number is migrated unnormalised to the BP.
+    fix_map:
+      __other__: Enter only digits, spaces and the separators ( ) - / . with an optional leading +; move extensions to the extension
+        field (XD02 > Address > Communication).
+    record_fix_template: 'Customer {KNA1.KUNNR}: telephone 1 cannot be dialled.'
+  - id: SDCM383
+    field: KNA1.TELF2
+    check_class: regex_check
+    pattern: ^[+]?[(]?[0-9][0-9 ()./-]{3,}[0-9]$
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: Second telephone number contains text or is too short to dial
+    why_it_matters: The second telephone number is dialled by people, CTI and the S/4HANA business partner, which normalises
+      it into TELNR_LONG. Letters, words or fewer than five digits ('see e-mail', 'ext 12', '011') cannot be dialled or normalised;
+      extensions belong in the extension field.
+    rule_authority: best_practice
+    sap_impact: Calls, faxes and CTI lookups fail; the number is migrated unnormalised to the BP.
+    fix_map:
+      __other__: Enter only digits, spaces and the separators ( ) - / . with an optional leading +; move extensions to the extension
+        field (XD02 > Address > Communication).
+    record_fix_template: 'Customer {KNA1.KUNNR}: telephone 2 cannot be dialled.'
+  - id: SDCM384
+    field: KNA1.TELFX
+    check_class: regex_check
+    pattern: ^[+]?[(]?[0-9][0-9 ()./-]{3,}[0-9]$
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: Fax number contains text or is too short to dial
+    why_it_matters: The fax number is dialled by people, CTI and the S/4HANA business partner, which normalises it into TELNR_LONG.
+      Letters, words or fewer than five digits ('see e-mail', 'ext 12', '011') cannot be dialled or normalised; extensions belong
+      in the extension field.
+    rule_authority: best_practice
+    sap_impact: Calls, faxes and CTI lookups fail; the number is migrated unnormalised to the BP.
+    fix_map:
+      __other__: Enter only digits, spaces and the separators ( ) - / . with an optional leading +; move extensions to the extension
+        field (XD02 > Address > Communication).
+    record_fix_template: 'Customer {KNA1.KUNNR}: fax number cannot be dialled.'
+  - id: SDCM385
+    field: KNVK.TELF1
+    check_class: regex_check
+    pattern: ^[+]?[(]?[0-9][0-9 ()./-]{3,}[0-9]$
+    grain: KNVK
+    severity: low
+    dimension: validity
+    message: Contact person's telephone number contains text or is too short to dial
+    why_it_matters: The contact person's telephone number is dialled by people, CTI and the S/4HANA business partner, which
+      normalises it into TELNR_LONG. Letters, words or fewer than five digits ('see e-mail', 'ext 12', '011') cannot be dialled
+      or normalised; extensions belong in the extension field.
+    rule_authority: best_practice
+    sap_impact: Calls, faxes and CTI lookups fail; the number is migrated unnormalised to the BP.
+    fix_map:
+      __other__: Enter only digits, spaces and the separators ( ) - / . with an optional leading +; move extensions to the extension
+        field (XD02 > Address > Communication).
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: telephone cannot be dialled.'
+  - id: SDCM386
+    field: ADR2.TEL_NUMBER
+    check_class: regex_check
+    pattern: ^[+]?[(]?[0-9][0-9 ()./-]{3,}[0-9]$
+    grain: ADR2
+    severity: low
+    dimension: validity
+    message: Telephone number of the address contains text or is too short to dial
+    why_it_matters: The telephone number of the address is dialled by people, CTI and the S/4HANA business partner, which normalises
+      it into TELNR_LONG. Letters, words or fewer than five digits ('see e-mail', 'ext 12', '011') cannot be dialled or normalised;
+      extensions belong in the extension field.
+    rule_authority: best_practice
+    sap_impact: Calls, faxes and CTI lookups fail; the number is migrated unnormalised to the BP.
+    fix_map:
+      __other__: Enter only digits, spaces and the separators ( ) - / . with an optional leading +; move extensions to the extension
+        field (XD02 > Address > Communication).
+    record_fix_template: 'Address {ADR2.ADDRNUMBER}, number {ADR2.CONSNUMBER}: telephone cannot be dialled.'
+  - id: SDCM387
+    field: ADR3.FAX_NUMBER
+    check_class: regex_check
+    pattern: ^[+]?[(]?[0-9][0-9 ()./-]{3,}[0-9]$
+    grain: ADR3
+    severity: low
+    dimension: validity
+    message: Fax number of the address contains text or is too short to dial
+    why_it_matters: The fax number of the address is dialled by people, CTI and the S/4HANA business partner, which normalises
+      it into TELNR_LONG. Letters, words or fewer than five digits ('see e-mail', 'ext 12', '011') cannot be dialled or normalised;
+      extensions belong in the extension field.
+    rule_authority: best_practice
+    sap_impact: Calls, faxes and CTI lookups fail; the number is migrated unnormalised to the BP.
+    fix_map:
+      __other__: Enter only digits, spaces and the separators ( ) - / . with an optional leading +; move extensions to the extension
+        field (XD02 > Address > Communication).
+    record_fix_template: 'Address {ADR3.ADDRNUMBER}, number {ADR3.CONSNUMBER}: fax number cannot be dialled.'
+  - id: SDCM388
+    field: ADR2.TEL_EXTENS
+    check_class: regex_check
+    pattern: ^[0-9]{1,10}$
+    grain: ADR2
+    severity: low
+    dimension: validity
+    message: Telephone extension contains characters other than digits
+    why_it_matters: SAP appends the telephone extension to the number to build the dialable long number. Words such as 'ext.',
+      names or a second number in the field make the long number undialable.
+    rule_authority: best_practice
+    sap_impact: The normalised long number cannot be dialled or matched.
+    fix_map:
+      __other__: Keep only the extension digits; move a second number to its own communication entry.
+    record_fix_template: 'Address {ADR2.ADDRNUMBER}, number {ADR2.CONSNUMBER}: extension is not numeric.'
+  - id: SDCM389
+    field: ADR3.FAX_EXTENS
+    check_class: regex_check
+    pattern: ^[0-9]{1,10}$
+    grain: ADR3
+    severity: low
+    dimension: validity
+    message: Fax extension contains characters other than digits
+    why_it_matters: SAP appends the fax extension to the number to build the dialable long number. Words such as 'ext.', names
+      or a second number in the field make the long number undialable.
+    rule_authority: best_practice
+    sap_impact: The normalised long number cannot be dialled or matched.
+    fix_map:
+      __other__: Keep only the extension digits; move a second number to its own communication entry.
+    record_fix_template: 'Address {ADR3.ADDRNUMBER}, number {ADR3.CONSNUMBER}: extension is not numeric.'
+  - id: SDCM390
+    field: ADR2.TEL_EXTENS
+    check_class: cross_field_check
+    fail_when: '`ADR2.TEL_NUMBER`.isna()'
+    applies_when:
+      ADR2.TEL_EXTENS:
+        populated: true
+    grain: ADR2
+    severity: low
+    dimension: completeness
+    message: Telephone extension recorded without a telephone number
+    why_it_matters: An extension is only reachable through its main number. Without TEL_NUMBER the communication entry cannot
+      be dialled and SAP cannot build the long number.
+    rule_authority: best_practice
+    sap_impact: The entry is useless for calls and is migrated as an empty phone number.
+    fix_map:
+      __other__: Enter the main number or delete the entry (XD02 > Address > Communication > Telephone).
+    record_fix_template: 'Address {ADR2.ADDRNUMBER}, number {ADR2.CONSNUMBER}: extension without a telephone number.'
+  - id: SDCM391
+    field: ADR3.FAX_EXTENS
+    check_class: cross_field_check
+    fail_when: '`ADR3.FAX_NUMBER`.isna()'
+    applies_when:
+      ADR3.FAX_EXTENS:
+        populated: true
+    grain: ADR3
+    severity: low
+    dimension: completeness
+    message: Fax extension recorded without a fax number
+    why_it_matters: An extension is only reachable through its main number. Without FAX_NUMBER the fax entry cannot be used
+      for output and SAP cannot build the long number.
+    rule_authority: best_practice
+    sap_impact: Fax output for the customer fails.
+    fix_map:
+      __other__: Enter the fax number or delete the entry (XD02 > Address > Communication > Fax).
+    record_fix_template: 'Address {ADR3.ADDRNUMBER}, number {ADR3.CONSNUMBER}: extension without a fax number.'
+  - id: SDCM392
+    field: ADR3.FAX_NUMBER
+    check_class: null_check
+    grain: ADR3
+    severity: medium
+    dimension: completeness
+    message: Fax communication entry has no fax number
+    why_it_matters: An ADR3 row exists only to hold a fax number. A row without it is an empty communication entry; if it is
+      the default, output determination picks fax and sends nothing.
+    rule_authority: best_practice
+    sap_impact: Fax output for the address fails silently.
+    fix_map:
+      __other__: Enter the fax number or delete the entry (XD02 > Address > Communication > Fax).
+    record_fix_template: 'Address {ADR3.ADDRNUMBER}, number {ADR3.CONSNUMBER}: no fax number.'
+  - id: SDCM393
+    field: ADR3.COUNTRY
+    check_class: null_check
+    applies_when:
+      ADR3.FAX_NUMBER:
+        populated: true
+    grain: ADR3
+    severity: low
+    dimension: completeness
+    message: Fax number has no country for the dialling code
+    why_it_matters: SAP derives the international dialling code from the fax entry's country to build FAXNR_LONG. Without it
+      the fax server cannot dial the number internationally.
+    rule_authority: best_practice
+    sap_impact: Faxes to the number cannot be dialled from another country and the long number stays empty.
+    fix_map:
+      __other__: Enter the country on the fax entry (XD02 > Address > Communication > Fax).
+    record_fix_template: 'Address {ADR3.ADDRNUMBER}, number {ADR3.CONSNUMBER}: fax number has no country.'
+  - id: SDCM394
+    field: ADR2.COUNTRY
+    check_class: null_check
+    applies_when:
+      ADR2.TEL_NUMBER:
+        populated: true
+    grain: ADR2
+    severity: low
+    dimension: completeness
+    message: Telephone number has no country for the dialling code
+    why_it_matters: SAP derives the international dialling code from the telephone entry's country to build TELNR_LONG. Without
+      it the number cannot be normalised or dialled from abroad.
+    rule_authority: best_practice
+    sap_impact: The normalised long number stays empty and CTI matching fails.
+    fix_map:
+      __other__: Enter the country on the telephone entry (XD02 > Address > Communication > Telephone).
+    record_fix_template: 'Address {ADR2.ADDRNUMBER}, number {ADR2.CONSNUMBER}: telephone number has no country.'
+  - id: SDCM395
+    field: ADR2.TELNR_LONG
+    check_class: cross_field_check
+    fail_when: '`ADR2.TELNR_LONG`.isna()'
+    applies_when:
+      ADR2.TEL_NUMBER:
+        populated: true
+    grain: ADR2
+    severity: low
+    dimension: completeness
+    message: Telephone number was never normalised into the complete international number
+    why_it_matters: Business Address Services fills TELNR_LONG (+country code, number and extension) whenever a number is saved
+      through the address dialog. An empty long number means the row was written directly by a load program; CTI, telephony
+      integration and the BP search by number do not find it.
+    rule_authority: best_practice
+    sap_impact: Inbound calls are not matched to the customer and the number is migrated unnormalised.
+    fix_map:
+      __other__: Re-save the address in XD02 or run report RSADRLSM02 / ADDR_NORMALIZE to normalise the numbers.
+    record_fix_template: 'Address {ADR2.ADDRNUMBER}, number {ADR2.CONSNUMBER}: no normalised long number.'
+  - id: SDCM396
+    field: ADR3.FAXNR_LONG
+    check_class: cross_field_check
+    fail_when: '`ADR3.FAXNR_LONG`.isna()'
+    applies_when:
+      ADR3.FAX_NUMBER:
+        populated: true
+    grain: ADR3
+    severity: low
+    dimension: completeness
+    message: Fax number was never normalised into the complete international number
+    why_it_matters: Business Address Services fills FAXNR_LONG whenever a fax number is saved through the address dialog. An
+      empty long number means a load program wrote the row directly; the fax server dials the long number.
+    rule_authority: best_practice
+    sap_impact: Fax output to the customer cannot be dialled.
+    fix_map:
+      __other__: Re-save the address in XD02 or run the address normalisation report.
+    record_fix_template: 'Address {ADR3.ADDRNUMBER}, number {ADR3.CONSNUMBER}: no normalised long fax number.'
+  - id: SDCM397
+    field: ADR2.TELNR_LONG
+    check_class: regex_check
+    pattern: ^[+][0-9]
+    grain: ADR2
+    severity: low
+    dimension: validity
+    message: Normalised telephone number does not start with + and the country code
+    why_it_matters: TELNR_LONG is the international form of the number (+27 16 973 4400). A value without the leading + and
+      country code was written by a load program, so CTI matching and dialling from another country fail.
+    rule_authority: best_practice
+    sap_impact: Inbound calls are not matched and outbound dialling from other countries fails.
+    fix_map:
+      __other__: Re-save the address in XD02 or run the address normalisation report.
+    record_fix_template: 'Address {ADR2.ADDRNUMBER}, number {ADR2.CONSNUMBER}: long number is not in international form.'
+  - id: SDCM398
+    field: ADR3.FAXNR_LONG
+    check_class: regex_check
+    pattern: ^[+][0-9]
+    grain: ADR3
+    severity: low
+    dimension: validity
+    message: Normalised fax number does not start with + and the country code
+    why_it_matters: FAXNR_LONG is the international form the fax server dials. A value without + and country code was written
+      by a load program and cannot be dialled across borders.
+    rule_authority: best_practice
+    sap_impact: Fax output to the customer from another country fails.
+    fix_map:
+      __other__: Re-save the address in XD02 or run the address normalisation report.
+    record_fix_template: 'Address {ADR3.ADDRNUMBER}, number {ADR3.CONSNUMBER}: long fax number is not in international form.'
+  - id: SDCM399
+    field: ADR2.VALID_TO
+    check_class: cross_field_check
+    fail_when: '`ADR2.VALID_TO` < `ADR2.VALID_FROM`'
+    require_populated: true
+    grain: ADR2
+    severity: low
+    dimension: consistency
+    message: Validity of the telephone number ends before it starts
+    why_it_matters: VALID_FROM and VALID_TO bound the period the telephone number may be used. An end before the start makes
+      the entry never valid, so it is silently skipped by output and the BP conversion carries an impossible period.
+    rule_authority: sap_hard_constraint
+    sap_impact: The telephone number is never used although it looks maintained.
+    fix_map:
+      __other__: Correct the validity period of the telephone number (XD02 > Communication > validity).
+    record_fix_template: 'Address {ADR2.ADDRNUMBER}, number {ADR2.CONSNUMBER}: validity ends before it starts.'
+  - id: SDCM400
+    field: ADR2.ADDRNUMBER
+    check_class: uniqueness_check
+    fields:
+    - ADR2.ADDRNUMBER
+    - ADR2.DATE_FROM
+    - ADR2.FLGDEFAULT
+    applies_when:
+      ADR2.FLGDEFAULT:
+      - X
+      ADR2.PERSNUMBER:
+        blank: true
+    grain: ADR2
+    severity: medium
+    dimension: uniqueness
+    message: Address has more than one default telephone number
+    why_it_matters: Business Address Services allows exactly one default telephone number per address; output, the KNA1 shadow
+      fields and the BP conversion read the default. Several defaults come from direct table loads, and which one is used is
+      undefined.
+    rule_authority: sap_hard_constraint
+    sap_impact: Output and the BP conversion pick an arbitrary telephone number.
+    fix_map:
+      __other__: Keep one default telephone number per address (XD02 > Communication) and clear the flag on the others.
+    record_fix_template: 'Address {ADR2.ADDRNUMBER}: several default telephone numbers.'
+  - id: SDCM401
+    field: ADR2.TEL_NUMBER
+    check_class: uniqueness_check
+    fields:
+    - ADR2.ADDRNUMBER
+    - ADR2.DATE_FROM
+    - ADR2.TEL_NUMBER
+    normalize: alnum
+    applies_when:
+      ADR2.PERSNUMBER:
+        blank: true
+      ADR2.TEL_EXTENS:
+        blank: true
+    grain: ADR2
+    severity: low
+    dimension: uniqueness
+    message: Same telephone number entered twice on one address
+    why_it_matters: Duplicate communication entries arise from repeated loads and merges. They double every telephone number
+      in output and in the BP conversion, and only one of them carries the default and usage flags.
+    rule_authority: best_practice
+    sap_impact: Output and contact lists show the same telephone number twice; flags diverge between the copies.
+    fix_map:
+      __other__: Delete the duplicate telephone number (XD02 > Communication).
+    record_fix_template: 'Address {ADR2.ADDRNUMBER}: duplicate telephone number.'
+  - id: SDCM402
+    field: ADR3.FLGDEFAULT
+    check_class: cross_field_check
+    fail_when: '`ADR3.FLG_NOUSE` == ''X'''
+    applies_when:
+      ADR3.FLGDEFAULT:
+      - X
+    grain: ADR3
+    severity: medium
+    dimension: consistency
+    message: Default fax number is flagged as not to be used
+    why_it_matters: The default fax number is the one output determination sends to. Flagging it 'do not use' at the same time
+      leaves the customer with no usable default, and fax output fails or picks an arbitrary other number.
+    rule_authority: sap_hard_constraint
+    sap_impact: Fax output for the customer fails or goes to a non-default number.
+    fix_map:
+      __other__: Make another fax number the default or clear the 'do not use' flag (XD02 > Communication).
+    record_fix_template: 'Address {ADR3.ADDRNUMBER}, number {ADR3.CONSNUMBER}: default fax flagged do-not-use.'
+  - id: SDCM403
+    field: ADR3.VALID_TO
+    check_class: cross_field_check
+    fail_when: '`ADR3.VALID_TO` < `ADR3.VALID_FROM`'
+    require_populated: true
+    grain: ADR3
+    severity: low
+    dimension: consistency
+    message: Validity of the fax number ends before it starts
+    why_it_matters: VALID_FROM and VALID_TO bound the period the fax number may be used. An end before the start makes the entry
+      never valid, so it is silently skipped by output and the BP conversion carries an impossible period.
+    rule_authority: sap_hard_constraint
+    sap_impact: The fax number is never used although it looks maintained.
+    fix_map:
+      __other__: Correct the validity period of the fax number (XD02 > Communication > validity).
+    record_fix_template: 'Address {ADR3.ADDRNUMBER}, number {ADR3.CONSNUMBER}: validity ends before it starts.'
+  - id: SDCM404
+    field: ADR3.ADDRNUMBER
+    check_class: uniqueness_check
+    fields:
+    - ADR3.ADDRNUMBER
+    - ADR3.DATE_FROM
+    - ADR3.FLGDEFAULT
+    applies_when:
+      ADR3.FLGDEFAULT:
+      - X
+      ADR3.PERSNUMBER:
+        blank: true
+    grain: ADR3
+    severity: medium
+    dimension: uniqueness
+    message: Address has more than one default fax number
+    why_it_matters: Business Address Services allows exactly one default fax number per address; output, the KNA1 shadow fields
+      and the BP conversion read the default. Several defaults come from direct table loads, and which one is used is undefined.
+    rule_authority: sap_hard_constraint
+    sap_impact: Output and the BP conversion pick an arbitrary fax number.
+    fix_map:
+      __other__: Keep one default fax number per address (XD02 > Communication) and clear the flag on the others.
+    record_fix_template: 'Address {ADR3.ADDRNUMBER}: several default fax numbers.'
+  - id: SDCM405
+    field: ADR3.FAX_NUMBER
+    check_class: uniqueness_check
+    fields:
+    - ADR3.ADDRNUMBER
+    - ADR3.DATE_FROM
+    - ADR3.FAX_NUMBER
+    normalize: alnum
+    applies_when:
+      ADR3.PERSNUMBER:
+        blank: true
+      ADR3.FAX_EXTENS:
+        blank: true
+    grain: ADR3
+    severity: low
+    dimension: uniqueness
+    message: Same fax number entered twice on one address
+    why_it_matters: Duplicate communication entries arise from repeated loads and merges. They double every fax number in output
+      and in the BP conversion, and only one of them carries the default and usage flags.
+    rule_authority: best_practice
+    sap_impact: Output and contact lists show the same fax number twice; flags diverge between the copies.
+    fix_map:
+      __other__: Delete the duplicate fax number (XD02 > Communication).
+    record_fix_template: 'Address {ADR3.ADDRNUMBER}: duplicate fax number.'
+  - id: SDCM406
+    field: ADR6.VALID_TO
+    check_class: cross_field_check
+    fail_when: '`ADR6.VALID_TO` < `ADR6.VALID_FROM`'
+    require_populated: true
+    grain: ADR6
+    severity: low
+    dimension: consistency
+    message: Validity of the e-mail address ends before it starts
+    why_it_matters: VALID_FROM and VALID_TO bound the period the e-mail address may be used. An end before the start makes the
+      entry never valid, so it is silently skipped by output and the BP conversion carries an impossible period.
+    rule_authority: sap_hard_constraint
+    sap_impact: The e-mail address is never used although it looks maintained.
+    fix_map:
+      __other__: Correct the validity period of the e-mail address (XD02 > Communication > validity).
+    record_fix_template: 'Address {ADR6.ADDRNUMBER}, number {ADR6.CONSNUMBER}: validity ends before it starts.'
+  - id: SDCM407
+    field: ADR6.ADDRNUMBER
+    check_class: uniqueness_check
+    fields:
+    - ADR6.ADDRNUMBER
+    - ADR6.DATE_FROM
+    - ADR6.FLGDEFAULT
+    applies_when:
+      ADR6.FLGDEFAULT:
+      - X
+      ADR6.PERSNUMBER:
+        blank: true
+    grain: ADR6
+    severity: medium
+    dimension: uniqueness
+    message: Address has more than one default e-mail address
+    why_it_matters: Business Address Services allows exactly one default e-mail address per address; output, the KNA1 shadow
+      fields and the BP conversion read the default. Several defaults come from direct table loads, and which one is used is
+      undefined.
+    rule_authority: sap_hard_constraint
+    sap_impact: Output and the BP conversion pick an arbitrary e-mail address.
+    fix_map:
+      __other__: Keep one default e-mail address per address (XD02 > Communication) and clear the flag on the others.
+    record_fix_template: 'Address {ADR6.ADDRNUMBER}: several default e-mail addresss.'
+  - id: SDCM408
+    field: ADR6.SMTP_ADDR
+    check_class: uniqueness_check
+    fields:
+    - ADR6.ADDRNUMBER
+    - ADR6.DATE_FROM
+    - ADR6.SMTP_ADDR
+    case_insensitive: true
+    applies_when:
+      ADR6.PERSNUMBER:
+        blank: true
+    grain: ADR6
+    severity: low
+    dimension: uniqueness
+    message: Same e-mail address entered twice on one address
+    why_it_matters: Duplicate communication entries arise from repeated loads and merges. They double every e-mail address in
+      output and in the BP conversion, and only one of them carries the default and usage flags.
+    rule_authority: best_practice
+    sap_impact: Output and contact lists show the same e-mail address twice; flags diverge between the copies.
+    fix_map:
+      __other__: Delete the duplicate e-mail address (XD02 > Communication).
+    record_fix_template: 'Address {ADR6.ADDRNUMBER}: duplicate e-mail address.'
+  - id: SDCM409
+    field: ADR6.SMTP_SRCH
+    check_class: cross_field_check
+    fail_when: '`ADR6.SMTP_SRCH` != `ADR6.SMTP_ADDR`.str.upper().str.slice(0, 20)'
+    require_populated: true
+    grain: ADR6
+    severity: low
+    dimension: consistency
+    message: E-mail search field does not match the e-mail address
+    why_it_matters: Business Address Services stores the first 20 characters of the e-mail address in capitals in SMTP_SRCH,
+      and every search for a customer by e-mail (XD03, the BP search help, inbound e-mail assignment) reads that field. A mismatch
+      means the address was changed by a direct table update, so searches by the real address miss the customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Customers are not found by e-mail and inbound e-mails are not assigned.
+    fix_map:
+      __other__: Re-save the e-mail address in XD02 or run the address search-field regeneration.
+    record_fix_template: 'Address {ADR6.ADDRNUMBER}, number {ADR6.CONSNUMBER}: e-mail search field is out of step.'
+  - id: SDCM410
+    field: ADR6.SMTP_SRCH
+    check_class: cross_field_check
+    fail_when: '`ADR6.SMTP_SRCH`.isna()'
+    applies_when:
+      ADR6.SMTP_ADDR:
+        populated: true
+    grain: ADR6
+    severity: low
+    dimension: completeness
+    message: E-mail address has no search field
+    why_it_matters: SMTP_SRCH (the address in capitals, first 20 characters) is the field every search by e-mail reads. An empty
+      search field means the row was loaded directly and the customer cannot be found by its e-mail.
+    rule_authority: best_practice
+    sap_impact: Customers are not found by e-mail and inbound e-mails are not assigned.
+    fix_map:
+      __other__: Re-save the e-mail address in XD02 or run the address search-field regeneration.
+    record_fix_template: 'Address {ADR6.ADDRNUMBER}, number {ADR6.CONSNUMBER}: e-mail search field is empty.'
+  - id: SDCM411
+    field: ADR6.SMTP_ADDR
+    check_class: null_check
+    grain: ADR6
+    severity: medium
+    dimension: completeness
+    message: E-mail communication entry has no e-mail address
+    why_it_matters: An ADR6 row exists only to hold an e-mail address. An empty row is a leftover of a deletion or load; if
+      it is the default, e-mail output (invoices, order confirmations, dunning) is sent to nobody.
+    rule_authority: best_practice
+    sap_impact: E-mail output fails silently for the address.
+    fix_map:
+      __other__: Enter the e-mail address or delete the entry (XD02 > Communication > E-mail).
+    record_fix_template: 'Address {ADR6.ADDRNUMBER}, number {ADR6.CONSNUMBER}: no e-mail address.'
+  - id: SDCM412
+    field: ADR6.SMTP_ADDR
+    check_class: cross_field_check
+    fail_when: '`ADR6.SMTP_ADDR`.str.contains(''[ ,;]'')'
+    grain: ADR6
+    severity: medium
+    dimension: validity
+    message: E-mail field holds several addresses or contains spaces
+    why_it_matters: Each ADR6 entry is one e-mail address. Several addresses separated by commas or semicolons, or an address
+      with blanks, are rejected by the mail server (SAPconnect), so invoices and dunning notices are never sent.
+    rule_authority: best_practice
+    sap_impact: E-mail output to the customer is rejected by SAPconnect.
+    fix_map:
+      __other__: Split the addresses into separate e-mail entries and remove the spaces (XD02 > Communication > E-mail).
+    record_fix_template: 'Address {ADR6.ADDRNUMBER}, number {ADR6.CONSNUMBER}: e-mail field holds several addresses or spaces.'
+  - id: SDCM413
+    field: KNA1.NAME1
+    check_class: cross_field_check
+    fail_when: '`KNA1.NAME1` != `ADRC.NAME1`.str.slice(0, 35)'
+    require_populated: true
+    grain: KNA1
+    severity: high
+    dimension: consistency
+    message: Name 1 in the customer master differs from the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.NAME1 is ADRC.NAME1 cut to 35 characters. A difference means one side was changed by a direct table update or a load,
+      so reports, interfaces and the BP conversion, which takes ADRC, show different data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Name 1 differs between reports that read KNA1 and the BP created from ADRC.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: name 1 differs from the central address.'
+  - id: SDCM414
+    field: KNA1.NAME2
+    check_class: cross_field_check
+    fail_when: '`KNA1.NAME2` != `ADRC.NAME2`.str.slice(0, 35)'
+    require_populated: true
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Name 2 in the customer master differs from the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.NAME2 is ADRC.NAME2 cut to 35 characters. A difference means one side was changed by a direct table update or a load,
+      so reports, interfaces and the BP conversion, which takes ADRC, show different data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Name 2 differs between reports that read KNA1 and the BP created from ADRC.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: name 2 differs from the central address.'
+  - id: SDCM415
+    field: KNA1.ORT02
+    check_class: cross_field_check
+    fail_when: '`KNA1.ORT02` != `ADRC.CITY2`.str.slice(0, 35)'
+    require_populated: true
+    grain: KNA1
+    severity: low
+    dimension: consistency
+    message: District in the customer master differs from the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.ORT02 is the district ADRC.CITY2. A difference means one side was changed by a direct table update or a load, so
+      reports, interfaces and the BP conversion, which takes ADRC, show different data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: District differs between reports that read KNA1 and the BP created from ADRC.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: district differs from the central address.'
+  - id: SDCM416
+    field: KNA1.PSTL2
+    check_class: cross_field_check
+    fail_when: '`KNA1.PSTL2` != `ADRC.POST_CODE2`'
+    require_populated: true
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: PO box postal code in the customer master differs from the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.PSTL2 is ADRC.POST_CODE2. A difference means one side was changed by a direct table update or a load, so reports,
+      interfaces and the BP conversion, which takes ADRC, show different data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: PO box postal code differs between reports that read KNA1 and the BP created from ADRC.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: po box postal code differs from the central address.'
+  - id: SDCM417
+    field: KNA1.PFACH
+    check_class: cross_field_check
+    fail_when: '`KNA1.PFACH` != `ADRC.PO_BOX`'
+    require_populated: true
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: PO box in the customer master differs from the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.PFACH is ADRC.PO_BOX. A difference means one side was changed by a direct table update or a load, so reports, interfaces
+      and the BP conversion, which takes ADRC, show different data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: PO box differs between reports that read KNA1 and the BP created from ADRC.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: po box differs from the central address.'
+  - id: SDCM418
+    field: KNA1.PFORT
+    check_class: cross_field_check
+    fail_when: '`KNA1.PFORT` != `ADRC.PO_BOX_LOC`.str.slice(0, 35)'
+    require_populated: true
+    grain: KNA1
+    severity: low
+    dimension: consistency
+    message: PO box city in the customer master differs from the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.PFORT is the PO box city ADRC.PO_BOX_LOC. A difference means one side was changed by a direct table update or a load,
+      so reports, interfaces and the BP conversion, which takes ADRC, show different data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: PO box city differs between reports that read KNA1 and the BP created from ADRC.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: po box city differs from the central address.'
+  - id: SDCM419
+    field: KNA1.SPRAS
+    check_class: cross_field_check
+    fail_when: '`KNA1.SPRAS` != `ADRC.LANGU`'
+    require_populated: true
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Language in the customer master differs from the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.SPRAS is the address language ADRC.LANGU, which selects the language of every form. A difference means one side was
+      changed by a direct table update or a load, so reports, interfaces and the BP conversion, which takes ADRC, show different
+      data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Language differs between reports that read KNA1 and the BP created from ADRC.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: language differs from the central address.'
+  - id: SDCM420
+    field: KNA1.LZONE
+    check_class: cross_field_check
+    fail_when: '`KNA1.LZONE` != `ADRC.TRANSPZONE`'
+    require_populated: true
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Transportation zone in the customer master differs from the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.LZONE is ADRC.TRANSPZONE, which route determination reads. A difference means one side was changed by a direct table
+      update or a load, so reports, interfaces and the BP conversion, which takes ADRC, show different data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Transportation zone differs between reports that read KNA1 and the BP created from ADRC.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: transportation zone differs from the central address.'
+  - id: SDCM421
+    field: KNA1.TXJCD
+    check_class: cross_field_check
+    fail_when: '`KNA1.TXJCD` != `ADRC.TAXJURCODE`'
+    require_populated: true
+    grain: KNA1
+    severity: high
+    dimension: consistency
+    message: Tax jurisdiction in the customer master differs from the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.TXJCD is ADRC.TAXJURCODE, which US/CA/BR sales tax reads. A difference means one side was changed by a direct table
+      update or a load, so reports, interfaces and the BP conversion, which takes ADRC, show different data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Tax jurisdiction differs between reports that read KNA1 and the BP created from ADRC.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: tax jurisdiction differs from the central address.'
+  - id: SDCM422
+    field: KNA1.SORTL
+    check_class: cross_field_check
+    fail_when: '`KNA1.SORTL`.str.upper() != `ADRC.SORT1`.str.upper().str.slice(0, 10)'
+    require_populated: true
+    grain: KNA1
+    severity: low
+    dimension: consistency
+    message: Search term in the customer master differs from the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.SORTL is the first search term ADRC.SORT1 cut to 10 characters. A difference means one side was changed by a direct
+      table update or a load, so reports, interfaces and the BP conversion, which takes ADRC, show different data for the same
+      customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Search term differs between reports that read KNA1 and the BP created from ADRC.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: search term differs from the central address.'
+  - id: SDCM423
+    field: KNA1.TELF1
+    check_class: cross_field_check
+    fail_when: '`KNA1.TELF1` != `ADRC.TEL_NUMBER`.str.slice(0, 16)'
+    require_populated: true
+    grain: KNA1
+    severity: low
+    dimension: consistency
+    message: Telephone in the customer master differs from the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.TELF1 is the default telephone ADRC.TEL_NUMBER cut to 16 characters. A difference means one side was changed by a
+      direct table update or a load, so reports, interfaces and the BP conversion, which takes ADRC, show different data for
+      the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Telephone differs between reports that read KNA1 and the BP created from ADRC.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: telephone differs from the central address.'
+  - id: SDCM424
+    field: KNA1.TELFX
+    check_class: cross_field_check
+    fail_when: '`KNA1.TELFX` != `ADRC.FAX_NUMBER`.str.slice(0, 31)'
+    require_populated: true
+    grain: KNA1
+    severity: low
+    dimension: consistency
+    message: Fax in the customer master differs from the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.TELFX is the default fax ADRC.FAX_NUMBER. A difference means one side was changed by a direct table update or a load,
+      so reports, interfaces and the BP conversion, which takes ADRC, show different data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Fax differs between reports that read KNA1 and the BP created from ADRC.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: fax differs from the central address.'
+  - id: SDCM425
+    field: KNA1.STRAS
+    check_class: cross_field_check
+    fail_when: '`ADRC.ADDRNUMBER`.notna() & (`KNA1.STRAS`.isna() != `ADRC.STREET`.isna())'
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Street is filled in only one of the customer master and the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.STRAS is derived from ADRC.STREET; one being empty while the other is filled is the clearest sign the copies drifted
+      apart. A difference means one side was changed by a direct table update or a load, so reports, interfaces and the BP conversion,
+      which takes ADRC, show different data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Street is lost in the BP conversion or missing in KNA1-based reports.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: street filled on one side only.'
+  - id: SDCM426
+    field: KNA1.TELF1
+    check_class: cross_field_check
+    fail_when: '`ADRC.ADDRNUMBER`.notna() & (`KNA1.TELF1`.isna() != `ADRC.TEL_NUMBER`.isna())'
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Telephone is filled in only one of the customer master and the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.TELF1 is derived from ADRC.TEL_NUMBER; one being empty while the other is filled is the clearest sign the copies
+      drifted apart. A difference means one side was changed by a direct table update or a load, so reports, interfaces and
+      the BP conversion, which takes ADRC, show different data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Telephone is lost in the BP conversion or missing in KNA1-based reports.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: telephone filled on one side only.'
+  - id: SDCM427
+    field: KNA1.TELFX
+    check_class: cross_field_check
+    fail_when: '`ADRC.ADDRNUMBER`.notna() & (`KNA1.TELFX`.isna() != `ADRC.FAX_NUMBER`.isna())'
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Fax number is filled in only one of the customer master and the central address
+    why_it_matters: KNA1 keeps copies of the central address (ADRC) for programs that do not read Business Address Services.
+      KNA1.TELFX is derived from ADRC.FAX_NUMBER; one being empty while the other is filled is the clearest sign the copies
+      drifted apart. A difference means one side was changed by a direct table update or a load, so reports, interfaces and
+      the BP conversion, which takes ADRC, show different data for the same customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Fax number is lost in the BP conversion or missing in KNA1-based reports.
+    fix_map:
+      __other__: Re-save the address in XD02 so Business Address Services rewrites the KNA1 copy, or correct ADRC.
+    record_fix_template: 'Customer {KNA1.KUNNR}: fax number filled on one side only.'
+  - id: SDCM428
+    field: KNA1.MCOD1
+    check_class: cross_field_check
+    fail_when: '`KNA1.NAME1`.str.match(''^[ -~]+$'') & (`KNA1.MCOD1` != `KNA1.NAME1`.str.upper().str.slice(0, 25))'
+    require_populated: true
+    grain: KNA1
+    severity: low
+    dimension: consistency
+    message: Match-code name does not match name 1
+    why_it_matters: SAP fills MCOD1 with NAME1 in capitals (25 characters) on every save; the customer search helps and duplicate
+      checks read it. A mismatch means NAME1 was changed by a direct table update, so the customer is not found under its current
+      name.
+    rule_authority: sap_hard_constraint
+    sap_impact: Searches and duplicate checks by name miss the customer.
+    fix_map:
+      __other__: Re-save the customer in XD02 so the match-code fields are rebuilt.
+    record_fix_template: 'Customer {KNA1.KUNNR}: match-code name out of step with name 1.'
+  - id: SDCM429
+    field: KNA1.MCOD3
+    check_class: cross_field_check
+    fail_when: '`KNA1.ORT01`.str.match(''^[ -~]+$'') & (`KNA1.MCOD3` != `KNA1.ORT01`.str.upper().str.slice(0, 25))'
+    require_populated: true
+    grain: KNA1
+    severity: low
+    dimension: consistency
+    message: Match-code city does not match the city
+    why_it_matters: SAP fills MCOD3 with ORT01 in capitals (25 characters) on every save; the search helps by city read it.
+      A mismatch means the city was changed by a direct table update, so the customer is not found by its city.
+    rule_authority: sap_hard_constraint
+    sap_impact: Searches by city miss the customer.
+    fix_map:
+      __other__: Re-save the customer in XD02 so the match-code fields are rebuilt.
+    record_fix_template: 'Customer {KNA1.KUNNR}: match-code city out of step with the city.'
+  - id: SDCM430
+    field: ADRC.DATE_TO
+    check_class: cross_field_check
+    fail_when: '`ADRC.DATE_TO` < `ADRC.DATE_FROM`'
+    require_populated: true
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Central address version ends before it starts
+    why_it_matters: DATE_FROM and DATE_TO bound an address version. An end before the start makes the version never valid; Business
+      Address Services then has no valid address for the customer on any date.
+    rule_authority: sap_hard_constraint
+    sap_impact: Forms and the BP conversion find no valid address for the customer.
+    fix_map:
+      __other__: Correct the address validity in XD02 or reload the address with a valid period.
+    record_fix_template: 'Customer {KNA1.KUNNR}: address version ends before it starts.'
+  - id: SDCM431
+    field: ADRC.DATE_TO
+    check_class: cross_field_check
+    fail_when: '`ADRC.DATE_TO` < @today'
+    require_populated: true
+    applies_when:
+      KNA1.LOEVM:
+        blank: true
+    grain: KNA1
+    severity: medium
+    dimension: timeliness
+    message: Active customer's central address has expired
+    why_it_matters: An address version whose DATE_TO has passed is no longer valid. An active customer whose only address version
+      expired prints no or an outdated address on invoices and delivery notes, and the BP conversion migrates an expired address.
+    rule_authority: sap_hard_constraint
+    sap_impact: Documents print an expired address and the BP conversion carries an invalid address version.
+    fix_map:
+      __other__: Create a current address version or extend the validity in XD02.
+    record_fix_template: 'Customer {KNA1.KUNNR}: central address expired.'
+  - id: SDCM432
+    field: ADRC.DEFLT_COMM
+    check_class: cross_field_check
+    fail_when: ((`ADRC.DEFLT_COMM` == 'TEL') & `ADRC.TEL_NUMBER`.isna()) | ((`ADRC.DEFLT_COMM` == 'FAX') & `ADRC.FAX_NUMBER`.isna())
+      | ((`ADRC.DEFLT_COMM` == 'INT') & `ADR6.SMTP_ADDR`.isna())
+    grain: KNA1
+    severity: medium
+    dimension: completeness
+    message: Standard communication method has no number or address behind it
+    why_it_matters: The standard communication method (TEL, FAX, INT for e-mail) tells output determination how to send documents.
+      If the matching telephone, fax or e-mail address is missing, every output that follows the default fails.
+    rule_authority: best_practice
+    sap_impact: Invoices, order confirmations and dunning letters sent by the default method are never delivered.
+    fix_map:
+      __other__: Enter the missing number or e-mail address, or change the standard communication method in XD02.
+    record_fix_template: 'Customer {KNA1.KUNNR}: standard communication method {ADRC.DEFLT_COMM} has no number or address.'
+  - id: SDCM433
+    field: ADRC.HOUSE_NUM1
+    check_class: cross_field_check
+    fail_when: '`ADRC.STREET`.isna()'
+    applies_when:
+      ADRC.HOUSE_NUM1:
+        populated: true
+    grain: KNA1
+    severity: medium
+    dimension: completeness
+    message: House number entered without a street
+    why_it_matters: 'A house number only locates a building together with its street. Without the street the address is incomplete:
+      carriers cannot deliver and the address check cannot validate it.'
+    rule_authority: best_practice
+    sap_impact: Deliveries and mail to the address fail; address validation rejects it.
+    fix_map:
+      __other__: Enter the street in XD02 > Address, or move the value to the right field.
+    record_fix_template: 'Customer {KNA1.KUNNR}: house number without a street.'
+  - id: SDCM434
+    field: ADRC.STREET
+    check_class: cross_field_check
+    fail_when: '`ADRC.HOUSE_NUM1`.isna() & `ADRC.STREET`.str.slice(-1).str.isdigit()'
+    applies_when:
+      ADRC.COUNTRY:
+      - DE
+      - AT
+      - CH
+      - NL
+      - BE
+      - DK
+      - 'NO'
+      - SE
+      - FI
+      - PL
+      - CZ
+      - IT
+      - ES
+      - PT
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: House number typed into the street field
+    why_it_matters: In continental Europe the house number follows the street name and Business Address Services keeps it in
+      its own field (HOUSE_NUM1) so the address can be validated, sorted for routes and printed in the national order. A number
+      at the end of the street with an empty house-number field defeats the address check and the postal validation services.
+    rule_authority: best_practice
+    sap_impact: Address validation and route sequencing cannot read the house number.
+    fix_map:
+      __other__: Move the house number from the street to the house-number field (XD02 > Address).
+    record_fix_template: 'Customer {KNA1.KUNNR} in {ADRC.COUNTRY}: house number is in the street field.'
+  - id: SDCM435
+    field: KNA1.PFACH
+    check_class: cross_field_check
+    fail_when: '`KNA1.PFACH`.str.upper().str.contains(''BOX|POSTFACH|POSTBUS|APARTADO|CASILLA|CAIXA|BP |P[.]O[.]'')'
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: PO box field repeats the words 'PO Box' instead of only the box number
+    why_it_matters: SAP prints the PO box with the country's own label ('PO Box', 'Postfach', 'Apartado') from the address format.
+      Typing the label into the field prints it twice and stops the postal validation from reading the number.
+    rule_authority: best_practice
+    sap_impact: Address labels print 'PO Box PO Box 123' and postal validation fails.
+    fix_map:
+      __other__: Keep only the box number in the PO box field (XD02 > Address > PO box address).
+    record_fix_template: 'Customer {KNA1.KUNNR}: PO box field contains the PO box label.'
+  - id: SDCM436
+    field: KNA1.PFORT
+    check_class: cross_field_check
+    fail_when: '`KNA1.PFACH`.isna() & `KNA1.PSTL2`.isna()'
+    applies_when:
+      KNA1.PFORT:
+        populated: true
+    grain: KNA1
+    severity: low
+    dimension: completeness
+    message: PO box city entered without a PO box or PO box postal code
+    why_it_matters: The PO box city is printed only as part of a PO box address. Without the box number or its postal code the
+      PO box address is incomplete and mail is returned.
+    rule_authority: best_practice
+    sap_impact: Correspondence sent to the PO box address is undeliverable.
+    fix_map:
+      __other__: Enter the PO box and its postal code or clear the PO box city (XD02 > Address).
+    record_fix_template: 'Customer {KNA1.KUNNR}: PO box city without a PO box.'
+  - id: SDCM437
+    field: KNA1.ORT02
+    check_class: cross_field_check
+    fail_when: '`KNA1.ORT02`.str.upper() == `KNA1.ORT01`.str.upper()'
+    require_populated: true
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: District repeats the city
+    why_it_matters: The district (ORT02) refines the city; repeating the city prints it twice on every label and makes the address
+      check treat the city as a district of itself.
+    rule_authority: best_practice
+    sap_impact: Address labels print the city twice and address validation may reject the address.
+    fix_map:
+      __other__: Clear the district or enter the real district (XD02 > Address).
+    record_fix_template: 'Customer {KNA1.KUNNR}: district repeats the city.'
+  - id: SDCM438
+    field: KNA1.NAME2
+    check_class: cross_field_check
+    fail_when: '`KNA1.NAME2`.str.upper() == `KNA1.NAME1`.str.upper()'
+    require_populated: true
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: Name 2 repeats name 1
+    why_it_matters: Name 2 continues the customer name. Repeating name 1 prints the name twice on every document and makes fuzzy
+      duplicate checks compare a doubled name.
+    rule_authority: best_practice
+    sap_impact: Documents print the name twice; duplicate detection scores are distorted.
+    fix_map:
+      __other__: Clear name 2 or enter the continuation of the name (XD02 > Address).
+    record_fix_template: 'Customer {KNA1.KUNNR}: name 2 repeats name 1.'
+  - id: SDCM439
+    field: KNA1.NAME1
+    check_class: cross_field_check
+    fail_when: '`KNA1.NAME1`.str.islower()'
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: Name is written entirely in lower case
+    why_it_matters: Customer names are printed on invoices, contracts and tax documents exactly as stored. An all-lower-case
+      name was typed carelessly or loaded from an unformatted source and looks wrong on every legal document.
+    rule_authority: best_practice
+    sap_impact: Legal documents print an unformatted customer name.
+    fix_map:
+      __other__: Correct the capitalisation of the name in XD02 > Address.
+    record_fix_template: 'Customer {KNA1.KUNNR}: name is all lower case.'
+  - id: SDCM440
+    field: KNA1.ORT01
+    check_class: cross_field_check
+    fail_when: '`KNA1.ORT01`.str.islower()'
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: City is written entirely in lower case
+    why_it_matters: The city is printed on address labels and compared by the address check and the match code. An all-lower-case
+      city was loaded unformatted and does not match the city file.
+    rule_authority: best_practice
+    sap_impact: Labels print an unformatted city and the city-file check fails.
+    fix_map:
+      __other__: Correct the capitalisation of the city in XD02 > Address.
+    record_fix_template: 'Customer {KNA1.KUNNR}: city is all lower case.'
+  - id: SDCM441
+    field: KNA1.KNURL
+    check_class: regex_check
+    pattern: ^((https?://)?[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?([.][A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*[.][A-Za-z]{2,}(:[0-9]{1,5})?([/?#][^
+      ]*)?)$
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: Website is not a valid web address
+    why_it_matters: KNURL is the customer's homepage, opened from XD03 and passed to CRM and the BP. A value without a domain,
+      with spaces or with a typo in the scheme cannot be opened and is migrated as a broken URI.
+    rule_authority: best_practice
+    sap_impact: The website link fails and is migrated as an invalid URI to the BP.
+    fix_map:
+      __other__: Enter the full web address (www.example.com or https://www.example.com) in XD02 > Control data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: website is not a valid web address.'
+  - id: SDCM442
+    field: KNA1.TELF2
+    check_class: cross_field_check
+    fail_when: '`KNA1.TELF2`.str.replace(''[^0-9]'', '''', regex=True) == `KNA1.TELF1`.str.replace(''[^0-9]'', '''', regex=True)'
+    require_populated: true
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: Second telephone number repeats the first
+    why_it_matters: Telephone 2 is an alternative number. Repeating telephone 1 gives no fallback and doubles the number in
+      the BP conversion, which creates one communication entry per number.
+    rule_authority: best_practice
+    sap_impact: The BP gets the same telephone number twice.
+    fix_map:
+      __other__: Clear telephone 2 or enter the real alternative number (XD02 > Address > Communication).
+    record_fix_template: 'Customer {KNA1.KUNNR}: telephone 2 repeats telephone 1.'
+  - id: SDCM443
+    field: KNA1.TELFX
+    check_class: cross_field_check
+    fail_when: '`KNA1.TELFX`.str.replace(''[^0-9]'', '''', regex=True) == `KNA1.TELF1`.str.replace(''[^0-9]'', '''', regex=True)'
+    require_populated: true
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: Fax number repeats the telephone number
+    why_it_matters: Fax output dials the fax number. When it is the voice telephone number, fax output rings a person's telephone
+      and fails, and the BP gets a fax entry that is not a fax.
+    rule_authority: best_practice
+    sap_impact: Fax output to the customer fails.
+    fix_map:
+      __other__: Enter the real fax number or clear it (XD02 > Address > Communication).
+    record_fix_template: 'Customer {KNA1.KUNNR}: fax number repeats the telephone number.'
+  - id: SDCM444
+    field: KNA1.CIVVE
+    check_class: cross_field_check
+    fail_when: '`KNA1.MILVE` == ''X'''
+    applies_when:
+      KNA1.CIVVE:
+      - X
+    grain: KNA1
+    severity: low
+    dimension: consistency
+    message: Customer is marked for both civilian and military use
+    why_it_matters: The ID for mainly civilian usage (CIVVE) and mainly military usage (MILVE) are alternatives used by export
+      control (SAP GTS / legal control) to classify the end use. Both set at once leaves the end-use classification undetermined,
+      so export licence determination cannot decide.
+    rule_authority: sap_hard_constraint
+    sap_impact: Export control screening cannot classify the end use and may block or wrongly release deliveries.
+    fix_map:
+      __other__: Keep only the correct usage indicator in XD02 > Control data > Export data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: marked for both civilian and military use.'
+  - id: SDCM445
+    field: KNA1.BRAN2
+    check_class: cross_field_check
+    fail_when: (`KNA1.BRAN2` == `KNA1.BRAN1`)
+    require_populated: false
+    applies_when:
+      KNA1.BRAN2:
+        populated: true
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: Industry code 2 repeats an earlier industry code
+    why_it_matters: Industry codes 1-5 classify the customer for statistics, pricing and the BP industry sectors. A repeated
+      code adds no classification and the BP conversion creates the same industry twice in one industry system, which the BP
+      rejects.
+    rule_authority: best_practice
+    sap_impact: The BP industry assignment fails or carries duplicates.
+    fix_map:
+      __other__: Remove the duplicate industry code in XD02 > Marketing.
+    record_fix_template: 'Customer {KNA1.KUNNR}: industry code 2 repeats an earlier one.'
+  - id: SDCM446
+    field: KNA1.BRAN3
+    check_class: cross_field_check
+    fail_when: (`KNA1.BRAN3` == `KNA1.BRAN1`) | (`KNA1.BRAN3` == `KNA1.BRAN2`)
+    require_populated: false
+    applies_when:
+      KNA1.BRAN3:
+        populated: true
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: Industry code 3 repeats an earlier industry code
+    why_it_matters: Industry codes 1-5 classify the customer for statistics, pricing and the BP industry sectors. A repeated
+      code adds no classification and the BP conversion creates the same industry twice in one industry system, which the BP
+      rejects.
+    rule_authority: best_practice
+    sap_impact: The BP industry assignment fails or carries duplicates.
+    fix_map:
+      __other__: Remove the duplicate industry code in XD02 > Marketing.
+    record_fix_template: 'Customer {KNA1.KUNNR}: industry code 3 repeats an earlier one.'
+  - id: SDCM447
+    field: KNA1.BRAN4
+    check_class: cross_field_check
+    fail_when: (`KNA1.BRAN4` == `KNA1.BRAN1`) | (`KNA1.BRAN4` == `KNA1.BRAN2`) | (`KNA1.BRAN4` == `KNA1.BRAN3`)
+    require_populated: false
+    applies_when:
+      KNA1.BRAN4:
+        populated: true
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: Industry code 4 repeats an earlier industry code
+    why_it_matters: Industry codes 1-5 classify the customer for statistics, pricing and the BP industry sectors. A repeated
+      code adds no classification and the BP conversion creates the same industry twice in one industry system, which the BP
+      rejects.
+    rule_authority: best_practice
+    sap_impact: The BP industry assignment fails or carries duplicates.
+    fix_map:
+      __other__: Remove the duplicate industry code in XD02 > Marketing.
+    record_fix_template: 'Customer {KNA1.KUNNR}: industry code 4 repeats an earlier one.'
+  - id: SDCM448
+    field: KNA1.BRAN5
+    check_class: cross_field_check
+    fail_when: (`KNA1.BRAN5` == `KNA1.BRAN1`) | (`KNA1.BRAN5` == `KNA1.BRAN2`) | (`KNA1.BRAN5` == `KNA1.BRAN3`) | (`KNA1.BRAN5`
+      == `KNA1.BRAN4`)
+    require_populated: false
+    applies_when:
+      KNA1.BRAN5:
+        populated: true
+    grain: KNA1
+    severity: low
+    dimension: validity
+    message: Industry code 5 repeats an earlier industry code
+    why_it_matters: Industry codes 1-5 classify the customer for statistics, pricing and the BP industry sectors. A repeated
+      code adds no classification and the BP conversion creates the same industry twice in one industry system, which the BP
+      rejects.
+    rule_authority: best_practice
+    sap_impact: The BP industry assignment fails or carries duplicates.
+    fix_map:
+      __other__: Remove the duplicate industry code in XD02 > Marketing.
+    record_fix_template: 'Customer {KNA1.KUNNR}: industry code 5 repeats an earlier one.'
+  - id: SDCM449
+    field: KNVI.KUNNR
+    check_class: exists_check
+    fields:
+    - KNVI.KUNNR
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    grain: KNVI
+    severity: medium
+    dimension: consistency
+    message: Tax classification belongs to a customer that does not exist
+    why_it_matters: KNVI rows hang off the customer master. A row without its customer is an orphan from an incomplete deletion
+      or load; extracts and the BP tax classification migration still read it.
+    rule_authority: sap_hard_constraint
+    sap_impact: The orphan is migrated or reported for a customer that does not exist.
+    fix_map:
+      __other__: Delete the orphan KNVI rows or create the missing customer.
+    record_fix_template: 'Customer {KNVI.KUNNR}, country {KNVI.ALAND}: customer does not exist.'
+  - id: SDCM450
+    field: KNVI.ALAND
+    check_class: exists_check
+    fields:
+    - KNVI.ALAND
+    target_table: T005
+    target_fields:
+    - LAND1
+    grain: KNVI
+    severity: medium
+    dimension: validity
+    message: Tax classification is maintained for a country that is not defined
+    why_it_matters: KNVI.ALAND is the departure country whose tax categories the classification feeds. An undefined country
+      never matches a delivering plant's country, so pricing never reads the classification.
+    rule_authority: sap_hard_constraint
+    sap_impact: Output tax is determined without the customer's tax classification.
+    fix_map:
+      __other__: Correct the country of the tax classification in VD02 > Billing > Taxes.
+    record_fix_template: 'Customer {KNVI.KUNNR}: tax classification country {KNVI.ALAND} is not defined.'
+  - id: SDCM451
+    field: KNVK.NAMEV
+    check_class: null_check
+    applies_when:
+      KNVK.LOEVM:
+        blank: true
+    grain: KNVK
+    severity: low
+    dimension: completeness
+    message: Contact person has no first name
+    why_it_matters: The CVI converts each contact person into a BP of category person with a relationship to the customer. Without
+      a first name salutations print only the surname and duplicate checks on persons are weaker.
+    rule_authority: best_practice
+    sap_impact: Letters address the contact by surname only; person duplicates are harder to detect.
+    fix_map:
+      __other__: Enter the first name in XD02 > Contact persons.
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: no first name.'
+  - id: SDCM452
+    field: KNVK.GBDAT
+    check_class: cross_field_check
+    fail_when: (`KNVK.GBDAT`.dt.year < 1900) | (`KNVK.GBDAT` > @today)
+    grain: KNVK
+    severity: low
+    dimension: validity
+    message: Contact person's date of birth is before 1900 or in the future
+    why_it_matters: A birth date in the future or before 1900 is a load default or typing error. The BP conversion copies it
+      to the person's birth date, where age-based checks and GDPR retention logic read it.
+    rule_authority: best_practice
+    sap_impact: The BP person carries an impossible birth date.
+    fix_map:
+      __other__: Correct or clear the date of birth in XD02 > Contact persons.
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: date of birth is impossible.'
+  - id: SDCM453
+    field: KNVK.MOBI1
+    check_class: cross_field_check
+    fail_when: (`KNVK.MOBI1` < `KNVK.MOAB1`) | (`KNVK.MOBI2` < `KNVK.MOAB2`) | (`KNVK.DIBI1` < `KNVK.DIAB1`) | (`KNVK.DIBI2`
+      < `KNVK.DIAB2`) | (`KNVK.MIBI1` < `KNVK.MIAB1`) | (`KNVK.MIBI2` < `KNVK.MIAB2`) | (`KNVK.DOBI1` < `KNVK.DOAB1`) | (`KNVK.DOBI2`
+      < `KNVK.DOAB2`) | (`KNVK.FRBI1` < `KNVK.FRAB1`) | (`KNVK.FRBI2` < `KNVK.FRAB2`) | (`KNVK.SABI1` < `KNVK.SAAB1`) | (`KNVK.SABI2`
+      < `KNVK.SAAB2`) | (`KNVK.SOBI1` < `KNVK.SOAB1`) | (`KNVK.SOBI2` < `KNVK.SOAB2`)
+    grain: KNVK
+    severity: low
+    dimension: consistency
+    message: Contact person's visiting hours end before they start
+    why_it_matters: Visiting hours are pairs of from (..AB) and until (..BI) times per weekday, used by sales reps and the call-planning
+      functions. An until time before the from time is a typing error and makes the window impossible.
+    rule_authority: best_practice
+    sap_impact: Visit and call planning uses an impossible time window.
+    fix_map:
+      __other__: Correct the visiting hours in XD02 > Contact persons > Visiting hours.
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: visiting hours end before they start.'
+  - id: SDCM454
+    field: KNVK.UEPAR
+    check_class: cross_field_check
+    fail_when: '`KNVK.UEPAR` == `KNVK.PARNR`'
+    require_populated: true
+    grain: KNVK
+    severity: low
+    dimension: consistency
+    message: Contact person is its own higher-level contact
+    why_it_matters: UEPAR links a contact to their superior contact person. Pointing at itself creates a loop in the contact
+      hierarchy that hierarchy reports and the CVI relationship conversion cannot resolve.
+    rule_authority: sap_hard_constraint
+    sap_impact: Contact hierarchy reports loop and the BP relationship conversion fails for the contact.
+    fix_map:
+      __other__: Clear or correct the higher-level partner in XD02 > Contact persons.
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: higher-level contact is itself.'
+  - id: SDCM455
+    field: KNVK.UEPAR
+    check_class: exists_check
+    fields:
+    - KNVK.UEPAR
+    target_table: KNVK
+    target_fields:
+    - PARNR
+    applies_when:
+      KNVK.UEPAR:
+        populated: true
+        not_in:
+        - '0000000000'
+    grain: KNVK
+    severity: low
+    dimension: consistency
+    message: Higher-level contact person does not exist
+    why_it_matters: UEPAR must point to another contact person. A number with no KNVK row was deleted or never loaded, so the
+      contact hierarchy is broken and the relationship cannot be migrated.
+    rule_authority: best_practice
+    sap_impact: The contact hierarchy is broken and the relationship is lost in the BP conversion.
+    fix_map:
+      __other__: Correct or clear the higher-level partner in XD02 > Contact persons.
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: higher-level contact {KNVK.UEPAR} does not exist.'
+  - id: SDCM456
+    field: KNVK.KUNNR
+    check_class: cross_field_check
+    fail_when: '`KNVK.KUNNR`.isna() & `KNVK.LIFNR`.isna()'
+    grain: KNVK
+    severity: medium
+    dimension: completeness
+    message: Contact person belongs to neither a customer nor a vendor
+    why_it_matters: A KNVK row is always a contact of a customer (KUNNR) or a vendor (LIFNR). A row with neither is an orphan
+      from an incomplete deletion or load; no transaction shows it, but the CVI contact person conversion fails on it.
+    rule_authority: sap_hard_constraint
+    sap_impact: The CVI contact person conversion stops on an orphan contact.
+    fix_map:
+      __other__: Delete the orphan contact person rows (KNVK) after checking that they are not needed.
+    record_fix_template: 'Contact person {KNVK.PARNR}: assigned to neither a customer nor a vendor.'
+  - id: SDCM457
+    field: KNVK.NAME1
+    check_class: uniqueness_check
+    fields:
+    - KNVK.KUNNR
+    - KNVK.NAMEV
+    - KNVK.NAME1
+    normalize: name
+    applies_when:
+      KNVK.LOEVM:
+        blank: true
+      KNVK.KUNNR:
+        populated: true
+    grain: KNVK
+    severity: low
+    dimension: uniqueness
+    message: Same contact person entered twice for one customer
+    why_it_matters: Each contact person becomes its own BP person and relationship in the CVI conversion. The same first and
+      last name twice on one customer creates duplicate persons, and their communication data and roles diverge.
+    rule_authority: best_practice
+    sap_impact: Duplicate BP persons and relationships are created for the customer.
+    fix_map:
+      __other__: Merge the duplicate contact persons and flag the extra one for deletion (XD02 > Contact persons).
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: duplicate contact person.'
+  - id: SDCM458
+    field: KNVK.NAME1
+    check_class: cross_field_check
+    fail_when: '`KNVK.NAME1`.str.contains(''[0-9]'')'
+    grain: KNVK
+    severity: low
+    dimension: validity
+    message: Contact person's last name contains digits
+    why_it_matters: A person's surname does not contain digits. Digits mean a telephone number, extension or reference was typed
+      into the name, which then becomes the BP person's last name.
+    rule_authority: best_practice
+    sap_impact: The BP person gets a last name with a number in it.
+    fix_map:
+      __other__: Move the number to the communication fields and correct the name (XD02 > Contact persons).
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: last name contains digits.'
+  - id: SDCM459
+    field: KNVK.NAME1
+    check_class: cross_field_check
+    fail_when: '`KNVK.NAME1`.str.upper() == `KNA1.NAME1`.str.upper()'
+    require_populated: true
+    grain: KNVK
+    severity: low
+    dimension: validity
+    message: Contact person's last name is the customer's company name
+    why_it_matters: A contact person is a named individual. When the 'last name' is the customer's own name, a generic company
+      contact was created instead of a person, and the CVI turns it into a BP person named like the company.
+    rule_authority: best_practice
+    sap_impact: The BP conversion creates a person named after the company.
+    fix_map:
+      __other__: Replace the contact with the real person, or keep company communication data on the customer address.
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: last name is the company name.'
+  - id: SDCM460
+    field: KNVK.ERDAT
+    check_class: cross_field_check
+    fail_when: '`KNVK.ERDAT` < `KNA1.ERDAT`'
+    require_populated: true
+    grain: KNVK
+    severity: low
+    dimension: consistency
+    message: Contact person was created before its customer
+    why_it_matters: A contact person can only be created on an existing customer. An earlier creation date means one of the
+      two dates was loaded wrongly, so audit trails and data-retention calculations are unreliable.
+    rule_authority: best_practice
+    sap_impact: Creation-date based retention and audit reports are wrong for the contact.
+    fix_map:
+      __other__: Check the legacy load and correct the creation dates if the source holds the real ones.
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: created before the customer.'
