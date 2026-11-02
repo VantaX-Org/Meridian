@@ -17,7 +17,7 @@ from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -76,6 +76,18 @@ class RequestOut(BaseModel):
     submitted_at: Optional[datetime] = None
     decided_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    due_at: Optional[datetime] = Field(None, description="when the waiting approval step is due")
+    waiting_step: Optional[str] = None
+    age_hours: Optional[float] = Field(None, description="open requests: hours since submitted (draft: since created)")
+    overdue: bool = False
+
+    @model_validator(mode="after")
+    def _ageing(self) -> "RequestOut":
+        if self.status in crs.OPEN:
+            now = datetime.now(timezone.utc)
+            self.age_hours = round((now - (self.submitted_at or self.created_at)).total_seconds() / 3600, 1)
+            self.overdue = bool(self.due_at and self.status == "in_approval" and self.due_at < now)
+        return self
 
 
 class RequestList(BaseModel):
@@ -194,8 +206,11 @@ async def create_request(body: RequestCreate, request: Request, db: AsyncSession
                          tenant: Tenant = Depends(get_tenant)) -> RequestOut:
     """A draft request. The proposal is checked for fields SAP has; the rules run at validate and submit."""
     uid = _uid(request)
-    _problems(body.object, body.kind, body.payload, body.object_key)
     await _rls(db, tenant)
+    payload, defaulted = crs.normalise(body.payload), []
+    if body.kind == "create":
+        payload, defaulted = await db.run_sync(lambda s: crs.apply_defaults(s, str(tenant.id), body.object, payload))
+    _problems(body.object, body.kind, payload, body.object_key)
     await _system_ok(db, tenant, body.target_system_id)
     cid = (await db.execute(text(
         "INSERT INTO change_requests (tenant_id, kind, object, target_system_id, object_key, title, payload, "
@@ -203,8 +218,10 @@ async def create_request(body: RequestCreate, request: Request, db: AsyncSession
         "CAST(:u AS uuid), :l) RETURNING id::text"),
         {"t": str(tenant.id), "k": body.kind, "o": body.object,
          "s": str(body.target_system_id) if body.target_system_id else None, "key": body.object_key,
-         "title": body.title, "p": json.dumps(crs.normalise(body.payload), default=str), "u": uid,
+         "title": body.title, "p": json.dumps(payload, default=str), "u": uid,
          "l": current_user_label()})).scalar()
+    await db.run_sync(lambda s: crs.record_changes(s, str(tenant.id), cid, {}, payload, uid, current_user_label(),
+                                                   defaulted))
     await db.run_sync(lambda s: workflow.event(s, str(tenant.id), crs.KIND, cid, "drafted", to_status="draft",
                                                actor_id=uid, actor_label=current_user_label()))
     cr = await _load(db, tenant, uuid.UUID(cid))
@@ -222,6 +239,9 @@ async def update_request(request_id: uuid.UUID, body: RequestUpdate, request: Re
     if cr["status"] not in crs.EDITABLE:
         raise HTTPException(status_code=409, detail=f"The request is {cr['status']}; only a draft is edited.")
     payload = crs.normalise(body.payload) if body.payload is not None else cr["payload"]
+    defaulted: list[str] = []
+    if cr["kind"] == "create" and body.payload is not None:
+        payload, defaulted = await db.run_sync(lambda s: crs.apply_defaults(s, str(tenant.id), cr["object"], payload))
     key = body.object_key if body.object_key is not None else cr["object_key"]
     _problems(cr["object"], cr["kind"], payload, key)
     await _system_ok(db, tenant, body.target_system_id)
@@ -232,6 +252,8 @@ async def update_request(request_id: uuid.UUID, body: RequestUpdate, request: Re
         {"p": json.dumps(payload, default=str), "k": key, "ti": body.title,
          "s": str(body.target_system_id) if body.target_system_id else None, "i": str(request_id),
          "t": str(tenant.id)})
+    await db.run_sync(lambda s: crs.record_changes(s, str(tenant.id), cr["id"], cr["payload"], payload, uid,
+                                                   current_user_label(), defaulted))
     await db.run_sync(lambda s: workflow.event(s, str(tenant.id), crs.KIND, cr["id"], "edited", actor_id=uid,
                                                actor_label=current_user_label(),
                                                detail={"fields": sorted(payload)}))
@@ -427,6 +449,64 @@ async def add_attachment(request_id: uuid.UUID, body: AttachmentBody, request: R
                                                detail={"attachment_id": aid, "filename": body.filename}))
     await db.commit()
     return {"id": aid, "request_id": cr["id"], "filename": body.filename}
+
+
+class DefaultBody(BaseModel):
+    object: Obj
+    field: str = Field(min_length=3, max_length=60, description="TABLE.FIELD")
+    value: str = Field(min_length=1, max_length=500)
+
+
+@router.get("/defaults", dependencies=[Depends(require_permission("mdm.read"))])
+async def list_defaults(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
+    """The values filled into an empty field of a new create request."""
+    await _rls(db, tenant)
+    rows = (await db.execute(text("SELECT id::text AS id, object, field, value, updated_at FROM request_defaults "
+                                  "WHERE tenant_id = :t ORDER BY object, field"), {"t": str(tenant.id)})).mappings()
+    return {"items": [dict(r) for r in rows]}
+
+
+@router.put("/defaults", dependencies=[Depends(require_permission("manage_workflows"))])
+async def put_default(body: DefaultBody, request: Request, db: AsyncSession = Depends(get_db),
+                      tenant: Tenant = Depends(get_tenant)) -> dict:
+    """Set the default of a field (an existing one is replaced). The field and value must pass the SAP field check."""
+    field = body.field.strip().upper()
+    problems = crs.check_payload(body.object, "create", {field: body.value}, None)
+    if problems:
+        raise HTTPException(status_code=422, detail={"detail": "The default is not valid.", "problems": problems})
+    await _rls(db, tenant)
+    row = (await db.execute(text(
+        "INSERT INTO request_defaults (tenant_id, object, field, value, updated_by) VALUES (:t, :o, :f, :v, "
+        "CAST(:u AS uuid)) ON CONFLICT (tenant_id, object, field) DO UPDATE SET value = EXCLUDED.value, "
+        "updated_by = EXCLUDED.updated_by, updated_at = now() "
+        "RETURNING id::text AS id, object, field, value, updated_at"),
+        {"t": str(tenant.id), "o": body.object, "f": field, "v": body.value, "u": current_user_id(request)})).mappings().one()
+    await db.commit()
+    return dict(row)
+
+
+@router.delete("/defaults/{default_id}", dependencies=[Depends(require_permission("manage_workflows"))])
+async def delete_default(default_id: uuid.UUID, db: AsyncSession = Depends(get_db),
+                         tenant: Tenant = Depends(get_tenant)) -> dict:
+    await _rls(db, tenant)
+    res = await db.execute(text("DELETE FROM request_defaults WHERE id = :i AND tenant_id = :t"),
+                           {"i": str(default_id), "t": str(tenant.id)})
+    if not res.rowcount:
+        raise HTTPException(status_code=404, detail="Default not found.")
+    await db.commit()
+    return {"deleted": str(default_id)}
+
+
+@router.get("/{request_id}/field-history", dependencies=[Depends(require_permission("mdm.read"))])
+async def field_history(request_id: uuid.UUID, db: AsyncSession = Depends(get_db),
+                        tenant: Tenant = Depends(get_tenant)) -> dict:
+    """Every field of the request that was set, changed, removed or defaulted: old and new value, who, when."""
+    await _load(db, tenant, request_id)
+    rows = (await db.execute(text(
+        "SELECT id::text AS id, field, action, old_value, new_value, actor_label, created_at "
+        "FROM change_request_field_changes WHERE tenant_id = :t AND request_id = :r ORDER BY created_at, field"),
+        {"t": str(tenant.id), "r": str(request_id)})).mappings()
+    return {"items": [dict(r) for r in rows]}
 
 
 @router.get("", response_model=RequestList)

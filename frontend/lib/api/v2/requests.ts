@@ -34,6 +34,13 @@ export interface ChangeRequest {
   submitted_at: string | null;
   decided_at: string | null;
   completed_at: string | null;
+  /** When the waiting approval step is due; null when no step waits or the step has no SLA. */
+  due_at: string | null;
+  waiting_step: string | null;
+  /** Hours since submission (since creation for a draft); null once the request is closed. */
+  age_hours: number | null;
+  /** True while in approval and past due_at. */
+  overdue: boolean;
 }
 
 export interface PrecheckFailure { check_id: string; severity: string; dimension: string | null; field: string | null; message: string }
@@ -70,6 +77,12 @@ export interface RequestDetail { request: ChangeRequest; workflow: WorkflowInsta
 export interface RequestFilter { view: RequestView; status?: string; object?: string; kind?: string }
 export interface RequestDraft { kind: RequestKind; object: RequestObject; target_system_id?: string | null; object_key?: string | null; title?: string | null; payload: Record<string, string> }
 
+/** One field of a request that was set, changed, removed or defaulted (GET /change-requests/{id}/field-history). */
+export type FieldAction = "set" | "changed" | "removed" | "defaulted";
+export interface FieldChange { id: string; field: string; action: FieldAction; old_value: string | null; new_value: string | null; actor_label: string | null; created_at: string }
+/** A value filled into an empty field of a new create request (GET /change-requests/defaults). */
+export interface EntryDefault { id: string; object: RequestObject; field: string; value: string; updated_at: string }
+
 const enc = encodeURIComponent;
 const cr = (id: string) => `/change-requests/${enc(id)}`;
 
@@ -83,6 +96,10 @@ export const cancelRequest = (id: string, reason?: string) => v2Send<ChangeReque
 export const retryRequest = (id: string, checked_in_sap: boolean) => v2Send<ChangeRequest>("POST", `${cr(id)}/retry`, { checked_in_sap });
 export const commentRequest = (id: string, body: string) => v2Send<RequestComment>("POST", `${cr(id)}/comments`, { body });
 export const attachToRequest = (id: string, filename: string, content_type: string | null, size_bytes: number) => v2Send<RequestAttachment>("POST", `${cr(id)}/attachments`, { filename, content_type, size_bytes });
+export const getFieldHistory = (id: string) => v2Get<{ items: FieldChange[] }>(`${cr(id)}/field-history`);
+export const listDefaults = () => v2Get<{ items: EntryDefault[] }>("/change-requests/defaults");
+export const putDefault = (object: RequestObject, field: string, value: string) => v2Send<EntryDefault>("PUT", "/change-requests/defaults", { object, field, value });
+export const deleteDefault = (id: string) => v2Send<{ deleted: string }>("DELETE", `/change-requests/defaults/${enc(id)}`);
 export const exportRequest = (id: string) => v2Download(`${cr(id)}/export`, undefined, `change_request_${id}.json`);
 
 export interface WorkflowDefinition {

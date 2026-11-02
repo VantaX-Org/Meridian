@@ -3,14 +3,15 @@
  * every other path answers NONE_REQ and falls through.
  *
  *   /change-requests (GET, POST), /change-requests/{id} (GET), /validate, /submit, /decide, /cancel, /retry,
- *   /comments, /attachments, GET /change-requests/{id}/export
+ *   /comments, /attachments, GET /change-requests/{id}/export, GET /change-requests/{id}/field-history,
+ *   GET and PUT /change-requests/defaults, DELETE /change-requests/defaults/{id}
  *   GET /workflows/definitions, /workflows/facts, /workflows/tasks; POST /workflows/definitions, /workflows/definitions/validate,
  *   /workflows/definitions/{id}/versions, /activate, /workflows/tasks/{id}/decide
  *
  * The demo user (u-me) requested CR-1002 to CR-1004; R. Govender's CR-1001 waits for the demo user's approval, and so
  * does the first step of batch B-241. Writes change the state until the fixture is reset.
  */
-import type { ChangeRequest, DryRun, Facts, Precheck, RequestDetail, TaskRow, WorkflowDefinition, WorkflowEvent } from "../requests";
+import type { ChangeRequest, DryRun, EntryDefault, Facts, FieldChange, Precheck, RequestDetail, TaskRow, WorkflowDefinition, WorkflowEvent } from "../requests";
 import * as wf from "./work-fixture";
 
 export const NONE_REQ = Symbol("no-requests-fixture");
@@ -43,7 +44,7 @@ const precheck = (failures: Precheck["failures"], duplicates: Precheck["duplicat
 
 const req = (r: Partial<ChangeRequest> & Pick<ChangeRequest, "id" | "kind" | "object" | "status" | "title" | "payload">): ChangeRequest => ({
   target_system_id: ECC, object_key: null, requester_id: ME, requester_label: ME_LABEL, workflow_instance_id: null, precheck: null, validated_at: null, sap_key: null, sap_result: null,
-  sap_phase: null, sap_attempts: 0, delivery: null, has_export: false, reason: null, created_at: "2026-10-18T08:00:00Z", updated_at: "2026-10-18T08:00:00Z", submitted_at: null, decided_at: null, completed_at: null, ...r,
+  sap_phase: null, sap_attempts: 0, delivery: null, has_export: false, reason: null, created_at: "2026-10-18T08:00:00Z", updated_at: "2026-10-18T08:00:00Z", submitted_at: null, decided_at: null, completed_at: null, due_at: null, waiting_step: null, age_hours: null, overdue: false, ...r,
 });
 
 const ev = (id: string, action: string, actor: string | null, at: string, to: string | null = null, detail: Record<string, unknown> | null = null): WorkflowEvent => ({ id, action, from_status: null, to_status: to, actor_label: actor, detail, created_at: at });
@@ -52,6 +53,8 @@ interface State {
   defs: WorkflowDefinition[];
   details: RequestDetail[];
   tasks: TaskRow[];
+  defaults: EntryDefault[];
+  fields: Record<string, FieldChange[]>;
   seq: number;
 }
 
@@ -61,6 +64,7 @@ function initial(): State {
     payload: { "MARA.MTART": "ERSA", "MARA.MBRSH": "M", "MARA.MEINS": "EA", "MAKT.MAKTX": "Hydraulic seal kit 80 mm", "MAKT.SPRAS": "EN", "MARC.WERKS": "1000" },
     workflow_instance_id: "WI-1001", precheck: precheck([{ check_id: "MM022", severity: "high", dimension: "completeness", field: "MARA.MATKL", message: "Material group is blank." }], [{ master_record_id: "MR-88120", domain: "material", sap_object_key: "MATNR=100-4471", score: 0.91, band: "likely", attributes: [{ field: "MAKT.MAKTX", similarity: 0.93, value: "Hydraulic seal kit 80mm" }] }]),
     validated_at: "2026-10-18T09:00:00Z", submitted_at: "2026-10-18T09:05:00Z", created_at: "2026-10-18T08:40:00Z", updated_at: "2026-10-18T09:05:00Z",
+    due_at: "2026-10-22T09:05:00Z", waiting_step: "Four-eyes approval", age_hours: 46.9,
   });
   const cr2 = req({
     id: "CR-1002", kind: "change", object: "customer", status: "approved", title: "Payment terms for Karoo Mining", object_key: "KUNNR=0000204411", payload: { "KNB1.ZTERM": "NT30" },
@@ -80,8 +84,18 @@ function initial(): State {
   });
   const t1 = task("T-1001", "WI-1001", "change_request", "CR-1001", cr1.title ?? "", "R. Govender", "2026-10-18T09:05:00Z");
   const decided = (inst: string, who: string, at: string) => ({ ...t1, id: `${inst}-0`, instance_id: inst, status: "approved", decided_by_label: who, decision: "approve", comment: null, decided_at: at });
+  const fc = (id: string, field: string, action: FieldChange["action"], old_value: string | null, new_value: string | null, who: string | null, at: string): FieldChange => ({ id, field, action, old_value, new_value, actor_label: who, created_at: at });
   return {
     seq: 1005,
+    defaults: [{ id: "D-1", object: "material", field: "MARA.MEINS", value: "EA", updated_at: "2026-10-01T09:00:00Z" }],
+    fields: {
+      "CR-1001": [
+        fc("F-1", "MARA.MTART", "set", null, "ERSA", "R. Govender", "2026-10-18T08:40:00Z"),
+        fc("F-2", "MARA.MEINS", "defaulted", null, "EA", "R. Govender", "2026-10-18T08:40:00Z"),
+        fc("F-3", "MAKT.MAKTX", "set", null, "Hydraulic seal kit 80mm", "R. Govender", "2026-10-18T08:40:00Z"),
+        fc("F-4", "MAKT.MAKTX", "changed", "Hydraulic seal kit 80mm", "Hydraulic seal kit 80 mm", "R. Govender", "2026-10-18T08:55:00Z"),
+      ],
+    },
     defs: [
       def("WD-1", "default-fix-batch", "Fix batch approval", "fix_batch", 1, true, four, "2026-09-01T00:00:00Z"),
       def("WD-2", "default-change-request", "Change request approval", "change_request", 1, false, four, "2026-09-01T00:00:00Z"),
@@ -138,6 +152,13 @@ const listed = (params: Record<string, unknown>): ChangeRequest[] => {
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 };
 
+/** The fields of a new create request that the tenant defaults fill; those the requester left empty. */
+function withDefaults(object: string, kind: unknown, payload: Record<string, string>): { payload: Record<string, string>; filled: string[] } {
+  if (kind !== "create") return { payload, filled: [] };
+  const filled = state.defaults.filter((d) => d.object === object && !(payload[d.field] ?? "").trim());
+  return { payload: { ...payload, ...Object.fromEntries(filled.map((d) => [d.field, d.value])) }, filled: filled.map((d) => d.field) };
+}
+
 function facts(): Facts {
   return {
     facts: { object_kind: "string", kind: "string", object: "string", modules: "list", fields: "list", policy_classes: "list", value_at_risk: "number", records: "number", target_system_id: "string", rule_failures: "number", critical_failures: "number", duplicates: "number" },
@@ -170,6 +191,12 @@ function dryRun(body: { definition?: { steps?: { name?: string; quorum?: string;
 
 export function requestsRead(path: string, params: Record<string, unknown>): unknown {
   if (path === "/change-requests") return { items: clone(listed(params)) };
+  if (path === "/change-requests/defaults") return { items: clone(state.defaults) };
+  const hist = /^\/change-requests\/([^/]+)\/field-history$/.exec(path);
+  if (hist) {
+    const id = find(decodeURIComponent(hist[1])).request.id;
+    return { items: clone(state.fields[id] ?? []) };
+  }
   const one = /^\/change-requests\/([^/]+)$/.exec(path);
   if (one) return clone(find(decodeURIComponent(one[1])));
   const inst = /^\/workflows\/instances\/([^/]+)$/.exec(path);
@@ -200,19 +227,35 @@ function decideRequest(d: RequestDetail, decision: string, comment: string | und
   if (!task) fail(403, "No step of this request waits for you.");
   state.tasks = state.tasks.filter((t) => t !== task);
   const approved = decision === "approve";
-  d.request = { ...d.request, status: approved ? "approved" : "rejected", has_export: approved, reason: approved ? "Live write-back is off; the load file holds the request." : (comment ?? null), decided_at: NOW, updated_at: NOW };
+  d.request = { ...d.request, status: approved ? "approved" : "rejected", has_export: approved, reason: approved ? "Live write-back is off; the load file holds the request." : (comment ?? null), decided_at: NOW, updated_at: NOW, due_at: null, waiting_step: null, age_hours: null, overdue: false };
   if (d.workflow) d.workflow = { ...d.workflow, status: approved ? "approved" : "rejected", completed_at: NOW, tasks: d.workflow.tasks.map((t) => (t.id === task.id ? { ...t, status: approved ? "approved" : "rejected", decided_by_label: ME_LABEL, decision, comment: comment ?? null, decided_at: NOW } : t)) };
   d.history = [...d.history, ev(`H-${state.seq++}`, approved ? "approved" : "rejected", ME_LABEL, NOW, approved ? "approved" : "rejected", comment ? { comment } : null)];
   return clone(d);
 }
 
 export function requestsWrite(method: string, path: string, body: unknown): unknown {
-  if (method !== "POST") return NONE_REQ;
   const b = (body ?? {}) as Record<string, unknown>;
+  if (method === "PUT" && path === "/change-requests/defaults") {
+    const field = String(b.field ?? "").trim().toUpperCase();
+    if (!/^[A-Z0-9_]+\.[A-Z0-9_]+$/.test(field) || !String(b.value ?? "").trim()) fail(422, "The default is not valid.");
+    const row: EntryDefault = { id: state.defaults.find((d) => d.object === b.object && d.field === field)?.id ?? `D-${state.seq++}`, object: b.object as EntryDefault["object"], field, value: String(b.value), updated_at: NOW };
+    state.defaults = [...state.defaults.filter((d) => d.id !== row.id), row];
+    return clone(row);
+  }
+  const del = /^\/change-requests\/defaults\/([^/]+)$/.exec(path);
+  if (method === "DELETE" && del) {
+    const id = decodeURIComponent(del[1]);
+    if (!state.defaults.some((d) => d.id === id)) fail(404, "Default not found.");
+    state.defaults = state.defaults.filter((d) => d.id !== id);
+    return { deleted: id };
+  }
+  if (method !== "POST") return NONE_REQ;
   if (path === "/change-requests") {
     const id = `CR-${state.seq++}`;
-    const payload = (b.payload ?? {}) as Record<string, string>;
-    if (Object.keys(payload).length === 0) fail(422, "Propose at least one field.");
+    const given = (b.payload ?? {}) as Record<string, string>;
+    if (Object.keys(given).length === 0) fail(422, "Propose at least one field.");
+    const { payload, filled } = withDefaults(String(b.object), b.kind, given);
+    state.fields[id] = Object.entries(payload).map(([field, v], i) => ({ id: `F-${state.seq++}-${i}`, field, action: filled.includes(field) ? "defaulted" : "set", old_value: null, new_value: v, actor_label: ME_LABEL, created_at: NOW }));
     if (b.kind === "change" && !String(b.object_key ?? "").trim()) fail(422, "A change names the record it changes (object_key).");
     const r = req({ id, kind: b.kind as ChangeRequest["kind"], object: b.object as ChangeRequest["object"], status: "draft", title: (b.title as string) || null, payload, object_key: (b.object_key as string) || null, target_system_id: (b.target_system_id as string) || ECC, created_at: NOW, updated_at: NOW });
     state.details = [{ request: r, workflow: null, history: [], comments: [], attachments: [] }, ...state.details];
@@ -276,7 +319,7 @@ export function requestsWrite(method: string, path: string, body: unknown): unkn
       if (r.status !== "draft") fail(409, `The request is ${r.status}.`);
       if (r.requester_id !== ME) fail(403, "Only the requester submits it.");
       const inst = `WI-${r.id}`;
-      d.request = { ...r, status: "in_approval", workflow_instance_id: inst, submitted_at: NOW, updated_at: NOW };
+      d.request = { ...r, status: "in_approval", workflow_instance_id: inst, submitted_at: NOW, updated_at: NOW, due_at: "2026-10-22T08:00:00Z", waiting_step: "Four-eyes approval", age_hours: 0, overdue: false };
       d.workflow = { id: inst, definition_key: "default-change-request", definition_version: 2, status: "in_progress", started_at: NOW, completed_at: null, tasks: [{ id: `T-${r.id}`, instance_id: inst, step_index: 0, step_name: "Four-eyes approval", status: "pending", quorum: "any", assigned_users: ["u-rg"], assignee_note: "Anyone holding approve", due_at: "2026-10-22T08:00:00Z", escalation_level: 0, activated_at: NOW }] };
       d.history = [ev(`H-${state.seq++}`, "started", ME_LABEL, NOW, "in_progress")];
       return clone(d);
@@ -286,7 +329,7 @@ export function requestsWrite(method: string, path: string, body: unknown): unkn
     case "cancel": {
       if (["created", "creating", "cancelled", "rejected"].includes(r.status)) fail(409, `The request is ${r.status}.`);
       state.tasks = state.tasks.filter((t) => t.object_id !== r.id);
-      d.request = { ...r, status: "cancelled", reason: (b.reason as string) || null, updated_at: NOW };
+      d.request = { ...r, status: "cancelled", reason: (b.reason as string) || null, updated_at: NOW, due_at: null, waiting_step: null, age_hours: null, overdue: false };
       d.history = [...d.history, ev(`H-${state.seq++}`, "cancelled", ME_LABEL, NOW, "cancelled")];
       return clone(d.request);
     }

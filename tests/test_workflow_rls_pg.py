@@ -16,7 +16,7 @@ from tests import workflow_seed as seed
 pytestmark = pytest.mark.skipif(not os.getenv("MERIDIAN_TEST_DB_URL"), reason="requires MERIDIAN_TEST_DB_URL")
 
 TABLES = ("workflow_definitions", "workflow_instances", "workflow_tasks", "workflow_events", "change_requests",
-          "change_request_attachments", "change_request_comments")
+          "change_request_attachments", "change_request_comments", "change_request_field_changes", "request_defaults")
 ROLE, PW = "meridian_wf_rls_app", "wf_rls_app_pw"
 
 
@@ -60,6 +60,10 @@ def _rows(owner, tid: str) -> None:
                   {"t": tid, "r": cr})
         c.execute(text("INSERT INTO change_request_comments (tenant_id, request_id, body) VALUES (:t, :r, 'b')"),
                   {"t": tid, "r": cr})
+        c.execute(text("INSERT INTO change_request_field_changes (tenant_id, request_id, field, action) "
+                       "VALUES (:t, :r, 'MARA.MEINS', 'set')"), {"t": tid, "r": cr})
+        c.execute(text("INSERT INTO request_defaults (tenant_id, object, field, value) "
+                       "VALUES (:t, 'material', 'MARA.MEINS', 'EA')"), {"t": tid})
 
 
 @pytest.fixture
