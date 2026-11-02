@@ -202,6 +202,35 @@ function pairList(p: Params): unknown {
   };
 }
 
+/** Four of the pairs above found across ECC production and S/4HANA sandbox; the fourth is already merged. */
+function acrossSystems(p: Params): unknown {
+  const ecc = { system_id: "a1b2c3d4-0001-4000-8000-000000000001", system_name: ECC_NAME };
+  const s4 = { system_id: "a1b2c3d4-0002-4000-8000-000000000002", system_name: "S/4HANA sandbox" };
+  const clusters = p.domain !== MM ? [] : [0, 1, 2, 3].map((i) => {
+    const it = pairItem(i);
+    const merged = i === 3;
+    return {
+      id: `${ecc.system_id}:${it.a}`,
+      members: [
+        { key: it.a, ...ecc, text: nameOf(i), golden_record_id: merged ? `gr-${i}` : it.a_record_id },
+        { key: it.b, ...s4, text: nameOf(i).toUpperCase(), golden_record_id: merged ? `gr-${i}` : it.b_record_id },
+      ],
+      pairs: 1,
+      best: it.total,
+      merged,
+      pair_ids: [it.id],
+    };
+  });
+  const open = clusters.filter((c) => !c.merged).length;
+  return {
+    domain: String(p.domain ?? ""),
+    pairs: clusters.length,
+    by_systems: clusters.length ? [{ a: ECC_NAME, b: s4.system_name, pairs: clusters.length, open, merged: clusters.length - open }] : [],
+    clusters,
+    clusters_total: clusters.length,
+  };
+}
+
 function pairDetail(id: string): ReviewPairDetail {
   const p = Number(id.replace(/^ms-/, ""));
   if (!Number.isInteger(p) || p < 0 || p >= PAIRS_TOTAL) throw new FixtureNotFound(`/match-scores/${id}`);
@@ -530,6 +559,7 @@ export function mdmFixture(path: string, params: Params): unknown {
     return gr[2] === "explain" ? goldenExplain(id) : gr[2] === "merge-events" ? goldenEvents(id) : goldenDetail(id);
   }
   if (path === "/match-scores") return pairList(params);
+  if (path === "/match-scores/across-systems") return acrossSystems(params);
   const pair = /^\/match-scores\/([^/]+)$/.exec(path);
   if (pair) return pairDetail(decodeURIComponent(pair[1]));
   if (path === "/survivorship-rules") return { rules: params.domain === MM ? SURVIVORSHIP : [], total: params.domain === MM ? SURVIVORSHIP.length : 0 };

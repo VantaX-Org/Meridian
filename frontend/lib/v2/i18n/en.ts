@@ -7113,6 +7113,15 @@ export const en = {
   "Last name": "Last name",
   "Gender": "Gender",
   "Nationality": "Nationality",
+  "Across systems": "Across systems",
+  "{n} {n2, plural, one {cluster} other {clusters}} across connected systems": "{n} {n2, plural, one {cluster} other {clusters}} across connected systems",
+  "The duplicates across systems could not be read.": "The duplicates across systems could not be read.",
+  "No {label} record has a duplicate in another connected system. The cross-system match compares the latest complete run of each connected system that holds this object.": "No {label} record has a duplicate in another connected system. The cross-system match compares the latest complete run of each connected system that holds this object.",
+  "Pairs per system pair": "Pairs per system pair",
+  "{a} and {b}: {pairs} pairs, {open} open, {merged} merged": "{a} and {b}: {pairs} pairs, {open} open, {merged} merged",
+  "Clusters across systems": "Clusters across systems",
+  "The record has no description": "The record has no description",
+  "Showing the first {shown} of {total}, largest first.": "Showing the first {shown} of {total}, largest first.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -272,6 +272,26 @@ describe("the pair inspector", () => {
   });
 });
 
+describe("the Across systems section", () => {
+  it("lists duplicate clusters across connected systems: counts per system pair, each key with its description and system", async () => {
+    tab();
+    const list = await screen.findByRole("list", { name: "Clusters across systems" });
+    expect(screen.getByText("4 clusters across connected systems")).toBeInTheDocument();
+    expect(norm(screen.getByRole("list", { name: "Pairs per system pair" }))).toBe("ECC production and S/4HANA sandbox: 4 pairs, 3 open, 1 merged");
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(4);
+    expect(norm(items[0])).toMatch(/^0\.94MATNR=5000 Hex bolt M8 zinc \(ECC production\) and MATNR=6000 HEX BOLT M8 ZINC \(S\/4HANA sandbox\)Review$/);
+    expect(norm(items[3])).toContain("Merged");
+    expect(within(items[0]).getByRole("link", { name: "Review" }).getAttribute("href")).toContain("open=golden%3Apair%3Ams-0");
+  });
+
+  it("says plainly when no record has a duplicate in another system", async () => {
+    vi.spyOn(mdm, "getAcrossSystems").mockResolvedValue({ domain: "material_master", pairs: 0, by_systems: [], clusters: [], clusters_total: 0 });
+    tab();
+    expect(await screen.findByText(/No Material master record has a duplicate in another connected system/)).toBeInTheDocument();
+  });
+});
+
 describe("overridesOf", () => {
   const detail = {
     record_a: { key: "A", record_id: null, confidence: null, fields: { x: "1", y: "same", z: "a" } },

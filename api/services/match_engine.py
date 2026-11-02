@@ -104,6 +104,7 @@ def score_candidate_pair(
     candidate_b_key: str,
     session: Session,
     dry_run: bool = False,
+    sources: Optional[list[dict]] = None,
 ) -> dict:
     """Score a candidate pair using all active match rules for the domain.
 
@@ -116,6 +117,8 @@ def score_candidate_pair(
         candidate_b_key: Unique key for candidate B
         session: Sync SQLAlchemy session (RLS will be set)
         dry_run: If True, compute scores but don't write to DB
+        sources: For a pair across systems, ``[{key, system_id, system_name, text}]`` of both
+            sides; kept in the explanation
 
     Returns:
         Dict with total_score, field_scores, auto_action, ai_semantic_score
@@ -164,6 +167,8 @@ def score_candidate_pair(
         candidate_a, candidate_b, auto_merge=AUTO_MERGE, review_floor=REVIEW_FLOOR,
         constraint=constraint, semantic=_semantic,
     )
+    if sources:
+        explanation["sources"] = sources
     field_scores: dict = {}
     for x in explanation["attributes"]:
         fs = {"match_type": x["comparator"], "score": x["similarity"] or 0.0, "weight": x["weight"]}

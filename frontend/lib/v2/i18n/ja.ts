@@ -7114,4 +7114,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Last name": "姓",
   "Gender": "性別",
   "Nationality": "国籍",
+  "Across systems": "システム横断",
+  "{n} {n2, plural, one {cluster} other {clusters}} across connected systems": "接続システム横断のクラスター {n} 件",
+  "The duplicates across systems could not be read.": "システム横断の重複を読み込めませんでした。",
+  "No {label} record has a duplicate in another connected system. The cross-system match compares the latest complete run of each connected system that holds this object.": "{label} のレコードに、他の接続システム内の重複はありません。システム横断の照合は、このオブジェクトを持つ各接続システムの最新の完了済み実行を比較します。",
+  "Pairs per system pair": "システムの組ごとのペア",
+  "{a} and {b}: {pairs} pairs, {open} open, {merged} merged": "{a} と {b}: ペア {pairs} 件、未処理 {open} 件、統合済み {merged} 件",
+  "Clusters across systems": "システム横断のクラスター",
+  "The record has no description": "このレコードには説明がありません",
+  "Showing the first {shown} of {total}, largest first.": "{total} 件中、大きい順に最初の {shown} 件を表示しています。",
 };

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { formatDate } from "@/lib/format";
 import { GOLDEN_PAGE, proposeMerges, type GoldenRow, type SurvivorshipRule } from "@/lib/api/v2/mdm";
 import { useOpenItem, useRunParam, useV2Session } from "@/lib/v2/hooks";
-import { useGoldenRecords, useMatchPairs, useSurvivorship } from "@/lib/v2/mdm-queries";
+import { useAcrossSystems, useGoldenRecords, useMatchPairs, useSurvivorship } from "@/lib/v2/mdm-queries";
 import { useNarrow } from "@/lib/v2/narrow";
 import { useLandscape } from "@/lib/v2/queries";
 import { int, moduleFromSlug } from "@/lib/v2/score";
@@ -155,6 +155,57 @@ function Candidates({ module, label }: { module: string; label: string }) {
   );
 }
 
+/** Duplicates whose records sit in different connected systems: each record with its system and description. */
+function AcrossSystems({ module, label }: { module: string; label: string }) {
+  const { hrefFor } = useOpenItem();
+  const q = useAcrossSystems(module);
+  return (
+    <section aria-label={t("Across systems")} className="m2-sec">
+      <div className="m2-sechead">
+        <h2 className="m2-h2">{t("Across systems")}</h2>
+        {q.data ? <span className="m2-sub">{t("{n} {n2, plural, one {cluster} other {clusters}} across connected systems", { n: int(q.data.clusters_total), n2: q.data.clusters_total })}</span> : null}
+      </div>
+      {q.isPending ? (
+        <Skeleton width="60%" height={14} />
+      ) : q.isError ? (
+        <ErrorFrame onRetry={() => void q.refetch()}>{t("The duplicates across systems could not be read.")}</ErrorFrame>
+      ) : q.data.clusters.length === 0 ? (
+        <p className="m2-rp m2-meta">{t("No {label} record has a duplicate in another connected system. The cross-system match compares the latest complete run of each connected system that holds this object.", { label })}</p>
+      ) : (
+        <>
+          <ul className="m2-rp m2-meta" aria-label={t("Pairs per system pair")}>
+            {q.data.by_systems.map((c) => (
+              <li key={`${c.a}|${c.b}`}>{t("{a} and {b}: {pairs} pairs, {open} open, {merged} merged", { a: c.a, b: c.b, pairs: int(c.pairs), open: int(c.open), merged: int(c.merged) })}</li>
+            ))}
+          </ul>
+          <ul className="m2-pairs" aria-label={t("Clusters across systems")}>
+            {q.data.clusters.map((c) => (
+              <li key={c.id}>
+                <span className="m2-pscore">{c.best.toFixed(2)}</span>
+                <span className="m2-pkeys">
+                  {c.members.map((m, i) => (
+                    <span key={`${m.system_id}:${m.key}`}>
+                      {i ? <span className="m2-meta"> {t("and")} </span> : null}
+                      <Mono>{shortKey(m.key)}</Mono> {m.text ?? <Dash why={t("The record has no description")} />} <span className="m2-meta">({m.system_name ?? m.system_id})</span>
+                    </span>
+                  ))}
+                  {c.merged ? <span className="m2-meta"> {t("Merged")}</span> : null}
+                </span>
+                {c.pair_ids[0] ? (
+                  <V2Link href={hrefFor({ kind: "golden", id: `pair:${c.pair_ids[0]}` })} className="m2-btn m2-sm">
+                    {t("Review")}
+                  </V2Link>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          {q.data.clusters_total > q.data.clusters.length ? <p className="m2-prov">{t("Showing the first {shown} of {total}, largest first.", { shown: q.data.clusters.length, total: int(q.data.clusters_total) })}</p> : null}
+        </>
+      )}
+    </section>
+  );
+}
+
 function rowName(r: GoldenRow) {
   return r.name ? r.name : <Dash why={t("The golden records list does not carry the name; open the record")} />;
 }
@@ -203,6 +254,7 @@ export function GoldenTab({ module: moduleSegment }: { system: string; module: s
   return (
     <div className="m2-mdm">
       <Candidates module={apiModule} label={label} />
+      <AcrossSystems module={apiModule} label={label} />
       <section aria-label={t("Golden records")} className="m2-sec">
         <div className="m2-sechead">
           <h2 className="m2-h2">{t("Golden records")}</h2>

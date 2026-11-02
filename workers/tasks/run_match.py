@@ -15,8 +15,12 @@ A key value shared by more than MAX_BLOCK records is not a duplicate signal (a p
 tax number, a shared switchboard phone): those groups are skipped and counted per pass. Each
 pair is scored by match_engine.score_candidate_pair, which upserts match_scores and queues
 the review band; populate_queue then turns queued pairs into steward merge decisions. Pairs
-a steward marked do_not_match are never scored. Cross-system matching is not done here: one
-run matches one analysed frame.
+a steward marked do_not_match are never scored.
+
+Cross-system: run_cross_system_match stacks the latest complete run of every connected system of the
+tenant that holds the module and keeps only the pairs whose two records come from different systems
+(same-system pairs stay with run_match). Each such pair's explanation carries ``sources``: the key,
+system and description of both sides, which the review queue and the Across systems view read.
 """
 
 import logging
@@ -246,9 +250,22 @@ def _record(row: pd.Series) -> dict:
     return {k: None if pd.isna(v) else (v.item() if hasattr(v, "item") else v) for k, v in row.items()}
 
 
-def match_frame(df: pd.DataFrame, module: str, tenant_id: str, session: Optional[Session]) -> dict:
+def _text_cols(profile: dict) -> list[str]:
+    """The description of a record: the name or text column of the profile's first name pass."""
+    p = next((p for p in profile["passes"] if "field" in p), None)
+    return [] if p is None else [p["field"]] + ([p["also"]] if p.get("also") else [])
+
+
+def _source(df: pd.DataFrame, i: Hashable, key: str, system: dict, cols: list[str]) -> dict:
+    words = [str(df.at[i, c]).strip() for c in cols if c in df.columns and not pd.isna(df.at[i, c])]
+    return {"key": key, **system, "text": " ".join(w for w in words if w) or None}
+
+
+def match_frame(df: pd.DataFrame, module: str, tenant_id: str, session: Optional[Session],
+                systems: Optional[pd.Series] = None) -> dict:
     """Score one module's candidate pairs into match_scores. ``session`` may be None only
-    when the module is skipped (no DB work happens before the column checks)."""
+    when the module is skipped (no DB work happens before the column checks). ``systems``
+    (index-aligned, ``{"system_id", "system_name"}`` per row) keeps only pairs across systems."""
     from api.services.match_engine import score_candidate_pair
     from api.services.merge_explain import drop_blocked_pairs
 
@@ -274,6 +291,8 @@ def match_frame(df: pd.DataFrame, module: str, tenant_id: str, session: Optional
     candidates = []
     for a, b in found:
         ida, idb = str(df.at[a, id_col]), str(df.at[b, id_col])
+        if systems is not None and systems.at[a]["system_id"] == systems.at[b]["system_id"]:
+            continue  # a same-system pair belongs to that system's own run_match
         if ida != idb:  # identical keys are cleaning_engine's exact_pk duplicates
             candidates.append({"category": "dedup", "record_key": f"{ida}|{idb}", "a": a, "b": b})
     not_scored = max(len(candidates) - MAX_CANDIDATES, 0)
@@ -283,8 +302,11 @@ def match_frame(df: pd.DataFrame, module: str, tenant_id: str, session: Optional
     queued = 0
     for c in to_score:
         ida, _, idb = c["record_key"].partition("|")
+        sources = None if systems is None else [
+            _source(df, c["a"], ida, systems.at[c["a"]], _text_cols(profile)),
+            _source(df, c["b"], idb, systems.at[c["b"]], _text_cols(profile))]
         res = score_candidate_pair(tenant_id, module, _record(df.loc[c["a"]]), _record(df.loc[c["b"]]),
-                                   ida, idb, session, dry_run=False)
+                                   ida, idb, session, dry_run=False, sources=sources)
         queued += res["auto_action"] == "queued"
     legacy = next((passes[p["name"]] for p in profile["passes"] if p["kind"] == "blocked"), {})
     return {"status": "complete", **{k: v for k, v in legacy.items() if k not in ("status", "pairs")},
@@ -308,4 +330,55 @@ def run_match(self, version_id: str, tenant_id: str, module: str, parquet_path: 
                 {k: v for k, v in result.items() if k != "passes"})
     if result.get("queued"):
         populate_queue.delay()
+    run_cross_system_match.delay(tenant_id, module)
     return {"version_id": version_id, "module": module, **result}
+
+
+# The latest complete run per connected system that analysed the module and kept its dataset.
+_LATEST_PER_SYSTEM = text("""
+    SELECT DISTINCT ON (s.id) s.id::text AS system_id, s.name AS system_name, v.id::text AS version_id,
+           COALESCE(v.metadata->>'dataset_path', v.metadata->>'parquet_path') AS path
+      FROM analysis_versions v
+      JOIN sap_systems s ON s.tenant_id = v.tenant_id AND s.id::text = v.metadata->>'system_id'
+     WHERE v.tenant_id = CAST(:tid AS uuid) AND v.status = 'complete'
+       AND COALESCE(v.metadata->>'dataset_path', v.metadata->>'parquet_path') IS NOT NULL
+       AND v.metadata->'modules' @> to_jsonb(CAST(:m AS text))
+     ORDER BY s.id, v.created_at DESC
+""")
+
+
+def latest_runs(session: Session, tenant_id: str, module: str) -> list[Any]:
+    session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    return list(session.execute(_LATEST_PER_SYSTEM, {"tid": str(tenant_id), "m": module}))
+
+
+def stack_systems(frames: list[tuple[dict, pd.DataFrame]]) -> tuple[pd.DataFrame, pd.Series]:
+    """One frame of every system's records and the system of each row, on a fresh index."""
+    df = pd.concat([f for _, f in frames], ignore_index=True)
+    systems = pd.Series([s for s, f in frames for _ in range(len(f))], index=df.index, dtype=object)
+    return df, systems
+
+
+@celery_app.task(bind=True, name="workers.tasks.run_match.run_cross_system_match",
+                 soft_time_limit=1800, time_limit=2100)
+def run_cross_system_match(self, tenant_id: str, module: str) -> dict:
+    """Score the module's duplicates across the tenant's connected systems (latest complete run each)."""
+    from workers.dataset import load_module_frame
+    from workers.tasks.populate_stewardship_queue import populate_queue
+
+    if module not in PROFILES:
+        return {"module": module, "status": "skipped"}
+    with Session(get_sync_engine()) as session:
+        runs = latest_runs(session, tenant_id, module)
+        if len(runs) < 2:
+            return {"module": module, "status": "skipped", "reason": "fewer than two systems"}
+        # ponytail: every system's frame in memory at once; stream per block if a landscape outgrows a worker
+        frames = [({"system_id": r.system_id, "system_name": r.system_name},
+                   load_module_frame(r.path, module, anchor=PROFILES[module].get("anchor"))) for r in runs]
+        df, systems = stack_systems(frames)
+        result = match_frame(df, module, tenant_id, session, systems=systems)
+    logger.info("run_cross_system_match tenant=%s module=%s systems=%d result=%s", tenant_id, module, len(runs),
+                {k: v for k, v in result.items() if k != "passes"})
+    if result.get("queued"):
+        populate_queue.delay()
+    return {"module": module, "systems": [r.system_name for r in runs], **result}
