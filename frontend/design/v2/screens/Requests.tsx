@@ -8,9 +8,9 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
 import { errorSentence } from "@/lib/api/v2/client";
-import { createRequest, deleteDefault, putDefault, submitRequest, validateRequest, type ChangeRequest, type Precheck, type RequestKind, type RequestObject, type RequestStatus, type RequestView } from "@/lib/api/v2/requests";
+import { createRequest, deleteCriticalField, deleteDefault, deleteDerivation, putCriticalField, putDefault, putDerivation, submitRequest, validateRequest, type ChangeRequest, type Precheck, type RequestKind, type RequestObject, type RequestStatus, type RequestView } from "@/lib/api/v2/requests";
 import { useOpenItem, useUrlParam, useV2Session } from "@/lib/v2/hooks";
-import { useEntryDefaults, useMassPreview, useRequests } from "@/lib/v2/requests-queries";
+import { useCriticalFields, useDerivations, useEntryDefaults, useMassPreview, useRequests } from "@/lib/v2/requests-queries";
 import { describeField } from "@/lib/v2/sap-fields";
 import { t } from "@/lib/v2/i18n";
 import { ageWord, kindWord, objectWord, PrecheckView, statusWord } from "../inspector/request";
@@ -308,6 +308,210 @@ function EntryDefaults({ canEdit }: { canEdit: boolean }) {
   );
 }
 
+/** Run one change to a rules list, refresh that list, and keep the busy and error state; the rules sections share it. */
+function useRuleAct(key: string) {
+  const qc = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const act = async (fn: () => Promise<unknown>, fallback: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      await qc.invalidateQueries({ queryKey: ["v2", key] });
+    } catch (e) {
+      setError(errorSentence(e, fallback));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { act, busy, error };
+}
+
+function ObjectSelect({ value, onChange }: { value: RequestObject; onChange: (o: RequestObject) => void }) {
+  return (
+    <label>
+      {t("Object")}
+      <select className="m2-sel" value={value} onChange={(e) => onChange(e.target.value as RequestObject)}>
+        {OBJECTS.map((o) => (
+          <option key={o} value={o}>
+            {objectWord(o)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+/** Rules that set a field of a request from other fields of it; applied when the request is saved, before the checks. */
+function DerivationRules({ canEdit }: { canEdit: boolean }) {
+  const q = useDerivations();
+  const { act, busy, error } = useRuleAct("request-derivations");
+  const [object, setObject] = useState<RequestObject>("material");
+  const [whenField, setWhenField] = useState("");
+  const [whenValues, setWhenValues] = useState("");
+  const [target, setTarget] = useState("");
+  const [value, setValue] = useState("");
+  const items = q.data?.items ?? [];
+  const values = whenValues.split(",").map((v) => v.trim()).filter(Boolean);
+  return (
+    <section className="m2-sec" aria-label={t("Derivation rules")} data-testid="derivation-rules">
+      <p className="m2-prov">{t("When a field of a request holds one of the listed values, another field of the same request is set to a fixed value. A derived value is marked as derived in the history of the request.")}</p>
+      {q.isError ? (
+        <ErrorFrame onRetry={() => void q.refetch()}>{t("The derivation rules could not be read.")}</ErrorFrame>
+      ) : items.length === 0 ? (
+        <EmptyFrame>{t("No derivation rule is set.")}</EmptyFrame>
+      ) : (
+        <table className="m2-tbl" aria-label={t("Derivation rules")}>
+          <thead>
+            <tr>
+              <th scope="col">{t("Object")}</th>
+              <th scope="col">{t("When field")}</th>
+              <th scope="col">{t("Is one of")}</th>
+              <th scope="col">{t("Set field")}</th>
+              <th scope="col">{t("To value")}</th>
+              {canEdit ? <th scope="col">{t("Remove")}</th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((d) => (
+              <tr key={d.id}>
+                <td>{objectWord(d.object)}</td>
+                <td>
+                  <Coded code={d.when_field} text={describeField(d.when_field)} />
+                </td>
+                <td>
+                  <Mono>{d.when_values.join(", ")}</Mono>
+                </td>
+                <td>
+                  <Coded code={d.target_field} text={describeField(d.target_field)} />
+                </td>
+                <td>
+                  <Mono>{d.value}</Mono>
+                </td>
+                {canEdit ? (
+                  <td>
+                    <button type="button" className="m2-btn m2-sm" disabled={busy} onClick={() => void act(() => deleteDerivation(d.id), t("The rule could not be removed."))}>
+                      {t("Remove")}
+                    </button>
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {canEdit ? (
+        <div className="m2-rfilters">
+          <ObjectSelect value={object} onChange={setObject} />
+          <label>
+            {t("When field, as TABLE.FIELD")}
+            <input value={whenField} maxLength={60} spellCheck={false} onChange={(e) => setWhenField(e.target.value)} />
+          </label>
+          <label>
+            {t("Is one of, separated by commas")}
+            <input value={whenValues} maxLength={500} spellCheck={false} onChange={(e) => setWhenValues(e.target.value)} />
+          </label>
+          <label>
+            {t("Set field, as TABLE.FIELD")}
+            <input value={target} maxLength={60} spellCheck={false} onChange={(e) => setTarget(e.target.value)} />
+          </label>
+          <label>
+            {t("To value")}
+            <input value={value} maxLength={500} onChange={(e) => setValue(e.target.value)} />
+          </label>
+          <button
+            type="button"
+            className="m2-btn"
+            disabled={busy || !whenField.trim() || values.length === 0 || !target.trim() || !value.trim()}
+            onClick={() =>
+              void act(async () => {
+                await putDerivation(object, whenField.trim(), values, target.trim(), value.trim());
+                setWhenField("");
+                setWhenValues("");
+                setTarget("");
+                setValue("");
+              }, t("The rule could not be saved."))
+            }
+          >
+            {t("Save rule")}
+          </button>
+        </div>
+      ) : null}
+      {error ? <p className="m2-prov" role="alert">{error}</p> : null}
+    </section>
+  );
+}
+
+/** Fields whose change needs the extra critical field approval step. */
+function CriticalFields({ canEdit }: { canEdit: boolean }) {
+  const q = useCriticalFields();
+  const { act, busy, error } = useRuleAct("request-critical-fields");
+  const [object, setObject] = useState<RequestObject>("material");
+  const [field, setField] = useState("");
+  const items = q.data?.items ?? [];
+  return (
+    <section className="m2-sec" aria-label={t("Critical fields")} data-testid="critical-fields">
+      <p className="m2-prov">{t("A request that touches one of these fields is flagged critical and needs a critical field approval step after the usual steps.")}</p>
+      {q.isError ? (
+        <ErrorFrame onRetry={() => void q.refetch()}>{t("The critical fields could not be read.")}</ErrorFrame>
+      ) : items.length === 0 ? (
+        <EmptyFrame>{t("No critical field is set.")}</EmptyFrame>
+      ) : (
+        <table className="m2-tbl" aria-label={t("Critical fields")}>
+          <thead>
+            <tr>
+              <th scope="col">{t("Object")}</th>
+              <th scope="col">{t("Field")}</th>
+              {canEdit ? <th scope="col">{t("Remove")}</th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((d) => (
+              <tr key={d.id}>
+                <td>{objectWord(d.object)}</td>
+                <td>
+                  <Coded code={d.field} text={describeField(d.field)} />
+                </td>
+                {canEdit ? (
+                  <td>
+                    <button type="button" className="m2-btn m2-sm" disabled={busy} onClick={() => void act(() => deleteCriticalField(d.id), t("The critical field could not be removed."))}>
+                      {t("Remove")}
+                    </button>
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {canEdit ? (
+        <div className="m2-rfilters">
+          <ObjectSelect value={object} onChange={setObject} />
+          <label>
+            {t("Field, as TABLE.FIELD")}
+            <input value={field} maxLength={60} spellCheck={false} onChange={(e) => setField(e.target.value)} />
+          </label>
+          <button
+            type="button"
+            className="m2-btn"
+            disabled={busy || !field.trim()}
+            onClick={() =>
+              void act(async () => {
+                await putCriticalField(object, field.trim());
+                setField("");
+              }, t("The critical field could not be saved."))
+            }
+          >
+            {t("Save critical field")}
+          </button>
+        </div>
+      ) : null}
+      {error ? <p className="m2-prov" role="alert">{error}</p> : null}
+    </section>
+  );
+}
+
 function Table({ rows }: { rows: ChangeRequest[] }) {
   const { open, hrefFor } = useOpenItem();
   const openId = open?.kind === "request" ? open.id : null;
@@ -363,6 +567,7 @@ export function RequestsCanvas() {
   const [keysParam] = useUrlParam<string>("keys", "");
   const [composing, setComposing] = useState(keysParam !== "");
   const [showDefaults, setShowDefaults] = useState(false);
+  const [showRules, setShowRules] = useState(false);
   const q = useRequests({ view, status: status === "all" ? undefined : status, object: object === "all" ? undefined : object, kind: kind === "all" ? undefined : kind });
   const rows = q.data?.items ?? [];
   const canWrite = session.can("mdm.write") && !session.shared;
@@ -432,8 +637,17 @@ export function RequestsCanvas() {
         <button type="button" className="m2-btn" aria-expanded={showDefaults} onClick={() => setShowDefaults((v) => !v)}>
           {t("Entry defaults")}
         </button>
+        <button type="button" className="m2-btn" aria-expanded={showRules} onClick={() => setShowRules((v) => !v)}>
+          {t("Derivations and critical fields")}
+        </button>
       </div>
       {showDefaults ? <EntryDefaults canEdit={session.can("manage_workflows") && !session.shared} /> : null}
+      {showRules ? (
+        <>
+          <DerivationRules canEdit={session.can("manage_workflows") && !session.shared} />
+          <CriticalFields canEdit={session.can("manage_workflows") && !session.shared} />
+        </>
+      ) : null}
       {composing ? (
         <NewRequest
           initialKeys={keysParam}

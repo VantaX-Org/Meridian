@@ -238,7 +238,8 @@ def facts(cr: dict, precheck: Optional[dict], classes: list[str]) -> dict:
             "fields": fields, "policy_classes": classes,
             "target_system_id": str(cr["target_system_id"]) if cr.get("target_system_id") else None,
             "rule_failures": len(failures), "critical_failures": sum(1 for f in failures if f["severity"] == "critical"),
-            "duplicates": len(pc.get("duplicates") or []), "records": cr.get("record_count") or 1}
+            "duplicates": len(pc.get("duplicates") or []), "records": cr.get("record_count") or 1,
+            "critical_fields": cr.get("critical_fields") or []}
 
 
 def title_of(cr: dict) -> str:
@@ -276,6 +277,7 @@ def load(session, tid: str, cr_id: str, lock: bool = False) -> dict:
     if cr["kind"] == "mass_change":  # the keys are up to 10,000 strings: not in the list rows (COLS)
         cr["record_keys"] = session.execute(text("SELECT record_keys FROM change_requests WHERE id = CAST(:i AS uuid) "
                                                  "AND tenant_id = CAST(:t AS uuid)"), {"i": cr_id, "t": tid}).scalar() or []
+    cr["critical_fields"] = critical_hits(cr, critical_set(session, tid))
     return cr
 
 
@@ -440,15 +442,48 @@ def apply_defaults(session, tid: str, obj: str, payload: dict[str, Any]) -> tupl
     return out, filled
 
 
+def apply_derivations(session, tid: str, obj: str, payload: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """The payload with the tenant's derivation rules applied, in the order they were made, each seeing what the ones
+    before it set: when ``when_field`` holds one of ``when_values``, ``target_field`` is set to the constant. Returns
+    it and the fields a rule set to a value other than the one they had."""
+    rows = session.execute(text(
+        "SELECT when_field, when_values, target_field, value FROM request_derivations WHERE tenant_id = CAST(:t AS uuid) "
+        "AND object = :o ORDER BY created_at, id"), {"t": tid, "o": obj}).all()
+    out, derived = dict(payload), []
+    for wf, vals, tf, v in rows:
+        cur = out.get(wf)
+        if cur is None or str(cur).strip() not in [str(x) for x in vals]:
+            continue
+        if str(out.get(tf)) != v:
+            out[tf] = v
+            if tf not in derived:
+                derived.append(tf)
+    return out, derived
+
+
+def critical_set(session, tid: str) -> dict[str, set[str]]:
+    out: dict[str, set[str]] = {}
+    for o, f in session.execute(text("SELECT object, field FROM request_critical_fields "
+                                     "WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid}):
+        out.setdefault(o, set()).add(f)
+    return out
+
+
+def critical_hits(cr: dict, crit: dict[str, set[str]]) -> list[str]:
+    """The critical fields (of the tenant's list for the request's object) the proposal touches, sorted."""
+    return sorted(set(normalise(cr.get("payload") or {})) & crit.get(cr["object"], set()))
+
+
 def record_changes(session, tid: str, cr_id: str, old: dict[str, Any], new: dict[str, Any], actor_id: Optional[str],
-                   actor_label: Optional[str], defaulted: tuple[str, ...] | list[str] = ()) -> int:
+                   actor_label: Optional[str], defaulted: tuple[str, ...] | list[str] = (),
+                   derived: tuple[str, ...] | list[str] = ()) -> int:
     """One row per field that differs between two payloads (old and new value kept here, never in workflow_events)."""
     n = 0
     for f in sorted(set(old) | set(new)):
         o, v = old.get(f), new.get(f)
         if str(o) == str(v) and (f in old) == (f in new):
             continue
-        action = "defaulted" if f in defaulted else "set" if f not in old else "removed" if f not in new else "changed"
+        action = "derived" if f in derived else "defaulted" if f in defaulted else "set" if f not in old else "removed" if f not in new else "changed"
         session.execute(text(
             "INSERT INTO change_request_field_changes (tenant_id, request_id, field, action, old_value, new_value, "
             "actor_id, actor_label) VALUES (CAST(:t AS uuid), CAST(:r AS uuid), :f, :a, :o, :n, CAST(:u AS uuid), :l)"),

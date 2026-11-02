@@ -88,6 +88,24 @@ describe("Requests", () => {
     expect(table.textContent).toContain("Base unit of measure");
   });
 
+  it("lists derivation rules and critical fields with each code beside its description", async () => {
+    setUrl("/requests?fixture=1&view=all");
+    renderWithQuery(<RequestsCanvas />);
+    fireEvent.click(await screen.findByRole("button", { name: "Derivations and critical fields" }));
+    const rules = await screen.findByTestId("derivation-rules");
+    await waitFor(() => expect(rules.textContent).toContain("MARC-BESKZ"));
+    expect(rules.textContent).toContain("MARA-MTART");
+    const crit = await screen.findByTestId("critical-fields");
+    await waitFor(() => expect(crit.textContent).toContain("MARA-MTART"));
+  });
+
+  it("flags the critical fields a request touches in the inspector", async () => {
+    setUrl("/requests?fixture=1");
+    renderWithQuery(<RequestInspector id="CR-1001" onClose={() => undefined} />);
+    const flag = await screen.findByTestId("request-critical");
+    expect(flag.textContent).toContain("MARA-MTART");
+  });
+
   it("gates the workflow administration on manage_workflows", async () => {
     h.allowed = [];
     setUrl("/admin/workflows?fixture=1");
