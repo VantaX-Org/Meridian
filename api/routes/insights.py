@@ -601,7 +601,7 @@ async def get_cleansing(version_id: Optional[uuid.UUID] = None, module: Optional
 class ActedBody(BaseModel):
     module: str
     check_id: str
-    action: Literal["tune", "cleanse", "open", "merge", "assign"]
+    action: Literal["tune", "cleanse", "open", "merge", "assign", "across"]
 
 
 async def _tunable(db: AsyncSession, tenant: Tenant) -> dict[str, dict]:
@@ -616,6 +616,31 @@ async def _dupes(db: AsyncSession, tenant: Tenant) -> dict[str, int]:
     from api.routes.merge_explain import _REVIEW_PAIRS, _review_params
     q = f"SELECT domain, COUNT(*) FROM ({_REVIEW_PAIRS.format(where='')}) q WHERE band = 'review' GROUP BY domain"
     return {r[0]: int(r[1]) for r in await db.execute(text(q), _review_params(str(tenant.id), None, None, None, False))}
+
+
+async def _cross_systems(db: AsyncSession, tenant: Tenant) -> dict[str, dict]:
+    """Open duplicate pairs whose two records sit in different connected systems, by object: the review and
+    auto-merge bands of match_scores that carry explanation.sources (run_cross_system_match), not yet merged, rejected
+    or constrained, counted with the Golden tab's own query so the band and the Across systems section agree.
+    ``systems`` is the pair count per (system, system), named as the sources name them."""
+    from api.routes.merge_explain import _REVIEW_PAIRS, _review_params
+    base = _REVIEW_PAIRS.format(where="AND jsonb_array_length(COALESCE(ms.explanation->'sources', '[]'::jsonb)) = 2")
+    q = (f"SELECT domain, COALESCE(explanation->'sources'->0->>'system_name', explanation->'sources'->0->>'system_id'), "
+         f"COALESCE(explanation->'sources'->1->>'system_name', explanation->'sources'->1->>'system_id'), COUNT(*) "
+         f"FROM ({base}) q WHERE band <> 'low' GROUP BY 1, 2, 3")
+    out: dict[str, dict] = {}
+    for d, x, y, n in await db.execute(text(q), _review_params(str(tenant.id), None, None, None, False)):
+        a, b = sorted((x or "", y or ""))
+        o = out.setdefault(d, {"pairs": 0, "systems": []})
+        o["pairs"] += int(n)
+        hit = next((e for e in o["systems"] if (e["a"], e["b"]) == (a, b)), None)
+        if hit:
+            hit["pairs"] += int(n)
+        else:
+            o["systems"].append({"a": a, "b": b, "pairs": int(n)})
+    for o in out.values():
+        o["systems"].sort(key=lambda e: (-e["pairs"], e["a"], e["b"]))
+    return out
 
 
 async def _owned(db: AsyncSession, tenant: Tenant) -> set[str]:
@@ -637,7 +662,8 @@ async def get_findings(module: Optional[str] = None, db: AsyncSession = Depends(
     await _rls(db, tenant)
     ids = await _latest_version_ids(db, tenant)
     dupes, owned = await _dupes(db, tenant), await _owned(db, tenant)
-    out = await db.run_sync(lambda s: aletheia_found.build(s, str(tenant.id), ids, module, tunable, dupes, owned))
+    cross = await _cross_systems(db, tenant)
+    out = await db.run_sync(lambda s: aletheia_found.build(s, str(tenant.id), ids, module, tunable, dupes, owned, cross))
     for a in out["acted"]:
         for p in a["proven_cost"] or []:
             p["label"] = _METRIC_LABEL.get(p["metric"])
@@ -652,7 +678,8 @@ async def mark_acted(body: ActedBody, db: AsyncSession = Depends(get_db), tenant
     from api.services.rbac import current_user_id
     await _rls(db, tenant)
     ids = await _latest_version_ids(db, tenant)
-    base = await db.run_sync(lambda s: aletheia_found.baseline(s, str(tenant.id), ids, body.module, body.check_id))
+    cross = await _cross_systems(db, tenant) if body.check_id == aletheia_found.CROSS_CHECK else None
+    base = await db.run_sync(lambda s: aletheia_found.baseline(s, str(tenant.id), ids, body.module, body.check_id, cross))
     if base is None or base["affected_before"] is None:
         raise HTTPException(404, "No current finding for this rule")
     await db.execute(text("""

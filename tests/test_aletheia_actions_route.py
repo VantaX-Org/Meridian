@@ -46,7 +46,7 @@ async def test_acting_records_merge_and_assign(monkeypatch: pytest.MonkeyPatch, 
     from api.services import aletheia_found
     monkeypatch.setattr(insights, "_rls", _none)
     monkeypatch.setattr(insights, "_latest_version_ids", _ids)
-    monkeypatch.setattr(aletheia_found, "baseline", lambda s, tid, ids, m, c: {
+    monkeypatch.setattr(aletheia_found, "baseline", lambda s, tid, ids, m, c, x=None: {
         "version_id": "v1", "score_before": 71.5, "affected_before": 120})
     db = _Db()
     body = insights.ActedBody(module="material_master", check_id="MM168", action=action)  # type: ignore[arg-type]
@@ -69,17 +69,38 @@ async def test_band_gets_review_pairs_and_owners(monkeypatch: pytest.MonkeyPatch
     async def tunable(*_a: Any) -> dict:
         return {}
 
-    def build(s: Any, tid: str, ids: list, module: Any, tun: dict, dupes: dict, owned: set) -> dict:
-        seen.update(dupes=dupes, owned=owned)
+    def build(s: Any, tid: str, ids: list, module: Any, tun: dict, dupes: dict, owned: set, cross: dict) -> dict:
+        seen.update(dupes=dupes, owned=owned, cross=cross)
         return {"acted": []}
 
     monkeypatch.setattr(insights, "_rls", _none)
     monkeypatch.setattr(insights, "_latest_version_ids", _ids)
     monkeypatch.setattr(insights, "_tunable", tunable)
     monkeypatch.setattr(aletheia_found, "build", build)
-    db = _Db([[("material_master", 14)], [("MM003",), ("sd_customer_master",)]])
+    db = _Db([[("material_master", 14)], [("MM003",), ("sd_customer_master",)],
+                [("sd_customer_master", "ECC", "S/4", 3), ("sd_customer_master", "S/4", "ECC", 2),
+                 ("sd_customer_master", "ECC", "BW", 1)]])
     await insights.get_findings(None, db, TENANT)  # type: ignore[arg-type]
-    assert seen == {"dupes": {"material_master": 14}, "owned": {"MM003", "sd_customer_master"}}
+    assert seen["dupes"] == {"material_master": 14} and seen["owned"] == {"MM003", "sd_customer_master"}
+    assert seen["cross"] == {"sd_customer_master": {"pairs": 6, "systems": [
+        {"a": "ECC", "b": "S/4", "pairs": 5}, {"a": "BW", "b": "ECC", "pairs": 1}]}}
+    assert "explanation->'sources'" in db.sql[2] and db.params[2]["tid"] == str(TENANT.id)
     assert "match_scores" in db.sql[0] and "band = 'review'" in db.sql[0]
     assert db.params[0]["tid"] == str(TENANT.id) and db.params[0]["inc"] is False
     assert "data_owners" in db.sql[1] and db.params[1]["t"] == str(TENANT.id)
+
+
+@pytest.mark.anyio
+async def test_acting_on_the_cross_system_finding_records_the_pair_count(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The baseline is the open cross-system pair count, counted tenant-scoped, and lands in the same ledger."""
+    from api.services import aletheia_found
+    monkeypatch.setattr(insights, "_rls", _none)
+    monkeypatch.setattr(insights, "_latest_version_ids", _ids)
+    monkeypatch.setattr(aletheia_found.agg, "current_objects", lambda s, t, ids, m: [{"version_id": "v1"}])
+    monkeypatch.setattr(aletheia_found.agg, "resolve_version", lambda s, t, v: {"dqs_summary": {}})
+    db = _Db([[("sd_customer_master", "ECC", "S/4", 7)]])
+    body = insights.ActedBody(module="sd_customer_master", check_id="XSYS", action="across")
+    out = await insights.mark_acted(body, db, TENANT)  # type: ignore[arg-type]
+    assert out["affected_before"] == 7 and out["action"] == "across"
+    assert db.params[0]["tid"] == str(TENANT.id) and "INSERT INTO aletheia_actions" in db.sql[1]
+    assert db.params[1]["a"] == "across" and db.params[1]["ab"] == 7 and db.committed

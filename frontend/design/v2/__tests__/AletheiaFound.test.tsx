@@ -88,6 +88,19 @@ describe("Aletheia found", () => {
     expect(acted).toHaveBeenCalledWith({ module: "sd_customer_master", check_id: "SDCM001", action: "assign" });
   });
 
+  it("shows cross-system duplicates with the pair count and systems, and opens the Across systems section", async () => {
+    const acted = vi.spyOn(insights, "markActed");
+    renderWithQuery(<AletheiaFound />);
+    const row = await screen.findByTestId("aletheia-across");
+    expect(row).toHaveTextContent("37 pairs of");
+    expect(row).toHaveTextContent("exist in more than one connected system as separate records");
+    expect(row).toHaveTextContent("ECC and S/4: 37");
+    const link = within(row).getByRole("link", { name: "Review across systems" });
+    expect(link.getAttribute("href")).toMatch(/\/golden#across-systems$/);
+    fireEvent.click(link);
+    expect(acted).toHaveBeenCalledWith({ module: "sd_customer_master", check_id: "XSYS", action: "across" });
+  });
+
   it("stays out of the way for an object with nothing found", async () => {
     const { container } = renderWithQuery(<AletheiaFound module="fi_gl" />);
     await waitFor(() => expect(container.querySelector("[data-testid=aletheia-found]")).toBeNull());

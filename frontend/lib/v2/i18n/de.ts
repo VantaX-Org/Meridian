@@ -7123,4 +7123,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Clusters across systems": "Systemübergreifende Cluster",
   "The record has no description": "Der Datensatz hat keine Beschreibung",
   "Showing the first {shown} of {total}, largest first.": "Die ersten {shown} von {total}, die größten zuerst.",
+  "Review across systems": "Über Systeme hinweg prüfen",
+  "Cross-system duplicates reviewed": "Systemübergreifende Duplikate geprüft",
+  "Duplicates across systems": "Duplikate über Systeme hinweg",
+  "{n} {n2, plural, one {pair} other {pairs}} of {label} records exist in more than one connected system as separate records": "{n} {n2, plural, one {Paar} other {Paare}} von {label}-Datensätzen liegen in mehr als einem verbundenen System als getrennte Datensätze vor",
+  "{a} and {b}: {n}": "{a} und {b}: {n}",
 };

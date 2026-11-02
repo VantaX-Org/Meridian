@@ -83,7 +83,14 @@ export const getTrends = () => v2Get<{ runs: TrendRun[] }>(`${P}/trends`, { limi
  */
 /** tune drafts the tuned rule version; merge opens the object's match & merge review (``pairs`` waiting); assign sets
  *  the rule's owner in data_owners; cleanse drafts a cleansing batch; open opens the rule. */
-export type AletheiaActionKind = "tune" | "cleanse" | "open" | "merge" | "assign";
+export type AletheiaActionKind = "tune" | "cleanse" | "open" | "merge" | "assign" | "across";
+
+/** Open duplicate pairs between two connected systems (match_scores with explanation.sources), as the sources name them. */
+export interface AcrossSystemsCount {
+  a: string;
+  b: string;
+  pairs: number;
+}
 
 export interface AletheiaFinding {
   id: string;
@@ -103,7 +110,8 @@ export interface AletheiaFinding {
   why: { origin: { status: string; top: string | null; share: number | null }; delta_affected: number | null };
   money: { cost_at_risk: number | null; currency: string; features: { feature: string; l1: string | null; value_at_risk: number | null }[] };
   confidence: { basis: "precision" | "origin_share"; value: number } | null;
-  action: { kind: AletheiaActionKind; pairs?: number };
+  /** across: the object has duplicates in more than one connected system; ``pairs`` counts them, ``systems`` splits them per system pair. */
+  action: { kind: AletheiaActionKind; pairs?: number; systems?: AcrossSystemsCount[] };
 }
 
 export interface AletheiaChange {

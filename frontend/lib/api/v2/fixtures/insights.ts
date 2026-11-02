@@ -70,6 +70,15 @@ const found = [
   mmFinding("SDCM001", "Customer number is mandatory - primary key for all SD customer transactions", "KNA1.KUNNR", "critical", "completeness",
     9, 1.8, null, 100, [9, 9, 9, 9, 9, 9, 9, 9], none, null, null, "assign", { module: "sd_customer_master" }),
 ];
+/** Cross-system duplicates: the open pairs the cross-system match found between the connected ECC and S/4 systems
+ *  for customers (counts are illustrative, no personal data). */
+const across = {
+  id: "sd_customer_master:XSYS", module: "sd_customer_master", version_id: "v-12", check_id: "XSYS", name: "", field: null, severity: null,
+  dimension: "uniqueness", affected: 37, total: null, impact: 0, delta_affected: null, auto_fix_pct: null, spark: [],
+  why: { origin: { status: "not_computed", top: null, share: null }, delta_affected: null },
+  money: { cost_at_risk: null, currency: "ZAR", features: [] }, confidence: null,
+  action: { kind: "across", pairs: 37, systems: [{ a: "ECC", b: "S/4", pairs: 37 }] },
+};
 const changes = [{
   module: "material_master", version_id: "v-12", previous_version_id: "v-11", score: 87.4, previous: 86.2, delta: 1.2,
   movers: [{ check_id: "MM003", name: found[0].name, delta_affected: 312 }, { check_id: "MM035", name: found[1].name, delta_affected: -96 },
@@ -96,7 +105,7 @@ export function insightsWrite(method: string, path: string, body: unknown): unkn
   }
   if (path !== "/insights/findings/acted") return NONE_INSIGHTS_WRITE;
   const b = body as { module: string; check_id: string; action: string };
-  const f = found.find((x) => x.module === b.module && x.check_id === b.check_id);
+  const f = [across, ...found].find((x) => x.module === b.module && x.check_id === b.check_id);
   const base = { module: b.module, check_id: b.check_id, action: b.action, version_id: "v-12", score_before: 87.4, affected_before: f?.affected ?? null };
   if (!acted.some((a) => a.module === b.module && a.check_id === b.check_id && a.action === b.action && a.version_id === "v-12")) {
     acted.unshift({ ...base, name: f?.name ?? null, created_at: "2026-11-01T08:00:00Z", waiting: true, affected_now: null, score_now: null, reduction: null, gain: null, proven_cost: null, currency: "ZAR" });
@@ -109,7 +118,7 @@ export function insightsRead(path: string, params: Record<string, unknown> = {})
     const m = params.module;
     // A fresh array each read: acting unshifts into `acted`, and a reused reference would hide the new row from the cache.
     const mine = <T extends { module: string }>(rows: T[]) => rows.filter((r) => !m || r.module === m);
-    return { currency: "ZAR", findings: mine(found), changes: mine(changes), acted: mine(acted as { module: string }[]) };
+    return { currency: "ZAR", findings: mine([across, ...found]), changes: mine(changes), acted: mine(acted as { module: string }[]) };
   }
   if (path === "/insights/impact") return { version_id: null, scope: "current", version_ids: ["v-12"], rows: impact };
   if (path === "/insights/proven-cost") return {

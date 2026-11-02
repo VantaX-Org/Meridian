@@ -7123,4 +7123,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Clusters across systems": "システム横断のクラスター",
   "The record has no description": "このレコードには説明がありません",
   "Showing the first {shown} of {total}, largest first.": "{total} 件中、大きい順に最初の {shown} 件を表示しています。",
+  "Review across systems": "システム横断で確認",
+  "Cross-system duplicates reviewed": "システム横断の重複を確認しました",
+  "Duplicates across systems": "システム横断の重複",
+  "{n} {n2, plural, one {pair} other {pairs}} of {label} records exist in more than one connected system as separate records": "{label} のレコード {n} ペアが、複数の接続システムに別々のレコードとして存在します",
+  "{a} and {b}: {n}": "{a} と {b}: {n}",
 };

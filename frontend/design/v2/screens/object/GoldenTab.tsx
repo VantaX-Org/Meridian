@@ -160,7 +160,7 @@ function AcrossSystems({ module, label }: { module: string; label: string }) {
   const { hrefFor } = useOpenItem();
   const q = useAcrossSystems(module);
   return (
-    <section aria-label={t("Across systems")} className="m2-sec">
+    <section id="across-systems" aria-label={t("Across systems")} className="m2-sec">
       <div className="m2-sechead">
         <h2 className="m2-h2">{t("Across systems")}</h2>
         {q.data ? <span className="m2-sub">{t("{n} {n2, plural, one {cluster} other {clusters}} across connected systems", { n: int(q.data.clusters_total), n2: q.data.clusters_total })}</span> : null}
