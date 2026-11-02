@@ -65,109 +65,37 @@ OBJECTS: dict[str, dict] = {
 # report's top gaps, in this order. Every field name here must exist in the dictionary.
 CURATED: dict[str, dict[str, str]] = {
     "material_master": {
-        "MARA.LIQDT": "cross-field: when populated, LIQDT is a valid date and MARA.LVORM is set; flag LIQDT"
-        " in the past on a material without the deletion flag",
         "MARA.DATAB": "format: valid date when populated; cross-field: DATAB not after MARA.MSTDE when both set",
         "MARA.BEGRU": "domain + S4-prerequisite: profile values per MARA.MTART; flag authorization groups"
         " used by fewer than a handful of materials (likely typos) before role redesign",
-        "MARA.MATFI": "cross-field: locked materials (MATFI = X) should not carry open plant-level"
-        " procurement (MARC.BESKZ populated without MARC.MMSTA block); profile set-rate first",
-        "MARA.XGCHP": "cross-field: XGCHP = X requires batch management (MARA.XCHPF = X)",
-        "MARA.KZEFF": "domain: blank or X; profile set-rate, review any X with change-management owners",
-        "MARC.BASMG": "domain: BASMG > 0 when in-house production time MARC.DZEIT is populated",
-        "MARC.WZEIT": "cross-field: WZEIT >= MARC.PLIFZ for externally procured materials (MARC.BESKZ = F);"
-        " flag WZEIT = 0 on MRP-relevant materials",
-        "MARC.MINLS": "cross-field: MINLS <= MARC.MAXLS when both populated",
-        "MARC.MAXLS": "cross-field: MAXLS >= MARC.MINLS and consistent with MARC.BSTMA when both populated",
         "MARC.HERBL": "cross-field: when populated, MARC.HERKL (country of origin) is also populated;"
         " region values valid for that country are country-specific (unverified)",
-        "MARC.QZGTP": "referential: value exists in TQ05.ZGTYP; cross-field: requires QM active (MARC.QMATV)",
         "MARD.LGPBE": "mandatory-if-used: profile bin population per MARD.LGORT; conditional null_check for"
         " storage locations where most records carry a bin",
         "MARD.PRCTL": "cross-field: when populated, equals MARC.PRCTR for the same material/plant (unverified:"
         " confirm the business allows a differing storage-location profit center)",
-        "MBEW.OWNPR": "cross-field: OWNPR = X implies in-house or mixed procurement (MARC.BESKZ in E/X)",
-        "MVKE.SKTOF": "domain: blank or X; profile set-rate per MVKE.VKORG, flag outliers within one sales org",
         "MLAN.TAXM2": "cross-field: when MLAN.TAXM1 is populated for a MLAN.ALAND whose tax procedure uses a"
         " second tax category, TAXM2 is populated (unverified: depends on country tax determination)",
         "QMAT.INSMK": "cross-field: an active inspection type (QMAT.AKTIV = X) for goods-receipt inspection"
         " types (QMAT.ART 01/0101) has INSMK = X (unverified: inspection type codes are customizing)",
-        "MKAL.ALORT": "referential: ALORT exists in T001L for the production version plant; mandatory when"
-        " the production version is used for repetitive manufacturing",
         "INOB.STATU": "domain: classification status is released (value 1) for classified objects; flag"
         " locked or incomplete assignments (unverified: status values are customizing)",
     },
     "sd_customer_master": {
-        "KNB1.AKONT": "mandatory + referential: every KNB1 row has a reconciliation account that exists in"
-        " SKB1 for KNB1.BUKRS and is flagged as a customer reconciliation account (SKB1.MITKZ = D);"
-        " S4-prerequisite for CVI",
-        "KNB1.ZWELS": "referential: each character of ZWELS is a payment method in T042Z for the company"
-        " code country (T001.LAND1)",
-        "KNB1.ZAHLS": "referential: value exists in T008.ZAHLS; cross-field: flag payment blocks on"
-        " customers without open items for review",
-        "KNB1.SPERR": "cross-field: posting-blocked company code rows (SPERR = X) should carry KNB1.LOEVM or a"
-        " documented reason; profile set-rate",
-        "KNA1.BRSCH": "referential: value exists in T016.BRSCH; mandatory per account group KNA1.KTOKD if"
-        " population is high",
         "KNA1.KONZS": "consistency: customers sharing a KONZS share KNA1.LAND1 or KNA1.KTOKD pattern;"
         " flag singleton group keys (likely typos)",
-        "KNA1.VBUND": "referential: value exists in T880.RCOMP; cross-field: intercompany customers"
-        " (by KNA1.KTOKD) carry VBUND",
         "KNA1.STKZU": "cross-field: STKZU = X requires KNA1.STCEG populated for EU countries (unverified)",
         "KNA1.STCD3": "format: country-specific tax number pattern by KNA1.LAND1 (unverified)",
-        "KNA1.NODEL": "cross-field: NODEL = X conflicts with KNA1.LOEVM = X (deletion flag set on a"
-        " deletion-blocked customer)",
-        "KNA1.CASSD": "cross-field: centrally sales-blocked customers should also have KNA1.AUFSD or"
-        " KNA1.SPERR set, or be reviewed for archiving; profile set-rate",
-        "KNBK.BANKL": "referential: KNBK.BANKS + BANKL exists in BNKA; S4-prerequisite for BP bank data",
         "KNBK.BANKN": "format: account number length/charset by KNBK.BANKS (unverified); cross-table: a"
         " matching TIBAN row (TIBAN.BANKS/BANKL/BANKN) exists where the country uses IBAN",
         "KNBK.KOINH": "mandatory: account holder populated; similarity check against KNA1.NAME1",
-        "KNB5.MANSP": "referential: value exists in T040S.MANSP; profile dunning-block rate per company code",
-        "KNVV.CASSD": "cross-field: sales-area block set while KNA1.CASSD is blank, review consistency with"
-        " KNVV.AUFSD",
-        "ADRC.CITY1": "mandatory: every customer address has a city (null_check)",
         "ADRC.POST_CODE1": "format: length and pattern per ADRC.COUNTRY using T005.LNPLZ / T005.PRPLZ",
-        "ADRC.REGION": "referential: ADRC.COUNTRY + REGION exists in T005S; mandatory for countries that"
-        " require a region (unverified per country)",
         "UKMBP_CMS_SGM.XCRITICAL": "cross-field: critical customers (XCRITICAL = X) carry a credit limit"
         " (UKMBP_CMS_SGM.CREDIT_LIMIT > 0) in the same credit segment",
     },
     "employee_central": {
-        "COMPINFO.USERID": "mandatory + cross-table: every COMPINFO row has a USERID that exists in"
-        " EMPEMPLOYMENT.USERID",
-        "COMPINFO.EFFECTIVE_DATE": "mandatory + cross-table: EFFECTIVE_DATE on or after the employee's"
-        " EMPEMPLOYMENT.START_DATE",
-        "COMPINFO.END_DATE": "cross-field: END_DATE >= EFFECTIVE_DATE; no overlapping records per USERID",
-        "COMPINFO.PAY_TYPE": "referential: pay component exists in FOPayComponent; mandatory on every"
-        " compensation row",
-        "COMPINFO.CURRENCY": "referential: valid currency code; cross-table: matches FOCOMPANY.CURRENCY of"
-        " EMPJOBHIST.COMPANY unless an expatriate assignment",
-        "COMPINFO.COMP_FREQUENCY": "referential: frequency exists in FOFrequency; mandatory when"
-        " COMPINFO.SALARY is populated",
-        "COMPINFO.PAY_GRADE": "cross-table: equals EMPJOBHIST.PAY_GRADE effective on the same date",
-        "COMPINFO.PAY_GROUP": "referential: pay group exists in FOPayGroup; mandatory when the employee is"
-        " replicated to payroll (COMPINFO.PAYROLL_ID populated)",
-        "COMPINFO.PAY_RANGE_MIN": "cross-field: PAY_RANGE_MIN <= PAY_RANGE_MID <= PAY_RANGE_MAX",
-        "COMPINFO.PAY_RANGE_MAX": "cross-field: PAY_RANGE_MAX >= PAY_RANGE_MIN; flag salaries outside the"
-        " range (outlier)",
-        "COMPINFO.COMPA_RATIO": "cross-field: COMPA_RATIO approximately equals ANNUAL_SALARY / PAY_RANGE_MID;"
-        " flag values outside a configurable band",
-        "COMPINFO.ANNUAL_SALARY": "domain: ANNUAL_SALARY > 0 for active employees; cross-field: approximately"
-        " SALARY * ANNUALIZATION_FACTOR",
-        "COMPINFO.EVENT_REASON": "referential: exists in FOEventReason; cross-table: aligns with"
-        " EMPJOBHIST.EVENT_REASON on the same date",
-        "COMPINFO.PAY_SCALE_TYPE": "S4-prerequisite: populated with PAY_SCALE_AREA and PAY_SCALE_LEVEL for"
-        " employees replicated to SAP payroll (all three or none)",
         "COMPINFO.PAYROLL_ID": "uniqueness: one USERID per PAYROLL_ID; mandatory for EC Payroll employees"
         " (unverified: non-standard property)",
-        "PAYMENTINFO.EFFECTIVE_DATE": "mandatory + cross-table: on or after EMPEMPLOYMENT.START_DATE",
-        "PAYMENTINFO.PAYMENT_METHOD": "mandatory: every active employee with PAYMENTINFO.PAY_TYPE main"
-        " payment has a payment method",
-        "PAYMENTINFO.CURRENCY": "cross-table: matches COMPINFO.CURRENCY for the main payment",
-        "PERINFO.NATIONAL_ID_CARD_TYPE": "cross-field: mandatory when PERINFO.NATIONAL_ID is populated;"
-        " allowed types are country-specific (unverified)",
-        "EMPEMPLOYMENT.SEQ_NUMBER": "uniqueness: (USERID, START_DATE, SEQ_NUMBER) unique; SEQ_NUMBER >= 1",
     },
 }
 
