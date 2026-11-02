@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
+  getAcrossSystems,
   getGlossary,
   getGlossaryTermDetail,
   getGoldenEvents,
@@ -45,6 +46,12 @@ const STALE = 30_000;
 export function useGoldenRecords(module: string, page: number) {
   const f = useFixture();
   return useQuery({ queryKey: mdmKeys.golden(f, module, page), queryFn: () => getGoldenRecords(module, page), staleTime: STALE, retry: false });
+}
+
+/** The object's duplicate clusters that span two or more connected systems. */
+export function useAcrossSystems(module: string) {
+  const f = useFixture();
+  return useQuery({ queryKey: ["v2", "mdm", "across-systems", f, module] as const, queryFn: () => getAcrossSystems(module), staleTime: STALE, retry: false });
 }
 
 export function useGoldenRecord(id: string) {

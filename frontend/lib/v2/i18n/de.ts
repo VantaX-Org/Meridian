@@ -7107,4 +7107,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Last name": "Nachname",
   "Gender": "Geschlecht",
   "Nationality": "Staatsangehörigkeit",
+  "Across systems": "Systemübergreifend",
+  "{n} {n2, plural, one {cluster} other {clusters}} across connected systems": "{n} {n2, plural, one {Cluster} other {Cluster}} über verbundene Systeme",
+  "The duplicates across systems could not be read.": "Die systemübergreifenden Dubletten konnten nicht gelesen werden.",
+  "No {label} record has a duplicate in another connected system. The cross-system match compares the latest complete run of each connected system that holds this object.": "Kein Datensatz von {label} hat eine Dublette in einem anderen verbundenen System. Der systemübergreifende Abgleich vergleicht den letzten vollständigen Lauf jedes verbundenen Systems, das dieses Objekt enthält.",
+  "Pairs per system pair": "Paare je Systempaar",
+  "{a} and {b}: {pairs} pairs, {open} open, {merged} merged": "{a} und {b}: {pairs} Paare, {open} offen, {merged} zusammengeführt",
+  "Clusters across systems": "Systemübergreifende Cluster",
+  "The record has no description": "Der Datensatz hat keine Beschreibung",
+  "Showing the first {shown} of {total}, largest first.": "Die ersten {shown} von {total}, die größten zuerst.",
 };

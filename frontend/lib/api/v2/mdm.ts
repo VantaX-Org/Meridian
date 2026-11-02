@@ -51,6 +51,28 @@ export function getMatchPairs(domain: string, limit: number, offset = 0): Promis
   return v2Get<ReviewPairList>("/match-scores", { domain, band: "review", limit, offset });
 }
 
+/** A record of a cross-system cluster: its SAP key, the connected system it sits in and its description. */
+export interface CrossMember {
+  key: string;
+  system_id: string | null;
+  system_name: string | null;
+  text: string | null;
+  golden_record_id: string | null;
+}
+
+/** GET /match-scores/across-systems: duplicates whose records sit in different connected systems, as clusters. */
+export interface CrossSystemList {
+  domain: string;
+  pairs: number;
+  by_systems: { a: string; b: string; pairs: number; open: number; merged: number }[];
+  clusters: { id: string; members: CrossMember[]; pairs: number; best: number; merged: boolean; pair_ids: string[] }[];
+  clusters_total: number;
+}
+
+export function getAcrossSystems(domain: string, limit = 50): Promise<CrossSystemList> {
+  return v2Get<CrossSystemList>("/match-scores/across-systems", { domain, limit });
+}
+
 export function getMatchPair(id: string): Promise<ReviewPairDetail> {
   return v2Get<ReviewPairDetail>(`/match-scores/${encodeURIComponent(id)}`);
 }

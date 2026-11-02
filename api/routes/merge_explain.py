@@ -12,6 +12,7 @@ Endpoints (prefix /api/v1):
   GET    /pair-constraints                     — do_not_match / always_match list
   DELETE /pair-constraints/{id}                — clear a pair constraint
   POST   /match-tuning/dry-run                 — clusters that would merge / split under new weights
+  GET    /match-scores/across-systems          — duplicate clusters whose records sit in different SAP systems
 
 A member id resolves to its cluster head. Nothing here talks to SAP.
 """
@@ -203,6 +204,39 @@ class PairDetail(PairListItem):
     record_a: PairSide
     record_b: PairSide
     default_survivor: str
+
+
+class CrossMember(BaseModel):
+    key: str
+    system_id: Optional[str] = None
+    system_name: Optional[str] = None
+    text: Optional[str] = None
+    golden_record_id: Optional[str] = None
+
+
+class CrossCluster(BaseModel):
+    id: str
+    members: list[CrossMember]
+    pairs: int
+    best: float
+    merged: bool
+    pair_ids: list[str]
+
+
+class SystemPairCount(BaseModel):
+    a: str
+    b: str
+    pairs: int
+    open: int
+    merged: int
+
+
+class CrossSystemResponse(BaseModel):
+    domain: str
+    pairs: int
+    by_systems: list[SystemPairCount]
+    clusters: list[CrossCluster]
+    clusters_total: int
 
 
 class PairMergeBody(BaseModel):
@@ -536,6 +570,90 @@ async def list_match_pairs(domain: Optional[str] = None, band: Optional[Band] = 
     return PairListResponse(pairs=[PairListItem(**_pair_item(r)) for r in rows], total=total,
                             bands={b: counts.get(b, 0) for b in ("auto_merge", "review", "low")},
                             thresholds={"auto_merge": AUTO_MERGE, "review_floor": REVIEW_FLOOR})
+
+
+# ponytail: the strongest 20k cross-system pairs per object; page the clustering if a landscape outgrows it
+_CROSS_LIMIT = 20_000
+
+
+def cross_system_clusters(pairs: list[dict], heads: dict[str, str]) -> tuple[list[dict], list[dict]]:
+    """Connected components of cross-system pairs; a record is (system, key). ``pairs``:
+    ``{id, total, sources: [a, b], open, same_cluster}``; ``heads``: key -> golden record id.
+    Returns (clusters, counts per system pair), largest and strongest cluster first."""
+    parent: dict[tuple, tuple] = {}
+
+    def find(x: tuple) -> tuple:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    node = {}
+    for p in pairs:
+        for src in p["sources"]:
+            n = (src.get("system_id"), src["key"])
+            node[n] = src
+            find(n)
+        a, b = (find((src.get("system_id"), src["key"])) for src in p["sources"])
+        parent[a] = b
+    groups: dict[tuple, dict] = {}
+    by: dict[tuple, dict] = {}
+    for p in pairs:
+        root = find((p["sources"][0].get("system_id"), p["sources"][0]["key"]))
+        g = groups.setdefault(root, {"pairs": 0, "best": 0.0, "pair_ids": []})
+        g["pairs"] += 1
+        g["best"] = max(g["best"], p["total"])
+        g["pair_ids"].append(p["id"])
+        a, b = sorted((src.get("system_name") or src.get("system_id") or "") for src in p["sources"])
+        c = by.setdefault((a, b), {"a": a, "b": b, "pairs": 0, "open": 0, "merged": 0})
+        c["pairs"] += 1
+        c["open"] += bool(p["open"])
+        c["merged"] += bool(p["same_cluster"])
+    members: dict[tuple, list] = {}
+    for n, src in node.items():
+        members.setdefault(find(n), []).append(
+            {"key": src["key"], "system_id": src.get("system_id"), "system_name": src.get("system_name"),
+             "text": src.get("text"), "golden_record_id": heads.get(src["key"])})
+    clusters = []
+    for root, g in groups.items():
+        ms = sorted(members[root], key=lambda m: (m["system_name"] or "", m["key"]))
+        golden = {m["golden_record_id"] for m in ms}
+        clusters.append({"id": f"{ms[0]['system_id']}:{ms[0]['key']}", "members": ms, **g,
+                         "merged": len(golden) == 1 and None not in golden})
+    clusters.sort(key=lambda c: (-len(c["members"]), -c["best"], c["id"]))
+    return clusters, sorted(by.values(), key=lambda c: -c["pairs"])
+
+
+@router.get("/match-scores/across-systems", response_model=CrossSystemResponse)
+async def list_cross_system_clusters(domain: str = Query(..., min_length=1, max_length=100),
+                                     limit: int = Query(50, ge=1, le=500),
+                                     _: str = Depends(require_permission("view")),
+                                     db: AsyncSession = Depends(get_db),
+                                     tenant: Tenant = Depends(get_tenant)) -> CrossSystemResponse:
+    """Duplicates whose records sit in different connected SAP systems (run_cross_system_match), as clusters.
+
+    Review and auto-merge bands only; a pair a steward rejected or marked do_not_match is left out. Each member
+    is a cross-reference: its SAP key, its system and, once merged, the golden record it belongs to.
+    """
+    tid = await _rls(db, tenant)
+    base = _REVIEW_PAIRS.format(where="AND ms.explanation->'sources' IS NOT NULL")
+    rows = (await db.execute(text(
+        f"SELECT * FROM ({base}) q WHERE band <> 'low' AND COALESCE(steward_decision, '') <> 'reject' "
+        "AND COALESCE(pc_kind, '') <> 'do_not_match' ORDER BY total DESC, id LIMIT :n"),
+        {**_review_params(tid, domain, None, None, True), "n": _CROSS_LIMIT})).all()
+    pairs = [{"id": str(r.id), "total": float(r.total), "sources": r.explanation["sources"],
+              "same_cluster": bool(r.same_cluster),
+              "open": r.steward_decision is None and r.pc_kind is None and not r.same_cluster}
+             for r in rows if len((r.explanation or {}).get("sources") or []) == 2]
+    keys = sorted({src["key"] for p in pairs for src in p["sources"]})
+    heads = {k: str(h) for k, h in (await db.execute(text(
+        "SELECT sap_object_key, COALESCE(merged_into, id) FROM master_records "
+        "WHERE tenant_id = :tid AND domain = :d AND sap_object_key = ANY(:keys)"),
+        {"tid": tid, "d": domain, "keys": keys})).all()} if keys else {}
+    clusters, by = cross_system_clusters(pairs, heads)
+    return CrossSystemResponse(domain=domain, pairs=len(pairs), by_systems=[SystemPairCount(**c) for c in by],
+                               clusters=[CrossCluster(**c) for c in clusters[:limit]], clusters_total=len(clusters))
 
 
 async def _pair_row(db: AsyncSession, tid: str, score_id: uuid.UUID) -> Any:
