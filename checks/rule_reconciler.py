@@ -20,8 +20,10 @@ Run as a tool::
     python -m checks.rule_reconciler          # human-readable report
     python -m checks.rule_reconciler --strict  # exit 1 if any rule_only drift
 
-The ``--strict`` form is suitable as a CI gate once the existing drift is
-resolved; it is intentionally not wired into the build yet.
+Value drift reads the curated dictionary first and falls back to the domain
+fixed values of the DDIC bundle (``sap/dictionaries``), so every domain rule on
+a bundled table is compared. ``tests/test_rule_reconciler.py`` holds the live
+rule set to zero dangerous drift, the same gate ``--strict`` applies.
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ from pathlib import Path
 import yaml
 
 from sap.data_dictionary import DATA_DICTIONARY, get_valid_values
+from sap.ddic import get_dictionary
 
 RULES_DIR = Path(__file__).parent / "rules"
 
@@ -135,6 +138,12 @@ def _split_field(field: str) -> tuple[str, str] | None:
     return table.upper(), fld.upper()
 
 
+def _bundle_values(table: str, fld: str) -> set[str] | None:
+    """Domain fixed values from the DDIC bundle the engine runs on, when the curated dictionary is silent."""
+    f = get_dictionary().field(table, fld)
+    return f.allowed_values() if f else None
+
+
 # ── Reconciliation ───────────────────────────────────────────────────────────
 
 
@@ -151,7 +160,7 @@ def reconcile_allowed_values(rules: list[dict]) -> list[ValueDrift]:
         if parts is None:
             continue
         table, fld = parts
-        dict_values = get_valid_values(table, fld)
+        dict_values = get_valid_values(table, fld) or _bundle_values(table, fld)
         if not dict_values:
             # Dictionary is silent / free-form for this field — nothing to compare.
             continue

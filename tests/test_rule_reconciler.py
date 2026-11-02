@@ -207,3 +207,18 @@ def test_reconcile_runs_over_live_ruleset():
         assert d.rule_only or d.dict_only
     for g in report.coverage_gaps:
         assert g.field.endswith(g.field.split(".")[-1])
+
+
+def test_bundle_domain_values_are_compared(monkeypatch):
+    # Curated dictionary silent; the bundle's MARC.MAABC domain still catches a value SAP never defined.
+    import checks.rule_reconciler as rr
+
+    monkeypatch.setattr(rr, "get_valid_values", lambda t, f: None)
+    allowed = sorted(rr._bundle_values("MARC", "MAABC"))
+    rules = [{"id": "X9", "field": "MARC.MAABC", "check_class": "domain_value_check",
+              "allowed_values": allowed + ["ZZ"], "_module": "m", "_source_file": "f.yaml"}]
+    assert [d.rule_only for d in reconcile_allowed_values(rules)] == [("ZZ",)]
+
+
+def test_live_ruleset_has_no_dangerous_drift():
+    assert reconcile().dangerous_drift == []

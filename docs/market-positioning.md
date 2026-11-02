@@ -15,7 +15,7 @@ scrutiny.
 | **6 DQS dimensions** (DAMA DMBOK) | `api/services/scoring.py::DEFAULT_WEIGHTS` |
 | every rule **proved** to fail ≥1 and pass ≥1 record | `tests/checks/test_rule_proofs.py` — 10,940 cases |
 | every rule field **resolves** in the SAP dictionary | `tests/checks/test_rule_integrity.py` — 2,253 cases |
-| rules reconciled against a curated dictionary | `checks/rule_reconciler.py` — 0 drift across its curated 31-table dictionary; it does **not** yet cover the 587-table bundle the engine runs on (repointing is the open item, not a claim) |
+| rules reconciled against the dictionary the engine runs on | `checks/rule_reconciler.py` — every `domain_value_check` on a dictionary field with fixed values is compared (curated dictionary first, then the DDIC bundle's domain fixed values); 0 rules admit a value SAP does not define, held by `tests/test_rule_reconciler.py::test_live_ruleset_has_no_dangerous_drift` |
 | runs **entirely inside the customer boundary** | no egress in the data path; self-hosted compose |
 
 The proof harness is the genuinely unusual asset. It is not a rule *count* — it is
