@@ -29,11 +29,21 @@ def score_of(version: Optional[dict], module: str) -> Optional[float]:
     return None if v is None else round(float(v), 2)
 
 
-def action_for(row: dict, tunable: dict[str, dict]) -> dict:
+def action_for(row: dict, tunable: dict[str, dict], dupes: Optional[dict[str, int]] = None,
+               owned: Optional[set] = None) -> dict:
     """One recommended action with a backend behind it: draft the tuned rule version when steward verdicts say the
-    rule over-flags, else draft a cleansing batch when proposed values exist, else open the rule."""
+    rule over-flags; review duplicates when a uniqueness rule fails and match & merge holds pairs waiting for review
+    on the object (``dupes``: pending review pairs by module); assign an owner when neither the rule nor its object
+    has an owner or steward in ``data_owners`` (``owned``: rule ids and modules that do; None means not loaded);
+    else draft a cleansing batch when proposed values exist, else open the rule. Assign goes before cleanse because
+    a drafted batch notifies the owners and nobody is told when there are none."""
     if row["check_id"] in tunable:
         return {"kind": "tune"}
+    pairs = (dupes or {}).get(row.get("module") or "", 0)
+    if row.get("dimension") == "uniqueness" and pairs > 0:
+        return {"kind": "merge", "pairs": pairs}
+    if owned is not None and row["check_id"] not in owned and row.get("module") not in owned:
+        return {"kind": "assign"}
     if (row.get("auto_fix_pct") or 0) > 0:
         return {"kind": "cleanse"}
     return {"kind": "open"}
@@ -108,7 +118,8 @@ def _proven(s: Session, tid: str, vid: str, check_id: str, currency: str) -> dic
          WHERE tenant_id = :t AND version_id = CAST(:v AS uuid) AND :c = ANY(check_ids)""", t=tid, v=vid, c=check_id)}
 
 
-def build(s: Session, tid: str, version_ids: list, module: Optional[str], tunable: dict[str, dict]) -> dict:
+def build(s: Session, tid: str, version_ids: list, module: Optional[str], tunable: dict[str, dict],
+          dupes: Optional[dict[str, int]] = None, owned: Optional[set] = None) -> dict:
     """The band over the current state (every object at the latest finished run of its lineage)."""
     objects = agg.current_objects(s, tid, version_ids, module)
     cost_model = agg.load_cost_model(s, tid)
@@ -153,7 +164,7 @@ def build(s: Session, tid: str, version_ids: list, module: Optional[str], tunabl
                     "why": {"origin": origin, "delta_affected": r["delta_affected"]},
                     "money": _money(r, impact_rows, currency),
                     "confidence": confidence_of(origin, tunable.get(r["check_id"])),
-                    "action": action_for(r, tunable)})
+                    "action": action_for({**r, "module": mod}, tunable, dupes, owned)})
     findings = rank(findings)
     acted = []
     for a in load_acted(s, tid):

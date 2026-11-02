@@ -25,6 +25,29 @@ def test_action_prefers_tune_then_cleanse_then_open():
     assert af.action_for(_row("A", 1), {}) == {"kind": "open"}
 
 
+def _dup(cid="MM168", fix=0.0, module="material_master", dim="uniqueness"):
+    return {**_row(cid, 1, fix=fix), "module": module, "dimension": dim}
+
+
+def test_merge_when_a_uniqueness_rule_has_review_pairs_on_its_object():
+    pairs = {"material_master": 14}
+    assert af.action_for(_dup(fix=40), {}, pairs, {"material_master"}) == {"kind": "merge", "pairs": 14}
+    assert af.action_for(_dup(), {"MM168": {}}, pairs, set()) == {"kind": "tune"}  # tune still wins
+    assert af.action_for(_dup(dim="completeness"), {}, pairs, {"MM168"}) == {"kind": "open"}
+    assert af.action_for(_dup(module="sd_customer_master"), {}, pairs, {"MM168"}) == {"kind": "open"}
+    assert af.action_for(_dup(), {}, {"material_master": 0}, {"MM168"}) == {"kind": "open"}
+
+
+def test_assign_when_neither_rule_nor_object_has_an_owner():
+    row = _dup("SDCM001", fix=40, module="sd_customer_master", dim="completeness")
+    assert af.action_for(row, {}, {}, set()) == {"kind": "assign"}  # before cleanse: nobody to notify
+    assert af.action_for(row, {}, {}, {"SDCM001"}) == {"kind": "cleanse"}  # rule owned
+    assert af.action_for(row, {}, {}, {"sd_customer_master"}) == {"kind": "cleanse"}  # object owned
+    assert af.action_for(row, {}, {}, None) == {"kind": "cleanse"}  # ownership not loaded: no assign
+    assert af.action_for(row, {"SDCM001": {}}, {}, set()) == {"kind": "tune"}
+    assert af.action_for(_dup(), {}, {"material_master": 3}, set()) == {"kind": "merge", "pairs": 3}
+
+
 def test_confidence_precision_then_origin_else_none():
     computed = {"status": "computed", "share": 0.8}
     assert af.confidence_of(computed, {"precision_before": 0.61}) == {"basis": "precision", "value": 0.61}

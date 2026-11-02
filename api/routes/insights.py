@@ -601,13 +601,29 @@ async def get_cleansing(version_id: Optional[uuid.UUID] = None, module: Optional
 class ActedBody(BaseModel):
     module: str
     check_id: str
-    action: Literal["tune", "cleanse", "open"]
+    action: Literal["tune", "cleanse", "open", "merge", "assign"]
 
 
 async def _tunable(db: AsyncSession, tenant: Tenant) -> dict[str, dict]:
     """Self-tune proposals with no version pending, by rule id (the "tune" action needs one to draft)."""
     from api.routes.rules import _tuning
     return {p["rule_id"]: p for p in await _tuning(db, tenant) if not p.get("pending")}
+
+
+async def _dupes(db: AsyncSession, tenant: Tenant) -> dict[str, int]:
+    """Match & merge pairs waiting for a steward in the review band, by object (match_scores.domain is the module),
+    counted with the review queue's own query so the band and the queue agree."""
+    from api.routes.merge_explain import _REVIEW_PAIRS, _review_params
+    q = f"SELECT domain, COUNT(*) FROM ({_REVIEW_PAIRS.format(where='')}) q WHERE band = 'review' GROUP BY domain"
+    return {r[0]: int(r[1]) for r in await db.execute(text(q), _review_params(str(tenant.id), None, None, None, False))}
+
+
+async def _owned(db: AsyncSession, tenant: Tenant) -> set[str]:
+    """Rule ids and modules with an owner or steward in data_owners (the ownership the triage queue routes to)."""
+    rows = await db.execute(text("""
+        SELECT ref FROM data_owners WHERE tenant_id = :t AND kind IN ('rule', 'object')
+           AND (owner_user_id IS NOT NULL OR steward_user_id IS NOT NULL)"""), {"t": str(tenant.id)})
+    return {r[0] for r in rows}
 
 
 @router.get("/findings", dependencies=[Depends(require_permission("view"))])
@@ -620,7 +636,8 @@ async def get_findings(module: Optional[str] = None, db: AsyncSession = Depends(
     tunable = await _tunable(db, tenant)
     await _rls(db, tenant)
     ids = await _latest_version_ids(db, tenant)
-    out = await db.run_sync(lambda s: aletheia_found.build(s, str(tenant.id), ids, module, tunable))
+    dupes, owned = await _dupes(db, tenant), await _owned(db, tenant)
+    out = await db.run_sync(lambda s: aletheia_found.build(s, str(tenant.id), ids, module, tunable, dupes, owned))
     for a in out["acted"]:
         for p in a["proven_cost"] or []:
             p["label"] = _METRIC_LABEL.get(p["metric"])

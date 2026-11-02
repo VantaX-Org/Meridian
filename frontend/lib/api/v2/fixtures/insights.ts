@@ -39,15 +39,17 @@ const sums = (key: "amount" | "value_at_risk", rows: { l1: string | null; amount
   return [...m].map(([l1, v]) => ({ l1, [key]: v }));
 };
 
-/** What Aletheia found (GET /insights/findings): rule texts and fields from checks/rules/ecc/material_master.yaml. */
+/** What Aletheia found (GET /insights/findings): rule texts and fields from checks/rules/ecc/material_master.yaml and
+ *  sd_customer_master.yaml. MM168 has match & merge pairs waiting (merge); SDCM001's object has no owner (assign). */
 const mmFinding = (check_id: string, name: string, field: string, severity: string, dimension: string, affected: number, impact: number,
   delta: number | null, fix: number | null, spark: (number | null)[], origin: { status: string; top: string | null; share: number | null },
-  cost: number | null, confidence: { basis: "precision" | "origin_share"; value: number } | null, kind: "tune" | "cleanse" | "open") => ({
-  id: `material_master:${check_id}`, module: "material_master", version_id: "v-12", check_id, name, field, severity, dimension,
+  cost: number | null, confidence: { basis: "precision" | "origin_share"; value: number } | null,
+  kind: "tune" | "cleanse" | "open" | "merge" | "assign", { module = "material_master", pairs }: { module?: string; pairs?: number } = {}) => ({
+  id: `${module}:${check_id}`, module, version_id: "v-12", check_id, name, field, severity, dimension,
   affected, total: 48_210, impact, delta_affected: delta, auto_fix_pct: fix, spark,
   why: { origin, delta_affected: delta },
   money: { cost_at_risk: cost, currency: "ZAR", features: impact_for(check_id) },
-  confidence, action: { kind },
+  confidence, action: pairs == null ? { kind } : { kind, pairs },
 });
 const impact_for = (cid: string) => impact
   .filter((r) => r.causing_rules.some((c) => (typeof c === "string" ? c : c.check_id) === cid))
@@ -63,6 +65,10 @@ const found = [
     866, 12.9, 14, 0, [null, null, 790, 812, 830, 841, 852, 866], none, null, { basis: "precision", value: 0.6 }, "tune"),
   mmFinding("MM142", "Base unit of measure MEINS must reference a valid entry in T006", "MARA.MEINS", "high", "consistency",
     37, 3.1, null, 0, [37, 37, 37, 37, 37, 37, 37, 37], none, 1_200_200, null, "open"),
+  mmFinding("MM168", "Two materials carry the same manufacturer and manufacturer part number (duplicate material)", "MARA.MFRPN", "medium",
+    "uniqueness", 28, 2.4, 4, 0, [18, 20, 21, 22, 24, 24, 24, 28], none, null, null, "merge", { pairs: 14 }),
+  mmFinding("SDCM001", "Customer number is mandatory - primary key for all SD customer transactions", "KNA1.KUNNR", "critical", "completeness",
+    9, 1.8, null, 100, [9, 9, 9, 9, 9, 9, 9, 9], none, null, null, "assign", { module: "sd_customer_master" }),
 ];
 const changes = [{
   module: "material_master", version_id: "v-12", previous_version_id: "v-11", score: 87.4, previous: 86.2, delta: 1.2,
@@ -79,6 +85,10 @@ export const NONE_INSIGHTS_WRITE = Symbol("not an Aletheia write");
 
 /** Acting on a finding in fixture mode: the baseline is the current run, so the proof waits for the next run. */
 export function insightsWrite(method: string, path: string, body: unknown): unknown {
+  if (method === "PUT" && path === "/owners") {
+    const b = body as { kind: string; ref: string; owner_user_id: string | null; steward_user_id: string | null };
+    return { ...b, owner_name: null, steward_name: null, updated_at: "2026-11-01T08:00:00Z" };
+  }
   if (method !== "POST") return NONE_INSIGHTS_WRITE;
   if (path === "/remediation/batches") {
     const b = body as { name: string };
