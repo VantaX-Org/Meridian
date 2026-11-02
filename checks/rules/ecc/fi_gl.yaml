@@ -2863,3 +2863,152 @@ rules:
     applies_when:
       BKPF.CPUDT:
         populated: true
+
+  - id: GL263
+    field: BSEG.WSKTO
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: '`BSEG.WSKTO` > `BSEG.WRBTR`'
+    severity: medium
+    dimension: accuracy
+    message: Cash discount amount is larger than the item amount in document currency
+    why_it_matters: A cash discount is a share of the invoice amount; it cannot exceed the amount it is a discount on. A larger discount means the discount or the item amount was changed or loaded wrongly, and a payment taking it would settle the item for less than nothing.
+    rule_authority: sap_business_convention
+    s4_area: finance
+    s4_impact: warning
+    simplification_item: Data Model Changes in Financials - Universal Journal
+    sap_impact: The payment program and incoming payment clearing deduct the discount as stored, leaving a residual or an over-clearing on the account.
+    fix_map:
+      __other__: Compare the item in FB03 with the payment terms; correct the discount amount (FB02 where allowed) or reverse and re-post the document.
+    record_fix_template: 'Company code {BSEG.BUKRS} document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: cash discount {BSEG.WSKTO} exceeds {BSEG.WRBTR}.'
+    applies_when:
+      BSEG.KOART:
+      - D
+      - K
+  - id: GL264
+    field: BSEG.SKNTO
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: '`BSEG.SKNTO` > `BSEG.DMBTR`'
+    severity: medium
+    dimension: accuracy
+    message: Cash discount amount is larger than the item amount in company-code currency
+    why_it_matters: The local-currency cash discount is the translated document discount and is bounded by the local item amount in the same way. A larger value means the translation or the load of one of the two amounts is wrong.
+    rule_authority: sap_business_convention
+    s4_area: finance
+    s4_impact: warning
+    simplification_item: Data Model Changes in Financials - Universal Journal
+    sap_impact: Clearing in company-code currency posts a discount larger than the item, producing a wrong cash discount expense or revenue.
+    fix_map:
+      __other__: Check the exchange rate and both amounts in FB03; reverse and re-post the document if the stored amounts are wrong.
+    record_fix_template: 'Company code {BSEG.BUKRS} document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: local cash discount {BSEG.SKNTO} exceeds {BSEG.DMBTR}.'
+    applies_when:
+      BSEG.KOART:
+      - D
+      - K
+  - id: GL265
+    field: BSEG.SKFBT
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: '`BSEG.SKFBT` > `BSEG.WRBTR`'
+    severity: medium
+    dimension: accuracy
+    message: Amount eligible for cash discount is larger than the item amount
+    why_it_matters: The amount eligible for cash discount is the part of the gross amount the discount is computed on (the gross amount less any excluded parts such as tax). It can be equal to the item amount or smaller, never larger; a larger base inflates every discount computed from it.
+    rule_authority: sap_business_convention
+    s4_area: finance
+    s4_impact: warning
+    simplification_item: Data Model Changes in Financials - Universal Journal
+    sap_impact: The payment program computes the discount on an inflated base and takes more discount than the terms allow.
+    fix_map:
+      __other__: Correct the discount base in FB02 if the document allows it, otherwise reverse and re-post with the right base.
+    record_fix_template: 'Company code {BSEG.BUKRS} document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: discount base {BSEG.SKFBT} exceeds {BSEG.WRBTR}.'
+    applies_when:
+      BSEG.KOART:
+      - D
+      - K
+  - id: GL266
+    field: BSEG.WMWST
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: '`BSEG.WMWST` > `BSEG.WRBTR`'
+    severity: medium
+    dimension: accuracy
+    message: Tax amount on the item is larger than the item amount in document currency
+    why_it_matters: Where a customer or vendor line carries a tax amount, it is the tax portion contained in that line's gross amount, so it cannot exceed it. A larger tax amount means the tax or the gross amount was loaded wrongly.
+    rule_authority: sap_business_convention
+    s4_area: finance
+    s4_impact: warning
+    simplification_item: Data Model Changes in Financials - Universal Journal
+    sap_impact: Tax adjustment on cash discount and the tax reports read a tax portion larger than the invoice itself.
+    fix_map:
+      __other__: Compare the line with the tax lines of the document in FB03; reverse and re-post the document with consistent amounts.
+    record_fix_template: 'Company code {BSEG.BUKRS} document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: tax amount {BSEG.WMWST} exceeds {BSEG.WRBTR}.'
+    applies_when:
+      BSEG.KOART:
+      - D
+      - K
+  - id: GL267
+    field: BSEG.BUZEI
+    check_class: uniqueness_check
+    fields: [BSEG.BUKRS, BSEG.BELNR, BSEG.GJAHR, BSEG.BUZEI]
+    grain: BSEG
+    severity: critical
+    dimension: uniqueness
+    message: Duplicate line item - same company code, document, fiscal year and line number
+    why_it_matters: BUKRS + BELNR + GJAHR + BUZEI is the key of an accounting line item, so two rows sharing it are the same line loaded twice. GL070 catches a whole document header loaded twice; this catches a line duplicated under a single header, which a header-level check cannot see and which leaves the document out of balance.
+    rule_authority: sap_hard_constraint
+    sap_impact: The duplicated line double-counts its amount in the account balance and, on a customer or vendor line, creates a second open item; the migration load rejects the duplicate key.
+    fix_map:
+      __other__: Compare the line with FB03 (S/4 F0717); remove the extra copy from the load and correct the extract to replace rather than append.
+    record_fix_template: 'Company code {BSEG.BUKRS} document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI} appears on more than one row.'
+  - id: GL268
+    field: SKB1.SAKNR
+    check_class: uniqueness_check
+    fields: [SKB1.BUKRS, SKB1.SAKNR]
+    grain: SKB1
+    severity: critical
+    dimension: uniqueness
+    message: Duplicate company-code segment for a G/L account
+    why_it_matters: BUKRS + SAKNR is the key of the company-code segment of a G/L account. GL025 checks the chart-of-accounts segment (SKA1); a company-code segment loaded twice carries two sets of control data (currency, open-item and line-item flags, field status group) for one account, and nobody can say which one is in force.
+    rule_authority: sap_hard_constraint
+    sap_impact: The migration load rejects the duplicate key; if both versions differ, postings and open-item management follow whichever row was loaded last.
+    fix_map:
+      __other__: Compare both rows with FS00 (S/4 F2735); keep the correct control data and remove the duplicate from the load.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: company-code segment appears on more than one row.'
+  - id: GL269
+    field: BSEG.AUGDT
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: (`BSEG.AUGDT` - @today).dt.days > 366
+    severity: high
+    dimension: timeliness
+    message: Line item clearing date is more than a year in the future
+    why_it_matters: The clearing date is the posting date of the clearing document. GL049 compares it with the line's own posting date; a clearing date more than a year ahead passes that check and is still impossible for a clearing already made, which is what a misparsed or placeholder date in the load produces.
+    rule_authority: sap_hard_constraint
+    sap_impact: Open-item and ageing reports keyed on the clearing date treat the item as open or cleared on the wrong day, and the key-date balance (FBL1N/FBL5N/FAGLL03) is wrong for every date up to it.
+    fix_map:
+      __other__: Compare the clearing document in FB03; correct the clearing date in the load or the extract mapping.
+    record_fix_template: 'Company code {BSEG.BUKRS} document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: clearing date {BSEG.AUGDT} is more than a year in the future.'
+    applies_when:
+      BSEG.AUGDT:
+        populated: true
+  - id: GL270
+    field: BKPF.BLDAT
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: (`BKPF.BLDAT` - @today).dt.days > 366
+    severity: high
+    dimension: timeliness
+    message: Journal entry document date is more than a year in the future
+    why_it_matters: The document date is the date of the source document (the invoice date). GL066 compares it with the posting date, so a document whose posting date was shifted forward too passes; a source document dated more than a year ahead cannot exist and is the mark of a misparsed or placeholder date.
+    rule_authority: sap_hard_constraint
+    sap_impact: The document date is the default baseline for payment terms, so due dates, discount dates and dunning run off a date a year or more ahead.
+    fix_map:
+      __other__: Correct the document date against the source document; reverse and re-post (FB08, FB01) if it cannot be changed in place.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} in company code {BKPF.BUKRS}: document date {BKPF.BLDAT} is more than a year in the future.'
+    applies_when:
+      BKPF.BSTAT:
+        not_in: [D, M, S, V, W, Z]
+      BKPF.BLDAT:
+        populated: true

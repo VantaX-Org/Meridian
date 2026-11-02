@@ -107,8 +107,8 @@ dimensions on the objects the tenant actually serves:
 |---|---|---|
 | business_partner | timeliness 4 | closed: `BP297`/`BP298` (expired partner validity, expired standard address) bring it to 6 |
 | accounts_payable | accuracy 4 | closed: tax-number check digits `AP289`-`AP298` bring it to 14 |
-| accounts_receivable | accuracy 4 | open: needs a reconciliation check (below) |
-| fi_gl | accuracy 4, uniqueness 3, timeliness 4 | open: partly (uniqueness on a journal is only meaningful at document grain) |
+| accounts_receivable | accuracy 4 | closed: `AR272`-`AR275` (cash discount, discount base and tax amount bounded by the item amount) bring it to 8 |
+| fi_gl | accuracy 4, uniqueness 3, timeliness 4 | closed: `GL263`-`GL266` (the same bounds on customer and vendor lines) bring accuracy to 8; `GL267`/`GL268` (duplicate line-item key, duplicate company-code account segment) bring uniqueness to 5; `GL269`/`GL270` (clearing date and document date more than a year ahead) bring timeliness to 6 |
 | compensation | timeliness 1 | raised to 3 (`COMP252`/`COMP253`); canonical CompInfo has no change timestamp, so no freshness rule exists to add |
 | the five unserved SF objects | several | no - the tenant serves no data |
 
@@ -141,6 +141,7 @@ express:
   directions all already have rules (`AP036`/`AP042`/`AP079`/`AP080`/`AP072`/`AP078`).
 
 So the honest statement is that the accuracy cell for the finance objects is bounded by the
-check classes the library has, and closing it would need a class that compares an object
-against an outside total - a reconciliation check. That is a real piece of work with its own
-design, not a matter of writing more rules of the kinds that exist.
+check classes used so far. `reconciliation_check` (a total against a total in another table)
+and `group_sum_check` (a child sum against its parent) now exist in `checks/runner.py`, and
+the bounds between amount fields on one item (discount, discount base and tax against the
+gross amount) were still unwritten; those are what closed the cells above.
