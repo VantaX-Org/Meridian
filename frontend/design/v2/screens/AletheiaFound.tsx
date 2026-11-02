@@ -126,7 +126,10 @@ function why(f: AletheiaFinding): string | null {
 }
 
 function FindingRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }) {
-  if (f.action.kind === "across") return <AcrossRow f={f} />;
+  return f.action.kind === "across" ? <AcrossRow f={f} /> : <ActionRow f={f} queryKey={queryKey} />;
+}
+
+function ActionRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }) {
   const qc = useQueryClient();
   const [done, setDone] = useState(false);
   const act = useMutation({
