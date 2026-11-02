@@ -30,7 +30,7 @@ from api.services.survivorship import (
     apply_trusted_source,
 )
 from checks.profiling import is_sensitive
-from sap.deterministic.normalize import canonical_phone, normalize_business_name
+from sap.deterministic.normalize import canonical_date_iso, canonical_phone, normalize_business_name
 
 AUTO_MERGE = 0.95
 REVIEW_FLOOR = 0.30
@@ -78,13 +78,114 @@ def _token_set(a: str, b: str) -> float:
     return fuzz.token_set_ratio(a, b) / 100.0 if a and b else 0.0
 
 
+# Letters NFKD cannot decompose into a base letter plus a mark.
+_TRANSLIT = str.maketrans({"ß": "ss", "ẞ": "SS", "æ": "ae", "Æ": "AE", "ø": "o", "Ø": "O", "œ": "oe",
+                           "Œ": "OE", "ł": "l", "Ł": "L", "đ": "d", "Đ": "D", "þ": "th", "Þ": "TH",
+                           "ı": "i", "ð": "d", "Ð": "D"})
+# Company forms stripped repeatedly from the end, on top of sap.deterministic's LEGAL_SUFFIXES,
+# so "GmbH & Co. KG" and "(Proprietary) Limited" both go. Japanese forms go wherever they stand.
+_LEGAL_TAIL = re.compile(
+    r"(?:^|\s)(?:and company|company|kgaa|gmbh|ag|kg|ohg|ug|se|plc|llc|llp|ltda|ltd|inc|corp|"
+    r"pty|proprietary|limited|bv|nv|oy|oyj|ab|as|asa|sa|sas|srl|spa|sarl|de cv|cv|kk|"
+    r"kabushiki kaisha|yugen kaisha|godo kaisha|pte|pvt|bhd|sdn|jsc|ooo|zao|oao)$")
+_LEGAL_JA = re.compile(r"株式会社|有限会社|合同会社|\(株\)|\(有\)")
+# Material description shorthand (MAKT.MAKTX is 40 characters, so stewards abbreviate).
+_DESC_ABBR = {"assy": "assembly", "asm": "assembly", "brg": "bearing", "brng": "bearing", "fltr": "filter",
+              "flt": "filter", "hyd": "hydraulic", "hydr": "hydraulic", "pmp": "pump", "vlv": "valve",
+              "gskt": "gasket", "gsk": "gasket", "wshr": "washer", "wsh": "washer", "blt": "bolt",
+              "scr": "screw", "hex": "hexagon", "stl": "steel", "cyl": "cylinder", "elem": "element",
+              "hse": "hose", "conn": "connector", "sw": "switch", "mtr": "motor", "eng": "engine",
+              "brkt": "bracket", "plt": "plate", "cvr": "cover", "rng": "ring", "spr": "spring",
+              "shft": "shaft", "nt": "nut"}
+
+
+def fold(v: object) -> str:
+    """NFKC (full-width to ASCII), transliterate, drop diacritics, lowercase: one script-free key."""
+    import unicodedata
+
+    s = unicodedata.normalize("NFKC", "" if v is None else str(v)).translate(_TRANSLIT)
+    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)).lower().strip()
+
+
+def norm_legal_name(v: str) -> str:
+    """Company name with every legal form gone: Acme (Pty) Ltd, ACME PTY LTD, Acme GmbH & Co. KG -> acme."""
+    s = " ".join(_WORD.findall(normalize_business_name(_LEGAL_JA.sub(" ", fold(v)))))
+    prev = None
+    while prev != s and s:
+        prev, s = s, _LEGAL_TAIL.sub("", s).strip()
+    return s or (prev or "")
+
+
+def norm_part(v: str) -> str:
+    """Manufacturer part / material number: case, separators and leading zeros carry no meaning."""
+    return _ALNUM.sub("", fold(v)).upper().lstrip("0")
+
+
+def norm_desc(v: str) -> str:
+    """Description tokens: folded, abbreviations expanded, sorted (word order carries no meaning)."""
+    return " ".join(sorted({_DESC_ABBR.get(t, t) for t in _WORD.findall(fold(v))}))
+
+
+def _numeric_tokens(s: str) -> set[str]:
+    return {t for t in s.split() if any(c.isdigit() for c in t)}
+
+
+def _desc(a: str, b: str) -> float:
+    """Token-set similarity, capped at 0.5 when the numeric tokens differ: BOLT M10X30 is not BOLT M10X40."""
+    s = _token_set(a, b)
+    return min(s, 0.5) if _numeric_tokens(a) != _numeric_tokens(b) else s
+
+
+def norm_email(v: str) -> str:
+    return fold(v).replace(" ", "")
+
+
+def _email(a: str, b: str) -> float:
+    """Same address 1.0; same mailbox name at another domain 0.6 (weak); otherwise 0."""
+    if not a or not b:
+        return 0.0
+    if a == b:
+        return 1.0
+    la, lb = a.partition("@")[0], b.partition("@")[0]
+    return 0.6 if la == lb and len(la) >= 6 and not la.isdigit() else 0.0
+
+
+def norm_date(v: str) -> str:
+    return canonical_date_iso(v) or ""
+
+
+def _date(a: str, b: str) -> float:
+    """Same day 1.0; day and month swapped (DD/MM against MM/DD entry) 0.7; otherwise 0."""
+    if not a or not b:
+        return 0.0
+    if a == b:
+        return 1.0
+    return 0.7 if a[:4] == b[:4] and a[5:7] == b[8:10] and a[8:10] == b[5:7] else 0.0
+
+
+def norm_person(v: str) -> str:
+    """Person name tokens, folded and sorted so "Smith, John" equals "John Smith"."""
+    return " ".join(sorted(_WORD.findall(fold(v))))
+
+
+def norm_code(v: str) -> str:
+    return fold(v).upper()
+
+
 # comparator -> (normaliser, scorer, always_mask)
 SAP_COMPARATORS: dict[str, tuple[Callable[[str], str], Callable[[str, str], float], bool]] = {
-    "name_legal": (normalize_business_name, _token_set, False),
+    "name_legal": (norm_legal_name, _token_set, False),
     "address_tokens": (_norm_address, _jaccard, False),
     "tax_exact": (_norm_tax, _eq, True),
     "phone_e164": (lambda v: canonical_phone(v) or "", _phone, True),
     "bank_exact": (_norm_bank, _eq, True),
+    "part_number": (norm_part, _eq, False),
+    "desc_tokens": (norm_desc, _desc, False),
+    "code_exact": (norm_code, _eq, False),
+    "email": (norm_email, _email, True),
+    "national_id": (_norm_tax, _eq, True),
+    "date_exact": (norm_date, _date, True),
+    "person_name": (norm_person, _token_set, False),
 }
 
 
