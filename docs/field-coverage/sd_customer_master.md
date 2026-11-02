@@ -64,11 +64,11 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
 | KNA1 | KUNNR | Customer Number | y | 28 / 28 | SDCM001, SDCM002, SDCM022, SDCM024, SDCM051, SDCM055 +22 more |  |
-| KNA1 | LAND1 | Country Key | y | 56 / 56 | SDCM005, SDCM050, SDCM300, SDCM301, SDCM302, SDCM303 +50 more |  |
-| KNA1 | NAME1 | Name 1 | y | 7 / 7 | SDCM003, SDCM381, SDCM413, SDCM428, SDCM438, SDCM439 +1 more |  |
+| KNA1 | LAND1 | Country Key | y | 57 / 57 | SDCM005, SDCM050, SDCM300, SDCM301, SDCM302, SDCM303 +51 more |  |
+| KNA1 | NAME1 | Name 1 | y | 8 / 8 | SDCM003, SDCM381, SDCM413, SDCM428, SDCM438, SDCM439 +2 more |  |
 | KNA1 | NAME2 | Name 2 | y | 2 / 2 | SDCM414, SDCM438 |  |
-| KNA1 | ORT01 | City | y | 4 / 4 | SDCM057, SDCM429, SDCM437, SDCM440 |  |
-| KNA1 | PSTLZ | Postal Code | y | 33 / 33 | SDCM300, SDCM301, SDCM302, SDCM303, SDCM304, SDCM305 +27 more |  |
+| KNA1 | ORT01 | City | y | 5 / 5 | SDCM057, SDCM429, SDCM437, SDCM440, SDCM838 |  |
+| KNA1 | PSTLZ | Postal Code | y | 34 / 34 | SDCM300, SDCM301, SDCM302, SDCM303, SDCM304, SDCM305 +28 more |  |
 | KNA1 | REGIO | Region (State, Province, County) | y | 4 / 4 | SDCM330, SDCM331, SDCM332, SDCM333 |  |
 | KNA1 | SORTL | Sort field | y | 1 / 1 | SDCM422 |  |
 | KNA1 | STRAS | House number and street | y | 2 / 2 | SDCM057, SDCM425 |  |
@@ -102,7 +102,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNA1 | LIFNR | Account Number of Vendor or Creditor | y | 3 / 3 | SDCM055, SDCM761, SDCM812 |  |
 | KNA1 | LIFSD | Central delivery block for the customer | y | 3 / 3 | SDCM210, SDCM741, SDCM763 |  |
 | KNA1 | LOCCO | City Coordinates |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
-| KNA1 | LOEVM | Central Deletion Flag for Master Record | y | 12 / 12 | SDCM051, SDCM208, SDCM239, SDCM246, SDCM431, SDCM532 +6 more |  |
+| KNA1 | LOEVM | Central Deletion Flag for Master Record | y | 15 / 15 | SDCM051, SDCM208, SDCM239, SDCM246, SDCM431, SDCM532 +9 more |  |
 | KNA1 | NAME3 | Name 3 | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | KNA1 | NAME4 | Name 4 | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | KNA1 | NIELS | Nielsen ID | y | 1 / 0 | DXR900c43c5 | only disabled (DDIC-generated) rules; review for enabling |
@@ -114,7 +114,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNA1 | RPMKR | Regional market |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | KNA1 | SPERR | Central posting block | y | 2 / 2 | SDCM212, SDCM229 |  |
 | KNA1 | SPRAS | Language Key | y | 1 / 1 | SDCM419 |  |
-| KNA1 | STCD1 | Tax Number 1 | y | 18 / 18 | SDCM006, SDCM356, SDCM357, SDCM364, SDCM366, SDCM367 +12 more |  |
+| KNA1 | STCD1 | Tax Number 1 | y | 19 / 19 | SDCM006, SDCM356, SDCM357, SDCM364, SDCM366, SDCM367 +13 more |  |
 | KNA1 | STCD2 | Tax Number 2 | y | 4 / 4 | SDCM355, SDCM365, SDCM374, SDCM380 |  |
 | KNA1 | STKZA | Indicator: Business Partner Subject to Equalization Tax? |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
 | KNA1 | STKZU | Liable for VAT |  | 0 / 0 |  | cross-field: STKZU = X requires KNA1.STCEG populated for EU countries (unverified) |
@@ -125,7 +125,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNA1 | LZONE | Transportation zone to or from which the goods are delivered | y | 2 / 1 | DXR8bf067bd, SDCM420 |  |
 | KNA1 | XZEMP | Indicator: Is an alternative payer allowed in document? |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
 | KNA1 | VBUND | Company ID of trading partner | y | 1 / 1 | SDCM814 |  |
-| KNA1 | STCEG | VAT Registration Number | y | 25 / 25 | SDCM006, SDCM334, SDCM335, SDCM336, SDCM337, SDCM338 +19 more |  |
+| KNA1 | STCEG | VAT Registration Number | y | 26 / 26 | SDCM006, SDCM334, SDCM335, SDCM336, SDCM337, SDCM338 +20 more |  |
 | KNA1 | DEAR1 | Indicator: Competitor |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
 | KNA1 | DEAR2 | Indicator: Sales partner |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
 | KNA1 | DEAR3 | Indicator: Sales prospect |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
