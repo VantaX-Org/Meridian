@@ -594,3 +594,56 @@ async def get_cleansing(version_id: Optional[uuid.UUID] = None, module: Optional
     if scope == "current":
         return await _current(db, tenant, agg.current_cleansing, version_id, module)
     return await _agg(db, tenant, agg.cleansing, version_id and str(version_id), module)
+
+
+# -- what Aletheia found (api/services/aletheia_found.py); deterministic, current state ---------------
+
+class ActedBody(BaseModel):
+    module: str
+    check_id: str
+    action: Literal["tune", "cleanse", "open"]
+
+
+async def _tunable(db: AsyncSession, tenant: Tenant) -> dict[str, dict]:
+    """Self-tune proposals with no version pending, by rule id (the "tune" action needs one to draft)."""
+    from api.routes.rules import _tuning
+    return {p["rule_id"]: p for p in await _tuning(db, tenant) if not p.get("pending")}
+
+
+@router.get("/findings", dependencies=[Depends(require_permission("view"))])
+async def get_findings(module: Optional[str] = None, db: AsyncSession = Depends(get_db),
+                       tenant: Tenant = Depends(get_tenant)):
+    """What Aletheia found over the current state: the highest-impact failing rules with their driver, money at
+    risk, confidence and one action; each object's change since its previous run; and the proof of value of every
+    finding acted on. Deterministic; nothing here is LLM output."""
+    from api.services import aletheia_found
+    tunable = await _tunable(db, tenant)
+    await _rls(db, tenant)
+    ids = await _latest_version_ids(db, tenant)
+    out = await db.run_sync(lambda s: aletheia_found.build(s, str(tenant.id), ids, module, tunable))
+    for a in out["acted"]:
+        for p in a["proven_cost"] or []:
+            p["label"] = _METRIC_LABEL.get(p["metric"])
+    return out
+
+
+@router.post("/findings/acted", status_code=201, dependencies=[Depends(require_permission("view"))])
+async def mark_acted(body: ActedBody, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Record that a person acted on a finding, with the baseline (run, score, failing records) taken on the
+    server, so the next run can show the realised result. Idempotent per run."""
+    from api.services import aletheia_found
+    from api.services.rbac import current_user_id
+    await _rls(db, tenant)
+    ids = await _latest_version_ids(db, tenant)
+    base = await db.run_sync(lambda s: aletheia_found.baseline(s, str(tenant.id), ids, body.module, body.check_id))
+    if base is None or base["affected_before"] is None:
+        raise HTTPException(404, "No current finding for this rule")
+    await db.execute(text("""
+        INSERT INTO aletheia_actions (tenant_id, module, check_id, action, version_id, affected_before, score_before,
+                                      created_by)
+        VALUES (:t, :m, :c, :a, CAST(:v AS uuid), :ab, :sb, CAST(:u AS uuid))
+        ON CONFLICT (tenant_id, module, check_id, action, version_id) DO NOTHING"""),
+        {"t": str(tenant.id), "m": body.module, "c": body.check_id, "a": body.action, "v": base["version_id"],
+         "ab": base["affected_before"], "sb": base["score_before"], "u": current_user_id()})
+    await db.commit()
+    return {"module": body.module, "check_id": body.check_id, "action": body.action, **base}
