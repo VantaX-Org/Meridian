@@ -81,7 +81,9 @@ export const getTrends = () => v2Get<{ runs: TrendRun[] }>(`${P}/trends`, { limi
  * What Aletheia found (GET /insights/findings): ranked deterministic findings over the current state, what changed
  * since each object's previous run, and the proof of value of every finding a person acted on.
  */
-export type AletheiaActionKind = "tune" | "cleanse" | "open";
+/** tune drafts the tuned rule version; merge opens the object's match & merge review (``pairs`` waiting); assign sets
+ *  the rule's owner in data_owners; cleanse drafts a cleansing batch; open opens the rule. */
+export type AletheiaActionKind = "tune" | "cleanse" | "open" | "merge" | "assign";
 
 export interface AletheiaFinding {
   id: string;
@@ -101,7 +103,7 @@ export interface AletheiaFinding {
   why: { origin: { status: string; top: string | null; share: number | null }; delta_affected: number | null };
   money: { cost_at_risk: number | null; currency: string; features: { feature: string; l1: string | null; value_at_risk: number | null }[] };
   confidence: { basis: "precision" | "origin_share"; value: number } | null;
-  action: { kind: AletheiaActionKind };
+  action: { kind: AletheiaActionKind; pairs?: number };
 }
 
 export interface AletheiaChange {

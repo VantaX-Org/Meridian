@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as insights from "@/lib/api/v2/insights";
+import * as mdm from "@/lib/api/v2/mdm";
 import { AletheiaFound } from "../screens/AletheiaFound";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
 beforeEach(() => window.sessionStorage.setItem("mn_v2_fixture", "1"));
 afterEach(() => {
@@ -16,7 +18,7 @@ describe("Aletheia found", () => {
   it("ranks findings with their rule text, field, driver, money, confidence and one action", async () => {
     renderWithQuery(<AletheiaFound />);
     const rows = await screen.findAllByTestId("aletheia-finding");
-    expect(rows).toHaveLength(4);
+    expect(rows).toHaveLength(6);
     expect(rows[0]).toHaveTextContent("MM003");
     expect(rows[0]).toHaveTextContent("Material type is mandatory");
     expect(rows[0]).toHaveTextContent("MARA-MTART");
@@ -54,6 +56,36 @@ describe("Aletheia found", () => {
     expect(batch).toHaveBeenCalledWith(expect.stringContaining("MM003"), { module: "material_master", check_id: "MM003" });
     expect(acted).toHaveBeenCalledWith({ module: "material_master", check_id: "MM003", action: "cleanse" });
     await waitFor(() => expect(screen.getByTestId("aletheia-proof")).toHaveTextContent("Waiting for the next run"));
+  });
+
+  it("sends a duplicate rule with review pairs to the object's match and merge review and records it", async () => {
+    const acted = vi.spyOn(insights, "markActed");
+    renderWithQuery(<AletheiaFound />);
+    const rows = await screen.findAllByTestId("aletheia-finding");
+    const mm168 = rows.find((r) => r.textContent?.includes("MM168")) as HTMLElement;
+    expect(mm168).toHaveTextContent("Pairs waiting for review: 14");
+    const link = within(mm168).getByRole("link", { name: "Review duplicates" });
+    await waitFor(() => expect(link.getAttribute("href")).toMatch(/^\/o\/[^/]+\/[^/]+\/golden/));
+    fireEvent.click(link);
+    expect(acted).toHaveBeenCalledWith({ module: "material_master", check_id: "MM168", action: "merge" });
+  });
+
+  it("assigns an owner to a rule nobody owns and records the action", async () => {
+    const owner = vi.spyOn(mdm, "putOwner");
+    const acted = vi.spyOn(insights, "markActed");
+    renderWithQuery(<AletheiaFound />);
+    const rows = await screen.findAllByTestId("aletheia-finding");
+    const sdcm = rows.find((r) => r.textContent?.includes("SDCM001")) as HTMLElement;
+    const button = within(sdcm).getByRole("button", { name: "Assign owner" });
+    expect(button).toBeDisabled();
+    const select = within(sdcm).getByRole("combobox", { name: "Owner of SDCM001" });
+    await waitFor(() => expect(select.querySelectorAll("option").length).toBeGreaterThan(1));
+    const person = (select.querySelectorAll("option")[1] as HTMLOptionElement).value;
+    fireEvent.change(select, { target: { value: person } });
+    fireEvent.click(button);
+    await waitFor(() => expect(within(sdcm).getByRole("status")).toHaveTextContent("Owner assigned"));
+    expect(owner).toHaveBeenCalledWith("rule", "SDCM001", person);
+    expect(acted).toHaveBeenCalledWith({ module: "sd_customer_master", check_id: "SDCM001", action: "assign" });
   });
 
   it("stays out of the way for an object with nothing found", async () => {

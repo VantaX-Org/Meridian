@@ -106,6 +106,11 @@ export function populateGlossary(): Promise<{ created: number; linked: number; o
   return v2Send("POST", "/glossary/populate");
 }
 
+/** PUT /owners: sets the owner of an object, rule or system (needs the assign permission). */
+export function putOwner(kind: DataOwner["kind"], ref: string, owner_user_id: string | null, steward_user_id: string | null = null): Promise<DataOwner> {
+  return v2Send("PUT", "/owners", { kind, ref, owner_user_id, steward_user_id });
+}
+
 export async function getObjectOwners(): Promise<DataOwner[]> {
   const res = await v2Get<{ owners: DataOwner[] }>("/owners", { kind: "object" });
   return res.owners;

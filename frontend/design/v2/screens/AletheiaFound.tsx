@@ -4,10 +4,15 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { createRuleBatch, getFindings, markActed, type AletheiaActed, type AletheiaFinding } from "@/lib/api/v2/insights";
+import { putOwner } from "@/lib/api/v2/mdm";
 import { draftTunedVersion } from "@/lib/api/v2/pilot";
+import { useAssignable } from "@/lib/v2/approvals-queries";
 import { failureText } from "@/lib/v2/errors";
+import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { moduleText, moneyCompactText } from "@/lib/v2/labels";
+import { objectHref } from "@/lib/v2/people";
+import { useLandscape } from "@/lib/v2/queries";
 import { DASH, f1, int, pct1 } from "@/lib/v2/score";
 import { Sparkline } from "../charts/Sparkline";
 import { Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
@@ -110,8 +115,8 @@ export function AletheiaFound({ module }: { module?: string }) {
   );
 }
 
-const ACTION_LABEL = { tune: () => t("Draft tuned version"), cleanse: () => t("Draft cleansing batch"), open: () => t("Open rule") };
-const ACTION_TEXT = { tune: () => t("Tuned rule version drafted"), cleanse: () => t("Cleansing batch drafted"), open: () => t("Opened") };
+const ACTION_LABEL = { tune: () => t("Draft tuned version"), cleanse: () => t("Draft cleansing batch"), open: () => t("Open rule"), merge: () => t("Review duplicates"), assign: () => t("Assign owner") };
+const ACTION_TEXT = { tune: () => t("Tuned rule version drafted"), cleanse: () => t("Cleansing batch drafted"), open: () => t("Opened"), merge: () => t("Duplicates reviewed"), assign: () => t("Owner assigned") };
 
 function why(f: AletheiaFinding): string | null {
   const parts: string[] = [];
@@ -169,7 +174,11 @@ function FindingRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }
         )}
       </td>
       <td data-label={t("Action")}>
-        {f.action.kind === "open" ? (
+        {f.action.kind === "merge" ? (
+          <MergeAction f={f} />
+        ) : f.action.kind === "assign" ? (
+          <AssignAction f={f} queryKey={queryKey} />
+        ) : f.action.kind === "open" ? (
           <V2Link href={`/r/${encodeURIComponent(f.check_id)}`} className="m2-btn m2-sm">{ACTION_LABEL.open()}</V2Link>
         ) : done ? (
           <span className="m2-meta" role="status">{ACTION_TEXT[f.action.kind]()}</span>
@@ -181,6 +190,64 @@ function FindingRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }
         {act.isError ? <span role="alert" className="m2-meta"> {failureText(act.error)}</span> : null}
       </td>
     </tr>
+  );
+}
+
+/** A failing uniqueness rule with match & merge pairs waiting on its object: open the object's golden records tab, where
+ *  the review queue decides them, and record the action for the proof of value. */
+function MergeAction({ f }: { f: AletheiaFinding }) {
+  const landscape = useLandscape(null);
+  const pairs = f.action.pairs ?? 0;
+  return (
+    <>
+      <V2Link
+        href={`${objectHref(landscape.data, f.module)}/golden`}
+        className="m2-btn m2-sm"
+        onClick={() => void markActed({ module: f.module, check_id: f.check_id, action: "merge" }).catch(() => undefined)}
+      >
+        {ACTION_LABEL.merge()}
+      </V2Link>
+      <span className="m2-meta"> {t("Pairs waiting for review: {n}", { n: int(pairs) })}</span>
+    </>
+  );
+}
+
+/** Neither the rule nor its object has an owner: choose a person and set them as the rule's owner (PUT /owners), the
+ *  owner the triage queue routes the rule's issues to. Needs the assign permission. */
+function AssignAction({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }) {
+  const qc = useQueryClient();
+  const session = useV2Session();
+  const allowed = session.can("assign") && !session.shared && !session.viewAs;
+  const people = useAssignable(allowed);
+  const [who, setWho] = useState("");
+  const [done, setDone] = useState(false);
+  const act = useMutation({
+    mutationFn: async () => {
+      await putOwner("rule", f.check_id, who);
+      return markActed({ module: f.module, check_id: f.check_id, action: "assign" });
+    },
+    onSuccess: () => {
+      setDone(true);
+      void qc.invalidateQueries({ queryKey });
+    },
+  });
+  if (done) return <span className="m2-meta" role="status">{ACTION_TEXT.assign()}</span>;
+  if (!allowed) return <span className="m2-meta">{t("No owner. Someone with the assign permission can set one.")}</span>;
+  return (
+    <>
+      <select value={who} onChange={(e) => setWho(e.target.value)} aria-label={t("Owner of {id}", { id: f.check_id })}>
+        <option value="">{t("Choose")}</option>
+        {(people.data ?? []).map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>{" "}
+      <button type="button" className="m2-btn m2-sm" disabled={!who || act.isPending} onClick={() => act.mutate()}>
+        {ACTION_LABEL.assign()}
+      </button>
+      {act.isError ? <span role="alert" className="m2-meta"> {failureText(act.error)}</span> : null}
+    </>
   );
 }
 
