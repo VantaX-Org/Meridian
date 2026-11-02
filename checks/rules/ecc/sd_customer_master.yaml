@@ -11671,3 +11671,663 @@ rules:
     fix_map:
       __other__: Check the legacy load and correct the creation dates if the source holds the real ones.
     record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: created before the customer.'
+  - id: SDCM800
+    field: KNB1.AKONT
+    check_class: null_check
+    grain: KNB1
+    s4_area: business_partner
+    s4_impact: blocking
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    severity: critical
+    dimension: completeness
+    message: Customer company code data has no reconciliation account
+    why_it_matters: Every posting to a customer is also posted to the G/L reconciliation account in KNB1.AKONT. The field is
+      required for every company code a customer is extended to; a row without it cannot carry any receivable and the CVI
+      cannot create the BP company code data (role FLCU00).
+    rule_authority: sap_hard_constraint
+    sap_impact: Invoices and payments cannot be posted for the customer in the company code; CVI synchronisation to the Business
+      Partner fails for the company code.
+    fix_map:
+      __blank__: Enter the reconciliation account in XD02/FD02 > Company code data > Account management.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: no reconciliation account.'
+  - id: SDCM801
+    field: KNB1.AKONT
+    check_class: exists_check
+    fields:
+    - KNB1.BUKRS
+    - KNB1.AKONT
+    target_table: SKB1
+    target_fields:
+    - BUKRS
+    - SAKNR
+    target_when:
+      MITKZ:
+      - D
+    grain: KNB1
+    severity: critical
+    dimension: consistency
+    message: Customer reconciliation account is not a customer reconciliation account in the company code
+    why_it_matters: A G/L account works as a customer reconciliation account only when its company code data (SKB1.MITKZ) is
+      set to account type D. An account without that setting, or with the vendor or asset type, cannot be assigned to a
+      customer, and postings to it are rejected.
+    rule_authority: sap_hard_constraint
+    sap_impact: Every customer posting in the company code fails on the reconciliation account check.
+    fix_map:
+      __other__: Assign a G/L account with reconciliation account type D for customers (FS00) in XD02/FD02 > Account management.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: reconciliation account {KNB1.AKONT} is not a customer
+      reconciliation account in the company code.'
+  - id: SDCM802
+    field: KNB1.AKONT
+    check_class: exists_check
+    fields:
+    - KNB1.BUKRS
+    - KNB1.AKONT
+    target_table: SKB1
+    target_fields:
+    - BUKRS
+    - SAKNR
+    target_when:
+      XSPEB:
+        blank: true
+    grain: KNB1
+    severity: high
+    dimension: consistency
+    message: Customer reconciliation account is missing or blocked for posting in the company code
+    why_it_matters: SKB1.XSPEB blocks a G/L account for posting in the company code. A customer whose reconciliation account
+      is blocked cannot receive any invoice, credit memo or payment, although the customer itself looks active.
+    rule_authority: sap_hard_constraint
+    sap_impact: Billing documents fail to post to accounting and incoming payments cannot be applied for the customer.
+    fix_map:
+      __other__: Unblock the G/L account in FS00 if it is still in use, or assign an active reconciliation account in XD02/FD02.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: reconciliation account {KNB1.AKONT} is missing or
+      blocked for posting.'
+  - id: SDCM803
+    field: KNB1.ZWELS
+    check_class: referential_check
+    multi_value: chars
+    grain: KNB1
+    severity: medium
+    dimension: consistency
+    message: Customer payment method list contains a method that is not defined
+    why_it_matters: Every character of KNB1.ZWELS is a payment method the payment program may use for the customer (direct
+      debit, refund). A character that is not a payment method in T042Z is never selected, so the collection the customer
+      agreed to is not executed.
+    rule_authority: sap_hard_constraint
+    sap_impact: F110 skips the customer's items for the undefined method; direct debits and refunds are not executed.
+    fix_map:
+      __other__: Payment method '{invalid_value}' is not defined in T042Z. Correct the list in XD02/FD02 > Payment transactions.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: payment methods ''{actual_value}'' contain a method
+      not in T042Z.'
+  - id: SDCM804
+    field: KNB1.ZAHLS
+    check_class: referential_check
+    grain: KNB1
+    severity: medium
+    dimension: consistency
+    message: Customer payment block key is not defined
+    why_it_matters: The payment block key decides whether the payment program may collect from or refund to the customer. A
+      key that is not in T008 has no meaning to F110 and cannot be released through the standard block maintenance.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payment proposals treat the customer inconsistently; the block cannot be reviewed against its configured reason.
+    fix_map:
+      __other__: Payment block '{invalid_value}' is not defined in T008. Replace it in XD02/FD02 > Payment transactions.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: payment block ''{actual_value}'' is not in T008.'
+  - id: SDCM805
+    field: KNB1.SPERR
+    check_class: domain_value_check
+    allowed_values:
+    - X
+    - ''
+    grain: KNB1
+    severity: medium
+    dimension: validity
+    message: Company code posting block holds a value other than X or blank
+    why_it_matters: KNB1.SPERR is a checkbox. SAP reads only X as blocked; any other character from a legacy load leaves the
+      customer open for posting while the value suggests a block was intended.
+    rule_authority: sap_hard_constraint
+    sap_impact: Postings go through for a customer that the source data marks as blocked.
+    valid_values_with_labels:
+      X: Blocked for posting
+      ? ''
+      : Not blocked
+    fix_map:
+      __other__: Value '{invalid_value}' is not a valid checkbox value. Set or clear the posting block in XD05/FD05.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: posting block is ''{actual_value}''.'
+  - id: SDCM806
+    field: KNB1.SPERR
+    check_class: cross_field_check
+    fail_when: (`KNB1.LOEVM` == 'X') & `KNB1.SPERR`.isna()
+    grain: KNB1
+    severity: medium
+    dimension: consistency
+    message: Customer is flagged for deletion in the company code but not blocked for posting
+    why_it_matters: The deletion flag only marks the record for archiving; it does not stop postings. A customer that is meant
+      to be deleted keeps receiving invoices and payments until the posting block is also set, and open items then prevent
+      the archiving.
+    rule_authority: best_practice
+    sap_impact: New items post to a customer due for deletion and block its archiving.
+    fix_map:
+      __other__: Set the company code posting block in XD05/FD05, or remove the deletion flag if the customer is still in use.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: flagged for deletion, not blocked for posting.'
+  - id: SDCM807
+    field: KNB1.NODEL
+    check_class: cross_field_check
+    fail_when: (`KNB1.NODEL` == 'X') & (`KNB1.LOEVM` == 'X')
+    grain: KNB1
+    severity: medium
+    dimension: consistency
+    message: Customer company code data is both flagged for deletion and blocked against deletion
+    why_it_matters: KNB1.NODEL protects the company code data from deletion while KNB1.LOEVM requests it. The two flags state
+      opposite intentions, so the archiving run skips the record and nobody knows which flag is correct.
+    rule_authority: best_practice
+    sap_impact: The record is never archived, and decommissioning reports show it as both active and obsolete.
+    fix_map:
+      __other__: Decide whether the customer is still needed; remove either the deletion flag or the deletion block in XD06/FD06.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: deletion flag and deletion block both set.'
+  - id: SDCM808
+    field: KNB1.ZUAWA
+    check_class: referential_check
+    grain: KNB1
+    severity: low
+    dimension: consistency
+    message: Customer sort key for the assignment number is not defined
+    why_it_matters: The sort key (TZUN) fills the assignment field of every customer line item. A key that is not defined leaves
+      the assignment blank, so open-item clearing and line-item sorting by assignment no longer work.
+    rule_authority: sap_hard_constraint
+    sap_impact: Line items are posted without an assignment number; automatic clearing by assignment finds no match.
+    fix_map:
+      __other__: Sort key '{invalid_value}' is not defined in TZUN. Replace it in XD02/FD02 > Account management.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: sort key ''{actual_value}'' is not in TZUN.'
+  - id: SDCM809
+    field: KNB1.FDGRV
+    check_class: referential_check
+    grain: KNB1
+    severity: low
+    dimension: consistency
+    message: Customer cash management planning group is not defined
+    why_it_matters: The planning group (T035) places the customer's expected receipts in the cash management and forecast.
+      A group that is not defined drops the customer's receipts from the liquidity forecast.
+    rule_authority: sap_hard_constraint
+    sap_impact: Expected incoming payments of the customer are missing from the cash position and liquidity forecast.
+    fix_map:
+      __other__: Planning group '{invalid_value}' is not defined in T035. Replace it in XD02/FD02 > Account management.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: planning group ''{actual_value}'' is not in T035.'
+  - id: SDCM810
+    field: KNB1.XAUSZ
+    check_class: referential_check
+    grain: KNB1
+    severity: low
+    dimension: consistency
+    message: Customer account statement indicator is not defined
+    why_it_matters: The indicator (T048K) decides how often the correspondence run sends the customer an account statement.
+      An undefined indicator is never selected, so the customer stops receiving statements.
+    rule_authority: sap_hard_constraint
+    sap_impact: The periodic account statement run skips the customer.
+    fix_map:
+      __other__: Statement indicator '{invalid_value}' is not defined in T048K. Replace it in XD02/FD02 > Correspondence.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: statement indicator ''{actual_value}'' is not in
+      T048K.'
+  - id: SDCM811
+    field: KNB1.UZAWE
+    check_class: referential_check
+    grain: KNB1
+    severity: low
+    dimension: consistency
+    message: Customer payment method supplement is not defined
+    why_it_matters: The payment method supplement (T042F) groups the customer's items into separate payment media. A supplement
+      that is not defined cannot be used to sort or print the payment media.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payment media for the customer are not grouped as intended.
+    fix_map:
+      __other__: Payment method supplement '{invalid_value}' is not defined in T042F. Replace it in XD02/FD02 > Payment transactions.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: payment method supplement ''{actual_value}'' is not
+      in T042F.'
+  - id: SDCM812
+    field: KNB1.XVERR
+    check_class: cross_field_check
+    fail_when: (`KNB1.XVERR` == 'X') & `KNA1.LIFNR`.isna()
+    grain: KNB1
+    severity: medium
+    dimension: consistency
+    message: Customer is set to clear with its vendor but names no vendor
+    why_it_matters: KNB1.XVERR lets the payment and dunning programs offset the customer's receivables against the payables
+      of the vendor in KNA1.LIFNR. Without a vendor number the setting does nothing, so the expected netting never happens.
+    rule_authority: sap_hard_constraint
+    sap_impact: Receivables and payables of the same trading partner are paid and collected separately instead of being netted.
+    fix_map:
+      __other__: Enter the vendor number in XD02 > Control data, or remove the clearing indicator in the company code data.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: clearing with vendor is set but no vendor is assigned.'
+  - id: SDCM813
+    field: KNA1.BRSCH
+    check_class: referential_check
+    grain: KNA1
+    severity: low
+    dimension: consistency
+    message: Customer industry key is not defined
+    why_it_matters: The industry key (T016) drives industry-based reporting, pricing and partner determination. During the CVI
+      conversion it is mapped to the BP industry system; an undefined key has no mapping and is lost or rejected.
+    rule_authority: s4hana_migration
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    sap_impact: Industry analyses misclassify the customer; CVI raises a mapping error for the BP industry.
+    fix_map:
+      __other__: Industry '{invalid_value}' is not defined in T016. Replace it in XD02 > Control data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: industry ''{actual_value}'' is not in T016.'
+  - id: SDCM814
+    field: KNA1.VBUND
+    check_class: referential_check
+    grain: KNA1
+    severity: high
+    dimension: consistency
+    message: Customer trading partner company is not defined
+    why_it_matters: KNA1.VBUND is copied into every receivable posting and drives the intercompany elimination in group
+      consolidation. A trading partner that is not a company in T880 cannot be eliminated.
+    rule_authority: sap_hard_constraint
+    sap_impact: Intercompany receivables stay in the consolidated statements; the elimination reconciliation does not balance.
+    fix_map:
+      __other__: Trading partner '{invalid_value}' is not defined in T880. Replace it in XD02 > Control data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: trading partner ''{actual_value}'' is not in T880.'
+  - id: SDCM815
+    field: KNA1.KUKLA
+    check_class: referential_check
+    grain: KNA1
+    severity: low
+    dimension: consistency
+    message: Customer classification is not defined
+    why_it_matters: The classification (TKUKL) groups customers for analyses and selections. A value that is not defined is
+      not offered in the selection screens, so the customer drops out of every classified report.
+    rule_authority: sap_hard_constraint
+    sap_impact: Customer classification analyses and selections miss the customer.
+    fix_map:
+      __other__: Classification '{invalid_value}' is not defined in TKUKL. Replace it in XD02 > Marketing.
+    record_fix_template: 'Customer {KNA1.KUNNR}: classification ''{actual_value}'' is not in TKUKL.'
+  - id: SDCM816
+    field: KNA1.NODEL
+    check_class: cross_field_check
+    fail_when: (`KNA1.NODEL` == 'X') & (`KNA1.LOEVM` == 'X')
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Customer is both flagged for deletion and blocked against deletion centrally
+    why_it_matters: KNA1.NODEL protects the customer from deletion while KNA1.LOEVM requests it. The record carries two opposite
+      instructions, so archiving skips it and the CVI conversion has to decide whether the BP is archived or active.
+    rule_authority: best_practice
+    sap_impact: The customer is never archived and is converted to a Business Partner with an unclear status.
+    fix_map:
+      __other__: Decide whether the customer is still needed; remove either the deletion flag or the deletion block in XD06.
+    record_fix_template: 'Customer {KNA1.KUNNR}: central deletion flag and deletion block both set.'
+  - id: SDCM817
+    field: KNA1.CASSD
+    check_class: cross_field_check
+    fail_when: (`KNA1.LOEVM` == 'X') & `KNA1.AUFSD`.isna() & `KNA1.CASSD`.isna()
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Customer is flagged for deletion centrally but not blocked for sales
+    why_it_matters: The central deletion flag does not stop new sales documents. Without a central order block or sales block,
+      orders and quotations can still be created for a customer that is meant to disappear.
+    rule_authority: best_practice
+    sap_impact: New sales documents are created for a customer due for deletion and then prevent its archiving.
+    fix_map:
+      __other__: Set the central order block or sales block in VD05/XD05, or remove the deletion flag if the customer is still
+        in use.
+    record_fix_template: 'Customer {KNA1.KUNNR}: flagged for deletion, no central order or sales block.'
+  - id: SDCM818
+    field: KNA1.KNRZA
+    check_class: exists_check
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LOEVM:
+        blank: true
+    grain: KNA1
+    severity: high
+    dimension: consistency
+    message: Customer's alternative payer does not exist or is flagged for deletion
+    why_it_matters: KNA1.KNRZA names the account that pays for this customer. A payer that is missing or flagged for deletion
+      is still proposed for incoming payments and direct debits, which then go to an account that should no longer be used.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payments are collected from, or allocated to, a non-existent or deleted payer account.
+    fix_map:
+      __other__: Replace the alternative payer in XD02 > Payment transactions, or remove it.
+    record_fix_template: 'Customer {KNA1.KUNNR}: alternative payer {KNA1.KNRZA} does not exist or is flagged for deletion.'
+  - id: SDCM819
+    field: KNA1.FISKN
+    check_class: exists_check
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LOEVM:
+        blank: true
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Customer's fiscal address account does not exist or is flagged for deletion
+    why_it_matters: KNA1.FISKN points to the master record that holds the customer's fiscal address and tax data. A target
+      that is missing or deleted leaves tax reporting without a valid fiscal address.
+    rule_authority: sap_hard_constraint
+    sap_impact: Tax reports and VAT returns pick up no fiscal address, or a deleted one, for the customer.
+    fix_map:
+      __other__: Replace the fiscal address account in XD02 > Control data, or remove it.
+    record_fix_template: 'Customer {KNA1.KUNNR}: fiscal address account {KNA1.FISKN} does not exist or is flagged for deletion.'
+  - id: SDCM820
+    field: KNA1.UMJAH
+    check_class: cross_field_check
+    fail_when: '`KNA1.UMJAH`.isna() | (`KNA1.UMJAH` == ''0000'')'
+    applies_when:
+      KNA1.UMSA1:
+        gt: 0
+    grain: KNA1
+    severity: low
+    dimension: completeness
+    message: Customer annual sales are given without the year they refer to
+    why_it_matters: Annual sales (KNA1.UMSA1) mean nothing without the year in KNA1.UMJAH. Without it, segmentation and credit
+      assessments compare figures from different years as if they were current.
+    rule_authority: best_practice
+    sap_impact: Customer segmentation by sales volume uses undated, possibly stale figures.
+    fix_map:
+      __other__: Enter the year for the annual sales in XD02 > Marketing, or clear the sales figure if it is unknown.
+    record_fix_template: 'Customer {KNA1.KUNNR}: annual sales without a reference year.'
+  - id: SDCM821
+    field: KNA1.JMJAH
+    check_class: cross_field_check
+    fail_when: '`KNA1.JMJAH`.isna() | (`KNA1.JMJAH` == ''0000'')'
+    applies_when:
+      KNA1.JMZAH:
+        gt: 0
+    grain: KNA1
+    severity: low
+    dimension: completeness
+    message: Customer number of employees is given without the year it refers to
+    why_it_matters: The yearly number of employees (KNA1.JMZAH) needs the year in KNA1.JMJAH to be usable for company-size
+      segmentation; an undated headcount cannot be told apart from a current one.
+    rule_authority: best_practice
+    sap_impact: Company-size segmentation uses undated, possibly stale headcounts.
+    fix_map:
+      __other__: Enter the year for the employee count in XD02 > Marketing, or clear the count if it is unknown.
+    record_fix_template: 'Customer {KNA1.KUNNR}: number of employees without a reference year.'
+  - id: SDCM822
+    field: KNB5.MANSP
+    check_class: referential_check
+    grain: KNB5
+    severity: medium
+    dimension: consistency
+    message: Customer dunning block reason is not defined
+    why_it_matters: The dunning block (T040S) stops the dunning run for the customer for a documented reason. A key that is
+      not defined cannot be reported or released by reason, so blocks pile up unreviewed.
+    rule_authority: sap_hard_constraint
+    sap_impact: Overdue items of the customer are not dunned and the block reason cannot be analysed.
+    fix_map:
+      __other__: Dunning block '{invalid_value}' is not defined in T040S. Replace it in XD02/FD02 > Correspondence.
+    record_fix_template: 'Customer {KNB5.KUNNR}, company code {KNB5.BUKRS}, dunning area {KNB5.MABER}: dunning block ''{actual_value}''
+      is not in T040S.'
+  - id: SDCM823
+    field: KNBK.BANKS
+    check_class: exists_check
+    fields:
+    - KNBK.BANKS
+    - KNBK.BANKL
+    target_table: BNKA
+    target_fields:
+    - BANKS
+    - BANKL
+    target_when:
+      LOEVM:
+        blank: true
+    grain: KNBK
+    s4_area: business_partner
+    s4_impact: blocking
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: Customer bank key does not exist in the bank master or is flagged for deletion
+    why_it_matters: Bank details reference the bank master (BNKA) by country and bank key. The CVI copies them to BUT0BK and
+      rejects bank keys that are not in the bank master; direct debits to a deleted bank fail.
+    rule_authority: sap_hard_constraint
+    sap_impact: CVI synchronisation of the customer's bank details fails; F110 cannot create direct debits for the account.
+    fix_map:
+      __other__: Create or reactivate the bank in FI01/FI02, or correct the bank key in XD02 > Payment transactions.
+    record_fix_template: 'Customer {KNBK.KUNNR}, bank country {KNBK.BANKS}: bank key not in the bank master or flagged for deletion.'
+  - id: SDCM824
+    field: KNBK.KOVON
+    check_class: cross_field_check
+    fail_when: '`KNBK.KOVON` > `KNBK.KOBIS`'
+    require_populated: true
+    grain: KNBK
+    severity: medium
+    dimension: consistency
+    message: Customer bank details are valid from a date after their valid-to date
+    why_it_matters: KNBK.KOVON and KNBK.KOBIS limit when the bank details may be used. A start after the end gives an empty
+      validity window, so the bank account is never valid for payments.
+    rule_authority: sap_hard_constraint
+    sap_impact: The payment program never selects the bank details; direct debits fall back to another account or fail.
+    fix_map:
+      __other__: Correct the validity dates of the bank details in XD02 > Payment transactions.
+    record_fix_template: 'Customer {KNBK.KUNNR}, bank country {KNBK.BANKS}: bank details valid from {KNBK.KOVON} to {KNBK.KOBIS}.'
+  - id: SDCM825
+    field: KNBK.EBPP_BVSTATUS
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - A
+    - B
+    - C
+    - D
+    grain: KNBK
+    severity: low
+    dimension: validity
+    message: Customer bank details Biller Direct status is not a defined value
+    why_it_matters: KNBK.EBPP_BVSTATUS decides whether the bank details can be shown or changed in Biller Direct and used by
+      the standard payment program. Only blank, A, B, C and D are defined; any other value makes the usage undefined.
+    rule_authority: sap_hard_constraint
+    sap_impact: The bank details are handled unpredictably in Biller Direct and in the payment run.
+    valid_values_with_labels:
+      ? ''
+      : Can be displayed/used in Biller Direct, used in standard
+      A: Can be displayed/used in Biller Direct, not used in standard
+      B: Can be changed/used in Biller Direct, used in standard
+      C: Can be changed/used in Biller Direct, not used in standard
+      D: Can only be used in standard
+    fix_map:
+      __other__: Value '{invalid_value}' is not a defined Biller Direct status. Set a valid status in XD02 > Payment transactions.
+    record_fix_template: 'Customer {KNBK.KUNNR}, bank country {KNBK.BANKS}: Biller Direct status ''{actual_value}''.'
+  - id: SDCM826
+    field: KNBK.BVTYP
+    check_class: uniqueness_check
+    fields:
+    - KNBK.KUNNR
+    - KNBK.BVTYP
+    applies_when:
+      KNBK.BVTYP:
+        populated: true
+    grain: KNBK
+    severity: medium
+    dimension: uniqueness
+    message: Customer uses the same partner bank type for more than one bank account
+    why_it_matters: The partner bank type (KNBK.BVTYP) selects one bank account of the customer in invoices and payment runs.
+      If two accounts share the type, the selection is ambiguous and the CVI cannot map the type to a unique BP bank ID.
+    rule_authority: sap_hard_constraint
+    sap_impact: Documents that name the partner bank type debit an arbitrary one of the accounts.
+    fix_map:
+      __other__: Give each bank account of the customer its own partner bank type in XD02 > Payment transactions.
+    record_fix_template: 'Customer {KNBK.KUNNR}: partner bank type {KNBK.BVTYP} is used by more than one bank account.'
+  - id: SDCM827
+    field: KNVV.CASSD
+    check_class: cross_field_check
+    fail_when: (`KNVV.LOEVM` == 'X') & `KNVV.AUFSD`.isna() & `KNVV.CASSD`.isna()
+    grain: KNVV
+    severity: medium
+    dimension: consistency
+    message: Sales area is flagged for deletion but not blocked for orders or sales
+    why_it_matters: The sales-area deletion flag only marks the data for archiving. Without an order block or sales block in
+      the sales area, new orders can still be created there for a customer that is meant to leave it.
+    rule_authority: best_practice
+    sap_impact: New sales documents are created in a sales area due for deletion and then prevent its archiving.
+    fix_map:
+      __other__: Set the order block or sales block for the sales area in VD05, or remove the deletion flag if the sales area
+        is still in use.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: flagged for deletion, no
+      order or sales block.'
+  - id: SDCM828
+    field: ADRC.CITY1
+    check_class: null_check
+    grain: ADRC
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    severity: high
+    dimension: completeness
+    message: Customer address has no city
+    why_it_matters: The city is part of every postal address printed on invoices, delivery notes and dunning letters, and is
+      used by tax jurisdiction, transportation zone and address validation. An address without a city cannot be delivered
+      to or validated.
+    rule_authority: best_practice
+    sap_impact: Documents print incomplete addresses; address checks and the BP conversion report the address as incomplete.
+    fix_map:
+      __blank__: Enter the city in XD02 > Address.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} (country {ADRC.COUNTRY}): no city.'
+  - id: SDCM829
+    field: ADRC.REGION
+    check_class: exists_check
+    fields:
+    - ADRC.COUNTRY
+    - ADRC.REGION
+    target_table: T005S
+    target_fields:
+    - LAND1
+    - BLAND
+    grain: ADRC
+    severity: medium
+    dimension: consistency
+    message: Customer address region is not defined for the address country
+    why_it_matters: Regions (T005S) are defined per country. A region that exists only for another country passes a client-wide
+      value check but is invalid for the address, which breaks tax jurisdiction and regional reporting.
+    rule_authority: sap_hard_constraint
+    sap_impact: Tax determination by region and regional sales analyses use a region that does not belong to the country.
+    fix_map:
+      __other__: Correct the region in XD02 > Address, or define it for the country in the region table (OX88).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: region {ADRC.REGION} is not defined for country {ADRC.COUNTRY}.'
+  - id: SDCM830
+    field: ADRC.PO_BOX_CTY
+    check_class: referential_check
+    grain: ADRC
+    severity: low
+    dimension: consistency
+    message: Customer PO box country is not defined
+    why_it_matters: The PO box country is used when the PO box lies in a different country from the street address. A country
+      key that is not defined in T005 cannot be formatted or validated.
+    rule_authority: sap_hard_constraint
+    sap_impact: PO box addresses print without a valid country and fail address validation.
+    fix_map:
+      __other__: Country '{invalid_value}' is not defined in T005. Correct the PO box country in XD02 > Address.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: PO box country ''{actual_value}'' is not in T005.'
+  - id: SDCM831
+    field: ADRC.ID_CATEGORY
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - I
+    grain: ADRC
+    severity: low
+    dimension: validity
+    message: Customer address ID category is not a defined value
+    why_it_matters: ADRC.ID_CATEGORY only knows blank and I. Any other value comes from a faulty load and makes the address
+      ID handling undefined for the address.
+    rule_authority: sap_hard_constraint
+    sap_impact: Address services treat the address ID inconsistently.
+    valid_values_with_labels:
+      ? ''
+      : Normal address ID
+      I: Internal address ID of an instance-sharing address
+    fix_map:
+      __other__: Value '{invalid_value}' is not a defined ID category. Clear the field in the address data load.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: ID category ''{actual_value}''.'
+  - id: SDCM832
+    field: ADRC.PO_BOX_NUM
+    check_class: cross_field_check
+    fail_when: (`ADRC.PO_BOX_NUM` == 'X') & `ADRC.PO_BOX`.notna()
+    grain: ADRC
+    severity: low
+    dimension: consistency
+    message: Customer address is flagged as PO box without number but has a PO box number
+    why_it_matters: ADRC.PO_BOX_NUM states that the PO box has no number. A PO box number in the same address contradicts the
+      flag, and the printed address depends on which of the two the output program reads.
+    rule_authority: best_practice
+    sap_impact: Letters and invoices print the PO box line inconsistently.
+    fix_map:
+      __other__: Clear the 'PO box without number' flag or the PO box number in XD02 > Address.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: flagged as PO box without number but has a PO box number.'
+  - id: SDCM833
+    field: ADRC.FLAGCOMM2
+    check_class: exists_check
+    fields:
+    - ADRC.ADDRNUMBER
+    target_table: ADR2
+    target_fields:
+    - ADDRNUMBER
+    applies_when:
+      ADRC.FLAGCOMM2:
+      - X
+    grain: ADRC
+    severity: low
+    dimension: consistency
+    message: Customer address is flagged as having telephone numbers but has none
+    why_it_matters: ADRC.FLAGCOMM2 tells address services that telephone numbers exist in ADR2. A flag without a matching row
+      comes from an incomplete load; the address shows a telephone that does not exist and the BP conversion copies the
+      inconsistency.
+    rule_authority: best_practice
+    sap_impact: Telephone lookups return nothing for an address that claims to have numbers.
+    fix_map:
+      __other__: Maintain the telephone number in XD02 > Address, or reload the address communication data.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: telephone flag set, no telephone number.'
+  - id: SDCM834
+    field: ADRC.FLAGCOMM3
+    check_class: exists_check
+    fields:
+    - ADRC.ADDRNUMBER
+    target_table: ADR3
+    target_fields:
+    - ADDRNUMBER
+    applies_when:
+      ADRC.FLAGCOMM3:
+      - X
+    grain: ADRC
+    severity: low
+    dimension: consistency
+    message: Customer address is flagged as having fax numbers but has none
+    why_it_matters: ADRC.FLAGCOMM3 tells address services that fax numbers exist in ADR3. A flag without a matching row comes
+      from an incomplete load; fax output is attempted for an address that has no fax number.
+    rule_authority: best_practice
+    sap_impact: Fax output for the customer fails without a recipient number.
+    fix_map:
+      __other__: Maintain the fax number in XD02 > Address, or reload the address communication data.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: fax flag set, no fax number.'
+  - id: SDCM835
+    field: ADRC.FLAGCOMM6
+    check_class: exists_check
+    fields:
+    - ADRC.ADDRNUMBER
+    target_table: ADR6
+    target_fields:
+    - ADDRNUMBER
+    applies_when:
+      ADRC.FLAGCOMM6:
+      - X
+    grain: ADRC
+    severity: low
+    dimension: consistency
+    message: Customer address is flagged as having e-mail addresses but has none
+    why_it_matters: ADRC.FLAGCOMM6 tells address services that e-mail addresses exist in ADR6. A flag without a matching row
+      comes from an incomplete load; e-mail output is attempted for an address that has no e-mail address.
+    rule_authority: best_practice
+    sap_impact: E-mailed invoices and order confirmations fail without a recipient.
+    fix_map:
+      __other__: Maintain the e-mail address in XD02 > Address, or reload the address communication data.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: e-mail flag set, no e-mail address.'
