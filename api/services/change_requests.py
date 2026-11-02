@@ -237,7 +237,13 @@ def title_of(cr: dict) -> str:
 COLS = ("id::text AS id, kind, object, target_system_id::text AS target_system_id, object_key, title, payload, status, "
         "requester_id::text AS requester_id, requester_label, workflow_instance_id::text AS workflow_instance_id, "
         "precheck, validated_at, sap_key, sap_result, sap_phase, sap_attempts, delivery, export IS NOT NULL AS has_export, "
-        "reason, created_at, updated_at, submitted_at, decided_at, completed_at")
+        "reason, created_at, updated_at, submitted_at, decided_at, completed_at, "
+        "(SELECT t.due_at FROM workflow_tasks t WHERE t.tenant_id = change_requests.tenant_id "
+        "AND t.instance_id = change_requests.workflow_instance_id AND t.status = 'pending' "
+        "ORDER BY t.step_index LIMIT 1) AS due_at, "
+        "(SELECT t.step_name FROM workflow_tasks t WHERE t.tenant_id = change_requests.tenant_id "
+        "AND t.instance_id = change_requests.workflow_instance_id AND t.status = 'pending' "
+        "ORDER BY t.step_index LIMIT 1) AS waiting_step")
 
 
 def load(session, tid: str, cr_id: str, lock: bool = False) -> dict:
@@ -382,3 +388,38 @@ def run_in_sap(session, tid: str, cr: dict, conn: Any, persist_phase) -> dict:
                 **({"export": export_file(cr, note)} if r["export"] else {})}
     return {"status": "failed", "sap_result": r, "reason": r["error"] or "SAP refused the change; see its RETURN "
                                                                          "messages"}
+
+
+# ── governance at entry: defaults and the per-field history ──────────────────
+
+OPEN = ("draft", "submitted", "in_approval", "approved", "creating")
+
+
+def apply_defaults(session, tid: str, obj: str, payload: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """The payload with the tenant's defaults in every field it leaves empty (absent or blank), and those fields."""
+    rows = session.execute(text("SELECT field, value FROM request_defaults WHERE tenant_id = CAST(:t AS uuid) "
+                                "AND object = :o ORDER BY field"), {"t": tid, "o": obj}).all()
+    out, filled = dict(payload), []
+    for f, v in rows:
+        if out.get(f) is None or str(out.get(f)).strip() == "":
+            out[f] = v
+            filled.append(f)
+    return out, filled
+
+
+def record_changes(session, tid: str, cr_id: str, old: dict[str, Any], new: dict[str, Any], actor_id: Optional[str],
+                   actor_label: Optional[str], defaulted: tuple[str, ...] | list[str] = ()) -> int:
+    """One row per field that differs between two payloads (old and new value kept here, never in workflow_events)."""
+    n = 0
+    for f in sorted(set(old) | set(new)):
+        o, v = old.get(f), new.get(f)
+        if str(o) == str(v) and (f in old) == (f in new):
+            continue
+        action = "defaulted" if f in defaulted else "set" if f not in old else "removed" if f not in new else "changed"
+        session.execute(text(
+            "INSERT INTO change_request_field_changes (tenant_id, request_id, field, action, old_value, new_value, "
+            "actor_id, actor_label) VALUES (CAST(:t AS uuid), CAST(:r AS uuid), :f, :a, :o, :n, CAST(:u AS uuid), :l)"),
+            {"t": tid, "r": cr_id, "f": f, "a": action, "o": None if o is None else str(o)[:500],
+             "n": None if v is None else str(v)[:500], "u": actor_id, "l": actor_label})
+        n += 1
+    return n

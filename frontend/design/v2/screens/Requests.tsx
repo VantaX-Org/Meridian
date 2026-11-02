@@ -8,12 +8,13 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
 import { errorSentence } from "@/lib/api/v2/client";
-import { createRequest, submitRequest, validateRequest, type ChangeRequest, type Precheck, type RequestKind, type RequestObject, type RequestStatus, type RequestView } from "@/lib/api/v2/requests";
+import { createRequest, deleteDefault, putDefault, submitRequest, validateRequest, type ChangeRequest, type Precheck, type RequestKind, type RequestObject, type RequestStatus, type RequestView } from "@/lib/api/v2/requests";
 import { useOpenItem, useUrlParam, useV2Session } from "@/lib/v2/hooks";
-import { useRequests } from "@/lib/v2/requests-queries";
+import { useEntryDefaults, useRequests } from "@/lib/v2/requests-queries";
+import { describeField } from "@/lib/v2/sap-fields";
 import { t } from "@/lib/v2/i18n";
-import { kindWord, objectWord, PrecheckView, statusWord } from "../inspector/request";
-import { EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { ageWord, kindWord, objectWord, PrecheckView, statusWord } from "../inspector/request";
+import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { CcBanner, CcHBars, CcPage, type CcBarRow } from "./cc-parts";
 
 const VIEWS: readonly RequestView[] = ["mine", "to_approve", "all"];
@@ -131,6 +132,108 @@ function NewRequest({ onDone }: { onDone: (id: string) => void }) {
   );
 }
 
+/** The values filled into an empty field of a new create request; those who manage workflows add and remove them. */
+function EntryDefaults({ canEdit }: { canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useEntryDefaults();
+  const [object, setObject] = useState<RequestObject>("material");
+  const [field, setField] = useState("");
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const act = async (fn: () => Promise<unknown>, fallback: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      await qc.invalidateQueries({ queryKey: ["v2", "request-defaults"] });
+    } catch (e) {
+      setError(errorSentence(e, fallback));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const items = q.data?.items ?? [];
+  return (
+    <section className="m2-sec" aria-label={t("Entry defaults")} data-testid="entry-defaults">
+      <p className="m2-prov">{t("A new create request gets these values in the fields its requester leaves empty. A change request is never defaulted.")}</p>
+      {q.isError ? (
+        <ErrorFrame onRetry={() => void q.refetch()}>{t("The entry defaults could not be read.")}</ErrorFrame>
+      ) : items.length === 0 ? (
+        <EmptyFrame>{t("No entry default is set.")}</EmptyFrame>
+      ) : (
+        <table className="m2-tbl" aria-label={t("Entry defaults")}>
+          <thead>
+            <tr>
+              <th scope="col">{t("Object")}</th>
+              <th scope="col">{t("Field")}</th>
+              <th scope="col">{t("Value")}</th>
+              {canEdit ? <th scope="col">{t("Remove")}</th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((d) => (
+              <tr key={d.id}>
+                <td>{objectWord(d.object)}</td>
+                <td>
+                  <Coded code={d.field} text={describeField(d.field)} />
+                </td>
+                <td>
+                  <Mono>{d.value}</Mono>
+                </td>
+                {canEdit ? (
+                  <td>
+                    <button type="button" className="m2-btn m2-sm" disabled={busy} onClick={() => void act(() => deleteDefault(d.id), t("The default could not be removed."))}>
+                      {t("Remove")}
+                    </button>
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {canEdit ? (
+        <div className="m2-rfilters">
+          <label>
+            {t("Object")}
+            <select className="m2-sel" value={object} onChange={(e) => setObject(e.target.value as RequestObject)}>
+              {OBJECTS.map((o) => (
+                <option key={o} value={o}>
+                  {objectWord(o)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {t("Field, as TABLE.FIELD")}
+            <input value={field} maxLength={60} spellCheck={false} onChange={(e) => setField(e.target.value)} />
+          </label>
+          <label>
+            {t("Value")}
+            <input value={value} maxLength={500} onChange={(e) => setValue(e.target.value)} />
+          </label>
+          <button
+            type="button"
+            className="m2-btn"
+            disabled={busy || !field.trim() || !value.trim()}
+            onClick={() =>
+              void act(async () => {
+                await putDefault(object, field.trim(), value.trim());
+                setField("");
+                setValue("");
+              }, t("The default could not be saved."))
+            }
+          >
+            {t("Save default")}
+          </button>
+        </div>
+      ) : null}
+      {error ? <p className="m2-prov" role="alert">{error}</p> : null}
+    </section>
+  );
+}
+
 function Table({ rows }: { rows: ChangeRequest[] }) {
   const { open, hrefFor } = useOpenItem();
   const openId = open?.kind === "request" ? open.id : null;
@@ -145,6 +248,8 @@ function Table({ rows }: { rows: ChangeRequest[] }) {
             <th scope="col">{t("Status")}</th>
             <th scope="col">{t("Requester")}</th>
             <th scope="col">{t("Updated")}</th>
+            <th scope="col">{t("Age")}</th>
+            <th scope="col">{t("Due")}</th>
           </tr>
         </thead>
         <tbody>
@@ -160,6 +265,11 @@ function Table({ rows }: { rows: ChangeRequest[] }) {
               <td>{statusWord(r.status)}</td>
               <td>{r.requester_label ?? ""}</td>
               <td>{formatDate(r.updated_at, "date")}</td>
+              <td>{r.age_hours != null ? ageWord(r.age_hours) : ""}</td>
+              <td>
+                {r.due_at ? formatDate(r.due_at, "date") : ""}
+                {r.overdue ? <strong>{` ${t("Overdue")}`}</strong> : null}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -177,12 +287,14 @@ export function RequestsCanvas() {
   const [object, setObject] = useUrlParam<string>("object", "all");
   const [kind, setKind] = useUrlParam<string>("kind", "all");
   const [composing, setComposing] = useState(false);
+  const [showDefaults, setShowDefaults] = useState(false);
   const q = useRequests({ view, status: status === "all" ? undefined : status, object: object === "all" ? undefined : object, kind: kind === "all" ? undefined : kind });
   const rows = q.data?.items ?? [];
   const canWrite = session.can("mdm.write") && !session.shared;
   const waiting = rows.filter((r) => r.status === "submitted" || r.status === "in_approval").length;
   const failed = rows.filter((r) => r.status === "failed").length;
   const drafts = rows.filter((r) => r.status === "draft").length;
+  const overdue = rows.filter((r) => r.overdue).length;
   const counts = new Map<string, number>();
   for (const r of rows) {
     const who = r.requester_label ?? "";
@@ -205,11 +317,12 @@ export function RequestsCanvas() {
         testId="requests-banner"
         label={t("Requests")}
         eyebrow={t("Change requests")}
-        verdict={failed > 0 ? "no-go" : waiting > 0 ? "at-risk" : "go"}
+        verdict={failed > 0 || overdue > 0 ? "no-go" : waiting > 0 ? "at-risk" : "go"}
         headline={waiting > 0 ? t("{n} {waiting, plural, one {request waits} other {requests wait}} for approval", { n: waiting, waiting }) : t("No request waits for approval")}
-        why={failed > 0 ? t("{n} {failed, plural, one {request} other {requests}} failed to reach SAP and need a new look.", { n: failed, failed }) : t("Nothing has failed in this list.")}
+        why={overdue > 0 ? t("{n} {overdue, plural, one {request is} other {requests are}} past the due time of the waiting approval step.", { n: overdue, overdue }) : failed > 0 ? t("{n} {failed, plural, one {request} other {requests}} failed to reach SAP and need a new look.", { n: failed, failed }) : t("Nothing has failed in this list.")}
         figs={[
           { label: t("Waiting"), value: waiting, note: t("submitted or in approval") },
+          { label: t("Overdue"), value: overdue, note: t("past the step due time") },
           { label: t("Failed"), value: failed, note: t("did not reach SAP") },
           { label: t("Drafts"), value: drafts, note: t("not yet submitted") },
         ]}
@@ -241,7 +354,11 @@ export function RequestsCanvas() {
             </button>
           ))}
         </div>
+        <button type="button" className="m2-btn" aria-expanded={showDefaults} onClick={() => setShowDefaults((v) => !v)}>
+          {t("Entry defaults")}
+        </button>
       </div>
+      {showDefaults ? <EntryDefaults canEdit={session.can("manage_workflows") && !session.shared} /> : null}
       {composing ? (
         <NewRequest
           onDone={(id) => {

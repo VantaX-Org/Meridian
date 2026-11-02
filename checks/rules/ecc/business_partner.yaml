@@ -2737,3 +2737,46 @@ rules:
       transaction BP (ECC), Fiori F3893 (S/4HANA), or maintain the role in SPRO > Cross-Application
       Components > SAP Business Partner > Business Partner Roles.'
   record_fix_template: 'Business partner {BUT100.PARTNER}: role {actual_value} is not a defined role.'
+- id: BP297
+  field: BUT000.VALID_TO
+  check_class: cross_field_check
+  fail_when: '`BUT000.VALID_TO` < (@today.dt.year * 1e10 + @today.dt.month * 1e8 + @today.dt.day * 1e6)'
+  require_populated: true
+  applies_when:
+    BUT000.XDELE:
+      blank: true
+    BUT000.XBLCK:
+      blank: true
+  severity: medium
+  dimension: timeliness
+  message: Business partner validity has ended but the partner is neither blocked nor marked for deletion
+  why_it_matters: BUT000.VALID_TO ends the period in which the partner may be used. Once it has passed, documents and
+    interfaces reject the partner, yet without a central block or deletion flag it still looks active in every list,
+    search and migration selection.
+  rule_authority: best_practice
+  sap_impact: Users pick a partner that postings then reject; migration carries a dead partner across as active.
+  fix_map:
+    __other__: Either extend the validity period in transaction BP, or set the central block or deletion flag on the partner.
+  record_fix_template: 'BP {BUT000.PARTNER}: validity ended {actual_value}, no block or deletion flag.'
+- id: BP298
+  field: BUT020.ADDR_VALID_TO
+  check_class: cross_field_check
+  grain: BUT020
+  fail_when: '`BUT020.ADDR_VALID_TO` < (@today.dt.year * 1e10 + @today.dt.month * 1e8 + @today.dt.day * 1e6)'
+  require_populated: true
+  applies_when:
+    BUT020.XDFADR:
+    - X
+    BUT000.XDELE:
+      blank: true
+  severity: medium
+  dimension: timeliness
+  message: Standard address of an active business partner is no longer valid
+  why_it_matters: The standard address (BUT020.XDFADR) is the address every process falls back to. Time-dependent
+    addresses are used only inside their validity period, so an expired standard address leaves correspondence, output
+    and tax determination with no valid default.
+  rule_authority: best_practice
+  sap_impact: Output, dunning and deliveries use no address or a non-default one; tax jurisdiction comes from the wrong address.
+  fix_map:
+    __other__: In transaction BP > Addresses > Address overview, extend the standard address or make a current address the standard.
+  record_fix_template: 'BP {BUT020.PARTNER}, address {BUT020.ADDRNUMBER}: standard address validity ended {actual_value}.'

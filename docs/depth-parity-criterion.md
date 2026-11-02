@@ -93,25 +93,26 @@ is not a criterion.
 
 Two of those rows are not gaps at all:
 
-- `lifecycle` and `freshness` are not DQS scoring dimensions. `api/services/scoring.py` scores
-  six (completeness, accuracy, consistency, timeliness, uniqueness, validity); lifecycle and
-  freshness are tags a few rules carry. material_master has 25 lifecycle rules and
-  accounts_payable none, yet both score the same dimensions. An empty lifecycle column is
-  invisible to the client's score.
+- `lifecycle` and `freshness` are not separate DQS dimensions. `api/services/scoring.py` scores
+  six (completeness, accuracy, consistency, timeliness, uniqueness, validity) and folds both into
+  timeliness through `DIMENSION_ALIASES`. So the column that matters is timeliness *after* that
+  fold: material_master scores 43 timeliness rules (6 + 35 lifecycle + 2 freshness), not 6.
 - `accuracy` is 0 for succession_planning because the 403 on `Successor` blocks the entity its
   accuracy rules would read. That is the permission, not the rule set.
 
 What is left, once those are excluded, is a small and specific list - and it is the *scored*
 dimensions on the objects the tenant actually serves:
 
-| object | scored dimension below 5 | can it be closed? |
+| object | scored dimension below 5 | status (Nov 2026) |
 |---|---|---|
-| business_partner | accuracy 6 | yes |
-| accounts_payable | accuracy 4 | yes |
-| accounts_receivable | accuracy 4 | yes |
-| fi_gl | accuracy 4, uniqueness 3, timeliness 4 | partly (uniqueness on a journal is only meaningful at document grain) |
-| compensation | timeliness 1 | yes |
+| business_partner | timeliness 4 | closed: `BP297`/`BP298` (expired partner validity, expired standard address) bring it to 6 |
+| accounts_payable | accuracy 4 | closed: tax-number check digits `AP289`-`AP298` bring it to 14 |
+| accounts_receivable | accuracy 4 | closed: `AR272`-`AR275` (cash discount, discount base and tax amount bounded by the item amount) bring it to 8 |
+| fi_gl | accuracy 4, uniqueness 3, timeliness 4 | closed: `GL263`-`GL266` (the same bounds on customer and vendor lines) bring accuracy to 8; `GL267`/`GL268` (duplicate line-item key, duplicate company-code account segment) bring uniqueness to 5; `GL269`/`GL270` (clearing date and document date more than a year ahead) bring timeliness to 6 |
+| compensation | timeliness 1 | raised to 3 (`COMP252`/`COMP253`); canonical CompInfo has no change timestamp, so no freshness rule exists to add |
 | the five unserved SF objects | several | no - the tenant serves no data |
+
+Counts are hand-authored rules with lifecycle and freshness folded into timeliness, as scored.
 
 So the honest criterion is narrower than either "rule count parity" or "a floor in every
 dimension": **every scored dimension of every served object carries rules the tenant can
@@ -140,6 +141,7 @@ express:
   directions all already have rules (`AP036`/`AP042`/`AP079`/`AP080`/`AP072`/`AP078`).
 
 So the honest statement is that the accuracy cell for the finance objects is bounded by the
-check classes the library has, and closing it would need a class that compares an object
-against an outside total - a reconciliation check. That is a real piece of work with its own
-design, not a matter of writing more rules of the kinds that exist.
+check classes used so far. `reconciliation_check` (a total against a total in another table)
+and `group_sum_check` (a child sum against its parent) now exist in `checks/runner.py`, and
+the bounds between amount fields on one item (discount, discount base and tax against the
+gross amount) were still unwritten; those are what closed the cells above.

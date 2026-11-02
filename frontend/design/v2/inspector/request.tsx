@@ -8,9 +8,9 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDate, labelOf } from "@/lib/format";
 import { errorSentence } from "@/lib/api/v2/client";
-import { attachToRequest, cancelRequest, commentRequest, exportRequest, retryRequest, submitRequest, type ChangeRequest, type Precheck, type RequestDetail, type RequestKind, type RequestObject, type RequestStatus } from "@/lib/api/v2/requests";
+import { attachToRequest, cancelRequest, commentRequest, exportRequest, retryRequest, submitRequest, type ChangeRequest, type FieldAction, type Precheck, type RequestDetail, type RequestKind, type RequestObject, type RequestStatus } from "@/lib/api/v2/requests";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
-import { useRequest } from "@/lib/v2/requests-queries";
+import { useFieldHistory, useRequest } from "@/lib/v2/requests-queries";
 import { int } from "@/lib/v2/score";
 import { t as tr } from "@/lib/v2/i18n";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
@@ -39,6 +39,9 @@ export function objectWord(o: RequestObject): string {
   const words: Record<RequestObject, string> = { material: tr("Material"), customer: tr("Customer"), vendor: tr("Vendor"), business_partner: tr("Business partner") };
   return words[o] ?? o;
 }
+
+/** Hours open as a short span: under two days in hours, else in days. */
+export const ageWord = (h: number): string => (h < 48 ? tr("{n} h", { n: int(Math.round(h)) }) : tr("{n} d", { n: int(Math.round(h / 24)) }));
 
 export const kindWord = (k: RequestKind): string => (k === "create" ? tr("Create") : tr("Change"));
 
@@ -93,6 +96,44 @@ export function PrecheckView({ p }: { p: Precheck }) {
         </ul>
       ) : null}
     </div>
+  );
+}
+
+const actionWord = (a: FieldAction): string => ({ set: tr("Set"), changed: tr("Changed"), removed: tr("Removed"), defaulted: tr("Defaulted") })[a] ?? a;
+
+/** Every field of the request that was set, changed, removed or filled by a default: old and new value, who, when. */
+function FieldHistory({ id }: { id: string }) {
+  const q = useFieldHistory(id);
+  const items = q.data?.items ?? [];
+  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>{tr("The field history could not be read.")}</ErrorFrame>;
+  if (items.length === 0) return <EmptyFrame>{tr("No field change is recorded for this request.")}</EmptyFrame>;
+  return (
+    <table className="m2-tbl" data-testid="request-field-history">
+      <thead>
+        <tr>
+          <th scope="col">{tr("Field")}</th>
+          <th scope="col">{tr("Action")}</th>
+          <th scope="col">{tr("From")}</th>
+          <th scope="col">{tr("To")}</th>
+          <th scope="col">{tr("By")}</th>
+          <th scope="col">{tr("When")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((c) => (
+          <tr key={c.id}>
+            <td>
+              <Coded code={c.field} text={describeField(c.field)} />
+            </td>
+            <td>{actionWord(c.action)}</td>
+            <td>{c.old_value != null ? <Mono>{c.old_value}</Mono> : ""}</td>
+            <td>{c.new_value != null ? <Mono>{c.new_value}</Mono> : ""}</td>
+            <td>{c.actor_label ?? "—"}</td>
+            <td>{formatDate(c.created_at, "datetime")}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -203,6 +244,9 @@ function RequestBody({ d }: { d: RequestDetail }) {
         <Fact label={tr("Requested by")}>{r.requester_label ?? "—"}</Fact>
         <Fact label={tr("Created")}>{formatDate(r.created_at, "date")}</Fact>
         {r.submitted_at ? <Fact label={tr("Submitted")}>{formatDate(r.submitted_at, "datetime")}</Fact> : null}
+        {r.waiting_step ? <Fact label={tr("Waiting for")}>{r.waiting_step}</Fact> : null}
+        {r.due_at ? <Fact label={tr("Due")}>{`${formatDate(r.due_at, "datetime")}${r.overdue ? ` ${tr("Overdue")}` : ""}`}</Fact> : null}
+        {r.age_hours != null ? <Fact label={tr("Age")}>{ageWord(r.age_hours)}</Fact> : null}
         {r.decided_at ? <Fact label={tr("Decided")}>{formatDate(r.decided_at, "datetime")}</Fact> : null}
         {r.sap_key ? (
           <Fact label={tr("SAP key")}>
@@ -235,7 +279,7 @@ function RequestBody({ d }: { d: RequestDetail }) {
           {Object.entries(r.payload).map(([k, v]) => (
             <tr key={k}>
               <td>
-                <Mono>{k}</Mono>
+                <Coded code={k} text={describeField(k)} />
               </td>
               <td>
                 <Mono>{v}</Mono>
@@ -244,6 +288,9 @@ function RequestBody({ d }: { d: RequestDetail }) {
           ))}
         </tbody>
       </table>
+
+      <h3>{tr("Field history")}</h3>
+      <FieldHistory id={r.id} />
 
       <h3>{tr("Checks")}</h3>
       {r.precheck ? <PrecheckView p={r.precheck} /> : <EmptyFrame>{tr("Not checked yet. Check runs the rules and the duplicate search on the proposed values.")}</EmptyFrame>}

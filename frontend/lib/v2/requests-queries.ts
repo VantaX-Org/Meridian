@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { getFacts, getRequest, getWorkflowInstance, listDefinitions, listRequests, listTasks, type RequestFilter } from "@/lib/api/v2/requests";
+import { getFacts, getFieldHistory, getRequest, getWorkflowInstance, listDefaults, listDefinitions, listRequests, listTasks, type RequestFilter } from "@/lib/api/v2/requests";
 
 const STALE = 15_000;
 
@@ -37,4 +37,16 @@ export function useDefinitions(enabled = true) {
 export function useFacts(enabled = true) {
   const fx = useFixture();
   return useQuery({ queryKey: ["v2", "workflow-facts", fx], queryFn: getFacts, staleTime: 60_000, retry: false, enabled });
+}
+
+/** The per-field change history of one request. */
+export function useFieldHistory(id: string) {
+  const fx = useFixture();
+  return useQuery({ queryKey: ["v2", "change-request-fields", fx, id], queryFn: () => getFieldHistory(id), staleTime: STALE, retry: false });
+}
+
+/** The tenant's entry defaults for new create requests. */
+export function useEntryDefaults() {
+  const fx = useFixture();
+  return useQuery({ queryKey: ["v2", "request-defaults", fx], queryFn: listDefaults, staleTime: STALE, retry: false });
 }

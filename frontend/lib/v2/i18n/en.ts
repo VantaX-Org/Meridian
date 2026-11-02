@@ -7147,6 +7147,22 @@ export const en = {
   "Saved as draft": "Saved as draft",
   "Save as draft": "Save as draft",
   "Proposed by Aletheia from an outlier in {field}": "Proposed by Aletheia from an outlier in {field}",
+  "{n} d": "{n} d",
+  "Set": "Set",
+  "Defaulted": "Defaulted",
+  "The field history could not be read.": "The field history could not be read.",
+  "No field change is recorded for this request.": "No field change is recorded for this request.",
+  "Field history": "Field history",
+  "Entry defaults": "Entry defaults",
+  "A new create request gets these values in the fields its requester leaves empty. A change request is never defaulted.": "A new create request gets these values in the fields its requester leaves empty. A change request is never defaulted.",
+  "The entry defaults could not be read.": "The entry defaults could not be read.",
+  "No entry default is set.": "No entry default is set.",
+  "The default could not be removed.": "The default could not be removed.",
+  "Field, as TABLE.FIELD": "Field, as TABLE.FIELD",
+  "The default could not be saved.": "The default could not be saved.",
+  "Save default": "Save default",
+  "{n} {overdue, plural, one {request is} other {requests are}} past the due time of the waiting approval step.": "{n} {overdue, plural, one {request is} other {requests are}} past the due time of the waiting approval step.",
+  "past the step due time": "past the step due time",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

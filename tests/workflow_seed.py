@@ -13,7 +13,7 @@ PEOPLE = (("requester", "data_steward"), ("alice", "data_owner"), ("bob", "data_
 
 _CLEAN = ("notifications", "audit_log", "webhook_deliveries", "webhooks", "skipped_deliveries", "delegations",
           "escalation_steps", "data_owners", "glossary_terms", "policy_field_classes", "change_request_comments",
-          "change_request_attachments", "change_requests", "workflow_events", "workflow_tasks", "workflow_instances",
+          "change_request_attachments", "change_request_field_changes", "request_defaults", "change_requests", "workflow_events", "workflow_tasks", "workflow_instances",
           "workflow_definitions", "match_rules", "master_records", "remediation_events", "remediation_items",
           "remediation_batches", "system_credentials", "sap_systems", "user_role_scopes", "users")
 

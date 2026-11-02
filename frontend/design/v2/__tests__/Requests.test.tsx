@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { parseFields, RequestsCanvas } from "../screens/Requests";
+import { RequestInspector } from "../inspector/request";
+import { fireEvent } from "@testing-library/react";
 import { WorkflowsSection } from "../admin/workflows";
 import { setUrl } from "./nav-store";
 import { stubLayout } from "./layout-stub";
@@ -38,6 +40,27 @@ describe("Requests", () => {
     const table = await screen.findByTestId("requests-table");
     const link = table.querySelector("a");
     expect(link?.getAttribute("href")).toContain("open=request");
+  });
+
+  it("shows the age and due time of an open request and the tenant entry defaults", async () => {
+    setUrl("/requests?fixture=1&view=all");
+    renderWithQuery(<RequestsCanvas />);
+    const table = await screen.findByTestId("requests-table");
+    expect(table.textContent).toContain("Age");
+    expect(table.textContent).toMatch(/47 h/);
+    fireEvent.click(screen.getByRole("button", { name: "Entry defaults" }));
+    const panel = await screen.findByTestId("entry-defaults");
+    await waitFor(() => expect(panel.textContent).toContain("MARA-MEINS"));
+  });
+
+  it("lists the field history of a request with each code beside its description", async () => {
+    setUrl("/requests?fixture=1");
+    renderWithQuery(<RequestInspector id="CR-1001" onClose={() => undefined} />);
+    const table = await screen.findByTestId("request-field-history");
+    expect(table.textContent).toContain("Defaulted");
+    expect(table.textContent).toContain("Hydraulic seal kit 80mm");
+    expect(table.textContent).toContain("MARA-MEINS");
+    expect(table.textContent).toContain("Base unit of measure");
   });
 
   it("gates the workflow administration on manage_workflows", async () => {
