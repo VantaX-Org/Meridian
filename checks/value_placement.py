@@ -266,6 +266,68 @@ VAT_CHECKS = {"BE": (_vat_be, r"^\d{10}$"), "DE": (_vat_de, r"^\d{9}$"), "IT": (
 TAX1_CHECKS = ("AU",)
 
 
+# National tax-number check digits (published algorithms), keyed by (country, tax-number field)
+_ES_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE"
+_CF_ODD = dict(zip("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                   (1, 0, 5, 7, 9, 13, 15, 17, 19, 21) * 2 + (2, 4, 18, 20, 11, 3, 6, 8, 12, 14, 16, 10, 22, 25, 24, 23)))
+
+
+def _es_nif(v: str) -> bool:  # DNI/NIE: number mod 23 selects the control letter; CIF: Luhn-style digit or letter
+    if v[0] in "XYZ" or v[0].isdigit():
+        return _ES_LETTERS[int(str("XYZ".find(v[0])) + v[1:8] if v[0] in "XYZ" else v[:8]) % 23] == v[8]
+    odd = sum(sum(divmod(int(c) * 2, 10)) for c in v[1:8:2])
+    c = (10 - (odd + sum(int(c) for c in v[2:8:2])) % 10) % 10
+    return v[8] in (str(c), "JABCDEFGHI"[c])
+
+
+def _it_cf(v: str) -> bool:  # codice fiscale control character; 11-digit numbers are a partita IVA
+    if v.isdigit():
+        return _vat_it(v)
+    total = sum(_CF_ODD[c] for c in v[0:15:2]) + sum(int(c) if c.isdigit() else ord(c) - 65 for c in v[1:15:2])
+    return chr(65 + total % 26) == v[15]
+
+
+def _cl_rut(v: str) -> bool:  # modulo 11 over the body read right to left, weights 2..7; 10 is written K
+    total = sum(int(c) * (2 + i % 6) for i, c in enumerate(reversed(v[:-1])))
+    return "0123456789K"[(11 - total % 11) % 11] == v[-1]
+
+
+def _ru_inn(d: str) -> bool:  # 10 digits (organisations) one control digit, 12 digits (individuals) two
+    w = (3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8)
+    if len(d) == 10:
+        return _weighted(d, w[2:]) % 11 % 10 == int(d[9])
+    return _weighted(d, w[1:]) % 11 % 10 == int(d[10]) and _weighted(d, w) % 11 % 10 == int(d[11])
+
+
+def _br_cpf(d: str) -> bool:  # two modulo-11 control digits
+    return all(_weighted(d, range(n + 1, 1, -1)) * 10 % 11 % 10 == int(d[n]) for n in (9, 10))
+
+
+TAX_ID_CHECKS = {
+    ("ES", "STCD1"): (_es_nif, r"^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z]|[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J])$"),
+    ("IT", "STCD1"): (_it_cf, r"^([A-Z]{6}[0-9LMNPQRSTUV]{2}[A-EHLMPRST][0-9LMNPQRSTUV]{2}[A-Z][0-9LMNPQRSTUV]{3}[A-Z]|[0-9]{11})$"),
+    ("IT", "STCD2"): (_vat_it, r"^[0-9]{11}$"),
+    ("PT", "STCD1"): (_vat_pt, r"^[0-9]{9}$"),
+    ("AR", "STCD1"): (lambda d: "012345678990"[11 - _weighted(d, (5, 4, 3, 2, 7, 6, 5, 4, 3, 2)) % 11] == d[10],
+                      r"^[0-9]{11}$"),
+    ("CL", "STCD1"): (_cl_rut, r"^[0-9]{7,8}[0-9K]$"),
+    ("CO", "STCD1"): (lambda d: "01987654321"[_weighted(reversed(d[:-1]), (3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71)) % 11] == d[-1],
+                      r"^[0-9]{7,11}$"),
+    ("PE", "STCD1"): (lambda d: (11 - _weighted(d, (5, 4, 3, 2, 7, 6, 5, 4, 3, 2)) % 11) % 10 == int(d[10]), r"^[0-9]{11}$"),
+    ("RU", "STCD1"): (_ru_inn, r"^([0-9]{10}|[0-9]{12})$"),
+    ("BR", "STCD2"): (_br_cpf, r"^[0-9]{11}$"),
+}
+
+
+def tax_id_status(country: str, field: str, v: str) -> str:
+    """'ok' | 'bad' (well-formed, wrong check digit) | 'n/a' (not judged or malformed)."""
+    check = TAX_ID_CHECKS.get((country, field))
+    v = re.sub(r"[\s.\-/]", "", v.upper())
+    if not check or not re.fullmatch(check[1], v):
+        return "n/a"  # malformed is the format rule's finding, not this one
+    return "ok" if check[0](v) else "bad"
+
+
 def vat_status(v: str) -> str:
     """'ok' | 'bad' (well-formed, wrong check digits) | 'n/a' (country not checked or malformed)."""
     v = re.sub(r"[\s.\-]", "", v.upper())
