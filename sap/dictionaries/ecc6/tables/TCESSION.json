@@ -1,0 +1,69 @@
+{
+ "table": "TCESSION",
+ "description": "Accounts Receivable Pledging",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "COMPANY",
+   "key": true,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 3,
+   "name": "CESSION_KZ",
+   "key": true,
+   "data_element": "CESSION_KZ",
+   "domain": "CESSION_KZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Accounts Receivable Pledging Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "CESSION_STATUS",
+   "key": false,
+   "data_element": "CESSION_STATUS",
+   "domain": "CESSION_STATUS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Accounts Receivable Pledging Status",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "COMPANY",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  }
+ ]
+}

@@ -1,0 +1,202 @@
+{
+ "table": "UKMBP_CMS",
+ "description": "SAP Credit Management: Credit Master Data for Partner",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PARTNER",
+   "key": true,
+   "data_element": "BU_PARTNER",
+   "domain": "BU_PARTNER",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Business Partner Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 4,
+   "name": "OWN_RATING",
+   "key": false,
+   "data_element": "UKM_OWN_RATING",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Score",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "CHECK_RULE",
+   "key": false,
+   "data_element": "UKM_CHECK_RULE",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Rule for Credit Check",
+   "check_table": "UKM_CHCK_RULE"
+  },
+  {
+   "pos": 6,
+   "name": "LIMIT_RULE",
+   "key": false,
+   "data_element": "UKM_LIMIT_RULE",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Rule for Calculating Score and Credit Limit",
+   "check_table": "UKM_LIMIT_RULES"
+  },
+  {
+   "pos": 7,
+   "name": "RATING_VAL_DATE",
+   "key": false,
+   "data_element": "UKM_RATING_VALID_DATE",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid To Date",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "RATING_CHG_DATE",
+   "key": false,
+   "data_element": "UKM_RATING_CHG_DATE",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Change Date for Score",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ALTERNATE_BP",
+   "key": false,
+   "data_element": "UKM_ALTERNATE_BP",
+   "domain": "BU_PARTNER",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Partner for Credit Account",
+   "check_table": "BUT000"
+  },
+  {
+   "pos": 10,
+   "name": "OWN_RATING_CALC",
+   "key": false,
+   "data_element": "UKM_OWN_RATING_CALC",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Rule for Calculating Score",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "RISK_CLASS",
+   "key": false,
+   "data_element": "UKM_RISK_CLASS",
+   "domain": "UKM_RISK_CLASS",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Risk Class",
+   "check_table": "UKM_RISK_CL"
+  },
+  {
+   "pos": 12,
+   "name": "RISK_CLASS_CALC",
+   "key": false,
+   "data_element": "UKM_RISK_CLASS_CALC",
+   "domain": "UKM_RISK_CLASS",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Risk Class Calculated",
+   "check_table": "UKM_RISK_CL"
+  },
+  {
+   "pos": 13,
+   "name": "RISK_CLASS_CHGDT",
+   "key": false,
+   "data_element": "UKM_RISK_CLASS_CHG_DATE",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Risk Class Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "CREDIT_GROUP",
+   "key": false,
+   "data_element": "UKM_CRED_GROUP",
+   "domain": "UKM_CRED_GROUP",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Customer Credit Group",
+   "check_table": "UKM_CUST_GRP"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ALTERNATE_BP",
+   "foreign_table": "BUT000",
+   "foreign_field": "PARTNER"
+  },
+  {
+   "field": "CHECK_RULE",
+   "foreign_table": "UKM_CHCK_RULE",
+   "foreign_field": "CHECK_RULE"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "CREDIT_GROUP",
+   "foreign_table": "UKM_CUST_GRP",
+   "foreign_field": "CRED_GROUP"
+  },
+  {
+   "field": "LIMIT_RULE",
+   "foreign_table": "UKM_LIMIT_RULES",
+   "foreign_field": "LIMIT_RULE"
+  },
+  {
+   "field": "RISK_CLASS",
+   "foreign_table": "UKM_RISK_CL",
+   "foreign_field": "RISK_CLASS"
+  },
+  {
+   "field": "RISK_CLASS_CALC",
+   "foreign_table": "UKM_RISK_CL",
+   "foreign_field": "RISK_CLASS"
+  }
+ ]
+}

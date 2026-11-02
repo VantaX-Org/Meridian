@@ -1,0 +1,11 @@
+{
+ "domain": "UKM_RISK_CLASS",
+ "type": "CHAR",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "UKM_RISK_CL",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,136 @@
+{
+ "table": "T044G",
+ "description": "Valuation Adjustment Key",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "WBRSL",
+   "key": true,
+   "data_element": "WBRSL",
+   "domain": "WBRSL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Value Adjustment Key",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "BWBER",
+   "key": true,
+   "data_element": "BWBER",
+   "domain": "BWBER",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Valuation Area for FI Year-End Closing",
+   "check_table": "T033"
+  },
+  {
+   "pos": 4,
+   "name": "LAND1",
+   "key": true,
+   "data_element": "LAND1",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country Key",
+   "check_table": "*"
+  },
+  {
+   "pos": 5,
+   "name": "OVDUE",
+   "key": true,
+   "data_element": "OVDUE",
+   "domain": "NUMC3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Days Overdue",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "FUTURE",
+   "key": true,
+   "data_element": "FFUTURE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Future",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ZINSO",
+   "key": false,
+   "data_element": "DZINSO",
+   "domain": "PRZ43",
+   "type": "DEC",
+   "length": 7,
+   "decimals": 3,
+   "description": "Debit interest rate",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "XMANU",
+   "key": false,
+   "data_element": "XMANU_F107",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Valuate items manually",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "XEXTR",
+   "key": false,
+   "data_element": "EXTERN_F107",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for External Valuation",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "PTYPE",
+   "key": false,
+   "data_element": "PTYPE_107",
+   "domain": "PTYPE_107",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Posting type for adjustment posting",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BWBER",
+   "foreign_table": "T033",
+   "foreign_field": "BWBER"
+  }
+ ]
+}
