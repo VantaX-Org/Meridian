@@ -393,6 +393,13 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
                 vals.append("a")  # case-check rule: a lowercase-first candidate to trip it
             if ".round(" in expr:
                 vals.append("1.004")  # a value whose cents aren't a whole number, for precision/rounding checks
+            col = re.escape(c)
+            prefix = re.search(rf"`{col}`\.str\.startswith\('([^']*)'\)", expr)
+            length = re.search(rf"`{col}`\.str\.len\(\)\s*==\s*(\d+)", expr)
+            if prefix and length and int(length.group(1)) > len(prefix.group(1)):
+                # a fixed-length coded value (an IBAN): its prefix padded to the exact length, so the
+                # rule's slices of it reach the comparison instead of stopping at the length gate
+                vals.insert(0, prefix.group(1).ljust(int(length.group(1)), "0"))
         vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]
         if _kind(dictionary, c) == "date" and f"`{c}`.dt." in expr:
             vals.insert(0, "20000101")  # date parts are compared: a real date ahead of the expression's literals
@@ -466,6 +473,10 @@ def _failing_rows(result, df: pd.DataFrame, dictionary) -> set[int]:
 
 def prove(rule: dict, dictionary) -> tuple[str, str]:
     """(verdict, detail): proven | never_fails | never_passes | not_applicable | error."""
+    # evaluate `@today` at the instant the date probes (TODAY, NOW) were built from: a long
+    # run that crosses UTC midnight otherwise proves "expires within N days of today" rules
+    # against yesterday's specimen and they never fail
+    rule = {"_as_of": _NOW.isoformat(), **rule}
     live = {}
     if rule.get("check_class") in ("referential_check", "domain_value_check") and not (
             rule.get("allowed_values") or rule.get("reference_values") or rule.get("format")):
