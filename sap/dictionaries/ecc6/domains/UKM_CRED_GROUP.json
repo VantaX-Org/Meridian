@@ -1,0 +1,11 @@
+{
+ "domain": "UKM_CRED_GROUP",
+ "type": "NUMC",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "UKM_CUST_GRP",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

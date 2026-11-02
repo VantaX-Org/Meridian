@@ -766,23 +766,6 @@ rules:
     __other__: EINA.URZTP '{invalid_value}' is not defined in the check table T069.URZTP. Correct it there or add the missing
       entry.
   record_fix_template: EINA.URZTP points at a check table T069.URZTP entry that does not exist.
-- id: DXR2cd100dd
-  enabled: false
-  field: EINA.LMEIN
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Base Unit of Measure must exist in the check table T006.MSEHI
-  why_it_matters: LMEIN (Base Unit of Measure) is defined in the SAP Data Dictionary with check table T006.MSEHI on domain
-    MEINS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LMEIN resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: EINA.LMEIN '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
-      entry.
-  record_fix_template: EINA.LMEIN points at a check table T006.MSEHI entry that does not exist.
 - id: DXRb51271f1
   enabled: false
   field: EINA.REGIO
@@ -852,23 +835,6 @@ rules:
     __other__: EINA.RUECK '{invalid_value}' is not defined in the check table TWRV.RUECV. Correct it there or add the missing
       entry.
   record_fix_template: EINA.RUECK points at a check table TWRV.RUECV entry that does not exist.
-- id: DXRbc9f3d20
-  enabled: false
-  field: EINA.KOLIF
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Prior Vendor must exist in the check table LFA1.LIFNR
-  why_it_matters: KOLIF (Prior Vendor) is defined in the SAP Data Dictionary with check table LFA1.LIFNR on domain LIFNR.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KOLIF resolve it through check table LFA1.LIFNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: EINA.KOLIF '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
-      entry.
-  record_fix_template: EINA.KOLIF points at a check table LFA1.LIFNR entry that does not exist.
 - id: DXR1c4d0636
   enabled: false
   field: EINA.PUNEI
@@ -2636,23 +2602,6 @@ rules:
   fix_map:
     __other__: 'EKPO.IPRKZ ''{invalid_value}'' is not in domain DATTP. Set it to one of: 1, 2, 3.'
   record_fix_template: 'EKPO.IPRKZ is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXRe3a6e8a0
-  enabled: false
-  field: EORD.EMATN
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Material number corresponding to manufacturer part number must exist in the check table MARA.MATNR
-  why_it_matters: EMATN (Material number corresponding to manufacturer part number) is defined in the SAP Data Dictionary
-    with check table MARA.MATNR on domain MATNR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EMATN resolve it through check table MARA.MATNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: EORD.EMATN '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
-      entry.
-  record_fix_template: EORD.EMATN points at a check table MARA.MATNR entry that does not exist.
 - id: DXVc5999d22
   enabled: false
   field: EORD.VRTYP
@@ -2713,23 +2662,6 @@ rules:
   fix_map:
     __other__: 'EORD.AUTET ''{invalid_value}'' is not in domain AUTET. Set it to one of: 1, 2.'
   record_fix_template: 'EORD.AUTET is {actual_value}; expected one of: 1, 2.'
-- id: DXR1e1bef81
-  enabled: false
-  field: EORD.MEINS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Order unit must exist in the check table T006.MSEHI
-  why_it_matters: MEINS (Order unit) is defined in the SAP Data Dictionary with check table T006.MSEHI on domain MEINS. A
-    value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MEINS resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: EORD.MEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
-      entry.
-  record_fix_template: EORD.MEINS points at a check table T006.MSEHI entry that does not exist.
 - id: DXRe5278a5e
   enabled: false
   field: EORD.LOGSY

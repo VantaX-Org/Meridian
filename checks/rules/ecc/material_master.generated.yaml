@@ -743,23 +743,6 @@ rules:
     __other__: MARA.BWVOR '{invalid_value}' is not defined in the check table T6WP1.BWVOR. Correct it there or add the missing
       entry.
   record_fix_template: MARA.BWVOR points at a check table T6WP1.BWVOR entry that does not exist.
-- id: DXR129d3763
-  enabled: false
-  field: MARA.BWSCL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Source of Supply must exist in the check table TMBW1.BWSCL
-  why_it_matters: BWSCL (Source of Supply) is defined in the SAP Data Dictionary with check table TMBW1.BWSCL on domain BQSCL.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BWSCL resolve it through check table TMBW1.BWSCL; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.BWSCL '{invalid_value}' is not defined in the check table TMBW1.BWSCL. Correct it there or add the missing
-      entry.
-  record_fix_template: MARA.BWSCL points at a check table TMBW1.BWSCL entry that does not exist.
 - id: DXR09a2cf1b
   enabled: false
   field: MARA.SAISO
@@ -828,40 +811,6 @@ rules:
     __other__: MARA.PLGTP '{invalid_value}' is not defined in the check table TWPT.PLGTP. Correct it there or add the missing
       entry.
   record_fix_template: MARA.PLGTP points at a check table TWPT.PLGTP entry that does not exist.
-- id: DXRebe1308b
-  enabled: false
-  field: MARA.PMATA
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Pricing Reference Material must exist in the check table MARA.MATNR
-  why_it_matters: PMATA (Pricing Reference Material) is defined in the SAP Data Dictionary with check table MARA.MATNR on
-    domain MATNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PMATA resolve it through check table MARA.MATNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.PMATA '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
-      entry.
-  record_fix_template: MARA.PMATA points at a check table MARA.MATNR entry that does not exist.
-- id: DXRe08b2623
-  enabled: false
-  field: MARA.RBNRM
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Report layout must exist in the check table T352B.RBNR
-  why_it_matters: RBNRM (Report layout) is defined in the SAP Data Dictionary with check table T352B.RBNR on domain RBNR.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read RBNRM resolve it through check table T352B.RBNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.RBNRM '{invalid_value}' is not defined in the check table T352B.RBNR. Correct it there or add the missing
-      entry.
-  record_fix_template: MARA.RBNRM points at a check table T352B.RBNR entry that does not exist.
 - id: DXR2bf39a04
   enabled: false
   field: MARA.ETIAG
@@ -879,23 +828,6 @@ rules:
     __other__: MARA.ETIAG '{invalid_value}' is not defined in the check table TWEA.ARTGR. Correct it there or add the missing
       entry.
   record_fix_template: MARA.ETIAG points at a check table TWEA.ARTGR entry that does not exist.
-- id: DXRb64e6812
-  enabled: false
-  field: MARA.KOSCH
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Product allocation determination procedure must exist in the check table T190S.KOSCH
-  why_it_matters: KOSCH (Product allocation determination procedure) is defined in the SAP Data Dictionary with check table
-    T190S.KOSCH on domain KOSCH. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KOSCH resolve it through check table T190S.KOSCH; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.KOSCH '{invalid_value}' is not defined in the check table T190S.KOSCH. Correct it there or add the missing
-      entry.
-  record_fix_template: MARA.KOSCH points at a check table T190S.KOSCH entry that does not exist.
 - id: DXV5eec5ca4
   enabled: false
   field: MARA.SPROF
@@ -950,23 +882,6 @@ rules:
     __other__: MARA.MFRNR '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: MARA.MFRNR points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR5ae06691
-  enabled: false
-  field: MARA.MPROF
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Mfr part profile must exist in the check table TMPPF.MPROF
-  why_it_matters: MPROF (Mfr part profile) is defined in the SAP Data Dictionary with check table TMPPF.MPROF on domain MPROF.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MPROF resolve it through check table TMPPF.MPROF; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.MPROF '{invalid_value}' is not defined in the check table TMPPF.MPROF. Correct it there or add the missing
-      entry.
-  record_fix_template: MARA.MPROF points at a check table TMPPF.MPROF entry that does not exist.
 - id: DXRd9b4a7b8
   enabled: false
   field: MARA.SAITY
@@ -1037,91 +952,6 @@ rules:
     __other__: MARA.GENNR '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: MARA.GENNR points at a check table MARA.MATNR entry that does not exist.
-- id: DXRdb2be70f
-  enabled: false
-  field: MARA.RMATP
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Reference material for materials packed in same way must exist in the check table MARA.MATNR
-  why_it_matters: RMATP (Reference material for materials packed in same way) is defined in the SAP Data Dictionary with check
-    table MARA.MATNR on domain MATNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read RMATP resolve it through check table MARA.MATNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.RMATP '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
-      entry.
-  record_fix_template: MARA.RMATP points at a check table MARA.MATNR entry that does not exist.
-- id: DXRf18a1cb1
-  enabled: false
-  field: MARA.HUTYP_DFLT
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Standard HU Type must exist in the check table THUTYP.HUTYP
-  why_it_matters: HUTYP_DFLT (Standard HU Type) is defined in the SAP Data Dictionary with check table THUTYP.HUTYP on domain
-    CHAR4. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read HUTYP_DFLT resolve it through check table THUTYP.HUTYP; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.HUTYP_DFLT '{invalid_value}' is not defined in the check table THUTYP.HUTYP. Correct it there or add the
-      missing entry.
-  record_fix_template: MARA.HUTYP_DFLT points at a check table THUTYP.HUTYP entry that does not exist.
-- id: DXRc94b8522
-  enabled: false
-  field: MARA.HUTYP
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Handling Unit Type must exist in the check table THUTYP.HUTYP
-  why_it_matters: HUTYP (Handling Unit Type) is defined in the SAP Data Dictionary with check table THUTYP.HUTYP on domain
-    CHAR4. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read HUTYP resolve it through check table THUTYP.HUTYP; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.HUTYP '{invalid_value}' is not defined in the check table THUTYP.HUTYP. Correct it there or add the missing
-      entry.
-  record_fix_template: MARA.HUTYP points at a check table THUTYP.HUTYP entry that does not exist.
-- id: DXRe93d8eb0
-  enabled: false
-  field: MARA.QQTIMEUOM
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Time Unit for Quarantine Period must exist in the check table T006.MSEHI
-  why_it_matters: QQTIMEUOM (Time Unit for Quarantine Period) is defined in the SAP Data Dictionary with check table T006.MSEHI
-    on domain MEINS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read QQTIMEUOM resolve it through check table T006.MSEHI; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.QQTIMEUOM '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
-      missing entry.
-  record_fix_template: MARA.QQTIMEUOM points at a check table T006.MSEHI entry that does not exist.
-- id: DXR6761d883
-  enabled: false
-  field: MARA.PS_SMARTFORM
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Form Name must exist in the check table STXFADM.FORMNAME
-  why_it_matters: PS_SMARTFORM (Form Name) is defined in the SAP Data Dictionary with check table STXFADM.FORMNAME on domain
-    TDSFNAME. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PS_SMARTFORM resolve it through check table STXFADM.FORMNAME; an unknown value leaves the
-    record unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.PS_SMARTFORM '{invalid_value}' is not defined in the check table STXFADM.FORMNAME. Correct it there or
-      add the missing entry.
-  record_fix_template: MARA.PS_SMARTFORM points at a check table STXFADM.FORMNAME entry that does not exist.
 - id: DXRf547979f
   enabled: false
   field: MARA.LOGUNIT
@@ -1139,90 +969,6 @@ rules:
     __other__: MARA.LOGUNIT '{invalid_value}' is not defined in the check table MARM.MEINH. Correct it there or add the missing
       entry.
   record_fix_template: MARA.LOGUNIT points at a check table MARM.MEINH entry that does not exist.
-- id: DXR20f83955
-  enabled: false
-  field: MARA.CWQPROC
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'EWM CW: Catch Weight Profile for Entering CW Quantity must exist in the check table TCWQPROC.CWQPROC'
-  why_it_matters: 'CWQPROC (EWM CW: Catch Weight Profile for Entering CW Quantity) is defined in the SAP Data Dictionary with
-    check table TCWQPROC.CWQPROC on domain CIFCWQPROC. A value outside that table is not a value SAP recognises, so the record
-    is inconsistent with the configuration it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read CWQPROC resolve it through check table TCWQPROC.CWQPROC; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.CWQPROC '{invalid_value}' is not defined in the check table TCWQPROC.CWQPROC. Correct it there or add
-      the missing entry.
-  record_fix_template: MARA.CWQPROC points at a check table TCWQPROC.CWQPROC entry that does not exist.
-- id: DXRdec48f61
-  enabled: false
-  field: MARA.CWQTOLGR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'EWM-CW: Catch Weight Tolerance Group for EWM must exist in the check table TCWQTOLGR.CWQTOLGR'
-  why_it_matters: 'CWQTOLGR (EWM-CW: Catch Weight Tolerance Group for EWM) is defined in the SAP Data Dictionary with check
-    table TCWQTOLGR.CWQTOLGR on domain CIFCWQTOLGR. A value outside that table is not a value SAP recognises, so the record
-    is inconsistent with the configuration it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read CWQTOLGR resolve it through check table TCWQTOLGR.CWQTOLGR; an unknown value leaves the
-    record unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.CWQTOLGR '{invalid_value}' is not defined in the check table TCWQTOLGR.CWQTOLGR. Correct it there or add
-      the missing entry.
-  record_fix_template: MARA.CWQTOLGR points at a check table TCWQTOLGR.CWQTOLGR entry that does not exist.
-- id: DXR8b6c0de5
-  enabled: false
-  field: MARA.ADPROF
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Adjustment Profile must exist in the check table TAPROF.ADPROF
-  why_it_matters: ADPROF (Adjustment Profile) is defined in the SAP Data Dictionary with check table TAPROF.ADPROF on domain
-    CIFADPROF. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ADPROF resolve it through check table TAPROF.ADPROF; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.ADPROF '{invalid_value}' is not defined in the check table TAPROF.ADPROF. Correct it there or add the
-      missing entry.
-  record_fix_template: MARA.ADPROF points at a check table TAPROF.ADPROF entry that does not exist.
-- id: DXR89228e26
-  enabled: false
-  field: MARA.MEDIUM
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Medium must exist in the check table T372M.MEDIU
-  why_it_matters: MEDIUM (Medium) is defined in the SAP Data Dictionary with check table T372M.MEDIU on domain MEDIU. A value
-    outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MEDIUM resolve it through check table T372M.MEDIU; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.MEDIUM '{invalid_value}' is not defined in the check table T372M.MEDIU. Correct it there or add the missing
-      entry.
-  record_fix_template: MARA.MEDIUM points at a check table T372M.MEDIU entry that does not exist.
-- id: DXRf052b066
-  enabled: false
-  field: MARA.COMMODITY
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Physical Commodity must exist in the check table TBAC_PHYSCOMM.COMMODITY
-  why_it_matters: COMMODITY (Physical Commodity) is defined in the SAP Data Dictionary with check table TBAC_PHYSCOMM.COMMODITY
-    on domain TBA_STOEFFCHEN. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read COMMODITY resolve it through check table TBAC_PHYSCOMM.COMMODITY; an unknown value leaves
-    the record unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.COMMODITY '{invalid_value}' is not defined in the check table TBAC_PHYSCOMM.COMMODITY. Correct it there
-      or add the missing entry.
-  record_fix_template: MARA.COMMODITY points at a check table TBAC_PHYSCOMM.COMMODITY entry that does not exist.
 - id: DXRe92d645f
   enabled: false
   field: MARA.ANP
@@ -1308,40 +1054,6 @@ rules:
     __other__: MARA./DSD/VC_GROUP '{invalid_value}' is not defined in the check table /DSD/VC_GRP.GRP. Correct it there or
       add the missing entry.
   record_fix_template: MARA./DSD/VC_GROUP points at a check table /DSD/VC_GRP.GRP entry that does not exist.
-- id: DXR4395e91e
-  enabled: false
-  field: MARA.PACKCODE
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Packaging Code must exist in the check table CCUNC121.PACKCODE
-  why_it_matters: PACKCODE (Packaging Code) is defined in the SAP Data Dictionary with check table CCUNC121.PACKCODE on domain
-    CBUND_PACOD. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PACKCODE resolve it through check table CCUNC121.PACKCODE; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.PACKCODE '{invalid_value}' is not defined in the check table CCUNC121.PACKCODE. Correct it there or add
-      the missing entry.
-  record_fix_template: MARA.PACKCODE points at a check table CCUNC121.PACKCODE entry that does not exist.
-- id: DXRdb15bd70
-  enabled: false
-  field: MARA.DG_PACK_STATUS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Dangerous Goods Packaging Status must exist in the check table TDG101.DG_PACK_STATUS
-  why_it_matters: DG_PACK_STATUS (Dangerous Goods Packaging Status) is defined in the SAP Data Dictionary with check table
-    TDG101.DG_PACK_STATUS on domain CHAR10. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read DG_PACK_STATUS resolve it through check table TDG101.DG_PACK_STATUS; an unknown value leaves
-    the record unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.DG_PACK_STATUS '{invalid_value}' is not defined in the check table TDG101.DG_PACK_STATUS. Correct it there
-      or add the missing entry.
-  record_fix_template: MARA.DG_PACK_STATUS points at a check table TDG101.DG_PACK_STATUS entry that does not exist.
 - id: DXV1ab12822
   enabled: false
   field: MARA.MCOND
@@ -1548,23 +1260,6 @@ rules:
     __other__: MARC.LZEIH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: MARC.LZEIH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR90393917
-  enabled: false
-  field: MARC.AUFTL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Splitting Indicator must exist in the check table T439P.AUFTL
-  why_it_matters: AUFTL (Splitting Indicator) is defined in the SAP Data Dictionary with check table T439P.AUFTL on domain
-    AUFTL. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read AUFTL resolve it through check table T439P.AUFTL; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.AUFTL '{invalid_value}' is not defined in the check table T439P.AUFTL. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.AUFTL points at a check table T439P.AUFTL entry that does not exist.
 - id: DXR0906ca84
   enabled: false
   field: MARC.PLVAR
@@ -1599,40 +1294,6 @@ rules:
     __other__: MARC.OTYPE '{invalid_value}' is not defined in the check table T778O.OTYPE. Correct it there or add the missing
       entry.
   record_fix_template: MARC.OTYPE points at a check table T778O.OTYPE entry that does not exist.
-- id: DXR0a8064cf
-  enabled: false
-  field: MARC.PERIV
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Fiscal Year Variant must exist in the check table T009.PERIV
-  why_it_matters: PERIV (Fiscal Year Variant) is defined in the SAP Data Dictionary with check table T009.PERIV on domain
-    PERIV. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PERIV resolve it through check table T009.PERIV; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.PERIV '{invalid_value}' is not defined in the check table T009.PERIV. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.PERIV points at a check table T009.PERIV entry that does not exist.
-- id: DXR8fa3ff6d
-  enabled: false
-  field: MARC.BWSCL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Source of Supply must exist in the check table TMBW1.BWSCL
-  why_it_matters: BWSCL (Source of Supply) is defined in the SAP Data Dictionary with check table TMBW1.BWSCL on domain BQSCL.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BWSCL resolve it through check table TMBW1.BWSCL; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.BWSCL '{invalid_value}' is not defined in the check table TMBW1.BWSCL. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.BWSCL points at a check table TMBW1.BWSCL entry that does not exist.
 - id: DXRe2f833a3
   enabled: false
   field: MARC.HERKR
@@ -1650,141 +1311,6 @@ rules:
     __other__: MARC.HERKR '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
       entry.
   record_fix_template: MARC.HERKR points at a check table T005S.BLAND entry that does not exist.
-- id: DXR14d889c9
-  enabled: false
-  field: MARC.STLAN
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: BOM Usage must exist in the check table T416.STLAN
-  why_it_matters: STLAN (BOM Usage) is defined in the SAP Data Dictionary with check table T416.STLAN on domain STLAN. A value
-    outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read STLAN resolve it through check table T416.STLAN; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.STLAN '{invalid_value}' is not defined in the check table T416.STLAN. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.STLAN points at a check table T416.STLAN entry that does not exist.
-- id: DXR1e97fd25
-  enabled: false
-  field: MARC.SOBSK
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Special Procurement Type for Costing must exist in the check table T460A.SOBSL
-  why_it_matters: SOBSK (Special Procurement Type for Costing) is defined in the SAP Data Dictionary with check table T460A.SOBSL
-    on domain SOBSL. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SOBSK resolve it through check table T460A.SOBSL; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.SOBSK '{invalid_value}' is not defined in the check table T460A.SOBSL. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.SOBSK points at a check table T460A.SOBSL entry that does not exist.
-- id: DXR91ba4740
-  enabled: false
-  field: MARC.DISGR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: MRP Group must exist in the check table T438M.MTART
-  why_it_matters: DISGR (MRP Group) is defined in the SAP Data Dictionary with check table T438M.MTART on domain DISGR. A
-    value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read DISGR resolve it through check table T438M.MTART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.DISGR '{invalid_value}' is not defined in the check table T438M.MTART. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.DISGR points at a check table T438M.MTART entry that does not exist.
-- id: DXR903021a0
-  enabled: false
-  field: MARC.STDPD
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Configurable material must exist in the check table MARA.MATNR
-  why_it_matters: STDPD (Configurable material) is defined in the SAP Data Dictionary with check table MARA.MATNR on domain
-    MATNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read STDPD resolve it through check table MARA.MATNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.STDPD '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.STDPD points at a check table MARA.MATNR entry that does not exist.
-- id: DXRc8e1828e
-  enabled: false
-  field: MARC.LFRHY
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Planning cycle must exist in the check table T439G.MRPPP
-  why_it_matters: LFRHY (Planning cycle) is defined in the SAP Data Dictionary with check table T439G.MRPPP on domain MRPPP.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LFRHY resolve it through check table T439G.MRPPP; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.LFRHY '{invalid_value}' is not defined in the check table T439G.MRPPP. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.LFRHY points at a check table T439G.MRPPP entry that does not exist.
-- id: DXReeea3bbb
-  enabled: false
-  field: MARC.RDPRF
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Rounding Profile must exist in the check table RDPR.RDPRF
-  why_it_matters: RDPRF (Rounding Profile) is defined in the SAP Data Dictionary with check table RDPR.RDPRF on domain RDPRF.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read RDPRF resolve it through check table RDPR.RDPRF; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.RDPRF '{invalid_value}' is not defined in the check table RDPR.RDPRF. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.RDPRF points at a check table RDPR.RDPRF entry that does not exist.
-- id: DXR7e3c6136
-  enabled: false
-  field: MARC.VRBMT
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Reference material for consumption must exist in the check table MARA.MATNR
-  why_it_matters: VRBMT (Reference material for consumption) is defined in the SAP Data Dictionary with check table MARA.MATNR
-    on domain MATNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VRBMT resolve it through check table MARA.MATNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.VRBMT '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.VRBMT points at a check table MARA.MATNR entry that does not exist.
-- id: DXR43e2741e
-  enabled: false
-  field: MARC.VRBWK
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Reference plant for consumption must exist in the check table T001W.WERKS
-  why_it_matters: VRBWK (Reference plant for consumption) is defined in the SAP Data Dictionary with check table T001W.WERKS
-    on domain WERKS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VRBWK resolve it through check table T001W.WERKS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.VRBWK '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.VRBWK points at a check table T001W.WERKS entry that does not exist.
 - id: DXV56c31b2d
   enabled: false
   field: MARC.PREFE
@@ -1863,23 +1389,6 @@ rules:
     __other__: MARC.SERVG '{invalid_value}' is not defined in the check table TWSG.SERVG. Correct it there or add the missing
       entry.
   record_fix_template: MARC.SERVG points at a check table TWSG.SERVG entry that does not exist.
-- id: DXR6342c7b4
-  enabled: false
-  field: MARC.PLNTY
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Task List Type must exist in the check table TCA01.PLNTY
-  why_it_matters: PLNTY (Task List Type) is defined in the SAP Data Dictionary with check table TCA01.PLNTY on domain PLNTY.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PLNTY resolve it through check table TCA01.PLNTY; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.PLNTY '{invalid_value}' is not defined in the check table TCA01.PLNTY. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.PLNTY points at a check table TCA01.PLNTY entry that does not exist.
 - id: DXRc359959b
   enabled: false
   field: MARC.UOMGR
@@ -1914,91 +1423,6 @@ rules:
     __other__: MARC.UMRSL '{invalid_value}' is not defined in the check table OIB01.UMRSL. Correct it there or add the missing
       entry.
   record_fix_template: MARC.UMRSL points at a check table OIB01.UMRSL entry that does not exist.
-- id: DXR81edc2e4
-  enabled: false
-  field: MARC.MDACH
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'Action control: planned order processing must exist in the check table T46AC.MDACH'
-  why_it_matters: 'MDACH (Action control: planned order processing) is defined in the SAP Data Dictionary with check table
-    T46AC.MDACH on domain MDACH. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MDACH resolve it through check table T46AC.MDACH; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.MDACH '{invalid_value}' is not defined in the check table T46AC.MDACH. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.MDACH points at a check table T46AC.MDACH entry that does not exist.
-- id: DXRf35c731d
-  enabled: false
-  field: MARC.MEGRU
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Unit of Measure Group must exist in the check table TWMEG.MEGRU
-  why_it_matters: MEGRU (Unit of Measure Group) is defined in the SAP Data Dictionary with check table TWMEG.MEGRU on domain
-    MEGRU. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MEGRU resolve it through check table TWMEG.MEGRU; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.MEGRU '{invalid_value}' is not defined in the check table TWMEG.MEGRU. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.MEGRU points at a check table TWMEG.MEGRU entry that does not exist.
-- id: DXR03dd08c6
-  enabled: false
-  field: MARC.MFRGR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Material freight group must exist in the check table TMFG.MFRGR
-  why_it_matters: MFRGR (Material freight group) is defined in the SAP Data Dictionary with check table TMFG.MFRGR on domain
-    MFRGR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MFRGR resolve it through check table TMFG.MFRGR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.MFRGR '{invalid_value}' is not defined in the check table TMFG.MFRGR. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.MFRGR points at a check table TMFG.MFRGR entry that does not exist.
-- id: DXR3a0eb0a2
-  enabled: false
-  field: MARC.LOGGR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Logistics handling group for workload calculation must exist in the check table TLOG.LOGGR
-  why_it_matters: LOGGR (Logistics handling group for workload calculation) is defined in the SAP Data Dictionary with check
-    table TLOG.LOGGR on domain LOGGR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LOGGR resolve it through check table TLOG.LOGGR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.LOGGR '{invalid_value}' is not defined in the check table TLOG.LOGGR. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.LOGGR points at a check table TLOG.LOGGR entry that does not exist.
-- id: DXRa8ade56f
-  enabled: false
-  field: MARC.FPRFM
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Distribution profile of material in plant must exist in the check table TMFPF.FPRFM
-  why_it_matters: FPRFM (Distribution profile of material in plant) is defined in the SAP Data Dictionary with check table
-    TMFPF.FPRFM on domain MPPRF. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read FPRFM resolve it through check table TMFPF.FPRFM; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.FPRFM '{invalid_value}' is not defined in the check table TMFPF.FPRFM. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.FPRFM points at a check table TMFPF.FPRFM entry that does not exist.
 - id: DXVa34ba125
   enabled: false
   field: MARC.INDUS
@@ -2087,40 +1511,6 @@ rules:
     __other__: MARC.GPNUM '{invalid_value}' is not defined in the check table T609G.GPNUM. Correct it there or add the missing
       entry.
   record_fix_template: MARC.GPNUM points at a check table T609G.GPNUM entry that does not exist.
-- id: DXR9c4ad229
-  enabled: false
-  field: MARC.STEUC
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Control code for consumption taxes in foreign trade must exist in the check table T604F.STEUC
-  why_it_matters: STEUC (Control code for consumption taxes in foreign trade) is defined in the SAP Data Dictionary with check
-    table T604F.STEUC on domain STEUC. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read STEUC resolve it through check table T604F.STEUC; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.STEUC '{invalid_value}' is not defined in the check table T604F.STEUC. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.STEUC points at a check table T604F.STEUC entry that does not exist.
-- id: DXR8d016cc1
-  enabled: false
-  field: MARC.VSPVB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Proposed Supply Area in Material Master Record must exist in the check table PVBE.PRVBE
-  why_it_matters: VSPVB (Proposed Supply Area in Material Master Record) is defined in the SAP Data Dictionary with check
-    table PVBE.PRVBE on domain PRVBE. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VSPVB resolve it through check table PVBE.PRVBE; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.VSPVB '{invalid_value}' is not defined in the check table PVBE.PRVBE. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.VSPVB points at a check table PVBE.PRVBE entry that does not exist.
 - id: DXVa19b36e1
   enabled: false
   field: MARC.DPLFS
@@ -2156,40 +1546,6 @@ rules:
     __other__: MARC.COMPL '{invalid_value}' is not defined in the check table TCSCP_COMP_LVL.COMP_LEVEL. Correct it there
       or add the missing entry.
   record_fix_template: MARC.COMPL points at a check table TCSCP_COMP_LVL.COMP_LEVEL entry that does not exist.
-- id: DXR39b3581e
-  enabled: false
-  field: MARC.CONVT
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Conversion types for production figures must exist in the check table TCSCP_CONV_TYPE.CONV_TYPE
-  why_it_matters: CONVT (Conversion types for production figures) is defined in the SAP Data Dictionary with check table TCSCP_CONV_TYPE.CONV_TYPE
-    on domain CSCP_CONV_TYPE. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read CONVT resolve it through check table TCSCP_CONV_TYPE.CONV_TYPE; an unknown value leaves
-    the record unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.CONVT '{invalid_value}' is not defined in the check table TCSCP_CONV_TYPE.CONV_TYPE. Correct it there
-      or add the missing entry.
-  record_fix_template: MARC.CONVT points at a check table TCSCP_CONV_TYPE.CONV_TYPE entry that does not exist.
-- id: DXRa744ddb4
-  enabled: false
-  field: MARC.OCMPF
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Overall profile for order change management must exist in the check table TCO48.GPROFILE
-  why_it_matters: OCMPF (Overall profile for order change management) is defined in the SAP Data Dictionary with check table
-    TCO48.GPROFILE on domain CHAR6. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read OCMPF resolve it through check table TCO48.GPROFILE; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.OCMPF '{invalid_value}' is not defined in the check table TCO48.GPROFILE. Correct it there or add the
-      missing entry.
-  record_fix_template: MARC.OCMPF points at a check table TCO48.GPROFILE entry that does not exist.
 - id: DXV30f74428
   enabled: false
   field: MARC.ROTATION_DATE
@@ -2245,23 +1601,6 @@ rules:
     __other__: MARC./VSO/R_PKGRP '{invalid_value}' is not defined in the check table /VSO/M_PKG.PKGRP. Correct it there or
       add the missing entry.
   record_fix_template: MARC./VSO/R_PKGRP points at a check table /VSO/M_PKG.PKGRP entry that does not exist.
-- id: DXR485ddc5c
-  enabled: false
-  field: MARC.IUID_TYPE
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Structure Type of UII must exist in the check table TIUID_TYPE.IUID_TYPE
-  why_it_matters: IUID_TYPE (Structure Type of UII) is defined in the SAP Data Dictionary with check table TIUID_TYPE.IUID_TYPE
-    on domain IUID_TYPE. A value outside that table is not a value SAP recognises, so the record is inconsistent with the
-    configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read IUID_TYPE resolve it through check table TIUID_TYPE.IUID_TYPE; an unknown value leaves the
-    record unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.IUID_TYPE '{invalid_value}' is not defined in the check table TIUID_TYPE.IUID_TYPE. Correct it there or
-      add the missing entry.
-  record_fix_template: MARC.IUID_TYPE points at a check table TIUID_TYPE.IUID_TYPE entry that does not exist.
 - id: DXR5097c676
   enabled: false
   field: MARC.CONS_PROCG
@@ -2296,23 +1635,6 @@ rules:
     __other__: MARC.REF_SCHEMA '{invalid_value}' is not defined in the check table WRF_REF_RFS.REF_SCHEMA. Correct it there
       or add the missing entry.
   record_fix_template: MARC.REF_SCHEMA points at a check table WRF_REF_RFS.REF_SCHEMA entry that does not exist.
-- id: DXR2ad53b58
-  enabled: false
-  field: MARD.HERKL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Country of origin of the material must exist in the check table T005.LAND1
-  why_it_matters: HERKL (Country of origin of the material) is defined in the SAP Data Dictionary with check table T005.LAND1
-    on domain LAND1. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read HERKL resolve it through check table T005.LAND1; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARD.HERKL '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
-      entry.
-  record_fix_template: MARD.HERKL points at a check table T005.LAND1 entry that does not exist.
 - id: DXRcc2af5a2
   enabled: false
   field: MARM.NUMTP
@@ -2402,23 +1724,6 @@ rules:
   fix_map:
     __other__: 'MARM.TY2TQ ''{invalid_value}'' is not in domain DO_EWMTY2TQ. Set it to one of: B, C.'
   record_fix_template: 'MARM.TY2TQ is {actual_value}; expected one of: B, C.'
-- id: DXRe12b4343
-  enabled: false
-  field: MBEW.VJBKL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Valuation class from previous year must exist in the check table T025.BKLAS
-  why_it_matters: VJBKL (Valuation class from previous year) is defined in the SAP Data Dictionary with check table T025.BKLAS
-    on domain BKLAS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VJBKL resolve it through check table T025.BKLAS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MBEW.VJBKL '{invalid_value}' is not defined in the check table T025.BKLAS. Correct it there or add the missing
-      entry.
-  record_fix_template: MBEW.VJBKL points at a check table T025.BKLAS entry that does not exist.
 - id: DXR6529043e
   enabled: false
   field: MBEW.MYPOL
@@ -2436,57 +1741,6 @@ rules:
     __other__: MBEW.MYPOL '{invalid_value}' is not defined in the check table TPOOL.MYPOOL. Correct it there or add the missing
       entry.
   record_fix_template: MBEW.MYPOL points at a check table TPOOL.MYPOOL entry that does not exist.
-- id: DXR9d873c99
-  enabled: false
-  field: MBEW.BWVA1
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Valuation variant for the future standard cost estimate must exist in the check table TCK05.BWVAR
-  why_it_matters: BWVA1 (Valuation variant for the future standard cost estimate) is defined in the SAP Data Dictionary with
-    check table TCK05.BWVAR on domain CK_BWVAR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BWVA1 resolve it through check table TCK05.BWVAR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MBEW.BWVA1 '{invalid_value}' is not defined in the check table TCK05.BWVAR. Correct it there or add the missing
-      entry.
-  record_fix_template: MBEW.BWVA1 points at a check table TCK05.BWVAR entry that does not exist.
-- id: DXR71a58b2e
-  enabled: false
-  field: MBEW.BWVA2
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Valuation variant for the current standard cost estimate must exist in the check table TCK05.BWVAR
-  why_it_matters: BWVA2 (Valuation variant for the current standard cost estimate) is defined in the SAP Data Dictionary with
-    check table TCK05.BWVAR on domain CK_BWVAR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BWVA2 resolve it through check table TCK05.BWVAR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MBEW.BWVA2 '{invalid_value}' is not defined in the check table TCK05.BWVAR. Correct it there or add the missing
-      entry.
-  record_fix_template: MBEW.BWVA2 points at a check table TCK05.BWVAR entry that does not exist.
-- id: DXR9f3221b8
-  enabled: false
-  field: MBEW.BWVA3
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Valuation variant for past standard cost estimate must exist in the check table TCK05.BWVAR
-  why_it_matters: BWVA3 (Valuation variant for past standard cost estimate) is defined in the SAP Data Dictionary with check
-    table TCK05.BWVAR on domain CK_BWVAR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BWVA3 resolve it through check table TCK05.BWVAR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MBEW.BWVA3 '{invalid_value}' is not defined in the check table TCK05.BWVAR. Correct it there or add the missing
-      entry.
-  record_fix_template: MBEW.BWVA3 points at a check table TCK05.BWVAR entry that does not exist.
 - id: DXV1aadb010
   enabled: false
   field: MBEW.LBWST
@@ -2604,23 +1858,160 @@ rules:
   fix_map:
     __other__: 'MBEW.MTORG ''{invalid_value}'' is not in domain J_1BMATORG. Set it to one of: 0, 1, 2.'
   record_fix_template: 'MBEW.MTORG is {actual_value}; expected one of: 0, 1, 2.'
-- id: DXR747de16b
+- id: DXR9b537bca
   enabled: false
-  field: MBEW.OKLAS
+  field: MCHA.VLCHA
   check_class: referential_check
   severity: high
   dimension: consistency
-  message: Valuation Class for Special Stock at the Vendor must exist in the check table T025.BKLAS
-  why_it_matters: OKLAS (Valuation Class for Special Stock at the Vendor) is defined in the SAP Data Dictionary with check
-    table T025.BKLAS on domain BKLAS. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
+  message: Original batch number (deactivated) must exist in the check table MCHA.CHARG
+  why_it_matters: VLCHA (Original batch number (deactivated)) is defined in the SAP Data Dictionary with check table MCHA.CHARG
+    on domain CHARG. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read OKLAS resolve it through check table T025.BKLAS; an unknown value leaves the record unclassified
+  sap_impact: Processes that read VLCHA resolve it through check table MCHA.CHARG; an unknown value leaves the record unclassified
     and can block posting, pricing or reporting.
   fix_map:
-    __other__: MBEW.OKLAS '{invalid_value}' is not defined in the check table T025.BKLAS. Correct it there or add the missing
+    __other__: MCHA.VLCHA '{invalid_value}' is not defined in the check table MCHA.CHARG. Correct it there or add the missing
       entry.
-  record_fix_template: MBEW.OKLAS points at a check table T025.BKLAS entry that does not exist.
+  record_fix_template: MCHA.VLCHA points at a check table MCHA.CHARG entry that does not exist.
+- id: DXR7ecf5df5
+  enabled: false
+  field: MCHA.VLWRK
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Original plant  (deactivated) must exist in the check table MARC.WERKS
+  why_it_matters: VLWRK (Original plant  (deactivated)) is defined in the SAP Data Dictionary with check table MARC.WERKS
+    on domain WERKS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read VLWRK resolve it through check table MARC.WERKS; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: MCHA.VLWRK '{invalid_value}' is not defined in the check table MARC.WERKS. Correct it there or add the missing
+      entry.
+  record_fix_template: MCHA.VLWRK points at a check table MARC.WERKS entry that does not exist.
+- id: DXRfbbe0389
+  enabled: false
+  field: MCHA.VLMAT
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Original material    (deactivated) must exist in the check table MARA.MATNR
+  why_it_matters: VLMAT (Original material    (deactivated)) is defined in the SAP Data Dictionary with check table MARA.MATNR
+    on domain MATNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read VLMAT resolve it through check table MARA.MATNR; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: MCHA.VLMAT '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
+      entry.
+  record_fix_template: MCHA.VLMAT points at a check table MARA.MATNR entry that does not exist.
+- id: DXR4e998de5
+  enabled: false
+  field: MCHA.BWTAR
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Valuation type must exist in the check table MBEW.BWTAR
+  why_it_matters: BWTAR (Valuation type) is defined in the SAP Data Dictionary with check table MBEW.BWTAR on domain BWTAR.
+    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
+    on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read BWTAR resolve it through check table MBEW.BWTAR; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: MCHA.BWTAR '{invalid_value}' is not defined in the check table MBEW.BWTAR. Correct it there or add the missing
+      entry.
+  record_fix_template: MCHA.BWTAR points at a check table MBEW.BWTAR entry that does not exist.
+- id: DXRf13eee15
+  enabled: false
+  field: MCHA.HERKL
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Country of origin of the material must exist in the check table T005.LAND1
+  why_it_matters: HERKL (Country of origin of the material) is defined in the SAP Data Dictionary with check table T005.LAND1
+    on domain LAND1. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read HERKL resolve it through check table T005.LAND1; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: MCHA.HERKL '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
+      entry.
+  record_fix_template: MCHA.HERKL points at a check table T005.LAND1 entry that does not exist.
+- id: DXRf42776ca
+  enabled: false
+  field: MCHA.HERKR
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Region of origin of material (non-preferential origin) must exist in the check table T005S.BLAND
+  why_it_matters: HERKR (Region of origin of material (non-preferential origin)) is defined in the SAP Data Dictionary with
+    check table T005S.BLAND on domain REGIO. A value outside that table is not a value SAP recognises, so the record is inconsistent
+    with the configuration it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read HERKR resolve it through check table T005S.BLAND; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: MCHA.HERKR '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
+      entry.
+  record_fix_template: MCHA.HERKR points at a check table T005S.BLAND entry that does not exist.
+- id: DXR985568c5
+  enabled: false
+  field: MCHA.MTVER
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Export/import material group must exist in the check table TVFM.MTVER
+  why_it_matters: MTVER (Export/import material group) is defined in the SAP Data Dictionary with check table TVFM.MTVER on
+    domain MTVER. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read MTVER resolve it through check table TVFM.MTVER; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: MCHA.MTVER '{invalid_value}' is not defined in the check table TVFM.MTVER. Correct it there or add the missing
+      entry.
+  record_fix_template: MCHA.MTVER points at a check table TVFM.MTVER entry that does not exist.
+- id: DXV73e99b2f
+  enabled: false
+  field: MCHB.SPERC
+  check_class: domain_value_check
+  severity: medium
+  dimension: validity
+  message: Physical inventory blocking indicator must be a value of domain SPERR (e.g. A, X)
+  why_it_matters: Domain SPERR fixes the permitted values of SPERC (Physical inventory blocking indicator) in the SAP Data
+    Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
+    that consume the field.
+  rule_authority: sap_hard_constraint
+  sap_impact: SPERC will not evaluate correctly wherever SAP branches on its value.
+  allowed_values:
+  - A
+  - X
+  fix_map:
+    __other__: 'MCHB.SPERC ''{invalid_value}'' is not in domain SPERR. Set it to one of: A, X.'
+  record_fix_template: 'MCHB.SPERC is {actual_value}; expected one of: A, X.'
+- id: DXR5d64dd1c
+  enabled: false
+  field: MCHB.HERKL
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Country of origin of the material must exist in the check table T005.LAND1
+  why_it_matters: HERKL (Country of origin of the material) is defined in the SAP Data Dictionary with check table T005.LAND1
+    on domain LAND1. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read HERKL resolve it through check table T005.LAND1; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: MCHB.HERKL '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
+      entry.
+  record_fix_template: MCHB.HERKL points at a check table T005.LAND1 entry that does not exist.
 - id: DXR6bb703cf
   enabled: false
   field: MDMA.WERKS
@@ -2638,40 +2029,6 @@ rules:
     __other__: MDMA.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXRe3e0a8ed
-  enabled: false
-  field: MDMA.DISPR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'Material: MRP profile must exist in the check table MDIP.DISPR'
-  why_it_matters: 'DISPR (Material: MRP profile) is defined in the SAP Data Dictionary with check table MDIP.DISPR on domain
-    DISPR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read DISPR resolve it through check table MDIP.DISPR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MDMA.DISPR '{invalid_value}' is not defined in the check table MDIP.DISPR. Correct it there or add the missing
-      entry.
-  record_fix_template: MDMA.DISPR points at a check table MDIP.DISPR entry that does not exist.
-- id: DXR14b15bd6
-  enabled: false
-  field: MDMA.DISPO
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: MRP controller must exist in the check table T024D.DISPO
-  why_it_matters: DISPO (MRP controller) is defined in the SAP Data Dictionary with check table T024D.DISPO on domain DISPO.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read DISPO resolve it through check table T024D.DISPO; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MDMA.DISPO '{invalid_value}' is not defined in the check table T024D.DISPO. Correct it there or add the missing
-      entry.
-  record_fix_template: MDMA.DISPO points at a check table T024D.DISPO entry that does not exist.
 - id: DXRa6d50e3d
   enabled: false
   field: MDMA.DISGR
@@ -2723,57 +2080,6 @@ rules:
     __other__: MDMA.RDPRF '{invalid_value}' is not defined in the check table RDPR.RDPRF. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.RDPRF points at a check table RDPR.RDPRF entry that does not exist.
-- id: DXRb1525356
-  enabled: false
-  field: MDMA.SOBSL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Special procurement type must exist in the check table T460A.SOBSL
-  why_it_matters: SOBSL (Special procurement type) is defined in the SAP Data Dictionary with check table T460A.SOBSL on domain
-    SOBSL. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SOBSL resolve it through check table T460A.SOBSL; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MDMA.SOBSL '{invalid_value}' is not defined in the check table T460A.SOBSL. Correct it there or add the missing
-      entry.
-  record_fix_template: MDMA.SOBSL points at a check table T460A.SOBSL entry that does not exist.
-- id: DXR6b97ab41
-  enabled: false
-  field: MDMA.LGPRO
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Issue storage location must exist in the check table MDLG.LGORT
-  why_it_matters: LGPRO (Issue storage location) is defined in the SAP Data Dictionary with check table MDLG.LGORT on domain
-    LGORT. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGPRO resolve it through check table MDLG.LGORT; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MDMA.LGPRO '{invalid_value}' is not defined in the check table MDLG.LGORT. Correct it there or add the missing
-      entry.
-  record_fix_template: MDMA.LGPRO points at a check table MDLG.LGORT entry that does not exist.
-- id: DXR68f8e522
-  enabled: false
-  field: MDMA.LGFSB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Default storage location for external procurement must exist in the check table MDLG.LGORT
-  why_it_matters: LGFSB (Default storage location for external procurement) is defined in the SAP Data Dictionary with check
-    table MDLG.LGORT on domain LGORT. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGFSB resolve it through check table MDLG.LGORT; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MDMA.LGFSB '{invalid_value}' is not defined in the check table MDLG.LGORT. Correct it there or add the missing
-      entry.
-  record_fix_template: MDMA.LGFSB points at a check table MDLG.LGORT entry that does not exist.
 - id: DXRa751d4ff
   enabled: false
   field: MDMA.MRPPP
@@ -2842,43 +2148,6 @@ rules:
     __other__: MDMA.SHPRO '{invalid_value}' is not defined in the check table T438V.SHPRO. Correct it there or add the missing
       entry.
   record_fix_template: MDMA.SHPRO points at a check table T438V.SHPRO entry that does not exist.
-- id: DXV19d82b68
-  enabled: false
-  field: MDMA.SHFLG
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Safety time indicator (with or without safety time) must be a value of domain SHFLG (e.g. 1, 2)
-  why_it_matters: Domain SHFLG fixes the permitted values of SHFLG (Safety time indicator (with or without safety time)) in
-    the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by
-    the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: SHFLG will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '1'
-  - '2'
-  fix_map:
-    __other__: 'MDMA.SHFLG ''{invalid_value}'' is not in domain SHFLG. Set it to one of: 1, 2.'
-  record_fix_template: 'MDMA.SHFLG is {actual_value}; expected one of: 1, 2.'
-- id: DXVebc0e925
-  enabled: false
-  field: MDMA.APOKZ
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: 'Indicator: Is material relevant for APO must be a value of domain APOKZ (e.g. 1, 2, 3)'
-  why_it_matters: 'Domain APOKZ fixes the permitted values of APOKZ (Indicator: Is material relevant for APO) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP''s own domain definition and is read inconsistently by the programs
-    that consume the field.'
-  rule_authority: sap_hard_constraint
-  sap_impact: APOKZ will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '1'
-  - '2'
-  - '3'
-  fix_map:
-    __other__: 'MDMA.APOKZ ''{invalid_value}'' is not in domain APOKZ. Set it to one of: 1, 2, 3.'
-  record_fix_template: 'MDMA.APOKZ is {actual_value}; expected one of: 1, 2, 3.'
 - id: DXR3690f808
   enabled: false
   field: MKAL.PLNTY
@@ -2982,23 +2251,6 @@ rules:
     __other__: MKAL.CSPLT '{invalid_value}' is not defined in the check table MAKV.CSPLIT. Correct it there or add the missing
       entry.
   record_fix_template: MKAL.CSPLT points at a check table MAKV.CSPLIT entry that does not exist.
-- id: DXRded4dc3a
-  enabled: false
-  field: MKAL.MATKO
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Other material for which BOM and task list are maintained must exist in the check table MARA.MATNR
-  why_it_matters: MATKO (Other material for which BOM and task list are maintained) is defined in the SAP Data Dictionary
-    with check table MARA.MATNR on domain MATNR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MATKO resolve it through check table MARA.MATNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MKAL.MATKO '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
-      entry.
-  record_fix_template: MKAL.MATKO points at a check table MARA.MATNR entry that does not exist.
 - id: DXV1f028702
   enabled: false
   field: MKAL.PRFG_F
@@ -3211,40 +2463,6 @@ rules:
     __other__: MVKE.LSTVZ '{invalid_value}' is not defined in the check table TWLV.LSTFL. Correct it there or add the missing
       entry.
   record_fix_template: MVKE.LSTVZ points at a check table TWLV.LSTFL entry that does not exist.
-- id: DXR0dfad11e
-  enabled: false
-  field: MVKE.RDPRF
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Rounding Profile must exist in the check table RDPR.RDPRF
-  why_it_matters: RDPRF (Rounding Profile) is defined in the SAP Data Dictionary with check table RDPR.RDPRF on domain RDPRF.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read RDPRF resolve it through check table RDPR.RDPRF; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MVKE.RDPRF '{invalid_value}' is not defined in the check table RDPR.RDPRF. Correct it there or add the missing
-      entry.
-  record_fix_template: MVKE.RDPRF points at a check table RDPR.RDPRF entry that does not exist.
-- id: DXR316846f3
-  enabled: false
-  field: MVKE.MEGRU
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Unit of Measure Group must exist in the check table TWMEG.MEGRU
-  why_it_matters: MEGRU (Unit of Measure Group) is defined in the SAP Data Dictionary with check table TWMEG.MEGRU on domain
-    MEGRU. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MEGRU resolve it through check table TWMEG.MEGRU; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MVKE.MEGRU '{invalid_value}' is not defined in the check table TWMEG.MEGRU. Correct it there or add the missing
-      entry.
-  record_fix_template: MVKE.MEGRU points at a check table TWMEG.MEGRU entry that does not exist.
 - id: DXV68b4e633
   enabled: false
   field: MVKE.MATKC

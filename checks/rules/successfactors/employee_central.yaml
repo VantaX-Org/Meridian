@@ -8601,3 +8601,3058 @@ rules:
   fix_map:
     __other__: Flag one of the person's active employments as primary.
   record_fix_template: 'Person {PERINFO.PERSON_ID}: no active employment is flagged as primary.'
+- id: EC450
+  field: PEREMERGENCY.PERSON_ID
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Emergency contact record has no person reference
+  why_it_matters: PerEmergencyContacts is keyed by personIdExternal; a row without it belongs to nobody and cannot
+    be shown on any people profile.
+  rule_authority: sap_hard_constraint
+  sap_impact: The contact is invisible in Employee Central and is dropped by any person-level interface.
+  fix_map:
+    __other__: Link the emergency contact to the person it belongs to, or delete the orphaned row.
+  record_fix_template: 'Emergency contact {PEREMERGENCY.NAME}: no person ID is recorded.'
+- id: EC451
+  field: PEREMERGENCY.PERSON_ID
+  check_class: exists_check
+  target_table: PERINFO
+  target_fields:
+  - PERSON_ID
+  severity: high
+  dimension: consistency
+  message: Emergency contact belongs to a person who does not exist
+  why_it_matters: Every PerEmergencyContacts row hangs off a PerPerson; a person ID that is not in the person extract
+    is an orphan left behind by a deleted or merged person, or a mistyped key in a data load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphaned emergency contacts survive in the database, fail re-imports and leak personal data of people
+    who are no longer on file.
+  fix_map:
+    __other__: Re-link the contact to the correct person or purge it under the data-retention policy.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact exists but the person is not on file.'
+- id: EC452
+  field: PEREMERGENCY.NAME
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Emergency contact has no name
+  why_it_matters: Name is the business key of an emergency contact in SuccessFactors; a nameless contact cannot
+    be told apart from the person's other contacts and a responder does not know who they are calling.
+  rule_authority: sap_hard_constraint
+  sap_impact: The contact cannot be maintained on the people profile and is unusable in an incident.
+  fix_map:
+    __other__: Record the emergency contact's full name.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: an emergency contact has no name.'
+- id: EC453
+  field: PEREMERGENCY.NAME
+  check_class: regex_check
+  pattern: ^[^0-9]*$
+  severity: low
+  dimension: accuracy
+  message: Emergency contact name contains digits
+  why_it_matters: A person's name does not contain digits; digits in the name field are almost always a phone number
+    or an ID typed into the wrong field.
+  rule_authority: best_practice
+  sap_impact: The contact is mislabelled and the number typed into the name is not dialled from the phone field.
+  fix_map:
+    __other__: Move the digits to the field they belong to and keep only the contact's name.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact name {PEREMERGENCY.NAME} contains digits.'
+- id: EC454
+  field: PEREMERGENCY.NAME
+  check_class: cross_field_check
+  fail_when: '`PEREMERGENCY.NAME`.str.strip().str.lower().isin([''test'', ''dummy'', ''xxx'', ''unknown'', ''tbd'',
+    ''n/a'', ''na'', ''none'', ''-'', ''.''])'
+  severity: medium
+  dimension: accuracy
+  message: Emergency contact name is a placeholder (TEST, UNKNOWN, N/A ...)
+  why_it_matters: Placeholder names are entered to get past the required-field check during hire; the record looks
+    complete but holds no usable contact.
+  rule_authority: best_practice
+  sap_impact: In an incident there is no real person to call even though the profile shows a contact.
+  fix_map:
+    __other__: Ask the employee for a real emergency contact and replace the placeholder.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact name {PEREMERGENCY.NAME} is a placeholder.'
+- id: EC455
+  field: PEREMERGENCY.PRIMARY_FLAG
+  check_class: domain_value_check
+  allowed_values:
+  - Y
+  - N
+  severity: medium
+  dimension: validity
+  message: Emergency contact primary flag is not Y or N
+  why_it_matters: PerEmergencyContacts.primaryFlag only accepts Y or N; any other value (true, 1, yes) is a load
+    error and the contact is treated as non-primary by the UI and integrations.
+  rule_authority: sap_hard_constraint
+  sap_impact: The intended primary contact is not shown as primary and the import that wrote it fails on re-load.
+  valid_values_with_labels:
+    Y: Primary emergency contact
+    N: Other emergency contact
+  fix_map:
+    __other__: Set the primary flag to Y for the primary contact and N for all others.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} has primary flag
+    {PEREMERGENCY.PRIMARY_FLAG}.'
+- id: EC456
+  field: PEREMERGENCY.PERSON_ID
+  check_class: exists_check
+  dedupe_on:
+  - PEREMERGENCY.PERSON_ID
+  target_table: PEREMERGENCY
+  target_fields:
+  - PERSON_ID
+  target_when:
+    PRIMARY_FLAG:
+    - Y
+  severity: low
+  dimension: completeness
+  message: Person has emergency contacts but none is flagged as primary
+  why_it_matters: When a person has emergency contacts, one of them should be the primary one; without it the first
+    contact to call is not defined. The join fans out to one row per contact, so findings are deduped to one per
+    person.
+  rule_authority: best_practice
+  sap_impact: Responders and HR have to guess which of several contacts to call first.
+  fix_map:
+    __other__: Flag one of the person's emergency contacts as primary (Y).
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: no emergency contact is flagged as primary.'
+- id: EC457
+  field: PEREMERGENCY.NAME
+  check_class: uniqueness_check
+  fields:
+  - PEREMERGENCY.PERSON_ID
+  - PEREMERGENCY.NAME
+  normalize: name
+  severity: low
+  dimension: uniqueness
+  message: The same emergency contact is recorded twice for one person
+  why_it_matters: SuccessFactors identifies an emergency contact by person and name; two rows with the same name
+    for one person are a duplicate created by a repeated import or a re-hire, and they drift apart when only one
+    is updated.
+  rule_authority: sap_hard_constraint
+  sap_impact: Updates go to one copy while the stale copy (old phone number) is still shown and exported.
+  fix_map:
+    __other__: Merge the duplicate contacts into one record holding the current details.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} is recorded more
+    than once.'
+- id: EC458
+  field: PEREMERGENCY.RELATIONSHIP
+  check_class: referential_check
+  severity: low
+  dimension: accuracy
+  message: Emergency contact relationship is not a value of the tenant's 'relation' picklist
+  why_it_matters: The relationship field is a picklist; a value outside it was loaded by import or comes from a
+    retired picklist option and does not render on the profile.
+  rule_authority: sap_hard_constraint
+  sap_impact: The relationship shows blank or as a raw code, and the import fails when the record is re-loaded.
+  fix_map:
+    __other__: Map the relationship to a current value of the relation picklist.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact relationship {PEREMERGENCY.RELATIONSHIP}
+    is not in the relation picklist.'
+- id: EC459
+  field: PEREMERGENCY.PHONE
+  check_class: regex_check
+  pattern: ^\D*(\d\D*){6,15}$
+  severity: low
+  dimension: validity
+  message: Emergency contact phone number has fewer than 6 or more than 15 digits
+  why_it_matters: ITU-T E.164 caps an international number at 15 digits and no dialable number is shorter than 6;
+    a count outside that range means digits were dropped, doubled or two numbers were typed into one field.
+  rule_authority: best_practice
+  sap_impact: The number cannot be dialled when the contact is needed.
+  fix_map:
+    __other__: Correct the emergency contact's phone number.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} phone number has
+    an invalid digit count.'
+- id: EC460
+  field: PEREMERGENCY.PHONE
+  check_class: regex_check
+  pattern: ^(?!.*(0000000|1111111|9999999|1234567|0123456)).*$
+  severity: medium
+  dimension: accuracy
+  message: Emergency contact phone number is a placeholder (0000000, 1234567, 9999999 ...)
+  why_it_matters: Placeholder numbers satisfy the required-field check on hire but reach nobody.
+  rule_authority: best_practice
+  sap_impact: The profile shows a reachable contact that cannot actually be called.
+  fix_map:
+    __other__: Ask the employee for the contact's real number and replace the placeholder.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} phone number is a
+    placeholder.'
+- id: EC461
+  field: PEREMERGENCY.EMAIL
+  check_class: regex_check
+  pattern: ^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$
+  auto_fix:
+    steps:
+    - op: strip
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    confidence: medium
+  severity: low
+  dimension: validity
+  message: Emergency contact e-mail address format is invalid
+  why_it_matters: An e-mail address that is not local@domain.tld cannot receive mail; incident notifications sent
+    to it bounce.
+  rule_authority: best_practice
+  sap_impact: Mass notification and incident tooling cannot reach the contact by e-mail.
+  fix_map:
+    __other__: Correct the emergency contact's e-mail address or clear it.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} e-mail address is
+    not a valid format.'
+- id: EC462
+  field: PEREMERGENCY.PHONE
+  check_class: exists_check
+  fields:
+  - PEREMERGENCY.PERSON_ID
+  - PEREMERGENCY.PHONE
+  target_table: PERPHONE
+  target_fields:
+  - PERSON_ID
+  - PHONE_NUMBER
+  negate: true
+  severity: medium
+  dimension: accuracy
+  message: Emergency contact phone number is the employee's own phone number
+  why_it_matters: An emergency contact exists to reach someone other than the employee; when its number is one of
+    the person's own phone numbers, the employee typed their own number to get past the required field.
+  rule_authority: best_practice
+  sap_impact: When the employee is the one in the emergency, the only number on file rings the employee's own phone.
+  fix_map:
+    __other__: Replace the number with the emergency contact's own phone number.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} has the employee''s
+    own phone number.'
+- id: EC463
+  field: PEREMERGENCY.EMAIL
+  check_class: exists_check
+  fields:
+  - PEREMERGENCY.PERSON_ID
+  - PEREMERGENCY.EMAIL
+  target_table: PEREMAIL
+  target_fields:
+  - PERSON_ID
+  - EMAIL_ADDRESS
+  negate: true
+  severity: low
+  dimension: accuracy
+  message: Emergency contact e-mail address is the employee's own e-mail address
+  why_it_matters: An emergency contact's e-mail must reach someone other than the employee; an address equal to
+    one of the person's own e-mail addresses was copied in to satisfy the form.
+  rule_authority: best_practice
+  sap_impact: Incident notifications for the employee go back to the employee instead of the contact.
+  fix_map:
+    __other__: Replace the address with the emergency contact's own e-mail address or clear it.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact {PEREMERGENCY.NAME} has the employee''s
+    own e-mail address.'
+- id: EC464
+  field: PEREMAIL.PERSON_ID
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: E-mail record has no person reference
+  why_it_matters: PerEmail is keyed by personIdExternal and e-mail type; a row without the person belongs to nobody.
+  rule_authority: sap_hard_constraint
+  sap_impact: The address is not shown on any profile and is dropped by identity provisioning.
+  fix_map:
+    __other__: Link the e-mail address to its person or delete the orphaned row.
+  record_fix_template: 'E-mail record: no person ID is recorded.'
+- id: EC465
+  field: PEREMAIL.PERSON_ID
+  check_class: exists_check
+  target_table: PERINFO
+  target_fields:
+  - PERSON_ID
+  severity: high
+  dimension: consistency
+  message: E-mail address belongs to a person who does not exist
+  why_it_matters: Every PerEmail row hangs off a PerPerson; a person ID missing from the person extract is an orphan
+    from a deleted or merged person or a mistyped load key.
+  rule_authority: sap_hard_constraint
+  sap_impact: The address can still be matched by single sign-on or mail routing to a person who is no longer on
+    file.
+  fix_map:
+    __other__: Re-link the address to the correct person or purge it.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: e-mail address exists but the person is not on file.'
+- id: EC466
+  field: PEREMAIL.EMAIL_TYPE
+  check_class: uniqueness_check
+  fields:
+  - PEREMAIL.PERSON_ID
+  - PEREMAIL.EMAIL_TYPE
+  severity: high
+  dimension: uniqueness
+  message: Person has more than one e-mail address of the same type
+  why_it_matters: PerEmail is keyed by person and e-mail type, so SuccessFactors holds one address per type per
+    person; a second row of the same type is a duplicate from an import and only one of them is the real one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports of PerEmail fail on the duplicate key and integrations pick an arbitrary one of the two addresses.
+  fix_map:
+    __other__: Keep one address per e-mail type; move the other to a different type or delete it.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: more than one e-mail address of the same type.'
+- id: EC467
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: uniqueness_check
+  fields:
+  - PEREMAIL.PERSON_ID
+  - PEREMAIL.EMAIL_ADDRESS
+  case_insensitive: true
+  severity: low
+  dimension: uniqueness
+  message: The same e-mail address is recorded twice for one person
+  why_it_matters: Recording one address under two e-mail types (for example business and personal) adds nothing
+    and hides the fact that the second address is missing. Mail addresses are compared case-insensitively.
+  rule_authority: best_practice
+  sap_impact: Notifications meant to go to a personal address (after termination, for example) go to the business
+    mailbox.
+  fix_map:
+    __other__: Keep the address under its correct type and record the real address for the other type, or delete
+      it.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: e-mail address is recorded under more than one type.'
+- id: EC468
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: regex_check
+  pattern: ^(?!\.)(?!.*\.@)(?!.*@[.-])(?!.*-\.)(?!.*\.-)(?!.*[.-]$).*$
+  severity: medium
+  dimension: validity
+  message: E-mail address has a dot or hyphen in an invalid position
+  why_it_matters: RFC 5322/5321 forbid a local part that starts or ends with a dot and a domain label that starts
+    or ends with a dot or hyphen; such addresses pass a loose format check but are rejected by mail servers.
+  rule_authority: sap_hard_constraint
+  sap_impact: Mail to the address bounces and identity provisioning rejects it as a login.
+  fix_map:
+    __other__: Correct the misplaced dot or hyphen in the e-mail address.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: e-mail address has a dot or hyphen in an invalid position.'
+- id: EC469
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: cross_field_check
+  fail_when: '`PEREMAIL.EMAIL_ADDRESS`.str.lower().str.replace(''^.*@'', '''', regex=True).isin([''gmail.com'',
+    ''googlemail.com'', ''yahoo.com'', ''yahoo.co.uk'', ''yahoo.co.in'', ''yahoo.fr'', ''yahoo.de'', ''ymail.com'',
+    ''hotmail.com'', ''hotmail.co.uk'', ''hotmail.fr'', ''hotmail.de'', ''outlook.com'', ''live.com'', ''live.co.uk'',
+    ''msn.com'', ''aol.com'', ''icloud.com'', ''me.com'', ''gmx.de'', ''gmx.net'', ''gmx.com'', ''protonmail.com'',
+    ''proton.me''])'
+  applies_when:
+    PEREMAIL.EMAIL_TYPE:
+    - B
+  severity: medium
+  dimension: accuracy
+  message: Business e-mail address is on a public free-mail domain
+  why_it_matters: A business e-mail is the company mailbox used for single sign-on, workflow notifications and the
+    User record; a public free-mail address (gmail, yahoo, hotmail, outlook.com ...) under the business type is
+    a personal address entered under the wrong type.
+  rule_authority: best_practice
+  sap_impact: Workflow notifications with company data go to a private mailbox, and SSO keyed on e-mail fails.
+  fix_map:
+    __other__: Record the company mailbox as the business e-mail and move the free-mail address to the personal
+      type.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: business e-mail address is on a public free-mail domain.'
+- id: EC470
+  field: USERACCOUNT.EMAIL
+  check_class: exists_check
+  grain: USERACCOUNT
+  target_table: PEREMAIL
+  target_fields:
+  - EMAIL_ADDRESS
+  target_when:
+    IS_PRIMARY:
+    - 'true'
+  severity: low
+  dimension: consistency
+  message: User account e-mail is not any person's primary e-mail address
+  why_it_matters: Employee Central keeps User.email in step with the person's primary PerEmail address; a user e-mail
+    that no person holds as primary was changed in the User record directly or the sync from PerEmail stopped.
+  rule_authority: best_practice
+  sap_impact: Notifications and SSO use the User e-mail while the profile shows another address, so mail goes to
+    the wrong mailbox.
+  fix_map:
+    __other__: Set the person's primary e-mail in Employee Central and let it sync to the user account.
+  record_fix_template: 'User {USERACCOUNT.USER_ID}: e-mail is not a primary e-mail address in Employee Central.'
+- id: EC471
+  field: PERPHONE.PERSON_ID
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Phone record has no person reference
+  why_it_matters: PerPhone is keyed by personIdExternal and phone type; a row without the person belongs to nobody.
+  rule_authority: sap_hard_constraint
+  sap_impact: The number is shown on no profile and is dropped by any person-level interface.
+  fix_map:
+    __other__: Link the phone number to its person or delete the orphaned row.
+  record_fix_template: 'Phone record: no person ID is recorded.'
+- id: EC472
+  field: PERPHONE.PERSON_ID
+  check_class: exists_check
+  target_table: PERINFO
+  target_fields:
+  - PERSON_ID
+  severity: high
+  dimension: consistency
+  message: Phone number belongs to a person who does not exist
+  why_it_matters: Every PerPhone row hangs off a PerPerson; a person ID missing from the person extract is an orphan
+    left by a deleted or merged person or a mistyped load key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphaned personal data stays in the system and the record fails on re-import.
+  fix_map:
+    __other__: Re-link the number to the correct person or purge it.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number exists but the person is not on file.'
+- id: EC473
+  field: PERPHONE.PHONE_TYPE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Phone number has no phone type
+  why_it_matters: Phone type is part of the PerPhone key; without it the number cannot be maintained on the profile
+    and an interface does not know whether it is a business, mobile or home number.
+  rule_authority: sap_hard_constraint
+  sap_impact: The number cannot be edited in the UI and the PerPhone import rejects the row.
+  fix_map:
+    __other__: Set the phone type (business, cell, home ...).
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: a phone number has no phone type.'
+- id: EC474
+  field: PERPHONE.PHONE_TYPE
+  check_class: uniqueness_check
+  fields:
+  - PERPHONE.PERSON_ID
+  - PERPHONE.PHONE_TYPE
+  severity: high
+  dimension: uniqueness
+  message: Person has more than one phone number of the same type
+  why_it_matters: PerPhone is keyed by person and phone type, so a person holds one number per type; a second row
+    of the same type is a duplicate load and only one of the two is current.
+  rule_authority: sap_hard_constraint
+  sap_impact: The PerPhone import fails on the duplicate key and integrations pick one of the numbers at random.
+  fix_map:
+    __other__: Keep one number per phone type; move the other to a different type or delete it.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: more than one phone number of the same type.'
+- id: EC475
+  field: PERPHONE.PHONE_NUMBER
+  check_class: uniqueness_check
+  fields:
+  - PERPHONE.PERSON_ID
+  - PERPHONE.PHONE_NUMBER
+  normalize: alnum
+  severity: low
+  dimension: uniqueness
+  message: The same phone number is recorded twice for one person
+  why_it_matters: One number recorded under two phone types adds nothing and hides that the other number is missing.
+    Numbers are compared on their digits only.
+  rule_authority: best_practice
+  sap_impact: The profile looks complete while the person can only be reached on one line.
+  fix_map:
+    __other__: Keep the number under its correct type and record the real number for the other type, or delete it.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number is recorded under more than one type.'
+- id: EC476
+  field: PERPHONE.PHONE_NUMBER
+  check_class: uniqueness_check
+  fields:
+  - PERPHONE.PHONE_NUMBER
+  normalize: alnum
+  unique_across: PERPHONE.PERSON_ID
+  applies_when:
+    PERPHONE.PHONE_TYPE:
+    - C
+  severity: low
+  dimension: uniqueness
+  message: The same mobile number is recorded for more than one person
+  why_it_matters: A cell phone (type C) belongs to one person, unlike a shared business switchboard number; the
+    same mobile on two people is a copy-paste error or a duplicated person. Numbers are compared on their digits
+    only.
+  rule_authority: best_practice
+  sap_impact: Text-message based MFA, alerts and on-call notifications reach the wrong person.
+  fix_map:
+    __other__: Confirm whose mobile number it is and correct the other person's record.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: mobile number is also recorded for another person.'
+- id: EC477
+  field: PERPHONE.COUNTRY_CODE
+  check_class: null_check
+  applies_when:
+    PERPHONE.PHONE_NUMBER:
+      populated: true
+  severity: medium
+  dimension: completeness
+  message: Phone number has no country dialling code
+  why_it_matters: Without the country code the number is only dialable from inside its own country; global teams,
+    travel tools and SMS gateways need the full international number.
+  rule_authority: best_practice
+  sap_impact: Calls and text messages from other countries or from cloud services cannot reach the number.
+  fix_map:
+    __other__: Record the international dialling code of the phone number.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: a phone number has no country code.'
+- id: EC478
+  field: PERPHONE.PHONE_NUMBER
+  check_class: cross_field_check
+  fail_when: (`PERPHONE.COUNTRY_CODE`.astype('string').fillna('').str.strip() != '') & `PERPHONE.PHONE_NUMBER`.astype('string').str.match('^
+    *(?:[+]|00)', na=False)
+  severity: medium
+  dimension: consistency
+  message: Phone number repeats the international prefix that is already in the country code
+  why_it_matters: SuccessFactors builds the dialable number from country code, area code and number; a number that
+    itself starts with + or 00 while the country code is filled is dialled with the prefix twice.
+  rule_authority: best_practice
+  sap_impact: Click-to-call, SMS gateways and directory exports produce an undialable number.
+  fix_map:
+    __other__: Remove the international prefix from the phone number and keep it only in the country code.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number starts with an international prefix although country
+    code {PERPHONE.COUNTRY_CODE} is set.'
+- id: EC479
+  field: PERPHONE.AREA_CODE
+  check_class: regex_check
+  pattern: ^\d{1,5}$
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[\s()\-.]'
+      repl: ''
+    confidence: medium
+  severity: low
+  dimension: validity
+  message: Phone area code is not 1 to 5 digits
+  why_it_matters: Area (trunk) codes are short digit strings; letters, brackets or long values mean the whole number
+    or the country code was typed into the area code field.
+  rule_authority: best_practice
+  sap_impact: The composed number is undialable.
+  fix_map:
+    __other__: Keep only the area code digits in the area code field.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: area code {PERPHONE.AREA_CODE} is not 1 to 5 digits.'
+- id: EC480
+  field: PERPHONE.EXTENSION
+  check_class: regex_check
+  pattern: ^\d{1,6}$
+  severity: low
+  dimension: validity
+  message: Phone extension is not 1 to 6 digits
+  why_it_matters: An extension is a short digit string dialled after the number; any other content (x123, a full
+    number, text) cannot be dialled by click-to-call or a PBX directory.
+  rule_authority: best_practice
+  sap_impact: Directory and click-to-call integrations fail for the number.
+  fix_map:
+    __other__: Keep only the extension digits.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: extension {PERPHONE.EXTENSION} is not 1 to 6 digits.'
+- id: EC481
+  field: FOCOMPANY.STATUS
+  check_class: domain_value_check
+  grain: FOCOMPANY
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Legal entity status is not A (active) or I (inactive)
+  why_it_matters: The status of a FOCompany record takes only A or I; any other value is neither active nor inactive,
+    so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the legal entity and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the legal entity status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Legal entity {FOCOMPANY.EXTERNAL_CODE}: status {FOCOMPANY.STATUS} is not A or I.'
+- id: EC482
+  field: FOBUSINESSUNIT.STATUS
+  check_class: domain_value_check
+  grain: FOBUSINESSUNIT
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Business unit status is not A (active) or I (inactive)
+  why_it_matters: The status of a FOBusinessUnit record takes only A or I; any other value is neither active nor
+    inactive, so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it
+    inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the business unit and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the business unit status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Business unit {FOBUSINESSUNIT.EXTERNAL_CODE}: status {FOBUSINESSUNIT.STATUS} is not A or
+    I.'
+- id: EC483
+  field: FODIVISION.STATUS
+  check_class: domain_value_check
+  grain: FODIVISION
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Division status is not A (active) or I (inactive)
+  why_it_matters: The status of a FODivision record takes only A or I; any other value is neither active nor inactive,
+    so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the division and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the division status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Division {FODIVISION.EXTERNAL_CODE}: status {FODIVISION.STATUS} is not A or I.'
+- id: EC484
+  field: FODEPARTMENT.STATUS
+  check_class: domain_value_check
+  grain: FODEPARTMENT
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Department status is not A (active) or I (inactive)
+  why_it_matters: The status of a FODepartment record takes only A or I; any other value is neither active nor inactive,
+    so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the department and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the department status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Department {FODEPARTMENT.EXTERNAL_CODE}: status {FODEPARTMENT.STATUS} is not A or I.'
+- id: EC485
+  field: FOLOCATION.STATUS
+  check_class: domain_value_check
+  grain: FOLOCATION
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Location status is not A (active) or I (inactive)
+  why_it_matters: The status of a FOLocation record takes only A or I; any other value is neither active nor inactive,
+    so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the location and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the location status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Location {FOLOCATION.EXTERNAL_CODE}: status {FOLOCATION.STATUS} is not A or I.'
+- id: EC486
+  field: FOJOBCODE.STATUS
+  check_class: domain_value_check
+  grain: FOJOBCODE
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Job classification status is not A (active) or I (inactive)
+  why_it_matters: The status of a FOJobCode record takes only A or I; any other value is neither active nor inactive,
+    so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the job classification and replication of the organisational
+    structure to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the job classification status to A (active) or I (inactive) in Manage Organization, Pay and Job
+      Structures.
+  record_fix_template: 'Job classification {FOJOBCODE.EXTERNAL_CODE}: status {FOJOBCODE.STATUS} is not A or I.'
+- id: EC487
+  field: FOCOSTCENTER.STATUS
+  check_class: domain_value_check
+  grain: FOCOSTCENTER
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Cost centre status is not A (active) or I (inactive)
+  why_it_matters: The status of a FOCostCenter record takes only A or I; any other value is neither active nor inactive,
+    so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the cost centre and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the cost centre status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Cost centre {FOCOSTCENTER.EXTERNAL_CODE}: status {FOCOSTCENTER.STATUS} is not A or I.'
+- id: EC488
+  field: FOEVENTREASON.STATUS
+  check_class: domain_value_check
+  grain: FOEVENTREASON
+  allowed_values:
+  - A
+  - I
+  severity: medium
+  dimension: validity
+  message: Event reason status is not A (active) or I (inactive)
+  why_it_matters: The status of a FOEventReason record takes only A or I; any other value is neither active nor
+    inactive, so the record is shown or hidden in pick lists unpredictably and effective-dated lookups treat it
+    inconsistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employees cannot be reliably assigned to the event reason and replication of the organisational structure
+    to payroll filters it out or rejects it.
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  fix_map:
+    __other__: Set the event reason status to A (active) or I (inactive) in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Event reason {FOEVENTREASON.EXTERNAL_CODE}: status {FOEVENTREASON.STATUS} is not A or I.'
+- id: EC489
+  field: FODEPARTMENT.COST_CENTER
+  check_class: null_check
+  grain: FODEPARTMENT
+  applies_when:
+    FODEPARTMENT.STATUS:
+    - A
+  severity: medium
+  dimension: completeness
+  message: Active department has no default cost centre
+  why_it_matters: The department's cost centre is the default SuccessFactors proposes on the job record when the
+    department is assigned, and the value cost-centre consistency checks compare against; an active department without
+    one leaves every new assignment to be costed by hand.
+  rule_authority: best_practice
+  sap_impact: New hires and transfers into the department are saved without a cost centre or with whatever was typed,
+    and personnel cost posts to the wrong or a suspense cost centre.
+  fix_map:
+    __other__: Maintain the default cost centre on the department in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'Department {FODEPARTMENT.EXTERNAL_CODE}: active but no cost centre is maintained.'
+- id: EC490
+  field: FOCOSTCENTER.LEGAL_ENTITY
+  check_class: null_check
+  grain: FOCOSTCENTER
+  applies_when:
+    FOCOSTCENTER.STATUS:
+    - A
+  severity: high
+  dimension: completeness
+  message: Active cost centre has no legal entity
+  why_it_matters: A cost centre belongs to exactly one company code in SAP controlling; the legal entity on FOCostCenter
+    is what lets SuccessFactors filter cost centres by the employee's company and what payroll posting uses to derive
+    the company code.
+  rule_authority: best_practice
+  sap_impact: The cost centre is offered for employees of any legal entity and payroll postings to it can be cross-company,
+    which the FI posting rejects.
+  fix_map:
+    __other__: Maintain the legal entity on the cost centre (normally replicated from the S/4HANA or ECC cost centre
+      master).
+  record_fix_template: 'Cost centre {FOCOSTCENTER.EXTERNAL_CODE}: active but no legal entity is maintained.'
+- id: EC491
+  field: FOLOCATION.STANDARD_HOURS
+  check_class: null_check
+  grain: FOLOCATION
+  applies_when:
+    FOLOCATION.STATUS:
+    - A
+  severity: medium
+  dimension: completeness
+  message: Active location has no standard weekly hours
+  why_it_matters: Location standard hours are the default for the job record's standard weekly hours and the base
+    from which SuccessFactors calculates FTE; without them every FTE at the location is entered by hand.
+  rule_authority: best_practice
+  sap_impact: FTE and standard hours of employees at the location are not derived and drift apart, which skews headcount-to-FTE
+    reporting and part-time pay proration.
+  fix_map:
+    __other__: Maintain the standard weekly hours on the location.
+  record_fix_template: 'Location {FOLOCATION.EXTERNAL_CODE}: active but no standard hours are maintained.'
+- id: EC492
+  field: FOLOCATION.STANDARD_HOURS
+  check_class: cross_field_check
+  grain: FOLOCATION
+  fail_when: '`FOLOCATION.STANDARD_HOURS`.notna() & (`FOLOCATION.STANDARD_HOURS` > 60) & (`FOLOCATION.STANDARD_HOURS`
+    <= 168)'
+  severity: medium
+  dimension: accuracy
+  message: Location standard hours exceed 60 per week
+  why_it_matters: Standard hours on a location are contractual weekly hours; working-time law caps the regular week
+    below 60 hours in practically every jurisdiction, so a value above 60 is almost always monthly or fortnightly
+    hours keyed into the weekly field.
+  rule_authority: best_practice
+  sap_impact: FTE derived from the location is understated for every employee there (for example 40/173 = 0.23),
+    which corrupts FTE reporting and part-time proration.
+  fix_map:
+    __other__: Enter the weekly standard hours on the location (monthly hours / 4.33).
+  record_fix_template: 'Location {FOLOCATION.EXTERNAL_CODE}: standard hours {FOLOCATION.STANDARD_HOURS} exceed 60
+    per week.'
+- id: EC493
+  field: FOCOMPANY.EXTERNAL_CODE
+  check_class: exists_check
+  grain: FOCOMPANY
+  target_table: FOCOSTCENTER
+  target_fields:
+  - LEGAL_ENTITY
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    FOCOMPANY.STATUS:
+    - A
+  severity: low
+  dimension: completeness
+  message: Active legal entity has no active cost centre
+  why_it_matters: Every employee of a legal entity needs a cost centre of that legal entity; an active legal entity
+    with no active cost centre assigned to it means hires into it cannot be costed, or are costed cross-company.
+  rule_authority: best_practice
+  sap_impact: Payroll postings for the legal entity have no valid cost-centre account assignment and fall back to
+    a suspense cost centre or fail in FI.
+  fix_map:
+    __other__: Replicate or create the legal entity's cost centres and set their legal entity, or inactivate the
+      unused legal entity.
+  record_fix_template: 'Legal entity {FOCOMPANY.EXTERNAL_CODE}: active but no active cost centre belongs to it.'
+- id: EC494
+  field: EMPEMPLOYMENT.IS_FULLTIME
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.IS_FULLTIME`.notna() & `FOJOBCODE.IS_FULLTIME`.notna() & (`EMPEMPLOYMENT.IS_FULLTIME`.astype(''string'').str.lower()
+    != `FOJOBCODE.IS_FULLTIME`.astype(''string'').str.lower())'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: consistency
+  message: Full-time flag on the job differs from the job classification
+  why_it_matters: The job classification carries whether the job is full-time and SuccessFactors defaults it onto
+    the job record; a job record that disagrees with its classification was overridden or not updated after a classification
+    change.
+  rule_authority: best_practice
+  sap_impact: Headcount by full-time/part-time and benefit eligibility rules keyed on the flag give different answers
+    depending on which object they read.
+  fix_map:
+    __other__: Align the job record's full-time flag with the job classification, or reclassify the job.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: full-time flag {EMPEMPLOYMENT.IS_FULLTIME} differs from
+    job classification {EMPEMPLOYMENT.JOB_CODE} ({FOJOBCODE.IS_FULLTIME}).'
+- id: EC495
+  field: EMPEMPLOYMENT.REGULAR_TEMP
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.REGULAR_TEMP`.notna() & `FOJOBCODE.REGULAR_TEMP`.notna() & (`EMPEMPLOYMENT.REGULAR_TEMP`
+    != `FOJOBCODE.REGULAR_TEMP`)'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Regular/temporary on the job differs from the job classification
+  why_it_matters: The job classification defines whether the job is regular or temporary and SuccessFactors defaults
+    it onto the job record; a mismatch means the employee is reported as temporary in one place and regular in another.
+  rule_authority: best_practice
+  sap_impact: Fixed-term contract monitoring, workforce reporting and benefit eligibility disagree on the employee's
+    regular/temporary status.
+  fix_map:
+    __other__: Align the job record's regular/temporary value with the job classification, or reclassify the job.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: regular/temporary {EMPEMPLOYMENT.REGULAR_TEMP} differs
+    from job classification {EMPEMPLOYMENT.JOB_CODE} ({FOJOBCODE.REGULAR_TEMP}).'
+- id: EC496
+  field: EMPEMPLOYMENT.TIMEZONE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.TIMEZONE`.notna() & `FOLOCATION.TIMEZONE`.notna() & (`EMPEMPLOYMENT.TIMEZONE` != `FOLOCATION.TIMEZONE`)'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: consistency
+  message: Job time zone differs from the location's time zone
+  why_it_matters: SuccessFactors defaults the job record's time zone from the location; a different time zone is
+    legitimate only for remote workers and is otherwise a stale value left behind by a location change.
+  rule_authority: best_practice
+  sap_impact: Time recording, absence day boundaries and scheduled notifications run in the wrong time zone for
+    the employee.
+  fix_map:
+    __other__: Confirm whether the employee works remotely; otherwise set the job time zone to the location's time
+      zone.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: time zone {EMPEMPLOYMENT.TIMEZONE} differs from location
+    {EMPEMPLOYMENT.LOCATION} ({FOLOCATION.TIMEZONE}).'
+- id: EC497
+  field: EMPWORKPERMIT.USERID
+  check_class: null_check
+  grain: EMPWORKPERMIT
+  severity: high
+  dimension: completeness
+  message: Work permit record has no user ID
+  why_it_matters: EmpWorkPermit is keyed by the employee's user ID; a document without one belongs to nobody, so
+    it is never shown on an employee's profile or included in expiry monitoring.
+  rule_authority: sap_hard_constraint
+  sap_impact: The right-to-work evidence for the employee is not attached to them and expiry alerts never reach
+    HR for that employee.
+  fix_map:
+    __other__: Attach the document to the employee's user ID or delete the orphan record.
+  record_fix_template: 'Work permit document type {EMPWORKPERMIT.DOCUMENT_TYPE} for {EMPWORKPERMIT.COUNTRY}: no
+    user ID.'
+- id: EC498
+  field: EMPWORKPERMIT.USERID
+  check_class: exists_check
+  grain: EMPWORKPERMIT
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  severity: high
+  dimension: consistency
+  message: Work permit belongs to a user with no employment
+  why_it_matters: A work permit record is meaningful only for an employment; a user ID with no EmpEmployment is
+    a deleted, purged or mistyped user, and the right-to-work evidence is attached to the wrong person or to nobody.
+  rule_authority: best_practice
+  sap_impact: Right-to-work audits cannot tie the document to an employee and data-retention purges miss it.
+  fix_map:
+    __other__: Correct the user ID on the work permit or delete the document if the employee was purged.
+  record_fix_template: 'Work permit of user {EMPWORKPERMIT.USERID}: no employment exists for this user.'
+- id: EC499
+  field: EMPWORKPERMIT.COUNTRY
+  check_class: null_check
+  grain: EMPWORKPERMIT
+  severity: high
+  dimension: completeness
+  message: Work permit has no issuing country
+  why_it_matters: A work permit grants the right to work in one country; without the country, the document cannot
+    be matched to the country of the employee's legal entity, and country-specific document-type pick lists do not
+    apply.
+  rule_authority: sap_hard_constraint
+  sap_impact: Right-to-work compliance reporting per country omits the employee and the document type cannot be
+    validated against the country's list.
+  fix_map:
+    __other__: Maintain the country the work permit was issued for.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit {EMPWORKPERMIT.DOCUMENT_TYPE} has no country.'
+- id: EC500
+  field: EMPWORKPERMIT.DOCUMENT_TYPE
+  check_class: null_check
+  grain: EMPWORKPERMIT
+  severity: high
+  dimension: completeness
+  message: Work permit has no document type
+  why_it_matters: The document type (visa, residence permit, work authorisation card and so on) determines what
+    the document allows and which renewal process applies; a record without a type cannot be assessed for right
+    to work.
+  rule_authority: sap_hard_constraint
+  sap_impact: Right-to-work audits cannot tell which permission the employee holds and expiry rules by document
+    type do not fire.
+  fix_map:
+    __other__: Maintain the document type from the country's documentType pick list.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit for {EMPWORKPERMIT.COUNTRY} has no document
+    type.'
+- id: EC501
+  field: EMPWORKPERMIT.ISSUE_DATE
+  check_class: cross_field_check
+  grain: EMPWORKPERMIT
+  fail_when: '`EMPWORKPERMIT.ISSUE_DATE`.notna() & (`EMPWORKPERMIT.ISSUE_DATE` > @today)'
+  severity: medium
+  dimension: accuracy
+  message: Work permit issue date is in the future
+  why_it_matters: A document cannot have been issued after today; a future issue date is a typo (often the expiry
+    date entered as issue date) and makes the document look not yet valid.
+  rule_authority: best_practice
+  sap_impact: Right-to-work checks treat the employee as having no valid permit yet and validity-period reporting
+    is wrong.
+  fix_map:
+    __other__: Correct the issue date from the document.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit {EMPWORKPERMIT.DOCUMENT_TYPE} issue date {EMPWORKPERMIT.ISSUE_DATE}
+    is in the future.'
+- id: EC502
+  field: EMPWORKPERMIT.DOCUMENT_NUMBER
+  check_class: cross_field_check
+  grain: EMPWORKPERMIT
+  fail_when: '`EMPWORKPERMIT.DOCUMENT_NUMBER`.notna() & `EMPWORKPERMIT.DOCUMENT_NUMBER`.astype(''string'').str.upper().str.replace(''[^A-Z0-9]'',
+    '''', regex=True).str.fullmatch(''0+|1+|9+|X+|NA|NONE|NIL|TBD|TBA|UNKNOWN|PENDING|TEST'')'
+  severity: medium
+  dimension: validity
+  message: Work permit document number is a placeholder
+  why_it_matters: A document number made only of zeros, ones, nines or X or a placeholder word was entered to get
+    past the mandatory field; it does not identify any real document.
+  rule_authority: best_practice
+  sap_impact: Right-to-work evidence for the employee cannot be verified against the issuing authority and audit
+    sampling counts the employee as documented.
+  fix_map:
+    __other__: Enter the number printed on the document, or remove the record if no document exists.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit {EMPWORKPERMIT.DOCUMENT_TYPE} number {EMPWORKPERMIT.DOCUMENT_NUMBER}
+    is a placeholder.'
+- id: EC503
+  field: EMPWORKPERMIT.DOCUMENT_NUMBER
+  check_class: uniqueness_check
+  grain: EMPWORKPERMIT
+  fields:
+  - EMPWORKPERMIT.COUNTRY
+  - EMPWORKPERMIT.DOCUMENT_TYPE
+  - EMPWORKPERMIT.DOCUMENT_NUMBER
+  normalize: alnum
+  unique_across: EMPWORKPERMIT.USERID
+  severity: high
+  dimension: uniqueness
+  message: Same work permit document number is recorded for more than one employee
+  why_it_matters: A work permit is issued to one person; the same country, document type and number on two different
+    users means one of them carries the other's document, or a duplicate person exists.
+  rule_authority: best_practice
+  sap_impact: One employee's right to work is evidenced by another person's document, which an immigration audit
+    treats as no evidence.
+  fix_map:
+    __other__: Check the documents of both employees and correct the wrong record; merge the users if they are one
+      person.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit {EMPWORKPERMIT.DOCUMENT_TYPE} {EMPWORKPERMIT.DOCUMENT_NUMBER}
+    ({EMPWORKPERMIT.COUNTRY}) is also recorded for another employee.'
+- id: EC504
+  field: EMPWORKPERMIT.IS_VALIDATED
+  check_class: cross_field_check
+  grain: EMPWORKPERMIT
+  fail_when: (`EMPWORKPERMIT.IS_VALIDATED`.astype('string').str.lower() == 'false') & (`EMPWORKPERMIT.EXPIRATION_DATE`.isna()
+    | (`EMPWORKPERMIT.EXPIRATION_DATE` >= @today))
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: validity
+  message: Active employee's current work permit has not been validated
+  why_it_matters: isValidated records that HR has inspected the original document; for an active employee relying
+    on an unexpired permit, an unvalidated document is unverified right-to-work evidence.
+  rule_authority: best_practice
+  sap_impact: In a right-to-work audit the employee counts as unverified, which carries employer penalties in most
+    jurisdictions.
+  fix_map:
+    __other__: Inspect the original document and set it to validated, or obtain a valid document.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit {EMPWORKPERMIT.DOCUMENT_TYPE} ({EMPWORKPERMIT.COUNTRY})
+    is not validated.'
+- id: EC505
+  field: EMPWORKPERMIT.EXPIRATION_DATE
+  check_class: cross_field_check
+  grain: EMPWORKPERMIT
+  fail_when: '`EMPWORKPERMIT.EXPIRATION_DATE`.notna() & (`EMPWORKPERMIT.EXPIRATION_DATE` >= @today) & `EMPEMPLOYMENT.CONTRACT_END_DATE`.notna()
+    & (`EMPEMPLOYMENT.CONTRACT_END_DATE` > `EMPWORKPERMIT.EXPIRATION_DATE`)'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Fixed-term contract runs past the work permit expiry
+  why_it_matters: When the employee's contract end date is after the expiry of a permit that is still valid today,
+    the employment is planned to continue after the right to work ends unless the permit is renewed first.
+  rule_authority: best_practice
+  sap_impact: The employee may work without a valid permit after expiry, and the contract end is not the date HR
+    must act on.
+  fix_map:
+    __other__: Start the permit renewal before expiry or align the contract end date with the permit.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: contract ends {EMPEMPLOYMENT.CONTRACT_END_DATE} but work
+    permit {EMPWORKPERMIT.DOCUMENT_TYPE} expires {EMPWORKPERMIT.EXPIRATION_DATE}.'
+- id: EC506
+  field: EMPWORKPERMIT.ISSUE_DATE
+  check_class: cross_field_check
+  grain: EMPWORKPERMIT
+  fail_when: '`EMPWORKPERMIT.ISSUE_DATE`.notna() & (`EMPWORKPERMIT.ISSUE_DATE` == `EMPWORKPERMIT.EXPIRATION_DATE`)'
+  severity: low
+  dimension: accuracy
+  message: Work permit was issued on the day it expires
+  why_it_matters: A permit valid for zero days is a data-entry error where the same date was keyed into both fields.
+  rule_authority: best_practice
+  sap_impact: The validity period of the document is lost and expiry monitoring uses the wrong date.
+  fix_map:
+    __other__: Correct the issue and expiry dates from the document.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit {EMPWORKPERMIT.DOCUMENT_TYPE} issued and expires
+    on {EMPWORKPERMIT.ISSUE_DATE}.'
+- id: EC507
+  field: EMPGLOBALASSIGNMENT.ASSIGNMENT_TYPE
+  check_class: null_check
+  grain: EMPGLOBALASSIGNMENT
+  severity: high
+  dimension: completeness
+  message: Global assignment has no assignment type
+  why_it_matters: The assignment type (for example short-term or long-term) is mandatory on Global Assignment Details
+    and drives the assignment's tax, allowance and approval processing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Mobility reporting and the allowance and tax rules keyed on the assignment type cannot classify the
+    assignment.
+  fix_map:
+    __other__: Maintain the assignment type on the global assignment.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment has no assignment type.'
+- id: EC508
+  field: EMPGLOBALASSIGNMENT.START_DATE
+  check_class: null_check
+  grain: EMPGLOBALASSIGNMENT
+  severity: high
+  dimension: completeness
+  message: Global assignment has no start date
+  why_it_matters: The start date opens the host employment; without it the assignment has no effective period and
+    is excluded from every dated query.
+  rule_authority: sap_hard_constraint
+  sap_impact: Host-country headcount, payroll and social-security reporting cannot date the assignment.
+  fix_map:
+    __other__: Maintain the assignment start date (the host employment start).
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment has no start date.'
+- id: EC509
+  field: EMPGLOBALASSIGNMENT.PLANNED_END_DATE
+  check_class: null_check
+  grain: EMPGLOBALASSIGNMENT
+  severity: medium
+  dimension: completeness
+  message: Global assignment has no planned end date
+  why_it_matters: SuccessFactors asks for the planned end date when a global assignment is added; it is the date
+    mobility uses to plan repatriation and that limits tax and social-security certificates.
+  rule_authority: sap_hard_constraint
+  sap_impact: Assignments running past their permitted duration are not detected and repatriation is not planned.
+  fix_map:
+    __other__: Maintain the planned end date on the global assignment.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment has no planned end date.'
+- id: EC510
+  field: EMPGLOBALASSIGNMENT.USERID
+  check_class: exists_check
+  grain: EMPGLOBALASSIGNMENT
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  severity: high
+  dimension: consistency
+  message: Global assignment belongs to a user with no employment
+  why_it_matters: Global Assignment Details hang off the host employment; a user ID with no EmpEmployment means
+    the host employment was deleted or the user ID is wrong.
+  rule_authority: sap_hard_constraint
+  sap_impact: The assignment is invisible on every employee profile and host-country reporting.
+  fix_map:
+    __other__: Correct the user ID on the global assignment or delete the orphan record.
+  record_fix_template: 'Global assignment of user {EMPGLOBALASSIGNMENT.USERID}: no employment exists for this user.'
+- id: EC511
+  field: EMPEMPLOYMENT.ASSIGNMENT_CLASS
+  check_class: cross_field_check
+  fail_when: '`EMPGLOBALASSIGNMENT.START_DATE`.notna() & `EMPEMPLOYMENT.ASSIGNMENT_CLASS`.notna() & (`EMPEMPLOYMENT.ASSIGNMENT_CLASS`
+    != ''GA'')'
+  severity: medium
+  dimension: consistency
+  message: Employment has global assignment details but is not a global assignment
+  why_it_matters: Global Assignment Details exist only for a host employment, whose assignment class is GA; details
+    on an employment with another assignment class contradict the employment type.
+  rule_authority: best_practice
+  sap_impact: The employment is counted as a home employment in headcount while mobility reporting treats it as
+    an assignment.
+  fix_map:
+    __other__: Correct the assignment class or remove the global assignment details from the wrong employment.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: assignment class {EMPEMPLOYMENT.ASSIGNMENT_CLASS} but global
+    assignment details exist.'
+- id: EC512
+  field: EMPGLOBALASSIGNMENT.START_DATE
+  check_class: cross_field_check
+  grain: EMPGLOBALASSIGNMENT
+  fail_when: '`EMPGLOBALASSIGNMENT.START_DATE`.notna() & `EMPEMPLOYMENT.START_DATE`.notna() & (`EMPGLOBALASSIGNMENT.START_DATE`
+    < `EMPEMPLOYMENT.START_DATE`)'
+  severity: medium
+  dimension: consistency
+  message: Global assignment starts before its host employment
+  why_it_matters: The host employment exists from the assignment start; an assignment start before the employment
+    start dates the assignment into a period when no host employment existed.
+  rule_authority: best_practice
+  sap_impact: Host-country payroll and social-security periods are calculated from the wrong start.
+  fix_map:
+    __other__: Align the assignment start with the host employment start date.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment starts {EMPGLOBALASSIGNMENT.START_DATE},
+    employment starts {EMPEMPLOYMENT.START_DATE}.'
+- id: EC513
+  field: EMPGLOBALASSIGNMENT.END_DATE
+  check_class: cross_field_check
+  grain: EMPGLOBALASSIGNMENT
+  fail_when: '`EMPGLOBALASSIGNMENT.END_DATE`.notna() & (`EMPGLOBALASSIGNMENT.END_DATE` < @today)'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Global assignment has ended but the host employment is still active
+  why_it_matters: Ending a global assignment ends the host employment; an ended assignment with an employment still
+    active means the end was recorded on one object but not the other.
+  rule_authority: best_practice
+  sap_impact: The employee is paid and counted in the host country after returning, and host payroll keeps running.
+  fix_map:
+    __other__: End the host employment as of the assignment end date, or remove the assignment end date if it was
+      extended.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment ended {EMPGLOBALASSIGNMENT.END_DATE}
+    but the employment status is {EMPEMPLOYMENT.STATUS}.'
+- id: EC514
+  field: EMPGLOBALASSIGNMENT.PLANNED_END_DATE
+  check_class: cross_field_check
+  grain: EMPGLOBALASSIGNMENT
+  fail_when: '`EMPGLOBALASSIGNMENT.START_DATE`.notna() & `EMPGLOBALASSIGNMENT.PLANNED_END_DATE`.notna() & ((`EMPGLOBALASSIGNMENT.PLANNED_END_DATE`
+    - `EMPGLOBALASSIGNMENT.START_DATE`).dt.days > 1826)'
+  severity: low
+  dimension: accuracy
+  message: Global assignment is planned for more than five years
+  why_it_matters: Global assignments are temporary by definition; tax treaties and social-security certificates
+    limit posting to between two and five years, so a longer planned duration is a typo or a permanent transfer
+    recorded as an assignment.
+  rule_authority: best_practice
+  sap_impact: Home-country social-security coverage and tax equalisation lapse while the record still shows a temporary
+    assignment.
+  fix_map:
+    __other__: Correct the planned end date or convert the move to a permanent transfer.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment runs from {EMPGLOBALASSIGNMENT.START_DATE}
+    to {EMPGLOBALASSIGNMENT.PLANNED_END_DATE}.'
+- id: EC515
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: ca_sin
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CAN
+  severity: high
+  dimension: validity
+  message: Canadian SIN fails its check digit
+  why_it_matters: The ninth digit of a Social Insurance Number is a Luhn check digit over the first eight. A failed
+    check means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: T4 slips and Records of Employment are rejected by the CRA and Service Canada.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Canadian SIN fails its check digit. Correct the record.'
+- id: EC516
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: br_cpf
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BRA
+  severity: high
+  dimension: validity
+  message: Brazilian CPF fails its check digit
+  why_it_matters: The last two digits of a CPF are mod-11 check digits; a CPF made of one repeated digit is never
+    issued. A failed check means at least one character was typed or transposed wrongly, even when the length and
+    layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: eSocial events and the DIRF/EFD-Reinf returns are rejected by the Receita Federal.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Brazilian CPF fails its check digit. Correct the record.'
+- id: EC517
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: nl_bsn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NLD
+  severity: high
+  dimension: validity
+  message: Dutch BSN fails its check digit
+  why_it_matters: A BSN must pass the eleven-test (weights 9 to 2 with the last digit weighted -1, total divisible
+    by 11). A failed check means at least one character was typed or transposed wrongly, even when the length and
+    layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll tax returns (loonaangifte) are rejected by the Belastingdienst.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Dutch BSN fails its check digit. Correct the record.'
+- id: EC518
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: es_dni
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ESP
+  severity: high
+  dimension: validity
+  message: Spanish DNI/NIE fails its check digit
+  why_it_matters: The letter of a DNI or NIE is selected by the number modulo 23 (X, Y, Z of an NIE count as 0,
+    1, 2). A failed check means at least one character was typed or transposed wrongly, even when the length and
+    layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Social security affiliation (Sistema RED) and modelo 111/190 tax returns are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Spanish DNI/NIE fails its check digit. Correct the record.'
+- id: EC519
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: cn_rid
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHN
+  severity: high
+  dimension: validity
+  message: Chinese resident ID fails its check digit
+  why_it_matters: The 18th character of a resident identity number is an ISO 7064 MOD 11-2 check character (0-9
+    or X). A failed check means at least one character was typed or transposed wrongly, even when the length and
+    layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Individual income tax filing and social insurance registration reject the employee.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Chinese resident ID fails its check digit. Correct the record.'
+- id: EC520
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: in_national
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - IND
+  severity: high
+  dimension: validity
+  message: Indian national ID fails its check digit
+  why_it_matters: A 12-digit Aadhaar number ends in a Verhoeff check digit and never starts with 0 or 1; a PAN has
+    the layout AAAAA9999A. A failed check means at least one character was typed or transposed wrongly, even when
+    the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Form 16 and the quarterly TDS returns (24Q) are rejected by the Income Tax Department.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Indian national ID fails its check digit. Correct the record.'
+- id: EC521
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: fr_nir
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FRA
+  severity: high
+  dimension: validity
+  message: French NIR fails its check digit
+  why_it_matters: The two-digit key of a NIR (social security number) is 97 minus the 13-character number modulo
+    97, with Corsican departments 2A and 2B counted as 19 and 18. A failed check means at least one character was
+    typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: DSN (declaration sociale nominative) returns are rejected by URSSAF.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: French NIR fails its check digit. Correct the record.'
+- id: EC522
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: it_cf
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ITA
+  severity: high
+  dimension: validity
+  message: Italian codice fiscale fails its check digit
+  why_it_matters: The 16th character of a codice fiscale is a check letter computed from the odd and even position
+    tables. A failed check means at least one character was typed or transposed wrongly, even when the length and
+    layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Certificazione Unica and modello 770 returns are rejected by the Agenzia delle Entrate.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Italian codice fiscale fails its check digit. Correct the record.'
+- id: EC523
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: au_tfn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - AUS
+  severity: high
+  dimension: validity
+  message: Australian TFN fails its check digit
+  why_it_matters: A Tax File Number passes a weighted sum modulo 11 (weights 1,4,3,7,5,8,6,9,10 for nine digits).
+    A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Single Touch Payroll reports are rejected by the ATO and the employee is taxed at the no-TFN rate.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Australian TFN fails its check digit. Correct the record.'
+- id: EC524
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: mx_curp
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - MEX
+  severity: high
+  dimension: validity
+  message: Mexican CURP fails its check digit
+  why_it_matters: The 18th character of a CURP is a check digit over the first 17 characters (weights 18 to 2, modulo
+    10). A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: IMSS affiliation and CFDI payroll receipts (nómina) are rejected by the SAT.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Mexican CURP fails its check digit. Correct the record.'
+- id: EC525
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: sg_nric
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SGP
+  severity: high
+  dimension: validity
+  message: Singapore NRIC/FIN fails its check digit
+  why_it_matters: The final letter of an NRIC or FIN is a check letter from the weighted digits (S, T, F and G series).
+    A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: CPF contributions and IR8A submissions to IRAS are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Singapore NRIC/FIN fails its check digit. Correct the record.'
+- id: EC526
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: se_pnr
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SWE
+  severity: high
+  dimension: validity
+  message: Swedish personnummer fails its check digit
+  why_it_matters: A personnummer is (YY)YYMMDD, a separator and four digits; the last digit is a Luhn check digit
+    over the ten-digit form. A failed check means at least one character was typed or transposed wrongly, even when
+    the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: AGI employer declarations (arbetsgivardeklaration) are rejected by Skatteverket.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Swedish personnummer fails its check digit. Correct the record.'
+- id: EC527
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: no_fnr
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NOR
+  severity: high
+  dimension: validity
+  message: Norwegian fødselsnummer fails its check digit
+  why_it_matters: A fødselsnummer or D-number has 11 digits; the last two are mod-11 check digits. A failed check
+    means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: A-melding payroll reports are rejected by Skatteetaten.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Norwegian fødselsnummer fails its check digit. Correct the record.'
+- id: EC528
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: fi_hetu
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FIN
+  severity: high
+  dimension: validity
+  message: Finnish henkilötunnus fails its check digit
+  why_it_matters: A henkilötunnus is DDMMYY, a century sign, three digits and a check character (number modulo 31).
+    A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Incomes Register (Tulorekisteri) earnings reports are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Finnish henkilötunnus fails its check digit. Correct the record.'
+- id: EC529
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: pl_pesel
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - POL
+  severity: high
+  dimension: validity
+  message: Polish PESEL fails its check digit
+  why_it_matters: A PESEL has 11 digits; the last is a check digit with weights 1,3,7,9 repeated. A failed check
+    means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: ZUS social insurance declarations and PIT-11 tax forms are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Polish PESEL fails its check digit. Correct the record.'
+- id: EC530
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: be_nn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BEL
+  severity: high
+  dimension: validity
+  message: Belgian national register number fails its check digit
+  why_it_matters: A national register number has 11 digits; the last two are 97 minus the first nine modulo 97 (with
+    a 2 prefixed for people born from 2000). A failed check means at least one character was typed or transposed
+    wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: DmfA social security declarations and Belcotax 281.10 forms are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Belgian national register number fails its check digit. Correct
+    the record.'
+- id: EC531
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: tr_tckn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - TUR
+  severity: high
+  dimension: validity
+  message: Turkish T.C. Kimlik No fails its check digit
+  why_it_matters: A T.C. Kimlik number has 11 digits, never starts with 0, and its last two digits are check digits.
+    A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: SGK social security notifications and the muhtasar tax return are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Turkish T.C. Kimlik No fails its check digit. Correct the record.'
+- id: EC532
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: cl_rut
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHL
+  severity: high
+  dimension: validity
+  message: Chilean RUT fails its check digit
+  why_it_matters: A RUT/RUN ends in a check character (0-9 or K) computed modulo 11 with weights 2 to 7. A failed
+    check means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Previred contribution files and the Libro de Remuneraciones Electrónico are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Chilean RUT fails its check digit. Correct the record.'
+- id: EC533
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: ch_ahv
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHE
+  severity: high
+  dimension: validity
+  message: Swiss AHV/AVS number fails its check digit
+  why_it_matters: An AHV/AVS number is 756 followed by 10 digits, the last being an EAN-13 check digit. A failed
+    check means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: ELM salary declarations (Swissdec) to the compensation fund are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Swiss AHV/AVS number fails its check digit. Correct the record.'
+- id: EC534
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: ie_ppsn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - IRL
+  severity: high
+  dimension: validity
+  message: Irish PPSN fails its check digit
+  why_it_matters: A PPS number is seven digits, a check letter (weighted sum modulo 23) and an optional second letter.
+    A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue PAYE Modernisation payroll submissions are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Irish PPSN fails its check digit. Correct the record.'
+- id: EC535
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: ro_cnp
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ROU
+  severity: high
+  dimension: validity
+  message: Romanian CNP fails its check digit
+  why_it_matters: A CNP has 13 digits; the last is a check digit with weights 279146358279 modulo 11. A failed check
+    means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: D112 social contribution declarations to ANAF are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Romanian CNP fails its check digit. Correct the record.'
+- id: EC536
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: jp_mynumber
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - JPN
+  severity: high
+  dimension: validity
+  message: Japanese My Number fails its check digit
+  why_it_matters: An Individual Number (My Number) has 12 digits; the last is a check digit modulo 11 over the first
+    11. A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Year-end adjustment and withholding slips submitted to the tax office are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Japanese My Number fails its check digit. Correct the record.'
+- id: EC537
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: nz_ird
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NZL
+  severity: high
+  dimension: validity
+  message: New Zealand IRD number fails its check digit
+  why_it_matters: An IRD number has 8 or 9 digits within the issued range and ends in a mod-11 check digit. A failed
+    check means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employment information filings are rejected by Inland Revenue and the employee is taxed at the no-notification
+    rate.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: New Zealand IRD number fails its check digit. Correct the record.'
+- id: EC538
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: at_svnr
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - AUT
+  severity: high
+  dimension: validity
+  message: Austrian social insurance number fails its check digit
+  why_it_matters: A Sozialversicherungsnummer has 10 digits; the fourth is a mod-11 check digit and the last six
+    are the date of birth. A failed check means at least one character was typed or transposed wrongly, even when
+    the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: ELDA registrations and the mBGM monthly contribution report are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Austrian social insurance number fails its check digit. Correct
+    the record.'
+- id: EC539
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: cz_rc
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CZE
+  severity: high
+  dimension: validity
+  message: Czech birth number fails its check digit
+  why_it_matters: A rodné číslo issued from 1954 has 10 digits and is divisible by 11 (9 digits before 1954). A
+    failed check means at least one character was typed or transposed wrongly, even when the length and layout look
+    right.
+  rule_authority: sap_hard_constraint
+  sap_impact: ELDP pension records and social and health insurance reports are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Czech birth number fails its check digit. Correct the record.'
+- id: EC540
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: cz_rc
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SVK
+  severity: high
+  dimension: validity
+  message: Slovak birth number fails its check digit
+  why_it_matters: A rodné číslo issued from 1954 has 10 digits and is divisible by 11 (9 digits before 1954). A
+    failed check means at least one character was typed or transposed wrongly, even when the length and layout look
+    right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Social insurance (Sociálna poisťovňa) monthly reports are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Slovak birth number fails its check digit. Correct the record.'
+- id: EC541
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: luhn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ISR
+  severity: high
+  dimension: validity
+  message: Israeli ID number fails its check digit
+  why_it_matters: The ninth digit of a Teudat Zehut number is a Luhn check digit over the first eight. A failed
+    check means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Form 102 and Form 126 returns are rejected by the Israel Tax Authority.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Israeli ID number fails its check digit. Correct the record.'
+- id: EC542
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^\d{9}$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ISR
+  severity: high
+  dimension: validity
+  message: Israeli ID number is not 9 digits
+  why_it_matters: A Teudat Zehut number has exactly 9 digits, including leading zeros.
+  rule_authority: sap_hard_constraint
+  sap_impact: Form 102 and Form 126 returns are rejected by the Israel Tax Authority.
+  fix_map:
+    __other__: Correct the ID number from the employee's identity card in National ID Information (digits only,
+      keep leading zeros).
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Israeli ID number is not 9 digits. Correct the record.'
+- id: EC543
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: th_pid
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - THA
+  severity: high
+  dimension: validity
+  message: Thai personal ID number fails its check digit
+  why_it_matters: The 13th digit of a Thai personal identification number is a check digit (weights 13 to 2, modulo
+    11). A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Social Security Office contribution files (SSO 1-10) and PND 1 withholding returns are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Thai personal ID number fails its check digit. Correct the record.'
+- id: EC544
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: hr_oib
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - HRV
+  severity: high
+  dimension: validity
+  message: Croatian OIB fails its check digit
+  why_it_matters: The 11th digit of an OIB (personal identification number) is an ISO 7064 MOD 11,10 check digit.
+    A failed check means at least one character was typed or transposed wrongly, even when the length and layout
+    look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: JOPPD payroll reports are rejected by the Tax Administration (Porezna uprava).
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Croatian OIB fails its check digit. Correct the record.'
+- id: EC545
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: bg_egn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BGR
+  severity: high
+  dimension: validity
+  message: Bulgarian EGN fails its check digit
+  why_it_matters: The 10th digit of an EGN is a check digit (weights 2,4,8,5,10,9,7,3,6, modulo 11, 10 counting
+    as 0). A failed check means at least one character was typed or transposed wrongly, even when the length and
+    layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Declaration 1 and Declaration 6 social insurance returns to the NRA are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Bulgarian EGN fails its check digit. Correct the record.'
+- id: EC546
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: luhn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - GRC
+  severity: high
+  dimension: validity
+  message: Greek AMKA fails its check digit
+  why_it_matters: An AMKA (social security number) has 11 digits; the last is a Luhn check digit. A failed check
+    means at least one character was typed or transposed wrongly, even when the length and layout look right.
+  rule_authority: sap_hard_constraint
+  sap_impact: APD (Analytical Periodic Declaration) social insurance returns to e-EFKA are rejected.
+  fix_map:
+    __other__: Re-enter the number from the employee's identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Greek AMKA fails its check digit. Correct the record.'
+- id: EC547
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.strftime('%y')
+    + (`PERINFO.DATE_OF_BIRTH`.dt.month + 20 * (`PERINFO.DATE_OF_BIRTH`.dt.year >= 2000)).astype('Int64').astype('string[python]').fillna('').str.zfill(2)
+    + `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d'))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}')
+    & (`PERINFO.DATE_OF_BIRTH`.dt.year >= 1900) & (`PERINFO.DATE_OF_BIRTH`.dt.year < 2100)) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - POL
+  severity: high
+  dimension: consistency
+  message: Polish PESEL does not match the date of birth
+  why_it_matters: Digits 1-6 of a PESEL are the date of birth as YYMMDD, with 20 added to the month for people born
+    from 2000. A different date of birth means either the number or the birth date belongs to someone else or was
+    mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: ZUS registration (ZUA) and PIT-11 forms are rejected when PESEL and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Polish PESEL does not match the date of birth.'
+- id: EC548
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{9}[13579]\d$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - POL
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Polish PESEL encodes a male but the person is recorded as female
+  why_it_matters: The 10th digit of a PESEL is odd for men and even for women. A mismatch with the recorded gender
+    means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: ZUS registration (ZUA) and PIT-11 forms are rejected when PESEL and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Polish PESEL sex code does not match the recorded gender.'
+- id: EC549
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{9}[02468]\d$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - POL
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Polish PESEL encodes a female but the person is recorded as male
+  why_it_matters: The 10th digit of a PESEL is odd for men and even for women. A mismatch with the recorded gender
+    means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: ZUS registration (ZUA) and PIT-11 forms are rejected when PESEL and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Polish PESEL sex code does not match the recorded gender.'
+- id: EC550
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(1, 7) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{13}')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ROU
+  severity: high
+  dimension: consistency
+  message: Romanian CNP does not match the date of birth
+  why_it_matters: Digits 2-7 of a CNP are the date of birth as YYMMDD. A different date of birth means either the
+    number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: D112 declarations to ANAF are rejected when the CNP and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Romanian CNP does not match the date of birth.'
+- id: EC551
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?![1357]\d{12}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ROU
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Romanian CNP encodes a male but the person is recorded as female
+  why_it_matters: 'The first digit of a CNP gives sex and century: 1, 3, 5, 7 for men and 2, 4, 6, 8 for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.'
+  rule_authority: best_practice
+  sap_impact: D112 declarations to ANAF are rejected when the CNP and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Romanian CNP sex code does not match the recorded gender.'
+- id: EC552
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?![2468]\d{12}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ROU
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Romanian CNP encodes a female but the person is recorded as male
+  why_it_matters: 'The first digit of a CNP gives sex and century: 1, 3, 5, 7 for men and 2, 4, 6, 8 for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.'
+  rule_authority: best_practice
+  sap_impact: D112 declarations to ANAF are rejected when the CNP and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Romanian CNP sex code does not match the recorded gender.'
+- id: EC553
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(6, 14) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%Y%m%d')) & `PERINFO.NATIONAL_ID`.str.fullmatch('[0-9]{17}[0-9X]'))
+    & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHN
+  severity: high
+  dimension: consistency
+  message: Chinese resident ID does not match the date of birth
+  why_it_matters: Characters 7-14 of a resident identity number are the date of birth as YYYYMMDD. A different date
+    of birth means either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Individual income tax filing and social insurance registration reject mismatched personal data.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Chinese resident ID does not match the date of birth.'
+- id: EC554
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{16}[13579][\dX]$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHN
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Chinese resident ID encodes a male but the person is recorded as female
+  why_it_matters: The 17th digit of a resident identity number is odd for men and even for women. A mismatch with
+    the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Individual income tax filing and social insurance registration reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Chinese resident ID sex code does not match the recorded gender.'
+- id: EC555
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{16}[02468][\dX]$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHN
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Chinese resident ID encodes a female but the person is recorded as male
+  why_it_matters: The 17th digit of a resident identity number is odd for men and even for women. A mismatch with
+    the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Individual income tax filing and social insurance registration reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Chinese resident ID sex code does not match the recorded gender.'
+- id: EC556
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(-10).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('([0-9]{2})?[0-9]{10}') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]',
+    '', regex=True).str.slice(-10).str.slice(4, 5) <= '3')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SWE
+  severity: high
+  dimension: consistency
+  message: Swedish personnummer does not match the date of birth
+  why_it_matters: The first six digits of the ten-digit personnummer are the date of birth as YYMMDD (coordination
+    numbers, with 60 added to the day, are not checked). A different date of birth means either the number or the
+    birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: AGI employer declarations are rejected by Skatteverket when the personnummer and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Swedish personnummer does not match the date of birth.'
+- id: EC557
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!.*[13579]\d$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SWE
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Swedish personnummer encodes a male but the person is recorded as female
+  why_it_matters: The ninth digit of the ten-digit personnummer is odd for men and even for women. A mismatch with
+    the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: AGI employer declarations are rejected by Skatteverket when the personnummer and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Swedish personnummer sex code does not match the recorded gender.'
+- id: EC558
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!.*[02468]\d$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SWE
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Swedish personnummer encodes a female but the person is recorded as male
+  why_it_matters: The ninth digit of the ten-digit personnummer is odd for men and even for women. A mismatch with
+    the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: AGI employer declarations are rejected by Skatteverket when the personnummer and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Swedish personnummer sex code does not match the recorded gender.'
+- id: EC559
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-3][0-9][01][0-9]{8}')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NOR
+  severity: high
+  dimension: consistency
+  message: Norwegian fødselsnummer does not match the date of birth
+  why_it_matters: The first six digits of a fødselsnummer are the date of birth as DDMMYY (D-numbers and H-numbers,
+    with 4 added to the day or month digit, are not checked). A different date of birth means either the number
+    or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: A-melding reports are rejected by Skatteetaten when the fødselsnummer and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Norwegian fødselsnummer does not match the date of birth.'
+- id: EC560
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{8}[13579]\d{2}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NOR
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Norwegian fødselsnummer encodes a male but the person is recorded as female
+  why_it_matters: The ninth digit of a fødselsnummer is odd for men and even for women. A mismatch with the recorded
+    gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: A-melding reports are rejected by Skatteetaten when the fødselsnummer and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Norwegian fødselsnummer sex code does not match the recorded
+    gender.'
+- id: EC561
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{8}[02468]\d{2}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NOR
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Norwegian fødselsnummer encodes a female but the person is recorded as male
+  why_it_matters: The ninth digit of a fødselsnummer is odd for men and even for women. A mismatch with the recorded
+    gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: A-melding reports are rejected by Skatteetaten when the fødselsnummer and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Norwegian fødselsnummer sex code does not match the recorded
+    gender.'
+- id: EC562
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y')) & `PERINFO.NATIONAL_ID`.str.fullmatch('[0-9]{6}[-+A-FU-Y][0-9]{3}[0-9A-Y]'))
+    & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FIN
+  severity: high
+  dimension: consistency
+  message: Finnish henkilötunnus does not match the date of birth
+  why_it_matters: The first six characters of a henkilötunnus are the date of birth as DDMMYY. A different date
+    of birth means either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Incomes Register earnings reports are rejected when the henkilötunnus and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Finnish henkilötunnus does not match the date of birth.'
+- id: EC563
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}.\d{2}[13579].$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FIN
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Finnish henkilötunnus encodes a male but the person is recorded as female
+  why_it_matters: The individual number (characters 8-10) of a henkilötunnus is odd for men and even for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Incomes Register earnings reports are rejected when the henkilötunnus and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Finnish henkilötunnus sex code does not match the recorded gender.'
+- id: EC564
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}.\d{2}[02468].$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FIN
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Finnish henkilötunnus encodes a female but the person is recorded as male
+  why_it_matters: The individual number (characters 8-10) of a henkilötunnus is odd for men and even for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Incomes Register earnings reports are rejected when the henkilötunnus and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Finnish henkilötunnus sex code does not match the recorded gender.'
+- id: EC565
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]',
+    '', regex=True).str.slice(2, 4) <= '12') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2,
+    4) != '00') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 6) != '00')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BEL
+  severity: high
+  dimension: consistency
+  message: Belgian national register number does not match the date of birth
+  why_it_matters: The first six digits of a national register number are the date of birth as YYMMDD (bis numbers,
+    with 20 or 40 added to the month, and unknown dates written 00 are not checked). A different date of birth means
+    either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: DmfA declarations are rejected when the national register number and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Belgian national register number does not match the date of
+    birth.'
+- id: EC566
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{2}\.?[01]\d\.?\d{2}-?\d{2}[13579]\.?\d{2}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BEL
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Belgian national register number encodes a male but the person is recorded as female
+  why_it_matters: The three-digit sequence (digits 7-9) of a national register number is odd for men and even for
+    women. A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: DmfA declarations are rejected when the national register number and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Belgian national register number sex code does not match the
+    recorded gender.'
+- id: EC567
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{2}\.?[01]\d\.?\d{2}-?\d{2}[02468]\.?\d{2}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BEL
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Belgian national register number encodes a female but the person is recorded as male
+  why_it_matters: The three-digit sequence (digits 7-9) of a national register number is odd for men and even for
+    women. A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: DmfA declarations are rejected when the national register number and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Belgian national register number sex code does not match the
+    recorded gender.'
+- id: EC568
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: (((`PERINFO.NATIONAL_ID`.str.slice(6, 8) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y')) | ((`PERINFO.NATIONAL_ID`.str.slice(9,
+    11) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d')) & (`PERINFO.NATIONAL_ID`.str.slice(9, 11) != (`PERINFO.DATE_OF_BIRTH`.dt.day
+    + 40).astype('Int64').astype('string[python]').fillna('')))) & `PERINFO.NATIONAL_ID`.str.fullmatch('[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]'))
+    & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ITA
+  severity: high
+  dimension: consistency
+  message: Italian codice fiscale does not match the date of birth
+  why_it_matters: Characters 7-8 of a codice fiscale are the year of birth and characters 10-11 the day of birth
+    (plus 40 for women). A different date of birth means either the number or the birth date belongs to someone
+    else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Certificazione Unica is rejected by the Agenzia delle Entrate when the codice fiscale and personal
+    data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Italian codice fiscale does not match the date of birth.'
+- id: EC569
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?![A-Z]{6}\d{2}[A-Z][0-3]\d[A-Z0-9]{5}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ITA
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Italian codice fiscale encodes a male but the person is recorded as female
+  why_it_matters: The day of birth in a codice fiscale (characters 10-11) is 01-31 for men and 41-71 for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Certificazione Unica is rejected by the Agenzia delle Entrate when the codice fiscale and personal
+    data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Italian codice fiscale sex code does not match the recorded
+    gender.'
+- id: EC570
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?![A-Z]{6}\d{2}[A-Z][4-7]\d[A-Z0-9]{5}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ITA
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Italian codice fiscale encodes a female but the person is recorded as male
+  why_it_matters: The day of birth in a codice fiscale (characters 10-11) is 01-31 for men and 41-71 for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Certificazione Unica is rejected by the Agenzia delle Entrate when the codice fiscale and personal
+    data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Italian codice fiscale sex code does not match the recorded
+    gender.'
+- id: EC571
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(4, 10) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d')) & `PERINFO.NATIONAL_ID`.str.fullmatch('[A-Z]{4}[0-9]{6}[HMX][A-Z0-9]{7}'))
+    & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - MEX
+  severity: high
+  dimension: consistency
+  message: Mexican CURP does not match the date of birth
+  why_it_matters: Characters 5-10 of a CURP are the date of birth as YYMMDD. A different date of birth means either
+    the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: IMSS affiliation and CFDI payroll receipts are rejected when the CURP and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Mexican CURP does not match the date of birth.'
+- id: EC572
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?![A-Z]{4}\d{6}H[A-Z0-9]{7}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - MEX
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Mexican CURP encodes a male but the person is recorded as female
+  why_it_matters: Character 11 of a CURP is H for men and M for women. A mismatch with the recorded gender means
+    the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: IMSS affiliation and CFDI payroll receipts are rejected when the CURP and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Mexican CURP sex code does not match the recorded gender.'
+- id: EC573
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?![A-Z]{4}\d{6}M[A-Z0-9]{7}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - MEX
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Mexican CURP encodes a female but the person is recorded as male
+  why_it_matters: Character 11 of a CURP is H for men and M for women. A mismatch with the recorded gender means
+    the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: IMSS affiliation and CFDI payroll receipts are rejected when the CURP and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Mexican CURP sex code does not match the recorded gender.'
+- id: EC574
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: (((`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(1, 3) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y'))
+    | ((`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(3, 5) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%m'))
+    & (`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(3, 5) <= '12'))) & `PERINFO.NATIONAL_ID`.str.replace('[
+    .-]', '', regex=True).str.fullmatch('[12][0-9]{4}[0-9AB]{2}[0-9]{6}([0-9]{2})?')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FRA
+  severity: high
+  dimension: consistency
+  message: French NIR does not match the date of birth
+  why_it_matters: Digits 2-5 of a NIR are the year and month of birth as YYMM (months above 12 mean an unknown month
+    and are not checked). A different date of birth means either the number or the birth date belongs to someone
+    else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: DSN returns are rejected by URSSAF when the NIR and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: French NIR does not match the date of birth.'
+- id: EC575
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!1.*$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FRA
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: French NIR encodes a male but the person is recorded as female
+  why_it_matters: The first digit of a NIR is 1 for men and 2 for women. A mismatch with the recorded gender means
+    the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: DSN returns are rejected by URSSAF when the NIR and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: French NIR sex code does not match the recorded gender.'
+- id: EC576
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!2.*$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FRA
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: French NIR encodes a female but the person is recorded as male
+  why_it_matters: The first digit of a NIR is 1 for men and 2 for women. A mismatch with the recorded gender means
+    the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: DSN returns are rejected by URSSAF when the NIR and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: French NIR sex code does not match the recorded gender.'
+- id: EC577
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{13}')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - KOR
+  severity: high
+  dimension: consistency
+  message: Korean resident registration number does not match the date of birth
+  why_it_matters: The first six digits of a resident registration number are the date of birth as YYMMDD. A different
+    date of birth means either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Year-end tax settlement and social insurance reports reject mismatched personal data.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Korean resident registration number does not match the date
+    of birth.'
+- id: EC578
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}-?[13579]\d{6}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - KOR
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Korean resident registration number encodes a male but the person is recorded as female
+  why_it_matters: The seventh digit of a resident registration number is odd (1, 3, 5, 7, 9) for men and even (2,
+    4, 6, 8, 0) for women. A mismatch with the recorded gender means the number or the gender was entered for the
+    wrong person.
+  rule_authority: best_practice
+  sap_impact: Year-end tax settlement and social insurance reports reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Korean resident registration number sex code does not match
+    the recorded gender.'
+- id: EC579
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}-?[24680]\d{6}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - KOR
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Korean resident registration number encodes a female but the person is recorded as male
+  why_it_matters: The seventh digit of a resident registration number is odd (1, 3, 5, 7, 9) for men and even (2,
+    4, 6, 8, 0) for women. A mismatch with the recorded gender means the number or the gender was entered for the
+    wrong person.
+  rule_authority: best_practice
+  sap_impact: Year-end tax settlement and social insurance reports reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Korean resident registration number sex code does not match
+    the recorded gender.'
+- id: EC580
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - DNK
+  severity: high
+  dimension: consistency
+  message: Danish CPR number does not match the date of birth
+  why_it_matters: The first six digits of a CPR number are the date of birth as DDMMYY. A different date of birth
+    means either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: eIndkomst reports are rejected by Skattestyrelsen when the CPR number and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Danish CPR number does not match the date of birth.'
+- id: EC581
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}-?\d{3}[13579]$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - DNK
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Danish CPR number encodes a male but the person is recorded as female
+  why_it_matters: The last digit of a CPR number is odd for men and even for women. A mismatch with the recorded
+    gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: eIndkomst reports are rejected by Skattestyrelsen when the CPR number and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Danish CPR number sex code does not match the recorded gender.'
+- id: EC582
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}-?\d{3}[02468]$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - DNK
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Danish CPR number encodes a female but the person is recorded as male
+  why_it_matters: The last digit of a CPR number is odd for men and even for women. A mismatch with the recorded
+    gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: eIndkomst reports are rejected by Skattestyrelsen when the CPR number and personal data disagree.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Danish CPR number sex code does not match the recorded gender.'
+- id: EC583
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: (((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 2) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y'))
+    | (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d'))
+    | ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2, 4) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%m'))
+    & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2, 4) != (`PERINFO.DATE_OF_BIRTH`.dt.month
+    + 20).astype('Int64').astype('string[python]').fillna('')) & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '',
+    regex=True).str.slice(2, 4) != (`PERINFO.DATE_OF_BIRTH`.dt.month + 50).astype('Int64').astype('string[python]').fillna(''))
+    & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2, 4) != (`PERINFO.DATE_OF_BIRTH`.dt.month
+    + 70).astype('Int64').astype('string[python]').fillna('')))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '',
+    regex=True).str.fullmatch('[0-9]{9,10}')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CZE
+    - SVK
+  severity: high
+  dimension: consistency
+  message: Czech/Slovak birth number does not match the date of birth
+  why_it_matters: A rodné číslo starts with the date of birth as YYMMDD; women have 50 added to the month and numbers
+    issued since 2004 may add a further 20. A different date of birth means either the number or the birth date
+    belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Social and health insurance reports reject mismatched personal data.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Czech/Slovak birth number does not match the date of birth.'
+- id: EC584
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{2}[0-3]\d{3}/?\d{3,4}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CZE
+    - SVK
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Czech/Slovak birth number encodes a male but the person is recorded as female
+  why_it_matters: The month in a rodné číslo (digits 3-4) is 01-12 or 21-32 for men and 51-62 or 71-82 for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Social and health insurance reports reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Czech/Slovak birth number sex code does not match the recorded
+    gender.'
+- id: EC585
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{2}[5-8]\d{3}/?\d{3,4}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CZE
+    - SVK
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Czech/Slovak birth number encodes a female but the person is recorded as male
+  why_it_matters: The month in a rodné číslo (digits 3-4) is 01-12 or 21-32 for men and 51-62 or 71-82 for women.
+    A mismatch with the recorded gender means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: Social and health insurance reports reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Czech/Slovak birth number sex code does not match the recorded
+    gender.'
+- id: EC586
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.strftime('%y')
+    + (`PERINFO.DATE_OF_BIRTH`.dt.month + 40 * (`PERINFO.DATE_OF_BIRTH`.dt.year >= 2000)).astype('Int64').astype('string[python]').fillna('').str.zfill(2)
+    + `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d'))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}')
+    & (`PERINFO.DATE_OF_BIRTH`.dt.year >= 1900) & (`PERINFO.DATE_OF_BIRTH`.dt.year < 2100)) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BGR
+  severity: high
+  dimension: consistency
+  message: Bulgarian EGN does not match the date of birth
+  why_it_matters: An EGN starts with the date of birth as YYMMDD, with 40 added to the month for people born from
+    2000. A different date of birth means either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: NRA social insurance declarations reject mismatched personal data.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Bulgarian EGN does not match the date of birth.'
+- id: EC587
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{8}[02468]\d$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BGR
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: Bulgarian EGN encodes a male but the person is recorded as female
+  why_it_matters: The ninth digit of an EGN is even for men and odd for women. A mismatch with the recorded gender
+    means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: NRA social insurance declarations reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Bulgarian EGN sex code does not match the recorded gender.'
+- id: EC588
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{8}[13579]\d$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BGR
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: Bulgarian EGN encodes a female but the person is recorded as male
+  why_it_matters: The ninth digit of an EGN is even for men and odd for women. A mismatch with the recorded gender
+    means the number or the gender was entered for the wrong person.
+  rule_authority: best_practice
+  sap_impact: NRA social insurance declarations reject mismatched personal data.
+  fix_map:
+    __other__: Check the number and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Bulgarian EGN sex code does not match the recorded gender.'
+- id: EC589
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - GRC
+  severity: high
+  dimension: consistency
+  message: Greek AMKA does not match the date of birth
+  why_it_matters: The first six digits of an AMKA are the date of birth as DDMMYY. A different date of birth means
+    either the number or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: e-EFKA APD returns reject mismatched personal data.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Greek AMKA does not match the date of birth.'
+- id: EC590
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 10) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+    & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]',
+    '', regex=True).str.slice(6, 8) <= '12')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - AUT
+  severity: high
+  dimension: consistency
+  message: Austrian social insurance number does not match the date of birth
+  why_it_matters: The last six digits of a Sozialversicherungsnummer are the date of birth as DDMMYY (months above
+    12 mean the date was unknown at issue and are not checked). A different date of birth means either the number
+    or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: ELDA registrations are rejected when the social insurance number and personal data disagree.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Austrian social insurance number does not match the date of
+    birth.'
+- id: EC591
+  field: EMPEMPLOYMENT.SERVICE_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.SERVICE_DATE` > @today'
+  severity: medium
+  dimension: validity
+  message: Service date lies in the future
+  why_it_matters: The service date is the date from which length of service is counted (hire or recognised prior
+    service, moved later by unpaid breaks). A date after today means a typing error in the year.
+  rule_authority: best_practice
+  sap_impact: Service awards, service-based leave entitlement and notice periods treat the employee as having no
+    service.
+  fix_map:
+    __other__: Correct the service date in Employment Details.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: service date {EMPEMPLOYMENT.SERVICE_DATE} is in the future.'
+- id: EC592
+  field: EMPEMPLOYMENT.SERVICE_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.SERVICE_DATE` > `EMPEMPLOYMENT.END_DATE`'
+  severity: medium
+  dimension: consistency
+  message: Service date is after the employment end date
+  why_it_matters: Service is counted from the service date until the employment ends. A service date after the termination
+    date gives a negative length of service; one of the two dates was changed alone.
+  rule_authority: best_practice
+  sap_impact: Severance, long-service payouts and final leave entitlement are calculated on a negative service length.
+  fix_map:
+    __other__: Correct the service date or the termination date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: service date {EMPEMPLOYMENT.SERVICE_DATE} is after the
+    end date {EMPEMPLOYMENT.END_DATE}.'
+- id: EC593
+  field: EMPEMPLOYMENT.SENIORITY_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.SENIORITY_DATE` > `EMPEMPLOYMENT.END_DATE`'
+  severity: medium
+  dimension: consistency
+  message: Seniority date is after the employment end date
+  why_it_matters: Seniority counts from the seniority date until the employment ends. A seniority date after the
+    termination date gives negative seniority; one of the two dates was changed alone.
+  rule_authority: best_practice
+  sap_impact: Seniority-based severance and layoff ranking use a negative seniority for the leaver.
+  fix_map:
+    __other__: Correct the seniority date or the termination date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: seniority date {EMPEMPLOYMENT.SENIORITY_DATE} is after
+    the end date {EMPEMPLOYMENT.END_DATE}.'
+- id: EC594
+  field: EMPEMPLOYMENT.ORIGINAL_START_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.ORIGINAL_START_DATE` <= `PERINFO.DATE_OF_BIRTH`'
+  severity: high
+  dimension: consistency
+  message: Original start date is on or before the person's date of birth
+  why_it_matters: Original start date marks the start of the person's working relationship with the company. It
+    cannot fall on or before the day the person was born; the year was mistyped or a default date was loaded. The
+    employment start date has its own check (EC059).
+  rule_authority: best_practice
+  sap_impact: Service and seniority based entitlements (leave, awards, severance, pension vesting) are calculated
+    from an impossible date.
+  fix_map:
+    __other__: Correct the original start date from the employment history, or correct the date of birth from the
+      identity document.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: original start date {EMPEMPLOYMENT.ORIGINAL_START_DATE}
+    is on or before the date of birth.'
+- id: EC595
+  field: EMPEMPLOYMENT.SERVICE_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.SERVICE_DATE` <= `PERINFO.DATE_OF_BIRTH`'
+  severity: high
+  dimension: consistency
+  message: Service date is on or before the person's date of birth
+  why_it_matters: Service date marks the start of the person's working relationship with the company. It cannot
+    fall on or before the day the person was born; the year was mistyped or a default date was loaded. The employment
+    start date has its own check (EC059).
+  rule_authority: best_practice
+  sap_impact: Service and seniority based entitlements (leave, awards, severance, pension vesting) are calculated
+    from an impossible date.
+  fix_map:
+    __other__: Correct the service date from the employment history, or correct the date of birth from the identity
+      document.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: service date {EMPEMPLOYMENT.SERVICE_DATE} is on or before
+    the date of birth.'
+- id: EC596
+  field: EMPEMPLOYMENT.SENIORITY_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.SENIORITY_DATE` <= `PERINFO.DATE_OF_BIRTH`'
+  severity: high
+  dimension: consistency
+  message: Seniority date is on or before the person's date of birth
+  why_it_matters: Seniority date marks the start of the person's working relationship with the company. It cannot
+    fall on or before the day the person was born; the year was mistyped or a default date was loaded. The employment
+    start date has its own check (EC059).
+  rule_authority: best_practice
+  sap_impact: Service and seniority based entitlements (leave, awards, severance, pension vesting) are calculated
+    from an impossible date.
+  fix_map:
+    __other__: Correct the seniority date from the employment history, or correct the date of birth from the identity
+      document.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: seniority date {EMPEMPLOYMENT.SENIORITY_DATE} is on or
+    before the date of birth.'
+- id: EC597
+  field: EMPEMPLOYMENT.LAST_DATE_WORKED
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.LAST_DATE_WORKED` < `EMPEMPLOYMENT.START_DATE`'
+  severity: medium
+  dimension: validity
+  message: Last date worked is before the employment start date
+  why_it_matters: The last date worked lies inside the employment, between the start and the end date. A date before
+    the start date is a typing error in the termination.
+  rule_authority: best_practice
+  sap_impact: Final pay and leave payout are calculated for a negative working period.
+  fix_map:
+    __other__: Correct the last date worked in the termination details.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: last date worked {EMPEMPLOYMENT.LAST_DATE_WORKED} is before
+    the start date {EMPEMPLOYMENT.START_DATE}.'
+- id: EC598
+  field: EMPEMPLOYMENT.PAYROLL_END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.PAYROLL_END_DATE` < `EMPEMPLOYMENT.START_DATE`'
+  severity: medium
+  dimension: validity
+  message: Payroll end date is before the employment start date
+  why_it_matters: Payroll runs from the start of the employment to the payroll end date. A payroll end date before
+    the start date stops payroll before the first day of work.
+  rule_authority: best_practice
+  sap_impact: The employee is excluded from every payroll run; payroll (Employee Central Payroll) does not pay any
+    period.
+  fix_map:
+    __other__: Correct the payroll end date in the termination details.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: payroll end date {EMPEMPLOYMENT.PAYROLL_END_DATE} is before
+    the start date {EMPEMPLOYMENT.START_DATE}.'
+- id: EC599
+  field: EMPEMPLOYMENT.PAYROLL_END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.PAYROLL_END_DATE`.notna()'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Active employee has a payroll end date
+  why_it_matters: The payroll end date is captured on termination. On an active employee it is a leftover of a cancelled
+    termination or a rehire, and payroll stops paying the employee after that date.
+  rule_authority: best_practice
+  sap_impact: Payroll stops at the payroll end date although the employee still works; pay is missed from then on.
+  fix_map:
+    __other__: Clear the payroll end date, or complete the termination.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: active but has a payroll end date {EMPEMPLOYMENT.PAYROLL_END_DATE}.'
+- id: EC600
+  field: EMPEMPLOYMENT.END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.END_DATE` > `PERINFO.DATE_OF_DEATH`'
+  severity: medium
+  dimension: consistency
+  message: Employment ends after the person's date of death
+  why_it_matters: Employment ends at the latest on the date of death (termination with a death event reason). An
+    end date after the date of death keeps the employment, payroll and benefits open for a deceased person.
+  rule_authority: best_practice
+  sap_impact: Pay, benefits and system access continue after death and must be recovered from the estate.
+  fix_map:
+    __other__: Verify the date of death and set the termination date to it, or remove a wrongly entered date of
+      death.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: employment ends {EMPEMPLOYMENT.END_DATE}, after the recorded
+    date of death.'
+- id: EC601
+  field: EMPEMPLOYMENT.OK_TO_REHIRE
+  check_class: null_check
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - T
+  severity: medium
+  dimension: completeness
+  message: Terminated employee has no rehire eligibility recorded
+  why_it_matters: The OK to rehire flag is captured on termination. SuccessFactors uses it to warn recruiters and
+    HR when a former employee is rehired or applies again; blank means the decision was never recorded.
+  rule_authority: best_practice
+  sap_impact: A former employee who must not be rehired can be rehired without any warning.
+  fix_map:
+    __other__: Record whether the employee is eligible for rehire in the termination details.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: terminated without a rehire eligibility decision.'
+- id: EC602
+  field: EMPEMPLOYMENT.OK_TO_REHIRE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.OK_TO_REHIRE`.notna()'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: consistency
+  message: Active employee has a rehire eligibility flag
+  why_it_matters: The OK to rehire flag belongs to the termination details. On an active employee it is a leftover
+    of a cancelled termination and is carried forward into the next real termination unchecked.
+  rule_authority: best_practice
+  sap_impact: A later termination keeps the old rehire decision instead of a new one.
+  fix_map:
+    __other__: Clear the rehire flag, or complete the termination.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: active but has a rehire eligibility flag.'
+- id: EC603
+  field: EMPEMPLOYMENT.JOB_END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.JOB_END_DATE` < `EMPEMPLOYMENT.JOB_START_DATE`'
+  severity: high
+  dimension: validity
+  message: Current job record ends before it starts
+  why_it_matters: An EmpJob record is valid from its start date to its end date. An end date before the start date
+    gives the record no valid day, so the employee has no job data for that slice.
+  rule_authority: sap_hard_constraint
+  sap_impact: Org, pay and time data for the employee resolve to no record; payroll replication and reports skip
+    the employee.
+  fix_map:
+    __other__: Correct the job record dates in Job History.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: job record from {EMPEMPLOYMENT.JOB_START_DATE} ends on
+    {EMPEMPLOYMENT.JOB_END_DATE}.'
+- id: EC604
+  field: EMPEMPLOYMENT.CREATED_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.CREATED_DATE` > @today'
+  severity: medium
+  dimension: validity
+  message: Employment record creation time lies in the future
+  why_it_matters: createdDateTime is stamped by the system when the employment is saved. A future value means the
+    record was loaded with a wrong audit date or a server clock was wrong.
+  rule_authority: best_practice
+  sap_impact: Audit trails, delta extraction and data-retention purges ordered by creation time handle the record
+    wrongly.
+  fix_map:
+    __other__: Report the record to the SuccessFactors administrator; correct the source of the load.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: employment created on {EMPEMPLOYMENT.CREATED_DATE}, which
+    is in the future.'
+- id: EC605
+  field: PERINFO.SECOND_NATIONALITY
+  check_class: cross_field_check
+  fail_when: '`PERINFO.SECOND_NATIONALITY` == `PERINFO.NATIONALITY`'
+  severity: low
+  dimension: consistency
+  message: Second nationality is the same as the first nationality
+  why_it_matters: The second nationality records an additional citizenship. Repeating the first nationality adds
+    nothing and usually means the real second nationality was not entered.
+  rule_authority: best_practice
+  sap_impact: Work-permit and tax-treaty checks miss the person's real second citizenship.
+  fix_map:
+    __other__: Enter the real second nationality or clear the field.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: second nationality {PERINFO.SECOND_NATIONALITY} repeats the
+    first nationality.'
+- id: EC606
+  field: PERINFO.PLACE_OF_BIRTH
+  check_class: regex_check
+  pattern: ^[^0-9]*$
+  severity: low
+  dimension: accuracy
+  message: Place of birth contains digits
+  why_it_matters: A place of birth is a town or city name. Digits mean a date, postal code or ID was typed into
+    the field.
+  rule_authority: best_practice
+  sap_impact: Identity documents and statutory forms that print the place of birth (for example social insurance
+    registration) carry a wrong value.
+  fix_map:
+    __other__: Correct the place of birth from the identity document.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: place of birth contains digits.'
+- id: EC607
+  field: PERINFO.COUNTRY_OF_BIRTH
+  check_class: null_check
+  applies_when:
+    PERINFO.PLACE_OF_BIRTH:
+      populated: true
+  severity: low
+  dimension: completeness
+  message: Place of birth is recorded but the country of birth is blank
+  why_it_matters: A place name alone is ambiguous (many towns share a name). Statutory registrations that ask for
+    the place of birth also ask for its country.
+  rule_authority: best_practice
+  sap_impact: Social insurance and tax registrations that need the country of birth are returned for completion.
+  fix_map:
+    __other__: Enter the country of birth.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: place of birth recorded without a country of birth.'
+- id: EC608
+  field: PERINFO.MIDDLENAME
+  check_class: regex_check
+  pattern: ^[^0-9!@#$%^&*()_+=\[\]{};:"\\|<>/?~]*$
+  severity: medium
+  dimension: accuracy
+  message: Middle name contains digits or symbols
+  why_it_matters: 'Personal names contain letters, spaces, hyphens, apostrophes and periods. Digits or symbols such
+    as @ # / mean an ID, an e-mail or a note was typed into the name field.'
+  rule_authority: best_practice
+  sap_impact: Letters, org charts and directory entries show the wrong name.
+  fix_map:
+    __other__: Correct the name and move any other information to its own field.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: middle name contains digits or symbols.'
+- id: EC609
+  field: PERINFO.MIDDLENAME
+  check_class: regex_check
+  pattern: ^(?!.*\s{2}).*$
+  auto_fix:
+    steps:
+    - op: collapse_spaces
+    - op: strip
+    confidence: high
+  severity: low
+  dimension: validity
+  message: Middle name contains repeated spaces
+  why_it_matters: Double spaces inside a name come from concatenated legacy fields or copy-paste. Searches, duplicate
+    checks and generated documents treat the name as different from the clean spelling.
+  rule_authority: best_practice
+  sap_impact: Duplicate-person detection misses the record; generated letters show the extra space.
+  fix_map:
+    __other__: Collapse the repeated spaces to one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: middle name contains repeated spaces.'
+- id: EC610
+  field: PERINFO.PREFERRED_NAME
+  check_class: regex_check
+  pattern: ^[^0-9!@#$%^&*()_+=\[\]{};:"\\|<>/?~]*$
+  severity: medium
+  dimension: accuracy
+  message: Preferred name contains digits or symbols
+  why_it_matters: 'Personal names contain letters, spaces, hyphens, apostrophes and periods. Digits or symbols such
+    as @ # / mean an ID, an e-mail or a note was typed into the name field.'
+  rule_authority: best_practice
+  sap_impact: Letters, org charts and directory entries show the wrong name.
+  fix_map:
+    __other__: Correct the name and move any other information to its own field.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: preferred name contains digits or symbols.'
+- id: EC611
+  field: PERINFO.PREFERRED_NAME
+  check_class: regex_check
+  pattern: ^(?!.*\s{2}).*$
+  auto_fix:
+    steps:
+    - op: collapse_spaces
+    - op: strip
+    confidence: high
+  severity: low
+  dimension: validity
+  message: Preferred name contains repeated spaces
+  why_it_matters: Double spaces inside a name come from concatenated legacy fields or copy-paste. Searches, duplicate
+    checks and generated documents treat the name as different from the clean spelling.
+  rule_authority: best_practice
+  sap_impact: Duplicate-person detection misses the record; generated letters show the extra space.
+  fix_map:
+    __other__: Collapse the repeated spaces to one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: preferred name contains repeated spaces.'
+- id: EC612
+  field: PERINFO.MIDDLENAME
+  check_class: cross_field_check
+  fail_when: '`PERINFO.MIDDLENAME`.str.strip().str.lower().isin([''nmn'', ''nmi'', ''none'', ''n/a'', ''na'', ''-'',
+    ''.'', ''unknown'', ''test'', ''xxx''])'
+  severity: low
+  dimension: accuracy
+  message: Middle name is a placeholder (NMN, NMI, NONE, N/A ...)
+  why_it_matters: Placeholders such as NMN (no middle name), NMI (no middle initial), NONE or a single dash are
+    typed to get past a required field in a legacy system. In SuccessFactors the middle name is optional and is
+    left blank when the person has none.
+  rule_authority: best_practice
+  sap_impact: Letters, payslips and tax certificates print the placeholder as part of the person's name.
+  fix_map:
+    __other__: Clear the middle name.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: middle name is a placeholder.'
+- id: EC613
+  field: PERINFO.PREFERRED_NAME
+  check_class: cross_field_check
+  fail_when: '`PERINFO.PREFERRED_NAME`.str.strip().str.lower().isin([''test'', ''dummy'', ''xxx'', ''unknown'',
+    ''tbd'', ''n/a'', ''na'', ''none'', ''-'', ''.''])'
+  severity: medium
+  dimension: accuracy
+  message: Preferred name is a placeholder (TEST, UNKNOWN, N/A ...)
+  why_it_matters: The preferred name is the name shown in the people profile, org chart and e-mails. A placeholder
+    is shown to everyone instead of the person's real name.
+  rule_authority: best_practice
+  sap_impact: The org chart, directory and notifications display the placeholder as the person's name.
+  fix_map:
+    __other__: Clear the preferred name or enter the name the person wants to be called.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: preferred name is a placeholder.'
+- id: EC614
+  field: PERINFO.PERSON_UUID
+  check_class: uniqueness_check
+  fields:
+  - PERINFO.PERSON_UUID
+  applies_when:
+    PERINFO.PERSON_UUID:
+      populated: true
+  severity: high
+  dimension: uniqueness
+  message: Person UUID is shared by more than one person
+  why_it_matters: perPersonUuid is the system-generated surrogate key of PerPerson and is unique per person. The
+    same UUID on two person IDs means rows were copied between persons in a load or an integration mapped two people
+    to one key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Integrations keyed on the person UUID (Employee Central Payroll, identity provisioning) merge two
+    people into one record.
+  fix_map:
+    __other__: Find which person the UUID really belongs to and have the SuccessFactors administrator correct the
+      other person record.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: person UUID is also held by another person.'
+- id: EC615
+  field: PERADDRESS.ADDRESS_LINE2
+  check_class: cross_field_check
+  fail_when: '`PERADDRESS.ADDRESS_LINE2`.str.strip().str.lower() == `PERADDRESS.ADDRESS_LINE1`.str.strip().str.lower()'
+  severity: low
+  dimension: accuracy
+  message: Address line 2 repeats address line 1
+  why_it_matters: The second address line holds extra detail (building, floor, suburb). A copy of the first line
+    prints the street twice on every letter and payslip.
+  rule_authority: best_practice
+  sap_impact: Printed address labels carry the street twice; postal address validation in payroll and benefits interfaces
+    may reject the address.
+  fix_map:
+    __other__: Clear address line 2 or enter the real additional detail.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address line 2 repeats address line 1.'
+- id: EC616
+  field: PERADDRESS.ADDRESS_LINE2
+  check_class: cross_field_check
+  fail_when: '`PERADDRESS.ADDRESS_LINE2`.str.strip().str.lower() == `PERADDRESS.CITY`.str.strip().str.lower()'
+  severity: low
+  dimension: accuracy
+  message: Address line 2 repeats the city
+  why_it_matters: The city has its own field. Putting it again into address line 2 prints the city twice and is
+    a sign of a legacy address mapped line by line into SuccessFactors.
+  rule_authority: best_practice
+  sap_impact: Printed address labels carry the city twice; address matching in downstream interfaces fails.
+  fix_map:
+    __other__: Clear address line 2 or enter the real additional detail.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address line 2 repeats the city.'

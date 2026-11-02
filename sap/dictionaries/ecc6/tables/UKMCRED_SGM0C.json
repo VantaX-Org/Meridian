@@ -1,0 +1,105 @@
+{
+ "table": "UKMCRED_SGM0C",
+ "description": "SAP Credit Management: Segment Data",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "CREDIT_SGMNT",
+   "key": true,
+   "data_element": "UKM_CREDIT_SGMNT",
+   "domain": "UKM_CREDIT_SGMNT",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Credit Segment",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "CURRENCY",
+   "key": false,
+   "data_element": "UKM_SGM_CURRENCY",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Credit Segment Currency",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 4,
+   "name": "LIMIT_VALID_CHCK",
+   "key": false,
+   "data_element": "UKM_XVALID_LIMIT_CHCK",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Check Credit Limit Validity",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "KURST",
+   "key": false,
+   "data_element": "UKM_KURST",
+   "domain": "KURST",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Exchange Rate Type",
+   "check_table": "TCURV"
+  },
+  {
+   "pos": 6,
+   "name": "MAIN_CRED_SGMNT",
+   "key": false,
+   "data_element": "UKM_MAIN_CRSGMNT_FLAG",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for Main Credit Segment",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "MAIN_CREDSGM_ADD",
+   "key": false,
+   "data_element": "UKM_MAIN_CRSGMNT_ADD",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Additive Contribution to Main Credit Segment",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CURRENCY",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "KURST",
+   "foreign_table": "TCURV",
+   "foreign_field": "KURST"
+  }
+ ]
+}

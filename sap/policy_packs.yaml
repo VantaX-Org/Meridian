@@ -33,8 +33,9 @@ packs:
              PERADDRESS.ADDRESS_LINE1, PERADDRESS.CITY, PERADDRESS.ZIPCODE]
     rules: [AP009, AP096, AR008, BP017, BP018, BP020, BP021, BP022, BP294, EC017, EC018, EC029, EC031, EC033, EC040,
             EC061, EC063, EC064, EC065, EC066, EC067, EC068, EC069, EC070, EC071, EC072, EC073, EC074, EC086, EC120,
-            EC149, EC150, EC155, EC156, EC161, EC162, EC163, EC164, EC165, EC166, EC356, HCM022, HCM023, HCM029,
-            PA036, PA091, PA092, PA101, S4R-HCM-LAND1, S4R-HCM-ORT01, SDCM007]
+            EC149, EC150, EC155, EC156, EC161, EC162, EC163, EC164, EC165, EC166, EC356, EC467, EC468, EC469, EC475,
+            EC476, EC478, HCM022, HCM023, HCM029, PA036, PA091, PA092, PA101, S4R-HCM-LAND1, S4R-HCM-ORT01, SDCM007,
+            SDCM386, SDCM401, SDCM408, SDCM411, SDCM412, SDCM434]
   - id: national_identifier
     label: National identification numbers
     authority: GDPR Article 87 (processing of the national identification number)
@@ -96,7 +97,7 @@ packs:
     authority: SOX Section 404(a) (completeness and accuracy of payables and receivables)
     fields: [LFB1.ZTERM, KNB1.ZTERM, LFM1.ZTERM, LFB1.ZWELS, LFB1.AKONT, KNB1.AKONT]
     rules: [AP014, AP016, AP017, AP036, AP037, AP042, AP063, AP240, AP241, AP258, AP282, AR018, AR021, AR030, AR041,
-            AR237, BKT072, XREC001, XREC002]
+            AR237, BKT072, SDCM500, XREC001, XREC002]
 - id: gxp
   name: GxP batch and quality
   authority: 21 CFR Part 211 (Current Good Manufacturing Practice for Finished Pharmaceuticals) and EudraLex Volume 4 (EU GMP)
@@ -110,7 +111,7 @@ packs:
              MCHA.WERKS, MCHA.CHAME, MARA.XCHPF, MARC.XCHPF]
     rules: [BATCH001, BATCH002, BATCH003, BATCH004, BATCH005, BATCH009, BATCH013, BATCH016, BATCH017, BATCH025,
             BATCH026, BATCH036, BATCH038, BATCH041, BATCH042, MM022, MM232, MM233, MM459, MM460, MM603, MM732, MM859,
-            MM860, MM862, S4R-AR-MCH1-LVORM, S4R-BATCH-MCHA-NOMARC]
+            MM860, MM862, MM929, MM940, S4R-AR-MCH1-LVORM, S4R-BATCH-MCHA-NOMARC]
   - id: shelf_life
     label: Shelf life and expiry
     authority: 21 CFR 211.137 (expiration dating)

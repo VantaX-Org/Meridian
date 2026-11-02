@@ -1612,37 +1612,3 @@ rules:
     __other__: PA0015.ZEINH '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0015.ZEINH points at a check table T538A.ZEINH entry that does not exist.
-- id: DXRfb33063f
-  enabled: false
-  field: PERINFO.COUNTRY_OF_BIRTH
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Country of birth must exist in the check table Country.externalCode
-  why_it_matters: COUNTRY_OF_BIRTH (Country of birth) is defined in the SAP Data Dictionary with check table Country.externalCode
-    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read COUNTRY_OF_BIRTH resolve it through check table Country.externalCode; an unknown value leaves
-    the record unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: PERINFO.COUNTRY_OF_BIRTH '{invalid_value}' is not defined in the check table Country.externalCode. Correct
-      it there or add the missing entry.
-  record_fix_template: PERINFO.COUNTRY_OF_BIRTH points at a check table Country.externalCode entry that does not exist.
-- id: DXR7b5b4578
-  enabled: false
-  field: PERINFO.SECOND_NATIONALITY
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Second nationality must exist in the check table Country.externalCode
-  why_it_matters: SECOND_NATIONALITY (Second nationality) is defined in the SAP Data Dictionary with check table Country.externalCode
-    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SECOND_NATIONALITY resolve it through check table Country.externalCode; an unknown value
-    leaves the record unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: PERINFO.SECOND_NATIONALITY '{invalid_value}' is not defined in the check table Country.externalCode. Correct
-      it there or add the missing entry.
-  record_fix_template: PERINFO.SECOND_NATIONALITY points at a check table Country.externalCode entry that does not exist.

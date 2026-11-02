@@ -1,0 +1,136 @@
+{
+ "table": "T047R",
+ "description": "Grouping rules for dunning notices",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MGRUP",
+   "key": true,
+   "data_element": "MGRUP",
+   "domain": "MGRUP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Key for dunning notice grouping",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "NAME1",
+   "key": false,
+   "data_element": "NAME1_ZGR",
+   "domain": "FDNAME",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Field Name from Tables BSID or BSIK",
+   "check_table": "*"
+  },
+  {
+   "pos": 4,
+   "name": "OFFS1",
+   "key": false,
+   "data_element": "OFFS1_ZGR",
+   "domain": "NUM02",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Offset Within the Field",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "LENG1",
+   "key": false,
+   "data_element": "LENG1_ZGR",
+   "domain": "NUM02",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number of Characters to be Considered",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "NAME2",
+   "key": false,
+   "data_element": "NAME1_ZGR",
+   "domain": "FDNAME",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Field Name from Tables BSID or BSIK",
+   "check_table": "*"
+  },
+  {
+   "pos": 7,
+   "name": "OFFS2",
+   "key": false,
+   "data_element": "OFFS1_ZGR",
+   "domain": "NUM02",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Offset Within the Field",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "LENG2",
+   "key": false,
+   "data_element": "LENG1_ZGR",
+   "domain": "NUM02",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number of Characters to be Considered",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "XDEBI",
+   "key": false,
+   "data_element": "XDEBI_MGR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: No field check against table \"BSID\" ?",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "XKRED",
+   "key": false,
+   "data_element": "XKRED_MGR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: No field check against table \"BSIK\" ?",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

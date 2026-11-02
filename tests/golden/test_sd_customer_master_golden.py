@@ -168,6 +168,7 @@ def test_sd_customer_master_golden():
         "SDCM020": {_area(D_LPRIO)},                     # delivery priority 09 not in TPRIO
         "SDCM018": {_area(D_WAERS)},                     # RAND is not an ISO currency code
         "DT-KNA1-ERDAT": {f"KUNNR={D_ERDAT}"},           # created in the future (loaded wrongly)
+        "SDCM708": {_area(D_ERDAT)},                     # sales data then predates the wrongly dated customer
         "SDCM031": {_area(D_ERDAT)},                     # no account assignment group (revenue accounts)
         "SDCM033": {_area(D_MAIL)},                      # shipping condition 99 not in TVSB
         "SDCM208": {_area(DEL)},                         # deleted centrally, sales area not flagged

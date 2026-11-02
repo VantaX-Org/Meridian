@@ -221,7 +221,9 @@ def _plan(rule: dict) -> tuple[list[dict], set[int]] | str:
         pat = rule["pattern"]
         good = sample_regex(pat)
         bad = next((v for v in (sample_regex_violation(pat), sample_regex_overflow(pat), "§§§", "~~~", "  ")
-                    if v and v.strip() and not re.match(pat, v.strip())), None)
+                    # 000000 / 00000000 are SAP-initial (blank) values the check skips, not violations
+                    if v and v.strip() and v.strip() not in ("000000", "00000000")
+                    and not re.match(pat, v.strip())), None)
         if not good or not good.strip() or not re.match(pat, good.strip()) or bad is None:
             return "no matching and non-matching sample derivable from the pattern"
         return [{field: bad if i in DEFECT else good.strip()} for i in range(N)], DEFECT

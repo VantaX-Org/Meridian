@@ -231,7 +231,22 @@ _PLACEMENT_SAMPLES = {"misplaced": ["ap@example.co.za", "www.acme.com", "0115551
                       "date_range": ["20991231", "20200101"], "change_before_create": ["20200101", "20210101"],
                       "vat_checksum": ["DE136695977", "DE136695976", "AU", "51824753557", "51824753556"]}
 _FORMAT_SAMPLES = {"gtin": "4006381333931", "ean": "4006381333931", "iban": "GB82WEST12345698765432",
-                   "luhn": "4539148803436467", "email": "ap@example.co.za", "date": TODAY}
+                   "luhn": "4539148803436467", "email": "ap@example.co.za", "date": TODAY,
+                   # national-identifier specimens (checks/types/format_check.py self-check)
+                   "ca_sin": "046454286", "nl_bsn": "111222333", "br_cpf": "11144477735", "es_dni": "12345678Z",
+                   "cn_rid": "11010519491231002X", "it_cf": "RSSMRA85T10A562S", "fr_nir": "255081416802538",
+                   "au_tfn": "123456782", "mx_curp": "HEGG560427MVZRRL04", "sg_nric": "S1234567D",
+                   "in_national": "234123412346", "se_pnr": "811218-9876", "no_fnr": "01010101006",
+                   "fi_hetu": "131052-308T", "pl_pesel": "44051401359", "be_nn": "85073003328",
+                   "tr_tckn": "10000000146", "cl_rut": "12345678-5", "ch_ahv": "7569217076985",
+                   "ie_ppsn": "1234567T", "ro_cnp": "1800101221144", "jp_mynumber": "123456789018",
+                   "nz_ird": "49091850", "at_svnr": "1237010180", "cz_rc": "7103192745",
+                   "th_pid": "1101700207030", "hr_oib": "69435151530", "bg_egn": "7523169263"}
+_NID_BY_COUNTRY = {"POL": "44051401359", "ROU": "1800101221144", "CHN": "11010519491231002X",
+                   "SWE": "811218-9876", "NOR": "01010101006", "FIN": "131052-308T", "BEL": "85073003328",
+                   "ITA": "RSSMRA85T10A562S", "MEX": "HEGG560427MVZRRL04", "FRA": "255081416802538",
+                   "KOR": "850730-1234567", "DNK": "300785-1231", "CZE": "7103192745", "SVK": "7103192745",
+                   "BGR": "8507301206", "GRC": "30078512345", "AUT": "1237010180"}
 # a cross_field_check comparing a slice of a column (IBAN prefix at [0:2], or a BIC/SWIFT
 # country code at [4:6], etc.) mapped through ``@iso_alpha3`` (an alpha-2 -> alpha-3 country
 # map, checks/types/cross_field_check.py) to a plain Country-FO field: neither generic char
@@ -328,6 +343,10 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
         if c == rule.get("split_field"):
             vals += [str(v) for v in rule["left_values"][:1] + rule["right_values"][:1]]
         if c == rule.get("field"):
+            # a national ID compared with the birth date (cross_field_check): a well-formed
+            # specimen for the rule's country, or no generated record ever parses as a date
+            for cc in (rule.get("applies_when") or {}).get("PERINFO.NATIONAL_ID_COUNTRY") or []:
+                vals += [_NID_BY_COUNTRY[cc]] if cc in _NID_BY_COUNTRY else []
             vals += [str(v) for v in (rule.get("allowed_values") or [])][:4]
             vals += [str(v) for v in (rule.get("reference_values") or [])][:4]
             if rule.get("format"):
@@ -374,7 +393,16 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
                 vals.append("a")  # case-check rule: a lowercase-first candidate to trip it
             if ".round(" in expr:
                 vals.append("1.004")  # a value whose cents aren't a whole number, for precision/rounding checks
+            col = re.escape(c)
+            prefix = re.search(rf"`{col}`\.str\.startswith\('([^']*)'\)", expr)
+            length = re.search(rf"`{col}`\.str\.len\(\)\s*==\s*(\d+)", expr)
+            if prefix and length and int(length.group(1)) > len(prefix.group(1)):
+                # a fixed-length coded value (an IBAN): its prefix padded to the exact length, so the
+                # rule's slices of it reach the comparison instead of stopping at the length gate
+                vals.insert(0, prefix.group(1).ljust(int(length.group(1)), "0"))
         vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]
+        if _kind(dictionary, c) == "date" and f"`{c}`.dt." in expr:
+            vals.insert(0, "20000101")  # date parts are compared: a real date ahead of the expression's literals
         out[c] = list(dict.fromkeys(vals))[:10]
     return out
 
@@ -445,6 +473,10 @@ def _failing_rows(result, df: pd.DataFrame, dictionary) -> set[int]:
 
 def prove(rule: dict, dictionary) -> tuple[str, str]:
     """(verdict, detail): proven | never_fails | never_passes | not_applicable | error."""
+    # evaluate `@today` at the instant the date probes (TODAY, NOW) were built from: a long
+    # run that crosses UTC midnight otherwise proves "expires within N days of today" rules
+    # against yesterday's specimen and they never fail
+    rule = {"_as_of": _NOW.isoformat(), **rule}
     live = {}
     if rule.get("check_class") in ("referential_check", "domain_value_check") and not (
             rule.get("allowed_values") or rule.get("reference_values") or rule.get("format")):
@@ -459,6 +491,10 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         aw = rule.get("applies_when") or {}
         across = rule.get("unique_across")
         dup = {c: cand[c][0] if c in aw else (cand[c][1] if len(cand[c]) > 1 else "X") for c in cols}
+        # an exact-literal gate on the rule's own field: its DDIC values (e.g. XFELD '', 'X')
+        # sort ahead of the gate's literals in the candidates, so pin the gate's first literal
+        dup.update({c: str(g[0]) for c, g in aw.items() if c in dup and isinstance(g, list) and g
+                    and dup[c] not in [str(v) for v in g]})
         # two records sharing the value but differing elsewhere (not a repeated flat row)
         grain = tables_of(cols)[0]
         other = next((f"{grain}.{f.name}" for f in dictionary.table(grain).fields.values()
