@@ -3352,6 +3352,39 @@ class ChangeRequest(Base):
     )
 
 
+class ChangeRequestFieldChange(Base):
+    """One field of a draft set, changed, removed or defaulted, with old and new value (migration 124)."""
+    __tablename__ = "change_request_field_changes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("change_requests.id", ondelete="CASCADE"), nullable=False)
+    field = Column(Text, nullable=False)
+    action = Column(Text, nullable=False)  # set | changed | removed | defaulted
+    old_value = Column(Text, nullable=True)
+    new_value = Column(Text, nullable=True)
+    actor_id = Column(UUID(as_uuid=True), nullable=True)
+    actor_label = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (Index("ix_cr_field_changes_request", "tenant_id", "request_id", "created_at"),)
+
+
+class RequestDefault(Base):
+    """A tenant value filled into an empty field of a create request (migration 124)."""
+    __tablename__ = "request_defaults"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    object = Column(Text, nullable=False)
+    field = Column(Text, nullable=False)
+    value = Column(Text, nullable=False)
+    updated_by = Column(UUID(as_uuid=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "object", "field", name="uq_request_defaults"),)
+
+
 class ChangeRequestAttachment(Base):
     """Metadata of a file attached to a change request."""
     __tablename__ = "change_request_attachments"
