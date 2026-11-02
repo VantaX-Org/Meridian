@@ -10,7 +10,7 @@ import { formatDate } from "@/lib/format";
 import { errorSentence } from "@/lib/api/v2/client";
 import { createRequest, deleteDefault, putDefault, submitRequest, validateRequest, type ChangeRequest, type Precheck, type RequestKind, type RequestObject, type RequestStatus, type RequestView } from "@/lib/api/v2/requests";
 import { useOpenItem, useUrlParam, useV2Session } from "@/lib/v2/hooks";
-import { useEntryDefaults, useRequests } from "@/lib/v2/requests-queries";
+import { useEntryDefaults, useMassPreview, useRequests } from "@/lib/v2/requests-queries";
 import { describeField } from "@/lib/v2/sap-fields";
 import { t } from "@/lib/v2/i18n";
 import { ageWord, kindWord, objectWord, PrecheckView, statusWord } from "../inspector/request";
@@ -19,7 +19,8 @@ import { CcBanner, CcHBars, CcPage, type CcBarRow } from "./cc-parts";
 
 const VIEWS: readonly RequestView[] = ["mine", "to_approve", "all"];
 const OBJECTS: readonly RequestObject[] = ["material", "customer", "vendor", "business_partner"];
-const KINDS: readonly RequestKind[] = ["create", "change"];
+const KINDS: readonly RequestKind[] = ["create", "change", "mass_change"];
+const KEY_NAME: Record<RequestObject, string> = { material: "MATNR", customer: "KUNNR", vendor: "LIFNR", business_partner: "PARTNER" };
 const STATUSES: readonly RequestStatus[] = ["draft", "submitted", "in_approval", "approved", "rejected", "creating", "created", "failed", "cancelled"];
 
 const viewWord = (v: RequestView): string => ({ mine: t("Mine"), to_approve: t("To approve"), all: t("All") })[v];
@@ -35,20 +36,73 @@ export function parseFields(text: string): Record<string, string> {
   return out;
 }
 
+/** Record keys from pasted text or the `keys` address parameter: split on lines, commas and spaces; a bare number gets the object's key field. */
+export function parseKeys(text: string, object: RequestObject): string[] {
+  const out = text.split(/[\s,;]+/).filter(Boolean).map((k) => (k.includes("=") ? k : `${KEY_NAME[object]}=${k}`));
+  return [...new Set(out)];
+}
+
+/** Each record of a mass change with its current and new value; the code and its text sit together. */
+function MassPreviewGrid({ id }: { id: string }) {
+  const q = useMassPreview(id);
+  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>{t("The preview could not be read.")}</ErrorFrame>;
+  if (!q.data) return <Skeleton width="100%" height={120} />;
+  const { counts, rows } = q.data;
+  return (
+    <div data-testid="mass-preview">
+      <p className="m2-prov">
+        {t("{records} {n, plural, one {record} other {records}}: {found} found, {missing} not found, {changing} would change, {unchanged} already hold the value.", { records: counts.records, n: counts.records, found: counts.found, missing: counts.missing, changing: counts.changing, unchanged: counts.unchanged })}
+      </p>
+      <table className="m2-tbl" aria-label={t("Preview of the mass change")}>
+        <thead>
+          <tr>
+            <th scope="col">{t("Record")}</th>
+            <th scope="col">{t("Field")}</th>
+            <th scope="col">{t("Current value")}</th>
+            <th scope="col">{t("New value")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={`${r.record_key}|${r.field}`}>
+              <td>
+                <Coded code={r.record_key} text={r.known ? r.text ?? "" : t("Not found")} />
+              </td>
+              <td>
+                <Coded code={r.field} text={describeField(r.field)} />
+              </td>
+              <td>{r.before === null ? "" : <Mono>{r.before}</Mono>}</td>
+              <td>
+                <Mono>{r.after}</Mono>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {q.data.truncated ? <p className="m2-prov">{t("Only the first rows are shown.")}</p> : null}
+    </div>
+  );
+}
+
 /** The new request form: object, kind and fields; Check creates the draft and runs the pre-checks, Submit sends it into approval. */
-function NewRequest({ onDone }: { onDone: (id: string) => void }) {
+function NewRequest({ onDone, initialKeys }: { onDone: (id: string) => void; initialKeys: string }) {
   const qc = useQueryClient();
   const [object, setObject] = useState<RequestObject>("material");
-  const [kind, setKind] = useState<RequestKind>("create");
+  const [kind, setKind] = useState<RequestKind>(initialKeys ? "mass_change" : "create");
   const [key, setKey] = useState("");
   const [title, setTitle] = useState("");
   const [fields, setFields] = useState("");
+  const [keys, setKeys] = useState(initialKeys.replace(/[,;]/g, "\n"));
+  const [massField, setMassField] = useState("");
+  const [massValue, setMassValue] = useState("");
   const [draft, setDraft] = useState<ChangeRequest | null>(null);
   const [check, setCheck] = useState<Precheck | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const payload = parseFields(fields);
-  const empty = Object.keys(payload).length === 0 || (kind === "change" && !key.trim());
+  const mass = kind === "mass_change";
+  const recordKeys = parseKeys(keys, object);
+  const payload = mass ? (massField.trim() && massValue.trim() ? { [massField.trim().toUpperCase()]: massValue.trim() } : {}) : parseFields(fields);
+  const empty = Object.keys(payload).length === 0 || (kind === "change" && !key.trim()) || (mass && recordKeys.length === 0);
   const edit = () => {
     setDraft(null);
     setCheck(null);
@@ -66,7 +120,7 @@ function NewRequest({ onDone }: { onDone: (id: string) => void }) {
   };
   const validate = () =>
     run(async () => {
-      const d = draft ?? (await createRequest({ kind, object, object_key: kind === "change" ? key.trim() : null, title: title.trim() || null, payload }));
+      const d = draft ?? (await createRequest({ kind, object, object_key: kind === "change" ? key.trim() : null, title: title.trim() || null, payload, ...(mass ? { record_keys: recordKeys } : {}) }));
       setDraft(d);
       setCheck(await validateRequest(d.id));
       await qc.invalidateQueries({ queryKey: ["v2"] });
@@ -113,10 +167,29 @@ function NewRequest({ onDone }: { onDone: (id: string) => void }) {
           <span className="m2-lbl">{t("Title")}</span>
           <input value={title} maxLength={200} onChange={(e) => (setTitle(e.target.value), edit())} />
         </label>
-        <label className="m2-fld m2-wide">
-          <span className="m2-lbl">{t("Fields, one TABLE.FIELD=value per line")}</span>
-          <textarea rows={6} value={fields} spellCheck={false} placeholder="MARA.MATKL=001" onChange={(e) => (setFields(e.target.value), edit())} />
-        </label>
+        {mass ? (
+          <>
+            <label className="m2-fld m2-wide">
+              <span className="m2-lbl">{t("Record keys, one per line; a bare number takes the key field of the object")}</span>
+              <textarea rows={6} value={keys} spellCheck={false} placeholder="MATNR=000000000000000101" onChange={(e) => (setKeys(e.target.value), edit())} />
+            </label>
+            <label className="m2-fld">
+              <span className="m2-lbl">{t("Field, as TABLE.FIELD")}</span>
+              <input value={massField} maxLength={60} spellCheck={false} placeholder="MARC.DISPO" onChange={(e) => (setMassField(e.target.value), edit())} />
+              {massField.trim() ? <span className="m2-prov">{describeField(massField.trim().toUpperCase())}</span> : null}
+            </label>
+            <label className="m2-fld">
+              <span className="m2-lbl">{t("New value")}</span>
+              <input value={massValue} maxLength={500} onChange={(e) => (setMassValue(e.target.value), edit())} />
+            </label>
+            <p className="m2-prov">{t("Meridian shows each record's current value from its own data. Nothing is written to SAP; an approved mass change leaves a load file.")}</p>
+          </>
+        ) : (
+          <label className="m2-fld m2-wide">
+            <span className="m2-lbl">{t("Fields, one TABLE.FIELD=value per line")}</span>
+            <textarea rows={6} value={fields} spellCheck={false} placeholder="MARA.MATKL=001" onChange={(e) => (setFields(e.target.value), edit())} />
+          </label>
+        )}
       </div>
       <div className="m2-cta">
         <button type="button" className="m2-btn" disabled={busy || empty} onClick={() => void validate()}>
@@ -127,6 +200,7 @@ function NewRequest({ onDone }: { onDone: (id: string) => void }) {
         </button>
       </div>
       {check ? <PrecheckView p={check} /> : null}
+      {mass && draft ? <MassPreviewGrid id={draft.id} /> : null}
       {error ? <p className="m2-prov" role="alert">{error}</p> : null}
     </section>
   );
@@ -257,7 +331,7 @@ function Table({ rows }: { rows: ChangeRequest[] }) {
             <tr key={r.id} aria-current={openId === r.id ? "true" : undefined}>
               <td>
                 <V2Link href={hrefFor({ kind: "request", id: r.id })} className="m2-rowlink">
-                  {r.title || (r.object_key ? <Mono>{r.object_key}</Mono> : t("Untitled request"))}
+                  {r.title || (r.kind === "mass_change" ? t("Mass change of {n} {count, plural, one {record} other {records}}", { n: r.record_count, count: r.record_count }) : r.object_key ? <Mono>{r.object_key}</Mono> : t("Untitled request"))}
                 </V2Link>
               </td>
               <td>{objectWord(r.object)}</td>
@@ -286,7 +360,8 @@ export function RequestsCanvas() {
   const [status, setStatus] = useUrlParam<string>("status", "all");
   const [object, setObject] = useUrlParam<string>("object", "all");
   const [kind, setKind] = useUrlParam<string>("kind", "all");
-  const [composing, setComposing] = useState(false);
+  const [keysParam] = useUrlParam<string>("keys", "");
+  const [composing, setComposing] = useState(keysParam !== "");
   const [showDefaults, setShowDefaults] = useState(false);
   const q = useRequests({ view, status: status === "all" ? undefined : status, object: object === "all" ? undefined : object, kind: kind === "all" ? undefined : kind });
   const rows = q.data?.items ?? [];
@@ -361,6 +436,7 @@ export function RequestsCanvas() {
       {showDefaults ? <EntryDefaults canEdit={session.can("manage_workflows") && !session.shared} /> : null}
       {composing ? (
         <NewRequest
+          initialKeys={keysParam}
           onDone={(id) => {
             setComposing(false);
             openItem({ kind: "request", id });

@@ -52,13 +52,13 @@ OPS: tuple[str, ...] = ("eq", "ne", "gt", "gte", "lt", "lte", "in", "not_in", "c
 # api/services/change_requests.py facts).
 FACTS: dict[str, str] = {
     "object_kind": "fix_batch or change_request",
-    "kind": "change requests: create or change",
+    "kind": "change requests: create, change or mass_change",
     "object": "change requests: material, customer, vendor or business_partner",
     "modules": "the Meridian objects touched (material_master, business_partner, ...)",
     "fields": "the SAP fields touched, as TABLE.FIELD",
     "policy_classes": "the applied policy classes touched: the pack (gxp, sox, gdpr) and pack:class",
     "value_at_risk": "fix batches: the value at risk of its records (currency of the cost model)",
-    "records": "fix batches: the number of records",
+    "records": "fix batches and mass change requests: the number of records",
     "target_system_id": "change requests: the SAP system it is for",
     "rule_failures": "change requests: Meridian rules the proposed record fails",
     "critical_failures": "change requests: critical rules the proposed record fails",

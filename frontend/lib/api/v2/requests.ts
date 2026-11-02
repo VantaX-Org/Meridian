@@ -3,7 +3,7 @@ import { v2Download } from "./download";
 
 /** Master data change requests (api/routes/change_requests.py) and the workflow engine (api/routes/workflows.py). */
 
-export type RequestKind = "create" | "change";
+export type RequestKind = "create" | "change" | "mass_change";
 export type RequestObject = "material" | "customer" | "vendor" | "business_partner";
 export type RequestStatus = "draft" | "submitted" | "in_approval" | "approved" | "rejected" | "creating" | "created" | "failed" | "cancelled";
 export type RequestView = "mine" | "to_approve" | "all";
@@ -14,6 +14,8 @@ export interface ChangeRequest {
   object: RequestObject;
   target_system_id: string | null;
   object_key: string | null;
+  /** Records a mass change names (the keys themselves are read through the preview). */
+  record_count: number;
   title: string | null;
   payload: Record<string, string>;
   status: RequestStatus;
@@ -75,11 +77,11 @@ export interface RequestAttachment { id: string; filename: string; content_type:
 export interface RequestDetail { request: ChangeRequest; workflow: WorkflowInstance | null; history: WorkflowEvent[]; comments: RequestComment[]; attachments: RequestAttachment[] }
 
 export interface RequestFilter { view: RequestView; status?: string; object?: string; kind?: string }
-export interface RequestDraft { kind: RequestKind; object: RequestObject; target_system_id?: string | null; object_key?: string | null; title?: string | null; payload: Record<string, string> }
+export interface RequestDraft { kind: RequestKind; object: RequestObject; target_system_id?: string | null; object_key?: string | null; title?: string | null; payload: Record<string, string>; record_keys?: string[] }
 
 /** One field of a request that was set, changed, removed or defaulted (GET /change-requests/{id}/field-history). */
 export type FieldAction = "set" | "changed" | "removed" | "defaulted";
-export interface FieldChange { id: string; field: string; action: FieldAction; old_value: string | null; new_value: string | null; actor_label: string | null; created_at: string }
+export interface FieldChange { id: string; record_key?: string | null; field: string; action: FieldAction; old_value: string | null; new_value: string | null; actor_label: string | null; created_at: string }
 /** A value filled into an empty field of a new create request (GET /change-requests/defaults). */
 export interface EntryDefault { id: string; object: RequestObject; field: string; value: string; updated_at: string }
 
@@ -97,7 +99,11 @@ export const retryRequest = (id: string, checked_in_sap: boolean) => v2Send<Chan
 export const commentRequest = (id: string, body: string) => v2Send<RequestComment>("POST", `${cr(id)}/comments`, { body });
 export const attachToRequest = (id: string, filename: string, content_type: string | null, size_bytes: number) => v2Send<RequestAttachment>("POST", `${cr(id)}/attachments`, { filename, content_type, size_bytes });
 export const getFieldHistory = (id: string) => v2Get<{ items: FieldChange[] }>(`${cr(id)}/field-history`);
-export const listDefaults = () => v2Get<{ items: EntryDefault[] }>("/change-requests/defaults");
+/** One record and field of a mass change, before and after, read from the master records Meridian holds. */
+export interface MassRow { record_key: string; field: string; before: string | null; after: string; unchanged: boolean; known: boolean; text: string | null }
+export interface MassPreview { counts: { records: number; found: number; missing: number; changing: number; unchanged: number; fields: number }; rows: MassRow[]; truncated: boolean }
+export const getMassPreview = (id: string) => v2Get<MassPreview>(`${cr(id)}/preview`);
+export const listDefaults =() => v2Get<{ items: EntryDefault[] }>("/change-requests/defaults");
 export const putDefault = (object: RequestObject, field: string, value: string) => v2Send<EntryDefault>("PUT", "/change-requests/defaults", { object, field, value });
 export const deleteDefault = (id: string) => v2Send<{ deleted: string }>("DELETE", `/change-requests/defaults/${enc(id)}`);
 export const exportRequest = (id: string) => v2Download(`${cr(id)}/export`, undefined, `change_request_${id}.json`);

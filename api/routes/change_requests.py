@@ -30,7 +30,7 @@ from api.services.rbac import current_user_id, current_user_label, require_permi
 router = APIRouter(prefix="/api/v1/change-requests", tags=["change-requests"])
 logger = logging.getLogger("meridian.change_requests")
 
-Kind = Literal["create", "change"]
+Kind = Literal["create", "change", "mass_change"]
 Obj = Literal["material", "customer", "vendor", "business_partner"]
 
 
@@ -41,6 +41,8 @@ class RequestCreate(BaseModel):
     object_key: Optional[str] = Field(None, max_length=500, description="change: the record, e.g. MATNR=...|WERKS=...")
     title: Optional[str] = Field(None, max_length=200)
     payload: dict[str, Any] = Field(default_factory=dict, max_length=500, description="TABLE.FIELD: proposed value")
+    record_keys: Optional[list[str]] = Field(None, max_length=crs.MAX_MASS_RECORDS,
+                                             description="mass_change: the records, e.g. MATNR=...")
 
 
 class RequestUpdate(BaseModel):
@@ -48,6 +50,7 @@ class RequestUpdate(BaseModel):
     object_key: Optional[str] = Field(None, max_length=500)
     title: Optional[str] = Field(None, max_length=200)
     payload: Optional[dict[str, Any]] = Field(None, max_length=500)
+    record_keys: Optional[list[str]] = Field(None, max_length=crs.MAX_MASS_RECORDS)
 
 
 class RequestOut(BaseModel):
@@ -71,6 +74,7 @@ class RequestOut(BaseModel):
     delivery: Optional[str] = None
     has_export: bool = False
     reason: Optional[str] = None
+    record_count: int = Field(0, description="mass_change: the number of records")
     created_at: datetime
     updated_at: datetime
     submitted_at: Optional[datetime] = None
@@ -163,8 +167,9 @@ def _own(cr: dict, uid: str) -> None:
         raise HTTPException(status_code=403, detail="Only the requester changes this request.")
 
 
-def _problems(obj: str, kind: str, payload: dict, object_key: Optional[str]) -> None:
-    problems = crs.check_payload(obj, kind, payload, object_key)
+def _problems(obj: str, kind: str, payload: dict, object_key: Optional[str],
+              record_keys: Optional[list[str]] = None) -> None:
+    problems = crs.check_payload(obj, kind, payload, object_key, record_keys)
     if problems:
         raise HTTPException(status_code=422, detail={"detail": "The proposal is not valid.", "problems": problems})
 
@@ -180,6 +185,8 @@ async def _precheck(db: AsyncSession, tenant: Tenant, cr: dict) -> dict:
     from sap.bapi_writeback import parse_key
 
     tid = str(tenant.id)
+    if cr["kind"] == "mass_change":  # no one-row frame to check; the preview shows what changes
+        return {"rules_run": 0, "failures": [], "duplicates": [], "checked_at": datetime.now(timezone.utc).isoformat()}
     overrides, authored = await db.run_sync(lambda s: crs.governance(s))
     rules = await asyncio.to_thread(crs.rule_results, tid, cr["object"], cr["payload"], cr.get("object_key"),
                                     overrides, authored)
@@ -210,15 +217,17 @@ async def create_request(body: RequestCreate, request: Request, db: AsyncSession
     payload, defaulted = crs.normalise(body.payload), []
     if body.kind == "create":
         payload, defaulted = await db.run_sync(lambda s: crs.apply_defaults(s, str(tenant.id), body.object, payload))
-    _problems(body.object, body.kind, payload, body.object_key)
+    keys = [k.strip() for k in body.record_keys] if body.kind == "mass_change" and body.record_keys else None
+    _problems(body.object, body.kind, payload, body.object_key, keys)
     await _system_ok(db, tenant, body.target_system_id)
     cid = (await db.execute(text(
         "INSERT INTO change_requests (tenant_id, kind, object, target_system_id, object_key, title, payload, "
-        "requester_id, requester_label) VALUES (:t, :k, :o, CAST(:s AS uuid), :key, :title, CAST(:p AS jsonb), "
-        "CAST(:u AS uuid), :l) RETURNING id::text"),
+        "record_keys, requester_id, requester_label) VALUES (:t, :k, :o, CAST(:s AS uuid), :key, :title, "
+        "CAST(:p AS jsonb), CAST(:rk AS jsonb), CAST(:u AS uuid), :l) RETURNING id::text"),
         {"t": str(tenant.id), "k": body.kind, "o": body.object,
          "s": str(body.target_system_id) if body.target_system_id else None, "key": body.object_key,
-         "title": body.title, "p": json.dumps(payload, default=str), "u": uid,
+         "title": body.title, "p": json.dumps(payload, default=str),
+         "rk": json.dumps(list(dict.fromkeys(keys))) if keys else None, "u": uid,
          "l": current_user_label()})).scalar()
     await db.run_sync(lambda s: crs.record_changes(s, str(tenant.id), cid, {}, payload, uid, current_user_label(),
                                                    defaulted))
@@ -243,13 +252,17 @@ async def update_request(request_id: uuid.UUID, body: RequestUpdate, request: Re
     if cr["kind"] == "create" and body.payload is not None:
         payload, defaulted = await db.run_sync(lambda s: crs.apply_defaults(s, str(tenant.id), cr["object"], payload))
     key = body.object_key if body.object_key is not None else cr["object_key"]
-    _problems(cr["object"], cr["kind"], payload, key)
+    keys = ([k.strip() for k in body.record_keys] if body.record_keys is not None else cr.get("record_keys")) \
+        if cr["kind"] == "mass_change" else None
+    _problems(cr["object"], cr["kind"], payload, key, keys)
     await _system_ok(db, tenant, body.target_system_id)
     await db.execute(text(
         "UPDATE change_requests SET payload = CAST(:p AS jsonb), object_key = :k, title = COALESCE(:ti, title), "
+        "record_keys = CAST(:rk AS jsonb), "
         "target_system_id = COALESCE(CAST(:s AS uuid), target_system_id), precheck = NULL, validated_at = NULL, "
         "updated_at = now() WHERE id = :i AND tenant_id = :t"),
         {"p": json.dumps(payload, default=str), "k": key, "ti": body.title,
+         "rk": json.dumps(list(dict.fromkeys(keys))) if keys else None,
          "s": str(body.target_system_id) if body.target_system_id else None, "i": str(request_id),
          "t": str(tenant.id)})
     await db.run_sync(lambda s: crs.record_changes(s, str(tenant.id), cr["id"], cr["payload"], payload, uid,
@@ -268,7 +281,7 @@ async def validate_request(request_id: uuid.UUID, request: Request, db: AsyncSes
                            tenant: Tenant = Depends(get_tenant)) -> PrecheckOut:
     """Which of Meridian's rules the proposed record would fail, and which master records it may duplicate."""
     cr = await _load(db, tenant, request_id)
-    problems = crs.check_payload(cr["object"], cr["kind"], cr["payload"], cr["object_key"])
+    problems = crs.check_payload(cr["object"], cr["kind"], cr["payload"], cr["object_key"], cr.get("record_keys"))
     if problems:
         return PrecheckOut(problems=problems)
     pc = await _precheck(db, tenant, cr)
@@ -294,7 +307,7 @@ async def submit_request(request_id: uuid.UUID, request: Request, db: AsyncSessi
     _own(cr, uid)
     if cr["status"] != "draft":
         raise HTTPException(status_code=409, detail=f"The request is {cr['status']}; only a draft is submitted.")
-    _problems(cr["object"], cr["kind"], cr["payload"], cr["object_key"])
+    _problems(cr["object"], cr["kind"], cr["payload"], cr["object_key"], cr.get("record_keys"))
     pc = await _precheck(db, tenant, cr)
     tid, label = str(tenant.id), current_user_label()
 
@@ -500,13 +513,29 @@ async def delete_default(default_id: uuid.UUID, db: AsyncSession = Depends(get_d
 @router.get("/{request_id}/field-history", dependencies=[Depends(require_permission("mdm.read"))])
 async def field_history(request_id: uuid.UUID, db: AsyncSession = Depends(get_db),
                         tenant: Tenant = Depends(get_tenant)) -> dict:
-    """Every field of the request that was set, changed, removed or defaulted: old and new value, who, when."""
+    """Every field of the request that was set, changed, removed or defaulted: old and new value, who, when. A mass
+    change has a row per record too (record_key), the first 2,000 by record."""
     await _load(db, tenant, request_id)
     rows = (await db.execute(text(
-        "SELECT id::text AS id, field, action, old_value, new_value, actor_label, created_at "
-        "FROM change_request_field_changes WHERE tenant_id = :t AND request_id = :r ORDER BY created_at, field"),
+        "SELECT id::text AS id, record_key, field, action, old_value, new_value, actor_label, created_at "
+        "FROM change_request_field_changes WHERE tenant_id = :t AND request_id = :r "
+        "ORDER BY created_at, record_key NULLS FIRST, field LIMIT 2000"),
         {"t": str(tenant.id), "r": str(request_id)})).mappings()
     return {"items": [dict(r) for r in rows]}
+
+
+@router.get("/{request_id}/preview", dependencies=[Depends(require_permission("mdm.read"))])
+async def preview_request(request_id: uuid.UUID, limit: int = Query(500, ge=1, le=2000),
+                          db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
+    """A mass change before it is submitted: per record the value now and after, from the master records Meridian
+    holds (never SAP), with counts over all the records and the rows of the first ``limit`` records."""
+    cr = await _load(db, tenant, request_id)
+    if cr["kind"] != "mass_change":
+        raise HTTPException(status_code=409, detail="Only a mass change has a preview.")
+    pv = await db.run_sync(lambda s: crs.mass_preview(s, str(tenant.id), cr["object"], cr["payload"],
+                                                      cr.get("record_keys") or []))
+    nf = pv["counts"]["fields"] or 1
+    return {**pv, "rows": pv["rows"][:limit * nf], "truncated": pv["counts"]["records"] > limit}
 
 
 @router.get("", response_model=RequestList)

@@ -3334,6 +3334,7 @@ class ChangeRequest(Base):
     delivery = Column(Text, nullable=True)  # sap | export
     export = Column(JSONB, nullable=True)
     reason = Column(Text, nullable=True)
+    record_keys = Column(JSONB, nullable=True)  # mass_change: the SAP keys of the records (migration 125)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     submitted_at = Column(DateTime(timezone=True), nullable=True)
@@ -3341,12 +3342,13 @@ class ChangeRequest(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
-        CheckConstraint("kind IN ('create', 'change')", name="ck_change_requests_kind"),
+        CheckConstraint("kind IN ('create', 'change', 'mass_change')", name="ck_change_requests_kind"),
         CheckConstraint("object IN ('material', 'customer', 'vendor', 'business_partner')",
                         name="ck_change_requests_object"),
         CheckConstraint("status IN ('draft', 'submitted', 'in_approval', 'approved', 'rejected', 'creating', "
                         "'created', 'failed', 'cancelled')", name="ck_change_requests_status"),
-        CheckConstraint("kind = 'create' OR object_key IS NOT NULL", name="ck_change_requests_change_key"),
+        CheckConstraint("kind IN ('create', 'mass_change') OR object_key IS NOT NULL",
+                        name="ck_change_requests_change_key"),
         Index("ix_change_requests_status", "tenant_id", "status", "created_at"),
         Index("ix_change_requests_requester", "tenant_id", "requester_id", "created_at"),
     )
@@ -3360,6 +3362,7 @@ class ChangeRequestFieldChange(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     request_id = Column(UUID(as_uuid=True), ForeignKey("change_requests.id", ondelete="CASCADE"), nullable=False)
     field = Column(Text, nullable=False)
+    record_key = Column(Text, nullable=True)  # mass_change: the record this row belongs to (migration 125)
     action = Column(Text, nullable=False)  # set | changed | removed | defaulted
     old_value = Column(Text, nullable=True)
     new_value = Column(Text, nullable=True)

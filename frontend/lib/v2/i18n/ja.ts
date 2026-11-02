@@ -7144,4 +7144,11 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Save default": "既定値を保存",
   "{n} {overdue, plural, one {request is} other {requests are}} past the due time of the waiting approval step.": "{n} 件の申請が、待機中の承認ステップの期限を過ぎています。",
   "past the step due time": "ステップの期限超過",
+  "Mass change": "一括変更",
+  "Mass change of {n} {count, plural, one {record} other {records}}": "{n} 件のレコードの一括変更",
+  "Record keys, one per line; a bare number takes the key field of the object": "レコードキー (1 行に 1 つ。番号のみの場合はオブジェクトのキー項目を付けます)",
+  "Meridian shows each record's current value from its own data. Nothing is written to SAP; an approved mass change leaves a load file.": "Meridian は各レコードの現在値を自身のデータから表示します。SAP には何も書き込まれません。承認された一括変更はロードファイルとして残ります。",
+  "{records} {n, plural, one {record} other {records}}: {found} found, {missing} not found, {changing} would change, {unchanged} already hold the value.": "{records} 件: {found} 件が見つかり、{missing} 件は見つからず、{changing} 件が変更され、{unchanged} 件は既にその値です。",
+  "Preview of the mass change": "一括変更のプレビュー",
+  "Only the first rows are shown.": "最初の行のみ表示しています。",
 };

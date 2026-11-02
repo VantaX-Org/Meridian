@@ -7144,4 +7144,11 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Save default": "Vorgabewert speichern",
   "{n} {overdue, plural, one {request is} other {requests are}} past the due time of the waiting approval step.": "{n} {overdue, plural, one {Antrag ist} other {Anträge sind}} über die Fälligkeit des wartenden Genehmigungsschritts hinaus.",
   "past the step due time": "Fälligkeit des Schritts überschritten",
+  "Mass change": "Massenänderung",
+  "Mass change of {n} {count, plural, one {record} other {records}}": "Massenänderung von {n} {count, plural, one {Datensatz} other {Datensätzen}}",
+  "Record keys, one per line; a bare number takes the key field of the object": "Datensatzschlüssel, einer pro Zeile; eine reine Nummer erhält das Schlüsselfeld des Objekts",
+  "Meridian shows each record's current value from its own data. Nothing is written to SAP; an approved mass change leaves a load file.": "Meridian zeigt den aktuellen Wert jedes Datensatzes aus den eigenen Daten. Nichts wird in SAP geschrieben; eine freigegebene Massenänderung hinterlässt eine Ladedatei.",
+  "{records} {n, plural, one {record} other {records}}: {found} found, {missing} not found, {changing} would change, {unchanged} already hold the value.": "{records} {n, plural, one {Datensatz} other {Datensätze}}: {found} gefunden, {missing} nicht gefunden, {changing} würden sich ändern, {unchanged} haben den Wert bereits.",
+  "Preview of the mass change": "Vorschau der Massenänderung",
+  "Only the first rows are shown.": "Nur die ersten Zeilen werden angezeigt.",
 };

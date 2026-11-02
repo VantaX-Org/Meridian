@@ -43,7 +43,7 @@ export function objectWord(o: RequestObject): string {
 /** Hours open as a short span: under two days in hours, else in days. */
 export const ageWord = (h: number): string => (h < 48 ? tr("{n} h", { n: int(Math.round(h)) }) : tr("{n} d", { n: int(Math.round(h / 24)) }));
 
-export const kindWord = (k: RequestKind): string => (k === "create" ? tr("Create") : tr("Change"));
+export const kindWord = (k: RequestKind): string => (k === "create" ? tr("Create") : k === "mass_change" ? tr("Mass change") : tr("Change"));
 
 /** The rule pre-checks and duplicate candidates of a request: what the validate step answered. */
 export function PrecheckView({ p }: { p: Precheck }) {
