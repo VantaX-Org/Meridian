@@ -14,6 +14,7 @@ import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../part
 import { ToolGrid } from "../../GridTools";
 import { t } from "@/lib/v2/i18n";
 import { ResultFrame, useOutcome } from "../../inspector/shared";
+import { ConsolidationPackSection, MatchProfile } from "./MatchDepth";
 
 export const RULE_LABEL: Record<string, string> = {
   get most_recent() { return t("Most recent"); },
@@ -256,6 +257,8 @@ export function GoldenTab({ module: moduleSegment }: { system: string; module: s
         <p className="m2-prov">{t("Confidence is the match engine's score for the surviving record. Last merged is when the record last changed. Open conflicts are fields where the sources disagree and no rule has settled it.")}</p>
       </section>
       <Survivorship module={apiModule} />
+      <MatchProfile module={apiModule} />
+      <ConsolidationPackSection module={apiModule} />
     </div>
   );
 }

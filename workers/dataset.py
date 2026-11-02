@@ -135,13 +135,15 @@ def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]]
     return TableFrames.from_flat(df, dictionary, conversions=conversions), df, len(df), len(df.columns)
 
 
-def load_module_frame(path: str, module: str, dictionary: Optional[Dictionary] = None) -> pd.DataFrame:
+def load_module_frame(path: str, module: str, dictionary: Optional[Dictionary] = None,
+                      anchor: Optional[str] = None) -> pd.DataFrame:
     """One flat frame for record-level consumers (cleaning, dedup, mining).
 
     Flat uploads are returned as uploaded. Extraction bundles return the
-    module's anchor table (e.g. LFA1 for accounts_payable) joined with its
-    1:1 attribute tables (address, e-mail, bank …) — one row per business
-    object, never fanned out.
+    module's anchor table (e.g. LFA1 for accounts_payable), or ``anchor`` when
+    a consumer needs another grain (PERINFO for person-level matching), joined
+    with its 1:1 attribute tables (address, e-mail, bank …) — one row per
+    business object, never fanned out.
     """
     from checks.frames import _graph
     from sap.ddic import get_dictionary
@@ -151,7 +153,7 @@ def load_module_frame(path: str, module: str, dictionary: Optional[Dictionary] =
     if flat is not None:
         return flat
     edges, anchors = _graph()
-    anchor = anchors.get(module)
+    anchor = anchor if anchor in frames.frames else anchors.get(module)
     if anchor not in frames.frames:
         anchor = max(frames.frames, key=lambda t: len(frames.frames[t]))  # best effort: largest table
     tables, todo = {anchor}, [anchor]
