@@ -11736,7 +11736,7 @@ rules:
   sap_impact: Payroll replication cannot map the amount to a wage type, so the employee is under- or over-paid.
   fix_map:
     __blank__: Assign the pay component the amount belongs to.
-  record_fix_template: 'Employee {COMPINFO.USERID}: amount {COMPINFO.SALARY} effective {COMPINFO.EFFECTIVE_DATE} has
+  record_fix_template: 'Employee {COMPINFO.USERID}: compensation record effective {COMPINFO.EFFECTIVE_DATE} has
     no pay component.'
 - id: EC622
   field: COMPINFO.CURRENCY
@@ -11767,7 +11767,7 @@ rules:
   sap_impact: Annual salary, compa-ratio and range penetration cannot be calculated; payroll cannot prorate the amount.
   fix_map:
     __blank__: Enter the frequency of the pay component.
-  record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} amount {COMPINFO.SALARY} has
+  record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} amount has
     no frequency.'
 - id: EC624
   field: COMPINFO.PAY_GROUP
@@ -11957,7 +11957,7 @@ rules:
   sap_impact: The employee is paid a value the pay component configuration forbids.
   fix_map:
     __other__: Reset the amount to the pay component default, or allow overrides on the pay component if intended.
-  record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} amount {COMPINFO.SALARY} differs
+  record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} amount differs
     from fixed default {COMPINFO.PAY_COMPONENT_DEFAULT}.'
 - id: EC635
   field: COMPINFO.ANNUALIZATION_FACTOR

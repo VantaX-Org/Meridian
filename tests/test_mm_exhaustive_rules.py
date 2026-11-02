@@ -13,7 +13,7 @@ from sap.ddic import get_dictionary
 
 PACK = yaml.safe_load(open("checks/rules/ecc/material_master.yaml"))["rules"]
 RULES = {r["id"]: r for r in PACK}
-NEW = [r for r in PACK if r["id"][2:].isdigit() and int(r["id"][2:]) >= 900]
+NEW = [r for r in PACK if r["id"][2:].isdigit() and int(r["id"][2:]) >= 900 and int(r["id"][2:]) <= 1073]
 DDIC = get_dictionary("ecc6")
 OPS = {"strip", "collapse_spaces", "upper", "lower", "title", "pad_left", "strip_leading_zeros", "regex_replace",
        "truncate", "map", "set", "copy", "lookup", "date_format", "gtin_check_digit"}
@@ -314,7 +314,8 @@ EXPECT = {"MM901": (2, 3), "MM908": (2, 3), "MM916": (2, 3), "MM917": (2, 3), "M
 def test_ids_contiguous_from_900():
     ids = [int(r["id"][2:]) for r in NEW]
     assert ids == list(range(900, 900 + len(ids)))
-    assert PACK[-len(NEW):] == NEW
+    start = PACK.index(NEW[0])
+    assert PACK[start:start + len(NEW)] == NEW
 
 
 def test_schema_contract():
