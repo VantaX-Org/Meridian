@@ -27,6 +27,15 @@ The Data mining page, under Data mining in the map, shows what the mining tasks 
 
 Users who may change master data can press **Mine the latest runs** to mine the latest run of every object again. A role that cannot read the mining results sees a dash in each list.
 
+## Anomaly rules
+
+The Anomaly rules page, under Anomaly rules in the map, turns an outlier that mining found into a proposed rule. It lists each field that has outliers, with the field description, how many outliers it has and the usual range. Users who may manage rules press **Propose a rule** on a field. The page then shows:
+
+- **The proposed rule.** A deterministic rule that flags values outside the usual range of the field. It is a template, so no AI is used. The AI drafts a rule only when no template fits, and then it sees the field, the statistic and counts, never a record.
+- **The evidence.** The outliers found, how many records the rule would flag when it runs on the same data, and the confidence.
+
+Press **Save as draft** to keep the rule as a draft in the rule workbench, where it is reviewed and published as any other draft.
+
 ## MDM health
 
 The MDM health page, under MDM health in the map, shows the daily snapshot of how well master data is governed. The banner gives the health score out of 100 and its change over the last 90 days, with the golden records, the open stewardship items and the share of systems synced beside it. Under it:

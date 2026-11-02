@@ -43,6 +43,7 @@ import { NONE_PROFILE, profileRead, profileWrite, resetProfileFixture } from "./
 import { NONE_SYNC_TRIGGER, resetSyncTriggerFixture, syncTriggerRead, syncTriggerWrite } from "./syncTrigger";
 import { NONE_SIMULATIONS, simulationsRead, simulationsWrite, resetSimulationsFixture } from "./simulations";
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
+import { anomalyRulesWrite, NONE_ANOMALY_RULES } from "./anomalyRules";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
 import { guardDecision, NONE_STEP10, receiptPolicy, resetStep10Fixture, step10Read, step10Write, withPolicyMarks, withSandbox } from "./step10";
 
@@ -154,6 +155,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (cl !== NONE_CLEANING) return cl as T;
   const pd = discoveryWrite(method, path, body);
   if (pd !== NONE_DISCOVERY) return pd as T;
+  const ar = anomalyRulesWrite(method, path, body);
+  if (ar !== NONE_ANOMALY_RULES) return ar as T;
   const mn = miningWrite(method, path, body);
   if (mn !== NONE_MINING) return mn as T;
   const mg = migrationWrite(method, path, body);
