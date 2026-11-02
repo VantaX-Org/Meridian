@@ -614,7 +614,7 @@ def cross_system_clusters(pairs: list[dict], heads: dict[str, str]) -> tuple[lis
     for n, src in node.items():
         members.setdefault(find(n), []).append(
             {"key": src["key"], "system_id": src.get("system_id"), "system_name": src.get("system_name"),
-             "text": src.get("text"), "golden_record_id": heads.get(src["key"])})
+             "text": src.get("text"), "golden_record_id": heads.get(src.get("record_key") or src["key"])})
     clusters = []
     for root, g in groups.items():
         ms = sorted(members[root], key=lambda m: (m["system_name"] or "", m["key"]))
@@ -646,7 +646,7 @@ async def list_cross_system_clusters(domain: str = Query(..., min_length=1, max_
               "same_cluster": bool(r.same_cluster),
               "open": r.steward_decision is None and r.pc_kind is None and not r.same_cluster}
              for r in rows if len((r.explanation or {}).get("sources") or []) == 2]
-    keys = sorted({src["key"] for p in pairs for src in p["sources"]})
+    keys = sorted({src.get("record_key") or src["key"] for p in pairs for src in p["sources"]})
     heads = {k: str(h) for k, h in (await db.execute(text(
         "SELECT sap_object_key, COALESCE(merged_into, id) FROM master_records "
         "WHERE tenant_id = :tid AND domain = :d AND sap_object_key = ANY(:keys)"),

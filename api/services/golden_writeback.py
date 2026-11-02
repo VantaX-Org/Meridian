@@ -27,6 +27,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Optional
 
+from api.services.golden_keys import plain
+
 from sap.btp import ecc_value
 from sap.s4hana_cloud import S4HC_TABLE_MAP
 
@@ -331,7 +333,7 @@ async def build_preview(db: Any, tenant_id: str, record: dict) -> dict:
 
     targets, unresolved = await resolve_targets(db, tenant_id, record["source_contributions"] or {})
     golden = record["golden_fields"] or {}
-    planned = [{**t, **plan_target(t["system_type"], record["domain"], record["sap_object_key"], golden)}
+    planned = [{**t, **plan_target(t["system_type"], record["domain"], plain(record["sap_object_key"]), golden)}
                for t in targets]
     supported = any(t["supported"] for t in planned)
     if not targets:

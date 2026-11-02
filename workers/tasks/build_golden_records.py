@@ -122,6 +122,17 @@ async def _run_origin(db, version_id: str, tenant_id: str) -> str | None:
     return "upload" if row is None or row[0] else None
 
 
+async def _master_key(db, tenant_id: str, module: str, key: str, system_id: str) -> str:
+    """Plain key unless another system already owns it; then the system-qualified key (golden_keys)."""
+    from api.services.golden_keys import pick_key, qualify
+
+    rows = (await db.execute(text(
+        "SELECT sap_object_key, source_contributions FROM master_records "
+        "WHERE tenant_id = CAST(:t AS uuid) AND domain = :d AND sap_object_key IN (:k, :q)"),
+        {"t": tenant_id, "d": module, "k": key, "q": qualify(key, system_id)})).all()
+    return pick_key(key, system_id, {r[0]: r[1] for r in rows})
+
+
 async def _build_for_module(
     version_id: str,
     tenant_id: str,
@@ -161,6 +172,8 @@ async def _build_for_module(
                 if not key_str or key_str.lower() in ("nan", "none", "nat"):
                     continue
                 incoming = _rows_to_incoming(group, source_system, system_id, system_name, origin)
+                if system_id:
+                    key_str = await _master_key(db, str(tenant_id), module, key_str, system_id)
                 # process_sync_batch swallows its own errors and returns None,
                 # so one bad object never aborts the rest of the module.
                 record_id = await process_sync_batch(
