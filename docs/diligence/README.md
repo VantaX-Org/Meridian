@@ -79,7 +79,7 @@ are now disclosed in the documents and logged in the register with a status:
 - **Most of the code was written with Claude Code under one principal engineer**, and the clone is shallow
   (DR-5, provenance.md).
 - **On-premise extraction depended on `RFC_READ_TABLE`** (PC-1): the reader is now selectable
-  (`/BODS/RFC_READ_TABLE2`, `BBP_RFC_READ_TABLE`, `auto`) with a read-only role template; no ODP or CDS path.
+  (`/BODS/RFC_READ_TABLE2`, `BBP_RFC_READ_TABLE`, `auto`) with a read-only role template; ODP over RFC is in code behind a per-system setting (default off, fake-connector tested only, not run on live SAP); no CDS path.
 - **xlsx stays on the SheetJS CDN** (PC-7, not fixed): the registry's 0.18.5 has two high advisories;
   vendoring the 0.20.3 tarball is open.
 
