@@ -18,7 +18,7 @@ import {
   getZReport,
   getZRules,
 } from "@/lib/api/v2/sys";
-import { getAllDrafts, getModuleRules, getRuleList, getSuppressions } from "@/lib/api/v2/rulelib";
+import { getAllDrafts, getMigrationScenarios, getModuleRules, getRuleList, getSuppressions, type MigrationScenarioId } from "@/lib/api/v2/rulelib";
 import { getModel, getReferenceModel, listModels, listVersions } from "@/lib/api/v2/designer";
 import { getSurvivorship } from "@/lib/api/v2/mdm";
 import { useLandscape } from "@/lib/v2/queries";
@@ -34,6 +34,7 @@ export const sysKeys = {
   rules: (f: boolean) => ["v2", "rule-list", f] as const,
   coverage: (f: boolean, module: string) => ["v2", "rule-coverage", f, module] as const,
   suppressions: (f: boolean) => ["v2", "rule-suppressions", f] as const,
+  migration: (f: boolean, scenario: string | null) => ["v2", "migration-scenarios", f, scenario] as const,
   drafts: (f: boolean) => ["v2", "rule-drafts-all", f] as const,
   models: (f: boolean) => ["v2", "process-models", f] as const,
   model: (f: boolean, id: string, version: number | null) => ["v2", "process-model", f, id, version] as const,
@@ -112,6 +113,11 @@ export function useRuleList() {
 export function useModuleRules(module: string, enabled: boolean) {
   const f = useFixture();
   return useQuery({ queryKey: sysKeys.coverage(f, module), queryFn: () => getModuleRules(module), enabled, retry: false, staleTime: 60_000 });
+}
+/** The four migration scenarios with counts, and the rules of the chosen one (none chosen: counts only). */
+export function useMigrationScenarios(scenario: MigrationScenarioId | null) {
+  const f = useFixture();
+  return useQuery({ queryKey: sysKeys.migration(f, scenario), queryFn: () => getMigrationScenarios(scenario ?? undefined), retry: false, staleTime: 5 * 60_000 });
 }
 export function useSuppressions() {
   const f = useFixture();

@@ -45,6 +45,7 @@ import { NONE_SYNC_TRIGGER, resetSyncTriggerFixture, syncTriggerRead, syncTrigge
 import { NONE_SIMULATIONS, simulationsRead, simulationsWrite, resetSimulationsFixture } from "./simulations";
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
 import { rulePromotionRead, rulePromotionWrite, NONE_RULE_PROMOTION } from "./rulePromotion";
+import { migrationScenariosRead, NONE_MIGRATION_SCENARIOS } from "./migrationScenarios";
 import { anomalyRulesRead, anomalyRulesWrite, NONE_ANOMALY_RULES } from "./anomalyRules";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
 import { guardDecision, NONE_STEP10, receiptPolicy, resetStep10Fixture, step10Read, step10Write, withPolicyMarks, withSandbox } from "./step10";
@@ -343,6 +344,8 @@ function forecastRead(path: string): unknown {
 }
 
 export function fixtureResponse<T>(path: string, params: Params): T {
+  const ms = migrationScenariosRead(path, params);
+  if (ms !== NONE_MIGRATION_SCENARIOS) return ms as T;
   const req = requestsRead(path, params);
   if (req !== NONE_REQ) return req as T;
   const step10 = step10Read(path, params);
