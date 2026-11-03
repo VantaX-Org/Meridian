@@ -7,6 +7,7 @@ import {
   getCompareSummary,
   getJobById,
   getJobsList,
+  getScoreDelta,
   getSystemConfigLoad,
   getSystemExtractions,
   getSystemObjectList,
@@ -46,6 +47,11 @@ export function useTimeline(systemId: string | null, limit = 8) {
 export function useCompareSummary(a: string, b: string) {
   const fixture = useFixture();
   return useQuery({ queryKey: runKeys.compare(fixture, a, b), queryFn: () => getCompareSummary(a, b), staleTime: 30_000, retry: false });
+}
+
+export function useScoreDelta(a: string, b: string, module: string | null) {
+  const fixture = useFixture();
+  return useQuery({ queryKey: ["v2", "score-delta", fixture, a, b, module] as const, queryFn: () => getScoreDelta(a, b, module as string), staleTime: 30_000, retry: false, enabled: Boolean(module) });
 }
 
 export function useVersionChanges(a: string, b: string) {

@@ -7211,6 +7211,18 @@ export const en = {
   "Only the first rows are shown.": "Only the first rows are shown.",
   "Propose rule": "Propose rule",
   "This draft already exists. Find it in the rule workbench.": "This draft already exists. Find it in the rule workbench.",
+  "Failing records changed": "Failing records changed",
+  "Records checked changed": "Records checked changed",
+  "Rule no longer ran": "Rule no longer ran",
+  "Dimension weighting": "Dimension weighting",
+  "Scoring configuration": "Scoring configuration",
+  "Critical cap": "Critical cap",
+  "The explanation of this change could not be read.": "The explanation of this change could not be read.",
+  "{before} to {after}. The contributions add up to {sum} points of the {delta} points that changed.": "{before} to {after}. The contributions add up to {sum} points of the {delta} points that changed.",
+  "Points by rule": "Points by rule",
+  "Written by Aletheia. Every number was checked against the figures above.": "Written by Aletheia. Every number was checked against the figures above.",
+  "Written from the figures above, without a model.": "Written from the figures above, without a model.",
+  "Sentences dropped because a number was not in the figures: {n}.": "Sentences dropped because a number was not in the figures: {n}.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
