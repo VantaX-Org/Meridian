@@ -72,6 +72,26 @@ const SHIFTS: FieldShift[] = [
   },
 ];
 
+const proposed = new Set<string>();
+
+/** Shaped like POST /aletheia/anomaly-rules/shifts/propose: the shift's rule as a pending draft; asking twice answers created false. */
+function proposeShift(b: { table?: string; field?: string; kind?: string } | null): unknown {
+  const field = `${b?.table}.${b?.field}`;
+  const s = SHIFTS.find((x) => x.field === field && x.kind === b?.kind);
+  if (!s) return refuse(404, "Shift not found");
+  const spike = s.kind === "null_spike";
+  const rule = {
+    id: `ANOM_${spike ? "NULL" : "DOM"}_${field.replace(".", "_")}`, field, severity: s.severity,
+    check_class: spike ? "null_check" : "domain_value_check", dimension: spike ? "completeness" : "validity",
+    ...(spike ? {} : { allowed_values: ["FERT", "HAWA", "ROH"] }),
+    message: spike ? `${field} must be filled` : `${field} holds a code outside the baseline set`,
+  };
+  const created = !proposed.has(field + s.kind);
+  proposed.add(field + s.kind);
+  const yaml = Object.entries(rule).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join("\n") + "\n";
+  return { id: `draft-${rule.id}`, status: "draft", created, rule, rule_yaml: yaml };
+}
+
 export function anomalyRulesRead(path: string): unknown {
   return path === "/aletheia/anomaly-rules/shifts" ? SHIFTS : NONE_ANOMALY_RULES;
 }
@@ -79,6 +99,7 @@ export function anomalyRulesRead(path: string): unknown {
 export function anomalyRulesWrite(method: string, path: string, body: unknown): unknown {
   if (method !== "POST") return NONE_ANOMALY_RULES;
   if (path === "/aletheia/anomaly-rules/propose") return propose((body as { anomaly_id?: string } | null)?.anomaly_id ?? "");
+  if (path === "/aletheia/anomaly-rules/shifts/propose") return proposeShift(body as { table?: string; field?: string; kind?: string } | null);
   if (path === "/rule-authoring/drafts") {
     // The workbench fixture reads rule_yaml as JSON; block YAML saves are answered here and not kept in its list.
     try {

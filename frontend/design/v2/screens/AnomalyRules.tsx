@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { approveAnomalyRule, getFieldShifts, proposeAnomalyRule, type AnomalyRuleProposal } from "@/lib/api/v2/anomaly-rules";
+import { approveAnomalyRule, getFieldShifts, proposeAnomalyRule, proposeShiftRule, type AnomalyRuleProposal, type FieldShift } from "@/lib/api/v2/anomaly-rules";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getAnomalies, type AnomalyItem } from "@/lib/api/v2/mining";
@@ -80,7 +80,7 @@ export function AnomalyRules() {
         why={t("The rule is a template on the usual range of the field. It runs on the same data first, so you see what it would flag before you approve it.")}
       />
 
-      <FieldShifts />
+      <FieldShifts allowed={allowed} />
 
       <Panel title={t("Fields with outliers")} meta={t("Most outliers first.")} testId="anomaly-rules-fields">
         {groups.length === 0 ? <EmptyFrame>{t("No outlier was found.")}</EmptyFrame> : (
@@ -133,7 +133,7 @@ export function AnomalyRules() {
 const pct = (n: number | null) => (n == null ? <Dash /> : t("{pct}% empty", { pct: f1(n) }));
 
 /** Null spikes and unexpected codes: a run's field profile against the run before it. Counts only, no record is read. */
-function FieldShifts() {
+function FieldShifts({ allowed }: { allowed: boolean }) {
   const fixture = useFixture();
   const q = useQuery({ queryKey: ["anomaly-rules", fixture, "shifts"], queryFn: getFieldShifts, staleTime: 60_000 });
   return (
@@ -152,6 +152,7 @@ function FieldShifts() {
                 <th scope="col">{t("Before")}</th>
                 <th scope="col">{t("Now")}</th>
                 <th scope="col">{t("Severity")}</th>
+                <th scope="col"><span className="m2-sr">{t("Propose a rule")}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -174,6 +175,7 @@ function FieldShifts() {
                     )}
                   </td>
                   <td data-label={t("Severity")}><Sev severity={s.severity} /></td>
+                  <td>{allowed ? <ProposeShift shift={s} /> : null}</td>
                 </tr>
               ))}
             </tbody>
@@ -181,6 +183,21 @@ function FieldShifts() {
         </ScrollFrame>
       )}
     </Panel>
+  );
+}
+
+/** Saves a pending draft built from the shift's profile aggregates; a steward publishes it from the rule workbench. */
+function ProposeShift({ shift }: { shift: FieldShift }) {
+  const toast = useToast();
+  const m = useMutation({
+    mutationFn: () => proposeShiftRule(shift),
+    onSuccess: (d) => toast.show(d.created ? t("Draft saved. Find it in the rule workbench.") : t("This draft already exists. Find it in the rule workbench.")),
+    onError: (e) => toast.show(errorSentence(e, t("The rule could not be proposed.")), "error"),
+  });
+  return (
+    <button type="button" className="m2-btn m2-sm" disabled={m.isPending || m.isSuccess} onClick={() => m.mutate()} data-testid={`propose-shift-${shift.id}`}>
+      {m.isSuccess ? t("Proposed") : t("Propose rule")}
+    </button>
   );
 }
 

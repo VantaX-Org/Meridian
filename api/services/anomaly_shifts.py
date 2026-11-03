@@ -8,6 +8,7 @@ values of non-sensitive code fields), never a record, and nothing here calls an 
 from __future__ import annotations
 
 import json
+from typing import Optional
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -47,6 +48,20 @@ def detect(cur: dict, prior: list[dict]) -> list[dict]:
                         "codes": [{"value": str(v["value"]), "count": int(v["count"])} for v in new],
                         "severity": "high" if share >= SHARE_HIGH else "medium"})
     return out
+
+
+def shift_rule(kind: str, field: str, severity: str, prev: Optional[dict]) -> tuple[Optional[dict], Optional[str]]:
+    """The draft rule for a shift, as (rule, reason it cannot be built). ``field`` is TABLE.FIELD, ``prev`` the field's
+    stats in the run before. Null spike: null_check. Unexpected code: domain_value_check on the values that run
+    listed, only when it listed every value (never raw records, never an LLM)."""
+    from api.services import anomaly_rules as ar
+    a = {"kind": kind, "field": field, "severity": severity}
+    if kind == "unexpected_code":
+        if not prev or not _exhaustive(prev):
+            return None, "The earlier run did not list every value of this field."
+        a["known_values"] = [str(v["value"]) for v in prev["top_values"]]
+    rule = ar.template_rule(a)
+    return (rule, None) if rule else (None, "No rule fits this shift.")
 
 
 def _summary(s: dict) -> dict:

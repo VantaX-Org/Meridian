@@ -7210,4 +7210,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{records} {n, plural, one {record} other {records}}: {found} found, {missing} not found, {changing} would change, {unchanged} already hold the value.": "{records} {n, plural, one {Datensatz} other {Datensätze}}: {found} gefunden, {missing} nicht gefunden, {changing} würden sich ändern, {unchanged} haben den Wert bereits.",
   "Preview of the mass change": "Vorschau der Massenänderung",
   "Only the first rows are shown.": "Nur die ersten Zeilen werden angezeigt.",
+  "Propose rule": "Regel vorschlagen",
+  "This draft already exists. Find it in the rule workbench.": "Dieser Entwurf besteht bereits. Sie finden ihn in der Regelwerkstatt.",
 };

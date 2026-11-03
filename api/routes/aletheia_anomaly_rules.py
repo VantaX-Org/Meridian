@@ -3,6 +3,7 @@
 Approving is the existing rule-authoring path: POST /api/v1/rule-authoring/drafts with the proposed YAML.
 """
 
+import json
 import uuid
 from typing import Literal, Optional
 
@@ -17,8 +18,9 @@ from api.routes import rule_authoring as route
 from api.routes.mining import field_text
 from api.routes.record_issues import _rls
 from api.services import anomaly_rules as ar
+from api.services import anomaly_shifts as sh
 from api.services import rule_authoring as ra
-from api.services.rbac import require_permission
+from api.services.rbac import current_user_label, require_permission
 
 router = APIRouter(prefix="/api/v1/aletheia/anomaly-rules", tags=["aletheia"])
 
@@ -166,3 +168,62 @@ async def shifts(version_id: Optional[uuid.UUID] = None, limit: int = Query(200,
                      module=r[5], field=f"{r[6]}.{r[7]}", field_description=field_text(f"{r[6]}.{r[7]}", r[5]),
                      kind=r[8], severity=r[9], current=r[10] or {}, previous=r[11] or {}, codes=r[12] or [],
                      detected_at=r[13]) for r in rows]
+
+
+class ShiftIn(BaseModel):
+    table: str = Field(min_length=1, max_length=64)
+    field: str = Field(min_length=1, max_length=64)  # the field alone, not TABLE.FIELD
+    kind: Literal["null_spike", "unexpected_code"]
+    version_id: Optional[uuid.UUID] = None  # default: the shift of the latest run
+
+
+@router.post("/shifts/propose")
+async def propose_from_shift(
+    body: ShiftIn,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("manage_rules")),
+):
+    """Draft rule for a detected shift, saved as a pending draft (ai_proposed_rules, status 'draft': nothing enforces it
+    until a human publishes it). Built from profile aggregates only; asking twice returns the same draft."""
+    await _rls(db, tenant)
+    p = {"tid": str(tenant.id), "t": body.table, "f": body.field, "k": body.kind,
+         "vid": str(body.version_id) if body.version_id else None}
+    s = (await db.execute(text("""
+        SELECT s.module, s.severity, s.prev_version_id::text FROM field_shift_anomalies s
+          JOIN analysis_versions v ON v.id = s.version_id
+         WHERE s.tenant_id = :tid AND s.table_name = :t AND s.field = :f AND s.kind = :k
+           AND (CAST(:vid AS uuid) IS NULL OR s.version_id = CAST(:vid AS uuid))
+         ORDER BY v.run_at DESC LIMIT 1"""), p)).fetchone()
+    if not s:
+        raise HTTPException(status_code=404, detail="Shift not found")
+    module, severity, prev_vid = s[0], s[1], s[2]
+    prev = None
+    if prev_vid:
+        r = (await db.execute(text("""
+            SELECT stats FROM field_profiles WHERE tenant_id = :tid AND version_id = CAST(:pv AS uuid)
+               AND module = :m AND table_name = :t AND field = :f"""),
+            {**p, "pv": prev_vid, "m": module})).fetchone()
+        prev = r[0] if r else None
+    qualified = f"{body.table}.{body.field}"
+    rule, why = sh.shift_rule(body.kind, qualified, severity, prev)
+    if rule is None:
+        raise HTTPException(status_code=422, detail={"errors": [why]})
+    latest = await route._latest(db, tenant, module, None)
+    d = await route._dictionary(db, latest[1] if latest else None)
+    rule, errors = ra.validate_rule_yaml(ar.to_yaml(rule), module, d)
+    if errors:
+        raise HTTPException(status_code=422, detail={"errors": errors})
+    domain = f"dq_rule:{module}"
+    old = (await db.execute(text("""
+        SELECT id FROM ai_proposed_rules WHERE tenant_id = :tid AND domain = :d AND status = 'draft'
+           AND proposed_rule->>'id' = :rid LIMIT 1"""), {"tid": str(tenant.id), "d": domain, "rid": rule["id"]})).fetchone()
+    if old:
+        return {"id": str(old[0]), "status": "draft", "created": False, "rule": rule, "rule_yaml": ar.to_yaml(rule)}
+    row = (await db.execute(text("""
+        INSERT INTO ai_proposed_rules (tenant_id, domain, proposed_rule, rationale, status)
+        VALUES (:tid, :d, CAST(:rule AS jsonb), :why, 'draft') RETURNING id"""),
+        {"tid": str(tenant.id), "d": domain, "rule": json.dumps(rule, default=str),
+         "why": f"Proposed from a {body.kind.replace('_', ' ')} in {qualified}, requested by {current_user_label()}"})).fetchone()
+    await db.commit()
+    return {"id": str(row[0]), "status": "draft", "created": True, "rule": rule, "rule_yaml": ar.to_yaml(rule)}
