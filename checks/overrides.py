@@ -14,6 +14,8 @@ the rule as ``body``; tenant-authored rules arrive as extra rules.
 
 from __future__ import annotations
 
+import json
+
 from sqlalchemy import text
 
 SEVERITIES = {"critical", "high", "medium", "low", "info"}
@@ -44,6 +46,13 @@ def load_overrides(session) -> dict[str, dict]:
         promoted = {r for r in promoted if "enabled" not in out.get(r, {})} & generated_rule_ids()
         for rid in promoted:
             out.setdefault(rid, {})["enabled"] = True
+    try:  # steward-approved Aletheia fix drafts (api/services/fix_drafter.py) become the rule's auto_fix
+        for (v,) in session.execute(text("SELECT value FROM tenant_settings WHERE key LIKE 'fix_draft.%'")).fetchall():
+            v = json.loads(v) if isinstance(v, str) else v
+            if v.get("status") == "approved" and v.get("steps"):
+                out.setdefault(v["rule_id"], {})["auto_fix"] = {"steps": v["steps"], "confidence": "low"}
+    except Exception:  # no tenant_settings table (older schema, unit tests)
+        session.rollback()
     from checks.lifecycle import load_active_versions
     for rid, body in load_active_versions(session).items():
         out.setdefault(rid, {})["body"] = body
@@ -64,7 +73,7 @@ def apply(rules: list[dict], overrides: dict[str, dict] | None) -> list[dict]:
         if o is None:
             if r.get("enabled", True):
                 kept.append(r)
-        elif o.get("enabled", True):
-            kept.append({**r, **o.get("body", {}), "id": r["id"],
+        elif o.get("enabled", r.get("enabled", True) if set(o) == {"auto_fix"} else True):
+            kept.append({**r, **o.get("body", {}), **({"auto_fix": o["auto_fix"]} if "auto_fix" in o else {}), "id": r["id"],
                          **({"severity": o["severity"]} if "severity" in o else {})})
     return kept

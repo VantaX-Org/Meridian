@@ -36,6 +36,7 @@ from api.routes.triage import router as triage_router
 from api.routes.remediation import router as remediation_router
 from api.routes.rule_authoring import router as rule_authoring_router
 from api.routes.rule_promotion import router as rule_promotion_router
+from api.routes.aletheia_fix_drafts import router as aletheia_fix_drafts_router
 from api.routes.aletheia_anomaly_rules import router as aletheia_anomaly_rules_router
 from api.routes.system_objects import router as system_objects_router
 from api.routes.field_profiles import by_version_router as field_profiles_by_version_router
@@ -419,6 +420,7 @@ app.include_router(triage_router)
 app.include_router(remediation_router)
 app.include_router(rule_authoring_router)
 app.include_router(rule_promotion_router)
+app.include_router(aletheia_fix_drafts_router)
 app.include_router(aletheia_anomaly_rules_router)
 app.include_router(system_objects_router)
 app.include_router(field_profiles_router)

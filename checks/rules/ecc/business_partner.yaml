@@ -36,6 +36,11 @@ rules:
       LSMW or a conversion program to renumber. In S/4HANA: check the grouping''s number range (BUCF, object BU_PARTNER).'
   record_fix_template: 'Partner {BUT000.PARTNER}: number format is invalid (value: ''{actual_value}''). Use only uppercase
     letters and digits (max 10); check the number range (BUCF) for the grouping.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: BP003
   field: BUT000.TYPE
   check_class: null_check
@@ -78,6 +83,10 @@ rules:
       BP. In S/4HANA: use Fiori F3893.'
   record_fix_template: 'Partner {BUT000.PARTNER}: BU_TYPE is ''{actual_value}''. Set to 1 (Person), 2 (Organisation), or 3
     (Group) via BP (ECC) or Fiori F3893 (S/4HANA).'
+  auto_fix:
+    steps:
+    - op: strip
+    confidence: medium
 - id: BP005
   field: BUT000.BU_GROUP
   check_class: null_check
@@ -178,6 +187,10 @@ rules:
       In S/4HANA: same FM or use MDG-BP correction. Coordinate with basis team before changing GUIDs in production.'
   record_fix_template: 'Partner {BUT000.PARTNER}: PARTNER_GUID is ''{actual_value}''. Regenerate a valid UUID via function
     module GUID_CREATE.'
+  auto_fix:
+    steps:
+    - op: strip
+    confidence: medium
 - id: BP011
   field: BUT000.BU_SORT1
   check_class: null_check
@@ -216,6 +229,11 @@ rules:
       In S/4HANA: use Fiori F3893.'
   record_fix_template: 'Partner {BUT000.PARTNER}: XDELE is ''{actual_value}''. Set to blank (active) or ''X'' (flagged for
     deletion).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: BP013
   field: BUT000.XBLCK
   check_class: domain_value_check
@@ -238,6 +256,11 @@ rules:
     __other__: 'Block flag ''{invalid_value}'' is not valid. Must be blank or ''X''. In ECC: correct via transaction BP. In
       S/4HANA: use Fiori F3893.'
   record_fix_template: 'Partner {BUT000.PARTNER}: XBLCK is ''{actual_value}''. Set to blank (active) or ''X'' (blocked).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: BP014
   field: BUT000.LANGU_CORR
   check_class: null_check
@@ -295,6 +318,10 @@ rules:
   record_fix_template: 'Partner {BUT000.PARTNER}: email address ADR6.SMTP_ADDR is invalid. Correct the format via BP (ECC) or
     Fiori F3893 (S/4HANA).'
   grain: BUT000
+  auto_fix:
+    steps:
+    - op: strip
+    confidence: medium
 - id: BP019
   field: ADRC.COUNTRY
   check_class: null_check
@@ -577,6 +604,11 @@ rules:
     __other__: 'Value {invalid_value} is not valid for Natural person flag. Allowed values: ['''', ''X''].'
   record_fix_template: 'Record has invalid BUT000.NATPERS value ''{actual_value}''. In ECC: Set via BP transaction. In S/4HANA:
     Use Fiori app F3893 (Manage Business Partner).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: BP040
   field: BUT000.TITLE
   check_class: null_check
@@ -610,6 +642,11 @@ rules:
     DFKKBPTAXNUM.TAXTYPE: [AT0, BE0, BG0, CY0, CZ0, DE0, DK0, EE0, EL0, ES0, FI0, FR0, HR0, HU0, IE0, IT0, LT0,
       LU0, LV0, MT0, NL0, PL0, PT0, RO0, SE0, SI0, SK0]
   record_fix_template: "Business partner {DFKKBPTAXNUM.PARTNER}: tax number '{actual_value}' is not a valid EU VAT format. Correct it in BP > Identification > Tax numbers."
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 
 - id: BP042
   field: BUT000.BU_GROUP
@@ -2737,6 +2774,11 @@ rules:
       transaction BP (ECC), Fiori F3893 (S/4HANA), or maintain the role in SPRO > Cross-Application
       Components > SAP Business Partner > Business Partner Roles.'
   record_fix_template: 'Business partner {BUT100.PARTNER}: role {actual_value} is not a defined role.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: BP297
   field: BUT000.VALID_TO
   check_class: cross_field_check
