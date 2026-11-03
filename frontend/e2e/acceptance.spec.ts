@@ -169,12 +169,16 @@ test("4. lead: the rule canvas and its four tabs", async ({ page }) => {
   }
 });
 
-test("5. steward: a decision and a proposed fix in the Work ledger", async ({ page }) => {
+test("5. steward: a decision and a proposed fix in the Work ledger", async ({ page, request }) => {
   await signIn(page, "steward");
   await page.goto(`/work?module=${MODULE}`);
   const decisions = page.getByLabel(/^Decision for /);
   await expect(decisions.first()).toBeVisible({ timeout: 45_000 });
-  const before = (await page.getByRole("button", { name: /^Waiting for approval/ }).innerText()).replace(/\D+/g, "");
+  // a fix goes into the steward's draft batch, which the owner approves in test 6
+  type Batches = { items: { status: string; items: number }[] };
+  const drafted = async () => (await apiGet<Batches>(request, "steward", "/remediation/batches")).items
+    .filter((x) => x.status === "draft").reduce((n, x) => n + Number(x.items), 0);
+  const before = await drafted();
   // a fix: a new value and the decision "fix"
   const firstKey = ((await decisions.nth(1).getAttribute("aria-label")) ?? "").replace("Decision for ", "");
   await page.getByLabel(`New value for ${firstKey}`).fill("1000009101");
@@ -186,9 +190,8 @@ test("5. steward: a decision and a proposed fix in the Work ledger", async ({ pa
   await dlg.getByLabel("Reason").fill("Acceptance walk: the value is correct for this partner.");
   await dlg.getByRole("button", { name: "Mark as not an issue" }).click();
   await expect(dlg).toHaveCount(0);
-  await expect.poll(async () => (await page.getByRole("button", { name: /^Waiting for approval/ }).innerText()).replace(/\D+/g, ""),
-    { timeout: 30_000 }).not.toBe(before);
-  note(`waiting for approval ${before} -> ${(await page.getByRole("button", { name: /^Waiting for approval/ }).innerText()).replace(/\D+/g, "")}; fixed ${firstKey}, not an issue ${secondKey}`);
+  await expect.poll(drafted, { timeout: 30_000 }).toBeGreaterThan(before);
+  note(`draft batch items ${before} -> ${await drafted()}; fixed ${firstKey}, not an issue ${secondKey}`);
 });
 
 test("6. owner: approves the waiting batch (four eyes)", async ({ page }) => {
