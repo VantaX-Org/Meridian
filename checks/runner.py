@@ -189,6 +189,15 @@ def _module_yaml_paths(module_name: str) -> list[Path]:
     return [primary, sidecar] if sidecar.exists() else [primary]
 
 
+@lru_cache(maxsize=1)
+def generated_rule_ids() -> frozenset[str]:
+    """Ids of every DDIC-derived rule (the ``*.generated.yaml`` sidecars only)."""
+    ids: set[str] = set()
+    for path in RULES_DIR.glob(f"*/*{GENERATED_SUFFIX}"):
+        ids |= {r["id"] for r in (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("rules") or [] if r.get("id")}
+    return frozenset(ids)
+
+
 def module_config(module_name: str) -> dict:
     """The module's own document (``module``, ``overlay``, ``target_state``, ...)."""
     return yaml.safe_load(_find_module_yaml(module_name).read_text(encoding="utf-8")) or {}
