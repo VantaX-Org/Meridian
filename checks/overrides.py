@@ -3,6 +3,11 @@
 Sources, in order: HQ's catalogue (licence manifest → rules_hq_cache) sets
 enabled + severity; the tenant's own Rules Engine toggle (rules table) can
 only switch a check off. Unknown ids are ignored — HQ cannot inject logic.
+One exception: a tenant ``rules`` row with ``source='promotion'`` and
+``enabled=true`` (Aletheia rule promotion, api/services/rule_promotion.py)
+re-enables a rule that ships disabled, but only when the id lives in a
+``<module>.generated.yaml`` pack. It never re-enables a hand-written rule that
+ships disabled, and an HQ ``rules_hq_cache`` entry for the id still wins.
 A tenant's approved (active) rule version (checks/lifecycle.py) is merged onto
 the rule as ``body``; tenant-authored rules arrive as extra rules.
 """
@@ -14,6 +19,12 @@ from sqlalchemy import text
 SEVERITIES = {"critical", "high", "medium", "low", "info"}
 
 
+def generated_rule_ids() -> set[str]:
+    """Ids shipped in a ``*.generated.yaml`` sidecar (the DDIC-derived packs)."""
+    from checks.runner import generated_rule_ids as _ids
+    return _ids()
+
+
 def load_overrides(session) -> dict[str, dict]:
     out: dict[str, dict] = {}
     try:
@@ -22,10 +33,17 @@ def load_overrides(session) -> dict[str, dict]:
             out[rid] = {"enabled": bool(enabled), **({"severity": severity} if severity in SEVERITIES else {})}
     except Exception:  # table absent before migration 050 → no HQ governance yet
         session.rollback()
-    for name, enabled in session.execute(text("SELECT name, enabled FROM rules")).fetchall():
+    promoted: set[str] = set()
+    for name, enabled, source in session.execute(text("SELECT name, enabled, source FROM rules")).fetchall():
         rid = (name or "").split(":", 1)[0].strip()
         if rid and not enabled:
             out.setdefault(rid, {})["enabled"] = False
+        elif rid and source == "promotion":
+            promoted.add(rid)
+    if promoted:
+        promoted = {r for r in promoted if "enabled" not in out.get(r, {})} & generated_rule_ids()
+        for rid in promoted:
+            out.setdefault(rid, {})["enabled"] = True
     from checks.lifecycle import load_active_versions
     for rid, body in load_active_versions(session).items():
         out.setdefault(rid, {})["body"] = body

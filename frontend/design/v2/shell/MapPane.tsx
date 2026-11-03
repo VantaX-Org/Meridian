@@ -192,6 +192,9 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
         <V2Link href="/anomaly-rules" className="m2-mi" aria-current={current("/anomaly-rules") ? "page" : undefined}>
           <span>{t("Anomaly rules")}</span>
         </V2Link>
+        <V2Link href="/rule-promotion" className="m2-mi" aria-current={current("/rule-promotion") ? "page" : undefined}>
+          <span>{t("Aletheia rule promotion")}</span>
+        </V2Link>
         <V2Link href="/mdm" className="m2-mi" aria-current={current("/mdm") ? "page" : undefined}>
           <span>{t("MDM health")}</span>
         </V2Link>

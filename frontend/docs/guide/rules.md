@@ -46,6 +46,23 @@ The library title says what is there, for example "794 rules across 15 objects, 
 
 Rules can also be imported and exported in bulk under Administration, Rules import and export: imported rules are validated against the data dictionary and land as drafts for review, never live.
 
+## Aletheia rule promotion
+
+Meridian ships about 2,700 rules that were generated from the SAP data dictionary. They are all switched off, because a rule that is sound in general is not yet proved on your data. The Aletheia rule promotion page, under Aletheia rule promotion in the map or at `/rule-promotion`, switches them on for your tenant, and only on evidence. No AI is used and no record leaves Meridian.
+
+The page lists each object with its generated rules, how many are promoted and how many fall in each bucket. Open an object and press **Preview**. Meridian runs each switched-off rule on the latest extraction, changes nothing, and sorts the rules into four buckets:
+
+- **Ready to promote.** The field is filled in at least 20% of records, the rule fails at most 2% of them, and at least 100 records are checked.
+- **Needs review.** The field is filled, but the rule fails more records than the threshold. The row shows the failing count, the rate and up to five sample record keys, never a field value.
+- **Needs a value set.** The rule checks a value against a list, and your system's live configuration has no such list. It is never switched on automatically, because it would flag every value you added yourself.
+- **Skipped, unused.** The field is empty, filled in too few records, or was not extracted.
+
+Each row shows the rule with its description, the field with its description, the check, the failure rate, how much of the field is filled and how many records were checked. The thresholds can be set per tenant in the `rule_promotion.thresholds` setting.
+
+Users who may manage rules also see three buttons. **Apply** promotes every rule in the Ready bucket. **Promote anyway** on a Needs review row asks for a reason of at least five characters and promotes that one rule. **Revert** puts a promoted rule, or all of them, back to the shipped state. Every promotion and every revert is written to the audit log with its evidence, and a promoted rule runs from the next extraction.
+
+Promoting is not the end. A promoted rule is checked again each time you press Preview. When its failure rate has risen five points or more over the rate it was promoted at, the page shows it in a warning above the table, with the old rate, the new rate and the sample records.
+
 ## The numbers and where they come from
 
 - **Failing** is distinct records failing the rule in the latest run of each object in scope.

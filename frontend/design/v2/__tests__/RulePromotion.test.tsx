@@ -1,0 +1,66 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
+import { fireEvent, screen, within } from "@testing-library/react";
+import { renderWithQuery } from "@/__tests__/render";
+import { resetRulePromotion } from "@/lib/api/v2/fixtures/rulePromotion";
+import { RulePromotion, ratePct } from "../screens/RulePromotion";
+import { ToastProvider } from "../Toast";
+import { stubLayout } from "./layout-stub";
+import { setUrl } from "./nav-store";
+
+vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
+
+let undo: () => void = () => undefined;
+beforeEach(() => {
+  window.sessionStorage.setItem("mn_v2_fixture", "1");
+  undo = stubLayout();
+  setUrl("/rule-promotion");
+  resetRulePromotion();
+});
+afterEach(() => {
+  undo();
+  window.sessionStorage.clear();
+  vi.restoreAllMocks();
+});
+
+describe("rule promotion", () => {
+  it("formats a small rate without rounding it to zero", () => {
+    expect(ratePct(0.000249)).toBe("0.025%");
+    expect(ratePct(0.082555)).toBe("8.3%");
+    expect(ratePct(0)).toBe("0.0%");
+  });
+
+  it("lists objects, previews with codes beside text, applies, flags drift and reverts", async () => {
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    const objects = await screen.findByTestId("rule-promotion-modules");
+    expect(await within(objects).findByTestId("promo-module-material_master")).toBeInTheDocument();
+    fireEvent.click(await screen.findByTestId("promo-preview"));
+    const table = await screen.findByTestId("promo-rules");
+    // rule id with its description, field with its description
+    expect(within(table).getByText("MARA.BRGEW must be filled")).toBeInTheDocument();
+    expect(within(table).getByText("Gross weight")).toBeInTheDocument();
+    expect(screen.queryByTestId("promo-drift")).toBeNull();
+    fireEvent.click(await screen.findByTestId("promo-apply"));
+    expect(await screen.findByText("2 rules promoted")).toBeInTheDocument();
+    // the promoted rule has since started failing: it is flagged
+    fireEvent.click(await screen.findByTestId("promo-preview"));
+    expect(await screen.findByTestId("drift-MM_GEN_MARA_BRGEW_NULL")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("promo-revert"));
+    expect(await screen.findByText("2 rules reverted")).toBeInTheDocument();
+  });
+
+  it("promotes a review rule anyway only with a reason", async () => {
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    fireEvent.click(await screen.findByTestId("promo-preview"));
+    fireEvent.click(await screen.findByTestId("promo-chip-review"));
+    const row = await screen.findByTestId("promo-rule-MM_GEN_MARA_MATKL_NULL");
+    expect(within(row).getByText(/000000000010004211/)).toBeInTheDocument(); // sample keys only
+    fireEvent.click(within(row).getByTestId("anyway-MM_GEN_MARA_MATKL_NULL"));
+    const confirm = screen.getByTestId("promo-anyway-confirm");
+    expect(confirm).toBeDisabled();
+    fireEvent.change(screen.getByTestId("promo-anyway-reason"), { target: { value: "Group is mandatory for finance" } });
+    expect(confirm).toBeEnabled();
+    fireEvent.click(confirm);
+    expect(await screen.findByText("Rule promoted. The reason is in the audit log.")).toBeInTheDocument();
+  });
+});
