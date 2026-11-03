@@ -65,7 +65,7 @@ jobs:
       DATABASE_URL_SYNC: postgresql://meridian_test:meridian_test@localhost:5432/meridian_test
       REDIS_URL: redis://localhost:6379/0
       MINIO_ENDPOINT: localhost:9000
-      MINIO_ACCESS_KEY: ciminio
+      MINIO_ACCESS_KEY: ciminiokey
       MINIO_SECRET_KEY: ciminio-secret-key
       MERIDIAN_ENV: development
       AUTH_MODE: local
@@ -86,7 +86,7 @@ jobs:
           # the shipped Garage image, built from this checkout (minio/minio can no longer be pulled from Docker Hub)
           docker build -q -f docker/Dockerfile.garage -t ci-storage docker
           docker run -d --name ci-storage -p 9000:9000 \
-            -e MINIO_ACCESS_KEY=ciminio -e MINIO_SECRET_KEY=ciminio-secret-key ci-storage
+            -e MINIO_ACCESS_KEY=ciminiokey -e MINIO_SECRET_KEY=ciminio-secret-key ci-storage
           for i in $(seq 1 60); do docker exec ci-storage test -f /tmp/storage-ready && exit 0; sleep 2; done
           docker logs ci-storage; exit 1
 
