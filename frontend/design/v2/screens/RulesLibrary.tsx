@@ -14,7 +14,9 @@ import { useOpenItem, useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
 import { filterRows, NO_FILTERS, rankRows, toRows, activeFilterCount, type LibFilters, type LibRow, type StateFilter } from "@/lib/v2/rules-library";
 import { int } from "@/lib/v2/score";
-import { sysKeys, useAllDrafts, useRefreshV2, useRuleList, useSuppressions } from "@/lib/v2/sys-queries";
+import { sysKeys, useAllDrafts, useMigrationScenarios, useRefreshV2, useRuleList, useSuppressions } from "@/lib/v2/sys-queries";
+import type { MigrationRelevance, MigrationScenarioId, MigrationScenarioRule } from "@/lib/api/v2/rulelib";
+import { relevanceLabel, ScenarioFilter, ScenarioPanel } from "./MigrationScenarios";
 import { type GridColumn } from "../Grid";
 import { ToolGrid } from "../GridTools";
 import { ConfirmBar, Field, Gate } from "../forms";
@@ -39,6 +41,13 @@ const columns: GridColumn<LibRow>[] = [
   { id: "source", get header() { return t("Source"); }, width: 90, cell: (r) => (r.source === "yaml" ? t("Shipped") : t("Custom")) },
   { id: "dimension", get header() { return t("Dimension"); }, width: 120, cell: (r) => (r.dimension ? labelOf(r.dimension) : <Dash why={t("Read from the object's rules when you filter by dimension")} />) },
   { id: "class", get header() { return t("Class"); }, width: 150, cell: (r) => (r.checkClass ? labelOf(r.checkClass) : <Dash why={t("Read from the object's rules when you filter by class")} />) },
+];
+
+/** The two columns a migration scenario adds: how much the rule matters for that path, and why, from the API's static mapping. */
+const scenarioColumns = (byId: Map<string, MigrationScenarioRule>): GridColumn<LibRow>[] => [
+  { id: "relevance", get header() { return t("Migration relevance"); }, width: 130, cell: (r) => { const m = byId.get(r.checkId); return m ? relevanceLabel(m.relevance) : <Dash />; } },
+  { id: "s4area", get header() { return t("S/4 area"); }, width: 150, cell: (r) => { const a = byId.get(r.checkId)?.s4_area; return a ? labelOf(a) : <Dash why={t("This rule records no S/4HANA area")} />; } },
+  { id: "why", get header() { return t("Why"); }, width: 520, cell: (r) => { const m = byId.get(r.checkId); return m ? <>{tx(m.rationale)}{m.impact_note ? ` ${m.impact_note}` : ""}</> : <Dash />; } },
 ];
 
 function FilterBar({ f, set, modules }: { f: LibFilters; set: (f: LibFilters) => void; modules: string[] }) {
@@ -336,7 +345,18 @@ export function RulesLibrary() {
   const covMap = useMemo(() => new Map(coverage.flatMap((c) => (c.data ? [[c.data.module, c.data] as const] : []))), [coverage]);
   const suppressed = useMemo(() => new Set((sup.data?.suppressions ?? []).filter((s) => s.active).map((s) => s.check_id)), [sup.data]);
   const rows = useMemo(() => rankRows(toRows(rules, suppressed, covMap)), [rules, suppressed, covMap]);
-  const shown = useMemo(() => filterRows(rows, filters), [rows, filters]);
+  const [scenario, setScenario] = useState<MigrationScenarioId | "">("");
+  const [relevance, setRelevance] = useState<MigrationRelevance | "">("");
+  const summary = useMigrationScenarios(null);
+  const scen = useMigrationScenarios(scenario || null);
+  const scenarios = (summary.data ?? scen.data)?.scenarios ?? [];
+  const byId = useMemo(() => new Map((scen.data?.rules ?? []).map((m) => [m.id, m] as const)), [scen.data]);
+  const gridColumns = useMemo(() => (scenario ? [...columns, ...scenarioColumns(byId)] : columns), [scenario, byId]);
+  const shown = useMemo(() => {
+    const base = filterRows(rows, filters);
+    return scenario ? base.filter((r) => { const m = byId.get(r.checkId); return m && (!relevance || m.relevance === relevance); }) : base;
+  }, [rows, filters, scenario, relevance, byId]);
+  const filtered = activeFilterCount(filters) + (scenario ? 1 : 0);
   const openId = open?.kind === "rule" ? open.id : null;
 
   const toggle = (selected: LibRow[], enabled: boolean, clear: () => void) =>
@@ -434,7 +454,11 @@ export function RulesLibrary() {
         <Suppressions canEnd={can("approve")} />
       ) : (
         <>
+          {scenarios.length ? <ScenarioPanel scenarios={scenarios} chosen={scenario} onChoose={(id) => { setScenario(id); setRelevance(""); }} /> : null}
           <FilterBar f={filters} set={setFilters} modules={modules} />
+          {scenarios.length ? <ScenarioFilter scenarios={scenarios} scenario={scenario} relevance={relevance} onScenario={setScenario} onRelevance={setRelevance} /> : null}
+          {scenario && scen.isLoading ? <p className="m2-prov" role="status">{t("Reading the migration scenario.")}</p> : null}
+          {scenario && scen.isError ? <ErrorFrame onRetry={() => void scen.refetch()}>{t("The migration scenario could not be read.")}</ErrorFrame> : null}
           {needMeta && loadingMeta ? <p className="m2-prov" role="status">{t("Reading the dimension and class of each object's rules.")}</p> : null}
           {list.isError ? (
             <ErrorFrame onRetry={() => void list.refetch()}>{t("The rules could not be read.")}</ErrorFrame>
@@ -447,7 +471,7 @@ export function RulesLibrary() {
               toolsRoute="rules"
               toolsFilters={Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) as Record<string, string>}
               ariaLabel={t("Rules library")}
-              columns={columns}
+              columns={gridColumns}
               rows={shown}
               rowId={(r) => r.id}
               count={shown.length}
@@ -461,13 +485,13 @@ export function RulesLibrary() {
                   <button type="button" className="m2-btn m2-sm" disabled={pending !== null} onClick={() => toggle(selected, false, clear)}>{t("Disable")}</button>
                 </>
               )}
-              emptyFrame={<EmptyFrame>{activeFilterCount(filters) ? t("No rule matches these filters.") : t("No rules yet.")}</EmptyFrame>}
+              emptyFrame={<EmptyFrame>{filtered ? t("No rule matches these filters.") : t("No rules yet.")}</EmptyFrame>}
             />
           )}
-          {activeFilterCount(filters) ? (
+          {filtered ? (
             <p className="m2-prov">
               {t("{shownCount} of {rowsCount} rules. ", { shownCount: int(shown.length), rowsCount: int(rows.length) })}
-              <button type="button" className="m2-linkbtn" onClick={() => setFilters(NO_FILTERS)}>{t("Clear the filters")}</button>
+              <button type="button" className="m2-linkbtn" onClick={() => { setFilters(NO_FILTERS); setScenario(""); setRelevance(""); }}>{t("Clear the filters")}</button>
             </p>
           ) : null}
           {outcome ? <ResultFrame outcome={outcome} /> : null}

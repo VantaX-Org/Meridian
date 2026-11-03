@@ -61,3 +61,38 @@ export const createRuleVersion = (id: string, body: Record<string, unknown>, not
 export const getRuleVersionDiff = (id: string, version: number): Promise<RuleVersionDiff> => v2Get(`/rules/${encodeURIComponent(id)}/versions/${version}/diff`);
 export const transitionRuleVersion = (id: string, version: number, to: RuleVersionState, note?: string): Promise<unknown> =>
   v2Send("POST", `/rules/${encodeURIComponent(id)}/versions/${version}/transition`, { to, note: note || null });
+
+/* ---- Migration scenarios: which shipped rules matter for each S/4HANA path (GET /rules/migration-scenarios) ---- */
+export type MigrationScenarioId = "new_implementation" | "system_conversion" | "selective_transition" | "carve_out";
+export type MigrationRelevance = "required" | "recommended" | "not_applicable";
+export interface MigrationCounts {
+  required: number;
+  recommended: number;
+  not_applicable: number;
+}
+export interface MigrationScenario {
+  id: MigrationScenarioId;
+  description: string;
+  counts: MigrationCounts;
+  blocking: number;
+  modules: Record<string, MigrationCounts>;
+}
+export interface MigrationScenarioRule {
+  id: string;
+  module: string;
+  field: string | null;
+  message: string | null;
+  s4_area: string | null;
+  s4_impact: string | null;
+  impact_note: string | null;
+  relevance: MigrationRelevance;
+  rationale: string;
+}
+export interface MigrationScenarios {
+  scenarios: MigrationScenario[];
+  rules: MigrationScenarioRule[] | null;
+}
+
+/** The four scenarios with counts; with a scenario, also its rules (optionally of one relevance). */
+export const getMigrationScenarios = (scenario?: MigrationScenarioId, relevance?: MigrationRelevance): Promise<MigrationScenarios> =>
+  v2Get<MigrationScenarios>("/rules/migration-scenarios", { scenario, relevance });

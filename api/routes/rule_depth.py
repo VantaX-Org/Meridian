@@ -322,3 +322,53 @@ def _accuracy() -> AccuracyResponse:
 async def rules_accuracy():
     """Per-rule precision and recall on synthetic injected defects (scripts/bench_precision_recall.py)."""
     return _accuracy()
+
+
+# ── migration scenarios ───────────────────────────────────────────────────────
+
+
+class ScenarioCounts(BaseModel):
+    required: int
+    recommended: int
+    not_applicable: int
+
+
+class MigrationScenario(BaseModel):
+    id: str
+    description: str
+    counts: ScenarioCounts
+    blocking: int
+    modules: dict[str, ScenarioCounts]
+
+
+class ScenarioRule(BaseModel):
+    id: str
+    module: str
+    field: Optional[str] = None
+    message: Optional[str] = None
+    s4_area: Optional[str] = None
+    s4_impact: Optional[str] = None
+    impact_note: Optional[str] = None
+    relevance: str
+    rationale: str
+
+
+class MigrationScenariosResponse(BaseModel):
+    scenarios: list[MigrationScenario]
+    rules: Optional[list[ScenarioRule]] = None
+
+
+@router.get("/rules/migration-scenarios", response_model=MigrationScenariosResponse)
+async def rules_migration_scenarios(
+    scenario: Optional[str] = Query(None, description="Also return this scenario's rules"),
+    relevance: Optional[str] = Query(None, description="With scenario: required, recommended or not_applicable"),
+):
+    """Which enabled shipped rules matter for each S/4HANA transition path. Static mapping in checks/migration_scenarios.py."""
+    from checks import migration_scenarios as ms
+    if scenario is not None and scenario not in ms.SCENARIOS:
+        raise HTTPException(status_code=422, detail=f"scenario must be one of {', '.join(ms.SCENARIOS)}")
+    if relevance is not None and relevance not in ms.RELEVANCES:
+        raise HTTPException(status_code=422, detail=f"relevance must be one of {', '.join(ms.RELEVANCES)}")
+    return MigrationScenariosResponse(
+        scenarios=[MigrationScenario(**s) for s in ms.summary().values()],
+        rules=[ScenarioRule(**r) for r in ms.rule_list(scenario, relevance)] if scenario else None)
