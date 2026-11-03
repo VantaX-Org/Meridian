@@ -36,6 +36,21 @@ describe("anomaly rules", () => {
     expect(await screen.findByText("Saved as draft")).toBeInTheDocument();
   });
 
+  it("shows null spikes and unexpected codes with field, run comparison and counts", async () => {
+    renderWithQuery(<AnomalyRules />);
+    const spike = await screen.findByTestId("shift-shift-1");
+    expect(within(spike).getByText("Gross weight")).toBeInTheDocument();
+    expect(within(spike).getByText("MARA-BRGEW")).toBeInTheDocument();
+    expect(within(spike).getByText("Null spike")).toBeInTheDocument();
+    expect(within(spike).getByText("Run 12 against run 11")).toBeInTheDocument();
+    expect(within(spike).getByText("4.5% empty")).toBeInTheDocument();
+    expect(within(spike).getByText("65.1% empty")).toBeInTheDocument();
+    const code = screen.getByTestId("shift-shift-2");
+    expect(within(code).getByText("Unexpected code")).toBeInTheDocument();
+    expect(within(code).getByText("HALB")).toBeInTheDocument();
+    expect(within(code).getByText("3,420 records")).toBeInTheDocument();
+  });
+
   it("says so when no rule fits", async () => {
     renderWithQuery(<AnomalyRules />);
     fireEvent.click(await screen.findByTestId("propose-anom-7")); // credit limit: no known table

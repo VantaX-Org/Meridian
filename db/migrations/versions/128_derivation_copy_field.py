@@ -1,7 +1,7 @@
 """derivation rules can copy from another field
 
-Revision ID: 127
-Revises: 126
+Revision ID: 128
+Revises: 127
 Create Date: 2026-11-03
 
 request_derivations.source_field: copy this field of the request into target_field (SAP MDG derivation, copy from field).
@@ -11,8 +11,8 @@ from typing import Sequence, Union
 
 from alembic import op
 
-revision: str = "127"
-down_revision: Union[str, None] = "126"
+revision: str = "128"
+down_revision: Union[str, None] = "127"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

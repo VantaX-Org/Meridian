@@ -1425,6 +1425,30 @@ class FieldProfile(Base):
     )
 
 
+class FieldShiftAnomaly(Base):
+    """Null spike or unexpected code on one TABLE.FIELD versus an earlier run (migration 127)."""
+    __tablename__ = "field_shift_anomalies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    prev_version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="SET NULL"), nullable=True)
+    module = Column(Text, nullable=False)
+    table_name = Column(Text, nullable=False)
+    field = Column(Text, nullable=False)
+    kind = Column(Text, nullable=False)  # null_spike | unexpected_code
+    severity = Column(Text, nullable=False)
+    current = Column(JSONB, nullable=False, server_default="{}")
+    previous = Column(JSONB, nullable=False, server_default="{}")
+    codes = Column(JSONB, nullable=False, server_default="[]")
+    detected_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("version_id", "module", "table_name", "field", "kind", name="uq_field_shift_anomalies"),
+        Index("ix_field_shift_anomalies_tenant_version", "tenant_id", "version_id"),
+    )
+
+
 class TableProfile(Base):
     """Profile of one extracted table in one version — the anomaly baseline (migration 054)."""
     __tablename__ = "table_profiles"
@@ -3398,7 +3422,7 @@ class RequestDerivation(Base):
     when_field = Column(Text, nullable=False)
     when_values = Column(JSONB, nullable=False)
     target_field = Column(Text, nullable=False)
-    value = Column(Text, nullable=True)  # constant; exactly one of value and source_field (migration 127)
+    value = Column(Text, nullable=True)  # constant; exactly one of value and source_field (migration 128)
     source_field = Column(Text, nullable=True)  # copy this field of the request into target_field
     updated_by = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
