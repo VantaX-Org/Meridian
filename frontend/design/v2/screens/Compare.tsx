@@ -15,6 +15,7 @@ import { Coded, Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from
 import { t as tr } from "@/lib/v2/i18n";
 import { CcBanner, CcDelta, CcPage } from "./cc-parts";
 import { CompareRecords } from "./CompareRecords";
+import { ScoreDeltaPanel } from "./ScoreDeltaPanel";
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
@@ -354,6 +355,8 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
           </>
         )}
       </section>
+
+      {S && t ? <ScoreDeltaPanel a={a} b={b} S={S} /> : null}
 
       {S && t ? (
         <WhatChanged

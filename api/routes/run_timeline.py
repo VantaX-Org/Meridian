@@ -4,6 +4,8 @@ GET /api/v1/runs/timeline?system_id=&limit=8   the last N finished runs of the s
                                                per-object scores, records checked, duration, baseline flag and job kind
 GET /api/v1/runs/{a}/vs/{b}/summary            per object before and after, and the rules that started failing,
                                                were fixed, got worse or better (api/routes/versions.py rules)
+GET /api/v1/runs/{a}/vs/{b}/score-delta        one object's score change split into points per rule and dimension
+                                               (api/services/score_delta.py), with a verified narrative
 
 Read-only and additive. Scores come from analysis_versions.dqs_summary exactly as stored (``score`` is the capped
 composite, ``raw_score`` the measured score before the cap); durations from analysis_run_steps; the baseline is the run
@@ -19,13 +21,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.objects import _label
 from api.routes.record_issues import _rls
 from api.routes.versions import CHANGE_MIN_PERCENT, CHANGE_MIN_RECORDS, _CHECK_CHANGES_SQL, _resolve_pair, change_kind
 from api.services.rbac import require_permission
-from api.services.receipt_math import records_checked_of
+from api.services.receipt_math import records_checked_of, rule_names
 from api.services.version_status import finished_sql
 
 router = APIRouter(prefix="/api/v1/runs", tags=["runs"], dependencies=[Depends(require_permission("view"))])
@@ -242,3 +245,85 @@ async def compare_summary(a: uuid.UUID, b: uuid.UUID, db: AsyncSession = Depends
                    "rules_compared": len(common), "rules_added": added, "rules_dropped": dropped},
         "method": method,
     }
+
+
+# ── why the score moved: points per rule ─────────────────────────────────────
+
+
+class ContributionOut(BaseModel):
+    kind: str                              # failing_records | record_count | new_rule | removed_rule | reweighting | unexplained | cap
+    check_id: Optional[str] = None
+    description: Optional[str] = None      # the rule's title
+    dimension: Optional[str] = None
+    severity: Optional[str] = None
+    points: float                          # change in composite points
+    before_failing: Optional[int] = None
+    after_failing: Optional[int] = None
+    before_records: Optional[int] = None
+    after_records: Optional[int] = None
+
+
+class DimensionDeltaOut(BaseModel):
+    dimension: str
+    points: float
+
+
+class NarrativeOut(BaseModel):
+    source: str                            # ai | template
+    sentences: list[str]
+    dropped: int = 0                       # model sentences removed because a number was not in the decomposition
+
+
+class ScoreDeltaOut(BaseModel):
+    module: str
+    label: str
+    before: float
+    after: float
+    delta: float                           # stored composite after minus before
+    contributions: list[ContributionOut]   # largest first; they sum to delta within ``tolerance``
+    by_dimension: list[DimensionDeltaOut]
+    sum: float
+    residual: float
+    tolerance: float
+    within_tolerance: bool
+    reproduced: bool                       # the findings recompute the stored measured-score change
+    narrative: NarrativeOut
+
+
+@router.get("/{a}/vs/{b}/score-delta", response_model=ScoreDeltaOut)
+async def score_delta(a: uuid.UUID, b: uuid.UUID, module: str = Query(..., min_length=1, max_length=64),
+                      narrative: bool = Query(True, description="false: skip the model, template sentences only"),
+                      db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Run ``b`` against run ``a`` for one object: the composite score change as points per rule, per DAMA dimension and
+    for the critical cap. 404 when a run is not this tenant's or the object has no score in both; the model, when
+    configured, sees only rule id, title, dimension and points."""
+    from api.services import score_delta as sd
+    await _rls(db, tenant)
+    t = str(tenant.id)
+    heads = {r["id"]: r["dqs_summary"] for r in (await db.execute(text(
+        "SELECT id::text AS id, dqs_summary FROM analysis_versions WHERE tenant_id = CAST(:t AS uuid) "
+        "AND id = ANY(CAST(:ids AS uuid[]))"), {"t": t, "ids": sorted({str(a), str(b)})})).mappings().all()}
+    if len(heads) != len({a, b}):
+        raise HTTPException(status_code=404, detail="One or both runs not found")
+    sums = [(heads[str(v)] or {}).get(module) for v in (a, b)]
+    if not all(isinstance(s, dict) for s in sums):
+        raise HTTPException(status_code=404, detail="The object has no score in one of these runs")
+    rows = []
+    for v in (a, b):
+        rows.append([dict(r) for r in (await db.execute(text(
+            "SELECT check_id, severity, dimension, affected_count, total_count, COALESCE(pass_rate, 100) AS pass_rate "
+            "FROM findings WHERE tenant_id = CAST(:t AS uuid) AND version_id = CAST(:v AS uuid) AND module = :m "
+            "AND finding_type = 'rule' AND details->>'error' IS NULL"), {"t": t, "v": str(v), "m": module})).mappings().all()])
+    raw_scoring = (await db.execute(text("SELECT dqs_weights FROM tenants WHERE id = CAST(:t AS uuid)"), {"t": t})).scalar() or {}
+    d = sd.decompose(rows[0], rows[1], sums[0], sums[1], raw_scoring)
+    if d is None:
+        raise HTTPException(status_code=404, detail="The object has no score in one of these runs")
+    label = _label(module)
+    names = await rule_names(db, tenant, sorted({c["check_id"] for c in d["contributions"] if c["check_id"]}))
+    generated = (await run_in_threadpool(sd.ai_sentences, sd.top_facts(d, names), label, d["before"], d["after"])
+                 if narrative else None)
+    return {"module": module, "label": label, "before": d["before"], "after": d["after"], "delta": d["delta"],
+            "contributions": [{**c, "description": names.get(c["check_id"] or "")} for c in d["contributions"]],
+            "by_dimension": d["by_dimension"], "sum": d["sum"], "residual": d["residual"], "tolerance": sd.SUM_TOLERANCE,
+            "within_tolerance": d["within_tolerance"], "reproduced": d["reproduced"],
+            "narrative": sd.narrative(d, names, label, generated)}
