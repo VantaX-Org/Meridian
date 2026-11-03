@@ -73,18 +73,18 @@ function Coverage() {
 
 function DraftForm({ onDone }: { onDone: (d: FixDraft) => void }) {
   const toast = useToast();
-  const [module, setModule] = useState("");
+  const [objectInput, setObjectInput] = useState("");
   const [rule, setRule] = useState("");
   const m = useMutation({
-    mutationFn: () => draftFix(module.trim(), rule.trim()),
+    mutationFn: () => draftFix(objectInput.trim(), rule.trim()),
     onSuccess: (d) => (d.status === "none" ? toast.show(t("Nothing in the allowed operations fixes this rule.")) : onDone(d)),
     onError: (e) => toast.show(errorSentence(e, t("The fix could not be drafted.")), "error"),
   });
   return (
     <div className="m2-acts" role="group" aria-label={t("Draft a fix")} data-testid="fix-draft-form">
-      <Field label={t("Object")}>{(p) => <input {...p} value={module} onChange={(e) => setModule(e.target.value)} data-testid="fix-module" />}</Field>
+      <Field label={t("Object")}>{(p) => <input {...p} value={objectInput} onChange={(e) => setObjectInput(e.target.value)} data-testid="fix-module" />}</Field>
       <Field label={t("Rule")}>{(p) => <input {...p} value={rule} onChange={(e) => setRule(e.target.value)} data-testid="fix-rule" />}</Field>
-      <button type="button" className="m2-btn m2-next" disabled={!module.trim() || !rule.trim() || m.isPending} onClick={() => m.mutate()} data-testid="fix-draft-go">
+      <button type="button" className="m2-btn m2-next" disabled={!objectInput.trim() || !rule.trim() || m.isPending} onClick={() => m.mutate()} data-testid="fix-draft-go">
         {m.isPending ? t("Working…") : t("Draft and verify")}
       </button>
     </div>
