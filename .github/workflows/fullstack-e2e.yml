@@ -146,7 +146,7 @@ jobs:
         working-directory: frontend
         env:
           CI: "true"
-        run: npx playwright test e2e/acceptance.spec.ts --workers=1 --retries=0 --grep "^(3|4|5)\. "
+        run: npx playwright test e2e/acceptance.spec.ts --workers=1 --retries=0 --grep " (3|4|5)\. "
 
       - name: Logs on failure
         if: failure()
