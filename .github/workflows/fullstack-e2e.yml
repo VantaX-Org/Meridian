@@ -15,6 +15,8 @@ on:
       - "workers/**"
       - "db/**"
       - "frontend/**"
+      - "docker/garage/**"
+      - "docker/Dockerfile.garage"
       - "scripts/ci_fullstack_seed.py"
       - "tests/fixtures/realistic_sap_data.py"
       - ".github/workflows/fullstack-e2e.yml"
@@ -81,10 +83,12 @@ jobs:
 
       - name: Object storage
         run: |
-          docker run -d --name ci-minio -p 9000:9000 \
-            -e MINIO_ROOT_USER=ciminio -e MINIO_ROOT_PASSWORD=ciminio-secret-key \
-            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
-          for i in $(seq 1 30); do curl -sf http://localhost:9000/minio/health/live && break; sleep 2; done
+          # the shipped Garage image, built from this checkout (minio/minio can no longer be pulled from Docker Hub)
+          docker build -q -f docker/Dockerfile.garage -t ci-storage docker
+          docker run -d --name ci-storage -p 9000:9000 \
+            -e MINIO_ACCESS_KEY=ciminio -e MINIO_SECRET_KEY=ciminio-secret-key ci-storage
+          for i in $(seq 1 60); do docker exec ci-storage test -f /tmp/storage-ready && exit 0; sleep 2; done
+          docker logs ci-storage; exit 1
 
       - uses: actions/setup-python@v5
         with:
