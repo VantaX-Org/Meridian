@@ -444,16 +444,22 @@ def apply_defaults(session, tid: str, obj: str, payload: dict[str, Any]) -> tupl
 
 def apply_derivations(session, tid: str, obj: str, payload: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     """The payload with the tenant's derivation rules applied, in the order they were made, each seeing what the ones
-    before it set: when ``when_field`` holds one of ``when_values``, ``target_field`` is set to the constant. Returns
+    before it set: when ``when_field`` holds one of ``when_values``, ``target_field`` is set to the constant, or to the
+    value of ``source_field`` (skipped when that is empty). Returns
     it and the fields a rule set to a value other than the one they had."""
     rows = session.execute(text(
-        "SELECT when_field, when_values, target_field, value FROM request_derivations WHERE tenant_id = CAST(:t AS uuid) "
+        "SELECT when_field, when_values, target_field, value, source_field FROM request_derivations WHERE tenant_id = CAST(:t AS uuid) "
         "AND object = :o ORDER BY created_at, id"), {"t": tid, "o": obj}).all()
     out, derived = dict(payload), []
-    for wf, vals, tf, v in rows:
+    for wf, vals, tf, v, sf in rows:
         cur = out.get(wf)
         if cur is None or str(cur).strip() not in [str(x) for x in vals]:
             continue
+        if sf is not None:
+            v = out.get(sf)
+            if v is None or str(v).strip() == "":
+                continue
+            v = str(v)
         if str(out.get(tf)) != v:
             out[tf] = v
             if tf not in derived:

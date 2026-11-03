@@ -116,7 +116,7 @@ function initial(): State {
     seq: 1005,
     keys: {},
     defaults: [{ id: "D-1", object: "material", field: "MARA.MEINS", value: "EA", updated_at: "2026-10-01T09:00:00Z" }],
-    derivations: [{ id: "V-1", object: "material", when_field: "MARA.MTART", when_values: ["ROH"], target_field: "MARC.BESKZ", value: "F", updated_at: "2026-10-02T09:00:00Z" }],
+    derivations: [{ id: "V-1", object: "material", when_field: "MARA.MTART", when_values: ["ROH"], target_field: "MARC.BESKZ", value: "F", source_field: null, updated_at: "2026-10-02T09:00:00Z" }],
     criticalFields: [{ id: "C-1", object: "material", field: "MARA.MTART", updated_at: "2026-10-02T09:00:00Z" }],
     fields: {
       "CR-1001": [
@@ -194,8 +194,10 @@ function withDerivations(object: string, payload: Record<string, string>): { pay
   const out = { ...payload };
   const derived: string[] = [];
   for (const d of state.derivations.filter((x) => x.object === object)) {
-    if (d.when_values.includes(out[d.when_field] ?? "") && out[d.target_field] !== d.value) {
-      out[d.target_field] = d.value;
+    if (!d.when_values.includes(out[d.when_field] ?? "")) continue;
+    const v = d.source_field ? (out[d.source_field] ?? "").trim() : d.value;
+    if (v && out[d.target_field] !== v) {
+      out[d.target_field] = v;
       derived.push(d.target_field);
     }
   }
@@ -300,8 +302,11 @@ export function requestsWrite(method: string, path: string, body: unknown): unkn
     const when_field = String(b.when_field ?? "").trim().toUpperCase();
     const target_field = String(b.target_field ?? "").trim().toUpperCase();
     const when_values = ((b.when_values ?? []) as string[]).map((v) => String(v).trim()).filter(Boolean);
-    if (!ok(when_field) || !ok(target_field) || when_values.length === 0 || !String(b.value ?? "").trim()) fail(422, "The rule is not valid.");
-    const row: Derivation = { id: `V-${state.seq++}`, object: b.object as Derivation["object"], when_field, when_values, target_field, value: String(b.value), updated_at: NOW };
+    const source_field = b.source_field == null ? null : String(b.source_field).trim().toUpperCase();
+    const value = b.value == null ? null : String(b.value);
+    if (!ok(when_field) || !ok(target_field) || when_values.length === 0) fail(422, "The rule is not valid.");
+    if ((value === null) === (source_field === null) || (source_field !== null && (!ok(source_field) || source_field === target_field || source_field === when_field)) || (value !== null && !value.trim())) fail(422, "The rule is not valid.");
+    const row: Derivation = { id: `V-${state.seq++}`, object: b.object as Derivation["object"], when_field, when_values, target_field, value, source_field, updated_at: NOW };
     state.derivations = [...state.derivations, row];
     return clone(row);
   }

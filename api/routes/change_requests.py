@@ -520,7 +520,14 @@ class DerivationBody(BaseModel):
     when_field: str = Field(min_length=3, max_length=60, description="TABLE.FIELD the condition reads")
     when_values: list[str] = Field(min_length=1, max_length=50, description="the condition holds when the field is one of these")
     target_field: str = Field(min_length=3, max_length=60, description="TABLE.FIELD set when it holds")
-    value: str = Field(min_length=1, max_length=500)
+    value: Optional[str] = Field(default=None, min_length=1, max_length=500, description="constant to set")
+    source_field: Optional[str] = Field(default=None, min_length=3, max_length=60, description="TABLE.FIELD to copy instead of a constant")
+
+    @model_validator(mode="after")
+    def _one_action(self) -> "DerivationBody":
+        if (self.value is None) == (self.source_field is None):
+            raise ValueError("Give exactly one of value and source_field.")
+        return self
 
 
 @router.get("/derivations", dependencies=[Depends(require_permission("mdm.read"))])
@@ -528,7 +535,7 @@ async def list_derivations(db: AsyncSession = Depends(get_db), tenant: Tenant = 
     """The rules that set a field of a request from other fields of it, applied in the order they were made."""
     await _rls(db, tenant)
     rows = (await db.execute(text(
-        "SELECT id::text AS id, object, when_field, when_values, target_field, value, created_at AS updated_at FROM request_derivations "
+        "SELECT id::text AS id, object, when_field, when_values, target_field, value, source_field, created_at AS updated_at FROM request_derivations "
         "WHERE tenant_id = :t ORDER BY object, created_at, id"), {"t": str(tenant.id)})).mappings()
     return {"items": [dict(r) for r in rows]}
 
@@ -543,17 +550,20 @@ async def put_derivation(body: DerivationBody, request: Request, db: AsyncSessio
         raise HTTPException(status_code=422, detail="Give at least one value to match.")
     if wf == tf:
         raise HTTPException(status_code=422, detail="A rule cannot set the field it reads.")
-    problems = crs.check_payload(body.object, "create", {wf: vals[0], tf: body.value}, None)
+    sf = body.source_field.strip().upper() if body.source_field else None
+    if sf in (wf, tf):
+        raise HTTPException(status_code=422, detail="A rule cannot copy from the field it reads or sets.")
+    problems = crs.check_payload(body.object, "create", {wf: vals[0], tf: body.value or "", **({sf: ""} if sf else {})}, None)
     if problems:
         raise HTTPException(status_code=422, detail={"detail": "The derivation is not valid.", "problems": problems})
     await _rls(db, tenant)
     row = (await db.execute(text(
-        "INSERT INTO request_derivations (tenant_id, object, when_field, when_values, target_field, value, updated_by) "
-        "VALUES (:t, :o, :w, CAST(:vs AS jsonb), :tf, :v, CAST(:u AS uuid)) "
+        "INSERT INTO request_derivations (tenant_id, object, when_field, when_values, target_field, value, source_field, updated_by) "
+        "VALUES (:t, :o, :w, CAST(:vs AS jsonb), :tf, :v, :sf, CAST(:u AS uuid)) "
         "ON CONFLICT (tenant_id, object, when_field, when_values, target_field) DO UPDATE SET value = EXCLUDED.value, "
-        "updated_by = EXCLUDED.updated_by "
-        "RETURNING id::text AS id, object, when_field, when_values, target_field, value, created_at AS updated_at"),
-        {"t": str(tenant.id), "o": body.object, "w": wf, "vs": json.dumps(vals), "tf": tf, "v": body.value,
+        "source_field = EXCLUDED.source_field, updated_by = EXCLUDED.updated_by "
+        "RETURNING id::text AS id, object, when_field, when_values, target_field, value, source_field, created_at AS updated_at"),
+        {"t": str(tenant.id), "o": body.object, "w": wf, "vs": json.dumps(vals), "tf": tf, "v": body.value, "sf": sf,
          "u": current_user_id(request)})).mappings().one()
     await db.commit()
     return dict(row)

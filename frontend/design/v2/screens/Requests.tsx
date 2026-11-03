@@ -351,12 +351,14 @@ function DerivationRules({ canEdit }: { canEdit: boolean }) {
   const [whenField, setWhenField] = useState("");
   const [whenValues, setWhenValues] = useState("");
   const [target, setTarget] = useState("");
+  const [copy, setCopy] = useState(false);
   const [value, setValue] = useState("");
+  const [source, setSource] = useState("");
   const items = q.data?.items ?? [];
   const values = whenValues.split(",").map((v) => v.trim()).filter(Boolean);
   return (
     <section className="m2-sec" aria-label={t("Derivation rules")} data-testid="derivation-rules">
-      <p className="m2-prov">{t("When a field of a request holds one of the listed values, another field of the same request is set to a fixed value. A derived value is marked as derived in the history of the request.")}</p>
+      <p className="m2-prov">{t("When a field of a request holds one of the listed values, another field of the same request is set to a fixed value or to a copy of a third field. A copy from an empty field is skipped. A derived value is marked as derived in the history of the request.")}</p>
       {q.isError ? (
         <ErrorFrame onRetry={() => void q.refetch()}>{t("The derivation rules could not be read.")}</ErrorFrame>
       ) : items.length === 0 ? (
@@ -369,7 +371,7 @@ function DerivationRules({ canEdit }: { canEdit: boolean }) {
               <th scope="col">{t("When field")}</th>
               <th scope="col">{t("Is one of")}</th>
               <th scope="col">{t("Set field")}</th>
-              <th scope="col">{t("To value")}</th>
+              <th scope="col">{t("Set to")}</th>
               {canEdit ? <th scope="col">{t("Remove")}</th> : null}
             </tr>
           </thead>
@@ -387,7 +389,13 @@ function DerivationRules({ canEdit }: { canEdit: boolean }) {
                   <Coded code={d.target_field} text={describeField(d.target_field)} />
                 </td>
                 <td>
-                  <Mono>{d.value}</Mono>
+                  {d.source_field ? (
+                    <>
+                      {t("Copy of")} <Coded code={d.source_field} text={describeField(d.source_field)} />
+                    </>
+                  ) : (
+                    <Mono>{d.value}</Mono>
+                  )}
                 </td>
                 {canEdit ? (
                   <td>
@@ -417,20 +425,36 @@ function DerivationRules({ canEdit }: { canEdit: boolean }) {
             <input value={target} maxLength={60} spellCheck={false} onChange={(e) => setTarget(e.target.value)} />
           </label>
           <label>
-            {t("To value")}
-            <input value={value} maxLength={500} onChange={(e) => setValue(e.target.value)} />
+            {t("Set to")}
+            <select value={copy ? "copy" : "value"} onChange={(e) => setCopy(e.target.value === "copy")}>
+              <option value="value">{t("Constant value")}</option>
+              <option value="copy">{t("Copy from field")}</option>
+            </select>
           </label>
+          {copy ? (
+            <label>
+              {t("Source field, as TABLE.FIELD")}
+              <input value={source} maxLength={60} spellCheck={false} onChange={(e) => setSource(e.target.value)} />
+              {source.trim() ? <span className="m2-prov">{describeField(source.trim().toUpperCase())}</span> : null}
+            </label>
+          ) : (
+            <label>
+              {t("To value")}
+              <input value={value} maxLength={500} onChange={(e) => setValue(e.target.value)} />
+            </label>
+          )}
           <button
             type="button"
             className="m2-btn"
-            disabled={busy || !whenField.trim() || values.length === 0 || !target.trim() || !value.trim()}
+            disabled={busy || !whenField.trim() || values.length === 0 || !target.trim() || !(copy ? source.trim() : value.trim())}
             onClick={() =>
               void act(async () => {
-                await putDerivation(object, whenField.trim(), values, target.trim(), value.trim());
+                await putDerivation(object, whenField.trim(), values, target.trim(), copy ? { source_field: source.trim() } : { value: value.trim() });
                 setWhenField("");
                 setWhenValues("");
                 setTarget("");
                 setValue("");
+                setSource("");
               }, t("The rule could not be saved."))
             }
           >
