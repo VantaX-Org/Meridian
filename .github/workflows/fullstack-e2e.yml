@@ -73,7 +73,7 @@ jobs:
       LLM_PROVIDER: none
       CREDENTIAL_MASTER_KEY: ci_fullstack_credential_master_key_not_a_secret
       # throwaway credentials of a stack that lives for this job
-      ACCEPTANCE_ADMIN_PASSWORD: Ci-Fullstack-Admin-7391!
+      ACCEPTANCE_ADMIN_PASSWORD: Ci-Fullstack-Lead-7391!
       ACCEPTANCE_PASSWORD: Ci-Fullstack-User-4827!
       ACCEPTANCE_DOMAIN: acceptance.test
       ACCEPTANCE_BASE_URL: http://127.0.0.1:3010
