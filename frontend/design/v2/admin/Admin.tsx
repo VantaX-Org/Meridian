@@ -19,6 +19,7 @@ import { BillingSection, LicenceSection } from "./tenant";
 import { UsersSection } from "./users";
 import { MatchRulesSection } from "./matchrules";
 import { WebhooksSection } from "./webhooks";
+import { DqFirewallSection } from "./dqfirewall";
 import { DigestsSection, PolicyPacksSection } from "./step10";
 import { t } from "@/lib/v2/i18n";
 import { useAccessRequests, useLicence, useRoles, useUsers } from "@/lib/v2/admin-queries";
@@ -240,6 +241,8 @@ function Section({ slug }: { slug: AdminSlug }) {
       return <NotificationsSection />;
     case "webhooks":
       return <WebhooksSection />;
+    case "dqfirewall":
+      return <DqFirewallSection />;
     case "policypacks":
       return <PolicyPacksSection />;
     case "digests":

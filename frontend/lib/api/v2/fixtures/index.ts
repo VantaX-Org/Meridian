@@ -17,6 +17,7 @@ import * as ap from "./approvals";
 import { NOT_MINE, resetSys6b, sys6bRead, sys6bWrite, withSystems } from "./sys6b";
 import { NONE_ROLES, resetRolesFixture, rolesFixtureResponse, rolesFixtureWrite } from "./roles";
 import { adminFixtureResponse, adminFixtureWrite, fixtureDownload as adminFixtureDownload, NONE_ADMIN } from "./admin";
+import { dqFirewallRead, dqFirewallWrite, NONE_DQ_FIREWALL } from "./dq-firewall";
 import { enterpriseFixtureDownload, enterpriseFixtureResponse, enterpriseFixtureWrite, NONE_ENTERPRISE } from "./enterprise";
 import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, step9Read, step9Write, withContractMarks } from "./step9";
 import { NONE_REQ, requestsDownload, requestsRead, requestsWrite, resetRequestsFixture } from "./requests";
@@ -215,6 +216,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     if (mdm !== undefined) return mdm;
     const ent = enterpriseFixtureWrite(method, path, body);
     if (ent !== NONE_ENTERPRISE) return ent;
+    const dqw = dqFirewallWrite(method, path, body);
+    if (dqw !== NONE_DQ_FIREWALL) return dqw;
     const admin = adminFixtureWrite(method, path, body, params);
     if (admin !== NONE_ADMIN) return admin;
     void params;
@@ -406,6 +409,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (rolesStep !== NONE_ROLES) return rolesStep as T;
   const ent = enterpriseFixtureResponse(path);
   if (ent !== NONE_ENTERPRISE) return ent as T;
+  const dqr = dqFirewallRead(path);
+  if (dqr !== NONE_DQ_FIREWALL) return dqr as T;
   const adminStep = adminFixtureResponse(path, params);
   if (adminStep !== NONE_ADMIN) return adminStep as T;
   const s6 = sys6bRead(path, params);
