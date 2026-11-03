@@ -43,6 +43,29 @@ The banner on top says "Change requests". Its headline counts what waits ("3 req
 - **The request inspector** shows the proposed values, the checks, the approval steps with who decided each and when, the history, comments and attachments. The requester can cancel a request that is not finished; a request that failed in SAP can be retried once you have checked in SAP that the record does not exist; a request with a load file can be exported.
 - **Your decision**: when a step waits for you, the inspector of the request shows **Approve**, and **Reject** with a reason the requester reads. The step, its due time and whether you decide on behalf of someone are stated.
 
+### Ageing and due time
+
+An open request shows how long it has waited. The list has **Age** and **Due** columns: the age in days or hours, and the due time of the approval step that waits. The banner adds an **Overdue** figure, and when a request is past the due time of its waiting step the banner turns to no-go and says "2 requests are past the due time of the waiting approval step." The inspector states **Waiting for** (the step), **Due** and **Age**. The due time comes from the hours set on the step in the approval workflow.
+
+### Field history
+
+The inspector has a **Field history** table. Every field that was set, changed, removed, defaulted or derived on the request is kept with the old value, the new value and the person who did it, with the field description beside each code. A request without a field change says "No field change is recorded for this request."
+
+### Entry defaults
+
+**Entry defaults** on the Requests screen lists values a new **create** request gets in the fields its requester leaves empty. A change request is never defaulted. Each default is a field as `TABLE.FIELD` and a value; the history shows them as **Defaulted**. Adding (**Save default**) or removing a default needs the manage workflows permission.
+
+### Mass change
+
+Choose the kind **Mass change** in **New request** to change the same field or fields on many records in one request, up to 10,000. Paste the record keys, one per line; a bare number takes the key field of the object (`?keys=` in the address fills them in). Give the field and the value. The **preview** shows, per record, the current value from Meridian's own data beside the proposed one, with the counts found, not found, would change and already hold the value; it shows the first rows only. The request then goes through the same approval steps and permissions as a single change. On approval the history holds one row per record and field that changes, and a load file is delivered. Nothing is written to SAP by Meridian, and no record data goes to an AI.
+
+### Derivation rules and critical fields
+
+The button **Derivations and critical fields**, beside Entry defaults, opens two lists; every code shows its description. Adding and removing needs manage workflows.
+
+- **Derivation rules.** A rule says: when a field of the request holds one of the listed values ("Is one of", separated by commas), set another field. The new value is either a **constant value** or a **copy from field**: the request's proposed value of a source field, skipped when that source is empty. For example, when `MARA.MTART` is `ROH`, set `MARC.BESKZ` to `F`. Rules run in the order they were made when a request is created or updated, before the check, so a later rule sees what an earlier one set. A derived value is authoritative and shows as **Derived** in the field history.
+- **Critical fields.** A list of fields per object. A request that touches one is flagged critical in the list and the inspector and gets an extra **Critical field** approval step after the usual steps, decided by a second person who is not the requester or an earlier approver. Administrators can also use the critical fields of a request in the conditions of their own workflow steps.
+
 ## Out of office and escalation
 
 - When an approver is away, their approvals go to the deputy they named under Preferences, Out of office. The batch inspector says so, for example "You cover for T. Mokoena until 30 Oct 2026: their approvals and assigned work come to you as well." Four eyes still holds: nobody approves their own batch.

@@ -36,6 +36,17 @@ The Anomaly rules page, under Anomaly rules in the map, turns an outlier that mi
 
 Press **Save as draft** to keep the rule as a draft in the rule workbench, where it is reviewed and published as any other draft.
 
+### Null spikes and unexpected codes
+
+Under the outliers, the panel **Null spikes and unexpected codes** compares each run with the run before it of the same system and shows counts only, never a record. Meridian reads it from the field statistics of the runs (row count, blank count, distinct values and the most common values of code fields); no AI is used. Each row shows the field with its description, the kind, the runs compared ("Run 12 against run 11"), the figures before and now, and the severity. By default the panel shows the latest run of each object that has shifts.
+
+- **Null spike.** The share of blank values in a field rose by at least 10 points against the earlier run, and both runs hold at least 100 rows. The severity is medium, high from a rise of 25 points and critical from 50 points. The figures read "12% empty" before and now.
+- **Unexpected code.** A code appears in the field that none of up to five earlier runs listed. Meridian judges this only when the current run and the one before it list every value of the field, so a new code is certain. Fields with many distinct values, masked fields and sensitive fields get no such check, because their statistics do not list every value. The severity is high when the new codes make up 5% or more of the filled rows, otherwise medium. The figures read "3 of 48,000".
+
+A run with no earlier run to compare gets no shifts, and earlier runs are not checked afterwards. When nothing shifted, the panel says "No null spike or unexpected code was found."
+
+Press **Propose rule** on a row to draft a rule from the shift. A null spike drafts a null check on the field. An unexpected code drafts a domain value check on the values the earlier run listed, and only when it listed every value. The draft is saved in the rule workbench like **Save as draft** above, so nothing is enforced until a person reviews and publishes it. Pressing it again for the same shift does not create a second draft; the page says "This draft already exists. Find it in the rule workbench."
+
 ## MDM health
 
 The MDM health page, under MDM health in the map, shows the daily snapshot of how well master data is governed. The banner gives the health score out of 100 and its change over the last 90 days, with the golden records, the open stewardship items and the share of systems synced beside it. Under it:
