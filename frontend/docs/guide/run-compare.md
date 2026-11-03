@@ -27,6 +27,8 @@ The method is stated under it, exactly as the product states it: "Rules are comp
 - **By object**: measured before and after, the change in points, shown before and after, records checked, coverage, and the counts of rules new, fixed, worse and better. The total row adds them.
 - **What changed**: "Rule counts match the table above." Four lists: **Newly failing rules**, **Fixed rules**, **Worse** and **Better**, each rule with its object and its failing records before and after, for example "MM201 Base unit of measure not in the check table, Material master, 0 to 316 records failing".
 
+Above the object table, the **Why the score moved** panel explains one object at a time; pick it in the **Object** list, which starts on the object that moved most. A bar chart shows **Points by rule**: each rule with its code and description, and how many points it added or cost, whether its failing records changed, the records checked changed, the rule is new, or the rule no longer ran. Separate bars show the dimension weighting and the critical cap when they moved the score. The contributions are computed from the same scoring code as the run, and the line above the chart states how many of the changed points they add up to; they agree within 0.05 points. The sentences below the chart are written by Aletheia from the largest contributions only, and each sentence is dropped if a number in it is not in the figures. If no model is available, the sentences come from a fixed template and the panel says so.
+
 On an object's Runs tab the same comparison appears as **Why the score moved**, and ends with what the cap did, for example "The shown score moved only 69.8 to 70.0, because the cap holds it at 70.0."
 
 ## The numbers and where they come from

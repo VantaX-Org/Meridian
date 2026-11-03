@@ -13,7 +13,7 @@ import { fixtureParam } from "../fixture";
 import { LIBRARY, type LibraryRule } from "./library";
 import { formatDate } from "@/lib/format";
 import type { Landscape, LandscapeCell } from "../types";
-import type { ChangeKind, CheckChange, CompareObject, CompareSide, CompareSummary, TimelineRun, VersionCompare, VersionHead } from "../runs";
+import type { ChangeKind, CheckChange, CompareObject, CompareSide, CompareSummary, ScoreContribution, ScoreDelta, TimelineRun, VersionCompare, VersionHead } from "../runs";
 import type { Job, JobStage, JobTable } from "@/types/jobs";
 import type { SAPSystemExtended, SyncProfile } from "@/types/api";
 import type { SystemObject, SystemVersion } from "@/lib/api/system-objects";
@@ -262,6 +262,47 @@ export function fixtureCompare(a: string, b: string): CompareSummary {
     objects,
     totals: { records_checked_before: total("before"), records_checked_after: total("after"), newly_failing: sum("newly_failing"), fixed: sum("fixed"), worse: sum("worse"), better: sum("better"), rules_compared: compared, rules_added: addedBetween, rules_dropped: 0 },
     method,
+  };
+}
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/** GET /runs/{a}/vs/{b}/score-delta: the fixture's rule changes weighted by records moved; a reweighting row makes the sum exact. */
+export function fixtureScoreDelta(a: string, b: string, module: string): ScoreDelta {
+  const ka = numberOf(a);
+  const kb = numberOf(b);
+  if (!RUNS.some((r) => r.id === a) || !RUNS.some((r) => r.id === b) || !MODULES.includes(module)) throw new FixtureNotFound(`/runs/${a}/vs/${b}/score-delta`);
+  const sa = shownAt(module, ka);
+  const sb = shownAt(module, kb);
+  const rawMove = r2(measuredAt(module, kb) - measuredAt(module, ka));
+  const sign: Record<ChangeKind, number> = { newly_failing: -1, worse: -1, fixed: 1, better: 1 };
+  const all = changesFor(ka, kb);
+  const rows = KIND_ORDER.flatMap((k) => all[k].filter((c) => c.module === module).map((c) => ({ c, k })));
+  const weight = (x: { c: CheckChange; k: ChangeKind }) => sign[x.k] * Math.abs(x.c.v2_affected - x.c.v1_affected);
+  const total = rows.reduce((n, x) => n + Math.abs(weight(x)), 0) || 1;
+  const none = { check_id: null, description: null, dimension: null, severity: null, before_failing: null, after_failing: null, before_records: null, after_records: null };
+  const contributions: ScoreContribution[] = rows.map((x) => ({
+    kind: "failing_records", check_id: x.c.check_id, description: x.c.message, dimension: LIBRARY.find((r) => r.check_id === x.c.check_id)?.dimension ?? null, severity: x.c.severity,
+    points: r2((weight(x) / total) * (Math.abs(rawMove) + 1)),
+    before_failing: x.c.v1_affected, after_failing: x.c.v2_affected, before_records: recordsAt(module, ka), after_records: recordsAt(module, kb),
+  }));
+  const moved = r2(contributions.reduce((n, c) => n + c.points, 0));
+  if (Math.abs(rawMove - moved) >= 0.005) contributions.push({ ...none, kind: "reweighting", points: r2(rawMove - moved) });
+  if (sa.capped || sb.capped) contributions.push({ ...none, kind: "cap", points: r2(sb.score - sa.score - rawMove) });
+  contributions.sort((x, y) => Math.abs(y.points) - Math.abs(x.points));
+  const byDim = new Map<string, number>();
+  for (const c of contributions) if (c.dimension) byDim.set(c.dimension, r2((byDim.get(c.dimension) ?? 0) + c.points));
+  const delta = r2(sb.score - sa.score);
+  const sum = r2(contributions.reduce((n, c) => n + c.points, 0));
+  const label = L.objects.find((o) => o.module === module)?.label ?? module;
+  const sentences = [`${label} ${delta >= 0 ? "rose" : "fell"} from ${sa.score.toFixed(2)} to ${sb.score.toFixed(2)}, a change of ${Math.abs(delta).toFixed(2)} points.`].concat(
+    contributions.slice(0, 3).map((c) => `${c.check_id ?? c.kind} ${c.points > 0 ? "added" : "cost"} ${Math.abs(c.points).toFixed(2)} points.`),
+  );
+  return {
+    module, label, before: sa.score, after: sb.score, delta, contributions,
+    by_dimension: [...byDim].map(([dimension, points]) => ({ dimension, points })).sort((x, y) => Math.abs(y.points) - Math.abs(x.points)),
+    sum, residual: r2(delta - sum), tolerance: 0.05, within_tolerance: Math.abs(delta - sum) <= 0.05, reproduced: true,
+    narrative: { source: "template", sentences, dropped: 0 },
   };
 }
 
@@ -574,6 +615,8 @@ export function runsFixtureResponse(path: string, params: Params): unknown {
   if (path === "/runs/timeline") return fixtureTimeline(params.system_id ? String(params.system_id) : undefined, Number(params.limit ?? 8));
   const vs = /^\/runs\/([^/]+)\/vs\/([^/]+)\/summary$/.exec(path);
   if (vs) return fixtureCompare(decodeURIComponent(vs[1]), decodeURIComponent(vs[2]));
+  const sd = /^\/runs\/([^/]+)\/vs\/([^/]+)\/score-delta$/.exec(path);
+  if (sd) return fixtureScoreDelta(decodeURIComponent(sd[1]), decodeURIComponent(sd[2]), String(params.module ?? ""));
   if (path === "/versions/compare") return fixtureVersionCompare(String(params.v1), String(params.v2), params.module ? String(params.module) : undefined);
   if (path === "/versions") return versionsPage(params);
   const ver = /^\/versions\/([^/]+)$/.exec(path);
