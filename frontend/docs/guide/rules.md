@@ -65,6 +65,16 @@ Users who may manage rules also see three buttons. **Apply** promotes every rule
 
 Promoting is not the end. A promoted rule is checked again each time you press Preview. When its failure rate has risen five points or more over the rate it was promoted at, the page shows it in a warning above the table, with the old rate, the new rate and the sample records.
 
+## Aletheia verified fixes
+
+Many rules can tell you a value is wrong but cannot say how to correct it. A rule has an automatic fix only when it carries `auto_fix` steps. The Aletheia verified fixes page, under Aletheia verified fixes in the map or at `/fix-drafts`, closes that gap for one rule at a time and never applies anything by itself.
+
+The top of the page charts, for each object, how many rules have a fix and how many do not. Below it, each drafted fix is a card with the rule and its description, the field and its description, and the aggregated shape of the failing values: the most common masks (letters as A or a, digits as 9), lengths, case, and how many values carry leading, trailing or inner spaces. The drafter sees this shape and nothing else. No field value ever reaches the model.
+
+The drafter picks steps only from the fixed set of fix operations, such as trim, upper case, pad on the left or map values. Each operation is shown with its description. Meridian then proves the steps on your latest extraction and shows the result as a bar: how many failing values are fixed, how many the rule still rejects after the fix, and how many are still failing. It also counts passing values the steps would change, which should be none. When the model is switched off or fails, Meridian drafts from a short list of safe candidates instead and marks the draft as drafted by rule.
+
+Every draft waits as pending. Users who may manage rules can press **Approve**, which makes the steps the rule's fix with low confidence, or **Reject**, which keeps the draft in the audit log and changes nothing. A rule that already has a fix, or has no extraction to prove against, cannot be drafted.
+
 ## The numbers and where they come from
 
 - **Failing** is distinct records failing the rule in the latest run of each object in scope.

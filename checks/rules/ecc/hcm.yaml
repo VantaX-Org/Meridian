@@ -776,6 +776,11 @@ rules:
   fix_map:
     __other__: Use the exact user ID from SU01 in PA30 infotype 0105 subtype 0001.
   record_fix_template: 'Personnel number {PA0105.PERNR}: user name format is invalid. Correct in PA30 infotype 0105.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: PA041
   field: PA0003.ABRDT
   check_class: freshness_check
@@ -1313,6 +1318,10 @@ rules:
   fix_map:
     __other__: Set a valid planning status in PPOME / PP01.
   record_fix_template: 'Object {HRP1000.OBJID}: planning status is invalid. Correct in PPOME.'
+  auto_fix:
+    steps:
+    - op: strip
+    confidence: medium
 - id: PA066
   field: HRP1001.BEGDA
   check_class: cross_field_check
@@ -1450,6 +1459,10 @@ rules:
   fix_map:
     __other__: Correct the status through the action type configuration (T529A) and re-run the action in PA40.
   record_fix_template: Personnel number {PA0000.PERNR} has an undefined employment status. Review the action type in T529A.
+  auto_fix:
+    steps:
+    - op: strip
+    confidence: medium
 - id: PA073
   field: PA0000.PREAS
   check_class: exists_check
@@ -2289,6 +2302,11 @@ rules:
   fix_map:
     __other__: Correct the relationship in PPOME.
   record_fix_template: Object {HRP1001.OBJID} has an invalid relationship direction. Correct in PPOME.
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: PA116
   field: HRP1001.SOBID
   check_class: null_check

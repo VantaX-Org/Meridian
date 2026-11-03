@@ -46,6 +46,7 @@ import { NONE_SIMULATIONS, simulationsRead, simulationsWrite, resetSimulationsFi
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
 import { rulePromotionRead, rulePromotionWrite, NONE_RULE_PROMOTION } from "./rulePromotion";
 import { migrationScenariosRead, NONE_MIGRATION_SCENARIOS } from "./migrationScenarios";
+import { fixDraftsRead, fixDraftsWrite, NONE_FIX_DRAFTS } from "./fixDrafts";
 import { anomalyRulesRead, anomalyRulesWrite, NONE_ANOMALY_RULES } from "./anomalyRules";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
 import { guardDecision, NONE_STEP10, receiptPolicy, resetStep10Fixture, step10Read, step10Write, withPolicyMarks, withSandbox } from "./step10";
@@ -160,6 +161,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (pd !== NONE_DISCOVERY) return pd as T;
   const rpw = rulePromotionWrite(method, path, body);
   if (rpw !== NONE_RULE_PROMOTION) return rpw as T;
+  const fdw = fixDraftsWrite(method, path, body);
+  if (fdw !== NONE_FIX_DRAFTS) return fdw as T;
   const ar = anomalyRulesWrite(method, path, body);
   if (ar !== NONE_ANOMALY_RULES) return ar as T;
   const mn = miningWrite(method, path, body);
@@ -364,6 +367,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (pd !== NONE_DISCOVERY) return pd as T;
   const rpr = rulePromotionRead(path, params);
   if (rpr !== NONE_RULE_PROMOTION) return rpr as T;
+  const fdr = fixDraftsRead(path);
+  if (fdr !== NONE_FIX_DRAFTS) return fdr as T;
   const ars = anomalyRulesRead(path);
   if (ars !== NONE_ANOMALY_RULES) return ars as T;
   const mn = miningRead(path);
