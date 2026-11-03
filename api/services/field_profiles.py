@@ -70,6 +70,8 @@ def profile_and_store(engine: Any, tenant_id: str, version_id: str, module: str,
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             stats = store(session, tenant_id, version_id, module, profiles, deps)
+            from api.services.anomaly_shifts import detect_and_store
+            stats["shifts"] = detect_and_store(session, tenant_id, version_id, module)
             session.commit()
         return stats
     except Exception as e:  # noqa: BLE001 — profiling is best-effort

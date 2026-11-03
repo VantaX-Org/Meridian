@@ -6,7 +6,7 @@ Approving is the existing rule-authoring path: POST /api/v1/rule-authoring/draft
 import uuid
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -110,3 +110,59 @@ def _grounding(a: dict, source: str, valid: bool, dry: dict) -> dict:
             "statistic": {k: a.get(k) for k in ("method", "z_score", "lower", "upper")},
             "anomaly_count": a.get("count"), "rule_hits": dry.get("hits"), "population": dry.get("population"),
             "ai_sent": ["field", "statistic", "counts"] if source == "llm" else []}
+
+
+class ShiftCounts(BaseModel):
+    rows: Optional[int] = None
+    blank: Optional[int] = None
+    blank_pct: Optional[float] = None
+    distinct: Optional[int] = None
+
+
+class ShiftCode(BaseModel):
+    value: str
+    count: int
+
+
+class ShiftOut(BaseModel):
+    id: str
+    version_id: str
+    prev_version_id: Optional[str] = None
+    run_number: Optional[int] = None
+    prev_run_number: Optional[int] = None
+    module: str
+    field: str  # TABLE.FIELD
+    field_description: Optional[str] = None
+    kind: Literal["null_spike", "unexpected_code"]
+    severity: Literal["critical", "high", "medium", "low"]
+    current: ShiftCounts
+    previous: ShiftCounts
+    codes: list[ShiftCode]
+    detected_at: str
+
+
+@router.get("/shifts", response_model=list[ShiftOut], dependencies=[Depends(require_permission("view"))])
+async def shifts(version_id: Optional[uuid.UUID] = None, limit: int = Query(200, ge=1, le=1000),
+                 db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> list[ShiftOut]:
+    """Null spikes and unexpected codes found by comparing a run's field profile with earlier runs (aggregates only).
+
+    Without ``version_id``: each object's most recent run that has any."""
+    await _rls(db, tenant)
+    rows = (await db.execute(text("""
+        SELECT s.id::text, s.version_id::text, s.prev_version_id::text, v.run_number, pv.run_number,
+               s.module, s.table_name, s.field, s.kind, s.severity, s.current, s.previous, s.codes, s.detected_at::text
+          FROM field_shift_anomalies s
+          JOIN analysis_versions v ON v.id = s.version_id
+          LEFT JOIN analysis_versions pv ON pv.id = s.prev_version_id
+         WHERE s.tenant_id = :tid
+           AND (CAST(:vid AS uuid) IS NOT NULL AND s.version_id = CAST(:vid AS uuid)
+                OR CAST(:vid AS uuid) IS NULL AND s.version_id = (
+                    SELECT x.version_id FROM field_shift_anomalies x JOIN analysis_versions xv ON xv.id = x.version_id
+                     WHERE x.tenant_id = s.tenant_id AND x.module = s.module ORDER BY xv.run_at DESC LIMIT 1))
+         ORDER BY CASE s.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+                  s.module, s.table_name, s.field
+         LIMIT :n"""), {"tid": str(tenant.id), "vid": str(version_id) if version_id else None, "n": limit})).fetchall()
+    return [ShiftOut(id=r[0], version_id=r[1], prev_version_id=r[2], run_number=r[3], prev_run_number=r[4],
+                     module=r[5], field=f"{r[6]}.{r[7]}", field_description=field_text(f"{r[6]}.{r[7]}", r[5]),
+                     kind=r[8], severity=r[9], current=r[10] or {}, previous=r[11] or {}, codes=r[12] or [],
+                     detected_at=r[13]) for r in rows]

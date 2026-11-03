@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { approveAnomalyRule, proposeAnomalyRule, type AnomalyRuleProposal } from "@/lib/api/v2/anomaly-rules";
+import { approveAnomalyRule, getFieldShifts, proposeAnomalyRule, type AnomalyRuleProposal } from "@/lib/api/v2/anomaly-rules";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getAnomalies, type AnomalyItem } from "@/lib/api/v2/mining";
@@ -80,6 +80,8 @@ export function AnomalyRules() {
         why={t("The rule is a template on the usual range of the field. It runs on the same data first, so you see what it would flag before you approve it.")}
       />
 
+      <FieldShifts />
+
       <Panel title={t("Fields with outliers")} meta={t("Most outliers first.")} testId="anomaly-rules-fields">
         {groups.length === 0 ? <EmptyFrame>{t("No outlier was found.")}</EmptyFrame> : (
           <ScrollFrame label={t("Fields with outliers table, scrollable")}>
@@ -125,6 +127,60 @@ export function AnomalyRules() {
         </Panel>
       ) : null}
     </CcPage>
+  );
+}
+
+const pct = (n: number | null) => (n == null ? <Dash /> : t("{pct}% empty", { pct: f1(n) }));
+
+/** Null spikes and unexpected codes: a run's field profile against the run before it. Counts only, no record is read. */
+function FieldShifts() {
+  const fixture = useFixture();
+  const q = useQuery({ queryKey: ["anomaly-rules", fixture, "shifts"], queryFn: getFieldShifts, staleTime: 60_000 });
+  return (
+    <Panel title={t("Null spikes and unexpected codes")} meta={t("Each run against the run before it. Counts only.")} testId="anomaly-rules-shifts">
+      {q.isPending ? <Skeleton width="100%" height={120} /> : q.isError ? (
+        <ErrorFrame onRetry={() => void q.refetch()}>{t("The field shifts could not be read.")}</ErrorFrame>
+      ) : q.data.length === 0 ? <EmptyFrame>{t("No null spike or unexpected code was found.")}</EmptyFrame> : (
+        <ScrollFrame label={t("Null spikes and unexpected codes table, scrollable")}>
+          <table className="m2-tbl m2-cards">
+            <thead>
+              <tr>
+                <th scope="col">{t("Object")}</th>
+                <th scope="col">{t("Field")}</th>
+                <th scope="col">{t("Found")}</th>
+                <th scope="col">{t("Runs compared")}</th>
+                <th scope="col">{t("Before")}</th>
+                <th scope="col">{t("Now")}</th>
+                <th scope="col">{t("Severity")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {q.data.map((s) => (
+                <tr key={s.id} data-testid={`shift-${s.id}`}>
+                  <td data-label={t("Object")}>{moduleText(s.module)}</td>
+                  <th scope="row" className="m2-card-lead"><FieldName code={s.field} text={s.field_description} /></th>
+                  <td data-label={t("Found")}>{s.kind === "null_spike" ? t("Null spike") : t("Unexpected code")}</td>
+                  <td data-label={t("Runs compared")}>
+                    {s.run_number == null || s.prev_run_number == null ? <Dash /> : t("Run {a} against run {b}", { a: s.run_number, b: s.prev_run_number })}
+                  </td>
+                  <td data-label={t("Before")} className="m2-num">
+                    {s.kind === "null_spike" ? <>{pct(s.previous.blank_pct)} <span className="m2-meta">{t("{n} of {rows}", { n: int(s.previous.blank ?? 0), rows: int(s.previous.rows ?? 0) })}</span></> : t("{n} distinct", { n: int(s.previous.distinct ?? 0) })}
+                  </td>
+                  <td data-label={t("Now")} className="m2-num">
+                    {s.kind === "null_spike" ? <>{pct(s.current.blank_pct)} <span className="m2-meta">{t("{n} of {rows}", { n: int(s.current.blank ?? 0), rows: int(s.current.rows ?? 0) })}</span></> : (
+                      <>
+                        {s.codes.map((c) => <span key={c.value}><Mono>{c.value}</Mono> <span className="m2-meta">{t("{n} records", { n: int(c.count) })}</span> </span>)}
+                      </>
+                    )}
+                  </td>
+                  <td data-label={t("Severity")}><Sev severity={s.severity} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ScrollFrame>
+      )}
+    </Panel>
   );
 }
 

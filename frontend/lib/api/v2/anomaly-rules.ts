@@ -7,7 +7,7 @@
  * when no template fits, and sees the field, the statistic and counts, never a record.
  */
 import type { SavedDraft } from "@/lib/api/rule-authoring";
-import { v2Send } from "./client";
+import { v2Get, v2Send } from "./client";
 
 export interface AnomalyDryRun {
   evaluated: boolean;
@@ -43,6 +43,35 @@ export interface AnomalyRuleProposal {
 
 export const proposeAnomalyRule = (anomalyId: string): Promise<AnomalyRuleProposal> =>
   v2Send("POST", "/aletheia/anomaly-rules/propose", { anomaly_id: anomalyId });
+
+export interface ShiftCounts {
+  rows: number | null;
+  blank: number | null;
+  blank_pct: number | null;
+  distinct: number | null;
+}
+
+/** A null spike or an unexpected code found by comparing a run's field profile with the run before (aggregates only). */
+export interface FieldShift {
+  id: string;
+  version_id: string;
+  prev_version_id: string | null;
+  run_number: number | null;
+  prev_run_number: number | null;
+  module: string;
+  /** TABLE.FIELD */
+  field: string;
+  field_description: string | null;
+  kind: "null_spike" | "unexpected_code";
+  severity: "critical" | "high" | "medium" | "low";
+  current: ShiftCounts;
+  previous: ShiftCounts;
+  codes: { value: string; count: number }[];
+  detected_at: string;
+}
+
+/** GET /aletheia/anomaly-rules/shifts: each object's latest run that has any. */
+export const getFieldShifts = (): Promise<FieldShift[]> => v2Get("/aletheia/anomaly-rules/shifts");
 
 /** Approve: the proposed YAML becomes a draft, as in the rule workbench. */
 export const approveAnomalyRule = (module: string, ruleYaml: string, rationale: string): Promise<SavedDraft> =>

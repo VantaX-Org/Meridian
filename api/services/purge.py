@@ -83,6 +83,7 @@ DELETE_ORDER: tuple[tuple[str, str], ...] = (
     ("data_relationships", "tenant_id = :t AND version_id = :v"),
     ("field_dependencies", "tenant_id = :t AND version_id = :v"),
     ("field_profiles", "tenant_id = :t AND version_id = :v"),
+    ("field_shift_anomalies", "tenant_id = :t AND version_id = :v"),
     ("table_profiles", "tenant_id = :t AND version_id = :v"),
     ("analysis_run_steps", "tenant_id = :t AND version_id = :v"),
     ("record_fixes", "tenant_id = :t AND version_id = :v"),
