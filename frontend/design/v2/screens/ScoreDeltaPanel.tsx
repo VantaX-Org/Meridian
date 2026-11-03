@@ -35,15 +35,15 @@ function rowLabel(c: ScoreContribution) {
 export function ScoreDeltaPanel({ a, b, S }: { a: string; b: string; S: CompareSummary }) {
   const biggest = [...S.objects].sort((x, y) => Math.abs((y.score_change ?? 0)) - Math.abs((x.score_change ?? 0)))[0]?.module ?? null;
   const [picked, setPicked] = useState<string | null>(null);
-  const module = picked ?? biggest;
-  const q = useScoreDelta(a, b, module);
+  const mod = picked ?? biggest;
+  const q = useScoreDelta(a, b, mod);
   const d = q.data;
   return (
     <section className="m2-cc-card" aria-label={tr("Why the score moved")} data-testid="score-delta">
       <h3>{tr("Why the score moved")}</h3>
       <div className="m2-cta">
         <label htmlFor="sd-object" className="m2-meta">{tr("Object")}</label>
-        <select id="sd-object" className="m2-sel" value={module ?? ""} onChange={(e) => setPicked(e.target.value)}>
+        <select id="sd-object" className="m2-sel" value={mod ?? ""} onChange={(e) => setPicked(e.target.value)}>
           {S.objects.map((o) => (
             <option key={o.module} value={o.module}>{o.label}</option>
           ))}
