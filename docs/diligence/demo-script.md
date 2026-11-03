@@ -164,8 +164,8 @@ empty, Redis, API, worker and beat, the built frontend), synthetic extracts from
 `tests/fixtures/realistic_sap_data.py` were uploaded and analysed, and the product was walked as every
 role: 18 of 21 browser steps and 66 of 66 API checks passed. The report (`frontend/docs/acceptance-2026-10.md`)
 and the live-stack spec (`frontend/e2e/acceptance.spec.ts`, skipped unless `ACCEPTANCE_BASE_URL` is set) are
-in commit `d49301fd` on the backend remediation branch and are not yet merged into this branch. No live
-end-to-end spec runs in CI.
+in commit `d49301fd` on the backend remediation branch and are not yet merged into this branch. One
+live path does run in CI (`.github/workflows/fullstack-e2e.yml`: synthetic upload, checks, score, ledger; spec steps 3 to 5 only).
 
 ## Part 2: technical deep dive (10 minutes)
 

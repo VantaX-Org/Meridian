@@ -1,0 +1,157 @@
+name: Full-stack E2E
+
+# One path through the real product, not fixture mode and not a stubbed API (debt item DR-1): Postgres, Redis and
+# object storage as services, the migrated API, a Celery worker and the production frontend build. The stack is
+# seeded the way the demo script describes (scripts/ci_fullstack_seed.py: synthetic business partner and material
+# master extracts uploaded to a system and analysed by the worker), then frontend/e2e/acceptance.spec.ts steps 3
+# (object canvas and its score receipt), 4 (rule canvas) and 5 (a decision and a fix in the Work ledger) run in a
+# browser against it. The rest of that walk needs webhooks, digests and six role users and is not run here.
+
+on:
+  pull_request:
+    paths:
+      - "api/**"
+      - "checks/**"
+      - "workers/**"
+      - "db/**"
+      - "frontend/**"
+      - "scripts/ci_fullstack_seed.py"
+      - "tests/fixtures/realistic_sap_data.py"
+      - ".github/workflows/fullstack-e2e.yml"
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  fullstack:
+    name: Full-stack E2E (upload, checks, score, ledger)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: meridian_test
+          POSTGRES_DB: meridian_test
+          POSTGRES_USER: meridian_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U meridian_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PYTHONUNBUFFERED: "1"
+      NEXT_TELEMETRY_DISABLED: "1"
+      DATABASE_URL: postgresql+asyncpg://meridian_test:meridian_test@localhost:5432/meridian_test
+      DATABASE_URL_SYNC: postgresql://meridian_test:meridian_test@localhost:5432/meridian_test
+      REDIS_URL: redis://localhost:6379/0
+      MINIO_ENDPOINT: localhost:9000
+      MINIO_ACCESS_KEY: ciminio
+      MINIO_SECRET_KEY: ciminio-secret-key
+      MERIDIAN_ENV: development
+      AUTH_MODE: local
+      LLM_PROVIDER: none
+      CREDENTIAL_MASTER_KEY: ci_fullstack_credential_master_key_not_a_secret
+      # throwaway credentials of a stack that lives for this job
+      ACCEPTANCE_ADMIN_PASSWORD: Ci-Fullstack-Admin-7391!
+      ACCEPTANCE_PASSWORD: Ci-Fullstack-User-4827!
+      ACCEPTANCE_DOMAIN: acceptance.test
+      ACCEPTANCE_BASE_URL: http://127.0.0.1:3010
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3010
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Object storage
+        run: |
+          docker run -d --name ci-minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=ciminio -e MINIO_ROOT_PASSWORD=ciminio-secret-key \
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+          for i in $(seq 1 30); do curl -sf http://localhost:9000/minio/health/live && break; sleep 2; done
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install API dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -c requirements.lock
+
+      - name: Migrate the database
+        run: alembic upgrade head
+
+      - name: Start the API and the worker
+        run: |
+          nohup uvicorn api.main:app --port 8000 > api.log 2>&1 &
+          nohup celery -A workers.celery_app worker --loglevel=info --concurrency=2 > worker.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/health >/dev/null && exit 0; sleep 2; done
+          cat api.log; exit 1
+
+      - name: Role users
+        run: |
+          python scripts/manage_users.py create --email lead@$ACCEPTANCE_DOMAIN --name "Acceptance lead" \
+            --password "$ACCEPTANCE_PASSWORD" --role programme_lead
+          python scripts/manage_users.py create --email steward@$ACCEPTANCE_DOMAIN --name "Acceptance steward" \
+            --password "$ACCEPTANCE_PASSWORD" --role data_steward
+
+      - name: Seed a system with uploaded, analysed extracts
+        run: python scripts/ci_fullstack_seed.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build and start the frontend (production build, no demo flag)
+        working-directory: frontend
+        env:
+          INTERNAL_API_URL: http://127.0.0.1:8000
+        run: |
+          npm ci
+          npm run build
+          PORT=3010 nohup npm run start:standalone > ../frontend.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:3010/sign-in >/dev/null && exit 0; sleep 2; done
+          cat ../frontend.log; exit 1
+
+      - name: Install the browser
+        working-directory: frontend
+        run: npm run e2e:install
+
+      - name: Walk the live stack
+        working-directory: frontend
+        env:
+          CI: "true"
+        run: npx playwright test e2e/acceptance.spec.ts --workers=1 --retries=0 --grep "^(3|4|5)\. "
+
+      - name: Logs on failure
+        if: failure()
+        run: tail -n 150 api.log worker.log frontend.log
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fullstack-e2e-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          if-no-files-found: ignore
