@@ -20,7 +20,6 @@ honours it for generated ids only. Revert removes it. Every enable and revert is
 
 from __future__ import annotations
 
-import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,7 +28,7 @@ import yaml
 from sqlalchemy import text
 
 from checks.base import is_blank
-from checks.runner import GENERATED_SUFFIX, RULES_DIR, _with_reference, rule_columns, run_rule
+from checks.runner import GENERATED_SUFFIX, RULES_DIR, _with_reference, run_rule
 
 BUCKETS = ("promote", "review", "skip_unused", "needs_value_set")
 VALUE_LIST = ("referential_check", "domain_value_check")
