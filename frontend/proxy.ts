@@ -14,6 +14,12 @@ export default function proxy(req: NextRequest) {
   if (PUBLIC.some((p) => pathname === p || pathname.startsWith(p + "/")) || req.cookies.has("mn_session")) {
     return NextResponse.next();
   }
+  // Local convenience only: `next dev` with MERIDIAN_DEV_AUTOLOGIN=1 skips the sign-in redirect.
+  if (process.env.NODE_ENV === "development" && process.env.MERIDIAN_DEV_AUTOLOGIN === "1") {
+    const res = NextResponse.next();
+    res.cookies.set("mn_session", "1", { path: "/", sameSite: "lax", maxAge: 2592000 });
+    return res;
+  }
   const url = req.nextUrl.clone();
   url.pathname = "/sign-in";
   url.search = pathname !== "/" ? `?next=${encodeURIComponent(pathname + req.nextUrl.search)}` : "";
