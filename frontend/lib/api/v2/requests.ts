@@ -108,10 +108,12 @@ export const getMassPreview = (id: string) => v2Get<MassPreview>(`${cr(id)}/prev
 export const listDefaults =() => v2Get<{ items: EntryDefault[] }>("/change-requests/defaults");
 export const putDefault = (object: RequestObject, field: string, value: string) => v2Send<EntryDefault>("PUT", "/change-requests/defaults", { object, field, value });
 export const deleteDefault = (id: string) => v2Send<{ deleted: string }>("DELETE", `/change-requests/defaults/${enc(id)}`);
-/** A rule that sets target_field to a constant when when_field of the same request holds one of when_values (GET /change-requests/derivations). */
-export interface Derivation { id: string; object: RequestObject; when_field: string; when_values: string[]; target_field: string; value: string; updated_at: string }
+/** A rule that sets target_field when when_field of the same request holds one of when_values: to the constant value, or to a copy of source_field (exactly one of the two is set) (GET /change-requests/derivations). */
+export interface Derivation { id: string; object: RequestObject; when_field: string; when_values: string[]; target_field: string; value: string | null; source_field: string | null; updated_at: string }
+/** What a derivation sets: a constant, or a copy of another field of the request. */
+export type DerivationAction = { value: string } | { source_field: string };
 export const listDerivations = () => v2Get<{ items: Derivation[] }>("/change-requests/derivations");
-export const putDerivation = (object: RequestObject, when_field: string, when_values: string[], target_field: string, value: string) => v2Send<Derivation>("PUT", "/change-requests/derivations", { object, when_field, when_values, target_field, value });
+export const putDerivation = (object: RequestObject, when_field: string, when_values: string[], target_field: string, action: DerivationAction) => v2Send<Derivation>("PUT", "/change-requests/derivations", { object, when_field, when_values, target_field, ...action });
 export const deleteDerivation = (id: string) => v2Send<{ deleted: string }>("DELETE", `/change-requests/derivations/${enc(id)}`);
 /** A field whose change needs the extra critical field approval step (GET /change-requests/critical-fields). */
 export interface CriticalField { id: string; object: RequestObject; field: string; updated_at: string }
