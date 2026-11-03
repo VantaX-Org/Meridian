@@ -216,8 +216,8 @@ a baseline. Extraction is read-only; the RFC SDK is never in the repository or t
 
 **How on-premise tables are read, and why a Basis team may object.** Every on-premise table read calls one
 function module, `RFC_READ_TABLE` (function group `SDTX`), from `sap/rfc.py` (`read_table` at line 273 and
-the paged `read_table_full`). There is no read function selection today: the name is fixed in the code, and
-there is no ODP, SLT or CDS-view path. To live within that function's limits the reader splits wide tables
+the paged `read_table_full`). The reader is selectable (below), and an ODP path over RFC exists behind a setting
+(`sap/odp.py`; fake-connector tested, not run on live SAP); there is no SLT or CDS-view path. To live within that function's limits the reader splits wide tables
 into column groups that each fit its 512-byte work area and joins them back on the key, pages by ranges of
 the leading key instead of `ROWSKIPS` (which makes SAP hold every skipped row and can repeat or miss rows),
 and can open a small pool of extra sessions for large reads. The cost for the customer: `RFC_READ_TABLE` is
@@ -227,7 +227,7 @@ authorisations it needs are listed in `docs/sap-connector.md` section 2. Since 3
 selectable: `/BODS/RFC_READ_TABLE2` (rows up to 30,000 bytes) or `BBP_RFC_READ_TABLE`, per connection
 (`SAPConnectionParams.read_function`) or per deployment (`MERIDIAN_RFC_READ_FUNCTION`), or `auto`, which probes
 `RFC_FUNCTION_SEARCH` (`sap/rfc.py`); the default stays `RFC_READ_TABLE` and the data read is the same. The
-read-only PFCG role is `docs/sap/authorisation-role-template.md`. There is still no ODP, SLT or CDS-view path;
+read-only PFCG role is `docs/sap/authorisation-role-template.md`. ODP over RFC is selectable per system (`extraction_path`, default `table_reader`) and untested on live SAP; there is still no SLT or CDS-view path;
 see PC-1 in [roadmap-and-debt.md](roadmap-and-debt.md).
 
 ## 8. Control plane
