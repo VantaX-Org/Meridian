@@ -189,16 +189,29 @@ def _module_yaml_paths(module_name: str) -> list[Path]:
     return [primary, sidecar] if sidecar.exists() else [primary]
 
 
+@lru_cache(maxsize=64)
+def _yaml_cached(path: str, mtime_ns: int, size: int) -> dict:
+    return yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
+
+
+def _load_yaml(path: Path) -> dict:
+    """A rule file parsed once per file version (the pure-Python parse of the generated packs costs seconds); a deep
+    copy per call, because run_checks writes into the rule dicts."""
+    import copy
+    st = path.stat()
+    return copy.deepcopy(_yaml_cached(str(path), st.st_mtime_ns, st.st_size))
+
+
 def module_config(module_name: str) -> dict:
     """The module's own document (``module``, ``overlay``, ``target_state``, ...)."""
-    return yaml.safe_load(_find_module_yaml(module_name).read_text(encoding="utf-8")) or {}
+    return _load_yaml(_find_module_yaml(module_name))
 
 
 def module_rules(module_name: str) -> list[dict]:
     """Every rule of a module: the hand-written pack, then the DDIC-derived sidecar."""
     rules: list[dict] = []
     for path in _module_yaml_paths(module_name):
-        rules += (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("rules") or []
+        rules += _load_yaml(path).get("rules") or []
     return rules
 
 
