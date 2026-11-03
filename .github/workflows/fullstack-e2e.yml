@@ -60,6 +60,7 @@ jobs:
 
     env:
       PYTHONUNBUFFERED: "1"
+      PYTHONPATH: ${{ github.workspace }}
       NEXT_TELEMETRY_DISABLED: "1"
       DATABASE_URL: postgresql+asyncpg://meridian_test:meridian_test@localhost:5432/meridian_test
       DATABASE_URL_SYNC: postgresql://meridian_test:meridian_test@localhost:5432/meridian_test
