@@ -144,6 +144,44 @@ export function getCompareSummary(a: string, b: string): Promise<CompareSummary>
   return v2Get<CompareSummary>(`/runs/${encodeURIComponent(a)}/vs/${encodeURIComponent(b)}/summary`);
 }
 
+export type ContributionKind = "failing_records" | "record_count" | "new_rule" | "removed_rule" | "reweighting" | "unexplained" | "cap";
+
+export interface ScoreContribution {
+  kind: ContributionKind;
+  check_id: string | null;
+  description: string | null;
+  dimension: string | null;
+  severity: string | null;
+  /** Change in composite points; the contributions sum to the stored change within `tolerance`. */
+  points: number;
+  before_failing: number | null;
+  after_failing: number | null;
+  before_records: number | null;
+  after_records: number | null;
+}
+
+/** GET /runs/{a}/vs/{b}/score-delta: why one object's score moved, in points per rule, with a verified narrative. */
+export interface ScoreDelta {
+  module: string;
+  label: string;
+  before: number;
+  after: number;
+  delta: number;
+  contributions: ScoreContribution[];
+  by_dimension: { dimension: string; points: number }[];
+  sum: number;
+  residual: number;
+  tolerance: number;
+  within_tolerance: boolean;
+  reproduced: boolean;
+  /** `ai` when the model's sentences all passed number verification, else `template`. */
+  narrative: { source: "ai" | "template"; sentences: string[]; dropped: number };
+}
+
+export function getScoreDelta(a: string, b: string, module: string): Promise<ScoreDelta> {
+  return v2Get<ScoreDelta>(`/runs/${encodeURIComponent(a)}/vs/${encodeURIComponent(b)}/score-delta`, { module });
+}
+
 export function getVersionCompare(v1: string, v2: string): Promise<VersionCompare> {
   return v2Get<VersionCompare>("/versions/compare", { v1, v2 });
 }
