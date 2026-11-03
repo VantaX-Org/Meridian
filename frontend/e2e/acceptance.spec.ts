@@ -149,7 +149,7 @@ test("3. lead: the object canvas, its receipt and every tab", async ({ page }) =
   await signIn(page, "lead");
   await page.goto(`/o/${SYSTEM}/${OBJECT}`);
   await expect(page.getByTestId("receipt")).toBeVisible({ timeout: 30_000 });
-  note((await page.getByText(/^Measured [\d.]+/).first().innerText()).trim());
+  note((await page.getByTestId("receipt").getByRole("row", { name: /^Measured/ }).first().innerText()).replace(/\s+/g, " ").trim());
   for (const tab of ["records", "fixes", "runs", "readiness", "processes", "lineage", "glossary", "golden"]) {
     await page.goto(`/o/${SYSTEM}/${OBJECT}/${tab}`);
     await page.waitForLoadState("load");
@@ -182,6 +182,10 @@ test("5. steward: a decision and a proposed fix in the Work ledger", async ({ pa
   // a decision: not an issue
   const secondKey = ((await decisions.nth(2).getAttribute("aria-label")) ?? "").replace("Decision for ", "");
   await page.getByLabel(`Decision for ${secondKey}`).selectOption({ label: "not an issue" });
+  const dlg = page.getByRole("dialog", { name: "Mark as not an issue" });
+  await dlg.getByLabel("Reason").fill("Acceptance walk: the value is correct for this partner.");
+  await dlg.getByRole("button", { name: "Mark as not an issue" }).click();
+  await expect(dlg).toHaveCount(0);
   await expect.poll(async () => (await page.getByRole("button", { name: /^Waiting for approval/ }).innerText()).replace(/\D+/g, ""),
     { timeout: 30_000 }).not.toBe(before);
   note(`waiting for approval ${before} -> ${(await page.getByRole("button", { name: /^Waiting for approval/ }).innerText()).replace(/\D+/g, "")}; fixed ${firstKey}, not an issue ${secondKey}`);
