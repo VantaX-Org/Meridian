@@ -152,14 +152,18 @@ No message, template or evidence field shows a name, address line, bank account,
   - Persons must not share the same name and date of birth.
   - Organisation names must not be near-identical within a country and postal code.
 
+## Check classes added for MDG-style validation
+
+- `count_per_parent_check`: at most (`max`) or at least (`min`) N child rows per parent that match `count_when`. BP299 uses it for one standard address (BUT020.XDFADR) per partner. KNVA.DEFAB and KNVP.DEFPA were already covered by `uniqueness_check` with `applies_when` (SDCM748, SDCM731).
+- `all_children_check`: a parent must carry its flag when every child row carries one. SDCM849 uses it for a customer whose company codes are all flagged for deletion.
+- `char_set_check`: every character of a code string must come from `allowed_chars`, or at least one from `require_any`. No shipped rule uses it yet.
+
 ## Checks the engine cannot express yet
 
 - **KNB1 against KNVV:** comparing company code data with sibling sales areas, for example payment terms per sales area against each company code individually. SDCM213 only checks that the terms match some company code.
-- **Payment methods (KNB1.ZWELS):** a direct-debit payment method needs bank details or a mandate. That needs a test of whether a character list contains a value, plus a downward join to KNBK.
-- **Number ranges:** checking a business partner number against the NRIV interval of its grouping (BU_GROUP). No check class compares a value with a range taken from another table.
-- **Conditions with OR or dates in `target_when`:** for example "head office missing, deleted or blocked" as one rule, or validity windows on the target row.
-- **Counts per parent:** exactly one default unloading point (KNVA.DEFAB), one default address (BUT020.XDFADR) or one default partner per function (KNVP.DEFPA).
-- **Aggregation upwards:** "every company code is deleted but the central record is not" needs an all-children test.
+- **Payment methods (KNB1.ZWELS):** a direct-debit payment method needs bank details or a mandate. The character-list test now exists (`char_set_check`), but the rule also needs a downward join to KNBK and a confirmed code for direct debit, so none was written.
+- **Number ranges:** checking a business partner number against the NRIV interval of its grouping (BU_GROUP). No check class compares a value with a range taken from another table, and NRIV is not extracted.
+- **Date comparisons in `target_when`:** validity windows on the target row. `target_when` accepts `any_of` (alternative contexts, OR) since `count_per_parent_check`, `all_children_check` and `char_set_check` were added, but it still has no date operators of its own.
 - **KNVI per departure country:** finding the departure countries of the delivering plants needs plant and sales area joins that the engine cannot traverse.
 - **FLCU01 when sales data exists:** this needs a downward path from BUT000 through CVI_CUST_LINK and KNA1 to KNVV.
 - **Validity of BUT100 and BUT0BK:** VALID_FROM and VALID_TO are DEC15 time stamps, which the cross-field date handling does not parse.

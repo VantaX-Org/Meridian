@@ -4,7 +4,7 @@
   "business_partner": {
    "benchmarked": 72,
    "perfect": 72,
-   "rules": 157
+   "rules": 158
   },
   "employee_central": {
    "benchmarked": 314,
@@ -19,7 +19,7 @@
   "sd_customer_master": {
    "benchmarked": 259,
    "perfect": 259,
-   "rules": 567
+   "rules": 568
   }
  },
  "records_per_rule": 40,
@@ -20346,6 +20346,13 @@
    "rule_id": "SDCM848"
   },
   {
+   "benchmarkable": false,
+   "check_class": "all_children_check",
+   "module": "sd_customer_master",
+   "reason": "all_children_check needs reference data or a second dataset",
+   "rule_id": "SDCM849"
+  },
+  {
    "benchmarkable": true,
    "check_class": "null_check",
    "f1": 1.0,
@@ -21947,6 +21954,13 @@
    "module": "business_partner",
    "reason": "condition not modelled: `BUT020.ADDR_VALID_TO` < (@today.dt.year * 1e10 + @today.dt.",
    "rule_id": "BP298"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "count_per_parent_check",
+   "module": "business_partner",
+   "reason": "count_per_parent_check needs reference data or a second dataset",
+   "rule_id": "BP299"
   }
  ]
 }

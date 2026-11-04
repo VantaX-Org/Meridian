@@ -12647,3 +12647,23 @@ rules:
       __other__: Correct the tax number in XD02 > Control data > Tax information from the
         customer's registration certificate; do not recompute the check digit.
     record_fix_template: 'Customer {KNA1.KUNNR}: Brazilian CPF in STCD2 fails its check digit.'
+  - id: SDCM849
+    field: KNA1.LOEVM
+    check_class: all_children_check
+    group_keys:
+      KNB1.KUNNR: KNA1.KUNNR
+    child_when:
+      KNB1.LOEVM:
+      - X
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: Every company code of the customer is flagged for deletion but the customer is not
+    why_it_matters: When all company code records of a customer carry the deletion flag (KNB1.LOEVM) the customer has no
+      live company code left, yet the central record (KNA1.LOEVM) still looks active in searches, lists and migration
+      selections. Archiving never reaches the central data, and the customer is carried to the target system as active.
+    rule_authority: best_practice
+    sap_impact: A customer with no live company code stays selectable and is migrated as active.
+    fix_map:
+      __other__: In transaction XD06 set the central deletion flag, or remove the flag from the company code that is still in use.
+    record_fix_template: 'Customer {KNA1.KUNNR}: every company code is flagged for deletion, the central record is not.'
