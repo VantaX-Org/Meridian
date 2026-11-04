@@ -7435,7 +7435,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "A proved AI pick is applied at once; stewards can still override it later.": "Eine belegte KI-Auswahl wird sofort angewendet; Data Stewards können sie später noch überschreiben.",
   "Require steward approval": "Freigabe durch Data Steward verlangen",
   "Changing this needs the manage settings permission. You can read it.": "Das Ändern erfordert die Berechtigung zum Verwalten der Einstellungen. Sie können den Wert lesen.",
-||||||| 0696d48f
   "Rule dry run": "Regel-Probelauf",
   "The changes must be a JSON object of rule fields, for example {example}.": "Die Änderungen müssen ein JSON-Objekt mit Regelfeldern sein, zum Beispiel {example}.",
   "{n, plural, one {# record fails} other {# records fail}} this rule": "{n, plural, one {# Datensatz verletzt} other {# Datensätze verletzen}} diese Regel",

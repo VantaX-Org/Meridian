@@ -7435,7 +7435,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "A proved AI pick is applied at once; stewards can still override it later.": "検証済みの AI 選択はすぐに適用されます。スチュワードは後から上書きできます。",
   "Require steward approval": "スチュワードの承認を必須にする",
   "Changing this needs the manage settings permission. You can read it.": "変更には設定管理の権限が必要です。値の閲覧は可能です。",
-||||||| 0696d48f
   "Rule dry run": "ルールのドライラン",
   "The changes must be a JSON object of rule fields, for example {example}.": "変更はルール項目の JSON オブジェクトで指定してください。例: {example}。",
   "{n, plural, one {# record fails} other {# records fail}} this rule": "{n, plural, other {# 件のレコードがこのルールに不合格}}",

@@ -7434,7 +7434,6 @@ export const en = {
   "A proved AI pick is applied at once; stewards can still override it later.": "A proved AI pick is applied at once; stewards can still override it later.",
   "Require steward approval": "Require steward approval",
   "Changing this needs the manage settings permission. You can read it.": "Changing this needs the manage settings permission. You can read it.",
-||||||| 0696d48f
   "Rule dry run": "Rule dry run",
   "The changes must be a JSON object of rule fields, for example {example}.": "The changes must be a JSON object of rule fields, for example {example}.",
   "{n, plural, one {# record fails} other {# records fail}} this rule": "{n, plural, one {# record fails} other {# records fail}} this rule",
