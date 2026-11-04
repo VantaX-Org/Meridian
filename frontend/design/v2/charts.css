@@ -84,7 +84,6 @@
 .m2-root .m2-rtrend { display: flex; align-items: center; gap: var(--m2-s3); margin: 0 0 var(--m2-s2); font-size: var(--m2-fs-12); }
 
 /* The signature on the charts: a heavier line with a lit end point, columns with a soft cap, the selected column glowing */
-.m2-root .m2-chart .m2-ln { stroke-width: 2.5; }
 .m2-root .m2-chart .m2-end { r: 4.5; filter: drop-shadow(0 0 4px var(--m2-data-glow-ink)); }
 .m2-root .m2-chart .m2-col { rx: 2px; fill: var(--m2-seq-4); }
 .m2-root .m2-chart .m2-col[data-on="true"] { fill: var(--m2-data); filter: drop-shadow(0 0 4px var(--m2-data-glow-ink)); }
