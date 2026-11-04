@@ -6,6 +6,7 @@ LLM is only invoked for remaining unmatched columns.
 
 import json
 import logging
+import re
 from pathlib import Path
 
 import yaml
@@ -129,6 +130,26 @@ def _build_short_name_index(fields: set[str]) -> dict[str, str]:
     return {short: targets[0] for short, targets in index.items() if len(targets) == 1}
 
 
+_NUMERIC_DATE_MASK = re.compile(r"^[9\-./:,~+]*9[9\-./:,~+]*$")
+
+
+def probably_headerless(headers: list[str], sample_rows: list[list[str]]) -> bool:
+    """True when most header cells look like data (Aletheia shapes only): a number or date, or a cell with a digit
+    whose mask is one of its own column's value masks. Needs 2+ non-blank cells and 60% or more data-like.
+    ponytail: a headerless file of pure text columns is not caught; upgrade by comparing against known field names."""
+    from api.services.prompt_shapes import column_profile, shape
+
+    cells = [(i, shape(h)["mask"]) for i, h in enumerate(headers) if str(h).strip()]
+    if len(cells) < 2:
+        return False
+    hits = 0
+    for i, m in cells:
+        masks = column_profile(r[i] for r in sample_rows if i < len(r))["masks"]
+        if _NUMERIC_DATE_MASK.match(m) or ("9" in m and m in masks):
+            hits += 1
+    return hits / len(cells) >= 0.6
+
+
 def detect_module_and_match(
     headers: list[str],
     sample_rows: list[list[str]],
@@ -139,6 +160,11 @@ def detect_module_and_match(
 
     Returns a dict matching the MatchResponse schema.
     """
+    headerless = probably_headerless(headers, sample_rows)
+    if headerless:
+        # The first row is data: never send it as header names. Positional names, and the row joins the sample.
+        sample_rows = [list(headers)] + list(sample_rows)
+        headers = [f"column_{i + 1}" for i in range(len(headers))]
     all_fields = _load_all_module_fields()
     all_maps = _load_all_column_maps()
 
@@ -288,6 +314,7 @@ def detect_module_and_match(
         "mappings": mappings,
         "unmapped_required": unmapped_required,
         "available_modules": available_modules,
+        "headerless": headerless,
     }
 
 

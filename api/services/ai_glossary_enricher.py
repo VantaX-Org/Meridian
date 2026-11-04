@@ -23,6 +23,40 @@ RATE_LIMIT_MAX = 20  # calls per hour per tenant
 TOKEN_LIMIT = 1200
 
 
+MAX_LEN = {"business_definition": 400, "why_it_matters_business": 250}
+# A "code" in an answer: TABLE.FIELD, an underscored identifier, or letters+digits (e.g. T001W). Plain words and
+# acronyms such as SAP are not codes. Every code in an answer must already be in the prompt we sent.
+_CODE = re.compile(r"\b[A-Z0-9]{2,}\.[A-Z0-9_]+\b|\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b|\b(?=[A-Z0-9]*\d)(?=[A-Z0-9]*[A-Z])[A-Z0-9]{3,}\b")
+
+
+def normalise(result: object, source_text: str) -> dict:
+    """Strict schema for the model answer: exactly the two keys, strings, trimmed, length-capped, citing no code
+    that is not in `source_text` (what we sent). A failing entry is emptied and the reason recorded."""
+    known = {c.upper() for c in _CODE.findall(source_text.upper())} | set(re.findall(r"[A-Z0-9_]+", source_text.upper()))
+    d = result if isinstance(result, dict) else {}
+    out: dict = {k: "" for k in MAX_LEN}
+    rejections: list[dict] = [] if isinstance(result, dict) else [{"entry": "*", "reason": "NOT_AN_OBJECT"}]
+    for key, limit in MAX_LEN.items():
+        v = d.get(key)
+        if not isinstance(v, str):
+            if isinstance(result, dict):
+                rejections.append({"entry": key, "reason": "MISSING_OR_NOT_TEXT"})
+            continue
+        v = " ".join(v.split())
+        extra = sorted({c for c in _CODE.findall(v) if c not in known})
+        if not v:
+            rejections.append({"entry": key, "reason": "EMPTY"})
+        elif len(v) > limit:
+            rejections.append({"entry": key, "reason": "TOO_LONG"})
+        elif extra:
+            rejections.append({"entry": key, "reason": "UNKNOWN_CODE", "codes": extra[:5]})
+        else:
+            out[key] = v
+    if rejections:
+        logger.warning("Glossary enrichment entries dropped: %s", rejections)
+    return {**out, "rejections": rejections}
+
+
 class RateLimitExceeded(Exception):
     pass
 
@@ -73,8 +107,8 @@ def enrich_term(
         f"Technical description: {why_it_matters}\n"
         f"SAP impact: {sap_impact}\n\n"
         "Respond in JSON only with two keys:\n"
-        '  "business_definition" (1-2 sentences for a business user)\n'
-        '  "why_it_matters_business" (1 sentence explaining business impact).\n'
+        '  "business_definition" (1-2 sentences for a business user, max 400 characters)\n'
+        '  "why_it_matters_business" (1 sentence explaining business impact, max 250 characters).\nMention only the table and field names given above; do not invent field names or codes.\n\n'
         "No preamble, no markdown, JSON only."
     )
 
@@ -97,7 +131,7 @@ def enrich_term(
             response.content if hasattr(response, "content") else str(response)
         )
         clean = re.sub(r"```json|```", "", text_content).strip()
-        result = json.loads(clean)
+        result = normalise(json.loads(clean), prompt_str)
 
         log_llm_call(
             tenant_id=tenant_id,
