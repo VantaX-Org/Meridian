@@ -57,7 +57,12 @@ rates Syniti "Innovative" — not a leader.
 3. **Migration scenario specificity.** Selective transition, carve-out, greenfield and
    brownfield differ in which rules matter; a library that says which rules apply to which
    scenario is more useful than a bigger flat list.
-4. **Local/regulatory reference data.** CDQ's 70 reference sources are a genuine moat and
+4. **AI that is proved, not trusted.** Golden-record survivorship by model (offered by Reltio, Ataccama
+   and Informatica in their own forms) is bounded here: the model sees only masks, lengths and counts, and
+   its pick wins only after the server checks it against the contributing sources. This is a design
+   claim we can show in code and on `/aletheia-survivorship`; it is not a claim that the pick is
+   more accurate than a competitor's, and no side-by-side has been run.
+5. **Local/regulatory reference data.** CDQ's 70 reference sources are a genuine moat and
    the hardest thing here to match. Do not pretend otherwise.
 
 ## Claims to avoid

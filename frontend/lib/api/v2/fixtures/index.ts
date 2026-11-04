@@ -46,6 +46,7 @@ import { NONE_SIMULATIONS, simulationsRead, simulationsWrite, resetSimulationsFi
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
 import { rulePromotionRead, rulePromotionWrite, NONE_RULE_PROMOTION } from "./rulePromotion";
 import { migrationScenariosRead, NONE_MIGRATION_SCENARIOS } from "./migrationScenarios";
+import { survivorshipRead, NONE_SURVIVORSHIP } from "./survivorship";
 import { fixDraftsRead, fixDraftsWrite, NONE_FIX_DRAFTS } from "./fixDrafts";
 import { anomalyRulesRead, anomalyRulesWrite, NONE_ANOMALY_RULES } from "./anomalyRules";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
@@ -369,6 +370,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (rpr !== NONE_RULE_PROMOTION) return rpr as T;
   const fdr = fixDraftsRead(path);
   if (fdr !== NONE_FIX_DRAFTS) return fdr as T;
+  const sv = survivorshipRead(path);
+  if (sv !== NONE_SURVIVORSHIP) return sv as T;
   const ars = anomalyRulesRead(path);
   if (ars !== NONE_ANOMALY_RULES) return ars as T;
   const mn = miningRead(path);

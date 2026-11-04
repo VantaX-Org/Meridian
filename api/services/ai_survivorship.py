@@ -1,20 +1,18 @@
 """AI survivorship service — proposes field winners when deterministic rules cannot.
 
 Called by: golden_record_engine.py for fields with no deterministic survivorship rule winner.
-Prompt construction: field names + source system metadata + value hashes ONLY.
-The LLM never sees raw SAP field values — sanitise_for_prompt() strips PII.
+Prompt construction: field names + source system metadata + aggregate value shapes ONLY (see ``facts``).
+The LLM never sees a SAP field value, a preview or a hash of one. Its answer is proved by ``verify`` before it can win.
 
-Returns: {recommended_value_source: str, confidence: float, reasoning: str}
+Returns: {recommended_value_source: str, confidence: float, reasoning: str (written by verify), verification: dict}
 Token limit: 600 per call
 On error: returns None (golden_record_engine falls back to most_recent rule)
 """
 
-import hashlib
 import logging
 import time
 from typing import Optional
 
-from api.utils.pii_fields import sanitise_for_prompt
 from api.utils.llm_logger import log_llm_call
 
 logger = logging.getLogger("meridian.ai_survivorship")
@@ -27,52 +25,62 @@ def ai_survivorship_available() -> bool:
     return not llm_is_noop()
 
 
-def _hash_value(value: object) -> str:
-    """Hash a value for prompt inclusion — LLM sees hash, not raw data."""
-    return hashlib.sha256(str(value).encode()).hexdigest()[:12]
+def facts(contributions: list[dict]) -> list[dict]:
+    """The only thing the model sees about each contributor: where it came from, when, how confident, and the
+    aggregate shape of its value (mask, length, blank) plus how many other sources hold the same value. Never the
+    value, a preview of it, or a hash of it (a hash of a short code can be reversed by guessing)."""
+    from api.services.fix_drafter import mask_of
+
+    texts = [("" if c["value"] is None else str(c["value"]).strip()) for c in contributions]
+    return [
+        {"source_system": c["source_system"], "extracted_at": str(c["extracted_at"]), "confidence": c.get("confidence"),
+         "blank": not t, "length": len(t), "mask": mask_of(t), "same_as": sum(1 for o in texts if o == t) - 1}
+        for c, t in zip(contributions, texts)
+    ]
 
 
-def _build_prompt(
-    field_name: str,
-    domain: str,
-    contributions: list[dict],
-) -> str:
-    """Build a survivorship prompt using only metadata and value hashes.
-
-    Each contribution dict has: source_system, extracted_at, confidence, value
-    """
-    sanitised_entries = []
-    for c in contributions:
-        sanitised_value = sanitise_for_prompt(field_name, c["value"])
-        value_hash = _hash_value(c["value"])
-        sanitised_entries.append(
-            f"  - Source: {c['source_system']}, "
-            f"Extracted: {c['extracted_at']}, "
-            f"Confidence: {c.get('confidence', 'N/A')}, "
-            f"Value hash: {value_hash}, "
-            f"Value preview: {sanitised_value}"
-        )
-
-    entries_text = "\n".join(sanitised_entries)
-
+def _build_prompt(field_name: str, domain: str, contributions: list[dict]) -> str:
+    """Survivorship prompt from ``facts`` only. ``field_name`` is metadata, not a value."""
+    lines = "\n".join(
+        f"  - Source: {f['source_system']}, Extracted: {f['extracted_at']}, Confidence: {f['confidence']}, "
+        f"Blank: {f['blank']}, Length: {f['length']}, Shape: {f['mask']}, Other sources with the same value: {f['same_as']}"
+        for f in facts(contributions)
+    )
     return f"""You are an SAP master data survivorship expert.
 
 Domain: {domain}
 Field: {field_name}
-Conflicting values from {len(contributions)} source systems:
+Conflicting values from {len(contributions)} source systems. You see each value's shape only (A upper, a lower, 9 digit, ~ space), never the value:
 
-{entries_text}
+{lines}
 
-Based on the source system metadata, extraction timestamps, and confidence scores,
-recommend which source system's value should be the golden record winner for this field.
-
-Consider:
-1. Data recency (more recent extractions may be more current)
-2. Source system reliability and confidence scores
-3. SAP domain best practices for {domain}
+Recommend which source system's value should be the golden record winner for this field, using recency,
+confidence, completeness and agreement between sources.
 
 Respond in JSON format only:
-{{"recommended_value_source": "<source_system_name>", "confidence": <0.0-1.0>, "reasoning": "<brief explanation>"}}"""
+{{"recommended_value_source": "<source_system_name>", "confidence": <0.0-1.0>}}"""
+
+
+def verify(contributions: list[dict], rec: dict) -> dict:
+    """Prove a model recommendation against the contributions before it can win. Deterministic.
+
+    SOURCE_KNOWN       the named source is exactly one contributor (no invented or ambiguous source)
+    VALUE_PRESENT      that contributor's value is not blank
+    CONFIDENCE_VALID   the stated confidence is a number from 0 to 1
+    The model's free-text reasoning is never kept: the sentence shown is written here from the same facts."""
+    named = [c for c in contributions if c["source_system"] == rec.get("recommended_value_source")]
+    win = named[0] if len(named) == 1 else None
+    text = "" if win is None or win["value"] is None else str(win["value"]).strip()
+    conf = rec.get("confidence")
+    checks = [
+        {"code": "SOURCE_KNOWN", "passed": win is not None},
+        {"code": "VALUE_PRESENT", "passed": bool(text)},
+        {"code": "CONFIDENCE_VALID", "passed": isinstance(conf, (int, float)) and not isinstance(conf, bool) and 0 <= conf <= 1},
+    ]
+    same = sum(1 for c in contributions if win is not None and str(c["value"] or "").strip() == text) - 1 if win else 0
+    sentence = (f"{win['source_system']} holds a value extracted {win['extracted_at']}; {same} of the other "
+                f"{len(contributions) - 1} sources hold the same value.") if win is not None and text else ""
+    return {"verified": all(c["passed"] for c in checks), "checks": checks, "reasoning": sentence}
 
 
 def propose_field_winner(
@@ -147,10 +155,14 @@ def propose_field_winner(
             logger.warning("AI survivorship response missing recommended_value_source")
             return None
 
+        rec = {"recommended_value_source": str(result["recommended_value_source"]), "confidence": result.get("confidence")}
+        proof = verify(contributions, rec)
+        conf = rec["confidence"]
         return {
-            "recommended_value_source": str(result["recommended_value_source"]),
-            "confidence": float(result.get("confidence", 0.5)),
-            "reasoning": str(result.get("reasoning", "")),
+            "recommended_value_source": rec["recommended_value_source"],
+            "confidence": float(conf) if proof["verified"] else 0.0,
+            "reasoning": proof["reasoning"],
+            "verification": {"verified": proof["verified"], "checks": proof["checks"]},
         }
 
     except Exception as e:

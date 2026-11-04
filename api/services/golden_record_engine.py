@@ -340,7 +340,8 @@ async def process_sync_batch(
                     # Find the contribution matching the AI recommendation
                     recommended_source = ai_result["recommended_value_source"]
                     matching = [c for c in contributions if c.source_system == recommended_source]
-                    if matching:
+                    # Aletheia: the recommendation wins only when verify() proved it against the contributions
+                    if matching and ai_result["verification"]["verified"]:
                         result = SurvivorshipResult(
                             value=matching[0].value,
                             source_system=matching[0].source_system,
@@ -369,6 +370,7 @@ async def process_sync_batch(
                     contribution_entry["ai_recommendation"] = ai_recommendation["recommended_value_source"]
                     contribution_entry["ai_confidence"] = ai_recommendation["confidence"]
                     contribution_entry["ai_reasoning"] = ai_recommendation["reasoning"]
+                    contribution_entry["ai_verification"] = ai_recommendation["verification"]
 
                 new_source_contributions[field_name] = contribution_entry
 
