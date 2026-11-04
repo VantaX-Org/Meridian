@@ -895,6 +895,11 @@ export function RuleActions({ view, canvas }: { view: RuleView; canvas?: boolean
             {tr("Edit in authoring")}
           </V2Link>
         ) : null}
+        {canEdit ? (
+          <V2Link href={`/rule-dry-run?rule=${encodeURIComponent(view.id)}&module=${encodeURIComponent(mod)}`} className="m2-btn">
+            {tr("Dry run")}
+          </V2Link>
+        ) : null}
         {canHandoff ? (
           <button type="button" className="m2-btn" aria-expanded={panel === "handoff"} onClick={() => setPanel(panel === "handoff" ? null : "handoff")}>
             {tr("Hand to a steward")}

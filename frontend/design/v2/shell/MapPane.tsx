@@ -195,6 +195,9 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
         <V2Link href="/rule-promotion" className="m2-mi" aria-current={current("/rule-promotion") ? "page" : undefined}>
           <span>{t("Aletheia rule promotion")}</span>
         </V2Link>
+        <V2Link href="/rule-dry-run" className="m2-mi" aria-current={current("/rule-dry-run") ? "page" : undefined}>
+          <span>{t("Rule dry run")}</span>
+        </V2Link>
         <V2Link href="/fix-drafts" className="m2-mi" aria-current={current("/fix-drafts") ? "page" : undefined}>
           <span>{t("Aletheia verified fixes")}</span>
         </V2Link>

@@ -129,6 +129,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/mining": "v2:monitoring",
   "/anomaly-rules": "v2:monitoring",
   "/rule-promotion": "v2:rules",
+  "/rule-dry-run": "v2:rules",
   "/fix-drafts": "v2:rules",
   "/aletheia-survivorship": "v2:monitoring",
   "/mdm": "v2:monitoring",
