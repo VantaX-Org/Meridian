@@ -81,12 +81,14 @@ export interface DuplicateMatch {
 export interface RecordDuplicates {
   /** "warn" when a match reaches the auto-merge threshold; never "block". */
   verdict: "pass" | "warn";
+  /** False: the record had no value to look up, so "pass" does not mean "no duplicates". */
+  searched: boolean;
   scored: number;
   truncated: boolean;
   matches: DuplicateMatch[];
 }
 
-export type DuplicateNotSearched = "module_not_supported" | "no_match_rules" | "no_population";
+export type DuplicateNotSearched = "module_not_supported" | "no_match_rules" | "no_population" | "no_block_field_in_population";
 
 export interface DuplicateSearch {
   searched: boolean;

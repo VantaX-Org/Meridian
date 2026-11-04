@@ -7651,6 +7651,8 @@ export const en = {
   "Below it, for a steward to review": "Below it, for a steward to review",
   "Duplicate search does not cover this object, so nothing was searched.": "Duplicate search does not cover this object, so nothing was searched.",
   "No match rule is active for this object, so nothing was searched.": "No match rule is active for this object, so nothing was searched.",
+  "The existing records of this object do not carry the fields the search looks up, so nothing was searched.": "The existing records of this object do not carry the fields the search looks up, so nothing was searched.",
+  "Record {records} was not searched: it has no value the search can look up. That is not a clean result.": "Record {records} was not searched: it has no value the search can look up. That is not a clean result.",
   "There are no existing records of this object to search, so nothing was searched.": "There are no existing records of this object to search, so nothing was searched.",
   "Nothing was searched.": "Nothing was searched.",
   "Duplicate search": "Duplicate search",

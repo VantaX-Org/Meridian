@@ -92,6 +92,13 @@ describe("Admin, Data quality firewall", () => {
     expect(screen.queryByText(/No likely duplicate found/)).toBeNull();
   });
 
+  it("never calls a record with nothing to look up a clean result", async () => {
+    await check([{ "MARA.MATNR": "NEW-5", "MARA.MTART": "ROH", "MARA.MEINS": "KG" }], true);
+    expect(norm(await screen.findByTestId("entry-dup-skipped"))).toContain("Record 1 was not searched");
+    expect(norm(screen.getByTestId("entry-dup-result"))).toContain("Nothing was searched");
+    expect(screen.queryByText(/No likely duplicate found/)).toBeNull();
+  });
+
   it("reports when the candidate cap cut the search", async () => {
     await check([{ "MARA.MATNR": "NEW-4", "MARA.MTART": "ROH", "MARA.MEINS": "KG", "MARA.MFRPN": "BULK-1" }], true);
     expect(norm(await screen.findByTestId("entry-dup-truncated"))).toContain("Only the first 50 candidates were scored for record 1");

@@ -7652,6 +7652,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Below it, for a steward to review": "それ未満、スチュワードの確認対象",
   "Duplicate search does not cover this object, so nothing was searched.": "重複検索はこのオブジェクトを対象としないため、何も検索していません。",
   "No match rule is active for this object, so nothing was searched.": "このオブジェクトに有効なマッチルールがないため、何も検索していません。",
+  "The existing records of this object do not carry the fields the search looks up, so nothing was searched.": "このオブジェクトの既存レコードには検索対象の項目がないため、何も検索していません。",
+  "Record {records} was not searched: it has no value the search can look up. That is not a clean result.": "レコード {records} は検索していません。検索に使える値がありません。問題なしという結果ではありません。",
   "There are no existing records of this object to search, so nothing was searched.": "検索できるこのオブジェクトの既存レコードがないため、何も検索していません。",
   "Nothing was searched.": "何も検索していません。",
   "Duplicate search": "重複検索",

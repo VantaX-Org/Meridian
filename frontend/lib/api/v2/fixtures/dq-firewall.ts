@@ -87,6 +87,7 @@ function addDuplicates(out: FirewallVerdict, records: Record<string, unknown>[])
       : [];
     rec.duplicates = {
       verdict: matches.some((m) => m.score >= m.threshold) ? "warn" : "pass",
+      searched: part !== "",
       scored: part === "BULK1" ? 50 : matches.length,
       truncated: part === "BULK1",
       matches,

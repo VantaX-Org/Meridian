@@ -103,8 +103,7 @@ def test_true_duplicate_found_and_no_values_leave(app_engine):  # noqa: F811
     out = r.json()
     assert out["duplicate_search"]["searched"] is True
     d = out["records"][0]["duplicates"]
-    assert d["verdict"] == "warn" and out["records"][0]["verdict"] != "block" or out["records"][0]["failures"]
-    assert d["verdict"] == "warn"
+    assert d["verdict"] == "warn" and d["searched"] is True
     top = d["matches"][0]
     assert top["key"] == "10001" and top["score"] >= top["threshold"] == 0.95 and top["band"] == "auto_merge"
     assert {f["field"] for f in top["fields"]} == {"MARA.MFRPN", "MAKT.MAKTX"}
@@ -121,7 +120,8 @@ def test_non_duplicate_not_found(app_engine):  # noqa: F811
     rec = {"MARA.MFRPN": "NEWPART-9", "MAKT.MAKTX": "Bearing roller"}
     out = _call(app_engine, tid, {"module": M, "records": [rec], "duplicates": True}).json()
     assert out["duplicate_search"]["searched"] is True
-    assert out["records"][0]["duplicates"] == {"verdict": "pass", "scored": 0, "truncated": False, "matches": []}
+    assert out["records"][0]["duplicates"] == {"verdict": "pass", "searched": True, "scored": 0,
+                                                 "truncated": False, "matches": []}
 
 
 def test_opt_out_unchanged(app_engine):  # noqa: F811
@@ -158,3 +158,41 @@ def test_tenant_isolation(app_engine):  # noqa: F811
                                   "duplicates": True}).json()
     keys = [m["key"] for m in out["records"][0]["duplicates"]["matches"]]
     assert keys == ["10002"] and not any(k.startswith("OTHER") for k in keys)
+
+
+def test_record_with_no_usable_value_says_not_searched(app_engine):  # noqa: F811
+    tid = _setup(app_engine)
+    recs = [{"MARA.MFRPN": "N/A"}, {"MAKT.MAKTX": "油圧シール"}, {"MARA.MFRPN": "ZZ-0001", "MAKT.MAKTX": "Gasket flange steel"}]
+    out = _call(app_engine, tid, {"module": M, "records": recs, "duplicates": True}).json()
+    assert out["duplicate_search"]["searched"] is True
+    assert [r["duplicates"]["searched"] for r in out["records"]] == [False, False, True]
+    assert _audit(app_engine, tid)[-1]["duplicate_unsearched_records"] == 2
+
+
+def test_population_without_block_fields_is_not_a_clean_answer(app_engine):  # noqa: F811
+    from sqlalchemy import text
+
+    tid = _setup(app_engine, population=False)
+    with app_engine[1].begin() as c:  # a flat upload keeps its own column names
+        c.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
+        c.execute(text("INSERT INTO master_records (tenant_id, domain, sap_object_key, golden_fields, status) "
+                       "VALUES (:t, :d, '1', CAST(:f AS jsonb), 'golden')"),
+                  {"t": tid, "d": M, "f": json.dumps({"MFRPN": "XQ-7731-ZK", "MAKTX": "Hydraulic seal kit"})})
+    out = _call(app_engine, tid, {"module": M, "records": [{"MARA.MFRPN": "XQ-7731-ZK"}], "duplicates": True}).json()
+    assert out["duplicate_search"] == {**out["duplicate_search"], "searched": False,
+                                       "reason": "no_block_field_in_population"}
+    assert out["records"][0]["duplicates"]["searched"] is False
+
+
+def test_saved_record_is_not_its_own_duplicate_under_a_qualified_key(app_engine):  # noqa: F811
+    from sqlalchemy import text
+
+    tid = _setup(app_engine)
+    with app_engine[1].begin() as c:
+        c.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
+        c.execute(text("INSERT INTO master_records (tenant_id, domain, sap_object_key, golden_fields, status) "
+                       "VALUES (:t, :d, '20001@@sys-b', CAST(:f AS jsonb), 'golden')"),
+                  {"t": tid, "d": M, "f": json.dumps({"MARA.MFRPN": "QQ-5", "MAKT.MAKTX": "Valve body"})})
+    rec = {"MARA.MATNR": "20001", "MARA.MFRPN": "QQ-5", "MAKT.MAKTX": "Valve body"}
+    d = _call(app_engine, tid, {"module": M, "records": [rec], "duplicates": True}).json()["records"][0]["duplicates"]
+    assert d["matches"] == []

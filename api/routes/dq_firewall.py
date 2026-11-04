@@ -84,6 +84,7 @@ class DuplicateMatch(BaseModel):
 
 class RecordDuplicates(BaseModel):
     verdict: str  # "warn" when a match reaches the auto-merge threshold, else "pass"; never "block"
+    searched: bool  # false: this record had no value to look up, so "pass" does not mean "no duplicates"
     scored: int
     truncated: bool
     matches: list[DuplicateMatch]
@@ -91,7 +92,7 @@ class RecordDuplicates(BaseModel):
 
 class DuplicateSearch(BaseModel):
     searched: bool
-    reason: Optional[str] = None  # why nothing was searched: module_not_supported, no_match_rules, no_population
+    reason: Optional[str] = None  # why not: module_not_supported, no_match_rules, no_population, no_block_field_in_population
     cap: int
     thresholds: dict[str, float]
     rules: Optional[int] = None
@@ -201,7 +202,8 @@ async def validate(body: ValidateBody, request: Request, db: AsyncSession = Depe
         dup_audit = {"duplicates_searched": found["search"]["searched"],
                      "duplicate_matches": sum(len(d["matches"]) for d in ds),
                      "duplicate_warned_records": sum(d["verdict"] == "warn" for d in ds),
-                     "duplicate_truncated_records": sum(d["truncated"] for d in ds)}
+                     "duplicate_truncated_records": sum(d["truncated"] for d in ds),
+                     "duplicate_unsearched_records": sum(not d["searched"] for d in ds)}
     await write_audit(db, tenant.id, request, ACTION, "dq_firewall", body.module, None, {
         "records": len(res["records"]), "blocked_records": sum(r["verdict"] == "block" for r in res["records"]),
         "failures": len(fails), "verdict": res["verdict"],

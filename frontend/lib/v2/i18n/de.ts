@@ -7652,6 +7652,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Below it, for a steward to review": "Darunter, zur Prüfung durch einen Datenverantwortlichen",
   "Duplicate search does not cover this object, so nothing was searched.": "Die Dublettensuche deckt dieses Objekt nicht ab, daher wurde nichts durchsucht.",
   "No match rule is active for this object, so nothing was searched.": "Für dieses Objekt ist keine Abgleichsregel aktiv, daher wurde nichts durchsucht.",
+  "The existing records of this object do not carry the fields the search looks up, so nothing was searched.": "Die vorhandenen Datensätze dieses Objekts enthalten die Felder nicht, nach denen gesucht wird, daher wurde nichts durchsucht.",
+  "Record {records} was not searched: it has no value the search can look up. That is not a clean result.": "Datensatz {records} wurde nicht durchsucht: Er hat keinen Wert, nach dem gesucht werden kann. Das ist kein sauberes Ergebnis.",
   "There are no existing records of this object to search, so nothing was searched.": "Es gibt keine vorhandenen Datensätze dieses Objekts, daher wurde nichts durchsucht.",
   "Nothing was searched.": "Es wurde nichts durchsucht.",
   "Duplicate search": "Dublettensuche",

@@ -43,6 +43,7 @@ const REASON: Record<DuplicateNotSearched, () => string> = {
   module_not_supported: () => t("Duplicate search does not cover this object, so nothing was searched."),
   no_match_rules: () => t("No match rule is active for this object, so nothing was searched."),
   no_population: () => t("There are no existing records of this object to search, so nothing was searched."),
+  no_block_field_in_population: () => t("The existing records of this object do not carry the fields the search looks up, so nothing was searched."),
 };
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -57,14 +58,22 @@ export function DuplicateResults({ res }: { res: FirewallVerdict }) {
   const rows = res.records.flatMap((r) => (r.duplicates?.matches ?? []).map((m) => ({ record: r.index, m })));
   const warned = res.records.filter((r) => r.duplicates?.verdict === "warn").length;
   const cut = res.records.filter((r) => r.duplicates?.truncated);
+  const skipped = res.records.filter((r) => r.duplicates && !r.duplicates.searched);
   return (
     <div data-testid="entry-dup">
       <p role="status" data-testid="entry-dup-result">
         {t("Duplicate search")}:{" "}
         {rows.length === 0
-          ? t("No likely duplicate found among the existing records.")
+          ? (skipped.length === res.records.length
+            ? t("Nothing was searched.")
+            : t("No likely duplicate found among the existing records."))
           : t("{warned} of {total} records warned, scored against the auto-merge threshold of {threshold}. A duplicate warns and never blocks.", { warned, total: res.records.length, threshold: pct(s.thresholds.auto_merge ?? 0.95) })}
       </p>
+      {skipped.length ? (
+        <p role="note" data-testid="entry-dup-skipped">
+          {t("Record {records} was not searched: it has no value the search can look up. That is not a clean result.", { records: skipped.map((r) => r.index + 1).join(", ") })}
+        </p>
+      ) : null}
       {cut.length ? (
         <p role="note" data-testid="entry-dup-truncated">
           {t("Only the first {cap} candidates were scored for record {records}, so a further duplicate may exist.", { cap: s.cap, records: cut.map((r) => r.index + 1).join(", ") })}
