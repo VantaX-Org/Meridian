@@ -17413,3 +17413,28 @@ rules:
     __other__: Set the deletion flag on the row in MM06 or remove the client-level flag in MM02.
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: client-level deletion flag {MARA.LVORM} but the
     row is not flagged.'
+- id: MM1108
+  field: MVKE.VKORG
+  check_class: exists_check
+  cross_object: sd_customer_master
+  fields:
+  - MVKE.VKORG
+  - MVKE.VTWEG
+  target_table: KNVV
+  target_fields:
+  - VKORG
+  - VTWEG
+  severity: low
+  dimension: consistency
+  message: Material is maintained for a sales area (sales organisation and distribution channel) in which no customer has
+    sales data (KNVV)
+  why_it_matters: A material sales view only earns its keep when a customer can order it in that sales area. If no customer
+    master carries the sales area, the view cannot be used in an order and is usually left over from a copy or a load.
+  rule_authority: best_practice
+  sap_impact: Pricing, listing and availability data is kept for a sales area that no customer can buy in; the sales area
+    looks live in material reports.
+  fix_map:
+    __other__: Extend a customer to this sales area (VD01/XD01 > Sales area data) or remove the unused material sales view
+      (MM02 > Sales org. 1).
+  record_fix_template: 'Material {MVKE.MATNR}: sales organisation {MVKE.VKORG}, distribution channel {MVKE.VTWEG} has no
+    customer with sales data.'

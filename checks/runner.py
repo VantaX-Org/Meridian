@@ -388,6 +388,12 @@ def _with_child_stats(rule: dict, frames: TableFrames) -> dict | None:
     return {**rule, "_child_total": total.to_dict(), "_child_match": match.to_dict()}
 
 
+def extract_target_columns(rule: dict) -> list[str]:
+    """Target columns the rule adds to its own object's extract. A cross_object rule's target belongs to another
+    licensed object: looked up only when that object is in the same run, never pulled in on the rule's account."""
+    return [] if rule.get("cross_object") else target_columns(rule)
+
+
 def get_required_columns(module_name: str, include_disabled: bool = False) -> set[str]:
     """Every column the rules of a module read, for column pruning at extraction.
 
@@ -401,7 +407,8 @@ def get_required_columns(module_name: str, include_disabled: bool = False) -> se
     if not include_disabled:
         rules = [r for r in rules if r.get("enabled", True)]
     cols = {c for rule in rules
-            for c in rule_columns(rule) + target_columns(rule) + auto_fix.columns(rule) + auto_fix.reference_columns(rule)}
+            for c in rule_columns(rule) + extract_target_columns(rule)
+            + auto_fix.columns(rule) + auto_fix.reference_columns(rule)}
     return cols | {f"{t}.{f}" for t in tables_of(cols) for f in fields_for(t)}
 
 
@@ -441,7 +448,9 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         resolved = _with_target_sums(rule, frames, as_of) if rule.get("check_class") == "reconciliation_check" \
             else _with_targets(rule, frames, as_of)
         if resolved is None:
-            return rule, None  # the referenced table is not in the extract
+            # the referenced table is not in the extract; for a cross_object rule that means the other
+            # object was not extracted with this one, reported apart from a coverage gap
+            return ({**rule, "_skip": "other_object_not_extracted"} if rule.get("cross_object") else rule), None
         if isinstance(resolved, str):
             return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(), resolved)
         rule = resolved

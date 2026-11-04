@@ -679,8 +679,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
 | MVKE | MATNR | Material Number | y | 11 / 11 | MM1099, MM1102, MM220, MM227, MM304, MM330 +5 more |  |
-| MVKE | VKORG | Sales Organization | y | 7 / 7 | MM020, MM021, MM214, MM362, MM474, MM827 +1 more |  |
-| MVKE | VTWEG | Distribution Channel | y | 4 / 4 | MM215, MM474, MM827, MM836 |  |
+| MVKE | VKORG | Sales Organization | y | 8 / 8 | MM020, MM021, MM1108, MM214, MM362, MM474 +2 more |  |
+| MVKE | VTWEG | Distribution Channel | y | 5 / 5 | MM1108, MM215, MM474, MM827, MM836 |  |
 | MVKE | LVORM | Ind.: Flag material for deletion at distribution chain level | y | 1 / 1 | MM365 |  |
 | MVKE | VERSG | Material statistics group | y | 1 / 1 | MM356 |  |
 | MVKE | BONUS | Volume rebate group | y | 1 / 1 | MM477 |  |

@@ -862,7 +862,7 @@ class ConnectivityManager:
     def _extract_successfactors(self, connector, modules, dictionary, system_id):
         """Assemble SF canonical tables from their source entities (see canonical/successfactors.yaml)."""
         from checks.frames import tables_of
-        from checks.runner import _find_module_yaml, rule_columns, target_columns
+        from checks.runner import _find_module_yaml, extract_target_columns, rule_columns
         from api.services.source_design import latest_snapshot_id, load_overlay
         import yaml as _yaml
 
@@ -870,7 +870,7 @@ class ConnectivityManager:
         for m in modules:
             try:
                 for r in _yaml.safe_load(_find_module_yaml(m).read_text()).get("rules", []):
-                    wanted |= set(tables_of(rule_columns(r) + target_columns(r)))
+                    wanted |= set(tables_of(rule_columns(r) + extract_target_columns(r)))
             except FileNotFoundError:
                 continue
         snap = latest_snapshot_id(self.session, system_id)
@@ -1034,14 +1034,14 @@ class ConnectivityManager:
     def _rule_tables(modules) -> set[str]:
         """Tables the rules of ``modules`` read, exists-check targets included."""
         from checks.frames import tables_of
-        from checks.runner import _find_module_yaml, rule_columns, target_columns
+        from checks.runner import _find_module_yaml, extract_target_columns, rule_columns
         import yaml as _yaml
 
         wanted: set[str] = set()
         for m in modules:
             try:
                 for r in _yaml.safe_load(_find_module_yaml(m).read_text()).get("rules", []):
-                    wanted |= set(tables_of(rule_columns(r) + target_columns(r)))
+                    wanted |= set(tables_of(rule_columns(r) + extract_target_columns(r)))
             except FileNotFoundError:
                 continue
         return wanted

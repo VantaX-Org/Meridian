@@ -12771,3 +12771,52 @@ rules:
     fix_map:
       __other__: Flag the company code for deletion too (XD06 / FD06), or remove the central flag if set in error.
     record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: deleted centrally but not in the company code.'
+  - id: SDCM858
+    field: KNVV.VKORG
+    check_class: exists_check
+    cross_object: material_master
+    fields:
+      - KNVV.VKORG
+      - KNVV.VTWEG
+    target_table: MVKE
+    target_fields:
+      - VKORG
+      - VTWEG
+    severity: medium
+    dimension: consistency
+    message: Customer sales area (sales organisation and distribution channel) has no material with a sales view (MVKE)
+    why_it_matters: >-
+      A customer can only order materials that carry a sales view for the order's sales organisation and distribution
+      channel. If no material is maintained for the customer's sales area, no sales order can be entered for it.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      VA01 rejects every item with "material not maintained in sales area"; the customer's sales area is unusable until
+      materials are extended to it.
+    fix_map:
+      __other__: >-
+        Extend materials to the sales area (MM01/MM02 > Sales org. 1) or correct the sales organisation and distribution
+        channel on the customer's sales area data (XD02 > Sales area).
+    record_fix_template: 'Customer {KNVV.KUNNR}: sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART} has no material with a sales view.'
+
+  - id: SDCM859
+    field: KNVV.VWERK
+    check_class: exists_check
+    cross_object: material_master
+    target_table: MARC
+    target_fields:
+      - WERKS
+    severity: medium
+    dimension: consistency
+    message: Customer delivering plant has no material with a plant view (MARC)
+    why_it_matters: >-
+      The delivering plant on the customer's sales area is proposed into every order item. A plant in which no material
+      is maintained cannot supply any item, so availability check and delivery creation fail for the customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Order items default to a plant that holds no material; users must overtype the plant on every item, or the
+      delivery cannot be created.
+    fix_map:
+      __other__: >-
+        Correct the delivering plant in XD02 > Sales area > Shipping, or extend the materials to that plant (MM01/MM02 >
+        MRP or Plant data).
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: delivering plant {KNVV.VWERK} has no material with a plant view.'

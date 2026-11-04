@@ -346,7 +346,7 @@ def score_all_modules(all_results: list[CheckResult], tenant_weights: dict | Non
                                  # a defect — the two are reported separately but score alike.
                                  skipped=_count(module, "not_evaluable"),
                                  not_applicable=_count(module, "not_applicable", "field_unmaintained",
-                                                       "field_suppressed"))
+                                                       "field_suppressed", "other_object_not_extracted"))
             for module, findings in by_module.items()}
 
 

@@ -14,12 +14,12 @@
   "material_master": {
    "benchmarked": 235,
    "perfect": 235,
-   "rules": 887
+   "rules": 888
   },
   "sd_customer_master": {
    "benchmarked": 260,
    "perfect": 260,
-   "rules": 574
+   "rules": 576
   }
  },
  "records_per_rule": 40,
@@ -7877,6 +7877,13 @@
    "records": 40,
    "rule_id": "MM1107",
    "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1108"
   },
   {
    "benchmarkable": true,
@@ -20561,6 +20568,20 @@
    "records": 40,
    "rule_id": "SDCM855",
    "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "sd_customer_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "SDCM858"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "sd_customer_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "SDCM859"
   },
   {
    "benchmarkable": true,
