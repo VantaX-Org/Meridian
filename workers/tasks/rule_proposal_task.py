@@ -8,6 +8,7 @@ Notifies Admin and Steward users that rules await review.
 
 import json
 import logging
+import re
 import time
 import uuid
 
@@ -111,32 +112,61 @@ def rule_proposal_task(self, tenant_id: str, domain: str) -> dict:
         return {"status": "completed", "proposals_created": created}
 
 
+_CODE = re.compile(r"[A-Za-z0-9_]{1,20}")
+
+
 def _summarise_corrections(corrections: list) -> dict:
-    """Aggregate correction patterns for the LLM prompt — never raw data."""
-    summary = {
+    """Aggregate correction counts for the LLM prompt. Counts only: steward free text (correction_reason) can
+    carry SAP values, so only how many corrections gave a reason is sent, never what it said."""
+    decision_counts: dict[str, int] = {}
+    with_reason = 0
+
+    for _, _ai_rec, steward_dec, reason, _ in corrections:
+        key = steward_dec if isinstance(steward_dec, str) and _CODE.fullmatch(steward_dec) else "other"
+        decision_counts[key] = decision_counts.get(key, 0) + 1
+        if reason:
+            with_reason += 1
+
+    return {
         "total_corrections": len(corrections),
-        "patterns": {},
+        "patterns": {"decision_distribution": decision_counts, "corrections_with_reason": with_reason},
     }
 
-    reason_counts: dict[str, int] = {}
-    decision_counts: dict[str, int] = {}
 
-    for _, ai_rec, steward_dec, reason, _ in corrections:
-        decision_counts[steward_dec] = decision_counts.get(steward_dec, 0) + 1
-        if reason:
-            # Sanitise reason text before including in summary
-            from api.utils.pii_fields import sanitise_for_prompt
-            sanitised_reason = sanitise_for_prompt("correction_reason", reason)
-            # Group by first 50 chars of sanitised reason to find patterns
-            key = sanitised_reason[:50].strip().lower()
-            reason_counts[key] = reason_counts.get(key, 0) + 1
+MATCH_TYPES = ("exact", "fuzzy", "phonetic", "numeric_range", "semantic")
 
-    summary["patterns"]["decision_distribution"] = decision_counts
-    summary["patterns"]["top_reasons"] = dict(
-        sorted(reason_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-    )
 
-    return summary
+def verify(p: object, known_fields: set[str]) -> dict:
+    """Prove one proposed rule before it is stored. Deterministic, grounded in the rule catalogue.
+
+    FIELD_KNOWN             field is a SAP field of the rule catalogue (TABLE.FIELD or its short name) or one
+                            already used by an active match rule of the domain
+    MATCH_TYPE_ALLOWED      match_type is one of exact, fuzzy, phonetic, numeric_range, semantic
+    WEIGHT_IN_RANGE         weight is a number from 0 to 100 (rejected, not clamped)
+    THRESHOLD_IN_RANGE      threshold is a number from 0 to 1 (rejected, not clamped)
+    The rationale is written by the server; the model's free text is never stored."""
+    rule = p.get("proposed_rule") if isinstance(p, dict) else None
+    rule = rule if isinstance(rule, dict) else {}
+
+    def num(x, hi):
+        return isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x <= hi
+
+    checks = [
+        {"code": "FIELD_KNOWN", "passed": isinstance(rule.get("field"), str) and rule["field"] in known_fields},
+        {"code": "MATCH_TYPE_ALLOWED", "passed": rule.get("match_type") in MATCH_TYPES},
+        {"code": "WEIGHT_IN_RANGE", "passed": num(rule.get("weight"), 100)},
+        {"code": "THRESHOLD_IN_RANGE", "passed": num(rule.get("threshold"), 1)},
+    ]
+    return {"verified": all(c["passed"] for c in checks), "checks": checks}
+
+
+def _known_fields(existing_rules: list) -> set[str]:
+    from api.services.ai_column_matcher import _load_all_module_fields
+
+    fields = {r[0] for r in existing_rules}
+    for module_fields in _load_all_module_fields().values():
+        fields |= module_fields | {f.split(".")[-1] for f in module_fields}
+    return fields
 
 
 def _generate_proposals(
@@ -171,7 +201,7 @@ Current match rules:
 Steward correction summary (past 7 days):
   Total corrections: {correction_summary['total_corrections']}
   Decision distribution: {json.dumps(correction_summary['patterns']['decision_distribution'])}
-  Top correction reasons: {json.dumps(correction_summary['patterns']['top_reasons'])}
+  Corrections with a written reason: {correction_summary['patterns']['corrections_with_reason']} (text not shown)
 
 Based on these patterns, propose up to 10 match rules that would reduce the need
 for manual steward intervention. Each rule should specify:
@@ -182,8 +212,7 @@ for manual steward intervention. Each rule should specify:
 
 Respond in JSON format only:
 {{"proposals": [
-  {{"proposed_rule": {{"field": "...", "match_type": "...", "weight": N, "threshold": N.N}},
-    "rationale": "..."}}
+  {{"proposed_rule": {{"field": "...", "match_type": "...", "weight": N, "threshold": N.N}}}}
 ]}}"""
 
     start_ms = time.monotonic_ns() // 1_000_000
@@ -228,21 +257,19 @@ Respond in JSON format only:
         result = json.loads(cleaned)
         proposals = result.get("proposals", [])
 
-        # Validate each proposal
+        # Verify each proposal; rationale is server-written
+        known = _known_fields(existing_rules)
+        n = correction_summary["total_corrections"]
         valid = []
-        for p in proposals:
-            rule = p.get("proposed_rule", {})
-            if (
-                rule.get("field")
-                and rule.get("match_type") in ("exact", "fuzzy", "phonetic", "numeric_range", "semantic")
-                and isinstance(rule.get("weight"), (int, float))
-                and isinstance(rule.get("threshold"), (int, float))
-            ):
-                rule["weight"] = max(0, min(100, int(rule["weight"])))
-                rule["threshold"] = max(0.0, min(1.0, float(rule["threshold"])))
+        for p in proposals if isinstance(proposals, list) else []:
+            if verify(p, known)["verified"]:
+                r = p["proposed_rule"]
+                rule = {"field": r["field"], "match_type": r["match_type"],
+                        "weight": int(r["weight"]), "threshold": float(r["threshold"])}
                 valid.append({
                     "proposed_rule": rule,
-                    "rationale": str(p.get("rationale", "")),
+                    "rationale": f"Proposed by the model from {n} steward correction(s) in the last 7 days; "
+                                 "field, match type, weight and threshold verified",
                 })
 
         return valid

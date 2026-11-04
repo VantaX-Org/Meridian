@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 import yaml
 
-from api.utils.pii_fields import sanitise_for_prompt
+from api.services.prompt_shapes import in_unit_range, shape
 from api.utils.llm_logger import log_deterministic_skip, log_llm_call
 
 logger = logging.getLogger("meridian.ai_impact_scorer")
@@ -152,7 +152,7 @@ def _build_impact_prompt(
     return f"""You are an SAP master data impact analysis expert.
 
 A golden record field has changed in the {domain} domain.
-Changed field: {sanitise_for_prompt(changed_field, changed_field)}
+Changed field: {changed_field}
 
 Related domains connected to this record:
 {relationships_text}
@@ -161,7 +161,7 @@ Assess the downstream impact of this field change on each related domain.
 Consider SAP cross-domain dependencies, data propagation paths, and business process impact.
 
 Respond in JSON format only:
-{{"impact_score": <0.0-1.0>, "affected_domains": [<list of domain names that need review>], "rationale": "<brief explanation of impact chain>"}}"""
+{{"impact_score": <0.0-1.0>, "affected_domains": [<names chosen from the related domains above>]}}"""
 
 
 def _build_inference_prompt(
@@ -170,7 +170,10 @@ def _build_inference_prompt(
     known_relationships: list[dict],
     candidate_domains: list[str],
 ) -> str:
-    """Build prompt to infer probable relationships not found in RFC link tables."""
+    """Build prompt to infer probable relationships not found in RFC link tables.
+
+    The record key is a SAP value: the model sees only its shape (length, mask)."""
+    key = shape(sap_object_key)
     known_text = "\n".join(
         f"  - {r['to_domain']} ({r['relationship_type']})"
         for r in known_relationships
@@ -181,7 +184,7 @@ def _build_inference_prompt(
     return f"""You are an SAP cross-domain relationship expert.
 
 Domain: {domain}
-Object key pattern: {sanitise_for_prompt('sap_object_key', sap_object_key)}
+Object key shape (A upper, a lower, 9 digit): length {key['length']}, mask {key['mask']}
 
 Known RFC-discovered relationships:
 {known_text}
@@ -194,7 +197,42 @@ with this {domain} record, even if no RFC link table confirms it?
 Only suggest relationships with high probability based on SAP best practices.
 
 Respond in JSON format only:
-{{"inferred_relationships": [{{"to_domain": "<domain>", "relationship_type": "<type>", "confidence": <0.0-1.0>, "reasoning": "<brief>"}}]}}"""
+{{"inferred_relationships": [{{"to_domain": "<domain>", "relationship_type": "<type>", "confidence": <0.0-1.0>}}]}}"""
+
+
+def verify_impact(result: object, related_domains: list[dict]) -> dict:
+    """Prove a model impact answer. Deterministic, grounded in the related domains the caller offered.
+
+    IMPACT_SCORE_IN_RANGE   impact_score is a number from 0 to 1 (rejected, not clamped)
+    AFFECTED_DOMAINS_OFFERED  affected_domains is a list of names the caller offered as related domains
+    The rationale is written by the server; the model's free text is never kept."""
+    d = result if isinstance(result, dict) else {}
+    offered = {r.get("to_domain") for r in related_domains}
+    aff = d.get("affected_domains")
+    checks = [
+        {"code": "IMPACT_SCORE_IN_RANGE", "passed": in_unit_range(d.get("impact_score"))},
+        {"code": "AFFECTED_DOMAINS_OFFERED", "passed": isinstance(aff, list) and all(a in offered for a in aff)},
+    ]
+    return {"verified": all(c["passed"] for c in checks), "checks": checks}
+
+
+def verify_inference(r: object, candidate_domains: list[str], known_relationships: list[dict]) -> dict:
+    """Prove one inferred relationship.
+
+    TO_DOMAIN_CANDIDATE     to_domain is one of the candidate domains offered
+    NOT_ALREADY_KNOWN       the domain is not already an RFC-discovered relationship
+    RELATIONSHIP_TYPE_TEXT  relationship_type is a non-empty string
+    CONFIDENCE_IN_RANGE     confidence is a number from 0 to 1"""
+    d = r if isinstance(r, dict) else {}
+    known = {k.get("to_domain") for k in known_relationships}
+    rt = d.get("relationship_type")
+    checks = [
+        {"code": "TO_DOMAIN_CANDIDATE", "passed": d.get("to_domain") in candidate_domains},
+        {"code": "NOT_ALREADY_KNOWN", "passed": d.get("to_domain") not in known},
+        {"code": "RELATIONSHIP_TYPE_TEXT", "passed": isinstance(rt, str) and bool(rt.strip())},
+        {"code": "CONFIDENCE_IN_RANGE", "passed": in_unit_range(d.get("confidence"))},
+    ]
+    return {"verified": all(c["passed"] for c in checks), "checks": checks}
 
 
 def score_impact(
@@ -268,11 +306,18 @@ def score_impact(
         cleaned = cleaned.strip()
 
         result = json.loads(cleaned)
+        proof = verify_impact(result, related_domains)
+        if not proof["verified"]:
+            failed = [c["code"] for c in proof["checks"] if not c["passed"]]
+            logger.warning("Impact scorer answer failed %s", failed)
+            return {"impact_score": 0.0, "affected_domains": [],
+                    "rationale": "Model answer failed verification (" + ", ".join(failed) + "); no impact claimed"}
 
         return {
-            "impact_score": max(0.0, min(1.0, float(result.get("impact_score", 0.5)))),
-            "affected_domains": list(result.get("affected_domains", [])),
-            "rationale": str(result.get("rationale", "")),
+            "impact_score": float(result["impact_score"]),
+            "affected_domains": list(result["affected_domains"]),
+            "rationale": f"Model estimate over {len(related_domains)} related domain(s); "
+                         "score and domains verified against the related domains offered",
         }
 
     except Exception as e:
@@ -355,18 +400,20 @@ def infer_relationships(
         cleaned = cleaned.strip()
 
         result = json.loads(cleaned)
-        inferred = result.get("inferred_relationships", [])
+        inferred = result.get("inferred_relationships", []) if isinstance(result, dict) else []
+        if not isinstance(inferred, list):
+            return []
 
-        # Filter to only high-confidence inferences (>= 0.6)
+        # Keep only verified, high-confidence (>= 0.6) inferences; reasoning is server-written
         return [
             {
-                "to_domain": str(r["to_domain"]),
-                "relationship_type": str(r["relationship_type"]),
-                "confidence": max(0.0, min(1.0, float(r.get("confidence", 0.5)))),
-                "reasoning": str(r.get("reasoning", "")),
+                "to_domain": r["to_domain"],
+                "relationship_type": r["relationship_type"].strip(),
+                "confidence": float(r["confidence"]),
+                "reasoning": "Inferred by model from domain metadata; no RFC link table confirms it",
             }
             for r in inferred
-            if float(r.get("confidence", 0)) >= 0.6
+            if verify_inference(r, candidate_domains, known_relationships)["verified"] and r["confidence"] >= 0.6
         ]
 
     except Exception as e:

@@ -41,13 +41,12 @@ def test_the_matcher_prompt_carries_no_personal_values(monkeypatch: pytest.Monke
     monkeypatch.setattr(m, "get_llm", lambda: object())
     monkeypatch.setattr("llm.provider.safe_invoke", lambda _llm, msgs, timeout_seconds=30: prompts.append(msgs[1].content) or _Resp())
     monkeypatch.setattr(m, "_log_llm_call", lambda *a: None)
-    # "Supplier label" is no PII word; the catalogue says it is LFA1.NAME1
-    monkeypatch.setattr(m, "_candidate_index", lambda: {"supplier label": "LFA1.NAME1"})
     headers = ["Supplier label", "Vendor name", "Payment ref", "Kind"]
     rows = [["Acme Holdings", "Jane Doe", "DE89370400440532013000", "ZLIF"]]
     m._llm_match_columns(["Supplier label", "Vendor name", "Kind"], rows, headers, {"LFA1.KTOKK"}, "accounts_payable")
     (prompt,) = prompts
     assert "Acme Holdings" not in prompt and "Jane Doe" not in prompt
-    assert "Supplier label=[REDACTED]" in prompt and "Vendor name=[REDACTED]" in prompt
-    assert "Kind=ZLIF" in prompt
+    # shape profile only: no cell value, PII-named or not, reaches the model
+    assert "Supplier label: rows=1" in prompt and "Vendor name: rows=1" in prompt
+    assert "ZLIF" not in prompt and "Kind: rows=1" in prompt
     assert "DE89370400440532013000" not in prompt  # a matched column never reaches the model at all
