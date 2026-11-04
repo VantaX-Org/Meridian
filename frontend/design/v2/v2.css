@@ -938,8 +938,9 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 .m2-ruler-box-lg .m2-ruler-num .m2-sc { letter-spacing: -0.02em; font-size: calc(var(--m2-fs-24) * 1.5); line-height: 1; }
 .m2-ruler-box-lg .m2-ruler-num { align-items: baseline; }
 
-/* The ruler: the large ruler and the selected score draw in the data hue; the measured tick is a blade */
+/* The ruler: the large ruler and the selected score draw in the data hue, the large one with a glow; the measured tick is a blade */
 .m2-ruler.m2-on .m2-f, .m2-ruler-lg .m2-f { fill: var(--m2-data); }
+.m2-ruler-lg .m2-f { filter: drop-shadow(0 0 3px var(--m2-data-glow-ink)); }
 .m2-ruler .m2-ks { fill: var(--m2-sheet); }
 
 /* Buttons and controls: the primary action in the flat data hue */
@@ -960,7 +961,8 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 .m2-bulk { border-radius: var(--m2-r2); }
 .m2-ck-heat { font-weight: 500; }
 
-/* Severity marks carry light */
+/* Severity marks carry light: the critical and no-go marks glow */
+.m2-vm.crit, .m2-vm.nogo { filter: drop-shadow(0 0 4px var(--m2-crit-glow-ink)); }
 
 /* The landscape: the go-live banner is the hero, its figures a wall of numbers */
 .m2-cc-banner { background: var(--m2-grad-hero); box-shadow: var(--m2-shadow-2); position: relative; overflow: hidden; }
@@ -975,21 +977,22 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
  * The data hue stays for the user's own selections, so the eye never confuses "chosen" with "proved".
  */
 .m2-cc-dock { box-shadow: var(--m2-shadow-2); border-color: var(--m2-ai-line); }
-.m2-cc-dock > header { position: relative; background: var(--m2-ai-bg); border-bottom-color: var(--m2-ai-line); }
-.m2-cc-dock > header img { border-radius: var(--m2-r-round); background: var(--m2-ai); padding: calc(var(--m2-s1) / 2); }
+.m2-cc-dock > header { position: relative; background: var(--m2-grad-ai-wash); border-bottom-color: var(--m2-ai-line); }
+.m2-cc-dock > header img { border-radius: var(--m2-r-round); background: var(--m2-grad-ai); box-shadow: var(--m2-glow-ai); padding: calc(var(--m2-s1) / 2); position: relative; z-index: 1; }
+.m2-cc-dock > header::before { content: ""; position: absolute; left: calc(var(--m2-s4) - var(--m2-s1)); top: calc(var(--m2-s4) - var(--m2-s1)); width: calc(28px + var(--m2-s2)); height: calc(28px + var(--m2-s2)); border-radius: var(--m2-r-round); border: 1px solid var(--m2-ai); pointer-events: none; }
 .m2-cc-dock > header strong { color: var(--m2-ai-ink); }
 .m2-ask-hero { color: var(--m2-ai-ink); padding-left: var(--m2-s4); box-shadow: inset 3px 0 0 var(--m2-ai); }
-.m2-ask-a { border-top: 0; padding: var(--m2-s3) var(--m2-s3) var(--m2-s3) var(--m2-s4); background: var(--m2-ai-bg); border-radius: 0 var(--m2-r2) var(--m2-r2) 0; box-shadow: inset 3px 0 0 var(--m2-ai); }
+.m2-ask-a { border-top: 0; padding: var(--m2-s3) var(--m2-s3) var(--m2-s3) var(--m2-s4); background: var(--m2-grad-ai-wash); border-radius: 0 var(--m2-r2) var(--m2-r2) 0; box-shadow: inset 3px 0 0 var(--m2-ai); }
 .m2-ask-a[data-refused] { box-shadow: inset 3px 0 0 var(--m2-ink-3); background: var(--m2-hover); }
 .m2-ask-badge { border-color: var(--m2-ai-line); color: var(--m2-ai-ink); background: var(--m2-ai-bg); font-weight: 500; }
-.m2-ask-badge[data-tone="pass"] { color: var(--m2-ai-ink); border-color: var(--m2-ai); background: var(--m2-ai-bg); }
+.m2-ask-badge[data-tone="pass"] { color: var(--m2-ai-ink); border-color: var(--m2-ai); background: var(--m2-ai-bg); box-shadow: 0 0 12px var(--m2-ai-glow-ink); }
 .m2-ask-bar { border-radius: var(--m2-r1); overflow: hidden; }
-.m2-ask-bar > span { background: var(--m2-ai); border-radius: var(--m2-r1); }
+.m2-ask-bar > span { background: var(--m2-grad-ai); border-radius: var(--m2-r1); box-shadow: 0 0 8px var(--m2-ai-glow-ink); }
 .m2-ask-cites a { color: var(--m2-ai-ink); text-decoration: underline; text-decoration-color: var(--m2-ai-line); text-underline-offset: 2px; }
 .m2-ask-cites a:hover { text-decoration-color: var(--m2-ai); }
 .m2-ask-q { background: var(--m2-data-bg); border-color: transparent; }
 .m2-ask-in input { box-shadow: var(--m2-shadow-1); }
-.m2-ask-in input:focus-visible { border-color: var(--m2-ai); box-shadow: 0 0 0 1px var(--m2-ai); outline: 0; }
+.m2-ask-in input:focus-visible { border-color: var(--m2-ai); box-shadow: var(--m2-glow-ai); outline: 0; }
 .m2-ask-chips .m2-chip:hover { border-color: var(--m2-ai); color: var(--m2-ai-ink); }
 
 /*
@@ -998,7 +1001,9 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
  * tracking. Everything here is a token in tokens.css; the signed-out pages share the hero in auth.css.
  */
 .m2-h1 { letter-spacing: -0.02em; }
-.m2-cc-banner { background: var(--m2-grad-hero); border-color: var(--m2-hero-line); box-shadow: var(--m2-shadow-2); color: var(--m2-hero-fg); gap: var(--m2-s6); padding: var(--m2-s6) var(--m2-s6) var(--m2-s5); }
+.m2-cc-banner { background: var(--m2-grad-hero); border-color: var(--m2-hero-line); box-shadow: var(--m2-shadow-hero); color: var(--m2-hero-fg); gap: var(--m2-s6); padding: var(--m2-s6) var(--m2-s6) var(--m2-s5); }
+.m2-cc-banner::after { content: ""; position: absolute; inset: 0; background: var(--m2-grad-hero-light); pointer-events: none; }
+.m2-cc-banner > * { position: relative; z-index: 1; }
 .m2-cc-banner::before { height: 4px; }
 .m2-cc-banner[data-verdict="go"]::before { background: var(--m2-on-hero-pass); }
 .m2-cc-banner[data-verdict="at-risk"]::before { background: var(--m2-on-hero-warn); }
@@ -1030,12 +1035,13 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 .m2-cc-banner .m2-btn:not(.m2-next) { background: var(--m2-hero-field); border-color: var(--m2-hero-line); color: var(--m2-hero-fg) !important; }
 .m2-cc-banner .m2-btn:not(.m2-next):hover { background: var(--m2-hero-line); }
 
-/* The matrix as a heat map: fills carry the band, the sheet shows through as a hairline grid, no borders or glows */
+/* The matrix as a heat map: fills carry the band, the sheet shows through as a hairline grid, no borders; only the critical band glows */
 .m2-ck-matrix td.m2-ck-heat { border-left: 2px solid var(--m2-sheet); border-bottom: 2px solid var(--m2-sheet); font-weight: 500; font-size: var(--m2-fs-13); min-width: 72px; }
 [data-band="0"].m2-ck-heat, .m2-ck-key [data-band="0"] { background: var(--m2-heat-0); color: var(--m2-heat-0-ink); }
 [data-band="1"].m2-ck-heat, .m2-ck-key [data-band="1"] { background: var(--m2-heat-1); color: var(--m2-heat-1-ink); }
 [data-band="2"].m2-ck-heat, .m2-ck-key [data-band="2"] { background: var(--m2-heat-2); color: var(--m2-heat-2-ink); }
-[data-band="3"].m2-ck-heat, .m2-ck-key [data-band="3"] { background: var(--m2-heat-3); color: var(--m2-heat-3-ink); box-shadow: none; }
+[data-band="3"].m2-ck-heat, .m2-ck-key [data-band="3"] { background: var(--m2-heat-3); color: var(--m2-heat-3-ink); }
+[data-band="3"].m2-ck-heat { box-shadow: inset 0 0 0 1px var(--m2-crit), var(--m2-glow-crit); }
 .m2-ck-key > span { border-color: transparent; font-weight: 500; }
 .m2-ck-score { font-size: var(--m2-fs-16); }
 

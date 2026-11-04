@@ -209,15 +209,23 @@
   --m2-ai-ink: #07545B;
   --m2-ai-line: #86CDD2;
   --m2-on-ai: #FFFFFF;
+  --m2-ai-glow-ink: #0B707966;
 
-  /* Depth: three lifts, each a pair of shadows (a contact shadow and an ambient one) */
+  /* Depth: three lifts, each a pair of shadows (a contact shadow and an ambient one), and the glow inks for the loud moments only */
   --m2-shadow-1: 0 1px 2px #151A1E14, 0 2px 10px #151A1E0A;
   --m2-shadow-2: 0 2px 6px #151A1E14, 0 14px 36px #151A1E1F;
   --m2-shadow-3: 0 10px 28px #151A1E29, 0 36px 72px #151A1E2E;
+  --m2-data-glow-ink: #2F5FD066;
+  --m2-crit-glow-ink: #B8322A4D;
+  --m2-glow-ai: 0 0 0 1px var(--m2-ai), 0 0 20px var(--m2-ai-glow-ink);
+  --m2-glow-crit: 0 0 18px var(--m2-crit-glow-ink);
+  --m2-glow-chart: 0 0 0 2px var(--m2-sheet), 0 0 14px var(--m2-data-glow-ink);
 
-  /* Light: the gradients. The bar is deep meridian blue running to verdigris; the hero and the sheet washes are quiet. */
+  /* Light: the bar is one flat deep blue; gradient lives only on the hero ground and the Aletheia surfaces. */
   --m2-bar-bg: var(--m2-b-950);
-  --m2-grad-hero: linear-gradient(180deg, var(--m2-hero-bg) 0%, var(--m2-hero-bg-2) 100%);
+  --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, var(--m2-b-900) 52%, var(--m2-hero-bg-2) 100%);
+  --m2-grad-ai: linear-gradient(135deg, #1796A1 0%, var(--m2-ai) 100%);
+  --m2-grad-ai-wash: linear-gradient(90deg, var(--m2-ai-bg) 0%, var(--m2-sheet) 42%);
   --m2-grad-area: linear-gradient(180deg, var(--m2-data-bg) 0%, transparent 100%);
 
   /* The bar's own inks: on the deep ground in both themes */
@@ -227,20 +235,25 @@
   --m2-bar-line: #FFFFFF2E;
   --m2-bar-field: #FFFFFF14;
 
-  /* Motion, the second part: the slow beat for the one arrival on load */
+  /* Motion, the second part: the slow beat for arrivals and the stagger between the landscape's first-screen siblings */
   --m2-t-slow: 420ms;
+  --m2-stagger: 45ms;
+  --m2-rise-lg: 14px;
   /* Hero: the deep ground the verdict and the signed-out pages stand on, and the inks that read on it (all AA on both ends) */
   --m2-hero-bg: #0B1B3F;
-  --m2-hero-bg-2: #0E2350;
+  --m2-hero-bg-2: #0F3D52;
   --m2-hero-fg: #FFFFFF;
   --m2-hero-fg-2: #C9D6F2;
   --m2-hero-meta: #9FB2DC;
   --m2-hero-accent: #8FB4FF;
   --m2-hero-line: #FFFFFF29;
   --m2-hero-field: #FFFFFF14;
+  --m2-hero-glow-ink: #4D8BFF40;
   --m2-on-hero-pass: #6FD39A;
   --m2-on-hero-warn: #F2C063;
   --m2-on-hero-crit: #FF8F86;
+  --m2-grad-hero-light: radial-gradient(ellipse at 82% 0%, var(--m2-hero-glow-ink) 0%, transparent 58%);
+  --m2-shadow-hero: 0 2px 6px #0B1B3F33, 0 18px 48px #0B1B3F52;
 
   /* Heat: the readiness ramp. Four fills with their own inks, strong enough to read as a heat map from across the room. */
   --m2-heat-0: #9ED9B6;
@@ -321,11 +334,19 @@
     --m2-ai-ink: #9FE3E8;
     --m2-ai-line: #1E5A61;
     --m2-on-ai: #0F1419;
+    --m2-ai-glow-ink: #5CCAD259;
     --m2-shadow-1: 0 1px 2px #00000052, 0 2px 10px #00000033;
     --m2-shadow-2: 0 2px 6px #00000066, 0 14px 36px #00000080;
     --m2-shadow-3: 0 10px 28px #00000099, 0 36px 72px #000000B3;
+    --m2-data-glow-ink: #7FA2F066;
+    --m2-crit-glow-ink: #F07A7059;
+    --m2-glow-ai: 0 0 0 1px var(--m2-ai), 0 0 20px var(--m2-ai-glow-ink);
+    --m2-glow-crit: 0 0 18px var(--m2-crit-glow-ink);
+    --m2-glow-chart: 0 0 0 2px var(--m2-sheet), 0 0 14px var(--m2-data-glow-ink);
     --m2-bar-bg: #0D1B3A;
-    --m2-grad-hero: linear-gradient(180deg, var(--m2-hero-bg) 0%, var(--m2-hero-bg-2) 100%);
+    --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, #0D2452 52%, var(--m2-hero-bg-2) 100%);
+    --m2-grad-ai: linear-gradient(135deg, #8FE2E8 0%, var(--m2-ai) 100%);
+    --m2-grad-ai-wash: linear-gradient(90deg, var(--m2-ai-bg) 0%, var(--m2-sheet) 42%);
     --m2-grad-area: linear-gradient(180deg, var(--m2-data-bg) 0%, transparent 100%);
     --m2-bar-fg: var(--m2-n-25);
     --m2-bar-fg-2: var(--m2-b-200);
@@ -333,18 +354,23 @@
     --m2-bar-line: #FFFFFF2E;
     --m2-bar-field: #FFFFFF14;
     --m2-t-slow: 420ms;
+    --m2-stagger: 45ms;
+    --m2-rise-lg: 14px;
     /* Hero and heat on the dark ground: the hero keeps its navy, the heat fills deepen and their inks lighten */
     --m2-hero-bg: #0B1B3F;
-    --m2-hero-bg-2: #0E2350;
+    --m2-hero-bg-2: #0F3D52;
     --m2-hero-fg: #FFFFFF;
     --m2-hero-fg-2: #C9D6F2;
     --m2-hero-meta: #9FB2DC;
     --m2-hero-accent: #8FB4FF;
     --m2-hero-line: #FFFFFF29;
     --m2-hero-field: #FFFFFF14;
+    --m2-hero-glow-ink: #4D8BFF40;
     --m2-on-hero-pass: #6FD39A;
     --m2-on-hero-warn: #F2C063;
     --m2-on-hero-crit: #FF8F86;
+    --m2-grad-hero-light: radial-gradient(ellipse at 82% 0%, var(--m2-hero-glow-ink) 0%, transparent 58%);
+    --m2-shadow-hero: 0 2px 6px #00000066, 0 18px 48px #00000099;
     --m2-heat-0: #1C5A38;
     --m2-heat-0-ink: #CFF2DC;
     --m2-heat-1: #1D2A40;
@@ -420,11 +446,19 @@ html[data-theme="dark"] .m2-root {
   --m2-ai-ink: #9FE3E8;
   --m2-ai-line: #1E5A61;
   --m2-on-ai: #0F1419;
+  --m2-ai-glow-ink: #5CCAD259;
   --m2-shadow-1: 0 1px 2px #00000052, 0 2px 10px #00000033;
   --m2-shadow-2: 0 2px 6px #00000066, 0 14px 36px #00000080;
   --m2-shadow-3: 0 10px 28px #00000099, 0 36px 72px #000000B3;
+  --m2-data-glow-ink: #7FA2F066;
+  --m2-crit-glow-ink: #F07A7059;
+  --m2-glow-ai: 0 0 0 1px var(--m2-ai), 0 0 20px var(--m2-ai-glow-ink);
+  --m2-glow-crit: 0 0 18px var(--m2-crit-glow-ink);
+  --m2-glow-chart: 0 0 0 2px var(--m2-sheet), 0 0 14px var(--m2-data-glow-ink);
   --m2-bar-bg: #0D1B3A;
-  --m2-grad-hero: linear-gradient(180deg, var(--m2-hero-bg) 0%, var(--m2-hero-bg-2) 100%);
+  --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, #0D2452 52%, var(--m2-hero-bg-2) 100%);
+  --m2-grad-ai: linear-gradient(135deg, #8FE2E8 0%, var(--m2-ai) 100%);
+  --m2-grad-ai-wash: linear-gradient(90deg, var(--m2-ai-bg) 0%, var(--m2-sheet) 42%);
   --m2-grad-area: linear-gradient(180deg, var(--m2-data-bg) 0%, transparent 100%);
   --m2-bar-fg: var(--m2-n-25);
   --m2-bar-fg-2: var(--m2-b-200);
@@ -432,18 +466,23 @@ html[data-theme="dark"] .m2-root {
   --m2-bar-line: #FFFFFF2E;
   --m2-bar-field: #FFFFFF14;
   --m2-t-slow: 420ms;
+  --m2-stagger: 45ms;
+  --m2-rise-lg: 14px;
   /* Hero and heat on the dark ground: the hero keeps its navy, the heat fills deepen and their inks lighten */
   --m2-hero-bg: #0B1B3F;
-  --m2-hero-bg-2: #0E2350;
+  --m2-hero-bg-2: #0F3D52;
   --m2-hero-fg: #FFFFFF;
   --m2-hero-fg-2: #C9D6F2;
   --m2-hero-meta: #9FB2DC;
   --m2-hero-accent: #8FB4FF;
   --m2-hero-line: #FFFFFF29;
   --m2-hero-field: #FFFFFF14;
+  --m2-hero-glow-ink: #4D8BFF40;
   --m2-on-hero-pass: #6FD39A;
   --m2-on-hero-warn: #F2C063;
   --m2-on-hero-crit: #FF8F86;
+  --m2-grad-hero-light: radial-gradient(ellipse at 82% 0%, var(--m2-hero-glow-ink) 0%, transparent 58%);
+  --m2-shadow-hero: 0 2px 6px #00000066, 0 18px 48px #00000099;
   --m2-heat-0: #1C5A38;
   --m2-heat-0-ink: #CFF2DC;
   --m2-heat-1: #1D2A40;
@@ -541,13 +580,36 @@ html[data-theme="dark"] .m2-root {
 .m2-root .m2-viz-tip { animation: m2-fade var(--m2-t-fast) var(--m2-ease); }
 .m2-root .m2-skel { animation: m2-breathe var(--m2-t-pulse) var(--m2-ease-loop) infinite; }
 
-/* The one entrance on load: the hero rises into place. Nothing else moves until it is asked to. */
+/*
+ * Motion, quiet chrome and loud moments. The landscape's first screen rises into place in sibling order (the stagger
+ * from --m2-stagger), the large ruler grows its fills from the baseline, a tab's underline slides, and the Aletheia
+ * mark breathes a ring. Working screens (frames, sections, charts) open instantly. All of it stops under
+ * prefers-reduced-motion below.
+ */
 @keyframes m2-rise {
-  from { transform: translateY(var(--m2-rise)); }
+  from { transform: translateY(var(--m2-rise-lg)); }
   to { transform: none; }
 }
-.m2-root .m2-cc-banner, .m2-root .m2-lhero { animation: m2-rise var(--m2-t-slow) var(--m2-ease) backwards; }
+@keyframes m2-grow-y {
+  from { transform: scaleY(0); }
+  to { transform: none; }
+}
+@keyframes m2-ring {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+.m2-root .m2-cc-banner, .m2-root .m2-cc-card, .m2-root .m2-ck-panel, .m2-root .m2-cc-dock, .m2-root .m2-lhero {
+  animation: m2-rise var(--m2-t-slow) var(--m2-ease) backwards;
+  animation-delay: calc(var(--m2-i, 0) * var(--m2-stagger));
+}
+.m2-root .m2-cc-row > :nth-child(2), .m2-root .m2-ck-row > :nth-child(2), .m2-root .m2-cc-main > :nth-child(2) { --m2-i: 1; }
+.m2-root .m2-cc-row > :nth-child(3), .m2-root .m2-ck-row > :nth-child(3), .m2-root .m2-cc-main > :nth-child(3) { --m2-i: 2; }
+.m2-root .m2-cc-row > :nth-child(4), .m2-root .m2-cc-main > :nth-child(4) { --m2-i: 3; }
+.m2-root .m2-cc-main > :nth-child(5) { --m2-i: 4; }
+.m2-root .m2-cc-dock { --m2-i: 2; }
+.m2-root .m2-ruler-lg .m2-f { animation: m2-grow-y var(--m2-t-slow) var(--m2-ease) both; animation-delay: var(--m2-t-fast); transform-box: fill-box; transform-origin: bottom; }
 .m2-root .m2-tab[aria-current="page"]::after { animation: m2-arrive-y var(--m2-t-fast) var(--m2-ease); }
+.m2-root .m2-cc-dock > header::before { animation: m2-ring var(--m2-t-pulse) var(--m2-ease-loop) infinite; }
 .m2-root .m2-btn.m2-next, .m2-root .m2-cell, .m2-root .m2-chip, .m2-root .m2-tab, .m2-root .m2-ck-heat { transition: background-color var(--m2-t-fast) var(--m2-ease), border-color var(--m2-t-fast) var(--m2-ease), color var(--m2-t-fast) var(--m2-ease), box-shadow var(--m2-t-fast) var(--m2-ease); }
 
 @media (prefers-reduced-motion: reduce) {

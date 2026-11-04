@@ -159,10 +159,20 @@ async def _mappings(db: AsyncSession, tid: str, sid: str, lst: rd.CodeList) -> l
              "decided_at": r[8].isoformat() if r[8] else None} for r in rows]
 
 
-async def _codes(db: AsyncSession, sid: str, lst: rd.CodeList, load_id: Optional[str]) -> dict[str, Any]:
+async def _lang(db: AsyncSession, tenant: Tenant, request: Request) -> Optional[str]:
+    """SAP logon language from the user's saved locale preference (Preferences page); None means English."""
+    from api.routes import preferences
+    try:
+        return rd.spras((await preferences._load(db, tenant, preferences._user(request))).get("locale"))
+    except HTTPException:
+        return None
+
+
+async def _codes(db: AsyncSession, sid: str, lst: rd.CodeList, load_id: Optional[str],
+                 lang: Optional[str] = None) -> dict[str, Any]:
     def run(s: Any) -> dict[str, Any]:
-        src, used = rd.source_codes(s, sid, lst, load_id)
-        tgt, label = rd.target_codes(s, sid, lst)
+        src, used = rd.source_codes(s, sid, lst, load_id, lang)
+        tgt, label = rd.target_codes(s, sid, lst, lang)
         return {"source": src, "version_id": used, "target": tgt, "label": label, "versions": rd.versions(s, sid, lst)}
     return await db.run_sync(run)
 
@@ -179,9 +189,10 @@ async def get_lists(system_id: str, request: Request, db: AsyncSession = Depends
                     tenant: Tenant = Depends(get_tenant)) -> ListsOut:
     sid = await _system(db, tenant, system_id)
     allowed = [x for x in rd.LISTS if _licensed(request, x.module)]
+    lang = await _lang(db, tenant, request)
     out, label = [], ""
     for lst in allowed:
-        c = await _codes(db, sid, lst, None)
+        c = await _codes(db, sid, lst, None, lang)
         label = c["label"]
         rows = await _mappings(db, str(tenant.id), sid, lst)
         out.append(ListSummary(
@@ -206,7 +217,7 @@ async def get_list(list_id: str, system_id: str, request: Request, load_id: Opti
             uuid.UUID(load_id)
         except ValueError:
             raise HTTPException(status_code=404, detail="Version not found")
-    c = await _codes(db, sid, lst, load_id)
+    c = await _codes(db, sid, lst, load_id, await _lang(db, tenant, request))
     if load_id is not None and not any(v["load_id"] == load_id for v in c["versions"]):
         raise HTTPException(status_code=404, detail="Version not found")
     rows = await _mappings(db, str(tenant.id), sid, lst)

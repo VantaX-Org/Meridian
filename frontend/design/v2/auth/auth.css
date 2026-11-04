@@ -60,6 +60,7 @@
 
 /* The second pass: the signed-out ground is the hero. Deep meridian blue running to verdigris, the promise set large, the sheet floating on it. */
 .m2-root .m2-auth { background: var(--m2-grad-hero); position: relative; }
+.m2-root .m2-auth::before { content: ""; position: absolute; inset: 0; background: var(--m2-grad-hero-light); pointer-events: none; }
 .m2-root .m2-auth-wrap { position: relative; }
 .m2-root .m2-auth-brand { color: var(--m2-hero-fg); }
 .m2-root .m2-auth-promise { color: var(--m2-hero-fg); font-size: var(--m2-fs-hero); line-height: var(--m2-lh-hero); letter-spacing: -0.02em; }
@@ -86,7 +87,7 @@
 .m2-root .m2-auth-heat-t[data-band="0"] { fill: var(--m2-on-hero-pass); fill-opacity: 0.82; }
 .m2-root .m2-auth-heat-t[data-band="2"] { fill: var(--m2-on-hero-warn); fill-opacity: 0.82; }
 .m2-root .m2-auth-heat-t[data-band="3"] { fill: var(--m2-on-hero-crit); fill-opacity: 0.82; }
-.m2-root .m2-auth-heat-lit { fill: none; stroke: var(--m2-hero-fg); stroke-width: 2.5; }
+.m2-root .m2-auth-heat-lit { fill: none; stroke: var(--m2-hero-fg); stroke-width: 2.5; filter: drop-shadow(0 0 6px var(--m2-hero-accent)) drop-shadow(0 0 20px var(--m2-hero-accent)); }
 .m2-root .m2-auth-facts-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--m2-s6); max-width: 900px; }
 .m2-root .m2-auth-facts-list li { grid-template-columns: minmax(0, 1fr); gap: var(--m2-s3); align-items: start; padding-top: var(--m2-s3); border-top: 1px solid var(--m2-hero-line); }
 .m2-root .m2-auth-facts-list li::before { width: 24px; height: 3px; border-radius: 2px; transform: none; }

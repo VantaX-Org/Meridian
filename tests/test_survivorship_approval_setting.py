@@ -18,9 +18,9 @@ def _patched(stored):
                           write_audit=AsyncMock(), current_user_id=lambda _r: "u1")
 
 
-def test_get_defaults_to_not_required():
+def test_get_defaults_to_required():
     with _patched(None):
-        assert asyncio.run(r.get_approval_setting(DB, TENANT)).required is False
+        assert asyncio.run(r.get_approval_setting(DB, TENANT)).required is True
 
 
 def test_get_reads_required():

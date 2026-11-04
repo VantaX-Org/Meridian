@@ -14,6 +14,8 @@ is dropped before anything is shown.
 """
 from __future__ import annotations
 
+import re
+
 import json
 import logging
 import time
@@ -42,13 +44,21 @@ class CodeList:
     module: str                # the licensed object the list belongs to
     target_fields: tuple[str, ...]  # TABLE.FIELD that the list checks (data_dictionary config_table)
     desc: Optional[str] = None  # description field when it is not one of config_pairing.DESC_FIELDS
+    text_table: Optional[str] = None  # language-dependent text table (config_items.object), keyed by lang_field + keys
+    text_field: Optional[str] = None  # its description field
+    lang_field: str = "SPRAS"
+    order_field: Optional[str] = None  # text-table key field whose lowest value wins within a language (T052U.ZTAGG)
 
 
 LISTS: tuple[CodeList, ...] = (
-    CodeList("country", "T005", ("LAND1",), "sd_customer_master", ("KNA1.LAND1",)),
-    CodeList("payment_terms", "T052", ("ZTERM",), "sd_customer_master", ("KNB1.ZTERM",)),
-    CodeList("unit_of_measure", "T006", ("MSEHI",), "material_master", ("MARA.MEINS", "MARA.GEWEI")),
-    CodeList("material_group", "T023", ("MATKL",), "material_master", ("MARA.MATKL",), "WGBEZ"),
+    CodeList("country", "T005", ("LAND1",), "sd_customer_master", ("KNA1.LAND1",),
+             text_table="T005T", text_field="LANDX"),
+    CodeList("payment_terms", "T052", ("ZTERM",), "sd_customer_master", ("KNB1.ZTERM",),
+             text_table="T052U", text_field="TEXT1", order_field="ZTAGG"),
+    CodeList("unit_of_measure", "T006", ("MSEHI",), "material_master", ("MARA.MEINS", "MARA.GEWEI"),
+             text_table="T006A", text_field="MSEHL"),
+    CodeList("material_group", "T023", ("MATKL",), "material_master", ("MARA.MATKL",),
+             text_table="T023T", text_field="WGBEZ"),
     # SuccessFactors: the picklist entity the config loader reads (no label is extracted, so no description)
     CodeList("picklist", "PickListValueV2", ("PickListV2_id", "externalCode"), "employee_central",
              ("PickListValueV2.externalCode",)),
@@ -60,10 +70,43 @@ def by_id(list_id: str) -> Optional[CodeList]:
     return next((x for x in LISTS if x.id == list_id), None)
 
 
-def codes_of(lst: CodeList, items: list[Any]) -> list[dict[str, Optional[str]]]:
+ENGLISH = ("E", "EN")  # SPRAS as RFC_READ_TABLE returns it (internal E) or as ISO, the fallback language
+
+
+SPRAS = {"en": "E", "de": "D", "ja": "J"}  # UI locales (frontend i18n) to SAP logon language
+
+
+def spras(locale: Optional[str]) -> Optional[str]:
+    """SAP SPRAS for a user locale such as ``de`` or ``de-DE``; None when not one of the supported UI locales."""
+    return SPRAS.get(re.split(r"[-_]", locale or "")[0].lower())
+
+
+def _texts(lst: CodeList, items: list[Any], lang: Optional[str]) -> dict[str, str]:
+    """Code -> text from the list's text table: the wanted language, else English, else any language."""
+    rank = {l.upper(): n for n, l in enumerate([lang, *ENGLISH] if lang else ENGLISH)}
+    best: dict[str, tuple[int, int, str]] = {}
+    for i in items:
+        if i.object != lst.text_table:
+            continue
+        k = cp.parse_key(i.key)
+        code = "/".join(k.get(f, "").strip() for f in lst.keys)
+        t = (i.values or {}).get(lst.text_field)
+        if not code.strip("/") or not isinstance(t, str) or not t.strip():
+            continue
+        r = rank.get(k.get(lst.lang_field, "").strip().upper(), len(rank))
+        o = k.get(lst.order_field, "").strip() if lst.order_field else ""
+        cand = (r, int(o) if o.isdigit() else 10**9, t.strip())
+        if code not in best or cand[:2] < best[code][:2]:
+            best[code] = cand
+    return {c: v[2] for c, v in best.items()}
+
+
+def codes_of(lst: CodeList, items: list[Any], lang: Optional[str] = None) -> list[dict[str, Optional[str]]]:
     """Distinct ``{code, text}`` of a list, sorted by code. The code is the key field value(s); the text is the
-    list's description field, else the first config_pairing description field present, else None."""
+    list's text table in ``lang`` (else English), else its description field, else the first config_pairing
+    description field present, else None."""
     out: dict[str, Optional[str]] = {}
+    texts = _texts(lst, items, lang) if lst.text_table else {}
     for i in items:
         if i.object != lst.table:
             continue
@@ -74,7 +117,7 @@ def codes_of(lst: CodeList, items: list[Any]) -> list[dict[str, Optional[str]]]:
         v = i.values or {}
         d = v.get(lst.desc) if lst.desc else None
         out[code] = (d.strip() if isinstance(d, str) and d.strip() else cp._desc(v))
-    return [{"code": c, "text": out[c]} for c in sorted(out)][:CODE_CAP]
+    return [{"code": c, "text": texts.get(c) or out[c]} for c in sorted(out)][:CODE_CAP]
 
 
 def versions(s: Session, sid: str, lst: CodeList) -> list[dict[str, Any]]:
@@ -90,19 +133,24 @@ def versions(s: Session, sid: str, lst: CodeList) -> list[dict[str, Any]]:
             for r in rows]
 
 
-def source_codes(s: Session, sid: str, lst: CodeList, load_id: Optional[str] = None) -> tuple[list[dict], Optional[str]]:
+def _with_text_items(lst: CodeList, load: Any) -> list[Any]:
+    return [*load(lst.table), *(load(lst.text_table) if lst.text_table else [])]
+
+
+def source_codes(s: Session, sid: str, lst: CodeList, load_id: Optional[str] = None,
+                 lang: Optional[str] = None) -> tuple[list[dict], Optional[str]]:
     """The source system's codes in a version (latest completed load unless ``load_id``), and the version used."""
     lid = load_id
     if lid is None:
         latest = cp.latest_completed_load(s, sid)
         lid = latest[0] if latest else None
-    return (codes_of(lst, cp.load_items(s, lid, lst.table)) if lid else []), lid
+    return (codes_of(lst, _with_text_items(lst, lambda o: cp.load_items(s, lid, o)), lang) if lid else []), lid
 
 
-def target_codes(s: Session, sid: str, lst: CodeList) -> tuple[list[dict], str]:
+def target_codes(s: Session, sid: str, lst: CodeList, lang: Optional[str] = None) -> tuple[list[dict], str]:
     """The target's codes: its latest load, else the type's SAP baseline (config_pairing.resolve_target)."""
     t = cp.resolve_target(s, sid)
-    return codes_of(lst, cp.target_items(s, t, lst.table)), t.label
+    return codes_of(lst, _with_text_items(lst, lambda o: cp.target_items(s, t, o)), lang), t.label
 
 
 def coverage(source: list[dict], mappings: list[dict], target: list[dict]) -> dict[str, int]:
