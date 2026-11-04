@@ -7468,4 +7468,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Counts only. A shape stands for a pattern, never a value: A is a letter, 9 a digit.": "Nur Anzahlen. Eine Form steht für ein Muster, nie für einen Wert: A ist ein Buchstabe, 9 eine Ziffer.",
   "No record fails.": "Kein Datensatz scheitert.",
   "{n} values": "{n} Werte",
+  "Rules and Aletheia": "Regeln und Aletheia",
+  "Programme": "Programm",
 };

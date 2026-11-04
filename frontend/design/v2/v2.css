@@ -998,3 +998,54 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 .m2-ask-in input { box-shadow: var(--m2-shadow-1); }
 .m2-ask-in input:focus-visible { border-color: var(--m2-ai); box-shadow: var(--m2-glow-ai); outline: 0; }
 .m2-ask-chips .m2-chip:hover { border-color: var(--m2-ai); color: var(--m2-ai-ink); }
+
+/*
+ * The second pass: the first impression. The go-live verdict stands on a deep hero ground with the headline figures set
+ * large; the readiness matrix wears a true heat ramp; the map is grouped and tighter; headline numbers carry tight
+ * tracking. Everything here is a token in tokens.css; the signed-out pages share the hero in auth.css.
+ */
+.m2-h1 { letter-spacing: -0.02em; }
+.m2-cc-banner { background: var(--m2-grad-hero); border-color: var(--m2-hero-line); box-shadow: var(--m2-shadow-hero); color: var(--m2-hero-fg); gap: var(--m2-s6); padding: var(--m2-s6) var(--m2-s6) var(--m2-s5); }
+.m2-cc-banner::after { content: ""; position: absolute; inset: 0; background: var(--m2-grad-hero-light); pointer-events: none; }
+.m2-cc-banner > * { position: relative; z-index: 1; }
+.m2-cc-banner::before { height: 4px; }
+.m2-cc-banner[data-verdict="go"]::before { background: var(--m2-on-hero-pass); }
+.m2-cc-banner[data-verdict="at-risk"]::before { background: var(--m2-on-hero-warn); }
+.m2-cc-banner[data-verdict="no-go"]::before { background: var(--m2-on-hero-crit); }
+.m2-cc-eyebrow { color: var(--m2-hero-accent); letter-spacing: 0.12em; }
+.m2-cc-verdict strong { font-size: var(--m2-fs-hero); line-height: var(--m2-lh-hero); letter-spacing: -0.025em; color: var(--m2-hero-fg); }
+.m2-cc-banner .m2-vm.go { fill: var(--m2-on-hero-pass); }
+.m2-cc-banner .m2-vm.risk { fill: var(--m2-on-hero-warn); }
+.m2-cc-banner .m2-vm.nogo { fill: var(--m2-on-hero-crit); }
+.m2-cc-why { color: var(--m2-hero-fg-2); font-size: var(--m2-fs-14); max-width: 52ch; }
+.m2-cc-why a, .m2-cc-also a { color: var(--m2-hero-fg) !important; text-decoration: underline; text-decoration-color: var(--m2-hero-line); text-underline-offset: 3px; }
+.m2-cc-why a:hover, .m2-cc-also a:hover { text-decoration-color: var(--m2-hero-accent); }
+.m2-cc-figs > div { border-left-color: var(--m2-hero-line); }
+.m2-cc-figs dt { color: var(--m2-hero-meta); letter-spacing: 0.08em; font-weight: 500; }
+.m2-cc-figs dd { color: var(--m2-hero-fg); letter-spacing: -0.03em; font-size: max(var(--m2-fs-24), min(var(--m2-fs-stat), 16cqi)); line-height: var(--m2-lh-stat); }
+.m2-cc-figs dd small { color: var(--m2-hero-meta); }
+.m2-cc-figs > div > dd.m2-cc-note { color: var(--m2-hero-meta); }
+.m2-cc-figs > div:first-child dd:not(.m2-cc-note) { color: var(--m2-hero-accent); }
+.m2-cc-banner[data-verdict="no-go"] .m2-cc-figs > div:nth-child(2) dd:not(.m2-cc-note) { color: var(--m2-on-hero-crit); }
+.m2-cc-banner[data-verdict="at-risk"] .m2-cc-figs > div:nth-child(2) dd:not(.m2-cc-note) { color: var(--m2-on-hero-warn); }
+.m2-cc-also, .m2-cc-also .m2-meta { color: var(--m2-hero-meta); }
+.m2-cc-banner .m2-btn.m2-next { background: var(--m2-hero-fg); color: var(--m2-b-900) !important; box-shadow: var(--m2-shadow-2); }
+.m2-cc-banner .m2-btn.m2-next:hover { background: var(--m2-hero-fg); filter: brightness(0.94); }
+.m2-cc-banner .m2-btn:not(.m2-next) { background: var(--m2-hero-field); border-color: var(--m2-hero-line); color: var(--m2-hero-fg) !important; }
+.m2-cc-banner .m2-btn:not(.m2-next):hover { background: var(--m2-hero-line); }
+
+/* The matrix as a heat map: fills carry the band, the sheet shows through as a hairline grid, no borders or glows */
+.m2-ck-matrix td.m2-ck-heat { border-left: 2px solid var(--m2-sheet); border-bottom: 2px solid var(--m2-sheet); font-weight: 600; font-size: var(--m2-fs-13); min-width: 72px; }
+[data-band="0"].m2-ck-heat, .m2-ck-key [data-band="0"] { background: var(--m2-heat-0); color: var(--m2-heat-0-ink); }
+[data-band="1"].m2-ck-heat, .m2-ck-key [data-band="1"] { background: var(--m2-heat-1); color: var(--m2-heat-1-ink); }
+[data-band="2"].m2-ck-heat, .m2-ck-key [data-band="2"] { background: var(--m2-heat-2); color: var(--m2-heat-2-ink); }
+[data-band="3"].m2-ck-heat, .m2-ck-key [data-band="3"] { background: var(--m2-heat-3); color: var(--m2-heat-3-ink); box-shadow: none; }
+.m2-ck-key > span { border-color: transparent; font-weight: 500; }
+.m2-ck-score { font-size: var(--m2-fs-16); letter-spacing: -0.01em; }
+
+/* The map: grouped, tighter rows, a confident active state */
+.m2-mnav { gap: 0; }
+.m2-mi { height: 28px; font-size: var(--m2-fs-13); border-radius: var(--m2-r1); }
+.m2-mi[aria-current="page"] { font-weight: 600; }
+.m2-mgrp { letter-spacing: 0.1em; font-weight: 500; font-size: var(--m2-fs-12); padding: var(--m2-s4) var(--m2-s3) var(--m2-s1); }
+.m2-mnav > .m2-mgrp:first-child { padding-top: var(--m2-s2); }

@@ -7467,6 +7467,8 @@ export const en = {
   "Counts only. A shape stands for a pattern, never a value: A is a letter, 9 a digit.": "Counts only. A shape stands for a pattern, never a value: A is a letter, 9 a digit.",
   "No record fails.": "No record fails.",
   "{n} values": "{n} values",
+  "Rules and Aletheia": "Rules and Aletheia",
+  "Programme": "Programme",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

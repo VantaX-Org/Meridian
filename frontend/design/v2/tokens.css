@@ -224,7 +224,7 @@
 
   /* Light: the gradients. The bar is deep meridian blue running to verdigris; the hero and the sheet washes are quiet. */
   --m2-grad-bar: linear-gradient(90deg, var(--m2-b-950) 0%, var(--m2-b-800) 48%, #0F3D52 100%);
-  --m2-grad-hero: linear-gradient(135deg, var(--m2-sheet) 0%, var(--m2-b-50) 58%, var(--m2-ai-bg) 100%);
+  --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, var(--m2-b-900) 52%, var(--m2-hero-bg-2) 100%);
   --m2-grad-sheet: linear-gradient(180deg, var(--m2-sheet) 0%, var(--m2-n-25) 100%);
   --m2-grad-sel: linear-gradient(90deg, var(--m2-data-bg) 0%, transparent 100%);
   --m2-grad-data: linear-gradient(135deg, var(--m2-b-500) 0%, var(--m2-b-700) 100%);
@@ -244,6 +244,37 @@
   --m2-t-slow: 420ms;
   --m2-stagger: 45ms;
   --m2-rise-lg: 14px;
+  /* Hero: the deep ground the verdict and the signed-out pages stand on, and the inks that read on it (all AA on both ends) */
+  --m2-hero-bg: #0B1B3F;
+  --m2-hero-bg-2: #0F3D52;
+  --m2-hero-fg: #FFFFFF;
+  --m2-hero-fg-2: #C9D6F2;
+  --m2-hero-meta: #9FB2DC;
+  --m2-hero-accent: #8FB4FF;
+  --m2-hero-line: #FFFFFF29;
+  --m2-hero-field: #FFFFFF14;
+  --m2-hero-glow-ink: #4D8BFF40;
+  --m2-on-hero-pass: #6FD39A;
+  --m2-on-hero-warn: #F2C063;
+  --m2-on-hero-crit: #FF8F86;
+  --m2-grad-hero-light: radial-gradient(ellipse at 82% 0%, var(--m2-hero-glow-ink) 0%, transparent 58%);
+  --m2-shadow-hero: 0 2px 6px #0B1B3F33, 0 18px 48px #0B1B3F52;
+
+  /* Heat: the readiness ramp. Four fills with their own inks, strong enough to read as a heat map from across the room. */
+  --m2-heat-0: #9ED9B6;
+  --m2-heat-0-ink: #0A3F22;
+  --m2-heat-1: #E6EEF8;
+  --m2-heat-1-ink: var(--m2-fg);
+  --m2-heat-2: #F6CF88;
+  --m2-heat-2-ink: #4E3200;
+  --m2-heat-3: #E98C82;
+  --m2-heat-3-ink: #4F0C07;
+
+  /* Headline sizes: the verdict and its figures, outside the body scale */
+  --m2-fs-hero: 36px;
+  --m2-lh-hero: 40px;
+  --m2-fs-stat: 34px;
+  --m2-lh-stat: 38px;
   color-scheme: light;
 }
 
@@ -319,7 +350,7 @@
     --m2-glow-crit: 0 0 18px var(--m2-crit-glow-ink);
     --m2-glow-chart: 0 0 0 2px var(--m2-sheet), 0 0 14px var(--m2-data-glow-ink);
     --m2-grad-bar: linear-gradient(90deg, #070B16 0%, #0D1B3A 48%, #0A2A36 100%);
-    --m2-grad-hero: linear-gradient(135deg, var(--m2-sheet) 0%, #141E36 58%, var(--m2-ai-bg) 100%);
+    --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, #0D2452 52%, var(--m2-hero-bg-2) 100%);
     --m2-grad-sheet: linear-gradient(180deg, var(--m2-sheet) 0%, #131920 100%);
     --m2-grad-sel: linear-gradient(90deg, var(--m2-data-bg) 0%, transparent 100%);
     --m2-grad-data: linear-gradient(135deg, var(--m2-b-300) 0%, var(--m2-b-400) 100%);
@@ -335,6 +366,33 @@
     --m2-t-slow: 420ms;
     --m2-stagger: 45ms;
     --m2-rise-lg: 14px;
+    /* Hero and heat on the dark ground: the hero keeps its navy, the heat fills deepen and their inks lighten */
+    --m2-hero-bg: #0B1B3F;
+    --m2-hero-bg-2: #0F3D52;
+    --m2-hero-fg: #FFFFFF;
+    --m2-hero-fg-2: #C9D6F2;
+    --m2-hero-meta: #9FB2DC;
+    --m2-hero-accent: #8FB4FF;
+    --m2-hero-line: #FFFFFF29;
+    --m2-hero-field: #FFFFFF14;
+    --m2-hero-glow-ink: #4D8BFF40;
+    --m2-on-hero-pass: #6FD39A;
+    --m2-on-hero-warn: #F2C063;
+    --m2-on-hero-crit: #FF8F86;
+    --m2-grad-hero-light: radial-gradient(ellipse at 82% 0%, var(--m2-hero-glow-ink) 0%, transparent 58%);
+    --m2-shadow-hero: 0 2px 6px #00000066, 0 18px 48px #00000099;
+    --m2-heat-0: #1C5A38;
+    --m2-heat-0-ink: #CFF2DC;
+    --m2-heat-1: #1D2A40;
+    --m2-heat-1-ink: var(--m2-fg);
+    --m2-heat-2: #6B4A0E;
+    --m2-heat-2-ink: #FFE2A8;
+    --m2-heat-3: #7A2620;
+    --m2-heat-3-ink: #FFD5D0;
+    --m2-fs-hero: 36px;
+    --m2-lh-hero: 40px;
+    --m2-fs-stat: 34px;
+    --m2-lh-stat: 38px;
     color-scheme: dark;
   }
 }
@@ -409,7 +467,7 @@ html[data-theme="dark"] .m2-root {
   --m2-glow-crit: 0 0 18px var(--m2-crit-glow-ink);
   --m2-glow-chart: 0 0 0 2px var(--m2-sheet), 0 0 14px var(--m2-data-glow-ink);
   --m2-grad-bar: linear-gradient(90deg, #070B16 0%, #0D1B3A 48%, #0A2A36 100%);
-  --m2-grad-hero: linear-gradient(135deg, var(--m2-sheet) 0%, #141E36 58%, var(--m2-ai-bg) 100%);
+  --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, #0D2452 52%, var(--m2-hero-bg-2) 100%);
   --m2-grad-sheet: linear-gradient(180deg, var(--m2-sheet) 0%, #131920 100%);
   --m2-grad-sel: linear-gradient(90deg, var(--m2-data-bg) 0%, transparent 100%);
   --m2-grad-data: linear-gradient(135deg, var(--m2-b-300) 0%, var(--m2-b-400) 100%);
@@ -425,6 +483,33 @@ html[data-theme="dark"] .m2-root {
   --m2-t-slow: 420ms;
   --m2-stagger: 45ms;
   --m2-rise-lg: 14px;
+  /* Hero and heat on the dark ground: the hero keeps its navy, the heat fills deepen and their inks lighten */
+  --m2-hero-bg: #0B1B3F;
+  --m2-hero-bg-2: #0F3D52;
+  --m2-hero-fg: #FFFFFF;
+  --m2-hero-fg-2: #C9D6F2;
+  --m2-hero-meta: #9FB2DC;
+  --m2-hero-accent: #8FB4FF;
+  --m2-hero-line: #FFFFFF29;
+  --m2-hero-field: #FFFFFF14;
+  --m2-hero-glow-ink: #4D8BFF40;
+  --m2-on-hero-pass: #6FD39A;
+  --m2-on-hero-warn: #F2C063;
+  --m2-on-hero-crit: #FF8F86;
+  --m2-grad-hero-light: radial-gradient(ellipse at 82% 0%, var(--m2-hero-glow-ink) 0%, transparent 58%);
+  --m2-shadow-hero: 0 2px 6px #00000066, 0 18px 48px #00000099;
+  --m2-heat-0: #1C5A38;
+  --m2-heat-0-ink: #CFF2DC;
+  --m2-heat-1: #1D2A40;
+  --m2-heat-1-ink: var(--m2-fg);
+  --m2-heat-2: #6B4A0E;
+  --m2-heat-2-ink: #FFE2A8;
+  --m2-heat-3: #7A2620;
+  --m2-heat-3-ink: #FFD5D0;
+  --m2-fs-hero: 36px;
+  --m2-lh-hero: 40px;
+  --m2-fs-stat: 34px;
+  --m2-lh-stat: 38px;
   color-scheme: dark;
 }
 

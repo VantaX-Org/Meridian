@@ -1,7 +1,7 @@
 /*
  * The signed-out pages (sign in, forgot and reset password, accept an invitation, licence needed) and the forced
  * password change: one card on the ground, the mark and the product name above it, the version under it. The same
- * tokens as the map, canvas and inspector; no picture, no gradient.
+ * tokens as the map, canvas and inspector. The second pass at the end of this file puts the page on the hero ground.
  */
 .m2-root .m2-auth { min-height: calc(100dvh - var(--m-attribution-h, 0px)); display: grid; padding: 0; background: var(--m2-bg); }
 /* The Login board: the ground carries the product on the left; the sign-in is a full-height white sheet on the right, divided by one rule. */
@@ -63,4 +63,25 @@
 }
 @media (max-width: 480px) {
   .m2-root .m2-auth { padding: var(--m2-s4); }
+}
+
+/* The second pass: the signed-out ground is the hero. Deep meridian blue running to verdigris, the promise set large, the sheet floating on it. */
+.m2-root .m2-auth { background: var(--m2-grad-hero); position: relative; }
+.m2-root .m2-auth::before { content: ""; position: absolute; inset: 0; background: var(--m2-grad-hero-light); pointer-events: none; }
+.m2-root .m2-auth-wrap { position: relative; }
+.m2-root .m2-auth-brand { color: var(--m2-hero-fg); }
+.m2-root .m2-auth-promise { color: var(--m2-hero-fg); font-size: var(--m2-fs-hero); line-height: var(--m2-lh-hero); letter-spacing: -0.025em; }
+.m2-root .m2-auth-wrap > .m2-auth-about { max-width: 520px; }
+.m2-root .m2-auth-facts-list { color: var(--m2-hero-fg-2); }
+.m2-root .m2-auth-facts-list li::before { background: var(--m2-hero-accent); }
+.m2-root .m2-auth-motif-t { fill: var(--m2-hero-field); }
+.m2-root .m2-auth-motif-f { fill: var(--m2-hero-accent); }
+.m2-root .m2-auth-motif g:nth-child(1) .m2-auth-motif-f, .m2-root .m2-auth-motif g:nth-child(2) .m2-auth-motif-f { fill: var(--m2-hero-fg-2); }
+.m2-root .m2-auth-motif g:nth-child(3) .m2-auth-motif-f { fill: var(--m2-hero-meta); }
+.m2-root .m2-auth-motif-k { fill: var(--m2-hero-fg); }
+.m2-root .m2-auth-col { border-left: 0; box-shadow: var(--m2-shadow-3); }
+.m2-root .m2-auth-wait { background: var(--m2-grad-hero); }
+@media (max-width: 860px) {
+  .m2-root .m2-auth-promise { font-size: var(--m2-fs-24); line-height: var(--m2-lh-24); }
+  .m2-root .m2-auth-col { border-top: 0; }
 }

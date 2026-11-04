@@ -7468,4 +7468,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Counts only. A shape stands for a pattern, never a value: A is a letter, 9 a digit.": "件数のみ。形状はパターンを表し、値そのものではありません。A は文字、9 は数字です。",
   "No record fails.": "不合格のレコードはありません。",
   "{n} values": "{n} 個の値",
+  "Rules and Aletheia": "ルールと Aletheia",
+  "Programme": "プログラム",
 };
