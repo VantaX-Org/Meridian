@@ -242,6 +242,15 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
                 continue
             seen_layouts.add(layout)
             batch_keys.extend(layout_keys.get(layout, ()))
+        # The resolve sweep only probes tmp_present for issues of THIS batch's checks, so keep the keys that
+        # have an open issue under one of them. Copying the layout's whole open-issue list per batch made
+        # the copy grow with batches x open issues (a key shared with another batch's check still lands
+        # here for every batch whose checks hold an issue on it).
+        mine = set(session.execute(text("""
+            SELECT COALESCE(grain, ''), record_key FROM record_issues
+             WHERE tenant_id = :tid AND scope = :scope AND status <> 'resolved' AND check_id = ANY(:batch)
+        """), bp).all())
+        batch_keys = [(g, k) for g, k in batch_keys if (g or "", k) in mine]
         _copy(session, "tmp_present", ("grain", "record_key"), batch_keys)
         session.execute(text("CREATE INDEX ON tmp_present (grain, record_key)"))
 
