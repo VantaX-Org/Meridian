@@ -145,6 +145,17 @@ Value delivered, under Forecast and plan on the map, prices what the latest fini
 
 Only the latest run is priced, so the figures never add the same failing records twice across runs.
 
+## Survivorship picks and their accuracy
+
+Aletheia survivorship lists the golden-record winners the model picked and whether the server proved each one. A candidate is shown as its source and the shape of its value, never the value. A steward can act on a proved pick:
+
+- **Accept the pick.** Records that a steward kept it. If the approval policy held the pick back, accepting applies it.
+- **Override.** Choose one of the other offered sources, never free text, and optionally a reason: wrong source, out of date, incomplete, wrong format or another reason. The change goes through the steward override path, so the field stays pinned until you clear it on the merge explain screen.
+
+Each decision stores who decided, when, the earlier source and the new source, and writes an audit entry. The accuracy panel shows how often stewards keep the pick: the accepted, overridden and waiting counts, the weekly trend of accepted picks and a bar per field. A pick that is ingested again becomes waiting again.
+
+To require approval before any AI pick is applied, use the Steward approval of AI picks panel on the verified survivorship screen. It shows the current value and the tenant setting behind it, `survivorship_ai_approval`: `required` holds each proved pick until a steward accepts it, `not_required` applies it at once. Changing it needs the manage settings permission; without it the panel shows the value and says why the control is off. Each change writes an audit entry.
+
 ## Score lens
 
 Score lens, under Value delivered on the map, scores every run two ways. The first is the score as it was recorded when the run finished, with the weights in force then. The second re-weights the same run under today's weights, so a change of weights never reads as a change in the data. The banner shows the latest run both ways, how many points the weight change accounts for, and the config-aware score. Under it:

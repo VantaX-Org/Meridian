@@ -45,8 +45,9 @@ import { NONE_SYNC_TRIGGER, resetSyncTriggerFixture, syncTriggerRead, syncTrigge
 import { NONE_SIMULATIONS, simulationsRead, simulationsWrite, resetSimulationsFixture } from "./simulations";
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
 import { rulePromotionRead, rulePromotionWrite, NONE_RULE_PROMOTION } from "./rulePromotion";
+import { ruleImpactWrite, NONE_RULE_IMPACT } from "./ruleImpact";
 import { migrationScenariosRead, NONE_MIGRATION_SCENARIOS } from "./migrationScenarios";
-import { survivorshipRead, NONE_SURVIVORSHIP } from "./survivorship";
+import { survivorshipRead, survivorshipWrite, NONE_SURVIVORSHIP } from "./survivorship";
 import { fixDraftsRead, fixDraftsWrite, NONE_FIX_DRAFTS } from "./fixDrafts";
 import { anomalyRulesRead, anomalyRulesWrite, NONE_ANOMALY_RULES } from "./anomalyRules";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
@@ -162,8 +163,12 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (pd !== NONE_DISCOVERY) return pd as T;
   const rpw = rulePromotionWrite(method, path, body);
   if (rpw !== NONE_RULE_PROMOTION) return rpw as T;
+  const riw = ruleImpactWrite(method, path, body);
+  if (riw !== NONE_RULE_IMPACT) return riw as T;
   const fdw = fixDraftsWrite(method, path, body);
   if (fdw !== NONE_FIX_DRAFTS) return fdw as T;
+  const svw = survivorshipWrite(method, path, body);
+  if (svw !== NONE_SURVIVORSHIP) return svw as T;
   const ar = anomalyRulesWrite(method, path, body);
   if (ar !== NONE_ANOMALY_RULES) return ar as T;
   const mn = miningWrite(method, path, body);
