@@ -332,9 +332,11 @@ export function WorkCanvas() {
         const typed = drafts.get(rowKeyOf(row))?.trim();
         if (typed) {
           drafts.delete(rowKeyOf(row));
-          void actions.decide([row], "edit", { value: typed });
-        } else void actions.decide([row], "accept");
-      } else h.decide([row], choice === "accept risk" ? "accept_risk" : "not_an_issue");
+          return actions.decide([row], "edit", { value: typed });
+        }
+        return actions.decide([row], "accept");
+      }
+      h.decide([row], choice === "accept risk" ? "accept_risk" : "not_an_issue");
     },
     [actions, drafts, h],
   );

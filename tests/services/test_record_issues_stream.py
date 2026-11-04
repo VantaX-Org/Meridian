@@ -157,3 +157,38 @@ def test_key_layouts_are_derived_once_not_per_batch():
     src = inspect.getsource(record_issues.track)
     assert "layout_keys" in src, "keys must be cached per layout"
     assert src.count("present_keys(") == 1, "present_keys runs once, not once per batch"
+
+
+def test_each_batch_copies_only_keys_with_an_open_issue_in_its_own_checks(monkeypatch):
+    """Two batches sharing one key layout must not each copy the layout's whole open-issue list.
+
+    Measured at 1M issues: 4 batches copied 950,000 rows each (3.8M) when 950,000 was the total need.
+    K2 is open under both checks, so it must still reach both batches.
+    """
+    from unittest.mock import MagicMock
+
+    from api.services import record_issues, remediation
+
+    monkeypatch.setenv("MERIDIAN_LIFECYCLE_RECORDS", "1000")
+    monkeypatch.setattr(remediation, "reconcile", lambda *a, **k: 0)
+    open_by_check = {"A": {"K1", "K2"}, "B": {"K2", "K3"}}
+    copied: list[set] = []
+    monkeypatch.setattr(record_issues, "_copy", lambda s, t, c, rows, *a, **k: copied.append({k for _, k in rows}))
+
+    def execute(stmt, params=None):
+        sql, out = " ".join(str(stmt).split()), MagicMock()
+        out.rowcount, out.scalar.return_value, out.fetchall.return_value = 0, None, []
+        if "SELECT COALESCE(grain" in sql:
+            checks = (params or {}).get("batch") or list(open_by_check)
+            out.all.return_value = [("MARA", f"MATNR={k}") for c in checks for k in open_by_check[c]]
+        elif "SELECT check_id, count(*)" in sql:
+            out.all.return_value = [("A", 1000), ("B", 1000)]
+        return out
+
+    session = MagicMock()
+    session.execute.side_effect = execute
+    frames = SimpleNamespace(frames={"MARA": pd.DataFrame({"MARA.MATNR": ["K1", "K2", "K3", "K4"]})}, flat=None)
+    results = [SimpleNamespace(check_id=c, grain="MARA", details={"record_key_fields": ["MARA.MATNR"]})
+               for c in ("A", "B")]
+    record_issues.track(session, "t", "v", "s", results, frames, store=False)
+    assert sorted(map(sorted, copied)) == [["MATNR=K1", "MATNR=K2"], ["MATNR=K2", "MATNR=K3"]]

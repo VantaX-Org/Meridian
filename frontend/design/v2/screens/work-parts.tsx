@@ -129,14 +129,23 @@ export function decisionOf(row: Pick<WorkRow, "status" | "resolution">): string 
   return row.status === "to_fix" ? "" : "fix";
 }
 
+/** A decided row can leave the list and take focus with it. Keyboard users then carry on at the next row's decision. */
+async function keepPlace(from: HTMLSelectElement, decide: () => Promise<unknown> | void) {
+  const all = Array.from(from.closest("[role=grid],table")?.querySelectorAll<HTMLElement>("select.m2-sel") ?? []);
+  const next = all[all.indexOf(from) + 1];
+  await decide();
+  if (from.isConnected || document.activeElement !== document.body) return;
+  (next?.isConnected ? next : document.getElementById("m2-canvas"))?.focus();
+}
+
 /** Decision: fix, not an issue or accept risk. The last two ask for a reason first. */
-export function DecisionCell({ row, h, onChoose }: { row: WorkRow; h: LedgerHandlers; onChoose: (row: WorkRow, choice: string) => void }) {
+export function DecisionCell({ row, h, onChoose }: { row: WorkRow; h: LedgerHandlers; onChoose: (row: WorkRow, choice: string) => Promise<unknown> | void }) {
   const value = decisionOf(row);
   const label = t("Decision for {keyValue}", { keyValue: keyValue(row, 0) ?? row.record_key });
   const allowed = (v: string) => (v === "fix" ? h.can.apply : h.can.approve);
   if (!h.can.apply && !h.can.approve) return <span>{DECISIONS.find((d) => d.value === value)?.label || "—"}</span>;
   return (
-    <select className="m2-sel" aria-label={label} value={value} onChange={(e) => e.target.value && onChoose(row, e.target.value)}>
+    <select className="m2-sel" aria-label={label} value={value} onChange={(e) => e.target.value && keepPlace(e.target, () => onChoose(row, e.target.value))}>
       {value === "" ? <option value="">{t("Decide")}</option> : null}
       {DECISIONS.map((d) => (
         <option key={d.value} value={d.value} disabled={!allowed(d.value)}>
