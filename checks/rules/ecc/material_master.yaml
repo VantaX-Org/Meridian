@@ -17190,3 +17190,226 @@ rules:
     __other__: Set the co-product indicator (MM02, MRP 2 / Costing 1) or clear the fixed-price co-product indicator.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: fixed-price co-product ''{actual_value}'' without the co-product
     indicator.'
+- id: MM1097
+  field: MBEW.MATNR
+  check_class: exists_check
+  grain: MBEW
+  fields:
+  - MBEW.MATNR
+  - MBEW.BWKEY
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  severity: medium
+  dimension: consistency
+  message: Valuation row has no plant row for the same valuation area (accounting view without a plant view)
+  why_it_matters: With valuation at plant level the valuation area equals the plant. An MBEW row whose plant has no MARC row
+    is an accounting view that no plant can use; this is the reverse of the plant-without-valuation check.
+  rule_authority: best_practice
+  sap_impact: Stock cannot be posted in a plant the material is not extended to; the orphan valuation row distorts price and
+    inventory reports.
+  fix_map:
+    __other__: Extend the material to the plant (MM01 plant views) or remove the orphan valuation row; confirm the valuation
+      level is the plant.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: no plant row exists for this area.'
+- id: MM1098
+  field: MARD.MATNR
+  check_class: exists_check
+  grain: MARD
+  fields:
+  - MARD.MATNR
+  - MARD.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  severity: high
+  dimension: consistency
+  message: Storage location row exists for a material that is not extended to the plant
+  why_it_matters: A storage location segment hangs below the plant segment. Without the MARC row the stock cannot be planned,
+    valued or picked in that plant.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock at the location is invisible to MRP and plant-level reports; goods movements to it are inconsistent.
+  fix_map:
+    __other__: Extend the material to the plant (MM01) or delete the orphan storage location segment.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: no plant row exists.'
+- id: MM1099
+  field: MVKE.MATNR
+  check_class: exists_check
+  grain: MVKE
+  fields:
+  - MVKE.MATNR
+  target_table: MARC
+  target_fields:
+  - MATNR
+  severity: high
+  dimension: consistency
+  message: Material has sales organisation data but is not extended to any plant
+  why_it_matters: A sales order item needs a delivering plant to check availability and deliver. A material with a sales view
+    and no plant row can never be delivered.
+  rule_authority: best_practice
+  sap_impact: Sales orders for the material fail the availability check and delivery creation in every sales area.
+  fix_map:
+    __other__: Extend the material to at least one plant (MM01 plant views) or remove the unused sales view.
+  record_fix_template: 'Material {MVKE.MATNR}, sales area {MVKE.VKORG}/{MVKE.VTWEG}: material has no plant row.'
+- id: MM1100
+  field: MARC.MATNR
+  check_class: exists_check
+  grain: MARC
+  fields:
+  - MARC.MATNR
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: high
+  dimension: consistency
+  message: Plant data exists for a material that is not in the general material master (MARA)
+  why_it_matters: Every material segment hangs below the general data in MARA. A MARC row without its MARA row is an orphan
+    left by a partial deletion, archiving run or load, and no transaction can reach it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The orphan row is excluded from transactions and standard reports but still skews table-level counts, extracts
+    and migrations.
+  fix_map:
+    __other__: Recreate the general material data (MM01) or delete the orphan row after review.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: no general material data (MARA) exists.'
+- id: MM1101
+  field: MBEW.MATNR
+  check_class: exists_check
+  grain: MBEW
+  fields:
+  - MBEW.MATNR
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: high
+  dimension: consistency
+  message: Valuation data exists for a material that is not in the general material master (MARA)
+  why_it_matters: Every material segment hangs below the general data in MARA. A MBEW row without its MARA row is an orphan
+    left by a partial deletion, archiving run or load, and no transaction can reach it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The orphan row is excluded from transactions and standard reports but still skews table-level counts, extracts
+    and migrations.
+  fix_map:
+    __other__: Recreate the general material data (MM01) or delete the orphan row after review.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: no general material data (MARA) exists.'
+- id: MM1102
+  field: MVKE.MATNR
+  check_class: exists_check
+  grain: MVKE
+  fields:
+  - MVKE.MATNR
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: high
+  dimension: consistency
+  message: Sales data exists for a material that is not in the general material master (MARA)
+  why_it_matters: Every material segment hangs below the general data in MARA. A MVKE row without its MARA row is an orphan
+    left by a partial deletion, archiving run or load, and no transaction can reach it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The orphan row is excluded from transactions and standard reports but still skews table-level counts, extracts
+    and migrations.
+  fix_map:
+    __other__: Recreate the general material data (MM01) or delete the orphan row after review.
+  record_fix_template: 'Material {MVKE.MATNR}, sales organisation {MVKE.VKORG}: no general material data (MARA) exists.'
+- id: MM1103
+  field: MARD.MATNR
+  check_class: exists_check
+  grain: MARD
+  fields:
+  - MARD.MATNR
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: high
+  dimension: consistency
+  message: Storage location data exists for a material that is not in the general material master (MARA)
+  why_it_matters: Every material segment hangs below the general data in MARA. A MARD row without its MARA row is an orphan
+    left by a partial deletion, archiving run or load, and no transaction can reach it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The orphan row is excluded from transactions and standard reports but still skews table-level counts, extracts
+    and migrations.
+  fix_map:
+    __other__: Recreate the general material data (MM01) or delete the orphan row after review.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}: no general material data (MARA) exists.'
+- id: MM1104
+  field: MARM.MATNR
+  check_class: exists_check
+  grain: MARM
+  fields:
+  - MARM.MATNR
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: high
+  dimension: consistency
+  message: Unit of measure data exists for a material that is not in the general material master (MARA)
+  why_it_matters: Every material segment hangs below the general data in MARA. A MARM row without its MARA row is an orphan
+    left by a partial deletion, archiving run or load, and no transaction can reach it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The orphan row is excluded from transactions and standard reports but still skews table-level counts, extracts
+    and migrations.
+  fix_map:
+    __other__: Recreate the general material data (MM01) or delete the orphan row after review.
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: no general material data (MARA) exists.'
+- id: MM1105
+  field: MLAN.MATNR
+  check_class: exists_check
+  grain: MLAN
+  fields:
+  - MLAN.MATNR
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: high
+  dimension: consistency
+  message: Tax classification exists for a material that is not in the general material master (MARA)
+  why_it_matters: Every material segment hangs below the general data in MARA. A MLAN row without its MARA row is an orphan
+    left by a partial deletion, archiving run or load, and no transaction can reach it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The orphan row is excluded from transactions and standard reports but still skews table-level counts, extracts
+    and migrations.
+  fix_map:
+    __other__: Recreate the general material data (MM01) or delete the orphan row after review.
+  record_fix_template: 'Material {MLAN.MATNR}, country {MLAN.ALAND}: no general material data (MARA) exists.'
+- id: MM1106
+  field: MARD.LVORM
+  check_class: cross_field_check
+  grain: MARD
+  applies_when:
+    MARA.LVORM:
+    - X
+  fail_when: '`MARD.LVORM`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Storage location row is active although the material is flagged for deletion
+  why_it_matters: When the material is flagged for deletion at client level, every lower-level row should carry the flag too.
+    Otherwise stock and valuation can still be posted on a material being retired.
+  rule_authority: best_practice
+  sap_impact: Goods movements and price changes stay possible below a material that is being retired, and archiving cannot
+    complete.
+  fix_map:
+    __other__: Set the deletion flag on the row in MM06 or remove the client-level flag in MM02.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: client-level deletion flag
+    {MARA.LVORM} but the row is not flagged.'
+- id: MM1107
+  field: MBEW.LVORM
+  check_class: cross_field_check
+  grain: MBEW
+  applies_when:
+    MARA.LVORM:
+    - X
+  fail_when: '`MBEW.LVORM`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Valuation row is active although the material is flagged for deletion
+  why_it_matters: When the material is flagged for deletion at client level, every lower-level row should carry the flag too.
+    Otherwise stock and valuation can still be posted on a material being retired.
+  rule_authority: best_practice
+  sap_impact: Goods movements and price changes stay possible below a material that is being retired, and archiving cannot
+    complete.
+  fix_map:
+    __other__: Set the deletion flag on the row in MM06 or remove the client-level flag in MM02.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: client-level deletion flag {MARA.LVORM} but the
+    row is not flagged.'

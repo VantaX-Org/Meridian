@@ -12,9 +12,9 @@
    "rules": 654
   },
   "material_master": {
-   "benchmarked": 233,
-   "perfect": 233,
-   "rules": 876
+   "benchmarked": 235,
+   "perfect": 235,
+   "rules": 887
   },
   "sd_customer_master": {
    "benchmarked": 259,
@@ -7786,6 +7786,97 @@
    "module": "material_master",
    "reason": "condition not modelled: `MARC.KZKUP`.fillna('').str.strip() != 'X'",
    "rule_id": "MM1096"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1097"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1098"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1099"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1100"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1101"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1102"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1103"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1104"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1105"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1106",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1107",
+   "true_positives": 10
   },
   {
    "benchmarkable": true,

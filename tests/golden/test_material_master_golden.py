@@ -285,6 +285,8 @@ def test_material_master_golden():
         "MM182": {"MATNR=000000000000300050|WERKS=1000"},        # plant status Z9 not configured (T141)
         "MM639": {"MATNR=000000000000300030|SPRAS=E"},           # "DO NOT USE" description, material not blocked
         "MM645": {"MATNR=000000000000300099"},                   # flagged for deletion without a blocking MSTAE
+        "MM1106": {"MATNR=000000000000300099|WERKS=1000|LGORT=0001"},  # storage location active though the material is flagged for deletion
+        "MM1107": {"MATNR=000000000000300099|BWKEY=1000|BWTAR="},      # valuation row active though the material is flagged for deletion
         "MM747": {"MATNR=000000000000300010|WERKS=1100|LGORT=0001"},  # storage location active under deleted plant 1100
     }, found
     # 300099 is flagged for deletion: out of every MARA-, MAKT- and plant-level rule, counted
