@@ -28,6 +28,29 @@ def test_codes_of_sorted_with_text_and_other_tables_ignored():
     assert rd.codes_of(lst, items) == [{"code": "A", "text": None}, {"code": "B", "text": "Bolts"}]
 
 
+def test_country_text_from_t005t_prefers_language_then_english():
+    lst = rd.by_id("country")
+    items = [item("T005", "MANDT=100,LAND1=DE"), item("T005", "MANDT=100,LAND1=ZA"), item("T005", "MANDT=100,LAND1=JP"),
+             item("T005T", "SPRAS=E,LAND1=DE", LANDX="Germany"), item("T005T", "SPRAS=D,LAND1=DE", LANDX="Deutschland"),
+             item("T005T", "SPRAS=E,LAND1=ZA", LANDX="South Africa"), item("T005T", "SPRAS=J,LAND1=JP", LANDX="Japan-ja")]
+    en = {c["code"]: c["text"] for c in rd.codes_of(lst, items)}
+    assert en == {"DE": "Germany", "JP": "Japan-ja", "ZA": "South Africa"}  # no English for JP: any language
+    de = {c["code"]: c["text"] for c in rd.codes_of(lst, items, "d")}
+    assert de["DE"] == "Deutschland" and de["ZA"] == "South Africa"
+
+
+def test_country_without_text_table_has_no_text():
+    assert rd.codes_of(rd.by_id("country"), [item("T005", "LAND1=DE")]) == [{"code": "DE", "text": None}]
+
+
+def test_country_text_table_is_registered_for_licensed_modules():
+    from sap.extraction_registry import SYSTEM_EXTRACTIONS
+    for m in ("material_master", "sd_customer_master", "business_partner"):
+        src = {t.source: t for t in SYSTEM_EXTRACTIONS["ecc"][m]}
+        assert src["T005"].is_config and src["T005T"].is_config
+        assert set(src["T005T"].fields) == {"SPRAS", "LAND1", "LANDX", "NATIO"}
+
+
 def test_lists_name_only_fields_in_data_dictionary():
     text = str(DATA_DICTIONARY)
     for lst in rd.LISTS:

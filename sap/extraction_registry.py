@@ -140,6 +140,18 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     # ------------------------------------------------------------------
     "material_master": [
         ExtractionTarget(
+            source="T005",
+            fields=["LAND1"],
+            description="Countries",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="T005T",
+            fields=["SPRAS", "LAND1", "LANDX", "NATIO"],
+            description="Country names (by language)",
+            is_config=True,
+        ),
+        ExtractionTarget(
             source="MARA",
             fields=[
                 "MATNR", "MTART", "MBRSH", "MATKL", "MEINS", "BRGEW",
@@ -200,6 +212,18 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     # Business Partner
     # ------------------------------------------------------------------
     "business_partner": [
+        ExtractionTarget(
+            source="T005",
+            fields=["LAND1"],
+            description="Countries",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="T005T",
+            fields=["SPRAS", "LAND1", "LANDX", "NATIO"],
+            description="Country names (by language)",
+            is_config=True,
+        ),
         ExtractionTarget(
             source="BUT000",
             fields=[
@@ -602,6 +626,18 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     # SD Customer Master
     # ------------------------------------------------------------------
     "sd_customer_master": [
+        ExtractionTarget(
+            source="T005",
+            fields=["LAND1"],
+            description="Countries",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="T005T",
+            fields=["SPRAS", "LAND1", "LANDX", "NATIO"],
+            description="Country names (by language)",
+            is_config=True,
+        ),
         ExtractionTarget(
             source="KNA1",
             fields=[
