@@ -63,7 +63,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| KNA1 | KUNNR | Customer Number | y | 29 / 29 | SDCM001, SDCM002, SDCM022, SDCM024, SDCM051, SDCM055 +23 more |  |
+| KNA1 | KUNNR | Customer Number | y | 32 / 32 | SDCM001, SDCM002, SDCM022, SDCM024, SDCM051, SDCM055 +26 more |  |
 | KNA1 | LAND1 | Country Key | y | 67 / 67 | SDCM005, SDCM050, SDCM300, SDCM301, SDCM302, SDCM303 +61 more |  |
 | KNA1 | NAME1 | Name 1 | y | 8 / 8 | SDCM003, SDCM381, SDCM413, SDCM428, SDCM438, SDCM439 +2 more |  |
 | KNA1 | NAME2 | Name 2 | y | 2 / 2 | SDCM414, SDCM438 |  |
@@ -102,7 +102,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNA1 | LIFNR | Account Number of Vendor or Creditor | y | 3 / 3 | SDCM055, SDCM761, SDCM812 |  |
 | KNA1 | LIFSD | Central delivery block for the customer | y | 3 / 3 | SDCM210, SDCM741, SDCM763 |  |
 | KNA1 | LOCCO | City Coordinates |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
-| KNA1 | LOEVM | Central Deletion Flag for Master Record | y | 16 / 16 | SDCM051, SDCM208, SDCM239, SDCM246, SDCM431, SDCM532 +10 more |  |
+| KNA1 | LOEVM | Central Deletion Flag for Master Record | y | 17 / 17 | SDCM051, SDCM208, SDCM239, SDCM246, SDCM431, SDCM532 +11 more |  |
 | KNA1 | NAME3 | Name 3 | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | KNA1 | NAME4 | Name 4 | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | KNA1 | NIELS | Nielsen ID | y | 1 / 0 | DXR900c43c5 | only disabled (DDIC-generated) rules; review for enabling |
@@ -249,13 +249,13 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| KNB1 | KUNNR | Customer Number | y | 7 / 7 | SDCM054, SDCM213, SDCM525, SDCM528, SDCM529, SDCM635 +1 more |  |
-| KNB1 | BUKRS | Company Code | y | 12 / 12 | SDCM519, SDCM520, SDCM521, SDCM522, SDCM523, SDCM524 +6 more |  |
+| KNB1 | KUNNR | Customer Number | y | 9 / 9 | SDCM054, SDCM213, SDCM525, SDCM528, SDCM529, SDCM635 +3 more |  |
+| KNB1 | BUKRS | Company Code | y | 13 / 13 | SDCM519, SDCM520, SDCM521, SDCM522, SDCM523, SDCM524 +7 more |  |
 | KNB1 | PERNR | Personnel Number |  | 0 / 0 |  | format: digits only, length 8 |
 | KNB1 | ERDAT | Date on which the Record Was Created | y | 2 / 2 | SDCM512, SDCM514 |  |
 | KNB1 | ERNAM | Name of Person who Created the Object |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | KNB1 | SPERR | Posting block for company code | y | 2 / 2 | SDCM805, SDCM806 |  |
-| KNB1 | LOEVM | Deletion Flag for Master Record (Company Code Level) | y | 5 / 5 | SDCM054, SDCM526, SDCM806, SDCM807, SDCM849 |  |
+| KNB1 | LOEVM | Deletion Flag for Master Record (Company Code Level) | y | 6 / 6 | SDCM054, SDCM526, SDCM806, SDCM807, SDCM849, SDCM855 |  |
 | KNB1 | ZUAWA | Key for sorting according to assignment numbers | y | 1 / 1 | SDCM808 |  |
 | KNB1 | BUSAB | Accounting clerk | y | 1 / 1 | SDCM522 |  |
 | KNB1 | AKONT | Reconciliation Account in General Ledger | y | 3 / 3 | SDCM800, SDCM801, SDCM802 |  |
@@ -330,8 +330,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| KNB5 | KUNNR | Customer Number | y | 2 / 2 | SDCM529, SDCM533 |  |
-| KNB5 | BUKRS | Company Code | y | 3 / 3 | SDCM529, SDCM530, SDCM531 |  |
+| KNB5 | KUNNR | Customer Number | y | 4 / 4 | SDCM529, SDCM533, SDCM852, SDCM853 |  |
+| KNB5 | BUKRS | Company Code | y | 4 / 4 | SDCM529, SDCM530, SDCM531, SDCM853 |  |
 | KNB5 | MABER | Dunning Area | y | 1 / 1 | SDCM530 |  |
 | KNB5 | MAHNA | Dunning Procedure | y | 1 / 1 | SDCM534 |  |
 | KNB5 | MANSP | Dunning block | y | 1 / 1 | SDCM822 |  |
@@ -381,10 +381,10 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| KNVV | KUNNR | Customer Number | y | 12 / 12 | SDCM205, SDCM213, SDCM222, SDCM223, SDCM233, SDCM245 +6 more |  |
-| KNVV | VKORG | Sales Organization | y | 12 / 12 | SDCM026, SDCM205, SDCM233, SDCM245, SDCM700, SDCM701 +6 more |  |
-| KNVV | VTWEG | Distribution Channel | y | 12 / 12 | SDCM027, SDCM205, SDCM233, SDCM245, SDCM700, SDCM701 +6 more |  |
-| KNVV | SPART | Division | y | 11 / 11 | SDCM028, SDCM205, SDCM233, SDCM245, SDCM700, SDCM701 +5 more |  |
+| KNVV | KUNNR | Customer Number | y | 13 / 13 | SDCM205, SDCM213, SDCM222, SDCM223, SDCM233, SDCM245 +7 more |  |
+| KNVV | VKORG | Sales Organization | y | 13 / 13 | SDCM026, SDCM205, SDCM233, SDCM245, SDCM700, SDCM701 +7 more |  |
+| KNVV | VTWEG | Distribution Channel | y | 13 / 13 | SDCM027, SDCM205, SDCM233, SDCM245, SDCM700, SDCM701 +7 more |  |
+| KNVV | SPART | Division | y | 12 / 12 | SDCM028, SDCM205, SDCM233, SDCM245, SDCM700, SDCM701 +6 more |  |
 | KNVV | ERNAM | Name of Person who Created the Object | y | 1 / 1 | SDCM706 |  |
 | KNVV | ERDAT | Date on which the record was created | y | 3 / 3 | SDCM100, SDCM707, SDCM708 |  |
 | KNVV | BEGRU | Authorization Group |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
@@ -462,10 +462,10 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| KNVP | KUNNR | Customer Number | y | 8 / 8 | SDCM052, SDCM053, SDCM200, SDCM203, SDCM204, SDCM233 +2 more |  |
-| KNVP | VKORG | Sales Organization | y | 11 / 11 | SDCM052, SDCM053, SDCM200, SDCM203, SDCM205, SDCM233 +5 more |  |
-| KNVP | VTWEG | Distribution Channel | y | 11 / 11 | SDCM052, SDCM053, SDCM200, SDCM203, SDCM205, SDCM233 +5 more |  |
-| KNVP | SPART | Division | y | 11 / 11 | SDCM052, SDCM053, SDCM200, SDCM203, SDCM205, SDCM233 +5 more |  |
+| KNVP | KUNNR | Customer Number | y | 10 / 10 | SDCM052, SDCM053, SDCM200, SDCM203, SDCM204, SDCM233 +4 more |  |
+| KNVP | VKORG | Sales Organization | y | 12 / 12 | SDCM052, SDCM053, SDCM200, SDCM203, SDCM205, SDCM233 +6 more |  |
+| KNVP | VTWEG | Distribution Channel | y | 12 / 12 | SDCM052, SDCM053, SDCM200, SDCM203, SDCM205, SDCM233 +6 more |  |
+| KNVP | SPART | Division | y | 12 / 12 | SDCM052, SDCM053, SDCM200, SDCM203, SDCM205, SDCM233 +6 more |  |
 | KNVP | PARVW | Partner Role | y | 23 / 23 | SDCM052, SDCM053, SDCM054, SDCM200, SDCM203, SDCM204 +17 more |  |
 | KNVP | PARZA | Partner counter |  | 0 / 0 |  | mandatory: key field never blank (null_check) |
 | KNVP | KUNN2 | Customer number of business partner | y | 17 / 17 | SDCM051, SDCM054, SDCM203, SDCM204, SDCM205, SDCM228 +11 more |  |
