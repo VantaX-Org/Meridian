@@ -134,7 +134,15 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
 - **Migration execution.** Syniti and SNP move the data, convert systems and carve out companies.
   Meridian measures readiness and certifies waves; it does not migrate.
 - **Governance of creation.** SAP MDG stops bad master data at the point of entry with workflow inside
-  SAP. Meridian finds and fixes bad data after the fact.
+  SAP. Meridian now also checks at entry for the licensed objects (material master, customer master,
+  SuccessFactors employee data): the data quality firewall (`/api/v1/dq-firewall/validate`) returns
+  block or warn for a candidate record, sample ABAP for the material master BAdI `BADI_MATERIAL_CHECK`
+  and a generic customer master hook calls it (`sap/abap/`, `docs/point-of-entry.md`), and an opt-in
+  suggestion gives a fix only when the rule itself defines one (its auto-fix steps or its allowed
+  values), checked again by the engine. The Entry gate screen shows the traffic. What remains behind
+  MDG: there is no approval workflow or staging area in SAP, no duplicate search at entry, and the
+  ABAP samples have not been run against a live SAP system. For SuccessFactors there is no sample,
+  only a documented integration pattern. Meridian still fixes most bad data after the fact.
 - **Breadth beyond SAP.** Informatica, Collibra and Ataccama cover the whole enterprise estate with a
   catalogue, lineage and MDM across systems; Monte Carlo and Soda cover warehouses and lakehouses
   (Snowflake, Databricks, BigQuery). Meridian is SAP plus file upload only.
