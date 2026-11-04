@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
+import { resetSurvivorship } from "@/lib/api/v2/fixtures/survivorship";
 import { renderWithQuery } from "@/__tests__/render";
 import { AletheiaSurvivorship } from "../screens/AletheiaSurvivorship";
 import { stubLayout } from "./layout-stub";
@@ -29,5 +30,60 @@ describe("verified survivorship", () => {
     expect(within(ok).getByText("The source's value is not blank")).toBeInTheDocument();
     const bad = await screen.findByTestId("surv-pick-MAT-000102-MARA.MATKL");
     expect(within(bad).getByText("Not proved, the pick did not win")).toBeInTheDocument();
+  });
+});
+
+const PICK = "surv-pick-MAT-000101-MARA.MTART";
+const asSteward = () => { const u = "/aletheia-survivorship?fixture=1&persona=owner"; window.history.pushState({}, "", u); setUrl(u); };
+
+describe("steward decision on a verified pick", () => {
+  beforeEach(() => { resetSurvivorship(); asSteward(); });
+
+  it("accepts the pick and shows who kept it", async () => {
+    renderWithQuery(<AletheiaSurvivorship />);
+    const pick = await screen.findByTestId(PICK);
+    fireEvent.click(within(pick).getByRole("button", { name: "Accept the pick" }));
+    expect(await screen.findByText("Accepted by a steward")).toBeInTheDocument();
+    expect(within(screen.getByTestId("surv-rates")).getByText(/Accepted/)).toBeInTheDocument();
+  });
+
+  it("offers only the other candidates as source and shape, then overrides with a coded reason", async () => {
+    renderWithQuery(<AletheiaSurvivorship />);
+    const pick = await screen.findByTestId(PICK);
+    fireEvent.click(within(pick).getByRole("button", { name: "Override" }));
+    expect(within(pick).queryByRole("radio", { name: /SYS_A/ })).toBeNull();
+    expect(within(pick).getByRole("radio", { name: /SYS_B/ })).toBeInTheDocument();
+    expect(within(pick).getByText("Shape AAAA, 4 characters")).toBeInTheDocument();
+    const go = within(pick).getByRole("button", { name: "Override with this source" });
+    expect(go).toBeDisabled();
+    fireEvent.click(within(pick).getByRole("radio", { name: /SYS_B/ }));
+    fireEvent.change(within(pick).getByLabelText("Reason for the override"), { target: { value: "stale_value" } });
+    fireEvent.click(go);
+    const state = await screen.findByTestId("surv-state-MAT-000101-MARA.MTART");
+    expect(state).toHaveTextContent("Overridden to SYS_B");
+    expect(state).toHaveTextContent("The picked value is out of date");
+  });
+
+  it("a viewer sees the picks but no actions", async () => {
+    window.history.pushState({}, "", "/aletheia-survivorship?fixture=1&persona=owner&role=viewer");
+    setUrl("/aletheia-survivorship?fixture=1&persona=owner&role=viewer");
+    renderWithQuery(<AletheiaSurvivorship />);
+    const pick = await screen.findByTestId(PICK);
+    expect(within(pick).queryByRole("button", { name: "Accept the pick" })).toBeNull();
+    expect(within(pick).queryByRole("button", { name: "Override" })).toBeNull();
+  });
+});
+
+describe("accuracy panel", () => {
+  beforeEach(() => { resetSurvivorship(); asSteward(); });
+
+  it("shows the rates, the weekly trend and a bar per field with its text", async () => {
+    renderWithQuery(<AletheiaSurvivorship />);
+    const panel = await screen.findByTestId("survivorship-accuracy");
+    expect(within(panel).getByTestId("surv-rates")).toHaveTextContent("Accepted 83.8%, overridden 16.2%, waiting 1");
+    expect(within(panel).getByTestId("surv-trend")).toBeInTheDocument();
+    const fields = within(panel).getByTestId("surv-by-field");
+    expect(within(fields).getByTitle("Material type (MARA.MTART)")).toBeInTheDocument();
+    expect(within(fields).getByText("Material type")).toBeInTheDocument();
   });
 });

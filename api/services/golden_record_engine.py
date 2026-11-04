@@ -30,12 +30,16 @@ from api.services.survivorship import (
     matches_source,
 )
 from api.services.ai_survivorship import ai_survivorship_available, propose_field_winner
+from api.services.tenant_settings import get_setting
 from sap.deterministic import classify_field
 
 logger = logging.getLogger("meridian.golden_record_engine")
 
 # Default confidence threshold — records below this go to pending_review
 CONFIDENCE_THRESHOLD = 0.85
+
+# tenant_settings key, value {"required": true}: a proved AI pick waits for a steward's accept before it is applied
+AI_APPROVAL_SETTING = "survivorship_ai_approval"
 
 
 def _llm_survivorship_enabled() -> bool:
@@ -265,6 +269,9 @@ async def process_sync_batch(
         # Build field contributions from incoming data
         field_contributions = _build_contributions(incoming_records)
 
+        # Policy: off by default, which keeps the current behaviour (a proved pick is applied at once)
+        require_approval = bool(use_ai and ((await get_setting(db, tenant_id, AI_APPROVAL_SETTING)) or {}).get("required"))
+
         # Evaluate each field
         new_golden_fields: dict = dict(existing_golden)
         new_source_contributions: dict = dict(existing_contributions)
@@ -341,7 +348,7 @@ async def process_sync_batch(
                     recommended_source = ai_result["recommended_value_source"]
                     matching = [c for c in contributions if c.source_system == recommended_source]
                     # Aletheia: the recommendation wins only when verify() proved it against the contributions
-                    if matching and ai_result["verification"]["verified"]:
+                    if matching and ai_result["verification"]["verified"] and not require_approval:
                         result = SurvivorshipResult(
                             value=matching[0].value,
                             source_system=matching[0].source_system,
@@ -371,6 +378,11 @@ async def process_sync_batch(
                     contribution_entry["ai_confidence"] = ai_recommendation["confidence"]
                     contribution_entry["ai_reasoning"] = ai_recommendation["reasoning"]
                     contribution_entry["ai_verification"] = ai_recommendation["verification"]
+                    # the steward may only choose among these; applied says whether the pick is the golden value now
+                    contribution_entry["ai_applied"] = result.rule_type == "ai_recommended"
+                    contribution_entry["ai_candidates"] = [
+                        {"source_system": c.source_system, "value": c.value, "extracted_at": c.extracted_at.isoformat(),
+                         "confidence": c.confidence} for c in contributions]
 
                 new_source_contributions[field_name] = contribution_entry
 
