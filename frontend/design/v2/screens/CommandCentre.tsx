@@ -19,6 +19,7 @@ import { V2Link } from "../parts";
 import { AskBody } from "../inspector/ask";
 
 const worst = (vs: readonly Verdict[]): Verdict => (vs.includes("no-go") ? "no-go" : vs.includes("at-risk") ? "at-risk" : "go");
+const RIBBON_ORDER: Record<Verdict, number> = { go: 0, "at-risk": 1, "no-go": 2 };
 
 /** The headline: is the next wave going live, what it costs to wait, how long is left, and the one thing to do next. */
 export function GoLiveBanner({ landscape, waves }: { landscape: Landscape; waves: readonly MigrationWave[] }) {
@@ -62,6 +63,12 @@ export function GoLiveBanner({ landscape, waves }: { landscape: Landscape; waves
           <dd>
             {int(ready)}
             <small>/{int(scope.length)}</small>
+            {/* One tile per object in scope, go first then at-risk then no-go: the same count as the figure above it, drawn. */}
+            <span className="m2-cc-ribbon" aria-hidden="true">
+              {[...scope]
+                .sort((a, b) => RIBBON_ORDER[a.verdict] - RIBBON_ORDER[b.verdict])
+                .map((c) => <i key={c.module} data-verdict={c.verdict} />)}
+            </span>
           </dd>
           <dd className="m2-cc-note">{t("{n} critical issues open", { n: int(critical) })}</dd>
         </div>

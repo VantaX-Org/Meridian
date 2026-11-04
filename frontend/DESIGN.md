@@ -54,8 +54,16 @@ the only places the interface spends light; everything else stays quiet so the d
    `--m2-hero-line`, the glass field `--m2-hero-field`), a radial glow in the corner (`--m2-grad-hero-light`), its own
    lift (`--m2-shadow-hero`) and a 4px verdict stripe on its left edge in the on-hero status inks (`--m2-on-hero-pass`,
    `-warn`, `-crit`). The verdict is set in the headline size (`--m2-fs-hero` 36px, tracked `-0.025em`) and the two
-   figures beside it in the stat size (`--m2-fs-stat` 34px, tracked `-0.03em`, shrinking with the container). It is the
-   one place a screen is loud; everything under it is the quiet sheet.
+   figures beside it in the stat size (`--m2-fs-stat` 34px, tracked `-0.03em`, shrinking with the container). Under
+   "Objects ready" the verdict ribbon (`.m2-cc-ribbon`) draws the same figure: one 6px tile per object in scope, go
+   first, then at-risk, then no-go, in the on-hero status inks; it is decorative (`aria-hidden`) because the figure
+   above it carries the number. It is the one place a screen is loud; everything under it is the quiet sheet.
+   The signed-out hero is composed to its full height: the promise at the top, the heat matrix as the brand's own
+   picture in the middle (`HeatMotif` in `auth/AuthFrame.tsx`, a 14 by 6 field of tiles in the on-hero status inks
+   and quiet `--m2-hero-fg`, fading away from one ringed and glowing tile; decorative, no figures), and the three
+   facts anchored on the floor as three columns over hairlines. The sheet beside it centres its form
+   (`grid-template-rows: 1fr auto 1fr`), sits on `--m2-grad-sheet`, carries a 40 by 4px tick of `--m2-grad-data`
+   above the title at `--m2-fs-24`, and keeps the version at its foot.
 2. **Three lifts.** The sheet, the cards, the status strip and the frames sit on `--m2-shadow-1`; the inspector, the
    go-live banner and popovers on `--m2-shadow-2`; menus, the command line, notices and the bulk bar on `--m2-shadow-3`.
    Each lift is a contact shadow and an ambient one, so depth reads without a visible border. Cards and the grid head

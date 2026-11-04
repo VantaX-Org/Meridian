@@ -1028,6 +1028,11 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 .m2-cc-figs > div:first-child dd:not(.m2-cc-note) { color: var(--m2-hero-accent); }
 .m2-cc-banner[data-verdict="no-go"] .m2-cc-figs > div:nth-child(2) dd:not(.m2-cc-note) { color: var(--m2-on-hero-crit); }
 .m2-cc-banner[data-verdict="at-risk"] .m2-cc-figs > div:nth-child(2) dd:not(.m2-cc-note) { color: var(--m2-on-hero-warn); }
+/* The verdict ribbon under "Objects ready": one tile per object in scope in its verdict ink, go first; the figure above it, drawn. */
+.m2-cc-ribbon { display: flex; gap: var(--m2-s1); height: 6px; margin-top: var(--m2-s2); }
+.m2-cc-ribbon i { flex: 1 1 0; min-width: 2px; border-radius: 1px; background: var(--m2-on-hero-pass); }
+.m2-cc-ribbon i[data-verdict="at-risk"] { background: var(--m2-on-hero-warn); }
+.m2-cc-ribbon i[data-verdict="no-go"] { background: var(--m2-on-hero-crit); }
 .m2-cc-also, .m2-cc-also .m2-meta { color: var(--m2-hero-meta); }
 .m2-cc-banner .m2-btn.m2-next { background: var(--m2-hero-fg); color: var(--m2-b-900) !important; box-shadow: var(--m2-shadow-2); }
 .m2-cc-banner .m2-btn.m2-next:hover { background: var(--m2-hero-fg); filter: brightness(0.94); }
