@@ -48,6 +48,7 @@ import { rulePromotionRead, rulePromotionWrite, NONE_RULE_PROMOTION } from "./ru
 import { ruleImpactWrite, NONE_RULE_IMPACT } from "./ruleImpact";
 import { migrationScenariosRead, NONE_MIGRATION_SCENARIOS } from "./migrationScenarios";
 import { survivorshipRead, survivorshipWrite, NONE_SURVIVORSHIP } from "./survivorship";
+import { referenceDataRead, referenceDataWrite, NONE_REFERENCE_DATA } from "./reference-data";
 import { fixDraftsRead, fixDraftsWrite, NONE_FIX_DRAFTS } from "./fixDrafts";
 import { anomalyRulesRead, anomalyRulesWrite, NONE_ANOMALY_RULES } from "./anomalyRules";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
@@ -169,6 +170,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (fdw !== NONE_FIX_DRAFTS) return fdw as T;
   const svw = survivorshipWrite(method, path, body);
   if (svw !== NONE_SURVIVORSHIP) return svw as T;
+  const rdw = referenceDataWrite(method, path, body);
+  if (rdw !== NONE_REFERENCE_DATA) return rdw as T;
   const ar = anomalyRulesWrite(method, path, body);
   if (ar !== NONE_ANOMALY_RULES) return ar as T;
   const mn = miningWrite(method, path, body);
@@ -377,6 +380,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (fdr !== NONE_FIX_DRAFTS) return fdr as T;
   const sv = survivorshipRead(path);
   if (sv !== NONE_SURVIVORSHIP) return sv as T;
+  const rdr = referenceDataRead(path, params);
+  if (rdr !== NONE_REFERENCE_DATA) return rdr as T;
   const ars = anomalyRulesRead(path);
   if (ars !== NONE_ANOMALY_RULES) return ars as T;
   const mn = miningRead(path);
