@@ -15,8 +15,8 @@ from collections import defaultdict
 from datetime import timedelta
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Query, Request
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,7 +26,9 @@ from api.routes.mining import field_text
 from api.routes.record_issues import _rls
 from api.services import mdm_merge
 from api.services.fix_drafter import mask_of
-from api.services.rbac import current_user_id, require_permission
+from api.services.golden_record_engine import AI_APPROVAL_SETTING
+from api.services.rbac import current_user_id, require_permission, write_audit
+from api.services.tenant_settings import get_setting, put_setting, set_rls
 
 router = APIRouter(prefix="/api/v1/aletheia/survivorship", tags=["aletheia"])
 
@@ -255,3 +257,28 @@ async def survivorship_accuracy(db: AsyncSession = Depends(get_db), tenant: Tena
     for f in out["by_field"]:
         f["field_text"] = field_text(f["field"], f["domain"])
     return {**out, "reason_codes": [{"code": k, "text": v} for k, v in REASON_CODES.items()]}
+
+
+class ApprovalSetting(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    required: bool
+
+
+@router.get("/approval-setting", response_model=ApprovalSetting, dependencies=[Depends(require_permission("view"))])
+async def get_approval_setting(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> ApprovalSetting:
+    """Whether a proved AI pick waits for a steward's accept before it is applied (tenant setting survivorship_ai_approval)."""
+    await set_rls(db, tenant.id)
+    return ApprovalSetting(required=bool(((await get_setting(db, tenant.id, AI_APPROVAL_SETTING)) or {}).get("required")))
+
+
+@router.put("/approval-setting", response_model=ApprovalSetting, dependencies=[Depends(require_permission("manage_settings"))])
+async def put_approval_setting(body: ApprovalSetting, request: Request, db: AsyncSession = Depends(get_db),
+                               tenant: Tenant = Depends(get_tenant)) -> ApprovalSetting:
+    await set_rls(db, tenant.id)
+    before = await get_setting(db, tenant.id, AI_APPROVAL_SETTING)
+    after = {"required": body.required}
+    await put_setting(db, tenant.id, AI_APPROVAL_SETTING, after, current_user_id(request))
+    await write_audit(db, tenant.id, request, "survivorship.approval_setting", "tenant_settings", AI_APPROVAL_SETTING,
+                      before if isinstance(before, dict) else None, after)
+    await db.commit()
+    return body

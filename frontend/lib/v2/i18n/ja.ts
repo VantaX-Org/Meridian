@@ -7426,4 +7426,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{n} not proved": "{n} 件未検証",
   "Model picks in {object}": "{object} のモデル選択",
   "Model picks, scrollable": "モデル選択（スクロール可能）",
+  "Steward approval of AI picks": "AI 選択のスチュワード承認",
+  "survivorship_ai_approval: whether a proved AI pick waits for a steward before it is applied.": "survivorship_ai_approval: 検証済みの AI 選択を適用する前にスチュワードを待つかどうか。",
+  "The approval setting could not be read.": "承認設定を読み取れませんでした。",
+  "A steward must approve each AI pick": "スチュワードがすべての AI 選択を承認する必要があります",
+  "Proved AI picks apply at once": "検証済みの AI 選択はすぐに適用されます",
+  "A proved AI pick waits for a steward to accept it before it is applied.": "検証済みの AI 選択は、スチュワードが承認するまで適用されません。",
+  "A proved AI pick is applied at once; stewards can still override it later.": "検証済みの AI 選択はすぐに適用されます。スチュワードは後から上書きできます。",
+  "Require steward approval": "スチュワードの承認を必須にする",
+  "Changing this needs the manage settings permission. You can read it.": "変更には設定管理の権限が必要です。値の閲覧は可能です。",
 };
