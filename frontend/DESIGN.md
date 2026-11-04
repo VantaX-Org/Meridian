@@ -143,7 +143,7 @@ Colour is quiet by default and spent on meaning. Three layers, all in `tokens.cs
      `--m2-crit-glow-ink`. Glows belong to the moments only. The old `--m2-shadow` remains for what floated before.
    - **Gradients**: `--m2-grad-hero` (the go-live banner, the landscape hero and the signed-out ground),
      `--m2-grad-hero-light` (its corner wash), `--m2-grad-ai` and `--m2-grad-ai-wash` (the Aletheia avatar,
-     confidence bars and proof wash), `--m2-grad-area` (a chart area fill). Nothing else is a gradient: the bar is the
+     confidence bars and proof wash). Nothing else is a gradient: the bar is the
      flat `--m2-bar-bg`, selection is `--m2-data-bg`, and the primary button is `--m2-data`.
    - **Bar inks**: `--m2-bar-fg`, `--m2-bar-fg-2`, `--m2-bar-hover`, `--m2-bar-line`, `--m2-bar-field`, the same in both
      themes because the bar is deep in both.

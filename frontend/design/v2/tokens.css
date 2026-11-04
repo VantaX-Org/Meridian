@@ -226,7 +226,6 @@
   --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, var(--m2-b-900) 52%, var(--m2-hero-bg-2) 100%);
   --m2-grad-ai: linear-gradient(135deg, #1796A1 0%, var(--m2-ai) 100%);
   --m2-grad-ai-wash: linear-gradient(90deg, var(--m2-ai-bg) 0%, var(--m2-sheet) 42%);
-  --m2-grad-area: linear-gradient(180deg, var(--m2-data-bg) 0%, transparent 100%);
 
   /* The bar's own inks: on the deep ground in both themes */
   --m2-bar-fg: var(--m2-n-25);
@@ -347,7 +346,6 @@
     --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, #0D2452 52%, var(--m2-hero-bg-2) 100%);
     --m2-grad-ai: linear-gradient(135deg, #8FE2E8 0%, var(--m2-ai) 100%);
     --m2-grad-ai-wash: linear-gradient(90deg, var(--m2-ai-bg) 0%, var(--m2-sheet) 42%);
-    --m2-grad-area: linear-gradient(180deg, var(--m2-data-bg) 0%, transparent 100%);
     --m2-bar-fg: var(--m2-n-25);
     --m2-bar-fg-2: var(--m2-b-200);
     --m2-bar-hover: #FFFFFF1F;
@@ -459,7 +457,6 @@ html[data-theme="dark"] .m2-root {
   --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, #0D2452 52%, var(--m2-hero-bg-2) 100%);
   --m2-grad-ai: linear-gradient(135deg, #8FE2E8 0%, var(--m2-ai) 100%);
   --m2-grad-ai-wash: linear-gradient(90deg, var(--m2-ai-bg) 0%, var(--m2-sheet) 42%);
-  --m2-grad-area: linear-gradient(180deg, var(--m2-data-bg) 0%, transparent 100%);
   --m2-bar-fg: var(--m2-n-25);
   --m2-bar-fg-2: var(--m2-b-200);
   --m2-bar-hover: #FFFFFF1F;
