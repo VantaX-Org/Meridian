@@ -11,7 +11,7 @@ import pandas as pd
 import yaml
 
 from checks import auto_fix, cost, record_context
-from checks.base import BaseCheck, CheckResult, SoftTimeLimitExceeded, as_of_time, failing_values, record_keys, reraise_soft_limit, sap_number
+from checks.base import BaseCheck, CheckResult, SoftTimeLimitExceeded, as_of_time, failing_values, is_blank, record_keys, reraise_soft_limit, sap_number
 from checks.frames import TableFrames, tables_of
 from checks.population import exclude, exclusions, fields_for
 from checks.profiling import is_sensitive
@@ -31,12 +31,15 @@ from checks.types.country_format_check import CountryFormatCheck
 from checks.types.aggregate_check import AggregateCheck
 from checks.types.reconciliation_check import ReconciliationCheck
 from checks.types.interval_check import IntervalCheck
-from checks.types.exists_check import ExistsCheck, target_keys
+from checks.types.exists_check import ExistsCheck, key_of, target_keys
 from checks.types.dependency_check import DependencyCheck
 from checks.types.hierarchy_check import HierarchyCheck
 from checks.types.similarity_check import SimilarityCheck
 from checks.types.group_sum_check import GroupSumCheck, child_sums
 from checks.types.group_range_check import GroupRangeCheck
+from checks.types.count_per_parent_check import CountPerParentCheck
+from checks.types.all_children_check import AllChildrenCheck
+from checks.types.char_set_check import CharSetCheck
 
 logger = logging.getLogger("meridian.checks")
 
@@ -146,11 +149,14 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "hierarchy_check": HierarchyCheck,
     "group_sum_check": GroupSumCheck,
     "group_range_check": GroupRangeCheck,
+    "count_per_parent_check": CountPerParentCheck,
+    "all_children_check": AllChildrenCheck,
+    "char_set_check": CharSetCheck,
 }
 
 # check types judging a group of rows together: only sound on a complete extract
 _WHOLE_GROUP = {"balance_check", "aggregate_check", "interval_check", "hierarchy_check",
-                "group_sum_check", "reconciliation_check"}
+                "group_sum_check", "reconciliation_check", "count_per_parent_check", "all_children_check"}
 
 # A presence check failing at least this fraction of its population is describing an
 # unmaintained field rather than per-record defects (see _unmaintained).
@@ -293,12 +299,34 @@ def target_columns(rule: dict) -> list[str]:
     if rule.get("check_class") == "group_sum_check":
         return list(dict.fromkeys([rule["amount"], *rule["group_keys"], *(rule.get("child_when") or {})]
                                   + ([rule["sign_field"]] if rule.get("sign_field") else [])))
+    if rule.get("check_class") == "all_children_check":
+        return list(dict.fromkeys([*rule["group_keys"], *(rule.get("child_when") or {})]))
     if rule.get("check_class") == "reconciliation_check":
         return [f"{rule['target_table']}.{rule['target_field']}"]
     if rule.get("check_class") != "exists_check":
         return []
     t = rule["target_table"]
-    return [f"{t}.{f}" for f in list(rule["target_fields"]) + list(rule.get("target_when") or {})]
+    return [f"{t}.{f}" for f in list(rule["target_fields"]) + list(_when_fields(rule.get("target_when")))]
+
+
+def _when_fields(when: dict | None) -> list[str]:
+    """Fields a ``target_when`` reads; ``any_of`` is a list of alternative contexts (OR)."""
+    when = when or {}
+    return list(dict.fromkeys([f for k, v in when.items() if k != "any_of" for f in [k]]
+                              + [f for alt in when.get("any_of") or [] for f in alt]))
+
+
+def _target_context(target: pd.DataFrame, t: str, when: dict | None, as_of: Any) -> pd.DataFrame:
+    """Target rows satisfying ``target_when``: its plain conditions AND (any of ``any_of``)."""
+    when = when or {}
+    rows = apply_context(target, {f"{t}.{k}": v for k, v in when.items() if k != "any_of"}, as_of)
+    alts = when.get("any_of")
+    if not alts:
+        return rows
+    keep = pd.Series(False, index=rows.index)
+    for alt in alts:
+        keep |= rows.index.isin(apply_context(rows, {f"{t}.{k}": v for k, v in alt.items()}, as_of).index)
+    return rows[keep]
 
 
 def _with_targets(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | str | None:
@@ -310,8 +338,7 @@ def _with_targets(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | 
     target = frames.frames.get(t)
     if target is None or any(c not in target.columns for c in target_columns(rule)):
         return None
-    when = {f"{t}.{k}": v for k, v in (rule.get("target_when") or {}).items()}
-    target = apply_context(target[list(dict.fromkeys(target_columns(rule)))], when, as_of)
+    target = _target_context(target[list(dict.fromkeys(target_columns(rule)))], t, rule.get("target_when"), as_of)
     return {**rule, "_target_values": target_keys(target, [f"{t}.{f}" for f in rule["target_fields"]])}
 
 
@@ -345,6 +372,20 @@ def _with_child_sums(rule: dict, frames: TableFrames) -> dict | None:
         return None
     child = child[list(dict.fromkeys(target_columns(rule)))]
     return {**rule, "_child_sums": child_sums(rule, apply_context(child, rule.get("child_when")))}
+
+
+def _with_child_stats(rule: dict, frames: TableFrames) -> dict | None:
+    """The rule with child row counts per parent key (all, and those matching ``child_when``);
+    None when the child table was not read."""
+    child = frames.frames.get(tables_of(list(rule["group_keys"]))[0])
+    if child is None or any(c not in child.columns for c in target_columns(rule)):
+        return None
+    child = child[list(dict.fromkeys(target_columns(rule)))]
+    keys = list(rule["group_keys"])
+    live = child[~pd.concat([is_blank(child[k]) for k in keys], axis=1).any(axis=1)]
+    total = key_of(live, keys).value_counts()
+    match = key_of(apply_context(live, rule.get("child_when")), keys).value_counts()
+    return {**rule, "_child_total": total.to_dict(), "_child_match": match.to_dict()}
 
 
 def get_required_columns(module_name: str, include_disabled: bool = False) -> set[str]:
@@ -410,6 +451,11 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
             if summed is None:
                 return rule, None  # the child table is not in the extract
             rule = summed
+        if rule.get("check_class") == "all_children_check":
+            stats = _with_child_stats(rule, frames)
+            if stats is None:
+                return rule, None  # the child table is not in the extract
+            rule = stats
         cols, g, excl, optional = _frame_inputs(rule, check_cls, frames, suppressed)
         cf = (rule.get("_cost") or {}).get("field")
         # parent-table flags (LFA1.LOEVM for an LFB1 rule), the cost field (EKPO.NETWR) and auto_fix

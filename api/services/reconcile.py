@@ -35,6 +35,8 @@ _GROUP_CLASSES = {
     "aggregate_check": "Per {group}, the {amount} of rows with {split} in {left} must agree with the rows with {split} in {right}{sign}.",
     "group_sum_check": "The sum of {amount} per parent record must stay {compare} {field}.",
     "group_range_check": "{field} must stay within the range learned for its {group}.",
+    "count_per_parent_check": "The number of rows per parent record that carry {field} must stay within the allowed count.",
+    "all_children_check": "When every child record of a parent is flagged, {field} on the parent must be flagged too.",
     "interval_check": "The validity periods ({start} to {end}) of one {group} must not overlap{gaps}.",
     "hierarchy_check": "Following {field} from record to record by {id_field} must never come back to a record already on the path.",
     "reconciliation_check": "The total of {field} must equal the total of {target}.",

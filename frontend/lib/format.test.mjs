@@ -4,6 +4,9 @@ import { checkClassLabel, errorLabel, formatDate, humanizeIds, labelOf } from ".
 
 assert.equal(checkClassLabel("domain_value_check"), "Allowed values");
 assert.equal(checkClassLabel("group_sum_check"), "Group total vs. limit");
+assert.equal(checkClassLabel("count_per_parent_check"), "Count per parent");
+assert.equal(checkClassLabel("all_children_check"), "Parent matches all children");
+assert.equal(checkClassLabel("char_set_check"), "Allowed characters");
 assert.equal(checkClassLabel("older_than_days"), "Older than days");
 assert.equal(checkClassLabel("toString"), "Tostring");
 

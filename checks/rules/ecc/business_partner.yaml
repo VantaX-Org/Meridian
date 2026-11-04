@@ -2822,3 +2822,24 @@ rules:
   fix_map:
     __other__: In transaction BP > Addresses > Address overview, extend the standard address or make a current address the standard.
   record_fix_template: 'BP {BUT020.PARTNER}, address {BUT020.ADDRNUMBER}: standard address validity ended {actual_value}.'
+- id: BP299
+  field: BUT020.XDFADR
+  check_class: count_per_parent_check
+  parent_keys:
+  - BUT020.PARTNER
+  count_when:
+    BUT020.XDFADR:
+    - X
+  max: 1
+  grain: BUT020
+  severity: high
+  dimension: uniqueness
+  message: Business partner has more than one standard address
+  why_it_matters: BUT020.XDFADR marks the address every process falls back to, so a partner may carry only one. With two
+    marked, correspondence, output and tax determination pick whichever address the read returns first, and the choice
+    can differ between programs and after a migration.
+  rule_authority: best_practice
+  sap_impact: Output, dunning and deliveries go to an arbitrary one of the standard addresses; migration to S/4HANA carries the conflict across.
+  fix_map:
+    __other__: In transaction BP > Addresses > Address overview, keep the standard flag on one address and clear it on the others.
+  record_fix_template: 'BP {BUT020.PARTNER}, address {BUT020.ADDRNUMBER}: one of several addresses flagged as standard.'

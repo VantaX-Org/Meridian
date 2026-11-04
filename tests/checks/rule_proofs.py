@@ -576,6 +576,27 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         return _verify(rule, dictionary, rows, (3, 2), live)
     if rule.get("check_class") == "group_sum_check":
         return _prove_group_sum(rule, dictionary, cand, live)
+    if rule.get("check_class") == "all_children_check":
+        return _prove_all_children(rule, dictionary, live)
+    if rule.get("check_class") == "count_per_parent_check":
+        # parent P1 breaks the bound, parent P2 meets it; sibling rows differ in the rest of the key
+        when = rule.get("count_when") or {rule["field"]: ["X"]}
+        flagged = {c: str(v[0]) for c, v in when.items()}
+        grain = tables_of(cols)[0]
+        spare = [f"{grain}.{k}" for k in dictionary.keys(grain) if f"{grain}.{k}" not in rule["parent_keys"]]
+        if rule.get("max") is not None:
+            n1, n2, filler, failing = int(rule["max"]) + 1, int(rule["max"]), 0, int(rule["max"]) + 1
+        else:  # min only: P2 is short by one (a filler row keeps it in scope when it is short of all)
+            n1, n2, filler, failing = int(rule["min"]), int(rule["min"]) - 1, 1, int(rule["min"])
+        rows = []
+        for p, n, extra in (("P1", n1, 0), ("P2", n2, filler)):
+            for j in range(n + extra):
+                row = {c: p for c in rule["parent_keys"]}
+                row.update({c: (flagged[c] if c in flagged and j < n else "Z0") for c in cols if c in when or c == rule["field"]})
+                row.update({c: f"{p}K{j}" for c in spare})
+                rows.append(row)
+        rule = {**rule, "_live_value": {"P1", "P2"}}
+        return _verify(rule, dictionary, rows, (len(rows), failing), live)
     if rule.get("check_class") == "similarity_check":
         # one block: a typo'd near-duplicate pair and an unrelated name (expected: 3 in scope, 2 failing)
         block = {c: "B1" for c in rule.get("block_by") or []}
@@ -788,6 +809,30 @@ def _prove_exists(rule, dictionary, cand, live) -> tuple[str, str]:
                                         for f, c in (rule.get("target_when") or {}).items())
     want = (3, 1) if self_ref else (2, 1)
     return ("proven", f"refs={rows}") if got == want else ("unproven", f"{got} != {want}")
+
+
+def _prove_all_children(rule, dictionary, live) -> tuple[str, str]:
+    """Two parents whose every child is flagged: one carries the flag itself, the other does not
+    (expected: 2 in scope, 1 failing)."""
+    ok = str((rule.get("parent_expected") or ["X"])[0])
+    parents = list(rule["group_keys"].values())
+    rows = [{**{p: f"P{i}{side}" for i, p in enumerate(parents)}, rule["field"]: v} for side, v in (("A", ok), ("B", "Z0"))]
+    df = _rows(rule, dictionary, rows)
+    frames = TableFrames.from_flat(df, dictionary, module=rule.get("module"))
+    t = tables_of(list(rule["group_keys"]))[0]
+    child = {f"{t}.{k}": [f"C{i}" for i in range(2 * len(df))] for k in dictionary.keys(t)}
+    for c, p in rule["group_keys"].items():
+        child[c] = list(df[p]) * 2
+    for f, cond in (rule.get("child_when") or {}).items():
+        child[f] = [str(cond[0])] * (2 * len(df))
+    frames.frames[t] = pd.DataFrame(child)
+    _, r = run_rule(rule, frames, live or {})
+    if r is None:
+        return "not_applicable", "no result on the proof records"
+    if r.error:
+        return "error", r.error
+    got = (r.total_count, r.affected_count)
+    return ("proven", f"parents={rows}") if got == (2, 1) else ("unproven", f"{got} != (2, 1)")
 
 
 def _prove_group_sum(rule, dictionary, cand, live) -> tuple[str, str]:
