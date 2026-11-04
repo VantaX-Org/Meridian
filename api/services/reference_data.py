@@ -45,14 +45,18 @@ class CodeList:
     text_table: Optional[str] = None  # language-dependent text table (config_items.object), keyed by lang_field + keys
     text_field: Optional[str] = None  # its description field
     lang_field: str = "SPRAS"
+    order_field: Optional[str] = None  # text-table key field whose lowest value wins within a language (T052U.ZTAGG)
 
 
 LISTS: tuple[CodeList, ...] = (
     CodeList("country", "T005", ("LAND1",), "sd_customer_master", ("KNA1.LAND1",),
              text_table="T005T", text_field="LANDX"),
-    CodeList("payment_terms", "T052", ("ZTERM",), "sd_customer_master", ("KNB1.ZTERM",)),
-    CodeList("unit_of_measure", "T006", ("MSEHI",), "material_master", ("MARA.MEINS", "MARA.GEWEI")),
-    CodeList("material_group", "T023", ("MATKL",), "material_master", ("MARA.MATKL",), "WGBEZ"),
+    CodeList("payment_terms", "T052", ("ZTERM",), "sd_customer_master", ("KNB1.ZTERM",),
+             text_table="T052U", text_field="TEXT1", order_field="ZTAGG"),
+    CodeList("unit_of_measure", "T006", ("MSEHI",), "material_master", ("MARA.MEINS", "MARA.GEWEI"),
+             text_table="T006A", text_field="MSEHL"),
+    CodeList("material_group", "T023", ("MATKL",), "material_master", ("MARA.MATKL",),
+             text_table="T023T", text_field="WGBEZ"),
     # SuccessFactors: the picklist entity the config loader reads (no label is extracted, so no description)
     CodeList("picklist", "PickListValueV2", ("PickListV2_id", "externalCode"), "employee_central",
              ("PickListValueV2.externalCode",)),
@@ -70,7 +74,7 @@ ENGLISH = ("E", "EN")  # SPRAS as RFC_READ_TABLE returns it (internal E) or as I
 def _texts(lst: CodeList, items: list[Any], lang: Optional[str]) -> dict[str, str]:
     """Code -> text from the list's text table: the wanted language, else English, else any language."""
     rank = {l.upper(): n for n, l in enumerate([lang, *ENGLISH] if lang else ENGLISH)}
-    best: dict[str, tuple[int, str]] = {}
+    best: dict[str, tuple[int, int, str]] = {}
     for i in items:
         if i.object != lst.text_table:
             continue
@@ -80,9 +84,11 @@ def _texts(lst: CodeList, items: list[Any], lang: Optional[str]) -> dict[str, st
         if not code.strip("/") or not isinstance(t, str) or not t.strip():
             continue
         r = rank.get(k.get(lst.lang_field, "").strip().upper(), len(rank))
-        if code not in best or r < best[code][0]:
-            best[code] = (r, t.strip())
-    return {c: v[1] for c, v in best.items()}
+        o = k.get(lst.order_field, "").strip() if lst.order_field else ""
+        cand = (r, int(o) if o.isdigit() else 10**9, t.strip())
+        if code not in best or cand[:2] < best[code][:2]:
+            best[code] = cand
+    return {c: v[2] for c, v in best.items()}
 
 
 def codes_of(lst: CodeList, items: list[Any], lang: Optional[str] = None) -> list[dict[str, Optional[str]]]:

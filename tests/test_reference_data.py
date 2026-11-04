@@ -23,8 +23,9 @@ def item(obj, key, **v):
 
 def test_codes_of_sorted_with_text_and_other_tables_ignored():
     lst = rd.by_id("material_group")
-    items = [item("T023", "MANDT=100,MATKL=B", WGBEZ="Bolts"), item("T023", "MANDT=100,MATKL=A", WGBEZ=""),
-             item("T006", "MSEHI=KG", MSEHL="Kilogram")]
+    items = [item("T023", "MANDT=100,MATKL=B"), item("T023", "MANDT=100,MATKL=A"),
+             item("T023T", "SPRAS=E,MATKL=B", WGBEZ="Bolts"), item("T023T", "SPRAS=E,MATKL=A", WGBEZ=""),
+             item("T006A", "SPRAS=E,MSEHI=KG", MSEHL="Kilogram")]
     assert rd.codes_of(lst, items) == [{"code": "A", "text": None}, {"code": "B", "text": "Bolts"}]
 
 
@@ -49,6 +50,43 @@ def test_country_text_table_is_registered_for_licensed_modules():
         src = {t.source: t for t in SYSTEM_EXTRACTIONS["ecc"][m]}
         assert src["T005"].is_config and src["T005T"].is_config
         assert set(src["T005T"].fields) == {"SPRAS", "LAND1", "LANDX", "NATIO"}
+
+
+def test_material_group_text_comes_from_t023t_not_t023():
+    lst = rd.by_id("material_group")
+    items = [item("T023", "MATKL=001", WGBEZ="stale"), item("T023", "MATKL=002"),
+             item("T023T", "SPRAS=D,MATKL=001", WGBEZ="Rohstoffe"), item("T023T", "SPRAS=E,MATKL=001", WGBEZ="Raw materials")]
+    assert rd.codes_of(lst, items) == [{"code": "001", "text": "Raw materials"}, {"code": "002", "text": None}]
+    assert rd.codes_of(lst, items, "D")[0]["text"] == "Rohstoffe"
+
+
+def test_unit_text_is_msehl_keyed_by_msehi():
+    lst = rd.by_id("unit_of_measure")
+    items = [item("T006", "MSEHI=KG"), item("T006", "MSEHI=ST"),
+             item("T006A", "SPRAS=E,MSEHI=KG", MSEHL="Kilogram", MSEH3="KG"),
+             item("T006A", "SPRAS=D,MSEHI=ST", MSEHL="Stueck", MSEH3="ST")]
+    assert rd.codes_of(lst, items) == [{"code": "KG", "text": "Kilogram"}, {"code": "ST", "text": "Stueck"}]
+
+
+def test_payment_terms_text_uses_lowest_ztagg_per_language():
+    lst = rd.by_id("payment_terms")
+    items = [item("T052", "ZTERM=Z030"),
+             item("T052U", "SPRAS=E,ZTERM=Z030,ZTAGG=10", TEXT1="10 days 2 percent"),
+             item("T052U", "SPRAS=E,ZTERM=Z030,ZTAGG=02", TEXT1="30 days net"),
+             item("T052U", "SPRAS=D,ZTERM=Z030,ZTAGG=01", TEXT1="30 Tage netto")]
+    assert rd.codes_of(lst, items) == [{"code": "Z030", "text": "30 days net"}]
+    assert rd.codes_of(lst, items, "D")[0]["text"] == "30 Tage netto"
+
+
+def test_text_tables_registered_for_the_list_modules():
+    from sap.extraction_registry import SYSTEM_EXTRACTIONS
+    want = {"material_master": {"T023T": {"SPRAS", "MATKL", "WGBEZ"}, "T006A": {"SPRAS", "MSEHI", "MSEHL", "MSEH3"}},
+            "sd_customer_master": {"T052": {"ZTERM"}, "T052U": {"SPRAS", "ZTERM", "ZTAGG", "TEXT1"}}}
+    for m, tabs in want.items():
+        src = {t.source: t for t in SYSTEM_EXTRACTIONS["ecc"][m]}
+        for tab, fields in tabs.items():
+            assert src[tab].is_config and fields <= set(src[tab].fields), (m, tab)
+    assert "WGBEZ" not in {f for t in SYSTEM_EXTRACTIONS["ecc"]["material_master"] if t.source == "T023" for f in t.fields}
 
 
 def test_lists_name_only_fields_in_data_dictionary():

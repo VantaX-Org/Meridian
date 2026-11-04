@@ -190,14 +190,26 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
         ),
         ExtractionTarget(
             source="T023",
-            fields=["MATKL", "WGBEZ"],
+            fields=["MATKL"],
             description="Material groups",
             is_config=True,
         ),
         ExtractionTarget(
+            source="T023T",
+            fields=["SPRAS", "MATKL", "WGBEZ"],
+            description="Material group texts (by language)",
+            is_config=True,
+        ),
+        ExtractionTarget(
             source="T006",
-            fields=["MSEHI", "MSEHL", "DIMID"],
+            fields=["MSEHI", "DIMID"],
             description="Units of measure",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="T006A",
+            fields=["SPRAS", "MSEHI", "MSEHL", "MSEH3"],
+            description="Unit of measure texts (by language)",
             is_config=True,
         ),
         ExtractionTarget(
@@ -626,6 +638,18 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     # SD Customer Master
     # ------------------------------------------------------------------
     "sd_customer_master": [
+        ExtractionTarget(
+            source="T052",
+            fields=["ZTERM", "ZTAGG", "ZTAG1", "ZTAG2", "ZTAG3"],
+            description="Payment terms",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="T052U",
+            fields=["SPRAS", "ZTERM", "ZTAGG", "TEXT1"],
+            description="Payment term texts (by language and day limit)",
+            is_config=True,
+        ),
         ExtractionTarget(
             source="T005",
             fields=["LAND1"],
