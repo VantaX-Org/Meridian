@@ -38,7 +38,7 @@ export function RuleDryRun() {
   const q = useSearchParams();
   const { can } = useV2Session();
   const allowed = can("manage_rules");
-  const [module, setModule] = useState(q.get("module") ?? "");
+  const [objectKey, setObjectKey] = useState(q.get("module") ?? "");
   const [ruleId, setRuleId] = useState(q.get("rule") ?? "");
   const [changes, setChanges] = useState("");
   const [cap, setCap] = useState<number>(50_000);
@@ -54,9 +54,9 @@ export function RuleDryRun() {
       setBad(t("The changes must be a JSON object of rule fields, for example {example}.", { example: '{"pattern": "^[0-9]+$"}' }));
       return;
     }
-    run.mutate({ module: module.trim(), rule_id: ruleId.trim() || undefined, rule: rule ?? undefined, row_cap: cap });
+    run.mutate({ module: objectKey.trim(), rule_id: ruleId.trim() || undefined, rule: rule ?? undefined, row_cap: cap });
   };
-  const ready = module.trim() !== "" && (ruleId.trim() !== "" || changes.trim() !== "");
+  const ready = objectKey.trim() !== "" && (ruleId.trim() !== "" || changes.trim() !== "");
   const r = run.data;
 
   return (
@@ -76,7 +76,7 @@ export function RuleDryRun() {
       <Panel title={t("Rule to test")} meta={t("Name an existing rule, switched on or off. Add changes to test an edit, or leave the rule id empty and give a whole draft.")} testId="dry-run-form">
         <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
           <Field label={t("Object")} hint={t("The object whose latest extraction is used, for example accounts_payable.")}>
-            {(p) => <input {...p} className="m2-input" value={module} onChange={(e) => setModule(e.target.value)} data-testid="dry-run-module" />}
+            {(p) => <input {...p} className="m2-input" value={objectKey} onChange={(e) => setObjectKey(e.target.value)} data-testid="dry-run-module" />}
           </Field>
           <Field label={t("Rule id")}>
             {(p) => <input {...p} className="m2-input" value={ruleId} onChange={(e) => setRuleId(e.target.value)} data-testid="dry-run-rule" />}
