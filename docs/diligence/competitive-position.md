@@ -95,6 +95,16 @@ side-by-side demo, so each is a hypothesis for the buyer's competitive calls, no
 4. **One product from measurement to approved fix**, customer-hosted, with no dependency on a model.
    The fix leaves as a file by default; live BAPI write-back is in the code behind a switch and not yet
    run against a live SAP system (DR-2).
+5. **Model survivorship that is proved before it wins.** When no survivorship rule decides a golden-record
+   field, the model may pick a source. It sees only the shape of each source's value (a mask, a length, a
+   blank flag, the extraction time, the confidence and whether sources agree), never a value, a preview or
+   a hash. The server then checks that the pick names exactly one contributor, that the value is not blank
+   and that the confidence is a number between 0 and 1; a pick that fails does not win, and the checks are
+   stored with the pick and listed on `/aletheia-survivorship` (`api/services/ai_survivorship.py`,
+   `api/routes/aletheia_survivorship.py`). Reltio, Ataccama and Informatica market AI survivorship; we have
+   not seen how they bound what the model reads or whether they prove its pick, so this is a hypothesis, not
+   a finding. The checks prove the pick is well formed and refers to real data. They do not prove the
+   chosen source is the better value, and a steward does not yet approve each pick.
 
 Claims we have removed from earlier drafts because we cannot support them:
 
