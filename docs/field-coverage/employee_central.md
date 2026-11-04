@@ -238,11 +238,11 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| EMPJOBRELATIONSHIPS | USERID | User ID of the employee | y | 4 / 4 | EC315, EC320, EC321, EC323 |  |
-| EMPJOBRELATIONSHIPS | RELATIONSHIP_TYPE | Type of relationship (e.g. matrix manager, HR partner) | y | 2 / 2 | EC316, EC321 |  |
-| EMPJOBRELATIONSHIPS | START_DATE | Effective start date of the relationship | y | 4 / 4 | EC317, EC321, EC322, EC425 |  |
-| EMPJOBRELATIONSHIPS | END_DATE | Effective end date of the relationship | y | 2 / 2 | EC322, EC650 |  |
-| EMPJOBRELATIONSHIPS | RELATED_USER_ID | User ID of the related person | y | 5 / 5 | EC318, EC319, EC323, EC424, EC649 |  |
+| EMPJOBRELATIONSHIPS | USERID | User ID of the employee | y | 5 / 5 | EC315, EC320, EC321, EC323, EC653 |  |
+| EMPJOBRELATIONSHIPS | RELATIONSHIP_TYPE | Type of relationship (e.g. matrix manager, HR partner) | y | 3 / 3 | EC316, EC321, EC653 |  |
+| EMPJOBRELATIONSHIPS | START_DATE | Effective start date of the relationship | y | 5 / 5 | EC317, EC321, EC322, EC425, EC653 |  |
+| EMPJOBRELATIONSHIPS | END_DATE | Effective end date of the relationship | y | 3 / 3 | EC322, EC650, EC653 |  |
+| EMPJOBRELATIONSHIPS | RELATED_USER_ID | User ID of the related person | y | 6 / 6 | EC318, EC319, EC323, EC424, EC649, EC653 |  |
 
 ### PAYMENTINFO
 

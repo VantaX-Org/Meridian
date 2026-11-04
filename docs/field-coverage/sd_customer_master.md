@@ -63,9 +63,9 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| KNA1 | KUNNR | Customer Number | y | 32 / 32 | SDCM001, SDCM002, SDCM022, SDCM024, SDCM051, SDCM055 +26 more |  |
+| KNA1 | KUNNR | Customer Number | y | 33 / 33 | SDCM001, SDCM002, SDCM022, SDCM024, SDCM051, SDCM055 +27 more |  |
 | KNA1 | LAND1 | Country Key | y | 67 / 67 | SDCM005, SDCM050, SDCM300, SDCM301, SDCM302, SDCM303 +61 more |  |
-| KNA1 | NAME1 | Name 1 | y | 8 / 8 | SDCM003, SDCM381, SDCM413, SDCM428, SDCM438, SDCM439 +2 more |  |
+| KNA1 | NAME1 | Name 1 | y | 9 / 9 | SDCM003, SDCM381, SDCM413, SDCM428, SDCM438, SDCM439 +3 more |  |
 | KNA1 | NAME2 | Name 2 | y | 2 / 2 | SDCM414, SDCM438 |  |
 | KNA1 | ORT01 | City | y | 5 / 5 | SDCM057, SDCM429, SDCM437, SDCM440, SDCM838 |  |
 | KNA1 | PSTLZ | Postal Code | y | 34 / 34 | SDCM300, SDCM301, SDCM302, SDCM303, SDCM304, SDCM305 +28 more |  |
@@ -102,7 +102,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNA1 | LIFNR | Account Number of Vendor or Creditor | y | 3 / 3 | SDCM055, SDCM761, SDCM812 |  |
 | KNA1 | LIFSD | Central delivery block for the customer | y | 3 / 3 | SDCM210, SDCM741, SDCM763 |  |
 | KNA1 | LOCCO | City Coordinates |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
-| KNA1 | LOEVM | Central Deletion Flag for Master Record | y | 17 / 17 | SDCM051, SDCM208, SDCM239, SDCM246, SDCM431, SDCM532 +11 more |  |
+| KNA1 | LOEVM | Central Deletion Flag for Master Record | y | 18 / 18 | SDCM051, SDCM208, SDCM239, SDCM246, SDCM431, SDCM532 +12 more |  |
 | KNA1 | NAME3 | Name 3 | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | KNA1 | NAME4 | Name 4 | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | KNA1 | NIELS | Nielsen ID | y | 1 / 0 | DXR900c43c5 | only disabled (DDIC-generated) rules; review for enabling |
@@ -125,7 +125,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNA1 | LZONE | Transportation zone to or from which the goods are delivered | y | 2 / 1 | DXR8bf067bd, SDCM420 |  |
 | KNA1 | XZEMP | Indicator: Is an alternative payer allowed in document? |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
 | KNA1 | VBUND | Company ID of trading partner | y | 1 / 1 | SDCM814 |  |
-| KNA1 | STCEG | VAT Registration Number | y | 26 / 26 | SDCM006, SDCM334, SDCM335, SDCM336, SDCM337, SDCM338 +20 more |  |
+| KNA1 | STCEG | VAT Registration Number | y | 27 / 27 | SDCM006, SDCM334, SDCM335, SDCM336, SDCM337, SDCM338 +21 more |  |
 | KNA1 | DEAR1 | Indicator: Competitor |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
 | KNA1 | DEAR2 | Indicator: Sales partner |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
 | KNA1 | DEAR3 | Indicator: Sales prospect |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
@@ -685,11 +685,11 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | TIBAN | BANKL | Bank Keys | y | 8 / 8 | SDCM617, SDCM619, SDCM621, SDCM622, SDCM624, SDCM626 +2 more |  |
 | TIBAN | BANKN | Bank account number | y | 7 / 7 | SDCM618, SDCM620, SDCM623, SDCM625, SDCM628, SDCM630 +1 more |  |
 | TIBAN | BKONT | Bank Control Key | y | 3 / 3 | SDCM627, SDCM631, SDCM632 |  |
-| TIBAN | IBAN | IBAN (International Bank Account Number) | y | 94 / 94 | SDCM541, SDCM542, SDCM543, SDCM544, SDCM545, SDCM546 +88 more |  |
+| TIBAN | IBAN | IBAN (International Bank Account Number) | y | 95 / 95 | SDCM541, SDCM542, SDCM543, SDCM544, SDCM545, SDCM546 +89 more |  |
 | TIBAN | VALID_FROM | Validity start of IBAN |  | 0 / 0 |  | format: valid date when populated; cross-field ordering against the record's validity dates |
 | TIBAN | ERNAM | Name of person who created the object |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | TIBAN | ERDAT | Date on which the record was created |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
-| TIBAN | TABNAME | Table name, 16 characters | y | 94 / 94 | SDCM541, SDCM542, SDCM543, SDCM544, SDCM545, SDCM546 +88 more |  |
+| TIBAN | TABNAME | Table name, 16 characters | y | 95 / 95 | SDCM541, SDCM542, SDCM543, SDCM544, SDCM545, SDCM546 +89 more |  |
 | TIBAN | TABKEY | IBAN origin: Key to table of bank details |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 
 ### ADRC

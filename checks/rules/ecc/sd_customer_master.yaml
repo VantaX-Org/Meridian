@@ -12771,6 +12771,44 @@ rules:
     fix_map:
       __other__: Flag the company code for deletion too (XD06 / FD06), or remove the central flag if set in error.
     record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: deleted centrally but not in the company code.'
+  - id: SDCM856
+    field: TIBAN.IBAN
+    check_class: format_check
+    format: iban
+    applies_when:
+      TIBAN.TABNAME:
+      - KNBK
+    grain: TIBAN
+    severity: high
+    dimension: validity
+    message: Customer IBAN fails the ISO 13616 mod-97 check
+    why_it_matters: The regex shape rules accept any IBAN of the right length. An IBAN with wrong check digits is a typo or a transposition that the shape rules cannot see, and the bank rejects the payment or the refund.
+    rule_authority: iso_standard
+    sap_impact: SEPA direct debits and refunds to the customer are rejected by the bank, or the payment medium program refuses the IBAN.
+    fix_map:
+      __other__: Obtain the IBAN from the customer's bank confirmation and correct it (XD02 > Payment transactions > IBAN).
+    record_fix_template: 'Customer bank account in {TIBAN.BANKS}: IBAN has wrong check digits.'
+  - id: SDCM857
+    field: KNA1.NAME1
+    check_class: similarity_check
+    block_by:
+    - KNA1.STCEG
+    threshold: 0.85
+    exact_rule: false
+    evidence_key: KNA1.KUNNR
+    grain: KNA1
+    applies_when:
+      KNA1.LOEVM:
+        blank: true
+    severity: medium
+    dimension: uniqueness
+    message: 'Possible duplicate customer: near-identical name under the same VAT registration number'
+    why_it_matters: A VAT registration number identifies one legal entity. Two active accounts with the same number and a near-identical name are most likely one customer created twice, which the city-based name check misses when the address differs. Branches of one entity legitimately share a VAT number; confirm before merging. Only account numbers are reported.
+    rule_authority: best_practice
+    sap_impact: Two accounts for one customer split credit exposure, open items, rebates and sales history.
+    fix_map:
+      __other__: Compare the pair in XD03; if they are one customer, merge by blocking and flagging the redundant account and moving its open items.
+    record_fix_template: 'Customer {KNA1.KUNNR}: name is near-identical to another customer with the same VAT number.'
   - id: SDCM858
     field: KNVV.VKORG
     check_class: exists_check
