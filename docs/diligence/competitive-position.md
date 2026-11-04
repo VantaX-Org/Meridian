@@ -164,5 +164,7 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   (SAP resells Syniti's migration product), and 24x7 support. Meridian holds no certification
   (`docs/PRODUCTION_READINESS.md`), is single-tenant in code today (DR-4), and depends on one principal
   engineer ([provenance.md](provenance.md)).
-- **Scale evidence.** Meridian's largest measured analysis hit a 6 hour limit at 2.78 million issues before
-  a rework that has not been re-measured (D-24).
+- **Scale evidence.** Meridian's largest production analysis hit a 6 hour limit at 2.78 million issues. After the
+  rework, a synthetic local benchmark (one laptop, generated data, 2.8 million issues) ran the issue lifecycle in
+  204 seconds. That is not a production run and is not comparable as a speedup; a re-run on the real customer
+  system is still open (D-24, `docs/analysis-throughput.md`).

@@ -65,6 +65,46 @@ dominated by two things:
    `record_issue_events` was empty — the work was rolled back when the task was
    killed, so nothing was gained.
 
+## Re-measurement after the batching and bounding fixes (2026-11-04)
+
+Commits `3b5bca1a` (bound `tmp_present` by open issues) and `7ef114d2` (reconcile in record-volume batches)
+were never measured at the scale above. `scripts/bench_lifecycle_scale.py` now does that: it seeds a throwaway
+Postgres with synthetic issues, runs the real `record_issues.track` (nothing reimplemented; the script only
+times the real statements and functions), and checks the created, reopened and resolved counts against what it
+seeded. Every run below returned the expected counts.
+
+Setup: Apple M5 Pro laptop (15 logical CPUs, 24 GB RAM), Postgres 16 (`postgres:16-alpine`) in Docker Desktop
+with a 3.8 GB VM, `shared_buffers=1GB`, `work_mem=64MB`, schema from `alembic upgrade head`. Scenario per 100
+issues of a check: 65 keep failing, 30 are fixed and resolve, 5 were resolved and fail again, plus 5 new records.
+One run per size, so no variance is known.
+
+| issues in scope | checks | batches | `track` total | upsert | resolve sweep | reopened sweep | copy + index `tmp_present` | events written |
+|---|---|---|---|---|---|---|---|---|
+| 100,000 | 2 | 1 | 3.4 s | 1.8 s | 1.0 s | 0.1 s | 0.2 s | 35,000 |
+| 1,000,000 | 20 | 4 | 48.0 s | 23.5 s | 12.5 s | 2.1 s | 6.8 s | 350,000 |
+| 2,800,000 | 56 | 12 | 204.0 s (3 min 24 s) | 66.7 s | 42.9 s | 18.4 s | 64.2 s | 980,000 |
+
+At 2.8 million issues (2.1 million failing in the new run) the lifecycle finished in about 3.4 minutes, against
+the 6 hour wall recorded on 2026-10-15. Client memory peaked at 2.0 GB; `record_issues` was 2.9 GB with its
+indexes, with 2.17 million dead tuples left for autovacuum.
+
+What this does not show. It is a synthetic run on one laptop, not a production run and not the Komatsu ECC
+4-module analysis: no customer data, no concurrent users or workers, no row-level security (the role owns the
+tables), no exported fix batches for `remediation.reconcile` to reconcile (it cost nothing here), one key layout,
+and issue keys that are unique per check. The 2026-10-15 figure came from a 30 GB Xeon with real key
+distributions and 100 million evaluated keys, so the two numbers must not be read as a speedup factor. What it
+does show is that the code path no longer has a statement that cannot finish at 2.8 million issues, and that
+cost grows a little worse than linearly (about 34 s per 1M issues at 100k, 48 s at 1M, 73 s at 2.8M).
+
+Bottleneck seen, not fixed. Copy and index of `tmp_present` rose from 14% of the run at 1M to 31% at 2.8M.
+Reading `track`, every batch of checks sharing a key layout copies the whole layout's open-issue key list, not
+only the keys of that batch's checks, so that part grows with batches times open issues. The fix (restrict each
+batch's keys to those of its own checks) touches the key-loading logic and needs its own test, so it is left for
+a separate change. The stage was not instrumented by row count, so this explanation comes from the code, not a
+measurement. Re-run the benchmark after any change to `record_issues.py`:
+
+    DATABASE_URL_SYNC=postgresql://u:p@localhost:5432/meridian_bench python scripts/bench_lifecycle_scale.py --issues 2800000
+
 ## What this blocks
 
 The lifecycle only runs for the **newest** run of a system, so it cannot be warmed
