@@ -156,6 +156,15 @@ Each decision stores who decided, when, the earlier source and the new source, a
 
 To require approval before any AI pick is applied, set the tenant setting `survivorship_ai_approval` to `{"required": true}`. Without it, proved picks apply at once.
 
+## Reference data
+
+Reference data, on the map, manages the code lists of an ECC to S/4HANA migration: country, unit of measure, material group, payment terms and, for SuccessFactors, the picklist values. Lists come only from the check tables Meridian has already extracted. A list with no extracted check table is not shown, and a code with no extracted text shows the code alone.
+
+- **Versions.** Each completed load of a check table is a version. Pick one to see the codes it held, and read the trend of codes per version.
+- **Source codes.** Every source code with the target it goes to: the same code on both sides, a mapping, or no target yet. Each code sits beside its description.
+- **Mappings.** A person with the analyse permission proposes a source to target mapping. A second person, never the proposer, approves or rejects it. Only an approved mapping reaches the migration. Each decision stores who decided and when, and writes an audit entry.
+- **Ask Aletheia.** With the trigger AI permission, Aletheia suggests a target from code values and descriptions only. The server checks that the target exists in the list before showing it, and a person still has to approve it.
+
 ## Score lens
 
 Score lens, under Value delivered on the map, scores every run two ways. The first is the score as it was recorded when the run finished, with the weights in force then. The second re-weights the same run under today's weights, so a change of weights never reads as a change in the data. The banner shows the latest run both ways, how many points the weight change accounts for, and the config-aware score. Under it:

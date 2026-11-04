@@ -204,6 +204,9 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
         <V2Link href="/aletheia-survivorship" className="m2-mi" aria-current={current("/aletheia-survivorship") ? "page" : undefined}>
           <span>{t("Aletheia verified survivorship")}</span>
         </V2Link>
+        <V2Link href="/reference-data" className="m2-mi" aria-current={current("/reference-data") ? "page" : undefined}>
+          <span>{t("Reference data")}</span>
+        </V2Link>
         <V2Link href="/mdm" className="m2-mi" aria-current={current("/mdm") ? "page" : undefined}>
           <span>{t("MDM health")}</span>
         </V2Link>
