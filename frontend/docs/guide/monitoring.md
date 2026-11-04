@@ -47,6 +47,29 @@ A run with no earlier run to compare gets no shifts, and earlier runs are not ch
 
 Press **Propose rule** on a row to draft a rule from the shift. A null spike drafts a null check on the field. An unexpected code drafts a domain value check on the values the earlier run listed, and only when it listed every value. The draft is saved in the rule workbench like **Save as draft** above, so nothing is enforced until a person reviews and publishes it. Pressing it again for the same shift does not create a second draft; the page says "This draft already exists. Find it in the rule workbench."
 
+## Learned monitors
+
+The Learned monitors page, under Learned monitors in the map, compares the latest run of each object with that object's own earlier runs. It needs no setup: material master, customer master and SuccessFactors get it as soon as they have runs. Every figure comes from the stored run results, so no record value is read and none is sent to a model.
+
+Each object keeps a baseline of up to 30 earlier runs of the same system for these figures: records checked, score, and the fail rate of each rule. It also keeps the empty share of each field that has field statistics. The usual range is the median of those runs plus or minus a robust spread (the median absolute deviation), so one bad run does not move it much. When an object has at least 28 earlier runs, the baseline also compares like weekdays with like. The table **What is learned** shows, per object, the latest run, how many earlier runs the baseline uses against how many it needs, and whether the object is **Watching** or still **Learning**. An object with fewer than 5 earlier runs only learns: it raises nothing and shows a dash for breaks.
+
+After each analysis run Meridian checks five kinds of break and stores each with its severity, the usual range, the observed value and the runs behind it:
+
+- **Volume drop** and **Volume spike.** Records checked fell below or rose above the usual range.
+- **Fail rate jump.** A rule failed on a larger share of records than usual. The row shows the rule code with its description.
+- **Score drop.** The score fell below the usual range.
+- **Field emptied.** A field that is normally populated is now empty or far emptier than usual. The row shows the field code with its description.
+
+The panel **Breaks in the latest run** lists them, most severe first. Press a break to see **Why Aletheia flagged this**: a sentence built from the figures by a fixed template, and the runs it rests on ("Run 12 (this run)"). Press **Ask Aletheia to explain** to have the model reword it. Aletheia sees only the aggregate figures and the rule or field description, and Meridian drops any sentence that states a number outside those figures. When the model is not available, the fixed wording stays.
+
+Users who may change master data can decide on a break:
+
+- **Acknowledge.** You have seen it. The baseline does not change.
+- **Mark expected.** Choose **Leave this run out of the baseline** if the run was a one-off, or **Accept as the new normal** if the new level is right; the baseline then restarts at that run.
+- **Snooze.** Hide the break for 1, 7 or 30 days. When the time passes and the break still stands, it reads as open again.
+
+Each decision is written to the audit log with the person who made it. Other roles can read the page and ask for an explanation but see no decision buttons.
+
 ## Entry gate
 
 The Entry gate page, under Entry gate in the map, shows the data quality firewall: the check SAP calls before it saves a master data record. It covers the licensed objects, Material master, Customer master (sales) and SuccessFactors employee data. The page shows only what the firewall's audit trail holds. Where the trail did not record a figure, the page shows a dash and not a zero.

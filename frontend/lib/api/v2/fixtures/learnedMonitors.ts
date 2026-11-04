@@ -1,0 +1,64 @@
+/**
+ * Learned monitors fixture, shaped like api/routes/learned_monitors.py: one active object with four breaks and one
+ * object still learning. Decisions change the in-memory break so the screen shows them; the explanation is the
+ * deterministic wording, as the route answers with no model.
+ */
+import type { LearnedBreak, LearnedMonitors } from "../learned-monitors";
+
+export const NONE_LEARNED_MONITORS = Symbol("not a learned monitor path");
+
+const cite = (n: number[], cur: number) => [
+  ...n.map((k) => ({ run_id: `run-${k}`, run_number: k, run_at: `2026-10-${String(k + 10).padStart(2, "0")}T04:10:00+00:00`, role: "baseline" as const })),
+  { run_id: `run-${cur}`, run_number: cur, run_at: `2026-10-${String(cur + 10).padStart(2, "0")}T04:10:00+00:00`, role: "current" as const },
+];
+const base = { version_id: "run-12", run_number: 12, baseline_runs: 6, method: "mad", status: "open" as const, baseline_effect: null, snoozed_until: null, decided_by: null, decided_at: null, note: null, detected_at: "2026-10-22T04:30:00+00:00", citations: cite([6, 7, 8, 9, 10, 11], 12) };
+const say = (s: string[]) => ({ source: "template" as const, sentences: s, dropped: 0 });
+
+const BREAKS: LearnedBreak[] = [
+  {
+    ...base, id: "lm-1", module: "material_master", kind: "field_emptied", metric: "blank_pct", subject_code: "MARA.BRGEW", subject_description: "Gross weight",
+    severity: "critical", expected_low: 0, expected_high: 6.4, median: 4.2, observed: 100,
+    explanation: say(["Gross weight (MARA.BRGEW): the field is now empty at 100.0; the usual range is 0.0 to 6.4.", "The baseline is the median of 6 earlier runs, 4.2."]),
+  },
+  {
+    ...base, id: "lm-2", module: "material_master", kind: "fail_rate_jump", metric: "fail_rate", subject_code: "MM014", subject_description: "Base unit not valid",
+    severity: "high", expected_low: 0.8, expected_high: 3.1, median: 1.9, observed: 14.6,
+    explanation: say(["Base unit not valid (MM014): the fail rate rose to 14.6; the usual range is 0.8 to 3.1.", "The baseline is the median of 6 earlier runs, 1.9."]),
+  },
+  {
+    ...base, id: "lm-3", module: "material_master", kind: "volume_drop", metric: "records", subject_code: "", subject_description: null,
+    severity: "medium", expected_low: 47_100, expected_high: 49_000, median: 48_050, observed: 33_400,
+    explanation: say(["Material master: records checked fell to 33,400; the usual range is 47,100 to 49,000.", "The baseline is the median of 6 earlier runs, 48,050."]),
+  },
+  {
+    ...base, id: "lm-4", module: "material_master", kind: "score_drop", metric: "score", subject_code: "", subject_description: null,
+    severity: "low", expected_low: 86.4, expected_high: 89.6, median: 88.1, observed: 84.9, status: "acknowledged", decided_by: "Demo steward", decided_at: "2026-10-22T09:00:00+00:00",
+    explanation: say(["Material master: the score fell to 84.9; the usual range is 86.4 to 89.6.", "The baseline is the median of 6 earlier runs, 88.1."]),
+  },
+];
+
+const COVERAGE: LearnedMonitors["coverage"] = [
+  { module: "material_master", run_id: "run-12", run_number: 12, baseline_runs: 6, min_runs: 5, state: "active", breaks: 4 },
+  { module: "sd_customer_master", run_id: "run-12", run_number: 12, baseline_runs: 3, min_runs: 5, state: "learning", breaks: 0 },
+];
+
+const mem = new Map<string, LearnedBreak>(BREAKS.map((b) => [b.id, { ...b }]));
+export const resetLearnedMonitors = () => BREAKS.forEach((b) => mem.set(b.id, { ...b }));
+
+export function learnedMonitorsRead(path: string): unknown {
+  if (path !== "/aletheia/monitors") return NONE_LEARNED_MONITORS;
+  return { min_runs: 5, history: 30, coverage: COVERAGE, breaks: [...mem.values()] } satisfies LearnedMonitors;
+}
+
+export function learnedMonitorsWrite(method: string, path: string, body: unknown): unknown {
+  const m = /^\/aletheia\/monitors\/([^/]+)\/(acknowledge|expected|snooze|explain)$/.exec(path);
+  if (method !== "POST" || !m) return NONE_LEARNED_MONITORS;
+  const b = mem.get(m[1]);
+  if (!b) throw Object.assign(new Error("Break not found"), { status: 404, response: { status: 404, data: { detail: "Break not found" } } });
+  const x = (body ?? {}) as { effect?: "exclude" | "accept"; days?: number; note?: string };
+  const stamp = { decided_by: "Demo steward", decided_at: "2026-10-23T08:00:00+00:00", note: x.note ?? null };
+  if (m[2] === "acknowledge") Object.assign(b, stamp, { status: "acknowledged" });
+  if (m[2] === "expected") Object.assign(b, stamp, { status: "expected", baseline_effect: x.effect ?? "exclude" });
+  if (m[2] === "snooze") Object.assign(b, stamp, { status: "snoozed", snoozed_until: "2026-11-06T08:00:00+00:00" });
+  return { ...b };
+}
