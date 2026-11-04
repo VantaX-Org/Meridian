@@ -57,8 +57,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| EMPEMPLOYMENT | USERID | User ID | y | 21 / 21 | EC001, EC002, EC041, EC075, EC076, EC077 +15 more |  |
-| EMPEMPLOYMENT | PERSON_ID | Person ID (external) | y | 6 / 6 | EC046, EC085, EC108, EC198, EC442, EC449 |  |
+| EMPEMPLOYMENT | USERID | User ID | y | 25 / 25 | EC001, EC002, EC041, EC075, EC076, EC077 +19 more |  |
+| EMPEMPLOYMENT | PERSON_ID | Person ID (external) | y | 7 / 7 | EC046, EC085, EC108, EC198, EC442, EC449 +1 more |  |
 | EMPEMPLOYMENT | START_DATE | Employment start date | y | 15 / 15 | EC005, EC025, EC059, EC078, EC079, EC085 +9 more |  |
 | EMPEMPLOYMENT | END_DATE | Employment end date | y | 13 / 13 | EC025, EC060, EC081, EC082, EC085, EC115 +7 more |  |
 | EMPEMPLOYMENT | CREATED_DATE | Created on | y | 1 / 1 | EC604 |  |
@@ -74,7 +74,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | EMPEMPLOYMENT | POSITION | Position | y | 5 / 5 | EC012, EC101, EC115, EC313, EC366 |  |
 | EMPEMPLOYMENT | EMPLOYMENT_TYPE | Employment type | y | 2 / 2 | EC010, EC369 |  |
 | EMPEMPLOYMENT | EVENT_REASON | Event reason | y | 4 / 4 | EC024, EC043, EC117, EC169 |  |
-| EMPEMPLOYMENT | STATUS | Employee status | y | 92 / 92 | EC014, EC044, EC060, EC077, EC080, EC081 +86 more |  |
+| EMPEMPLOYMENT | STATUS | Employee status | y | 96 / 96 | EC014, EC044, EC060, EC077, EC080, EC081 +90 more |  |
 | EMPEMPLOYMENT | JOB_START_DATE | Effective start date of the current job record | y | 4 / 4 | EC167, EC190, EC603, EC641 |  |
 | EMPEMPLOYMENT | SEQ_NUMBER | Sequence of job records on the same start date | y | 1 / 1 | EC641 |  |
 | EMPEMPLOYMENT | EVENT | Job event (hire, transfer, termination, ...) | y | 3 / 2 | DXR1c8d6656, EC168, EC169 |  |
@@ -114,16 +114,16 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| EMPJOBHIST | USERID |  | y | 9 / 9 | EC202, EC208, EC239, EC247, EC249, EC271 +3 more |  |
+| EMPJOBHIST | USERID |  | y | 11 / 11 | EC202, EC208, EC239, EC247, EC249, EC271 +5 more |  |
 | EMPJOBHIST | START_DATE | Record effective start | y | 10 / 10 | EC202, EC203, EC206, EC207, EC247, EC259 +4 more |  |
 | EMPJOBHIST | SEQ_NUMBER | Sequence on the same start date | y | 6 / 6 | EC202, EC240, EC246, EC247, EC378, EC641 |  |
-| EMPJOBHIST | END_DATE | Record effective end | y | 25 / 25 | EC202, EC203, EC259, EC271, EC359, EC360 +19 more |  |
+| EMPJOBHIST | END_DATE | Record effective end | y | 26 / 26 | EC202, EC203, EC259, EC271, EC359, EC360 +20 more |  |
 | EMPJOBHIST | EVENT |  | y | 3 / 3 | EC205, EC241, EC386 |  |
 | EMPJOBHIST | EVENT_REASON |  | y | 4 / 4 | EC205, EC258, EC411, EC438 |  |
-| EMPJOBHIST | STATUS |  | y | 48 / 47 | DXR56be2fb1, EC204, EC242, EC243, EC244, EC245 +42 more |  |
+| EMPJOBHIST | STATUS |  | y | 49 / 48 | DXR56be2fb1, EC204, EC242, EC243, EC244, EC245 +43 more |  |
 | EMPJOBHIST | COMPANY |  | y | 4 / 4 | EC242, EC256, EC359, EC400 |  |
 | EMPJOBHIST | POSITION |  | y | 3 / 3 | EC257, EC366, EC405 |  |
-| EMPJOBHIST | MANAGER_ID |  | y | 6 / 6 | EC208, EC248, EC249, EC367, EC387, EC404 |  |
+| EMPJOBHIST | MANAGER_ID |  | y | 7 / 7 | EC208, EC248, EC249, EC367, EC387, EC404 +1 more |  |
 | EMPJOBHIST | BUSINESS_UNIT |  | y | 3 / 3 | EC250, EC360, EC406 |  |
 | EMPJOBHIST | DIVISION |  | y | 3 / 3 | EC251, EC361, EC407 |  |
 | EMPJOBHIST | DEPARTMENT |  | y | 4 / 4 | EC243, EC252, EC362, EC401 |  |
@@ -147,7 +147,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| PERINFO | PERSON_ID | Person ID | y | 9 / 9 | EC152, EC234, EC358, EC442, EC446, EC449 +3 more |  |
+| PERINFO | PERSON_ID | Person ID | y | 11 / 11 | EC152, EC234, EC358, EC442, EC446, EC449 +5 more |  |
 | PERINFO | FIRSTNAME | First name | y | 8 / 8 | EC003, EC083, EC084, EC127, EC128, EC129 +2 more |  |
 | PERINFO | LASTNAME | Last name | y | 8 / 8 | EC004, EC083, EC084, EC130, EC131, EC132 +2 more |  |
 | PERINFO | MIDDLENAME | Middle name | y | 3 / 3 | EC608, EC609, EC612 |  |
@@ -170,7 +170,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| PERADDRESS | PERSON_ID |  | y | 3 / 3 | EC352, EC357, EC358 |  |
+| PERADDRESS | PERSON_ID |  | y | 4 / 4 | EC352, EC357, EC358, EC647 |  |
 | PERADDRESS | ADDRESS_TYPE |  | y | 4 / 4 | EC056, EC356, EC357, EC426 |  |
 | PERADDRESS | START_DATE | Effective start date of the address record | y | 1 / 1 | EC357 |  |
 | PERADDRESS | ADDRESS_LINE1 |  | y | 3 / 3 | EC029, EC120, EC615 |  |
@@ -241,8 +241,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | EMPJOBRELATIONSHIPS | USERID | User ID of the employee | y | 4 / 4 | EC315, EC320, EC321, EC323 |  |
 | EMPJOBRELATIONSHIPS | RELATIONSHIP_TYPE | Type of relationship (e.g. matrix manager, HR partner) | y | 2 / 2 | EC316, EC321 |  |
 | EMPJOBRELATIONSHIPS | START_DATE | Effective start date of the relationship | y | 4 / 4 | EC317, EC321, EC322, EC425 |  |
-| EMPJOBRELATIONSHIPS | END_DATE | Effective end date of the relationship | y | 1 / 1 | EC322 |  |
-| EMPJOBRELATIONSHIPS | RELATED_USER_ID | User ID of the related person | y | 4 / 4 | EC318, EC319, EC323, EC424 |  |
+| EMPJOBRELATIONSHIPS | END_DATE | Effective end date of the relationship | y | 2 / 2 | EC322, EC650 |  |
+| EMPJOBRELATIONSHIPS | RELATED_USER_ID | User ID of the related person | y | 5 / 5 | EC318, EC319, EC323, EC424, EC649 |  |
 
 ### PAYMENTINFO
 
