@@ -63,6 +63,11 @@ def _scaled(r: CheckResult, scale: float) -> CheckResult:
                                 "pass_rate": pass_rate_of(total, affected), "passed": affected == 0})
 
 
+def _field_text(frames: TableFrames, field: str | None) -> str:
+    fd = frames.dictionary.resolve(field) if field else None
+    return fd.description if fd else ""
+
+
 def shapes(r: CheckResult) -> list[dict]:
     """Failing values of the rule's field as counts by shape; masked fields are one category."""
     c: Counter[str] = Counter()
@@ -86,7 +91,10 @@ def dry_run(run: sf.ObjectRun, frames: TableFrames, rule: dict, current: dict | 
     new = evaluate(rule, capped, cut)
     r: CheckResult | None = new["result"]
     out: dict = {"module": run.module, "run_id": run.run_id, "rule_id": rule["id"],
-                 "mode": "new" if current is None else "edit", "evaluated": r is not None, "reason": new["error"],
+                 "mode": "new" if current is None else "edit",
+                 "rule": {**{k: rule.get(k) for k in ("field", "message", "check_class", "severity", "dimension")},
+                          "field_text": _field_text(frames, rule.get("field"))},
+                 "evaluated": r is not None, "reason": new["error"],
                  "row_cap": {"cap": cap, "sampled": bool(cut), "tables_cut": cut,
                              "note": "first rows of each table; counts are scaled to the full table"}}
     if r is None:

@@ -98,6 +98,7 @@ def test_existing_rule_counts_and_score(setup):
     assert r.status_code == 200, r.text
     b = r.json()
     assert b["mode"] == "edit" and b["evaluated"]
+    assert b["rule"]["field"] == "LFA1.LIFNR" and b["rule"]["message"] and b["rule"]["field_text"]
     assert (b["records_evaluated"], b["records_failing"]) == (8, 3)
     assert b["failure_rate"] == 37.5
     assert b["dqs"]["after"] < b["dqs"]["before"] and b["dqs"]["delta"] < 0
