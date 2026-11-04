@@ -94,6 +94,25 @@ def test_invalid_stays_unchanged(fn, val, c):
     assert r.value == val and r.status == "invalid"
 
 
+def _validation(rows):
+    df = pd.DataFrame(rows)
+    return CleaningEngine().detect_validation_errors(df, "customer", "v", "t")
+
+
+def test_invalid_postcode_flagged_valid_and_unknown_not():
+    bad = _validation({"kunnr": ["1"], "land1": ["DE"], "pstlz": ["123"]})
+    assert len(bad) == 1 and bad[0]["category"] == "validation"
+    assert bad[0]["record_data_before"]["pstlz"] == "123"
+    assert "DE" in bad[0]["record_data_before"]["error"]
+    assert _validation({"kunnr": ["1"], "land1": ["DE"], "pstlz": ["10115"]}) == []
+    assert _validation({"kunnr": ["1"], "land1": ["XX"], "pstlz": ["123"]}) == []
+
+
+def test_non_sa_vat_not_flagged_by_sa_rule():
+    assert _validation({"kunnr": ["1"], "land1": ["DE"], "stceg": ["DE123456789"]}) == []
+    assert len(_validation({"kunnr": ["1"], "land1": ["DE"], "stceg": ["DE12"]})) == 1
+
+
 def test_engine_uses_row_country():
     df = pd.DataFrame({
         "kunnr": ["1", "2", "3"],
