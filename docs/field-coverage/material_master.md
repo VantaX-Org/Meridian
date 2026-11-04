@@ -60,14 +60,14 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| MARA | MATNR | Material Number | y | 36 / 36 | MM001, MM002, MM138, MM226, MM306, MM309 +30 more |  |
+| MARA | MATNR | Material Number | y | 42 / 42 | MM001, MM002, MM1100, MM1101, MM1102, MM1103 +36 more |  |
 | MARA | ERSDA | Created On | y | 3 / 3 | MM011, MM452, MM453 |  |
 | MARA | ERNAM | Name of Person who Created the Object | y | 1 / 1 | MM052 |  |
 | MARA | LAEDA | Date of Last Change | y | 1 / 1 | MM452 |  |
 | MARA | AENAM | Name of Person Who Changed Object |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | MARA | VPSTA | Maintenance status of complete material | y | 6 / 6 | MM077, MM079, MM330, MM331, MM332, MM557 |  |
 | MARA | PSTAT | Maintenance status | y | 1 / 1 | MM069 |  |
-| MARA | LVORM | Flag Material for Deletion at Client Level | y | 11 / 11 | MM013, MM1074, MM365, MM380, MM441, MM540 +5 more |  |
+| MARA | LVORM | Flag Material for Deletion at Client Level | y | 13 / 13 | MM013, MM1074, MM1106, MM1107, MM365, MM380 +7 more |  |
 | MARA | MTART | Material type | y | 9 / 9 | MM003, MM140, MM305, MM554, MM601, MM603 +3 more |  |
 | MARA | MBRSH | Industry sector | y | 2 / 2 | MM005, MM006 |  |
 | MARA | MATKL | Material Group | y | 3 / 3 | MM007, MM141, MM870 |  |
@@ -289,8 +289,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| MARC | MATNR | Material Number | y | 40 / 40 | MM1023, MM174, MM228, MM235, MM304, MM305 +34 more |  |
-| MARC | WERKS | Plant | y | 40 / 40 | MM1023, MM212, MM228, MM235, MM304, MM305 +34 more |  |
+| MARC | MATNR | Material Number | y | 44 / 44 | MM1023, MM1097, MM1098, MM1099, MM1100, MM174 +38 more |  |
+| MARC | WERKS | Plant | y | 42 / 42 | MM1023, MM1097, MM1098, MM212, MM228, MM235 +36 more |  |
 | MARC | PSTAT | Maintenance status | y | 3 / 3 | MM095, MM333, MM438 |  |
 | MARC | LVORM | Flag Material for Deletion at Plant Level | y | 14 / 14 | MM222, MM380, MM398, MM399, MM424, MM547 +8 more |  |
 | MARC | BWTTY | Valuation Category | y | 2 / 1 | DXRba047ed6, MM818 |  |
@@ -511,11 +511,11 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| MARD | MATNR | Material Number | y | 15 / 15 | MM1085, MM235, MM333, MM425, MM426, MM427 +9 more |  |
-| MARD | WERKS | Plant | y | 15 / 15 | MM1085, MM235, MM333, MM425, MM426, MM427 +9 more |  |
+| MARD | MATNR | Material Number | y | 17 / 17 | MM1085, MM1098, MM1103, MM235, MM333, MM425 +11 more |  |
+| MARD | WERKS | Plant | y | 16 / 16 | MM1085, MM1098, MM235, MM333, MM425, MM426 +10 more |  |
 | MARD | LGORT | Storage location | y | 12 / 12 | MM1085, MM211, MM235, MM434, MM435, MM436 +6 more |  |
 | MARD | PSTAT | Maintenance status |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
-| MARD | LVORM | Flag Material for Deletion at Storage Location Level | y | 2 / 2 | MM308, MM747 |  |
+| MARD | LVORM | Flag Material for Deletion at Storage Location Level | y | 3 / 3 | MM1106, MM308, MM747 |  |
 | MARD | LFGJA | Fiscal Year of Current Period |  | 0 / 0 |  | format: digits only, length 4 |
 | MARD | LFMON | Current period (posting period) | y | 1 / 1 | MM1061 |  |
 | MARD | SPERR | Physical inventory blocking indicator | y | 1 / 1 | MM428 |  |
@@ -565,10 +565,10 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| MBEW | MATNR | Material Number | y | 12 / 12 | MM305, MM331, MM425, MM426, MM427, MM519 +6 more |  |
-| MBEW | BWKEY | Valuation area | y | 16 / 16 | MM035, MM036, MM144, MM213, MM305, MM425 +10 more |  |
+| MBEW | MATNR | Material Number | y | 14 / 14 | MM1097, MM1101, MM305, MM331, MM425, MM426 +8 more |  |
+| MBEW | BWKEY | Valuation area | y | 17 / 17 | MM035, MM036, MM1097, MM144, MM213, MM305 +11 more |  |
 | MBEW | BWTAR | Valuation type | y | 9 / 9 | MM1082, MM155, MM425, MM426, MM427, MM816 +3 more |  |
-| MBEW | LVORM | Deletion flag for all material data of a valuation type | y | 2 / 2 | MM424, MM815 |  |
+| MBEW | LVORM | Deletion flag for all material data of a valuation type | y | 3 / 3 | MM1107, MM424, MM815 |  |
 | MBEW | LBKUM | Total Valuated Stock | y | 16 / 16 | MM043, MM152, MM153, MM217, MM218, MM219 +10 more |  |
 | MBEW | SALK3 | Value of Total Valuated Stock | y | 6 / 6 | MM153, MM217, MM229, MM230, MM815, MM826 |  |
 | MBEW | VPRSV | Price control indicator | y | 16 / 16 | MM033, MM043, MM127, MM144, MM152, MM155 +10 more |  |
@@ -678,7 +678,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| MVKE | MATNR | Material Number | y | 9 / 9 | MM220, MM227, MM304, MM330, MM557, MM828 +3 more |  |
+| MVKE | MATNR | Material Number | y | 11 / 11 | MM1099, MM1102, MM220, MM227, MM304, MM330 +5 more |  |
 | MVKE | VKORG | Sales Organization | y | 7 / 7 | MM020, MM021, MM214, MM362, MM474, MM827 +1 more |  |
 | MVKE | VTWEG | Distribution Channel | y | 4 / 4 | MM215, MM474, MM827, MM836 |  |
 | MVKE | LVORM | Ind.: Flag material for deletion at distribution chain level | y | 1 / 1 | MM365 |  |
@@ -750,7 +750,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| MARM | MATNR | Material Number | y | 17 / 17 | MM221, MM226, MM227, MM444, MM457, MM524 +11 more |  |
+| MARM | MATNR | Material Number | y | 18 / 18 | MM1104, MM221, MM226, MM227, MM444, MM457 +12 more |  |
 | MARM | MEINH | Alternative Unit of Measure for Stockkeeping Unit | y | 27 / 27 | MM150, MM210, MM221, MM226, MM227, MM444 +21 more |  |
 | MARM | UMREZ | Numerator for Conversion to Base Units of Measure | y | 9 / 9 | MM039, MM150, MM225, MM345, MM626, MM629 +3 more |  |
 | MARM | UMREN | Denominator for conversion to base units of measure | y | 9 / 9 | MM040, MM150, MM225, MM345, MM626, MM629 +3 more |  |
@@ -794,7 +794,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| MLAN | MATNR | Material Number | y | 4 / 4 | MM220, MM310, MM315, MM316 |  |
+| MLAN | MATNR | Material Number | y | 5 / 5 | MM1105, MM220, MM310, MM315, MM316 |  |
 | MLAN | ALAND | Departure country (country from which the goods are sent) | y | 3 / 3 | MM311, MM314, MM316 |  |
 | MLAN | TAXM1 | Tax Classification of Material | y | 1 / 1 | MM312 |  |
 | MLAN | TAXM2 | Tax Classification of Material |  | 0 / 0 |  | cross-field: when MLAN.TAXM1 is populated for a MLAN.ALAND whose tax procedure uses a second tax category, TAXM2 is populated (unverified: depends on country tax determination) |
