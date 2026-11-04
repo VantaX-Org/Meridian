@@ -326,7 +326,7 @@ test.describe("keyboard only", () => {
     await expect(grid).toBeVisible(NAV);
     const chips = page.getByRole("group", { name: "Filter by state" });
     await expect(chips.getByRole("button", { name: /To fix/ })).toContainText("25,712");
-    // The decision cell of a row with a suggested value, reached by Tab and changed with the arrow keys.
+    // The decision cell of a row with a suggested value, reached by Tab and changed from the keyboard.
     await tabTo(page, /^Decision for 000000000000000100$/, 200);
     await focusVisible(page);
     // A native select: typing the first letter of "fix" picks it on every platform. ArrowDown only changes the value on
@@ -335,6 +335,8 @@ test.describe("keyboard only", () => {
     const notice = page.getByRole("region", { name: "Change notices" });
     await expect(notice).toContainText(/Accepted 1 suggested value/, NAV);
     await expect(chips.getByRole("button", { name: /To fix/ })).toContainText("25,711");
+    // The decided row leaves the list; focus carries on at the next row's decision, never on the page body.
+    await expect(page.locator(":focus")).toHaveAttribute("aria-label", /^Decision for /);
     await page.locator("#m2-canvas").focus();
     await page.keyboard.press("Control+z");
     await expect(notice).toContainText("Undone", NAV);
