@@ -160,3 +160,95 @@ def test_rule_proposal_prompt_and_verify() -> None:
     assert not _codes(m.verify(with_rule(weight=500), known))["WEIGHT_IN_RANGE"]
     assert not _codes(m.verify(with_rule(threshold=1.5), known))["THRESHOLD_IN_RANGE"]
     assert not m.verify("nope", known)["verified"]
+
+
+# ── enrich report, glossary enricher, headerless upload ──
+
+
+def test_enrich_report_rejects_unverified_numbers_and_clusters() -> None:
+    from workers.tasks import ai_enrich_report as e
+
+    rej: list[dict] = []
+    ok = e.allowed_numbers(3, 2, 71.5, 88)
+    assert e.verify_text("Scores of 71.5 and 88 with 2 critical findings.", ok, 900, "s", rej) is not None
+    assert e.verify_text("Scores improved by 40%.", ok, 900, "s", rej) is None
+    assert e.verify_text("x" * 901, ok, 900, "s", rej) is None
+    assert e.verify_text(["not text"], ok, 900, "s", rej) is None
+    assert [r["reason"] for r in rej] == ["UNVERIFIED_NUMBER", "TOO_LONG", "NOT_TEXT"]
+
+    clusters = [{"id": "RC_KNA1", "cause": "Multiple data quality issues in KNA1 master data", "count": 4}]
+    raw = json.dumps([
+        {"cluster_id": "RC_KNA1", "explanation": "4 checks failed together."},
+        {"cluster_id": "RC_KNA1", "explanation": "dup"},
+        {"cluster_id": "RC_MADE_UP", "explanation": "invented"},
+        {"cluster_id": "RC_KNA1", "explanation": "17 checks"},
+    ])
+    rej = []
+    kept = json.loads(e.verify_root_causes(raw, clusters, rej))
+    assert kept == [{"cluster_id": "RC_KNA1", "explanation": "4 checks failed together."}]
+    assert e.verify_root_causes("not json", clusters, rej) is None
+    assert e.verify_root_causes('{"a": 1}', clusters, rej) is None
+
+
+def test_enrich_report_prompts_carry_only_aggregates() -> None:
+    import contextlib
+    from unittest.mock import MagicMock, patch
+
+    from workers.tasks import ai_enrich_report as e
+
+    seen: list[str] = []
+    report = {"overall_dqs": {"by_module": {"business_partner": 71.5}}, "findings_by_severity": {"critical": 2},
+              "root_causes": [{"cluster_id": "RC_KNA1", "root_cause": "r", "finding_count": 4, "description": VALUE_A}],
+              "remediation_plan": {"priority_sequence": [{"check_id": "BP_001", "severity": "high",
+                                                          "affected_count": 9, "sample": VALUE_B}]}}
+    sess = MagicMock()
+    sess.__enter__.return_value.execute.return_value.fetchone.return_value = (report,)
+    with patch.object(e, "Session", return_value=sess), patch.object(e, "get_sync_engine"), \
+            patch.object(e, "_safe_llm_call", lambda llm, s, u: seen.append(u) or None), \
+            patch("llm.provider.get_llm_safe", return_value=object()), contextlib.suppress(Exception):
+        e.ai_enrich_report.run("v", "t")
+    assert len(seen) == 3 and not any(VALUE_A in p or VALUE_B in p for p in seen)
+
+
+def test_glossary_enricher_normalise() -> None:
+    from api.services.ai_glossary_enricher import normalise
+
+    src = "SAP Table: KNA1 | Field: NAME1 | Full name: Name 1 Technical description: customer name"
+    good = normalise({"business_definition": "  The  customer name held in KNA1. ",
+                      "why_it_matters_business": "Needed for NAME1 on invoices.", "extra": "dropped"}, src)
+    assert good["business_definition"] == "The customer name held in KNA1." and good["rejections"] == []
+    assert "extra" not in good
+    bad = normalise({"business_definition": "Stored in LFA1.ORT01 and T001W", "why_it_matters_business": "y" * 300}, src)
+    assert bad["business_definition"] == "" and bad["why_it_matters_business"] == ""
+    assert {r["reason"] for r in bad["rejections"]} == {"UNKNOWN_CODE", "TOO_LONG"}
+    for junk in (["x"], None, "text"):
+        n = normalise(junk, src)
+        assert n["business_definition"] == "" and n["rejections"][0]["reason"] == "NOT_AN_OBJECT"
+    assert normalise({"business_definition": 5}, src)["rejections"][0]["reason"] == "MISSING_OR_NOT_TEXT"
+
+
+def test_headerless_upload_uses_positional_names() -> None:
+    from api.services import ai_column_matcher as m
+
+    first_row = ["1000123", "2024-01-31", "4500.00"]
+    rows = [["1000124", "2024-02-01", "12.50"], ["1000125", "2024-02-03", "99.00"]]
+    assert m.probably_headerless(first_row, rows)
+    assert not m.probably_headerless(["Customer", "Name", "Plant"], rows)
+    assert not m.probably_headerless(["Plant"], rows)
+
+    prompts: list[str] = []
+    orig = m._build_prompt
+    m._build_prompt = lambda f: prompts.append(orig(f)) or prompts[-1]  # type: ignore[assignment]
+    try:
+        out = m.detect_module_and_match(first_row, rows, "f.csv", module_hint="business_partner")
+    finally:
+        m._build_prompt = orig  # type: ignore[assignment]
+    assert out["headerless"] is True
+    assert [x["source_column"] for x in out["mappings"]] == ["column_1", "column_2", "column_3"]
+    blob = " ".join(prompts)
+    assert prompts and "column_1" in blob
+    assert not any(v in blob for v in first_row + rows[0] + rows[1])
+
+    real = m.detect_module_and_match(["Customer", "Name", "Plant"], [["a", "b", "c"]], "f.csv",
+                                     module_hint="business_partner")
+    assert real["headerless"] is False

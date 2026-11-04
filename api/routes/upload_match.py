@@ -37,6 +37,7 @@ class MatchResponse(BaseModel):
     mappings: list[ColumnMappingItem]
     unmapped_required: list[str]
     available_modules: list[dict[str, str]]
+    headerless: bool = False  # no header row detected: source_column values are column_1.. positions
 
 
 @router.post("/upload/match", response_model=MatchResponse, dependencies=[Depends(require_permission("upload"))])
