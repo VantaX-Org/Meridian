@@ -138,9 +138,15 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
 - **Breadth beyond SAP.** Informatica, Collibra and Ataccama cover the whole enterprise estate with a
   catalogue, lineage and MDM across systems; Monte Carlo and Soda cover warehouses and lakehouses
   (Snowflake, Databricks, BigQuery). Meridian is SAP plus file upload only.
-- **Learned monitoring.** Observability tools lead with learned anomaly monitors. Meridian's checks are
-  declared rules; its statistical layer (`checks/anomaly.py`, `checks/outliers.py`,
-  `/api/v1/mining/anomalies`) is secondary.
+- **Learned monitoring.** Observability tools lead with learned anomaly monitors. Meridian now learns a
+  baseline per object and rule from its own run history (records checked, score, rule fail rate, field
+  empty share), using median and MAD with weekday seasonality once about 28 runs exist. It flags volume
+  drops and spikes, fail-rate jumps, score drops and fields that went empty, stays silent under 5 earlier
+  runs, explains each break from aggregate figures only, and takes steward feedback (acknowledge, expected,
+  snooze) that feeds back into the baseline. What it does not do: baselines are per tenant and per system,
+  with no cross-tenant or industry priors; they run once per analysis run, not on intra-day or source change
+  streams; severity and minimum-effect thresholds are fixed, not learned; and the checks themselves remain
+  declared rules (`checks/anomaly.py`, `checks/outliers.py`, `/api/v1/mining/anomalies` are the older layer).
 - **Enterprise assurance.** The established vendors offer certifications (for example SOC 2 or ISO 27001
   for their cloud services; buyer to confirm per vendor), multi-tenant operation, SAP partnership or resale
   (SAP resells Syniti's migration product), and 24x7 support. Meridian holds no certification
