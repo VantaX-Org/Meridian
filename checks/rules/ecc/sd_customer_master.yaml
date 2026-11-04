@@ -12667,3 +12667,107 @@ rules:
     fix_map:
       __other__: In transaction XD06 set the central deletion flag, or remove the flag from the company code that is still in use.
     record_fix_template: 'Customer {KNA1.KUNNR}: every company code is flagged for deletion, the central record is not.'
+  - id: SDCM850
+    field: KNB1.KUNNR
+    check_class: exists_check
+    grain: KNB1
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    severity: high
+    dimension: consistency
+    message: Customer company code data has no parent record in KNA1
+    why_it_matters: 'KNB1 rows hang off KNA1. A company code row whose key (KNB1.KUNNR) has no KNA1 record is an orphan left by a deletion, archiving or a partial legacy load; FD02 never shows it, but open-item extracts, the CVI synchronisation and migration objects still read it.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The orphan is converted or reported as a live company code although no customer master carries it.
+    fix_map:
+      __other__: Delete the orphan company code rows or recreate the customer general data.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: company code data without customer general data.'
+  - id: SDCM851
+    field: KNVP.KUNNR
+    check_class: exists_check
+    grain: KNVP
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    severity: high
+    dimension: consistency
+    message: Customer partner functions have no parent record in KNA1
+    why_it_matters: 'KNVP rows hang off KNA1 through the customer number. A partner function row whose own customer (KNVP.KUNNR) has no KNA1 record is an orphan; it is invisible in XD02 but still read by partner determination extracts and migration.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Orphan partner functions are carried to the target system or rejected in the Business Partner conversion.
+    fix_map:
+      __other__: Delete the orphan partner function rows or recreate the customer general data.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): partner function {KNVP.PARVW} without customer general data.'
+  - id: SDCM852
+    field: KNB5.KUNNR
+    check_class: exists_check
+    grain: KNB5
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    severity: high
+    dimension: consistency
+    message: Customer dunning data has no parent record in KNA1
+    why_it_matters: 'KNB5 rows hang off the customer. A dunning data row whose key (KNB5.KUNNR) has no KNA1 record is an orphan left by a deletion or a partial load; the dunning run never reads it but extracts and migration objects do.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Orphan dunning data is migrated as live correspondence settings for a customer that does not exist.
+    fix_map:
+      __other__: Delete the orphan dunning rows or recreate the customer general data.
+    record_fix_template: 'Customer {KNB5.KUNNR}, company code {KNB5.BUKRS}: dunning data without customer general data.'
+  - id: SDCM853
+    fields:
+    - KNB5.KUNNR
+    - KNB5.BUKRS
+    check_class: exists_check
+    grain: KNB5
+    target_table: KNB1
+    target_fields:
+    - KUNNR
+    - BUKRS
+    severity: medium
+    dimension: consistency
+    message: Dunning data exists for a company code the customer is not extended to
+    why_it_matters: 'KNB5 is a dependent table of KNB1: dunning data can only be maintained for a customer and company code that exist in the company code data. A KNB5 row with no matching KNB1 row is dunning data for a company code the customer is not extended to, left behind by a deletion or a partial load.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The dunning settings are never used by the dunning run and are migrated as data for a company code the customer does not have.
+    fix_map:
+      __other__: Delete the orphan dunning rows, or extend the customer to the company code (XD01 > Company code data).
+    record_fix_template: 'Customer {KNB5.KUNNR}: dunning data for company code {KNB5.BUKRS} without company code data.'
+  - id: SDCM854
+    fields:
+    - KNVP.KUNNR
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    check_class: exists_check
+    grain: KNVP
+    target_table: KNVV
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    severity: medium
+    dimension: consistency
+    message: Partner functions exist for a sales area the customer is not extended to
+    why_it_matters: 'KNVP rows belong to a sales area of the customer. A partner function row whose sales area (VKORG/VTWEG/SPART) has no KNVV row is a partner assignment for a sales area the customer cannot be sold to, left behind by a sales area deletion or a partial load.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Partner determination never reads the rows; they are migrated as partners of a sales area that does not exist for the customer.
+    fix_map:
+      __other__: Delete the orphan partner function rows, or extend the customer to the sales area (XD01 > Sales area data).
+    record_fix_template: 'Customer {KNVP.KUNNR}: partner function {KNVP.PARVW} for sales area {KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART} without sales area data.'
+  - id: SDCM855
+    field: KNB1.LOEVM
+    check_class: cross_field_check
+    fail_when: (`KNA1.LOEVM` == 'X') & `KNB1.LOEVM`.isna()
+    grain: KNB1
+    severity: medium
+    dimension: consistency
+    message: Customer is flagged for deletion centrally but the company code is not
+    why_it_matters: XD06 with 'all company codes' sets the deletion flag in every company code record. A company code without the flag stays postable and selectable in FI reports that read KNB1, so the customer is not really retired.
+    rule_authority: best_practice
+    sap_impact: Postings and payment runs can still reach a retired customer; FI archiving skips the company code.
+    fix_map:
+      __other__: Flag the company code for deletion too (XD06 / FD06), or remove the central flag if set in error.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: deleted centrally but not in the company code.'
