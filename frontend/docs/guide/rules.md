@@ -65,6 +65,14 @@ Users who may manage rules also see three buttons. **Apply** promotes every rule
 
 Promoting is not the end. A promoted rule is checked again each time you press Preview. When its failure rate has risen five points or more over the rate it was promoted at, the page shows it in a warning above the table, with the old rate, the new rate and the sample records.
 
+## Rule dry run
+
+Before you switch a rule on, edit it or add one, the Rule dry run page shows what it would do. Open it from Rule dry run in the map, from the Dry run button on a rule, or at `/rule-dry-run`. It needs the manage rules permission.
+
+Name the object and the rule, switched on or off. To test an edit, give the fields to change as JSON, for example a new pattern. To test a new rule, leave the rule id empty and give the whole draft. Meridian runs the rule on the latest stored extraction, on at most the number of rows per table that you choose. It never calls SAP and writes nothing to the findings.
+
+The page shows how many records were checked and how many fail, the failure rate, the projected object score before and after with the same scoring a run uses, and the failing values grouped by shape, never as values. For an edit it also shows how many records start to fail and how many start to pass against the current rule. When the row cap cut a table, the page says so and the counts are scaled to the full table. A strict rule can leave the score unchanged when a critical breach already caps it.
+
 ## Aletheia verified fixes
 
 Many rules can tell you a value is wrong but cannot say how to correct it. A rule has an automatic fix only when it carries `auto_fix` steps. The Aletheia verified fixes page, under Aletheia verified fixes in the map or at `/fix-drafts`, closes that gap for one rule at a time and never applies anything by itself.
