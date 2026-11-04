@@ -88,13 +88,13 @@ At 2.8 million issues (2.1 million failing in the new run) the lifecycle finishe
 the 6 hour wall recorded on 2026-10-15. Client memory peaked at 2.0 GB; `record_issues` was 2.9 GB with its
 indexes, with 2.17 million dead tuples left for autovacuum.
 
-What this does not show. It is a synthetic run on one laptop, not a production run and not the Komatsu ECC
+What this does not show. It is a synthetic run on one laptop, not a production run and not the customer ECC
 4-module analysis: no customer data, no concurrent users or workers, no row-level security (the role owns the
 tables), no exported fix batches for `remediation.reconcile` to reconcile (it cost nothing here), one key layout,
 and issue keys that are unique per check. The 2026-10-15 figure came from a 30 GB Xeon with real key
 distributions and 100 million evaluated keys, so the two numbers must not be read as a speedup factor. What it
-does show is that the code path no longer has a statement that cannot finish at 2.8 million issues, and that
-cost grows a little worse than linearly (about 34 s per 1M issues at 100k, 48 s at 1M, 73 s at 2.8M).
+does show is that the lifecycle finishes at 2.8 million issues when about 2.9 million keys are evaluated. It says
+nothing yet about 100 million evaluated keys, which only the real re-run can settle. Cost grows a little worse than linearly (about 34 s per 1M issues at 100k, 48 s at 1M, 73 s at 2.8M).
 
 Bottleneck seen, not fixed. Copy and index of `tmp_present` rose from 14% of the run at 1M to 31% at 2.8M.
 Reading `track`, every batch of checks sharing a key layout copies the whole layout's open-issue key list, not
