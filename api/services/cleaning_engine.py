@@ -9,6 +9,10 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
+from api.services.country_normalisers import (
+    normalise_phone, normalise_postcode, normalise_tax_number, phone_e164, postcode,
+    resolve_land1, tax_number,
+)
 from api.services.standardisers import (
     country_code,
     material_description,
@@ -37,6 +41,7 @@ _UOM_COLS = ["uom", "base_unit", "base_uom", "meins", "gewei", "unit_of_measure"
 _EMAIL_COLS = ["email", "smtp_addr", "email_address", "e_mail", "contact_email"]
 _ID_COLS = ["id_number", "sa_id", "national_id"]
 _VAT_COLS = ["vat_number", "vat_no", "stceg"]
+_POSTCODE_COLS = ["postal_code", "post_code", "postcode", "post_code1", "pstlz", "zip"]
 _BRANCH_COLS = ["branch_code", "bank_branch", "bankl"]
 _DESC_COLS = [
     "description", "material_description", "maktx", "txt50", "eqktx",
@@ -66,6 +71,14 @@ _PK_COLS = [
     "pernr", "employee_id", "candidate_id", "anln1", "saknr",
     "ebeln", "vbeln", "tanum", "charg", "lgpla",
 ]
+
+
+def _row_land1(row: pd.Series, country_col: str | None) -> str | None:
+    """Resolved SAP country key for a row, or None when absent."""
+    if not country_col:
+        return None
+    v = row.get(country_col)
+    return None if v is None or pd.isna(v) else resolve_land1(str(v))
 
 
 def _find_col(df: pd.DataFrame, candidates: list[str]) -> str | None:
@@ -207,9 +220,16 @@ class CleaningEngine:
 
         # Map columns to standardiser functions — base set applies to all modules
         mappings: list[tuple[list[str], callable, int]] = [
-            (_PHONE_COLS, sa_phone_number, 90),
             (_COUNTRY_COLS, country_code, 90),
         ]
+        # Country-aware: picked per row from the record's country field (LAND1 /
+        # COUNTRY). Without a country, phones keep the legacy SA behaviour.
+        country_mappings: list[tuple[list[str], callable, int]] = [
+            (_PHONE_COLS, lambda v, c: phone_e164(v, c) if c else sa_phone_number(v), 90),
+            (_POSTCODE_COLS, postcode, 85),
+            (_VAT_COLS, tax_number, 85),
+        ]
+        country_col = _find_col(df, _COUNTRY_COLS)
 
         # ECC master data — names, UOM, descriptions
         if object_type in ("customer", "vendor", "business_partner",
@@ -237,7 +257,9 @@ class CleaningEngine:
                            "fleet_management"):
             mappings.append((_UOM_COLS, sap_uom, 85))
 
-        for col_candidates, func, confidence in mappings:
+        all_mappings = [(c, f, n, False) for c, f, n in mappings]
+        all_mappings += [(c, f, n, True) for c, f, n in country_mappings]
+        for col_candidates, func, confidence, by_country in all_mappings:
             col = _find_col(df, col_candidates)
             if not col:
                 continue
@@ -248,7 +270,12 @@ class CleaningEngine:
                     continue
 
                 original = str(val)
-                standardised = func(original)
+                if by_country:
+                    land1 = row.get(country_col) if country_col else None
+                    land1 = None if land1 is None or pd.isna(land1) else str(land1)
+                    standardised = func(original, land1)
+                else:
+                    standardised = func(original)
 
                 if standardised != original:
                     key = _record_key(row, df)
@@ -415,6 +442,8 @@ class CleaningEngine:
                         "category": "validation",
                     })
 
+        country_col = _find_col(df, _COUNTRY_COLS)
+
         # SA VAT validation (10 digits starting with 4)
         vat_col = _find_col(df, _VAT_COLS)
         if vat_col:
@@ -424,6 +453,8 @@ class CleaningEngine:
                     continue
                 vat_str = str(val).strip()
                 import re
+                if _row_land1(row, country_col) not in (None, "ZA"):
+                    continue  # non-SA VAT is validated by the country-aware check below
                 if not re.match(r"^4\d{9}$", vat_str):
                     key = _record_key(row, df)
                     results.append({
@@ -437,6 +468,41 @@ class CleaningEngine:
                         "version_id": version_id,
                         "tenant_id": tenant_id,
                         "priority": 55,
+                        "merge_preview": None,
+                        "category": "validation",
+                    })
+
+        # Country-aware phone / postcode / VAT: flag only status "invalid"
+        # (unknown country is not an error, the rule just does not exist for it).
+        if country_col:
+            for cols, fn, field in (
+                (_PHONE_COLS, normalise_phone, "phone"),
+                (_POSTCODE_COLS, normalise_postcode, "postcode"),
+                (_VAT_COLS, normalise_tax_number, "VAT number"),
+            ):
+                col = _find_col(df, cols)
+                if not col:
+                    continue
+                for idx, row in df.iterrows():
+                    val = row.get(col)
+                    land1 = _row_land1(row, country_col)
+                    if pd.isna(val) or not str(val).strip() or not land1:
+                        continue
+                    if land1 == "ZA" and fn is normalise_tax_number:
+                        continue  # already covered by the SA VAT check above
+                    if fn(str(val), land1).status != "invalid":
+                        continue
+                    results.append({
+                        "object_type": object_type,
+                        "status": "detected",
+                        "record_key": _record_key(row, df),
+                        "record_data_before": {col: str(val), "error": f"invalid {field} for country {land1}"},
+                        "record_data_after": {},
+                        "confidence": 85,
+                        "rule_id": None,
+                        "version_id": version_id,
+                        "tenant_id": tenant_id,
+                        "priority": 50,
                         "merge_preview": None,
                         "category": "validation",
                     })
