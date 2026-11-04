@@ -12142,3 +12142,163 @@ rules:
   fix_map:
     __other__: Replace the inactive pay component with its successor in Compensation Information.
   record_fix_template: 'Employee {COMPINFO.USERID}: current pay component {COMPINFO.PAY_TYPE} is inactive.'
+- id: EC645
+  field: EMPJOBHIST.USERID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  severity: high
+  dimension: consistency
+  message: Job history row belongs to an employee with no employment record
+  why_it_matters: Every job information row hangs below an employment. A job row whose userId has no employment is an
+    orphan left by a partial load, a deleted employment or a scoped extract, and no Employee Central screen can reach it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The orphan row is invisible in the employee's job history but still counts in extracts, headcount history
+    and migrations.
+  fix_map:
+    __other__: Restore the employment for this userId, or delete the orphan job row after review.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}, job row from {EMPJOBHIST.START_DATE}: no employment record exists.'
+- id: EC646
+  field: PERINFO.PERSON_ID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - PERSON_ID
+  severity: medium
+  dimension: consistency
+  message: Person record has no employment at all
+  why_it_matters: A person is created for an employee, so a person with no employment of any status is a stray left by
+    a failed hire, a deleted employment or a partial load.
+  rule_authority: best_practice
+  sap_impact: The person still holds personal data with no employment to justify it, which inflates person counts and
+    personal-data retention.
+  fix_map:
+    __other__: Create the missing employment, or delete the stray person record after review.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: no employment record exists.'
+- id: EC647
+  field: PERINFO.PERSON_ID
+  check_class: exists_check
+  target_table: PERADDRESS
+  target_fields:
+  - PERSON_ID
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: completeness
+  message: Active employee has no address
+  why_it_matters: Payslips, tax certificates and statutory filings are addressed from the person's address. An active
+    employee with no address row at all cannot be reached by post and fails statutory reporting.
+  rule_authority: best_practice
+  sap_impact: Year-end certificates and statutory returns for the employee are produced without an address or rejected.
+  fix_map:
+    __other__: Add the home address in Personal Information (Employee Central > Personal Information > Addresses).
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: person {PERINFO.PERSON_ID} has no address.'
+- id: EC648
+  field: EMPJOBHIST.MANAGER_ID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  applies_when:
+    EMPJOBHIST.MANAGER_ID:
+      not_in:
+      - NO_MANAGER
+  severity: high
+  dimension: consistency
+  message: Job row names a manager who has no employment record
+  why_it_matters: The job row drives approvals and the org chart. A manager userId that matches no employment cannot
+    receive workflows, so the employee's approvals have nobody to route to.
+  rule_authority: best_practice
+  sap_impact: Leave, goal and pay-change approvals stall; the employee drops out of every manager's team view.
+  fix_map:
+    __other__: Assign an existing manager in Job Information (Take Action > Change Job and Compensation Info).
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}: manager {EMPJOBHIST.MANAGER_ID} has no employment record.'
+- id: EC649
+  field: EMPJOBRELATIONSHIPS.RELATED_USER_ID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  applies_when:
+    EMPJOBRELATIONSHIPS.RELATED_USER_ID:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Job relationship points at a user who has no employment record
+  why_it_matters: Job relationships such as HR manager or matrix manager feed workflows and permission groups. A related
+    userId that matches no employment leaves those workflows without a recipient.
+  rule_authority: best_practice
+  sap_impact: Workflows and role-based permissions that use the relationship route to a missing user.
+  fix_map:
+    __other__: Replace the related user in Job Relationships, or delete the relationship.
+  record_fix_template: 'Employee {EMPJOBRELATIONSHIPS.USERID}: related user {EMPJOBRELATIONSHIPS.RELATED_USER_ID} has no
+    employment record.'
+- id: EC650
+  field: EMPJOBRELATIONSHIPS.END_DATE
+  check_class: null_check
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - T
+    - R
+  severity: medium
+  dimension: consistency
+  message: Terminated employee still has an open job relationship
+  why_it_matters: When the employment ends, the employee's job relationships must be ended too, otherwise the leaver
+    still appears as someone's report or relation.
+  rule_authority: best_practice
+  sap_impact: The leaver stays on HR manager and matrix team lists and keeps receiving workflow items.
+  fix_map:
+    __blank__: End the job relationship on the employment end date.
+  record_fix_template: 'Employee {EMPJOBRELATIONSHIPS.USERID}: relationship to {EMPJOBRELATIONSHIPS.RELATED_USER_ID} is
+    still open although the employment ended.'
+- id: EC651
+  field: EMPJOBHIST.STATUS
+  check_class: cross_field_check
+  grain: EMPJOBHIST
+  fail_when: '`EMPEMPLOYMENT.STATUS`.isin([''T'', ''R''])'
+  applies_when:
+    EMPJOBHIST.STATUS:
+    - A
+    - U
+    - P
+    - S
+    EMPJOBHIST.END_DATE:
+      open_ended: true
+  severity: high
+  dimension: consistency
+  message: Employment is terminated but the latest job record still shows an active status
+  why_it_matters: A termination sets the status on the employment and on its latest job row together. A leaver whose
+    open job row is still active is a half-applied termination.
+  rule_authority: best_practice
+  sap_impact: Job-history based headcount and cost reports still count the leaver as active.
+  fix_map:
+    __other__: Re-run the termination so the latest job row carries the terminated status.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}: employment is terminated but job row from {EMPJOBHIST.START_DATE} is
+    still active.'
+- id: EC652
+  field: EMPEMPLOYMENT.USERID
+  check_class: exists_check
+  target_table: EMPJOBHIST
+  target_fields:
+  - USERID
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: completeness
+  message: Active employment has no job history row
+  why_it_matters: An employment is described by its job information rows. An active employee with none has no position,
+    manager, department or pay group history to read.
+  rule_authority: sap_hard_constraint
+  sap_impact: Org charts, headcount history and payroll replication cannot place the employee.
+  fix_map:
+    __other__: Reload the job information for the employee, or correct the employment status.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: no job history row exists.'

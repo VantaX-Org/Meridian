@@ -7,9 +7,9 @@
    "rules": 158
   },
   "employee_central": {
-   "benchmarked": 314,
-   "perfect": 314,
-   "rules": 654
+   "benchmarked": 316,
+   "perfect": 316,
+   "rules": 662
   },
   "material_master": {
    "benchmarked": 235,
@@ -14653,6 +14653,76 @@
    "records": 40,
    "rule_id": "EC644",
    "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC645"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC646"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC647"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC648"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC649"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC650",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC651",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC652"
   },
   {
    "benchmarkable": true,
