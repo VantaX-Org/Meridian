@@ -794,6 +794,36 @@ def test_reconcile_marks_exported_items_fixed_during_track(app_engine):
         s.commit()
 
 
+def test_reconcile_proves_an_item_fixed_after_a_steward_resolved_its_issue(app_engine):
+    """A steward marks the issue fixed_in_source before the next run. The item has no open issue any more, but
+    its key must still reach tmp_present, or the run could never prove the exported fix."""
+    from sqlalchemy import text
+
+    owner, app = app_engine
+    tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'TS')"), {"a": tid})
+    _run(app, tid, sid, [_result("CHK-S", ["1"])], ["1", "2"])
+    bid = str(uuid.uuid4())
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO remediation_batches (id, tenant_id, name, status, exported_at) "
+                       "VALUES (:b, :t, 'fix', 'exported', now() - interval '1 minute')"), {"b": bid, "t": tid})
+        c.execute(text("INSERT INTO remediation_items (tenant_id, batch_id, scope, module, check_id, record_key, "
+                       "grain, field, proposed_value) VALUES "
+                       "(:t, :b, :s, 'accounts_payable', 'CHK-S', 'LIFNR=1', 'LFA1', 'LFA1.NAME1', 'A')"),
+                  {"t": tid, "b": bid, "s": sid})
+        c.execute(text("UPDATE record_issues SET status = 'resolved', resolution = 'fixed_in_source', "
+                       "resolved_at = now() WHERE record_key = 'LIFNR=1'"))
+
+    vid, st = _run(app, tid, sid, [_result("CHK-S", [])], ["1", "2"])
+    assert st["reconciled"] == 1
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        assert c.execute(text("SELECT recon_status FROM remediation_items WHERE recon_version = :v"),
+                         {"v": vid}).scalar() == "fixed"
+
+
 def test_run_checks_lifecycle_session_resets_tenant_per_transaction(app_engine):
     """run_checks' step-9 session commits (DQS, each lifecycle batch) before the finding_records DELETE,
     reconcile and monitor steps; after a commit the pooled connection may carry another tenant (or

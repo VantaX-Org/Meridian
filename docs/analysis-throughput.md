@@ -128,8 +128,13 @@ check owns its records, so the open issues of different batches are disjoint and
 shrinks to its own share (237,500 rows per batch at 2.8M, 47,500 for the last). In real data many checks hit the same
 record (one material fails several checks). A batch then keeps every key that any of its checks has open, so
 batches whose checks overlap on the same records shrink less, and if every check had an issue on every record
-nothing would shrink. The fix never copies more than before; how much it saves on the customer analysis is
-unmeasured. Re-run the benchmark after any change to `record_issues.py`:
+nothing would shrink. Apart from the keys below, the fix never copies more than before; how much it saves on the
+customer analysis is unmeasured.
+
+`tmp_present` also keeps the keys of exported remediation items, because `remediation.reconcile` probes it too. An
+item whose issue a steward already resolved has no open issue, and without its key the run could never prove the
+fix. The benchmark has no exported items, so the figures above do not include these keys and were measured before
+this change. Re-run the benchmark after any change to `record_issues.py`:
 
     DATABASE_URL_SYNC=postgresql://u:p@localhost:5432/meridian_bench python scripts/bench_lifecycle_scale.py --issues 2800000
 

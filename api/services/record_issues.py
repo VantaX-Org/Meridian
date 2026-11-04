@@ -177,11 +177,16 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
     # backend where a temp table from the previous one does not exist ("relation tmp_present does
     # not exist" - which is exactly how the first batched rebuild failed). The whole
     # create/copy/index/query cycle now happens within one transaction and is dropped by its commit.
-    # tmp_present is only ever probed to decide whether an EXISTING issue should be resolved, so it
-    # never needs a key that has no issue. Bounding it by the open issues keeps the copy small.
+    # tmp_present is only ever probed for an open issue (the resolve sweep) or an exported remediation item
+    # (remediation.reconcile, whose issue a steward may already have resolved), so it never needs any
+    # other key. Bounding it by those keeps the copy small.
     tracked = set(session.execute(text("""
         SELECT COALESCE(grain, ''), record_key FROM record_issues
          WHERE tenant_id = :tid AND scope = :scope AND status <> 'resolved'
+        UNION
+        SELECT COALESCE(i.grain, ''), i.record_key FROM remediation_items i
+          JOIN remediation_batches b ON b.id = i.batch_id
+         WHERE i.tenant_id = :tid AND i.scope = :scope AND b.status IN ('awaiting_load', 'exported')
     """), p).all())
 
     by_check = {r.check_id: r for r in results}
@@ -242,13 +247,19 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
                 continue
             seen_layouts.add(layout)
             batch_keys.extend(layout_keys.get(layout, ()))
-        # The resolve sweep only probes tmp_present for issues of THIS batch's checks, so keep the keys that
-        # have an open issue under one of them. Copying the layout's whole open-issue list per batch made
-        # the copy grow with batches x open issues (a key shared with another batch's check still lands
-        # here for every batch whose checks hold an issue on it).
+        # tmp_present is probed for two things in this batch: the resolve sweep (open issues of THIS batch's
+        # checks) and remediation.reconcile (exported items of them, whose issue a steward may already have
+        # resolved). Keep exactly those keys. Copying the layout's whole open-issue list per batch made the
+        # copy grow with batches x open issues (a key shared with another batch's check still lands here
+        # for every batch whose checks hold an issue or item on it).
         mine = set(session.execute(text("""
             SELECT COALESCE(grain, ''), record_key FROM record_issues
              WHERE tenant_id = :tid AND scope = :scope AND status <> 'resolved' AND check_id = ANY(:batch)
+            UNION
+            SELECT COALESCE(i.grain, ''), i.record_key FROM remediation_items i
+              JOIN remediation_batches b ON b.id = i.batch_id
+             WHERE i.tenant_id = :tid AND i.scope = :scope AND i.check_id = ANY(:batch)
+               AND b.status IN ('awaiting_load', 'exported')
         """), bp).all())
         batch_keys = [(g, k) for g, k in batch_keys if (g or "", k) in mine]
         _copy(session, "tmp_present", ("grain", "record_key"), batch_keys)
