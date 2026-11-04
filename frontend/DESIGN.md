@@ -48,7 +48,22 @@ the only places the interface spends light; everything else stays quiet so the d
 1. **The deep bar.** The top bar runs from deep meridian blue to verdigris in both themes (`--m2-grad-bar`), with its
    own inks (`--m2-bar-fg`, `--m2-bar-fg-2`) and a glass search field (`--m2-bar-field`, `--m2-bar-line`). It is the one
    dark surface of the light theme, so the product is recognisable before a word is read. The job line under it is the
-   data gradient with its glow.
+   data gradient with its glow. The same deep ground is the hero: the go-live banner on the landscape and the whole
+   signed-out page sit on `--m2-grad-hero` (deep meridian blue through the brand blue to a dark verdigris) with its own
+   inks (`--m2-hero-fg`, `--m2-hero-fg-2`, `--m2-hero-meta`, the accent `--m2-hero-accent`, the hairline
+   `--m2-hero-line`, the glass field `--m2-hero-field`), a radial glow in the corner (`--m2-grad-hero-light`), its own
+   lift (`--m2-shadow-hero`) and a 4px verdict stripe on its left edge in the on-hero status inks (`--m2-on-hero-pass`,
+   `-warn`, `-crit`). The verdict is set in the headline size (`--m2-fs-hero` 36px, tracked `-0.025em`) and the two
+   figures beside it in the stat size (`--m2-fs-stat` 34px, tracked `-0.03em`, shrinking with the container). Under
+   "Objects ready" the verdict ribbon (`.m2-cc-ribbon`) draws the same figure: one 6px tile per object in scope, go
+   first, then at-risk, then no-go, in the on-hero status inks; it is decorative (`aria-hidden`) because the figure
+   above it carries the number. It is the one place a screen is loud; everything under it is the quiet sheet.
+   The signed-out hero is composed to its full height: the promise at the top, the heat matrix as the brand's own
+   picture in the middle (`HeatMotif` in `auth/AuthFrame.tsx`, a 14 by 6 field of tiles in the on-hero status inks
+   and quiet `--m2-hero-fg`, fading away from one ringed and glowing tile; decorative, no figures), and the three
+   facts anchored on the floor as three columns over hairlines. The sheet beside it centres its form
+   (`grid-template-rows: 1fr auto 1fr`), sits on `--m2-grad-sheet`, carries a 40 by 4px tick of `--m2-grad-data`
+   above the title at `--m2-fs-24`, and keeps the version at its foot.
 2. **Three lifts.** The sheet, the cards, the status strip and the frames sit on `--m2-shadow-1`; the inspector, the
    go-live banner and popovers on `--m2-shadow-2`; menus, the command line, notices and the bulk bar on `--m2-shadow-3`.
    Each lift is a contact shadow and an ambient one, so depth reads without a visible border. Cards and the grid head
@@ -56,8 +71,10 @@ the only places the interface spends light; everything else stays quiet so the d
 3. **Light on what is chosen.** The place you are on the map, the open grid row and the selected matrix cell carry a
    3px bar of the data hue and a wash fading into the ground (`--m2-grad-sel`); the selected cell, the focused search
    and the primary button on hover glow (`--m2-glow-data`); the large ruler and the selected row's ruler fill in the
-   data hue with a soft glow; the primary button is the data gradient (`--m2-grad-data`). A critical heat cell glows red
-   (`--m2-glow-crit`). Nothing unselected glows.
+   data hue with a soft glow; the primary button is the data gradient (`--m2-grad-data`). Nothing unselected glows.
+   The heat matrix is a confident four-step ramp (`--m2-heat-0` pass green, `-1` the quiet neutral, `-2` warn amber,
+   `-3` critical red, each with its `-ink` at AA), cells divided by 2px sheet gutters so the matrix reads as tiles, the
+   figure in each at 600; the critical cell is the darkest tile, not a glow.
 4. **The Aletheia signature.** Anything an AI has proved wears verdigris (`--m2-ai`, one step from the data blue on the
    wheel): a 3px left bar with a wash fading into the sheet (`--m2-grad-ai-wash`), the Aletheia mark as a round glowing
    avatar with a breathing ring (`--m2-grad-ai`, `--m2-glow-ai`, `m2-ring`), confidence bars in the verdigris gradient,
@@ -116,6 +133,13 @@ Colour is quiet by default and spent on meaning. Three layers, all in `tokens.cs
      `--m2-grad-ai-wash` (the Aletheia avatar, confidence bars and proof wash), `--m2-grad-area` (a chart area fill).
    - **Bar inks**: `--m2-bar-fg`, `--m2-bar-fg-2`, `--m2-bar-hover`, `--m2-bar-line`, `--m2-bar-field`, the same in both
      themes because the bar is deep in both.
+   - **Hero ground and inks**: `--m2-hero-bg`, `--m2-hero-bg-2` (the two ends of `--m2-grad-hero`), `--m2-hero-fg`,
+     `--m2-hero-fg-2`, `--m2-hero-meta`, `--m2-hero-accent`, `--m2-hero-line`, `--m2-hero-field`, `--m2-hero-glow-ink`
+     (inside `--m2-grad-hero-light` and `--m2-shadow-hero` only) and the status inks that read on the hero,
+     `--m2-on-hero-pass`, `--m2-on-hero-warn`, `--m2-on-hero-crit`. Every hero ink is measured at 4.5:1 against both
+     ends of the gradient in both themes.
+   - **Heat ramp**: `--m2-heat-0` to `--m2-heat-3` with `--m2-heat-0-ink` to `--m2-heat-3-ink`, the matrix's four
+     bands, each ink measured on its band.
 
 Every pair a screen draws is measured by `design/v2/__tests__/tokens.test.ts` in light and dark: text, data and status
 at 4.5:1 or better on every ground it sits on (WCAG 1.4.3), marks, the focus ring and chart fills at 3:1 (WCAG 1.4.11).
@@ -146,7 +170,9 @@ Before and after screenshots of the refresh are in `docs/design-refresh.md`.
 
 - **Type**: IBM Plex Sans for words and figures (`--m2-font`, tabular figures), IBM Plex Mono for SAP identifiers only
   (`--m2-mono`: check ids, `TABLE.FIELD`, record keys, run ids). Both self-hosted from `app/_fonts`. Scale
-  12/13/14/16/20/24 (`--m2-fs-*`, `--m2-lh-*`). Sentence case everywhere.
+  12/13/14/16/20/24 (`--m2-fs-*`, `--m2-lh-*`), plus two headline sizes outside the scale, `--m2-fs-hero` 36/40 for
+  the hero's verdict and the signed-out promise and `--m2-fs-stat` 34/38 for the hero's figures; nothing else may use
+  them. Sentence case everywhere.
 - **Space and shape**: `--m2-s1` to `--m2-s10` on a 4px grid, radii `--m2-r1` 4px and `--m2-r2` 6px, the shadow
   `--m2-shadow` only for what floats (menus, the inspector on a phone).
 - **Density**: two modes, a preference in the Preferences panel saved with the theme and the language (server and this
@@ -185,12 +211,16 @@ All under `design/v2`. Screens compose these and draw nothing of their own.
 - **Shell** (`shell/V2Shell.tsx`, `TopBar.tsx`, `MapPane.tsx`, `StatusStrip.tsx`, `Standalone.tsx`): the gate
   (`auth/Guard.tsx`: session check, the forced password change), the permissions provider, the request for access
   (`RequestAccess.tsx`), the top bar, the map, the canvas, the inspector, the job line and the toasts. Pages that stand
-  without the shell (the status page, the signed-out pages, not found) use `StandaloneRoot`.
-- **Signed-out pages** (`auth/AuthFrame.tsx`): two columns on the slate ground. On the left the tenant's mark and name,
-  the one sentence of what the product does, three facts in plain words and the ruler drawn as the brand's picture (six
-  segments as wide as their weights, the tick across them; decorative). On the right one white card, lifted by
-  `--m2-shadow-card`, with the page's h1, the form and the version under it. On a phone: the mark, the card, then the
-  facts. The Aletheia attribution strip stays under every page (root layout).
+  without the shell (the status page, the signed-out pages, not found) use `StandaloneRoot`. The map's links sit in
+  four groups: the first unlabelled (Landscape, Action centre, Work, Runs, People, Requests), then "Rules and
+  Aletheia", "Master data" and "Programme", each under a small tracked label (`.m2-mgrp`); the current page is the
+  3px data bar and the selection wash at weight 600.
+- **Signed-out pages** (`auth/AuthFrame.tsx`): two columns on the hero ground (`--m2-grad-hero` with its corner glow).
+  On the left the tenant's mark and name in the hero ink, the one sentence of what the product does at the headline
+  size, three facts in the second hero ink with accent bullets and the ruler drawn as the brand's picture (six segments
+  as wide as their weights, the tick across them; decorative; filled in the hero inks). On the right one white sheet
+  floating on the ground (`--m2-shadow-3`), with the page's h1, the form and the version under it. On a phone: the
+  mark, the sheet, then the facts. The Aletheia attribution strip stays under every page (root layout).
 - **First run**: an empty tenant's landscape is a stepper of three steps (`FirstSteps`: connect or upload, run, read),
   joined by a rule, the current step open with the canvas's one strong button and "Step 1 of 3" beside the heading. A
   person's first visit to a populated landscape opens with the welcome (`screens/Welcome.tsx`): the map, the canvas and
@@ -211,7 +241,9 @@ All under `design/v2`. Screens compose these and draw nothing of their own.
   in `--m2-ai*`. The dock's header is the verdigris wash with the round glowing avatar and its breathing ring; a proved
   answer (`.m2-ask-a`) sits on the verdigris left bar and wash, a refused one on a grey bar with no wash; the badge
   (`.m2-ask-badge`) is verdigris, glowing when the tone is pass; the confidence bar is the verdigris gradient; cited
-  links underline in verdigris. The signature rules live at the end of `design/v2/v2.css` under "Meridian signature".
+  links underline in verdigris. The signature rules live at the end of `design/v2/v2.css` under "Meridian signature";
+  the hero, heat ramp, grouped map and headline rules follow them under "The second pass", and the signed-out hero
+  closes `design/v2/auth/auth.css`.
 
 ### Charts
 

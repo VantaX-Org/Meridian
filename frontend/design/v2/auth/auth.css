@@ -1,7 +1,7 @@
 /*
  * The signed-out pages (sign in, forgot and reset password, accept an invitation, licence needed) and the forced
  * password change: one card on the ground, the mark and the product name above it, the version under it. The same
- * tokens as the map, canvas and inspector; no picture, no gradient.
+ * tokens as the map, canvas and inspector. The second pass at the end of this file puts the page on the hero ground.
  */
 .m2-root .m2-auth { min-height: calc(100dvh - var(--m-attribution-h, 0px)); display: grid; padding: 0; background: var(--m2-bg); }
 /* The Login board: the ground carries the product on the left; the sign-in is a full-height white sheet on the right, divided by one rule. */
@@ -15,12 +15,6 @@
 .m2-root .m2-auth-facts-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--m2-s3); font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); color: var(--m2-ink-2); }
 .m2-root .m2-auth-facts-list li { display: grid; grid-template-columns: var(--m2-s3) minmax(0, 1fr); gap: var(--m2-s3); align-items: baseline; }
 .m2-root .m2-auth-facts-list li::before { content: ""; width: 6px; height: 6px; border-radius: 1px; background: var(--m2-data); transform: translateY(-2px); }
-.m2-root .m2-auth-motif { display: block; max-width: 100%; height: auto; margin-top: var(--m2-s4); }
-.m2-root .m2-auth-motif-t { fill: var(--m2-track); }
-.m2-root .m2-auth-motif-f { fill: var(--m2-seq-2); }
-.m2-root .m2-auth-motif g:nth-child(1) .m2-auth-motif-f, .m2-root .m2-auth-motif g:nth-child(2) .m2-auth-motif-f { fill: var(--m2-seq-4); }
-.m2-root .m2-auth-motif g:nth-child(3) .m2-auth-motif-f { fill: var(--m2-seq-3); }
-.m2-root .m2-auth-motif-k { fill: var(--m2-fg); }
 .m2-root .m2-auth-card { display: grid; gap: var(--m2-s4); }
 .m2-root .m2-auth-card h1 { margin: 0; font-size: var(--m2-fs-20); line-height: var(--m2-lh-20); font-weight: 600; color: var(--m2-fg); }
 .m2-root .m2-auth-lead { margin: 0; font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); color: var(--m2-ink-2); }
@@ -59,8 +53,59 @@
   .m2-root .m2-auth-col { max-width: none; justify-self: stretch; border-left: 0; border-top: 1px solid var(--m2-line); padding: var(--m2-s6) var(--m2-s4); }
   .m2-root .m2-auth-about { padding-top: var(--m2-s4); gap: var(--m2-s4); }
   .m2-root .m2-auth-promise { font-size: var(--m2-fs-16); line-height: var(--m2-lh-16); }
-  .m2-root .m2-auth-motif { display: none; }
 }
 @media (max-width: 480px) {
   .m2-root .m2-auth { padding: var(--m2-s4); }
+}
+
+/* The second pass: the signed-out ground is the hero. Deep meridian blue running to verdigris, the promise set large, the sheet floating on it. */
+.m2-root .m2-auth { background: var(--m2-grad-hero); position: relative; }
+.m2-root .m2-auth::before { content: ""; position: absolute; inset: 0; background: var(--m2-grad-hero-light); pointer-events: none; }
+.m2-root .m2-auth-wrap { position: relative; }
+.m2-root .m2-auth-brand { color: var(--m2-hero-fg); }
+.m2-root .m2-auth-promise { color: var(--m2-hero-fg); font-size: var(--m2-fs-hero); line-height: var(--m2-lh-hero); letter-spacing: -0.025em; }
+.m2-root .m2-auth-wrap > .m2-auth-about { max-width: 520px; }
+.m2-root .m2-auth-facts-list { color: var(--m2-hero-fg-2); }
+.m2-root .m2-auth-facts-list li::before { background: var(--m2-hero-accent); }
+.m2-root .m2-auth-col { border-left: 0; box-shadow: var(--m2-shadow-3); }
+.m2-root .m2-auth-wait { background: var(--m2-grad-hero); }
+@media (max-width: 860px) {
+  .m2-root .m2-auth-promise { font-size: var(--m2-fs-24); line-height: var(--m2-lh-24); }
+  .m2-root .m2-auth-col { border-top: 0; }
+}
+
+/*
+ * The third pass: the hero composed to its full height. The promise at the top, the heat matrix lit from one chosen
+ * tile filling the middle, the three facts anchored on the floor as three columns; the sign-in sheet centres its form
+ * and carries a tick of the data gradient over the title, the version at its foot.
+ */
+.m2-root .m2-auth-wrap { grid-template-rows: auto minmax(0, 1fr); align-items: stretch; }
+.m2-root .m2-auth-wrap > .m2-auth-about { max-width: none; margin-right: var(--m2-s10); margin-bottom: var(--m2-s10); grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--m2-s8); align-content: stretch; min-height: 0; }
+.m2-root .m2-auth-promise { max-width: 14em; }
+.m2-root .m2-auth-heat { display: block; width: 100%; max-width: 900px; max-height: 100%; height: auto; justify-self: start; align-self: center; min-height: 0; overflow: visible; }
+.m2-root .m2-auth-heat-t { fill: var(--m2-hero-fg); fill-opacity: 0.22; }
+.m2-root .m2-auth-heat-t[data-band="0"] { fill: var(--m2-on-hero-pass); fill-opacity: 0.82; }
+.m2-root .m2-auth-heat-t[data-band="2"] { fill: var(--m2-on-hero-warn); fill-opacity: 0.82; }
+.m2-root .m2-auth-heat-t[data-band="3"] { fill: var(--m2-on-hero-crit); fill-opacity: 0.82; }
+.m2-root .m2-auth-heat-lit { fill: none; stroke: var(--m2-hero-fg); stroke-width: 2.5; filter: drop-shadow(0 0 6px var(--m2-hero-accent)) drop-shadow(0 0 20px var(--m2-hero-accent)); }
+.m2-root .m2-auth-facts-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--m2-s6); max-width: 900px; }
+.m2-root .m2-auth-facts-list li { grid-template-columns: minmax(0, 1fr); gap: var(--m2-s3); align-items: start; padding-top: var(--m2-s3); border-top: 1px solid var(--m2-hero-line); }
+.m2-root .m2-auth-facts-list li::before { width: 24px; height: 3px; border-radius: 2px; transform: none; }
+.m2-root .m2-auth-col { grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr); align-content: stretch; gap: var(--m2-s4); background: var(--m2-grad-sheet); }
+.m2-root .m2-auth-card { grid-row: 2; gap: var(--m2-s5); }
+.m2-root .m2-auth-card::before { content: ""; width: 40px; height: 4px; border-radius: 2px; background: var(--m2-grad-data); }
+.m2-root .m2-auth-card h1 { font-size: var(--m2-fs-24); line-height: var(--m2-lh-24); letter-spacing: -0.02em; }
+.m2-root .m2-auth-version { grid-row: 3; align-self: end; }
+.m2-root .m2-auth-wait > .m2-auth-col { grid-template-rows: none; background: none; }
+@media (max-width: 1100px) {
+  .m2-root .m2-auth-facts-list { grid-template-columns: minmax(0, 1fr); gap: var(--m2-s3); }
+  .m2-root .m2-auth-facts-list li { padding-top: 0; border-top: 0; grid-template-columns: var(--m2-s3) minmax(0, 1fr); align-items: baseline; }
+  .m2-root .m2-auth-facts-list li::before { width: 6px; height: 6px; border-radius: 1px; transform: translateY(-2px); }
+}
+@media (max-width: 860px) {
+  .m2-root .m2-auth-wrap { grid-template-rows: none; }
+  .m2-root .m2-auth-wrap > .m2-auth-about { margin-right: var(--m2-s4); margin-bottom: var(--m2-s6); grid-template-rows: none; gap: var(--m2-s4); }
+  .m2-root .m2-auth-heat { display: none; }
+  .m2-root .m2-auth-col { grid-template-rows: none; }
+  .m2-root .m2-auth-card, .m2-root .m2-auth-version { grid-row: auto; }
 }
