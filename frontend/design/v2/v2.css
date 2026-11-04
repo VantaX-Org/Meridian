@@ -916,12 +916,12 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 .m2-top .m2-search svg { color: var(--m2-bar-fg-2); }
 .m2-top .m2-kb { border-color: var(--m2-bar-line); color: var(--m2-bar-fg-2); background: transparent; }
 .m2-top :focus-visible { outline-color: var(--m2-bar-fg); }
-.m2-top .m2-menu, .m2-top .m2-pal { color: var(--m2-fg); }
+.m2-top .m2-menu, .m2-top .m2-pal, .m2-top .m2-pop, .m2-top .m2-tlpop { color: var(--m2-fg); }
 .m2-job-bar { background: var(--m2-grad-data); box-shadow: var(--m2-glow-data); }
 
 /* The canvas: the sheet lifts off the ground, the inspector lifts further, menus and the palette further still */
 .m2-sheetwrap { box-shadow: var(--m2-shadow-1); }
-.m2-insp { box-shadow: var(--m2-shadow-2); z-index: 5; }
+.m2-insp { box-shadow: var(--m2-shadow-2); }
 .m2-ih { background: var(--m2-grad-sheet); }
 .m2-ih h2 { font-size: var(--m2-fs-16); line-height: var(--m2-lh-16); letter-spacing: -0.01em; }
 .m2-menu, .m2-pal, .m2-toast, .m2-bulk { box-shadow: var(--m2-shadow-3); }

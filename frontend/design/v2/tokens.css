@@ -601,8 +601,8 @@ html[data-theme="dark"] .m2-root {
  * the Aletheia mark breathes a ring. All of it stops under prefers-reduced-motion below.
  */
 @keyframes m2-rise {
-  from { opacity: 0; transform: translateY(var(--m2-rise-lg)); }
-  to { opacity: 1; transform: none; }
+  from { transform: translateY(var(--m2-rise-lg)); }
+  to { transform: none; }
 }
 @keyframes m2-grow-y {
   from { transform: scaleY(0); }
@@ -612,8 +612,8 @@ html[data-theme="dark"] .m2-root {
   0% { transform: scale(1); opacity: 0.7; }
   100% { transform: scale(1.9); opacity: 0; }
 }
-.m2-root .m2-cc-banner, .m2-root .m2-cc-card, .m2-root .m2-ck-panel, .m2-root .m2-cc-dock, .m2-root .m2-frame, .m2-root .m2-viz, .m2-root .m2-sheetwrap, .m2-root .m2-rsec, .m2-root .m2-lhero {
-  animation: m2-rise var(--m2-t-slow) var(--m2-ease) both;
+.m2-root .m2-cc-banner, .m2-root .m2-cc-card, .m2-root .m2-ck-panel, .m2-root .m2-cc-dock, .m2-root .m2-frame, .m2-root .m2-viz, .m2-root .m2-rsec, .m2-root .m2-lhero {
+  animation: m2-rise var(--m2-t-slow) var(--m2-ease) backwards;
   animation-delay: calc(var(--m2-i, 0) * var(--m2-stagger));
 }
 .m2-root .m2-cc-row > :nth-child(2), .m2-root .m2-ck-row > :nth-child(2), .m2-root .m2-rcols > :nth-child(2), .m2-root .m2-cc-main > :nth-child(2), .m2-root .m2-sheetwrap > * > .m2-sec:nth-of-type(2) { --m2-i: 1; }

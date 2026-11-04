@@ -505,7 +505,8 @@ function ValueMap({ module, field }: { module: string; field: string }) {
     onError: (e) => toast.show(errorSentence(e, t("The value map could not be saved.")), "error"),
   });
   const remove = useMutation({ mutationFn: deleteValueEntry, onSuccess: done(t("The value was removed from the map.")), onError: (e) => toast.show(errorSentence(e, t("The value could not be removed.")), "error") });
-  const edit = can("analyse");
+  // Saving here confirms the mapping at once, so it needs the approve permission.
+  const edit = can("approve");
   const byValue = new Map((saved.data?.entries ?? []).map((e) => [e.source_value, e]));
   const values = cands.data?.values ?? (saved.data?.entries ?? []).map((e) => ({ source_value: e.source_value, records: null as number | null }));
   const title = t("Value map for {field}", { field });

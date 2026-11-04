@@ -1144,18 +1144,21 @@ async def upsert_value_map(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
+    # Writing a confirmed mapping directly is an approval, so it needs the approve
+    # permission; proposals from analysts go through /api/v1/reference-data/mappings.
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     for e in body.entries:
         await db.execute(
             text("""
                 INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, target_value,
-                                                     note, updated_by, updated_at)
-                VALUES (gen_random_uuid(), :tid, :m, :tf, :sv, :tv, :note, :uid, now())
+                                                     note, updated_by, updated_at, decided_by, decided_at)
+                VALUES (gen_random_uuid(), :tid, :m, :tf, :sv, :tv, :note, :uid, now(), :uid, now())
                 ON CONFLICT ON CONSTRAINT uq_transfer_value_mappings_scope
                 DO UPDATE SET target_value = EXCLUDED.target_value, note = EXCLUDED.note,
-                              updated_by = EXCLUDED.updated_by, updated_at = now(), status = 'confirmed'
+                              updated_by = EXCLUDED.updated_by, updated_at = now(), status = 'confirmed',
+                              decided_by = EXCLUDED.updated_by, decided_at = now()
             """),
             {"tid": str(tenant.id), "m": body.module, "tf": body.target_field.upper(), "sv": e.source_value,
              "tv": e.target_value, "note": e.note, "uid": current_user_id(request)},
@@ -1169,7 +1172,7 @@ async def delete_value_map(
     entry_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     await db.execute(text("DELETE FROM transfer_value_mappings WHERE id = :id"), {"id": entry_id})

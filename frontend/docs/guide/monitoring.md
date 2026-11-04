@@ -154,7 +154,16 @@ Aletheia survivorship lists the golden-record winners the model picked and wheth
 
 Each decision stores who decided, when, the earlier source and the new source, and writes an audit entry. The accuracy panel shows how often stewards keep the pick: the accepted, overridden and waiting counts, the weekly trend of accepted picks and a bar per field. A pick that is ingested again becomes waiting again.
 
-To require approval before any AI pick is applied, set the tenant setting `survivorship_ai_approval` to `{"required": true}`. Without it, proved picks apply at once.
+To require approval before any AI pick is applied, use the Steward approval of AI picks panel on the verified survivorship screen. It shows the current value and the tenant setting behind it, `survivorship_ai_approval`: `required` holds each proved pick until a steward accepts it, `not_required` applies it at once. Changing it needs the manage settings permission; without it the panel shows the value and says why the control is off. Each change writes an audit entry.
+
+## Reference data
+
+Reference data, on the map, manages the code lists of an ECC to S/4HANA migration: country, unit of measure, material group, payment terms and, for SuccessFactors, the picklist values. Lists come only from the check tables Meridian has already extracted. A list with no extracted check table is not shown, and a code with no extracted text shows the code alone.
+
+- **Versions.** Each completed load of a check table is a version. Pick one to see the codes it held, and read the trend of codes per version.
+- **Source codes.** Every source code with the target it goes to: the same code on both sides, a mapping, or no target yet. Each code sits beside its description.
+- **Mappings.** A person with the analyse permission proposes a source to target mapping. A second person, never the proposer, approves or rejects it. Only an approved mapping reaches the migration. Each decision stores who decided and when, and writes an audit entry.
+- **Ask Aletheia.** With the trigger AI permission, Aletheia suggests a target from code values and descriptions only. The server checks that the target exists in the list before showing it, and a person still has to approve it.
 
 ## Score lens
 
