@@ -42,19 +42,32 @@ in the ledger; anything you select opens in the same inspector. There is no menu
 
 ### The Meridian signature
 
-The interface is a data cockpit, not an admin dashboard. Four things make it recognisable at a glance, and they are
-the only places the interface spends light; everything else stays quiet so the data reads.
+The interface is a data cockpit, not an admin dashboard. The rule is quiet chrome, loud moments. The chrome (the
+bar, the map, tabs, buttons, tables, the grid, focus, selection) is flat, untracked and still, with no glow and no hue
+gradient. Light is spent only on the moments below, and glow and gradient are allowed nowhere else:
 
-1. **The deep bar.** The top bar runs from deep meridian blue to verdigris in both themes (`--m2-grad-bar`), with its
+- the go-live hero: the banner's radial light wash, its coloured shadow and its verdict ribbon;
+- the heat matrix: the critical band's glow and the critical verdict marks (`.m2-vm.crit`, `.m2-vm.nogo`);
+- the charts: glows on end points, selected columns, sparkline dots and small-multiple dots, and the large ruler's
+  glowing fill that grows from the baseline;
+- Aletheia, the product's main differentiator: the breathing ring on its mark, the gradient and glowing avatar, the
+  verdigris confidence bar, the verified badge's glow, the verdigris wash on the dock header and on answers, and the
+  glowing ask field on focus (an AI surface);
+- the landscape's first screen: the staggered rise of the banner, cards, panels, dock and their rows;
+- the signed-out hero: the radial wash and the lit tile.
+
+Four things make the interface recognisable at a glance.
+
+1. **The deep bar.** The top bar is one flat deep meridian blue in both themes (`--m2-bar-bg`), with its
    own inks (`--m2-bar-fg`, `--m2-bar-fg-2`) and a glass search field (`--m2-bar-field`, `--m2-bar-line`). It is the one
    dark surface of the light theme, so the product is recognisable before a word is read. The job line under it is the
-   data gradient with its glow. The same deep ground is the hero: the go-live banner on the landscape and the whole
+   flat data hue. The same deep ground is the hero: the go-live banner on the landscape and the whole
    signed-out page sit on `--m2-grad-hero` (deep meridian blue through the brand blue to a dark verdigris) with its own
    inks (`--m2-hero-fg`, `--m2-hero-fg-2`, `--m2-hero-meta`, the accent `--m2-hero-accent`, the hairline
-   `--m2-hero-line`, the glass field `--m2-hero-field`), a radial glow in the corner (`--m2-grad-hero-light`), its own
-   lift (`--m2-shadow-hero`) and a 4px verdict stripe on its left edge in the on-hero status inks (`--m2-on-hero-pass`,
-   `-warn`, `-crit`). The verdict is set in the headline size (`--m2-fs-hero` 36px, tracked `-0.025em`) and the two
-   figures beside it in the stat size (`--m2-fs-stat` 34px, tracked `-0.03em`, shrinking with the container). Under
+   `--m2-hero-line`, the glass field `--m2-hero-field`), a radial glow in the corner (`--m2-grad-hero-light`), its own lift (`--m2-shadow-hero`) and a 4px verdict
+   stripe on its top edge in the on-hero status inks (`--m2-on-hero-pass`, `-warn`, `-crit`). The verdict is set in the
+   headline size (`--m2-fs-hero` 36px, tracked `-0.02em`) and the two figures beside it in the stat size
+   (`--m2-fs-stat` 34px, tracked `-0.02em`, shrinking with the container). Under
    "Objects ready" the verdict ribbon (`.m2-cc-ribbon`) draws the same figure: one 6px tile per object in scope, go
    first, then at-risk, then no-go, in the on-hero status inks; it is decorative (`aria-hidden`) because the figure
    above it carries the number. It is the one place a screen is loud; everything under it is the quiet sheet.
@@ -62,30 +75,31 @@ the only places the interface spends light; everything else stays quiet so the d
    picture in the middle (`HeatMotif` in `auth/AuthFrame.tsx`, a 14 by 6 field of tiles in the on-hero status inks
    and quiet `--m2-hero-fg`, fading away from one ringed and glowing tile; decorative, no figures), and the three
    facts anchored on the floor as three columns over hairlines. The sheet beside it centres its form
-   (`grid-template-rows: 1fr auto 1fr`), sits on `--m2-grad-sheet`, carries a 40 by 4px tick of `--m2-grad-data`
+   (`grid-template-rows: 1fr auto 1fr`), sits on `--m2-sheet`, carries a 40 by 4px tick of `--m2-data`
    above the title at `--m2-fs-24`, and keeps the version at its foot.
 2. **Three lifts.** The sheet, the cards, the status strip and the frames sit on `--m2-shadow-1`; the inspector, the
    go-live banner and popovers on `--m2-shadow-2`; menus, the command line, notices and the bulk bar on `--m2-shadow-3`.
    Each lift is a contact shadow and an ambient one, so depth reads without a visible border. Cards and the grid head
-   carry a faint top-to-bottom wash (`--m2-grad-sheet`, `--m2-grad-ghead`).
+   are flat sheet; depth comes from the lift alone.
 3. **Light on what is chosen.** The place you are on the map, the open grid row and the selected matrix cell carry a
-   3px bar of the data hue and a wash fading into the ground (`--m2-grad-sel`); the selected cell, the focused search
-   and the primary button on hover glow (`--m2-glow-data`); the large ruler and the selected row's ruler fill in the
-   data hue with a soft glow; the primary button is the data gradient (`--m2-grad-data`). Nothing unselected glows.
+   3px bar of the data hue on the data wash (`--m2-data-bg`); the selected cell and the focused search take a 1px
+   outline of the data hue; the large ruler and the selected row's ruler fill in the data hue (the large one glows, as a
+   chart moment); the primary button is the flat data hue and brightens on hover. No chrome glows, selected or not.
    The heat matrix is a confident four-step ramp (`--m2-heat-0` pass green, `-1` the quiet neutral, `-2` warn amber,
    `-3` critical red, each with its `-ink` at AA), cells divided by 2px sheet gutters so the matrix reads as tiles, the
-   figure in each at 600; the critical cell is the darkest tile, not a glow.
+   figure in each at 500; the critical cell is the darkest tile and the one band that glows (`--m2-glow-crit`).
 4. **The Aletheia signature.** Anything an AI has proved wears verdigris (`--m2-ai`, one step from the data blue on the
    wheel): a 3px left bar with a wash fading into the sheet (`--m2-grad-ai-wash`), the Aletheia mark as a round glowing
    avatar with a breathing ring (`--m2-grad-ai`, `--m2-glow-ai`, `m2-ring`), confidence bars in the verdigris gradient,
-   the verified badge in the verdigris wash, cited links underlined in verdigris, and the ask field glowing verdigris on
-   focus. The data hue stays for the user's own selections, so the eye never confuses "chosen" with "proved". No
-   other component may use `--m2-ai*`.
+   the verified badge in the verdigris wash with a soft glow when the tone is pass, cited links underlined in
+   verdigris, and the ask field glowing verdigris on focus. The data hue stays for the user's own selections, so the
+   eye never confuses "chosen" with "proved". No other component may use `--m2-ai*`.
 
-Motion is purposeful and layered: frames, cards and sections rise into place in sibling order (`m2-rise`, staggered
-by `--m2-stagger`), the large ruler grows its fills from the baseline (`m2-grow-y`), a tab's underline slides in, the
-Aletheia ring breathes, and charts carry a heavier line with a lit end point. All of it stops under
-`prefers-reduced-motion`.
+Motion follows the same rule. The landscape's first screen rises into place in sibling order (`m2-rise`, staggered by
+`--m2-stagger`), the large ruler grows its fills from the baseline (`m2-grow-y`), the Aletheia ring breathes
+(`m2-ring`), a tab's underline slides in, and charts carry a heavier line with a lit end point. Working screens (the
+frames, sections and charts of an object, the rules and the reports) open instantly, with no stagger. Nothing in the
+chrome moves until it is asked to. All of it stops under `prefers-reduced-motion`.
 
 ## 2. Tokens
 
@@ -124,13 +138,13 @@ Colour is quiet by default and spent on meaning. Three layers, all in `tokens.cs
    - **Aletheia**: `--m2-ai` (light `#0B7079`, dark `#5CCAD2`), its wash `--m2-ai-bg`, the ink on the wash
      `--m2-ai-ink`, the hairline `--m2-ai-line`, text on it `--m2-on-ai`, and `--m2-ai-glow-ink`, a translucent step of
      the hue used only inside glows. AA on the sheet and the ground in both themes.
-   - **Depth**: `--m2-shadow-1`, `--m2-shadow-2`, `--m2-shadow-3` (each a contact and an ambient shadow); the glows
-     `--m2-glow-data`, `--m2-glow-ai`, `--m2-glow-crit`, `--m2-glow-chart` built from the translucent inks
-     `--m2-data-glow-ink` and `--m2-crit-glow-ink`. The old `--m2-shadow` remains for what floated before.
-   - **Gradients**: `--m2-grad-bar` (the top bar), `--m2-grad-hero` (the go-live banner and the landscape hero),
-     `--m2-grad-sheet` and `--m2-grad-ghead` (card and grid-head washes), `--m2-grad-sel` (the selection wash),
-     `--m2-grad-data` (the primary button, the tab underline, the job line, the banner's top stripe), `--m2-grad-ai` and
-     `--m2-grad-ai-wash` (the Aletheia avatar, confidence bars and proof wash), `--m2-grad-area` (a chart area fill).
+   - **Depth**: `--m2-shadow-1`, `--m2-shadow-2`, `--m2-shadow-3` (each a contact and an ambient shadow), `--m2-shadow-hero` (the go-live banner); the glows
+     `--m2-glow-ai`, `--m2-glow-crit`, `--m2-glow-chart` built from the translucent inks `--m2-data-glow-ink` and
+     `--m2-crit-glow-ink`. Glows belong to the moments only. The old `--m2-shadow` remains for what floated before.
+   - **Gradients**: `--m2-grad-hero` (the go-live banner, the landscape hero and the signed-out ground),
+     `--m2-grad-hero-light` (its corner wash), `--m2-grad-ai` and `--m2-grad-ai-wash` (the Aletheia avatar,
+     confidence bars and proof wash). Nothing else is a gradient: the bar is the
+     flat `--m2-bar-bg`, selection is `--m2-data-bg`, and the primary button is `--m2-data`.
    - **Bar inks**: `--m2-bar-fg`, `--m2-bar-fg-2`, `--m2-bar-hover`, `--m2-bar-line`, `--m2-bar-field`, the same in both
      themes because the bar is deep in both.
    - **Hero ground and inks**: `--m2-hero-bg`, `--m2-hero-bg-2` (the two ends of `--m2-grad-hero`), `--m2-hero-fg`,
@@ -191,12 +205,12 @@ Before and after screenshots of the refresh are in `docs/design-refresh.md`.
   including `app/(v2)/loading.tsx`; `InspectorSkeleton` for an inspector body; `Skeleton` inside a block). A notice
   (`Toast.tsx`) waits while the pointer or the keyboard is on it, carries a check when it reports a change with Undo
   and a red mark when it is an error. Every focusable thing shows the one focus ring (`--m2-focus`, 2px). The second
-  motion layer is the signature: `--m2-t-slow` 420ms for a rise, `--m2-stagger` 45ms between siblings (the order set
-  by `--m2-i` on nth-child rules in the tokens file), `--m2-rise-lg` 14px for how far a frame rises; the keyframes
-  `m2-rise` (frames, cards, sections, the hero, the Aletheia dock), `m2-grow-y` (the large ruler's fills) and `m2-ring`
-  (the breathing ring on the Aletheia mark, on `--m2-t-pulse`). Headlines are tracked tighter (`-0.02em`, the big
-  score `-0.03em`); grid and table heads are 12px, tracked `0.02em`, in sentence case. Under `prefers-reduced-motion`
-  nothing moves.
+  motion layer is for the moments: `--m2-t-slow` 420ms for a rise, `--m2-stagger` 45ms between siblings (the order set
+  by `--m2-i` on nth-child rules in the tokens file, for the landscape's first screen only), `--m2-rise-lg` 14px for
+  how far it rises; the keyframes `m2-rise` (the banner, cards, panels, dock and the landscape hero), `m2-grow-y` (the
+  large ruler's fills) and `m2-ring` (the breathing ring on the Aletheia mark, on `--m2-t-pulse`). Headlines and big figures are tracked `-0.02em` at 24px and above,
+  never below 16px; grid and table heads are 12px at weight 500, untracked, in sentence case. Under
+  `prefers-reduced-motion` nothing moves.
 - **Tenant theme**: a tenant may set its accent, logo and name (Administration, Settings, Appearance). The form shows the
   accent's contrast and, below 4.5:1, the nearest shade of it that passes, with a button to use it; the server refuses
   to save a failing accent. `themeRootProps` (`lib/v2/theme.ts`) puts the accent on the root and clamps it whatever was
@@ -213,10 +227,9 @@ All under `design/v2`. Screens compose these and draw nothing of their own.
   (`RequestAccess.tsx`), the top bar, the map, the canvas, the inspector, the job line and the toasts. Pages that stand
   without the shell (the status page, the signed-out pages, not found) use `StandaloneRoot`. The map's links sit in
   four groups: the first unlabelled (Landscape, Action centre, Work, Runs, People, Requests), then "Rules and
-  Aletheia", "Master data" and "Programme", each under a small tracked label (`.m2-mgrp`); the current page is the
-  3px data bar and the selection wash at weight 600.
-- **Signed-out pages** (`auth/AuthFrame.tsx`): two columns on the hero ground (`--m2-grad-hero` with its corner glow).
-  On the left the tenant's mark and name in the hero ink, the one sentence of what the product does at the headline
+  Aletheia", "Master data" and "Programme", each under a small label (`.m2-mgrp`); the current page is the
+  3px data bar on the data wash at weight 500.
+- **Signed-out pages** (`auth/AuthFrame.tsx`): two columns on the hero ground (`--m2-grad-hero` with its corner glow). On the left the tenant's mark and name in the hero ink, the one sentence of what the product does at the headline
   size, three facts in the second hero ink with accent bullets and the ruler drawn as the brand's picture (six segments
   as wide as their weights, the tick across them; decorative; filled in the hero inks). On the right one white sheet
   floating on the ground (`--m2-shadow-3`), with the page's h1, the form and the version under it. On a phone: the
@@ -270,7 +283,7 @@ one step off the sheet (`--m2-chart-grid`), the baseline one step stronger (`--m
 from the tokens alone. The signature on the charts (end of `charts.css`): the trend line is 2.5px with a lit end point
 (`--m2-data-glow-ink` drop shadow), distribution columns have a 2px cap and the selected column glows, the small
 multiples' dots carry `--m2-glow-chart`, the sparkline's latest dot glows and the sparkline of the selected map row
-draws in the data hue.
+draws in the data hue. Charts are a moment, so this is where glow is allowed on data.
 
 ### Status vocabulary
 

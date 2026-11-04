@@ -63,7 +63,7 @@
 .m2-root .m2-auth::before { content: ""; position: absolute; inset: 0; background: var(--m2-grad-hero-light); pointer-events: none; }
 .m2-root .m2-auth-wrap { position: relative; }
 .m2-root .m2-auth-brand { color: var(--m2-hero-fg); }
-.m2-root .m2-auth-promise { color: var(--m2-hero-fg); font-size: var(--m2-fs-hero); line-height: var(--m2-lh-hero); letter-spacing: -0.025em; }
+.m2-root .m2-auth-promise { color: var(--m2-hero-fg); font-size: var(--m2-fs-hero); line-height: var(--m2-lh-hero); letter-spacing: -0.02em; }
 .m2-root .m2-auth-wrap > .m2-auth-about { max-width: 520px; }
 .m2-root .m2-auth-facts-list { color: var(--m2-hero-fg-2); }
 .m2-root .m2-auth-facts-list li::before { background: var(--m2-hero-accent); }
@@ -91,9 +91,9 @@
 .m2-root .m2-auth-facts-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--m2-s6); max-width: 900px; }
 .m2-root .m2-auth-facts-list li { grid-template-columns: minmax(0, 1fr); gap: var(--m2-s3); align-items: start; padding-top: var(--m2-s3); border-top: 1px solid var(--m2-hero-line); }
 .m2-root .m2-auth-facts-list li::before { width: 24px; height: 3px; border-radius: 2px; transform: none; }
-.m2-root .m2-auth-col { grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr); align-content: stretch; gap: var(--m2-s4); background: var(--m2-grad-sheet); }
+.m2-root .m2-auth-col { grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr); align-content: stretch; gap: var(--m2-s4); background: var(--m2-sheet); }
 .m2-root .m2-auth-card { grid-row: 2; gap: var(--m2-s5); }
-.m2-root .m2-auth-card::before { content: ""; width: 40px; height: 4px; border-radius: 2px; background: var(--m2-grad-data); }
+.m2-root .m2-auth-card::before { content: ""; width: 40px; height: 4px; border-radius: 2px; background: var(--m2-data); }
 .m2-root .m2-auth-card h1 { font-size: var(--m2-fs-24); line-height: var(--m2-lh-24); letter-spacing: -0.02em; }
 .m2-root .m2-auth-version { grid-row: 3; align-self: end; }
 .m2-root .m2-auth-wait > .m2-auth-col { grid-template-rows: none; background: none; }
