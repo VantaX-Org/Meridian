@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
+from api.services.country_normalisers import phone_e164, postcode, tax_number
 from api.services.standardisers import (
     country_code,
     material_description,
@@ -37,6 +38,7 @@ _UOM_COLS = ["uom", "base_unit", "base_uom", "meins", "gewei", "unit_of_measure"
 _EMAIL_COLS = ["email", "smtp_addr", "email_address", "e_mail", "contact_email"]
 _ID_COLS = ["id_number", "sa_id", "national_id"]
 _VAT_COLS = ["vat_number", "vat_no", "stceg"]
+_POSTCODE_COLS = ["postal_code", "post_code", "postcode", "post_code1", "pstlz", "zip"]
 _BRANCH_COLS = ["branch_code", "bank_branch", "bankl"]
 _DESC_COLS = [
     "description", "material_description", "maktx", "txt50", "eqktx",
@@ -207,9 +209,16 @@ class CleaningEngine:
 
         # Map columns to standardiser functions — base set applies to all modules
         mappings: list[tuple[list[str], callable, int]] = [
-            (_PHONE_COLS, sa_phone_number, 90),
             (_COUNTRY_COLS, country_code, 90),
         ]
+        # Country-aware: picked per row from the record's country field (LAND1 /
+        # COUNTRY). Without a country, phones keep the legacy SA behaviour.
+        country_mappings: list[tuple[list[str], callable, int]] = [
+            (_PHONE_COLS, lambda v, c: phone_e164(v, c) if c else sa_phone_number(v), 90),
+            (_POSTCODE_COLS, postcode, 85),
+            (_VAT_COLS, tax_number, 85),
+        ]
+        country_col = _find_col(df, _COUNTRY_COLS)
 
         # ECC master data — names, UOM, descriptions
         if object_type in ("customer", "vendor", "business_partner",
@@ -237,7 +246,9 @@ class CleaningEngine:
                            "fleet_management"):
             mappings.append((_UOM_COLS, sap_uom, 85))
 
-        for col_candidates, func, confidence in mappings:
+        all_mappings = [(c, f, n, False) for c, f, n in mappings]
+        all_mappings += [(c, f, n, True) for c, f, n in country_mappings]
+        for col_candidates, func, confidence, by_country in all_mappings:
             col = _find_col(df, col_candidates)
             if not col:
                 continue
@@ -248,7 +259,12 @@ class CleaningEngine:
                     continue
 
                 original = str(val)
-                standardised = func(original)
+                if by_country:
+                    land1 = row.get(country_col) if country_col else None
+                    land1 = None if land1 is None or pd.isna(land1) else str(land1)
+                    standardised = func(original, land1)
+                else:
+                    standardised = func(original)
 
                 if standardised != original:
                     key = _record_key(row, df)
