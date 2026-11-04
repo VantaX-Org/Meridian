@@ -18,7 +18,7 @@ from typing import Optional
 
 import redis
 
-from api.utils.pii_fields import sanitise_for_prompt
+from api.services.prompt_shapes import in_unit_range, shape
 from api.utils.llm_logger import log_llm_call
 from sap.deterministic import (
     FieldType,
@@ -63,25 +63,45 @@ def _cache_key(tenant_id: str, domain: str, value_a: str, value_b: str) -> str:
     return f"{tenant_id}:emb:{domain}:{pair_hash}"
 
 
-def _build_prompt(field: str, domain: str, value_a_sanitised: str, value_b_sanitised: str) -> str:
-    """Build a semantic similarity prompt — never includes raw PII."""
+def facts(field: str, value_a: str, value_b: str, det_score: float, field_type: object) -> dict:
+    """The only thing the model sees about a pair: field metadata, each value's shape (blank, length, mask) and the
+    deterministic score. Never a value, a preview or a hash of one. ponytail: shapes are weaker evidence than values,
+    so the model only acts in the uncertain band and its answer is proved by ``verify``."""
+    return {"field": field, "field_type": getattr(field_type, "name", str(field_type)),
+            "a": shape(value_a), "b": shape(value_b),
+            "deterministic_score": round(det_score, 3)}
+
+
+def _build_prompt(domain: str, f: dict) -> str:
+    """Semantic similarity prompt from ``facts`` only."""
     return f"""You are an SAP master data matching expert.
 
 Domain: {domain}
-Field: {field}
+Field: {f['field']} (type {f['field_type']})
 
-Compare these two field values for semantic similarity in the context of SAP {domain} data:
-  Value A: {value_a_sanitised}
-  Value B: {value_b_sanitised}
+Two values were compared. You see only each value's shape (A upper, a lower, 9 digit, ~ space), never the value:
+  Value A: length {f['a']['length']}, shape {f['a']['mask']}
+  Value B: length {f['b']['length']}, shape {f['b']['mask']}
+  Deterministic similarity: {f['deterministic_score']}
 
-Consider:
-1. Whether they refer to the same real-world entity or concept
-2. Common SAP abbreviations and variations
-3. Spelling differences, transliterations, and formatting differences
-4. Domain-specific equivalences in {domain}
+Estimate how likely the two values refer to the same real-world {domain} entity.
 
 Respond in JSON format only:
-{{"similarity": <0.0-1.0>, "reasoning": "<brief explanation>"}}"""
+{{"similarity": <0.0-1.0>}}"""
+
+
+def verify(rec: object, det_score: float) -> dict:
+    """Prove a model answer before its score is used. Deterministic.
+
+    SIMILARITY_IS_NUMBER   the answer holds a numeric similarity
+    SIMILARITY_IN_RANGE    it is from 0 to 1 (rejected, not clamped)
+    A failed answer falls back to the deterministic score. Free-text reasoning is never kept."""
+    sim = rec.get("similarity") if isinstance(rec, dict) else None
+    numeric = isinstance(sim, (int, float)) and not isinstance(sim, bool)
+    checks = [{"code": "SIMILARITY_IS_NUMBER", "passed": numeric},
+              {"code": "SIMILARITY_IN_RANGE", "passed": in_unit_range(sim)}]
+    ok = all(c["passed"] for c in checks)
+    return {"verified": ok, "checks": checks, "similarity": float(sim) if ok else det_score}
 
 
 def compute_semantic_score(
@@ -129,13 +149,7 @@ def compute_semantic_score(
     if mode == "off" or is_closed_domain:
         return det_score
 
-    # ── Sanitise + cache lookup (LLM path only) ─────────────────────────────
-    sanitised_a = sanitise_for_prompt(field, value_a)
-    sanitised_b = sanitise_for_prompt(field, value_b)
-    if sanitised_a == "[REDACTED]" and sanitised_b == "[REDACTED]":
-        # Can't safely prompt the LLM without leaking PII → keep deterministic score
-        return det_score
-
+    # ── Cache lookup (LLM path only) ─────────────────────────────
     cache_key = _cache_key(tenant_id, domain, str(value_a), str(value_b))
     try:
         r = _get_redis()
@@ -146,7 +160,7 @@ def compute_semantic_score(
         logger.warning(f"Redis cache read failed: {e}")
 
     # Build prompt and call LLM (uncertain band only)
-    prompt = _build_prompt(field, domain, sanitised_a, sanitised_b)
+    prompt = _build_prompt(domain, facts(field, value_a, value_b, det_score, field_type))
     start_ms = time.monotonic_ns() // 1_000_000
 
     try:
@@ -188,8 +202,12 @@ def compute_semantic_score(
         cleaned = cleaned.strip()
 
         result = json.loads(cleaned)
-        similarity = float(result.get("similarity", 0.0))
-        similarity = max(0.0, min(1.0, similarity))  # Clamp to 0-1
+        proof = verify(result, det_score)
+        if not proof["verified"]:
+            logger.warning("Semantic matcher answer failed %s for %s",
+                           [c["code"] for c in proof["checks"] if not c["passed"]], field)
+            return det_score
+        similarity = proof["similarity"]
 
         # Cache the result
         try:

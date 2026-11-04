@@ -5,13 +5,15 @@ ai_recommendation IS NULL.  Attaches a recommendation and confidence score.
 
 Security:
   - Runs as a service account, not triggered by user requests directly.
-  - Uses sanitise_for_prompt to strip PII before LLM calls.
+  - The model sees allowlisted metadata only (scores, codes), never a SAP value; output is verified.
   - Token limit: 800 per call.
   - Logs every call via llm_audit_log (prompt hash only, no content).
 """
 
+import json
 import logging
 import os
+import re
 import time
 from typing import Any
 
@@ -89,8 +91,18 @@ def deterministic_triage(item: dict[str, Any]) -> tuple[str, float] | None:
     return None
 
 
-def _build_triage_prompt(item: dict[str, Any]) -> str:
-    """Build a concise triage prompt from queue item metadata only — no raw data."""
+# Metadata keys the model may see: scores, status codes and SAP schema names from _get_source_metadata.
+# Contract name/producer/consumer and glossary technical_name are tenant-authored free text, so they stay out.
+PROMPT_META_KEYS = frozenset({
+    "match_domain", "total_score", "auto_action", "record_domain", "overall_confidence", "record_status",
+    "exception_type", "category", "severity", "sap_table", "sap_field", "term_domain",
+})
+ACTIONS = ("approve", "reject", "escalate", "review_manually")
+_TOKEN = re.compile(r"[A-Za-z0-9_.\-]{1,40}")
+
+
+def facts(item: dict[str, Any]) -> list[str]:
+    """Prompt lines from queue metadata only: numbers, and short code-like tokens for allowlisted keys."""
     from api.utils.pii_fields import sanitise_for_prompt
 
     parts = [
@@ -99,26 +111,42 @@ def _build_triage_prompt(item: dict[str, Any]) -> str:
         f"Priority: {item['priority']}",
         f"Status: {item['status']}",
     ]
-
     if item.get("sla_hours"):
         parts.append(f"SLA hours: {item['sla_hours']}")
-
-    if item.get("source_metadata"):
-        meta = item["source_metadata"]
-        if isinstance(meta, dict):
-            for k, v in meta.items():
+    meta = item.get("source_metadata")
+    if isinstance(meta, dict):
+        for k, v in meta.items():
+            numeric = isinstance(v, (int, float)) and not isinstance(v, bool)
+            if k in PROMPT_META_KEYS and (numeric or (isinstance(v, str) and _TOKEN.fullmatch(v))):
                 parts.append(f"{k}: {sanitise_for_prompt(k, v)}")
+    return parts
 
-    prompt = (
+
+def _build_triage_prompt(item: dict[str, Any]) -> str:
+    """Build a concise triage prompt from allowlisted queue metadata only: no raw data, no free text."""
+    return (
         "You are a data stewardship AI assistant for SAP master data quality.\n"
-        "Given the following stewardship queue item, provide:\n"
-        "1. A brief recommendation (approve, reject, escalate, or review_manually)\n"
-        "2. A one-sentence justification\n\n"
-        "Item details:\n" + "\n".join(parts) + "\n\n"
-        "Respond in JSON format: {\"recommendation\": \"...\", \"justification\": \"...\", \"confidence\": 0.0-1.0}"
+        "Given the following stewardship queue item, choose one recommendation "
+        "(approve, reject, escalate, or review_manually) and a confidence.\n\n"
+        "Item details:\n" + "\n".join(facts(item)) + "\n\n"
+        "Respond in JSON format: {\"recommendation\": \"...\", \"confidence\": 0.0-1.0}"
     )
 
-    return prompt
+
+def verify(data: object) -> dict:
+    """Prove a model triage answer. Deterministic.
+
+    ACTION_ALLOWED         recommendation is one of approve, reject, escalate, review_manually
+    CONFIDENCE_IN_RANGE    confidence is a number from 0 to 1 (rejected, not clamped)
+    The stored text is written by the server; the model's justification is never kept."""
+    d = data if isinstance(data, dict) else {}
+    conf = d.get("confidence")
+    checks = [
+        {"code": "ACTION_ALLOWED", "passed": d.get("recommendation") in ACTIONS},
+        {"code": "CONFIDENCE_IN_RANGE",
+         "passed": isinstance(conf, (int, float)) and not isinstance(conf, bool) and 0 <= conf <= 1},
+    ]
+    return {"verified": all(c["passed"] for c in checks), "checks": checks}
 
 
 def _call_llm(prompt: str, tenant_id: str) -> tuple[str, float]:
@@ -174,27 +202,17 @@ def _call_llm(prompt: str, tenant_id: str) -> tuple[str, float]:
 
 
 def _parse_llm_response(content: str) -> tuple[str, float]:
-    """Parse the LLM JSON response into (recommendation, confidence)."""
-    import json
-
+    """Parse the LLM JSON response into (recommendation, confidence). A failed verify gives review_manually, 0.0."""
     try:
-        # Try to extract JSON from the response
         start = content.find("{")
         end = content.rfind("}") + 1
         if start >= 0 and end > start:
             data = json.loads(content[start:end])
-            recommendation = data.get("recommendation", "review_manually")
-            justification = data.get("justification", "")
-            confidence = float(data.get("confidence", 0.5))
-            confidence = max(0.0, min(1.0, confidence))
-
-            full_text = f"{recommendation}: {justification}" if justification else recommendation
-            return full_text, confidence
+            if verify(data)["verified"]:
+                return f"{data['recommendation']}: AI-assisted triage suggestion, verified", float(data["confidence"])
     except (json.JSONDecodeError, ValueError, TypeError):
         pass
-
-    # Fallback: use raw content as recommendation
-    return content[:500], 0.3
+    return "review_manually", 0.0
 
 
 def _get_source_metadata(session: Session, item_type: str, source_id: str) -> dict[str, Any]:
