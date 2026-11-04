@@ -25,7 +25,7 @@ concurrency:
 jobs:
   checks:
     name: Aurora checks (types, lint, unit, tokens, contrast)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright has no chromium build for ubuntu-latest (26.04) yet
     timeout-minutes: 15
     defaults:
       run:
@@ -63,7 +63,7 @@ jobs:
     # The browser suite split into shards of two workers each. The help recordings (guided-tours-v2.spec.ts) run
     # only in record-help-videos.yml.
     name: Aurora E2E (${{ matrix.name }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright has no chromium build for ubuntu-latest (26.04) yet
     timeout-minutes: 25
     strategy:
       fail-fast: false

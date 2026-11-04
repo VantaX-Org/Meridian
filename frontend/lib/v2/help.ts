@@ -132,6 +132,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/rule-dry-run": "v2:rules",
   "/fix-drafts": "v2:rules",
   "/aletheia-survivorship": "v2:monitoring",
+  "/reference-data": "v2:monitoring",
   "/mdm": "v2:monitoring",
   "/links": "v2:monitoring",
   "/materials": "v2:monitoring",

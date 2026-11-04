@@ -47,6 +47,7 @@ export function placeIndex(can: (action: string) => boolean): { id: string; titl
     { id: "rule-dry-run", title: tr("Rule dry run"), href: "/rule-dry-run" },
     { id: "fix-drafts", title: tr("Aletheia verified fixes"), href: "/fix-drafts" },
     { id: "aletheia-survivorship", title: tr("Aletheia verified survivorship"), href: "/aletheia-survivorship" },
+    { id: "reference-data", title: tr("Reference data"), href: "/reference-data" },
     { id: "anomaly-rules", title: tr("Anomaly rules"), href: "/anomaly-rules" },
     { id: "work-analytics", title: tr("Work analytics"), href: "/work/analytics" },
     { id: "migration", title: tr("Migration analysis"), href: "/migration" },

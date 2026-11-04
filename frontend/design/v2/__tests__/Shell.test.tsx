@@ -100,7 +100,7 @@ describe("map", () => {
     mount();
     const nav = screen.getByRole("navigation", { name: "Places" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Landscape", "Action centre", "Work", "Runs", "People", "Requests", "Configuration", "Cleansing", "Process discovery", "Data mining", "Anomaly rules", "Aletheia rule promotion", "Rule dry run", "Aletheia verified fixes", "Aletheia verified survivorship", "MDM health", "Record links", "Material 360", "Issues", "Migration", "S/4HANA readiness", "Cost and causes", "Forecast and plan", "Value delivered", "Score lens"]);
+    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Landscape", "Action centre", "Work", "Runs", "People", "Requests", "Configuration", "Cleansing", "Process discovery", "Data mining", "Anomaly rules", "Aletheia rule promotion", "Rule dry run", "Aletheia verified fixes", "Aletheia verified survivorship", "Reference data", "MDM health", "Record links", "Material 360", "Issues", "Migration", "S/4HANA readiness", "Cost and causes", "Forecast and plan", "Value delivered", "Score lens"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
     expect(links[2]).not.toHaveAttribute("aria-current");
     await waitFor(() => expect(links[2]).toHaveTextContent("25,712"));

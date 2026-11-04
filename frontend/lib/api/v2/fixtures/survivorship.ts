@@ -62,10 +62,12 @@ const seedAccuracy = (): SurvivorshipAccuracy => ({
 
 let data = seed();
 let acc = seedAccuracy();
-export const resetSurvivorship = () => { data = seed(); acc = seedAccuracy(); };
+let approval = { required: false };
+export const resetSurvivorship = () => { data = seed(); acc = seedAccuracy(); approval = { required: false }; };
 
 export function survivorshipRead(path: string): unknown {
   if (path === "/aletheia/survivorship/accuracy") return acc;
+  if (path === "/aletheia/survivorship/approval-setting") return approval;
   return path === "/aletheia/survivorship" ? data : NONE_SURVIVORSHIP;
 }
 
@@ -78,6 +80,10 @@ const bump = (c: AccuracyCounts, over: boolean) => {
 };
 
 export function survivorshipWrite(method: string, path: string, body: unknown): unknown {
+  if (method === "PUT" && path === "/aletheia/survivorship/approval-setting") {
+    approval = { required: Boolean((body as { required?: boolean }).required) };
+    return approval;
+  }
   if (method !== "POST" || path !== "/aletheia/survivorship/decision") return NONE_SURVIVORSHIP;
   const b = body as SurvivorshipDecisionBody;
   const p = data.picks.find((x) => x.sap_object_key === b.sap_object_key && x.field === b.field && x.domain === b.domain);
