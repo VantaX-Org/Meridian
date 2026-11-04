@@ -487,7 +487,7 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
     from checks.config_rules import fields_for as config_fields
     from checks.country_rules import fields_for as country_fields
     from checks.value_placement import fields_for as placement_fields
-    from checks.runner import module_rules, rule_columns, target_columns
+    from checks.runner import extract_target_columns, module_rules, rule_columns
 
     edges, _ = _graph()
     joinable = {t for e in edges for t in (e.parent, e.child)}
@@ -531,7 +531,7 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
             for t in path_tables:
                 add(t, {c.split(".", 1)[1] for c in cols if c.startswith(t + ".")}, module)
             # the master table a reference must exist in (read in full)
-            for c in target_columns(rule):
+            for c in extract_target_columns(rule):
                 add(c.split(".", 1)[0], {c.split(".", 1)[1]}, module)
             # configuration tables holding the allowed values
             if rule.get("check_class") in ("domain_value_check", "referential_check") and rule.get("field"):

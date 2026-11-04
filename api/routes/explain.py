@@ -327,7 +327,7 @@ async def _coverage(c: _Ctx) -> dict:
         sentences.append(f"{cov * 100:.1f}% of the rules attempted for {c.label} produced a result.")
     if measured is not None:
         extra = [f"{_count(v)} {w}" for v, w in ((skipped, "skipped (a table, field or value list was missing)"),
-                                                   (errored, "errored"), (na, "had no records to check")) if isinstance(v, int) and v]
+                                                   (errored, "errored"), (na, "had no records to check or needed an object outside this run")) if isinstance(v, int) and v]
         sentences.append(f"{_count(measured)} rules were measured" + (f"; {', '.join(extra)}." if extra else "."))
     if s.get("low_confidence"):
         sentences.append("That is below 70%, so the score is marked low confidence: treat it as indicative until more rules run.")

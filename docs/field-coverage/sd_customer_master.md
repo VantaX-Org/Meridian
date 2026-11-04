@@ -382,8 +382,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
 | KNVV | KUNNR | Customer Number | y | 13 / 13 | SDCM205, SDCM213, SDCM222, SDCM223, SDCM233, SDCM245 +7 more |  |
-| KNVV | VKORG | Sales Organization | y | 13 / 13 | SDCM026, SDCM205, SDCM233, SDCM245, SDCM700, SDCM701 +7 more |  |
-| KNVV | VTWEG | Distribution Channel | y | 13 / 13 | SDCM027, SDCM205, SDCM233, SDCM245, SDCM700, SDCM701 +7 more |  |
+| KNVV | VKORG | Sales Organization | y | 14 / 14 | SDCM026, SDCM205, SDCM233, SDCM245, SDCM700, SDCM701 +8 more |  |
+| KNVV | VTWEG | Distribution Channel | y | 14 / 14 | SDCM027, SDCM205, SDCM233, SDCM245, SDCM700, SDCM701 +8 more |  |
 | KNVV | SPART | Division | y | 12 / 12 | SDCM028, SDCM205, SDCM233, SDCM245, SDCM700, SDCM701 +6 more |  |
 | KNVV | ERNAM | Name of Person who Created the Object | y | 1 / 1 | SDCM706 |  |
 | KNVV | ERDAT | Date on which the record was created | y | 3 / 3 | SDCM100, SDCM707, SDCM708 |  |
@@ -418,7 +418,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNVV | KLABC | Customer classification (ABC analysis) |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | KNVV | KTGRD | Account assignment group for this customer | y | 2 / 2 | SDCM031, SDCM032 |  |
 | KNVV | ZTERM | Terms of payment key | y | 3 / 3 | SDCM014, SDCM034, SDCM213 |  |
-| KNVV | VWERK | Delivering Plant (Own or External) | y | 3 / 3 | SDCM040, SDCM206, SDCM702 |  |
+| KNVV | VWERK | Delivering Plant (Own or External) | y | 4 / 4 | SDCM040, SDCM206, SDCM702, SDCM859 |  |
 | KNVV | VKGRP | Sales group | y | 3 / 3 | SDCM043, SDCM703, SDCM704 |  |
 | KNVV | VKBUR | Sales office | y | 3 / 3 | SDCM042, SDCM703, SDCM704 |  |
 | KNVV | VSORT | Item proposal | y | 1 / 0 | DXR3c072adb | only disabled (DDIC-generated) rules; review for enabling |
