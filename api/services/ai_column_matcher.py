@@ -10,6 +10,7 @@ from pathlib import Path
 
 import yaml
 
+from api.services.prompt_shapes import in_unit_range
 from llm.provider import get_llm
 
 logger = logging.getLogger("meridian.ai_column_matcher")
@@ -293,12 +294,12 @@ def detect_module_and_match(
 # ── LLM matching ────────────────────────────────────────────────────────────
 
 MATCH_SYSTEM_PROMPT = """You are an SAP data mapping expert. Given a set of CSV column headers \
-with sample data, map each column to the correct SAP TABLE.FIELD format.
+with a shape profile of each column's data, map each column to the correct SAP TABLE.FIELD format.
 
 Rules:
 - Only map columns you are confident about (>0.7 confidence)
 - Return null for target if you cannot confidently map a column
-- Consider both the column name AND the sample data values
+- Consider the column name AND the column's shape profile (you never see the data values)
 - SAP field names follow TABLE.FIELD format (e.g., BUT000.PARTNER, MARA.MTART)
 - Respond ONLY with a JSON array, no other text"""
 
@@ -310,7 +311,7 @@ Expected fields for this module:
 Unmatched columns from uploaded file:
 {unmatched_columns}
 
-Sample data (first 3 rows):
+Shape profile of each unmatched column (counts and masks only; mask: A upper, a lower, 9 digit, ~ space):
 {sample_data}
 
 Map each unmatched column to the best matching expected field.
@@ -318,16 +319,51 @@ Return a JSON array: [{{"source": "column_name", "target": "TABLE.FIELD", "confi
 Use null for target if no confident match exists."""
 
 
-def _candidate_index() -> dict[str, str]:
-    """{lower-case header: TABLE.FIELD} over the whole catalogue, for redaction: every alias in any module's
-    column_map.yaml and every unambiguous short field name across all modules (aliases win)."""
-    fields: set[str] = set()
-    for module_fields in _load_all_module_fields().values():
-        fields |= module_fields
-    index = {k.lower(): v for k, v in _build_short_name_index(fields).items()}
-    for aliases in _load_all_column_maps().values():
-        index.update({str(a).strip().lower(): t for a, t in aliases.items() if isinstance(t, str)})
-    return index
+def facts(unmatched_headers: list[str], sample_rows: list[list[str]], all_headers: list[str],
+          target_fields: set[str], module_name: str) -> dict:
+    """What the model may see: module, schema field names, the unmatched headers and a shape profile per column
+    (counts, length range, top masks). Never a cell value, a preview or a hash of one.
+    ponytail: a headerless file puts its first data row in the header position; callers must not pass that as a header."""
+    from api.services.prompt_shapes import column_profile
+
+    profiles = {}
+    for i, h in enumerate(all_headers):
+        if h in unmatched_headers and h not in profiles:
+            profiles[h] = column_profile(row[i] for row in sample_rows if i < len(row))
+    return {"module": module_name, "expected": sorted(target_fields),
+            "unmatched": list(unmatched_headers), "profiles": profiles}
+
+
+def _build_prompt(f: dict) -> str:
+    lines = [
+        f"{h}: rows={p['rows']} blank={p['blank']} distinct={p['distinct']} "
+        f"length={p['min_length']}-{p['max_length']} masks={p['masks']}"
+        for h, p in f["profiles"].items()
+    ]
+    return MATCH_USER_TEMPLATE.format(
+        module_name=f["module"],
+        expected_fields="\n".join(f["expected"]),
+        unmatched_columns=", ".join(f["unmatched"]),
+        sample_data="\n".join(lines) if lines else "(no profile)",
+    )
+
+
+def verify(item: object, unmatched_headers: list[str], target_fields: set[str]) -> dict:
+    """Prove one model mapping before it is used. Deterministic, grounded in what the caller offered.
+
+    SOURCE_OFFERED       the source column is one we asked about
+    TARGET_IN_SCHEMA     the target is null or a field of the detected module
+    CONFIDENCE_IN_RANGE  confidence is a number from 0 to 1
+    Any failed check drops the target. Free text is never kept."""
+    d = item if isinstance(item, dict) else {}
+    target, conf = d.get("target"), d.get("confidence")
+    checks = [
+        {"code": "SOURCE_OFFERED", "passed": d.get("source") in unmatched_headers},
+        {"code": "TARGET_IN_SCHEMA", "passed": target is None or target in target_fields},
+        {"code": "CONFIDENCE_IN_RANGE", "passed": in_unit_range(conf)},
+    ]
+    ok = all(c["passed"] for c in checks)
+    return {"verified": ok, "checks": checks}
 
 
 def _llm_match_columns(
@@ -338,31 +374,7 @@ def _llm_match_columns(
     module_name: str,
 ) -> list[dict]:
     """Call the LLM to map unmatched columns. Returns list of {source, target, confidence}."""
-    # Build sample data for unmatched columns only. Values pass through
-    # sanitise_for_prompt, which redacts by the header name (an SAP PII field or a
-    # business word such as "Vendor name") and by the SAP field the header is known
-    # to stand for in any module's column map, so personal data never reaches the
-    # LLM whatever the header is called.
-    from api.utils.pii_fields import sanitise_for_prompt
-    unmatched_indices = [i for i, h in enumerate(all_headers) if h in unmatched_headers]
-    index = _candidate_index()
-    candidates = {all_headers[i]: index.get(all_headers[i].strip().lower()) for i in unmatched_indices}
-    sample_data_lines = []
-    for row in sample_rows[:3]:
-        sample_vals = []
-        for idx in unmatched_indices:
-            if idx < len(row):
-                h = all_headers[idx]
-                sample_vals.append(f"{h}={sanitise_for_prompt(h, row[idx], candidates[h])}")
-        if sample_vals:
-            sample_data_lines.append(", ".join(sample_vals))
-
-    prompt = MATCH_USER_TEMPLATE.format(
-        module_name=module_name,
-        expected_fields="\n".join(sorted(target_fields)),
-        unmatched_columns=", ".join(unmatched_headers),
-        sample_data="\n".join(sample_data_lines) if sample_data_lines else "(no sample data)",
-    )
+    prompt = _build_prompt(facts(unmatched_headers, sample_rows, all_headers, target_fields, module_name))
 
     try:
         from llm.provider import safe_invoke
@@ -390,32 +402,21 @@ def _llm_match_columns(
             logger.warning("LLM returned non-list response for column matching")
             return _fallback_unmatched(unmatched_headers)
 
-        # Validate and sanitise results
         valid_results = []
-        valid_targets = target_fields  # Only allow mapping to known fields
+        seen: set[str] = set()
         for item in results:
-            source = item.get("source", "")
-            target = item.get("target")
-            confidence = float(item.get("confidence", 0.0))
-
-            if source not in unmatched_headers:
+            proof = verify(item, unmatched_headers, target_fields)
+            if not proof["checks"][0]["passed"] or item["source"] in seen:
                 continue
-            if target and target not in valid_targets:
-                target = None
-                confidence = 0.0
-            if confidence < 0.5:
-                target = None
-
-            valid_results.append({
-                "source": source,
-                "target": target,
-                "confidence": round(confidence, 2),
-            })
+            seen.add(item["source"])
+            target, confidence = item.get("target"), item.get("confidence")
+            if not proof["verified"] or confidence < 0.5:
+                target, confidence = None, 0.0
+            valid_results.append({"source": item["source"], "target": target, "confidence": round(confidence, 2)})
 
         # Add any headers the LLM missed
-        returned_sources = {r["source"] for r in valid_results}
         for header in unmatched_headers:
-            if header not in returned_sources:
+            if header not in seen:
                 valid_results.append({"source": header, "target": None, "confidence": 0.0})
 
         return valid_results
