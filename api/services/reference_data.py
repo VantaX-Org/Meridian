@@ -14,6 +14,8 @@ is dropped before anything is shown.
 """
 from __future__ import annotations
 
+import re
+
 import json
 import logging
 import time
@@ -69,6 +71,14 @@ def by_id(list_id: str) -> Optional[CodeList]:
 
 
 ENGLISH = ("E", "EN")  # SPRAS as RFC_READ_TABLE returns it (internal E) or as ISO, the fallback language
+
+
+SPRAS = {"en": "E", "de": "D", "ja": "J"}  # UI locales (frontend i18n) to SAP logon language
+
+
+def spras(locale: Optional[str]) -> Optional[str]:
+    """SAP SPRAS for a user locale such as ``de`` or ``de-DE``; None when not one of the supported UI locales."""
+    return SPRAS.get(re.split(r"[-_]", locale or "")[0].lower())
 
 
 def _texts(lst: CodeList, items: list[Any], lang: Optional[str]) -> dict[str, str]:
