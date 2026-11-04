@@ -1634,6 +1634,10 @@ class TransferValueMapping(Base):
     source_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=True)
     target_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=True)
     status = Column(Text, nullable=False, server_default="confirmed")  # proposed | confirmed | rejected
+    # Maker-checker (migration 130): who proposed, who approved or rejected, and when
+    proposed_by = Column(UUID(as_uuid=True), nullable=True)
+    decided_by = Column(UUID(as_uuid=True), nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "module", "target_field", "source_value", "source_system_id",
