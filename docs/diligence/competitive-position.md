@@ -143,8 +143,13 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   block or warn for a candidate record, sample ABAP for the material master BAdI `BADI_MATERIAL_CHECK`
   and a generic customer master hook calls it (`sap/abap/`, `docs/point-of-entry.md`), and an opt-in
   suggestion gives a fix only when the rule itself defines one (its auto-fix steps or its allowed
-  values), checked again by the engine. The Entry gate screen shows the traffic. What remains behind
-  MDG: there is no approval workflow or staging area in SAP, no duplicate search at entry, and the
+  values), checked again by the engine. An opt-in duplicate search at entry (material master, customer
+  master and business partner) scores a candidate against the golden records Meridian holds, using the
+  tenant's match rules, and warns with the existing record's key, score and matched fields; it never
+  blocks. The Entry gate screen shows the traffic and the duplicate result. What remains behind
+  MDG: there is no approval workflow or staging area in SAP; the duplicate search finds candidates only
+  by exact normalised value of a match field (a typo is missed), skips semantic match rules, searches
+  Meridian's golden records rather than live SAP, and has no steward workflow at entry; and the
   ABAP samples have not been run against a live SAP system. For SuccessFactors there is no sample,
   only a documented integration pattern. Meridian still fixes most bad data after the fact.
 - **Breadth beyond SAP.** Informatica, Collibra and Ataccama cover the whole enterprise estate with a

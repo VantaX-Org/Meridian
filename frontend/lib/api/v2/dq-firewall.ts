@@ -58,10 +58,50 @@ export interface FirewallFailure {
   suggestion?: FirewallSuggestion | null;
 }
 
+/** One compared field of a likely duplicate. The other record's values are never returned. */
+export interface DuplicateField {
+  field: string;
+  comparator: string;
+  similarity: number;
+  weight: number;
+  threshold: number | null;
+  met: boolean;
+}
+
+export interface DuplicateMatch {
+  /** The existing record's key. */
+  key: string;
+  score: number;
+  band: string;
+  /** The auto-merge threshold the score is judged against. */
+  threshold: number;
+  fields: DuplicateField[];
+}
+
+export interface RecordDuplicates {
+  /** "warn" when a match reaches the auto-merge threshold; never "block". */
+  verdict: "pass" | "warn";
+  scored: number;
+  truncated: boolean;
+  matches: DuplicateMatch[];
+}
+
+export type DuplicateNotSearched = "module_not_supported" | "no_match_rules" | "no_population";
+
+export interface DuplicateSearch {
+  searched: boolean;
+  reason?: DuplicateNotSearched | null;
+  cap: number;
+  thresholds: Record<string, number>;
+  rules?: number | null;
+  skipped_semantic?: number | null;
+}
+
 export interface FirewallRecord {
   index: number;
   verdict: "pass" | "block";
   failures: FirewallFailure[];
+  duplicates?: RecordDuplicates | null;
 }
 
 export interface FirewallVerdict {
@@ -70,9 +110,15 @@ export interface FirewallVerdict {
   module: string;
   rules_run: number;
   records: FirewallRecord[];
+  duplicate_search?: DuplicateSearch | null;
 }
 
 export const getFirewallSummary = (): Promise<FirewallSummary> => v2Get("/dq-firewall/summary");
 
-export const validateRecords = (module: string, records: Record<string, string>[], suggest = false): Promise<FirewallVerdict> =>
-  v2Send("POST", "/dq-firewall/validate", suggest ? { module, records, suggest } : { module, records });
+export const validateRecords = (module: string, records: Record<string, string>[], opts: { suggest?: boolean; duplicates?: boolean } = {}): Promise<FirewallVerdict> =>
+  v2Send("POST", "/dq-firewall/validate", {
+    module,
+    records,
+    ...(opts.suggest ? { suggest: true } : {}),
+    ...(opts.duplicates ? { duplicates: true } : {}),
+  });

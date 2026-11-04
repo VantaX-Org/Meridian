@@ -1,12 +1,13 @@
 """Real-time data-quality firewall (api/services/dq_firewall.py).
 
-  POST /api/v1/dq-firewall/validate   {module, records: [{"TABLE.FIELD": value}, ...]} (1 to 100): synchronous verdict
-                                      with every failing enabled rule per record; nothing stored but one audit row
+  POST /api/v1/dq-firewall/validate   {module, records: [{"TABLE.FIELD": value}, ...], duplicates?} (1 to 100): synchronous
+                                      verdict with every failing enabled rule per record; with ``duplicates`` also the
+                                      existing master records each looks like; nothing stored but one audit row
   GET  /api/v1/dq-firewall/summary    the modules, the limits and the recent-call counts from the audit
 
 Callers are people or API keys (service accounts, api/routes/api_keys.py) holding mdm.write; the tenant comes from the
 credential and RLS is set before the audit row is written. The audit row holds the module, counts and failing rule ids,
-never a record value. The language model is never involved.
+never a record value (the duplicate search adds counts). The language model is never involved.
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services import change_requests as crs
 from api.services import dq_firewall as fw
+from api.services import entry_duplicates as ed
 from api.services.rbac import require_permission, write_audit
 
 logger = logging.getLogger("meridian.dq_firewall")
@@ -33,6 +35,8 @@ class ValidateBody(BaseModel):
     module: str = Field(min_length=1, max_length=60)
     records: list[dict[str, Any]] = Field(min_length=1, max_length=fw.MAX_RECORDS)
     suggest: bool = Field(False, description="Add a grounded fix to failures that have one (rule definition only).")
+    duplicates: bool = Field(False, description="Also search the tenant's master records for likely duplicates "
+                             "(material_master, sd_customer_master, business_partner).")
 
 
 class AllowedValue(BaseModel):
@@ -61,10 +65,44 @@ class Failure(BaseModel):
     suggestion: Optional[Suggestion] = None
 
 
+class DuplicateField(BaseModel):
+    field: str
+    comparator: str
+    similarity: float
+    weight: float
+    threshold: Optional[float] = None
+    met: bool
+
+
+class DuplicateMatch(BaseModel):
+    key: str  # the existing record's key; none of its values are returned
+    score: float
+    band: str
+    threshold: float  # the auto-merge threshold the score is judged against
+    fields: list[DuplicateField]
+
+
+class RecordDuplicates(BaseModel):
+    verdict: str  # "warn" when a match reaches the auto-merge threshold, else "pass"; never "block"
+    scored: int
+    truncated: bool
+    matches: list[DuplicateMatch]
+
+
+class DuplicateSearch(BaseModel):
+    searched: bool
+    reason: Optional[str] = None  # why nothing was searched: module_not_supported, no_match_rules, no_population
+    cap: int
+    thresholds: dict[str, float]
+    rules: Optional[int] = None
+    skipped_semantic: Optional[int] = None
+
+
 class RecordOut(BaseModel):
     index: int
     verdict: str
     failures: list[Failure]
+    duplicates: Optional[RecordDuplicates] = None
 
 
 class ValidateOut(BaseModel):
@@ -73,6 +111,7 @@ class ValidateOut(BaseModel):
     module: str
     rules_run: int
     records: list[RecordOut]
+    duplicate_search: Optional[DuplicateSearch] = None
 
 
 class SummaryOut(BaseModel):
@@ -141,20 +180,35 @@ async def validate(body: ValidateBody, request: Request, db: AsyncSession = Depe
     """Which enabled rules the candidate records fail, and whether to block them (any critical failure blocks)."""
     await _rls(db, tenant)
     overrides, authored = await db.run_sync(lambda s: crs.governance(s))
+    allow = await ed.match_fields(db, str(tenant.id), body.module) if body.duplicates else frozenset()
     try:
-        res = await asyncio.to_thread(fw.validate, str(tenant.id), body.module, body.records, overrides, authored, body.suggest)
+        res = await asyncio.to_thread(fw.validate, str(tenant.id), body.module, body.records, overrides, authored,
+                                      body.suggest, allow)
     except fw.FirewallError as e:
         raise HTTPException(status_code=422, detail=str(e)) from None
     except Exception as e:  # noqa: BLE001 - no trace to the caller; the type is logged
         logger.error("dq firewall failed for module %s: %s", body.module, type(e).__name__)
         raise HTTPException(status_code=500, detail="The check engine could not judge these records.") from None
     fails = [f for r in res["records"] for f in r["failures"]]
+    dup_audit: dict[str, Any] = {}
+    if body.duplicates:
+        found = await ed.search(db, str(tenant.id), body.module, fw._clean(body.module, body.records, allow))
+        res["duplicate_search"] = found["search"]
+        for rec, d in zip(res["records"], found["records"]):
+            d["verdict"] = "warn" if any(m["score"] >= m["threshold"] for m in d["matches"]) else "pass"
+            rec["duplicates"] = d
+        ds = found["records"]
+        dup_audit = {"duplicates_searched": found["search"]["searched"],
+                     "duplicate_matches": sum(len(d["matches"]) for d in ds),
+                     "duplicate_warned_records": sum(d["verdict"] == "warn" for d in ds),
+                     "duplicate_truncated_records": sum(d["truncated"] for d in ds)}
     await write_audit(db, tenant.id, request, ACTION, "dq_firewall", body.module, None, {
         "records": len(res["records"]), "blocked_records": sum(r["verdict"] == "block" for r in res["records"]),
         "failures": len(fails), "verdict": res["verdict"],
         "warned_records": sum(r["verdict"] == "pass" and bool(r["failures"]) for r in res["records"]),
         "blocking_rule_counts": dict(sorted(_count_blocking(fails).items(), key=lambda kv: -kv[1])[:50]),
-        "blocking_rules": sorted({f["rule_id"] for f in fails if f["severity"] == fw.BLOCK_SEVERITY})[:50]})
+        "blocking_rules": sorted({f["rule_id"] for f in fails if f["severity"] == fw.BLOCK_SEVERITY})[:50],
+        **dup_audit})
     await db.commit()
     return ValidateOut(**res)
 

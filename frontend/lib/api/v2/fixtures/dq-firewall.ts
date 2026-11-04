@@ -3,7 +3,7 @@
  * The fixture judges only Material master and only three rules, the real ones of checks/rules/ecc/material_master.yaml
  * (MM001, MM003, MM008, each critical and completeness: a blank material number, type or base unit).
  */
-import type { FirewallDay, FirewallFailure, FirewallSummary, FirewallVerdict } from "../dq-firewall";
+import type { DuplicateMatch, FirewallDay,FirewallFailure, FirewallSummary, FirewallVerdict } from "../dq-firewall";
 
 export const NONE_DQ_FIREWALL = Symbol("no-dq-firewall-fixture");
 
@@ -58,9 +58,45 @@ export function dqFirewallRead(path: string): unknown {
   return out;
 }
 
+const THRESHOLDS = { auto_merge: 0.95, review_floor: 0.3 };
+const norm = (v: unknown) => String(v ?? "").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+
+/**
+ * Duplicate search answers, by manufacturer part number (MARA.MFRPN, normalised): XQ7731ZK is a duplicate of record
+ * 100042 and 100077 (a lesser one); BULK1 hits the candidate cap; NOPOP says nothing was searched. Synthetic keys only.
+ */
+function addDuplicates(out: FirewallVerdict, records: Record<string, unknown>[]): void {
+  if (records.some((r) => norm(r["MARA.MFRPN"]) === "NOPOP")) {
+    out.duplicate_search = { searched: false, reason: "no_population", cap: 50, thresholds: THRESHOLDS };
+    return;
+  }
+  out.duplicate_search = { searched: true, reason: null, cap: 50, thresholds: THRESHOLDS, rules: 3, skipped_semantic: 0 };
+  out.records.forEach((rec, i) => {
+    const part = norm(records[i]?.["MARA.MFRPN"]);
+    const matches: DuplicateMatch[] = part === "XQ7731ZK"
+      ? [
+          { key: "100042", score: 0.97, band: "auto_merge", threshold: 0.95, fields: [
+            { field: "MARA.MFRPN", comparator: "part_number", similarity: 1, weight: 60, threshold: 0.9, met: true },
+            { field: "MAKT.MAKTX", comparator: "desc_tokens", similarity: 0.92, weight: 40, threshold: 0.6, met: true },
+          ] },
+          { key: "100077", score: 0.62, band: "steward_review", threshold: 0.95, fields: [
+            { field: "MARA.MFRPN", comparator: "part_number", similarity: 1, weight: 60, threshold: 0.9, met: true },
+            { field: "MAKT.MAKTX", comparator: "desc_tokens", similarity: 0.05, weight: 40, threshold: 0.6, met: false },
+          ] },
+        ]
+      : [];
+    rec.duplicates = {
+      verdict: matches.some((m) => m.score >= m.threshold) ? "warn" : "pass",
+      scored: part === "BULK1" ? 50 : matches.length,
+      truncated: part === "BULK1",
+      matches,
+    };
+  });
+}
+
 export function dqFirewallWrite(method: string, path: string, body: unknown): unknown {
   if (method !== "POST" || path !== "/dq-firewall/validate") return NONE_DQ_FIREWALL;
-  const b = (body ?? {}) as { module?: string; records?: Record<string, unknown>[]; suggest?: boolean };
+  const b = (body ?? {}) as { module?: string; records?: Record<string, unknown>[]; suggest?: boolean; duplicates?: boolean };
   if (b.module !== "material_master") throw new Refused(422, `Unknown module '${String(b.module ?? "").slice(0, 60)}'.`);
   const records = b.records ?? [];
   if (records.length < 1 || records.length > 100) throw new Refused(422, "Send 1 to 100 records.");
@@ -87,5 +123,6 @@ export function dqFirewallWrite(method: string, path: string, body: unknown): un
     }),
   };
   if (out.records.some((r) => r.verdict === "block")) out.verdict = "block";
+  if (b.duplicates) addDuplicates(out, records);
   return out;
 }

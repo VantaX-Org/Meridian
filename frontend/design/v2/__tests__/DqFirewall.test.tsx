@@ -58,6 +58,52 @@ describe("Admin, Data quality firewall", () => {
     expect(screen.getByRole("status").textContent).toContain("1 of 2 records blocked");
   });
 
+  const check = async (records: Record<string, string>[], duplicates: boolean) => {
+    page();
+    fireEvent.change(await screen.findByLabelText("Records, as JSON"), { target: { value: JSON.stringify(records) } });
+    if (duplicates) fireEvent.click(screen.getByLabelText("Look for duplicates among existing records"));
+    fireEvent.click(screen.getByRole("button", { name: "Check records" }));
+  };
+
+  it("finds a duplicate, names the existing record and the fields, and warns rather than blocks", async () => {
+    await check([{ "MARA.MATNR": "NEW-1", "MARA.MTART": "ROH", "MARA.MEINS": "KG", "MARA.MFRPN": "xq 7731 zk" }], true);
+    const res = await screen.findByTestId("entry-dup-result");
+    expect(norm(res)).toContain("1 of 1 records warned");
+    expect(norm(res)).toContain("never blocks");
+    const dup = screen.getByTestId("entry-dup");
+    expect(norm(dup)).toContain("100042");
+    expect(norm(dup)).toContain("97%");
+    expect(norm(dup)).toContain("MARA-MFRPN Manufacturer part number");
+    expect(norm(dup)).toContain("Description words");
+    expect(norm(dup)).toContain("below its own threshold");
+    expect(norm(screen.getAllByRole("status")[0]!)).toContain("Passed");
+  });
+
+  it("says no duplicate was found when the search ran and found none", async () => {
+    await check([{ "MARA.MATNR": "NEW-2", "MARA.MTART": "ROH", "MARA.MEINS": "KG", "MARA.MFRPN": "ABC-1" }], true);
+    expect(norm(await screen.findByTestId("entry-dup-result"))).toContain("No likely duplicate found");
+  });
+
+  it("says nothing was searched, with the reason, never 'no duplicates'", async () => {
+    await check([{ "MARA.MATNR": "NEW-3", "MARA.MTART": "ROH", "MARA.MEINS": "KG", "MARA.MFRPN": "NOPOP" }], true);
+    const s = await screen.findByTestId("entry-dup-not-searched");
+    expect(norm(s)).toContain("no existing records");
+    expect(norm(s)).toContain("nothing was searched");
+    expect(screen.queryByText(/No likely duplicate found/)).toBeNull();
+  });
+
+  it("reports when the candidate cap cut the search", async () => {
+    await check([{ "MARA.MATNR": "NEW-4", "MARA.MTART": "ROH", "MARA.MEINS": "KG", "MARA.MFRPN": "BULK-1" }], true);
+    expect(norm(await screen.findByTestId("entry-dup-truncated"))).toContain("Only the first 50 candidates were scored for record 1");
+  });
+
+  it("shows nothing about duplicates unless asked", async () => {
+    await check([{ "MARA.MATNR": "NEW-5", "MARA.MTART": "ROH", "MARA.MEINS": "KG", "MARA.MFRPN": "XQ-7731-ZK" }], false);
+    await screen.findByRole("status");
+    expect(screen.queryByTestId("entry-dup")).toBeNull();
+    expect(screen.queryByTestId("entry-dup-not-searched")).toBeNull();
+  });
+
   it("explains bad JSON without calling the endpoint", async () => {
     page();
     const box = await screen.findByLabelText("Records, as JSON");
