@@ -74,6 +74,68 @@ describe("steward decision on a verified pick", () => {
   });
 });
 
+describe("approval queue", () => {
+  const Q = "surv-queue-MAT-000103-MARA.MEINS";
+  beforeEach(() => { resetSurvivorship(); asSteward(); });
+
+  it("lists proposed picks with field, shapes the model saw, checks and confidence, and the counts", async () => {
+    renderWithQuery(<AletheiaSurvivorship />);
+    const row = await screen.findByTestId(Q);
+    expect(within(row).getByText("Base unit of measure")).toBeInTheDocument();
+    expect(within(row).getByText("Shape AA, 2 characters")).toBeInTheDocument();
+    expect(within(row).getByText("The source's value is not blank")).toBeInTheDocument();
+    expect(within(row).getByText(/Confidence 74/)).toBeInTheDocument();
+    expect(screen.queryByTestId("surv-queue-MAT-000101-MARA.MTART")).toBeNull();
+    expect(screen.getByTestId("surv-count-proposed")).toHaveTextContent("2");
+    expect(screen.getByTestId("surv-count-approved")).toHaveTextContent("51");
+    expect(screen.getByTestId("surv-count-rejected")).toHaveTextContent("4");
+  });
+
+  it("approves a pick and moves the counts", async () => {
+    renderWithQuery(<AletheiaSurvivorship />);
+    const row = await screen.findByTestId(Q);
+    fireEvent.click(within(row).getByRole("button", { name: "Approve" }));
+    expect(await screen.findByTestId("surv-state-MAT-000103-MARA.MEINS")).toHaveTextContent("Accepted by a steward");
+    expect(screen.queryByTestId(Q)).toBeNull();
+    expect(screen.getByTestId("surv-count-approved")).toHaveTextContent("52");
+    expect(screen.getByTestId("surv-count-proposed")).toHaveTextContent("1");
+  });
+
+  it("rejects only with a reason", async () => {
+    renderWithQuery(<AletheiaSurvivorship />);
+    const row = await screen.findByTestId(Q);
+    fireEvent.click(within(row).getByRole("button", { name: "Reject" }));
+    const go = within(row).getByRole("button", { name: "Reject this pick" });
+    expect(go).toBeDisabled();
+    fireEvent.change(within(row).getByLabelText("Reason for the rejection"), { target: { value: "wrong unit" } });
+    fireEvent.click(go);
+    expect(await screen.findByTestId("surv-state-MAT-000103-MARA.MEINS")).toHaveTextContent("Rejected by a steward: wrong unit");
+    expect(screen.getByTestId("surv-count-rejected")).toHaveTextContent("5");
+  });
+
+  it("approves the selected picks in bulk", async () => {
+    renderWithQuery(<AletheiaSurvivorship />);
+    const row = await screen.findByTestId(Q);
+    const bulk = screen.getByRole("button", { name: /Approve selected/ });
+    expect(bulk).toBeDisabled();
+    fireEvent.click(within(row).getByRole("checkbox"));
+    fireEvent.click(await screen.findByRole("button", { name: "Approve selected (1)" }));
+    expect(await screen.findByTestId("surv-state-MAT-000103-MARA.MEINS")).toHaveTextContent("Accepted by a steward");
+    expect(screen.getByTestId("surv-count-proposed")).toHaveTextContent("1");
+  });
+
+  it("a viewer can read the queue but not decide", async () => {
+    const u = "/aletheia-survivorship?fixture=1&persona=owner&role=viewer";
+    window.history.pushState({}, "", u);
+    setUrl(u);
+    renderWithQuery(<AletheiaSurvivorship />);
+    const row = await screen.findByTestId("survivorship-queue");
+    expect(within(row).getByTestId("surv-queue-reason")).toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(within(row).queryByRole("button", { name: /Approve selected/ })).toBeNull();
+  });
+});
+
 describe("accuracy panel", () => {
   beforeEach(() => { resetSurvivorship(); asSteward(); });
 

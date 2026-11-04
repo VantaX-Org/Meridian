@@ -30,6 +30,7 @@ from api.services.survivorship import (
     matches_source,
 )
 from api.services.ai_survivorship import ai_survivorship_available, propose_field_winner
+from api.services.rbac import current_user_id
 from api.services.tenant_settings import get_setting
 from sap.deterministic import classify_field
 
@@ -269,8 +270,9 @@ async def process_sync_batch(
         # Build field contributions from incoming data
         field_contributions = _build_contributions(incoming_records)
 
-        # Policy: off by default, which keeps the current behaviour (a proved pick is applied at once)
-        require_approval = bool(use_ai and ((await get_setting(db, tenant_id, AI_APPROVAL_SETTING)) or {}).get("required"))
+        # Policy: a proved pick is only proposed until a steward approves it. A tenant opts into auto-approve by
+        # storing {"required": false}; with no stored setting approval is required.
+        require_approval = bool(use_ai and ((await get_setting(db, tenant_id, AI_APPROVAL_SETTING)) or {}).get("required", True))
 
         # Evaluate each field
         new_golden_fields: dict = dict(existing_golden)
@@ -380,6 +382,8 @@ async def process_sync_batch(
                     contribution_entry["ai_verification"] = ai_recommendation["verification"]
                     # the steward may only choose among these; applied says whether the pick is the golden value now
                     contribution_entry["ai_applied"] = result.rule_type == "ai_recommended"
+                    # who triggered the run: the four-eyes approver must be someone else (None: no user context)
+                    contribution_entry["proposed_by"] = current_user_id()
                     contribution_entry["ai_candidates"] = [
                         {"source_system": c.source_system, "value": c.value, "extracted_at": c.extracted_at.isoformat(),
                          "confidence": c.confidence} for c in contributions]
