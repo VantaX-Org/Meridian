@@ -9,7 +9,7 @@
   "employee_central": {
    "benchmarked": 316,
    "perfect": 316,
-   "rules": 662
+   "rules": 663
   },
   "material_master": {
    "benchmarked": 235,
@@ -19,7 +19,7 @@
   "sd_customer_master": {
    "benchmarked": 260,
    "perfect": 260,
-   "rules": 574
+   "rules": 576
   }
  },
  "records_per_rule": 40,
@@ -14725,6 +14725,13 @@
    "rule_id": "EC652"
   },
   {
+   "benchmarkable": false,
+   "check_class": "interval_check",
+   "module": "employee_central",
+   "reason": "interval_check needs reference data or a second dataset",
+   "rule_id": "EC653"
+  },
+  {
    "benchmarkable": true,
    "check_class": "null_check",
    "f1": 1.0,
@@ -20561,6 +20568,20 @@
    "records": 40,
    "rule_id": "SDCM855",
    "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "format_check",
+   "module": "sd_customer_master",
+   "reason": "format_check needs reference data or a second dataset",
+   "rule_id": "SDCM856"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "similarity_check",
+   "module": "sd_customer_master",
+   "reason": "similarity_check needs reference data or a second dataset",
+   "rule_id": "SDCM857"
   },
   {
    "benchmarkable": true,
