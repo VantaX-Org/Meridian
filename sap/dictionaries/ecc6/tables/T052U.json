@@ -1,0 +1,86 @@
+{
+ "table": "T052U",
+ "description": "Own Explanations for Terms of Payment",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "SPRAS",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 3,
+   "name": "ZTERM",
+   "key": true,
+   "data_element": "DZTERM",
+   "domain": "ZTERM",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Terms of payment key",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ZTAGG",
+   "key": true,
+   "data_element": "DZTAGG_052",
+   "domain": "TAGGZ_052",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Day Limit",
+   "check_table": "T052"
+  },
+  {
+   "pos": 5,
+   "name": "TEXT1",
+   "key": false,
+   "data_element": "TEXT1_052",
+   "domain": "TEXT50",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Own Explanation of Term of Payment",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "ZTAGG",
+   "foreign_table": "T052",
+   "foreign_field": "ZTAGG"
+  }
+ ]
+}

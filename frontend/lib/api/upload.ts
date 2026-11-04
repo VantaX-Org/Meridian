@@ -18,6 +18,8 @@ export interface MatchResponse {
   mappings: ColumnMapping[];
   unmapped_required: string[];
   available_modules: { value: string; label: string }[];
+  /** True when no header row was detected; `source_column` is then `column_1..` by position. */
+  headerless?: boolean;
 }
 
 /**
