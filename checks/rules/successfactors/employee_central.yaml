@@ -12302,3 +12302,27 @@ rules:
   fix_map:
     __other__: Reload the job information for the employee, or correct the employment status.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: no job history row exists.'
+- id: EC653
+  field: EMPJOBRELATIONSHIPS.START_DATE
+  check_class: interval_check
+  group_by:
+  - EMPJOBRELATIONSHIPS.USERID
+  - EMPJOBRELATIONSHIPS.RELATIONSHIP_TYPE
+  - EMPJOBRELATIONSHIPS.RELATED_USER_ID
+  start: EMPJOBRELATIONSHIPS.START_DATE
+  end: EMPJOBRELATIONSHIPS.END_DATE
+  severity: medium
+  dimension: consistency
+  message: Two ended job relationships of the same type with the same related user overlap in time
+  why_it_matters: A relationship such as matrix manager or HR partner normally ends before the same relationship
+    to the same person starts again. Overlapping dates mean the earlier row was not ended when the new one was added.
+    Confirm before changing, as a relationship may be kept in parallel on purpose. Relationships without an end date
+    are not compared.
+  rule_authority: best_practice
+  sap_impact: Matrix org charts and HR partner routing show the same relationship twice for the overlap days.
+  fix_map:
+    __other__: If the overlap is not intended, correct the end date of the earlier relationship or the start date of
+      the later one.
+  record_fix_template: 'Employee {EMPJOBRELATIONSHIPS.USERID}: {EMPJOBRELATIONSHIPS.RELATIONSHIP_TYPE} relationship
+    with {EMPJOBRELATIONSHIPS.RELATED_USER_ID} ({EMPJOBRELATIONSHIPS.START_DATE} to {EMPJOBRELATIONSHIPS.END_DATE})
+    overlaps another one.'
