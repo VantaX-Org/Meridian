@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getApprovalSetting, getSurvivorship, getSurvivorshipAccuracy, postSurvivorshipDecision, putApprovalSetting,
+  getApprovalSetting, getSurvivorship, getSurvivorshipAccuracy, postSurvivorshipBulkApprove, postSurvivorshipDecision, putApprovalSetting,
   type ReasonCode, type SurvivorshipAccuracy, type SurvivorshipPick,
 } from "@/lib/api/v2/aletheia-survivorship";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -61,7 +61,9 @@ function Decide({ p, queryKeys }: { p: SurvivorshipPick; queryKeys: unknown[][] 
     },
   });
   if (p.state !== "pending") {
-    const text = p.state === "accepted" ? t("Accepted by a steward") : t("Overridden to {source}", { source: p.decided_source ?? "" });
+    const text = p.state === "accepted" ? t("Accepted by a steward")
+      : p.state === "rejected" ? t("Rejected by a steward: {reason}", { reason: p.note ?? "" })
+        : t("Overridden to {source}", { source: p.decided_source ?? "" });
     return <p className="m2-meta" data-testid={`surv-state-${p.sap_object_key}-${p.field}`}>{text}{p.reason_code && p.reason_code in REASON_TEXT ? <> <Coded code={p.reason_code} text={REASON_TEXT[p.reason_code as ReasonCode]()} /></> : null}</p>;
   }
   if (!p.candidates.length) return null;
@@ -109,12 +111,103 @@ function Pick({ p, queryKeys }: { p: SurvivorshipPick; queryKeys: unknown[][] })
           <li key={c.code}><Coded code={c.code} text={CHECK_TEXT[c.code]?.()} /> <span className="m2-meta">{c.passed ? t("Passed") : t("Failed")}</span></li>
         ))}
       </ul>
-      {p.verified && can("approve") ? <Decide p={p} queryKeys={queryKeys} /> : null}
+      {p.verified && can("approve") && !held(p) ? <Decide p={p} queryKeys={queryKeys} /> : null}
     </article>
   );
 }
 
-/** The tenant setting survivorship_ai_approval: with it on, a proved AI pick waits for a steward before it applies. */
+/** A proved pick the approval policy held back: it is not applied until a steward approves it, so it sits in the queue. */
+const held = (p: SurvivorshipPick) => p.verified && !p.applied && p.state === "pending" && p.candidates.length > 0;
+
+/** One proposed pick: the field, the shape each source showed the model, the checks, the confidence, and the decision. */
+function QueueRow({ p, queryKeys, selected, onSelect }: { p: SurvivorshipPick; queryKeys: unknown[][]; selected: boolean; onSelect: (on: boolean) => void }) {
+  const qc = useQueryClient();
+  const [rejecting, setRejecting] = useState(false);
+  const [why, setWhy] = useState("");
+  const send = useMutation({
+    mutationFn: (reject: boolean) => postSurvivorshipDecision({
+      domain: p.domain, sap_object_key: p.sap_object_key, field: p.field, decision: reject ? "reject" : "accept", ...(reject ? { note: why.trim() } : {}),
+    }),
+    onSuccess: () => { for (const queryKey of queryKeys) void qc.invalidateQueries({ queryKey }); },
+  });
+  const id = `${p.sap_object_key}-${p.field}`;
+  return (
+    <article className="m2-ck-panel" aria-label={`${p.sap_object_key} ${p.field}`} data-testid={`surv-queue-${id}`}>
+      <header className="m2-ck-head">
+        <h3 className="m2-h2">
+          <label>
+            <input type="checkbox" checked={selected} onChange={(e) => onSelect(e.target.checked)} aria-label={t("Select {field} on {key}", { field: p.field, key: p.sap_object_key })} />{" "}
+            <Coded code={p.field} text={p.field_text} />
+          </label>
+        </h3>
+        <span className="m2-meta">{p.confidence == null ? t("No confidence") : t("Confidence {pct}", { pct: pct1(p.confidence) })}</span>
+      </header>
+      <p>{moduleText(p.domain)} <span className="m2-meta">{p.sap_object_key}</span> {t("Model picked {source}", { source: p.recommended_source })}</p>
+      {p.reasoning ? <p className="m2-meta">{p.reasoning}</p> : null}
+      <ul className="m2-cl-changes" aria-label={t("What the model saw")}>
+        {p.candidates.map((c) => (
+          <li key={c.source_system}><Coded code={c.source_system} text={shapeText(c)} />{c.picked ? <> <span className="m2-meta">{t("Picked")}</span></> : null}</li>
+        ))}
+      </ul>
+      <ul className="m2-cl-changes" aria-label={t("Checks the server ran")}>
+        {p.checks.map((c) => (
+          <li key={c.code}><Coded code={c.code} text={CHECK_TEXT[c.code]?.()} /> <span className="m2-meta">{c.passed ? t("Passed") : t("Failed")}</span></li>
+        ))}
+      </ul>
+      <button type="button" className="m2-btn m2-sm" disabled={send.isPending} onClick={() => send.mutate(false)}>{t("Approve")}</button>{" "}
+      <button type="button" className="m2-btn m2-sm" disabled={send.isPending} aria-expanded={rejecting} onClick={() => setRejecting(!rejecting)}>{t("Reject")}</button>
+      {rejecting ? (
+        <fieldset className="m2-fld">
+          <legend>{t("Why is this pick rejected")}</legend>
+          <label>
+            {t("Reason")}{" "}
+            <input type="text" value={why} maxLength={500} onChange={(e) => setWhy(e.target.value)} aria-label={t("Reason for the rejection")} />
+          </label>{" "}
+          <button type="button" className="m2-btn m2-sm" disabled={!why.trim() || send.isPending} onClick={() => send.mutate(true)}>{t("Reject this pick")}</button>
+        </fieldset>
+      ) : null}
+      {send.isError ? <p role="alert" className="m2-meta">{failureText(send.error)}</p> : null}
+    </article>
+  );
+}
+
+/** Proposed picks wait here. Approving applies the pick to the golden record; rejecting keeps the value the rules chose. */
+function ApprovalQueue({ picks, queryKeys }: { picks: SurvivorshipPick[]; queryKeys: unknown[][] }) {
+  const qc = useQueryClient();
+  const { can } = useV2Session();
+  const [chosen, setChosen] = useState<string[]>([]);
+  const queue = picks.filter(held);
+  const idOf = (p: SurvivorshipPick) => `${p.domain}|${p.sap_object_key}|${p.field}`;
+  const bulk = useMutation({
+    mutationFn: () => postSurvivorshipBulkApprove(queue.filter((p) => chosen.includes(idOf(p))).map(({ domain, sap_object_key, field }) => ({ domain, sap_object_key, field }))),
+    onSuccess: () => { setChosen([]); for (const queryKey of queryKeys) void qc.invalidateQueries({ queryKey }); },
+  });
+  const allowed = can("approve");
+  return (
+    <Panel title={t("Picks waiting for a steward")} meta={t("A proved pick is not applied to the golden record until a steward other than the one who ran it approves it.")} testId="survivorship-queue">
+      {queue.length === 0 ? <EmptyFrame>{t("No pick is waiting for approval.")}</EmptyFrame> : (
+        <>
+          {allowed ? (
+            <p>
+              <button type="button" className="m2-btn m2-sm" disabled={chosen.length === 0 || bulk.isPending} onClick={() => bulk.mutate()}>{t("Approve selected ({n})", { n: int(chosen.length) })}</button>
+              {bulk.data && bulk.data.failed.length ? (
+                <span role="alert" className="m2-meta" data-testid="surv-bulk-failed"> {t("{n, plural, one {# pick was not approved} other {# picks were not approved}}", { n: bulk.data.failed.length })}: {bulk.data.failed.map((f) => `${f.sap_object_key} ${f.field} ${f.detail}`).join("; ")}</span>
+              ) : null}
+              {bulk.isError ? <span role="alert" className="m2-meta"> {failureText(bulk.error)}</span> : null}
+            </p>
+          ) : <p className="m2-meta" data-testid="surv-queue-reason">{t("Approving a pick needs the approve permission. You can read the queue.")}</p>}
+          <ScrollFrame label={t("Picks waiting for approval, scrollable")}>
+            {queue.map((p) => allowed
+              ? <QueueRow key={idOf(p)} p={p} queryKeys={queryKeys} selected={chosen.includes(idOf(p))} onSelect={(on) => setChosen(on ? [...chosen, idOf(p)] : chosen.filter((x) => x !== idOf(p)))} />
+              : <Pick key={idOf(p)} p={p} queryKeys={queryKeys} />)}
+          </ScrollFrame>
+        </>
+      )}
+    </Panel>
+  );
+}
+
+/** The tenant setting survivorship_ai_approval: on by default, a proved AI pick waits for a steward before it applies. Off is an opt-in auto-approve. */
 function ApprovalSetting() {
   const fixture = useFixture();
   const qc = useQueryClient();
@@ -125,16 +218,16 @@ function ApprovalSetting() {
   const allowed = can("manage_settings");
   const required = q.data?.required;
   return (
-    <Panel title={t("Steward approval of AI picks")} meta={t("survivorship_ai_approval: whether a proved AI pick waits for a steward before it is applied.")} testId="survivorship-approval">
+    <Panel title={t("Steward approval of AI picks")} meta={t("survivorship_ai_approval: on by default. Turning it off is an opt-in auto-approve.")} testId="survivorship-approval">
       {q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The approval setting could not be read.")}</ErrorFrame> : (
         <>
           <p data-testid="surv-approval-current">
             {t("Current value")}{" "}
-            {required === undefined ? "" : <Coded code={required ? "required" : "not_required"} text={required ? t("A steward must approve each AI pick") : t("Proved AI picks apply at once")} />}
+            {required === undefined ? "" : <Coded code={required ? "required" : "not_required"} text={required ? t("A steward must approve each AI pick") : t("Auto-approve is on: proved AI picks apply at once")} />}
           </p>
           <ul className="m2-cl-changes">
             <li><Coded code="required" text={t("A proved AI pick waits for a steward to accept it before it is applied.")} /></li>
-            <li><Coded code="not_required" text={t("A proved AI pick is applied at once; stewards can still override it later.")} /></li>
+            <li><Coded code="not_required" text={t("Opt-in auto-approve: a proved AI pick is applied at once; stewards can still override it later.")} /></li>
           </ul>
           <label>
             <input type="checkbox" checked={Boolean(required)} disabled={!allowed || q.isPending || save.isPending} onChange={(e) => save.mutate({ required: e.target.checked })} />{" "}
@@ -196,7 +289,8 @@ export function AletheiaSurvivorship() {
   const queryKeys = [["survivorship", fixture], ["survivorship-accuracy", fixture]];
   if (q.isPending) return <CcPage title={t("Aletheia verified survivorship")}><Skeleton width="100%" height={320} /></CcPage>;
   if (q.isError) return <CcPage title={t("Aletheia verified survivorship")}><ErrorFrame onRetry={() => void q.refetch()}>{t("The survivorship picks could not be read.")}</ErrorFrame></CcPage>;
-  const { domains, picks } = q.data;
+  const { domains, picks, counts } = q.data;
+  const decided = picks.filter((p) => !held(p));
   const verified = domains.reduce((n, d) => n + d.verified, 0);
   const rejected = domains.reduce((n, d) => n + d.rejected, 0);
   return (
@@ -207,8 +301,17 @@ export function AletheiaSurvivorship() {
         eyebrow={t("Aletheia verified survivorship")}
         headline={t("{n, plural, one {# model pick did not pass its proof} other {# model picks did not pass their proof}}", { n: rejected })}
         why={t("The model sees only the shape of each source's value, never a value. A pick wins only when the server proves it against the contributing sources.")}
-        figs={[{ label: t("Proved"), value: int(verified) }, { label: t("Not proved"), value: int(rejected) }]}
+        figs={[{ label: t("Proved"), value: int(verified) }, { label: t("Not proved"), value: int(rejected) }, { label: t("Waiting for a steward"), value: int(counts.proposed) }]}
       />
+      <Panel title={t("Steward decisions on proved picks")} meta={t("Proposed picks wait for a steward. Auto-applied picks were applied under the opt-in auto-approve.")} testId="survivorship-counts">
+        <ul className="m2-cl-changes" data-testid="surv-counts">
+          <li data-testid="surv-count-proposed"><Coded code="proposed" text={t("Proposed, waiting for approval")} /> <strong>{int(counts.proposed)}</strong></li>
+          <li data-testid="surv-count-approved"><Coded code="approved" text={t("Approved by a steward")} /> <strong>{int(counts.approved)}</strong></li>
+          <li data-testid="surv-count-rejected"><Coded code="rejected" text={t("Rejected by a steward")} /> <strong>{int(counts.rejected)}</strong></li>
+          <li data-testid="surv-count-auto"><Coded code="auto_applied" text={t("Applied by auto-approve")} /> <strong>{int(counts.auto_applied)}</strong></li>
+        </ul>
+      </Panel>
+      <ApprovalQueue picks={picks} queryKeys={queryKeys} />
       <Panel title={t("Picks by object")} meta={t("Model picks that were proved and that were not.")} testId="survivorship-domains">
         {domains.length === 0 ? <EmptyFrame>{t("The model has not picked a winner yet.")}</EmptyFrame> : (
           <ul className="m2-cl-changes">
@@ -230,9 +333,9 @@ export function AletheiaSurvivorship() {
       <ApprovalSetting />
       {acc.data ? <Accuracy a={acc.data} /> : null}
       <Panel title={t("Newest picks")} meta={t("Each pick with the checks the server ran.")} testId="survivorship-picks">
-        {picks.length === 0 ? <EmptyFrame>{t("The model has not picked a winner yet.")}</EmptyFrame> : (
+        {decided.length === 0 ? <EmptyFrame>{t("The model has not picked a winner yet.")}</EmptyFrame> : (
           <ScrollFrame label={t("Model picks, scrollable")}>
-            {picks.map((p) => <Pick key={`${p.sap_object_key}-${p.field}`} p={p} queryKeys={queryKeys} />)}
+            {decided.map((p) => <Pick key={`${p.sap_object_key}-${p.field}`} p={p} queryKeys={queryKeys} />)}
           </ScrollFrame>
         )}
       </Panel>

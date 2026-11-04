@@ -165,7 +165,7 @@ Aletheia survivorship lists the golden-record winners the model picked and wheth
 
 Each decision stores who decided, when, the earlier source and the new source, and writes an audit entry. The accuracy panel shows how often stewards keep the pick: the accepted, overridden and waiting counts, the weekly trend of accepted picks and a bar per field. A pick that is ingested again becomes waiting again.
 
-To require approval before any AI pick is applied, use the Steward approval of AI picks panel on the verified survivorship screen. It shows the current value and the tenant setting behind it, `survivorship_ai_approval`: `required` holds each proved pick until a steward accepts it, `not_required` applies it at once. Changing it needs the manage settings permission; without it the panel shows the value and says why the control is off. Each change writes an audit entry.
+To require approval before any AI pick is applied, use the Steward approval of AI picks panel on the verified survivorship screen. It shows the current value and the tenant setting behind it, `survivorship_ai_approval`: `required` (the default) holds each proved pick in the approval queue until a different steward approves or rejects it, `not_required` is the opt-in auto-approve and applies it at once. Changing it needs the manage settings permission; without it the panel shows the value and says why the control is off. Each change writes an audit entry.
 
 ## Reference data
 
