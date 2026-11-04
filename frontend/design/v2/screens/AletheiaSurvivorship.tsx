@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getSurvivorship, getSurvivorshipAccuracy, postSurvivorshipDecision,
+  getApprovalSetting, getSurvivorship, getSurvivorshipAccuracy, postSurvivorshipDecision, putApprovalSetting,
   type ReasonCode, type SurvivorshipAccuracy, type SurvivorshipPick,
 } from "@/lib/api/v2/aletheia-survivorship";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -114,6 +114,40 @@ function Pick({ p, queryKeys }: { p: SurvivorshipPick; queryKeys: unknown[][] })
   );
 }
 
+/** The tenant setting survivorship_ai_approval: with it on, a proved AI pick waits for a steward before it applies. */
+function ApprovalSetting() {
+  const fixture = useFixture();
+  const qc = useQueryClient();
+  const { can } = useV2Session();
+  const key = ["survivorship-approval", fixture];
+  const q = useQuery({ queryKey: key, queryFn: getApprovalSetting, staleTime: 15_000 });
+  const save = useMutation({ mutationFn: putApprovalSetting, onSuccess: (v) => qc.setQueryData(key, v) });
+  const allowed = can("manage_settings");
+  const required = q.data?.required;
+  return (
+    <Panel title={t("Steward approval of AI picks")} meta={t("survivorship_ai_approval: whether a proved AI pick waits for a steward before it is applied.")} testId="survivorship-approval">
+      {q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The approval setting could not be read.")}</ErrorFrame> : (
+        <>
+          <p data-testid="surv-approval-current">
+            {t("Current value")}{" "}
+            {required === undefined ? "" : <Coded code={required ? "required" : "not_required"} text={required ? t("A steward must approve each AI pick") : t("Proved AI picks apply at once")} />}
+          </p>
+          <ul className="m2-cl-changes">
+            <li><Coded code="required" text={t("A proved AI pick waits for a steward to accept it before it is applied.")} /></li>
+            <li><Coded code="not_required" text={t("A proved AI pick is applied at once; stewards can still override it later.")} /></li>
+          </ul>
+          <label>
+            <input type="checkbox" checked={Boolean(required)} disabled={!allowed || q.isPending || save.isPending} onChange={(e) => save.mutate({ required: e.target.checked })} />{" "}
+            {t("Require steward approval")}
+          </label>
+          {!allowed ? <p className="m2-meta" data-testid="surv-approval-reason">{t("Changing this needs the manage settings permission. You can read it.")}</p> : null}
+          {save.isError ? <p role="alert" className="m2-meta">{failureText(save.error)}</p> : null}
+        </>
+      )}
+    </Panel>
+  );
+}
+
 function Accuracy({ a }: { a: SurvivorshipAccuracy }) {
   const points = a.by_week.map((w) => {
     const label = formatDate(w.week, "date");
@@ -193,6 +227,7 @@ export function AletheiaSurvivorship() {
           </ul>
         )}
       </Panel>
+      <ApprovalSetting />
       {acc.data ? <Accuracy a={acc.data} /> : null}
       <Panel title={t("Newest picks")} meta={t("Each pick with the checks the server ran.")} testId="survivorship-picks">
         {picks.length === 0 ? <EmptyFrame>{t("The model has not picked a winner yet.")}</EmptyFrame> : (

@@ -3,6 +3,7 @@
  *
  *   GET  /aletheia/survivorship            model picks of a golden-record winner, per object counts and the newest picks with their checks and offered candidates
  *   POST /aletheia/survivorship/decision   a steward accepts a pick or overrides it with another offered source
+ *   GET/PUT /aletheia/survivorship/approval-setting   whether a proved AI pick waits for a steward's accept (PUT needs manage_settings)
  *   GET  /aletheia/survivorship/accuracy   acceptance and override rates by object, by field and by week
  *
  * The model sees only the shape of each source's value. A pick wins only when the server proved it. No value is
@@ -66,3 +67,10 @@ export const getSurvivorshipAccuracy = (): Promise<SurvivorshipAccuracy> => v2Ge
 
 export const postSurvivorshipDecision = (body: SurvivorshipDecisionBody): Promise<SurvivorshipDecisionResult> =>
   v2Send<SurvivorshipDecisionResult>("POST", "/aletheia/survivorship/decision", body);
+
+export interface ApprovalSetting { required: boolean }
+
+export const getApprovalSetting = (): Promise<ApprovalSetting> => v2Get<ApprovalSetting>("/aletheia/survivorship/approval-setting");
+
+export const putApprovalSetting = (body: ApprovalSetting): Promise<ApprovalSetting> =>
+  v2Send<ApprovalSetting>("PUT", "/aletheia/survivorship/approval-setting", body);
