@@ -17,7 +17,24 @@ const seed = (): Survivorship => ({
     { domain: "material_master", verified: 41, rejected: 3 },
     { domain: "sd_customer_master", verified: 18, rejected: 2 },
   ],
+  counts: { proposed: 2, approved: 51, rejected: 4, auto_applied: 2 },
   picks: [
+    {
+      domain: "material_master", sap_object_key: "MAT-000103", field: "MARA.MEINS", field_text: "Base unit of measure", recommended_source: "SYS_B", confidence: 0.74,
+      reasoning: "SYS_B holds a value extracted 2026-11-03; the other source holds a value of a different shape.", verified: true, checks: ok, applied: false, state: "pending",
+      candidates: [
+        { source_system: "SYS_A", shape: "AAA", length: 3, blank: false, picked: false },
+        { source_system: "SYS_B", shape: "AA", length: 2, blank: false, picked: true },
+      ],
+    },
+    {
+      domain: "material_master", sap_object_key: "MAT-000104", field: "MARA.BISMT", field_text: "Old material number", recommended_source: "SYS_A", confidence: 0.61,
+      reasoning: "SYS_A holds the longer value; SYS_B holds a blank.", verified: true, checks: ok, applied: false, state: "pending",
+      candidates: [
+        { source_system: "SYS_A", shape: "AAA-9999", length: 8, blank: false, picked: true },
+        { source_system: "SYS_B", shape: "", length: 0, blank: true, picked: false },
+      ],
+    },
     {
       domain: "material_master", sap_object_key: "MAT-000101", field: "MARA.MTART", field_text: "Material type", recommended_source: "SYS_A", confidence: 0.82,
       reasoning: "SYS_A holds a value extracted 2026-11-04; 1 of the other 2 sources hold the same value.", verified: true, checks: ok, applied: true, state: "pending",
@@ -62,13 +79,14 @@ const seedAccuracy = (): SurvivorshipAccuracy => ({
 
 let data = seed();
 let acc = seedAccuracy();
-let approval = { required: false };
-export const resetSurvivorship = () => { data = seed(); acc = seedAccuracy(); approval = { required: false }; };
+let approval = { required: true };
+export const resetSurvivorship = () => { data = seed(); acc = seedAccuracy(); approval = { required: true }; };
 
 export function survivorshipRead(path: string): unknown {
-  if (path === "/aletheia/survivorship/accuracy") return acc;
-  if (path === "/aletheia/survivorship/approval-setting") return approval;
-  return path === "/aletheia/survivorship" ? data : NONE_SURVIVORSHIP;
+  // Clones, so React Query sees a new object after a write mutates the store.
+  if (path === "/aletheia/survivorship/accuracy") return structuredClone(acc);
+  if (path === "/aletheia/survivorship/approval-setting") return { ...approval };
+  return path === "/aletheia/survivorship" ? structuredClone(data) : NONE_SURVIVORSHIP;
 }
 
 const bump = (c: AccuracyCounts, over: boolean) => {
@@ -84,10 +102,31 @@ export function survivorshipWrite(method: string, path: string, body: unknown): 
     approval = { required: Boolean((body as { required?: boolean }).required) };
     return approval;
   }
+  if (method === "POST" && path === "/aletheia/survivorship/decision/bulk") {
+    const failed: { domain: string; sap_object_key: string; field: string; detail: string }[] = [];
+    let approved = 0;
+    for (const r of (body as { picks: { domain: string; sap_object_key: string; field: string }[] }).picks) {
+      try { survivorshipWrite("POST", "/aletheia/survivorship/decision", { ...r, decision: "accept" }); approved += 1; } catch (e) { failed.push({ ...r, detail: (e as Error).message }); }
+    }
+    return { approved, failed };
+  }
   if (method !== "POST" || path !== "/aletheia/survivorship/decision") return NONE_SURVIVORSHIP;
   const b = body as SurvivorshipDecisionBody;
   const p = data.picks.find((x) => x.sap_object_key === b.sap_object_key && x.field === b.field && x.domain === b.domain);
   if (!p || !p.candidates.length) return refuse(409, "no AI pick for this record and field");
+  if (p.state !== "pending") return refuse(409, "this pick has already been decided");
+  const held = !p.applied;
+  if (b.decision === "reject") {
+    if (!b.note?.trim()) return refuse(422, "a rejection needs a reason");
+    if (!held) return refuse(409, "this pick is already applied; override it with another source instead");
+    p.state = "rejected";
+    p.decided_source = p.recommended_source;
+    p.note = b.note.trim();
+    data.counts.proposed -= 1;
+    data.counts.rejected += 1;
+    return { decision: "reject", prior_source: p.recommended_source, new_source: p.recommended_source, field: b.field };
+  }
+  if (held) { data.counts.proposed -= 1; data.counts.approved += 1; } else { data.counts.auto_applied -= 1; data.counts.approved += 1; }
   const over = b.decision === "override";
   if (over && (!b.source_system || b.source_system === p.recommended_source || !p.candidates.some((c) => c.source_system === b.source_system))) {
     return refuse(409, "override must be one of the offered candidate sources");
