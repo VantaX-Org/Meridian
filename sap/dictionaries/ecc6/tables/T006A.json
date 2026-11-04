@@ -1,0 +1,110 @@
+{
+ "table": "T006A",
+ "description": "Assign Internal to Language-Dependent Unit",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "SPRAS",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 3,
+   "name": "MSEHI",
+   "key": true,
+   "data_element": "MSEHI",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of Measurement",
+   "check_table": "T006"
+  },
+  {
+   "pos": 4,
+   "name": "MSEH3",
+   "key": false,
+   "data_element": "MSEH3",
+   "domain": "MSEH3",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "External Unit of Measurement in Commercial Format (3-Char.)",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "MSEH6",
+   "key": false,
+   "data_element": "MSEH6",
+   "domain": "MSEH6",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "External Unit of Measurement in Technical Format (6-Char.)",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "MSEHT",
+   "key": false,
+   "data_element": "MSEHT",
+   "domain": "TEXT10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Unit of Measurement Text (Maximum 10 Characters)",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "MSEHL",
+   "key": false,
+   "data_element": "MSEHL",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Unit of Measurement Text (Maximum 30 Characters)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MSEHI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  }
+ ]
+}

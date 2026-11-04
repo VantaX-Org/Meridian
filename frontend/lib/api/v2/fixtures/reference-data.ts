@@ -22,7 +22,8 @@ const c = (code: string, text: string | null = null): RefCode => ({ code, text }
 const DEFS: Def[] = [
   {
     id: "country", table: "T005", module: "sd_customer_master", target_fields: ["KNA1.LAND1"], versions: [8, 9, 9],
-    source: [c("DE"), c("ZA"), c("US"), c("UK"), c("YU")], target: [c("DE"), c("ZA"), c("US"), c("GB"), c("RS")],
+    source: [c("DE", "Germany"), c("ZA", "South Africa"), c("US", "United States"), c("UK", "United Kingdom"), c("YU", "Yugoslavia")],
+    target: [c("DE", "Germany"), c("ZA", "South Africa"), c("US", "United States"), c("GB", "United Kingdom"), c("RS", "Serbia")],
   },
   {
     id: "payment_terms", table: "T052", module: "sd_customer_master", target_fields: ["KNB1.ZTERM"], versions: [4, 5, 6],
