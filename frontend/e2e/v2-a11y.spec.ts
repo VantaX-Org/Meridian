@@ -329,7 +329,9 @@ test.describe("keyboard only", () => {
     // The decision cell of a row with a suggested value, reached by Tab and changed with the arrow keys.
     await tabTo(page, /^Decision for 000000000000000100$/, 200);
     await focusVisible(page);
-    await page.keyboard.press("ArrowDown");
+    // A native select: typing the first letter of "fix" picks it on every platform. ArrowDown only changes the value on
+    // Windows and Linux; on macOS it opens a native list that synthetic key events cannot reach.
+    await page.keyboard.press("f");
     const notice = page.getByRole("region", { name: "Change notices" });
     await expect(notice).toContainText(/Accepted 1 suggested value/, NAV);
     await expect(chips.getByRole("button", { name: /To fix/ })).toContainText("25,711");
