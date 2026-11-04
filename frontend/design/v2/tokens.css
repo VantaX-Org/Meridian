@@ -201,6 +201,49 @@
   --m2-focus: var(--m2-data);
   --m2-focus-w: 2px;
 
+
+  /* Signature: the Aletheia hue. Verdigris, one step away from the data blue, kept for content an AI has proved.
+     A verified pick, its proof and its confidence are the only things drawn in it. AA on the sheet and the ground. */
+  --m2-ai: #0B7079;
+  --m2-ai-bg: #DDF3F4;
+  --m2-ai-ink: #07545B;
+  --m2-ai-line: #86CDD2;
+  --m2-on-ai: #FFFFFF;
+  --m2-ai-glow-ink: #0B707966;
+
+  /* Depth: three lifts, each a pair of shadows (a contact shadow and an ambient one), and the glow inks */
+  --m2-shadow-1: 0 1px 2px #151A1E14, 0 2px 10px #151A1E0A;
+  --m2-shadow-2: 0 2px 6px #151A1E14, 0 14px 36px #151A1E1F;
+  --m2-shadow-3: 0 10px 28px #151A1E29, 0 36px 72px #151A1E2E;
+  --m2-data-glow-ink: #2F5FD066;
+  --m2-crit-glow-ink: #B8322A4D;
+  --m2-glow-data: 0 0 0 1px var(--m2-data), 0 0 20px var(--m2-data-glow-ink);
+  --m2-glow-ai: 0 0 0 1px var(--m2-ai), 0 0 20px var(--m2-ai-glow-ink);
+  --m2-glow-crit: 0 0 18px var(--m2-crit-glow-ink);
+  --m2-glow-chart: 0 0 0 2px var(--m2-sheet), 0 0 14px var(--m2-data-glow-ink);
+
+  /* Light: the gradients. The bar is deep meridian blue running to verdigris; the hero and the sheet washes are quiet. */
+  --m2-grad-bar: linear-gradient(90deg, var(--m2-b-950) 0%, var(--m2-b-800) 48%, #0F3D52 100%);
+  --m2-grad-hero: linear-gradient(135deg, var(--m2-sheet) 0%, var(--m2-b-50) 58%, var(--m2-ai-bg) 100%);
+  --m2-grad-sheet: linear-gradient(180deg, var(--m2-sheet) 0%, var(--m2-n-25) 100%);
+  --m2-grad-sel: linear-gradient(90deg, var(--m2-data-bg) 0%, transparent 100%);
+  --m2-grad-data: linear-gradient(135deg, var(--m2-b-500) 0%, var(--m2-b-700) 100%);
+  --m2-grad-ai: linear-gradient(135deg, #1796A1 0%, var(--m2-ai) 100%);
+  --m2-grad-ai-wash: linear-gradient(90deg, var(--m2-ai-bg) 0%, var(--m2-sheet) 42%);
+  --m2-grad-ghead: linear-gradient(180deg, var(--m2-sheet) 0%, var(--m2-n-25) 100%);
+  --m2-grad-area: linear-gradient(180deg, var(--m2-data-bg) 0%, transparent 100%);
+
+  /* The bar's own inks: on the deep ground in both themes */
+  --m2-bar-fg: var(--m2-n-25);
+  --m2-bar-fg-2: var(--m2-b-200);
+  --m2-bar-hover: #FFFFFF1F;
+  --m2-bar-line: #FFFFFF2E;
+  --m2-bar-field: #FFFFFF14;
+
+  /* Motion, the second part: the slow beat for arrivals and the stagger between siblings */
+  --m2-t-slow: 420ms;
+  --m2-stagger: 45ms;
+  --m2-rise-lg: 14px;
   color-scheme: light;
 }
 
@@ -259,6 +302,39 @@
     --m2-chart-grid: var(--m2-n-875);
     --m2-chart-axis: var(--m2-n-800);
     --m2-chart-text: var(--m2-n-400);
+
+    --m2-ai: #5CCAD2;
+    --m2-ai-bg: #0F2E33;
+    --m2-ai-ink: #9FE3E8;
+    --m2-ai-line: #1E5A61;
+    --m2-on-ai: #0F1419;
+    --m2-ai-glow-ink: #5CCAD259;
+    --m2-shadow-1: 0 1px 2px #00000052, 0 2px 10px #00000033;
+    --m2-shadow-2: 0 2px 6px #00000066, 0 14px 36px #00000080;
+    --m2-shadow-3: 0 10px 28px #00000099, 0 36px 72px #000000B3;
+    --m2-data-glow-ink: #7FA2F066;
+    --m2-crit-glow-ink: #F07A7059;
+    --m2-glow-data: 0 0 0 1px var(--m2-data), 0 0 20px var(--m2-data-glow-ink);
+    --m2-glow-ai: 0 0 0 1px var(--m2-ai), 0 0 20px var(--m2-ai-glow-ink);
+    --m2-glow-crit: 0 0 18px var(--m2-crit-glow-ink);
+    --m2-glow-chart: 0 0 0 2px var(--m2-sheet), 0 0 14px var(--m2-data-glow-ink);
+    --m2-grad-bar: linear-gradient(90deg, #070B16 0%, #0D1B3A 48%, #0A2A36 100%);
+    --m2-grad-hero: linear-gradient(135deg, var(--m2-sheet) 0%, #141E36 58%, var(--m2-ai-bg) 100%);
+    --m2-grad-sheet: linear-gradient(180deg, var(--m2-sheet) 0%, #131920 100%);
+    --m2-grad-sel: linear-gradient(90deg, var(--m2-data-bg) 0%, transparent 100%);
+    --m2-grad-data: linear-gradient(135deg, var(--m2-b-300) 0%, var(--m2-b-400) 100%);
+    --m2-grad-ai: linear-gradient(135deg, #8FE2E8 0%, var(--m2-ai) 100%);
+    --m2-grad-ai-wash: linear-gradient(90deg, var(--m2-ai-bg) 0%, var(--m2-sheet) 42%);
+    --m2-grad-ghead: linear-gradient(180deg, var(--m2-sheet) 0%, #131920 100%);
+    --m2-grad-area: linear-gradient(180deg, var(--m2-data-bg) 0%, transparent 100%);
+    --m2-bar-fg: var(--m2-n-25);
+    --m2-bar-fg-2: var(--m2-b-200);
+    --m2-bar-hover: #FFFFFF1F;
+    --m2-bar-line: #FFFFFF2E;
+    --m2-bar-field: #FFFFFF14;
+    --m2-t-slow: 420ms;
+    --m2-stagger: 45ms;
+    --m2-rise-lg: 14px;
     color-scheme: dark;
   }
 }
@@ -317,6 +393,38 @@ html[data-theme="dark"] .m2-root {
   --m2-chart-grid: var(--m2-n-875);
   --m2-chart-axis: var(--m2-n-800);
   --m2-chart-text: var(--m2-n-400);
+  --m2-ai: #5CCAD2;
+  --m2-ai-bg: #0F2E33;
+  --m2-ai-ink: #9FE3E8;
+  --m2-ai-line: #1E5A61;
+  --m2-on-ai: #0F1419;
+  --m2-ai-glow-ink: #5CCAD259;
+  --m2-shadow-1: 0 1px 2px #00000052, 0 2px 10px #00000033;
+  --m2-shadow-2: 0 2px 6px #00000066, 0 14px 36px #00000080;
+  --m2-shadow-3: 0 10px 28px #00000099, 0 36px 72px #000000B3;
+  --m2-data-glow-ink: #7FA2F066;
+  --m2-crit-glow-ink: #F07A7059;
+  --m2-glow-data: 0 0 0 1px var(--m2-data), 0 0 20px var(--m2-data-glow-ink);
+  --m2-glow-ai: 0 0 0 1px var(--m2-ai), 0 0 20px var(--m2-ai-glow-ink);
+  --m2-glow-crit: 0 0 18px var(--m2-crit-glow-ink);
+  --m2-glow-chart: 0 0 0 2px var(--m2-sheet), 0 0 14px var(--m2-data-glow-ink);
+  --m2-grad-bar: linear-gradient(90deg, #070B16 0%, #0D1B3A 48%, #0A2A36 100%);
+  --m2-grad-hero: linear-gradient(135deg, var(--m2-sheet) 0%, #141E36 58%, var(--m2-ai-bg) 100%);
+  --m2-grad-sheet: linear-gradient(180deg, var(--m2-sheet) 0%, #131920 100%);
+  --m2-grad-sel: linear-gradient(90deg, var(--m2-data-bg) 0%, transparent 100%);
+  --m2-grad-data: linear-gradient(135deg, var(--m2-b-300) 0%, var(--m2-b-400) 100%);
+  --m2-grad-ai: linear-gradient(135deg, #8FE2E8 0%, var(--m2-ai) 100%);
+  --m2-grad-ai-wash: linear-gradient(90deg, var(--m2-ai-bg) 0%, var(--m2-sheet) 42%);
+  --m2-grad-ghead: linear-gradient(180deg, var(--m2-sheet) 0%, #131920 100%);
+  --m2-grad-area: linear-gradient(180deg, var(--m2-data-bg) 0%, transparent 100%);
+  --m2-bar-fg: var(--m2-n-25);
+  --m2-bar-fg-2: var(--m2-b-200);
+  --m2-bar-hover: #FFFFFF1F;
+  --m2-bar-line: #FFFFFF2E;
+  --m2-bar-field: #FFFFFF14;
+  --m2-t-slow: 420ms;
+  --m2-stagger: 45ms;
+  --m2-rise-lg: 14px;
   color-scheme: dark;
 }
 
@@ -401,6 +509,37 @@ html[data-theme="dark"] .m2-root {
 .m2-root .m2-scrim { animation: m2-fade var(--m2-t-med) var(--m2-ease); }
 .m2-root .m2-viz-tip { animation: m2-fade var(--m2-t-fast) var(--m2-ease); }
 .m2-root .m2-skel { animation: m2-breathe var(--m2-t-pulse) var(--m2-ease-loop) infinite; }
+
+/*
+ * The second motion layer: arrivals and the live signature. Cards and frames rise into place in sibling order
+ * (the stagger from --m2-stagger), the large ruler grows its fills from the baseline, a tab's underline slides, and
+ * the Aletheia mark breathes a ring. All of it stops under prefers-reduced-motion below.
+ */
+@keyframes m2-rise {
+  from { opacity: 0; transform: translateY(var(--m2-rise-lg)); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes m2-grow-y {
+  from { transform: scaleY(0); }
+  to { transform: none; }
+}
+@keyframes m2-ring {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+.m2-root .m2-cc-banner, .m2-root .m2-cc-card, .m2-root .m2-ck-panel, .m2-root .m2-cc-dock, .m2-root .m2-frame, .m2-root .m2-viz, .m2-root .m2-sheetwrap, .m2-root .m2-rsec, .m2-root .m2-lhero {
+  animation: m2-rise var(--m2-t-slow) var(--m2-ease) both;
+  animation-delay: calc(var(--m2-i, 0) * var(--m2-stagger));
+}
+.m2-root .m2-cc-row > :nth-child(2), .m2-root .m2-ck-row > :nth-child(2), .m2-root .m2-rcols > :nth-child(2), .m2-root .m2-cc-main > :nth-child(2), .m2-root .m2-sheetwrap > * > .m2-sec:nth-of-type(2) { --m2-i: 1; }
+.m2-root .m2-cc-row > :nth-child(3), .m2-root .m2-ck-row > :nth-child(3), .m2-root .m2-rcols > :nth-child(3), .m2-root .m2-cc-main > :nth-child(3), .m2-root .m2-sheetwrap > * > .m2-sec:nth-of-type(3) { --m2-i: 2; }
+.m2-root .m2-cc-row > :nth-child(4), .m2-root .m2-cc-main > :nth-child(4), .m2-root .m2-sheetwrap > * > .m2-sec:nth-of-type(4) { --m2-i: 3; }
+.m2-root .m2-cc-main > :nth-child(5), .m2-root .m2-sheetwrap > * > .m2-sec:nth-of-type(5) { --m2-i: 4; }
+.m2-root .m2-cc-dock { --m2-i: 2; }
+.m2-root .m2-ruler-lg .m2-f { animation: m2-grow-y var(--m2-t-slow) var(--m2-ease) both; animation-delay: var(--m2-t-fast); transform-box: fill-box; transform-origin: bottom; }
+.m2-root .m2-tab[aria-current="page"]::after { animation: m2-arrive-y var(--m2-t-fast) var(--m2-ease); }
+.m2-root .m2-cc-dock > header::before { animation: m2-ring var(--m2-t-pulse) var(--m2-ease-loop) infinite; }
+.m2-root .m2-btn.m2-next, .m2-root .m2-cell, .m2-root .m2-chip, .m2-root .m2-tab, .m2-root .m2-ask-bar > span, .m2-root .m2-ck-heat { transition: background-color var(--m2-t-fast) var(--m2-ease), border-color var(--m2-t-fast) var(--m2-ease), color var(--m2-t-fast) var(--m2-ease), box-shadow var(--m2-t-med) var(--m2-ease), transform var(--m2-t-fast) var(--m2-ease), width var(--m2-t-slow) var(--m2-ease); }
 
 @media (prefers-reduced-motion: reduce) {
   .m2-root *,
