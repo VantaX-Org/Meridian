@@ -14,6 +14,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
+from checks import auto_fix
 from checks.runner import CATEGORIES, RULES_DIR, is_overlay, module_rules, rule_columns, run_checks
 
 MAX_RECORDS = 100
@@ -45,6 +46,16 @@ def module_fields(module: str) -> frozenset[str]:
     return frozenset(out)
 
 
+@lru_cache(maxsize=1)
+def _messages() -> dict[str, str]:
+    return {r["id"]: r.get("message") or "" for m in modules() for r in module_rules(m) if r.get("id")}
+
+
+def describe(rule_id: str) -> Optional[str]:
+    """The message of a shipped rule of any firewall module (tenant-authored rules are not looked up here)."""
+    return _messages().get(rule_id) or None
+
+
 def _clean(module: str, records: list[dict[str, Any]]) -> list[dict[str, str]]:
     if module not in modules():
         raise FirewallError(f"Unknown module {module[:60]!r}.")
@@ -70,13 +81,60 @@ def _clean(module: str, records: list[dict[str, Any]]) -> list[dict[str, str]]:
     return out
 
 
+MAX_ALLOWED = 25  # allowed values listed in one suggestion; more are cut and flagged ``truncated``
+
+
+def _suggestions(tid: str, module: str, row: dict[str, str], fails: list[dict], rules: dict[str, dict],
+                 overrides: Optional[dict], extra_rules: Optional[list[dict]]) -> None:
+    """Attach ``suggestion`` to the failures that have a grounded fix. Deterministic: the only sources are the failing
+    rule's own definition (its ``auto_fix`` steps, its ``allowed_values`` with ``valid_values_with_labels``). The
+    record is never sent anywhere; a corrected value is re-judged by the same engine and dropped unless the rule now
+    passes. A failure with no grounded value gets no suggestion."""
+    fixed = dict(row)
+    proposed: dict[str, tuple[dict, str]] = {}
+    for f in fails:
+        rule = rules.get(f["rule_id"])
+        if not rule or not rule.get("field"):
+            continue
+        hit = None
+        try:
+            hit = auto_fix.propose(rule, row)
+        except Exception:  # noqa: BLE001 - a rule that cannot propose has no suggestion
+            hit = None
+        if hit and rule["field"].upper() not in proposed:
+            proposed[f["rule_id"]] = ({"kind": "value", "field": rule["field"], "value": hit[0],
+                                       "source": f"rule {rule['id']} auto_fix steps", "verified": False}, hit[0])
+            fixed[rule["field"].upper()] = hit[0]
+    if proposed:
+        again = {r.check_id for r in run_checks(module, pd.DataFrame([fixed]), tid, overrides=overrides,
+                                                extra_rules=extra_rules) if not r.passed and not r.error and r.affected_count}
+        for f in fails:
+            if f["rule_id"] in proposed and f["rule_id"] not in again:
+                f["suggestion"] = {**proposed[f["rule_id"]][0], "rule_id": f["rule_id"], "verified": True}
+    for f in fails:
+        if f.get("suggestion"):
+            continue
+        rule = rules.get(f["rule_id"]) or {}
+        allowed = [str(v) for v in (rule.get("allowed_values") or []) if str(v).strip()]
+        if not allowed:
+            continue
+        labels = rule.get("valid_values_with_labels") or {}
+        f["suggestion"] = {"kind": "allowed_values", "field": rule.get("field", f["field"]), "rule_id": f["rule_id"],
+                           "source": f"rule {f['rule_id']} allowed values", "verified": True,
+                           "allowed_values": [{"code": v, "text": str(labels.get(v) or "") or None}
+                                              for v in allowed[:MAX_ALLOWED]],
+                           "truncated": len(allowed) > MAX_ALLOWED}
+
+
 def validate(tid: str, module: str, records: list[dict[str, Any]], overrides: Optional[dict] = None,
-             extra_rules: Optional[list[dict]] = None) -> dict[str, Any]:
+             extra_rules: Optional[list[dict]] = None, suggest: bool = False) -> dict[str, Any]:
     """{verdict, block_severity, module, rules_run, records: [{index, verdict, failures: [{rule_id, description, field,
-    severity, dimension, reason}]}]}. Raises FirewallError for a request it refuses."""
+    severity, dimension, reason[, suggestion]}]}]}. ``suggest`` is opt-in. Raises FirewallError for a request it refuses."""
     rows = _clean(module, records)
     desc = {r.get("id"): (r.get("message") or "") for r in module_rules(module)}
     desc.update({r.get("id"): (r.get("message") or "") for r in (extra_rules or []) if r.get("module") == module})
+    by_id = {r.get("id"): r for r in module_rules(module)}
+    by_id.update({r.get("id"): r for r in (extra_rules or []) if r.get("module") == module})
     out, rules_run = [], 0
     for i, row in enumerate(rows):
         # ponytail: one run_checks per record, about 0.09s each, so 100 records is about 9s; batch one frame with key attribution if that is too slow
@@ -86,6 +144,8 @@ def validate(tid: str, module: str, records: list[dict[str, Any]], overrides: Op
                   "severity": r.severity, "dimension": r.dimension, "reason": (r.message or "")[:300]}
                  for r in results if not r.passed and not r.error and r.affected_count]
         fails.sort(key=lambda f: (_ORDER.get(f["severity"], 9), f["rule_id"]))
+        if suggest and fails:
+            _suggestions(tid, module, row, fails, by_id, overrides, extra_rules)
         out.append({"index": i, "verdict": "block" if any(f["severity"] == BLOCK_SEVERITY for f in fails) else "pass",
                     "failures": fails})
     return {"verdict": "block" if any(r["verdict"] == "block" for r in out) else "pass",

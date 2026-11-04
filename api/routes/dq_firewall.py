@@ -32,6 +32,23 @@ ACTION = "dq_firewall.validate"
 class ValidateBody(BaseModel):
     module: str = Field(min_length=1, max_length=60)
     records: list[dict[str, Any]] = Field(min_length=1, max_length=fw.MAX_RECORDS)
+    suggest: bool = Field(False, description="Add a grounded fix to failures that have one (rule definition only).")
+
+
+class AllowedValue(BaseModel):
+    code: str
+    text: Optional[str] = None
+
+
+class Suggestion(BaseModel):
+    kind: str  # "value" (a corrected value) or "allowed_values" (the values the rule accepts)
+    field: str
+    rule_id: str
+    source: str
+    verified: bool
+    value: Optional[str] = None
+    allowed_values: Optional[list[AllowedValue]] = None
+    truncated: Optional[bool] = None
 
 
 class Failure(BaseModel):
@@ -41,6 +58,7 @@ class Failure(BaseModel):
     severity: str
     dimension: str
     reason: str
+    suggestion: Optional[Suggestion] = None
 
 
 class RecordOut(BaseModel):
@@ -64,6 +82,53 @@ class SummaryOut(BaseModel):
     calls_24h: int
     calls_7d: int
     last_call_at: Optional[str] = None
+    days: list["DayOut"] = []
+    top_rules: list["TopRule"] = []
+    by_module: list["ModuleOut"] = []
+
+
+class DayOut(BaseModel):
+    day: str
+    checked: int
+    blocked: int
+    warned: Optional[int] = None
+    passed: Optional[int] = None
+
+
+class TopRule(BaseModel):
+    rule_id: str
+    description: str
+    blocked: int
+
+
+class ModuleOut(BaseModel):
+    module: str
+    checked: int
+    blocked: int
+    warned: Optional[int] = None
+    passed: Optional[int] = None
+
+
+SummaryOut.model_rebuild()
+
+
+def _count_blocking(fails: list[dict]) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for f in fails:
+        if f["severity"] == fw.BLOCK_SEVERITY:
+            out[f["rule_id"]] = out.get(f["rule_id"], 0) + 1
+    return out
+
+
+def _tally(rows: list[dict]) -> dict[str, Optional[int]]:
+    """checked, blocked, warned, passed of audit payloads; warned and passed are None when any row predates the
+    warned count (a missing value is shown as a dash, never as zero)."""
+    checked = sum(int(r.get("records") or 0) for r in rows)
+    blocked = sum(int(r.get("blocked_records") or 0) for r in rows)
+    if any("warned_records" not in r for r in rows):
+        return {"checked": checked, "blocked": blocked, "warned": None, "passed": None}
+    warned = sum(int(r["warned_records"] or 0) for r in rows)
+    return {"checked": checked, "blocked": blocked, "warned": warned, "passed": checked - blocked - warned}
 
 
 async def _rls(db: AsyncSession, tenant: Tenant) -> None:
@@ -77,7 +142,7 @@ async def validate(body: ValidateBody, request: Request, db: AsyncSession = Depe
     await _rls(db, tenant)
     overrides, authored = await db.run_sync(lambda s: crs.governance(s))
     try:
-        res = await asyncio.to_thread(fw.validate, str(tenant.id), body.module, body.records, overrides, authored)
+        res = await asyncio.to_thread(fw.validate, str(tenant.id), body.module, body.records, overrides, authored, body.suggest)
     except fw.FirewallError as e:
         raise HTTPException(status_code=422, detail=str(e)) from None
     except Exception as e:  # noqa: BLE001 - no trace to the caller; the type is logged
@@ -87,6 +152,8 @@ async def validate(body: ValidateBody, request: Request, db: AsyncSession = Depe
     await write_audit(db, tenant.id, request, ACTION, "dq_firewall", body.module, None, {
         "records": len(res["records"]), "blocked_records": sum(r["verdict"] == "block" for r in res["records"]),
         "failures": len(fails), "verdict": res["verdict"],
+        "warned_records": sum(r["verdict"] == "pass" and bool(r["failures"]) for r in res["records"]),
+        "blocking_rule_counts": dict(sorted(_count_blocking(fails).items(), key=lambda kv: -kv[1])[:50]),
         "blocking_rules": sorted({f["rule_id"] for f in fails if f["severity"] == fw.BLOCK_SEVERITY})[:50]})
     await db.commit()
     return ValidateOut(**res)
@@ -100,6 +167,24 @@ async def summary(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(g
         "SELECT count(*) FILTER (WHERE created_at > now() - interval '24 hours'), count(*), max(created_at) "
         "FROM audit_log WHERE tenant_id = CAST(:t AS uuid) AND action = :a AND created_at > now() - interval '7 days'"),
         {"t": str(tenant.id), "a": ACTION})).fetchone()
+    calls = (await db.execute(text(
+        "SELECT created_at::date, entity_id, after_json FROM audit_log WHERE tenant_id = CAST(:t AS uuid) "
+        "AND action = :a AND created_at > now() - interval '7 days' ORDER BY created_at DESC LIMIT 5000"),
+        {"t": str(tenant.id), "a": ACTION})).fetchall()
+    by_day: dict[str, list[dict]] = {}
+    by_mod: dict[str, list[dict]] = {}
+    rule_n: dict[str, int] = {}
+    for d, mod, aft in calls:
+        a = aft if isinstance(aft, dict) else {}
+        by_day.setdefault(d.isoformat(), []).append(a)
+        by_mod.setdefault(mod or "", []).append(a)
+        for rid, n in (a.get("blocking_rule_counts") or {}).items():
+            rule_n[rid] = rule_n.get(rid, 0) + int(n)
+    top = sorted(rule_n.items(), key=lambda kv: (-kv[1], kv[0]))[:10]
     return SummaryOut(modules=list(fw.modules()), max_records=fw.MAX_RECORDS, block_severity=fw.BLOCK_SEVERITY,
                       calls_24h=int(row[0] or 0), calls_7d=int(row[1] or 0),
-                      last_call_at=row[2].isoformat() if row[2] else None)
+                      last_call_at=row[2].isoformat() if row[2] else None,
+                      days=[DayOut(day=k, **_tally(v)) for k, v in sorted(by_day.items())],
+                      top_rules=[TopRule(rule_id=r, description=fw.describe(r) or "", blocked=n) for r, n in top],
+                      by_module=[ModuleOut(module=m, **_tally(v)) for m, v in sorted(by_mod.items())
+                                 if m in fw.modules()])

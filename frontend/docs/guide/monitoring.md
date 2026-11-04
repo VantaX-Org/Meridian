@@ -70,6 +70,17 @@ Users who may change master data can decide on a break:
 
 Each decision is written to the audit log with the person who made it. Other roles can read the page and ask for an explanation but see no decision buttons.
 
+## Entry gate
+
+The Entry gate page, under Entry gate in the map, shows the data quality firewall: the check SAP calls before it saves a master data record. It covers the licensed objects, Material master, Customer master (sales) and SuccessFactors employee data. The page shows only what the firewall's audit trail holds. Where the trail did not record a figure, the page shows a dash and not a zero.
+
+- **Records checked and blocked.** Two charts of the last 7 days, with a table of each day. A record is blocked when it fails a critical rule. A record that passes but fails a lesser rule is warned. The warned and passed counts were not kept before this release, so earlier days show a dash.
+- **Rules that block most.** The critical rules that stopped the most records, each with its code and what it requires.
+- **By object.** Records checked, blocked, warned and passed for each licensed object.
+- **Try a record.** Paste records as JSON, choose the object and press **Check records**. The page runs the same check SAP calls. Tick **Show a fix where the rule gives one** to see a suggested fix. A fix appears only when the rule itself defines one, either a corrected value from the rule's auto-fix steps or the values the rule accepts, and each fix names its rule. When no fix is grounded in the rule, the cell shows a dash. No language model sees the record.
+
+The page is a view of the firewall. The SAP side, the API key and the choice to let a save go on or stop when the check cannot run are described in the point-of-entry guide in the repository (docs/point-of-entry.md). There is no approval workflow in SAP and no duplicate search at entry.
+
 ## MDM health
 
 The MDM health page, under MDM health in the map, shows the daily snapshot of how well master data is governed. The banner gives the health score out of 100 and its change over the last 90 days, with the golden records, the open stewardship items and the share of systems synced beside it. Under it:
