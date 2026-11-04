@@ -50,6 +50,7 @@ import { migrationScenariosRead, NONE_MIGRATION_SCENARIOS } from "./migrationSce
 import { survivorshipRead, survivorshipWrite, NONE_SURVIVORSHIP } from "./survivorship";
 import { referenceDataRead, referenceDataWrite, NONE_REFERENCE_DATA } from "./reference-data";
 import { fixDraftsRead, fixDraftsWrite, NONE_FIX_DRAFTS } from "./fixDrafts";
+import { learnedMonitorsRead, learnedMonitorsWrite, NONE_LEARNED_MONITORS } from "./learnedMonitors";
 import { anomalyRulesRead, anomalyRulesWrite, NONE_ANOMALY_RULES } from "./anomalyRules";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
 import { guardDecision, NONE_STEP10, receiptPolicy, resetStep10Fixture, step10Read, step10Write, withPolicyMarks, withSandbox } from "./step10";
@@ -174,6 +175,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (rdw !== NONE_REFERENCE_DATA) return rdw as T;
   const ar = anomalyRulesWrite(method, path, body);
   if (ar !== NONE_ANOMALY_RULES) return ar as T;
+  const lmw = learnedMonitorsWrite(method, path, body);
+  if (lmw !== NONE_LEARNED_MONITORS) return lmw as T;
   const mn = miningWrite(method, path, body);
   if (mn !== NONE_MINING) return mn as T;
   const mg = migrationWrite(method, path, body);
@@ -384,6 +387,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (rdr !== NONE_REFERENCE_DATA) return rdr as T;
   const ars = anomalyRulesRead(path);
   if (ars !== NONE_ANOMALY_RULES) return ars as T;
+  const lmr = learnedMonitorsRead(path);
+  if (lmr !== NONE_LEARNED_MONITORS) return lmr as T;
   const mn = miningRead(path);
   if (mn !== NONE_MINING) return mn as T;
   const mh = mdmHealthRead(path);

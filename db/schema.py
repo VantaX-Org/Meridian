@@ -1449,6 +1449,40 @@ class FieldShiftAnomaly(Base):
     )
 
 
+class LearnedMonitorBreak(Base):
+    """A break from the baseline learned from the system's own run history (migration 132)."""
+    __tablename__ = "learned_monitor_breaks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    module = Column(Text, nullable=False)
+    kind = Column(Text, nullable=False)  # volume_drop | volume_spike | fail_rate_jump | score_drop | field_emptied
+    metric = Column(Text, nullable=False)  # records | score | fail_rate | blank_pct
+    subject_code = Column(Text, nullable=False, server_default="")  # rule id, TABLE.FIELD, or empty for the object
+    severity = Column(Text, nullable=False)
+    expected_low = Column(Float, nullable=True)
+    expected_high = Column(Float, nullable=True)
+    median = Column(Float, nullable=True)
+    observed = Column(Float, nullable=False)
+    baseline_runs = Column(Integer, nullable=False)
+    baseline_run_ids = Column(JSONB, nullable=False, server_default="[]")
+    method = Column(Text, nullable=False)
+    status = Column(Text, nullable=False, server_default="open")  # open | acknowledged | expected | snoozed
+    baseline_effect = Column(Text, nullable=True)  # exclude | accept (status expected)
+    snoozed_until = Column(DateTime(timezone=True), nullable=True)
+    decided_by = Column(Text, nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    note = Column(Text, nullable=True)
+    explanation = Column(JSONB, nullable=True)
+    detected_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("version_id", "module", "kind", "subject_code", name="uq_learned_monitor_breaks"),
+        Index("ix_learned_monitor_breaks_tenant_version", "tenant_id", "version_id"),
+    )
+
+
 class TableProfile(Base):
     """Profile of one extracted table in one version — the anomaly baseline (migration 054)."""
     __tablename__ = "table_profiles"

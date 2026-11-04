@@ -1213,6 +1213,19 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             session.commit()
         logger.info(f"Upserted dqs_history for {len(modules)} modules")
 
+        # Learned monitors: breaks against the baseline of this system's earlier runs (aggregates only)
+        try:
+            from api.services import learned_monitors
+            with Session(engine) as session:
+                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                found = {m: learned_monitors.detect_and_store(session, str(tenant_id), str(version_id), m) for m in modules}
+                session.commit()
+            if any(found.values()):
+                logger.info(f"learned monitor breaks for {version_id}: {found}")
+        except Exception as e:  # noqa: BLE001 - monitoring never fails a finished run
+            reraise_soft_limit(e)
+            logger.warning(f"learned monitors for {version_id} not run: {type(e).__name__}")
+
         # Outbound webhooks: run.finished, score.dropped and breach.new (ids, names and numbers only)
         try:
             from api.services import webhooks
