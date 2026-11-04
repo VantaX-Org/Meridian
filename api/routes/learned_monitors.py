@@ -198,27 +198,23 @@ class SnoozeIn(NoteIn):
     days: int = Field(7, ge=1, le=90)
 
 
-_STEWARD = require_permission("mdm.write")
-
-
-@router.post("/{break_id}/acknowledge", response_model=BreakOut)
+@router.post("/{break_id}/acknowledge", response_model=BreakOut, dependencies=[Depends(require_permission("mdm.write"))])
 async def acknowledge(break_id: uuid.UUID, request: Request, body: Optional[NoteIn] = None,
-                      db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
-                      _p: str = Depends(_STEWARD)) -> BreakOut:
+                      db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> BreakOut:
     return await _decide(db, tenant, request, break_id, "acknowledge", "acknowledged", None, None, body.note if body else None)
 
 
-@router.post("/{break_id}/expected", response_model=BreakOut)
+@router.post("/{break_id}/expected", response_model=BreakOut, dependencies=[Depends(require_permission("mdm.write"))])
 async def expected(break_id: uuid.UUID, body: ExpectedIn, request: Request, db: AsyncSession = Depends(get_db),
-                   tenant: Tenant = Depends(get_tenant), _p: str = Depends(_STEWARD)) -> BreakOut:
+                   tenant: Tenant = Depends(get_tenant)) -> BreakOut:
     """Mark the break expected. ``exclude``: this run is left out of later baselines. ``accept``: the baseline restarts
     at this run (older runs are dropped; the object relearns)."""
     return await _decide(db, tenant, request, break_id, "expected", "expected", body.effect, None, body.note)
 
 
-@router.post("/{break_id}/snooze", response_model=BreakOut)
+@router.post("/{break_id}/snooze", response_model=BreakOut, dependencies=[Depends(require_permission("mdm.write"))])
 async def snooze(break_id: uuid.UUID, body: SnoozeIn, request: Request, db: AsyncSession = Depends(get_db),
-                 tenant: Tenant = Depends(get_tenant), _p: str = Depends(_STEWARD)) -> BreakOut:
+                 tenant: Tenant = Depends(get_tenant)) -> BreakOut:
     """Hide the break, and the same break in later runs, for ``days`` days."""
     until = datetime.now(timezone.utc) + timedelta(days=body.days)
     return await _decide(db, tenant, request, break_id, "snooze", "snoozed", None, until, body.note)

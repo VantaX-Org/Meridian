@@ -177,21 +177,7 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
         <V2Link href="/requests" className="m2-mi" aria-current={current("/requests") ? "page" : undefined}>
           <span>{t("Requests")}</span>
         </V2Link>
-        <V2Link href="/config" className="m2-mi" aria-current={current("/config") ? "page" : undefined}>
-          <span>{t("Configuration")}</span>
-        </V2Link>
-        <V2Link href="/cleansing" className="m2-mi" aria-current={current("/cleansing") ? "page" : undefined}>
-          <span>{t("Cleansing")}</span>
-        </V2Link>
-        <V2Link href="/processes" className="m2-mi" aria-current={current("/processes") ? "page" : undefined}>
-          <span>{t("Process discovery")}</span>
-        </V2Link>
-        <V2Link href="/mining" className="m2-mi" aria-current={current("/mining") ? "page" : undefined}>
-          <span>{t("Data mining")}</span>
-        </V2Link>
-        <V2Link href="/monitors" className="m2-mi" aria-current={current("/monitors") ? "page" : undefined}>
-          <span>{t("Learned monitors")}</span>
-        </V2Link>
+        <div className="m2-mgrp">{t("Rules and Aletheia")}</div>
         <V2Link href="/anomaly-rules" className="m2-mi" aria-current={current("/anomaly-rules") ? "page" : undefined}>
           <span>{t("Anomaly rules")}</span>
         </V2Link>
@@ -207,6 +193,13 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
         <V2Link href="/aletheia-survivorship" className="m2-mi" aria-current={current("/aletheia-survivorship") ? "page" : undefined}>
           <span>{t("Aletheia verified survivorship")}</span>
         </V2Link>
+        <V2Link href="/cleansing" className="m2-mi" aria-current={current("/cleansing") ? "page" : undefined}>
+          <span>{t("Cleansing")}</span>
+        </V2Link>
+        <V2Link href="/monitors" className="m2-mi" aria-current={current("/monitors") ? "page" : undefined}>
+          <span>{t("Learned monitors")}</span>
+        </V2Link>
+        <div className="m2-mgrp">{t("Master data")}</div>
         <V2Link href="/reference-data" className="m2-mi" aria-current={current("/reference-data") ? "page" : undefined}>
           <span>{t("Reference data")}</span>
         </V2Link>
@@ -222,6 +215,13 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
         <V2Link href="/issues" className="m2-mi" aria-current={current("/issues") ? "page" : undefined}>
           <span>{t("Issues")}</span>
         </V2Link>
+        <V2Link href="/mining" className="m2-mi" aria-current={current("/mining") ? "page" : undefined}>
+          <span>{t("Data mining")}</span>
+        </V2Link>
+        <V2Link href="/processes" className="m2-mi" aria-current={current("/processes") ? "page" : undefined}>
+          <span>{t("Process discovery")}</span>
+        </V2Link>
+        <div className="m2-mgrp">{t("Programme")}</div>
         <V2Link href="/migration" className="m2-mi" aria-current={current("/migration") ? "page" : undefined}>
           <span>{t("Migration")}</span>
         </V2Link>
@@ -239,6 +239,9 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
         </V2Link>
         <V2Link href="/score" className="m2-mi" aria-current={current("/score") ? "page" : undefined}>
           <span>{t("Score lens")}</span>
+        </V2Link>
+        <V2Link href="/config" className="m2-mi" aria-current={current("/config") ? "page" : undefined}>
+          <span>{t("Configuration")}</span>
         </V2Link>
       </nav>
       <div className="m2-mgrp m2-mgrp-act">

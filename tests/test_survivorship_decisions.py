@@ -34,10 +34,11 @@ def _entry(applied=True, with_candidates=True):
 
 class FakeDB:
     def __init__(self, entry):
-        self.entry, self.decisions, self.commits = entry, [], 0
+        self.entry, self.decisions, self.commits, self.log = entry, [], 0, []
 
     async def execute(self, stmt, params=None):
         sql = str(stmt)
+        self.log.append((sql, params))
         if "FROM master_records" in sql:
             row = SimpleNamespace(id=uuid.uuid4(), entry=self.entry)
             return SimpleNamespace(first=lambda: row if self.entry is not None else None)
@@ -64,7 +65,13 @@ def env(monkeypatch):
     async def _rls(db, tenant):
         return None
 
+    async def _audit(db, tid, request, action, etype, eid, before, after):
+        st.audits_written.append((tid, action, etype, eid, before, after))
+
+    st.audits_written, st.user = [], str(uuid.uuid4())
     monkeypatch.setattr(mdm_merge, "set_overrides", _set_overrides)
+    monkeypatch.setattr(route, "write_audit", _audit)
+    monkeypatch.setattr(route, "current_user_id", lambda request=None: st.user)
     monkeypatch.setattr(route, "_rls", _rls)
     monkeypatch.setattr(audit_mw, "_insert_audit_row", st.audits.append)
     app = FastAPI()
@@ -150,6 +157,95 @@ def test_failed_decision_writes_no_audit_row(env):
     assert env.audits == []
 
 
+URL = "/api/v1/aletheia/survivorship/decision"
+
+
+def test_proposed_pick_is_not_applied_until_approved(env):
+    env.db.entry = {**_entry(applied=False), "proposed_by": str(uuid.uuid4())}
+    out = route.summarise([("customer_master", "K1", "NAME1", env.db.entry)], 10)
+    assert out["counts"] == {"proposed": 1, "approved": 0, "rejected": 0, "auto_applied": 0}
+    assert out["picks"][0]["state"] == "pending" and out["picks"][0]["applied"] is False
+    assert env.overrides == []  # nothing pinned before a steward acts
+    assert env.c.post(URL, json={**OBJ, "decision": "accept"}).status_code == 200
+    assert env.overrides[0][0] == {"NAME1": "Synthetic Co"}
+
+
+def test_counts_cover_proposed_approved_rejected_and_auto_applied():
+    at = datetime(2026, 11, 4, tzinfo=timezone.utc)
+    rows = [("customer_master", "K1", "NAME1", _entry(applied=False)),
+            ("customer_master", "K2", "NAME1", _entry(applied=False), "accept", "SYS_A", None, None, "u", at),
+            ("customer_master", "K3", "NAME1", _entry(applied=False), "reject", "SYS_A", None, "wrong", "u", at),
+            ("customer_master", "K4", "NAME1", _entry(applied=True))]
+    out = route.summarise(rows, 10)
+    assert out["counts"] == {"proposed": 1, "approved": 1, "rejected": 1, "auto_applied": 1}
+    rej = out["picks"][2]
+    assert (rej["state"], rej["note"], rej["decided_by"], rej["decided_at"]) == ("rejected", "wrong", "u", at.isoformat())
+
+
+def test_reject_needs_a_reason_and_leaves_golden_value(env):
+    env.db.entry = _entry(applied=False)
+    assert env.c.post(URL, json={**OBJ, "decision": "reject"}).status_code == 422
+    assert env.c.post(URL, json={**OBJ, "decision": "reject", "note": "   "}).status_code == 422
+    r = env.c.post(URL, json={**OBJ, "decision": "reject", "note": "Looks like a trade name, not the legal name"})
+    assert r.status_code == 200 and env.overrides == []
+    d = env.db.decisions[0]
+    assert d["dec"] == "reject" and d["note"].startswith("Looks like") and d["u"] == env.user
+
+
+def test_reject_of_already_applied_pick_is_409(env):
+    r = env.c.post(URL, json={**OBJ, "decision": "reject", "note": "x"})
+    assert r.status_code == 409 and env.db.decisions == []
+
+
+def test_four_eyes_blocks_the_user_who_triggered_the_run(env):
+    env.db.entry = {**_entry(applied=False), "proposed_by": env.user}
+    for body in ({"decision": "accept"}, {"decision": "reject", "note": "x"}):
+        r = env.c.post(URL, json={**OBJ, **body})
+        assert r.status_code == 403
+    assert env.db.decisions == [] and env.overrides == [] and env.audits_written == []
+
+
+def test_four_eyes_allows_a_different_user_and_unknown_run_user(env):
+    env.db.entry = {**_entry(applied=False), "proposed_by": str(uuid.uuid4())}
+    assert env.c.post(URL, json={**OBJ, "decision": "accept"}).status_code == 200
+    env.db.entry = _entry(applied=False)  # run had no user context (scheduled ingest)
+    assert env.c.post(URL, json={**OBJ, "decision": "accept"}).status_code == 200
+
+
+def test_decision_writes_audit_entry_with_approver_context_and_no_value(env):
+    env.db.entry = _entry(applied=False)
+    env.c.post(URL, json={**OBJ, "decision": "reject", "note": "wrong entity"})
+    tid, action, etype, eid, before, after = env.audits_written[0]
+    assert (action, etype, eid) == ("survivorship.reject", "survivorship_pick", "customer_master:K1:NAME1")
+    assert before["state"] == "proposed" and after["note"] == "wrong entity" and "Synthetic" not in str(env.audits_written)
+
+
+def test_approver_role_can_decide_analyst_cannot(env):
+    env.db.entry = _entry(applied=False)
+    assert env.c.post(URL, json={**OBJ, "decision": "accept"}, headers={"X-User-Role": "approver"}).status_code == 200
+    assert env.c.post(URL, json={**OBJ, "decision": "accept"}, headers={"X-User-Role": "analyst"}).status_code == 403
+
+
+def test_bulk_approve_reports_failures_and_commits_once(env):
+    env.db.entry = {**_entry(applied=False), "proposed_by": env.user}  # four eyes blocks this caller
+    pick = {k: OBJ[k] for k in ("domain", "sap_object_key", "field")}
+    r = env.c.post(URL + "/bulk", json={"picks": [pick]})
+    assert r.status_code == 200 and r.json()["approved"] == 0 and "different user" in r.json()["failed"][0]["detail"]
+    env.db.entry = _entry(applied=False)
+    r = env.c.post(URL + "/bulk", json={"picks": [pick, {**pick, "sap_object_key": "K2"}]})
+    assert r.json()["approved"] == 2 and len(env.db.decisions) == 2 and env.db.commits == 2
+    assert env.c.post(URL + "/bulk", json={"picks": []}).status_code == 422
+
+
+def test_decision_queries_are_scoped_to_the_callers_tenant(env):
+    env.db.entry = _entry(applied=False)
+    env.c.post(URL, json={**OBJ, "decision": "accept"})
+    tids = {p["tid"] for sql, p in env.db.log if p}
+    assert len(tids) == 1  # only the caller's tenant id is ever bound
+    assert all("tenant_id" in sql for sql, p in env.db.log if "master_records" in sql or "survivorship_decisions" in sql)
+    assert env.audits_written[0][0] != uuid.UUID(int=0) and str(env.audits_written[0][0]) in tids
+
+
 def test_summary_exposes_shapes_not_values_and_state():
     out = route.summarise([("customer_master", "K1", "NAME1", _entry(), "override", "SYS_B", "stale_value")], 10)
     p = out["picks"][0]
@@ -229,7 +325,7 @@ def _ai(**kw):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("required,applied,golden", [(None, True, "Beta"), (False, True, "Beta"), (True, False, "Alpha")])
+@pytest.mark.parametrize("required,applied,golden", [(None, False, "Alpha"), (False, True, "Beta"), (True, False, "Alpha")])
 async def test_engine_approval_policy_holds_proved_pick_and_stores_candidates(monkeypatch, required, applied, golden):
     monkeypatch.setattr(engine, "SurvivorshipChain", _Undecided)
     monkeypatch.setattr(engine, "propose_field_winner", _ai)

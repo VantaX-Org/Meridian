@@ -897,3 +897,160 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 .m2-cl-changes s { color: var(--m2-ink-3); }
 .m2-cl-items { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--m2-s3); }
 .m2-cl-items > li { display: flex; flex-direction: column; gap: var(--m2-s2); padding-bottom: var(--m2-s3); border-bottom: 1px solid var(--m2-rule); }
+
+/*
+ * Meridian signature (DESIGN.md "Direction"). The layer on top of the base rules above: the deep bar, the lifted sheet,
+ * the glowing data hue on whatever is selected, the Aletheia verdigris on whatever an AI has proved. Every value is a
+ * token from tokens.css; nothing here names a colour, a shadow or a time.
+ */
+
+/* The bar: deep meridian blue to verdigris in both themes, its own inks, the search as a glass field */
+.m2-top { background: var(--m2-grad-bar); color: var(--m2-bar-fg); border-bottom-color: transparent; box-shadow: var(--m2-shadow-1); z-index: 6; }
+.m2-top .m2-brand { color: var(--m2-bar-fg) !important; letter-spacing: 0.01em; }
+.m2-top .m2-mark { color: var(--m2-bar-fg); filter: drop-shadow(0 0 6px var(--m2-data-glow-ink)); }
+.m2-top .m2-tbtn { color: var(--m2-bar-fg); }
+.m2-top .m2-tbtn svg, .m2-top .m2-persona .m2-who { color: var(--m2-bar-fg-2); }
+.m2-top .m2-tbtn:hover, .m2-top .m2-tbtn[aria-expanded="true"] { background: var(--m2-bar-hover); }
+.m2-top .m2-search { background: var(--m2-bar-field); border-color: var(--m2-bar-line); color: var(--m2-bar-fg-2); }
+.m2-top .m2-search:hover, .m2-top .m2-search:focus-visible { border-color: var(--m2-bar-fg-2); background: var(--m2-bar-hover); }
+.m2-top .m2-search svg { color: var(--m2-bar-fg-2); }
+.m2-top .m2-kb { border-color: var(--m2-bar-line); color: var(--m2-bar-fg-2); background: transparent; }
+.m2-top :focus-visible { outline-color: var(--m2-bar-fg); }
+.m2-top .m2-menu, .m2-top .m2-pal, .m2-top .m2-pop, .m2-top .m2-tlpop { color: var(--m2-fg); }
+.m2-job-bar { background: var(--m2-grad-data); box-shadow: var(--m2-glow-data); }
+
+/* The canvas: the sheet lifts off the ground, the inspector lifts further, menus and the palette further still */
+.m2-sheetwrap { box-shadow: var(--m2-shadow-1); }
+.m2-insp { box-shadow: var(--m2-shadow-2); }
+.m2-ih { background: var(--m2-grad-sheet); }
+.m2-ih h2 { font-size: var(--m2-fs-16); line-height: var(--m2-lh-16); letter-spacing: -0.01em; }
+.m2-menu, .m2-pal, .m2-toast, .m2-bulk { box-shadow: var(--m2-shadow-3); }
+.m2-pop { box-shadow: var(--m2-shadow-2); }
+.m2-frame, .m2-cc-card, .m2-ck-panel, .m2-status { box-shadow: var(--m2-shadow-1); }
+.m2-cc-card, .m2-ck-panel { background: var(--m2-grad-sheet); }
+
+/* The map: the place you are carries a bar of the data hue and a wash that fades into the ground */
+.m2-mi[aria-current="page"], .m2-orow[aria-current="page"] { background: var(--m2-grad-sel); box-shadow: inset 3px 0 0 var(--m2-data); }
+.m2-mi[aria-current="page"] { color: var(--m2-data); }
+.m2-sysrow-nm { letter-spacing: 0.02em; font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
+
+/* Headlines: tighter, heavier; the big score at one and a half times the headline size */
+.m2-h1, .m2-cc-verdict strong { letter-spacing: -0.02em; }
+.m2-cc-figs dd { letter-spacing: -0.03em; }
+.m2-ruler-box-lg .m2-ruler-num .m2-sc { letter-spacing: -0.03em; font-size: calc(var(--m2-fs-24) * 1.5); line-height: 1; }
+.m2-ruler-box-lg .m2-ruler-num { align-items: baseline; }
+
+/* The ruler: the large ruler and the selected score draw in the data hue and glow; the measured tick is a blade */
+.m2-ruler.m2-on .m2-f, .m2-ruler-lg .m2-f { fill: var(--m2-data); }
+.m2-ruler-lg .m2-f { filter: drop-shadow(0 0 3px var(--m2-data-glow-ink)); }
+.m2-ruler .m2-ks { fill: var(--m2-sheet); }
+
+/* Buttons and controls: the primary action in the data gradient with its glow */
+.m2-btn.m2-next { background: var(--m2-grad-data); border-color: transparent; box-shadow: var(--m2-shadow-1); font-weight: 600; letter-spacing: 0.01em; }
+.m2-btn.m2-next:hover { background: var(--m2-grad-data); box-shadow: var(--m2-glow-data); filter: none; transform: translateY(-1px); }
+.m2-btn.m2-next:active { transform: none; }
+.m2-chip[aria-pressed="true"] { background: var(--m2-data-bg); border-color: var(--m2-data); color: var(--m2-data); }
+.m2-seg[aria-pressed="true"], .m2-segs > button[aria-pressed="true"] { box-shadow: inset 0 -2px 0 var(--m2-data); }
+.m2-tab[aria-current="page"]::after { background: var(--m2-grad-data); height: 3px; border-radius: var(--m2-r1) var(--m2-r1) 0 0; }
+.m2-search:focus-visible, .m2-pal input:focus-visible { box-shadow: var(--m2-glow-data); }
+
+/* Tables and the grid: the header as a soft band in small capitals, the open row lit from the left, the selected cell glowing */
+.m2-tbl th, .m2-ghead .m2-gcell, .m2-ghead .m2-gpin { background: var(--m2-grad-ghead); font-weight: 500; letter-spacing: 0.02em; font-size: var(--m2-fs-12); }
+.m2-grow[data-selected="true"], .m2-grow[data-open="true"] { background: var(--m2-grad-sel); box-shadow: inset 3px 0 0 var(--m2-data); }
+.m2-grow[data-active="true"] { outline: 0; box-shadow: inset 3px 0 0 var(--m2-data), inset 0 0 0 1px var(--m2-data); }
+.m2-cell[data-selected="true"] { box-shadow: var(--m2-glow-data); border-color: var(--m2-data); z-index: 1; }
+.m2-rrow[data-active] td:first-child { box-shadow: inset 3px 0 0 var(--m2-data); }
+.m2-bulk { border-radius: var(--m2-r2); }
+.m2-ck-heat { font-weight: 600; }
+[data-band="3"].m2-ck-heat { box-shadow: inset 0 0 0 1px var(--m2-crit), var(--m2-glow-crit); }
+
+/* Severity marks carry light */
+.m2-vm.crit, .m2-vm.nogo { filter: drop-shadow(0 0 4px var(--m2-crit-glow-ink)); }
+
+/* The landscape: the go-live banner is the hero, its figures a wall of numbers */
+.m2-cc-banner { background: var(--m2-grad-hero); box-shadow: var(--m2-shadow-2); position: relative; overflow: hidden; }
+.m2-cc-banner::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--m2-grad-data); }
+.m2-cc-eyebrow { letter-spacing: 0.08em; font-size: var(--m2-fs-12); font-weight: 500; color: var(--m2-data); }
+.m2-cc-figs > div { border-left-color: var(--m2-line-2); }
+.m2-cc-figs dt { letter-spacing: 0.06em; }
+.m2-lhero { background: var(--m2-grad-hero); border-radius: var(--m2-r2); box-shadow: var(--m2-shadow-2); padding: var(--m2-s5); }
+
+/*
+ * The Aletheia signature. Anything an AI has proved sits on a verdigris left bar with a wash fading into the sheet; the
+ * mark carries a breathing ring; confidence draws in the verdigris gradient; a verified pick wears the verdigris badge.
+ * The data hue stays for the user's own selections, so the eye never confuses "chosen" with "proved".
+ */
+.m2-cc-dock { box-shadow: var(--m2-shadow-2); border-color: var(--m2-ai-line); }
+.m2-cc-dock > header { position: relative; background: var(--m2-grad-ai-wash); border-bottom-color: var(--m2-ai-line); }
+.m2-cc-dock > header img { border-radius: var(--m2-r-round); background: var(--m2-grad-ai); box-shadow: var(--m2-glow-ai); padding: calc(var(--m2-s1) / 2); position: relative; z-index: 1; }
+.m2-cc-dock > header::before { content: ""; position: absolute; left: calc(var(--m2-s4) - var(--m2-s1)); top: calc(var(--m2-s4) - var(--m2-s1)); width: calc(28px + var(--m2-s2)); height: calc(28px + var(--m2-s2)); border-radius: var(--m2-r-round); border: 1px solid var(--m2-ai); pointer-events: none; }
+.m2-cc-dock > header strong { color: var(--m2-ai-ink); letter-spacing: -0.01em; }
+.m2-ask-hero { color: var(--m2-ai-ink); padding-left: var(--m2-s4); box-shadow: inset 3px 0 0 var(--m2-ai); }
+.m2-ask-a { border-top: 0; padding: var(--m2-s3) var(--m2-s3) var(--m2-s3) var(--m2-s4); background: var(--m2-grad-ai-wash); border-radius: 0 var(--m2-r2) var(--m2-r2) 0; box-shadow: inset 3px 0 0 var(--m2-ai); }
+.m2-ask-a[data-refused] { box-shadow: inset 3px 0 0 var(--m2-ink-3); background: var(--m2-hover); }
+.m2-ask-badge { border-color: var(--m2-ai-line); color: var(--m2-ai-ink); background: var(--m2-ai-bg); font-weight: 500; }
+.m2-ask-badge[data-tone="pass"] { color: var(--m2-ai-ink); border-color: var(--m2-ai); background: var(--m2-ai-bg); box-shadow: 0 0 12px var(--m2-ai-glow-ink); }
+.m2-ask-bar { border-radius: var(--m2-r1); overflow: hidden; }
+.m2-ask-bar > span { background: var(--m2-grad-ai); border-radius: var(--m2-r1); box-shadow: 0 0 8px var(--m2-ai-glow-ink); }
+.m2-ask-cites a { color: var(--m2-ai-ink); text-decoration: underline; text-decoration-color: var(--m2-ai-line); text-underline-offset: 2px; }
+.m2-ask-cites a:hover { text-decoration-color: var(--m2-ai); }
+.m2-ask-q { background: var(--m2-data-bg); border-color: transparent; }
+.m2-ask-in input { box-shadow: var(--m2-shadow-1); }
+.m2-ask-in input:focus-visible { border-color: var(--m2-ai); box-shadow: var(--m2-glow-ai); outline: 0; }
+.m2-ask-chips .m2-chip:hover { border-color: var(--m2-ai); color: var(--m2-ai-ink); }
+
+/*
+ * The second pass: the first impression. The go-live verdict stands on a deep hero ground with the headline figures set
+ * large; the readiness matrix wears a true heat ramp; the map is grouped and tighter; headline numbers carry tight
+ * tracking. Everything here is a token in tokens.css; the signed-out pages share the hero in auth.css.
+ */
+.m2-h1 { letter-spacing: -0.02em; }
+.m2-cc-banner { background: var(--m2-grad-hero); border-color: var(--m2-hero-line); box-shadow: var(--m2-shadow-hero); color: var(--m2-hero-fg); gap: var(--m2-s6); padding: var(--m2-s6) var(--m2-s6) var(--m2-s5); }
+.m2-cc-banner::after { content: ""; position: absolute; inset: 0; background: var(--m2-grad-hero-light); pointer-events: none; }
+.m2-cc-banner > * { position: relative; z-index: 1; }
+.m2-cc-banner::before { height: 4px; }
+.m2-cc-banner[data-verdict="go"]::before { background: var(--m2-on-hero-pass); }
+.m2-cc-banner[data-verdict="at-risk"]::before { background: var(--m2-on-hero-warn); }
+.m2-cc-banner[data-verdict="no-go"]::before { background: var(--m2-on-hero-crit); }
+.m2-cc-eyebrow { color: var(--m2-hero-accent); letter-spacing: 0.12em; }
+.m2-cc-verdict strong { font-size: var(--m2-fs-hero); line-height: var(--m2-lh-hero); letter-spacing: -0.025em; color: var(--m2-hero-fg); }
+.m2-cc-banner .m2-vm.go { fill: var(--m2-on-hero-pass); }
+.m2-cc-banner .m2-vm.risk { fill: var(--m2-on-hero-warn); }
+.m2-cc-banner .m2-vm.nogo { fill: var(--m2-on-hero-crit); }
+.m2-cc-why { color: var(--m2-hero-fg-2); font-size: var(--m2-fs-14); max-width: 52ch; }
+.m2-cc-why a, .m2-cc-also a { color: var(--m2-hero-fg) !important; text-decoration: underline; text-decoration-color: var(--m2-hero-line); text-underline-offset: 3px; }
+.m2-cc-why a:hover, .m2-cc-also a:hover { text-decoration-color: var(--m2-hero-accent); }
+.m2-cc-figs > div { border-left-color: var(--m2-hero-line); }
+.m2-cc-figs dt { color: var(--m2-hero-meta); letter-spacing: 0.08em; font-weight: 500; }
+.m2-cc-figs dd { color: var(--m2-hero-fg); letter-spacing: -0.03em; font-size: max(var(--m2-fs-24), min(var(--m2-fs-stat), 16cqi)); line-height: var(--m2-lh-stat); }
+.m2-cc-figs dd small { color: var(--m2-hero-meta); }
+.m2-cc-figs > div > dd.m2-cc-note { color: var(--m2-hero-meta); }
+.m2-cc-figs > div:first-child dd:not(.m2-cc-note) { color: var(--m2-hero-accent); }
+.m2-cc-banner[data-verdict="no-go"] .m2-cc-figs > div:nth-child(2) dd:not(.m2-cc-note) { color: var(--m2-on-hero-crit); }
+.m2-cc-banner[data-verdict="at-risk"] .m2-cc-figs > div:nth-child(2) dd:not(.m2-cc-note) { color: var(--m2-on-hero-warn); }
+/* The verdict ribbon under "Objects ready": one tile per object in scope in its verdict ink, go first; the figure above it, drawn. */
+.m2-cc-ribbon { display: flex; gap: var(--m2-s1); height: 6px; margin-top: var(--m2-s2); }
+.m2-cc-ribbon i { flex: 1 1 0; min-width: 2px; border-radius: 1px; background: var(--m2-on-hero-pass); }
+.m2-cc-ribbon i[data-verdict="at-risk"] { background: var(--m2-on-hero-warn); }
+.m2-cc-ribbon i[data-verdict="no-go"] { background: var(--m2-on-hero-crit); }
+.m2-cc-also, .m2-cc-also .m2-meta { color: var(--m2-hero-meta); }
+.m2-cc-banner .m2-btn.m2-next { background: var(--m2-hero-fg); color: var(--m2-b-900) !important; box-shadow: var(--m2-shadow-2); }
+.m2-cc-banner .m2-btn.m2-next:hover { background: var(--m2-hero-fg); filter: brightness(0.94); }
+.m2-cc-banner .m2-btn:not(.m2-next) { background: var(--m2-hero-field); border-color: var(--m2-hero-line); color: var(--m2-hero-fg) !important; }
+.m2-cc-banner .m2-btn:not(.m2-next):hover { background: var(--m2-hero-line); }
+
+/* The matrix as a heat map: fills carry the band, the sheet shows through as a hairline grid, no borders or glows */
+.m2-ck-matrix td.m2-ck-heat { border-left: 2px solid var(--m2-sheet); border-bottom: 2px solid var(--m2-sheet); font-weight: 600; font-size: var(--m2-fs-13); min-width: 72px; }
+[data-band="0"].m2-ck-heat, .m2-ck-key [data-band="0"] { background: var(--m2-heat-0); color: var(--m2-heat-0-ink); }
+[data-band="1"].m2-ck-heat, .m2-ck-key [data-band="1"] { background: var(--m2-heat-1); color: var(--m2-heat-1-ink); }
+[data-band="2"].m2-ck-heat, .m2-ck-key [data-band="2"] { background: var(--m2-heat-2); color: var(--m2-heat-2-ink); }
+[data-band="3"].m2-ck-heat, .m2-ck-key [data-band="3"] { background: var(--m2-heat-3); color: var(--m2-heat-3-ink); box-shadow: none; }
+.m2-ck-key > span { border-color: transparent; font-weight: 500; }
+.m2-ck-score { font-size: var(--m2-fs-16); letter-spacing: -0.01em; }
+
+/* The map: grouped, tighter rows, a confident active state */
+.m2-mnav { gap: 0; }
+.m2-mi { height: 28px; font-size: var(--m2-fs-13); border-radius: var(--m2-r1); }
+.m2-mi[aria-current="page"] { font-weight: 600; }
+.m2-mgrp { letter-spacing: 0.1em; font-weight: 500; font-size: var(--m2-fs-12); padding: var(--m2-s4) var(--m2-s3) var(--m2-s1); }
+.m2-mnav > .m2-mgrp:first-child { padding-top: var(--m2-s2); }

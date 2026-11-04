@@ -1,21 +1,20 @@
 """learned_monitor_breaks: breaks from the baseline Meridian learns from its own run history
 
 Revision ID: 132
-Revises: 130
+Revises: 131
 Create Date: 2026-11-04
 
 One row per (run, object, kind, subject). Aggregates only: the expected range, the observed value, the number and ids
 of the runs the baseline used. Steward state (acknowledged, expected, snoozed) lives on the row. Row level security is
 forced, as on field_shift_anomalies (migration 127).
 
-Revision 131 is held by an open change; when it merges, point ``down_revision`` at "131".
 """
 from typing import Sequence, Union
 
 from alembic import op
 
 revision: str = "132"
-down_revision: Union[str, None] = "130"
+down_revision: Union[str, None] = "131"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

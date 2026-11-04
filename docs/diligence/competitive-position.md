@@ -104,7 +104,11 @@ side-by-side demo, so each is a hypothesis for the buyer's competitive calls, no
    `api/routes/aletheia_survivorship.py`). Reltio, Ataccama and Informatica market AI survivorship; we have
    not seen how they bound what the model reads or whether they prove its pick, so this is a hypothesis, not
    a finding. The checks prove the pick is well formed and refers to real data. They do not prove the
-   chosen source is the better value, and a steward does not yet approve each pick.
+   chosen source is the better value. By default a proved pick is only proposed: it is not applied until a
+   steward other than the person who triggered the run approves it, and a rejection needs a written reason.
+   Approver, time, decision and reason are stored and audited. A tenant can opt in to auto-approve, which
+   is off by default. A steward's approval is a human check on a well-formed pick; we have no measured
+   evidence yet on how often stewards agree with the model.
 
 Claims we have removed from earlier drafts because we cannot support them:
 

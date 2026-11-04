@@ -15,8 +15,8 @@ from collections import defaultdict
 from datetime import timedelta
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Query, Request
-from pydantic import BaseModel, ConfigDict
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,9 +65,12 @@ class Pick(BaseModel):
     verified: bool
     checks: list[Check]
     applied: bool = False
-    state: Literal["pending", "accepted", "overridden"] = "pending"
+    state: Literal["pending", "accepted", "overridden", "rejected"] = "pending"
     decided_source: Optional[str] = None
     reason_code: Optional[str] = None
+    note: Optional[str] = None
+    decided_by: Optional[str] = None
+    decided_at: Optional[str] = None
     candidates: list[Candidate] = []
 
 
@@ -77,8 +80,18 @@ class DomainCount(BaseModel):
     rejected: int
 
 
+class PickCounts(BaseModel):
+    """Proved picks only. proposed: waits for a steward. approved: a steward accepted or overrode it. rejected: a
+    steward turned it down. auto_applied: applied at once under the tenant's opt-in auto-approve, never decided."""
+    proposed: int = 0
+    approved: int = 0
+    rejected: int = 0
+    auto_applied: int = 0
+
+
 class Survivorship(BaseModel):
     domains: list[DomainCount]
+    counts: PickCounts = PickCounts()
     picks: list[Pick]
 
 
@@ -96,28 +109,36 @@ def summarise(rows: list[tuple], limit: int) -> dict:
     """Group stored ``(domain, key, field, contribution[, decision, new_source, reason_code])`` rows into per-domain
     counts and the newest ``limit`` picks."""
     counts: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    tot = {"proposed": 0, "approved": 0, "rejected": 0, "auto_applied": 0}
     picks: list[dict] = []
     for domain, key, field, c, *d in rows:
         # entries written before verification existed carry no proof; they count as rejected, never as verified
         v = c.get("ai_verification") or {"verified": False, "checks": []}
         counts[domain][0 if v["verified"] else 1] += 1
+        dec, src, reason, note, by, at = (d + [None] * 6)[:6]
+        if v["verified"]:
+            tot["rejected" if dec == "reject" else "approved" if dec in ("accept", "override")
+                else "auto_applied" if c.get("ai_applied") else "proposed"] += 1
         if len(picks) < limit:
-            dec, src, reason = (d + [None] * 3)[:3]
             picks.append({"domain": domain, "sap_object_key": key, "field": field, "field_text": field_text(field, domain),
                           "recommended_source": c["ai_recommendation"], "confidence": c.get("ai_confidence"),
                           "reasoning": c.get("ai_reasoning") or "", "verified": bool(v["verified"]), "checks": v["checks"],
                           "applied": bool(c.get("ai_applied")),
-                          "state": {"accept": "accepted", "override": "overridden"}.get(dec, "pending"),
-                          "decided_source": src, "reason_code": reason, "candidates": _candidates(c)})
-    return {"domains": [{"domain": d, "verified": a, "rejected": b} for d, (a, b) in sorted(counts.items())], "picks": picks}
+                          "state": {"accept": "accepted", "override": "overridden", "reject": "rejected"}.get(dec, "pending"),
+                          "decided_source": src, "reason_code": reason, "note": note,
+                          "decided_by": str(by) if by else None, "decided_at": at.isoformat() if at else None,
+                          "candidates": _candidates(c)})
+    return {"domains": [{"domain": d, "verified": a, "rejected": b} for d, (a, b) in sorted(counts.items())],
+            "counts": tot, "picks": picks}
 
 
 _PICKS_SQL = """
-    SELECT m.domain, m.sap_object_key, e.key, e.value, d.decision, d.new_source, d.reason_code
+    SELECT m.domain, m.sap_object_key, e.key, e.value, d.decision, d.new_source, d.reason_code, d.note, d.actor,
+           d.decided_at
     FROM master_records m
     CROSS JOIN LATERAL jsonb_each(m.source_contributions) e
     LEFT JOIN LATERAL (
-        SELECT s.decision, s.new_source, s.reason_code FROM survivorship_decisions s
+        SELECT s.decision, s.new_source, s.reason_code, s.note, s.actor, s.decided_at FROM survivorship_decisions s
          WHERE s.tenant_id = m.tenant_id AND s.domain = m.domain AND s.sap_object_key = m.sap_object_key
            AND s.field = e.key AND s.decided_at >= m.updated_at   -- a later re-ingest makes the pick pending again
          ORDER BY s.decided_at DESC LIMIT 1) d ON true
@@ -141,9 +162,16 @@ class SurvivorshipDecisionBody(BaseModel):
     domain: str
     sap_object_key: str
     field: str
-    decision: Literal["accept", "override"]
+    decision: Literal["accept", "override", "reject"]
     source_system: Optional[str] = None  # override only: one of the offered candidates
     reason_code: Optional[Literal["wrong_source", "stale_value", "incomplete_value", "format_issue", "other"]] = None
+    note: Optional[str] = Field(default=None, max_length=500)  # required for a rejection
+
+    @model_validator(mode="after")
+    def _reject_needs_reason(self):
+        if self.decision == "reject" and not (self.note or "").strip():
+            raise ValueError("a rejection needs a reason")
+        return self
 
 
 def plan_decision(entry: dict, decision: str, source: Optional[str]) -> tuple[str, str, object]:
@@ -154,6 +182,10 @@ def plan_decision(entry: dict, decision: str, source: Optional[str]) -> tuple[st
         raise ValueError("this pick has no offered candidates to decide on")
     if decision == "accept":
         return prior, prior, cands[prior]["value"]
+    if decision == "reject":
+        if entry.get("ai_applied"):
+            raise ValueError("this pick is already applied; override it with another source instead")
+        return prior, prior, None
     if source not in cands:
         raise ValueError("override must be one of the offered candidate sources")
     if source == prior:
@@ -161,7 +193,8 @@ def plan_decision(entry: dict, decision: str, source: Optional[str]) -> tuple[st
     return prior, source, cands[source]["value"]
 
 
-async def apply_decision(db: AsyncSession, tid: str, body: SurvivorshipDecisionBody, user_id: Optional[str]) -> dict:
+async def apply_decision(db: AsyncSession, tid: str, body: SurvivorshipDecisionBody, user_id: Optional[str],
+                         request: Optional[Request] = None) -> dict:
     row = (await db.execute(text(
         "SELECT id, source_contributions -> :f AS entry FROM master_records "
         "WHERE tenant_id = :tid AND domain = :d AND sap_object_key = :k"),
@@ -175,33 +208,78 @@ async def apply_decision(db: AsyncSession, tid: str, body: SurvivorshipDecisionB
         prior, new, value = plan_decision(entry, body.decision, body.source_system)
     except ValueError as e:
         raise mdm_merge.MergeStateError(str(e))
+    # Four eyes: whoever triggered the run that proposed a held-back pick cannot decide it. A run with no user (a
+    # scheduled ingest) has nobody to compare with; an unknown deciding user can never pass the check.
+    maker = entry.get("proposed_by")
+    if not entry.get("ai_applied") and maker and (user_id is None or user_id == maker):
+        raise HTTPException(status_code=403, detail="A different user must decide this pick")
     # An override, or an accept of a pick the approval policy held back, changes the golden value through the
     # steward-override path. ponytail: that pins the field as a steward override; clear it on the merge explain
-    # screen to return to survivorship.
-    if body.decision == "override" or not entry.get("ai_applied"):
+    # screen to return to survivorship. A reject leaves the golden value as the deterministic chain set it.
+    if body.decision == "override" or (body.decision == "accept" and not entry.get("ai_applied")):
         await mdm_merge.set_overrides(db, tid, str(row.id), {body.field: value}, user_id,
                                       f"AI survivorship {body.decision}: {prior} -> {new}")
     await db.execute(text("""
         INSERT INTO survivorship_decisions (tenant_id, domain, sap_object_key, field, decision, prior_source,
-                                            new_source, reason_code, actor)
-        VALUES (:tid, :d, :k, :f, :dec, :p, :n, :rc, CAST(:u AS uuid))
+                                            new_source, reason_code, actor, note)
+        VALUES (:tid, :d, :k, :f, :dec, :p, :n, :rc, CAST(:u AS uuid), :note)
     """), {"tid": tid, "d": body.domain, "k": body.sap_object_key, "f": body.field, "dec": body.decision, "p": prior,
-           "n": new, "rc": body.reason_code, "u": user_id})
+           "n": new, "rc": body.reason_code, "u": user_id, "note": (body.note or "").strip() or None})
+    if request is not None:  # sources and reasons only, never a value
+        await write_audit(db, uuid.UUID(tid), request, f"survivorship.{body.decision}", "survivorship_pick",
+                          f"{body.domain}:{body.sap_object_key}:{body.field}",
+                          {"state": "applied" if entry.get("ai_applied") else "proposed", "recommended_source": prior},
+                          {"decision": body.decision, "source": new, "reason_code": body.reason_code,
+                           "note": (body.note or "").strip() or None})
     return {"decision": body.decision, "prior_source": prior, "new_source": new, "field": body.field}
 
 
-@router.post("/decision")
-async def decide(body: SurvivorshipDecisionBody, _: str = Depends(require_permission("mdm.write")),
-                 db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
-    """Accept or override one AI pick. The request audit middleware writes the audit_log row for this POST;
-    the decision itself, with actor, time, prior and new source, is in survivorship_decisions."""
-    await _rls(db, tenant)
+def _uid() -> Optional[str]:
     uid = current_user_id()
     try:
-        uid = str(uuid.UUID(uid)) if uid else None
+        return str(uuid.UUID(uid)) if uid else None
     except ValueError:
-        uid = None
-    return await _mutate(db, apply_decision(db, str(tenant.id), body, uid))
+        return None
+
+
+@router.post("/decision")
+async def decide(body: SurvivorshipDecisionBody, request: Request, _: str = Depends(require_permission("approve")),
+                 db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
+    """Approve (accept), override or reject one proposed AI pick; the approver must not be whoever triggered the run.
+    The decision, with approver, time, prior and new source, reason and note, is in survivorship_decisions and in an
+    audit_log row (survivorship.<decision>)."""
+    await _rls(db, tenant)
+    return await _mutate(db, apply_decision(db, str(tenant.id), body, _uid(), request))
+
+
+class PickRef(BaseModel):
+    domain: str
+    sap_object_key: str
+    field: str
+
+
+class BulkApproveBody(BaseModel):
+    picks: list[PickRef] = Field(min_length=1, max_length=200)
+
+
+@router.post("/decision/bulk")
+async def approve_bulk(body: BulkApproveBody, request: Request, _: str = Depends(require_permission("approve")),
+                       db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
+    """Approve each listed pick. A pick that cannot be approved (not found, four eyes) is reported and skipped; the
+    others are approved. ponytail: one transaction for all picks, no per-pick savepoint."""
+    await _rls(db, tenant)
+    uid, done, failed = _uid(), 0, []
+    for ref in body.picks:
+        try:
+            await apply_decision(db, str(tenant.id), SurvivorshipDecisionBody(**ref.model_dump(), decision="accept"),
+                                 uid, request)
+            done += 1
+        except HTTPException as e:
+            failed.append({**ref.model_dump(), "detail": str(e.detail)})
+        except mdm_merge.MergeStateError as e:
+            failed.append({**ref.model_dump(), "detail": str(e)})
+    await db.commit()
+    return {"approved": done, "failed": failed}
 
 
 # -- accuracy -----------------------------------------------------------------------------------------------------
@@ -250,7 +328,7 @@ async def survivorship_accuracy(db: AsyncSession = Depends(get_db), tenant: Tena
     await _rls(db, tenant)
     tid = {"tid": str(tenant.id)}
     dec = (await db.execute(text("SELECT domain, field, decision, decided_at FROM survivorship_decisions "
-                                 "WHERE tenant_id = :tid"), tid)).fetchall()
+                                 "WHERE tenant_id = :tid AND decision <> 'reject'"), tid)).fetchall()
     pend = (await db.execute(text(_PICKS_SQL), tid)).fetchall()
     out = accuracy([tuple(r) for r in dec],
                    [(r[0], r[2]) for r in pend if r[4] is None and r[3].get("ai_candidates")])
@@ -266,9 +344,10 @@ class ApprovalSetting(BaseModel):
 
 @router.get("/approval-setting", response_model=ApprovalSetting, dependencies=[Depends(require_permission("view"))])
 async def get_approval_setting(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> ApprovalSetting:
-    """Whether a proved AI pick waits for a steward's accept before it is applied (tenant setting survivorship_ai_approval)."""
+    """Whether a proved AI pick waits for a steward's approval before it is applied (tenant setting
+    survivorship_ai_approval). On unless the tenant opted into auto-approve with required=false."""
     await set_rls(db, tenant.id)
-    return ApprovalSetting(required=bool(((await get_setting(db, tenant.id, AI_APPROVAL_SETTING)) or {}).get("required")))
+    return ApprovalSetting(required=bool(((await get_setting(db, tenant.id, AI_APPROVAL_SETTING)) or {}).get("required", True)))
 
 
 @router.put("/approval-setting", response_model=ApprovalSetting, dependencies=[Depends(require_permission("manage_settings"))])

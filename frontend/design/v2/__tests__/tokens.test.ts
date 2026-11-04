@@ -101,6 +101,8 @@ const TEXT: [string, string][] = [
   ["--m2-meta", "--m2-bg"], ["--m2-meta", "--m2-sheet"], ["--m2-meta", "--m2-hover"], ["--m2-meta", "--m2-active"],
   ["--m2-data", "--m2-bg"], ["--m2-data", "--m2-sheet"], ["--m2-data", "--m2-hover"], ["--m2-data", "--m2-active"], ["--m2-data", "--m2-data-bg"],
   ["--m2-on-data", "--m2-data"], ["--m2-on-inverse", "--m2-inverse"], ["--m2-chart-text", "--m2-sheet"],
+  ...(["--m2-hero-fg", "--m2-hero-fg-2", "--m2-hero-meta", "--m2-hero-accent", "--m2-on-hero-pass", "--m2-on-hero-warn", "--m2-on-hero-crit"] as const).flatMap((c): [string, string][] => [[c, "--m2-hero-bg"], [c, "--m2-hero-bg-2"]]),
+  ...[0, 1, 2, 3].map((i): [string, string] => [`--m2-heat-${i}-ink`, `--m2-heat-${i}`]),
   ...(["pass", "warn", "crit", "fail", "info"] as const).flatMap((s): [string, string][] => [
     [`--m2-${s}`, "--m2-bg"], [`--m2-${s}`, "--m2-sheet"], [`--m2-${s}-ink`, `--m2-${s}-bg`], ["--m2-fg", `--m2-${s}-bg`],
   ]),
