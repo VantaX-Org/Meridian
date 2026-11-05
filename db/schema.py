@@ -3443,7 +3443,7 @@ class ChangeRequest(Base):
         Index("ix_change_requests_requester", "tenant_id", "requester_id", "created_at"),
         Index("uq_change_requests_entry_open", "tenant_id", "entry_fingerprint", unique=True,
               postgresql_where=text("entry_fingerprint IS NOT NULL AND status IN "
-                                    "('draft', 'submitted', 'in_approval', 'approved', 'creating')")),
+                                    "('draft', 'submitted', 'in_approval', 'approved', 'creating', 'failed')")),
         Index("ix_change_requests_entry", "tenant_id", text("created_at DESC"),
               postgresql_where=text("entry_fingerprint IS NOT NULL")),
     )

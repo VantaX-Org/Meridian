@@ -26,7 +26,7 @@ def upgrade() -> None:
     op.execute("ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS entry_fingerprint text")
     op.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_change_requests_entry_open ON change_requests "
                "(tenant_id, entry_fingerprint) WHERE entry_fingerprint IS NOT NULL "
-               "AND status IN ('draft', 'submitted', 'in_approval', 'approved', 'creating')")
+               "AND status IN ('draft', 'submitted', 'in_approval', 'approved', 'creating', 'failed')")
     op.execute("CREATE INDEX IF NOT EXISTS ix_change_requests_entry ON change_requests (tenant_id, created_at DESC) "
                "WHERE entry_fingerprint IS NOT NULL")
 

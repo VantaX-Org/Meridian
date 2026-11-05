@@ -212,7 +212,8 @@ def _tally(rows: list[dict]) -> dict[str, Optional[int]]:
 
 OBJECT_OF = {m: o for o, m in MODULE_OF.items()}
 MAX_ROUTED = 25  # requests one call may open; the rest say over_limit
-_OPEN = ("draft", "submitted", "in_approval", "approved", "creating")
+# failed stays open: retry moves it back to creating, so a second request for the content would break the unique index.
+_OPEN = ("draft", "submitted", "in_approval", "approved", "creating", "failed")
 
 
 async def _open_request(db: AsyncSession, tenant: Tenant, request: Request, module: str, row: dict[str, str],

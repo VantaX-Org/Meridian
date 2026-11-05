@@ -146,3 +146,43 @@ async def test_open_failure_keeps_the_verdict(monkeypatch, worlds):
     sr = r.json()["records"][0]["steward_request"]
     assert sr["reason"] == "not_opened" and not sr.get("request_id")
     assert count(eng, a) == 0
+
+
+def set_status(eng, rid, status):
+    with eng.begin() as c:
+        c.execute(text("UPDATE change_requests SET status = :s WHERE id = :i"), {"s": status, "i": rid})
+
+
+@pytest.mark.anyio
+async def test_failed_keeps_the_content_until_cancelled(monkeypatch, worlds):
+    eng, a, _ = worlds
+    first = (await validate(monkeypatch, a, "material_master", [BAD])).json()["records"][0]["steward_request"]
+    set_status(eng, first["request_id"], "failed")  # retry would move it back to creating
+    again = (await validate(monkeypatch, a, "material_master", [BAD])).json()["records"][0]["steward_request"]
+    assert again["request_id"] == first["request_id"] and again["status"] == "failed" and again["existing"] is True
+    set_status(eng, first["request_id"], "cancelled")
+    new = (await validate(monkeypatch, a, "material_master", [BAD])).json()["records"][0]["steward_request"]
+    assert new["request_id"] != first["request_id"] and not new.get("existing")
+    assert count(eng, a) == 2
+
+
+@pytest.mark.anyio
+async def test_parallel_open_returns_the_winner(monkeypatch, worlds):
+    """The other call commits after this call's lookup and before its insert: the unique index decides."""
+    from api.routes import change_requests as cr_routes
+
+    eng, a, _ = worlds
+    first = (await validate(monkeypatch, a, "material_master", [BAD])).json()["records"][0]["steward_request"]
+    set_status(eng, first["request_id"], "cancelled")
+    real = cr_routes.draft_request
+
+    async def lose_the_race(*args, **kw):
+        set_status(eng, first["request_id"], "in_approval")
+        return await real(*args, **kw)
+
+    monkeypatch.setattr(cr_routes, "draft_request", lose_the_race)
+    r = await validate(monkeypatch, a, "material_master", [BAD])
+    assert r.status_code == 200, r.text
+    sr = r.json()["records"][0]["steward_request"]
+    assert sr["request_id"] == first["request_id"] and sr["existing"] is True
+    assert count(eng, a) == 1
