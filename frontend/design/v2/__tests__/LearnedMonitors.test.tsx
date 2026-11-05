@@ -60,6 +60,36 @@ describe("learned monitors", () => {
   });
 });
 
+describe("value pattern and range breaks", () => {
+  it("shows the field code beside its description and the share for a pattern or format break", async () => {
+    renderWithQuery(<LearnedMonitors />);
+    const pat = await screen.findByTestId("break-lm-6");
+    expect(within(pat).getByRole("button", { name: "Value shapes shifted" })).toBeInTheDocument();
+    expect(within(pat).getByText("MARA-MTART")).toBeInTheDocument();
+    expect(within(pat).getByText("Material type")).toBeInTheDocument();
+    expect(within(pat).getByText("31.5%")).toBeInTheDocument();
+    const fmtb = screen.getByTestId("break-lm-7");
+    expect(within(fmtb).getByRole("button", { name: "Format broke" })).toBeInTheDocument();
+    expect(within(fmtb).getByText("22.4%")).toBeInTheDocument();
+  });
+
+  it("shows only how far a range moved, never the mean or the dates themselves", async () => {
+    renderWithQuery(<LearnedMonitors />);
+    const mean = await screen.findByTestId("break-lm-8");
+    expect(within(mean).getByRole("button", { name: /Range shifted/ })).toHaveTextContent("Mean");
+    expect(within(mean).getByText("Gross weight")).toBeInTheDocument();
+    expect(within(mean).getByText("158.3% from the usual level")).toBeInTheDocument();
+    expect(mean).not.toHaveTextContent("3.1");
+    const date = screen.getByTestId("break-lm-9");
+    expect(within(date).getByRole("button", { name: /Latest date/ })).toBeInTheDocument();
+    expect(within(date).getByText("990 days from the usual level")).toBeInTheDocument();
+    expect(date).not.toHaveTextContent("739");
+    fireEvent.click(within(date).getByRole("button", { name: /Range shifted/ }));
+    expect(await screen.findByTestId("monitors-explanation")).toHaveTextContent("the latest date fell back");
+    expect(screen.getByTestId("monitors-detail")).not.toHaveTextContent("739");
+  });
+});
+
 describe("breaks below the learned minimum", () => {
   it("lists one quietly with its code beside the description, outside the open count, and confirming moves it out", async () => {
     const u = "/monitors?fixture=1&persona=owner"; window.history.pushState({}, "", u); setUrl(u);
@@ -68,7 +98,7 @@ describe("breaks below the learned minimum", () => {
     expect(within(row).getByText("MM021")).toBeInTheDocument();
     expect(within(row).getByText("Material group missing")).toBeInTheDocument();
     expect(screen.queryByTestId("break-lm-5")).toBeNull();
-    expect(screen.getByTestId("monitors")).toHaveTextContent("4 open breaks");
+    expect(screen.getByTestId("monitors")).toHaveTextContent("8 open breaks");
     fireEvent.click(within(row).getByRole("button", { name: "Confirm as real" }));
     await waitFor(() => expect(screen.queryByTestId("quiet-lm-5")).toBeNull());
   });

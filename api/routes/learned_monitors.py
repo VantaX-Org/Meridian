@@ -26,6 +26,8 @@ from api.services.receipt_math import rule_names
 from api.services.version_status import finished_sql
 from api.services.rbac import current_user_label, require_permission, write_audit
 
+FIELD_METRICS = ("blank_pct", "distinct_pct", "pattern_pct", "unparse_pct", *lm.RANGE)  # metrics of one TABLE.FIELD
+
 router = APIRouter(prefix="/api/v1/aletheia/monitors", tags=["aletheia"])
 
 COLS = """b.id::text, b.version_id::text, v.run_number, b.module, b.kind, b.metric, b.subject_code, b.severity,
@@ -52,8 +54,10 @@ class BreakOut(BaseModel):
     version_id: str
     run_number: Optional[int] = None
     module: str
-    kind: Literal["volume_drop", "volume_spike", "fail_rate_jump", "score_drop", "field_emptied", "cardinality_shift"]
-    metric: Literal["records", "score", "fail_rate", "blank_pct", "distinct_pct"]
+    kind: Literal["volume_drop", "volume_spike", "fail_rate_jump", "score_drop", "field_emptied", "cardinality_shift",
+                  "pattern_shift", "format_break", "range_shift"]
+    metric: Literal["records", "score", "fail_rate", "blank_pct", "distinct_pct", "pattern_pct", "unparse_pct", "num_mean", "num_max",
+                    "num_min", "date_max", "date_min"]
     subject_code: str
     subject_description: Optional[str] = None
     severity: Literal["critical", "high", "medium", "low"]
@@ -99,7 +103,8 @@ class ThresholdMove(BaseModel):
 class Threshold(BaseModel):
     """One monitor's minimum effect: what it is now, the fixed floor and ceiling, and the decisions that moved it."""
     module: str
-    metric: Literal["records", "score", "fail_rate", "blank_pct", "distinct_pct"]
+    metric: Literal["records", "score", "fail_rate", "blank_pct", "distinct_pct", "pattern_pct", "unparse_pct", "num_mean", "num_max",
+                    "num_min", "date_max", "date_min"]
     subject_code: str
     subject_description: Optional[str] = None
     min_effect: float
@@ -135,7 +140,7 @@ async def _shape(db: AsyncSession, tenant: Tenant, rows) -> list[BreakOut]:
     now = datetime.now(timezone.utc)
     out = []
     for r in rows:
-        desc = names.get(r[6]) if r[5] == "fail_rate" else field_text(r[6], r[3]) if r[5] in ("blank_pct", "distinct_pct") else None
+        desc = names.get(r[6]) if r[5] == "fail_rate" else field_text(r[6], r[3]) if r[5] in FIELD_METRICS else None
         b = {"kind": r[4], "metric": r[5], "subject_code": r[6], "expected_low": r[8], "expected_high": r[9],
              "median": r[10], "observed": r[11], "baseline_runs": r[12], "method": r[14]}
         exp = r[21] or lm.explanation(lm.facts(b, desc), None)
@@ -166,7 +171,7 @@ async def _thresholds(db: AsyncSession, tenant: Tenant, modules: list[str]) -> l
         out.append(Threshold(
             module=module, metric=metric, subject_code=subject, min_effect=L["min_effect"], floor=L["floor"],
             ceiling=L["ceiling"], window_days=lm.LEARN_DAYS,
-            subject_description=names.get(subject) if metric == "fail_rate" else field_text(subject, module) if metric in ("blank_pct", "distinct_pct") else None,
+            subject_description=names.get(subject) if metric == "fail_rate" else field_text(subject, module) if metric in FIELD_METRICS else None,
             moves=[ThresholdMove(break_id=m["id"], run_number=m["run_number"], decision=m["decision"], effect=m["effect"],
                                  result=m["result"], min_effect_after=m["min_effect"], decided_by=m["decided_by"],
                                  decided_at=_iso(m["decided_at"])) for m in reversed(L["moves"])]))

@@ -202,3 +202,147 @@ def test_distinct_share_explanation_is_grounded():
 
 def test_events_cover_every_learned_metric():
     assert all(f"'{m}'" in lm.EVENTS_SQL for m in lm.FLOOR)
+
+
+# -- value patterns and ranges ------------------------------------------------------------------------------------------
+
+D = 739000.0  # a date as days (proleptic ordinal), around 2024
+
+
+def test_pattern_shift_fires_only_upward_and_over_ten_points():
+    b = _base([2, 3, 2.5, 3, 2, 2.5], "pattern_pct")
+    j = lm.judge("pattern_pct", "MARA.MTART", 20, b)
+    assert j["kind"] == "pattern_shift" and j["metric"] == "pattern_pct" and j["severity"] == "medium"
+    assert lm.judge("pattern_pct", "MARA.MTART", 80, b)["severity"] == "critical"
+    assert lm.judge("pattern_pct", "MARA.MTART", 8, b) is None      # under the 10 point floor
+    assert lm.judge("pattern_pct", "MARA.MTART", 0, b) is None      # fewer odd shapes is not a break
+    assert lm.judge("pattern_pct", "MARA.MTART", 2.7, _base([2, 3, 2.5, 3, 2, 2.5], "pattern_pct")) is None  # stable
+
+
+def test_format_break_fires_only_upward_and_over_five_points():
+    b = _base([0, 0.1, 0, 0.2, 0, 0.1], "unparse_pct")
+    j = lm.judge("unparse_pct", "MARA.NTGEW", 12, b)
+    assert j["kind"] == "format_break" and j["metric"] == "unparse_pct"
+    assert lm.judge("unparse_pct", "MARA.NTGEW", 4, b) is None
+    assert lm.judge("unparse_pct", "MARA.NTGEW", 0, b) is None
+
+
+def test_numeric_range_moves_both_ways_for_the_mean_and_one_way_for_max_and_min():
+    mean = _base([100, 101, 99, 100, 100.5, 99.5], "num_mean")
+    assert lm.judge("num_mean", "MARA.BRGEW", 400, mean)["kind"] == "range_shift"
+    assert lm.judge("num_mean", "MARA.BRGEW", 20, mean)["kind"] == "range_shift"
+    assert lm.judge("num_mean", "MARA.BRGEW", 120, mean) is None      # 20 percent: under the 50 percent floor
+    mx = _base([1000, 1010, 990, 1000, 1005, 995], "num_max")
+    assert lm.judge("num_max", "MARA.BRGEW", 5000, mx)["kind"] == "range_shift"
+    assert lm.judge("num_max", "MARA.BRGEW", 10, mx) is None          # a lower largest value is not a break
+    mn = _base([10, 10.1, 9.9, 10, 10, 10.05], "num_min")
+    assert lm.judge("num_min", "MARA.BRGEW", -500, mn)["kind"] == "range_shift"
+    assert lm.judge("num_min", "MARA.BRGEW", 500, mn) is None
+    assert lm.effect_of("num_mean", 150, 100) == 50 == lm.effect_of("num_mean", 50, 100)
+    assert lm.effect_of("num_mean", 5, 0) == 0.0                      # a zero median has no relative size
+
+
+def test_a_date_moving_forward_is_silent_but_falling_back_a_year_fires():
+    mx = _base([D, D + 30, D + 60, D + 90, D + 120, D + 150], "date_max")
+    assert lm.judge("date_max", "MARA.LAEDA", D + 150 + 30, mx) is None      # the latest date grew with new records
+    assert lm.judge("date_max", "MARA.LAEDA", D + 150 + 4000, mx) is None    # forward is never a break
+    assert lm.judge("date_max", "MARA.LAEDA", D - 800, mx)["kind"] == "range_shift"
+    assert lm.judge("date_max", "MARA.LAEDA", D - 200, mx) is None           # under 365 days
+    mn = _base([D, D, D, D + 1, D, D], "date_min")
+    assert lm.judge("date_min", "MARA.ERSDA", D - 5000, mn)["kind"] == "range_shift"
+    assert lm.judge("date_min", "MARA.ERSDA", D + 5000, mn) is None                 # an earliest date that rises is not a break
+    assert lm.effect_of("date_max", D - 800, D + 75) == 875
+
+
+def test_a_stable_field_is_silent_on_every_new_metric():
+    for m, vals, obs in (("pattern_pct", [2, 3, 2.5, 3, 2, 2.5], 2.6), ("unparse_pct", [0, 0.1, 0, 0.2, 0, 0.1], 0.1),
+                         ("num_mean", [100, 101, 99, 100, 100.5, 99.5], 100.2), ("num_max", [1000, 1010, 990, 1000, 1005, 995], 1002),
+                         ("num_min", [10, 10.1, 9.9, 10, 10, 10.05], 10.02), ("date_max", [D, D + 1, D, D + 2, D, D + 1], D + 1),
+                         ("date_min", [D, D, D, D + 1, D, D], D)):
+        assert lm.judge(m, "MARA.X", obs, _base(vals, m)) is None, m
+
+
+def test_range_severity_follows_the_size_of_the_move():
+    mean = _base([100, 101, 99, 100, 100.5, 99.5], "num_mean")
+    assert lm.judge("num_mean", "T.F", 160, mean)["severity"] == "medium"
+    assert lm.judge("num_mean", "T.F", 250, mean)["severity"] == "high"
+    assert lm.judge("num_mean", "T.F", 400, mean)["severity"] == "critical"
+    mx = _base([D, D, D + 1, D, D, D], "date_max")
+    assert lm.judge("date_max", "T.F", D - 400, mx)["severity"] == "medium"
+    assert lm.judge("date_max", "T.F", D - 4000, mx)["severity"] == "critical"
+
+
+def test_below_minimum_and_learning_work_for_the_new_metrics():
+    b = _base([100, 101, 99, 100, 100.5, 99.5], "num_mean")
+    assert lm.judge("num_mean", "T.F", 160, b, 80.0) is None                      # 60 percent under a raised 80
+    k = lm.judge("num_mean", "T.F", 160, b, 80.0, keep_suppressed=True)
+    assert k["below_minimum"] is True and k["kind"] == "range_shift"
+    assert lm.learn("num_mean", [ev("expected", 80.0, 1)])["min_effect"] == 80.0 * lm.LEARN_MARGIN
+    assert lm.learn("date_max", [ev("confirmed", 100.0, 1)])["min_effect"] == lm.RANGE_MIN_DAYS    # never below the floor
+    assert lm.learn("pattern_pct", [ev("expected", 20.0, 1)])["min_effect"] == 20.0 * lm.LEARN_MARGIN
+    assert lm.learn("unparse_pct", [])["min_effect"] == lm.UNPARSE_MIN_RISE
+    # a raised pattern minimum silences a break a lower one would raise
+    p = _base([2, 3, 2.5, 3, 2, 2.5], "pattern_pct")
+    assert lm.judge("pattern_pct", "T.F", 20, p, 25.0) is None
+    assert lm.judge("pattern_pct", "T.F", 20, p, 25.0, keep_suppressed=True)["below_minimum"] is True
+
+
+def test_usual_shapes_are_those_in_half_the_earlier_runs_and_a_new_shape_shows_up_as_outside():
+    stable = {f"r{i}": {"AAAA": 0.7, "AAAA9": 0.28} for i in range(6)}
+    stable["now"] = {"AAAA": 0.7, "AAAA9": 0.28}
+    s = lm._pattern_series(stable, "now")
+    assert round(s["now"], 6) == 2.0 and len(s) == 7
+    shifted = {**stable, "now": {"9999": 0.6, "AAAA": 0.3, "AAAA9": 0.08}}
+    assert round(lm._pattern_series(shifted, "now")["now"], 6) == 62.0
+    assert lm._pattern_series({k: v for k, v in list(stable.items())[:4] + [("now", stable["now"])]}, "now") == {}   # <5 earlier runs
+    free = {f"r{i}": {"A9": 0.04, "B9": 0.03} for i in range(6)}
+    free["now"] = {"A9": 0.04}
+    assert lm._pattern_series(free, "now") == {}                     # no usual shape: free text, a key
+
+
+def test_the_shape_series_of_a_run_is_in_percent_of_the_filled_rows():
+    by = {f"r{i}": {"X": 0.9, "Y": 0.06} for i in range(5)}
+    by["now"] = {"X": 0.9, "Y": 0.06}
+    assert round(lm._pattern_series(by, "now")["r0"], 6) == 4.0
+
+
+def _rb(kind, metric, subject, observed, median, runs=6):
+    return {"kind": kind, "metric": metric, "subject_code": subject, "expected_low": median * 0.9, "expected_high": median * 1.1,
+            "median": median, "observed": observed, "baseline_runs": runs, "method": "mad"}
+
+
+def test_range_facts_carry_the_effect_size_and_never_a_figure_of_the_field():
+    for metric, obs, med, unit in (("num_mean", 3175.0, 1234.5, "%"), ("num_max", 98765.4, 4321.0, "%"),
+                                   ("date_max", 738900.0, 739890.0, " days")):
+        f = lm.facts(_rb("range_shift", metric, "MARA.BRGEW", obs, med), "Gross weight")
+        assert f["observed"] is None and f["median"] is None and f["expected_low"] is None and f["expected_high"] is None
+        assert f["effect"] == lm.effect_of(metric, obs, med)
+        text_ = " ".join(lm.template_explanation(f))
+        assert f"{f['effect']:.1f}{unit}" in text_
+        for fig in (obs, med, int(obs), int(med), f"{obs:.1f}", f"{med:.1f}", "738900", "739890"):
+            assert str(fig) not in text_ and str(fig) not in str(f)
+        assert lm.verify(lm.template_explanation(f), f)[1] == 0
+        # a sentence quoting the field's own figure is dropped
+        kept, dropped = lm.verify([f"The largest value is {int(obs)}.", f"It moved {f['effect']:.1f}{unit}."], f)
+        assert dropped == 1 and len(kept) == 1
+
+
+def test_pattern_and_format_facts_hold_shares_only():
+    f = lm.facts(_rb("pattern_shift", "pattern_pct", "MARA.MTART", 30.0, 3.0), "Material type")
+    assert set(f) == {"kind", "metric", "subject", "description", "observed", "expected_low", "expected_high", "median",
+                      "baseline_runs", "method"}
+    s = lm.template_explanation(f)
+    assert "30.0%" in s[0] and lm.verify(s, f)[1] == 0
+    g = lm.facts(_rb("format_break", "unparse_pct", "MARA.NTGEW", 12.0, 0.1), None)
+    assert "12.0%" in lm.template_explanation(g)[0]
+
+
+def test_the_model_prompt_for_a_range_break_holds_the_effect_not_a_value(monkeypatch):
+    import llm.provider as prov
+    seen = {}
+    monkeypatch.setattr(prov, "llm_is_noop", lambda: False)
+    monkeypatch.setattr(prov, "get_llm", lambda: object())
+    monkeypatch.setattr(prov, "safe_invoke", lambda llm, prompt, **k: seen.setdefault("p", prompt) and "It moved a lot.")
+    f = lm.facts(_rb("range_shift", "num_mean", "MARA.BRGEW", 3175.0, 1234.5), "Gross weight")
+    assert lm.ai_sentences(f, "material master MARA.BRGEW") == ["It moved a lot."]
+    assert "157" in seen["p"] and "3175" not in seen["p"] and "1234" not in seen["p"]
