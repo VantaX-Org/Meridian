@@ -31,6 +31,9 @@ const KIND: Record<BreakKind, () => string> = {
   score_drop: () => t("Score drop"),
   field_emptied: () => t("Field emptied"),
   cardinality_shift: () => t("Distinct values shifted"),
+  pattern_shift: () => t("Value shapes shifted"),
+  format_break: () => t("Format broke"),
+  range_shift: () => t("Range shifted"),
 };
 
 const METRIC: Record<BreakMetric, () => string> = {
@@ -39,15 +42,39 @@ const METRIC: Record<BreakMetric, () => string> = {
   fail_rate: () => t("Fail rate"),
   blank_pct: () => t("Empty share"),
   distinct_pct: () => t("Distinct share"),
+  pattern_pct: () => t("Share outside the usual shapes"),
+  unparse_pct: () => t("Share not parseable"),
+  num_mean: () => t("Mean"),
+  num_max: () => t("Largest value"),
+  num_min: () => t("Smallest value"),
+  date_max: () => t("Latest date"),
+  date_min: () => t("Earliest date"),
 };
+
+/** Metrics that hold a value of the field (a number or a day). The screen shows how far it moved, never the value. */
+const RANGE = new Set<BreakMetric>(["num_mean", "num_max", "num_min", "date_max", "date_min"]);
+const isDate = (m: BreakMetric) => m === "date_max" || m === "date_min";
 
 const STATUS = { open: () => t("Open"), acknowledged: () => t("Acknowledged"), expected: () => t("Expected"), snoozed: () => t("Snoozed"), below_minimum: () => t("Below the minimum") };
 
 const fmt = (m: BreakMetric, n: number | null) => (n == null ? <Dash /> : m === "records" ? int(n) : m === "score" ? f1(n) : `${f1(n)}%`);
 
-/** An effect in its own unit: records as a share of the median, the others as points (score) or percentage points. */
+/** An effect in its own unit: records and numeric ranges as a share of the median, dates as days, score as points, the rest as percentage points. */
 const eff = (m: MonitorThreshold["metric"], n: number) =>
-  m === "records" ? `${f1(n * 100)}%` : m === "score" ? t("{n} points", { n: f1(n) }) : t("{n} percentage points", { n: f1(n) });
+  m === "records" ? `${f1(n * 100)}%` : RANGE.has(m) ? (isDate(m) ? t("{n, plural, one {# day} other {# days}}", { n: Math.round(n) }) : `${f1(n)}%`) : m === "score" ? t("{n} points", { n: f1(n) }) : t("{n} percentage points", { n: f1(n) });
+
+/** How far a range metric moved from its usual level, in the unit of eff(): percent of the median, or days. */
+const moved = (b: LearnedBreak) => {
+  const m = b.median ?? 0;
+  return eff(b.metric, isDate(b.metric) ? Math.abs(b.observed - m) : m === 0 ? 0 : (Math.abs(b.observed - m) / Math.abs(m)) * 100);
+};
+
+/** Usual range and observed cells: a range metric shows how far it moved, never a value of the field. */
+const Usual = ({ b }: { b: LearnedBreak }) => RANGE.has(b.metric) ? <Dash why={t("Only the size of the move is shown, not a value of the field.")} /> : <>{fmt(b.metric, b.expected_low)} {t("to")} {fmt(b.metric, b.expected_high)}</>;
+const Seen = ({ b }: { b: LearnedBreak }) => !RANGE.has(b.metric) ? <>{fmt(b.metric, b.observed)}</>
+  : !isDate(b.metric) && !b.median ? <>{t("Moved from a usual level of zero")}</> : <>{t("{effect} from the usual level", { effect: moved(b) })}</>;
+/** The break kind with, for a range, which figure moved. */
+const Kind = ({ b }: { b: LearnedBreak }) => <>{KIND[b.kind]()}{b.kind === "range_shift" ? <span className="m2-meta"> {METRIC[b.metric]()}</span> : null}</>;
 
 function Thresholds({ rows }: { rows: MonitorThreshold[] }) {
   return (
@@ -102,6 +129,7 @@ const Subject = ({ b }: { b: LearnedBreak }) =>
 
 /** The usual range as a band with the observed value as a mark; the axis runs from the lower of the three to the higher. */
 function Strip({ b }: { b: LearnedBreak }) {
+  if (RANGE.has(b.metric)) return <Dash />;
   const lo = b.expected_low ?? b.observed, hi = b.expected_high ?? b.observed;
   const min = Math.min(lo, b.observed), max = Math.max(hi, b.observed);
   const span = max - min || 1;
@@ -194,11 +222,11 @@ export function LearnedMonitors() {
                   <tr key={b.id} data-testid={`break-${b.id}`} aria-selected={sel?.id === b.id} onClick={() => setPicked(b.id)}>
                     <td data-label={t("Object")}>{moduleText(b.module)}</td>
                     <th scope="row" className="m2-card-lead">
-                      <button type="button" className="m2-linkbtn" onClick={() => setPicked(b.id)}>{KIND[b.kind]()}</button>
+                      <button type="button" className="m2-linkbtn" onClick={() => setPicked(b.id)}><Kind b={b} /></button>
                     </th>
                     <td data-label={t("Rule or field")}><Subject b={b} /></td>
-                    <td data-label={t("Usual range")} className="m2-num">{fmt(b.metric, b.expected_low)} {t("to")} {fmt(b.metric, b.expected_high)}</td>
-                    <td data-label={t("Observed")} className="m2-num">{fmt(b.metric, b.observed)}</td>
+                    <td data-label={t("Usual range")} className="m2-num"><Usual b={b} /></td>
+                    <td data-label={t("Observed")} className="m2-num"><Seen b={b} /></td>
                     <td><Strip b={b} /></td>
                     <td data-label={t("Earlier runs used")} className="m2-num">{int(b.baseline_runs)}</td>
                     <td data-label={t("Severity")}><Sev severity={b.severity} /></td>
@@ -233,10 +261,10 @@ export function LearnedMonitors() {
                   <tr key={b.id} data-testid={`interim-${b.id}`} aria-selected={sel?.id === b.id} onClick={() => setPicked(b.id)}>
                     <td data-label={t("Object")}>{moduleText(b.module)}</td>
                     <th scope="row" className="m2-card-lead">
-                      <button type="button" className="m2-linkbtn" onClick={() => setPicked(b.id)}>{KIND[b.kind]()}</button>
+                      <button type="button" className="m2-linkbtn" onClick={() => setPicked(b.id)}><Kind b={b} /></button>
                     </th>
-                    <td data-label={t("Usual range")} className="m2-num">{fmt(b.metric, b.expected_low)} {t("to")} {fmt(b.metric, b.expected_high)}</td>
-                    <td data-label={t("Rows extracted")} className="m2-num">{fmt(b.metric, b.observed)}</td>
+                    <td data-label={t("Usual range")} className="m2-num"><Usual b={b} /></td>
+                    <td data-label={t("Rows extracted")} className="m2-num"><Seen b={b} /></td>
                     <td><Strip b={b} /></td>
                     <td data-label={t("Earlier syncs used")} className="m2-num">{int(b.baseline_runs)}</td>
                     <td data-label={t("Severity")}><Sev severity={b.severity} /></td>
@@ -290,10 +318,10 @@ function BelowMinimum({ rows, thresholds, allowed, onChanged }: { rows: LearnedB
                 return (
                   <tr key={b.id} data-testid={`quiet-${b.id}`}>
                     <td data-label={t("Object")}>{moduleText(b.module)}</td>
-                    <th scope="row" className="m2-card-lead">{KIND[b.kind]()}</th>
+                    <th scope="row" className="m2-card-lead"><Kind b={b} /></th>
                     <td data-label={t("Rule or field")}><Subject b={b} /></td>
-                    <td data-label={t("Usual range")} className="m2-num">{fmt(b.metric, b.expected_low)} {t("to")} {fmt(b.metric, b.expected_high)}</td>
-                    <td data-label={t("Observed")} className="m2-num">{fmt(b.metric, b.observed)}</td>
+                    <td data-label={t("Usual range")} className="m2-num"><Usual b={b} /></td>
+                    <td data-label={t("Observed")} className="m2-num"><Seen b={b} /></td>
                     <td data-label={t("Minimum now")} className="m2-num">{m ? eff(m.metric, m.min_effect) : <Dash />}</td>
                     <td>{allowed ? <button type="button" className="m2-btn m2-sm" disabled={confirm.isPending} onClick={() => confirm.mutate(b.id)}>{t("Confirm as real")}</button> : null}</td>
                   </tr>
@@ -324,7 +352,7 @@ function Detail({ b, allowed, onChanged }: { b: LearnedBreak; allowed: boolean; 
       <p data-testid="monitors-explanation">{e.sentences.join(" ")}</p>
       <ul className="m2-cl-changes">
         <li>{e.source === "ai" ? t("Worded by Aletheia from the figures only. It saw no record.") : t("Worded from the figures by a fixed template. No AI was used.")}</li>
-        <li>{METRIC[b.metric]()}: {b.median == null ? <Dash /> : t("baseline median {m} over {n} earlier runs", { m: b.metric === "records" ? int(b.median) : f1(b.median), n: int(b.baseline_runs) })}</li>
+        <li>{METRIC[b.metric]()}: {b.median == null || RANGE.has(b.metric) ? <Dash /> : t("baseline median {m} over {n} earlier runs", { m: b.metric === "records" ? int(b.median) : f1(b.median), n: int(b.baseline_runs) })}</li>
         <li data-testid="monitors-cites">
           {t("Runs behind it")}: {b.citations.map((c) => (
             <span key={c.run_id}>{c.run_number == null ? <Dash /> : <Mono>{c.role === "current" ? t("Run {n} (this run)", { n: c.run_number }) : t("Run {n}", { n: c.run_number })}</Mono>}{" "}</span>

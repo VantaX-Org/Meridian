@@ -1,5 +1,5 @@
 /**
- * Learned monitors fixture, shaped like api/routes/learned_monitors.py: one active object with four breaks, one below a raised minimum, and one
+ * Learned monitors fixture, shaped like api/routes/learned_monitors.py: one active object with eight breaks, one below a raised minimum, and one
  * object still learning. Decisions change the in-memory break so the screen shows them; the explanation is the
  * deterministic wording, as the route answers with no model.
  */
@@ -35,6 +35,26 @@ const BREAKS: LearnedBreak[] = [
     severity: "low", expected_low: 86.4, expected_high: 89.6, median: 88.1, observed: 84.9, status: "acknowledged", decided_by: "Demo steward", decided_at: "2026-10-22T09:00:00+00:00",
     explanation: say(["Material master: the score fell to 84.9; the usual range is 86.4 to 89.6.", "The baseline is the median of 6 earlier runs, 88.1."]),
   },
+  {
+    ...base, id: "lm-6", module: "material_master", kind: "pattern_shift", metric: "pattern_pct", subject_code: "MARA.MTART", subject_description: "Material type",
+    severity: "medium", expected_low: 0, expected_high: 2.4, median: 0.8, observed: 31.5,
+    explanation: say(["Material type (MARA.MTART): the share of values in an unusual shape rose to 31.5; the usual range is 0.0 to 2.4.", "The baseline is the median of 6 earlier runs, 0.8."]),
+  },
+  {
+    ...base, id: "lm-7", module: "material_master", kind: "format_break", metric: "unparse_pct", subject_code: "MARA.NTGEW", subject_description: "Net weight",
+    severity: "high", expected_low: 0, expected_high: 1.2, median: 0.1, observed: 22.4,
+    explanation: say(["Net weight (MARA.NTGEW): the share of values that do not parse rose to 22.4; the usual range is 0.0 to 1.2.", "The baseline is the median of 6 earlier runs, 0.1."]),
+  },
+  {
+    ...base, id: "lm-8", module: "material_master", kind: "range_shift", metric: "num_mean", subject_code: "MARA.BRGEW", subject_description: "Gross weight",
+    severity: "medium", expected_low: 0.9, expected_high: 1.6, median: 1.2, observed: 3.1,
+    explanation: say(["Gross weight (MARA.BRGEW): the mean moved by 158.3% from its usual level.", "The baseline is the median of 6 earlier runs."]),
+  },
+  {
+    ...base, id: "lm-9", module: "material_master", kind: "range_shift", metric: "date_max", subject_code: "MARA.LAEDA", subject_description: "Date of last change",
+    severity: "low", expected_low: 739860, expected_high: 739895, median: 739890, observed: 738900,
+    explanation: say(["Date of last change (MARA.LAEDA): the latest date fell back by 990.0 days from its usual level.", "The baseline is the median of 6 earlier runs."]),
+  },
 ];
 
 /** Outside the usual range, but 3.4 points is under the 4.2 minimum a steward raised for this rule: stored, not alerted. */
@@ -60,7 +80,7 @@ const INTERIM: LearnedBreak[] = [
 ];
 
 const COVERAGE: LearnedMonitors["coverage"] = [
-  { module: "material_master", run_id: "run-12", run_number: 12, baseline_runs: 6, min_runs: 5, state: "active", breaks: 4 },
+  { module: "material_master", run_id: "run-12", run_number: 12, baseline_runs: 6, min_runs: 5, state: "active", breaks: 8 },
   { module: "sd_customer_master", run_id: "run-12", run_number: 12, baseline_runs: 3, min_runs: 5, state: "learning", breaks: 0 },
 ];
 

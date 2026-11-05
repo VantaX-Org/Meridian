@@ -1461,8 +1461,8 @@ class LearnedMonitorBreak(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
     module = Column(Text, nullable=False)
-    kind = Column(Text, nullable=False)  # volume_drop | volume_spike | fail_rate_jump | score_drop | field_emptied | cardinality_shift (142)
-    metric = Column(Text, nullable=False)  # records | score | fail_rate | blank_pct | distinct_pct (142)
+    kind = Column(Text, nullable=False)  # volume_drop | volume_spike | fail_rate_jump | score_drop | field_emptied | cardinality_shift (142) | pattern_shift | format_break | range_shift (145)
+    metric = Column(Text, nullable=False)  # records | score | fail_rate | blank_pct | distinct_pct (142) | pattern_pct | unparse_pct | num_mean | num_max | num_min | date_max | date_min (145)
     subject_code = Column(Text, nullable=False, server_default="")  # rule id, TABLE.FIELD, or empty for the object
     severity = Column(Text, nullable=False)
     expected_low = Column(Float, nullable=True)

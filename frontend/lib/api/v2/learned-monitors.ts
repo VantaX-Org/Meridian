@@ -12,8 +12,8 @@
  */
 import { v2Get, v2Send } from "./client";
 
-export type BreakKind = "volume_drop" | "volume_spike" | "fail_rate_jump" | "score_drop" | "field_emptied" | "cardinality_shift";
-export type BreakMetric = "records" | "score" | "fail_rate" | "blank_pct" | "distinct_pct";
+export type BreakKind = "volume_drop" | "volume_spike" | "fail_rate_jump" | "score_drop" | "field_emptied" | "cardinality_shift" | "pattern_shift" | "format_break" | "range_shift";
+export type BreakMetric = "records" | "score" | "fail_rate" | "blank_pct" | "distinct_pct" | "pattern_pct" | "unparse_pct" | "num_mean" | "num_max" | "num_min" | "date_max" | "date_min";
 export type BreakStatus = "open" | "acknowledged" | "expected" | "snoozed" | "below_minimum";
 
 export interface BreakCitation {
@@ -30,13 +30,14 @@ export interface LearnedBreak {
   module: string;
   kind: BreakKind;
   metric: BreakMetric;
-  /** A rule id for fail_rate, TABLE.FIELD for blank_pct and distinct_pct, empty for records and score. */
+  /** A rule id for fail_rate, TABLE.FIELD for every field metric, empty for records and score. */
   subject_code: string;
   subject_description: string | null;
   severity: "critical" | "high" | "medium" | "low";
   expected_low: number | null;
   expected_high: number | null;
   median: number | null;
+  /** For num_* metrics the figure of the field, for date_* the day number; the screen shows the size of the move, not these. */
   observed: number;
   baseline_runs: number;
   method: string;
@@ -77,7 +78,7 @@ export interface ThresholdMove {
 /** One monitor's learned minimum effect. Records: a share of the median (0.3 is 30%); score and fail rate: points. */
 export interface MonitorThreshold {
   module: string;
-  metric: "records" | "score" | "fail_rate" | "blank_pct" | "distinct_pct";
+  metric: BreakMetric;
   subject_code: string;
   subject_description: string | null;
   min_effect: number;
