@@ -7762,4 +7762,11 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{n} percentage points": "{n} パーセントポイント",
   "Run {n}: marked expected by {who} at {effect}, minimum now {min}": "実行 {n}: {who} が {effect} の変化を想定内と判断。最小値は現在 {min}",
   "Run {n}: confirmed real by {who} at {effect}, minimum now {min}": "実行 {n}: {who} が {effect} の変化を実際のブレークと確認。最小値は現在 {min}",
+  "Between full runs": "フル実行の合間",
+  "Volume only. An extraction that landed after the latest finished run, whose analysis has not finished, compared with the rows of earlier syncs. Score, fail rate and empty share exist only after the checks run.": "件数のみ。直近の完了した実行の後に取り込まれ、分析がまだ終わっていない抽出を、過去の同期の行数と比較します。スコア、失敗率、空欄の割合はチェックの実行後にしか得られません。",
+  "No break between full runs. No pending extraction is outside its usual size.": "フル実行の合間にブレークはありません。保留中の抽出はどれも通常の規模の範囲内です。",
+  "Breaks between full runs table, scrollable": "フル実行の合間のブレーク表(スクロール可)",
+  "Rows extracted": "抽出した行数",
+  "Earlier syncs used": "使用した過去の同期",
+  "Analysis pending": "分析待ち",
 };

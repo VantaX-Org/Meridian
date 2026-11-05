@@ -7762,4 +7762,11 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{n} percentage points": "{n} Prozentpunkte",
   "Run {n}: marked expected by {who} at {effect}, minimum now {min}": "Lauf {n}: von {who} als erwartet markiert bei {effect}, Mindestwert jetzt {min}",
   "Run {n}: confirmed real by {who} at {effect}, minimum now {min}": "Lauf {n}: von {who} als echt bestätigt bei {effect}, Mindestwert jetzt {min}",
+  "Between full runs": "Zwischen vollen Läufen",
+  "Volume only. An extraction that landed after the latest finished run, whose analysis has not finished, compared with the rows of earlier syncs. Score, fail rate and empty share exist only after the checks run.": "Nur Volumen. Eine Extraktion, die nach dem letzten abgeschlossenen Lauf eingetroffen ist und deren Analyse noch nicht fertig ist, verglichen mit den Zeilen früherer Synchronisierungen. Score, Fehlerquote und Leeranteil gibt es erst, wenn die Prüfungen gelaufen sind.",
+  "No break between full runs. No pending extraction is outside its usual size.": "Kein Bruch zwischen vollen Läufen. Keine ausstehende Extraktion liegt außerhalb ihrer üblichen Größe.",
+  "Breaks between full runs table, scrollable": "Tabelle der Brüche zwischen vollen Läufen, scrollbar",
+  "Rows extracted": "Extrahierte Zeilen",
+  "Earlier syncs used": "Verwendete frühere Synchronisierungen",
+  "Analysis pending": "Analyse ausstehend",
 };

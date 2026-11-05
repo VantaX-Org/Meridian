@@ -1475,6 +1475,7 @@ class LearnedMonitorBreak(Base):
     decided_at = Column(DateTime(timezone=True), nullable=True)
     note = Column(Text, nullable=True)
     explanation = Column(JSONB, nullable=True)
+    source = Column(Text, nullable=False, server_default="run")  # run | interim (migration 136)
     detected_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (

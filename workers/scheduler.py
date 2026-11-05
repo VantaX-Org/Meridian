@@ -30,6 +30,7 @@ import workers.tasks.send_report_pack  # noqa: F401 — registers the board pack
 import workers.tasks.report_schedules  # noqa: F401 — registers the scheduled report tasks
 import workers.tasks.process_schedules  # noqa: F401 — registers the process discovery schedule tick
 import workers.tasks.health_samples  # noqa: F401 — registers the 5-minute health sample (status page uptime)
+import workers.tasks.learned_monitor_interim  # noqa: F401 — registers the 15-minute interim learned monitor
 
 logger = logging.getLogger("meridian.scheduler")
 
@@ -1047,6 +1048,10 @@ celery_app.conf.beat_schedule = {
     "health-samples-every-5min": {
         "task": "workers.tasks.health_samples.sample_health",
         "schedule": crontab(minute="*/5"),  # status page uptime: one row per component per 5-minute slot
+    },
+    "learned-monitor-interim-every-15min": {
+        "task": "workers.tasks.learned_monitor_interim.check_interim",
+        "schedule": crontab(minute="*/15"),  # volume of an extraction whose analysis has not finished
     },
     "health-check-every-30min": {
         "task": "workers.tasks.run_health_check.check_all_systems",

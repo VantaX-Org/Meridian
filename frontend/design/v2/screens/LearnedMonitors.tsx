@@ -8,6 +8,7 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
+import { relTime } from "@/lib/v2/format";
 import { f1, int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
@@ -124,8 +125,9 @@ export function LearnedMonitors() {
   if (q.isError) return <CcPage title={title}><ErrorFrame onRetry={() => void q.refetch()}>{t("The monitors could not be read.")}</ErrorFrame></CcPage>;
 
   const { coverage, breaks, min_runs: minRuns } = q.data;
-  const open = breaks.filter((b) => b.status === "open").length;
-  const sel = breaks.find((b) => b.id === picked) ?? breaks[0] ?? null;
+  const interim = q.data.interim ?? [];
+  const open = [...breaks, ...interim].filter((b) => b.status === "open").length;
+  const sel = [...interim, ...breaks].find((b) => b.id === picked) ?? breaks[0] ?? interim[0] ?? null;
   const allowed = can("mdm.write");
 
   return (
@@ -198,6 +200,45 @@ export function LearnedMonitors() {
                     <td data-label={t("Earlier runs used")} className="m2-num">{int(b.baseline_runs)}</td>
                     <td data-label={t("Severity")}><Sev severity={b.severity} /></td>
                     <td data-label={t("Status")}>{STATUS[b.status]()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollFrame>
+        )}
+      </Panel>
+
+      <Panel title={t("Between full runs")} meta={t("Volume only. An extraction that landed after the latest finished run, whose analysis has not finished, compared with the rows of earlier syncs. Score, fail rate and empty share exist only after the checks run.")} testId="monitors-interim">
+        {interim.length === 0 ? <EmptyFrame>{t("No break between full runs. No pending extraction is outside its usual size.")}</EmptyFrame> : (
+          <ScrollFrame label={t("Breaks between full runs table, scrollable")}>
+            <table className="m2-tbl m2-cards">
+              <thead>
+                <tr>
+                  <th scope="col">{t("Object")}</th>
+                  <th scope="col">{t("Break")}</th>
+                  <th scope="col">{t("Usual range")}</th>
+                  <th scope="col">{t("Rows extracted")}</th>
+                  <th scope="col"><span className="m2-sr">{t("Range chart")}</span></th>
+                  <th scope="col">{t("Earlier syncs used")}</th>
+                  <th scope="col">{t("Severity")}</th>
+                  <th scope="col">{t("Status")}</th>
+                  <th scope="col">{t("Detected")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {interim.map((b) => (
+                  <tr key={b.id} data-testid={`interim-${b.id}`} aria-selected={sel?.id === b.id} onClick={() => setPicked(b.id)}>
+                    <td data-label={t("Object")}>{moduleText(b.module)}</td>
+                    <th scope="row" className="m2-card-lead">
+                      <button type="button" className="m2-linkbtn" onClick={() => setPicked(b.id)}>{KIND[b.kind]()}</button>
+                    </th>
+                    <td data-label={t("Usual range")} className="m2-num">{fmt(b.metric, b.expected_low)} {t("to")} {fmt(b.metric, b.expected_high)}</td>
+                    <td data-label={t("Rows extracted")} className="m2-num">{fmt(b.metric, b.observed)}</td>
+                    <td><Strip b={b} /></td>
+                    <td data-label={t("Earlier syncs used")} className="m2-num">{int(b.baseline_runs)}</td>
+                    <td data-label={t("Severity")}><Sev severity={b.severity} /></td>
+                    <td data-label={t("Status")}>{b.status === "open" ? t("Analysis pending") : STATUS[b.status]()}</td>
+                    <td data-label={t("Detected")}>{relTime(b.detected_at)}</td>
                   </tr>
                 ))}
               </tbody>

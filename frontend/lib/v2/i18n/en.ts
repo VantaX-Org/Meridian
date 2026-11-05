@@ -7761,6 +7761,13 @@ export const en = {
   "{n} percentage points": "{n} percentage points",
   "Run {n}: marked expected by {who} at {effect}, minimum now {min}": "Run {n}: marked expected by {who} at {effect}, minimum now {min}",
   "Run {n}: confirmed real by {who} at {effect}, minimum now {min}": "Run {n}: confirmed real by {who} at {effect}, minimum now {min}",
+  "Between full runs": "Between full runs",
+  "Volume only. An extraction that landed after the latest finished run, whose analysis has not finished, compared with the rows of earlier syncs. Score, fail rate and empty share exist only after the checks run.": "Volume only. An extraction that landed after the latest finished run, whose analysis has not finished, compared with the rows of earlier syncs. Score, fail rate and empty share exist only after the checks run.",
+  "No break between full runs. No pending extraction is outside its usual size.": "No break between full runs. No pending extraction is outside its usual size.",
+  "Breaks between full runs table, scrollable": "Breaks between full runs table, scrollable",
+  "Rows extracted": "Rows extracted",
+  "Earlier syncs used": "Earlier syncs used",
+  "Analysis pending": "Analysis pending",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

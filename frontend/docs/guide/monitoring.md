@@ -62,6 +62,17 @@ After each analysis run Meridian checks five kinds of break and stores each with
 
 The panel **Breaks in the latest run** lists them, most severe first. Press a break to see **Why Aletheia flagged this**: a sentence built from the figures by a fixed template, and the runs it rests on ("Run 12 (this run)"). Press **Ask Aletheia to explain** to have the model reword it. Aletheia sees only the aggregate figures and the rule or field description, and Meridian drops any sentence that states a number outside those figures. When the model is not available, the fixed wording stays.
 
+### Between full runs
+
+A full analysis takes minutes to hours, and its figures (score, fail rate, empty share, records checked) exist only after the checks have run. One figure is known earlier: the number of rows a sync extracted, which Meridian stores as soon as the extraction lands. Every 15 minutes it compares that count with the row counts of the earlier synced runs of the same object, with the same baseline and the same learned minimum as the run monitors. The panel **Between full runs** lists a **Volume drop** or **Volume spike** found this way, with **Rows extracted**, the usual range, **Earlier syncs used** and the status **Analysis pending**. Press one to read the explanation, which states that the break comes from the extraction and not from a finished run. Steward decisions work as for any other break.
+
+The check is limited on purpose:
+
+- It covers volume only. Score, fail rate and empty share cannot be known before the checks run, so nothing is shown for them.
+- It covers full extractions of a profile with one module. A delta or sampled extraction does not carry the size of the object, and a profile with several modules sums their rows, so both are left out.
+- It looks at the latest sync of the last 72 hours whose analysis has not finished. When the analysis finishes, the run monitor judges the run on records checked and replaces the interim row.
+- It reads stored counts only. It starts no extraction and does not run while the analysis is working.
+
 Users who may change master data can decide on a break:
 
 - **Acknowledge.** You have seen it. The baseline does not change.

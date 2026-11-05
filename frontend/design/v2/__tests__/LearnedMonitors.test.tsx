@@ -48,6 +48,16 @@ describe("learned monitors", () => {
     expect(screen.getByTestId("monitors-cites")).toHaveTextContent("Run 12 (this run)");
     expect(screen.queryByTestId("monitors-actions")).toBeNull();
   });
+
+  it("shows a volume break found between full runs, and its detail says the analysis has not finished", async () => {
+    renderWithQuery(<LearnedMonitors />);
+    const row = await screen.findByTestId("interim-lm-i1");
+    expect(within(row).getByText("SD customer master")).toBeInTheDocument();
+    expect(within(row).getByText("4,100")).toBeInTheDocument();
+    expect(within(row).getByText("Analysis pending")).toBeInTheDocument();
+    fireEvent.click(within(row).getByRole("button", { name: "Volume drop" }));
+    expect(await screen.findByTestId("monitors-explanation")).toHaveTextContent("Found between full runs");
+  });
 });
 
 describe("learned minimum effect", () => {

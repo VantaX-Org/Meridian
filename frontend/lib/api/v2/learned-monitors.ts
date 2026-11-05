@@ -2,7 +2,8 @@
  * Learned monitors client: breaks from the baseline Meridian learns from its own earlier runs.
  *
  * Endpoints (api/routes/learned_monitors.py):
- *   GET  /aletheia/monitors                  the latest run's breaks and, per object, how many earlier runs its baseline has
+ *   GET  /aletheia/monitors                  the latest run's breaks and, per object, how many earlier runs its baseline has;
+ *                                            `interim`: volume breaks found between full runs (extraction landed, analysis pending)
  *   POST /aletheia/monitors/{id}/acknowledge { note? }
  *   POST /aletheia/monitors/{id}/expected    { effect: "exclude" | "accept", note? }  mark expected; feeds the baseline
  *   POST /aletheia/monitors/{id}/snooze      { days, note? }
@@ -48,6 +49,8 @@ export interface LearnedBreak {
   explanation: { source: "ai" | "template"; sentences: string[]; dropped: number };
   citations: BreakCitation[];
   detected_at: string;
+  /** run: from a finished analysis run. interim: found between full runs, from the rows a sync extracted. */
+  source: "run" | "interim";
 }
 
 export interface MonitorCoverage {
@@ -90,6 +93,8 @@ export interface LearnedMonitors {
   coverage: MonitorCoverage[];
   breaks: LearnedBreak[];
   thresholds: MonitorThreshold[];
+  /** Volume breaks of syncs whose extraction landed after the latest finished run and whose analysis has not finished. */
+  interim: LearnedBreak[];
 }
 
 export const getLearnedMonitors = (): Promise<LearnedMonitors> => v2Get("/aletheia/monitors");
