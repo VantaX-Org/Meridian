@@ -60,11 +60,36 @@ export interface MonitorCoverage {
   breaks: number;
 }
 
+export interface ThresholdMove {
+  break_id: string;
+  run_number: number | null;
+  decision: "expected" | "confirmed";
+  effect: number;
+  result: "raised" | "lowered" | "kept";
+  min_effect_after: number;
+  decided_by: string | null;
+  decided_at: string | null;
+}
+
+/** One monitor's learned minimum effect. Records: a share of the median (0.3 is 30%); score and fail rate: points. */
+export interface MonitorThreshold {
+  module: string;
+  metric: "records" | "score" | "fail_rate";
+  subject_code: string;
+  subject_description: string | null;
+  min_effect: number;
+  floor: number;
+  ceiling: number;
+  window_days: number;
+  moves: ThresholdMove[];
+}
+
 export interface LearnedMonitors {
   min_runs: number;
   history: number;
   coverage: MonitorCoverage[];
   breaks: LearnedBreak[];
+  thresholds: MonitorThreshold[];
 }
 
 export const getLearnedMonitors = (): Promise<LearnedMonitors> => v2Get("/aletheia/monitors");

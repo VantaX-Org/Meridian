@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { acknowledgeBreak, expectBreak, explainBreak, getLearnedMonitors, snoozeBreak, type BreakKind, type BreakMetric, type LearnedBreak } from "@/lib/api/v2/learned-monitors";
+import { acknowledgeBreak, expectBreak, explainBreak, getLearnedMonitors, snoozeBreak, type BreakKind, type BreakMetric, type LearnedBreak, type MonitorThreshold } from "@/lib/api/v2/learned-monitors";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { useV2Session } from "@/lib/v2/hooks";
@@ -41,6 +41,56 @@ const METRIC: Record<BreakMetric, () => string> = {
 const STATUS = { open: () => t("Open"), acknowledged: () => t("Acknowledged"), expected: () => t("Expected"), snoozed: () => t("Snoozed") };
 
 const fmt = (m: BreakMetric, n: number | null) => (n == null ? <Dash /> : m === "records" ? int(n) : m === "score" ? f1(n) : `${f1(n)}%`);
+
+/** An effect in its own unit: records as a share of the median, score and fail rate as points. */
+const eff = (m: MonitorThreshold["metric"], n: number) =>
+  m === "records" ? `${f1(n * 100)}%` : m === "score" ? t("{n} points", { n: f1(n) }) : t("{n} percentage points", { n: f1(n) });
+
+function Thresholds({ rows }: { rows: MonitorThreshold[] }) {
+  return (
+    <Panel title={t("Learned minimum effect")} meta={t("How big a break must be before it is raised. Stewards' decisions move it between the fixed floor and the ceiling.")} testId="monitors-thresholds">
+      {rows.length === 0 ? <EmptyFrame>{t("No decision has moved a minimum yet. Every monitor uses its fixed floor.")}</EmptyFrame> : (
+        <ScrollFrame label={t("Learned minimum effects table, scrollable")}>
+          <table className="m2-tbl m2-cards">
+            <thead>
+              <tr>
+                <th scope="col">{t("Object")}</th>
+                <th scope="col">{t("Figure")}</th>
+                <th scope="col">{t("Rule or field")}</th>
+                <th scope="col">{t("Minimum now")}</th>
+                <th scope="col">{t("Fixed floor")}</th>
+                <th scope="col">{t("Ceiling")}</th>
+                <th scope="col">{t("Decisions that moved it")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={`${r.module}|${r.metric}|${r.subject_code}`} data-testid={`threshold-${r.module}-${r.metric}-${r.subject_code || "all"}`}>
+                  <td data-label={t("Object")}>{moduleText(r.module)}</td>
+                  <th scope="row" className="m2-card-lead">{METRIC[r.metric]()}</th>
+                  <td data-label={t("Rule or field")}>{r.subject_code ? <>{r.subject_description ? <>{r.subject_description} </> : null}<span className="m2-meta"><Mono>{r.subject_code}</Mono></span></> : <Dash />}</td>
+                  <td data-label={t("Minimum now")} className="m2-num">{eff(r.metric, r.min_effect)}</td>
+                  <td data-label={t("Fixed floor")} className="m2-num">{eff(r.metric, r.floor)}</td>
+                  <td data-label={t("Ceiling")} className="m2-num">{eff(r.metric, r.ceiling)}</td>
+                  <td data-label={t("Decisions that moved it")}>
+                    <ul className="m2-cl-changes">
+                      {r.moves.map((m) => (
+                        <li key={m.break_id}>
+                          {(m.decision === "expected" ? t("Run {n}: marked expected by {who} at {effect}, minimum now {min}", { n: m.run_number ?? "-", who: m.decided_by ?? "-", effect: eff(r.metric, m.effect), min: eff(r.metric, m.min_effect_after) })
+                            : t("Run {n}: confirmed real by {who} at {effect}, minimum now {min}", { n: m.run_number ?? "-", who: m.decided_by ?? "-", effect: eff(r.metric, m.effect), min: eff(r.metric, m.min_effect_after) }))}
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ScrollFrame>
+      )}
+    </Panel>
+  );
+}
 
 const Subject = ({ b }: { b: LearnedBreak }) =>
   b.subject_code ? (
@@ -155,6 +205,8 @@ export function LearnedMonitors() {
           </ScrollFrame>
         )}
       </Panel>
+
+      <Thresholds rows={q.data.thresholds ?? []} />
 
       {sel ? <Detail b={sel} allowed={allowed} onChanged={() => void qc.invalidateQueries({ queryKey: key })} /> : null}
     </CcPage>

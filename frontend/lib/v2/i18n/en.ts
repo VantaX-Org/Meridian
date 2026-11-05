@@ -7753,6 +7753,18 @@ export const en = {
   "On: no sample from a row reaches the model, not a value, a mask or a key shape. Aletheia sends counts and totals only, and falls back to the deterministic checks where a sample would have helped.": "On: no sample from a row reaches the model, not a value, a mask or a key shape. Aletheia sends counts and totals only, and falls back to the deterministic checks where a sample would have helped.",
   "Only aggregates go to the model": "Only aggregates go to the model",
   "Masked samples may go to the model": "Masked samples may go to the model",
+  "Learned minimum effect": "Learned minimum effect",
+  "How big a break must be before it is raised. Stewards' decisions move it between the fixed floor and the ceiling.": "How big a break must be before it is raised. Stewards' decisions move it between the fixed floor and the ceiling.",
+  "No decision has moved a minimum yet. Every monitor uses its fixed floor.": "No decision has moved a minimum yet. Every monitor uses its fixed floor.",
+  "Learned minimum effects table, scrollable": "Learned minimum effects table, scrollable",
+  "Figure": "Figure",
+  "Minimum now": "Minimum now",
+  "Fixed floor": "Fixed floor",
+  "Ceiling": "Ceiling",
+  "Decisions that moved it": "Decisions that moved it",
+  "{n} percentage points": "{n} percentage points",
+  "Run {n}: marked expected by {who} at {effect}, minimum now {min}": "Run {n}: marked expected by {who} at {effect}, minimum now {min}",
+  "Run {n}: confirmed real by {who} at {effect}, minimum now {min}": "Run {n}: confirmed real by {who} at {effect}, minimum now {min}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
