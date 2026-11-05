@@ -50,9 +50,32 @@ These are database-and-engine times without HTTP, authentication or network, and
 
 Both passes read the view `entry_duplicate_population` from migration 135, not `master_records`. Row level security keeps these expressions away from the indexes on the table itself, where the same exact lookup took 142 ms and the similar lookup 590 ms on 300,000 rows. The view filters on the tenant set for the transaction and fails closed when none is set. It is fast only when it is owned by a role that bypasses row level security, which is the case when migrations run as the database owner; on a managed Postgres where they do not, the search stays correct but slow and the migration logs a warning.
 
-Limits: a typo is found only in the three free-text fields and only for keys of 6 or more characters (a typo in a tax number or part number is not found, on purpose, because a near match there is another taxpayer or another part); the similar pass dominates latency when it runs (see the table above); the similar pass shares the 50-candidate cap with the exact pass, exact first, and a search cut short says so; a record of the same number in another connected system is passed over with the record being saved, because a candidate does not name its system; there is no steward workflow at entry; and the population is as fresh as the last load into Meridian.
+Limits: a typo is found only in the three free-text fields and only for keys of 6 or more characters (a typo in a tax number or part number is not found, on purpose, because a near match there is another taxpayer or another part); the similar pass dominates latency when it runs (see the table above); the similar pass shares the 50-candidate cap with the exact pass, exact first, and a search cut short says so; a record of the same number in another connected system is passed over with the record being saved, because a candidate does not name its system; and the population is as fresh as the last load into Meridian.
 
 The sample ABAP passes `iv_duplicates = abap_true` and adds a warning line per match. It has not been run against a live SAP system.
+
+## Route to a steward (opt-in)
+
+Add `"route_to_steward": true` to the body and a record that is blocked, warned or flagged by the duplicate search is also opened as a change request of kind create, through the same change request machinery the Requests screen uses, and submitted so the tenant's active change request workflow routes it. Without the flag the response is unchanged, and a record that passes cleanly opens nothing.
+
+Each flagged record carries `steward_request`. When a request was opened it holds `request_id` and `status`; open it in the Requests screen. The request carries the candidate as its payload, and a comment lists the failing rule ids with their severity and description, and the duplicate keys with their scores. The comment holds no field values. Whether a steward is assigned depends on the steps of the tenant's change request workflow: the gate submits the request and the workflow decides.
+
+Repeats are idempotent. The key is the tenant, the object and the candidate content: an HMAC of the object and the sorted TABLE.FIELD values, keyed with the tenant secret, stored in `change_requests.entry_fingerprint` (migration 136). While a request for the same content is still open (draft, submitted, in approval, approved or being created), the call returns that request with `existing: true` and adds none. A database unique index enforces this, so two parallel calls also open one. Once the request is rejected, cancelled, created or failed, sending the same content again opens a new one. Any change to a value is new content and opens its own request. A tenant without a secret cannot form the key, so no request is opened and the answer says `not_opened`.
+
+When no request is opened, there is no `request_id` and `reason` says why, so it never fails silently:
+
+- `module_has_no_change_request`: the object has no change request type. This is the case for `employee_central` (SuccessFactors). Material master opens a material request, customer master a customer request, business partner a business partner request and accounts payable a vendor request. The object list of change requests is not widened for this.
+- `over_limit`: at most 25 requests are opened per call; later flagged records get this reason.
+- `not_accepted`: the change request refused the payload (for example a field it does not support). `detail` gives the first problems.
+- `not_opened`: opening failed. The error is logged by its type, never with values, and the verdict is still returned with status 200.
+
+Permission and requester. The endpoint already needs `mdm.write`, and that is enough to open a request. The requester is the caller. A person signed in to the Try a record panel is the requester. An SAP hook that calls with an API key is the key's service user, so the request names that service account and not the SAP user who pressed save; the gate does not know that person. Name the service account clearly so stewards can tell where the request came from.
+
+Personal data. The candidate values are stored in the change request payload, exactly as for any change request, so a candidate with personal data is held there, and in the workflow's own records, until the request is closed. Do not use the flag for `employee_central` (it has no request anyway). Values are not logged and are never sent to a language model. Note that Meridian's general audit middleware keeps the request body of every successful POST, validate calls included; this feature does not change that.
+
+The gate stays fast. Opening happens after the verdict is computed, one savepoint per record, and a failure to open never changes the verdict or the status code. Each opened request adds a database write and a workflow start, so keep `route_to_steward` for the Try a record panel and for batches, not for a save that waits on SAP.
+
+The Entry gate screen has a checkbox for this under Try a record, a table of the requests it opened with their status and a link to each, and a panel listing the latest ten requests opened from the gate with their object and status.
 
 ## Setup
 
@@ -86,4 +109,4 @@ SuccessFactors has no ABAP. The pattern, to be built with your SuccessFactors co
 
 ## What Meridian stores
 
-One audit row per call: the module, record counts, blocked and warned record counts, and the failing rule ids with counts. Never a record value. The Entry gate screen reads these rows.
+One audit row per call: the module, record counts, blocked and warned record counts, and the failing rule ids with counts, plus how many requests were opened when `route_to_steward` was used. Never a record value. The Entry gate screen reads these rows. A request opened from the gate is stored as a change request like any other, with the candidate as its payload.

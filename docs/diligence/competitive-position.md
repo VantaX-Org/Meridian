@@ -149,7 +149,10 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   blocks. The Entry gate screen shows the traffic and the duplicate result. What remains behind
   MDG: there is no approval workflow or staging area in SAP; the duplicate search finds candidates only
   by exact normalised value of a match field plus a trigram similarity pass on the three free-text fields only (a typo in a tax or part number is missed; the similar pass was about 89 ms for one query on 1,000,000 synthetic rows), skips semantic match rules, searches
-  Meridian's golden records rather than live SAP, and has no steward workflow at entry; and the
+  Meridian's golden records rather than live SAP; an opt-in route to a steward opens a change request
+  of kind create for a blocked, warned or duplicate-flagged record, deduplicated while open, but only for
+  material, customer and vendor objects (SuccessFactors has none and the answer says so), and whether a
+  steward is assigned depends on the tenant's change request workflow; and the
   ABAP samples have not been run against a live SAP system. For SuccessFactors there is no sample,
   only a documented integration pattern. Meridian still fixes most bad data after the fact.
 - **Breadth beyond SAP.** Informatica, Collibra and Ataccama cover the whole enterprise estate with a
