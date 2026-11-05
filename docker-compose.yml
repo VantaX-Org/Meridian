@@ -18,7 +18,7 @@ x-logging: &default-logging
 services:
   db:
     logging: *default-logging
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
     container_name: meridian-db
     environment:
       POSTGRES_USER: meridian
@@ -37,7 +37,7 @@ services:
 
   redis:
     logging: *default-logging
-    image: redis:7.2-alpine  # 7.4 and later are not open source (RSALv2/SSPLv1)
+    image: redis:7.2-alpine@sha256:2c933526722b4126a61d5c170f766dc159adf97682f0b1cbbc27b1666ba96d84  # 7.4 and later are not open source (RSALv2/SSPLv1)
     container_name: meridian-redis
     volumes:
       - redis_data:/data
@@ -83,7 +83,7 @@ services:
   #   docker compose up -d                          # Tier 0 / 1 / 1.5 / 3
   ollama:
     logging: *default-logging
-    image: ollama/ollama:0.40.12
+    image: ollama/ollama:0.40.12@sha256:20d1bbfbabe1c97ba4b16301f08a20d8484bcf77047742a3cb71c613d8e12d0b
     container_name: meridian-ollama
     profiles: ["llm-bundled"]
     volumes:
