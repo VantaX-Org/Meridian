@@ -278,8 +278,8 @@ turns it off. When the worker is unreachable, the last valid signed response is 
 - Fixture mode: `?fixture=1` answers every read from `lib/api/v2/fixtures` (21 files) so tests, recordings
   and the demo run with no backend; `?persona=lead|steward|owner|basis|process` and `?role=<role>` shape the
   first screen and the permissions.
-- Auth in the browser: the session JWT is kept in `localStorage` and sent as a bearer header; an httponly,
-  SameSite=Lax cookie carries the same token for downloads and video. `frontend/middleware.ts` keeps
+- Auth in the browser: the session JWT lives only in an httponly, SameSite=Lax cookie (no `localStorage`), with a
+  double-submit CSRF cookie and header on writes; bearer headers remain for API keys and machine clients. `frontend/middleware.ts` keeps
   signed-out users off the app shell (see [security.md](security.md) section 3 and D-12).
 - Help: 31 chapters in `frontend/docs/guide`, 26 recordings `guide2-*.mp4`, every route mapped to a chapter
   (`lib/v2/help.test.ts`).

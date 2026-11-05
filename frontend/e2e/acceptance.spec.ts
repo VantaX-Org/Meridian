@@ -84,7 +84,7 @@ const tokens = new Map<Who, string>();
 async function token(request: APIRequestContext, who: Who): Promise<string> {
   const hit = tokens.get(who);
   if (hit) return hit;
-  // the session the browser already holds (lib/api/client.ts keeps it in localStorage): no extra sign-in
+  // a pre-cookie session kept in localStorage is reused when present; the browser now holds only a cookie, so this usually signs in
   const kept = sessions.get(who)?.origins.flatMap((o) => o.localStorage).find((i) => i.name === "mn_auth_token")?.value;
   if (kept) {
     tokens.set(who, kept);

@@ -102,8 +102,27 @@ describe("AuthGuard session check", () => {
     }
   });
 
-  it("goes to sign-in when there is no stored token", async () => {
+  it("moves a pre-cookie localStorage token over: sent once as a bearer header, then removed", async () => {
+    const get = vi.spyOn(apiClient, "get").mockResolvedValue({ data: { user: USER, must_change_password: false } });
+    mount();
+    expect(await screen.findByText("the app")).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith("/api/v1/auth/me", { headers: { Authorization: "Bearer tok" } });
+    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
+    expect(document.cookie).toContain("mn_session=1");
+  });
+
+  it("checks a cookie-only session with no header and no stored token", async () => {
     localStorage.removeItem(TOKEN_KEY);
+    document.cookie = "mn_session=1; Path=/";
+    const get = vi.spyOn(apiClient, "get").mockResolvedValue({ data: { user: USER, must_change_password: false } });
+    mount();
+    expect(await screen.findByText("the app")).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith("/api/v1/auth/me", undefined);
+  });
+
+  it("goes to sign-in when there is no stored token and no session marker", async () => {
+    localStorage.removeItem(TOKEN_KEY);
+    document.cookie = "mn_session=; Path=/; Max-Age=0";
     const get = vi.spyOn(apiClient, "get");
     mount();
     await waitFor(() => expect(push).toHaveBeenCalledWith("/sign-in"));

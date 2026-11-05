@@ -3,9 +3,9 @@ import type { NextRequest } from "next/server";
 import { buildCsp } from "./lib/csp";
 
 /**
- * Signed-out users never receive the app shell. The bearer token lives in
- * localStorage (unreadable here), so the auth context sets a plain marker
- * cookie on login; every API call still carries and verifies the real token.
+ * Signed-out users never receive the app shell. The session is an httponly cookie
+ * the API sets, so the auth context sets a plain marker cookie on login; every API
+ * call still carries and verifies the real session.
  */
 const PUBLIC = ["/sign-in", "/sign-up", "/login", "/accept-invite", "/forgot-password", "/reset-password",
   "/licence-error", "/api", "/health", "/status"];

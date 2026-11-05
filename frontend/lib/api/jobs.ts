@@ -18,7 +18,7 @@ export async function retryJob(jobId: string): Promise<{ job_id?: string | null;
 }
 
 /**
- * Live job stream. EventSource cannot send the bearer token, so this reads
+ * Live job stream. This reads
  * the SSE body through fetch and parses `event:`/`data:` frames itself.
  * Returns a stop function. Reconnection is the caller's concern.
  */
@@ -27,11 +27,10 @@ export function streamJobs(
   onEnd: (error?: unknown) => void,
 ): () => void {
   const controller = new AbortController();
-  const token = typeof window !== "undefined" ? localStorage.getItem("mn_auth_token") : null;
   (async () => {
     try {
       const res = await fetch("/api/v1/jobs/events", {
-        headers: { Accept: "text/event-stream", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { Accept: "text/event-stream" },  // the session cookie rides along (same origin)
         signal: controller.signal,
       });
       if (!res.ok || !res.body) throw new Error(`jobs stream: HTTP ${res.status}`);

@@ -171,8 +171,8 @@ Start from the UI (Admin → analyse), or:
 ```bash
 # the extract, then the checks, exactly as the UI does
 # Every call needs a token. POST /api/v1/auth/login returns {"token": "..."}; send it as a
-# bearer. (The API also accepts the mn_auth_token cookie, which is what the browser uses for
-# downloads.)
+# bearer. (The API also accepts the mn_auth_token cookie, which is the browser's whole session; a
+# cookie-authenticated write also needs the X-CSRF-Token header. A bearer needs neither.)
 TOKEN=$(curl -sS -X POST http://127.0.0.1/api/v1/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"<admin-email>","password":"<admin-password>"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
