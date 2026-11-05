@@ -1511,6 +1511,31 @@ class SubjectRequest(Base):
     )
 
 
+class MigrationReconciliation(Base):
+    """Post-load reconciliation of one migration run against the target system's extraction (migration 140)."""
+    __tablename__ = "migration_reconciliations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("migration_runs.id", ondelete="CASCADE"), nullable=False)
+    status = Column(Text, nullable=False, server_default="queued")  # queued | running | done | failed
+    target_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="SET NULL"), nullable=True)
+    target_version_id = Column(UUID(as_uuid=True), nullable=True)
+    target_synced_at = Column(DateTime(timezone=True), nullable=True)
+    summary = Column(JSONB, nullable=False, server_default="{}")
+    tables = Column(JSONB, nullable=False, server_default="[]")
+    records = Column(JSONB, nullable=False, server_default="{}")
+    scores = Column(JSONB, nullable=True)
+    record_cap = Column(Integer, nullable=True)
+    error_detail = Column(Text, nullable=True)
+    task_id = Column(Text, nullable=True)
+    requested_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (Index("ix_migration_reconciliations_run", "tenant_id", "run_id", "created_at"),)
+
+
 class TableProfile(Base):
     """Profile of one extracted table in one version — the anomaly baseline (migration 054)."""
     __tablename__ = "table_profiles"

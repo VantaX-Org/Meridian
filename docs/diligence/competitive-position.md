@@ -136,7 +136,13 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   load file today; its BAPI write-back covers material, customer, business partner and (where it is a
   business partner) vendor, and is not proven against a live system or at volume.
 - **Migration execution.** Syniti and SNP move the data, convert systems and carve out companies.
-  Meridian measures readiness and certifies waves; it does not migrate.
+  Meridian measures readiness and certifies waves; it does not migrate. It now compares a migration
+  run's load files with the target system's next extraction (post-load reconciliation: records
+  expected, found, missing and different per target table, and the source, projected and actual
+  target data quality score side by side; `/api/v1/migration/runs/{run_id}/reconcile`). It does not
+  execute the load, and the reconciliation has not been run against a live SAP system; it has been
+  tested only on synthetic extractions. It compares only against a target extraction someone has
+  already run, and it does not schedule one.
 - **Governance of creation.** SAP MDG stops bad master data at the point of entry with workflow inside
   SAP. Meridian now also checks at entry for the licensed objects (material master, customer master,
   SuccessFactors employee data): the data quality firewall (`/api/v1/dq-firewall/validate`) returns
