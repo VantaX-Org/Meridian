@@ -70,9 +70,8 @@ def run_reconciliation(self, tenant_id, reconciliation_id):
                                "The run has no target system to reconcile against.", scores=scores(None))
             version_id, meta = resolve_source_version(session, run.dest_system_id, None)
             if not version_id or not meta.get("dataset_path"):
-                return _finish(session, reconciliation_id, "failed",
-                               "The target system has no completed analysis. Extract the target first.",
-                               scores=scores(None))
+                from api.services.migration.post_load import NO_TARGET_ANALYSIS
+                return _finish(session, reconciliation_id, "failed", NO_TARGET_ANALYSIS, scores=scores(None))
 
             from api.services.migration import snapshot
             from api.services.migration.export import target_dictionary
@@ -119,7 +118,8 @@ def run_reconciliation(self, tenant_id, reconciliation_id):
 
 
 def start_stale_reconciliations(session, tenant_id, system_id) -> list[str]:
-    """Re-reconcile every run whose latest finished reconciliation compared this target system and is now out of date.
+    """Re-reconcile every run whose latest finished reconciliation compared this target system and is now out of date,
+    and every run whose latest one failed because this target system had no analysis yet.
 
     Called when a target analysis completes (the same moment the API starts reporting ``stale``). A run with a
     reconciliation still queued or running is skipped, and once the new one finishes it compares the newest extraction,
@@ -128,7 +128,8 @@ def start_stale_reconciliations(session, tenant_id, system_id) -> list[str]:
     started: list[str] = []
     try:
         rows = session.execute(text("""
-            SELECT DISTINCT ON (c.run_id) c.run_id, c.status, c.target_synced_at, c.target_system_id
+            SELECT DISTINCT ON (c.run_id) c.run_id, c.status, c.target_synced_at, c.target_system_id,
+                   c.error_detail, r.dest_system_id
               FROM migration_reconciliations c JOIN migration_runs r ON r.id = c.run_id
              WHERE c.tenant_id = :t AND r.status IN ('analysed', 'exported')
              ORDER BY c.run_id, c.created_at DESC"""), {"t": str(tenant_id)}).fetchall()
@@ -136,8 +137,13 @@ def start_stale_reconciliations(session, tenant_id, system_id) -> list[str]:
             "SELECT max(run_at) FROM analysis_versions WHERE tenant_id = :t AND metadata->>'system_id' = :sid "
             "AND position('complete' in status) > 0 AND metadata->>'dataset_path' IS NOT NULL"),
             {"t": str(tenant_id), "sid": str(system_id)}).scalar()
+        from api.services.migration.post_load import NO_TARGET_ANALYSIS
         for row in rows:
-            if (row.status != "done" or str(row.target_system_id) != str(system_id) or not latest
+            # a reconciliation that failed for want of a target analysis has one now: run it again
+            if (row.status == "failed" and row.error_detail == NO_TARGET_ANALYSIS and latest
+                    and str(row.dest_system_id) == str(system_id)):
+                pass
+            elif (row.status != "done" or str(row.target_system_id) != str(system_id) or not latest
                     or not row.target_synced_at or latest <= row.target_synced_at):
                 continue
             rid = session.execute(text(

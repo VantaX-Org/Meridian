@@ -108,7 +108,7 @@ def seeded(engines):
                   {"i": str(uuid.uuid4()), "t": tid, "r": run})
     yield SimpleNamespace(tid=tid, run=run, dst=dst, tv=tv)
     with owner.begin() as c:
-        for table in ("audit_log", "migration_reconciliations", "migration_export_files", "transfer_field_mappings", "migration_runs",
+        for table in ("audit_log", "migration_reconciliations", "migration_export_files", "transfer_field_mappings", "migration_runs", "migration_waves",
                       "analysis_versions", "users", "sap_systems", "tenants"):
             col = "id" if table == "tenants" else "tenant_id"
             c.execute(text(f"DELETE FROM {table} WHERE {col} = :t"), {"t": tid})
@@ -401,3 +401,97 @@ async def test_export_route_survives_a_storage_failure_and_records_it(engines, s
     (row,) = _exports(owner, seeded)
     assert row.snapshot_prefix is None and row.snapshot_sha256 is None and row.snapshot_at is None
     assert "bucket down" in row.snapshot_error
+
+
+def _count(owner, sql: str, **p) -> int:
+    with owner.connect() as c:
+        return c.execute(text(sql), p).scalar()
+
+
+@pytest.mark.anyio
+async def test_delete_run_refuses_while_running_then_removes_it_with_its_children(engines, seeded, store, monkeypatch):
+    owner, _ = engines
+    rid = _queued(owner, seeded)
+    removed: list = []
+    monkeypatch.setattr("api.services.purge._delete_storage", lambda t: removed.append(t) or (0, []))
+    url = f"/api/v1/migration/runs/{seeded.run}"
+    async with await _client(monkeypatch, seeded.tid) as client:
+        with owner.begin() as c:
+            c.execute(text("UPDATE migration_runs SET status = 'running' WHERE id = :r"), {"r": seeded.run})
+        assert (await client.delete(url, headers=H)).status_code == 409
+        assert not removed
+        with owner.begin() as c:
+            c.execute(text("UPDATE migration_runs SET status = 'analysed' WHERE id = :r"), {"r": seeded.run})
+        assert (await client.delete(url, headers=H)).status_code == 409  # its reconciliation is still queued
+        assert not removed
+        with owner.begin() as c:
+            c.execute(text("UPDATE migration_reconciliations SET status = 'done' WHERE id = :i"), {"i": rid})
+            wave = c.execute(text("INSERT INTO migration_waves (tenant_id, name, signed_off_at) "
+                                  "VALUES (:t, 'w', now()) RETURNING id"), {"t": seeded.tid}).scalar()
+            c.execute(text("UPDATE migration_runs SET wave_id = :w WHERE id = :r"), {"w": wave, "r": seeded.run})
+        assert (await client.delete(url, headers=H)).status_code == 409  # evidence behind a sign-off
+        assert not removed
+        with owner.begin() as c:
+            c.execute(text("UPDATE migration_waves SET signed_off_at = NULL WHERE id = :w"), {"w": wave})
+        assert (await client.delete(url, headers=H)).status_code == 204
+        assert (await client.delete(url, headers=H)).status_code == 404
+    assert len(removed) == 1 and removed[0]["prefixes"][0][1].endswith("/")
+    assert _count(owner, "SELECT count(*) FROM migration_runs WHERE id = :r", r=seeded.run) == 0
+    assert _count(owner, "SELECT count(*) FROM migration_gap_findings WHERE run_id = :r", r=seeded.run) == 0
+    assert _count(owner, "SELECT count(*) FROM migration_reconciliations WHERE id = :i", i=rid) == 0
+    assert _count(owner, "SELECT count(*) FROM audit_log WHERE tenant_id = :t AND entity_type = 'migration_run' "
+                         "AND action = 'delete' AND status_code = 204", t=seeded.tid) == 1
+
+
+@pytest.mark.anyio
+async def test_delete_run_is_kept_when_the_stored_copies_cannot_be_removed(engines, seeded, store, monkeypatch):
+    owner, _ = engines
+    monkeypatch.setattr("api.services.purge._delete_storage", lambda t: (0, ["boom"]))
+    async with await _client(monkeypatch, seeded.tid) as client:
+        assert (await client.delete(f"/api/v1/migration/runs/{seeded.run}", headers=H)).status_code == 502
+    assert _count(owner, "SELECT count(*) FROM migration_runs WHERE id = :r", r=seeded.run) == 1
+
+
+@pytest.mark.anyio
+async def test_extract_target_starts_one_extraction_and_never_queues_over_a_running_one(engines, seeded, store,
+                                                                                         monkeypatch):
+    owner, _ = engines
+    started: list = []
+    active: list = []
+    monkeypatch.setattr("workers.tasks.run_extraction.run_extraction.delay",
+                        lambda *a: started.append(a) or SimpleNamespace(id="t-1"))
+    monkeypatch.setattr("api.services.jobs.list_jobs", lambda *a, **k: active)
+    registered: list = []
+    monkeypatch.setattr("api.services.jobs.start_job", lambda *a, **k: registered.append(k))
+    monkeypatch.setattr("api.services.jobs.set_task_ids", lambda *a, **k: None)
+    with owner.begin() as c:
+        c.execute(text("UPDATE sap_systems SET system_type = 's4hana_onprem' WHERE id = :i"), {"i": seeded.dst})
+    url = f"/api/v1/migration/runs/{seeded.run}/extract-target"
+    async with await _client(monkeypatch, seeded.tid) as client:
+        active.append({"kind": "extraction", "system_id": seeded.dst})
+        assert (await client.post(url, headers=H)).status_code == 409
+        assert not started
+        active.clear()
+        r = await client.post(url, headers=H)
+        assert r.status_code == 202, r.text
+        assert r.json()["modules"] == ["material_master"]
+        assert started[0][:3] == (seeded.tid, seeded.dst, ["material_master"])
+        assert registered[0]["retry"] == {"via": "extract", "body": {
+            "system_id": seeded.dst, "modules": ["material_master"], "include_config": False, "sync_type": "data"}}
+        with owner.begin() as c:
+            c.execute(text("UPDATE migration_runs SET dest_system_id = NULL WHERE id = :r"), {"r": seeded.run})
+        assert (await client.post(url, headers=H)).status_code == 409
+    assert _count(owner, "SELECT count(*) FROM audit_log WHERE tenant_id = :t AND action = 'extract_target'",
+                  t=seeded.tid) == 1
+
+
+@pytest.mark.anyio
+async def test_reconciliation_that_found_no_target_analysis_offers_the_extraction(engines, seeded, store, monkeypatch):
+    owner, worker = engines
+    with owner.begin() as c:
+        c.execute(text("UPDATE analysis_versions SET status = 'failed' WHERE id = :v"), {"v": seeded.tv})
+    rid = _queued(owner, seeded)
+    _execute(monkeypatch, worker, seeded, rid)
+    async with await _client(monkeypatch, seeded.tid) as client:
+        r = await client.get(f"/api/v1/migration/runs/{seeded.run}/reconciliation", headers=H)
+    assert r.status_code == 200 and r.json()["needs_target_extraction"] is True

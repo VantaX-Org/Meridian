@@ -34,6 +34,7 @@ from sap.ddic import Dictionary
 RECORD_CAP = 100  # record rows kept per table and kind (missing, differing, unexpected)
 REASON_TOP = 10
 KINDS = ("missing", "differing", "unexpected")
+NO_TARGET_ANALYSIS = "The target system has no completed analysis. Extract the target first."
 
 
 def _prepare(df: pd.DataFrame, table: str, fields: list[str], dictionary: Dictionary) -> pd.DataFrame:

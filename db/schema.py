@@ -3685,5 +3685,6 @@ class ExternalDbConnection(Base):
     last_tested_at = Column(DateTime(timezone=True), nullable=True)
     last_test_ok = Column(Integer, nullable=True)
     last_loaded_at = Column(DateTime(timezone=True), nullable=True)
+    key_version = Column(Integer, nullable=False, server_default="1")
 
     __table_args__ = (UniqueConstraint("tenant_id", "name"),)

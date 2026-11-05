@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { Migration } from "../screens/Migration";
+import { ToastProvider } from "../Toast";
 import { stubLayout } from "./layout-stub";
 import { setUrl } from "./nav-store";
 
@@ -52,5 +53,24 @@ describe("Migration analysis", () => {
     expect(change).toContain("198 missing (-241)");
     expect(change).toContain("143 fields differ (-58)");
     expect(change).toContain("83,782 found (+241)");
+  });
+
+  it("offers the target extraction when the reconciliation found nothing to compare with", async () => {
+    renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: /Open the analysis of 20 Oct/ }));
+    const note = await screen.findByTestId("mig-post-load-needs-target");
+    expect(note.textContent).toContain("has not been extracted yet");
+    fireEvent.click(within(note).getByRole("button", { name: "Extract the target system" }));
+    expect(await screen.findByText("Extraction of the target system started")).toBeTruthy();
+  });
+
+  it("deletes an analysis only after a confirmation", async () => {
+    renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
+    const runs = await screen.findByTestId("mig-runs");
+    const before = within(runs).getAllByRole("row").length;
+    fireEvent.click(within(runs).getAllByRole("button", { name: /^Delete the analysis of/ })[2]);
+    fireEvent.click(await screen.findByRole("button", { name: "Delete the analysis" }));
+    expect(await screen.findByText("Analysis deleted")).toBeTruthy();
+    await waitFor(() => expect(within(screen.getByTestId("mig-runs")).getAllByRole("row").length).toBe(before - 1));
   });
 });
