@@ -122,7 +122,8 @@ def test_non_duplicate_not_found(app_engine):  # noqa: F811
     assert out["duplicate_search"]["searched"] is True
     assert out["records"][0]["duplicates"] == {"verdict": "pass", "searched": True, "scored": 0,
                                                  "truncated": False, "matches": [],
-                                                 "fuzzy": {"ran": True, "reason": None}}
+                                                 "fuzzy": {"ran": True, "reason": None},
+                                                 "near": {"ran": True, "reason": None}}
 
 
 def test_opt_out_unchanged(app_engine):  # noqa: F811
@@ -242,7 +243,10 @@ def test_tax_number_near_miss_is_not_a_duplicate_but_a_name_typo_is(app_engine):
                            "VALUES (:t, 'sd_customer_master', :f, :m, :w, :th)"), {"t": tid, "f": f, "m": mt, "w": w, "th": th})
     _insert(app_engine, tid, "C1", {"KNA1.STCEG": "XX123456789", "KNA1.NAME1": "Zeta Handel Gesellschaft"}, "sd_customer_master")
     cust = "sd_customer_master"
-    assert _dups(app_engine, tid, {"KNA1.STCEG": "XX123456780"}, cust)["matches"] == []  # one digit off: another taxpayer
+    # one digit off may be another taxpayer, so it is no similarity match; the near pass reports it as a warning
+    near = _dups(app_engine, tid, {"KNA1.STCEG": "XX123456780"}, cust)
+    assert [(m["key"], m["found_by"], m["found_field"]) for m in near["matches"]] == [("C1", "near", "KNA1.STCEG")]
+    assert near["verdict"] == "warn"
     d = _dups(app_engine, tid, {"KNA1.NAME1": "Zeta Handl Gesellschaft"}, cust)
     assert [(m["key"], m["found_by"]) for m in d["matches"]] == [("C1", "similar")]
 
@@ -331,3 +335,62 @@ def test_app_role_reaches_the_indexes_and_only_its_own_tenant(app_engine):  # no
         # No tenant filter of its own, and the other tenant holds this description: the view still returns one tenant.
         got = c.execute(text(f"SELECT DISTINCT tenant_id::text FROM {POPULATION} WHERE {block_expr(f)} = :k"), {"k": k})
         assert [r[0] for r in got] == [tid]
+
+
+# ---- near-value pass on identifiers (migration 139) ----
+
+
+def _near(app_engine, tid, value, field="MARA.MFRPN", module=M):  # noqa: F811
+    return _dups(app_engine, tid, {field: value}, module)
+
+
+def test_part_number_typo_and_swap_are_found_as_near_and_distance_two_is_not(app_engine):  # noqa: F811
+    tid = _setup(app_engine)  # 10001 holds XQ-7731-ZK
+    for typo in ("XQ-7731-ZL", "XQ-731-ZK", "XQ-77831-ZK", "XQ-7713-ZK"):  # substitute, delete, insert, swap
+        d = _near(app_engine, tid, typo)
+        assert [(m["key"], m["found_by"], m["found_field"]) for m in d["matches"]] == [("10001", "near", "MARA.MFRPN")], typo
+        assert d["verdict"] == "warn" and d["near"] == {"ran": True, "reason": None}
+    exact = _near(app_engine, tid, "XQ-7731-ZK")
+    assert [m["found_by"] for m in exact["matches"]] == ["exact"] and exact["matches"][0]["found_field"] is None
+    assert _near(app_engine, tid, "XQ-7799-ZK")["matches"] == []   # two edits
+
+
+def test_near_pass_says_why_it_did_not_run(app_engine):  # noqa: F811
+    tid = _setup(app_engine)
+    assert _near(app_engine, tid, "ZZ01")["near"] == {"ran": False, "reason": "key_length"}   # 4 characters
+    d = _dups(app_engine, tid, {"MAKT.MAKTX": "Gasket flange steel"})
+    assert d["near"] == {"ran": False, "reason": "no_identifier_value"}
+
+
+def test_near_pass_never_returns_other_tenant_or_merged_records(app_engine):  # noqa: F811
+    tid = _setup(app_engine)  # the other tenant holds the same part numbers under OTHER... keys
+    _insert(app_engine, tid, "60001", {"MARA.MFRPN": "AB-12345"})
+    _insert(app_engine, tid, "60002", {"MARA.MFRPN": "AB-12346"}, merged_into_key="60001")
+    d = _near(app_engine, tid, "AB-12347")
+    assert [m["key"] for m in d["matches"]] == ["60001"]
+    assert all(not m["key"].startswith("OTHER") for m in _near(app_engine, tid, "XQ-7731-ZL")["matches"])
+
+
+def test_near_pass_uses_its_index_under_the_app_role(app_engine):  # noqa: F811
+    from sqlalchemy import text
+
+    from api.services.entry_duplicates import POPULATION, block_expr
+
+    tid = _setup(app_engine, extra=3000)   # enough rows that the planner has a real choice
+    with app_engine[0].connect().execution_options(isolation_level="AUTOCOMMIT") as c:
+        c.execute(text("ANALYZE master_records"))
+    with app_engine[1].begin() as c:
+        c.execute(text("SELECT set_config('app.tenant_id', :t, true), set_config('enable_seqscan', 'off', true)"), {"t": tid})
+        sql = (f"EXPLAIN SELECT 1 FROM {POPULATION} WHERE tenant_id = CAST(:t AS uuid) AND domain = :d "
+               f"AND entry_dup_variants({block_expr('MARA.MFRPN')}) && CAST(:v AS text[])")
+        plan = "\n".join(r[0] for r in c.execute(text(sql), {"t": tid, "d": M, "v": ["XQ7731ZL", "XQ7731Z"]}))
+        assert "ix_master_records_near_mara_mfrpn" in plan and "Seq Scan" not in plan, plan
+
+
+def test_within_one_is_exact():
+    from api.services.entry_duplicates import variants, within_one
+
+    assert within_one("ABCDE", "ABCDF") and within_one("ABCDE", "ABDCE") and within_one("ABCDE", "ABCE")
+    assert within_one("ABCDE", "ABCDEF") and not within_one("ABCDE", "ABCDE") and not within_one("ABCDE", "ABEDC")
+    assert not within_one("ABCDE", "ACBED")           # two separate swaps: distance 2
+    assert variants("ABC") == ["ABC", "BC", "AC", "AB"]

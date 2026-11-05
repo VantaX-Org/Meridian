@@ -156,7 +156,7 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   tenant's match rules, and warns with the existing record's key, score and matched fields; it never
   blocks. The Entry gate screen shows the traffic and the duplicate result. What remains behind
   MDG: there is no approval workflow or staging area in SAP; the duplicate search finds candidates only
-  by exact normalised value of a match field plus a trigram similarity pass on the three free-text fields only (a typo in a tax or part number is missed; the similar pass was about 89 ms for one query on 1,000,000 synthetic rows), skips semantic match rules, searches
+  by exact normalised value of a match field plus a trigram similarity pass on the three free-text fields (about 114 ms for one query on 1,000,000 synthetic rows, under the application role with row level security on) and a near-value pass on five identifier fields, tax numbers KNA1 STCD1, STCD2 and STCEG and part numbers MARA BISMT and MFRPN, that finds a value one character different or with two neighbouring characters swapped (migration 139; a median of 4 to 14 ms for the whole search of a record on the same 1,000,000 rows). It does not find a difference of two or more characters, skips keys under 5 or over 40 normalised characters, and a near match always warns because adjacent part numbers can be different parts; it skips semantic match rules, searches
   Meridian's golden records rather than live SAP; an opt-in route to a steward opens a change request
   of kind create for a blocked, warned or duplicate-flagged record, deduplicated while open, but only for
   material, customer and vendor objects (SuccessFactors has none and the answer says so), and whether a

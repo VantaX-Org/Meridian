@@ -82,8 +82,10 @@ export interface DuplicateField {
 export interface DuplicateMatch {
   /** The existing record's key. */
   key: string;
-  /** "exact": same normalised value. "similar": found by the typo-tolerant pass on a free-text field. */
-  found_by: "exact" | "similar";
+  /** "exact": same normalised value. "similar": found by the typo-tolerant pass on a free-text field. "near": an identifier one character off. */
+  found_by: "exact" | "similar" | "near";
+  /** The identifier field that matched by near value; set only when found_by is "near". */
+  found_field?: string | null;
   score: number;
   band: string;
   /** The auto-merge threshold the score is judged against. */
@@ -93,8 +95,10 @@ export interface DuplicateMatch {
 
 export type FuzzyNotRun = "extension_missing" | "index_missing" | "key_too_short" | "no_free_text_value" | "not_searched";
 
+export type NearNotRun = "index_missing" | "key_length" | "no_identifier_value" | "not_searched";
+
 export interface RecordDuplicates {
-  /** "warn" when a match reaches the auto-merge threshold; never "block". */
+  /** "warn" when a match reaches the auto-merge threshold or is a near value; never "block". */
   verdict: "pass" | "warn";
   /** False: the record had no value to look up, so "pass" does not mean "no duplicates". */
   searched: boolean;
@@ -103,6 +107,8 @@ export interface RecordDuplicates {
   matches: DuplicateMatch[];
   /** ran false: a typo in this record's names was not looked for; the exact pass still ran. */
   fuzzy: { ran: boolean; reason?: FuzzyNotRun | null };
+  /** ran false: a tax or part number one character off was not looked for. */
+  near: { ran: boolean; reason?: NearNotRun | null };
 }
 
 export type DuplicateNotSearched = "module_not_supported" | "no_match_rules" | "no_population" | "no_block_field_in_population";
@@ -116,6 +122,8 @@ export interface DuplicateSearch {
   skipped_semantic?: number | null;
   /** Whether the typo-tolerant pass can run at all; absent when nothing was searched. */
   fuzzy?: { available: boolean; reason?: FuzzyNotRun | null; min_key_length: number; similarity: number } | null;
+  /** Whether the near-value pass can run at all, and the key lengths it covers; absent when nothing was searched. */
+  near?: { available: boolean; reason?: NearNotRun | null; min_key_length: number; max_key_length: number } | null;
 }
 
 export type StewardNotOpened = "module_has_no_change_request" | "over_limit" | "not_accepted" | "not_opened";

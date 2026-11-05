@@ -124,7 +124,7 @@ def test_downgrade_drops_and_upgrade_restores(app_engine):
     from sqlalchemy import text
 
     owner, _app = app_engine
-    _alembic("downgrade", "137")
+    _alembic("downgrade", "139")
     with owner.begin() as c:
         assert c.execute(text("SELECT to_regclass('public.migration_reconciliations')")).scalar() is None
     _alembic("upgrade", "head")

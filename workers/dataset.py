@@ -37,10 +37,12 @@ def _client():
 def _read(client, bucket: str, name: str) -> bytes:
     resp = client.get_object(bucket, name)
     try:
-        return resp.read()
+        data = resp.read()
     finally:
         resp.close()
         resp.release_conn()
+    from api.services import suppression  # rows erased on request stay out of every analysis (D-27)
+    return suppression.filter_parquet(name, data)[0]
 
 
 def parquet_name(table: str) -> str:

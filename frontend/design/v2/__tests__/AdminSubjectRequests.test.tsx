@@ -48,7 +48,7 @@ describe("Admin, Data subject requests", () => {
     page();
     expect(await screen.findByText("Meridian does not delete from SAP. Erase the record there as well.")).toBeInTheDocument();
     expect(screen.getByText(/Backups of the database and the object store are out of reach/)).toBeInTheDocument();
-    expect(screen.getByText(/There is no suppression list yet/)).toBeInTheDocument();
+    expect(screen.getByText(/The suppression list drops an erased key/)).toBeInTheDocument();
   });
 
   it("asks for the permission when the viewer lacks it", async () => {
@@ -102,5 +102,26 @@ describe("Admin, Data subject requests", () => {
     fireEvent.change(screen.getByLabelText("Reason, at least 10 characters"), { target: { value: "Subject request 0001" } });
     fireEvent.click(erase);
     expect(await screen.findByText("The records changed since the dry run.")).toBeInTheDocument();
+  });
+
+  it("lists the suppression after an erasure, with the field description, and lifts it with a reason", async () => {
+    page();
+    expect(await screen.findByText("No suppressions yet.")).toBeInTheDocument();
+    await search("SYNTH-0001");
+    await screen.findAllByText(/13 rows across/);
+    fireEvent.click(screen.getByRole("button", { name: "Dry run an erasure" }));
+    fireEvent.change(await screen.findByLabelText("Type ERASE to confirm"), { target: { value: "ERASE" } });
+    fireEvent.change(screen.getByLabelText("Reason, at least 10 characters"), { target: { value: "Subject request 0001" } });
+    fireEvent.click(screen.getByRole("button", { name: "Erase permanently" }));
+    await screen.findByText("13 rows removed or cleared.");
+    expect(await screen.findByText("1 active keys, 0 rows dropped.")).toBeInTheDocument();
+    expect(screen.getByText(/Material number/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Lift" }));
+    const go = screen.getAllByRole("button", { name: "Lift" }).at(-1)!;
+    expect(go).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Reason, at least 10 characters"), { target: { value: "Record is valid again" } });
+    expect(go).toBeEnabled();
+    fireEvent.click(go);
+    expect(await screen.findByText("0 active keys, 0 rows dropped.")).toBeInTheDocument();
   });
 });
