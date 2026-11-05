@@ -121,7 +121,8 @@ def test_non_duplicate_not_found(app_engine):  # noqa: F811
     out = _call(app_engine, tid, {"module": M, "records": [rec], "duplicates": True}).json()
     assert out["duplicate_search"]["searched"] is True
     assert out["records"][0]["duplicates"] == {"verdict": "pass", "searched": True, "scored": 0,
-                                                 "truncated": False, "matches": []}
+                                                 "truncated": False, "matches": [],
+                                                 "fuzzy": {"ran": True, "reason": None}}
 
 
 def test_opt_out_unchanged(app_engine):  # noqa: F811
@@ -196,3 +197,137 @@ def test_saved_record_is_not_its_own_duplicate_under_a_qualified_key(app_engine)
     rec = {"MARA.MATNR": "20001", "MARA.MFRPN": "QQ-5", "MAKT.MAKTX": "Valve body"}
     d = _call(app_engine, tid, {"module": M, "records": [rec], "duplicates": True}).json()["records"][0]["duplicates"]
     assert d["matches"] == []
+
+
+# ---- typo-tolerant pass (migration 135, pg_trgm) ----
+
+
+def _insert(app_engine, tid, key, fields, domain=M, merged_into_key=None):  # noqa: F811
+    from sqlalchemy import text
+
+    with app_engine[1].begin() as c:
+        c.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
+        c.execute(text("INSERT INTO master_records (tenant_id, domain, sap_object_key, golden_fields, status, merged_into) "
+                       "VALUES (:t, :d, :k, CAST(:f AS jsonb), 'golden', "
+                       "(SELECT id FROM master_records WHERE tenant_id = :t AND domain = :d AND sap_object_key = :m))"),
+                  {"t": tid, "d": domain, "k": key, "f": json.dumps(fields), "m": merged_into_key})
+
+
+def _dups(app_engine, tid, rec, module=M):  # noqa: F811
+    r = _call(app_engine, tid, {"module": module, "records": [rec], "duplicates": True})
+    assert r.status_code == 200, r.text
+    return r.json()["records"][0]["duplicates"]
+
+
+def test_typo_in_description_finds_the_record_as_similar(app_engine):  # noqa: F811
+    tid = _setup(app_engine)
+    d = _dups(app_engine, tid, {"MAKT.MAKTX": "Hydralic seal kit heavy duty"})
+    assert [(m["key"], m["found_by"]) for m in d["matches"]] == [("10001", "similar")]
+    assert d["fuzzy"] == {"ran": True, "reason": None}
+    exact = _dups(app_engine, tid, {"MAKT.MAKTX": "Hydraulic seal kit, heavy duty"})
+    assert [(m["key"], m["found_by"]) for m in exact["matches"]] == [("10001", "exact")]
+
+
+def test_tax_number_near_miss_is_not_a_duplicate_but_a_name_typo_is(app_engine):  # noqa: F811
+    from sqlalchemy import text
+
+    owner, app_eng = app_engine
+    tid = str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'D1')"), {"a": tid})
+    with app_eng.begin() as c:
+        c.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
+        for f, mt, w, th in (("KNA1.STCEG", "tax_exact", 60, 1.0), ("KNA1.NAME1", "name_legal", 40, 0.6)):
+            c.execute(text("INSERT INTO match_rules (tenant_id, domain, field, match_type, weight, threshold) "
+                           "VALUES (:t, 'sd_customer_master', :f, :m, :w, :th)"), {"t": tid, "f": f, "m": mt, "w": w, "th": th})
+    _insert(app_engine, tid, "C1", {"KNA1.STCEG": "XX123456789", "KNA1.NAME1": "Zeta Handel Gesellschaft"}, "sd_customer_master")
+    cust = "sd_customer_master"
+    assert _dups(app_engine, tid, {"KNA1.STCEG": "XX123456780"}, cust)["matches"] == []  # one digit off: another taxpayer
+    d = _dups(app_engine, tid, {"KNA1.NAME1": "Zeta Handl Gesellschaft"}, cust)
+    assert [(m["key"], m["found_by"]) for m in d["matches"]] == [("C1", "similar")]
+
+
+def test_short_key_skips_the_similar_pass_and_says_so(app_engine):  # noqa: F811
+    tid = _setup(app_engine)
+    _insert(app_engine, tid, "30001", {"MAKT.MAKTX": "Seals"})
+    d = _dups(app_engine, tid, {"MAKT.MAKTX": "Seal"})
+    assert d["searched"] is True and d["matches"] == []
+    assert d["fuzzy"] == {"ran": False, "reason": "key_too_short"}
+
+
+def test_cap_holds_across_both_passes_and_exact_comes_first(app_engine, monkeypatch):  # noqa: F811
+    from api.services import entry_duplicates as ed
+
+    monkeypatch.setattr(ed, "CANDIDATE_CAP", 5)
+    tid = _setup(app_engine)
+    for i in range(3):
+        _insert(app_engine, tid, f"4000{i}", {"MAKT.MAKTX": "Widget bracket zinc plated"})
+    for i in range(10):
+        _insert(app_engine, tid, f"4100{i}", {"MAKT.MAKTX": f"Widget bracket zinc plated {'abcdefghij'[i]}"})
+    d = _dups(app_engine, tid, {"MAKT.MAKTX": "Widget bracket zinc plated"})
+    assert d["scored"] == 5 and d["truncated"] is True
+    by = {m["key"]: m["found_by"] for m in d["matches"]}
+    assert [k for k, v in by.items() if v == "exact"] == ["40000", "40001", "40002"]
+    assert sum(v == "similar" for v in by.values()) == 2
+
+
+def test_other_tenants_near_match_and_merged_record_are_not_returned(app_engine):  # noqa: F811
+    tid = _setup(app_engine)  # the other tenant holds the same descriptions under OTHER... keys
+    _insert(app_engine, tid, "50001", {"MAKT.MAKTX": "Pressure relief valve body"})
+    _insert(app_engine, tid, "50002", {"MAKT.MAKTX": "Pressure relief valve bodies"}, merged_into_key="50001")
+    d = _dups(app_engine, tid, {"MAKT.MAKTX": "Pressure relief valve bodys"})
+    assert [m["key"] for m in d["matches"]] == ["50001"]
+    d = _dups(app_engine, tid, {"MAKT.MAKTX": "Hydralic seal kit heavy duty"})
+    assert [m["key"] for m in d["matches"]] == ["10001"]
+
+
+def test_missing_extension_reports_the_similar_pass_did_not_run(app_engine):  # noqa: F811
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from api.services import entry_duplicates as ed
+
+    tid = _setup(app_engine)
+    rows = [{"MAKT.MAKTX": "Hydralic seal kit heavy duty"}, {"MARA.MFRPN": "XQ-7731-ZK"}]
+
+    async def go():
+        eng = create_async_engine(app_engine[0].url.set(drivername="postgresql+asyncpg"))
+        try:
+            async with eng.connect() as conn:
+                tx = await conn.begin()  # DDL is transactional: the extension and its indexes come back on rollback
+                await conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
+                await conn.execute(text("DROP EXTENSION pg_trgm CASCADE"))
+                out = await ed.search(conn, tid, M, rows)
+                await tx.rollback()
+                return out
+        finally:
+            await eng.dispose()
+
+    out = asyncio.run(go())
+    assert out["search"]["searched"] is True
+    assert out["search"]["fuzzy"] == {**out["search"]["fuzzy"], "available": False, "reason": "extension_missing"}
+    assert [r["fuzzy"] for r in out["records"]] == [{"ran": False, "reason": "extension_missing"}] * 2
+    assert out["records"][0]["matches"] == []  # the typo is missed, and the result says so
+    assert [m["key"] for m in out["records"][1]["matches"]] == ["10001"]  # the exact pass still works
+
+
+def test_app_role_reaches_the_indexes_and_only_its_own_tenant(app_engine):  # noqa: F811
+    """Row level security keeps these quals off an index on the table itself, so the search goes through the view."""
+    from sqlalchemy import text
+
+    from api.services.entry_duplicates import POPULATION, block_expr
+
+    tid = _setup(app_engine)
+    owner, app_eng = app_engine
+    assert owner.connect().execute(text("SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user")).scalar()
+    f, k = "MAKT.MAKTX", "HYDRAULICSEALKITHEAVYDUTY"
+    where = f"tenant_id = CAST(:t AS uuid) AND domain = :d AND {block_expr(f)}"
+    with app_eng.begin() as c:
+        c.execute(text("SELECT set_config('app.tenant_id', :t, true), set_config('enable_seqscan', 'off', true)"), {"t": tid})
+        args = {"t": tid, "d": M, "k": k}
+        for sql in (f"SELECT 1 FROM {POPULATION} WHERE {where} = :k", f"SELECT 1 FROM {POPULATION} WHERE {where} % :k"):
+            plan = "\n".join(r[0] for r in c.execute(text("EXPLAIN " + sql), args))
+            assert "ix_master_records" in plan and "Seq Scan" not in plan, plan
+        # No tenant filter of its own, and the other tenant holds this description: the view still returns one tenant.
+        got = c.execute(text(f"SELECT DISTINCT tenant_id::text FROM {POPULATION} WHERE {block_expr(f)} = :k"), {"k": k})
+        assert [r[0] for r in got] == [tid]

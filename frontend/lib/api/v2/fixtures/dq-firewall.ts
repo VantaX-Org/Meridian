@@ -63,34 +63,39 @@ const norm = (v: unknown) => String(v ?? "").replace(/[^0-9A-Za-z]/g, "").toUppe
 
 /**
  * Duplicate search answers, by manufacturer part number (MARA.MFRPN, normalised): XQ7731ZK is a duplicate of record
- * 100042 and 100077 (a lesser one); BULK1 hits the candidate cap; NOPOP says nothing was searched. Synthetic keys only.
+ * 100042 and 100077 (a lesser one); TYPO1 finds record 100090 by the typo-tolerant pass; SHORT1 did not run it; BULK1 hits the candidate cap; NOPOP says nothing was searched. Synthetic keys only.
  */
 function addDuplicates(out: FirewallVerdict, records: Record<string, unknown>[]): void {
   if (records.some((r) => norm(r["MARA.MFRPN"]) === "NOPOP")) {
     out.duplicate_search = { searched: false, reason: "no_population", cap: 50, thresholds: THRESHOLDS };
     return;
   }
-  out.duplicate_search = { searched: true, reason: null, cap: 50, thresholds: THRESHOLDS, rules: 3, skipped_semantic: 0 };
+  out.duplicate_search = { searched: true, reason: null, cap: 50, thresholds: THRESHOLDS, rules: 3, skipped_semantic: 0, fuzzy: { available: true, reason: null, min_key_length: 6, similarity: 0.5 } };
   out.records.forEach((rec, i) => {
     const part = norm(records[i]?.["MARA.MFRPN"]);
     const matches: DuplicateMatch[] = part === "XQ7731ZK"
       ? [
-          { key: "100042", score: 0.97, band: "auto_merge", threshold: 0.95, fields: [
+          { key: "100042", found_by: "exact", score: 0.97, band: "auto_merge", threshold: 0.95, fields: [
             { field: "MARA.MFRPN", comparator: "part_number", similarity: 1, weight: 60, threshold: 0.9, met: true },
             { field: "MAKT.MAKTX", comparator: "desc_tokens", similarity: 0.92, weight: 40, threshold: 0.6, met: true },
           ] },
-          { key: "100077", score: 0.62, band: "steward_review", threshold: 0.95, fields: [
+          { key: "100077", found_by: "exact", score: 0.62, band: "steward_review", threshold: 0.95, fields: [
             { field: "MARA.MFRPN", comparator: "part_number", similarity: 1, weight: 60, threshold: 0.9, met: true },
             { field: "MAKT.MAKTX", comparator: "desc_tokens", similarity: 0.05, weight: 40, threshold: 0.6, met: false },
           ] },
         ]
-      : [];
+      : part === "TYPO1"
+        ? [{ key: "100090", found_by: "similar", score: 0.71, band: "steward_review", threshold: 0.95, fields: [
+            { field: "MAKT.MAKTX", comparator: "desc_tokens", similarity: 0.71, weight: 40, threshold: 0.6, met: true },
+          ] }]
+        : [];
     rec.duplicates = {
       verdict: matches.some((m) => m.score >= m.threshold) ? "warn" : "pass",
       searched: part !== "",
       scored: part === "BULK1" ? 50 : matches.length,
       truncated: part === "BULK1",
       matches,
+      fuzzy: part === "SHORT1" ? { ran: false, reason: "key_too_short" } : { ran: true, reason: null },
     };
   });
 }

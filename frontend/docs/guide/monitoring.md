@@ -79,7 +79,7 @@ The Entry gate page, under Entry gate in the map, shows the data quality firewal
 - **By object.** Records checked, blocked, warned and passed for each licensed object.
 - **Try a record.** Paste records as JSON, choose the object and press **Check records**. The page runs the same check SAP calls. Tick **Show a fix where the rule gives one** to see a suggested fix. A fix appears only when the rule itself defines one, either a corrected value from the rule's auto-fix steps or the values the rule accepts, and each fix names its rule. When no fix is grounded in the rule, the cell shows a dash. No language model sees the record.
 
-The page is a view of the firewall. The SAP side, the API key and the choice to let a save go on or stop when the check cannot run are described in the point-of-entry guide in the repository (docs/point-of-entry.md). There is no approval workflow in SAP and no duplicate search at entry.
+The page is a view of the firewall. The SAP side, the API key and the choice to let a save go on or stop when the check cannot run are described in the point-of-entry guide in the repository (docs/point-of-entry.md). There is no approval workflow in SAP. The duplicate search at entry warns and never stops a save.
 
 ## MDM health
 

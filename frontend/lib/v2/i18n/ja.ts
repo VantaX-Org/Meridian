@@ -7743,4 +7743,11 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Where it falls": "区分",
   "{n} similar": "類似度{n}",
   "below its own threshold": "それ自体のしきい値未満",
+  "the typo-tolerant search is not installed on this database": "誤字許容検索がこのデータベースに入っていない",
+  "the typo-tolerant search index is not built on this database": "誤字許容検索のインデックスがこのデータベースに作成されていない",
+  "the name is too short to compare for typos": "名前が短すぎて誤字を比較できない",
+  "the record has no name or description to compare for typos": "レコードに誤字を比較できる名前や説明がない",
+  "the record was not searched": "レコードが検索されなかった",
+  "Similar value, typo tolerated": "類似した値(誤字を許容)",
+  "Record {record}: only identical values were searched, because {why}. A typo in its name would not be found.": "レコード {record}: {why}ため、同一の値だけを検索しました。名前の誤字は見つかりません。",
 };

@@ -104,6 +104,21 @@ describe("Admin, Data quality firewall", () => {
     expect(norm(await screen.findByTestId("entry-dup-truncated"))).toContain("Only the first 50 candidates were scored for record 1");
   });
 
+  it("says how a duplicate was found and that a typo-tolerant match is only similar", async () => {
+    await check([{ "MARA.MATNR": "NEW-6", "MARA.MTART": "ROH", "MARA.MEINS": "KG", "MARA.MFRPN": "TYPO1" }], true);
+    const dup = await screen.findByTestId("entry-dup");
+    expect(norm(dup)).toContain("100090");
+    expect(norm(dup)).toContain("Similar value, typo tolerated");
+    expect(screen.queryByTestId("entry-dup-no-fuzzy")).toBeNull();
+  });
+
+  it("says when the typo-tolerant pass did not run for a record", async () => {
+    await check([{ "MARA.MATNR": "NEW-7", "MARA.MTART": "ROH", "MARA.MEINS": "KG", "MARA.MFRPN": "SHORT1" }], true);
+    const n = await screen.findByTestId("entry-dup-no-fuzzy");
+    expect(norm(n)).toContain("Record 1: only identical values were searched");
+    expect(norm(n)).toContain("A typo in its name would not be found");
+  });
+
   it("shows nothing about duplicates unless asked", async () => {
     await check([{ "MARA.MATNR": "NEW-5", "MARA.MTART": "ROH", "MARA.MEINS": "KG", "MARA.MFRPN": "XQ-7731-ZK" }], false);
     await screen.findByRole("status");
