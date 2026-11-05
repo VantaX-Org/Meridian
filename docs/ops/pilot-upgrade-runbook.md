@@ -140,6 +140,10 @@ docker compose -f docker/docker-compose.customer.yml exec -T db \
     pg_restore -U meridian -d meridian --clean --if-exists < backups/pre-update-<UTC>.dump
 ```
 
+Rolling back does not undo migrations. From the release that contains the entrypoint change (D-22), the
+previous api starts on the newer schema and logs that it skipped migrations; older releases stop with
+"Can't locate revision", and for those the `pg_restore` above is the way back.
+
 Rolling back keeps the files in Garage: the previous images reach it at
 `minio:9000` exactly as they reached MinIO. The untouched `docker_minio_data`
 volume is the last resort if the copied files themselves were ever in doubt.
