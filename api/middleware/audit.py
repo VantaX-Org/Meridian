@@ -71,6 +71,8 @@ _EXCLUDED_PREFIXES = (
     "/api/v1/client-errors",
     # The create response carries the one-time API key; the routes write their own api_key.* rows.
     "/api/v1/admin/api-keys",
+    # The body carries the data subject's record key; the routes write their own rows with a keyed hash only.
+    "/api/v1/admin/subject-requests",
 )
 
 # UUID-like segment so we can pull entity id out of REST paths.

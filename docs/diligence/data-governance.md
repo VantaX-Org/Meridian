@@ -65,7 +65,7 @@ the vendor processes only licence data (`docs/legal/DPA.md`, a template awaiting
 | Security of processing | RLS, encryption of credentials, role model, audit (security.md) | volume encryption is the host's responsibility |
 | Records of processing | audit log, `llm_audit_log`, `purge_log`, compliance statement | |
 | Personal data in model prompts | 20 named personal-data SAP fields redacted before any prompt (`api/utils/pii_fields.py`) | redaction by field name only (security.md, F-2) |
-| Data subject access and erasure | record history shows every run and decision for one record key (`GET /api/v1/work/records/{module}/{key}/history`); users can be deleted (`api/routes/users.py`) | no subject-access export or erasure across extracts and findings; SAP is the system of record and erasure there flows into the next run, but stored past runs keep the values until purged (D-27) |
+| Data subject access and erasure | record history shows every run and decision for one record key (`GET /api/v1/work/records/{module}/{key}/history`); users can be deleted (`api/routes/users.py`) | Admin > Data subject requests (`api/services/subject_requests.py`, migration 134) searches one record key, exports what is held, and erases it in two steps (a dry run, then a confirmed execute with a reason). Open limits: no suppression list, so a later extraction brings the record back unless it is erased in SAP first; backups, raw uploads, reports and other bundles are not covered; extract files match on the full key only; no personal-field search (D-27, partly closed) |
 | Special categories | the GDPR policy pack's `special_category` class marks the fields | |
 
 ## 5. Policy packs
