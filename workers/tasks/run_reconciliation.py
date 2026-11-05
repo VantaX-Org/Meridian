@@ -116,3 +116,48 @@ def run_reconciliation(self, tenant_id, reconciliation_id):
             logger.exception("post-load reconciliation failed")
             session.rollback()
             return _finish(session, reconciliation_id, "failed", str(e)[:500])
+
+
+def start_stale_reconciliations(session, tenant_id, system_id) -> list[str]:
+    """Re-reconcile every run whose latest finished reconciliation compared this target system and is now out of date.
+
+    Called when a target analysis completes (the same moment the API starts reporting ``stale``). A run with a
+    reconciliation still queued or running is skipped, and once the new one finishes it compares the newest extraction,
+    so the same run and extraction are never queued twice. Never raises: a failure here must not fail the analysis.
+    """
+    started: list[str] = []
+    try:
+        rows = session.execute(text("""
+            SELECT DISTINCT ON (c.run_id) c.run_id, c.status, c.target_synced_at, c.target_system_id
+              FROM migration_reconciliations c JOIN migration_runs r ON r.id = c.run_id
+             WHERE c.tenant_id = :t AND r.status IN ('analysed', 'exported')
+             ORDER BY c.run_id, c.created_at DESC"""), {"t": str(tenant_id)}).fetchall()
+        latest = session.execute(text(
+            "SELECT max(run_at) FROM analysis_versions WHERE tenant_id = :t AND metadata->>'system_id' = :sid "
+            "AND position('complete' in status) > 0 AND metadata->>'dataset_path' IS NOT NULL"),
+            {"t": str(tenant_id), "sid": str(system_id)}).scalar()
+        for row in rows:
+            if (row.status != "done" or str(row.target_system_id) != str(system_id) or not latest
+                    or not row.target_synced_at or latest <= row.target_synced_at):
+                continue
+            rid = session.execute(text(
+                "INSERT INTO migration_reconciliations (tenant_id, run_id, status, auto_started) "
+                "SELECT :t, :r, 'queued', true WHERE NOT EXISTS (SELECT 1 FROM migration_reconciliations "
+                "WHERE run_id = :r AND status IN ('queued','running') AND created_at > now() - interval '2 hours') "
+                "RETURNING id"), {"t": str(tenant_id), "r": row.run_id}).scalar()
+            session.commit()
+            if not rid:
+                continue
+            try:
+                task = run_reconciliation.delay(str(tenant_id), str(rid))
+                session.execute(text("UPDATE migration_reconciliations SET task_id = :k WHERE id = :id"),
+                                {"k": task.id, "id": rid})
+            except Exception:
+                session.execute(text("UPDATE migration_reconciliations SET status = 'failed', completed_at = now(), "
+                                     "error_detail = 'The task queue could not be reached.' WHERE id = :id"), {"id": rid})
+            session.commit()
+            started.append(str(rid))
+    except Exception:
+        logger.exception("automatic reconciliation could not be started")
+        session.rollback()
+    return started

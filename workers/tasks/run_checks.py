@@ -1091,6 +1091,10 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 session.commit()
                 logger.info("DQS committed for %s before the issue lifecycle: %d module(s)",
                             version_id, len(dqs_summary))
+                sys_id = (metadata or {}).get("system_id")
+                if sys_id:  # keep post-load reconciliations current; never fails the analysis
+                    from workers.tasks.run_reconciliation import start_stale_reconciliations
+                    start_stale_reconciliations(session, tenant_id, sys_id)
 
             # Step 9b: record-level findings + cross-run issue lifecycle
             # (savepoint: a failure here never loses the findings above).

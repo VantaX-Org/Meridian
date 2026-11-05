@@ -323,6 +323,7 @@ const RECON_KIND: Record<ReconKind, () => string> = {
 };
 const RECON_STATUS: Record<string, () => string> = { ...STATUS_TEXT, done: () => t("Done") };
 const signed = (n: number) => `${n > 0 ? "+" : ""}${f1(n)}`;
+const signedInt = (n: number) => `${n > 0 ? "+" : ""}${int(n)}`;
 
 /** Post-load reconciliation: what the load files carried against the target system's latest extraction (migration.py /reconcile). */
 function PostLoadPanel({ run }: { run: MigrationRun }) {
@@ -383,6 +384,17 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                   n: int(sum.comparable ?? 0), m: int(sum.tables ?? 0), e: int(sum.expected ?? 0), f: int(sum.found ?? 0), x: int(sum.missing ?? 0), u: int(sum.unexpected ?? 0), w: int(sum.differing_fields ?? 0),
                 })}
               </p>
+              {d!.automatic ? <p className="m2-meta" data-testid="mig-post-load-auto">{t("Started automatically when the target system was analysed again.")}</p> : null}
+              {d!.previous ? (
+                <p className="m2-meta" data-testid="mig-post-load-change">
+                  {t("Since the comparison of {date}: {x} missing ({dx}), {w} fields differ ({dw}), {f} found ({df}).", {
+                    date: formatDate(d!.previous.created_at, "date"),
+                    x: int(sum.missing ?? 0), dx: signedInt((sum.missing ?? 0) - (d!.previous.summary.missing ?? 0)),
+                    w: int(sum.differing_fields ?? 0), dw: signedInt((sum.differing_fields ?? 0) - (d!.previous.summary.differing_fields ?? 0)),
+                    f: int(sum.found ?? 0), df: signedInt((sum.found ?? 0) - (d!.previous.summary.found ?? 0)),
+                  })}
+                </p>
+              ) : null}
               <p className="m2-meta">
                 {sum.basis === "snapshot"
                   ? t("Compared against the files exported on {date}.", { date: formatDate(sum.snapshot_exported_at ?? null, "date") })
