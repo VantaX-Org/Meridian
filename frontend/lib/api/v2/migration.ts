@@ -6,6 +6,10 @@
  *   GET    /migration/runs/{id}                 (one analysis with its gaps grouped by object, kind and severity)
  *   GET    /migration/runs/{id}/records         (records that will or will not load, with the reasons)
  *   GET    /migration/runs/{id}/findings        (the field-level gaps, filtered and paged)
+ *   POST   /migration/runs/{id}/reconcile       (queue the post-load reconciliation against the target system)
+ *   GET    /migration/runs/{id}/reconciliation  (its latest result: counts per table, three scores, stale flag)
+ *   GET    /migration/runs/{id}/reconciliation/records  (missing, differing and unexpected records, paged)
+ *   GET    /migration/runs/{id}/reconciliation/export   (the result as Excel)
  *   GET    /migration/runs/{id}/findings/export (the gaps as CSV or Excel)
  *   GET    /migration/runs/{id}/value-candidates (source values of one target field, for the value map)
  *   GET/POST/PUT/DELETE /migration/field-map    (source field to target field, per object and target type)
@@ -158,3 +162,99 @@ export const getValueMap = (module: string, targetField: string) => v2Get<{ entr
 export const saveValueMap = (module: string, targetField: string, entries: { source_value: string; target_value: string; note?: string }[]) =>
   v2Send<{ saved: number }>("PUT", `${P}/value-map`, { module, target_field: targetField, entries });
 export const deleteValueEntry = (id: string) => v2Send<unknown>("DELETE", `${P}/value-map/${encodeURIComponent(id)}`);
+
+// Post-load reconciliation: did the records the load files carried land in the target system (migration.py).
+export type ReconKind = "missing" | "differing" | "unexpected";
+
+export interface ReconField {
+  field: string;
+  description: string;
+  in_target_extract: boolean;
+  compared: number;
+  matched: number;
+  differing: number;
+}
+
+export interface ReconTable {
+  table: string;
+  description: string;
+  comparable: boolean;
+  /** Why the table could not be compared (no_key_in_dictionary, key_not_in_load, target_extract_incomplete, ...). */
+  reason: string | null;
+  key_fields: string[];
+  expected: number;
+  found: number;
+  missing: number;
+  unexpected: number;
+  duplicate_expected: number;
+  duplicate_found: number;
+  fields: ReconField[];
+  records_total: Record<ReconKind, number>;
+  capped: boolean;
+  unmapped_keys?: string[];
+}
+
+export interface ReconReason {
+  check_id: string;
+  description: string | null;
+  severity: string;
+  dimension: string;
+  source_pass_rate: number | null;
+  target_pass_rate: number | null;
+  change: number;
+}
+
+export interface ReconScores {
+  module: string;
+  source: number | null;
+  projected: number | null;
+  /** Null when the target has no completed analysis (actual_reason says why); never estimated. */
+  actual: number | null;
+  actual_reason: "no_target_analysis" | "no_target_findings_for_module" | null;
+  reasons: ReconReason[];
+}
+
+export interface Reconciliation {
+  reconciliation_id: string;
+  run_id: string;
+  status: "queued" | "running" | "done" | "failed";
+  error_detail: string | null;
+  target_system_id: string | null;
+  target_version_id: string | null;
+  target_synced_at: string | null;
+  created_at: string;
+  completed_at: string | null;
+  /** A target extraction newer than the one compared has landed since. */
+  stale: boolean;
+  latest_target_synced_at: string | null;
+  record_cap: number | null;
+  summary: { tables?: number; comparable?: number; expected?: number; found?: number; missing?: number; unexpected?: number; differing_fields?: number };
+  tables: ReconTable[];
+  scores: ReconScores[];
+}
+
+export interface ReconRecord {
+  kind: ReconKind;
+  key: string;
+  source_record: string | null;
+  field: string | null;
+  expected: string | null;
+  found: string | null;
+  withheld?: boolean;
+}
+
+export interface ReconRecordsPage {
+  table: string | null;
+  kind: ReconKind | null;
+  total: number;
+  capped: boolean;
+  record_cap: number | null;
+  rows: ReconRecord[];
+}
+
+export const getReconciliation = (id: string) => v2Get<Reconciliation>(`${run(id)}/reconciliation`);
+export const startReconciliation = (id: string) => v2Send<{ reconciliation_id: string; task_id: string | null; status: string }>("POST", `${run(id)}/reconcile`);
+export const getReconciliationRecords = (id: string, q: { table?: string; kind?: ReconKind; offset?: number; limit?: number }) =>
+  v2Get<ReconRecordsPage>(`${run(id)}/reconciliation/records`, { ...q });
+export const exportReconciliation = (id: string) =>
+  v2Download(`${run(id)}/reconciliation/export`, undefined, `post_load_reconciliation_${id}.xlsx`);

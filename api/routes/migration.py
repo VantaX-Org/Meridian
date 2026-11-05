@@ -316,6 +316,222 @@ async def run_records(
     return {"total": int(total or 0), "rows": [_row(x) for x in rows.fetchall()]}
 
 
+# ── Post-load reconciliation ──────────────────────────────────────────────────
+
+
+class ReconcileStarted(BaseModel):
+    reconciliation_id: uuid.UUID
+    task_id: Optional[str] = None
+    status: str
+
+
+class ModuleScores(BaseModel):
+    module: str
+    source: Optional[float] = None
+    projected: Optional[float] = None
+    actual: Optional[float] = None        # None when the target has no completed analysis; never estimated
+    actual_reason: Optional[str] = None
+    reasons: list[dict] = []
+
+
+class ReconciliationOut(BaseModel):
+    reconciliation_id: uuid.UUID
+    run_id: uuid.UUID
+    status: str
+    error_detail: Optional[str] = None
+    target_system_id: Optional[uuid.UUID] = None
+    target_version_id: Optional[uuid.UUID] = None
+    target_synced_at: Optional[datetime.datetime] = None
+    created_at: datetime.datetime
+    completed_at: Optional[datetime.datetime] = None
+    stale: bool = False                    # a newer target extraction exists than the one compared
+    latest_target_synced_at: Optional[datetime.datetime] = None
+    record_cap: Optional[int] = None
+    summary: dict = {}
+    tables: list[dict] = []
+    scores: list[ModuleScores] = []
+
+
+class ReconciliationRecord(BaseModel):
+    kind: str
+    key: str
+    source_record: Optional[str] = None
+    field: Optional[str] = None
+    expected: Optional[str] = None
+    found: Optional[str] = None
+    withheld: bool = False                 # a personal field: it differs, its values are not kept
+
+
+class ReconciliationRecordsPage(BaseModel):
+    table: Optional[str] = None
+    kind: Optional[str] = None
+    total: int
+    capped: bool
+    record_cap: Optional[int] = None
+    rows: list[ReconciliationRecord]
+
+
+_RECON_COLS = ("id, run_id, status, error_detail, target_system_id, target_version_id, target_synced_at, "
+               "created_at, completed_at, record_cap, summary, tables, scores")
+
+
+async def _latest_reconciliation(db: AsyncSession, tenant_id: uuid.UUID, run_id: uuid.UUID, cols: str):
+    run = (await db.execute(text("SELECT id FROM migration_runs WHERE id = :rid AND tenant_id = :t"),
+                            {"rid": run_id, "t": str(tenant_id)})).fetchone()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    row = (await db.execute(
+        text(f"SELECT {cols} FROM migration_reconciliations WHERE run_id = :rid AND tenant_id = :t "
+             "ORDER BY created_at DESC LIMIT 1"), {"rid": run_id, "t": str(tenant_id)})).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="This run has not been reconciled.")
+    return row
+
+
+@router.post("/runs/{run_id}/reconcile", response_model=ReconcileStarted)
+async def start_reconciliation(
+    run_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
+):
+    """Compare the records the load files carried with the target system's latest extraction."""
+    import json
+
+    from api.services.rbac import current_user_label
+
+    await _set_rls(db, tenant.id)
+    run = (await db.execute(text("SELECT id, status, dest_system_id FROM migration_runs "
+                                 "WHERE id = :rid AND tenant_id = :t"),
+                            {"rid": run_id, "t": str(tenant.id)})).fetchone()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    if run.status not in ("analysed", "exported"):
+        raise HTTPException(status_code=409, detail="The run has not finished analysing.")
+    if not run.dest_system_id:
+        raise HTTPException(status_code=409, detail="The run has no target system to reconcile against.")
+    busy = (await db.execute(text("SELECT 1 FROM migration_reconciliations WHERE run_id = :rid "
+                                  "AND status IN ('queued','running') AND created_at > now() - interval '2 hours'"),
+                             {"rid": run_id})).fetchone()
+    if busy:
+        raise HTTPException(status_code=409, detail="A reconciliation of this run is already running.")
+    rec_id = uuid.uuid4()
+    uid = current_user_id(request)
+    await db.execute(text("INSERT INTO migration_reconciliations (id, tenant_id, run_id, status, requested_by) "
+                          "VALUES (:id, :t, :rid, 'queued', :u)"),
+                     {"id": rec_id, "t": str(tenant.id), "rid": run_id, "u": uid})
+    await db.commit()
+    from workers.tasks.run_reconciliation import run_reconciliation
+    try:
+        task = run_reconciliation.delay(str(tenant.id), str(rec_id))
+    except Exception:
+        await db.execute(text("UPDATE migration_reconciliations SET status = 'failed', completed_at = now(), "
+                              "error_detail = 'The task queue could not be reached.' WHERE id = :id"), {"id": rec_id})
+        await db.commit()
+        raise HTTPException(status_code=503, detail="The task queue could not be reached. Try again shortly.")
+    await db.execute(text("UPDATE migration_reconciliations SET task_id = :task WHERE id = :id"),
+                     {"task": task.id, "id": rec_id})
+    await db.execute(text("""
+        INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, method, path,
+                               status_code, before_json, after_json)
+        VALUES (:t, :u, :e, 'reconcile', 'migration_run', :r, 'POST', :p, 200, NULL, CAST(:a AS jsonb))"""),
+        {"t": str(tenant.id), "u": uid, "e": current_user_label(), "r": str(run_id), "p": request.url.path,
+         "a": json.dumps({"reconciliation_id": str(rec_id), "target_system_id": str(run.dest_system_id)})})
+    await db.commit()
+    return ReconcileStarted(reconciliation_id=rec_id, task_id=task.id, status="queued")
+
+
+@router.get("/runs/{run_id}/reconciliation", response_model=ReconciliationOut)
+async def get_reconciliation(
+    run_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
+):
+    """Latest reconciliation of the run: per-table counts, three DQS sides, and whether it is stale."""
+    await _set_rls(db, tenant.id)
+    r = _row(await _latest_reconciliation(db, tenant.id, run_id, _RECON_COLS))
+    latest = None
+    if r["target_system_id"]:
+        latest = (await db.execute(
+            text("SELECT max(run_at) FROM analysis_versions WHERE tenant_id = :t AND metadata->>'system_id' = :sid "
+                 "AND position('complete' in status) > 0 AND metadata->>'dataset_path' IS NOT NULL"),
+            {"t": str(tenant.id), "sid": str(r["target_system_id"])})).scalar()
+    return ReconciliationOut(
+        reconciliation_id=r["id"], run_id=r["run_id"], status=r["status"], error_detail=r["error_detail"],
+        target_system_id=r["target_system_id"], target_version_id=r["target_version_id"],
+        target_synced_at=r["target_synced_at"], created_at=r["created_at"], completed_at=r["completed_at"],
+        stale=bool(r["status"] == "done" and latest and r["target_synced_at"] and latest > r["target_synced_at"]),
+        latest_target_synced_at=latest, record_cap=r["record_cap"], summary=r["summary"] or {},
+        tables=r["tables"] or [], scores=(r["scores"] or {}).get("modules", []))
+
+
+@router.get("/runs/{run_id}/reconciliation/records", response_model=ReconciliationRecordsPage)
+async def get_reconciliation_records(
+    run_id: uuid.UUID,
+    table: Optional[str] = None,
+    kind: Optional[Literal["missing", "differing", "unexpected"]] = None,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
+):
+    """Missing, differing and unexpected records of the latest reconciliation. Each table keeps at most record_cap
+    rows per kind; the totals in the table summary are not capped."""
+    await _set_rls(db, tenant.id)
+    r = await _latest_reconciliation(db, tenant.id, run_id, "records, tables, record_cap")
+    rows = [x for t, rs in (r.records or {}).items() if table in (None, t) for x in rs
+            if kind in (None, x["kind"])]
+    capped = any(tt.get("capped") for tt in (r.tables or []) if table in (None, tt["table"]))
+    return ReconciliationRecordsPage(table=table, kind=kind, total=len(rows), capped=capped,
+                                     record_cap=r.record_cap, rows=rows[offset:offset + limit])
+
+
+@router.get("/runs/{run_id}/reconciliation/export")
+async def export_reconciliation(
+    run_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
+):
+    """Per-table counts, per-field match counts and the capped record rows, as XLSX."""
+    await _set_rls(db, tenant.id)
+    r = await _latest_reconciliation(db, tenant.id, run_id, "status, tables, records, record_cap")
+    if r.status != "done":
+        raise HTTPException(status_code=409, detail="The reconciliation has not completed.")
+    tables = r.tables or []
+    count_cols = ("expected", "found", "missing", "unexpected")
+    fields = [{"table": t["table"], **f} for t in tables for f in t["fields"]]
+    recs = [{"table": t, **x, **({"expected": "Withheld", "found": "Withheld"} if x.get("withheld") else {})}
+            for t, rs in (r.records or {}).items() for x in rs]
+    data = build_workbook(
+        tenant_name=tenant.name, run_label=None, run_id=str(run_id), title="Post-load reconciliation",
+        sheets=[
+            SheetSpec(title="Tables", note=f"Record rows are capped at {r.record_cap} per table and kind.",
+                      columns=[ColumnSpec(key="table", header="Table", kind="mono"),
+                               ColumnSpec(key="description", header="Description"),
+                               ColumnSpec(key="reason", header="Not comparable because"),
+                               *[ColumnSpec(key=k, header=k.title(), kind="int") for k in count_cols]],
+                      rows=tables),
+            SheetSpec(title="Fields",
+                      columns=[ColumnSpec(key="table", header="Table", kind="mono"),
+                               ColumnSpec(key="field", header="Field", kind="mono"),
+                               ColumnSpec(key="description", header="Description"),
+                               *[ColumnSpec(key=k, header=k.title(), kind="int")
+                                 for k in ("compared", "matched", "differing")]],
+                      rows=fields),
+            SheetSpec(title="Records",
+                      columns=[ColumnSpec(key=k, header=k.replace("_", " ").title(),
+                                          kind="mono" if k in ("table", "key", "source_record", "field") else "text")
+                               for k in ("table", "kind", "key", "source_record", "field", "expected", "found")],
+                      rows=recs),
+        ])
+    return _stream(data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                   f"post_load_reconciliation_{run_id}.xlsx")
+
+
 @router.get("/runs/{run_id}/dry-run/{fmt}")
 async def dry_run_report(
     run_id: uuid.UUID,
@@ -904,38 +1120,15 @@ async def export_migration(
         raise HTTPException(status_code=409, detail=(
             f"Export blocked — {structural} structural critical gap(s) (missing/obsolete target fields). "
             "Fix the field map and re-analyse."))
-    blocked: dict[str, set[str]] = {}
-    for m, k in (await db.execute(text(
-        "SELECT DISTINCT module, record_key FROM migration_gap_findings WHERE run_id = :rid "
-        "AND severity IN ('critical', 'high') AND record_key IS NOT NULL"), {"rid": run_id})).fetchall():
-        blocked.setdefault(m, set()).add(k)
-    meta_row = (await db.execute(text("SELECT metadata FROM analysis_versions WHERE id = :v"),
-                                 {"v": run.source_version_id})).fetchone()
-    meta = (meta_row[0] if meta_row else None) or {}
-    target_type = run.target_release or (await db.execute(
-        text("SELECT system_type FROM sap_systems WHERE id = :s"), {"s": run.dest_system_id})).scalar()
-
     from starlette.concurrency import run_in_threadpool
-    from api.services.migration.export import build_load_tables, to_csv_zip, to_xlsx
+    from api.services.migration.export import load_run_tables, to_csv_zip, to_xlsx
     from workers.db import get_sync_engine
     from sqlalchemy.orm import Session
 
     def _build():
-        from api.services.source_design import dictionary_for
-        from sap.ddic import get_dictionary
-        from workers.dataset import load_dataset
-        from workers.tasks.run_migration import load_mappings, load_value_maps, module_source_tables
         with Session(get_sync_engine()) as s:
             s.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
-            from checks.field_status_rules import conversions_for
-            frames, _, _, _ = load_dataset(meta["dataset_path"], dictionary_for(s, run.source_system_id), run.modules,
-                                           conversions=conversions_for(s, run.source_system_id))
-            mtables = {m: module_source_tables(m, frames) for m in run.modules}
-            maps = {m: load_mappings(s, m, target_type) for m in run.modules}
-            vms = {m: load_value_maps(s, m, run.source_system_id, run.dest_system_id) for m in run.modules}
-            target_dict = (dictionary_for(s, run.dest_system_id) if run.dest_system_id
-                           else get_dictionary(target_type or "s4hana"))
-        return build_load_tables(frames, mtables, maps, vms, blocked, target_dict=target_dict)
+            return load_run_tables(s, run)[0]
 
     tables = await run_in_threadpool(_build)
     if not tables:
