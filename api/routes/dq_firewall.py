@@ -76,10 +76,16 @@ class DuplicateField(BaseModel):
 
 class DuplicateMatch(BaseModel):
     key: str  # the existing record's key; none of its values are returned
+    found_by: str  # "exact" (same normalised value) or "similar" (typo-tolerant pass on a free-text field)
     score: float
     band: str
     threshold: float  # the auto-merge threshold the score is judged against
     fields: list[DuplicateField]
+
+
+class FuzzyRun(BaseModel):
+    ran: bool  # false: the typo-tolerant pass did not run for this record, so a typo in its names was not looked for
+    reason: Optional[str] = None  # extension_missing, index_missing, key_too_short, no_free_text_value, not_searched
 
 
 class RecordDuplicates(BaseModel):
@@ -88,6 +94,7 @@ class RecordDuplicates(BaseModel):
     scored: int
     truncated: bool
     matches: list[DuplicateMatch]
+    fuzzy: FuzzyRun
 
 
 class DuplicateSearch(BaseModel):
@@ -97,6 +104,7 @@ class DuplicateSearch(BaseModel):
     thresholds: dict[str, float]
     rules: Optional[int] = None
     skipped_semantic: Optional[int] = None
+    fuzzy: Optional[dict[str, Any]] = None  # available, reason, min_key_length, similarity of the typo-tolerant pass
 
 
 class RecordOut(BaseModel):
