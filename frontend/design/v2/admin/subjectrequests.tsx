@@ -38,16 +38,20 @@ const TABLE: Record<string, string> = {
   get dedup_candidates() { return t("Duplicate candidates awaiting a decision"); },
   get match_scores() { return t("Match scores between two records"); },
   get record_relationships() { return t("Links from one record to another"); },
-  get master_records() { return t("Golden records and their history"); },
+  get master_records() { return t("Golden records"); },
+  get master_record_history() { return t("Every change made to a golden record"); },
+  get golden_writeback_requests() { return t("Requests to write a golden record back to SAP"); },
+  get mdm_pair_constraints() { return t("Always-match and never-match decisions on two records"); },
   get survivorship_decisions() { return t("Which source value won for a golden record"); },
   get cleaning_queue() { return t("Cleansing queue: values before and after"); },
   get cleaning_audit() { return t("Cleansing audit: values before and after"); },
+  get change_requests() { return t("Change requests on this record: key, title and content"); },
   get change_request_field_changes() { return t("Old and new values in change requests"); },
   get mdm_merge_events() { return t("Merge events and the records merged"); },
   get migration_export_files() { return t("Record keys listed in migration export files"); },
   get audit_log() { return t("Audit log entries that carry the exact key"); },
 };
-const SCRUBBED = new Set(["cleaning_queue", "cleaning_audit", "change_request_field_changes", "mdm_merge_events", "migration_export_files", "audit_log"]);
+const SCRUBBED = new Set(["cleaning_queue", "cleaning_audit", "change_requests", "change_request_field_changes", "mdm_merge_events", "migration_export_files", "audit_log"]);
 
 type Row = { table: string; rows: number };
 
@@ -76,7 +80,9 @@ const LIMITS: (() => string)[] = [
   () => t("Backups of the database and the object store are out of reach. They age out on their own schedule."),
   () => t("Raw uploads, generated reports and archived files are not searched or changed."),
   () => t("Extract files are matched on the full record key only. A record without a key (row numbers) cannot be found in them."),
-  () => t("Change requests, sample key lists on learned rules and process variants, and the language model audit log are not changed. The audit log holds no record keys."),
+  () => t("Comments, attachments and workflow events on change requests, requests to create a record that have no key yet, sample key lists on learned rules and process variants, and the language model audit log are not changed. The audit log holds no record keys."),
+  () => t("An open change request on this record stops the erasure. Finish or cancel it first."),
+  () => t("A golden record under another key may still carry values merged from this one."),
   () => t("The search matches record keys, not names or other personal values: those are masked or dropped before findings are stored. A bare value matches the FIELD=value parts of keys in three tables only."),
 ];
 

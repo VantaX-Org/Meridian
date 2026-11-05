@@ -1503,7 +1503,11 @@ class SubjectRequest(Base):
     actor_email = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
-    __table_args__ = (Index("ix_subject_requests_tenant_created", "tenant_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_subject_requests_tenant_created", "tenant_id", "created_at"),
+        Index("ux_subject_requests_executed", "tenant_id", "dry_run_id", unique=True,
+              postgresql_where=text("dry_run = false")),
+    )
 
 
 class TableProfile(Base):
@@ -2119,7 +2123,7 @@ class MdmMergeEvent(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     domain = Column(Text, nullable=False)
     event_type = Column(Text, nullable=False)
-    golden_record_id = Column(UUID(as_uuid=True), ForeignKey("master_records.id"), nullable=True)
+    golden_record_id = Column(UUID(as_uuid=True), ForeignKey("master_records.id", ondelete="SET NULL"), nullable=True)
     member_keys = Column(ARRAY(Text), nullable=False, server_default="{}")
     actor = Column(UUID(as_uuid=True), nullable=True)
     reason = Column(Text, nullable=True)
