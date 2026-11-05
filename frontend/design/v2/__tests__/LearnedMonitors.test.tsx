@@ -50,6 +50,18 @@ describe("learned monitors", () => {
   });
 });
 
+describe("learned minimum effect", () => {
+  it("shows the minimum now, the fixed floor, the ceiling and the decisions that moved it", async () => {
+    renderWithQuery(<LearnedMonitors />);
+    const row = await screen.findByTestId("threshold-material_master-fail_rate-MM014");
+    expect(within(row).getByText("MM014")).toBeInTheDocument();
+    expect(within(row).getByText("Base unit not valid")).toBeInTheDocument();
+    expect(within(row).getByText("5.3 percentage points")).toBeInTheDocument();
+    expect(within(row).getByText("2.0 percentage points")).toBeInTheDocument();
+    expect(within(row).getAllByText(/marked expected by Demo steward/)).toHaveLength(2);
+  });
+});
+
 describe("steward decision", () => {
   beforeEach(() => { const u = "/monitors?fixture=1&persona=owner"; window.history.pushState({}, "", u); setUrl(u); });
 

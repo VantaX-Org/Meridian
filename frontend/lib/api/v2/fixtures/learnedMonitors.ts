@@ -3,7 +3,7 @@
  * object still learning. Decisions change the in-memory break so the screen shows them; the explanation is the
  * deterministic wording, as the route answers with no model.
  */
-import type { LearnedBreak, LearnedMonitors } from "../learned-monitors";
+import type { LearnedBreak, LearnedMonitors, MonitorThreshold } from "../learned-monitors";
 
 export const NONE_LEARNED_MONITORS = Symbol("not a learned monitor path");
 
@@ -42,12 +42,23 @@ const COVERAGE: LearnedMonitors["coverage"] = [
   { module: "sd_customer_master", run_id: "run-12", run_number: 12, baseline_runs: 3, min_runs: 5, state: "learning", breaks: 0 },
 ];
 
+const THRESHOLDS: MonitorThreshold[] = [
+  {
+    module: "material_master", metric: "fail_rate", subject_code: "MM014", subject_description: "Base unit not valid",
+    min_effect: 5.25, floor: 2, ceiling: 6, window_days: 90,
+    moves: [
+      { break_id: "lm-0b", run_number: 11, decision: "expected", effect: 5, result: "raised", min_effect_after: 5.25, decided_by: "Demo steward", decided_at: "2026-10-21T09:00:00+00:00" },
+      { break_id: "lm-0a", run_number: 9, decision: "expected", effect: 3, result: "raised", min_effect_after: 3.15, decided_by: "Demo steward", decided_at: "2026-10-12T09:00:00+00:00" },
+    ],
+  },
+];
+
 const mem = new Map<string, LearnedBreak>(BREAKS.map((b) => [b.id, { ...b }]));
 export const resetLearnedMonitors = () => BREAKS.forEach((b) => mem.set(b.id, { ...b }));
 
 export function learnedMonitorsRead(path: string): unknown {
   if (path !== "/aletheia/monitors") return NONE_LEARNED_MONITORS;
-  return { min_runs: 5, history: 30, coverage: COVERAGE, breaks: [...mem.values()] } satisfies LearnedMonitors;
+  return { min_runs: 5, history: 30, coverage: COVERAGE, breaks: [...mem.values()], thresholds: THRESHOLDS } satisfies LearnedMonitors;
 }
 
 export function learnedMonitorsWrite(method: string, path: string, body: unknown): unknown {

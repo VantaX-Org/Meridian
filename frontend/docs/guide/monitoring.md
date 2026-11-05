@@ -70,6 +70,20 @@ Users who may change master data can decide on a break:
 
 Each decision is written to the audit log with the person who made it. Other roles can read the page and ask for an explanation but see no decision buttons.
 
+### Learned minimum effect
+
+A break is raised only when its effect reaches the minimum effect of that monitor. A monitor is one object, one figure and one rule or field. The effect is the share of the median for records checked, and points for score and fail rate. Each figure has a fixed floor: 30 percent of the median for records checked, and the fixed point drops set for score and fail rate.
+
+The panel **Learned minimum effect** shows, for every monitor that decisions touched, the **Minimum now**, the **Fixed floor**, the **Ceiling** and **Decisions that moved it**, newest first, each with the run, the person and the effect.
+
+- **Mark expected** raises the minimum to 5 percent above the largest effect marked expected in the last 90 days.
+- The ceiling is 3 times the floor, so a monitor is never silenced. A break above the ceiling is always raised.
+- **Acknowledge** on a break smaller than the current minimum lowers the minimum to that effect. It never goes below the floor.
+- Decisions older than 90 days stop counting, so a raised minimum relaxes by itself.
+- Severity cut points scale with the minimum divided by the floor.
+
+Limits. Field emptied has no effect size and stays fixed. A break hidden by a raised minimum is not stored, so only an open break can be acknowledged to lower the minimum. The rule is a fixed calculation on aggregates, not a trained model, and a language model takes no part in it.
+
 ## Entry gate
 
 The Entry gate page, under Entry gate in the map, shows the data quality firewall: the check SAP calls before it saves a master data record. It covers the licensed objects, Material master, Customer master (sales) and SuccessFactors employee data. The page shows only what the firewall's audit trail holds. Where the trail did not record a figure, the page shows a dash and not a zero.

@@ -162,7 +162,7 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   runs, explains each break from aggregate figures only, and takes steward feedback (acknowledge, expected,
   snooze) that feeds back into the baseline. What it does not do: baselines are per tenant and per system,
   with no cross-tenant or industry priors; they run once per analysis run, not on intra-day or source change
-  streams; severity and minimum-effect thresholds are fixed, not learned; and the checks themselves remain
+  streams; the minimum effect of a monitor is now learned from steward decisions (raised just above the largest effect marked expected in the last 90 days, capped at 3 times the fixed floor, lowered by a confirmed smaller break, never below the floor), but only for volume, score and fail rate; the field-emptied monitor stays fixed, severity only scales with the learned minimum, a break hidden by a raised minimum is not stored and so cannot be confirmed, and the rule is a deterministic fold, not a trained model; and the checks themselves remain
   declared rules (`checks/anomaly.py`, `checks/outliers.py`, `/api/v1/mining/anomalies` are the older layer).
 - **Enterprise assurance.** The established vendors offer certifications (for example SOC 2 or ISO 27001
   for their cloud services; buyer to confirm per vendor), multi-tenant operation, SAP partnership or resale
