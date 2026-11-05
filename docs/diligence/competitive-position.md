@@ -176,7 +176,14 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   only a documented integration pattern. Meridian still fixes most bad data after the fact.
 - **Breadth beyond SAP.** Informatica, Collibra and Ataccama cover the whole enterprise estate with a
   catalogue, lineage and MDM across systems; Monte Carlo and Soda cover warehouses and lakehouses
-  (Snowflake, Databricks, BigQuery). Meridian is SAP plus file upload only.
+  (Snowflake, Databricks, BigQuery). Meridian is SAP, file upload and, new, a read-only PostgreSQL source: a tenant
+  admin registers a connection, picks a table or one SELECT, maps columns, and the rows go through the same path as a file
+  upload so existing rules score them (Admin, Database sources). Limits: PostgreSQL only; SQL Server is not supported
+  because no driver is installed; Snowflake, Databricks and BigQuery are out of scope. A load is one-off and manual,
+  not scheduled, capped at 100,000 rows and 60 seconds per statement; the credential rotation script does not yet
+  re-encrypt these passwords; a read-only session does not stop a server-side function that writes, so the database
+  user must be SELECT-only; the live read-only and row-cap behaviour was tested only against stubs, not a real PostgreSQL
+  server. There is still no catalogue or cross-system lineage for these sources.
 - **Learned monitoring.** Observability tools lead with learned anomaly monitors. Meridian now learns a
   baseline per object and rule from its own run history (records checked, score, rule fail rate, field
   empty share, field distinct-value share), using median and MAD with weekday seasonality once about 28 runs exist. It flags volume

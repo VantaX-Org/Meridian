@@ -1,6 +1,6 @@
 import { t } from "@/lib/v2/i18n";
 /** The sections of the Admin canvas, in the order the left index lists them, with the permission each one needs. */
-export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "matchrules" | "audit" | "alerts" | "notifications" | "webhooks" | "dqfirewall" | "subjectrequests" | "runs" | "system" | "workflows" | Step10Slug | CapabilitySlug;
+export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "matchrules" | "audit" | "alerts" | "notifications" | "webhooks" | "dqfirewall" | "externaldb" | "subjectrequests" | "runs" | "system" | "workflows" | Step10Slug | CapabilitySlug;
 /** Step 10: policy packs and scheduled digests. */
 export type Step10Slug = "policypacks" | "digests";
 /** Step 6c, the role capability audit (design/v2/admin/capabilities.tsx). */
@@ -37,6 +37,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { slug: "matchrules", get label() { return t("Match rules"); }, get group() { return t("Data"); }, get lead() { return t("The field comparisons that decide when two records are the same, per object."); }, needs: ["manage_rules"] },
   { slug: "rulesio", get label() { return t("Rules import and export"); }, get group() { return t("Data"); }, get lead() { return t("Every rule as YAML or Excel, and many rules back in as drafts."); }, needs: ["manage_rules", "export"] },
   { slug: "policypacks", get label() { return t("Policy packs"); }, get group() { return t("Data"); }, get lead() { return t("GxP, SOX and GDPR field classes, the authority each answers to, and the rules that evidence them."); }, needs: ["manage_rules", "view"] },
+  { slug: "externaldb", get label() { return t("Database sources"); }, get group() { return t("Data"); }, get lead() { return t("Read a table or one SELECT from a non-SAP database and score the rows with the same rules as a file upload."); }, needs: ["manage_systems"] },
   { slug: "dqfirewall", get label() { return t("Data quality firewall"); }, get group() { return t("Data"); }, get lead() { return t("Check records against your enabled rules before they reach SAP: one call, a verdict per record."); }, needs: ["manage_settings", "manage_users"] },
   { slug: "subjectrequests", get label() { return t("Data subject requests"); }, get group() { return t("Data"); }, get lead() { return t("Find, export and erase what is held about one record key, with a dry run first."); }, needs: ["manage_settings"] },
   { slug: "audit", get label() { return t("Audit log"); }, get group() { return t("Data"); }, get lead() { return t("Every change made through the product, by whom and when."); }, needs: ["view_audit", "manage_users"] },
