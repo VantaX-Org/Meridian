@@ -71,7 +71,6 @@ SEV_SCALE_MAX = 1.5   # severity cuts stretch at most this far, so losing every 
 FLOOR = {"records": VOLUME_REL, "score": SCORE_MIN_DROP, "fail_rate": RATE_MIN_RISE,
          "blank_pct": EMPTY_AT - POPULATED_BELOW, "distinct_pct": DISTINCT_MIN_SHIFT}
 CEILING = {"blank_pct": 90.0}  # an effect cannot exceed 100 points, so three times the floor would silence the monitor
-LEARNED = tuple(FLOOR)
 
 Point = tuple[str, datetime, float]  # (run id, run_at, value), oldest first
 

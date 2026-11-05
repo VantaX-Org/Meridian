@@ -201,4 +201,4 @@ def test_distinct_share_explanation_is_grounded():
 
 
 def test_events_cover_every_learned_metric():
-    assert all(f"'{m}'" in lm.EVENTS_SQL for m in lm.LEARNED)
+    assert all(f"'{m}'" in lm.EVENTS_SQL for m in lm.FLOOR)
