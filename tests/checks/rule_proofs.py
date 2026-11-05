@@ -17,6 +17,8 @@ except ImportError:  # pragma: no cover
     import sre_constants
     import sre_parse
 
+from functools import partial
+
 import pandas as pd
 
 from checks.base import as_of_time
@@ -28,6 +30,9 @@ from checks.runner import rule_columns, run_rule
 _NOW = as_of_time()
 TODAY = _NOW.strftime("%Y%m%d")
 NOW = _NOW.strftime("%Y-%m-%dT%H:%M:%S")
+# every proof runs at the instant the probes were built, or applies_when and target_when
+# fall back to the wall clock and a run crossing UTC midnight misjudges date-relative rules
+run_rule = partial(run_rule, as_of=_NOW)
 CUR_YEAR = _NOW.strftime("%Y")
 _PROBES = {
     "date": ["", "20000101", TODAY, "20991231", "99991231", NOW],

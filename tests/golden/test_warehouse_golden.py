@@ -19,11 +19,12 @@ from checks.value_placement import generate
 from sap.ddic import get_dictionary
 
 D = get_dictionary("s4hana")
+TODAY = datetime.now(timezone.utc).date()  # one date for the data and the run, so a test crossing midnight stays consistent
 
 
 def _day(days_ago: int) -> str:
     """SAP DATS, ``days_ago`` days before today."""
-    return (datetime.now(timezone.utc).date() - timedelta(days=days_ago)).strftime("%Y%m%d")
+    return (TODAY - timedelta(days=days_ago)).strftime("%Y%m%d")
 
 
 def _stamp(days_ago: int, hhmmss: str = "101500") -> str:
@@ -48,7 +49,7 @@ def _live_config(rules: list[dict], values: dict[str, set[str]]) -> dict[str, se
 
 def _run(module: str, frames: dict[str, pd.DataFrame], live: dict[str, set[str]] | None = None):
     static = _static(module)
-    results = run_checks(module, TableFrames(frames, D, module=module), "t",
+    results = run_checks(module, TableFrames(frames, D, module=module), "t", as_of=TODAY,
                          reference_values=_live_config(static, live or {}),
                          extra_rules=generate(module, static, D))
     errors = {r.check_id: r.error for r in results if r.error}
