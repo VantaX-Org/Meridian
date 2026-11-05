@@ -7,7 +7,10 @@ free-text fields only (``FUZZY_FIELDS``) and a key of at least ``FUZZY_MIN_KEY``
 through the migration 135 indexes, so a typo still finds the record. Both passes read the migration 135 view
 ``POPULATION``, because row level security on the table itself keeps these expressions away from any index; through the
 view both are index probes and a call does not scan the population. When the extension or an index is missing the exact pass still runs and the result says the
-similar pass did not (``fuzzy``). At most ``CANDIDATE_CAP`` records are scored and a cut-short search says so. A lookup that
+similar pass did not (``fuzzy``). Identifier fields (``NEAR_FIELDS``: part numbers, tax numbers) get a third pass,
+the near-value pass of migration 139: a stored key one edit away from the candidate's (``found_by: "near"`` with
+``found_field``). It reports as ``near`` the way the similar pass reports as ``fuzzy``. A near match is kept below the
+review floor and always warns, because a tax number one character off a stored one is the signal itself. At most ``CANDIDATE_CAP`` records are scored and a cut-short search says so. A lookup that
 could not have found anything says so too, never "no duplicates": ``no_block_field_in_population`` when no record of
 the population carries a block field (a flat upload keeps its own column names), and ``searched: false`` on a record
 with no usable block value (blank, junk, or a value with no ASCII letters or digits). Scoring is
@@ -37,6 +40,11 @@ CANDIDATE_CAP = 50   # records scored per candidate, exact and similar together;
 FUZZY_FIELDS = frozenset({"MAKT.MAKTX", "KNA1.NAME1", "BUT000.NAME_ORG1"})
 FUZZY_MIN_KEY = 6          # normalised characters; a 3 to 5 letter key shares too few trigrams to tell a typo from a stranger
 FUZZY_SIMILARITY = 0.5     # pg_trgm similarity of the normalised keys; scoring by the match rules still decides
+# Near-value pass (migration 139): identifier fields, edit distance 1 on the normalised key (one wrong, missing or extra
+# character, or two neighbours swapped). Outside these lengths a key is neither indexed nor searched this way.
+NEAR_FIELDS = frozenset({"MARA.MFRPN", "MARA.BISMT", "KNA1.STCEG", "KNA1.STCD1", "KNA1.STCD2"})
+NEAR_MIN_KEY, NEAR_MAX_KEY = 5, 40   # must equal the bounds inside SQL entry_dup_variants
+NEAR_FETCH = CANDIDATE_CAP * 4       # rows read per field; sharing a deletion variant over-includes some distance-2 keys
 MAX_MATCHES = 10     # matches returned per candidate record
 # module -> (record key field, fields a lookup may block on). Each block field has an index in migration 133.
 SUPPORTED: dict[str, tuple[str, tuple[str, ...]]] = {
@@ -59,6 +67,35 @@ def block_key(value: Any) -> str:
     """The Python side of ``block_expr``; '' when the value cannot be a duplicate signal."""
     k = _NOT_ALNUM.sub("", "" if value is None else str(value)).upper()
     return "" if k in _JUNK or len(k) < 2 else k
+
+
+def variants(key: str) -> list[str]:
+    """The Python side of SQL ``entry_dup_variants``: the key and every key made by deleting one character."""
+    return [key, *(key[:i] + key[i + 1:] for i in range(len(key)))]
+
+
+def within_one(a: str, b: str) -> bool:
+    """Exactly one edit apart: a substitution, an insertion, a deletion or a swap of two neighbours."""
+    if a == b or abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        d = [i for i in range(len(a)) if a[i] != b[i]]
+        return len(d) == 1 or (len(d) == 2 and d[1] == d[0] + 1 and a[d[0]] == b[d[1]] and a[d[1]] == b[d[0]])
+    a, b = sorted((a, b), key=len)
+    return any(b[:i] + b[i + 1:] == a for i in range(len(b)))
+
+
+def near_index_name(field: str) -> str:
+    """Migration 139's index name for an identifier block field."""
+    return "ix_master_records_near_" + field.lower().replace(".", "_")
+
+
+async def _near_available(db: AsyncSession) -> str | None:
+    """None when the near-value pass can run, else ``index_missing``: the function or a valid index is not there."""
+    names = [near_index_name(f) for f in sorted(NEAR_FIELDS)]
+    n = (await db.execute(text("SELECT count(*) FROM pg_class c JOIN pg_index x ON x.indexrelid = c.oid "
+                               "WHERE c.relname = ANY(:n) AND x.indisvalid"), {"n": names})).scalar()
+    return None if n == len(names) else "index_missing"
 
 
 def fuzzy_index_name(field: str) -> str:
@@ -92,7 +129,8 @@ async def match_fields(db: AsyncSession, tid: str, module: str) -> frozenset[str
 async def search(db: AsyncSession, tid: str, module: str, rows: list[dict[str, str]]) -> dict[str, Any]:
     """{search: {searched, reason, cap, thresholds, ...}, records: [{searched, matches, scored, truncated}]} per row."""
     empty = [{"searched": False, "matches": [], "scored": 0, "truncated": False,
-              "fuzzy": {"ran": False, "reason": "not_searched"}} for _ in rows]
+              "fuzzy": {"ran": False, "reason": "not_searched"},
+              "near": {"ran": False, "reason": "not_searched"}} for _ in rows]
     if module not in SUPPORTED:
         return {"search": _not_searched("module_not_supported"), "records": empty}
     key_field, fields = SUPPORTED[module]
@@ -116,6 +154,7 @@ async def search(db: AsyncSession, tid: str, module: str, rows: list[dict[str, s
     why = await _fuzzy_available(db)
     if why is None:  # transaction-local: never outlives the request's transaction, so a pooled connection is clean
         await db.execute(text("SELECT set_config('pg_trgm.similarity_threshold', :v, true)"), {"v": str(FUZZY_SIMILARITY)})
+    near_why = await _near_available(db)
     out = []
     for row in rows:
         seen: dict[str, dict] = {}
@@ -154,6 +193,29 @@ async def search(db: AsyncSession, tid: str, module: str, rows: list[dict[str, s
                     seen[key] = rec or {}
                     how[key] = "similar"
                 truncated = len(new) > room
+        near_keys = [(f, k) for f, k in keys.items() if f in NEAR_FIELDS and NEAR_MIN_KEY <= len(k) <= NEAR_MAX_KEY]
+        near = {"ran": False, "reason": near_why or (None if near_keys else
+                ("key_length" if any(f in NEAR_FIELDS for f in keys) else "no_identifier_value"))}
+        found_field: dict[str, str] = {}
+        if near_why is None and near_keys:
+            near["ran"] = True
+            for f, k in near_keys:
+                if truncated:
+                    break
+                room = CANDIDATE_CAP - len(seen)
+                # && on the variants is what the GIN index answers; the exact distance is checked here. No ORDER BY in
+                # SQL: with a LIMIT the planner walks the key order over every row instead of using the index.
+                got = (await db.execute(text(
+                    f"SELECT sap_object_key, COALESCE(own_fields, golden_fields), {block_expr(f)} FROM {POPULATION} "
+                    f"WHERE tenant_id = CAST(:t AS uuid) AND domain = :d "
+                    f"AND entry_dup_variants({block_expr(f)}) && CAST(:v AS text[]) LIMIT :n"),
+                    {"t": tid, "d": module, "v": variants(k), "n": NEAR_FETCH})).fetchall()
+                new = sorted((key, rec) for key, rec, stored in got if key not in seen and within_one(k, stored))
+                for key, rec in new[:room]:
+                    seen[key] = rec or {}
+                    how[key] = "near"
+                    found_field[key] = f
+                truncated = len(new) > room or len(got) == NEAR_FETCH
         own = row.get(key_field)
         matches = []
         for key, rec in seen.items():
@@ -162,20 +224,25 @@ async def search(db: AsyncSession, tid: str, module: str, rows: list[dict[str, s
                 # same number in another connected system is passed over with it.
                 continue
             ex = explain_pair(rules, row, rec, auto_merge=AUTO_MERGE, review_floor=REVIEW_FLOOR)
-            if ex["total"] < REVIEW_FLOOR:
+            if ex["total"] < REVIEW_FLOOR and how[key] != "near":
                 continue
             scored = [a for a in ex["attributes"] if not a.get("skipped")]
             matches.append({
-                "key": key, "found_by": how[key], "score": ex["total"], "band": ex["band"], "threshold": AUTO_MERGE,
+                "key": key, "found_by": how[key], "score": ex["total"], "threshold": AUTO_MERGE,
+                # A near identifier is itself the signal, so it stays below the review floor; a steward looks at it.
+                "band": "steward_review" if how[key] == "near" and ex["band"] == "auto_dismiss" else ex["band"],
+                **({"found_field": found_field[key]} if key in found_field else {}),
                 "fields": [{"field": a["field"], "comparator": a["comparator"], "similarity": a["similarity"],
                             "weight": a["weight"], "threshold": a["threshold"], "met": bool(a["threshold_met"])}
                            for a in scored]})
         matches.sort(key=lambda m: (-m["score"], m["key"]))
         out.append({"searched": bool(keys), "matches": matches[:MAX_MATCHES], "scored": len(seen), "truncated": truncated,
-                    "fuzzy": fuzzy})
+                    "fuzzy": fuzzy, "near": near})
     return {"search": {"searched": True, "reason": None, "cap": CANDIDATE_CAP,
                        "thresholds": {"auto_merge": AUTO_MERGE, "review_floor": REVIEW_FLOOR},
                        "fuzzy": {"available": why is None, "reason": why, "min_key_length": FUZZY_MIN_KEY,
                                  "similarity": FUZZY_SIMILARITY},
+                       "near": {"available": near_why is None, "reason": near_why, "min_key_length": NEAR_MIN_KEY,
+                                "max_key_length": NEAR_MAX_KEY},
                        "rules": len(rules), "skipped_semantic": sum(r["match_type"] == "semantic" for r in rules)},
             "records": out}

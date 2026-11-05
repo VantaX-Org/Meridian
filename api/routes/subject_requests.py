@@ -4,6 +4,8 @@
 * ``POST /api/v1/admin/subject-requests/export``  a zip of what is held for the subject.
 * ``POST /api/v1/admin/subject-requests/erase``   dry run, then execute with a confirm word, a reason and the dry run id.
 * ``GET  /api/v1/admin/subject-requests``         the ledger (hashes and counts, never the key).
+* ``GET  /api/v1/admin/subject-requests/suppressions``  the suppression list: field names, counts, records dropped.
+* ``POST /api/v1/admin/subject-requests/suppressions/{request_id}/lift``  lift one erasure's suppressions, with a reason.
 
 The subject travels in the body, never the URL, and this path is skipped by the audit middleware (which would copy
 the body); the service writes its own audit rows without the key. See api/services/subject_requests.py.
@@ -35,6 +37,10 @@ class EraseBody(SubjectBody):
     confirm: Optional[str] = None
     reason: Optional[str] = Field(None, max_length=1000)
     dry_run_id: Optional[str] = None
+
+
+class LiftBody(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=1000)
 
 
 def _actor(request: Request) -> Actor:
@@ -76,3 +82,14 @@ async def erase(body: EraseBody, request: Request, tenant: Tenant = Depends(get_
 @router.get("", dependencies=[Depends(require_permission("manage_settings"))])
 async def ledger(tenant: Tenant = Depends(get_tenant)) -> list[dict[str, Any]]:
     return await asyncio.to_thread(_run, str(tenant.id), svc.history)
+
+
+@router.get("/suppressions", dependencies=[Depends(require_permission("manage_settings"))])
+async def suppression_list(tenant: Tenant = Depends(get_tenant)) -> dict[str, Any]:
+    return await asyncio.to_thread(_run, str(tenant.id), svc.suppressions)
+
+
+@router.post("/suppressions/{request_id}/lift", dependencies=[Depends(require_permission("manage_settings"))])
+async def suppression_lift(request_id: str, body: LiftBody, request: Request,
+                           tenant: Tenant = Depends(get_tenant)) -> dict[str, Any]:
+    return await asyncio.to_thread(_run, str(tenant.id), svc.lift, request_id, _actor(request), body.reason)

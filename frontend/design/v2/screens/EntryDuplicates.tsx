@@ -1,6 +1,6 @@
 "use client";
 
-import type { DuplicateNotSearched, FirewallVerdict, FuzzyNotRun } from "@/lib/api/v2/dq-firewall";
+import type { DuplicateNotSearched, FirewallVerdict, FuzzyNotRun, NearNotRun } from "@/lib/api/v2/dq-firewall";
 import { t } from "@/lib/v2/i18n";
 import { Mono } from "../parts";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -53,9 +53,14 @@ const FUZZY: Record<FuzzyNotRun, () => string> = {
   no_free_text_value: () => t("the record has no name or description to compare for typos"),
   not_searched: () => t("the record was not searched"),
 };
+const NEAR: Partial<Record<NearNotRun, () => string>> = {
+  index_missing: () => t("the near-value search index is not built on this database"),
+  key_length: () => t("its tax or part number is too short or too long to compare"),
+};
 const FOUND_BY: Record<string, () => string> = {
   exact: () => t("Same value"),
   similar: () => t("Similar value, typo tolerated"),
+  near: () => t("Near value, one character off"),
 };
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -72,6 +77,7 @@ export function DuplicateResults({ res }: { res: FirewallVerdict }) {
   const cut = res.records.filter((r) => r.duplicates?.truncated);
   const skipped = res.records.filter((r) => r.duplicates && !r.duplicates.searched);
   const noFuzzy = res.records.filter((r) => r.duplicates?.searched && !r.duplicates.fuzzy.ran);
+  const noNear = res.records.filter((r) => r.duplicates?.searched && !r.duplicates.near.ran && NEAR[r.duplicates.near.reason ?? "not_searched"]);
   return (
     <div data-testid="entry-dup">
       <p role="status" data-testid="entry-dup-result">
@@ -90,6 +96,11 @@ export function DuplicateResults({ res }: { res: FirewallVerdict }) {
       {noFuzzy.map((r) => (
         <p key={r.index} role="note" data-testid="entry-dup-no-fuzzy">
           {t("Record {record}: only identical values were searched, because {why}. A typo in its name would not be found.", { record: r.index + 1, why: FUZZY[r.duplicates!.fuzzy.reason ?? "not_searched"]?.() ?? r.duplicates!.fuzzy.reason ?? "" })}
+        </p>
+      ))}
+      {noNear.map((r) => (
+        <p key={r.index} role="note" data-testid="entry-dup-no-near">
+          {t("Record {record}: a tax or part number one character off was not searched, because {why}.", { record: r.index + 1, why: NEAR[r.duplicates!.near.reason ?? "not_searched"]?.() ?? "" })}
         </p>
       ))}
       {cut.length ? (
@@ -119,6 +130,11 @@ export function DuplicateResults({ res }: { res: FirewallVerdict }) {
                   <td data-label={t("Where it falls")}>{BAND[m.band]?.() ?? m.band}</td>
                   <td data-label={t("Found by")}>{FOUND_BY[m.found_by]?.() ?? m.found_by}</td>
                   <td data-label={t("Matched on")}>
+                    {m.found_by === "near" && m.found_field ? (
+                      <div data-testid="entry-dup-near-field">
+                        <Mono>{m.found_field}</Mono> {FIELD[m.found_field]?.() ?? ""}: {t("one character different, or two neighbouring characters swapped")}
+                      </div>
+                    ) : null}
                     {m.fields.map((f) => (
                       <div key={f.field}>
                         <Mono>{f.field}</Mono> {FIELD[f.field]?.() ?? ""}: {COMPARATOR[f.comparator]?.() ?? f.comparator}, {t("{n} similar", { n: pct(f.similarity) })}

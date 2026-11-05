@@ -112,6 +112,14 @@ describe("Admin, Data quality firewall", () => {
     expect(screen.queryByTestId("entry-dup-no-fuzzy")).toBeNull();
   });
 
+  it("names the identifier field that matched by near value, and still only warns", async () => {
+    await check([{ "MARA.MATNR": "NEW-8", "MARA.MTART": "ROH", "MARA.MEINS": "KG", "MARA.MFRPN": "XQ7731ZL" }], true);
+    const dup = await screen.findByTestId("entry-dup");
+    expect(norm(dup)).toContain("100042");
+    expect(norm(dup)).toContain("Near value, one character off");
+    expect(norm(await screen.findByTestId("entry-dup-near-field"))).toContain("Manufacturer part number");
+  });
+
   it("says when the typo-tolerant pass did not run for a record", async () => {
     await check([{ "MARA.MATNR": "NEW-7", "MARA.MTART": "ROH", "MARA.MEINS": "KG", "MARA.MFRPN": "SHORT1" }], true);
     const n = await screen.findByTestId("entry-dup-no-fuzzy");

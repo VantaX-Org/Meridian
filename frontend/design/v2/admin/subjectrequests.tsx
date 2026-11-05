@@ -6,13 +6,15 @@ import {
   downloadSubjectExport,
   dryRunErasure,
   executeErasure,
+  liftSuppression,
   searchSubject,
   subjectError,
   type SubjectErase,
   type SubjectLedgerRow,
   type SubjectResult,
+  type SuppressionItem,
 } from "@/lib/api/v2/subject-requests";
-import { refreshAdmin, useSubjectRequests } from "@/lib/v2/admin-queries";
+import { refreshAdmin, useSubjectRequests, useSuppressions } from "@/lib/v2/admin-queries";
 import { relTime } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
 import { Grid, type GridColumn } from "../Grid";
@@ -76,7 +78,7 @@ const LEDGER_COLUMNS: GridColumn<SubjectLedgerRow>[] = [
 
 const LIMITS: (() => string)[] = [
   () => t("Meridian does not delete from SAP. Erase the record there as well."),
-  () => t("A later extraction brings the record back. There is no suppression list yet, so erase it again after the next extraction or remove it in SAP first."),
+  () => t("The suppression list drops an erased key from the extracts Meridian reads and stores. Some readers still see the old files: the change-detection baseline and the subject search read extract files directly. Erase the record in SAP as well, or the list is the only guard."),
   () => t("Backups of the database and the object store are out of reach. They age out on their own schedule."),
   () => t("Raw uploads, generated reports and archived files are not searched or changed."),
   () => t("Extract files are matched on the full record key only. A record without a key (row numbers) cannot be found in them."),
@@ -86,12 +88,26 @@ const LIMITS: (() => string)[] = [
   () => t("The search matches record keys, not names or other personal values: those are masked or dropped before findings are stored. A bare value matches the FIELD=value parts of keys in three tables only."),
 ];
 
+const suppressionColumns = (texts: Record<string, string>, lift: (r: SuppressionItem) => void): GridColumn<SuppressionItem>[] => [
+  { id: "when", get header() { return t("Erased"); }, width: 150, pin: true, locked: true, cell: (r) => relTime(r.created_at) },
+  { id: "fields", get header() { return t("Key fields"); }, width: 320, cell: (r) => r.key_fields.map((f, i) => <span key={f}>{i ? ", " : ""}<Mono>{f}</Mono>{texts[f] ? ` ${texts[f]}` : ""}</span>) },
+  { id: "keys", get header() { return t("Keys"); }, width: 80, numeric: true, cell: (r) => r.keys },
+  { id: "dropped", get header() { return t("Rows dropped"); }, width: 120, numeric: true, cell: (r) => r.dropped },
+  { id: "last", get header() { return t("Last dropped"); }, width: 150, cell: (r) => (r.last_dropped_at ? relTime(r.last_dropped_at) : t("Never")) },
+  { id: "status", get header() { return t("Status"); }, width: 120, cell: (r) => <StatusWord tone={r.active_keys > 0 ? "go" : "at-risk"}>{r.active_keys > 0 ? t("Active") : t("Lifted")}</StatusWord> },
+  { id: "who", get header() { return t("By"); }, width: 200, cell: (r) => r.lifted_by ?? r.created_by ?? "—" },
+  { id: "lift", get header() { return t("Lift"); }, width: 110, cell: (r) => (r.active_keys > 0 && r.request_id ? <button type="button" className="m2-btn" onClick={() => lift(r)}>{t("Lift")}</button> : null) },
+];
+
 /** Admin › Data subject requests: find, export and erase what is held for one record key, dry run first. */
 export function SubjectRequestsSection() {
   const can = useCan();
   const qc = useQueryClient();
   const allowed = can("manage_settings");
   const ledger = useSubjectRequests(allowed);
+  const supp = useSuppressions(allowed);
+  const [lifting, setLifting] = useState<string | null>(null);
+  const [liftReason, setLiftReason] = useState("");
   const [subject, setSubject] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +141,13 @@ export function SubjectRequestsSection() {
       setBusy(false);
     }
   };
+  const lift = () =>
+    void run(async () => {
+      if (!lifting) return;
+      await liftSuppression(lifting, liftReason.trim());
+      setLifting(null);
+      setLiftReason("");
+    }, t("The lift failed."));
   const subj = subject.trim();
   const search = () => {
     clear();
@@ -227,6 +250,30 @@ export function SubjectRequestsSection() {
           <Grid<Row> id="admin-subject-done" ariaLabel={t("What was erased")} columns={COLUMNS} rows={rowsOf(done)} rowId={(r) => r.table} emptyFrame={<EmptyFrame>{t("Nothing was erased.")}</EmptyFrame>} />
         </Block>
       ) : null}
+
+      <Block title={t("Suppression list")} hint={t("Erased keys that extraction drops before findings, work records or files. The list holds a keyed hash, never the key. Lifting needs a reason and is audited.")}>
+        <Loaded q={supp} what={t("The suppression list")}>
+          {(d) => (
+            <>
+              <p role="status">{t("{keys} active keys, {rows} rows dropped.", { keys: d.active_keys, rows: d.dropped_total })}</p>
+              <Grid<SuppressionItem> id="admin-subject-suppressions" ariaLabel={t("Suppression list")} columns={suppressionColumns(d.field_texts, (r) => { setLifting(r.request_id); setLiftReason(""); })} rows={d.items} rowId={(r) => r.request_id ?? r.created_at} emptyFrame={<EmptyFrame>{t("No suppressions yet.")}</EmptyFrame>} />
+            </>
+          )}
+        </Loaded>
+        {lifting ? (
+          <>
+            <div className="m2-fgrid">
+              <Fld label={t("Reason, at least {n} characters", { n: MIN_REASON })} wide>
+                <textarea rows={2} value={liftReason} maxLength={1000} onChange={(e) => setLiftReason(e.target.value)} />
+              </Fld>
+            </div>
+            <div className="m2-adm-acts">
+              <button type="button" className="m2-btn m2-strong" disabled={busy || liftReason.trim().length < MIN_REASON} onClick={lift}>{t("Lift")}</button>
+              <button type="button" className="m2-btn" onClick={() => setLifting(null)}>{t("Cancel")}</button>
+            </div>
+          </>
+        ) : null}
+      </Block>
 
       <Block title={t("Requests so far")} hint={t("Counts and a keyed hash only. The record key is never kept.")}>
         <Loaded q={ledger} what={t("The request list")}>

@@ -42,6 +42,28 @@ export interface SubjectLedgerRow {
   created_at: string;
 }
 
+export interface SuppressionItem {
+  request_id: string | null;
+  key_fields: string[];
+  keys: number;
+  dropped: number;
+  last_dropped_at: string | null;
+  created_at: string;
+  created_by: string | null;
+  active_keys: number;
+  lifted_at: string | null;
+  lifted_by: string | null;
+  lift_reason: string | null;
+}
+
+/** The suppression list: erased keys that extraction drops. No key and no hash, only field names and counts. */
+export interface SuppressionList {
+  active_keys: number;
+  dropped_total: number;
+  field_texts: Record<string, string>;
+  items: SuppressionItem[];
+}
+
 const BASE = "/admin/subject-requests";
 
 export const searchSubject = (subject: string): Promise<SubjectSearch> => v2Send("POST", `${BASE}/search`, { subject });
@@ -49,6 +71,9 @@ export const dryRunErasure = (subject: string): Promise<SubjectErase> => v2Send(
 export const executeErasure = (subject: string, dryRunId: string, confirm: string, reason: string): Promise<SubjectErase> =>
   v2Send("POST", `${BASE}/erase`, { subject, dry_run: false, dry_run_id: dryRunId, confirm, reason });
 export const listSubjectRequests = (): Promise<SubjectLedgerRow[]> => v2Get(BASE);
+export const listSuppressions = (): Promise<SuppressionList> => v2Get(`${BASE}/suppressions`);
+export const liftSuppression = (requestId: string, reason: string): Promise<{ request_id: string; lifted: number }> =>
+  v2Send("POST", `${BASE}/suppressions/${encodeURIComponent(requestId)}/lift`, { reason });
 
 /** The sentence a refusal carries. The API sends `detail` as { error, message }; a string detail also works. */
 export function subjectError(err: unknown, fallback: string): string {
