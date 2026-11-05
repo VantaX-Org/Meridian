@@ -146,7 +146,7 @@ async def test_draft_validate_submit_approve_and_export_when_live_is_off(world, 
     done = await approve(monkeypatch, w, cid)
     assert (done["status"], done["delivery"], done["has_export"]) == ("approved", "export", True)
     assert "MERIDIAN_LIVE_WRITEBACK_ENABLED" in done["reason"] and w["queued"] == []
-    ex = await call(monkeypatch, w, "dave", "GET", f"/change-requests/{cid}/export")  # every reader may fetch it
+    ex = await call(monkeypatch, w, "dave", "POST", f"/change-requests/{cid}/export")  # every reader may fetch it
     assert ex.status_code == 200
     doc = ex.json()
     assert doc["format"] == "meridian.change_request.v1" and doc["reason"] == done["reason"]
@@ -209,7 +209,7 @@ async def test_a_release_without_the_create_function_ends_approved_with_the_expo
     read = (await call(monkeypatch, w, "requester", "GET", f"/change-requests/{cid}")).json()["request"]
     assert (read["status"], read["delivery"]) == ("approved", "export")
     assert "BAPI_BUPA_CREATE_FROM_DATA is not available" in read["reason"]
-    doc = (await call(monkeypatch, w, "alice", "GET", f"/change-requests/{cid}/export")).json()
+    doc = (await call(monkeypatch, w, "alice", "POST", f"/change-requests/{cid}/export")).json()
     assert doc["plan"]["roles"] == ["FLCU00"] and doc["reason"] == read["reason"]
 
 

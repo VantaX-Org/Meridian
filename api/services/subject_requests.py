@@ -81,6 +81,7 @@ class Target:
     ``action``  ``delete`` removes the row; ``scrub`` keeps the row for its audit trail and clears the key and
                 the values (``set``); ``set`` uses the token ``:erased`` for the placeholder key.
     ``also``    one more predicate, for rows tied to a subject through something other than a key column.
+    ``export``  the select list of the access package, when a row also holds other subjects' data (default ``*``).
     """
     table: str
     cols: tuple[str, ...] = ()
@@ -89,11 +90,16 @@ class Target:
     set: str = ""
     full_key_only: bool = False
     also: str = ""
+    export: str = ""
 
 
 # The golden records of the subject. Order below matters: their dependants go first, while this still finds them.
 _GOLDEN = "(SELECT id FROM master_records WHERE tenant_id = :t AND sap_object_key = ANY(CAST(:keys AS text[])))"
 _MASS = "kind = 'mass_change'"
+# A reconciliation keeps one document per run, {table: [row, ...]}, so it holds many subjects. A row names its record
+# twice: key on the target side, source_record on the source side. source_record can be NULL, hence IS TRUE below.
+_RECON_ROWS = "FROM jsonb_array_elements(e.value) r"
+_RECON_HIT = ("(r->>'key' = ANY(CAST(:keys AS text[])) OR r->>'source_record' = ANY(CAST(:keys AS text[]))) IS TRUE")
 
 TARGETS: tuple[Target, ...] = (
     Target("finding_records", ("record_key",)),
@@ -141,6 +147,14 @@ TARGETS: tuple[Target, ...] = (
                "precheck = NULL, sap_result = NULL, export = NULL"),
     Target("migration_export_files", arrays=("record_keys",), action="scrub",
            set="record_keys = ARRAY(SELECT x FROM unnest(record_keys) x WHERE x <> ALL(CAST(:keys AS text[])))"),
+    # Only the subject's rows go: the run's other records and its counts stay.
+    Target("migration_reconciliations", action="scrub",
+           also=f"EXISTS (SELECT 1 FROM jsonb_each(records) e WHERE EXISTS (SELECT 1 {_RECON_ROWS} WHERE {_RECON_HIT}))",
+           set=f"records = (SELECT COALESCE(jsonb_object_agg(e.key, (SELECT COALESCE(jsonb_agg(r), CAST('[]' AS jsonb)) "
+               f"{_RECON_ROWS} WHERE NOT {_RECON_HIT})), CAST('{{}}' AS jsonb)) FROM jsonb_each(records) e)",
+           export=f"id, run_id, status, created_at, completed_at, (SELECT jsonb_object_agg(e.key, (SELECT "
+                  f"COALESCE(jsonb_agg(r), CAST('[]' AS jsonb)) {_RECON_ROWS} WHERE {_RECON_HIT})) "
+                  "FROM jsonb_each(records) e) AS records"),
     Target("audit_log", action="scrub", full_key_only=True, set="before_json = NULL, after_json = NULL"),
 )
 
@@ -426,7 +440,7 @@ def export(session: Any, tenant_id: str, subject: str, actor: Actor) -> tuple[by
             if t.table not in rows:
                 continue
             data = session.execute(text(
-                f"SELECT to_jsonb(x) FROM (SELECT * FROM {t.table} WHERE {_where(t)} LIMIT {EXPORT_ROWS_PER_TABLE}) x"),
+                f"SELECT to_jsonb(x) FROM (SELECT {t.export or '*'} FROM {t.table} WHERE {_where(t)} LIMIT {EXPORT_ROWS_PER_TABLE}) x"),
                 {"t": str(tenant_id), "keys": keys}).fetchall()
             if rows[t.table] > EXPORT_ROWS_PER_TABLE:
                 truncated.append(t.table)
@@ -459,6 +473,10 @@ def _require_quiet(session: Any, tenant_id: str) -> None:
             "AND run_at > now() - interval '24 hours' LIMIT 1"),
             {"t": str(tenant_id), "s": list(BUSY_RUN_STATUSES)}).fetchone():
         raise SubjectError("run_in_progress", "An extraction or analysis is running. Wait for it to finish.", 409)
+    if session.execute(text(
+            "SELECT 1 FROM migration_reconciliations WHERE tenant_id = :t AND status IN ('queued', 'running') "
+            "AND created_at > now() - interval '24 hours' LIMIT 1"), {"t": str(tenant_id)}).fetchone():
+        raise SubjectError("run_in_progress", "A post-load reconciliation is running. Wait for it to finish.", 409)
     try:
         active = jobs.list_jobs(str(tenant_id), active_only=True, strict=True)
     except Exception as e:

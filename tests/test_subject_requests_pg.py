@@ -147,7 +147,7 @@ def world(monkeypatch):
     yield engine, a, b, store, lambda t: tenant_session(engine, t)
     with engine.begin() as c:
         c.execute(text("SET LOCAL app.subject_erasure = 'on'"))
-        for table in ("mdm_pair_constraints", "mdm_merge_events", "golden_writeback_requests",
+        for table in ("migration_reconciliations", "migration_runs", "mdm_pair_constraints", "mdm_merge_events", "golden_writeback_requests",
                       "master_record_history", "master_records", "change_request_field_changes", "change_requests",
                       "subject_suppressions", "subject_requests", "audit_log", "cleaning_audit", "cleaning_queue", "record_hashes",
                       "work_records", "record_issues", "finding_records", "analysis_versions"):
@@ -417,6 +417,67 @@ def test_export_holds_the_subjects_rows_only(world):
     body = " ".join(z.read(n).decode() for n in z.namelist())
     assert OTHER not in body and "00000002" not in z.read("extracts.json").decode()
     assert json.loads(z.read("manifest.json"))["request_id"] == rid
+
+
+def _reconciliation(engine, tenant, status="done"):
+    """One run's document: the subject by target key, the subject by source key, and someone else."""
+    rows = [{"kind": "missing", "key": KEY, "source_record": KEY, "field": None},
+            {"kind": "differing", "key": "PERNR=90000001|SUBTY=0001", "source_record": KEY, "field": "PLANS"},
+            {"kind": "unexpected", "key": OTHER, "source_record": None, "field": None}]
+    with engine.begin() as c:
+        run = c.execute(text("INSERT INTO migration_runs (tenant_id, mode, modules, status) VALUES "
+                             "(:t, 'source_to_destination', '{hcm}', 'analysed') RETURNING id"), {"t": tenant}).scalar()
+        c.execute(text("INSERT INTO migration_reconciliations (tenant_id, run_id, status, records, summary) VALUES "
+                       "(:t, :r, :s, CAST(:d AS jsonb), CAST('{\"missing\": 1}' AS jsonb))"),
+                  {"t": tenant, "r": run, "s": status, "d": json.dumps({"PA0001": rows, "PA0002": []})})
+
+
+def _reconciliation_records(engine, tenant):
+    with engine.connect() as c:
+        return c.execute(text("SELECT records FROM migration_reconciliations WHERE tenant_id = :t"),
+                         {"t": tenant}).scalar()
+
+
+@pg
+def test_erasure_takes_the_subjects_reconciliation_rows_only(world):
+    engine, a, b, store, sess = world
+    _reconciliation(engine, a)
+    _reconciliation(engine, b)
+    with sess(a) as s:
+        dry = svc.erase(s, a, KEY, ACTOR, dry_run=True)
+    assert dry["rows_by_table"]["migration_reconciliations"] == 1
+    with sess(a) as s:
+        svc.erase(s, a, KEY, ACTOR, dry_run=False, confirm="ERASE", reason="Synthetic erasure request",
+                  dry_run_id=dry["request_id"])
+    assert [r["key"] for r in _reconciliation_records(engine, a)["PA0001"]] == [OTHER]
+    assert _reconciliation_records(engine, a)["PA0002"] == []
+    assert len(_reconciliation_records(engine, b)["PA0001"]) == 3
+    with engine.connect() as c:
+        assert c.execute(text("SELECT summary FROM migration_reconciliations WHERE tenant_id = :t"),
+                         {"t": a}).scalar() == {"missing": 1}
+
+
+@pg
+def test_access_package_leaves_out_other_subjects_in_a_reconciliation(world):
+    engine, a, b, store, sess = world
+    _reconciliation(engine, a)
+    with sess(a) as s:
+        data, _ = svc.export(s, a, KEY, ACTOR)
+    z = zipfile.ZipFile(io.BytesIO(data))
+    held = json.loads(z.read("migration_reconciliations.json"))[0]["records"]
+    assert len(held["PA0001"]) == 2 and OTHER not in json.dumps(held)
+
+
+@pg
+@pytest.mark.parametrize("status", ["queued", "running"])
+def test_erasure_waits_for_a_reconciliation(world, status):
+    engine, a, b, store, sess = world
+    _reconciliation(engine, a, status)
+    with sess(a) as s:
+        dry = svc.erase(s, a, KEY, ACTOR, dry_run=True)["request_id"]
+    with sess(a) as s, pytest.raises(svc.SubjectError) as e:
+        svc.erase(s, a, KEY, ACTOR, dry_run=False, confirm="ERASE", reason="Synthetic erasure request", dry_run_id=dry)
+    assert e.value.code == "run_in_progress"
 
 
 @pg

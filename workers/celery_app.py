@@ -67,6 +67,7 @@ import workers.tasks.run_match  # noqa: F401 — match pipeline → match_scores
 import workers.tasks.build_golden_records  # noqa: F401
 import workers.tasks.run_golden_writeback  # noqa: F401 — golden-record write-back (simulate / approved apply)
 import workers.tasks.run_migration  # noqa: F401 — source→source/dest migration
+import workers.tasks.run_reconciliation  # noqa: F401 — post-load reconciliation against the target
 import workers.tasks.run_extraction  # noqa: F401 — live SAP extraction → checks
 import workers.tasks.run_config_sync  # noqa: F401 — SPRO/FO config sync
 import workers.tasks.run_load_config  # noqa: F401 — read-only config snapshot + flow derivation

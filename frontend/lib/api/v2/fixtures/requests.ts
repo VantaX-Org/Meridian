@@ -3,7 +3,7 @@
  * every other path answers NONE_REQ and falls through.
  *
  *   /change-requests (GET, POST), /change-requests/{id} (GET), /validate, /submit, /decide, /cancel, /retry,
- *   /comments, /attachments, GET /change-requests/{id}/export, GET /change-requests/{id}/field-history, GET /change-requests/{id}/preview,
+ *   /comments, /attachments, POST /change-requests/{id}/export, GET /change-requests/{id}/field-history, GET /change-requests/{id}/preview,
  *   GET and PUT /change-requests/defaults, DELETE /change-requests/defaults/{id}
  *   GET and PUT /change-requests/derivations and /change-requests/critical-fields, DELETE on {id} of each
  *   GET /workflows/definitions, /workflows/facts, /workflows/tasks; POST /workflows/definitions, /workflows/definitions/validate,

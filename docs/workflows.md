@@ -198,7 +198,7 @@ draft --validate--> draft --submit--> submitted --> in_approval --+--> rejected
 4. **Decide.** Approvers (approve, and an approver of the step) approve or reject with a reason.
 5. **Approved.** With live write-back on (`MERIDIAN_LIVE_WRITEBACK_ENABLED`), outside sandbox mode and with a
    registered ABAP system with stored credentials as target, the request moves to `creating` and a worker writes it.
-   Otherwise it stays `approved` with an export load file (`GET /change-requests/{id}/export`) and the reason. In
+   Otherwise it stays `approved` with an export load file (`POST /change-requests/{id}/export`) and the reason. In
    sandbox mode the refusal is also recorded in the sandbox's held-back deliveries.
 6. **Creating.** The worker (`workers/tasks/change_requests.py`, retried three times on a connection failure before the
    commit) simulates, then creates or changes the record, and commits only when no RETURN holds an E or A message.
@@ -241,7 +241,7 @@ is not on the release, nothing is sent and the request ends approved with the ex
 | `POST /api/v1/change-requests/{id}/comments` | mdm.read |
 | `POST /api/v1/change-requests/{id}/attachments` (metadata) | mdm.write |
 | `POST /api/v1/change-requests/{id}/retry` | mdm.write |
-| `GET /api/v1/change-requests/{id}/export` | mdm.read |
+| `POST /api/v1/change-requests/{id}/export` | mdm.read |
 
 Webhook events: `change_request.submitted`, `.approved`, `.rejected`, `.created`, `.failed`, `.cancelled` (ids, kind,
 object, status and title; never a field value or an SAP key).

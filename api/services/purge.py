@@ -117,6 +117,12 @@ UNLINK: tuple[tuple[str, str, str], ...] = (
     ("cleaning_queue", "version_id = NULL", "tenant_id = :t AND version_id = :v"),
     ("contract_compliance_history", "version_id = NULL", "tenant_id = :t AND version_id = :v"),
     ("learned_rule_proposals", "version_id = NULL", "tenant_id = :t AND version_id = :v"),
+    # Record rows come from the target and source extracts, so either version going takes them. Must stay before
+    # migration_runs, which loses the source pointer this matches on. The counts stay.
+    ("migration_reconciliations",
+     "target_version_id = NULLIF(target_version_id, :v), records = CAST('{}' AS jsonb)",
+     "tenant_id = :t AND (target_version_id = :v OR run_id IN "
+     "(SELECT id FROM migration_runs WHERE tenant_id = :t AND source_version_id = :v))"),
     ("migration_runs", "source_version_id = NULL", "tenant_id = :t AND source_version_id = :v"),
     ("process_discovery_runs", "extraction_version_id = NULL", "tenant_id = :t AND extraction_version_id = :v"),
 )

@@ -122,7 +122,7 @@ export interface CriticalField { id: string; object: RequestObject; field: strin
 export const listCriticalFields = () => v2Get<{ items: CriticalField[] }>("/change-requests/critical-fields");
 export const putCriticalField = (object: RequestObject, field: string) => v2Send<CriticalField>("PUT", "/change-requests/critical-fields", { object, field });
 export const deleteCriticalField = (id: string) => v2Send<{ deleted: string }>("DELETE", `/change-requests/critical-fields/${enc(id)}`);
-export const exportRequest = (id: string) => v2Download(`${cr(id)}/export`, undefined, `change_request_${id}.json`);
+export const exportRequest = (id: string) => v2Download(`${cr(id)}/export`, undefined, `change_request_${id}.json`, "post");
 
 export interface WorkflowDefinition {
   id: string;

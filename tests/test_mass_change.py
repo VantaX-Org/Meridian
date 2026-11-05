@@ -88,7 +88,7 @@ async def test_create_validate_preview_submit_approve_records_each_record(world,
     done = await approve(monkeypatch, w, cid)
     assert done["status"] == "approved" and done["delivery"] == "export" and done["has_export"] is True
     assert w["queued"] == []
-    exp = (await call(monkeypatch, w, "requester", "GET", f"/change-requests/{cid}/export")).json()
+    exp = (await call(monkeypatch, w, "requester", "POST", f"/change-requests/{cid}/export")).json()
     assert exp["kind"] == "mass_change" and exp["record_keys"] == KEYS
     assert exp["fields"] == [{"field": "MARC.DISPO", "value": "N01"}]
 

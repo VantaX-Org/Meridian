@@ -6,9 +6,10 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
-  deleteFieldMapping, deleteValueEntry, exportLoadFiles, exportMigrationFindings, getFieldMap, getMigrationFindings, getMigrationRecords,
-  getMigrationRun, getMigrationRuns, getValueCandidates, getValueMap, saveValueMap, seedFieldMap, startMigration,
-  updateFieldMapping, type FieldDef, type MigrationMode, type MigrationRun,
+  deleteFieldMapping, deleteValueEntry, exportLoadFiles, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
+  getMigrationRecords, getMigrationRun, getMigrationRuns, getReconciliation, getReconciliationRecords, getValueCandidates, getValueMap,
+  saveValueMap, seedFieldMap, startMigration, startReconciliation, updateFieldMapping, type FieldDef, type MigrationMode, type MigrationRun,
+  type ReconKind,
 } from "@/lib/api/v2/migration";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { useUrlParam, useV2Session } from "@/lib/v2/hooks";
@@ -272,6 +273,7 @@ function RunDetail({ run }: { run: MigrationRun }) {
         )}
       </Panel>
       <LoadFilesPanel run={run} />
+      {analysed(run) ? <PostLoadPanel run={run} /> : null}
       <FindingsPanel run={run} gapTypes={[...new Set((q.data?.gap_breakdown ?? []).map((g) => g.gap_type))]} />
       <RecordsPanel run={run} />
     </>
@@ -298,6 +300,174 @@ function LoadFilesPanel({ run }: { run: MigrationRun }) {
         <button type="button" className="m2-btn" disabled={exp.isPending} onClick={() => exp.mutate("csv")}>{t("Download as CSV files")}</button>{" "}
         <button type="button" className="m2-btn" disabled={exp.isPending} onClick={() => exp.mutate("xlsx")}>{t("Download as Excel")}</button>
       </p>
+    </Panel>
+  );
+}
+
+const RECON_REASON: Record<string, () => string> = {
+  no_key_in_dictionary: () => t("No key in the data dictionary"),
+  key_not_in_load: () => t("Key field not in the load files"),
+  target_extract_incomplete: () => t("Target extraction incomplete"),
+  target_extract_partial: () => t("Target extraction partial"),
+  table_not_extracted: () => t("Table not extracted from the target"),
+  key_not_in_target_extract: () => t("Key field not in the target extraction"),
+};
+const ACTUAL_WHY: Record<string, () => string> = {
+  no_target_analysis: () => t("The target system has no completed analysis."),
+  no_target_findings_for_module: () => t("The target analysis has no findings for this object."),
+};
+const RECON_KIND: Record<ReconKind, () => string> = {
+  missing: () => t("Missing in target"),
+  differing: () => t("Different in target"),
+  unexpected: () => t("Held back but present"),
+};
+const RECON_STATUS: Record<string, () => string> = { ...STATUS_TEXT, done: () => t("Done") };
+const signed = (n: number) => `${n > 0 ? "+" : ""}${f1(n)}`;
+
+/** Post-load reconciliation: what the load files carried against the target system's latest extraction (migration.py /reconcile). */
+function PostLoadPanel({ run }: { run: MigrationRun }) {
+  const { can, shared, viewAs } = useV2Session();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const fixture = useFixture();
+  const [kind, setKind] = useState<ReconKind>("missing");
+  const [table, setTable] = useState("");
+  const [offset, setOffset] = useState(0);
+  const q = useQuery({
+    queryKey: ["migration", "recon", run.id, fixture], queryFn: () => getReconciliation(run.id), staleTime: 30_000,
+    retry, refetchInterval: (c) => (c.state.data?.status === "queued" || c.state.data?.status === "running" ? 5_000 : false),
+  });
+  const done = q.data?.status === "done";
+  const rec = useQuery({
+    queryKey: ["migration", "recon-records", run.id, table, kind, offset, fixture], queryFn: () => getReconciliationRecords(run.id, { table: table || undefined, kind, offset, limit: PAGE }),
+    staleTime: 60_000, retry, enabled: done,
+  });
+  const start = useMutation({
+    mutationFn: () => startReconciliation(run.id),
+    onSuccess: () => { toast.show(t("Reconciliation started")); void qc.invalidateQueries({ queryKey: ["migration", "recon", run.id] }); },
+    onError: (e) => toast.show(errorSentence(e, t("The reconciliation could not be started.")), "error"),
+  });
+  const exp = useMutation({
+    mutationFn: () => exportReconciliation(run.id),
+    onSuccess: (name) => toast.show(t("Reconciliation saved as {name}", { name })),
+    onError: (e) => toast.show(errorSentence(e, t("The reconciliation could not be prepared.")), "error"),
+  });
+  const act = !shared && !viewAs;
+  const d = q.data;
+  const sum = d?.summary ?? {};
+  const rules = (d?.scores ?? []).flatMap((m) => m.reasons.map((r) => ({ ...r, module: m.module })));
+  const tablesWithRecords = (d?.tables ?? []).filter((x) => x.comparable);
+  const fieldText = new Map(tablesWithRecords.flatMap((x) => x.fields.map((f) => [f.field, f.description ?? undefined] as const)));
+  return (
+    <Panel title={t("Post-load reconciliation")} meta={d?.completed_at ? t("Compared on {date}", { date: formatDate(d.completed_at, "date") }) : t("Load files against the target system")} testId="mig-post-load">
+      <p>
+        {can("analyse") && act ? <button type="button" className="m2-btn" disabled={start.isPending || d?.status === "queued" || d?.status === "running"} onClick={() => start.mutate()}>{t("Run reconciliation")}</button> : null}{" "}
+        {can("export") && act && done ? <button type="button" className="m2-btn" disabled={exp.isPending} onClick={() => exp.mutate()}>{t("Download as Excel")}</button> : null}
+      </p>
+      {q.isPending ? <Skeleton width="100%" height={120} /> : status(q.error) === 404 ? (
+        <EmptyFrame>{t("This run has not been reconciled against the target system.")}</EmptyFrame>
+      ) : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("This reconciliation could not be read.")}</ErrorFrame> : (
+        <>
+          {d!.stale ? (
+            <p role="status" className="m2-meta" data-testid="mig-post-load-stale">
+              <strong>{t("Out of date.")}</strong>{" "}{t("The target system was extracted again on {date}, after this comparison. Run the reconciliation again to compare with the newer extraction.", { date: formatDate(d!.latest_target_synced_at, "date") })}
+            </p>
+          ) : null}
+          {!done ? (
+            <p className="m2-meta">{RECON_STATUS[d!.status]?.() ?? d!.status}{d!.error_detail ? ` ${d!.error_detail}` : ""}</p>
+          ) : (
+            <>
+              <p className="m2-meta">
+                {t("Target extraction of {date}.", { date: formatDate(d!.target_synced_at, "date") })}{" "}
+                {t("{n} of {m} tables compared: {e} expected, {f} found, {x} missing, {u} held back but present, {w} fields differ.", {
+                  n: int(sum.comparable ?? 0), m: int(sum.tables ?? 0), e: int(sum.expected ?? 0), f: int(sum.found ?? 0), x: int(sum.missing ?? 0), u: int(sum.unexpected ?? 0), w: int(sum.differing_fields ?? 0),
+                })}
+              </p>
+              <p className="m2-meta">{t("The expected side is rebuilt from the current field mappings, not from the files handed over. A mapping changed after the load shows as a difference.")}</p>
+              <Table title={t("Data quality score, source, projected and actual")} head={[t("Object"), t("Source"), t("Projected"), t("Actual in target")]}>
+                {d!.scores.map((m) => (
+                  <tr key={m.module}>
+                    <th scope="row" className="m2-card-lead">{formatModuleName(m.module)}</th>
+                    <td data-label={t("Source")}>{f1(m.source)}</td>
+                    <td data-label={t("Projected")}>{f1(m.projected)}</td>
+                    <td data-label={t("Actual in target")}>{m.actual === null ? <span className="m2-meta">{f1(null)} {m.actual_reason ? ACTUAL_WHY[m.actual_reason]?.() ?? m.actual_reason : ""}</span> : f1(m.actual)}</td>
+                  </tr>
+                ))}
+              </Table>
+              {rules.length > 0 ? (
+                <Table title={t("Rules that moved the actual score")} head={[t("Object"), t("Rule"), t("Source pass rate"), t("Target pass rate"), t("Change")]}>
+                  {rules.map((r) => (
+                    <tr key={`${r.module}-${r.check_id}`}>
+                      <th scope="row" className="m2-card-lead">{formatModuleName(r.module)}</th>
+                      <td data-label={t("Rule")}><Coded code={r.check_id} text={r.description} /></td>
+                      <td data-label={t("Source pass rate")}>{f1(r.source_pass_rate)}</td>
+                      <td data-label={t("Target pass rate")}>{f1(r.target_pass_rate)}</td>
+                      <td data-label={t("Change")}>{signed(r.change)}</td>
+                    </tr>
+                  ))}
+                </Table>
+              ) : null}
+              <Table title={t("Records per target table")} head={[t("Table"), t("Expected"), t("Found"), t("Missing"), t("Held back but present"), t("Fields that differ")]}>
+                {d!.tables.map((x) => (
+                  <tr key={x.table}>
+                    <th scope="row" className="m2-card-lead"><Coded code={x.table} text={x.description} first /></th>
+                    {x.comparable ? (
+                      <>
+                        <td data-label={t("Expected")}>{int(x.expected)}</td>
+                        <td data-label={t("Found")}>{int(x.found)}</td>
+                        <td data-label={t("Missing")}>{int(x.missing)}</td>
+                        <td data-label={t("Held back but present")}>{int(x.unexpected)}</td>
+                        <td data-label={t("Fields that differ")}>{int(x.fields.reduce((a, f) => a + f.differing, 0))}</td>
+                      </>
+                    ) : (
+                      <td colSpan={5} data-label={t("Not compared")}>{t("Not compared")}: <Coded code={x.reason ?? ""} text={x.reason ? RECON_REASON[x.reason]?.() : undefined} /></td>
+                    )}
+                  </tr>
+                ))}
+              </Table>
+              <Table title={t("Fields compared")} head={[t("Table"), t("Field"), t("Compared"), t("Matched"), t("Different")]}>
+                {tablesWithRecords.flatMap((x) => x.fields.map((f) => (
+                  <tr key={`${x.table}-${f.field}`}>
+                    <th scope="row" className="m2-card-lead"><Coded code={x.table} text={x.description} first /></th>
+                    <td data-label={t("Field")}><Coded code={f.field} text={f.description} first /></td>
+                    <td data-label={t("Compared")}>{f.in_target_extract ? int(f.compared) : t("Not in the target extraction")}</td>
+                    <td data-label={t("Matched")}>{f.in_target_extract ? int(f.matched) : f1(null)}</td>
+                    <td data-label={t("Different")}>{f.in_target_extract ? int(f.differing) : f1(null)}</td>
+                  </tr>
+                )))}
+              </Table>
+              <p>
+                {(Object.keys(RECON_KIND) as ReconKind[]).map((k) => (
+                  <button key={k} type="button" className="m2-btn" aria-pressed={kind === k} onClick={() => { setKind(k); setOffset(0); }}>{RECON_KIND[k]()}</button>
+                ))}{" "}
+                <select aria-label={t("Table")} value={table} onChange={(e) => { setTable(e.target.value); setOffset(0); }}>
+                  <option value="">{t("All tables")}</option>
+                  {tablesWithRecords.map((x) => <option key={x.table} value={x.table}>{x.table} {x.description}</option>)}
+                </select>
+              </p>
+              {rec.isPending ? <Skeleton width="100%" height={120} /> : rec.isError ? <ErrorFrame onRetry={() => void rec.refetch()}>{t("This list could not be read.")}</ErrorFrame> : rec.data.rows.length === 0 ? (
+                <EmptyFrame>{t("No records in this list.")}</EmptyFrame>
+              ) : (
+                <>
+                  <Table title={RECON_KIND[kind]()} head={[t("Record"), t("Load file record"), t("Field"), t("Expected"), t("Found")]}>
+                    {rec.data.rows.map((r) => (
+                      <tr key={`${r.source_record}-${r.key}-${r.field}`}>
+                        <th scope="row" className="m2-card-lead"><Coded code={r.key} text={undefined} first /></th>
+                        <td data-label={t("Load file record")}>{r.source_record ?? f1(null)}</td>
+                        <td data-label={t("Field")}>{r.field ? <Coded code={r.field} text={fieldText.get(r.field)} first /> : f1(null)}</td>
+                        <td data-label={t("Expected")}>{r.withheld ? t("Withheld") : r.expected ?? f1(null)}</td>
+                        <td data-label={t("Found")}>{r.withheld ? t("Withheld") : r.found ?? f1(null)}</td>
+                      </tr>
+                    ))}
+                  </Table>
+                  <Pager offset={offset} total={rec.data.total} onMove={setOffset} />
+                  {rec.data.capped ? <p className="m2-meta">{t("Only the first {n} records of each table and kind are kept; the counts above are complete.", { n: int(rec.data.record_cap ?? 0) })}</p> : null}
+                </>
+              )}
+            </>
+          )}
+        </>
+      )}
     </Panel>
   );
 }

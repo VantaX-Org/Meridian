@@ -61,6 +61,37 @@ let fieldMap: FieldMapping[] = [
 let valueMap: ValueEntry[] = [
   { id: "vm-1", target_field: "MARA.MTART", source_value: "ZFRT", target_value: "FERT", note: "Finished goods", updated_at: "2026-10-28T10:00:00Z" },
 ];
+
+const field = (f: string, description: string, compared: number, differing: number) => ({ field: f, description, in_target_extract: true, compared, matched: compared - differing, differing });
+const reconTables = [
+  { table: "MARA", description: "General material data", comparable: true, reason: null, key_fields: ["MATNR"], expected: 41_990, found: 41_902, missing: 88, unexpected: 3, duplicate_expected: 0, duplicate_found: 0, capped: true, records_total: { missing: 88, differing: 143, unexpected: 3 },
+    fields: [field("MTART", "Material type", 41_990, 61), field("MATKL", "Material group", 41_990, 12), field("MEINS", "Base unit of measure", 41_990, 0)] },
+  { table: "MAKT", description: "Material descriptions", comparable: true, reason: null, key_fields: ["MATNR", "SPRAS"], expected: 41_990, found: 41_880, missing: 110, unexpected: 0, duplicate_expected: 0, duplicate_found: 0, capped: true, records_total: { missing: 110, differing: 70, unexpected: 0 },
+    fields: [field("MAKTX", "Material description", 41_990, 70)] },
+  { table: "MARC", description: "Plant data for material", comparable: false, reason: "target_extract_partial", key_fields: ["MATNR", "WERKS"], expected: 0, found: 0, missing: 0, unexpected: 0, duplicate_expected: 0, duplicate_found: 0, capped: false, records_total: { missing: 0, differing: 0, unexpected: 0 }, fields: [] },
+];
+const reconRecords = [
+  { kind: "missing", key: "MATNR=000000000010004801", source_record: "MARA:000000000010004801", field: null, expected: null, found: null },
+  { kind: "missing", key: "MATNR=000000000010004802", source_record: "MARA:000000000010004802", field: null, expected: null, found: null },
+  { kind: "differing", key: "MATNR=000000000010004711", source_record: "MARA:000000000010004711", field: "MTART", expected: "ROH", found: "HALB" },
+  { kind: "differing", key: "MATNR=000000000010009001|SPRAS=E", source_record: "MAKT:000000000010009001", field: "MAKTX", expected: "Hydraulic hose assembly 3/4in 2-wire", found: "Hydraulic hose assembly 3/4in 2-wi" },
+  { kind: "differing", key: "LIFNR=0000100234", source_record: "LFA1:0000100234", field: "NAME1", expected: null, found: null, withheld: true },
+  { kind: "unexpected", key: "MATNR=000000000010004711", source_record: "MARA:000000000010004711", field: null, expected: null, found: null },
+] as const;
+const recon = {
+  reconciliation_id: "rec-0001", run_id: "mig-0002", status: "done", error_detail: null, target_system_id: S4, target_version_id: "v-s4-3",
+  target_synced_at: "2026-11-02T04:10:00Z", created_at: "2026-11-02T06:00:00Z", completed_at: "2026-11-02T06:04:00Z", stale: false,
+  latest_target_synced_at: "2026-11-02T04:10:00Z", record_cap: 100,
+  summary: { tables: 3, comparable: 2, expected: 83_980, found: 83_782, missing: 198, unexpected: 3, differing_fields: 143 },
+  tables: reconTables,
+  scores: [
+    { module: "material_master", source: 78.2, projected: 91.4, actual: 88.9, actual_reason: null, reasons: [
+      { check_id: "MM-MTART-001", description: "Material type exists in the target", severity: "high", dimension: "validity", source_pass_rate: 93.1, target_pass_rate: 99.8, change: 6.7 },
+      { check_id: "MM-MAKTX-004", description: "Description fits the target field length", severity: "medium", dimension: "completeness", source_pass_rate: 96.6, target_pass_rate: 99.7, change: 3.1 },
+    ] },
+    { module: "business_partner", source: 81.0, projected: 90.2, actual: null, actual_reason: "no_target_findings_for_module", reasons: [] },
+  ],
+};
 let seq = 10;
 
 export function migrationRead(path: string, params: Record<string, unknown> = {}): unknown {
@@ -81,6 +112,11 @@ export function migrationRead(path: string, params: Record<string, unknown> = {}
       const rows = records.filter((x) => x.status === params.status);
       return { total: params.status === "load_fail" ? r.records_blocked : (r.records_total ?? 0) - (r.records_blocked ?? 0), rows };
     }
+    if (rest === "/reconciliation") return r.id === "mig-0002" ? recon : NONE_MIGRATION;
+    if (rest === "/reconciliation/records" && r.id === "mig-0002") {
+      const rows = reconRecords.filter((x) => (!params.kind || x.kind === params.kind) && (!params.table || x.source_record.startsWith(`${params.table}:`)));
+      return { table: params.table ?? null, kind: params.kind ?? null, total: rows.length, capped: true, record_cap: 100, rows };
+    }
     if (rest === "/value-candidates") return { target_field: params.target_field, values: [{ source_value: "ZROH", records: 2_904 }, { source_value: "ZFRT", records: 611 }, { source_value: "HALB", records: 4_020 }] };
     return NONE_MIGRATION;
   }
@@ -92,6 +128,7 @@ export function migrationRead(path: string, params: Record<string, unknown> = {}
 export function migrationWrite(method: string, path: string, body: unknown): unknown {
   const b = (body ?? {}) as Record<string, unknown>;
   if (method === "POST" && path === "/migration/analyze") return { run_id: `mig-${++seq}`, task_id: "t-fixture", status: "queued", mode: b.mode, modules: b.modules };
+  if (method === "POST" && /^\/migration\/runs\/[^/]+\/reconcile$/.test(path)) return { reconciliation_id: "rec-0002", task_id: "t-fixture", status: "queued" };
   if (method === "POST" && path === "/migration/field-map/seed") return { seeded: 0, module: b.module, dest_system_type: b.dest_system_type };
   if (method === "POST" && path === "/migration/field-map") {
     const row = { id: `fm-${++seq}`, module: String(b.module), source_field: String(b.source_field), dest_system_type: String(b.dest_system_type), dest_table: (b.dest_table as string) ?? null, dest_field: (b.dest_field as string) ?? null, value_map: false, origin: "steward", transform_note: (b.transform_note as string) ?? null, is_confirmed: false, source_def: null, target_def: null };

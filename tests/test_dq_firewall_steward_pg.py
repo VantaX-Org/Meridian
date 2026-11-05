@@ -346,7 +346,7 @@ async def test_a_released_request_is_not_exported_and_an_exported_one_is_not_rel
     deps, client = make_client(monkeypatch, a["tid"], a["requester"])
     await deps.engine.dispose()
     async with client:
-        r = await client.get(f"/api/v1/change-requests/{rid}/export", headers=HEAD)
+        r = await client.post(f"/api/v1/change-requests/{rid}/export", headers=HEAD)
     assert r.status_code == 409 and row_of(eng, rid)[2] is None
     # the other order: the file was taken first
     bad2 = {**BAD, "MAKT.MAKTX": "Hex bolt M10"}
@@ -355,7 +355,7 @@ async def test_a_released_request_is_not_exported_and_an_exported_one_is_not_rel
     deps, client = make_client(monkeypatch, a["tid"], a["requester"])
     await deps.engine.dispose()
     async with client:
-        r = await client.get(f"/api/v1/change-requests/{rid2}/export", headers=HEAD)
+        r = await client.post(f"/api/v1/change-requests/{rid2}/export", headers=HEAD)
     assert r.status_code == 200 and row_of(eng, rid2)[2] is not None
     out = await hold(monkeypatch, a, [bad2])
     h = out["records"][0]["hold"]

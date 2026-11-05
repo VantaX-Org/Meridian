@@ -1,7 +1,7 @@
 """entry_hold: stage a flagged candidate as a change request and release the approved one to the SAP save
 
 Revision ID: 141
-Revises: 139
+Revises: 140
 Create Date: 2026-11-05
 
 The entry gate can hold a flagged candidate (POST /api/v1/dq-firewall/validate with ``hold``): the SAP save stops, the
@@ -18,8 +18,7 @@ migration stamps ``export_downloaded_at`` on every approved gate request that ha
 
 The open-request unique index now also requires ``entry_released_at IS NULL``: a released request whose time ran out
 must not block a new request for the same content. A second index serves the lookup of the latest request of a
-fingerprint at any status. Revision 140 (post-load recon) branches from 139 as well; whichever merges second needs an
-Alembic merge revision.
+fingerprint at any status.
 
 Downgrade: the old unique index allows one open request per fingerprint, so a released request that a newer open
 request outlived loses its fingerprint first (the request itself stays).
@@ -29,7 +28,7 @@ from typing import Sequence, Union
 from alembic import op
 
 revision: str = "141"
-down_revision: Union[str, None] = "139"
+down_revision: Union[str, None] = "140"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

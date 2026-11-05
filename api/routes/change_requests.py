@@ -742,10 +742,11 @@ async def get_request(request_id: uuid.UUID, db: AsyncSession = Depends(get_db),
     return RequestDetail(request=RequestOut(**cr), workflow=wf, history=hist, comments=comments, attachments=files)
 
 
-@router.get("/{request_id}/export", dependencies=[Depends(require_permission("mdm.read"))])
+@router.post("/{request_id}/export", dependencies=[Depends(require_permission("mdm.read"))])
 async def export_request(request_id: uuid.UUID, db: AsyncSession = Depends(get_db),
                          tenant: Tenant = Depends(get_tenant)) -> Response:
-    """The load file of a request that goes to SAP by file, with the reason it does."""
+    """The load file of a request that goes to SAP by file, with the reason it does. A POST because taking the file
+    stamps the request: a GET skips the CSRF check, and no GET may change state."""
     await _rls(db, tenant)
     # One atomic statement: a request released to the SAP save (entry gate hold) is never also handed out as a load file,
     # and a download stamps the request so the gate never releases it afterwards.
