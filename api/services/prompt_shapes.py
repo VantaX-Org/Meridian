@@ -43,7 +43,7 @@ def aggregates_only(tenant_id: str | None = None) -> bool:
         if tenant_id is None:
             from api.middleware.tenant import get_current_tenant_id
 
-            tenant_id = get_current_tenant_id() or os.getenv("MERIDIAN_TENANT_ID")
+            tenant_id = str(get_current_tenant_id() or os.getenv("MERIDIAN_TENANT_ID") or "")
         if not tenant_id:
             return False
         from workers.db import get_sync_engine

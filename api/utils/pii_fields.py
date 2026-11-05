@@ -9,6 +9,7 @@ so matching on SAP names alone let a non-SAP header through.
 """
 
 import re
+from collections.abc import Iterable
 
 PII_EXCLUDED_FIELDS: set[str] = {
     # Business Partner personal data
@@ -90,7 +91,7 @@ def is_pii_value(value: object) -> bool:
     return bool(t) and (any(p.match(t) for p in _VALUE_PII) or bool(_NAMEISH.match(t)))
 
 
-def column_is_personal(header: str | None, values: "list[object] | tuple[object, ...]" = (),
+def column_is_personal(header: str | None, values: Iterable[object] = (),
                        mapped_field: str | None = None) -> bool:
     """Fail-safe verdict for one column. A saved mapping can only tighten: the mapped SAP field, the header words or
     any non-blank value shaped like PII each make the column personal."""
