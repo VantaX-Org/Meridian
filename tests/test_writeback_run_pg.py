@@ -131,7 +131,6 @@ async def test_send_returns_at_once_and_the_worker_commits_in_chunks(env, monkey
 async def test_crash_mid_chunk_leaves_the_record_in_doubt_and_resume_does_not_resend_it(env, monkeypatch):
     engine, tid, bid, sid, queued = env
     fake, _ = _sap(monkeypatch)
-    real = worker.__dict__.get("write_record")
     import sap.bapi_writeback as bw
 
     orig, calls = bw.write_record, []
