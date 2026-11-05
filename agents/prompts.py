@@ -146,15 +146,14 @@ CONFIG_MATCH_SYSTEM = (
     "stewardship review.\n\n"
     "Key rule: config_deviation requires a CONSISTENT pattern across records. "
     "Random or mixed deviations are data_error. "
-    "You never see raw SAP table data — only aggregated signals and value samples. "
+    "You never see raw SAP table data, only aggregated signals and value shapes (counts and character masks). "
     "Respond ONLY with valid JSON matching the schema provided."
 )
 
 CONFIG_MATCH_USER_TEMPLATE = (
     "Classify each finding for module '{{ module }}' as "
     "data_error, config_deviation, or ambiguous.\n\n"
-    "Findings with value samples:\n{{ findings_with_signals_json }}\n\n"
-    "Observed configuration patterns in this dataset:\n{{ config_patterns_json }}\n\n"
+    "Findings with value shapes:\n{{ findings_with_signals_json }}\n\n"
     "Standard SAP rule context:\n{{ rule_context_json }}\n\n"
     "Respond with valid JSON matching this exact schema:\n"
     "{\n"

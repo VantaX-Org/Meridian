@@ -138,7 +138,7 @@ def judge(metric: str, subject: str, obs: float, base: dict, min_effect: Optiona
     """The break, if ``obs`` is outside the band in the direction that matters for ``metric`` and its effect reaches
     ``min_effect`` (default: the floor)."""
     low, high, med = base["low"], base["high"], base["median"]
-    floor = FLOOR.get(metric)
+    floor = FLOOR.get(metric, 0.0)
     me = floor if min_effect is None else min_effect
     scale = min(me / floor, SEV_SCALE_MAX) if floor else 1.0
     kind = sev = None
@@ -252,11 +252,12 @@ def _decisions(session: Session, tid: str, module: str) -> dict[str, list[tuple[
 
 def settings(metric: str, min_effect: Optional[float] = None) -> dict:
     """Band settings of ``metric``; the band's own minimum width follows the learned minimum effect."""
-    me = FLOOR.get(metric) if min_effect is None else min_effect
-    return {"records": dict(rel=me, min_spread=VOLUME_SPREAD),
-            "score": dict(min_spread=SCORE_SPREAD),
-            "fail_rate": dict(abs_=me, min_spread=RATE_SPREAD, relative_floor=False),
-            "blank_pct": dict(abs_=10.0, min_spread=RATE_SPREAD, relative_floor=False)}[metric]
+    me = FLOOR.get(metric, 0.0) if min_effect is None else min_effect
+    table: dict[str, dict] = {"records": dict(rel=me, min_spread=VOLUME_SPREAD),
+                              "score": dict(min_spread=SCORE_SPREAD),
+                              "fail_rate": dict(abs_=me, min_spread=RATE_SPREAD, relative_floor=False),
+                              "blank_pct": dict(abs_=10.0, min_spread=RATE_SPREAD, relative_floor=False)}
+    return table[metric]
 
 
 def learned_minimums(session: Session, tid: str, module: str, now: datetime) -> dict[tuple[str, str], float]:

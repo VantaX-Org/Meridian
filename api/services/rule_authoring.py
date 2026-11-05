@@ -73,6 +73,20 @@ def assert_no_values(ctx: dict) -> None:
             raise ValueError(f"profile keys not allowed in an LLM prompt: {sorted(leaked)}")
 
 
+def redact_ctx(ctx: dict, aggregates: bool = False) -> dict:
+    """Copy of ``ctx`` without the row-derived format shapes of a personal field, or of any field under "aggregates
+    only" (counts and lengths stay)."""
+    from api.utils.pii_fields import is_pii_field, is_pii_header
+
+    out = []
+    for f in ctx["fields"]:
+        name = f.get("field", "")
+        if "profile" in f and (aggregates or is_pii_field(name) or is_pii_header(name.rpartition(".")[2])):
+            f = {**f, "profile": {k: v for k, v in f["profile"].items() if k not in ("shapes", "shape_count", "masked")}}
+        out.append(f)
+    return {**ctx, "fields": out}
+
+
 def build_prompt(description: str, ctx: dict) -> str:
     assert_no_values(ctx)
     return (
@@ -102,7 +116,8 @@ def generate(tenant_id: str, description: str, ctx: dict) -> Optional[str]:
     """Rule YAML from the LLM, or None when AI is unavailable. Sync: run in a threadpool."""
     from api.utils.llm_logger import log_llm_call
     from llm.provider import get_llm, safe_invoke
-    prompt = build_prompt(description, ctx)
+    from api.services.prompt_shapes import aggregates_only
+    prompt = build_prompt(description, redact_ctx(ctx, aggregates_only(tenant_id)))
     llm = get_llm()
     t0 = time.monotonic()
     out = safe_invoke(llm, prompt, timeout_seconds=90, max_tokens=1500)

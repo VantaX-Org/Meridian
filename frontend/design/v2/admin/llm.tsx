@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getLlmConfig, getLlmProviders, putLlmConfig, testLlm, type LlmBody, type LlmConfig, type LlmProvider } from "@/lib/api/v2/llm";
+import { getLlmConfig, getLlmProviders, putLlmAggregatesOnly, putLlmConfig, testLlm, type LlmBody, type LlmConfig, type LlmProvider } from "@/lib/api/v2/llm";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { ResultFrame, useOutcome } from "../inspector/shared";
-import { Block, Fld, Loaded, useCan, useUnsaved } from "./kit";
+import { Block, Fld, Loaded, Sw, useCan, useUnsaved } from "./kit";
 
 type Draft = Omit<LlmBody, "temperature" | "max_tokens" | "request_timeout"> & { temperature: string; max_tokens: string; request_timeout: string };
 
@@ -115,6 +115,30 @@ function Editor({ config, providers }: { config: LlmConfig; providers: Record<st
   );
 }
 
+function Privacy({ on }: { on: boolean }) {
+  const qc = useQueryClient();
+  const f = useFixture();
+  const { outcome, pending, run } = useOutcome("llm-privacy");
+  return (
+    <>
+      <Sw
+        checked={on}
+        disabled={pending !== null}
+        label={t("Aggregates only to the model")}
+        hint={t("On: no sample from a row reaches the model, not a value, a mask or a key shape. Aletheia sends counts and totals only, and falls back to the deterministic checks where a sample would have helped.")}
+        onChange={(v) =>
+          void run("privacy", async () => {
+            await putLlmAggregatesOnly(v);
+            await qc.invalidateQueries({ queryKey: ["v2", "llm", f] });
+            return { tone: "ok", title: v ? t("Only aggregates go to the model") : t("Masked samples may go to the model") };
+          })
+        }
+      />
+      {outcome ? <ResultFrame outcome={outcome} /> : null}
+    </>
+  );
+}
+
 /**
  * Admin › Settings › Language model: the provider and model Aletheia answers with. Read and changed under manage_llm,
  * as the routes are. Until saved here the deployment's environment decides.
@@ -135,6 +159,7 @@ export function LlmBlock() {
                 ? t("Set by the deployment's environment. Saving here overrides it for this tenant.")
                 : t("Saved here {when}.", { when: c.updated_at ? formatDate(c.updated_at, "datetime") : "" })}
             </p>
+            <Privacy on={c.aggregates_only} />
             <Loaded q={prov} what={t("The providers")} rows={2}>
               {(pv) => <Editor key={JSON.stringify(c)} config={c} providers={pv.providers} />}
             </Loaded>

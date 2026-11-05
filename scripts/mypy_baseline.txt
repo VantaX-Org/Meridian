@@ -301,7 +301,6 @@ api/services/insights_aggregate.py:error: Unsupported operand type for unary - (
 api/services/insights_impact.py:error: Library stubs not installed for "yaml"  [import-untyped]
 api/services/insights_owners.py:error: Argument "key" to "max" has incompatible type overloaded function; expected "Callable[[Any], SupportsDunderLT[Any] | SupportsDunderGT[Any]]"  [arg-type]
 api/services/learned_monitors.py:error: Argument 1 to "records_checked_of" has incompatible type "dict[Any, Any] | None"; expected "dict[Any, Any]"  [arg-type]
-api/services/learned_monitors.py:error: Argument 3 to "baseline" has incompatible type "**dict[str, float]"; expected "bool"  [arg-type]
 api/services/learned_monitors.py:error: Item "None" of "dict[Any, Any] | None" has no attribute "get"  [union-attr]
 api/services/lineage.py:error: Library stubs not installed for "yaml"  [import-untyped]
 api/services/match_calibration.py:error: Argument 1 to "float" has incompatible type "Any | float | None"; expected "str | Buffer | SupportsFloat | SupportsIndex"  [arg-type]

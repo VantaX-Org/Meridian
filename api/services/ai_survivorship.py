@@ -25,16 +25,18 @@ def ai_survivorship_available() -> bool:
     return not llm_is_noop()
 
 
-def facts(contributions: list[dict]) -> list[dict]:
+def facts(contributions: list[dict], field_name: str | None = None) -> list[dict]:
     """The only thing the model sees about each contributor: where it came from, when, how confident, and the
     aggregate shape of its value (mask, length, blank) plus how many other sources hold the same value. Never the
     value, a preview of it, or a hash of it (a hash of a short code can be reversed by guessing)."""
     from api.services.fix_drafter import mask_of
+    from api.utils.pii_fields import is_pii_header
 
+    personal = is_pii_header(field_name)  # a personal field keeps its length, never its mask
     texts = [("" if c["value"] is None else str(c["value"]).strip()) for c in contributions]
     return [
         {"source_system": c["source_system"], "extracted_at": str(c["extracted_at"]), "confidence": c.get("confidence"),
-         "blank": not t, "length": len(t), "mask": mask_of(t), "same_as": sum(1 for o in texts if o == t) - 1}
+         "blank": not t, "length": len(t), "mask": "" if personal else mask_of(t), "same_as": sum(1 for o in texts if o == t) - 1}
         for c, t in zip(contributions, texts)
     ]
 
@@ -44,7 +46,7 @@ def _build_prompt(field_name: str, domain: str, contributions: list[dict]) -> st
     lines = "\n".join(
         f"  - Source: {f['source_system']}, Extracted: {f['extracted_at']}, Confidence: {f['confidence']}, "
         f"Blank: {f['blank']}, Length: {f['length']}, Shape: {f['mask']}, Other sources with the same value: {f['same_as']}"
-        for f in facts(contributions)
+        for f in facts(contributions, field_name)
     )
     return f"""You are an SAP master data survivorship expert.
 
@@ -105,6 +107,9 @@ def propose_field_winner(
     if not ai_survivorship_available():
         return None  # no LLM: the caller's deterministic chain decides
 
+    from api.services.prompt_shapes import aggregates_only
+    if aggregates_only(tenant_id):
+        return None  # "aggregates only": every per-source fact is derived from a row, so the deterministic chain decides
     prompt = _build_prompt(field_name, domain, contributions)
     start_ms = time.monotonic_ns() // 1_000_000
 
