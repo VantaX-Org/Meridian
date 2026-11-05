@@ -91,6 +91,45 @@ def test_reconciliations_are_tenant_isolated(app_engine):
 
 
 @pg
+def test_purging_either_version_clears_the_record_rows(app_engine):
+    from sqlalchemy import text
+
+    from api.services.purge import UNLINK
+
+    owner, _ = app_engine
+    tid = _tenant(owner)
+    versions = {}
+    for name in ("source", "target", "other"):
+        with owner.begin() as c:
+            versions[name] = str(c.execute(text("INSERT INTO analysis_versions (tenant_id, status) VALUES (:t, 'complete') "
+                                                "RETURNING id"), {"t": tid}).scalar())
+
+    def recon(source, target):
+        run = _run(owner, tid)
+        with owner.begin() as c:
+            c.execute(text("UPDATE migration_runs SET source_version_id = :v WHERE id = :r"), {"v": source, "r": run})
+            return c.execute(text("INSERT INTO migration_reconciliations (tenant_id, run_id, target_version_id, records) "
+                                  "VALUES (:t, :r, :v, CAST('{\"MARA\": [{\"key\": \"MATNR=1\"}]}' AS jsonb)) "
+                                  "RETURNING id"), {"t": tid, "r": run, "v": target}).scalar()
+
+    by_target = recon(versions["other"], versions["target"])
+    by_source = recon(versions["source"], versions["other"])
+    untouched = recon(versions["other"], versions["other"])
+    steps = [u for u in UNLINK if u[0] in ("migration_reconciliations", "migration_runs")]
+    assert [u[0] for u in steps] == ["migration_reconciliations", "migration_runs"]
+    with owner.begin() as c:
+        for v in (versions["target"], versions["source"]):
+            for table, sets, where in steps:
+                c.execute(text(f"UPDATE {table} SET {sets} WHERE {where}"), {"t": tid, "v": v})
+    with owner.connect() as c:
+        rows = {r.id: r for r in c.execute(text("SELECT id, target_version_id, records FROM migration_reconciliations "
+                                                "WHERE tenant_id = :t"), {"t": tid})}
+    assert rows[by_target].records == {} and rows[by_target].target_version_id is None
+    assert rows[by_source].records == {} and str(rows[by_source].target_version_id) == versions["other"]
+    assert rows[untouched].records != {}
+
+
+@pg
 def test_other_tenant_cannot_insert(app_engine):
     from sqlalchemy import text
     from sqlalchemy.exc import ProgrammingError
