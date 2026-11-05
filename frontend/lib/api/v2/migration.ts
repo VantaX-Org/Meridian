@@ -10,6 +10,8 @@
  *   GET    /migration/runs/{id}/reconciliation  (its latest result: counts per table, three scores, stale flag)
  *   GET    /migration/runs/{id}/reconciliation/records  (missing, differing and unexpected records, paged)
  *   GET    /migration/runs/{id}/reconciliation/export   (the result as Excel)
+ *   POST   /migration/runs/{id}/extract-target  (extract and analyse the run's objects from its target system, 409 if one is running)
+ *   DELETE /migration/runs/{id}                 (the run with its gaps, load files, reconciliations and stored copies; 409 while it runs)
  *   GET    /migration/runs/{id}/findings/export (the gaps as CSV or Excel)
  *   GET    /migration/runs/{id}/value-candidates (source values of one target field, for the value map)
  *   GET/POST/PUT/DELETE /migration/field-map    (source field to target field, per object and target type)
@@ -237,6 +239,8 @@ export interface Reconciliation {
   scores: ReconScores[];
   /** Started by a finished target analysis, not by a person. */
   automatic: boolean;
+  /** It failed because the target system has no completed analysis: extracting it is the one action. */
+  needs_target_extraction: boolean;
   /** The reconciliation before this one, counts only. Null when there is none. */
   previous: { created_at: string; summary: Reconciliation["summary"] } | null;
 }
@@ -266,3 +270,5 @@ export const getReconciliationRecords = (id: string, q: { table?: string; kind?:
   v2Get<ReconRecordsPage>(`${run(id)}/reconciliation/records`, { ...q });
 export const exportReconciliation = (id: string) =>
   v2Download(`${run(id)}/reconciliation/export`, undefined, `post_load_reconciliation_${id}.xlsx`);
+export const extractMigrationTarget = (id: string) => v2Send<{ job_id: string; version_id: string; status: string; modules: string[] }>("POST", `${run(id)}/extract-target`);
+export const deleteMigrationRun = (id: string) => v2Send<unknown>("DELETE", run(id));

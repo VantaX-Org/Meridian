@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, csv_response
+from api.services.migration.post_load import NO_TARGET_ANALYSIS
 from api.services.rbac import Scope, current_user_id, require_permission, require_scope, scope_from_path
 
 logger = logging.getLogger("meridian.migration")
@@ -359,6 +360,7 @@ class ReconciliationOut(BaseModel):
     tables: list[dict] = []
     scores: list[ModuleScores] = []
     automatic: bool = False                # started by a finished target analysis, not by a person
+    needs_target_extraction: bool = False  # it failed because the target system has not been extracted and analysed
     previous: Optional[ReconciliationPrevious] = None   # the reconciliation before this one, when it finished
 
 
@@ -452,6 +454,120 @@ async def start_reconciliation(
     return ReconcileStarted(reconciliation_id=rec_id, task_id=task.id, status="queued")
 
 
+async def _audit(db: AsyncSession, tenant: Tenant, request: Request, action: str, run_id: uuid.UUID,
+                 status_code: int, after: dict) -> None:
+    import json
+
+    from api.services.rbac import current_user_label
+
+    await db.execute(text("""
+        INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, method, path,
+                               status_code, before_json, after_json)
+        VALUES (:t, :u, :e, :act, 'migration_run', :r, :m, :p, :sc, NULL, CAST(:a AS jsonb))"""),
+        {"t": str(tenant.id), "u": current_user_id(request), "e": current_user_label(), "act": action,
+         "r": str(run_id), "m": request.method, "p": request.url.path, "sc": status_code, "a": json.dumps(after)})
+
+
+@router.post("/runs/{run_id}/extract-target", status_code=202)
+async def extract_target(
+    run_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("trigger_sync", scope=scope_from_path)),
+):
+    """Extract and analyse the run's modules from its target system, so a reconciliation has something to compare.
+
+    Reads whole business objects, not only the tables the load files carry: the extraction path has no per-table
+    restriction. Starts now or not at all: a running extraction on the system is never queued behind or interrupted.
+    A reconciliation that failed for want of this extraction starts again by itself when the analysis completes.
+    """
+    from api.middleware.licence import enforce_licensed_modules
+    from api.services import jobs
+    from sap.extraction_plan import MODULES_BY_SYSTEM
+    from workers.tasks.run_extraction import run_extraction
+
+    await _set_rls(db, tenant.id)
+    run = (await db.execute(text("SELECT id, modules, dest_system_id FROM migration_runs "
+                                 "WHERE id = :rid AND tenant_id = :t"),
+                            {"rid": run_id, "t": str(tenant.id)})).fetchone()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    if not run.dest_system_id:
+        raise HTTPException(status_code=409, detail="The run has no target system to extract.")
+    system = await _load_system(db, tenant.id, str(run.dest_system_id))
+    if not system:
+        raise HTTPException(status_code=404, detail="The target system was not found.")
+    modules = [m for m in run.modules or [] if m in MODULES_BY_SYSTEM.get(system.system_type, [])]
+    if not modules:
+        raise HTTPException(status_code=409, detail="None of the run's objects can be extracted from the target system.")
+    enforce_licensed_modules(request, modules)
+    try:
+        active = jobs.list_jobs(str(tenant.id), active_only=True, limit=200, strict=True)
+    except Exception:
+        raise HTTPException(status_code=503, detail="The job registry could not be read. Try again shortly.")
+    if any(j.get("kind") == "extraction" and str(j.get("system_id")) == str(run.dest_system_id) for j in active):
+        raise HTTPException(status_code=409, detail="An extraction on the target system is already running.")
+    version_id = str(uuid.uuid4())
+    jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", f"Target for run: {', '.join(modules)}",
+                   status="queued", system_id=str(run.dest_system_id), modules=modules, version_id=version_id,
+                   retry={"via": "extract", "body": {"system_id": str(run.dest_system_id), "modules": modules,
+                                                     "include_config": False, "sync_type": "data"}})
+    try:
+        task = run_extraction.delay(str(tenant.id), str(run.dest_system_id), modules, False, "data", None, True,
+                                    None, version_id)
+    except Exception:
+        jobs.finish_job(str(tenant.id), f"dl-{version_id}", "failed")
+        raise HTTPException(status_code=503, detail="The task queue could not be reached. Try again shortly.")
+    jobs.set_task_ids(str(tenant.id), f"dl-{version_id}", [str(getattr(task, "id", ""))])
+    await _audit(db, tenant, request, "extract_target", run_id, 202,
+                 {"job_id": f"dl-{version_id}", "target_system_id": str(run.dest_system_id), "modules": modules})
+    await db.commit()
+    return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "modules": modules}
+
+
+@router.delete("/runs/{run_id}", status_code=204)
+async def delete_run(
+    run_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
+):
+    """Delete a run with its gaps, load files and reconciliations (database cascade) and its parquet copies."""
+    from starlette.concurrency import run_in_threadpool
+
+    from api.config import settings
+    from api.services import purge
+    from api.services.migration import snapshot
+
+    await _set_rls(db, tenant.id)
+    run = (await db.execute(text("SELECT status, mode, wave_id FROM migration_runs WHERE id = :rid AND tenant_id = :t"),
+                            {"rid": run_id, "t": str(tenant.id)})).fetchone()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    if run.status in ("queued", "running"):
+        raise HTTPException(status_code=409, detail="The run is still running. Delete it when it has finished.")
+    if (await db.execute(text("SELECT 1 FROM migration_reconciliations WHERE run_id = :rid AND tenant_id = :t "
+                              "AND status IN ('queued', 'running') LIMIT 1"),
+                         {"rid": run_id, "t": str(tenant.id)})).first():
+        raise HTTPException(status_code=409, detail="A reconciliation of the run is in progress. Delete it when that has finished.")
+    # the wave list, cockpit and workbook read a wave's latest run: deleting it would change what was signed off
+    if run.wave_id and (await db.execute(text("SELECT 1 FROM migration_waves WHERE id = :w AND tenant_id = :t "
+                                              "AND signed_off_at IS NOT NULL"),
+                                         {"w": run.wave_id, "t": str(tenant.id)})).first():
+        raise HTTPException(status_code=409, detail="The run belongs to a signed-off wave and is kept as its evidence.")
+    # the parquet copies hold record values: if they cannot be removed, keep the run so the delete can be retried
+    _, errors = await run_in_threadpool(purge._delete_storage, {
+        "prefixes": [(settings.minio_bucket_uploads, snapshot.run_prefix(tenant.id, run_id))], "objects": []})
+    if errors:
+        raise HTTPException(status_code=502, detail="The stored copies of the load files could not be removed. Try again shortly.")
+    await db.execute(text("DELETE FROM migration_runs WHERE id = :rid AND tenant_id = :t"),
+                     {"rid": run_id, "t": str(tenant.id)})
+    await _audit(db, tenant, request, "delete", run_id, 204, {"mode": run.mode, "status": run.status})
+    await db.commit()
+
+
 @router.get("/runs/{run_id}/reconciliation", response_model=ReconciliationOut)
 async def get_reconciliation(
     run_id: uuid.UUID,
@@ -475,6 +591,7 @@ async def get_reconciliation(
     counts = ("tables", "comparable", "expected", "found", "missing", "unexpected", "differing_fields")
     return ReconciliationOut(
         automatic=bool(r["auto_started"]),
+        needs_target_extraction=bool(r["status"] == "failed" and r["error_detail"] == NO_TARGET_ANALYSIS),
         previous=ReconciliationPrevious(created_at=prev.created_at, summary={
             k: v for k, v in (prev.summary or {}).items() if k in counts}) if prev else None,
         reconciliation_id=r["id"], run_id=r["run_id"], status=r["status"], error_detail=r["error_detail"],

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Rotate the CREDENTIAL_MASTER_KEY that encrypts SAP system passwords.
+"""Rotate the CREDENTIAL_MASTER_KEY that encrypts SAP system and external database passwords.
 
-Reads every row in system_credentials, decrypts with the OLD master key,
+Reads every row in system_credentials and external_db_connections, decrypts with the OLD master key,
 re-encrypts with the NEW master key, and bumps key_version. Safe to re-run
 — already-new-encrypted rows are detected and skipped via key_version.
 
@@ -76,6 +76,38 @@ def _fetch_credentials(conn) -> Iterable[tuple]:
     return rows
 
 
+def _rotate_row(conn, row, old_key, new_key, dry_run, target_version, result) -> None:
+    cred_id, label, tenant_id, ct, version, table = row
+    cred_ref = f"{table} id={cred_id} {label}"
+    if version >= target_version:  # already at (or past) the target version
+        result.already_new += 1
+        return
+    try:
+        new_ct = encrypt_with_key(new_key, str(tenant_id), decrypt_with_key(old_key, str(tenant_id), ct))
+    except Exception as e:
+        logger.error(f"re-encrypt failed for {cred_ref}: {e}")
+        result.failed.append(cred_ref)
+        return
+    if dry_run:
+        logger.info(f"[DRY RUN] would rotate {cred_ref} v{version} -> v{target_version}")
+    else:
+        # table is one of two literals set above, never user input
+        conn.execute(text(f"UPDATE {table} SET encrypted_password = :ct, key_version = :ver WHERE id = :cid"),
+                     {"ct": new_ct, "ver": target_version, "cid": cred_id})
+        logger.info(f"Rotated {cred_ref} v{version} -> v{target_version}")
+    result.rotated += 1
+
+
+def _highest_version(conn) -> int:
+    """The highest key_version in either table, so the target is above every stored password."""
+    top = conn.execute(text("SELECT COALESCE(MAX(key_version), 0) FROM system_credentials")).scalar() or 0
+    for (tid,) in conn.execute(text("SELECT id FROM tenants")).fetchall():
+        conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tid)})
+        ext = conn.execute(text("SELECT COALESCE(MAX(key_version), 0) FROM external_db_connections")).scalar() or 0
+        top = max(top, ext)
+    return int(top)
+
+
 def rotate(
     db_url: str,
     old_key: str,
@@ -90,47 +122,19 @@ def rotate(
     result = RotationResult(rotated=0, already_new=0, failed=[])
 
     with engine.begin() as conn:
-        rows = list(_fetch_credentials(conn))
-        logger.info(f"Found {len(rows)} credential row(s) to scan")
-
-        for cred_id, system_id, tenant_id, ct, version in rows:
-            cred_ref = f"cred={cred_id} system={system_id}"
-
-            # Skip rows that are already at (or past) the target version.
-            if version >= target_version:
-                result.already_new += 1
-                continue
-
-            # Decrypt with old key
-            try:
-                plaintext = decrypt_with_key(old_key, str(tenant_id), ct)
-            except Exception as e:
-                logger.error(f"decrypt failed with OLD key for {cred_ref}: {e}")
-                result.failed.append(cred_ref)
-                continue
-
-            # Re-encrypt with new key
-            try:
-                new_ct = encrypt_with_key(new_key, str(tenant_id), plaintext)
-            except Exception as e:
-                logger.error(f"re-encrypt failed for {cred_ref}: {e}")
-                result.failed.append(cred_ref)
-                continue
-
-            if dry_run:
-                logger.info(f"[DRY RUN] would rotate {cred_ref} v{version} -> v{target_version}")
-            else:
-                conn.execute(
-                    text(
-                        "UPDATE system_credentials "
-                        "SET encrypted_password = :ct, key_version = :ver "
-                        "WHERE id = :cid"
-                    ),
-                    {"ct": new_ct, "ver": target_version, "cid": cred_id},
-                )
-                logger.info(f"Rotated {cred_ref} v{version} -> v{target_version}")
-
-            result.rotated += 1
+        # system_credentials first: once app.tenant_id is set below, row level security would hide other tenants' rows
+        for r in _fetch_credentials(conn):
+            _rotate_row(conn, (r[0], f"system={r[1]}", r[2], r[3], r[4], "system_credentials"),
+                        old_key, new_key, dry_run, target_version, result)
+        # external_db_connections is FORCE row level security: read and write it one tenant at a time.
+        for (tid,) in conn.execute(text("SELECT id FROM tenants")).fetchall():
+            conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tid)})
+            ext = conn.execute(text("SELECT id, name, tenant_id, encrypted_password, key_version "
+                                    "FROM external_db_connections")).fetchall()
+            for r in ext:
+                _rotate_row(conn, (r[0], f"connection={r[1]}", r[2], r[3], r[4], "external_db_connections"),
+                            old_key, new_key, dry_run, target_version, result)
+        logger.info(f"Scanned {result.total_scanned} credential row(s)")
 
     return result
 
@@ -167,11 +171,8 @@ def main() -> int:
     target_version = args.target_version
     if target_version is None:
         eng = create_engine(args.database_url, echo=False)
-        with eng.connect() as conn:
-            current_max = conn.execute(
-                text("SELECT COALESCE(MAX(key_version), 0) FROM system_credentials")
-            ).scalar() or 0
-        target_version = int(current_max) + 1
+        with eng.begin() as conn:
+            target_version = max(_highest_version(conn), 1) + 1
         eng.dispose()
 
     logger.info(f"Rotating to key_version {target_version} (dry_run={args.dry_run})")

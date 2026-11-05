@@ -7980,4 +7980,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "No connection yet. Add one with the host, database and a read-only user.": "Noch keine Verbindung. Fügen Sie eine mit Host, Datenbank und einem Leseuser hinzu.",
   "Open a connection to read from it.": "Öffnen Sie eine Verbindung, um daraus zu lesen.",
   "Read a table or one SELECT from a non-SAP database and score the rows with the same rules as a file upload.": "Eine Tabelle oder ein SELECT aus einer Nicht-SAP-Datenbank lesen und die Zeilen mit denselben Regeln wie bei einem Datei-Upload bewerten.",
+  "Analysis deleted": "Analyse gelöscht",
+  "The analysis could not be deleted.": "Die Analyse konnte nicht gelöscht werden.",
+  "Delete the analysis of {d}": "Analyse vom {d} löschen",
+  "The analysis, its gaps, load files and reconciliations are removed, with the stored copies of the records. This cannot be undone.": "Die Analyse, ihre Lücken, Ladedateien und Abstimmungen werden samt den gespeicherten Kopien der Datensätze entfernt. Das lässt sich nicht rückgängig machen.",
+  "Delete the analysis": "Analyse löschen",
+  "Extraction of the target system started": "Extraktion des Zielsystems gestartet",
+  "The target system could not be extracted.": "Das Zielsystem konnte nicht extrahiert werden.",
+  "The target system has not been extracted yet, so there is nothing to compare the load files with. The comparison starts by itself when the extraction has been analysed.": "Das Zielsystem wurde noch nicht extrahiert, daher gibt es nichts, womit die Ladedateien verglichen werden könnten. Der Vergleich startet von selbst, sobald die Extraktion analysiert ist.",
+  "Extract the target system": "Zielsystem extrahieren",
 };

@@ -98,3 +98,28 @@ def test_failures_never_propagate(engine):
     broken = mock.Mock()
     broken.execute.side_effect = RuntimeError("db down")
     assert start_stale_reconciliations(broken, tid, sid) == []  # a broken session does not raise either
+
+
+@pg
+def test_reconciliation_that_found_no_target_analysis_runs_again_once_one_lands(engine):
+    from sqlalchemy import text
+
+    from api.services.migration.post_load import NO_TARGET_ANALYSIS
+    from workers.db import tenant_session
+    from workers.tasks.run_reconciliation import run_reconciliation, start_stale_reconciliations
+
+    tid, sid, _ = _seed(engine, recon_age="10 minutes")  # current, so only the failure reason can trigger a re-run
+    with engine.begin() as c:
+        c.execute(text("UPDATE migration_reconciliations SET status = 'failed', error_detail = :e "
+                       "WHERE tenant_id = :t"), {"e": NO_TARGET_ANALYSIS, "t": tid})
+    with mock.patch.object(run_reconciliation, "delay", return_value=mock.Mock(id="task-2")) as delay:
+        with tenant_session(engine, tid) as s:
+            assert len(start_stale_reconciliations(s, tid, sid)) == 1
+    assert delay.call_count == 1
+    with engine.begin() as c:  # any other failure is left alone
+        c.execute(text("UPDATE migration_reconciliations SET status = 'failed', error_detail = 'boom' "
+                       "WHERE tenant_id = :t AND status = 'queued'"), {"t": tid})
+    with mock.patch.object(run_reconciliation, "delay") as delay:
+        with tenant_session(engine, tid) as s:
+            assert start_stale_reconciliations(s, tid, sid) == []
+    delay.assert_not_called()

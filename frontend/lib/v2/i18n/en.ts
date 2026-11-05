@@ -7979,6 +7979,15 @@ export const en = {
   "No connection yet. Add one with the host, database and a read-only user.": "No connection yet. Add one with the host, database and a read-only user.",
   "Open a connection to read from it.": "Open a connection to read from it.",
   "Read a table or one SELECT from a non-SAP database and score the rows with the same rules as a file upload.": "Read a table or one SELECT from a non-SAP database and score the rows with the same rules as a file upload.",
+  "Analysis deleted": "Analysis deleted",
+  "The analysis could not be deleted.": "The analysis could not be deleted.",
+  "Delete the analysis of {d}": "Delete the analysis of {d}",
+  "The analysis, its gaps, load files and reconciliations are removed, with the stored copies of the records. This cannot be undone.": "The analysis, its gaps, load files and reconciliations are removed, with the stored copies of the records. This cannot be undone.",
+  "Delete the analysis": "Delete the analysis",
+  "Extraction of the target system started": "Extraction of the target system started",
+  "The target system could not be extracted.": "The target system could not be extracted.",
+  "The target system has not been extracted yet, so there is nothing to compare the load files with. The comparison starts by itself when the extraction has been analysed.": "The target system has not been extracted yet, so there is nothing to compare the load files with. The comparison starts by itself when the extraction has been analysed.",
+  "Extract the target system": "Extract the target system",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

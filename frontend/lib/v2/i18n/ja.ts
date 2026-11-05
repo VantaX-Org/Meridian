@@ -7980,4 +7980,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "No connection yet. Add one with the host, database and a read-only user.": "接続がありません。ホスト、データベース、読み取り専用ユーザーで追加してください。",
   "Open a connection to read from it.": "接続を開いて読み取ります。",
   "Read a table or one SELECT from a non-SAP database and score the rows with the same rules as a file upload.": "SAP以外のデータベースからテーブルまたはSELECTを読み込み、ファイルのアップロードと同じルールで評価します。",
+  "Analysis deleted": "分析を削除しました",
+  "The analysis could not be deleted.": "分析を削除できませんでした。",
+  "Delete the analysis of {d}": "{d}の分析を削除",
+  "The analysis, its gaps, load files and reconciliations are removed, with the stored copies of the records. This cannot be undone.": "分析、そのギャップ、ロードファイル、照合は、保存されたレコードのコピーとともに削除されます。この操作は元に戻せません。",
+  "Delete the analysis": "分析を削除",
+  "Extraction of the target system started": "ターゲットシステムの抽出を開始しました",
+  "The target system could not be extracted.": "ターゲットシステムを抽出できませんでした。",
+  "The target system has not been extracted yet, so there is nothing to compare the load files with. The comparison starts by itself when the extraction has been analysed.": "ターゲットシステムはまだ抽出されていないため、ロードファイルと比較するものがありません。抽出の分析が終わると、比較は自動的に始まります。",
+  "Extract the target system": "ターゲットシステムを抽出",
 };
