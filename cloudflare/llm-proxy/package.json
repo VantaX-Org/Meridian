@@ -16,7 +16,7 @@
     "itty-router": "^4.2.2",
     "jose": "^5.10.0",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
-    "wrangler": "^4.146.0"
+    "vitest": "^5.1.0",
+    "wrangler": "^4.157.0"
   }
 }

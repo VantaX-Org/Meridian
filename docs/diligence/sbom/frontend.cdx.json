@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:871c850c-231a-4836-8893-e7b2e1eb2bd5",
+  "serialNumber": "urn:uuid:50a588ef-7dcc-4381-9f15-2b6b1b7bf8ec",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-10-30T05:05:54.471Z",
+    "timestamp": "2026-11-05T05:47:14.383Z",
     "lifecycles": [
       {
         "phase": "pre-build"
@@ -15,7 +15,7 @@
       {
         "vendor": "npm",
         "name": "cli",
-        "version": "10.9.4"
+        "version": "10.9.10"
       }
     ],
     "component": {
@@ -5994,6 +5994,39 @@
       ]
     },
     {
+      "bom-ref": "safer-buffer@2.1.2",
+      "type": "library",
+      "name": "safer-buffer",
+      "version": "2.1.2",
+      "scope": "required",
+      "purl": "pkg:npm/safer-buffer@2.1.2",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/safer-buffer"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/safer-buffer/-/safer-buffer-2.1.2.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "619a372bcd920fb462ca2d04d4440fa232f3ee4a5ea6749023d2323db1c78355d75debdbe5d248eeda72376003c467106c71bbbdcc911e4d1c6f0a9c42b894b6"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
       "bom-ref": "sharp@0.35.5",
       "type": "library",
       "name": "sharp",
@@ -6137,6 +6170,72 @@
         {
           "alg": "SHA-512",
           "content": "d393d41ca48d13ca2ed9dc08c539e0978133727b020d9189fe208bb437e547f48707f9f2d78ad773ea94e4fe261bd264bac895ec48afcd8f4c866e7903302f0a"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "tailwind-merge@3.5.0",
+      "type": "library",
+      "name": "tailwind-merge",
+      "version": "3.5.0",
+      "scope": "required",
+      "purl": "pkg:npm/tailwind-merge@3.5.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/tailwind-merge"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/tailwind-merge/-/tailwind-merge-3.5.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "23c2bdc1ec2754390bd4d4c6a2a5a654422551c07d805ae200491791f0a35f989bf1ecc6c6d477c43ee2648c6b7c0ae312c1fb1750870f844552dc5e7dda95fc"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "tiny-invariant@1.3.3",
+      "type": "library",
+      "name": "tiny-invariant",
+      "version": "1.3.3",
+      "scope": "required",
+      "purl": "pkg:npm/tiny-invariant@1.3.3",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/tiny-invariant"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/tiny-invariant/-/tiny-invariant-1.3.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f856c13c4d68f50018bef89abbfa82e5213771ac36d6adf192f58a06d8dae6f82a3962071c9de2a1aab554f7e7fd2cea72dcf66d4fe861e29df7fcf904bf8f56"
         }
       ],
       "licenses": [
@@ -6326,7 +6425,7 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+          "url": "file:/Users/reshigan/Code/GONXT/Technology/Platforms/Meridian/Meridian_2/.claude/worktrees/agent-a62234f3c7b10b279/frontend/vendor/xlsx-0.20.3.tgz"
         }
       ],
       "hashes": [
@@ -6397,6 +6496,7 @@
         "next-themes@0.4.6",
         "recharts@3.10.1",
         "sonner@2.0.7",
+        "tailwind-merge@3.5.0",
         "tw-animate-css@1.4.0",
         "xlsx@0.20.3"
       ]
@@ -7347,7 +7447,9 @@
     },
     {
       "ref": "iconv-lite@0.6.3",
-      "dependsOn": []
+      "dependsOn": [
+        "safer-buffer@2.1.2"
+      ]
     },
     {
       "ref": "immer@11.1.21",
@@ -7432,6 +7534,7 @@
         "immer@11.1.21",
         "react-redux@9.2.0",
         "reselect@5.2.0",
+        "tiny-invariant@1.3.3",
         "use-sync-external-store@1.6.0",
         "victory-vendor@37.3.6"
       ]
@@ -7456,6 +7559,10 @@
     },
     {
       "ref": "rw@1.3.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "safer-buffer@2.1.2",
       "dependsOn": []
     },
     {
@@ -7506,6 +7613,14 @@
     },
     {
       "ref": "tabbable@6.4.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "tailwind-merge@3.5.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "tiny-invariant@1.3.3",
       "dependsOn": []
     },
     {

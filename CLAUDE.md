@@ -6,7 +6,7 @@ You are building **Meridian**, a customer-deployed SAP Data Quality and Master D
 
 ## What you are building
 
-Meridian analyses SAP data quality across **29 modules** and **8,380 YAML validation rules** (5,623 enabled; the DDIC-derived rest ship disabled) on data from **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP). It ships as a customer-hosted Docker Compose stack — SAP data, findings, and reports never leave the customer's own environment.
+Meridian analyses SAP data quality across **29 modules** and **9,245 YAML validation rules** (6,541 enabled; the DDIC-derived rest ship disabled) on data from **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP). It ships as a customer-hosted Docker Compose stack — SAP data, findings, and reports never leave the customer's own environment.
 
 The product includes:
 - **Data Quality Engine** — deterministic checks with DAMA DMBOK scoring (6 dimensions, record-level pass rates)
@@ -65,12 +65,12 @@ meridian/
 ├── .github/workflows/               ← CI/CD (build, test, release, deploy)
 │
 ├── api/                             ← FastAPI application
-│   ├── main.py                      ← 120 registered routers + GzipMiddleware
+│   ├── main.py                      ← 130 registered routers + GzipMiddleware
 │   ├── middleware/
 │   │   ├── tenant.py                ← JWT → tenant_id → Postgres RLS
 │   │   ├── licence.py               ← module entitlement enforcement
 │   │   └── cache.py                 ← Redis response caching decorator
-│   ├── routes/                      ← all API endpoints (125 route modules)
+│   ├── routes/                      ← all API endpoints (138 route modules)
 │   │   ├── connectivity.py          ← module-aware extraction, config sync, health
 │   │   ├── spro_config.py           ← SPRO configuration reader
 │   │   ├── config_impact.py         ← feature-level impact analysis
@@ -117,11 +117,11 @@ meridian/
 │   │   ├── run_config_sync.py       ← SPRO/FO config sync
 │   │   ├── run_health_check.py      ← connection health + check_all_systems
 │   │   └── ...                      ← cleaning, sync, PDF, notifications, etc.
-│   └── scheduler.py                 ← 31 beat tasks inc. health check every 30min
+│   └── scheduler.py                 ← 32 beat tasks inc. health check every 30min
 │
-├── db/                              ← SQLAlchemy schema + Alembic migrations (head 117)
+├── db/                              ← SQLAlchemy schema + Alembic migrations (head 135)
 │   ├── schema.py                    ← all models inc. ConfigImpactResult, ConfigSnapshot, SystemModuleMap
-│   ├── migrations/versions/         ← 115 migration files (head 117)
+│   ├── migrations/versions/         ← 133 migration files (head 135)
 │   └── seeds/config_impact_rules.yaml ← 53 feature impact rules
 │
 ├── llm/provider.py                  ← swappable LLM with request_timeout=120
@@ -136,7 +136,7 @@ meridian/
 ├── cloudflare/                      ← Meridian HQ + licence worker
 ├── scripts/                         ← deploy, update, backup, package, export
 ├── helm/                            ← Kubernetes Helm chart
-└── tests/                           ← 518 pytest files (Playwright specs live in frontend/e2e, 19 files)
+└── tests/                           ← 613 pytest files (Playwright specs live in frontend/e2e, 19 files)
 ```
 
 ---
