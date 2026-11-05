@@ -1,20 +1,19 @@
 """learned_monitor_breaks: status below_minimum, kind cardinality_shift, metric distinct_pct
 
 Revision ID: 142
-Revises: 140
+Revises: 141
 Create Date: 2026-11-05
 
 ``below_minimum`` is a break outside the usual range whose effect is under a steward-raised learned minimum: stored so it
 can be confirmed, never alerted. ``cardinality_shift`` / ``distinct_pct`` is the share of distinct values among the filled
-rows of a field. Only the three CHECK constraints of migration 132 change. Number 141 belongs to another open branch;
-down_revision is fixed on merge.
+rows of a field. Only the three CHECK constraints of migration 132 change.
 """
 from typing import Sequence, Union
 
 from alembic import op
 
 revision: str = "142"
-down_revision: Union[str, None] = "140"
+down_revision: Union[str, None] = "141"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

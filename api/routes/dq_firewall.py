@@ -13,6 +13,13 @@ With ``route_to_steward`` a blocked or warned record also opens a change request
 the tenant's workflow routes it to a steward). It is opened as the caller: a person, or an API key's service user, whose
 email is then the requester label. The same candidate (an HMAC of module and content) finds its open request instead of
 opening another. If opening fails the verdict still stands and the record says the request was not opened.
+
+With ``hold`` ("blocked" or "flagged") the request is also the staging area of the entry: the candidate waits as the
+change request's payload and the answer says whether the SAP save may go on (``save`` "stop" or "go"). The latest
+request of the candidate's fingerprint decides: waiting or failed is held, rejected stays rejected, creating or
+created is written, approved is released to the SAP save for RELEASE_HOURS from the first release and then expires. A
+released request is never also handed out as an export load file. The verdicts never change; ``hold`` off (the
+default) answers exactly as before. The audit rows hold counts and request ids, never a value or a key.
 """
 from __future__ import annotations
 
@@ -20,10 +27,10 @@ import asyncio
 import json
 import logging
 import uuid
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_serializer
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,6 +47,7 @@ from sap.bapi_create import MODULE_OF
 logger = logging.getLogger("meridian.dq_firewall")
 router = APIRouter(prefix="/api/v1/dq-firewall", tags=["dq-firewall"])
 ACTION = "dq_firewall.validate"
+ACTION_RELEASE = "dq_firewall.release"
 
 
 class ValidateBody(BaseModel):
@@ -50,6 +58,10 @@ class ValidateBody(BaseModel):
                              "(material_master, sd_customer_master, business_partner).")
     route_to_steward: bool = Field(False, description="Open a change request (kind create) for each record that is "
                                    "blocked or warned, so a steward sees it. Modules with no change request object open none.")
+    hold: Literal["off", "blocked", "flagged"] = Field(
+        "off", description="off: the answer is the verdict only. blocked: a blocked record is held until its change "
+        "request is approved. flagged: a warned record and a duplicate warning are held too. Any value but off also "
+        "routes to a steward and adds per-record `hold` and the overall `save`.")
 
 
 class AllowedValue(BaseModel):
@@ -136,12 +148,27 @@ class StewardRequest(BaseModel):
     detail: Optional[str] = None
 
 
+class HoldOut(BaseModel):
+    state: str  # held, released, rejected, written, not_held
+    request_id: Optional[str] = None
+    reason: Optional[str] = None  # not_held: module_has_no_change_request, over_limit, not_accepted, not_opened; others: why
+    sap_key: Optional[str] = None  # written: the key SAP gave the record, when known
+
+
 class RecordOut(BaseModel):
     index: int
     verdict: str
     failures: list[Failure]
     duplicates: Optional[RecordDuplicates] = None
     steward_request: Optional[StewardRequest] = None  # only with route_to_steward, and only for a flagged record
+    hold: Optional[HoldOut] = None  # only with hold on, and only for a record the hold mode covers
+
+    @model_serializer(mode="wrap")
+    def _no_hold_when_off(self, handler):
+        out = handler(self)
+        if out.get("hold") is None:
+            out.pop("hold", None)
+        return out
 
 
 class ValidateOut(BaseModel):
@@ -151,6 +178,14 @@ class ValidateOut(BaseModel):
     rules_run: int
     records: list[RecordOut]
     duplicate_search: Optional[DuplicateSearch] = None
+    save: Optional[str] = None  # only with hold on: "stop" or "go", whether the SAP save of these records may go on
+
+    @model_serializer(mode="wrap")
+    def _no_save_when_off(self, handler):
+        out = handler(self)
+        if out.get("save") is None:
+            out.pop("save", None)
+        return out
 
 
 class GateRequest(BaseModel):
@@ -159,6 +194,16 @@ class GateRequest(BaseModel):
     title: Optional[str] = None
     status: str
     created_at: str
+
+
+class HoldsOut(BaseModel):
+    held: int  # waiting for the workflow (draft, submitted, in approval, failed), whatever their age
+    released: int  # released to the SAP save in the last 7 days
+    rejected: int  # rejected in the last 7 days
+    written: int  # opened in the last 7 days and since written, or being written, by Meridian
+    oldest_held_hours: Optional[float] = None
+    median_decision_hours: Optional[float] = None  # opened to decided, requests decided in the last 7 days
+    latest: list[GateRequest] = []  # the latest held requests
 
 
 class SummaryOut(BaseModel):
@@ -172,6 +217,7 @@ class SummaryOut(BaseModel):
     top_rules: list["TopRule"] = []
     by_module: list["ModuleOut"] = []
     requests: list[GateRequest] = []  # the latest change requests opened from the gate
+    holds: HoldsOut = HoldsOut(held=0, released=0, rejected=0, written=0)
 
 
 class DayOut(BaseModel):
@@ -224,8 +270,16 @@ MAX_ROUTED = 25  # requests one call may open; the rest say over_limit
 _OPEN = ("draft", "submitted", "in_approval", "approved", "creating", "failed")
 
 
+RELEASE_HOURS = 24  # how long an approved candidate may be saved after its first release
+_WAITING = ("draft", "submitted", "in_approval", "failed")
+
+
+async def _fingerprint(db: AsyncSession, tid: str, module: str, row: dict[str, str]) -> str:
+    return await db.run_sync(lambda s: _hmac(s, tid, "entry_gate", module + json.dumps(row, sort_keys=True)))
+
+
 async def _open_request(db: AsyncSession, tenant: Tenant, request: Request, module: str, row: dict[str, str],
-                        rec: dict[str, Any]) -> dict[str, Any]:
+                        rec: dict[str, Any], fp: Optional[str] = None) -> dict[str, Any]:
     """The open request of this candidate, or a new one submitted to the workflow. Never raises: a failure is logged
     (the type only, never a value) and answered as not_opened."""
     tid = str(tenant.id)
@@ -233,11 +287,11 @@ async def _open_request(db: AsyncSession, tenant: Tenant, request: Request, modu
     async def find() -> Optional[dict[str, Any]]:
         r = (await db.execute(text(
             "SELECT id::text, status FROM change_requests WHERE tenant_id = CAST(:t AS uuid) "
-            "AND entry_fingerprint = :f AND status = ANY(:o) LIMIT 1"), {"t": tid, "f": fp, "o": list(_OPEN)})).first()
+            "AND entry_fingerprint = :f AND entry_released_at IS NULL AND status = ANY(:o) LIMIT 1"), {"t": tid, "f": fp, "o": list(_OPEN)})).first()
         return {"request_id": r[0], "status": r[1], "existing": True} if r else None
 
     try:
-        fp = await db.run_sync(lambda s: _hmac(s, tid, "entry_gate", module + json.dumps(row, sort_keys=True)))
+        fp = fp or await _fingerprint(db, tid, module, row)
         if found := await find():
             return found
         dups = (rec.get("duplicates") or {}).get("matches") or []
@@ -272,14 +326,82 @@ async def _open_request(db: AsyncSession, tenant: Tenant, request: Request, modu
         return {"reason": "not_opened", "detail": "The change request could not be opened; the verdict stands."}
 
 
+def _latest_state(r: Optional[Any]) -> dict[str, Any]:
+    """What the latest request of a fingerprint means for the SAP save. ``act`` is "open" (no usable request),
+    "release" (approved, not yet released) or "done" with the hold answer in ``hold``."""
+    if r is None or r.status == "cancelled":
+        return {"act": "open"}
+    rid, st = r.id, r.status
+    if st in _WAITING:
+        return {"act": "done", "hold": {"state": "held", "request_id": rid}}
+    if st == "rejected":  # a fixed reason: the comment may hold field values and is never copied
+        return {"act": "done", "hold": {"state": "rejected", "request_id": rid, "reason": "rejected_by_approver"}}
+    if st in ("creating", "created"):
+        return {"act": "done", "hold": {"state": "written", "request_id": rid, "sap_key": r.sap_key,
+                                        "reason": "written_to_sap" if st == "created" else "being_written_to_sap"}}
+    if st == "approved":
+        if r.released:
+            if r.expired:
+                return {"act": "open"}
+            return {"act": "done", "hold": {"state": "released", "request_id": rid}}
+        if r.exported:  # the load file was taken: the record goes to SAP that way, so the save must not also go on
+            return {"act": "done", "hold": {"state": "written", "request_id": rid, "reason": "exported_as_load_file"}}
+        return {"act": "release", "id": rid}
+    return {"act": "done", "hold": {"state": "held", "request_id": rid}}
+
+
+async def _hold_record(db: AsyncSession, tenant: Tenant, request: Request, module: str, row: dict[str, str],
+                       rec: dict[str, Any], may_open: bool) -> tuple[dict[str, Any], Optional[dict[str, Any]], bool]:
+    """The hold answer for a flagged record: (hold, steward_request, opened). The latest request of the candidate at
+    any status decides; an approved one is released here, once, by a single conditional UPDATE."""
+    tid = str(tenant.id)
+    if module not in OBJECT_OF:
+        return {"state": "not_held", "reason": "module_has_no_change_request"}, {"reason": "module_has_no_change_request"}, False
+    fp = await _fingerprint(db, tid, module, row)
+    opened = False
+    for _ in range(4):
+        r = (await db.execute(text(
+            "SELECT id::text AS id, status, sap_key, entry_released_at IS NOT NULL AS released, "
+            "COALESCE(entry_released_at + make_interval(hours => :h) <= now(), false) AS expired, "
+            "export_downloaded_at IS NOT NULL AS exported FROM change_requests "
+            "WHERE tenant_id = CAST(:t AS uuid) AND entry_fingerprint = :f ORDER BY created_at DESC, id DESC LIMIT 1"),
+            {"t": tid, "f": fp, "h": RELEASE_HOURS})).first()
+        st = _latest_state(r)
+        if st["act"] == "done":
+            return st["hold"], {"request_id": r.id, "status": r.status, "existing": not opened}, opened
+        if st["act"] == "release":
+            got = (await db.execute(text(
+                "UPDATE change_requests SET entry_released_at = now(), updated_at = now() "
+                "WHERE id = CAST(:i AS uuid) AND tenant_id = CAST(:t AS uuid) AND status = 'approved' "
+                "AND entry_released_at IS NULL AND export_downloaded_at IS NULL RETURNING id::text"),
+                {"i": st["id"], "t": tid})).scalar()
+            if got:
+                await write_audit(db, tenant.id, request, ACTION_RELEASE, "dq_firewall", module, None,
+                                  {"released": 1, "request_ids": [got], "release_hours": RELEASE_HOURS})
+            continue  # read again: the released row, or what a parallel call made of it
+        if opened or not may_open:
+            reason = "not_opened" if opened else "over_limit"
+            return {"state": "not_held", "reason": reason}, {"reason": reason}, False
+        out = await _open_request(db, tenant, request, module, row, rec, fp)
+        if not out.get("request_id"):
+            return {"state": "not_held", "reason": out["reason"]}, out, False
+        opened = True
+    return {"state": "not_held", "reason": "not_opened"}, {"reason": "not_opened"}, opened
+
+
 async def _route(db: AsyncSession, tenant: Tenant, request: Request, module: str, rows: list[dict[str, str]],
-                 res: dict[str, Any]) -> int:
-    """Attach ``steward_request`` to every blocked or warned record. Returns how many requests were opened or found."""
+                 res: dict[str, Any], mode: str = "off") -> int:
+    """Attach ``steward_request`` to every blocked or warned record, and with a hold mode ``hold`` to every record the
+    mode covers. Returns how many requests were opened or found."""
     n = 0
     for rec, row in zip(res["records"], rows):
         if not (rec["failures"] or (rec.get("duplicates") or {}).get("verdict") == "warn"):
             continue
-        if module not in OBJECT_OF:
+        if mode == "flagged" or (mode == "blocked" and rec["verdict"] == "block"):
+            rec["hold"], rec["steward_request"], opened = await _hold_record(db, tenant, request, module, row, rec,
+                                                                           n < MAX_ROUTED)
+            n += opened
+        elif module not in OBJECT_OF:
             rec["steward_request"] = {"reason": "module_has_no_change_request"}
         elif n >= MAX_ROUTED:
             rec["steward_request"] = {"reason": "over_limit"}
@@ -287,6 +409,18 @@ async def _route(db: AsyncSession, tenant: Tenant, request: Request, module: str
             rec["steward_request"] = await _open_request(db, tenant, request, module, row, rec)
             n += 1
     return sum(1 for r in res["records"] if (r.get("steward_request") or {}).get("request_id"))
+
+
+def _save_answer(records: list[dict[str, Any]]) -> str:
+    """stop when a record is held, rejected, written, not held with a block verdict, or unqualified with one."""
+    for rec in records:
+        h = rec.get("hold")
+        if h is None:
+            if rec["verdict"] == "block":
+                return "stop"
+        elif h["state"] in ("held", "rejected", "written") or (h["state"] == "not_held" and rec["verdict"] == "block"):
+            return "stop"
+    return "go"
 
 
 async def _rls(db: AsyncSession, tenant: Tenant) -> None:
@@ -322,9 +456,15 @@ async def validate(body: ValidateBody, request: Request, db: AsyncSession = Depe
                      "duplicate_warned_records": sum(d["verdict"] == "warn" for d in ds),
                      "duplicate_truncated_records": sum(d["truncated"] for d in ds),
                      "duplicate_unsearched_records": sum(not d["searched"] for d in ds)}
-    if body.route_to_steward:
+    if body.route_to_steward or body.hold != "off":
         dup_audit["steward_requests"] = await _route(db, tenant, request, body.module,
-                                                     fw._clean(body.module, body.records, allow), res)
+                                                     fw._clean(body.module, body.records, allow), res, body.hold)
+    if body.hold != "off":
+        res["save"] = _save_answer(res["records"])
+        states = [r["hold"]["state"] for r in res["records"] if r.get("hold")]
+        dup_audit["hold"] = body.hold
+        dup_audit["hold_states"] = {k: states.count(k) for k in sorted(set(states))}
+        dup_audit["save"] = res["save"]
     await write_audit(db, tenant.id, request, ACTION, "dq_firewall", body.module, None, {
         "records": len(res["records"]), "blocked_records": sum(r["verdict"] == "block" for r in res["records"]),
         "failures": len(fails), "verdict": res["verdict"],
@@ -361,10 +501,30 @@ async def summary(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(g
         "SELECT id::text, object, title, status, created_at FROM change_requests WHERE tenant_id = CAST(:t AS uuid) "
         "AND entry_fingerprint IS NOT NULL ORDER BY created_at DESC LIMIT 10"), {"t": str(tenant.id)})).fetchall()
     top = sorted(rule_n.items(), key=lambda kv: (-kv[1], kv[0]))[:10]
+    h = (await db.execute(text(
+        "SELECT count(*) FILTER (WHERE status = ANY(:w)), "
+        "count(*) FILTER (WHERE entry_released_at > now() - interval '7 days'), "
+        "count(*) FILTER (WHERE status = 'rejected' AND decided_at > now() - interval '7 days'), "
+        "count(*) FILTER (WHERE status IN ('creating', 'created') AND created_at > now() - interval '7 days'), "
+        "EXTRACT(EPOCH FROM now() - min(COALESCE(submitted_at, created_at)) FILTER (WHERE status = ANY(:w))) / 3600, "
+        "percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM decided_at - created_at) / 3600) "
+        "FILTER (WHERE decided_at > now() - interval '7 days') "
+        "FROM change_requests WHERE tenant_id = CAST(:t AS uuid) AND entry_fingerprint IS NOT NULL"),
+        {"t": str(tenant.id), "w": list(_WAITING)})).fetchone()
+    waiting = (await db.execute(text(
+        "SELECT id::text, object, title, status, created_at FROM change_requests WHERE tenant_id = CAST(:t AS uuid) "
+        "AND entry_fingerprint IS NOT NULL AND status = ANY(:w) ORDER BY created_at DESC LIMIT 10"),
+        {"t": str(tenant.id), "w": list(_WAITING)})).fetchall()
     return SummaryOut(modules=list(fw.modules()), max_records=fw.MAX_RECORDS, block_severity=fw.BLOCK_SEVERITY,
                       calls_24h=int(row[0] or 0), calls_7d=int(row[1] or 0),
                       last_call_at=row[2].isoformat() if row[2] else None,
                       days=[DayOut(day=k, **_tally(v)) for k, v in sorted(by_day.items())],
+                      holds=HoldsOut(held=int(h[0] or 0), released=int(h[1] or 0), rejected=int(h[2] or 0),
+                                     written=int(h[3] or 0),
+                                     oldest_held_hours=round(float(h[4]), 1) if h[4] is not None else None,
+                                     median_decision_hours=round(float(h[5]), 1) if h[5] is not None else None,
+                                     latest=[GateRequest(id=i, object=o, title=t, status=st, created_at=c.isoformat())
+                                             for i, o, t, st, c in waiting]),
                       requests=[GateRequest(id=i, object=o, title=t, status=st, created_at=c.isoformat())
                                 for i, o, t, st, c in reqs],
                       top_rules=[TopRule(rule_id=r, description=fw.describe(r) or "", blocked=n) for r, n in top],

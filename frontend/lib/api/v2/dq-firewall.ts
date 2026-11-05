@@ -14,6 +14,35 @@ export interface FirewallSummary {
   by_module: FirewallModuleRow[];
   /** The latest change requests opened from the gate. */
   requests: GateRequest[];
+  /** The hold counts, computed in SQL over the gate's change requests. */
+  holds: FirewallHolds;
+}
+
+/** Requests the hold mode staged. held counts those waiting now; the rest count the last 7 days. */
+export interface FirewallHolds {
+  held: number;
+  released: number;
+  rejected: number;
+  written: number;
+  /** Hours the oldest waiting request has been open; null when none waits. */
+  oldest_held_hours: number | null;
+  /** Median hours from opened to decided; null when nothing was decided in the last 7 days. */
+  median_decision_hours: number | null;
+  /** The latest waiting requests. */
+  latest: GateRequest[];
+}
+
+export type HoldMode = "off" | "blocked" | "flagged";
+export type HoldState = "held" | "released" | "rejected" | "written" | "not_held";
+export type HoldReason = StewardNotOpened | "exported_as_load_file" | "release_expired" | null;
+
+/** What the hold did for one record. Present only for a record the hold mode covers. */
+export interface RecordHold {
+  state: HoldState;
+  request_id?: string | null;
+  reason?: HoldReason;
+  /** written: the key SAP gave the record, when known. */
+  sap_key?: string | null;
 }
 
 /** A change request the gate opened for a flagged record. */
@@ -144,6 +173,7 @@ export interface FirewallRecord {
   failures: FirewallFailure[];
   duplicates?: RecordDuplicates | null;
   steward_request?: StewardRequest | null;
+  hold?: RecordHold | null;
 }
 
 export interface FirewallVerdict {
@@ -153,15 +183,18 @@ export interface FirewallVerdict {
   rules_run: number;
   records: FirewallRecord[];
   duplicate_search?: DuplicateSearch | null;
+  /** stop: the SAP save must not go on. Present only when a hold mode was sent. */
+  save?: "stop" | "go" | null;
 }
 
 export const getFirewallSummary = (): Promise<FirewallSummary> => v2Get("/dq-firewall/summary");
 
-export const validateRecords = (module: string, records: Record<string, string>[], opts: { suggest?: boolean; duplicates?: boolean; route_to_steward?: boolean } = {}): Promise<FirewallVerdict> =>
+export const validateRecords = (module: string, records: Record<string, string>[], opts: { suggest?: boolean; duplicates?: boolean; route_to_steward?: boolean; hold?: HoldMode } = {}): Promise<FirewallVerdict> =>
   v2Send("POST", "/dq-firewall/validate", {
     module,
     records,
     ...(opts.suggest ? { suggest: true } : {}),
     ...(opts.duplicates ? { duplicates: true } : {}),
     ...(opts.route_to_steward ? { route_to_steward: true } : {}),
+    ...(opts.hold && opts.hold !== "off" ? { hold: opts.hold } : {}),
   });

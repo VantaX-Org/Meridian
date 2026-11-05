@@ -3476,6 +3476,8 @@ class ChangeRequest(Base):
     reason = Column(Text, nullable=True)
     record_keys = Column(JSONB, nullable=True)  # mass_change: the SAP keys of the records (migration 125)
     entry_fingerprint = Column(Text, nullable=True)  # opened from the entry gate: HMAC of module and candidate (136)
+    entry_released_at = Column(DateTime(timezone=True), nullable=True)  # approved candidate released to the SAP save (141)
+    export_downloaded_at = Column(DateTime(timezone=True), nullable=True)  # the export load file was taken (141)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     submitted_at = Column(DateTime(timezone=True), nullable=True)
@@ -3493,8 +3495,10 @@ class ChangeRequest(Base):
         Index("ix_change_requests_status", "tenant_id", "status", "created_at"),
         Index("ix_change_requests_requester", "tenant_id", "requester_id", "created_at"),
         Index("uq_change_requests_entry_open", "tenant_id", "entry_fingerprint", unique=True,
-              postgresql_where=text("entry_fingerprint IS NOT NULL AND status IN "
+              postgresql_where=text("entry_fingerprint IS NOT NULL AND entry_released_at IS NULL AND status IN "
                                     "('draft', 'submitted', 'in_approval', 'approved', 'creating', 'failed')")),
+        Index("ix_change_requests_entry_latest", "tenant_id", "entry_fingerprint", text("created_at DESC"),
+              postgresql_where=text("entry_fingerprint IS NOT NULL")),
         Index("ix_change_requests_entry", "tenant_id", text("created_at DESC"),
               postgresql_where=text("entry_fingerprint IS NOT NULL")),
     )

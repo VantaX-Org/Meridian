@@ -257,7 +257,7 @@ def title_of(cr: dict) -> str:
 COLS = ("id::text AS id, kind, object, target_system_id::text AS target_system_id, object_key, title, payload, status, "
         "requester_id::text AS requester_id, requester_label, workflow_instance_id::text AS workflow_instance_id, "
         "precheck, validated_at, sap_key, sap_result, sap_phase, sap_attempts, delivery, export IS NOT NULL AS has_export, "
-        "reason, created_at, updated_at, submitted_at, decided_at, completed_at, "
+        "reason, created_at, updated_at, submitted_at, decided_at, completed_at, entry_released_at, "
         "COALESCE(jsonb_array_length(record_keys), 0) AS record_count, "
         "(SELECT t.due_at FROM workflow_tasks t WHERE t.tenant_id = change_requests.tenant_id "
         "AND t.instance_id = change_requests.workflow_instance_id AND t.status = 'pending' "

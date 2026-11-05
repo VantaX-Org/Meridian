@@ -14,6 +14,12 @@
 *&    "Bearer mk_..." (a key scoped to the firewall, see the doc).
 *&  - TVARVC parameter ZMERIDIAN_GATE_FAILMODE: OPEN (default) lets the
 *&    save through when Meridian cannot be reached, CLOSED blocks it.
+*&  - TVARVC parameter ZMERIDIAN_GATE_HOLD: OFF (default), BLOCKED or
+*&    FLAGGED. When not OFF the body carries "hold" and Meridian stages
+*&    the candidate as a change request; its answer "save" (stop or go)
+*&    then decides ev_block instead of the plain verdict. A record that
+*&    an approver released may be saved even when its verdict is block.
+*&    NOT RUN ON A LIVE SAP SYSTEM: this part has not been executed.
 *&  - Message class ZMERIDIAN, 001 (block) and 002 (warn), both with
 *&    one variable &1 (create in SE91, text "&1").
 *& Authorization: none beyond the user's own; the call is made by the
@@ -43,15 +49,24 @@ CLASS zcl_meridian_entry_gate DEFINITION PUBLIC FINAL CREATE PUBLIC.
              verdict TYPE string,
              matches TYPE tt_match,
            END OF ty_dups.
+    " Hold state of a record (only when hold is on): held, released, rejected, written or not_held.
+    TYPES: BEGIN OF ty_hold,
+             state      TYPE string,
+             request_id TYPE string,
+             reason     TYPE string,
+             sap_key    TYPE string,
+           END OF ty_hold.
     TYPES: BEGIN OF ty_record,
              index      TYPE i,
              verdict    TYPE string,
              failures   TYPE tt_failure,
              duplicates TYPE ty_dups,
+             hold       TYPE ty_hold,
            END OF ty_record,
            tt_record TYPE STANDARD TABLE OF ty_record WITH DEFAULT KEY.
     TYPES: BEGIN OF ty_answer,
              verdict TYPE string,
+             save    TYPE string,   " stop or go; only present when hold is on
              records TYPE tt_record,
            END OF ty_answer.
     CONSTANTS: c_destination TYPE rfcdest VALUE 'MERIDIAN_FIREWALL',
@@ -71,6 +86,7 @@ CLASS zcl_meridian_entry_gate IMPLEMENTATION.
           lv_json   TYPE string,
           lv_body   TYPE string,
           lv_mode   TYPE tvarvc-low,
+          lv_hold   TYPE tvarvc-low,
           ls_answer TYPE ty_answer.
     CLEAR: ev_block, et_text.
 
@@ -78,6 +94,13 @@ CLASS zcl_meridian_entry_gate IMPLEMENTATION.
       WHERE name = 'ZMERIDIAN_GATE_FAILMODE' AND type = 'P' AND numb = '0000'.
     IF lv_mode IS INITIAL.
       lv_mode = 'OPEN'.
+    ENDIF.
+
+    SELECT SINGLE low FROM tvarvc INTO lv_hold
+      WHERE name = 'ZMERIDIAN_GATE_HOLD' AND type = 'P' AND numb = '0000'.
+    TRANSLATE lv_hold TO UPPER CASE.
+    IF lv_hold <> 'BLOCKED' AND lv_hold <> 'FLAGGED'.
+      lv_hold = 'OFF'.
     ENDIF.
 
     " request body: {"module": "...", "records": [ {"TABLE.FIELD": "value", ...} ]}
@@ -92,6 +115,11 @@ CLASS zcl_meridian_entry_gate IMPLEMENTATION.
     " opt-in: also look for likely duplicates among existing records; without it the body is as before
     IF iv_duplicates = abap_true.
       lv_json = lv_json && ',"duplicates":true'.
+    ENDIF.
+    " opt-in: stage the candidate as a change request; without it the body is as before
+    IF lv_hold <> 'OFF'.
+      TRANSLATE lv_hold TO LOWER CASE.
+      lv_json = lv_json && |,"hold":"{ lv_hold }"|.
     ENDIF.
     lv_json = lv_json && '}'.
 
@@ -126,10 +154,17 @@ CLASS zcl_meridian_entry_gate IMPLEMENTATION.
     /ui2/cl_json=>deserialize( EXPORTING json = lv_body pretty_name = /ui2/cl_json=>pretty_mode-low_case
                                CHANGING data = ls_answer ).
     ev_block = xsdbool( ls_answer-verdict = 'block' ).
+    " with hold on, the save answer overrides the plain verdict (a released record may go on)
+    IF ls_answer-save IS NOT INITIAL.
+      ev_block = xsdbool( ls_answer-save = 'stop' ).
+    ENDIF.
     LOOP AT ls_answer-records INTO DATA(ls_rec).
       LOOP AT ls_rec-failures INTO DATA(ls_fail).
         APPEND |{ ls_fail-rule_id } { ls_fail-field }: { ls_fail-description }| TO et_text.
       ENDLOOP.
+      IF ls_rec-hold-state IS NOT INITIAL.
+        APPEND |Hold { ls_rec-hold-state } { ls_rec-hold-reason }, request { ls_rec-hold-request_id }{ COND string( WHEN ls_rec-hold-sap_key IS NOT INITIAL THEN | (SAP key { ls_rec-hold-sap_key })| ) }.| TO et_text.
+      ENDIF.
       " a duplicate only warns: it is added to the text and never sets ev_block
       LOOP AT ls_rec-duplicates-matches INTO DATA(ls_match).
         APPEND |Likely duplicate of existing record { ls_match-key } (score { ls_match-score DECIMALS = 2 }).| TO et_text.

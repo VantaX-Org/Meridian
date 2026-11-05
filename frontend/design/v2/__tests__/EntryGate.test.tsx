@@ -3,6 +3,7 @@ vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout:
 import { fireEvent, screen, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { resetDqFirewallFixture } from "@/lib/api/v2/fixtures/dq-firewall";
+import { statusWord } from "../inspector/request";
 import { EntryGate, LICENSED_MODULES, moduleRows, notOpenedWord } from "../screens/EntryGate";
 import { stubLayout } from "./layout-stub";
 import { setUrl } from "./nav-store";
@@ -82,5 +83,55 @@ describe("entry gate", () => {
     expect(notOpenedWord("over_limit")).toMatch(/25/);
     expect(notOpenedWord("not_accepted")).toMatch(/refused/);
     expect(notOpenedWord("not_opened")).toMatch(/could not be opened/);
+  });
+
+  it("shows the hold counts, the oldest wait, the median decision time and the latest held requests", async () => {
+    renderWithQuery(<EntryGate />);
+    const panel = await screen.findByTestId("entry-gate-holds");
+    expect(within(screen.getByTestId("entry-gate-hold-held")).getByText("1")).toBeInTheDocument();
+    expect(within(screen.getByTestId("entry-gate-hold-released")).getByText("6")).toBeInTheDocument();
+    expect(within(screen.getByTestId("entry-gate-hold-rejected")).getByText("2")).toBeInTheDocument();
+    expect(within(screen.getByTestId("entry-gate-hold-written")).getByText("4")).toBeInTheDocument();
+    expect(screen.getByTestId("entry-gate-hold-oldest").textContent).toMatch(/32/);
+    expect(screen.getByTestId("entry-gate-hold-median").textContent).toMatch(/5/);
+    const list = within(panel).getByTestId("entry-gate-held-list");
+    expect(within(list).getAllByRole("link").length).toBeGreaterThan(0);
+  });
+
+  async function runWith(hold: string, matnr: string) {
+    renderWithQuery(<EntryGate />);
+    await screen.findByTestId("entry-gate-run");
+    fireEvent.change(screen.getByTestId("entry-gate-json"), { target: { value: JSON.stringify([{ "MARA.MATNR": matnr, "MARA.MTART": "", "MARA.MEINS": "KG" }]) } });
+    fireEvent.change(screen.getByTestId("entry-gate-hold"), { target: { value: hold } });
+    fireEvent.click(screen.getByTestId("entry-gate-run"));
+    return screen.findByTestId("entry-gate-hold-results");
+  }
+
+  it("holds a blocked record and says the SAP save stops", async () => {
+    const table = await runWith("blocked", "ENTRY-TEST-1");
+    expect(within(table).getByText("Held")).toBeInTheDocument();
+    expect(screen.getByTestId("entry-gate-save").textContent).toContain("The SAP save stops.");
+  });
+
+  it("says the save may go on when the record was released", async () => {
+    const table = await runWith("blocked", "ENTRY-APPROVED");
+    expect(within(table).getByText("Released")).toBeInTheDocument();
+    expect(screen.getByTestId("entry-gate-save").textContent).toContain("may go on");
+  });
+
+  it("shows a rejected and a written record with the SAP key", async () => {
+    let table = await runWith("flagged", "ENTRY-WRITTEN");
+    expect(within(table).getByText("Written")).toBeInTheDocument();
+    expect(within(table).getByText("4711")).toBeInTheDocument();
+    expect(screen.getByTestId("entry-gate-save").textContent).toContain("stops");
+    fireEvent.change(screen.getByTestId("entry-gate-json"), { target: { value: JSON.stringify([{ "MARA.MATNR": "ENTRY-REJECTED", "MARA.MTART": "" }]) } });
+    fireEvent.click(screen.getByTestId("entry-gate-run"));
+    table = await screen.findByText("Rejected by an approver. The SAP save stops. Changed content opens a new request.");
+    expect(table).toBeInTheDocument();
+  });
+
+  it("names a released request that has not been exported in words", () => {
+    expect(statusWord("approved", "2026-10-18T09:00:00Z")).toBe("Released to the SAP save");
+    expect(statusWord("approved", null)).not.toBe("Released to the SAP save");
   });
 });
