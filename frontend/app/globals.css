@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 /* Design tokens (--m-*). Every @/design component and the @theme mapping below read these. */
 @import "../design/tokens.css";
