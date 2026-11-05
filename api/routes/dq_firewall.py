@@ -136,6 +136,14 @@ class StewardRequest(BaseModel):
     detail: Optional[str] = None
 
 
+class StewardRequest(BaseModel):
+    request_id: Optional[str] = None  # none: no request was opened, see reason
+    status: Optional[str] = None
+    existing: bool = False  # true: the same candidate already had this open request
+    reason: Optional[str] = None  # module_has_no_change_request, over_limit, not_accepted, not_opened
+    detail: Optional[str] = None
+
+
 class RecordOut(BaseModel):
     index: int
     verdict: str
