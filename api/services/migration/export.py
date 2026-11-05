@@ -92,7 +92,6 @@ def load_run_tables(session, run, held_back: Optional[dict[str, pd.DataFrame]] =
 
     from api.services.source_design import dictionary_for
     from checks.field_status_rules import conversions_for
-    from sap.ddic import get_dictionary
     from workers.dataset import load_dataset
     from workers.tasks.run_migration import load_mappings, load_value_maps, module_source_tables
 
