@@ -92,6 +92,8 @@ def run_reconciliation(self, tenant_id, reconciliation_id):
             if expected is None:
                 held = {}
                 expected, target_dict = load_run_tables(session, run, held)
+            if snapshot.newest_has_no_copy(session, run.id):
+                basis["newest_export_no_copy"] = True
             if not expected:
                 return _finish(session, reconciliation_id, "failed", "No transfer-ready records in the load.",
                                scores=scores(None))

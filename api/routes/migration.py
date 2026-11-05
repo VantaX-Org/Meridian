@@ -1257,7 +1257,7 @@ async def export_migration(
             "Fix the field map and re-analyse."))
     from starlette.concurrency import run_in_threadpool
     from api.services.migration.export import load_run_tables, to_csv_zip, to_xlsx
-    from workers.db import get_sync_engine
+    from workers.db import get_sync_engine, tenant_session
     from sqlalchemy.orm import Session
 
     def _build():
@@ -1292,6 +1292,16 @@ async def export_migration(
     )
     await db.execute(text("UPDATE migration_runs SET status = 'exported' WHERE id = :rid"), {"rid": run_id})
     await db.commit()
+    if snap["pre"]:
+        def _prune() -> None:
+            with tenant_session(get_sync_engine(), tenant.id) as s:
+                snapshot.prune(s, tenant.id, run_id)
+                s.commit()
+
+        try:
+            await run_in_threadpool(_prune)
+        except Exception as e:  # housekeeping only: the file is built and recorded, so the export still succeeds
+            logger.warning("Pruning old export copies failed for run %s: %s", run_id, e)
     media = ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if export_format == "xlsx"
              else "application/zip")
     return _stream(content, media, fname)

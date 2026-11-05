@@ -154,8 +154,9 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   expected side from the current mappings and says so. The copy holds record values, personal
   fields included: it is deleted with its run, version purge and tenant purge, and a data-subject
   erasure rewrites it without the person (matched on the source record key; a copy that cannot be
-  rewritten is deleted). Copies are not in backups or in files already downloaded, their size is
-  not bounded. `DELETE /api/v1/migration/runs/{run_id}` removes a run, its gaps, load files and reconciliations and
+  rewritten is deleted). Copies are not in backups or in files already downloaded. A copy over
+  `MERIDIAN_MIGRATION_SNAPSHOT_MAX_MB` (2 GB by default) is not kept and the export records why; only the three newest
+  copies of a run stay, and when the newest export has no copy the comparison uses an older one and says so. `DELETE /api/v1/migration/runs/{run_id}` removes a run, its gaps, load files and reconciliations and
   these copies (409 while the run is running; if the copies cannot be removed the run is kept so the delete can be
   retried). Copies already downloaded stay with whoever downloaded them. A table extracted with dropped non-key columns
   and every record present is compared on the remaining fields; a windowed or scoped read, and
