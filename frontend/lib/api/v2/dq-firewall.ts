@@ -138,18 +138,6 @@ export interface StewardRequest {
   detail?: string | null;
 }
 
-export type StewardNotOpened = "module_has_no_change_request" | "over_limit" | "not_accepted" | "not_opened";
-
-/** What route_to_steward did for a flagged record: the request id, or the reason none was opened. */
-export interface StewardRequest {
-  request_id?: string | null;
-  status?: GateRequest["status"] | null;
-  /** True: the same candidate already had this open request, so none was added. */
-  existing?: boolean;
-  reason?: StewardNotOpened | null;
-  detail?: string | null;
-}
-
 export interface FirewallRecord {
   index: number;
   verdict: "pass" | "block";

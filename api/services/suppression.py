@@ -99,11 +99,11 @@ def _hits(entry: dict, columns: dict[str, str], get: Any, n: int) -> tuple[list[
             continue  # this file has no column for a field of the key
         cols = [get(columns[f]) for f in fields]
         for i in range(n):
-            vals = [c[i] for c in cols]
-            if None in vals:
+            vals = [(c[i] or "").strip() for c in cols]  # a null is blank, as in checks.base.record_keys
+            if not any(vals):
                 continue
             h = base.copy()
-            h.update("|".join(f"{f}={v.strip()}" for f, v in zip(fields, vals)).encode())
+            h.update("|".join(f"{f}={v}" for f, v in zip(fields, vals)).encode())
             hex_ = digests.get(h.digest())
             if hex_:
                 flags[i] = True
@@ -124,7 +124,8 @@ def filter_frame(tenant_id: str, df: Any) -> tuple[Any, dict[str, int]]:
     if not entry or len(df) == 0:
         return df, {}
     flags, counts = _hits(entry, _field_columns([str(c) for c in df.columns]),
-                          lambda c: [None if v is None or v != v else str(v) for v in df[c].tolist()], len(df))
+                          lambda c: [None if na else str(v) for v, na in zip(df[c].tolist(), df[c].isna().tolist())],
+                          len(df))
     if not counts:
         return df, {}
     return df[[not f for f in flags]], counts

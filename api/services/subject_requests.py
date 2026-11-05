@@ -284,12 +284,15 @@ def _mask(table: Any, keys: list[str]) -> Optional[Any]:
     mask = None
     for key in keys:
         parts = key_parts(key)
-        if not parts or any(f not in by_field for f in parts):
+        if not any(v.strip() for v in parts.values()) or any(f not in by_field for f in parts):
             continue
         m = None
         for f, v in parts.items():
-            col = pc.utf8_trim_whitespace(pc.cast(table.column(by_field[f]), pa.string()))
-            eq = pc.fill_null(pc.equal(col, pa.scalar(v.strip())), False)
+            raw = table.column(by_field[f])
+            if pa.types.is_floating(raw.type):  # arrow casts 1234.0 to "1234", the record key says "1234.0"
+                raw = pa.array([None if x is None else str(x) for x in raw.to_pylist()], pa.string())
+            col = pc.fill_null(pc.utf8_trim_whitespace(pc.cast(raw, pa.string())), "")  # a null is blank in a key
+            eq = pc.equal(col, pa.scalar(v.strip()))
             m = eq if m is None else pc.and_(m, eq)
         mask = m if mask is None else pc.or_(mask, m)
     return mask

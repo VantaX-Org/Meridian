@@ -139,3 +139,32 @@ def test_suppression_fails_closed_when_lookup_fails(world, monkeypatch):
     name, data = _extract(a)
     with pytest.raises(RuntimeError):
         suppression.filter_parquet(name, data)
+
+
+@pg
+def test_null_key_part_is_blank_on_every_path(world):
+    """record_keys writes a null part as ``SUBTY=``, so a null cell must match that key, on all three paths."""
+    engine, a, b, store, sess = world
+    _erase(sess, a, "PERNR=00000009|SUBTY=")
+    suppression.invalidate(a)
+    table = pa.table({"PA0001.PERNR": ["00000009", "00000002"], "PA0001.SUBTY": pa.array([None, None], pa.string())})
+    buf = io.BytesIO()
+    pq.write_table(table, buf)
+    out, counts, _ = suppression.filter_parquet(f"staging/{a}/v2/PA0001.parquet", buf.getvalue())
+    assert sum(counts.values()) == 1
+    assert pq.read_table(io.BytesIO(out)).column("PA0001.PERNR").to_pylist() == ["00000002"]
+    df = pd.DataFrame({"PERNR": ["00000009", "00000002"], "SUBTY": [None, None]})
+    assert suppression.filter_frame(a, df)[0]["PERNR"].tolist() == ["00000002"]
+    assert suppression.filter_frame(a, df.astype("string"))[0]["PERNR"].tolist() == ["00000002"]  # pd.NA cells
+    assert svc._mask(table, ["PERNR=00000009|SUBTY="]).to_pylist() == [True, False]
+
+
+def test_mask_all_blank_key_matches_nothing():
+    table = pa.table({"PERNR": pa.array([None, ""], pa.string()), "SUBTY": pa.array([None, ""], pa.string())})
+    assert svc._mask(table, ["PERNR=|SUBTY="]) is None
+
+
+def test_mask_float_key_column_matches_the_record_key():
+    """record_keys renders a double as ``1234.0``; arrow's own cast would give ``1234`` and miss the row."""
+    table = pa.table({"KUNNR": pa.array([1234.0, 5678.0, None], pa.float64())})
+    assert svc._mask(table, ["KUNNR=1234.0"]).to_pylist() == [True, False, False]
