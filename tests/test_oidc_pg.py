@@ -183,7 +183,12 @@ def _fragment_token(r: httpx.Response) -> str | None:
     loc = r.headers["location"]
     if not loc.startswith("/sign-in#"):
         return None
-    return parse_qs(loc.split("#", 1)[1]).get("sso_token", [None])[0]
+    frag = parse_qs(loc.split("#", 1)[1])
+    assert "sso_token" not in frag, "the session must never ride in the URL"
+    if frag.get("sso") != ["1"]:
+        return None
+    # the session itself is the httponly cookie the callback set
+    return r.cookies.get("mn_auth_token")
 
 
 def _error(r: httpx.Response) -> str:
@@ -212,7 +217,8 @@ def test_code_pkce_happy_path_maps_by_email_then_subject(world: dict[str, Any], 
     r = _signin(w, idp, "sub-viewer", email)
     assert r.status_code == 302 and not idp.errors, idp.errors
     token = _fragment_token(r)
-    assert token and parse_qs(r.headers["location"].split("#", 1)[1])["next"] == ["/objects"]
+    assert token and token not in r.headers["location"]
+    assert parse_qs(r.headers["location"].split("#", 1)[1])["next"] == ["/objects"]
     assert "mn_auth_token=" in r.headers["set-cookie"]  # the same session cookie as password login
     me = w["client"].get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200 and me.json()["user"]["email"] == email

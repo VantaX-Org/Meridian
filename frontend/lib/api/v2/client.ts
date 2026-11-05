@@ -9,7 +9,7 @@ const clean = (params?: Params): Record<string, string | number | boolean> | und
 
 /**
  * The one read path of the v2 clients. In fixture mode the answer comes from lib/api/v2/fixtures; otherwise it is a
- * GET on /api/v1 through the shared axios client (bearer token, retry, licence and access handling).
+ * GET on /api/v1 through the shared axios client (session cookie, CSRF header on writes, retry, licence and access handling).
  */
 export async function v2Get<T>(path: string, params?: Params): Promise<T> {
   const query = clean(params);

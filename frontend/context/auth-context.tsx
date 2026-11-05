@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { isAxiosError } from "axios";
-import apiClient from "@/lib/api/client";
+import apiClient, { LEGACY_TOKEN_KEY, clearBrowserSession, hasSessionMarker, setSessionMarker } from "@/lib/api/client";
 import { changeOwnPassword, logoutSession } from "@/lib/api/auth";
 import { clearLocalPreferences } from "@/lib/preferences";
 
@@ -17,12 +17,11 @@ export interface AuthUser {
 
 interface AuthContextValue {
   user: AuthUser | null;
-  token: string | null;
   isLoading: boolean;
   mustChangePassword: boolean;
   /**
    * Set when the stored session could not be checked for a reason other than being signed out (a 5xx or
-   * a network failure). The token is kept so a retry can succeed; only a 401 signs the user out.
+   * a network failure). The session is kept so a retry can succeed; only a 401 signs the user out.
    */
   error: string | null;
   /** Re-checks the stored session after an `error`. */
@@ -52,43 +51,46 @@ function isAuthUser(x: unknown): x is AuthUser {
   );
 }
 
-const TOKEN_KEY = "mn_auth_token";
-
-/** Signed-in marker for proxy.ts (the token itself never leaves localStorage). */
-function setSessionCookie(on: boolean): void {
-  document.cookie = on
-    ? "mn_session=1; Path=/; SameSite=Lax; Max-Age=2592000"
-    : "mn_session=; Path=/; SameSite=Lax; Max-Age=0";
+/** A pre-cookie localStorage token, if this browser still holds one. */
+function legacyToken(): string | null {
+  try {
+    return localStorage.getItem(LEGACY_TOKEN_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export function LocalAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
-  // On mount (and on retry), check for a stored token and validate it. A 401 means the session is over
-  // and the token goes; any other failure keeps it, since the server, not the session, is the problem.
+  // On mount (and on retry), validate the session with /me. It rides on the httponly cookie; the page knows
+  // whether to ask from the readable marker cookie. A browser still holding the old localStorage token sends it
+  // once as a bearer header: /me answers by setting the cookies, and the stored copy is removed. A 401 means the
+  // session is over; any other failure keeps it, since the server, not the session, is the problem.
   useEffect(() => {
     let cancelled = false;
-    const stored = localStorage.getItem(TOKEN_KEY);
-    const validate = stored
+    const stored = legacyToken();
+    const validate = stored || hasSessionMarker()
       ? apiClient
-          .get("/api/v1/auth/me", { headers: { Authorization: `Bearer ${stored}` } })
+          .get("/api/v1/auth/me", stored ? { headers: { Authorization: `Bearer ${stored}` } } : undefined)
           .then((res) => {
             if (cancelled) return;
-            setToken(stored);
+            if (stored) {
+              try { localStorage.removeItem(LEGACY_TOKEN_KEY); } catch { /* storage blocked */ }
+              setSessionMarker(true);
+            }
             setUser(res.data.user);
             setMustChangePassword(Boolean(res.data.must_change_password));
           })
           .catch((e: unknown) => {
             if (cancelled) return;
-            // 401 and 403 are the server's verdict on the token; anything else is the server's problem, so keep the token and offer Retry.
+            // 401 and 403 are the server's verdict on the session; anything else is the server's problem, so keep it and offer Retry.
             if (isAxiosError(e) && (e.response?.status === 401 || e.response?.status === 403)) {
-              localStorage.removeItem(TOKEN_KEY);
-              setSessionCookie(false);
+              clearBrowserSession();
               return;
             }
             const status = isAxiosError(e) ? e.response?.status : undefined;
@@ -107,31 +109,30 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await apiClient.post("/api/v1/auth/login", { email, password });
-    const { token: newToken, user: newUser, must_change_password } = res.data;
+    const { user: newUser, must_change_password } = res.data;
     if (!isAuthUser(newUser)) throw new Error("Login response did not include a valid user.");
-    localStorage.setItem(TOKEN_KEY, newToken);
-    setSessionCookie(true);
-    setToken(newToken);
+    // The session is the httponly cookie the response set; the token in the body is for machine clients.
+    try { localStorage.removeItem(LEGACY_TOKEN_KEY); } catch { /* storage blocked */ }
+    setSessionMarker(true);
     setUser(newUser);
     setMustChangePassword(Boolean(must_change_password));
     return newUser;
   }, []);
 
   const logout = useCallback(() => {
-    // Carries the token being dropped, so the sign-out is attributed; not awaited.
-    void logoutSession(localStorage.getItem(TOKEN_KEY));
-    localStorage.removeItem(TOKEN_KEY);
+    // Rides on the cookie being dropped, so the sign-out is attributed and the server clears it; not awaited.
+    // Other tabs notice on their next request, which the server answers 401.
+    void logoutSession().finally(clearBrowserSession);
     clearLocalPreferences();
-    setSessionCookie(false);
-    setToken(null);
+    setSessionMarker(false);
     setUser(null);
     setMustChangePassword(false);
   }, []);
 
   const changePassword = useCallback(
     async (currentPassword: string, newPassword: string) => {
-      // The change revokes the old token; changeOwnPassword has already stored its replacement.
-      setToken(await changeOwnPassword(currentPassword, newPassword));
+      // The change revokes the old session; the response renewed the cookie.
+      await changeOwnPassword(currentPassword, newPassword);
       setMustChangePassword(false);
     },
     [],
@@ -139,7 +140,7 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, isLoading, mustChangePassword, error, retry, login, logout, changePassword }}
+      value={{ user, isLoading, mustChangePassword, error, retry, login, logout, changePassword }}
     >
       {children}
     </AuthContext.Provider>

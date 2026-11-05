@@ -15,35 +15,23 @@ export async function acceptInvite(
   return data;
 }
 
-/** localStorage key of the session token (the apiClient interceptor reads it on every request). */
-const TOKEN_KEY = "mn_auth_token";
-
 /**
  * POST /api/v1/auth/change-password: rotate the signed-in user's own password.
  * A wrong current password is a 422 (not a 401), so it never signs the user out.
- * The change revokes every session issued before it, this one included, so the
- * response's replacement token is stored in place of the old one and returned.
+ * The change revokes every session issued before it, this one included; the response
+ * renews the session cookie in place, so the page has nothing to store.
  */
-export async function changeOwnPassword(currentPassword: string, newPassword: string): Promise<string> {
-  const { data } = await apiClient.post<{ ok: true; token: string }>(
-    "/api/v1/auth/change-password",
-    { current_password: currentPassword, new_password: newPassword },
-  );
-  if (typeof data?.token !== "string" || !data.token) {
-    throw new Error("Your password was changed, but no new session came back. Sign in again.");
-  }
-  localStorage.setItem(TOKEN_KEY, data.token);
-  return data.token;
+export async function changeOwnPassword(currentPassword: string, newPassword: string): Promise<void> {
+  await apiClient.post("/api/v1/auth/change-password", { current_password: currentPassword, new_password: newPassword });
 }
 
 /**
  * POST /api/v1/auth/logout: the server writes the sign-out to the audit log and clears its session
  * cookie. Best effort: signing out locally never waits on or fails because of it.
  */
-export async function logoutSession(token: string | null): Promise<void> {
-  if (!token) return;
+export async function logoutSession(): Promise<void> {
   try {
-    await apiClient.post("/api/v1/auth/logout", undefined, { headers: { Authorization: `Bearer ${token}` } });
+    await apiClient.post("/api/v1/auth/logout");
   } catch {
     // already signed out, or offline: the local sign-out still happens
   }
