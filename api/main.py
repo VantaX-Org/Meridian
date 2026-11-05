@@ -342,9 +342,24 @@ app.add_exception_handler(ScimError, _scim_error_handler)
 # Security headers middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+# JSON answers load nothing, so they take the strictest policy. The two HTML pages FastAPI generates for /docs
+# and /redoc pull Swagger UI and ReDoc from jsdelivr, run an inline bootstrap script and (ReDoc) a blob worker,
+# so they get a policy that names exactly that. The product's own pages are served by Next.js, which sets its own
+# CSP in frontend/proxy.ts; nginx deliberately sets none, so the two never conflict.
+_API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+_DOCS_CSP = (
+    "default-src 'none'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+    "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; img-src 'self' data: https://fastapi.tiangolo.com; "
+    "connect-src 'self'; worker-src blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+)
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
+        response.headers["Content-Security-Policy"] = (
+            _DOCS_CSP if request.url.path in ("/docs", "/redoc") else _API_CSP
+        )
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
