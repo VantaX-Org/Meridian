@@ -1,5 +1,8 @@
 # Refreshes the pins: action commit SHAs, and the upstream image digests in Dockerfiles and compose files.
 # Each refresh is a pull request that has to pass CI, so nothing moves without review.
+# Refreshes only: a version line is a decision, not a refresh. Postgres majors need a data migration, Redis 7.4 and
+# later are not open source, and the runtimes follow the CI matrix. So images stay on their tag line, and actions on
+# their major, because release and image workflows do not run on a pull request.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -9,6 +12,9 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directories: ["/docker"]
     schedule:
@@ -16,6 +22,9 @@ updates:
     groups:
       images:
         patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: docker-compose
     directories: ["/", "/docker"]
     schedule:
@@ -23,3 +32,6 @@ updates:
     groups:
       compose-images:
         patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
