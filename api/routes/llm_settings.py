@@ -102,6 +102,11 @@ class LLMConfigResponse(BaseModel):
     source: str  # "database" or "environment"
     updated_at: Optional[str] = None
     updated_by: Optional[str] = None
+    aggregates_only: bool = False  # only counts and aggregates go to the model, never a row-level sample
+
+
+class AggregatesOnlyUpdate(BaseModel):
+    aggregates_only: bool
 
 
 class LLMConfigUpdate(BaseModel):
@@ -204,8 +209,9 @@ async def get_llm_config(
         {"tid": str(tenant.id)},
     )
     row = result.fetchone()
+    agg = bool(row and isinstance(row[0], dict) and row[0].get("aggregates_only"))
 
-    if row and row[0]:
+    if row and row[0] and row[0].get("provider"):
         config = row[0]
         jwt_secret = row[1] or ""
         decrypted_key = ""
@@ -227,6 +233,7 @@ async def get_llm_config(
             source="database",
             updated_at=config.get("updated_at"),
             updated_by=config.get("updated_by"),
+            aggregates_only=agg,
         )
     else:
         env = _get_env_config()
@@ -242,6 +249,7 @@ async def get_llm_config(
             azure_deployment=env["azure_deployment"],
             azure_api_version=env["azure_api_version"],
             source="environment",
+            aggregates_only=agg,
         )
 
 
@@ -304,6 +312,7 @@ async def update_llm_config(
         "updated_by": getattr(request.state, "local_user_id", None),
     }
 
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))  # before the reads: RLS must not hide the flag
     if body.api_key:
         from api.services.crypto import encrypt_api_key
         config["api_key_encrypted"] = encrypt_api_key(body.api_key, jwt_secret)
@@ -316,7 +325,12 @@ async def update_llm_config(
         if existing_key:
             config["api_key_encrypted"] = existing_key
 
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    flag = await db.execute(
+        text("SELECT llm_config->'aggregates_only' FROM tenants WHERE id = :tid"), {"tid": str(tenant.id)},
+    )
+    if flag.scalar() is True:  # a provider save never loosens the privacy switch
+        config["aggregates_only"] = True
+
     await db.execute(
         text("UPDATE tenants SET llm_config = CAST(:config AS jsonb) WHERE id = :tid"),
         {"tid": str(tenant.id), "config": json.dumps(config)},
@@ -328,6 +342,39 @@ async def update_llm_config(
 
     logger.info(f"LLM config updated: provider={body.provider}, model={body.model}")
     return {"status": "ok", "provider": body.provider, "model": body.model}
+
+
+# ── PUT /settings/llm/aggregates-only — the privacy switch ───────────────
+
+@router.put("/llm/aggregates-only")
+async def set_aggregates_only(
+    body: AggregatesOnlyUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("manage_llm")),
+):
+    """Turn "aggregates only to the model" on or off for this tenant. On: no row-level sample (mask, value or
+    key shape) goes to the model on any path, only counts and aggregates. Stored in tenants.llm_config, audited."""
+    from api.services.rbac import write_audit
+
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    before = (await db.execute(
+        text("SELECT COALESCE(llm_config->'aggregates_only', 'false'::jsonb) FROM tenants WHERE id = :tid"),
+        {"tid": str(tenant.id)},
+    )).scalar()
+    await db.execute(
+        text("UPDATE tenants SET llm_config = jsonb_set(COALESCE(llm_config, '{}'::jsonb), '{aggregates_only}', "
+             "CAST(:v AS jsonb)) WHERE id = :tid"),
+        {"tid": str(tenant.id), "v": json.dumps(body.aggregates_only)},
+    )
+    await write_audit(db, tenant.id, request, "llm.aggregates_only", "llm_config", str(tenant.id),
+                      {"aggregates_only": bool(before)}, {"aggregates_only": body.aggregates_only})
+    await db.commit()
+
+    from llm.provider import clear_llm_cache
+    clear_llm_cache()
+    return {"status": "ok", "aggregates_only": body.aggregates_only}
 
 
 # ── POST /settings/llm/test — test connection ────────────────────────────

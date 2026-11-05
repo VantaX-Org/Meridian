@@ -169,11 +169,15 @@ def _build_inference_prompt(
     sap_object_key: str,
     known_relationships: list[dict],
     candidate_domains: list[str],
+    aggregates: bool = False,
 ) -> str:
     """Build prompt to infer probable relationships not found in RFC link tables.
 
-    The record key is a SAP value: the model sees only its shape (length, mask)."""
+    The record key is a SAP value: the model sees only its shape (length, mask), and under "aggregates only" not
+    even that."""
     key = shape(sap_object_key)
+    key_line = ("Object key shape: withheld" if aggregates
+                else f"Object key shape (A upper, a lower, 9 digit): length {key['length']}, mask {key['mask']}")
     known_text = "\n".join(
         f"  - {r['to_domain']} ({r['relationship_type']})"
         for r in known_relationships
@@ -184,7 +188,7 @@ def _build_inference_prompt(
     return f"""You are an SAP cross-domain relationship expert.
 
 Domain: {domain}
-Object key shape (A upper, a lower, 9 digit): length {key['length']}, mask {key['mask']}
+{key_line}
 
 Known RFC-discovered relationships:
 {known_text}
@@ -362,7 +366,9 @@ def infer_relationships(
     if not candidate_domains:
         return []
 
-    prompt = _build_inference_prompt(domain, sap_object_key, known_relationships, candidate_domains)
+    from api.services.prompt_shapes import aggregates_only
+    prompt = _build_inference_prompt(domain, sap_object_key, known_relationships, candidate_domains,
+                                     aggregates_only(tenant_id))
     start_ms = time.monotonic_ns() // 1_000_000
 
     try:

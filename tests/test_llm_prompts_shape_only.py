@@ -29,10 +29,13 @@ def test_semantic_matcher_prompt_and_verify() -> None:
 
     from api.services import ai_semantic_matcher as m
 
-    f = m.facts("NAME1", VALUE_A, VALUE_B, 0.7, FieldType.NAME)
+    f = m.facts("KTOKK", VALUE_A, VALUE_B, 0.7, FieldType.NAME)
     prompt = m._build_prompt("business_partner", f)
     assert VALUE_A not in prompt and VALUE_B not in prompt and "Zebratron" not in prompt
     assert str(shape(VALUE_A)["mask"]) in prompt
+    # a personal field keeps its length, never its mask
+    p = m._build_prompt("business_partner", m.facts("NAME1", VALUE_A, VALUE_B, 0.7, FieldType.NAME))
+    assert str(shape(VALUE_A)["mask"]) not in p and "Zebratron" not in p
 
     assert m.verify({"similarity": 0.8, "reasoning": "free text"}, 0.7) == {
         "verified": True, "checks": [{"code": "SIMILARITY_IS_NUMBER", "passed": True},

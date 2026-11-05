@@ -54,6 +54,18 @@ describe("language model settings", () => {
     expect(() => fixtureWrite("PUT", "/settings/llm", { provider: "openai", model: "", base_url: "", api_key: "", temperature: 0.1, max_tokens: 8192, request_timeout: 120, azure_deployment: "", azure_api_version: "" }, {})).toThrow(/API key is required/);
   });
 
+  it("the aggregates-only switch saves and reads back", async () => {
+    renderWithQuery(<LlmBlock />);
+    const block = await screen.findByRole("region", { name: "Language model" });
+    const sw = await within(block).findByLabelText(/Aggregates only to the model/);
+    expect(sw).not.toBeChecked();
+    fireEvent.click(sw);
+    await waitFor(() => expect(config().aggregates_only).toBe(true));
+    expect(await within(block).findByText("Only aggregates go to the model")).toBeInTheDocument();
+    fireEvent.click(within(block).getByLabelText(/Aggregates only to the model/));
+    await waitFor(() => expect(config().aggregates_only).toBe(false));
+  });
+
   it("is hidden without manage_llm", () => {
     h.allowed = ["view"];
     renderWithQuery(<LlmBlock />);

@@ -67,8 +67,11 @@ def facts(field: str, value_a: str, value_b: str, det_score: float, field_type: 
     """The only thing the model sees about a pair: field metadata, each value's shape (blank, length, mask) and the
     deterministic score. Never a value, a preview or a hash of one. ponytail: shapes are weaker evidence than values,
     so the model only acts in the uncertain band and its answer is proved by ``verify``."""
+    from api.utils.pii_fields import is_pii_header
+
+    p = is_pii_header(field)  # a personal field keeps its length, never its mask
     return {"field": field, "field_type": getattr(field_type, "name", str(field_type)),
-            "a": shape(value_a), "b": shape(value_b),
+            "a": shape(value_a, p), "b": shape(value_b, p),
             "deterministic_score": round(det_score, 3)}
 
 
@@ -148,6 +151,9 @@ def compute_semantic_score(
         return det_score
     if mode == "off" or is_closed_domain:
         return det_score
+    from api.services.prompt_shapes import aggregates_only
+    if aggregates_only(tenant_id):
+        return det_score  # "aggregates only": a pair's shapes are row-level, so the model is not asked
 
     # ── Cache lookup (LLM path only) ─────────────────────────────
     cache_key = _cache_key(tenant_id, domain, str(value_a), str(value_b))

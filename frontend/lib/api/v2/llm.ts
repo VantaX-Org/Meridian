@@ -1,6 +1,6 @@
 /**
  * The language model behind Aletheia (api/routes/llm_settings.py): GET /settings/llm/providers, GET and PUT
- * /settings/llm, POST /settings/llm/test, all manage_llm. The key is never read back, only a masked preview; a save or
+ * /settings/llm, PUT /settings/llm/aggregates-only (the privacy switch), POST /settings/llm/test, all manage_llm. The key is never read back, only a masked preview; a save or
  * a test with an empty key keeps the stored one.
  */
 import { v2Get, v2Send } from "./client";
@@ -29,6 +29,8 @@ export interface LlmConfig {
   source: "database" | "environment";
   updated_at?: string | null;
   updated_by?: string | null;
+  /** On: no row-level sample (mask, value or key shape) goes to the model, only counts and aggregates. */
+  aggregates_only: boolean;
 }
 
 export type LlmBody = Pick<LlmConfig, "provider" | "model" | "base_url" | "temperature" | "max_tokens" | "request_timeout" | "azure_deployment" | "azure_api_version"> & { api_key: string };
@@ -36,4 +38,5 @@ export type LlmBody = Pick<LlmConfig, "provider" | "model" | "base_url" | "tempe
 export const getLlmProviders = (): Promise<{ providers: Record<string, LlmProvider> }> => v2Get("/settings/llm/providers");
 export const getLlmConfig = (): Promise<LlmConfig> => v2Get("/settings/llm");
 export const putLlmConfig = (body: LlmBody): Promise<{ status: string; provider: string; model: string }> => v2Send("PUT", "/settings/llm", body);
+export const putLlmAggregatesOnly = (aggregates_only: boolean): Promise<{ status: string; aggregates_only: boolean }> => v2Send("PUT", "/settings/llm/aggregates-only", { aggregates_only });
 export const testLlm = (body: LlmBody): Promise<{ success: boolean; message: string; response_preview: string }> => v2Send("POST", "/settings/llm/test", body);
