@@ -439,6 +439,8 @@ app.include_router(notifications_router)
 app.include_router(users_router)
 app.include_router(roles_router)
 app.include_router(api_keys_router)
+from api.routes.subject_requests import router as subject_requests_router
+app.include_router(subject_requests_router)
 app.include_router(me_router)
 app.include_router(preferences_router)
 app.include_router(me_notifications_router)

@@ -1483,6 +1483,33 @@ class LearnedMonitorBreak(Base):
     )
 
 
+class SubjectRequest(Base):
+    """One data-subject access export, erasure dry run or erasure (migration 134). Holds no personal value."""
+    __tablename__ = "subject_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    kind = Column(Text, nullable=False)  # access | erasure
+    dry_run = Column(Boolean, nullable=False)
+    subject_hmac = Column(Text, nullable=False)  # HMAC of the subject as typed, keyed by the tenant secret
+    key_set_hmac = Column(Text, nullable=False)  # HMAC of the sorted record keys the subject resolved to
+    key_count = Column(Integer, nullable=False, server_default="0")
+    rows_by_table = Column(JSONB, nullable=False, server_default="{}")
+    storage = Column(JSONB, nullable=False, server_default="{}")
+    dry_run_id = Column(UUID(as_uuid=True), nullable=True)
+    reason = Column(Text, nullable=True)
+    status = Column(Text, nullable=False, server_default="done")  # done | incomplete
+    actor_user_id = Column(Text, nullable=True)
+    actor_email = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("ix_subject_requests_tenant_created", "tenant_id", "created_at"),
+        Index("ux_subject_requests_executed", "tenant_id", "dry_run_id", unique=True,
+              postgresql_where=text("dry_run = false")),
+    )
+
+
 class TableProfile(Base):
     """Profile of one extracted table in one version — the anomaly baseline (migration 054)."""
     __tablename__ = "table_profiles"
@@ -2096,7 +2123,7 @@ class MdmMergeEvent(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     domain = Column(Text, nullable=False)
     event_type = Column(Text, nullable=False)
-    golden_record_id = Column(UUID(as_uuid=True), ForeignKey("master_records.id"), nullable=True)
+    golden_record_id = Column(UUID(as_uuid=True), ForeignKey("master_records.id", ondelete="SET NULL"), nullable=True)
     member_keys = Column(ARRAY(Text), nullable=False, server_default="{}")
     actor = Column(UUID(as_uuid=True), nullable=True)
     reason = Column(Text, nullable=True)
