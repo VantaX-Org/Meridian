@@ -103,6 +103,8 @@ export interface DuplicateSearch {
   thresholds: Record<string, number>;
   rules?: number | null;
   skipped_semantic?: number | null;
+  /** Whether the typo-tolerant pass can run at all; absent when nothing was searched. */
+  fuzzy?: { available: boolean; reason?: FuzzyNotRun | null; min_key_length: number; similarity: number } | null;
 }
 
 export interface FirewallRecord {

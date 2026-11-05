@@ -72,6 +72,17 @@ def test_cross_run_is_registered_and_chained_from_run_match():
     assert "WHERE v.tenant_id = CAST(:tid AS uuid)" in src
 
 
+def test_latest_run_query_names_only_real_columns():
+    """The query runs after every match run, and a wrong column raises there, away from any request."""
+    import re
+
+    import workers.tasks.run_match as rm
+    from db.schema import AnalysisVersion
+
+    used = set(re.findall(r"\bv\.(\w+)", str(rm._LATEST_PER_SYSTEM)))
+    assert used and used <= set(AnalysisVersion.__table__.columns.keys())
+
+
 def test_cross_run_skips_with_fewer_than_two_systems(monkeypatch):
     import workers.tasks.run_match as rm
 

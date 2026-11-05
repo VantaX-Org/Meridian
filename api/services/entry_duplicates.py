@@ -4,8 +4,9 @@ Opt-in beside api/services/dq_firewall.py (whose ``validate`` stays pure). Popul
 ``master_records`` of the module (``merged_into IS NULL``; own fields when the record sits in a merge cluster).
 Blocking: a candidate is looked up first by equality on normalised key fields that migration 133 indexes, then, for the
 free-text fields only (``FUZZY_FIELDS``) and a key of at least ``FUZZY_MIN_KEY`` characters, by pg_trgm similarity
-through the migration 135 indexes, so a typo still finds the record. Both passes are index probes, so a call never
-scans the population. When the extension or an index is missing the exact pass still runs and the result says the
+through the migration 135 indexes, so a typo still finds the record. Both passes read the migration 135 view
+``POPULATION``, because row level security on the table itself keeps these expressions away from any index; through the
+view both are index probes and a call does not scan the population. When the extension or an index is missing the exact pass still runs and the result says the
 similar pass did not (``fuzzy``). At most ``CANDIDATE_CAP`` records are scored and a cut-short search says so. A lookup that
 could not have found anything says so too, never "no duplicates": ``no_block_field_in_population`` when no record of
 the population carries a block field (a flat upload keeps its own column names), and ``searched: false`` on a record
@@ -16,7 +17,7 @@ with no usable block value (blank, junk, or a value with no ASCII letters or dig
 to the language model. Here a semantic rule is skipped and counted. Deterministic, no model.
 
 Nothing of the other record but its key, score and per-field similarity leaves this module; its values never do.
-Every query filters on ``tenant_id`` and the route sets the tenant (set_config) before calling.
+Every query filters on ``tenant_id`` and the route sets the tenant (set_config) before calling; the view needs it set.
 """
 from __future__ import annotations
 
@@ -29,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.services.golden_keys import plain
 from api.services.merge_explain import AUTO_MERGE, REVIEW_FLOOR, explain_pair
 
+POPULATION = "entry_duplicate_population"  # the tenant's live records, see migration 135 for why not master_records
 CANDIDATE_CAP = 50   # records scored per candidate, exact and similar together; a hit on more is cut and reported
 # Typo-tolerant pass (migration 135, pg_trgm). Free-text fields only: a tax number one character off is another
 # taxpayer, and a part number one digit off is another part, so those stay exact.
@@ -100,13 +102,13 @@ async def search(db: AsyncSession, tid: str, module: str, rows: list[dict[str, s
                               "ORDER BY weight DESC, field"), {"t": tid, "d": module})).fetchall()]
     if not rules:
         return {"search": _not_searched("no_match_rules"), "records": empty}
-    if not (await db.execute(text("SELECT 1 FROM master_records WHERE tenant_id = CAST(:t AS uuid) AND domain = :d "
-                                  "AND merged_into IS NULL LIMIT 1"), {"t": tid, "d": module})).first():
+    if not (await db.execute(text(f"SELECT 1 FROM {POPULATION} WHERE tenant_id = CAST(:t AS uuid) AND domain = :d "
+                                  "LIMIT 1"), {"t": tid, "d": module})).first():
         return {"search": _not_searched("no_population"), "records": empty}
 
     # Answered from the migration 133 indexes: a missing field is a NULL key, so this never reads the table.
     live = [f for f in fields if (await db.execute(text(
-        f"SELECT 1 FROM master_records WHERE tenant_id = CAST(:t AS uuid) AND domain = :d AND merged_into IS NULL "
+        f"SELECT 1 FROM {POPULATION} WHERE tenant_id = CAST(:t AS uuid) AND domain = :d "
         f"AND {block_expr(f)} IS NOT NULL LIMIT 1"), {"t": tid, "d": module})).first()]
     if not live:
         return {"search": _not_searched("no_block_field_in_population"), "records": empty}
@@ -125,8 +127,8 @@ async def search(db: AsyncSession, tid: str, module: str, rows: list[dict[str, s
                 break
             room = CANDIDATE_CAP - len(seen)
             got = (await db.execute(text(
-                f"SELECT sap_object_key, COALESCE(own_fields, golden_fields) FROM master_records "
-                f"WHERE tenant_id = CAST(:t AS uuid) AND domain = :d AND merged_into IS NULL AND {block_expr(f)} = :k "
+                f"SELECT sap_object_key, COALESCE(own_fields, golden_fields) FROM {POPULATION} "
+                f"WHERE tenant_id = CAST(:t AS uuid) AND domain = :d AND {block_expr(f)} = :k "
                 f"LIMIT :n"), {"t": tid, "d": module, "k": k, "n": room + 1})).fetchall()
             for key, rec in got[:room]:
                 seen.setdefault(key, rec or {})
@@ -143,8 +145,8 @@ async def search(db: AsyncSession, tid: str, module: str, rows: list[dict[str, s
                 room = CANDIDATE_CAP - len(seen)
                 # The % operator is what the trigram index answers; best matches first, bounded like the exact pass.
                 got = (await db.execute(text(
-                    f"SELECT sap_object_key, COALESCE(own_fields, golden_fields) FROM master_records "
-                    f"WHERE tenant_id = CAST(:t AS uuid) AND domain = :d AND merged_into IS NULL "
+                    f"SELECT sap_object_key, COALESCE(own_fields, golden_fields) FROM {POPULATION} "
+                    f"WHERE tenant_id = CAST(:t AS uuid) AND domain = :d "
                     f"AND {block_expr(f)} % :k ORDER BY similarity({block_expr(f)}, :k) DESC, sap_object_key LIMIT :n"),
                     {"t": tid, "d": module, "k": k, "n": room + len(seen) + 1})).fetchall()
                 new = [(key, rec) for key, rec in got if key not in seen]

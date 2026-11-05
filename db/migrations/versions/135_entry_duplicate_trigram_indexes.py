@@ -17,6 +17,15 @@ index statements (or ``alembic downgrade 134 && alembic upgrade head``) to turn 
 
 Indexes are built CONCURRENTLY so writers are not blocked; that cannot run inside alembic's transaction, hence the
 autocommit block. A failed concurrent build leaves an invalid index, which the search ignores.
+
+The search reads the view ``entry_duplicate_population``, not ``master_records``. Row level security keeps every
+non-leakproof expression above the policy, so under the app role no ``regexp_replace`` or ``%`` qual can reach an index
+and each probe is a sequential scan (measured: 142 ms against 0.03 ms on 300,000 rows). A view runs with its owner's
+rights, so when the owner bypasses row level security (the superuser that runs migrations) the indexes work, and the
+view's own ``tenant_id`` filter takes the policy's place: same setting, same cast, and the same error when it is unset.
+It must stay a plain view, because ``security_barrier`` would hold the quals back exactly as the policy does; that is
+safe here since the app role runs only fixed SQL and cannot supply a function. If the migration role does not bypass
+row level security the view is still correct, the policy applies to it, and the search is slow.
 """
 import logging
 from typing import Sequence, Union
@@ -36,6 +45,21 @@ def _name(f: str) -> str:
 
 
 def upgrade() -> None:
+    op.execute("""
+        CREATE OR REPLACE VIEW entry_duplicate_population AS
+        SELECT tenant_id, domain, sap_object_key, own_fields, golden_fields FROM master_records
+        WHERE tenant_id = current_setting('app.tenant_id')::uuid AND merged_into IS NULL""")
+    op.execute("""
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'meridian_app') THEN
+                GRANT SELECT ON entry_duplicate_population TO meridian_app;
+            END IF;
+        END $$""")
+    if not op.get_bind().exec_driver_sql(
+            "SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user").scalar():
+        logging.getLogger("alembic.runtime.migration").warning(
+            "the migration role does not bypass row level security; duplicate search at entry stays correct but "
+            "scans the table instead of using its indexes until a role that does owns entry_duplicate_population")
     with op.get_context().autocommit_block():
         conn = op.get_bind()
         try:
@@ -61,3 +85,4 @@ def downgrade() -> None:
     with op.get_context().autocommit_block():
         for f in FIELDS:
             op.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {_name(f)}")
+    op.execute("DROP VIEW IF EXISTS entry_duplicate_population")

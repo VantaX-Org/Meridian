@@ -295,6 +295,7 @@ def test_missing_extension_reports_the_similar_pass_did_not_run(app_engine):  # 
         try:
             async with eng.connect() as conn:
                 tx = await conn.begin()  # DDL is transactional: the extension and its indexes come back on rollback
+                await conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
                 await conn.execute(text("DROP EXTENSION pg_trgm CASCADE"))
                 out = await ed.search(conn, tid, M, rows)
                 await tx.rollback()
@@ -308,3 +309,25 @@ def test_missing_extension_reports_the_similar_pass_did_not_run(app_engine):  # 
     assert [r["fuzzy"] for r in out["records"]] == [{"ran": False, "reason": "extension_missing"}] * 2
     assert out["records"][0]["matches"] == []  # the typo is missed, and the result says so
     assert [m["key"] for m in out["records"][1]["matches"]] == ["10001"]  # the exact pass still works
+
+
+def test_app_role_reaches_the_indexes_and_only_its_own_tenant(app_engine):  # noqa: F811
+    """Row level security keeps these quals off an index on the table itself, so the search goes through the view."""
+    from sqlalchemy import text
+
+    from api.services.entry_duplicates import POPULATION, block_expr
+
+    tid = _setup(app_engine)
+    owner, app_eng = app_engine
+    assert owner.connect().execute(text("SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user")).scalar()
+    f, k = "MAKT.MAKTX", "HYDRAULICSEALKITHEAVYDUTY"
+    where = f"tenant_id = CAST(:t AS uuid) AND domain = :d AND {block_expr(f)}"
+    with app_eng.begin() as c:
+        c.execute(text("SELECT set_config('app.tenant_id', :t, true), set_config('enable_seqscan', 'off', true)"), {"t": tid})
+        args = {"t": tid, "d": M, "k": k}
+        for sql in (f"SELECT 1 FROM {POPULATION} WHERE {where} = :k", f"SELECT 1 FROM {POPULATION} WHERE {where} % :k"):
+            plan = "\n".join(r[0] for r in c.execute(text("EXPLAIN " + sql), args))
+            assert "ix_master_records" in plan and "Seq Scan" not in plan, plan
+        # No tenant filter of its own, and the other tenant holds this description: the view still returns one tenant.
+        got = c.execute(text(f"SELECT DISTINCT tenant_id::text FROM {POPULATION} WHERE {block_expr(f)} = :k"), {"k": k})
+        assert [r[0] for r in got] == [tid]

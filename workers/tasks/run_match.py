@@ -368,7 +368,7 @@ _LATEST_PER_SYSTEM = text("""
      WHERE v.tenant_id = CAST(:tid AS uuid) AND v.status = 'complete'
        AND COALESCE(v.metadata->>'dataset_path', v.metadata->>'parquet_path') IS NOT NULL
        AND v.metadata->'modules' @> to_jsonb(CAST(:m AS text))
-     ORDER BY s.id, v.created_at DESC
+     ORDER BY s.id, v.run_at DESC
 """)
 
 
