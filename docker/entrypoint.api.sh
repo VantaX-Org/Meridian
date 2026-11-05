@@ -22,7 +22,7 @@ url = os.getenv("DATABASE_URL_MIGRATE") or os.getenv("DATABASE_URL_SYNC") or os.
 with create_engine(url.replace("postgresql+asyncpg://", "postgresql://")).connect() as c:
     rev = c.execute(text("select version_num from alembic_version")).scalar()
 known = {r.revision for r in ScriptDirectory.from_config(Config("alembic.ini")).walk_revisions()}
-if rev in known:
+if rev is None or rev in known:  # an empty table is a failed first install, not a rollback
     sys.exit(1)
 print(f"Database revision {rev} is newer than this image; skipping migrations (rollback).")
 PY
