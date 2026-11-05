@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { resetLearnedMonitors } from "@/lib/api/v2/fixtures/learnedMonitors";
 import { renderWithQuery } from "@/__tests__/render";
 import { LearnedMonitors } from "../screens/LearnedMonitors";
@@ -57,6 +57,20 @@ describe("learned monitors", () => {
     expect(within(row).getByText("Analysis pending")).toBeInTheDocument();
     fireEvent.click(within(row).getByRole("button", { name: "Volume drop" }));
     expect(await screen.findByTestId("monitors-explanation")).toHaveTextContent("Found between full runs");
+  });
+});
+
+describe("breaks below the learned minimum", () => {
+  it("lists one quietly with its code beside the description, outside the open count, and confirming moves it out", async () => {
+    const u = "/monitors?fixture=1&persona=owner"; window.history.pushState({}, "", u); setUrl(u);
+    renderWithQuery(<LearnedMonitors />);
+    const row = await screen.findByTestId("quiet-lm-5");
+    expect(within(row).getByText("MM021")).toBeInTheDocument();
+    expect(within(row).getByText("Material group missing")).toBeInTheDocument();
+    expect(screen.queryByTestId("break-lm-5")).toBeNull();
+    expect(screen.getByTestId("monitors")).toHaveTextContent("4 open breaks");
+    fireEvent.click(within(row).getByRole("button", { name: "Confirm as real" }));
+    await waitFor(() => expect(screen.queryByTestId("quiet-lm-5")).toBeNull());
   });
 });
 

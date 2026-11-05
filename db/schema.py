@@ -1457,8 +1457,8 @@ class LearnedMonitorBreak(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
     module = Column(Text, nullable=False)
-    kind = Column(Text, nullable=False)  # volume_drop | volume_spike | fail_rate_jump | score_drop | field_emptied
-    metric = Column(Text, nullable=False)  # records | score | fail_rate | blank_pct
+    kind = Column(Text, nullable=False)  # volume_drop | volume_spike | fail_rate_jump | score_drop | field_emptied | cardinality_shift (142)
+    metric = Column(Text, nullable=False)  # records | score | fail_rate | blank_pct | distinct_pct (142)
     subject_code = Column(Text, nullable=False, server_default="")  # rule id, TABLE.FIELD, or empty for the object
     severity = Column(Text, nullable=False)
     expected_low = Column(Float, nullable=True)
@@ -1468,7 +1468,7 @@ class LearnedMonitorBreak(Base):
     baseline_runs = Column(Integer, nullable=False)
     baseline_run_ids = Column(JSONB, nullable=False, server_default="[]")
     method = Column(Text, nullable=False)
-    status = Column(Text, nullable=False, server_default="open")  # open | acknowledged | expected | snoozed
+    status = Column(Text, nullable=False, server_default="open")  # open | acknowledged | expected | snoozed | below_minimum (142)
     baseline_effect = Column(Text, nullable=True)  # exclude | accept (status expected)
     snoozed_until = Column(DateTime(timezone=True), nullable=True)
     decided_by = Column(Text, nullable=True)

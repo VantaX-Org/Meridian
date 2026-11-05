@@ -2,7 +2,8 @@
 
 GET lists the latest run's breaks with the baseline each used and, per object, how many earlier runs it has (an object
 under the minimum is "learning" and raises nothing). Stewards acknowledge, mark expected (exclude the run from later
-baselines, or accept it as the new normal) or snooze a break; each is audited. Explain asks the model for a wording of
+baselines, or accept it as the new normal) or snooze a break; each is audited. A break outside the usual range but below a raised learned minimum is listed apart
+(``below_minimum``): it raises nothing, and confirming it (acknowledge) lowers the minimum. Explain asks the model for a wording of
 the figures; only sentences whose numbers are in the figures are kept, else the deterministic text stands.
 """
 
@@ -51,8 +52,8 @@ class BreakOut(BaseModel):
     version_id: str
     run_number: Optional[int] = None
     module: str
-    kind: Literal["volume_drop", "volume_spike", "fail_rate_jump", "score_drop", "field_emptied"]
-    metric: Literal["records", "score", "fail_rate", "blank_pct"]
+    kind: Literal["volume_drop", "volume_spike", "fail_rate_jump", "score_drop", "field_emptied", "cardinality_shift"]
+    metric: Literal["records", "score", "fail_rate", "blank_pct", "distinct_pct"]
     subject_code: str
     subject_description: Optional[str] = None
     severity: Literal["critical", "high", "medium", "low"]
@@ -62,7 +63,7 @@ class BreakOut(BaseModel):
     observed: float
     baseline_runs: int
     method: str
-    status: Literal["open", "acknowledged", "expected", "snoozed"]
+    status: Literal["open", "acknowledged", "expected", "snoozed", "below_minimum"]
     baseline_effect: Optional[Literal["exclude", "accept"]] = None
     snoozed_until: Optional[str] = None
     decided_by: Optional[str] = None
@@ -98,7 +99,7 @@ class ThresholdMove(BaseModel):
 class Threshold(BaseModel):
     """One monitor's minimum effect: what it is now, the fixed floor and ceiling, and the decisions that moved it."""
     module: str
-    metric: Literal["records", "score", "fail_rate"]
+    metric: Literal["records", "score", "fail_rate", "blank_pct", "distinct_pct"]
     subject_code: str
     subject_description: Optional[str] = None
     min_effect: float
@@ -114,6 +115,7 @@ class MonitorsOut(BaseModel):
     coverage: list[Coverage]
     breaks: list[BreakOut]
     thresholds: list[Threshold] = []
+    below_minimum: list[BreakOut] = []  # outside the usual range, below a raised minimum: no alert, confirm to lower it
     interim: list[BreakOut] = []  # found between full runs: extraction landed, analysis not finished
 
 
@@ -133,7 +135,7 @@ async def _shape(db: AsyncSession, tenant: Tenant, rows) -> list[BreakOut]:
     now = datetime.now(timezone.utc)
     out = []
     for r in rows:
-        desc = names.get(r[6]) if r[5] == "fail_rate" else field_text(r[6], r[3]) if r[5] == "blank_pct" else None
+        desc = names.get(r[6]) if r[5] == "fail_rate" else field_text(r[6], r[3]) if r[5] in ("blank_pct", "distinct_pct") else None
         b = {"kind": r[4], "metric": r[5], "subject_code": r[6], "expected_low": r[8], "expected_high": r[9],
              "median": r[10], "observed": r[11], "baseline_runs": r[12], "method": r[14]}
         exp = r[21] or lm.explanation(lm.facts(b, desc), None)
@@ -164,7 +166,7 @@ async def _thresholds(db: AsyncSession, tenant: Tenant, modules: list[str]) -> l
         out.append(Threshold(
             module=module, metric=metric, subject_code=subject, min_effect=L["min_effect"], floor=L["floor"],
             ceiling=L["ceiling"], window_days=lm.LEARN_DAYS,
-            subject_description=names.get(subject) if metric == "fail_rate" else None,
+            subject_description=names.get(subject) if metric == "fail_rate" else field_text(subject, module) if metric in ("blank_pct", "distinct_pct") else None,
             moves=[ThresholdMove(break_id=m["id"], run_number=m["run_number"], decision=m["decision"], effect=m["effect"],
                                  result=m["result"], min_effect_after=m["min_effect"], decided_by=m["decided_by"],
                                  decided_at=_iso(m["decided_at"])) for m in reversed(L["moves"])]))
@@ -197,15 +199,19 @@ async def monitors(version_id: Optional[uuid.UUID] = None, limit: int = Query(30
                AND metadata->>'system_id' IS NOT DISTINCT FROM CAST(:sid AS text) AND dqs_summary ? :m"""),
             {"t": t, "at": run[2], "sid": run[3], "m": m})).scalar() or 0
         k = (await db.execute(text("SELECT count(*) FROM learned_monitor_breaks WHERE tenant_id = :t "
-                                   "AND version_id = CAST(:v AS uuid) AND module = :m"), {"t": t, "v": run[0], "m": m})).scalar() or 0
+                                   "AND version_id = CAST(:v AS uuid) AND module = :m AND status <> 'below_minimum'"), {"t": t, "v": run[0], "m": m})).scalar() or 0
         n = min(int(n), lm.HISTORY)
         cov.append(Coverage(module=m, run_id=run[0], run_number=run[1], baseline_runs=n, min_runs=lm.MIN_RUNS,
                             state="active" if n >= lm.MIN_RUNS else "learning", breaks=int(k)))
     rows = (await db.execute(text(f"""
         SELECT {COLS} FROM learned_monitor_breaks b JOIN analysis_versions v ON v.id = b.version_id
-         WHERE b.tenant_id = :t AND b.version_id = CAST(:v AS uuid)
+         WHERE b.tenant_id = :t AND b.version_id = CAST(:v AS uuid) AND b.status <> 'below_minimum'
          ORDER BY CASE b.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
                   b.module, b.kind, b.subject_code LIMIT :n"""), {"t": t, "v": run[0], "n": limit})).fetchall()
+    quiet = (await db.execute(text(f"""
+        SELECT {COLS} FROM learned_monitor_breaks b JOIN analysis_versions v ON v.id = b.version_id
+         WHERE b.tenant_id = :t AND b.version_id = CAST(:v AS uuid) AND b.status = 'below_minimum'
+         ORDER BY b.module, b.kind, b.subject_code LIMIT :n"""), {"t": t, "v": run[0], "n": limit})).fetchall()
     interim = []
     if not version_id:  # the latest state only: open breaks of syncs whose analysis is newer than this run and unfinished
         irows = (await db.execute(text(f"""
@@ -216,7 +222,7 @@ async def monitors(version_id: Optional[uuid.UUID] = None, limit: int = Query(30
                       b.module, b.kind LIMIT :n"""), {"t": t, "at": run[2], "n": limit})).fetchall()
         interim = await _shape(db, tenant, irows)
     return MonitorsOut(min_runs=lm.MIN_RUNS, history=lm.HISTORY, coverage=cov, breaks=await _shape(db, tenant, rows),
-                       thresholds=await _thresholds(db, tenant, sorted(mods)), interim=interim)
+                       below_minimum=await _shape(db, tenant, quiet), thresholds=await _thresholds(db, tenant, sorted(mods)), interim=interim)
 
 
 async def _get(db: AsyncSession, tenant: Tenant, bid: uuid.UUID):
@@ -232,6 +238,8 @@ async def _get(db: AsyncSession, tenant: Tenant, bid: uuid.UUID):
 async def _decide(db: AsyncSession, tenant: Tenant, request: Request, bid: uuid.UUID, action: str, status: str,
                   effect: Optional[str], until: Optional[datetime], note: Optional[str]) -> BreakOut:
     r = await _get(db, tenant, bid)
+    if r[15] == "below_minimum" and action != "acknowledge":
+        raise HTTPException(status_code=409, detail="A break below the minimum can only be confirmed")
     await db.execute(text("""
         UPDATE learned_monitor_breaks SET status = :s, baseline_effect = :e, snoozed_until = :u, decided_by = :by,
                decided_at = now(), note = :n WHERE id = CAST(:id AS uuid) AND tenant_id = :t"""),
