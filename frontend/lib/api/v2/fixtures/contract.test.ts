@@ -170,7 +170,6 @@ describe("the reconciliation pack fixture answers in the API's shape", () => {
 });
 
 describe("the live write-back fixtures answer in the API's shapes", () => {
-  const post = (route: string) => api.paths[route]?.post?.responses?.["200"]?.content?.["application/json"]?.schema as Schema;
   it("POST /writeback/batches/{id}/check, /send and the run routes", () => {
     resetWorkFixture();
     const ok = (route: string, method: "get" | "post", body: unknown) => {

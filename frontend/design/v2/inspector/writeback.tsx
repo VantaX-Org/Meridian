@@ -62,7 +62,7 @@ const RUN_WORD = (st: RunStatus) => {
 /** The progress of a run: counts, why it paused, what failed, and the actions that fit its state. */
 function RunPanel({ b, run, can, mine, busy, act }: { b: BatchRow; run: WritebackRun; can: BatchCan; mine: boolean; busy: boolean; act: (what: "resume" | "cancel" | "retry" | "retry-checked") => void }) {
   const [offset, setOffset] = useState(0);
-  const failColumns = useMemo(FAILURE_COLUMNS, []);
+  const failColumns = useMemo(() => FAILURE_COLUMNS(), []);
   const fixture = useFixture();
   const c = run.counts;
   const done = run.records - c.pending - c.sending;
