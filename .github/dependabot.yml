@@ -1,0 +1,25 @@
+# Refreshes the pins: action commit SHAs, and the upstream image digests in Dockerfiles and compose files.
+# Each refresh is a pull request that has to pass CI, so nothing moves without review.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: docker
+    directories: ["/docker"]
+    schedule:
+      interval: weekly
+    groups:
+      images:
+        patterns: ["*"]
+  - package-ecosystem: docker-compose
+    directories: ["/", "/docker"]
+    schedule:
+      interval: weekly
+    groups:
+      compose-images:
+        patterns: ["*"]
