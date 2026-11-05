@@ -7743,4 +7743,11 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Where it falls": "Einstufung",
   "{n} similar": "{n} ähnlich",
   "below its own threshold": "unter der eigenen Schwelle",
+  "the typo-tolerant search is not installed on this database": "die fehlertolerante Suche ist in dieser Datenbank nicht installiert",
+  "the typo-tolerant search index is not built on this database": "der Index der fehlertoleranten Suche ist in dieser Datenbank nicht aufgebaut",
+  "the name is too short to compare for typos": "der Name zu kurz ist, um auf Tippfehler zu vergleichen",
+  "the record has no name or description to compare for typos": "der Datensatz keinen Namen und keine Beschreibung zum Vergleich auf Tippfehler hat",
+  "the record was not searched": "der Datensatz nicht durchsucht wurde",
+  "Similar value, typo tolerated": "Ähnlicher Wert, Tippfehler toleriert",
+  "Record {record}: only identical values were searched, because {why}. A typo in its name would not be found.": "Datensatz {record}: Es wurden nur identische Werte gesucht, weil {why}. Ein Tippfehler im Namen würde nicht gefunden.",
 };

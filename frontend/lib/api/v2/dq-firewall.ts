@@ -71,12 +71,16 @@ export interface DuplicateField {
 export interface DuplicateMatch {
   /** The existing record's key. */
   key: string;
+  /** "exact": same normalised value. "similar": found by the typo-tolerant pass on a free-text field. */
+  found_by: "exact" | "similar";
   score: number;
   band: string;
   /** The auto-merge threshold the score is judged against. */
   threshold: number;
   fields: DuplicateField[];
 }
+
+export type FuzzyNotRun = "extension_missing" | "index_missing" | "key_too_short" | "no_free_text_value" | "not_searched";
 
 export interface RecordDuplicates {
   /** "warn" when a match reaches the auto-merge threshold; never "block". */
@@ -86,6 +90,8 @@ export interface RecordDuplicates {
   scored: number;
   truncated: boolean;
   matches: DuplicateMatch[];
+  /** ran false: a typo in this record's names was not looked for; the exact pass still ran. */
+  fuzzy: { ran: boolean; reason?: FuzzyNotRun | null };
 }
 
 export type DuplicateNotSearched = "module_not_supported" | "no_match_rules" | "no_population" | "no_block_field_in_population";

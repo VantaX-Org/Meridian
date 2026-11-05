@@ -7742,6 +7742,13 @@ export const en = {
   "Where it falls": "Where it falls",
   "{n} similar": "{n} similar",
   "below its own threshold": "below its own threshold",
+  "the typo-tolerant search is not installed on this database": "the typo-tolerant search is not installed on this database",
+  "the typo-tolerant search index is not built on this database": "the typo-tolerant search index is not built on this database",
+  "the name is too short to compare for typos": "the name is too short to compare for typos",
+  "the record has no name or description to compare for typos": "the record has no name or description to compare for typos",
+  "the record was not searched": "the record was not searched",
+  "Similar value, typo tolerated": "Similar value, typo tolerated",
+  "Record {record}: only identical values were searched, because {why}. A typo in its name would not be found.": "Record {record}: only identical values were searched, because {why}. A typo in its name would not be found.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

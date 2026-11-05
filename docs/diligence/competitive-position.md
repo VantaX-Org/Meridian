@@ -148,7 +148,7 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   tenant's match rules, and warns with the existing record's key, score and matched fields; it never
   blocks. The Entry gate screen shows the traffic and the duplicate result. What remains behind
   MDG: there is no approval workflow or staging area in SAP; the duplicate search finds candidates only
-  by exact normalised value of a match field (a typo is missed), skips semantic match rules, searches
+  by exact normalised value of a match field plus a trigram similarity pass on the three free-text fields only (a typo in a tax or part number is missed; the similar pass was about 89 ms for one query on 1,000,000 synthetic rows), skips semantic match rules, searches
   Meridian's golden records rather than live SAP, and has no steward workflow at entry; and the
   ABAP samples have not been run against a live SAP system. For SuccessFactors there is no sample,
   only a documented integration pattern. Meridian still fixes most bad data after the fact.
