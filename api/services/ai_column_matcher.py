@@ -137,14 +137,14 @@ def probably_headerless(headers: list[str], sample_rows: list[list[str]]) -> boo
     """True when most header cells look like data (Aletheia shapes only): a number or date, or a cell with a digit
     whose mask is one of its own column's value masks. Needs 2+ non-blank cells and 60% or more data-like.
     ponytail: a headerless file of pure text columns is not caught; upgrade by comparing against known field names."""
-    from api.services.prompt_shapes import column_profile, shape
+    from api.services.prompt_shapes import masks_of, shape
 
     cells = [(i, shape(h)["mask"]) for i, h in enumerate(headers) if str(h).strip()]
     if len(cells) < 2:
         return False
     hits = 0
     for i, m in cells:
-        masks = column_profile(r[i] for r in sample_rows if i < len(r))["masks"]
+        masks = masks_of(r[i] for r in sample_rows if i < len(r))  # local test, never sent to the model
         if _NUMERIC_DATE_MASK.match(m) or ("9" in m and m in masks):
             hits += 1
     return hits / len(cells) >= 0.6
@@ -155,9 +155,13 @@ def detect_module_and_match(
     sample_rows: list[list[str]],
     filename: str,
     module_hint: str | None = None,
+    tenant_id: str | None = None,
+    saved_mapping: dict[str, str] | None = None,
 ) -> dict:
     """Detect the SAP module and map columns to TABLE.FIELD format.
 
+    ``saved_mapping`` is the tenant's saved {source header: SAP field}; the model prompt redacts by that field.
+    ``tenant_id`` selects the tenant's "aggregates only" switch (no sample-derived shape reaches the model).
     Returns a dict matching the MatchResponse schema.
     """
     headerless = probably_headerless(headers, sample_rows)
@@ -269,7 +273,8 @@ def detect_module_and_match(
     # ── Step 3: LLM matching for remaining unmatched columns ──
     if unmatched_headers and target_fields:
         llm_results = _llm_match_columns(
-            unmatched_headers, sample_rows, headers, target_fields, detected_module
+            unmatched_headers, sample_rows, headers, target_fields, detected_module,
+            tenant_id=tenant_id, saved_mapping=saved_mapping,
         )
         already_mapped_targets = {m["target_field"] for m in mappings if m["target_field"]}
         for result in llm_results:
@@ -347,24 +352,29 @@ Use null for target if no confident match exists."""
 
 
 def facts(unmatched_headers: list[str], sample_rows: list[list[str]], all_headers: list[str],
-          target_fields: set[str], module_name: str) -> dict:
+          target_fields: set[str], module_name: str, tenant_id: str | None = None,
+          saved_mapping: dict[str, str] | None = None) -> dict:
     """What the model may see: module, schema field names, the unmatched headers and a shape profile per column
     (counts, length range, top masks). Never a cell value, a preview or a hash of one.
     ponytail: a headerless file puts its first data row in the header position; callers must not pass that as a header."""
-    from api.services.prompt_shapes import column_profile
+    from api.services.prompt_shapes import aggregates_only, column_profile
 
+    agg = aggregates_only(tenant_id)
+    saved = saved_mapping or {}
     profiles = {}
     for i, h in enumerate(all_headers):
         if h in unmatched_headers and h not in profiles:
-            profiles[h] = column_profile(row[i] for row in sample_rows if i < len(row))
+            profiles[h] = column_profile((row[i] for row in sample_rows if i < len(row)), header=h,
+                                         mapped_field=saved.get(h), aggregates=agg)
     return {"module": module_name, "expected": sorted(target_fields),
-            "unmatched": list(unmatched_headers), "profiles": profiles}
+            "unmatched": list(unmatched_headers), "profiles": profiles, "aggregates_only": agg}
 
 
 def _build_prompt(f: dict) -> str:
     lines = [
         f"{h}: rows={p['rows']} blank={p['blank']} distinct={p['distinct']} "
-        f"length={p['min_length']}-{p['max_length']} masks={p['masks']}"
+        f"length={p['min_length']}-{p['max_length']} "
+        + (f"kind={p['kind']} (shape withheld)" if p.get("masked") else f"masks={p['masks']}")
         for h, p in f["profiles"].items()
     ]
     return MATCH_USER_TEMPLATE.format(
@@ -399,9 +409,12 @@ def _llm_match_columns(
     all_headers: list[str],
     target_fields: set[str],
     module_name: str,
+    tenant_id: str | None = None,
+    saved_mapping: dict[str, str] | None = None,
 ) -> list[dict]:
     """Call the LLM to map unmatched columns. Returns list of {source, target, confidence}."""
-    prompt = _build_prompt(facts(unmatched_headers, sample_rows, all_headers, target_fields, module_name))
+    prompt = _build_prompt(facts(unmatched_headers, sample_rows, all_headers, target_fields, module_name,
+                                 tenant_id, saved_mapping))
 
     try:
         from llm.provider import safe_invoke

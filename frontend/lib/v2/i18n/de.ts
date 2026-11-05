@@ -7750,4 +7750,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "the record was not searched": "der Datensatz nicht durchsucht wurde",
   "Similar value, typo tolerated": "Ähnlicher Wert, Tippfehler toleriert",
   "Record {record}: only identical values were searched, because {why}. A typo in its name would not be found.": "Datensatz {record}: Es wurden nur identische Werte gesucht, weil {why}. Ein Tippfehler im Namen würde nicht gefunden.",
+  "Aggregates only to the model": "Nur Aggregate an das Modell",
+  "On: no sample from a row reaches the model, not a value, a mask or a key shape. Aletheia sends counts and totals only, and falls back to the deterministic checks where a sample would have helped.": "Ein: Keine Stichprobe aus einer Zeile erreicht das Modell, weder ein Wert noch eine Maske noch eine Schlüsselform. Aletheia sendet nur Anzahlen und Summen und greift auf die deterministischen Prüfungen zurück, wo eine Stichprobe geholfen hätte.",
+  "Only aggregates go to the model": "Nur Aggregate gehen an das Modell",
+  "Masked samples may go to the model": "Maskierte Stichproben dürfen an das Modell gehen",
 };

@@ -20,6 +20,7 @@ class MatchRequest(BaseModel):
     sample_rows: list[list[str]]
     filename: str
     module_hint: str | None = None
+    saved_mapping: dict[str, str] | None = None  # the tenant's saved {header: SAP field}; the prompt redacts by it
 
 
 class ColumnMappingItem(BaseModel):
@@ -68,6 +69,8 @@ async def match_columns(
         sample_rows=body.sample_rows,
         filename=body.filename,
         module_hint=body.module_hint,
+        tenant_id=str(tenant.id),
+        saved_mapping=body.saved_mapping,
     )
 
     logger.info(

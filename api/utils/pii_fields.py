@@ -69,3 +69,33 @@ def sanitise_for_prompt(field_name: str, value: object, mapped_field: str | None
     if is_pii_header(field_name) or is_pii_field(mapped_field):
         return "[REDACTED]"
     return str(value)[:200] if value is not None else "null"
+
+
+# -- Value shape -------------------------------------------------------------------------------------------------
+# A header says little ("Col7"), so a column is also judged by what its sample values look like. Shapes only: these
+# patterns decide "treat as personal"; they never leave this module.
+_VALUE_PII = (
+    re.compile(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$"),                    # e-mail
+    re.compile(r"^[A-Za-z]{2}\d{2}[A-Za-z0-9]{10,30}$"),                 # IBAN
+    re.compile(r"^\+?[\d][\d\s().\-/]{7,}$"),                           # phone or long formatted number
+    re.compile(r"^\d{9,}$"),                                            # tax, ID or account number
+)
+_NAMEISH = re.compile(r"^[A-Z][a-z]+(?:[ '\-][A-Z][a-z]+)+$")           # "Anna Muller", "Jean-Luc Picard"
+
+
+def is_pii_value(value: object) -> bool:
+    """True when one value is shaped like personal data: e-mail, IBAN, phone, long digit run, or a capitalised
+    multi-word name."""
+    t = str(value).strip() if value is not None else ""
+    return bool(t) and (any(p.match(t) for p in _VALUE_PII) or bool(_NAMEISH.match(t)))
+
+
+def column_is_personal(header: str | None, values: "list[object] | tuple[object, ...]" = (),
+                       mapped_field: str | None = None) -> bool:
+    """Fail-safe verdict for one column. With a saved mapping the mapped SAP field decides (the header is not
+    trusted, nor is a stray value). Without one: the header words, then any non-blank value shaped like PII."""
+    if mapped_field:
+        return is_pii_field(mapped_field)
+    if is_pii_header(header):
+        return True
+    return any(is_pii_value(v) for v in values)

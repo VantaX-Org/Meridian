@@ -14,7 +14,7 @@ const PROVIDERS: Record<string, LlmProvider> = {
   custom: P("Custom (BYOLLM)", false, true, "", "default"),
 };
 
-const initial = (): LlmConfig => ({ provider: "ollama", model: "llama3.2:3b", base_url: "http://ollama:11434", has_api_key: false, api_key_preview: "", temperature: 0.1, max_tokens: 8192, request_timeout: 120, azure_deployment: "", azure_api_version: "2024-08-01-preview", source: "environment" });
+const initial = (): LlmConfig => ({ provider: "ollama", model: "llama3.2:3b", base_url: "http://ollama:11434", has_api_key: false, api_key_preview: "", temperature: 0.1, max_tokens: 8192, request_timeout: 120, azure_deployment: "", azure_api_version: "2024-08-01-preview", source: "environment", aggregates_only: false });
 let config: LlmConfig | null = null;
 const state = (): LlmConfig => (config ??= initial());
 
@@ -38,6 +38,10 @@ export function llmWrite(method: string, path: string, body: unknown): unknown {
       ? { success: false, message: "Connection failed: AuthenticationError", response_preview: "" }
       : { success: true, message: `Connected to ${p.label} successfully`, response_preview: "READY" };
   }
+  if (method === "PUT" && path === "/settings/llm/aggregates-only") {
+    config = { ...state(), aggregates_only: (body as { aggregates_only: boolean }).aggregates_only };
+    return { status: "ok", aggregates_only: config.aggregates_only };
+  }
   if (method !== "PUT" || path !== "/settings/llm") return NONE_LLM;
   const p = PROVIDERS[b.provider] ?? refuse(400, `Unsupported provider: ${b.provider}`);
   const keyed = b.api_key ? true : state().has_api_key;
@@ -46,7 +50,7 @@ export function llmWrite(method: string, path: string, body: unknown): unknown {
   config = {
     ...b, base_url, model: b.model || p.default_model, has_api_key: keyed,
     api_key_preview: b.api_key ? `••••${b.api_key.slice(-4)}` : state().api_key_preview,
-    source: "database", updated_at: new Date().toISOString(), updated_by: "u-me",
+    aggregates_only: state().aggregates_only, source: "database", updated_at: new Date().toISOString(), updated_by: "u-me",
   };
   return { status: "ok", provider: b.provider, model: config.model };
 }

@@ -144,6 +144,11 @@ def ask_llm(tenant_id: str, rule: dict, shape: dict) -> Optional[list]:
     from llm.provider import get_llm, llm_is_noop, safe_invoke
     if llm_is_noop():
         return None
+    from api.services.prompt_shapes import aggregates_only
+    from api.utils.pii_fields import is_pii_header
+    if aggregates_only(tenant_id) or is_pii_header(str(rule.get("field") or "")):
+        # no pattern masks or length counts (they are read off the rows): whitespace and case counts only
+        shape = {**shape, "masks": [], "other_masks": 0, "lengths": []}
     prompt = build_prompt(rule, shape)
     llm = get_llm()
     t0 = time.monotonic()

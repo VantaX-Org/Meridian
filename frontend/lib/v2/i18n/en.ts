@@ -7749,6 +7749,10 @@ export const en = {
   "the record was not searched": "the record was not searched",
   "Similar value, typo tolerated": "Similar value, typo tolerated",
   "Record {record}: only identical values were searched, because {why}. A typo in its name would not be found.": "Record {record}: only identical values were searched, because {why}. A typo in its name would not be found.",
+  "Aggregates only to the model": "Aggregates only to the model",
+  "On: no sample from a row reaches the model, not a value, a mask or a key shape. Aletheia sends counts and totals only, and falls back to the deterministic checks where a sample would have helped.": "On: no sample from a row reaches the model, not a value, a mask or a key shape. Aletheia sends counts and totals only, and falls back to the deterministic checks where a sample would have helped.",
+  "Only aggregates go to the model": "Only aggregates go to the model",
+  "Masked samples may go to the model": "Masked samples may go to the model",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
