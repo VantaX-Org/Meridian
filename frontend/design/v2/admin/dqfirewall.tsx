@@ -9,6 +9,7 @@ import { relTime } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
 import { Grid, type GridColumn } from "../Grid";
 import { EmptyFrame, Mono } from "../parts";
+import { DuplicateResults } from "../screens/EntryDuplicates";
 import { AdminPage, Block, copyText, Fld, Kv, Loaded, NeedsPermission, Note, StatusWord, useCan } from "./kit";
 
 type Row = FirewallFailure & { record: number };
@@ -60,6 +61,7 @@ export function DqFirewallSection() {
   const q = useFirewallSummary(allowed);
   const [obj, setObj] = useState("material_master");
   const [text, setText] = useState(SAMPLE);
+  const [duplicates, setDuplicates] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<FirewallVerdict | null>(null);
@@ -79,7 +81,7 @@ export function DqFirewallSection() {
     }
     setPending(true);
     try {
-      setResult(await validateRecords(obj, records));
+      setResult(await validateRecords(obj, records, { duplicates }));
       void refreshAdmin(qc, "dqfirewall");
     } catch (e) {
       setError(errorSentence(e, t("The records could not be checked.")));
@@ -126,6 +128,9 @@ export function DqFirewallSection() {
           <Fld label={t("Records, as JSON")} wide mono>
             <textarea rows={9} value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} />
           </Fld>
+          <Fld label={t("Look for duplicates among existing records")}>
+            <input type="checkbox" checked={duplicates} onChange={(e) => setDuplicates(e.target.checked)} />
+          </Fld>
         </div>
         <div className="m2-adm-acts">
           <button type="button" className="m2-btn m2-strong" disabled={pending} onClick={() => void run()}>{t("Check records")}</button>
@@ -145,6 +150,7 @@ export function DqFirewallSection() {
               rowId={(r) => `${r.record}:${r.rule_id}`}
               emptyFrame={<EmptyFrame>{t("Every record passed every enabled rule.")}</EmptyFrame>}
             />
+            <DuplicateResults res={result} />
           </>
         ) : null}
       </Block>

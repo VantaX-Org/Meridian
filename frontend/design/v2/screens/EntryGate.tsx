@@ -11,6 +11,7 @@ import { int } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, TrendChart, niceTicks, type TrendPoint } from "../charts";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { CcBanner, CcPage } from "./cc-parts";
+import { DuplicateResults } from "./EntryDuplicates";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
 
@@ -83,12 +84,13 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
   const [obj, setObj] = useState<string>(modules[0] ?? "material_master");
   const [text, setText] = useState(SAMPLE);
   const [suggest, setSuggest] = useState(true);
+  const [duplicates, setDuplicates] = useState(false);
   const [bad, setBad] = useState<string | null>(null);
   const run = useMutation({
     mutationFn: async () => {
       const parsed: unknown = JSON.parse(text);
       if (!Array.isArray(parsed)) throw new SyntaxError("array");
-      return validateRecords(obj, parsed as Record<string, string>[], suggest);
+      return validateRecords(obj, parsed as Record<string, string>[], { suggest, duplicates });
     },
     onMutate: () => setBad(null),
     onError: (e) => { if (e instanceof SyntaxError) setBad(t("The records must be a JSON list of objects, each with TABLE.FIELD values.")); },
@@ -112,6 +114,9 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
         </label>
         <label>
           <input type="checkbox" checked={suggest} onChange={(e) => setSuggest(e.target.checked)} /> {t("Show a fix where the rule gives one")}
+        </label>
+        <label>
+          <input type="checkbox" checked={duplicates} onChange={(e) => setDuplicates(e.target.checked)} data-testid="entry-gate-duplicates" /> {t("Look for duplicates among existing records")}
         </label>
       </div>
       <button type="button" className="m2-btn m2-strong" disabled={run.isPending} onClick={() => run.mutate()} data-testid="entry-gate-run">{t("Check records")}</button>
@@ -150,6 +155,7 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
               </table>
             </ScrollFrame>
           )}
+          <DuplicateResults res={res} />
         </>
       ) : null}
     </Panel>

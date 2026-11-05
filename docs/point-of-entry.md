@@ -2,7 +2,7 @@
 
 Meridian's data quality firewall judges a candidate record against your enabled rules and answers at once. This page shows how to put that answer in front of the SAP save for the three licensed objects: material master, customer master and SuccessFactors employee data.
 
-What this is and is not. It is a synchronous check with a block or warn decision inside the SAP save. It is not a change workflow: there is no approval chain inside SAP, no staging area and no duplicate search at entry. Meridian's change requests (`/api/v1/change-requests`) carry approvals, but they are separate from the save in SAP.
+What this is and is not. It is a synchronous check with a block or warn decision inside the SAP save. It is not a change workflow: there is no approval chain inside SAP and no staging area. A duplicate search is available on request (see below); it warns and never blocks. Meridian's change requests (`/api/v1/change-requests`) carry approvals, but they are separate from the save in SAP.
 
 ## What the firewall answers
 
@@ -24,6 +24,22 @@ Add `"suggest": true` to the body and a failure may carry a `suggestion`. Withou
 - `kind: "allowed_values"`: the rule lists the values it accepts, shown with the labels the rule carries.
 
 Every suggestion names its `rule_id` and `source`. If no grounded value exists, there is no `suggestion` key. Suggestions are computed in Meridian with no language model; the record values never leave the check engine. Values come from the rule definition, not from your live SAP check tables.
+
+## Duplicate search at entry (opt-in)
+
+Add `"duplicates": true` to the body and Meridian also looks for existing records that a candidate resembles. Without the flag the response is unchanged. It covers `material_master`, `sd_customer_master` and `business_partner`; for any other object the answer says nothing was searched.
+
+It reuses the tenant's active match rules, their thresholds and the match engine, and searches the golden records Meridian already holds (`master_records`), not your live SAP tables. Candidates are found by an exact match on the normalised value of each match field, then scored by the same engine. Semantic rules are skipped and counted, so no language model runs. At most 50 candidates are scored per record and at most 10 matches are returned; when the cap cuts a search the record says `truncated: true`.
+
+Per record the response carries `duplicates`: a `verdict` (`warn` when a match scores at or above the auto-merge threshold, otherwise `pass`), and for each match the existing record's key, its score, the threshold used, and for each field the similarity and whether it met its own threshold. It never carries the other record's field values. A duplicate warns and never blocks. The top level carries `duplicate_search`; when `searched` is false it gives a `reason` (`module_not_supported`, `no_match_rules`, `no_population`, or `no_block_field_in_population` when no existing record carries a field the search looks up, which is the case for a flat upload that kept its own column names), and that must not be read as "no duplicates". The same holds per record: `duplicates.searched` is false when the record has no usable value in a looked-up field (blank, a placeholder such as `N/A`, or a value with no ASCII letters or digits, so a name written only in a non-Latin script is not searched).
+
+The audit entry records counts only (records searched, matches, warned and truncated records), never values or keys.
+
+Measured once on a laptop: local Postgres 16 in Docker, about 1,000,000 material records in one tenant, three match rules, the eight block-key indexes built, table analysed, warm cache, a superuser role (so row level security was not in the timing). One record with one planted duplicate took 1.0 ms at the median (21 runs, 1.6 ms worst); a record with no candidates took 0.8 ms; a batch of 100 records took 44.8 ms at the median (49.1 ms worst). These are database-and-engine times without HTTP, authentication or network, and one run on one machine, not a guarantee.
+
+Limits: a typo in a match field's value is not found, because candidates are found by exact normalised value; a record of the same number in another connected system is passed over with the record being saved, because a candidate does not name its system; there is no steward workflow at entry; and the population is as fresh as the last load into Meridian.
+
+The sample ABAP passes `iv_duplicates = abap_true` and adds a warning line per match. It has not been run against a live SAP system.
 
 ## Setup
 
