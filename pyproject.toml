@@ -11,3 +11,11 @@ select = ["E9", "F"]
 # pytest fixtures are imported from other test modules and named as parameters, which pyflakes
 # reads as an unused import (F401) redefined by the argument (F811).
 "tests/**" = ["F401", "F811"]
+
+[tool.mypy]
+# Type gate (PC-10). Runs over the server packages only, with default (non-strict) checking.
+# Third-party packages are not installed in the CI job, so their imports resolve to Any.
+python_version = "3.12"
+files = ["api", "checks", "workers", "sap", "agents", "db", "llm"]
+explicit_package_bases = true
+ignore_missing_imports = true
