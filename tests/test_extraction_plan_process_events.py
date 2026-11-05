@@ -89,7 +89,7 @@ def test_jcds_reads_via_both_order_and_wbs_parents() -> None:
 
 def test_qmel_iwerk_is_dropped_and_reported() -> None:
     p = _plan(["process_events_pm"])
-    assert "IWERK" not in p["QMEL"].fields and p["QMEL"].partial
+    assert "IWERK" not in p["QMEL"].fields and p["QMEL"].partial and p["QMEL"].columns_dropped
     assert ep.process_event_gaps(["process_events_pm"], ECC, "ecc") == {"QMEL": ["IWERK"]}
 
 

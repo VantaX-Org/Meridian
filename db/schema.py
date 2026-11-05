@@ -891,6 +891,10 @@ class MigrationExportFile(Base):
     record_keys = Column(ARRAY(Text), server_default="{}")
     filename = Column(Text, nullable=False)
     exported_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    snapshot_prefix = Column(Text, nullable=True)  # parquet of what was handed over (load + held back)
+    snapshot_sha256 = Column(Text, nullable=True)
+    snapshot_at = Column(DateTime(timezone=True), nullable=True)
+    snapshot_error = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
     __table_args__ = (

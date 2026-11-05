@@ -102,6 +102,7 @@ def _tenant_storage_prefixes(tenant_id: str) -> list[tuple[str, str]]:
 
     return [(settings.minio_bucket_uploads, f"uploads/{tenant_id}/"),
             (settings.minio_bucket_uploads, f"staging/{tenant_id}/"),
+            (settings.minio_bucket_uploads, f"migration-snapshots/{tenant_id}/"),
             (settings.minio_bucket_reports, f"reports/{tenant_id}/"),
             (settings.minio_bucket_reports, f"archive/{tenant_id}/")]
 

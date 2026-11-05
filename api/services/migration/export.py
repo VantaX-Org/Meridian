@@ -68,6 +68,20 @@ def build_load_tables(frames: TableFrames, module_tables: dict[str, list[str]], 
     return {t: pd.concat(parts, ignore_index=True) for t, parts in out.items() if parts}
 
 
+def target_dictionary(session, run) -> Dictionary:
+    """The dictionary of the run's destination system, or of its target release when no system is set."""
+    from sqlalchemy import text
+
+    from api.services.source_design import dictionary_for
+    from sap.ddic import get_dictionary
+
+    if run.dest_system_id:
+        return dictionary_for(session, run.dest_system_id)
+    target_type = run.target_release or session.execute(
+        text("SELECT system_type FROM sap_systems WHERE id = :s"), {"s": run.dest_system_id}).scalar()
+    return get_dictionary(target_type or "s4hana")
+
+
 def load_run_tables(session, run, held_back: Optional[dict[str, pd.DataFrame]] = None,
                     ) -> tuple[dict[str, pd.DataFrame], Dictionary]:
     """The load files of one analysed migration run, and the target dictionary they are shaped by.
@@ -97,8 +111,7 @@ def load_run_tables(session, run, held_back: Optional[dict[str, pd.DataFrame]] =
     mtables = {m: module_source_tables(m, frames) for m in run.modules}
     maps = {m: load_mappings(session, m, target_type) for m in run.modules}
     vms = {m: load_value_maps(session, m, run.source_system_id, run.dest_system_id) for m in run.modules}
-    target_dict = (dictionary_for(session, run.dest_system_id) if run.dest_system_id
-                   else get_dictionary(target_type or "s4hana"))
+    target_dict = target_dictionary(session, run)
     return build_load_tables(frames, mtables, maps, vms, blocked, target_dict=target_dict,
                              held_back=held_back), target_dict
 

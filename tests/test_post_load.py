@@ -90,3 +90,22 @@ def test_scores_actual_and_reasons():
                     {"m": {"a": "Rule a"}})["modules"][0]
     assert s["actual"] is not None and [r["check_id"] for r in s["reasons"]] == ["a"]
     assert s["reasons"][0]["description"] == "Rule a" and s["reasons"][0]["change"] == 10.0
+
+
+def test_dropped_non_key_column_is_compared_on_the_rest():
+    # target extracted every record but lost NAME1 and ORT01 (columns_dropped, not partial): key compare plus present fields
+    tgt = _target({"LFA1.LIFNR": ["0000000001", "0000000002"]})
+    t = _row_with(tgt)
+    assert t["comparable"] and t["missing"] == 1 and t["found"] == 2
+    assert {f["field"]: f["in_target_extract"] for f in t["fields"]}["NAME1"] is False
+    assert all(f["differing"] == 0 for f in t["fields"])
+
+
+def test_windowed_read_stays_not_comparable_and_absent_key_is_reported():
+    assert _row(_target({"LFA1.LIFNR": ["0000000001"]}, partial={"LFA1"}))["comparable"] is False
+    t = _row(_target({"LFA1.NAME1": ["Alpha"]}))  # the key column itself was lost
+    assert not t["comparable"] and t["reason"] == "key_not_in_target_extract"
+
+
+def _row_with(tgt):
+    return reconcile(EXPECTED, {}, tgt, D)["tables"][0]

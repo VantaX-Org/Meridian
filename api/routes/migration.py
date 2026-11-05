@@ -11,6 +11,7 @@ inside the customer's deployment.
 
 import datetime
 import io
+import logging
 import re
 import uuid
 from typing import Literal, Optional
@@ -25,6 +26,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, csv_response
 from api.services.rbac import Scope, current_user_id, require_permission, require_scope, scope_from_path
+
+logger = logging.getLogger("meridian.migration")
 
 router = APIRouter(prefix="/api/v1/migration", tags=["migration"])
 
@@ -1128,19 +1131,32 @@ async def export_migration(
     def _build():
         with Session(get_sync_engine()) as s:
             s.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
-            return load_run_tables(s, run)[0]
+            held: dict = {}
+            return load_run_tables(s, run, held)[0], held
 
-    tables = await run_in_threadpool(_build)
+    tables, held = await run_in_threadpool(_build)
     if not tables:
         raise HTTPException(status_code=404, detail="No transfer-ready records to export.")
     total = sum(len(t) for t in tables.values())
     content = to_xlsx(tables) if export_format == "xlsx" else to_csv_zip(tables)
     fname = f"migration_{run_id}.{'xlsx' if export_format == 'xlsx' else 'zip'}"
+    # What was handed over is kept for post-load reconciliation. A storage failure never fails the export: the
+    # row records the error, and reconciliation then rebuilds from the current mappings and says so.
+    from api.services.migration import snapshot
+    export_id = uuid.uuid4()
+    snap: dict = {"pre": None, "sha": None, "at": None, "err": None}
+    try:
+        snap["pre"], snap["sha"] = await run_in_threadpool(snapshot.write, tenant.id, run_id, export_id, tables, held)
+        snap["at"] = datetime.datetime.now(datetime.timezone.utc)
+    except Exception as e:
+        logger.warning("migration export snapshot failed: %s", e)
+        snap["err"] = f"{type(e).__name__}: {e}"[:500]
     await db.execute(
         text("INSERT INTO migration_export_files (id, tenant_id, run_id, export_format, record_count, filename, "
-             "exported_by) VALUES (gen_random_uuid(), :tid, :rid, :fmt, :cnt, :fn, :uid)"),
-        {"tid": str(tenant.id), "rid": run_id, "fmt": export_format, "cnt": total, "fn": fname,
-         "uid": current_user_id(request)},
+             "exported_by, snapshot_prefix, snapshot_sha256, snapshot_at, snapshot_error) "
+             "VALUES (:id, :tid, :rid, :fmt, :cnt, :fn, :uid, :pre, :sha, :at, :err)"),
+        {"id": export_id, "tid": str(tenant.id), "rid": run_id, "fmt": export_format, "cnt": total, "fn": fname,
+         "uid": current_user_id(request), **snap},
     )
     await db.execute(text("UPDATE migration_runs SET status = 'exported' WHERE id = :rid"), {"rid": run_id})
     await db.commit()

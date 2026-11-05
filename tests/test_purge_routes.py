@@ -404,6 +404,7 @@ def test_tenant_purge_sweeps_the_tenant_prefixes_and_counts_them(monkeypatch):
     monkeypatch.setattr("api.services.storage.delete_prefix", delete_prefix)
     out = routes._purge_tenant(tid, routes.Actor(email="admin@example.com"))
     assert swept == [(settings.minio_bucket_uploads, f"uploads/{tid}/"), (settings.minio_bucket_uploads, f"staging/{tid}/"),
+                     (settings.minio_bucket_uploads, f"migration-snapshots/{tid}/"),
                      (settings.minio_bucket_reports, f"reports/{tid}/"), (settings.minio_bucket_reports, f"archive/{tid}/")]
     assert out["rows_by_table"][f"storage objects uploads/{tid}/"] == 2
     assert out["bytes_freed"] == 100 + 10

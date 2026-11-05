@@ -516,7 +516,7 @@ class ConnectivityManager:
                     if table in needed_raw or sink is None:
                         raw[table] = df
                     entry = {"table": table, "status": "live", "rows": len(df), "purpose": plan.purpose,
-                             "partial": plan.partial, "modules": sorted(plan.modules),
+                             "partial": plan.partial, "columns_dropped": plan.columns_dropped, "modules": sorted(plan.modules),
                              "window": where if where and not where.startswith(tuple(
                                  f"{f} = " for f in ("DATBI", "BDATU", "INACT"))) else None,
                              "truncated": len(df) >= max_rows, "seconds": round(time.monotonic() - t0, 1)}

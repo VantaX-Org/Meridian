@@ -15,6 +15,12 @@ Every statement carries ``tenant_id`` and runs under row level security. The led
 and the audit_log row hold an HMAC of the subject and the request id, never the key. The routes sit under a
 path the audit middleware skips, because it would copy the request body, key included.
 
+Export snapshots (migration-snapshots/<tenant>/, kept for post-load reconciliation) hold load values of every record
+handed over. Erasure rewrites them per record: the subject's rows leave each snapshot table, and the digest on the
+export row is recomputed. A snapshot that cannot be read, verified or rewritten is deleted whole and its pointer
+cleared, so reconciliation rebuilds. Rows are matched on the snapshot's SOURCE_RECORD key; a record that mentions the
+subject only inside another record's values is not found. Raw export files already downloaded are out of reach.
+
 What erasure cannot do: it does not delete from SAP. A completed erasure writes the record keys to the suppression
 list (api/services/suppression.py), so extraction and analysis drop them until an admin lifts the suppression, but
 SAP still holds the record and a path that bypasses the shared read and write points would show it again; it cannot reach backups; it does not rewrite raw
@@ -316,6 +322,112 @@ def _blank_scan() -> dict[str, Any]:
     return {"files": {}, "rows": 0, "scanned_bytes": 0, "skipped": [], "errors": [], "complete": True}
 
 
+def _snapshot_hits(df: Any, usable: list[str]) -> Any:
+    """Boolean Series: rows of a snapshot table whose SOURCE_RECORD carries every part of any subject key."""
+    import pandas as pd
+
+    if "SOURCE_RECORD" not in df.columns:
+        return pd.Series(False, index=df.index)
+    wanted = [{f: v.strip() for f, v in key_parts(k).items()} for k in usable]
+    wanted = [w for w in wanted if any(w.values())]
+
+    def hit(src: Any) -> bool:
+        have = {f: v.strip() for f, v in key_parts(src if isinstance(src, str) else "").items()}
+        return any(all(have.get(f) == v for f, v in w.items()) for w in wanted)
+    return df["SOURCE_RECORD"].map(hit).astype(bool)
+
+
+def scan_snapshots(session: Any, tenant_id: str, keys: list[str], *, rewrite: bool, collect: bool = False
+                   ) -> dict[str, Any]:
+    """Same contract as ``scan_extracts``, for the export snapshots of migration runs
+    (``migration-snapshots/<tenant>/``, api/services/migration/snapshot.py). They hold the load values of every
+    record handed over, so a subject must not stay in them. With ``rewrite`` each affected snapshot table is
+    rewritten without the subject's rows and the export row's digest is recomputed; the rest of the snapshot stays
+    usable. If a snapshot cannot be read, verified or rewritten, it is deleted whole and its pointer cleared
+    (reconciliation then rebuilds from the mappings). Only if even that fails is the scan reported incomplete."""
+    import pandas as pd
+
+    from api.services.migration import snapshot
+
+    out = _blank_scan()
+    if collect:
+        out["samples"] = {}
+    usable = [k for k in keys if key_parts(k)]
+    if not usable:
+        return out
+    bucket = settings.minio_bucket_uploads
+    try:
+        exports = session.execute(text(
+            "SELECT id, snapshot_prefix, snapshot_sha256 FROM migration_export_files "
+            "WHERE tenant_id = :t AND snapshot_prefix IS NOT NULL"), {"t": str(tenant_id)}).fetchall()
+    except Exception as e:
+        out["errors"].append(f"snapshots: {type(e).__name__}")
+        out["complete"] = False
+        return out
+    for ex in exports:
+        pre = ex[1]
+        try:
+            if not pre.startswith(f"{snapshot.ROOT}/{tenant_id}/"):
+                raise ValueError("foreign prefix")
+            names = [n for n, sz in storage.list_prefix(bucket, pre) if n.endswith(".parquet")]
+            parts = {n: storage.download_file(bucket, n) for n in names}
+            out["scanned_bytes"] += sum(len(b) for b in parts.values())
+            if rewrite and snapshot.digest(parts) != ex[2]:
+                raise ValueError("digest mismatch")
+            changed = False
+            for n, data in list(parts.items()):
+                df = pd.read_parquet(io.BytesIO(data))
+                hits = _snapshot_hits(df, usable)
+                k = int(hits.sum())
+                if not k:
+                    continue
+                out["files"][n] = k
+                out["rows"] += k
+                if collect:
+                    out["samples"][n] = df[hits].head(EXPORT_ROWS_PER_FILE).to_dict("records")
+                if rewrite:
+                    buf = io.BytesIO()
+                    df[~hits].to_parquet(buf, index=False)
+                    parts[n] = buf.getvalue()
+                    storage.upload_file(bucket, n, parts[n], suppress=False)
+                    changed = True
+            if rewrite and changed:
+                session.execute(text("UPDATE migration_export_files SET snapshot_sha256 = :d "
+                                     "WHERE tenant_id = :t AND id = :id"),
+                                {"d": snapshot.digest(parts), "t": str(tenant_id), "id": ex[0]})
+                session.commit()
+        except Exception as e:
+            logger.warning("subject snapshot scan failed on %s: %s", pre, type(e).__name__)
+            if not rewrite:
+                out["errors"].append(f"{pre}: {type(e).__name__}")
+                out["complete"] = False
+                continue
+            try:  # cannot rewrite it safely: remove it whole; reconciliation falls back to a rebuild
+                storage.delete_prefix(bucket, pre)
+                session.execute(text(
+                    "UPDATE migration_export_files SET snapshot_prefix = NULL, snapshot_sha256 = NULL, "
+                    "snapshot_error = 'removed by a data-subject erasure' WHERE tenant_id = :t AND id = :id"),
+                    {"t": str(tenant_id), "id": ex[0]})
+                session.commit()
+                out["files"][pre] = out["files"].get(pre, 0) + 1
+            except Exception as e2:
+                out["errors"].append(f"{pre}: {type(e2).__name__}")
+                out["complete"] = False
+    return out
+
+
+def scan_all(session: Any, tenant_id: str, keys: list[str], *, rewrite: bool, collect: bool = False) -> dict[str, Any]:
+    """Staging extracts and export snapshots, merged into one scan result."""
+    a = scan_extracts(tenant_id, keys, rewrite=rewrite, collect=collect)
+    b = scan_snapshots(session, tenant_id, keys, rewrite=rewrite, collect=collect)
+    out = {"files": {**a["files"], **b["files"]}, "rows": a["rows"] + b["rows"],
+           "scanned_bytes": a["scanned_bytes"] + b["scanned_bytes"], "skipped": a["skipped"] + b["skipped"],
+           "errors": a["errors"] + b["errors"], "complete": a["complete"] and b["complete"]}
+    if collect:
+        out["samples"] = {**a.get("samples", {}), **b.get("samples", {})}
+    return out
+
+
 # ponytail: runs inside the request and holds one file in memory, bounded by MAX_OBJECT_BYTES and MAX_SCAN_BYTES;
 # move it to a Celery task if extract files outgrow a request.
 def scan_extracts(tenant_id: str, keys: list[str], *, rewrite: bool, collect: bool = False) -> dict[str, Any]:
@@ -419,7 +531,7 @@ def search(session: Any, tenant_id: str, subject: str, actor: Actor) -> dict[str
     keys, shmac, kmac = _resolve(session, tenant_id, subject)
     full = "=" in subject
     rows = count_rows(session, tenant_id, keys, include_full_key_only=full)
-    scan = scan_extracts(tenant_id, keys, rewrite=False)
+    scan = scan_all(session, tenant_id, keys, rewrite=False)
     rid = _ledger(session, tenant_id, kind="access", dry_run=True, subject_hmac=shmac, key_set_hmac=kmac,
                   keys=len(keys), rows=rows, storage_doc=_storage_doc(scan), actor=actor)
     _audit(session, tenant_id, actor, "subject_search", rid, shmac, rows)
@@ -445,7 +557,7 @@ def export(session: Any, tenant_id: str, subject: str, actor: Actor) -> tuple[by
             if rows[t.table] > EXPORT_ROWS_PER_TABLE:
                 truncated.append(t.table)
             z.writestr(f"{t.table}.json", json.dumps([r[0] for r in data], indent=2, default=str))
-        scan = scan_extracts(tenant_id, keys, rewrite=False, collect=True)
+        scan = scan_all(session, tenant_id, keys, rewrite=False, collect=True)
         if scan["files"]:
             z.writestr("extracts.json", json.dumps(
                 {"rows_by_file": scan["files"], "sample_rows": scan.get("samples", {})}, indent=2, default=str))
@@ -502,7 +614,7 @@ def erase(session: Any, tenant_id: str, subject: str, actor: Actor, *, dry_run: 
     full = "=" in subject
     if dry_run:
         rows = count_rows(session, tenant_id, keys, include_full_key_only=full)
-        scan = scan_extracts(tenant_id, keys, rewrite=False)
+        scan = scan_all(session, tenant_id, keys, rewrite=False)
         rid = _ledger(session, tenant_id, kind="erasure", dry_run=True, subject_hmac=shmac, key_set_hmac=kmac,
                       keys=len(keys), rows=rows, storage_doc=_storage_doc(scan), actor=actor)
         _audit(session, tenant_id, actor, "subject_erase_dry_run", rid, shmac, rows)
@@ -558,7 +670,7 @@ def erase(session: Any, tenant_id: str, subject: str, actor: Actor, *, dry_run: 
     # a run may have started during the database half; a rewrite now could lose its writes or race its reads
     try:
         _require_quiet(session, tenant_id)
-        scan = scan_extracts(tenant_id, keys, rewrite=True)
+        scan = scan_all(session, tenant_id, keys, rewrite=True)
     except SubjectError as e:
         scan = {**_blank_scan(), "errors": [e.code], "complete": False}
     doc = _storage_doc(scan)

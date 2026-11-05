@@ -383,7 +383,12 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                   n: int(sum.comparable ?? 0), m: int(sum.tables ?? 0), e: int(sum.expected ?? 0), f: int(sum.found ?? 0), x: int(sum.missing ?? 0), u: int(sum.unexpected ?? 0), w: int(sum.differing_fields ?? 0),
                 })}
               </p>
-              <p className="m2-meta">{t("The expected side is rebuilt from the current field mappings, not from the files handed over. A mapping changed after the load shows as a difference.")}</p>
+              <p className="m2-meta">
+                {sum.basis === "snapshot"
+                  ? t("Compared against the files exported on {date}.", { date: formatDate(sum.snapshot_exported_at ?? null, "date") })
+                  : t("Rebuilt from the current field mappings. No export snapshot was kept for this run, so a mapping changed after the load shows as a difference.")}
+                {sum.snapshot_skipped ? ` ${t("The export snapshot could not be used, so the expected side was rebuilt from the current field mappings.")}` : ""}
+              </p>
               <Table title={t("Data quality score, source, projected and actual")} head={[t("Object"), t("Source"), t("Projected"), t("Actual in target")]}>
                 {d!.scores.map((m) => (
                   <tr key={m.module}>
