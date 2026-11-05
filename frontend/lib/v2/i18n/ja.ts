@@ -7908,6 +7908,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Previous page": "前のページ",
   "Records handled by the write-back": "書き戻しで処理済みのレコード",
   "Records SAP refused or that need a check": "SAP が拒否した、または確認が必要なレコード",
+  "Checked in SAP, send again": "SAPで確認済み、再送信",
   "Retry failed": "失敗分を再試行",
   "SAP message": "SAP メッセージ",
   "Sent {sent} of {records}, refused {failed}, to check {check}, waiting {pending}.": "{records} 件中 {sent} 件送信済み、{failed} 件拒否、{check} 件要確認、{pending} 件待機中。",

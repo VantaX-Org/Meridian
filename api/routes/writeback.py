@@ -842,12 +842,12 @@ async def send_batch_writeback(
             "errors) VALUES (:id, :tid, :bid, 'queued', :u, :l, :eo, CAST(:errs AS jsonb))"),
             {"id": run_id, "tid": tenant_id, "bid": batch_id, "u": user, "l": current_user_label(), "eo": export_only,
              "errs": json.dumps(errors)})
-        for seq, ((system_id, module, key), changes) in enumerate(sorted(todo.items())):
-            await db.execute(text(
-                "INSERT INTO writeback_run_records (tenant_id, run_id, seq, system_id, module, record_key, changes) "
-                "VALUES (:tid, :r, :seq, :sys, :m, :k, CAST(:c AS jsonb))"),
-                {"tid": tenant_id, "r": run_id, "seq": seq, "sys": system_id, "m": module, "k": key,
-                 "c": json.dumps(changes, default=str)})
+        await db.execute(text(
+            "INSERT INTO writeback_run_records (tenant_id, run_id, seq, system_id, module, record_key, changes) "
+            "VALUES (:tid, :r, :seq, :sys, :m, :k, CAST(:c AS jsonb))"),
+            [{"tid": tenant_id, "r": run_id, "seq": seq, "sys": system_id, "m": module, "k": key,
+              "c": json.dumps(changes, default=str)}
+             for seq, ((system_id, module, key), changes) in enumerate(sorted(todo.items()))])
         await db.commit()
     except IntegrityError:  # a second send won the race for the one open run
         await db.rollback()
@@ -954,7 +954,7 @@ async def cancel_batch_run(batch_id: uuid.UUID, db: AsyncSession = Depends(get_d
         raise HTTPException(status_code=404, detail="This batch has not been sent to SAP")
     if run["status"] not in _OPEN:
         raise HTTPException(status_code=409, detail="The run is already finished.")
-    if run["status"] == "running" and not run["stale"]:
+    if run["status"] in ("running", "cancelling") and not run["stale"]:  # the worker is alive: it finishes the stop
         new = "cancelling"
     else:
         new = "cancelled"

@@ -14,7 +14,7 @@ from api.main import app
 from sap.base import SAPConnectorError
 from tests.route_auth import patch_tenant
 from tests.test_bapi_writeback import FakeRFC
-from tests.test_writeback_batch_route_pg import HEADERS, drive
+from tests.test_writeback_batch_route_pg import HEADERS, ME, drive
 from workers.db import tenant_session
 from workers.tasks import run_batch_writeback as worker
 
@@ -213,6 +213,50 @@ async def test_cancel_stops_after_the_chunk_in_progress(env, monkeypatch):
     r = await _call("POST", f"/api/v1/writeback/batches/{bid}/run/cancel")
     assert r.status_code == 200 and r.json()["status"] == "cancelled"
     assert (await _call("POST", f"/api/v1/writeback/batches/{bid}/run/cancel")).status_code == 409
+
+
+@pytest.mark.anyio
+async def test_a_second_cancel_leaves_a_live_worker_to_finish_the_stop(env, monkeypatch):
+    engine, tid, bid, sid, queued = env
+    _sap(monkeypatch)
+    run = await _send(env)
+    q(env, "UPDATE writeback_runs SET status = 'running', heartbeat_at = now() WHERE id = :r", r=run["id"])
+    q(env, "UPDATE writeback_run_records SET state = 'sending' WHERE seq = 0")
+    for _ in range(2):
+        r = await _call("POST", f"/api/v1/writeback/batches/{bid}/run/cancel")
+        assert r.status_code == 200 and r.json()["status"] == "cancelling"
+    assert r.json()["counts"]["sending"] == 1 and r.json()["counts"]["needs_check"] == 0
+
+
+@pytest.mark.anyio
+async def test_a_worker_stops_sending_once_the_run_is_no_longer_its_own(env, monkeypatch):
+    engine, tid, bid, sid, queued = env
+    fake, _ = _sap(monkeypatch)
+    run = await _send(env)
+    orig, seen = fake.execute_bapi, []
+
+    def cancel_outright_after_first_commit(call):
+        out = orig(call)
+        if call.bapi_name == "BAPI_TRANSACTION_COMMIT" and not seen:
+            seen.append(1)
+            q(env, "UPDATE writeback_runs SET status = 'cancelled' WHERE id = :r", r=run["id"])
+        return out
+
+    fake.execute_bapi = cancel_outright_after_first_commit
+    drive(tid, run["id"])
+    got = (await _call("GET", f"/api/v1/writeback/batches/{bid}/run")).json()
+    assert got["status"] == "cancelled" and got["counts"]["committed"] == 2 and got["counts"]["pending"] == N - 2
+
+
+@pytest.mark.anyio
+async def test_the_batch_creator_cannot_resume_or_retry(env, monkeypatch):
+    engine, tid, bid, sid, queued = env
+    _sap(monkeypatch)
+    run = await _send(env)
+    q(env, "UPDATE writeback_runs SET status = 'paused' WHERE id = :r", r=run["id"])
+    q(env, "UPDATE remediation_batches SET created_by = :u WHERE id = :b", u=ME, b=bid)
+    for action in ("resume", "retry-failed"):
+        assert (await _call("POST", f"/api/v1/writeback/batches/{bid}/run/{action}")).status_code == 403
 
 
 @pytest.mark.anyio

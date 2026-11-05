@@ -7907,6 +7907,7 @@ export const en = {
   "Previous page": "Previous page",
   "Records handled by the write-back": "Records handled by the write-back",
   "Records SAP refused or that need a check": "Records SAP refused or that need a check",
+  "Checked in SAP, send again": "Checked in SAP, send again",
   "Retry failed": "Retry failed",
   "SAP message": "SAP message",
   "Sent {sent} of {records}, refused {failed}, to check {check}, waiting {pending}.": "Sent {sent} of {records}, refused {failed}, to check {check}, waiting {pending}.",

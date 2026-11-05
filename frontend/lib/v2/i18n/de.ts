@@ -7908,6 +7908,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Previous page": "Vorherige Seite",
   "Records handled by the write-back": "Vom Zurückschreiben bearbeitete Datensätze",
   "Records SAP refused or that need a check": "Von SAP abgelehnte oder zu prüfende Datensätze",
+  "Checked in SAP, send again": "In SAP geprüft, erneut senden",
   "Retry failed": "Fehlgeschlagene wiederholen",
   "SAP message": "SAP-Meldung",
   "Sent {sent} of {records}, refused {failed}, to check {check}, waiting {pending}.": "{sent} von {records} gesendet, {failed} abgelehnt, {check} zu prüfen, {pending} wartend.",

@@ -60,7 +60,7 @@ const RUN_WORD = (st: RunStatus) => {
 };
 
 /** The progress of a run: counts, why it paused, what failed, and the actions that fit its state. */
-function RunPanel({ b, run, can, mine, busy, act }: { b: BatchRow; run: WritebackRun; can: BatchCan; mine: boolean; busy: boolean; act: (what: "resume" | "cancel" | "retry") => void }) {
+function RunPanel({ b, run, can, mine, busy, act }: { b: BatchRow; run: WritebackRun; can: BatchCan; mine: boolean; busy: boolean; act: (what: "resume" | "cancel" | "retry" | "retry-checked") => void }) {
   const [offset, setOffset] = useState(0);
   const failColumns = useMemo(FAILURE_COLUMNS, []);
   const fixture = useFixture();
@@ -118,6 +118,11 @@ function RunPanel({ b, run, can, mine, busy, act }: { b: BatchRow; run: Writebac
           {!open && c.failed > 0 && can2 ? (
             <button type="button" className="m2-btn" disabled={busy} onClick={() => act("retry")}>
               {tr("Retry failed")}
+            </button>
+          ) : null}
+          {!open && c.needs_check > 0 && can2 ? (
+            <button type="button" className="m2-btn" disabled={busy} onClick={() => act("retry-checked")}>
+              {tr("Checked in SAP, send again")}
             </button>
           ) : null}
         </div>
@@ -195,11 +200,11 @@ export function LiveWriteback({ b, can }: { b: BatchRow; can: BatchCan }) {
       setBusy(null);
     }
   };
-  const runAct = async (what: "resume" | "cancel" | "retry") => {
+  const runAct = async (what: "resume" | "cancel" | "retry" | "retry-checked") => {
     setBusy("act");
     setFailure(null);
     try {
-      qc.setQueryData(runKey, await (what === "resume" ? resumeBatchRun(b.id) : what === "cancel" ? cancelBatchRun(b.id) : retryFailedBatchRun(b.id)));
+      qc.setQueryData(runKey, await (what === "resume" ? resumeBatchRun(b.id) : what === "cancel" ? cancelBatchRun(b.id) : retryFailedBatchRun(b.id, what === "retry-checked")));
     } catch (e) {
       setFailure({ tone: "fail", title: tr("The run was not changed"), detail: errorSentence(e, tr("The run could not be changed.")) });
     } finally {

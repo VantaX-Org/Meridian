@@ -166,6 +166,9 @@ def run(session: Any, tenant_id: str, run_id: str, enqueue: Callable[[float], No
         status = session.execute(text("SELECT status FROM writeback_runs WHERE id = :id"), {"id": run_id}).scalar()
         if status == "cancelling":
             return stop("cancelled", None, "writeback_run.cancelled")
+        if status != "running":  # cancelled or taken over while this slice ran: the run is no longer ours
+            session.rollback()
+            return {"skipped": True, "reason": f"run is {status}"}
         if clock() >= deadline:
             moved = session.execute(text("UPDATE writeback_runs SET status = 'queued', heartbeat_at = now() "
                                          "WHERE id = :id AND status = 'running' RETURNING id"), {"id": run_id}).fetchone()
@@ -202,8 +205,12 @@ def run(session: Any, tenant_id: str, run_id: str, enqueue: Callable[[float], No
                     for rid, _, _, key, changes in recs:
                         if clock() >= deadline:
                             break
-                        session.execute(text("UPDATE writeback_run_records SET state = 'sending', attempts = attempts + 1, "
-                                             "updated_at = now() WHERE id = :id"), {"id": rid})
+                        claimed = session.execute(text(
+                            "UPDATE writeback_run_records SET state = 'sending', attempts = attempts + 1, "
+                            "updated_at = now() WHERE id = :id AND state = 'pending' RETURNING id"), {"id": rid}).fetchone()
+                        if not claimed:  # never send a record this slice does not hold
+                            session.commit()
+                            continue
                         session.execute(text("UPDATE writeback_runs SET heartbeat_at = now() WHERE id = :id"),
                                         {"id": run_id})
                         session.commit()  # from here SAP may change; a crash leaves this one record 'sending'
