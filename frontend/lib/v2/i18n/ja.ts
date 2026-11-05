@@ -7826,6 +7826,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Load file record": "ロードファイルのレコード",
   "Only the first {n} records of each table and kind are kept; the counts above are complete.": "テーブルと種別ごとに先頭 {n} 件のみ保持します。上の件数は全件です。",
   "Withheld": "非表示",
+  "Started automatically when the target system was analysed again.": "ターゲットシステムの再分析時に自動で開始しました。",
+  "Since the comparison of {date}: {x} missing ({dx}), {w} fields differ ({dw}), {f} found ({df}).": "{date}の比較以降: 欠落 {x} 件({dx})、相違フィールド {w} 件({dw})、検出 {f} 件({df})。",
   "Compared against the files exported on {date}.": "{date}にエクスポートしたファイルと比較しました。",
   "Rebuilt from the current field mappings. No export snapshot was kept for this run, so a mapping changed after the load shows as a difference.": "現在のフィールドマッピングから再構築しました。この実行にはエクスポートのスナップショットが保存されていないため、ロード後に変更したマッピングは差異として表示されます。",
   "The export snapshot could not be used, so the expected side was rebuilt from the current field mappings.": "エクスポートのスナップショットを使用できなかったため、期待値は現在のフィールドマッピングから再構築しました。",

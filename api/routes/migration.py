@@ -337,6 +337,11 @@ class ModuleScores(BaseModel):
     reasons: list[dict] = []
 
 
+class ReconciliationPrevious(BaseModel):
+    created_at: datetime.datetime
+    summary: dict = {}                     # counts only
+
+
 class ReconciliationOut(BaseModel):
     reconciliation_id: uuid.UUID
     run_id: uuid.UUID
@@ -353,6 +358,8 @@ class ReconciliationOut(BaseModel):
     summary: dict = {}
     tables: list[dict] = []
     scores: list[ModuleScores] = []
+    automatic: bool = False                # started by a finished target analysis, not by a person
+    previous: Optional[ReconciliationPrevious] = None   # the reconciliation before this one, when it finished
 
 
 class ReconciliationRecord(BaseModel):
@@ -375,7 +382,7 @@ class ReconciliationRecordsPage(BaseModel):
 
 
 _RECON_COLS = ("id, run_id, status, error_detail, target_system_id, target_version_id, target_synced_at, "
-               "created_at, completed_at, record_cap, summary, tables, scores")
+               "created_at, completed_at, record_cap, summary, tables, scores, auto_started")
 
 
 async def _latest_reconciliation(db: AsyncSession, tenant_id: uuid.UUID, run_id: uuid.UUID, cols: str):
@@ -461,7 +468,15 @@ async def get_reconciliation(
             text("SELECT max(run_at) FROM analysis_versions WHERE tenant_id = :t AND metadata->>'system_id' = :sid "
                  "AND position('complete' in status) > 0 AND metadata->>'dataset_path' IS NOT NULL"),
             {"t": str(tenant.id), "sid": str(r["target_system_id"])})).scalar()
+    prev = (await db.execute(
+        text("SELECT created_at, summary FROM migration_reconciliations WHERE run_id = :rid AND tenant_id = :t "
+             "AND status = 'done' AND created_at < :c ORDER BY created_at DESC LIMIT 1"),
+        {"rid": run_id, "t": str(tenant.id), "c": r["created_at"]})).fetchone()
+    counts = ("tables", "comparable", "expected", "found", "missing", "unexpected", "differing_fields")
     return ReconciliationOut(
+        automatic=bool(r["auto_started"]),
+        previous=ReconciliationPrevious(created_at=prev.created_at, summary={
+            k: v for k, v in (prev.summary or {}).items() if k in counts}) if prev else None,
         reconciliation_id=r["id"], run_id=r["run_id"], status=r["status"], error_detail=r["error_detail"],
         target_system_id=r["target_system_id"], target_version_id=r["target_version_id"],
         target_synced_at=r["target_synced_at"], created_at=r["created_at"], completed_at=r["completed_at"],

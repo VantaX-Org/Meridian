@@ -43,4 +43,14 @@ describe("Migration analysis", () => {
     expect(map.textContent).toContain("Needs a transformation");
     expect(within(map).getByTestId("mig-delta-bars").textContent).toContain("Change with no transformation yet");
   });
+
+  it("marks an automatic reconciliation and shows the count change since the previous one", async () => {
+    renderWithQuery(<Migration />);
+    const panel = await screen.findByTestId("mig-post-load");
+    expect((await within(panel).findByTestId("mig-post-load-auto")).textContent).toContain("Started automatically");
+    const change = within(panel).getByTestId("mig-post-load-change").textContent ?? "";
+    expect(change).toContain("198 missing (-241)");
+    expect(change).toContain("143 fields differ (-58)");
+    expect(change).toContain("83,782 found (+241)");
+  });
 });
