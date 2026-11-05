@@ -49,7 +49,7 @@ Population:
   4500011990  PO flagged for deletion (LOEKZ L) — and incomplete: excluded, counted
 """
 
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import yaml
@@ -60,10 +60,11 @@ from checks.value_placement import generate
 from sap.ddic import get_dictionary
 
 D = get_dictionary("ecc6")
+TODAY = datetime.now(timezone.utc).date()  # one date for the data and the run, so a test crossing midnight stays consistent
 
 
 def _ago(days: int) -> str:
-    return (date.today() - timedelta(days=days)).strftime("%Y%m%d")  # DATS
+    return (TODAY - timedelta(days=days)).strftime("%Y%m%d")  # DATS
 
 
 def _m(n: int) -> str:
@@ -363,7 +364,7 @@ def _hist(ebeln: str, ebelp: str, belnr: str, days: int) -> str:
 
 def test_mm_purchasing_golden():
     static = yaml.safe_load(_find_module_yaml("mm_purchasing").read_text())["rules"]
-    results = run_checks("mm_purchasing", _frames(), "t", reference_values=_live_config(static),
+    results = run_checks("mm_purchasing", _frames(), "t", as_of=TODAY, reference_values=_live_config(static),
                          extra_rules=generate("mm_purchasing", static, D))
     errors = {r.check_id: r.error for r in results if r.error}
     assert not errors, errors

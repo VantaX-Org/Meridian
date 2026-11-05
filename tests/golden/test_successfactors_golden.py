@@ -74,7 +74,7 @@ def _run(module: str, frames: TableFrames):
             key = _with_reference(r, D, {}).get("_reference_key")
             if key:
                 live[key] = LIVE[r["field"]]
-    results = run_checks(module, frames, "t", reference_values=live,
+    results = run_checks(module, frames, "t", reference_values=live, as_of=TODAY,
                          extra_rules=generate(module, static, get_dictionary("s4hana")))
     errors = {r.check_id: r.error for r in results if r.error}
     assert not errors, errors

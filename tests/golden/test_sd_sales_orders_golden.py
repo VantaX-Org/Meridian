@@ -13,11 +13,12 @@ from checks.value_placement import generate
 from sap.ddic import get_dictionary
 
 D = get_dictionary("ecc6")  # ECC: GBSTK / ABSTK / GBSTA live on VBUK / VBUP (exposed as VBAK / VBAP fields)
+TODAY = pd.Timestamp.now(tz="UTC").normalize().tz_localize(None)  # one date for the data and the run, so a test crossing midnight stays consistent
 
 
 def _d(days_ago: int) -> str:
     """DATS relative to today, so open/old orders stay open/old whenever the test runs."""
-    return (pd.Timestamp.now().normalize() - pd.Timedelta(days=days_ago)).strftime("%Y%m%d")
+    return (TODAY - pd.Timedelta(days=days_ago)).strftime("%Y%m%d")
 
 
 # Customers: K1 ZA trade customer, K2 German export customer, K3 customer under a central order block
@@ -259,7 +260,7 @@ def _live_config(rules) -> dict[str, set[str]]:
 
 def test_sd_sales_orders_golden():
     static = yaml.safe_load(_find_module_yaml("sd_sales_orders").read_text())["rules"]
-    results = run_checks("sd_sales_orders", _frames(), "t", reference_values=_live_config(static),
+    results = run_checks("sd_sales_orders", _frames(), "t", as_of=TODAY, reference_values=_live_config(static),
                          extra_rules=generate("sd_sales_orders", static, D))
     errors = {r.check_id: r.error for r in results if r.error}
     assert not errors, errors
