@@ -11,7 +11,7 @@ const cite = (n: number[], cur: number) => [
   ...n.map((k) => ({ run_id: `run-${k}`, run_number: k, run_at: `2026-10-${String(k + 10).padStart(2, "0")}T04:10:00+00:00`, role: "baseline" as const })),
   { run_id: `run-${cur}`, run_number: cur, run_at: `2026-10-${String(cur + 10).padStart(2, "0")}T04:10:00+00:00`, role: "current" as const },
 ];
-const base = { version_id: "run-12", run_number: 12, baseline_runs: 6, method: "mad", status: "open" as const, baseline_effect: null, snoozed_until: null, decided_by: null, decided_at: null, note: null, detected_at: "2026-10-22T04:30:00+00:00", citations: cite([6, 7, 8, 9, 10, 11], 12) };
+const base = { version_id: "run-12", run_number: 12, baseline_runs: 6, method: "mad", source: "run" as const, status: "open" as const, baseline_effect: null, snoozed_until: null, decided_by: null, decided_at: null, note: null, detected_at: "2026-10-22T04:30:00+00:00", citations: cite([6, 7, 8, 9, 10, 11], 12) };
 const say = (s: string[]) => ({ source: "template" as const, sentences: s, dropped: 0 });
 
 const BREAKS: LearnedBreak[] = [
@@ -37,6 +37,19 @@ const BREAKS: LearnedBreak[] = [
   },
 ];
 
+/** Run 13 landed 4,100 rows after run 12 and its analysis has not finished: found between full runs. */
+const INTERIM: LearnedBreak[] = [
+  {
+    ...base, id: "lm-i1", version_id: "run-13", run_number: 13, source: "interim", module: "sd_customer_master", kind: "volume_drop", metric: "records",
+    subject_code: "", subject_description: null, severity: "high", expected_low: 11_800, expected_high: 12_600, median: 12_200, observed: 4_100,
+    detected_at: "2026-10-23T09:15:00+00:00", citations: cite([7, 8, 9, 10, 11, 12], 13),
+    explanation: say([
+      "Found between full runs: the extraction landed 4,100 rows before its analysis finished. Compared with the rows of earlier syncs of this object, not with a finished run.",
+      "SD customer master: records checked fell to 4,100; the usual range is 11,800 to 12,600.",
+    ]),
+  },
+];
+
 const COVERAGE: LearnedMonitors["coverage"] = [
   { module: "material_master", run_id: "run-12", run_number: 12, baseline_runs: 6, min_runs: 5, state: "active", breaks: 4 },
   { module: "sd_customer_master", run_id: "run-12", run_number: 12, baseline_runs: 3, min_runs: 5, state: "learning", breaks: 0 },
@@ -53,12 +66,13 @@ const THRESHOLDS: MonitorThreshold[] = [
   },
 ];
 
-const mem = new Map<string, LearnedBreak>(BREAKS.map((b) => [b.id, { ...b }]));
-export const resetLearnedMonitors = () => BREAKS.forEach((b) => mem.set(b.id, { ...b }));
+const mem = new Map<string, LearnedBreak>([...BREAKS, ...INTERIM].map((b) => [b.id, { ...b }]));
+export const resetLearnedMonitors = () => [...BREAKS, ...INTERIM].forEach((b) => mem.set(b.id, { ...b }));
 
 export function learnedMonitorsRead(path: string): unknown {
   if (path !== "/aletheia/monitors") return NONE_LEARNED_MONITORS;
-  return { min_runs: 5, history: 30, coverage: COVERAGE, breaks: [...mem.values()], thresholds: THRESHOLDS } satisfies LearnedMonitors;
+  const all = [...mem.values()];
+  return { min_runs: 5, history: 30, coverage: COVERAGE, breaks: all.filter((b) => b.source === "run"), thresholds: THRESHOLDS, interim: all.filter((b) => b.source === "interim") } satisfies LearnedMonitors;
 }
 
 export function learnedMonitorsWrite(method: string, path: string, body: unknown): unknown {

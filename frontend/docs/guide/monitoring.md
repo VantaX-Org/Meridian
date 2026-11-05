@@ -62,6 +62,17 @@ After each analysis run Meridian checks five kinds of break and stores each with
 
 The panel **Breaks in the latest run** lists them, most severe first. Press a break to see **Why Aletheia flagged this**: a sentence built from the figures by a fixed template, and the runs it rests on ("Run 12 (this run)"). Press **Ask Aletheia to explain** to have the model reword it. Aletheia sees only the aggregate figures and the rule or field description, and Meridian drops any sentence that states a number outside those figures. When the model is not available, the fixed wording stays.
 
+### Between full runs
+
+A full analysis takes minutes to hours, and its figures (score, fail rate, empty share, records checked) exist only after the checks have run. One figure is known earlier: the number of rows a sync extracted, which Meridian stores as soon as the extraction lands. Every 15 minutes it compares that count with the row counts of the earlier synced runs of the same object, with the same baseline and the same learned minimum as the run monitors. The panel **Between full runs** lists a **Volume drop** or **Volume spike** found this way, with **Rows extracted**, the usual range, **Earlier syncs used** and the status **Analysis pending**. Press one to read the explanation, which states that the break comes from the extraction and not from a finished run. Steward decisions work as for any other break.
+
+The check is limited on purpose:
+
+- It covers volume only. Score, fail rate and empty share cannot be known before the checks run, so nothing is shown for them.
+- It covers full extractions of a profile with one module. A delta or sampled extraction does not carry the size of the object, and a profile with several modules sums their rows, so both are left out.
+- It looks at the latest sync of the last 72 hours whose analysis has not finished. When the analysis finishes, the run monitor judges the run on records checked and replaces the interim row.
+- It reads stored counts only. It starts no extraction and does not run while the analysis is working.
+
 Users who may change master data can decide on a break:
 
 - **Acknowledge.** You have seen it. The baseline does not change.
@@ -92,8 +103,10 @@ The Entry gate page, under Entry gate in the map, shows the data quality firewal
 - **Rules that block most.** The critical rules that stopped the most records, each with its code and what it requires.
 - **By object.** Records checked, blocked, warned and passed for each licensed object.
 - **Try a record.** Paste records as JSON, choose the object and press **Check records**. The page runs the same check SAP calls. Tick **Show a fix where the rule gives one** to see a suggested fix. A fix appears only when the rule itself defines one, either a corrected value from the rule's auto-fix steps or the values the rule accepts, and each fix names its rule. When no fix is grounded in the rule, the cell shows a dash. No language model sees the record.
+- **Send to a steward.** Tick **Send blocked or warned records to a steward as a change request** before you check. Each blocked, warned or duplicate-flagged record then opens a create request and sends it to the approval workflow, and a table shows the request's status and an **Open the request** link for each record. Checking the same record again shows the request that is already open and adds no second one. When no request is opened, the note says why in words: SuccessFactors employee data has no change request, only the first 25 flagged records open one, the change request refused the record, or opening failed while the verdict still stands. The request carries the record values like any other change request, so avoid it for personal data you do not want held there.
+- **Requests opened from the gate.** The latest ten requests the gate opened, each with its title linking to the request, its object and its status in words, and the date it was opened.
 
-The page is a view of the firewall. The SAP side, the API key and the choice to let a save go on or stop when the check cannot run are described in the point-of-entry guide in the repository (docs/point-of-entry.md). There is no approval workflow in SAP. The duplicate search at entry warns and never stops a save.
+The page is a view of the firewall. The SAP side, the API key and the choice to let a save go on or stop when the check cannot run are described in the point-of-entry guide in the repository (docs/point-of-entry.md). The approval workflow runs in Meridian, not in SAP. The duplicate search at entry warns and never stops a save.
 
 ## MDM health
 

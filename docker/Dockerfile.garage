@@ -2,7 +2,7 @@
 # Garage (https://garagehq.deuxfleurs.fr) is an S3-compatible store; this image
 # ships its official static release binary, pinned by SHA-256, unmodified.
 # Garage is AGPL-3.0: the licence is shipped under /licenses.
-FROM alpine:3.22
+FROM alpine:3.22@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
 ARG GARAGE_VERSION=v2.4.1
 ARG GARAGE_SHA256=ae49f8de4aaee6b5ca305f7cbdccc8cd8a29b2804aac074649f18bfb83d0a2b6
 LABEL org.opencontainers.image.title="meridian-garage" \

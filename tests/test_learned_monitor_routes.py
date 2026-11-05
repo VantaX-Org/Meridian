@@ -15,7 +15,7 @@ BID, VID, RID = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
 
 def brk(status="open"):
     return (BID, VID, 7, "material_master", "fail_rate_jump", "fail_rate", "MM014", "high", 3.0, 7.0, 5.0, 30.0, 6,
-            [RID], "mad", status, None, None, None, None, None, None, NOW, NOW)
+            [RID], "mad", status, None, None, None, None, None, None, NOW, NOW, "run")
 
 
 class _Res:

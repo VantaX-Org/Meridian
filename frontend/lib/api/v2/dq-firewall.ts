@@ -12,6 +12,17 @@ export interface FirewallSummary {
   days: FirewallDay[];
   top_rules: FirewallTopRule[];
   by_module: FirewallModuleRow[];
+  /** The latest change requests opened from the gate. */
+  requests: GateRequest[];
+}
+
+/** A change request the gate opened for a flagged record. */
+export interface GateRequest {
+  id: string;
+  object: "material" | "customer" | "vendor" | "business_partner";
+  title: string | null;
+  status: "draft" | "submitted" | "in_approval" | "approved" | "rejected" | "creating" | "created" | "failed" | "cancelled";
+  created_at: string;
 }
 
 export interface FirewallDay {
@@ -107,11 +118,24 @@ export interface DuplicateSearch {
   fuzzy?: { available: boolean; reason?: FuzzyNotRun | null; min_key_length: number; similarity: number } | null;
 }
 
+export type StewardNotOpened = "module_has_no_change_request" | "over_limit" | "not_accepted" | "not_opened";
+
+/** What route_to_steward did for a flagged record: the request id, or the reason none was opened. */
+export interface StewardRequest {
+  request_id?: string | null;
+  status?: GateRequest["status"] | null;
+  /** True: the same candidate already had this open request, so none was added. */
+  existing?: boolean;
+  reason?: StewardNotOpened | null;
+  detail?: string | null;
+}
+
 export interface FirewallRecord {
   index: number;
   verdict: "pass" | "block";
   failures: FirewallFailure[];
   duplicates?: RecordDuplicates | null;
+  steward_request?: StewardRequest | null;
 }
 
 export interface FirewallVerdict {
@@ -125,10 +149,11 @@ export interface FirewallVerdict {
 
 export const getFirewallSummary = (): Promise<FirewallSummary> => v2Get("/dq-firewall/summary");
 
-export const validateRecords = (module: string, records: Record<string, string>[], opts: { suggest?: boolean; duplicates?: boolean } = {}): Promise<FirewallVerdict> =>
+export const validateRecords = (module: string, records: Record<string, string>[], opts: { suggest?: boolean; duplicates?: boolean; route_to_steward?: boolean } = {}): Promise<FirewallVerdict> =>
   v2Send("POST", "/dq-firewall/validate", {
     module,
     records,
     ...(opts.suggest ? { suggest: true } : {}),
     ...(opts.duplicates ? { duplicates: true } : {}),
+    ...(opts.route_to_steward ? { route_to_steward: true } : {}),
   });

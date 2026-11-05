@@ -20,6 +20,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes.mining import field_text
 from api.routes.record_issues import _rls
 from api.services import learned_monitors as lm
+from api.services.learned_monitors_interim import interim_sentence
 from api.services.receipt_math import rule_names
 from api.services.version_status import finished_sql
 from api.services.rbac import current_user_label, require_permission, write_audit
@@ -29,7 +30,7 @@ router = APIRouter(prefix="/api/v1/aletheia/monitors", tags=["aletheia"])
 COLS = """b.id::text, b.version_id::text, v.run_number, b.module, b.kind, b.metric, b.subject_code, b.severity,
           b.expected_low, b.expected_high, b.median, b.observed, b.baseline_runs, b.baseline_run_ids, b.method,
           b.status, b.baseline_effect, b.snoozed_until, b.decided_by, b.decided_at, b.note, b.explanation,
-          b.detected_at, v.run_at"""
+          b.detected_at, v.run_at, b.source"""
 
 
 class Citation(BaseModel):
@@ -70,6 +71,7 @@ class BreakOut(BaseModel):
     explanation: Explanation
     citations: list[Citation]
     detected_at: str
+    source: Literal["run", "interim"] = "run"
 
 
 class Coverage(BaseModel):
@@ -112,6 +114,7 @@ class MonitorsOut(BaseModel):
     coverage: list[Coverage]
     breaks: list[BreakOut]
     thresholds: list[Threshold] = []
+    interim: list[BreakOut] = []  # found between full runs: extraction landed, analysis not finished
 
 
 def _iso(x) -> Optional[str]:
@@ -134,6 +137,8 @@ async def _shape(db: AsyncSession, tenant: Tenant, rows) -> list[BreakOut]:
         b = {"kind": r[4], "metric": r[5], "subject_code": r[6], "expected_low": r[8], "expected_high": r[9],
              "median": r[10], "observed": r[11], "baseline_runs": r[12], "method": r[14]}
         exp = r[21] or lm.explanation(lm.facts(b, desc), None)
+        if r[24] == "interim":
+            exp = {**exp, "sentences": [interim_sentence(r[11]), *exp["sentences"]]}
         cites = [Citation(run_id=i, run_number=runs.get(i, (None, None))[0], run_at=_iso(runs.get(i, (None, None))[1]),
                           role="baseline") for i in (r[13] or [])]
         cites.append(Citation(run_id=r[1], run_number=r[2], run_at=_iso(r[23]), role="current"))
@@ -143,7 +148,7 @@ async def _shape(db: AsyncSession, tenant: Tenant, rows) -> list[BreakOut]:
                             expected_high=r[9], median=r[10], observed=r[11], baseline_runs=r[12], method=r[14],
                             status=status, baseline_effect=r[16], snoozed_until=_iso(r[17]), decided_by=r[18],
                             decided_at=_iso(r[19]), note=r[20], explanation=Explanation(**exp), citations=cites,
-                            detected_at=_iso(r[22]) or ""))
+                            detected_at=_iso(r[22]) or "", source=r[24]))
     return out
 
 
@@ -201,8 +206,17 @@ async def monitors(version_id: Optional[uuid.UUID] = None, limit: int = Query(30
          WHERE b.tenant_id = :t AND b.version_id = CAST(:v AS uuid)
          ORDER BY CASE b.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
                   b.module, b.kind, b.subject_code LIMIT :n"""), {"t": t, "v": run[0], "n": limit})).fetchall()
+    interim = []
+    if not version_id:  # the latest state only: open breaks of syncs whose analysis is newer than this run and unfinished
+        irows = (await db.execute(text(f"""
+            SELECT {COLS} FROM learned_monitor_breaks b JOIN analysis_versions v ON v.id = b.version_id
+             WHERE b.tenant_id = :t AND b.source = 'interim' AND b.status IN ('open', 'snoozed')
+               AND NOT ({finished_sql('v.status')}) AND v.run_at > :at
+             ORDER BY CASE b.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+                      b.module, b.kind LIMIT :n"""), {"t": t, "at": run[2], "n": limit})).fetchall()
+        interim = await _shape(db, tenant, irows)
     return MonitorsOut(min_runs=lm.MIN_RUNS, history=lm.HISTORY, coverage=cov, breaks=await _shape(db, tenant, rows),
-                       thresholds=await _thresholds(db, tenant, sorted(mods)))
+                       thresholds=await _thresholds(db, tenant, sorted(mods)), interim=interim)
 
 
 async def _get(db: AsyncSession, tenant: Tenant, bid: uuid.UUID):

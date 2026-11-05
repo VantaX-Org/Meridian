@@ -3,7 +3,7 @@
  * The fixture judges only Material master and only three rules, the real ones of checks/rules/ecc/material_master.yaml
  * (MM001, MM003, MM008, each critical and completeness: a blank material number, type or base unit).
  */
-import type { DuplicateMatch, FirewallDay,FirewallFailure, FirewallSummary, FirewallVerdict } from "../dq-firewall";
+import type { DuplicateMatch, FirewallDay, FirewallFailure, FirewallSummary, FirewallVerdict, GateRequest } from "../dq-firewall";
 
 export const NONE_DQ_FIREWALL = Symbol("no-dq-firewall-fixture");
 
@@ -34,8 +34,15 @@ const DAYS: FirewallDay[] = [
 
 let calls = 3;
 
+// Requests the gate opened in this session, newest first, keyed by candidate content (the real key is an HMAC of it).
+const SEED: GateRequest[] = [
+  { id: "00000000-0000-4000-8000-000000000a01", object: "material", title: "Entry gate: new material, 2 rule failure(s)", status: "in_approval", created_at: "2026-10-19T09:12:00Z" },
+];
+let opened: { key: string; req: GateRequest }[] = [];
+
 export function resetDqFirewallFixture(): void {
   calls = 3;
+  opened = [];
 }
 
 export function dqFirewallRead(path: string): unknown {
@@ -49,6 +56,7 @@ export function dqFirewallRead(path: string): unknown {
     last_call_at: "2026-10-20T07:42:00Z",
     days: DAYS,
     top_rules: RULES.map((r, i) => ({ rule_id: r.id, description: r.message, blocked: [14, 9, 4][i] })),
+    requests: [...opened.map((o) => o.req), ...SEED],
     by_module: [
       { module: "material_master", checked: 168, blocked: 27, warned: 31, passed: 110 },
       { module: "sd_customer_master", checked: 58, blocked: 9, warned: 12, passed: 37 },
@@ -100,9 +108,31 @@ function addDuplicates(out: FirewallVerdict, records: Record<string, unknown>[])
   });
 }
 
+/** A flagged record opens one request; the same content again returns it. A clean pass opens nothing. */
+function routeToSteward(out: FirewallVerdict, records: Record<string, unknown>[]): void {
+  out.records.forEach((rec, i) => {
+    if (!rec.failures.length && rec.duplicates?.verdict !== "warn") return;
+    const key = JSON.stringify(records[i], Object.keys(records[i] ?? {}).sort());
+    const found = opened.find((o) => o.key === key);
+    if (found) {
+      rec.steward_request = { request_id: found.req.id, status: found.req.status, existing: true };
+      return;
+    }
+    const req: GateRequest = {
+      id: `00000000-0000-4000-8000-${String(opened.length + 1).padStart(12, "0")}`,
+      object: "material",
+      title: `Entry gate: new material, ${rec.failures.length} rule failure(s)`,
+      status: "in_approval",
+      created_at: "2026-10-20T07:50:00Z",
+    };
+    opened = [{ key, req }, ...opened];
+    rec.steward_request = { request_id: req.id, status: req.status, existing: false };
+  });
+}
+
 export function dqFirewallWrite(method: string, path: string, body: unknown): unknown {
   if (method !== "POST" || path !== "/dq-firewall/validate") return NONE_DQ_FIREWALL;
-  const b = (body ?? {}) as { module?: string; records?: Record<string, unknown>[]; suggest?: boolean; duplicates?: boolean };
+  const b = (body ?? {}) as { module?: string; records?: Record<string, unknown>[]; suggest?: boolean; duplicates?: boolean; route_to_steward?: boolean };
   if (b.module !== "material_master") throw new Refused(422, `Unknown module '${String(b.module ?? "").slice(0, 60)}'.`);
   const records = b.records ?? [];
   if (records.length < 1 || records.length > 100) throw new Refused(422, "Send 1 to 100 records.");
@@ -130,5 +160,6 @@ export function dqFirewallWrite(method: string, path: string, body: unknown): un
   };
   if (out.records.some((r) => r.verdict === "block")) out.verdict = "block";
   if (b.duplicates) addDuplicates(out, records);
+  if (b.route_to_steward) routeToSteward(out, records);
   return out;
 }

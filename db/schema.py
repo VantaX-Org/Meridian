@@ -1475,6 +1475,7 @@ class LearnedMonitorBreak(Base):
     decided_at = Column(DateTime(timezone=True), nullable=True)
     note = Column(Text, nullable=True)
     explanation = Column(JSONB, nullable=True)
+    source = Column(Text, nullable=False, server_default="run")  # run | interim (migration 136)
     detected_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (
@@ -3424,6 +3425,7 @@ class ChangeRequest(Base):
     export = Column(JSONB, nullable=True)
     reason = Column(Text, nullable=True)
     record_keys = Column(JSONB, nullable=True)  # mass_change: the SAP keys of the records (migration 125)
+    entry_fingerprint = Column(Text, nullable=True)  # opened from the entry gate: HMAC of module and candidate (136)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     submitted_at = Column(DateTime(timezone=True), nullable=True)
@@ -3440,6 +3442,11 @@ class ChangeRequest(Base):
                         name="ck_change_requests_change_key"),
         Index("ix_change_requests_status", "tenant_id", "status", "created_at"),
         Index("ix_change_requests_requester", "tenant_id", "requester_id", "created_at"),
+        Index("uq_change_requests_entry_open", "tenant_id", "entry_fingerprint", unique=True,
+              postgresql_where=text("entry_fingerprint IS NOT NULL AND status IN "
+                                    "('draft', 'submitted', 'in_approval', 'approved', 'creating', 'failed')")),
+        Index("ix_change_requests_entry", "tenant_id", text("created_at DESC"),
+              postgresql_where=text("entry_fingerprint IS NOT NULL")),
     )
 
 

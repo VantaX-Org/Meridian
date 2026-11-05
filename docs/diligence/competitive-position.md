@@ -149,7 +149,10 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   blocks. The Entry gate screen shows the traffic and the duplicate result. What remains behind
   MDG: there is no approval workflow or staging area in SAP; the duplicate search finds candidates only
   by exact normalised value of a match field plus a trigram similarity pass on the three free-text fields only (a typo in a tax or part number is missed; the similar pass was about 89 ms for one query on 1,000,000 synthetic rows), skips semantic match rules, searches
-  Meridian's golden records rather than live SAP, and has no steward workflow at entry; and the
+  Meridian's golden records rather than live SAP; an opt-in route to a steward opens a change request
+  of kind create for a blocked, warned or duplicate-flagged record, deduplicated while open, but only for
+  material, customer and vendor objects (SuccessFactors has none and the answer says so), and whether a
+  steward is assigned depends on the tenant's change request workflow; and the
   ABAP samples have not been run against a live SAP system. For SuccessFactors there is no sample,
   only a documented integration pattern. Meridian still fixes most bad data after the fact.
 - **Breadth beyond SAP.** Informatica, Collibra and Ataccama cover the whole enterprise estate with a
@@ -161,8 +164,7 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   drops and spikes, fail-rate jumps, score drops and fields that went empty, stays silent under 5 earlier
   runs, explains each break from aggregate figures only, and takes steward feedback (acknowledge, expected,
   snooze) that feeds back into the baseline. What it does not do: baselines are per tenant and per system,
-  with no cross-tenant or industry priors; they run once per analysis run, not on intra-day or source change
-  streams; the minimum effect of a monitor is now learned from steward decisions (raised just above the largest effect marked expected in the last 90 days, capped at 3 times the fixed floor, lowered by a confirmed smaller break, never below the floor), but only for volume, score and fail rate; the field-emptied monitor stays fixed, severity only scales with the learned minimum, a break hidden by a raised minimum is not stored and so cannot be confirmed, and the rule is a deterministic fold, not a trained model; and the checks themselves remain
+  with no cross-tenant or industry priors; they run once per analysis run, plus a 15-minute volume-only check between runs: when a sync's extraction has landed and its analysis has not finished, the rows extracted are judged against the rows of earlier synced runs with the same baseline and learned minimum. Score, fail rate and empty share exist only after the checks run, so they have no intra-day signal and are not faked; delta, sampled and multi-module profiles are left out; there are no source change streams; the minimum effect of a monitor is now learned from steward decisions (raised just above the largest effect marked expected in the last 90 days, capped at 3 times the fixed floor, lowered by a confirmed smaller break, never below the floor), but only for volume, score and fail rate; the field-emptied monitor stays fixed, severity only scales with the learned minimum, a break hidden by a raised minimum is not stored and so cannot be confirmed, and the rule is a deterministic fold, not a trained model; and the checks themselves remain
   declared rules (`checks/anomaly.py`, `checks/outliers.py`, `/api/v1/mining/anomalies` are the older layer).
 - **Enterprise assurance.** The established vendors offer certifications (for example SOC 2 or ISO 27001
   for their cloud services; buyer to confirm per vendor), multi-tenant operation, SAP partnership or resale

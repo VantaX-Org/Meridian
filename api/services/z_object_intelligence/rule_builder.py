@@ -1,4 +1,4 @@
-"""Z-Rule Builder: 12 pre-built rule templates for Z-object governance."""
+"""Z-Rule Builder: 8 pre-built rule templates for Z-object governance."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ class ZRuleBuilder:
     # ------------------------------------------------------------------
 
     def _register_templates(self) -> None:
-        """Register all 12 pre-built Z-rule templates."""
+        """Register all 8 pre-built Z-rule templates."""
 
         self.templates["Z-RULE-001"] = ZRuleTemplate(
             template_id="Z-RULE-001",
@@ -52,19 +52,6 @@ class ZRuleBuilder:
             applicable_to="config_value",
             evaluate=self._eval_001_number_range,
         )
-
-        self.templates["Z-RULE-002"] = ZRuleTemplate(
-            template_id="Z-RULE-002",
-            name="Z Movement Type Must Have Account Determination",
-            description=(
-                "Z movement type must produce correct accounting entries "
-                "(compare to mapped standard equivalent)"
-            ),
-            default_severity="high",
-            applicable_to="config_value",
-            evaluate=self._eval_002_account_determination,
-        )
-
 
         self.templates["Z-RULE-004"] = ZRuleTemplate(
             template_id="Z-RULE-004",
@@ -260,50 +247,6 @@ class ZRuleBuilder:
                     remediation=(
                         f"Configure a number range interval for document type "
                         f"{z_obj.object_name} in transaction FBN1/SNRO."
-                    ),
-                )
-            ]
-        return []
-
-    def _eval_002_account_determination(
-        self,
-        z_obj: ZDetectedObject,
-        profile: ZObjectProfile | None,
-        baseline: ZBaseline | None,
-        records: list[dict],
-        ctx: dict,
-    ) -> list[ZRuleFinding]:
-        """Z movement type must produce correct accounting entries."""
-        # TODO: Requires MSEG + BSEG cross-reference data to validate that
-        # Z movement types produce GL postings. Needs additional SAP data
-        # beyond a single CSV upload.
-        if z_obj.source_field != "BWART":
-            return []
-        matching = [
-            r
-            for r in records
-            if self._find_field(r, "BWART") == z_obj.object_name
-            and self._find_field(r, "HKONT")
-        ]
-        if not matching:
-            return [
-                ZRuleFinding(
-                    z_object_name=z_obj.object_name,
-                    rule_id="Z-RULE-002",
-                    rule_name="Z Movement Type Must Have Account Determination",
-                    severity="high",
-                    title=(
-                        f"Z movement type {z_obj.object_name} has no GL account "
-                        f"postings"
-                    ),
-                    description=(
-                        f"Custom movement type {z_obj.object_name} was detected but "
-                        f"no HKONT (GL account) values are associated \u2014 account "
-                        f"determination may not be configured."
-                    ),
-                    remediation=(
-                        f"Check account determination for movement type "
-                        f"{z_obj.object_name} via OMWN / automatic account assignment."
                     ),
                 )
             ]

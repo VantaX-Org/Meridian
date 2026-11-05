@@ -11,7 +11,7 @@ image:
 llm:
   provider: ollama
   model: llama3.1:70b
-  image: ollama/ollama:0.40.12
+  image: ollama/ollama:0.40.12@sha256:20d1bbfbabe1c97ba4b16301f08a20d8484bcf77047742a3cb71c613d8e12d0b
   gpu:
     enabled: true
     count: 1
@@ -23,14 +23,14 @@ llm:
 
 postgres:
   enabled: true
-  image: postgres:16-alpine
+  image: postgres:16-alpine@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
   storageSize: 50Gi
   user: meridian
   database: meridian
 
 redis:
   enabled: true
-  image: redis:7.2-alpine  # 7.4 and later are not open source (RSALv2/SSPLv1)
+  image: redis:7.2-alpine@sha256:2c933526722b4126a61d5c170f766dc159adf97682f0b1cbbc27b1666ba96d84  # 7.4 and later are not open source (RSALv2/SSPLv1)
   storageSize: 5Gi
 
 storage:  # Garage object storage (docker/Dockerfile.garage)

@@ -3,7 +3,7 @@
 # Build arg MODEL_NAME selects the bundled model
 # =========================================================
 
-FROM ollama/ollama:0.40.12
+FROM ollama/ollama:0.40.12@sha256:20d1bbfbabe1c97ba4b16301f08a20d8484bcf77047742a3cb71c613d8e12d0b
 
 # qwen3.5:9b-instruct was never a real Ollama model — the "-instruct" suffix
 # doesn't exist for this family. `ollama pull` failed on it every time this
