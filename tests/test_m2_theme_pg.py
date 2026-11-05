@@ -111,7 +111,9 @@ async def test_theme_settings_and_public_theme(owner, monkeypatch):
         assert (await client.post("/api/v1/settings/theme/logo", headers=headers("viewer"),
                                   files={"file": ("l.png", PNG, "image/png")})).status_code == 403
 
-        pub = (await client.get("/api/v1/theme", params={"tenant": s["tid"]})).json()
+        pub_res = await client.get("/api/v1/theme", params={"tenant": s["tid"]})
+        assert pub_res.headers["content-security-policy"].startswith("default-src 'none'; frame-ancestors")
+        pub = pub_res.json()
         assert pub["product_name"] == "Acme Data Quality" and pub["accent"] == "#0F766E" and pub["customised"]
         assert pub["logo_url"].startswith(logo_url)
         r = await client.get("/api/v1/theme/logo", params={"tenant": s["tid"]})

@@ -259,10 +259,13 @@ def get_job(tenant_id: str, job_id: str) -> Optional[dict]:
         return None
 
 
-def list_jobs(tenant_id: str, *, active_only: bool = False, limit: int = 50) -> list[dict]:
-    """Most recently updated first."""
+def list_jobs(tenant_id: str, *, active_only: bool = False, limit: int = 50, strict: bool = False) -> list[dict]:
+    """Most recently updated first. With ``strict`` an unreadable registry raises rather than reading as empty,
+    for callers that must not take "cannot tell" for "nothing is running"."""
     client = _redis_client()
     if client is None:
+        if strict:
+            raise RuntimeError("job registry unavailable")
         return []
     try:
         ids = client.zrevrange(_index(tenant_id), 0, INDEX_KEEP - 1)
@@ -275,6 +278,8 @@ def list_jobs(tenant_id: str, *, active_only: bool = False, limit: int = 50) -> 
         return jobs[:limit]
     except Exception as exc:
         logger.warning("list_jobs failed: %s", exc)
+        if strict:
+            raise
         return []
 
 
