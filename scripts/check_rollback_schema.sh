@@ -7,7 +7,8 @@ set -euo pipefail
 PREV="$(cd "${1:?previous release checkout}" && pwd)"
 HERE="$(pwd)"
 LOG="${TMPDIR:-/tmp}/prev-api.log"
-export PYTHONPATH=. DB_HOST=127.0.0.1 AUTH_MODE=local CREDENTIAL_MASTER_KEY=ci_credential_master_key_not_a_secret
+# MERIDIAN_ENV=development: with no licence key every gated route otherwise answers 402, which says nothing about the schema.
+export PYTHONPATH=. DB_HOST=127.0.0.1 AUTH_MODE=local MERIDIAN_ENV=development CREDENTIAL_MASTER_KEY=ci_credential_master_key_not_a_secret
 BASE=http://127.0.0.1:8000
 PW='ci-rollback-Pass1!'
 
