@@ -80,7 +80,7 @@ The panel **Learned minimum effect** shows, for every monitor that decisions tou
 - The ceiling is 3 times the floor, so a monitor is never silenced. A break above the ceiling is always raised.
 - **Acknowledge** on a break smaller than the current minimum lowers the minimum to that effect. It never goes below the floor.
 - Decisions older than 90 days stop counting, so a raised minimum relaxes by itself.
-- Severity cut points scale with the minimum divided by the floor.
+- Severity cut points scale with the minimum divided by the floor, at most 1.5 times, so a total loss of records stays critical however high the minimum.
 
 Limits. Field emptied has no effect size and stays fixed. A break hidden by a raised minimum is not stored, so only an open break can be acknowledged to lower the minimum. The rule is a fixed calculation on aggregates, not a trained model, and a language model takes no part in it.
 

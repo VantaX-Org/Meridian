@@ -125,6 +125,12 @@ def test_raised_minimum_suppresses_small_breaks_and_scales_severity():
     assert lm.judge("fail_rate", "R1", 12.0, b, 5.25)["severity"] == "medium"  # cuts scaled by 5.25 / 2
 
 
+def test_a_raised_minimum_never_stops_a_total_loss_being_critical():
+    b = _base([1000, 1010, 990, 1000, 1005, 1000], "records")
+    assert lm.judge("records", "", 0.0, b, 0.9)["severity"] == "critical"   # effect 1.0, minimum at the ceiling
+    assert lm.judge("records", "", 0.0, b, 0.9)["kind"] == "volume_drop"
+
+
 def test_effect_is_in_each_metrics_own_unit():
     assert lm.effect_of("records", 700, 1000) == 0.3 and lm.effect_of("score", 85, 90) == 5 and lm.effect_of("fail_rate", 7, 2) == 5
 

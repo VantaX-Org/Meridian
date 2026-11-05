@@ -22,7 +22,7 @@ the floor:
   confirmed break (acknowledged) of effect e below the minimum    minimum = max(floor, e)
 The ceiling is ``CEILING_MULT`` times the floor, so a monitor can never be silenced; the minimum is never below the
 floor. Decisions older than the window drop out, so a raised minimum relaxes by itself. Severity cut points scale with
-minimum / floor (unchanged at the floor). ``field_emptied`` has no effect size and stays fixed. A break suppressed by a
+minimum / floor, capped at ``SEV_SCALE_MAX`` (unchanged at the floor). ``field_emptied`` has no effect size and stays fixed. A break suppressed by a
 raised minimum is not stored, so only a break that was already open can be confirmed to lower it; that is a limit.
 
 Aggregates only: the input is ``analysis_versions.dqs_summary``, ``findings`` counts and ``field_profiles`` blank
@@ -57,6 +57,7 @@ EMPTY_AT, POPULATED_BELOW = 95.0, 50.0          # blank share now / median blank
 LEARN_DAYS = 90       # steward decisions older than this no longer move a minimum effect
 LEARN_MARGIN = 1.05   # the minimum sits 5% above the largest effect marked expected
 CEILING_MULT = 3.0    # a minimum effect never exceeds this multiple of its floor
+SEV_SCALE_MAX = 1.5   # severity cuts stretch at most this far, so losing every record is still critical
 FLOOR = {"records": VOLUME_REL, "score": SCORE_MIN_DROP, "fail_rate": RATE_MIN_RISE}
 
 Point = tuple[str, datetime, float]  # (run id, run_at, value), oldest first
@@ -139,7 +140,7 @@ def judge(metric: str, subject: str, obs: float, base: dict, min_effect: Optiona
     low, high, med = base["low"], base["high"], base["median"]
     floor = FLOOR.get(metric)
     me = floor if min_effect is None else min_effect
-    scale = me / floor if floor else 1.0
+    scale = min(me / floor, SEV_SCALE_MAX) if floor else 1.0
     kind = sev = None
     if metric == "records":
         if (obs < low or obs > high) and effect_of(metric, obs, med) >= me:
