@@ -35,6 +35,7 @@ METHOD if_ex_badi_material_check~check_data.
 
   zcl_meridian_entry_gate=>check(
     EXPORTING iv_module = 'material_master' it_fields = lt_fields
+              iv_duplicates = abap_true   " opt-in duplicate search; drop this line to leave it off
     IMPORTING ev_block = lv_block et_text = lt_text ).
 
   CHECK lt_text IS NOT INITIAL.

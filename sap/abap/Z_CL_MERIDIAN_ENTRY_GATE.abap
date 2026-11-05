@@ -33,10 +33,21 @@ CLASS zcl_meridian_entry_gate DEFINITION PUBLIC FINAL CREATE PUBLIC.
              severity    TYPE string,
            END OF ty_failure,
            tt_failure TYPE STANDARD TABLE OF ty_failure WITH DEFAULT KEY.
+    " Answer of the opt-in duplicate search: the existing record's key and a score, never its values.
+    TYPES: BEGIN OF ty_match,
+             key   TYPE string,
+             score TYPE f,
+           END OF ty_match,
+           tt_match TYPE STANDARD TABLE OF ty_match WITH DEFAULT KEY.
+    TYPES: BEGIN OF ty_dups,
+             verdict TYPE string,
+             matches TYPE tt_match,
+           END OF ty_dups.
     TYPES: BEGIN OF ty_record,
-             index    TYPE i,
-             verdict  TYPE string,
-             failures TYPE tt_failure,
+             index      TYPE i,
+             verdict    TYPE string,
+             failures   TYPE tt_failure,
+             duplicates TYPE ty_dups,
            END OF ty_record,
            tt_record TYPE STANDARD TABLE OF ty_record WITH DEFAULT KEY.
     TYPES: BEGIN OF ty_answer,
@@ -49,6 +60,7 @@ CLASS zcl_meridian_entry_gate DEFINITION PUBLIC FINAL CREATE PUBLIC.
     CLASS-METHODS check
       IMPORTING iv_module TYPE string
                 it_fields TYPE tt_field
+                iv_duplicates TYPE abap_bool DEFAULT abap_false
       EXPORTING ev_block  TYPE abap_bool
                 et_text   TYPE string_table.
 ENDCLASS.
@@ -76,7 +88,12 @@ CLASS zcl_meridian_entry_gate IMPLEMENTATION.
       ENDIF.
       lv_json = lv_json && |"{ ls_field-name }":"{ escape( val = ls_field-value format = cl_abap_format=>e_json_string ) }"|.
     ENDLOOP.
-    lv_json = lv_json && '}]}'.
+    lv_json = lv_json && '}]'.
+    " opt-in: also look for likely duplicates among existing records; without it the body is as before
+    IF iv_duplicates = abap_true.
+      lv_json = lv_json && ',"duplicates":true'.
+    ENDIF.
+    lv_json = lv_json && '}'.
 
     cl_http_client=>create_by_destination(
       EXPORTING destination = c_destination
@@ -112,6 +129,10 @@ CLASS zcl_meridian_entry_gate IMPLEMENTATION.
     LOOP AT ls_answer-records INTO DATA(ls_rec).
       LOOP AT ls_rec-failures INTO DATA(ls_fail).
         APPEND |{ ls_fail-rule_id } { ls_fail-field }: { ls_fail-description }| TO et_text.
+      ENDLOOP.
+      " a duplicate only warns: it is added to the text and never sets ev_block
+      LOOP AT ls_rec-duplicates-matches INTO DATA(ls_match).
+        APPEND |Likely duplicate of existing record { ls_match-key } (score { ls_match-score DECIMALS = 2 }).| TO et_text.
       ENDLOOP.
     ENDLOOP.
   ENDMETHOD.

@@ -4,8 +4,9 @@ An external system (an SAP BAdI, middleware, a CI job) posts up to MAX_RECORDS c
 flat ``TABLE.FIELD: value`` object. Every record is judged on its own by the same engine a run uses
 (checks/runner.py run_checks, the tenant's rule governance applied as in api/services/change_requests.py), so no check
 logic lives here. Block policy: a record is blocked when any rule of severity ``critical`` fails; the call is blocked
-when any record is. CPU only and deterministic: no database, no language model; the route writes the audit row and
-never the record values.
+when any record is. ``validate`` is CPU only and deterministic: no database, no language model; the route writes the
+audit row and never the record values. The opt-in duplicate search reads the database and lives apart, in
+api/services/entry_duplicates.py, which the route calls.
 """
 from __future__ import annotations
 
@@ -56,14 +57,14 @@ def describe(rule_id: str) -> Optional[str]:
     return _messages().get(rule_id) or None
 
 
-def _clean(module: str, records: list[dict[str, Any]]) -> list[dict[str, str]]:
+def _clean(module: str, records: list[dict[str, Any]], allow: frozenset = frozenset()) -> list[dict[str, str]]:
     if module not in modules():
         raise FirewallError(f"Unknown module {module[:60]!r}.")
     if not records:
         raise FirewallError("Send at least one record.")
     if len(records) > MAX_RECORDS:
         raise FirewallError(f"At most {MAX_RECORDS} records per call.")
-    known = module_fields(module)
+    known = module_fields(module) | allow
     out: list[dict[str, str]] = []
     for i, rec in enumerate(records):
         if not isinstance(rec, dict) or not rec:
@@ -127,10 +128,11 @@ def _suggestions(tid: str, module: str, row: dict[str, str], fails: list[dict], 
 
 
 def validate(tid: str, module: str, records: list[dict[str, Any]], overrides: Optional[dict] = None,
-             extra_rules: Optional[list[dict]] = None, suggest: bool = False) -> dict[str, Any]:
+             extra_rules: Optional[list[dict]] = None, suggest: bool = False,
+             allow: frozenset = frozenset()) -> dict[str, Any]:
     """{verdict, block_severity, module, rules_run, records: [{index, verdict, failures: [{rule_id, description, field,
-    severity, dimension, reason[, suggestion]}]}]}. ``suggest`` is opt-in. Raises FirewallError for a request it refuses."""
-    rows = _clean(module, records)
+    severity, dimension, reason[, suggestion]}]}]}. ``suggest`` is opt-in; ``allow`` names extra fields a record may carry (the duplicate search's match fields). Raises FirewallError for a request it refuses."""
+    rows = _clean(module, records, allow)
     desc = {r.get("id"): (r.get("message") or "") for r in module_rules(module)}
     desc.update({r.get("id"): (r.get("message") or "") for r in (extra_rules or []) if r.get("module") == module})
     by_id = {r.get("id"): r for r in module_rules(module)}

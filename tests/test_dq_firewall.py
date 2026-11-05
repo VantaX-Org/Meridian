@@ -72,3 +72,27 @@ def test_describe_and_tally():
     assert fw.describe("MM016")
     assert _tally([{"records": 2, "blocked_records": 1}])["warned"] is None
     assert _tally([{"records": 3, "blocked_records": 1, "warned_records": 1}])["passed"] == 1
+
+
+def test_validate_stays_pure_and_opt_out_adds_nothing():
+    import inspect
+
+    res = fw.validate(T, "material_master", [{"MARA.MATNR": "ABC"}], overrides={}, extra_rules=[])
+    assert "duplicate_search" not in res and all("duplicates" not in r for r in res["records"])
+    assert "sqlalchemy" not in inspect.getsource(fw)
+
+
+def test_allow_admits_match_fields_only_when_named():
+    with pytest.raises(fw.FirewallError, match="not a field"):
+        fw.validate(T, "sd_customer_master", [{"BUT000.NAME_ORG1": "X1"}], overrides={}, extra_rules=[])
+    res = fw.validate(T, "sd_customer_master", [{"BUT000.NAME_ORG1": "X1"}], overrides={}, extra_rules=[],
+                      allow=frozenset({"BUT000.NAME_ORG1"}))
+    assert res["module"] == "sd_customer_master"
+
+
+def test_duplicate_block_key_normalisation():
+    from api.services import entry_duplicates as ed
+
+    assert ed.block_key(" xq-7731 zk ") == "XQ7731ZK"
+    assert ed.block_key("n/a") == "" and ed.block_key("0") == "" and ed.block_key(None) == ""
+    assert set(ed.BLOCK_FIELDS) == {f for _, fs in ed.SUPPORTED.values() for f in fs}
