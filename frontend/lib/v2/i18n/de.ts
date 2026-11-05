@@ -7831,6 +7831,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Compared against the files exported on {date}.": "Verglichen mit den am {date} exportierten Dateien.",
   "Rebuilt from the current field mappings. No export snapshot was kept for this run, so a mapping changed after the load shows as a difference.": "Aus den aktuellen Feldzuordnungen neu aufgebaut. Für diesen Lauf wurde kein Export-Snapshot aufbewahrt, daher erscheint eine nach dem Laden geänderte Zuordnung als Abweichung.",
   "The export snapshot could not be used, so the expected side was rebuilt from the current field mappings.": "Der Export-Snapshot konnte nicht verwendet werden, daher wurde die erwartete Seite aus den aktuellen Feldzuordnungen neu aufgebaut.",
+  "The latest export has no copy on file, so it is not the basis of this comparison.": "Für den letzten Export ist keine Kopie vorhanden, daher ist er nicht die Grundlage dieses Vergleichs.",
   "The suppression list drops an erased key from the extracts Meridian reads and stores. Some readers still see the old files: the change-detection baseline and the subject search read extract files directly. Erase the record in SAP as well, or the list is the only guard.": "Die Sperrliste entfernt einen gelöschten Schlüssel aus den Extrakten, die Meridian liest und speichert. Einige Leser sehen noch die alten Dateien: die Änderungsbasis und die Betroffenensuche lesen Extraktdateien direkt. Löschen Sie den Datensatz zusätzlich in SAP, sonst ist die Liste der einzige Schutz.",
   "Lifted": "Aufgehoben",
   "Key fields": "Schlüsselfelder",

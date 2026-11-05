@@ -401,3 +401,79 @@ async def test_export_route_survives_a_storage_failure_and_records_it(engines, s
     (row,) = _exports(owner, seeded)
     assert row.snapshot_prefix is None and row.snapshot_sha256 is None and row.snapshot_at is None
     assert "bucket down" in row.snapshot_error
+
+
+def _newest_first(owner, s) -> list:
+    with owner.connect() as c:
+        return c.execute(text("SELECT snapshot_prefix, snapshot_sha256, snapshot_error FROM migration_export_files "
+                              "WHERE run_id = :r ORDER BY created_at DESC"), {"r": s.run}).fetchall()
+
+
+async def _export_via_route(owner, s, c) -> None:
+    _ready_to_export(owner, s)
+    r = await c.get(f"/api/v1/migration/export/{s.run}/csv", headers=H)
+    assert r.status_code == 200, r.text
+
+
+@pytest.mark.anyio
+async def test_export_over_the_size_limit_keeps_no_copy_and_says_why(engines, seeded, store, blobs, monkeypatch):
+    from api.config import settings
+
+    owner, worker = engines
+    monkeypatch.setattr("workers.db.get_sync_engine", lambda: worker)
+    monkeypatch.setattr(settings, "migration_snapshot_max_mb", 0)
+    async with await _client(monkeypatch, seeded.tid) as c:
+        await _export_via_route(owner, seeded, c)
+    (row,) = _exports(owner, seeded)
+    assert row.snapshot_prefix is None and "limit" in row.snapshot_error
+    assert not blobs
+
+
+@pytest.mark.anyio
+async def test_only_the_latest_copies_are_kept(engines, seeded, store, blobs, monkeypatch):
+    from api.services.migration import snapshot
+
+    owner, worker = engines
+    monkeypatch.setattr("workers.db.get_sync_engine", lambda: worker)
+    async with await _client(monkeypatch, seeded.tid) as c:
+        for _ in range(snapshot.KEEP):
+            await _export_via_route(owner, seeded, c)
+        oldest = _newest_first(owner, seeded)[-1].snapshot_prefix
+        await _export_via_route(owner, seeded, c)
+    rows = _newest_first(owner, seeded)
+    assert len(rows) == snapshot.KEEP + 1
+    assert all(r.snapshot_prefix and r.snapshot_error is None for r in rows[:snapshot.KEEP])
+    gone = rows[-1]
+    assert gone.snapshot_prefix is None and gone.snapshot_sha256 is None and "latest copies" in gone.snapshot_error
+    assert not any(k.startswith(oldest) for k in blobs)
+
+
+@pytest.mark.anyio
+async def test_export_survives_a_failed_prune_and_keeps_the_pointers(engines, seeded, store, blobs, monkeypatch):
+    from api.services import storage
+    from api.services.migration import snapshot
+
+    def fail(*_a, **_k):
+        raise OSError("bucket down")
+
+    owner, worker = engines
+    monkeypatch.setattr("workers.db.get_sync_engine", lambda: worker)
+    async with await _client(monkeypatch, seeded.tid) as c:
+        for _ in range(snapshot.KEEP):
+            await _export_via_route(owner, seeded, c)
+        monkeypatch.setattr(storage, "delete_prefix", fail)
+        await _export_via_route(owner, seeded, c)
+    assert all(r.snapshot_prefix for r in _newest_first(owner, seeded))
+
+
+def test_a_newest_export_without_a_copy_is_flagged_on_the_comparison(engines, seeded, store, blobs, monkeypatch):
+    owner, worker = engines
+    _export(engines, seeded, monkeypatch)
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO migration_export_files (id, tenant_id, run_id, export_format, filename, "
+                       "snapshot_error, created_at) VALUES (:i, :t, :r, 'csv', 'x.csv', 'too big', "
+                       "now() + interval '1 hour')"), {"i": str(uuid.uuid4()), "t": seeded.tid, "r": seeded.run})
+    rid = _queued(owner, seeded)
+    assert _execute(monkeypatch, worker, seeded, rid)["status"] == "done"
+    sm = _summary(owner, rid)
+    assert sm["basis"] == "snapshot" and sm["newest_export_no_copy"] is True

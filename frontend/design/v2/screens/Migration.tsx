@@ -400,6 +400,7 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                   ? t("Compared against the files exported on {date}.", { date: formatDate(sum.snapshot_exported_at ?? null, "date") })
                   : t("Rebuilt from the current field mappings. No export snapshot was kept for this run, so a mapping changed after the load shows as a difference.")}
                 {sum.snapshot_skipped ? ` ${t("The export snapshot could not be used, so the expected side was rebuilt from the current field mappings.")}` : ""}
+                {sum.newest_export_no_copy ? ` ${t("The latest export has no copy on file, so it is not the basis of this comparison.")}` : ""}
               </p>
               <Table title={t("Data quality score, source, projected and actual")} head={[t("Object"), t("Source"), t("Projected"), t("Actual in target")]}>
                 {d!.scores.map((m) => (

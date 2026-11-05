@@ -7,6 +7,9 @@ the digest and that the prefix belongs to the caller's tenant, so a tampered or 
 
 Snapshots hold record values, personal fields included. They are removed with the run (``delete_run``), with a
 version purge, with a tenant purge, and rewritten per record by a data-subject erasure (subject_requests).
+
+Storage is bounded: a copy over ``migration_snapshot_max_mb`` is not kept, and only the newest ``KEEP`` copies of a run
+stay (``prune``).
 """
 import hashlib
 import io
@@ -20,6 +23,7 @@ from api.services import storage
 
 ROOT = "migration-snapshots"
 SIDES = ("load", "held")
+KEEP = 3  # copies per run; reconciliation reads only the newest
 
 
 def run_prefix(tenant_id, run_id) -> str:
@@ -48,6 +52,9 @@ def write(tenant_id, run_id, export_id, load: dict[str, pd.DataFrame], held: dic
     pre = prefix(tenant_id, run_id, export_id)
     parts = {f"{pre}{side}/{quote(t, safe='')}.parquet": _to_parquet(df)
              for side, frames in zip(SIDES, (load, held)) for t, df in frames.items()}
+    size = sum(map(len, parts.values()))
+    if size > settings.migration_snapshot_max_mb * 1024 * 1024:
+        raise ValueError(f"copy is {size // (1024 * 1024)} MB, over the {settings.migration_snapshot_max_mb} MB limit")
     try:
         for name, data in parts.items():
             storage.upload_file(settings.minio_bucket_uploads, name, data, suppress=False)
@@ -85,3 +92,33 @@ def latest(session, run_id) -> Optional[object]:
         "SELECT id, snapshot_prefix, snapshot_sha256, created_at FROM migration_export_files "
         "WHERE run_id = :r AND snapshot_prefix IS NOT NULL ORDER BY created_at DESC LIMIT 1"),
         {"r": run_id}).fetchone()
+
+
+def newest_has_no_copy(session, run_id) -> bool:
+    """True when the run's newest export kept no copy, so a comparison cannot be against those files."""
+    from sqlalchemy import text
+    row = session.execute(text(
+        "SELECT snapshot_prefix FROM migration_export_files WHERE run_id = :r ORDER BY created_at DESC LIMIT 1"),
+        {"r": run_id}).fetchone()
+    return row is not None and row.snapshot_prefix is None
+
+
+def prune(session, tenant_id, run_id) -> int:
+    """Remove all but the newest ``KEEP`` copies of a run; the caller commits. Returns the copies removed.
+
+    Objects go first: an erasure finds copies through these rows, so a row must not lose its pointer while personal
+    data remains. A failure leaves the rows pointing at what is left, the next prune finishes the job, and an erasure
+    deletes a partial copy whole.
+    """
+    from sqlalchemy import text
+    rows = session.execute(text(
+        "SELECT id, snapshot_prefix FROM migration_export_files WHERE run_id = :r AND snapshot_prefix IS NOT NULL "
+        "ORDER BY created_at DESC OFFSET :k"), {"r": run_id, "k": KEEP}).fetchall()
+    rows = [r for r in rows if r.snapshot_prefix.startswith(run_prefix(tenant_id, run_id))]
+    for r in rows:
+        storage.delete_prefix(settings.minio_bucket_uploads, r.snapshot_prefix)
+    for r in rows:
+        session.execute(text(
+            "UPDATE migration_export_files SET snapshot_prefix = NULL, snapshot_sha256 = NULL, "
+            "snapshot_error = 'removed: only the latest copies are kept' WHERE id = :i"), {"i": r.id})
+    return len(rows)

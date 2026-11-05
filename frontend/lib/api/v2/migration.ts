@@ -230,7 +230,9 @@ export interface Reconciliation {
   record_cap: number | null;
   summary: { tables?: number; comparable?: number; expected?: number; found?: number; missing?: number; unexpected?: number; differing_fields?: number;
     /** What the expected side was built from: the files exported (snapshot) or the mappings as they stand (rebuilt). Absent on older results. */
-    basis?: "snapshot" | "rebuilt"; snapshot_export_id?: string; snapshot_exported_at?: string; snapshot_skipped?: string };
+    basis?: "snapshot" | "rebuilt"; snapshot_export_id?: string; snapshot_exported_at?: string; snapshot_skipped?: string;
+    /** The newest export kept no copy: over the size limit, a storage failure, or removed. */
+    newest_export_no_copy?: boolean };
   tables: ReconTable[];
   scores: ReconScores[];
   /** Started by a finished target analysis, not by a person. */

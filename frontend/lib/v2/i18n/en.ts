@@ -7830,6 +7830,7 @@ export const en = {
   "Compared against the files exported on {date}.": "Compared against the files exported on {date}.",
   "Rebuilt from the current field mappings. No export snapshot was kept for this run, so a mapping changed after the load shows as a difference.": "Rebuilt from the current field mappings. No export snapshot was kept for this run, so a mapping changed after the load shows as a difference.",
   "The export snapshot could not be used, so the expected side was rebuilt from the current field mappings.": "The export snapshot could not be used, so the expected side was rebuilt from the current field mappings.",
+  "The latest export has no copy on file, so it is not the basis of this comparison.": "The latest export has no copy on file, so it is not the basis of this comparison.",
   "The suppression list drops an erased key from the extracts Meridian reads and stores. Some readers still see the old files: the change-detection baseline and the subject search read extract files directly. Erase the record in SAP as well, or the list is the only guard.": "The suppression list drops an erased key from the extracts Meridian reads and stores. Some readers still see the old files: the change-detection baseline and the subject search read extract files directly. Erase the record in SAP as well, or the list is the only guard.",
   "Lifted": "Lifted",
   "Key fields": "Key fields",

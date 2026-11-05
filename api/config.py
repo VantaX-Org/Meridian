@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     # MinIO's native variable names.
     minio_secret_key: str = os.environ.get("MINIO_SECRET_KEY") or os.environ.get("MINIO_PASSWORD") or ""
     minio_bucket_uploads: str = "meridian-uploads"
+    # Largest export copy kept for reconciliation, in MB of compressed files. A larger export still downloads; it just
+    # keeps no copy, and the comparison falls back to an older copy or a rebuild. 0 keeps none.
+    migration_snapshot_max_mb: int = Field(
+        default=2048, ge=0, validation_alias=AliasChoices("MERIDIAN_MIGRATION_SNAPSHOT_MAX_MB"))
     minio_bucket_reports: str = "meridian-reports"
 
     # Licence
