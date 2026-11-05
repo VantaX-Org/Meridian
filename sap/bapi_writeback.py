@@ -617,6 +617,7 @@ class RecordResult:
     messages: list[dict] = field(default_factory=list)
     error: Optional[str] = None
     export: list[dict] = field(default_factory=list)   # fields not sent, each {field, reason}: they go by export
+    connector_error: bool = False                      # error is a lost or refused RFC connection, not SAP's answer
 
     def as_dict(self) -> dict:
         return {"record_key": self.record_key, "bapis": self.bapi_calls, "fields": self.fields,
@@ -700,5 +701,6 @@ def write_record(conn: Any, module: str, record_key: str, changes: dict[str, Any
                     "committed" if res.committed else "commit failed", len(res.fields))
     except SAPConnectorError as e:
         res.error = str(e)
+        res.connector_error = True
         logger.warning("write-back %s: connector error (%s)", record_key, type(e).__name__)
     return res

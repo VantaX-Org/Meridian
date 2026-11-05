@@ -10,7 +10,7 @@ from sqlalchemy import create_engine, text
 from api.config import settings
 from tests.route_auth import patch_tenant
 from tests.test_vendor_writeback import BPC, CVI_TABLES, LIFNR, VendorRFC
-from tests.test_writeback_batch_route_pg import _call, _drop
+from tests.test_writeback_batch_route_pg import _call, _drop, send_and_drive
 
 pytestmark = pytest.mark.skipif(not os.getenv("MERIDIAN_TEST_DB_URL"), reason="requires MERIDIAN_TEST_DB_URL")
 
@@ -101,11 +101,11 @@ async def test_send_writes_the_vendor_name_through_the_business_partner(ap_batch
     patch_tenant(monkeypatch, tid)
     monkeypatch.setattr(settings, "live_writeback_enabled", True)
     fake = _fake(monkeypatch)
-    r = await _call("POST", f"/api/v1/writeback/batches/{bid}/send")
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert (body["sent"], body["failed"], body["export_only"]) == (1, 0, 1)
-    rec = body["records"][0]
+    _, run = await send_and_drive(monkeypatch, tid, bid)
+    assert (run["counts"]["committed"], run["counts"]["failed"], run["export_only_fields"]) == (1, 0, 1)
+    with create_engine(os.environ["MERIDIAN_TEST_DB_URL"]).begin() as c:
+        c.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
+        rec = c.execute(text("SELECT result FROM writeback_run_records WHERE tenant_id = :t"), {"t": tid}).scalar_one()
     assert rec["committed"] and rec["bapis"] == [BPC] and rec["fields"] == ["LFA1.NAME1"] and rec["export"] == []
     assert fake.names() == [BPC, "BAPI_TRANSACTION_ROLLBACK", BPC, "BAPI_TRANSACTION_COMMIT"]
     assert fake.params(BPC)[-1]["BUSINESSPARTNER"] == "0000900001"
@@ -117,10 +117,12 @@ async def test_send_on_a_classic_release_sends_nothing_and_says_why(ap_batch, mo
     patch_tenant(monkeypatch, tid)
     monkeypatch.setattr(settings, "live_writeback_enabled", True)
     fake = _fake(monkeypatch, functions=())
-    body = (await _call("POST", f"/api/v1/writeback/batches/{bid}/send")).json()
-    assert (body["sent"], body["failed"], body["export_only"]) == (0, 0, 2)
-    assert body["status"] == "completed_with_errors" and fake.names() == []
-    rec = body["records"][0]
+    sent, run = await send_and_drive(monkeypatch, tid, bid)
+    assert (run["counts"]["committed"], run["counts"]["failed"], run["export_only_fields"]) == (0, 0, 2)
+    assert fake.names() == []
+    with create_engine(os.environ["MERIDIAN_TEST_DB_URL"]).begin() as c:
+        c.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
+        rec = c.execute(text("SELECT result FROM writeback_run_records WHERE tenant_id = :t"), {"t": tid}).scalar_one()
     assert rec["export"][0]["field"] == "LFA1.NAME1" and "vendor maintenance transaction" in rec["export"][0]["reason"]
     engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
     with engine.begin() as c:

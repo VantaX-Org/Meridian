@@ -47,7 +47,7 @@ def _drop(engine, tid, sid):
     with engine.begin() as c:
         c.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
         c.execute(text("DELETE FROM system_credentials WHERE system_id = :s"), {"s": sid})
-        for t in ("remediation_events", "remediation_items", "remediation_batches", "sap_systems"):
+        for t in ("audit_log", "writeback_runs", "remediation_events", "remediation_items", "remediation_batches", "sap_systems"):
             c.execute(text(f"DELETE FROM {t} WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM tenants WHERE id = :t"), {"t": tid})
     engine.dispose()
@@ -71,6 +71,34 @@ async def _call(method: str, path: str):
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         return await c.request(method, path, headers=HEADERS)
+
+
+def drive(tid, run_id, max_slices=20):
+    """Run the worker slices of a write-back run until it stops re-queueing itself."""
+    from workers.db import tenant_session
+    from workers.tasks import run_batch_writeback as worker
+
+    out: dict = {}
+    for _ in range(max_slices):
+        again: list = []
+        s = tenant_session(create_engine(os.environ["MERIDIAN_TEST_DB_URL"]), tid)
+        try:
+            out = worker.run(s, tid, run_id, lambda countdown: again.append(countdown), sleep=lambda x: None)
+        finally:
+            s.close()
+        if not again:
+            return out
+    raise AssertionError("run never finished")
+
+
+async def send_and_drive(monkeypatch, tid, bid):
+    """POST /send (the Celery enqueue is held back), then let the worker finish the run; returns (send, run)."""
+    monkeypatch.setattr("api.routes.writeback._enqueue", lambda run_id, t: None)
+    r = await _call("POST", f"/api/v1/writeback/batches/{bid}/send")
+    assert r.status_code == 200, r.text
+    drive(tid, r.json()["id"])
+    run = (await _call("GET", f"/api/v1/writeback/batches/{bid}/run")).json()
+    return r.json(), run
 
 
 def _fake_sap(monkeypatch) -> FakeRFC:
@@ -144,14 +172,15 @@ async def test_send_simulates_commits_returns_sap_messages_and_marks_the_batch_s
     patch_tenant(monkeypatch, tid)
     monkeypatch.setattr(settings, "live_writeback_enabled", True)
     fake = _fake_sap(monkeypatch)
-    r = await _call("POST", f"/api/v1/writeback/batches/{bid}/send")
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert (body["sent"], body["failed"], body["export_only"]) == (1, 0, 1)
-    rec = body["records"][0]
-    assert rec["record_key"] == KEY and rec["committed"] and rec["fields"] == ["MARC.PLIFZ"]
-    assert rec["messages"][0] == {"type": "S", "id": "M3", "number": "801", "message": "saved"}
-    assert rec["simulated"] and rec["simulate_messages"][0]["message"] == "ok"
+    sent, run = await send_and_drive(monkeypatch, tid, bid)
+    assert sent["status"] == "queued" and sent["records"] == 1 and sent["counts"]["pending"] == 1
+    assert run["status"] == "completed" and run["counts"]["committed"] == 1 and run["export_only_fields"] == 1
+    with create_engine(os.environ["MERIDIAN_TEST_DB_URL"]).begin() as c:  # SAP's RETURN messages are kept per record
+        c.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
+        rec = c.execute(text("SELECT record_key, result FROM writeback_run_records WHERE tenant_id = :t"), {"t": tid}).one()
+    assert rec[0] == KEY and rec[1]["committed"] and rec[1]["fields"] == ["MARC.PLIFZ"]
+    assert rec[1]["messages"][0] == {"type": "S", "id": "M3", "number": "801", "message": "saved"}
+    assert rec[1]["simulated"] and rec[1]["simulate_messages"][0]["message"] == "ok"
     assert fake.names() == ["BAPI_MATERIAL_SAVEDATA", "BAPI_MATERIAL_SAVEDATA", "BAPI_TRANSACTION_COMMIT"]
     engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
     with engine.begin() as c:
