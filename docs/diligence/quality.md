@@ -60,7 +60,10 @@ Gaps:
   list (D-06). Fixed: added to `SPECS` in `.github/workflows/aurora-e2e.yml`.
 - No Python lint or type-check step (D-29, PC-10). The ruff E9 and F errors, including the two undefined
   names, were cleared in commit `6fdf345f`, and a `ruff check` job now runs in
-  `.github/workflows/unit-tests.yml`. No type checker gate exists yet.
+  `.github/workflows/unit-tests.yml`. A `mypy` job in the same workflow now type-checks `api`, `checks`,
+  `workers`, `sap`, `agents`, `db` and `llm` (non-strict, third-party packages not installed). It fails
+  on any error outside the 585 recorded in `scripts/mypy_baseline.txt`; those 585 existing errors are not
+  fixed, and `tests/` and `scripts/` are not checked.
 - No full-stack end-to-end test in CI. A live-stack acceptance spec (`frontend/e2e/acceptance.spec.ts`,
   commit `d49301fd`) exists and is skipped unless `ACCEPTANCE_BASE_URL` is set.
 
