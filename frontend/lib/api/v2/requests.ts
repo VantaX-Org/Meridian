@@ -36,6 +36,8 @@ export interface ChangeRequest {
   submitted_at: string | null;
   decided_at: string | null;
   completed_at: string | null;
+  /** When the entry gate released this approved request to the SAP save; null otherwise. */
+  entry_released_at: string | null;
   /** When the waiting approval step is due; null when no step waits or the step has no SLA. */
   due_at: string | null;
   waiting_step: string | null;

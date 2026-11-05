@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
-import { getFirewallSummary, validateRecords, type FirewallFailure, type FirewallModuleRow, type FirewallSuggestion, type FirewallSummary, type StewardRequest } from "@/lib/api/v2/dq-firewall";
+import { getFirewallSummary, validateRecords, type FirewallFailure, type FirewallModuleRow, type FirewallSuggestion, type FirewallSummary, type HoldMode, type HoldState, type RecordHold, type StewardRequest } from "@/lib/api/v2/dq-firewall";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
 import { useOpenItem } from "@/lib/v2/hooks";
@@ -11,7 +11,7 @@ import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, TrendChart, niceTicks, type TrendPoint } from "../charts";
-import { objectWord, statusWord } from "../inspector/request";
+import { ageWord, objectWord, statusWord } from "../inspector/request";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { DuplicateResults } from "./EntryDuplicates";
@@ -92,6 +92,121 @@ export function notOpenedWord(r: StewardRequest["reason"]): string {
   }
 }
 
+/** The hold state of a record in words. */
+export function holdWord(s: HoldState): string {
+  switch (s) {
+    case "held": return t("Held");
+    case "released": return t("Released");
+    case "rejected": return t("Rejected");
+    case "written": return t("Written");
+    default: return t("Not held");
+  }
+}
+
+/** What a hold state means for the SAP save, in a sentence. */
+export function holdNote(h: RecordHold): string {
+  switch (h.state) {
+    case "held": return t("Waiting for the approval workflow. The SAP save stops.");
+    case "released": return t("Approved and released to the SAP save. The save may go on, even for a blocked record.");
+    case "rejected": return t("Rejected by an approver. The SAP save stops. Changed content opens a new request.");
+    case "written": return h.reason === "exported_as_load_file"
+      ? t("Already taken as a load file. The SAP save stops, so the record is not created twice.")
+      : t("Meridian writes or has written this record to SAP. The SAP save stops, so the record is not created twice.");
+    default: return notOpenedWord(h.reason as StewardRequest["reason"]);
+  }
+}
+
+/** The hold state and the request of each record the hold mode covered. */
+function HoldResults({ records }: { records: { index: number; hold?: RecordHold | null }[] }) {
+  const { hrefFor } = useOpenItem();
+  const rows = records.filter((r) => r.hold);
+  if (rows.length === 0) return null;
+  return (
+    <ScrollFrame label={t("Hold state of each record table, scrollable")}>
+      <table className="m2-tbl m2-cards" data-testid="entry-gate-hold-results">
+        <thead>
+          <tr>
+            <th scope="col">{t("Record")}</th>
+            <th scope="col">{t("Hold")}</th>
+            <th scope="col">{t("Request")}</th>
+            <th scope="col">{t("SAP key")}</th>
+            <th scope="col">{t("What it means")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ index, hold: h }) => (
+            <tr key={index}>
+              <td data-label={t("Record")} className="m2-num">{index + 1}</td>
+              <td data-label={t("Hold")}>{h ? holdWord(h.state) : <Dash />}</td>
+              <td data-label={t("Request")}>{h?.request_id ? <V2Link href={hrefFor({ kind: "request", id: h.request_id })} className="m2-rowlink">{t("Open the request")}</V2Link> : <Dash />}</td>
+              <td data-label={t("SAP key")}>{h?.sap_key ? <Mono>{h.sap_key}</Mono> : <Dash why={t("SAP has not given a key.")} />}</td>
+              <td data-label={t("What it means")}>{h ? holdNote(h) : null}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </ScrollFrame>
+  );
+}
+
+/** Held, released, rejected and written requests, how long the oldest has waited, and the latest held ones. */
+function HoldsPanel({ holds }: { holds: FirewallSummary["holds"] }) {
+  const { hrefFor } = useOpenItem();
+  const h = holds;
+  const figs: { id: string; label: string; value: number }[] = [
+    { id: "held", label: t("Held"), value: h.held },
+    { id: "released", label: t("Released"), value: h.released },
+    { id: "rejected", label: t("Rejected"), value: h.rejected },
+    { id: "written", label: t("Written"), value: h.written },
+  ];
+  return (
+    <Panel title={t("Holds")} meta={t("A held record waits for the approval workflow before SAP may save it. Released, rejected and written count the last 7 days; held counts what waits now.")} testId="entry-gate-holds">
+      <dl className="m2-facts">
+        {figs.map((f) => (
+          <div key={f.id} data-testid={`entry-gate-hold-${f.id}`}>
+            <dt>{f.label}</dt>
+            <dd className="m2-num">{int(f.value)}</dd>
+          </div>
+        ))}
+        <div data-testid="entry-gate-hold-oldest">
+          <dt>{t("Oldest held")}</dt>
+          <dd className="m2-num">{h.oldest_held_hours == null ? <Dash why={t("Nothing is held.")} /> : ageWord(h.oldest_held_hours)}</dd>
+        </div>
+        <div data-testid="entry-gate-hold-median">
+          <dt>{t("Median time to a decision")}</dt>
+          <dd className="m2-num">{h.median_decision_hours == null ? <Dash why={t("Nothing was decided in the last 7 days.")} /> : ageWord(h.median_decision_hours)}</dd>
+        </div>
+      </dl>
+      {h.latest.length === 0 ? <EmptyFrame>{t("No record is held.")}</EmptyFrame> : (
+        <ScrollFrame label={t("Held requests table, scrollable")}>
+          <table className="m2-tbl m2-cards" data-testid="entry-gate-held-list">
+            <thead>
+              <tr>
+                <th scope="col">{t("Request")}</th>
+                <th scope="col">{t("Object")}</th>
+                <th scope="col">{t("Status")}</th>
+                <th scope="col">{t("Opened")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {h.latest.map((r) => (
+                <tr key={r.id} data-testid={`entry-gate-held-${r.id}`}>
+                  <th scope="row" className="m2-card-lead">
+                    <V2Link href={hrefFor({ kind: "request", id: r.id })} className="m2-rowlink">{r.title || t("Untitled request")}</V2Link>
+                  </th>
+                  <td data-label={t("Object")}>{objectWord(r.object)}</td>
+                  <td data-label={t("Status")}>{statusWord(r.status)}</td>
+                  <td data-label={t("Opened")}>{formatDate(r.created_at, "date")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ScrollFrame>
+      )}
+    </Panel>
+  );
+}
+
 /** The request each flagged record opened, or why none was. */
 function StewardResults({ records }: { records: { index: number; steward_request?: StewardRequest | null }[] }) {
   const { hrefFor } = useOpenItem();
@@ -167,12 +282,13 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
   const [suggest, setSuggest] = useState(true);
   const [duplicates, setDuplicates] = useState(false);
   const [route, setRoute] = useState(false);
+  const [hold, setHold] = useState<HoldMode>("off");
   const [bad, setBad] = useState<string | null>(null);
   const run = useMutation({
     mutationFn: async () => {
       const parsed: unknown = JSON.parse(text);
       if (!Array.isArray(parsed)) throw new SyntaxError("array");
-      return validateRecords(obj, parsed as Record<string, string>[], { suggest, duplicates, route_to_steward: route });
+      return validateRecords(obj, parsed as Record<string, string>[], { suggest, duplicates, route_to_steward: route, hold });
     },
     onMutate: () => setBad(null),
     onError: (e) => { if (e instanceof SyntaxError) setBad(t("The records must be a JSON list of objects, each with TABLE.FIELD values.")); },
@@ -203,6 +319,14 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
         <label>
           <input type="checkbox" checked={route} onChange={(e) => setRoute(e.target.checked)} data-testid="entry-gate-route" /> {t("Send blocked or warned records to a steward as a change request")}
         </label>
+        <label>
+          <span>{t("Hold")}</span>
+          <select value={hold} onChange={(e) => setHold(e.target.value as HoldMode)} data-testid="entry-gate-hold">
+            <option value="off">{t("Off: the verdict alone decides the save")}</option>
+            <option value="blocked">{t("Blocked: hold blocked records for approval")}</option>
+            <option value="flagged">{t("Flagged: hold blocked and warned records for approval")}</option>
+          </select>
+        </label>
       </div>
       <button type="button" className="m2-btn m2-strong" disabled={run.isPending} onClick={() => run.mutate()} data-testid="entry-gate-run">{t("Check records")}</button>
       {bad || apiErr ? <p role="alert">{bad ?? apiErr}</p> : null}
@@ -212,6 +336,11 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
             {res.verdict === "block" ? t("Blocked") : t("Passed")}{" "}
             {t("{blocked} of {total} records blocked, {rules} rules run.", { blocked: res.records.filter((r) => r.verdict === "block").length, total: res.records.length, rules: res.rules_run })}
           </p>
+          {res.save ? (
+            <p role="status" data-testid="entry-gate-save">
+              {res.save === "stop" ? t("The SAP save stops.") : t("The SAP save may go on.")}
+            </p>
+          ) : null}
           {rows.length === 0 ? <EmptyFrame>{t("Every record passed every enabled rule.")}</EmptyFrame> : (
             <ScrollFrame label={t("Failing rules table, scrollable")}>
               <table className="m2-tbl m2-cards">
@@ -242,6 +371,7 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
           )}
           <DuplicateResults res={res} />
           <StewardResults records={res.records} />
+          <HoldResults records={res.records} />
         </>
       ) : null}
     </Panel>
@@ -362,6 +492,8 @@ export function EntryGate() {
           </ScrollFrame>
         </Panel>
       </div>
+
+      <HoldsPanel holds={s.holds} />
 
       <GateRequests rows={s.requests ?? []} />
 

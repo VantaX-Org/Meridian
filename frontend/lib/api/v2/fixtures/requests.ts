@@ -44,7 +44,7 @@ const def = (id: string, key: string, name: string, kind: string, version: numbe
 const precheck = (failures: Precheck["failures"], duplicates: Precheck["duplicates"] = []): Precheck => ({ problems: [], rules_run: 214, failures, duplicates, checked_at: "2026-10-18T09:00:00Z" });
 
 const req = (r: Partial<ChangeRequest> & Pick<ChangeRequest, "id" | "kind" | "object" | "status" | "title" | "payload">): ChangeRequest => ({
-  target_system_id: ECC, object_key: null, record_count: 0, requester_id: ME, requester_label: ME_LABEL, workflow_instance_id: null, precheck: null, validated_at: null, sap_key: null, sap_result: null,
+  target_system_id: ECC, object_key: null, record_count: 0, requester_id: ME, requester_label: ME_LABEL, workflow_instance_id: null, precheck: null, validated_at: null, sap_key: null, sap_result: null, entry_released_at: null,
   sap_phase: null, sap_attempts: 0, delivery: null, has_export: false, reason: null, created_at: "2026-10-18T08:00:00Z", updated_at: "2026-10-18T08:00:00Z", submitted_at: null, decided_at: null, completed_at: null, due_at: null, waiting_step: null, age_hours: null, overdue: false, critical_fields: [], ...r,
 });
 

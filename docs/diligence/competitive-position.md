@@ -147,12 +147,15 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   master and business partner) scores a candidate against the golden records Meridian holds, using the
   tenant's match rules, and warns with the existing record's key, score and matched fields; it never
   blocks. The Entry gate screen shows the traffic and the duplicate result. What remains behind
-  MDG: there is no approval workflow or staging area in SAP; the duplicate search finds candidates only
+  MDG: the approval chain and staging area are Meridian's and not inside SAP (the opt-in hold, below, stops the SAP save until a Meridian request is approved, but it has not run against a live SAP system); the duplicate search finds candidates only
   by exact normalised value of a match field plus a trigram similarity pass on the three free-text fields (about 114 ms for one query on 1,000,000 synthetic rows, under the application role with row level security on) and a near-value pass on five identifier fields, tax numbers KNA1 STCD1, STCD2 and STCEG and part numbers MARA BISMT and MFRPN, that finds a value one character different or with two neighbouring characters swapped (migration 139; a median of 4 to 14 ms for the whole search of a record on the same 1,000,000 rows). It does not find a difference of two or more characters, skips keys under 5 or over 40 normalised characters, and a near match always warns because adjacent part numbers can be different parts; it skips semantic match rules, searches
   Meridian's golden records rather than live SAP; an opt-in route to a steward opens a change request
   of kind create for a blocked, warned or duplicate-flagged record, deduplicated while open, but only for
   material, customer and vendor objects (SuccessFactors has none and the answer says so), and whether a
-  steward is assigned depends on the tenant's change request workflow; and the
+  steward is assigned depends on the tenant's change request workflow; an opt-in `hold` of `blocked` or `flagged` makes the same call answer whether the SAP save may go on: a covered record is
+  held while its request waits, stays stopped when rejected or already written, and is released once, for 24 hours, when the
+  request is approved (a released request cannot also be exported as a load file); the added time was measured locally at
+  about 127 ms when a request is opened and none for a repeat, not at SAP scale; and the
   ABAP samples have not been run against a live SAP system. For SuccessFactors there is no sample,
   only a documented integration pattern. Meridian still fixes most bad data after the fact.
 - **Breadth beyond SAP.** Informatica, Collibra and Ataccama cover the whole enterprise estate with a

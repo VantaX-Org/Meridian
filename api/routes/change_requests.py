@@ -80,6 +80,7 @@ class RequestOut(BaseModel):
     submitted_at: Optional[datetime] = None
     decided_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    entry_released_at: Optional[datetime] = Field(None, description="opened from the entry gate and released to the SAP save")
     due_at: Optional[datetime] = Field(None, description="when the waiting approval step is due")
     waiting_step: Optional[str] = None
     age_hours: Optional[float] = Field(None, description="open requests: hours since submitted (draft: since created)")
@@ -402,6 +403,9 @@ async def cancel_request(request_id: uuid.UUID, body: CancelBody, request: Reque
         raise HTTPException(status_code=403, detail="Only the requester or an administrator cancels this request.")
     if cr["status"] not in crs.CANCELLABLE:
         raise HTTPException(status_code=409, detail=f"The request is {cr['status']}; it can no longer be cancelled.")
+    if cr.get("entry_released_at"):  # the content may already be saved in SAP; a new request would allow a second save
+        raise HTTPException(status_code=409, detail="The request was released to the SAP save from the entry gate; "
+                                                    "it can no longer be cancelled.")
 
     def go(s):
         workflow.close(s, tid, crs.KIND, cr["id"], "cancelled", uid, label, body.reason)
@@ -743,9 +747,20 @@ async def export_request(request_id: uuid.UUID, db: AsyncSession = Depends(get_d
                          tenant: Tenant = Depends(get_tenant)) -> Response:
     """The load file of a request that goes to SAP by file, with the reason it does."""
     await _rls(db, tenant)
-    doc = (await db.execute(text("SELECT export FROM change_requests WHERE id = :i AND tenant_id = :t"),
-                            {"i": str(request_id), "t": str(tenant.id)})).scalar()
+    # One atomic statement: a request released to the SAP save (entry gate hold) is never also handed out as a load file,
+    # and a download stamps the request so the gate never releases it afterwards.
+    doc = (await db.execute(text(
+        "UPDATE change_requests SET export_downloaded_at = COALESCE(export_downloaded_at, now()) "
+        "WHERE id = :i AND tenant_id = :t AND export IS NOT NULL AND entry_released_at IS NULL RETURNING export"),
+        {"i": str(request_id), "t": str(tenant.id)})).scalar()
+    await db.commit()
     if doc is None:
+        released = (await db.execute(text("SELECT 1 FROM change_requests WHERE id = :i AND tenant_id = :t "
+                                          "AND entry_released_at IS NOT NULL"),
+                                     {"i": str(request_id), "t": str(tenant.id)})).scalar()
+        if released:
+            raise HTTPException(status_code=409, detail="This request was released to the SAP save from the entry gate; "
+                                                        "it has no load file to download.")
         raise HTTPException(status_code=404, detail="This request has no export load file.")
     return Response(content=json.dumps(doc, indent=2, default=str), media_type="application/json",
                     headers={"Content-Disposition": f"attachment; filename=change_request_{request_id}.json"})

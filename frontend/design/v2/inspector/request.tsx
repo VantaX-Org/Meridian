@@ -20,7 +20,8 @@ import { useToast } from "../Toast";
 import { StepDecide } from "./decide";
 import { ResultFrame, WorkflowSteps, useOutcome } from "./shared";
 
-export function statusWord(s: RequestStatus): string {
+export function statusWord(s: RequestStatus, releasedAt?: string | null): string {
+  if (s === "approved" && releasedAt) return tr("Released to the SAP save");
   const words: Record<RequestStatus, string> = {
     draft: tr("Draft"),
     submitted: tr("Submitted"),
@@ -240,7 +241,7 @@ function RequestBody({ d }: { d: RequestDetail }) {
             <Mono>{r.object_key}</Mono>
           </Fact>
         ) : null}
-        <Fact label={tr("Status")}>{statusWord(r.status)}</Fact>
+        <Fact label={tr("Status")}>{statusWord(r.status, r.entry_released_at)}</Fact>
         <Fact label={tr("Requested by")}>{r.requester_label ?? "—"}</Fact>
         <Fact label={tr("Created")}>{formatDate(r.created_at, "date")}</Fact>
         {r.submitted_at ? <Fact label={tr("Submitted")}>{formatDate(r.submitted_at, "datetime")}</Fact> : null}
@@ -347,7 +348,7 @@ function RequestBody({ d }: { d: RequestDetail }) {
             {tr("Retry")}
           </button>
         ) : null}
-        {r.has_export ? (
+        {r.has_export && !r.entry_released_at ? (
           <button
             type="button"
             className="m2-btn"
@@ -361,7 +362,7 @@ function RequestBody({ d }: { d: RequestDetail }) {
             {tr("Export load file")}
           </button>
         ) : null}
-        {["draft", "submitted", "in_approval", "approved", "failed"].includes(r.status) && mine && write ? (
+        {["draft", "submitted", "in_approval", "approved", "failed"].includes(r.status) && !r.entry_released_at && mine && write ? (
           <button type="button" className="m2-btn" disabled={pending !== null} onClick={() => void run("cancel", async () => { await cancelRequest(r.id); return done(tr("Request cancelled.")); })}>
             {tr("Cancel request")}
           </button>
@@ -377,7 +378,7 @@ function RequestBody({ d }: { d: RequestDetail }) {
 export function RequestInspector({ id, onClose }: { id: string; onClose: () => void }) {
   const q = useRequest(id);
   const r = q.data?.request ?? null;
-  const status = r ? statusWord(r.status) : q.isLoading ? <Skeleton width={120} height={12} /> : tr("Not found");
+  const status = r ? statusWord(r.status, r.entry_released_at) : q.isLoading ? <Skeleton width={120} height={12} /> : tr("Not found");
   return (
     <InspectorFrame title={r?.title ?? tr("Change request {id}", { id })} status={status} onClose={onClose}>
       {q.data ? (

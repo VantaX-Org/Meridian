@@ -39,12 +39,14 @@ def worlds():
     eng.dispose()
 
 
-async def validate(monkeypatch, w, module, records, route=True):
+async def validate(monkeypatch, w, module, records, route=True, hold=None):
     deps, client = make_client(monkeypatch, w["tid"], w["requester"])
     await deps.engine.dispose()
+    body = {"module": module, "records": records, "route_to_steward": route}
+    if hold:
+        body["hold"] = hold
     async with client:
-        return await client.post("/api/v1/dq-firewall/validate", headers=HEAD,
-                                 json={"module": module, "records": records, "route_to_steward": route})
+        return await client.post("/api/v1/dq-firewall/validate", headers=HEAD, json=body)
 
 
 async def summary(monkeypatch, w):
@@ -186,3 +188,263 @@ async def test_parallel_open_returns_the_winner(monkeypatch, worlds):
     sr = r.json()["records"][0]["steward_request"]
     assert sr["request_id"] == first["request_id"] and sr["existing"] is True
     assert count(eng, a) == 1
+
+
+# ── hold: stage the candidate, stop the SAP save, release the approved one ────
+
+
+async def hold(monkeypatch, w, records, mode="blocked", module="material_master"):
+    r = await validate(monkeypatch, w, module, records, route=False, hold=mode)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def stamp(eng, rid, **cols):
+    sets = ", ".join(f"{k} = {v}" for k, v in cols.items())
+    with eng.begin() as c:
+        c.execute(text(f"UPDATE change_requests SET {sets} WHERE id = :i"), {"i": rid})
+
+
+def row_of(eng, rid):
+    with eng.begin() as c:
+        return c.execute(text("SELECT status, entry_released_at, export_downloaded_at FROM change_requests WHERE id = :i"),
+                         {"i": rid}).first()
+
+
+@pytest.mark.anyio
+async def test_hold_off_answers_as_before(monkeypatch, worlds):
+    eng, a, _ = worlds
+    for route in (False, True):
+        r = await validate(monkeypatch, a, "material_master", [BAD, GOOD], route=route)
+        body = r.json()
+        assert "save" not in body and all("hold" not in rec for rec in body["records"])
+        assert set(body) == {"verdict", "block_severity", "module", "rules_run", "records", "duplicate_search"}
+        assert set(body["records"][0]) == {"index", "verdict", "failures", "duplicates", "steward_request"}
+    r = await validate(monkeypatch, a, "material_master", [BAD, GOOD], hold="off")
+    assert "save" not in r.json()
+
+
+@pytest.mark.anyio
+async def test_blocked_candidate_is_held_and_the_verdict_stands(monkeypatch, worlds):
+    eng, a, _ = worlds
+    out = await hold(monkeypatch, a, [BAD, WARN, GOOD])
+    assert out["verdict"] == "block" and out["save"] == "stop"
+    bad, warn, good = out["records"]
+    assert bad["verdict"] == "block" and bad["hold"]["state"] == "held" and bad["hold"]["request_id"]
+    assert bad["steward_request"]["request_id"] == bad["hold"]["request_id"]
+    assert "hold" not in warn and "hold" not in good  # blocked mode: the warned record has no hold entry
+    assert count(eng, a) == 2  # the warned record is routed as route_to_steward does
+    again = await hold(monkeypatch, a, [BAD])
+    assert again["records"][0]["hold"] == bad["hold"] and count(eng, a) == 2
+
+
+@pytest.mark.anyio
+async def test_blocked_mode_lets_a_warned_record_go(monkeypatch, worlds):
+    eng, a, _ = worlds
+    out = await hold(monkeypatch, a, [WARN, GOOD])
+    assert out["save"] == "go" and "hold" not in out["records"][0]
+
+
+@pytest.mark.anyio
+async def test_flagged_mode_holds_warned_records(monkeypatch, worlds):
+    eng, a, _ = worlds
+    out = await hold(monkeypatch, a, [WARN, GOOD], mode="flagged")
+    assert out["records"][0]["verdict"] == "pass" and out["records"][0]["hold"]["state"] == "held"
+    assert out["save"] == "stop" and "hold" not in out["records"][1]
+    assert (await hold(monkeypatch, a, [GOOD], mode="flagged"))["save"] == "go"
+
+
+@pytest.mark.anyio
+async def test_waiting_states_stay_held(monkeypatch, worlds):
+    eng, a, _ = worlds
+    rid = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]["request_id"]
+    for st in ("draft", "submitted", "in_approval", "failed"):
+        set_status(eng, rid, st)
+        h = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]
+        assert h["state"] == "held" and h["request_id"] == rid, st
+    assert count(eng, a) == 1
+
+
+@pytest.mark.anyio
+async def test_rejected_stays_rejected_and_hides_the_comment(monkeypatch, worlds):
+    eng, a, _ = worlds
+    rid = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]["request_id"]
+    set_status(eng, rid, "rejected")
+    with eng.begin() as c:
+        c.execute(text("INSERT INTO change_request_comments (tenant_id, request_id, author_label, body) "
+                       "VALUES (:t, :r, 'x', 'Material ZZZ-NOT-LOGGED is wrong')"), {"t": a["tid"], "r": rid})
+    out = await hold(monkeypatch, a, [BAD])
+    h = out["records"][0]["hold"]
+    assert h["state"] == "rejected" and h["request_id"] == rid and out["save"] == "stop"
+    assert "ZZZ-NOT-LOGGED" not in str(out["records"][0]["hold"])
+    assert count(eng, a) == 1
+    other = await hold(monkeypatch, a, [{**BAD, "MAKT.MAKTX": "Hex bolt M10"}])  # changed content: a new request
+    assert other["records"][0]["hold"]["state"] == "held" and count(eng, a) == 2
+
+
+@pytest.mark.anyio
+async def test_creating_and_created_are_written_and_stop(monkeypatch, worlds):
+    eng, a, _ = worlds
+    rid = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]["request_id"]
+    set_status(eng, rid, "creating")
+    h = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]
+    assert h["state"] == "written" and h["request_id"] == rid and not h.get("sap_key")
+    stamp(eng, rid, status="'created'", sap_key="'4711'")
+    out = await hold(monkeypatch, a, [BAD])
+    assert out["records"][0]["hold"]["state"] == "written" and out["records"][0]["hold"]["sap_key"] == "4711"
+    assert out["save"] == "stop" and count(eng, a) == 1
+
+
+@pytest.mark.anyio
+async def test_cancelled_opens_a_new_request(monkeypatch, worlds):
+    eng, a, _ = worlds
+    rid = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]["request_id"]
+    set_status(eng, rid, "cancelled")
+    h = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]
+    assert h["state"] == "held" and h["request_id"] != rid and count(eng, a) == 2
+
+
+@pytest.mark.anyio
+async def test_approved_is_released_once_and_a_block_verdict_may_save(monkeypatch, worlds):
+    eng, a, _ = worlds
+    rid = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]["request_id"]
+    set_status(eng, rid, "approved")
+    out = await hold(monkeypatch, a, [BAD, GOOD])
+    rec = out["records"][0]
+    assert rec["verdict"] == "block" and out["verdict"] == "block"
+    assert rec["hold"]["state"] == "released" and rec["hold"]["request_id"] == rid and out["save"] == "go"
+    first = row_of(eng, rid)[1]
+    assert first is not None
+    again = await hold(monkeypatch, a, [BAD])
+    assert again["records"][0]["hold"]["state"] == "released" and row_of(eng, rid)[1] == first
+    with eng.begin() as c:
+        audits = c.execute(text("SELECT after_json::text FROM audit_log WHERE tenant_id = :t AND action = 'dq_firewall.release'"),
+                           {"t": a["tid"]}).scalars().all()
+    assert len(audits) == 1 and rid in audits[0] and "ZZZ-NOT-LOGGED" not in audits[0] and "4711" not in audits[0]
+
+
+@pytest.mark.anyio
+async def test_release_expires_after_the_window(monkeypatch, worlds):
+    eng, a, _ = worlds
+    rid = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]["request_id"]
+    set_status(eng, rid, "approved")
+    await hold(monkeypatch, a, [BAD])
+    stamp(eng, rid, entry_released_at="now() - interval '25 hours'")
+    out = await hold(monkeypatch, a, [BAD])
+    h = out["records"][0]["hold"]
+    assert h["state"] == "held" and h["request_id"] != rid and out["save"] == "stop"
+    assert count(eng, a) == 2
+    assert row_of(eng, rid)[0] == "approved"  # the old request is untouched
+
+
+@pytest.mark.anyio
+async def test_a_released_request_is_not_exported_and_an_exported_one_is_not_released(monkeypatch, worlds):
+    eng, a, _ = worlds
+    rid = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]["request_id"]
+    stamp(eng, rid, status="'approved'", export="'{\"rows\": 1}'::jsonb")
+    await hold(monkeypatch, a, [BAD])  # released
+    deps, client = make_client(monkeypatch, a["tid"], a["requester"])
+    await deps.engine.dispose()
+    async with client:
+        r = await client.get(f"/api/v1/change-requests/{rid}/export", headers=HEAD)
+    assert r.status_code == 409 and row_of(eng, rid)[2] is None
+    # the other order: the file was taken first
+    bad2 = {**BAD, "MAKT.MAKTX": "Hex bolt M10"}
+    rid2 = (await hold(monkeypatch, a, [bad2]))["records"][0]["hold"]["request_id"]
+    stamp(eng, rid2, status="'approved'", export="'{\"rows\": 1}'::jsonb")
+    deps, client = make_client(monkeypatch, a["tid"], a["requester"])
+    await deps.engine.dispose()
+    async with client:
+        r = await client.get(f"/api/v1/change-requests/{rid2}/export", headers=HEAD)
+    assert r.status_code == 200 and row_of(eng, rid2)[2] is not None
+    out = await hold(monkeypatch, a, [bad2])
+    h = out["records"][0]["hold"]
+    assert h["state"] == "written" and h["reason"] == "exported_as_load_file" and out["save"] == "stop"
+    assert row_of(eng, rid2)[1] is None
+
+
+@pytest.mark.anyio
+async def test_a_released_request_cannot_be_cancelled(monkeypatch, worlds):
+    eng, a, _ = worlds
+    rid = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]["request_id"]
+    set_status(eng, rid, "approved")
+    await hold(monkeypatch, a, [BAD])
+    deps, client = make_client(monkeypatch, a["tid"], a["requester"])
+    await deps.engine.dispose()
+    async with client:
+        r = await client.post(f"/api/v1/change-requests/{rid}/cancel", headers=HEAD, json={})
+    assert r.status_code == 409
+
+
+@pytest.mark.anyio
+async def test_not_held_reasons(monkeypatch, worlds):
+    eng, a, _ = worlds
+    out = await hold(monkeypatch, a, [{f: "" for f in fw.module_fields("employee_central")}], module="employee_central")
+    holds = [r["hold"] for r in out["records"] if "hold" in r]
+    assert holds and all(h["state"] == "not_held" and h["reason"] == "module_has_no_change_request" for h in holds)
+    assert out["save"] == "stop"  # a block verdict with no hold: the plain verdict decides
+    from api.routes import dq_firewall as route
+    monkeypatch.setattr(route, "MAX_ROUTED", 1)
+    out = await hold(monkeypatch, a, [BAD, {**BAD, "MAKT.MAKTX": "two"}])
+    assert [r["hold"]["state"] for r in out["records"]] == ["held", "not_held"]
+    assert out["records"][1]["hold"]["reason"] == "over_limit" and out["save"] == "stop"
+
+    async def boom(*args, **kw):
+        raise RuntimeError("db gone")
+
+    monkeypatch.setattr("api.routes.change_requests.start_approval", boom)
+    out = await hold(monkeypatch, a, [{**BAD, "MAKT.MAKTX": "three"}])
+    assert out["records"][0]["hold"] == {"state": "not_held", "request_id": None, "reason": "not_opened", "sap_key": None}
+    assert count(eng, a) == 1
+
+
+@pytest.mark.anyio
+async def test_parallel_hold_opens_one(monkeypatch, worlds):
+    from api.routes import change_requests as cr_routes
+
+    eng, a, _ = worlds
+    first = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]["request_id"]
+    set_status(eng, first, "cancelled")
+    real = cr_routes.draft_request
+
+    async def lose_the_race(*args, **kw):
+        set_status(eng, first, "in_approval")
+        return await real(*args, **kw)
+
+    monkeypatch.setattr(cr_routes, "draft_request", lose_the_race)
+    h = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]
+    assert h["state"] == "held" and h["request_id"] == first and count(eng, a) == 1
+
+
+@pytest.mark.anyio
+async def test_hold_audit_has_counts_and_no_values(monkeypatch, worlds):
+    eng, a, _ = worlds
+    rid = (await hold(monkeypatch, a, [BAD, WARN], mode="flagged"))["records"][0]["hold"]["request_id"]
+    set_status(eng, rid, "approved")
+    await hold(monkeypatch, a, [BAD, WARN], mode="flagged")
+    with eng.begin() as c:
+        rows = c.execute(text("SELECT action, after_json FROM audit_log WHERE tenant_id = :t AND action LIKE 'dq_firewall.%' "
+                              "ORDER BY created_at"), {"t": a["tid"]}).all()
+    last = [r for r in rows if r[0] == "dq_firewall.validate"][-1][1]
+    assert last["hold"] == "flagged" and last["hold_states"] == {"held": 1, "released": 1} and last["save"] == "stop"
+    assert "ZZZ-NOT-LOGGED" not in " ".join(str(r[1]) for r in rows)
+
+
+@pytest.mark.anyio
+async def test_summary_holds(monkeypatch, worlds):
+    eng, a, _ = worlds
+    empty = (await summary(monkeypatch, a))["holds"]
+    assert empty == {"held": 0, "released": 0, "rejected": 0, "written": 0, "oldest_held_hours": None,
+                     "median_decision_hours": None, "latest": []}
+    r1 = (await hold(monkeypatch, a, [BAD]))["records"][0]["hold"]["request_id"]
+    r2 = (await hold(monkeypatch, a, [{**BAD, "MAKT.MAKTX": "b"}]))["records"][0]["hold"]["request_id"]
+    r3 = (await hold(monkeypatch, a, [{**BAD, "MAKT.MAKTX": "c"}]))["records"][0]["hold"]["request_id"]
+    r4 = (await hold(monkeypatch, a, [{**BAD, "MAKT.MAKTX": "d"}]))["records"][0]["hold"]["request_id"]
+    stamp(eng, r1, status="'approved'", decided_at="created_at + interval '2 hours'")
+    await hold(monkeypatch, a, [BAD])  # released
+    stamp(eng, r2, status="'rejected'", decided_at="created_at + interval '4 hours'")
+    set_status(eng, r3, "created")
+    h = (await summary(monkeypatch, a))["holds"]
+    assert (h["held"], h["released"], h["rejected"], h["written"]) == (1, 1, 1, 1)
+    assert [x["id"] for x in h["latest"]] == [r4] and h["oldest_held_hours"] is not None
+    assert h["median_decision_hours"] == 3.0
