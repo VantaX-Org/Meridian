@@ -17,6 +17,11 @@ ROOT = Path(__file__).resolve().parent.parent
 TENANT = uuid.uuid4()
 
 
+@pytest.fixture(autouse=True)
+def _no_own_addresses(monkeypatch):
+    monkeypatch.setattr(svc, "_own_addresses", lambda: set())
+
+
 def _resolves_to(monkeypatch, *ips):
     monkeypatch.setattr(svc.socket, "getaddrinfo",
                         lambda *a, **k: [(socket.AF_INET6 if ":" in i else socket.AF_INET, 0, 0, "", (i, 0)) for i in ips])
@@ -45,7 +50,7 @@ def test_private_range_allowed_and_checked_address_returned(monkeypatch):
 @pytest.mark.parametrize("q", [
     "SELECT 1; DELETE FROM t", "select 1; commit; drop table t", "DELETE FROM t", "UPDATE t SET a = 1",
     "INSERT INTO t VALUES (1)", "SELECT 'a", "SELECT 1 /* x", "", "  ", "COPY t TO PROGRAM 'id'",
-    "WITH x AS (SELECT 1) SELECT 1; SELECT 2",
+    "WITH x AS (SELECT 1) SELECT 1; SELECT 2", "SELECT $$a;b$$ AS s",
 ])
 def test_rejected_queries(q):
     with pytest.raises(svc.ExternalDbError):
@@ -54,7 +59,7 @@ def test_rejected_queries(q):
 
 @pytest.mark.parametrize("q", [
     "SELECT 1", "select a, b from t where c = 'x;y' ;", "WITH x AS (SELECT 1) SELECT * FROM x",
-    "SELECT $$a;b$$ AS s -- ; trailing", 'SELECT "a;b" FROM t', "SELECT 1 /* ; */",
+    "SELECT 1 -- ; trailing", 'SELECT "a;b" FROM t', "SELECT 1 /* ; */",
 ])
 def test_accepted_queries(q):
     assert svc.check_single_select(q)
@@ -161,7 +166,7 @@ def test_every_route_needs_manage_systems():
 def test_live_session_is_read_only_and_capped(monkeypatch):
     from sqlalchemy.engine import make_url
     u = make_url(__import__("os").environ["MERIDIAN_TEST_DB_URL"])
-    monkeypatch.setattr(svc, "resolve_safe", lambda host, port: host)  # the test database is on loopback
+    monkeypatch.setattr(svc, "resolve_safe", lambda host, port: "127.0.0.1")  # the test database is on loopback
     conn = {"host": u.host, "port": u.port or 5432, "database": u.database, "username": u.username, "ssl_mode": "disable"}
     pw = u.password or ""
     df, cut = svc.fetch(conn, pw, table=None, query="SELECT g AS n FROM generate_series(1, 50) g", limit=10)
@@ -169,3 +174,41 @@ def test_live_session_is_read_only_and_capped(monkeypatch):
     with pytest.raises(svc.ExternalDbError) as e:
         svc.fetch(conn, pw, table=None, query="WITH d AS (DELETE FROM tenants RETURNING 1) SELECT * FROM d")
     assert e.value.code == "query_failed"
+
+
+# each of these hides a second statement from a naive mask while Postgres runs it; COMMIT would end the read-only transaction
+_SMUGGLED = [
+    "SELECT E'\\'' ; COMMIT; DELETE FROM t; --'",           # escape string: \' does not close it
+    "SELECT 1 AS a$b$; COMMIT; DELETE FROM t; SELECT 1 AS c$b$",  # a$b$ is an identifier, not a dollar quote
+    "SELECT 1 /* /* */ ' */ ; COMMIT; DELETE FROM t; --'",  # block comments nest
+    "SELECT 1 -- x\r; COMMIT; DELETE FROM t",               # a carriage return ends a line comment
+]
+
+
+@pytest.mark.parametrize("q", _SMUGGLED)
+def test_smuggled_second_statement_refused(q):
+    with pytest.raises(svc.ExternalDbError):
+        svc.check_single_select(q)
+
+
+def test_own_service_address_refused(monkeypatch):
+    monkeypatch.setattr(svc, "_own_addresses", lambda: {"172.18.0.5"})
+    monkeypatch.setattr(svc.socket, "getaddrinfo", lambda *a, **k: [(2, 1, 6, "", ("172.18.0.5", 5432))])
+    with pytest.raises(svc.ExternalDbError) as e:
+        svc.resolve_safe("db", 5432)
+    assert e.value.code == "host_blocked"
+
+
+@pytest.mark.skipif(not __import__("os").getenv("MERIDIAN_TEST_DB_URL"), reason="requires MERIDIAN_TEST_DB_URL")
+def test_live_timeout_and_types(monkeypatch):
+    from sqlalchemy.engine import make_url
+    u = make_url(__import__("os").environ["MERIDIAN_TEST_DB_URL"])
+    monkeypatch.setattr(svc, "resolve_safe", lambda host, port: "127.0.0.1")
+    monkeypatch.setattr(svc, "STATEMENT_TIMEOUT_MS", 500)
+    conn = {"host": u.host, "port": u.port or 5432, "database": u.database, "username": u.username, "ssl_mode": "disable"}
+    with pytest.raises(svc.ExternalDbError) as e:
+        svc.fetch(conn, u.password or "", table=None, query="SELECT pg_sleep(5)")
+    assert e.value.code == "timeout"
+    df, _ = svc.fetch(conn, u.password or "", table=None,
+                      query="SELECT 1.5::numeric AS n, '\\x00ff'::bytea AS b, gen_random_uuid() AS g, now() AS t")
+    assert df["n"][0] == 1.5 and df["b"][0] == "00ff" and isinstance(df["g"][0], str)

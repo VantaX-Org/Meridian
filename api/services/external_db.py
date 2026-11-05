@@ -5,11 +5,13 @@ Trust boundary, in the order a request meets it:
      169.254.169.254 cloud metadata address), multicast, reserved, unspecified and the other well-known metadata
      addresses are refused. The connection then goes to the address that was checked (``hostaddr``), so a DNS answer
      that changes between the check and the connect cannot redirect it;
-  2. the session is read only (BEGIN READ ONLY) with a statement timeout and an idle-in-transaction timeout;
+  2. the session is read only (BEGIN READ ONLY, and read-only by default) with a statement timeout and an
+     idle-in-transaction timeout;
   3. a query must be one SELECT or WITH statement (``check_single_select``);
   4. at most MAX_ROWS rows are fetched, through a server-side cursor so the API process never holds more.
 
 Private ranges (10/8, 172.16/12, 192.168/16) are allowed on purpose: a customer's database normally lives there.
+Meridian's own database, Redis and object store are refused by address, since they sit in those ranges too.
 The password is decrypted by the caller for the one connection and is never logged or put in an error.
 """
 from __future__ import annotations
@@ -21,10 +23,14 @@ import socket
 import uuid
 from decimal import Decimal
 from typing import Any
+from urllib.parse import urlsplit
 
 import pandas as pd
 import psycopg2
 from psycopg2 import sql
+from sqlalchemy.engine import make_url
+
+from api.config import settings
 
 MAX_ROWS = 100_000
 STATEMENT_TIMEOUT_MS = 60_000
@@ -51,6 +57,19 @@ def _blocked(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
             or any(ip in n for n in _BLOCKED_NETS))
 
 
+def _own_addresses() -> set[str]:
+    """Addresses of Meridian's own database, Redis and object store: private, so the range check would let them through."""
+    names = {make_url(settings.database_url_sync).host, urlsplit(settings.redis_url).hostname,
+             settings.minio_endpoint.split(":")[0]}
+    found: set[str] = set()
+    for name in filter(None, names):
+        try:
+            found |= {str(i[4][0]) for i in socket.getaddrinfo(name, None, type=socket.SOCK_STREAM)}
+        except (socket.gaierror, UnicodeError):
+            pass
+    return found
+
+
 def resolve_safe(host: str, port: int) -> str:
     """The address to connect to; raises ExternalDbError when the host cannot be resolved or any address is refused."""
     try:
@@ -60,20 +79,35 @@ def resolve_safe(host: str, port: int) -> str:
     addrs = [ipaddress.ip_address(str(i[4][0]).split("%")[0]) for i in infos]
     if not addrs:
         raise ExternalDbError("host_unresolvable", "The host name could not be resolved.")
-    if any(_blocked(a) for a in addrs):
-        raise ExternalDbError("host_blocked", "That address is not allowed (loopback, link-local or metadata).")
+    own = _own_addresses()
+    if any(_blocked(a) or str(a) in own for a in addrs):
+        raise ExternalDbError("host_blocked", "That address is not allowed (loopback, link-local, metadata or this system's own services).")
     return str(addrs[0])
 
 
-# comments, string literals, quoted identifiers and dollar-quoted strings; blanked before the statement is inspected
-_MASK = re.compile(r"--[^\n]*|/\*.*?\*/|'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"|\$([A-Za-z_]*)\$.*?\$\1\$", re.S)
+# comments, string literals and quoted identifiers; blanked before the statement is inspected. The mask must never hide
+# text Postgres would run, because a hidden ";COMMIT;" ends the read-only transaction. So whatever needs a real lexer to
+# read right is refused instead of parsed: escape strings, nested block comments and any $ outside a literal.
+# standard_conforming_strings is forced on in _connect, so a backslash means nothing in a plain string.
+_MASK = re.compile(r"--[^\r\n]*|/\*.*?\*/|'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"", re.S)
 
 
 def check_single_select(query: str) -> str:
     """The query without a trailing semicolon, or ExternalDbError unless it is exactly one SELECT/WITH statement."""
     if not query or not query.strip():
         raise ExternalDbError("query_empty", "The query is empty.")
-    masked = _MASK.sub(" ", query).strip()
+
+    def blank(m: re.Match) -> str:
+        tok = m.group(0)
+        if tok.startswith("/*") and "/*" in tok[2:]:
+            raise ExternalDbError("query_unsupported", "Nested comments are not allowed.")
+        if tok[0] == "'" and query[m.start() - 1:m.start()] in ("e", "E"):
+            raise ExternalDbError("query_unsupported", "Escape strings (E'...') are not allowed.")
+        return " "
+
+    masked = _MASK.sub(blank, query).strip()
+    if "$" in masked:
+        raise ExternalDbError("query_unsupported", "A $ is only allowed inside a string or a quoted name.")
     if masked.endswith(";"):
         masked = masked[:-1].rstrip()
         query = query.rstrip().rstrip(";").rstrip()
@@ -93,7 +127,8 @@ def _connect(conn: dict[str, Any], password: str):
             host=conn["host"], hostaddr=addr, port=conn["port"], dbname=conn["database"], user=conn["username"],
             password=password, sslmode=conn["ssl_mode"], connect_timeout=CONNECT_TIMEOUT_S,
             application_name="meridian-source",
-            options=f"-c statement_timeout={STATEMENT_TIMEOUT_MS} -c idle_in_transaction_session_timeout={STATEMENT_TIMEOUT_MS}",
+            options=f"-c statement_timeout={STATEMENT_TIMEOUT_MS} -c idle_in_transaction_session_timeout={STATEMENT_TIMEOUT_MS} "
+                    "-c standard_conforming_strings=on -c default_transaction_read_only=on",
         )
     except psycopg2.OperationalError:
         # the libpq message can carry the address; the admin gets a fixed sentence
@@ -107,7 +142,9 @@ def _plain(v: Any) -> Any:
         return float(v)
     if isinstance(v, (dict, list)):
         return json.dumps(v, default=str)
-    if isinstance(v, (uuid.UUID, bytes, memoryview)):
+    if isinstance(v, (bytes, memoryview)):
+        return bytes(v).hex()
+    if isinstance(v, uuid.UUID):
         return str(v)
     return v
 

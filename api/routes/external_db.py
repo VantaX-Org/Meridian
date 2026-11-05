@@ -225,7 +225,7 @@ async def load(request: Request, conn_id: str, body: LoadIn, db: AsyncSession = 
     # recorded as an upload-class run (source/trigger "upload") so lineage and golden-record survivorship treat it
     # like a file; "origin" says where the rows came from. The query text is not stored (it may hold literals).
     metadata = {
-        "source": "upload", "trigger": "upload", "origin": "external_db", "connection_id": r["id"],
+        "source": "upload", "trigger": "upload", "origin": "external_db", "connection_id": str(r["id"]),
         "file_name": label, "row_count": len(df), "columns": list(df.columns), "modules": [module],
         "parquet_path": parquet_path, "truncated_at_row_cap": truncated,
         "standard_fields_present": sorted(present_std), "standard_fields_missing": sorted(missing_std),
