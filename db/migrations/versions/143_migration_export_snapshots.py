@@ -1,7 +1,7 @@
 """migration_export_files: pointer and digest of the snapshot of what was handed over
 
-Revision ID: 142
-Revises: 141
+Revision ID: 143
+Revises: 142
 Create Date: 2026-11-05
 
 At export, the load tables and the held-back tables are stored as parquet in object storage, and the export row keeps
@@ -13,16 +13,14 @@ not against a rebuild from the current mappings.
 * ``snapshot_at``: when the snapshot was written.
 * ``snapshot_error``: why the snapshot could not be written (the export itself still succeeded).
 
-Renumber at merge: another unmerged branch also holds revision 142.
-
 Downgrade drops the four columns; snapshot objects already in storage are not removed by it.
 """
 from typing import Sequence, Union
 
 from alembic import op
 
-revision: str = "142"
-down_revision: Union[str, None] = "141"
+revision: str = "143"
+down_revision: Union[str, None] = "142"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

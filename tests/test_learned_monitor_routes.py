@@ -138,3 +138,13 @@ def test_explain_falls_back_to_the_template_and_sends_no_values(monkeypatch):
 def test_list_with_no_run_is_empty(monkeypatch):
     r = _client(monkeypatch, _DB()).get("/api/v1/aletheia/monitors", headers=VIEWER)
     assert r.status_code == 200 and r.json()["breaks"] == [] and r.json()["min_runs"] == 5
+
+
+def test_a_break_below_the_minimum_can_only_be_confirmed(monkeypatch):
+    db = _DB([brk("below_minimum")])
+    c = _client(monkeypatch, db)
+    for path, body in (("expected", {"effect": "exclude"}), ("snooze", {"days": 3})):
+        assert c.post(f"{URL}/{path}", json=body, headers=ADMIN).status_code == 409
+    assert not db.committed and not c.audits
+    r = c.post(f"{URL}/acknowledge", json={}, headers=ADMIN)
+    assert r.status_code == 200 and db.committed and c.audits[0][0] == "learned_monitor.acknowledge"

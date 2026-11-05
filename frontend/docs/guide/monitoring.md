@@ -51,14 +51,16 @@ Press **Propose rule** on a row to draft a rule from the shift. A null spike dra
 
 The Learned monitors page, under Learned monitors in the map, compares the latest run of each object with that object's own earlier runs. It needs no setup: material master, customer master and SuccessFactors get it as soon as they have runs. Every figure comes from the stored run results, so no record value is read and none is sent to a model.
 
-Each object keeps a baseline of up to 30 earlier runs of the same system for these figures: records checked, score, and the fail rate of each rule. It also keeps the empty share of each field that has field statistics. The usual range is the median of those runs plus or minus a robust spread (the median absolute deviation), so one bad run does not move it much. When an object has at least 28 earlier runs, the baseline also compares like weekdays with like. The table **What is learned** shows, per object, the latest run, how many earlier runs the baseline uses against how many it needs, and whether the object is **Watching** or still **Learning**. An object with fewer than 5 earlier runs only learns: it raises nothing and shows a dash for breaks.
+Each object keeps a baseline of up to 30 earlier runs of the same system for these figures: records checked, score, and the fail rate of each rule. It also keeps the empty share and the distinct share (distinct values as a share of the filled rows, for fields with at least 100 filled rows) of each field that has field statistics. The usual range is the median of those runs plus or minus a robust spread (the median absolute deviation), so one bad run does not move it much. When an object has at least 28 earlier runs, the baseline also compares like weekdays with like. The table **What is learned** shows, per object, the latest run, how many earlier runs the baseline uses against how many it needs, and whether the object is **Watching** or still **Learning**. An object with fewer than 5 earlier runs only learns: it raises nothing and shows a dash for breaks.
 
-After each analysis run Meridian checks five kinds of break and stores each with its severity, the usual range, the observed value and the runs behind it:
+After each analysis run Meridian checks six kinds of break and stores each with its severity, the usual range, the observed value and the runs behind it:
 
 - **Volume drop** and **Volume spike.** Records checked fell below or rose above the usual range.
 - **Fail rate jump.** A rule failed on a larger share of records than usual. The row shows the rule code with its description.
 - **Score drop.** The score fell below the usual range.
 - **Field emptied.** A field that is normally populated is now empty or far emptier than usual. The row shows the field code with its description.
+
+- **Distinct values shifted.** The share of distinct values among the filled rows of a field moved by at least 20 percentage points either way, for example a code field that collapsed to a few values or a key field that began to repeat. The row shows the field code with its description. Only counts are compared; no value is read.
 
 The panel **Breaks in the latest run** lists them, most severe first. Press a break to see **Why Aletheia flagged this**: a sentence built from the figures by a fixed template, and the runs it rests on ("Run 12 (this run)"). Press **Ask Aletheia to explain** to have the model reword it. Aletheia sees only the aggregate figures and the rule or field description, and Meridian drops any sentence that states a number outside those figures. When the model is not available, the fixed wording stays.
 
@@ -83,7 +85,7 @@ Each decision is written to the audit log with the person who made it. Other rol
 
 ### Learned minimum effect
 
-A break is raised only when its effect reaches the minimum effect of that monitor. A monitor is one object, one figure and one rule or field. The effect is the share of the median for records checked, and points for score and fail rate. Each figure has a fixed floor: 30 percent of the median for records checked, and the fixed point drops set for score and fail rate.
+A break is raised only when its effect reaches the minimum effect of that monitor. A monitor is one object, one figure and one rule or field. The effect is the share of the median for records checked, points for score, and percentage points for fail rate, empty share and distinct share. Each figure has a fixed floor: 30 percent of the median for records checked, and fixed point values for the others (45 points for empty share, which is exactly where the monitor fires today, and 20 points for distinct share).
 
 The panel **Learned minimum effect** shows, for every monitor that decisions touched, the **Minimum now**, the **Fixed floor**, the **Ceiling** and **Decisions that moved it**, newest first, each with the run, the person and the effect.
 
@@ -93,7 +95,9 @@ The panel **Learned minimum effect** shows, for every monitor that decisions tou
 - Decisions older than 90 days stop counting, so a raised minimum relaxes by itself.
 - Severity cut points scale with the minimum divided by the floor, at most 1.5 times, so a total loss of records stays critical however high the minimum.
 
-Limits. Field emptied has no effect size and stays fixed. A break hidden by a raised minimum is not stored, so only an open break can be acknowledged to lower the minimum. The rule is a fixed calculation on aggregates, not a trained model, and a language model takes no part in it.
+The panel **Below the learned minimum** lists breaks that are outside the usual range but smaller than a raised minimum. They raise no alert, send no notification and are not counted as open. **Confirm as real** records the decision as an acknowledgement, and the minimum drops to that effect, never below the floor. A later run replaces the list.
+
+Limits. The minimum is one number per monitor, learned from decisions alone. The distinct-share monitor compares counts only: it cannot tell which values changed, and value patterns, numeric ranges and date ranges are not watched. The rule is a fixed calculation on aggregates, not a trained model, and a language model takes no part in it.
 
 ## Entry gate
 

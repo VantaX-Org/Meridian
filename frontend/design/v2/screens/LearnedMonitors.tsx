@@ -30,6 +30,7 @@ const KIND: Record<BreakKind, () => string> = {
   fail_rate_jump: () => t("Fail rate jump"),
   score_drop: () => t("Score drop"),
   field_emptied: () => t("Field emptied"),
+  cardinality_shift: () => t("Distinct values shifted"),
 };
 
 const METRIC: Record<BreakMetric, () => string> = {
@@ -37,13 +38,14 @@ const METRIC: Record<BreakMetric, () => string> = {
   score: () => t("Score"),
   fail_rate: () => t("Fail rate"),
   blank_pct: () => t("Empty share"),
+  distinct_pct: () => t("Distinct share"),
 };
 
-const STATUS = { open: () => t("Open"), acknowledged: () => t("Acknowledged"), expected: () => t("Expected"), snoozed: () => t("Snoozed") };
+const STATUS = { open: () => t("Open"), acknowledged: () => t("Acknowledged"), expected: () => t("Expected"), snoozed: () => t("Snoozed"), below_minimum: () => t("Below the minimum") };
 
 const fmt = (m: BreakMetric, n: number | null) => (n == null ? <Dash /> : m === "records" ? int(n) : m === "score" ? f1(n) : `${f1(n)}%`);
 
-/** An effect in its own unit: records as a share of the median, score and fail rate as points. */
+/** An effect in its own unit: records as a share of the median, the others as points (score) or percentage points. */
 const eff = (m: MonitorThreshold["metric"], n: number) =>
   m === "records" ? `${f1(n * 100)}%` : m === "score" ? t("{n} points", { n: f1(n) }) : t("{n} percentage points", { n: f1(n) });
 
@@ -126,6 +128,7 @@ export function LearnedMonitors() {
 
   const { coverage, breaks, min_runs: minRuns } = q.data;
   const interim = q.data.interim ?? [];
+  const quiet = q.data.below_minimum ?? [];
   const open = [...breaks, ...interim].filter((b) => b.status === "open").length;
   const sel = [...interim, ...breaks].find((b) => b.id === picked) ?? breaks[0] ?? interim[0] ?? null;
   const allowed = can("mdm.write");
@@ -247,10 +250,60 @@ export function LearnedMonitors() {
         )}
       </Panel>
 
+      <BelowMinimum rows={quiet} thresholds={q.data.thresholds ?? []} allowed={allowed} onChanged={() => void qc.invalidateQueries({ queryKey: key })} />
+
       <Thresholds rows={q.data.thresholds ?? []} />
 
       {sel ? <Detail b={sel} allowed={allowed} onChanged={() => void qc.invalidateQueries({ queryKey: key })} /> : null}
     </CcPage>
+  );
+}
+
+/** Breaks outside the usual range that are smaller than a raised minimum: stored, never alerted. Confirming one is a decision that it is real. */
+function BelowMinimum({ rows, thresholds, allowed, onChanged }: { rows: LearnedBreak[]; thresholds: MonitorThreshold[]; allowed: boolean; onChanged: () => void }) {
+  const toast = useToast();
+  const confirm = useMutation({
+    mutationFn: (id: string) => acknowledgeBreak(id),
+    onSuccess: onChanged,
+    onError: (e: unknown) => toast.show(errorSentence(e, t("The decision could not be saved.")), "error"),
+  });
+  const minimum = (b: LearnedBreak) => thresholds.find((x) => x.module === b.module && x.metric === b.metric && x.subject_code === b.subject_code);
+  return (
+    <Panel title={t("Below the learned minimum")} meta={t("Outside the usual range but smaller than the minimum a steward raised. Nothing is alerted. Confirm one that is real and the minimum drops.")} testId="monitors-below-minimum">
+      {rows.length === 0 ? <EmptyFrame>{t("No break sits below a raised minimum.")}</EmptyFrame> : (
+        <ScrollFrame label={t("Breaks below the learned minimum table, scrollable")}>
+          <table className="m2-tbl m2-cards">
+            <thead>
+              <tr>
+                <th scope="col">{t("Object")}</th>
+                <th scope="col">{t("Break")}</th>
+                <th scope="col">{t("Rule or field")}</th>
+                <th scope="col">{t("Usual range")}</th>
+                <th scope="col">{t("Observed")}</th>
+                <th scope="col">{t("Minimum now")}</th>
+                <th scope="col"><span className="m2-sr">{t("Actions")}</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((b) => {
+                const m = minimum(b);
+                return (
+                  <tr key={b.id} data-testid={`quiet-${b.id}`}>
+                    <td data-label={t("Object")}>{moduleText(b.module)}</td>
+                    <th scope="row" className="m2-card-lead">{KIND[b.kind]()}</th>
+                    <td data-label={t("Rule or field")}><Subject b={b} /></td>
+                    <td data-label={t("Usual range")} className="m2-num">{fmt(b.metric, b.expected_low)} {t("to")} {fmt(b.metric, b.expected_high)}</td>
+                    <td data-label={t("Observed")} className="m2-num">{fmt(b.metric, b.observed)}</td>
+                    <td data-label={t("Minimum now")} className="m2-num">{m ? eff(m.metric, m.min_effect) : <Dash />}</td>
+                    <td>{allowed ? <button type="button" className="m2-btn m2-sm" disabled={confirm.isPending} onClick={() => confirm.mutate(b.id)}>{t("Confirm as real")}</button> : null}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </ScrollFrame>
+      )}
+    </Panel>
   );
 }
 

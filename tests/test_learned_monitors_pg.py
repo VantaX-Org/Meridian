@@ -114,3 +114,77 @@ def test_another_tenants_id_reads_nothing_under_row_level_security(engines):
     with Session(app) as s, s.begin():
         s.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": t2})
         assert lm.learned_minimums(s, t1, _MODULE, _NOW) == {}
+
+
+def _score_tenant(owner, current: float = 88.0) -> tuple[str, str]:
+    """A tenant with six earlier finished runs scoring 90, an 'expected' score break (effect 3, so the learned
+    minimum is 3.15) and a current run scoring ``current``. Returns (tenant id, current run id)."""
+    tid = str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, :n)"), {"t": tid, "n": f"M-{tid[:8]}"})
+        first = None
+        for n in range(1, 8):
+            vid = c.execute(text(
+                "INSERT INTO analysis_versions (tenant_id, run_number, run_at, status, dqs_summary) "
+                "VALUES (:t, :n, :at, 'complete', CAST(:d AS jsonb)) RETURNING id::text"),
+                {"t": tid, "n": n, "at": _NOW - timedelta(days=10 - n),
+                 "d": '{"%s": {"composite_score": %s}}' % (_MODULE, 90.0 if n < 7 else current)}).scalar()
+            first = first or vid
+        c.execute(text("""
+            INSERT INTO learned_monitor_breaks (tenant_id, version_id, module, kind, metric, subject_code, severity,
+                                                median, observed, baseline_runs, method, status, decided_by, decided_at)
+            VALUES (:t, :v, :m, 'score_drop', 'score', '', 'high', 90, 87, 6, 'median_mad', 'expected', 'steward',
+                    :at)"""), {"t": tid, "v": first, "m": _MODULE, "at": _NOW - timedelta(days=1)})
+    return tid, vid
+
+
+def _store(app, tid: str, vid: str) -> int:
+    from api.services import learned_monitors as lm
+    with Session(app) as s, s.begin():
+        s.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
+        return lm.detect_and_store(s, tid, vid, _MODULE)
+
+
+def _rows(owner, tid: str, vid: str) -> list[tuple]:
+    with owner.begin() as c:
+        return [tuple(r) for r in c.execute(text(
+            "SELECT status, kind, metric FROM learned_monitor_breaks WHERE tenant_id = :t AND version_id = CAST(:v AS uuid) "
+            "ORDER BY 1"), {"t": tid, "v": vid})]
+
+
+def test_a_break_below_the_raised_minimum_is_stored_quietly_replaced_and_confirmable(engines):
+    from api.services import learned_monitors as lm
+
+    owner, app, _ = engines
+    tid, vid = _score_tenant(owner)
+    assert _store(app, tid, vid) == 0                     # raises nothing
+    assert _rows(owner, tid, vid) == [("below_minimum", "score_drop", "score")]
+    assert _store(app, tid, vid) == 0                     # a rerun replaces it, never doubles it
+    assert _rows(owner, tid, vid) == [("below_minimum", "score_drop", "score")]
+    with owner.begin() as c:
+        assert c.execute(text("SELECT count(*) FROM learned_monitor_breaks WHERE tenant_id = :t AND status = 'open'"),
+                         {"t": tid}).scalar() == 0
+
+    with owner.begin() as c:                              # the steward confirms it
+        c.execute(text("UPDATE learned_monitor_breaks SET status = 'acknowledged', decided_by = 'steward', decided_at = :at "
+                       "WHERE tenant_id = :t AND status = 'below_minimum'"), {"t": tid, "at": _NOW})
+    with Session(app) as s, s.begin():
+        s.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
+        assert lm.learned_minimums(s, tid, _MODULE, _NOW + timedelta(minutes=1)) == {("score", ""): 2.0}
+    assert _store(app, tid, vid) == 1                     # at the lowered minimum the same drop now counts as a break,
+    # but the steward's acknowledged row on this run and subject stays as it is (the unique key keeps it)
+    assert _rows(owner, tid, vid) == [("acknowledged", "score_drop", "score")]
+
+
+def test_the_new_kinds_and_status_pass_the_check_constraints_and_the_migration_is_applied(engines):
+    owner, _, _ = engines
+    tid, vid = _score_tenant(owner)
+    with owner.begin() as c:
+        assert c.execute(text("SELECT version_num FROM alembic_version")).scalar() >= "142"
+        for n, (kind, metric, subject, status) in enumerate([("field_emptied", "blank_pct", "MARA.MATKL", "below_minimum"),
+                                                              ("cardinality_shift", "distinct_pct", "MARA.MATKL", "open")]):
+            c.execute(text("""
+                INSERT INTO learned_monitor_breaks (tenant_id, version_id, module, kind, metric, subject_code, severity,
+                                                    median, observed, baseline_runs, method, status)
+                VALUES (:t, CAST(:v AS uuid), :m, :k, :me, :s, 'high', 10, 99, 6, 'median_mad', :st)"""),
+                      {"t": tid, "v": vid, "m": _MODULE, "k": kind, "me": metric, "s": subject, "st": status})
