@@ -33,6 +33,22 @@ jobs:
       - name: ruff check
         run: ruff check . --output-format github
 
+  # Type gate (PC-10): mypy over api, checks, workers, sap, agents, db and llm (config in pyproject.toml
+  # [tool.mypy]). Those packages carry 585 known errors, recorded in scripts/mypy_baseline.txt; the
+  # ratchet script fails on any error not in that file. Third-party packages are not installed here.
+  mypy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install mypy
+        run: python -m pip install "mypy==1.18.2"
+      - name: mypy ratchet
+        run: python scripts/mypy_ratchet.py
+
   pytest:
     runs-on: ubuntu-latest
     # Split per test id in tests/conftest.py (one rule-proof file holds over half the
