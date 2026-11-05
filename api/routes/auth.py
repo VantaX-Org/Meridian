@@ -4,6 +4,7 @@ Active only when AUTH_MODE=local.
 """
 
 import os
+import secrets
 import uuid
 from datetime import datetime, timezone
 
@@ -25,7 +26,7 @@ from api.services.local_auth import (
     validate_password,
     verify_password,
 )
-from api.middleware.local_auth import forget_token_version
+from api.middleware.local_auth import AUTH_COOKIE, CSRF_COOKIE, forget_token_version
 from api.services.rate_limiter import rate_limit
 
 # Login endpoint is unauthenticated, so rate-limit by IP: 10 attempts per
@@ -149,18 +150,39 @@ def cookie_secure(request: Request) -> bool:
     return (proto or request.url.scheme) == "https"
 
 
+_COOKIE_MAX_AGE = 24 * 60 * 60  # the session JWT's lifetime
+
+
+def _set_csrf_cookie(response: Response, request: Request) -> None:
+    """The double-submit CSRF token: not httponly, because the page reads it and echoes it in X-CSRF-Token on
+    every mutating request (LocalAuthMiddleware compares the two). It guards nothing by itself; a cross-site
+    page can neither read it nor set it for this origin."""
+    response.set_cookie(key=CSRF_COOKIE, value=secrets.token_urlsafe(32), max_age=_COOKIE_MAX_AGE, path="/",
+                        samesite="lax", httponly=False, secure=cookie_secure(request))
+
+
 def _set_auth_cookie(response: Response, token: str, request: Request) -> None:
-    """Cookie fallback for browser-initiated requests (anchor downloads, the help centre's <video>) where custom
-    Authorization headers are not attached. httponly so JS can't read the JWT; Secure on HTTPS (`cookie_secure`)."""
+    """The browser's session: the JWT in an httponly cookie (the page never sees it), plus its CSRF token. Used
+    for every request the browser makes, downloads and the help centre's <video> included. Secure on HTTPS
+    (`cookie_secure`), SameSite=Lax, Path=/."""
     response.set_cookie(
-        key="mn_auth_token",
+        key=AUTH_COOKIE,
         value=token,
-        max_age=24 * 60 * 60,
+        max_age=_COOKIE_MAX_AGE,
         path="/",
         samesite="lax",
         httponly=True,
         secure=cookie_secure(request),
     )
+    _set_csrf_cookie(response, request)
+
+
+def session_token(request: Request) -> str:
+    """The session JWT of this request: the bearer header, else the browser's cookie."""
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header[7:]
+    return request.cookies.get(AUTH_COOKIE, "")
 
 
 @router.post("/login", response_model=LoginResponse, dependencies=[Depends(_login_rate_limit)])
@@ -287,13 +309,16 @@ async def role_matrix() -> dict[str, list[str]]:
 
 
 @router.get("/me", response_model=MeResponse)
-def me(request: Request):
-    """Return the current authenticated user from the JWT."""
-    auth_header = request.headers.get("authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Not authenticated")
+def me(request: Request, response: Response):
+    """Return the current authenticated user from the JWT (bearer header or the session cookie).
 
-    token = auth_header[7:]
+    A bearer-authenticated call is how a browser that still holds a pre-cookie localStorage token moves over: the
+    session cookies are issued here, then the page drops its stored copy. A cookie session missing its CSRF cookie
+    gets one too, so a lost cookie heals on the next page load."""
+    token = session_token(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    via_bearer = request.headers.get("authorization", "").startswith("Bearer ")
 
     engine = get_sync_engine_or_create()
     with engine.connect() as conn:
@@ -326,6 +351,11 @@ def me(request: Request):
         if not row or not row[4]:
             raise HTTPException(status_code=401, detail="Not authenticated")
 
+        if via_bearer and not payload.get("purpose"):
+            _set_auth_cookie(response, token, request)
+        elif not request.cookies.get(CSRF_COOKIE):
+            _set_csrf_cookie(response, request)
+
         return MeResponse(
             user=UserResponse(id=str(row[0]), email=row[1], name=row[2], role=row[3],
                               permissions=unscoped_actions_sync(conn, str(DEV_TENANT_ID), str(row[0]), row[3]),
@@ -353,12 +383,11 @@ def change_password(body: ChangePasswordRequest, request: Request, response: Res
     Revokes every other session: bumps ``users.token_version``, so LocalAuthMiddleware rejects
     any token issued before the change (a stolen session dies with the old password). The
     caller's own session is replaced, not ended: the response carries a fresh token (and
-    cookie) at the new version, which the frontend stores in place of the old one.
+    cookie) at the new version; the browser keeps only the cookie, machine clients may use the token.
     """
-    auth_header = request.headers.get("authorization", "")
-    if not auth_header.startswith("Bearer "):
+    token = session_token(request)
+    if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    token = auth_header[7:]
 
     new_password = (body.new_password or "").strip()
     if new_password == body.current_password:
@@ -447,7 +476,8 @@ def logout(request: Request) -> Response:
                              actor_user_id=user_id if known else None, actor_email=email)
             conn.commit()
     out = Response(status_code=204)
-    out.delete_cookie("mn_auth_token", path="/", samesite="lax", httponly=True, secure=cookie_secure(request))
+    for name in (AUTH_COOKIE, CSRF_COOKIE):
+        out.delete_cookie(name, path="/", samesite="lax", httponly=name == AUTH_COOKIE, secure=cookie_secure(request))
     return out
 
 

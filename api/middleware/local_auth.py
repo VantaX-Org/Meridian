@@ -6,6 +6,7 @@ verified claim the request's tenant (request.state.tenant_id / verified_tenant_i
 """
 
 import contextvars
+import hmac
 import logging
 import os
 import threading
@@ -22,6 +23,14 @@ from api.services.local_auth import decode_access_token, token_version_claim
 from api.services.rate_limiter import rate_limit
 
 logger = logging.getLogger("meridian.local_auth")
+
+AUTH_COOKIE = "mn_auth_token"  # the httponly session cookie the browser rides on
+CSRF_COOKIE = "mn_csrf"  # readable by the page, which echoes it in CSRF_HEADER (double submit)
+CSRF_HEADER = "x-csrf-token"
+_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+# Signing out needs no CSRF proof: forcing a sign-out is harmless, and a user whose CSRF cookie is lost must still
+# be able to end the session and clear the cookie.
+_CSRF_EXEMPT = {"/api/v1/auth/logout"}
 
 DEV_TENANT_ID = "00000000-0000-0000-0000-000000000001"  # the development tenant (api/deps.py DEV_TENANT_ID)
 
@@ -216,20 +225,40 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             return await call_next(request)
 
-        # Extract Bearer token (header first, cookie fallback for download links)
+        # Extract Bearer token (header first). A cookie-authenticated request is the browser's session: it must
+        # also prove it came from our own page (CSRF) unless it only reads. Bearer-authenticated requests
+        # (API keys, SCIM, scripts) carry no ambient credential, so they need no such proof.
         auth_header = request.headers.get("authorization", "")
         if auth_header.startswith("Bearer " + KEY_SCHEME):
             return await self._dispatch_api_key(request, call_next, auth_header[7:])
         if auth_header.startswith("Bearer "):
-            token = auth_header[7:]
-        else:
-            token = request.cookies.get("mn_auth_token", "")
-            if not token:
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Not authenticated"},
-                )
+            return await self._session(request, call_next, auth_header[7:])
 
+        token = request.cookies.get(AUTH_COOKIE, "")
+        if not token:
+            return JSONResponse(status_code=401, content={"detail": "Not authenticated"})
+        if request.method not in _SAFE_METHODS and path not in _CSRF_EXEMPT:
+            sent, have = request.headers.get(CSRF_HEADER, ""), request.cookies.get(CSRF_COOKIE, "")
+            if not have or not hmac.compare_digest(sent.encode(), have.encode()):
+                return JSONResponse(status_code=403, content={
+                    "detail": "Your session could not be confirmed. Reload the page and try again."})
+        reached = False
+
+        async def forward(req):
+            nonlocal reached
+            reached = True
+            return await call_next(req)
+
+        resp = await self._session(request, forward, token)
+        if resp.status_code == 401 and not reached:
+            # This middleware refused the cookie (expired, revoked): drop it so the browser is cleanly signed out.
+            # A 401 from a route behind us is that route's business and leaves the session alone.
+            for name in (AUTH_COOKIE, CSRF_COOKIE):
+                resp.delete_cookie(name, path="/", samesite="lax", httponly=name == AUTH_COOKIE)
+        return resp
+
+    async def _session(self, request, call_next, token: str):
+        """Verify a session JWT and run the request as its user (the tenant is the token's)."""
         # The secret of the tenant the token names (each tenant signs its own sessions)
         secret, claimed = _secret_for(token)
         if not secret:

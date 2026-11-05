@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import { StatusScreen } from "@/design/v2/screens/Status";
 
 const noop = () => () => undefined;
-/** The marker cookie the auth context sets on sign-in (context/auth-context.tsx); the token itself is never read here. */
+/** The marker cookie the auth context sets on sign-in (context/auth-context.tsx); the session cookie itself is never read here. */
 const signedIn = () => /(?:^|;\s*)mn_session=1(?:;|$)/.test(document.cookie);
 
 /**

@@ -79,10 +79,10 @@ describe("sign-in with single sign-on", () => {
 });
 
 describe("sso helpers", () => {
-  it("stores the session token from the fragment, clears it and returns a same-site page", () => {
-    window.history.replaceState(null, "", "/sign-in#sso_token=abc.def.ghi&next=%2Fobjects");
+  it("marks the page signed in from the fragment, clears it and returns a same-site page; no token is stored", () => {
+    window.history.replaceState(null, "", "/sign-in#sso=1&next=%2Fobjects");
     expect(takeSsoSession()).toBe("/objects");
-    expect(localStorage.getItem("mn_auth_token")).toBe("abc.def.ghi");
+    expect(localStorage.getItem("mn_auth_token")).toBeNull();
     expect(window.location.hash).toBe("");
     expect(document.cookie).toContain("mn_session=1");
     expect(takeSsoSession()).toBeNull();
@@ -90,7 +90,7 @@ describe("sso helpers", () => {
 
   it("never navigates to an address it was handed", () => {
     for (const bad of ["https://evil.test", "//evil.test", "/\\evil.test", "", null, undefined]) expect(safeNext(bad)).toBe("/");
-    window.history.replaceState(null, "", "/sign-in#sso_token=t&next=https%3A%2F%2Fevil.test");
+    window.history.replaceState(null, "", "/sign-in#sso=1&next=https%3A%2F%2Fevil.test");
     expect(takeSsoSession()).toBe("/");
     expect(ssoStartHref("//evil.test")).toBe("/api/v1/auth/oidc/start");
     expect(ssoErrorSentence(null)).toBeNull();

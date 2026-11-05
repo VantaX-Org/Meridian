@@ -1,9 +1,7 @@
 /** Browser side of OIDC sign-in: the address that starts it, the sentences for its failure codes, and the hand-over
- *  of the session token the server puts in the URL fragment (a fragment never reaches a server or a log). */
+ *  of the session: the server has already set the session cookie, and the fragment only says so. */
 import { t } from "@/lib/v2/i18n";
-
-/** Same key as context/auth-context.tsx and lib/api/auth.ts. */
-const TOKEN_KEY = "mn_auth_token";
+import { setSessionMarker } from "@/lib/api/client";
 
 /** Codes the server redirects with (api/routes/auth_oidc.py ERROR_SENTENCES) and what the page says for each. */
 export const SSO_ERROR_SENTENCES: Record<string, () => string> = {
@@ -38,22 +36,16 @@ export function ssoStartHref(next: string | null): string {
 }
 
 /**
- * If the URL fragment carries a session token from the OIDC callback, store it as password sign-in does, clear
- * the fragment, and return where to go next; otherwise null. The caller does a full navigation so the auth
- * provider validates the stored token on load.
+ * If the URL fragment says the OIDC callback has signed the browser in (`sso=1`; the session itself is the httponly
+ * cookie the callback set, never in the URL), mark the page signed in, clear the fragment, and return where to go
+ * next; otherwise null. The caller does a full navigation so the auth provider validates the session on load.
  */
 export function takeSsoSession(): string | null {
   const hash = window.location.hash.replace(/^#/, "");
   if (!hash) return null;
   const params = new URLSearchParams(hash);
-  const token = params.get("sso_token");
-  if (!token) return null;
-  try {
-    localStorage.setItem(TOKEN_KEY, token);
-  } catch {
-    return null;
-  }
-  document.cookie = "mn_session=1; Path=/; SameSite=Lax; Max-Age=2592000";
+  if (params.get("sso") !== "1") return null;
+  setSessionMarker(true);
   window.history.replaceState(null, "", window.location.pathname + window.location.search);
   return safeNext(params.get("next"));
 }

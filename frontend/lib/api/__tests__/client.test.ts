@@ -1,4 +1,4 @@
-import { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
+import { AxiosError, AxiosHeaders, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it, vi } from "vitest";
 import apiClient, { isRetryable, licenceLockFrom } from "../client";
 
@@ -69,8 +69,28 @@ describe("apiClient 401 handling", () => {
 
   it("clears the session on a 401 from any non-login call", async () => {
     localStorage.setItem("mn_auth_token", "t");
+    document.cookie = "mn_session=1; Path=/";
     await runResponseErrorInterceptors(apiClient, error(401));
     expect(localStorage.getItem("mn_auth_token")).toBeNull();
+    expect(document.cookie).not.toContain("mn_session=1");
+  });
+
+  it("sends the CSRF cookie as a header on a mutating request only, and never a bearer header", async () => {
+    document.cookie = "mn_csrf=abc123; Path=/";
+    localStorage.setItem("mn_auth_token", "t");
+    const manager = apiClient.interceptors.request as unknown as {
+      handlers: ({ fulfilled: (c: InternalAxiosRequestConfig) => InternalAxiosRequestConfig } | null)[];
+    };
+    const run = (method: string) => {
+      let cfg = { method, headers: new AxiosHeaders() } as InternalAxiosRequestConfig;
+      for (const h of manager.handlers) if (h) cfg = h.fulfilled(cfg);
+      return cfg.headers;
+    };
+    expect(run("post").get("X-CSRF-Token")).toBe("abc123");
+    expect(run("delete").get("X-CSRF-Token")).toBe("abc123");
+    expect(run("get").get("X-CSRF-Token")).toBeUndefined();
+    expect(run("post").get("Authorization")).toBeUndefined();
+    document.cookie = "mn_csrf=; Path=/; Max-Age=0";
   });
 });
 

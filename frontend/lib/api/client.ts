@@ -74,7 +74,42 @@ export function licenceLockFrom(status: number | undefined, data: unknown): stri
   return typeof code === "string" && LICENCE_LOCKS.has(code) ? code : null;
 }
 
-const TOKEN_KEY = "mn_auth_token";
+/**
+ * The browser's session is an httponly cookie the page cannot read, so there is no token to keep. Before that
+ * change the JWT sat in localStorage under this key; it is only read once, to move such a session over (see
+ * context/auth-context.tsx), and removed.
+ */
+export const LEGACY_TOKEN_KEY = "mn_auth_token";
+const CSRF_COOKIE = "mn_csrf";
+const SAFE_METHODS = new Set(["get", "head", "options"]);
+
+/** The CSRF token the API set as a readable cookie at sign-in, echoed in X-CSRF-Token on every mutating request. */
+function csrfToken(): string | null {
+  const hit = document.cookie.split("; ").find((c) => c.startsWith(`${CSRF_COOKIE}=`));
+  return hit ? decodeURIComponent(hit.slice(CSRF_COOKIE.length + 1)) : null;
+}
+
+/** Signed-in marker for proxy.ts: the page-readable stand-in for the httponly session cookie. */
+export function setSessionMarker(on: boolean): void {
+  document.cookie = on
+    ? "mn_session=1; Path=/; SameSite=Lax; Max-Age=2592000"
+    : "mn_session=; Path=/; SameSite=Lax; Max-Age=0";
+}
+
+export function hasSessionMarker(): boolean {
+  return document.cookie.split("; ").some((c) => c.startsWith("mn_session="));
+}
+
+/** Drop everything the page keeps of a session: the marker and any pre-cookie token. */
+export function clearBrowserSession(): void {
+  setSessionMarker(false);
+  try {
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+  } catch {
+    // storage blocked: nothing was kept there
+  }
+}
+
 const PER_PAGE_CAP = 100;
 let warnedPerPageCap = false;
 
@@ -93,8 +128,11 @@ function instrument(client: AxiosInstance): AxiosInstance {
       }
     }
     if (typeof window === "undefined") return config;
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    // The session cookie rides along by itself (same origin); a mutating request also proves it came from this page.
+    if (!SAFE_METHODS.has((config.method ?? "get").toLowerCase())) {
+      const csrf = csrfToken();
+      if (csrf) config.headers["X-CSRF-Token"] = csrf;
+    }
     return config;
   });
 
@@ -108,7 +146,7 @@ function instrument(client: AxiosInstance): AxiosInstance {
       if (typeof window !== "undefined" && error.response) {
         // a 401 from the login call means wrong credentials, not an expired session: let the form show it
         if (error.response.status === 401 && !String(error.config?.url ?? "").endsWith("/api/v1/auth/login")) {
-          localStorage.removeItem(TOKEN_KEY);
+          clearBrowserSession();
           window.location.href = new URL("/sign-in", window.location.origin).href;
           return Promise.reject(error);
         }
