@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import localFont from "next/font/local";
 import { AuthProvider } from "@/lib/auth-provider";
 import { Attribution } from "@/design/brand/Attribution";
@@ -41,11 +42,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // proxy.ts mints one nonce per request; reading it makes every page render per request, which a nonce needs.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <AuthProvider>
       {/* Font variables sit on <html> so both token files (:root and .m2-root) resolve the Plex faces. */}
@@ -53,6 +56,7 @@ export default function RootLayout({
         <head>
           {/* Sets data-theme before first paint from the keys lib/preferences.ts writes, defaulting to DEFAULT_THEME (lib/theme.ts). */}
           <script
+            nonce={nonce}
             dangerouslySetInnerHTML={{
               __html: themeBootScript(),
             }}
