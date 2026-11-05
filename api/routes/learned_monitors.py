@@ -82,11 +82,36 @@ class Coverage(BaseModel):
     breaks: int
 
 
+class ThresholdMove(BaseModel):
+    break_id: str
+    run_number: Optional[int] = None
+    decision: Literal["expected", "confirmed"]
+    effect: float
+    result: Literal["raised", "lowered", "kept"]
+    min_effect_after: float
+    decided_by: Optional[str] = None
+    decided_at: Optional[str] = None
+
+
+class Threshold(BaseModel):
+    """One monitor's minimum effect: what it is now, the fixed floor and ceiling, and the decisions that moved it."""
+    module: str
+    metric: Literal["records", "score", "fail_rate"]
+    subject_code: str
+    subject_description: Optional[str] = None
+    min_effect: float
+    floor: float
+    ceiling: float
+    window_days: int
+    moves: list[ThresholdMove]
+
+
 class MonitorsOut(BaseModel):
     min_runs: int
     history: int
     coverage: list[Coverage]
     breaks: list[BreakOut]
+    thresholds: list[Threshold] = []
 
 
 def _iso(x) -> Optional[str]:
@@ -119,6 +144,25 @@ async def _shape(db: AsyncSession, tenant: Tenant, rows) -> list[BreakOut]:
                             status=status, baseline_effect=r[16], snoozed_until=_iso(r[17]), decided_by=r[18],
                             decided_at=_iso(r[19]), note=r[20], explanation=Explanation(**exp), citations=cites,
                             detected_at=_iso(r[22]) or ""))
+    return out
+
+
+async def _thresholds(db: AsyncSession, tenant: Tenant, modules: list[str]) -> list[Threshold]:
+    """Learned minimum effects of the monitors that stewards' decisions touched in the window, with those decisions."""
+    since = datetime.now(timezone.utc) - timedelta(days=lm.LEARN_DAYS)
+    ev = lm.monitor_events((await db.execute(text(lm.EVENTS_SQL), {"tid": str(tenant.id), "m": None, "since": since})).fetchall())
+    keys = sorted(k for k in ev if k[0] in modules)
+    names = await rule_names(db, tenant, sorted({k[2] for k in keys if k[1] == "fail_rate"}))
+    out = []
+    for module, metric, subject in keys:
+        L = lm.learn(metric, ev[(module, metric, subject)])
+        out.append(Threshold(
+            module=module, metric=metric, subject_code=subject, min_effect=L["min_effect"], floor=L["floor"],
+            ceiling=L["ceiling"], window_days=lm.LEARN_DAYS,
+            subject_description=names.get(subject) if metric == "fail_rate" else None,
+            moves=[ThresholdMove(break_id=m["id"], run_number=m["run_number"], decision=m["decision"], effect=m["effect"],
+                                 result=m["result"], min_effect_after=m["min_effect"], decided_by=m["decided_by"],
+                                 decided_at=_iso(m["decided_at"])) for m in reversed(L["moves"])]))
     return out
 
 
@@ -157,7 +201,8 @@ async def monitors(version_id: Optional[uuid.UUID] = None, limit: int = Query(30
          WHERE b.tenant_id = :t AND b.version_id = CAST(:v AS uuid)
          ORDER BY CASE b.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
                   b.module, b.kind, b.subject_code LIMIT :n"""), {"t": t, "v": run[0], "n": limit})).fetchall()
-    return MonitorsOut(min_runs=lm.MIN_RUNS, history=lm.HISTORY, coverage=cov, breaks=await _shape(db, tenant, rows))
+    return MonitorsOut(min_runs=lm.MIN_RUNS, history=lm.HISTORY, coverage=cov, breaks=await _shape(db, tenant, rows),
+                       thresholds=await _thresholds(db, tenant, sorted(mods)))
 
 
 async def _get(db: AsyncSession, tenant: Tenant, bid: uuid.UUID):

@@ -13,6 +13,18 @@ With ``SEASON_MIN`` or more earlier runs and ``SEASON_POINTS`` of them on the sa
 those same-weekday runs only. A steward can mark a break expected: ``exclude`` drops that run from later baselines,
 ``accept`` makes that run the start of the baseline (the older runs are dropped and the monitor relearns).
 
+Minimum effect, learned per monitor (module, metric, rule or field). A break is raised only when its effect is at least
+the monitor's minimum effect. Effect: records |observed - median| / median, score median - observed (points), fail
+rate observed - median (percentage points). The fixed constants VOLUME_REL, SCORE_MIN_DROP and RATE_MIN_RISE are the
+FLOOR. ``learn`` folds the steward decisions of the last ``LEARN_DAYS`` days on that monitor, oldest first, starting at
+the floor:
+  expected break of effect e   minimum = max(minimum, min(e * LEARN_MARGIN, ceiling))
+  confirmed break (acknowledged) of effect e below the minimum    minimum = max(floor, e)
+The ceiling is ``CEILING_MULT`` times the floor, so a monitor can never be silenced; the minimum is never below the
+floor. Decisions older than the window drop out, so a raised minimum relaxes by itself. Severity cut points scale with
+minimum / floor, capped at ``SEV_SCALE_MAX`` (unchanged at the floor). ``field_emptied`` has no effect size and stays fixed. A break suppressed by a
+raised minimum is not stored, so only a break that was already open can be confirmed to lower it; that is a limit.
+
 Aggregates only: the input is ``analysis_versions.dqs_summary``, ``findings`` counts and ``field_profiles`` blank
 shares, never a record value. Deterministic; the explanation text lives at the bottom of this file and is the fallback
 for the model's (api/routes/learned_monitors.py), whose output is checked against the figures before it is shown.
@@ -22,7 +34,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy import text
@@ -41,6 +53,12 @@ VOLUME_REL, VOLUME_SPREAD = 0.30, 0.02
 SCORE_SPREAD, SCORE_MIN_DROP = 0.005, 1.0       # points
 RATE_SPREAD, RATE_MIN_RISE = 1.0, 2.0           # percentage points
 EMPTY_AT, POPULATED_BELOW = 95.0, 50.0          # blank share now / median blank share before
+
+LEARN_DAYS = 90       # steward decisions older than this no longer move a minimum effect
+LEARN_MARGIN = 1.05   # the minimum sits 5% above the largest effect marked expected
+CEILING_MULT = 3.0    # a minimum effect never exceeds this multiple of its floor
+SEV_SCALE_MAX = 1.5   # severity cuts stretch at most this far, so losing every record is still critical
+FLOOR = {"records": VOLUME_REL, "score": SCORE_MIN_DROP, "fail_rate": RATE_MIN_RISE}
 
 Point = tuple[str, datetime, float]  # (run id, run_at, value), oldest first
 
@@ -68,24 +86,72 @@ def baseline(points: list[Point], at: datetime, *, rel: float = 0.0, abs_: float
             "runs": len(window), "run_ids": [p[0] for p in window]}
 
 
-def _sev(step: float, cuts: tuple[float, float]) -> str:
+def effect_of(metric: str, observed: float, median: float) -> float:
+    """The size of a break in the metric's own unit (see the module docstring)."""
+    if metric == "records":
+        return abs(observed - median) / median if median else 1.0
+    return median - observed if metric == "score" else observed - median
+
+
+def learn(metric: str, events: list[dict]) -> dict:
+    """The learned minimum effect from ``events`` (oldest first): {id, decision 'expected'|'confirmed', effect, ...}.
+    Returns {min_effect, floor, ceiling, moves}; each move is its event plus ``result`` raised|lowered|kept and the
+    minimum after it."""
+    floor = FLOOR[metric]
+    ceiling = floor * CEILING_MULT
+    cur, moves = floor, []
+    for e in events:
+        was = cur
+        if e["decision"] == "expected":
+            cur = max(cur, min(e["effect"] * LEARN_MARGIN, ceiling))
+        elif e["effect"] < cur:
+            cur = max(floor, e["effect"])
+        moves.append({**e, "result": "raised" if cur > was else "lowered" if cur < was else "kept", "min_effect": cur})
+    return {"min_effect": cur, "floor": floor, "ceiling": ceiling, "moves": moves}
+
+
+EVENTS_SQL = """
+    SELECT b.id::text, v.run_number, b.module, b.metric, b.subject_code, b.status, b.observed, b.median, b.decided_by,
+           b.decided_at
+      FROM learned_monitor_breaks b JOIN analysis_versions v ON v.id = b.version_id AND v.tenant_id = b.tenant_id
+     WHERE b.tenant_id = :tid AND b.status IN ('expected', 'acknowledged') AND b.metric IN ('records', 'score', 'fail_rate')
+       AND b.median IS NOT NULL AND b.decided_at >= :since AND (CAST(:m AS text) IS NULL OR b.module = :m)
+     ORDER BY b.decided_at, b.id"""
+
+
+def monitor_events(rows: Any) -> dict[tuple[str, str, str], list[dict]]:
+    """Rows of EVENTS_SQL as learn() events per (module, metric, subject)."""
+    out: dict[tuple[str, str, str], list[dict]] = {}
+    for r in rows:
+        out.setdefault((r[2], r[3], r[4]), []).append({
+            "id": r[0], "run_number": r[1], "decision": "expected" if r[5] == "expected" else "confirmed",
+            "effect": effect_of(r[3], r[6], r[7]), "decided_by": r[8], "decided_at": r[9]})
+    return out
+
+
+def _sev(step: float, cuts: tuple[float, float], scale: float = 1.0) -> str:
+    cuts = (cuts[0] * scale, cuts[1] * scale)
     return "critical" if step >= cuts[1] else "high" if step >= cuts[0] else "medium"
 
 
-def judge(metric: str, subject: str, obs: float, base: dict) -> Optional[dict]:
-    """The break, if ``obs`` is outside the band in the direction that matters for ``metric``."""
+def judge(metric: str, subject: str, obs: float, base: dict, min_effect: Optional[float] = None) -> Optional[dict]:
+    """The break, if ``obs`` is outside the band in the direction that matters for ``metric`` and its effect reaches
+    ``min_effect`` (default: the floor)."""
     low, high, med = base["low"], base["high"], base["median"]
+    floor = FLOOR.get(metric)
+    me = floor if min_effect is None else min_effect
+    scale = min(me / floor, SEV_SCALE_MAX) if floor else 1.0
     kind = sev = None
     if metric == "records":
-        if obs < low or obs > high:
+        if (obs < low or obs > high) and effect_of(metric, obs, med) >= me:
             kind = "volume_drop" if obs < low else "volume_spike"
-            sev = _sev(abs(obs - med) / med if med else 1.0, (0.25, 0.5))
+            sev = _sev(effect_of(metric, obs, med), (0.25, 0.5), scale)
     elif metric == "score":
-        if obs < low and med - obs >= SCORE_MIN_DROP:
-            kind, sev = "score_drop", _sev(med - obs, (5, 10))
+        if obs < low and med - obs >= me:
+            kind, sev = "score_drop", _sev(med - obs, (5, 10), scale)
     elif metric == "fail_rate":
-        if obs > high and obs - med >= RATE_MIN_RISE:
-            kind, sev = "fail_rate_jump", _sev(obs - med, (10, 25))
+        if obs > high and obs - med >= me:
+            kind, sev = "fail_rate_jump", _sev(obs - med, (10, 25), scale)
     elif metric == "blank_pct":
         if obs >= EMPTY_AT and med < POPULATED_BELOW and obs > high:
             kind, sev = "field_emptied", "critical" if med < 10 else "high"
@@ -184,31 +250,41 @@ def _decisions(session: Session, tid: str, module: str) -> dict[str, list[tuple[
     return out
 
 
-SETTINGS = {
-    "records": dict(rel=VOLUME_REL, min_spread=VOLUME_SPREAD),
-    "score": dict(min_spread=SCORE_SPREAD),
-    "fail_rate": dict(abs_=RATE_MIN_RISE, min_spread=RATE_SPREAD, relative_floor=False),
-    "blank_pct": dict(abs_=10.0, min_spread=RATE_SPREAD, relative_floor=False),
-}
+def settings(metric: str, min_effect: Optional[float] = None) -> dict:
+    """Band settings of ``metric``; the band's own minimum width follows the learned minimum effect."""
+    me = FLOOR.get(metric) if min_effect is None else min_effect
+    return {"records": dict(rel=me, min_spread=VOLUME_SPREAD),
+            "score": dict(min_spread=SCORE_SPREAD),
+            "fail_rate": dict(abs_=me, min_spread=RATE_SPREAD, relative_floor=False),
+            "blank_pct": dict(abs_=10.0, min_spread=RATE_SPREAD, relative_floor=False)}[metric]
 
 
-def detect(session: Session, tid: str, vid: str, module: str) -> dict:
+def learned_minimums(session: Session, tid: str, module: str, now: datetime) -> dict[tuple[str, str], float]:
+    """{(metric, subject): learned minimum effect} for the monitors of ``module`` that stewards' decisions moved."""
+    since = now - timedelta(days=LEARN_DAYS)
+    ev = monitor_events(session.execute(text(EVENTS_SQL), {"tid": tid, "m": module, "since": since}))
+    return {(me, sub): learn(me, e)["min_effect"] for (_, me, sub), e in ev.items()}
+
+
+def detect(session: Session, tid: str, vid: str, module: str, now: Optional[datetime] = None) -> dict:
     """{"breaks": [...], "series": n watched, "learning": n with too few earlier runs, "runs": earlier runs of the object}.
     Read only; the caller set ``app.tenant_id``."""
     run, series, mine = collect(session, tid, vid, module)
     if not run:
         return {"breaks": [], "series": 0, "learning": 0, "runs": 0}
     decided = _decisions(session, tid, module)
+    mins = learned_minimums(session, tid, module, now or datetime.now(timezone.utc))
     when = {pt[0]: pt[1] for pts in series.values() for pt in pts}
     breaks, learning = [], 0
     for key, cur in sorted(mine.items()):
         metric, _, subject = key.partition("|")
         pts = apply_decisions(series.get(key, []), decided.get(key, []), when)
-        base = baseline(pts, run["run_at"], **SETTINGS[metric])
+        me = mins.get((metric, subject))
+        base = baseline(pts, run["run_at"], **settings(metric, me))
         if base is None:
             learning += 1
             continue
-        b = judge(metric, subject, cur["value"], base)
+        b = judge(metric, subject, cur["value"], base, me)
         if b:
             breaks.append(b)
     return {"breaks": breaks, "series": len(mine), "learning": learning,
