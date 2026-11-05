@@ -24,7 +24,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import require_any_permission, require_permission
+from api.services.rbac import current_user_label, require_any_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["writeback"])
 logger = logging.getLogger("meridian.writeback")
@@ -564,15 +564,53 @@ class BatchCheckResponse(BaseModel):
     errors: list[str] = []
 
 
-class BatchSendResponse(BaseModel):
+class RunCounts(BaseModel):
+    pending: int = 0
+    sending: int = 0
+    committed: int = 0
+    failed: int = 0
+    needs_check: int = 0              # SAP may hold the change: check it in SAP before sending the record again
+    export_only: int = 0
+
+
+class RunOut(BaseModel):
+    """A batch's send to SAP, which runs in the background in chunks (workers/tasks/run_batch_writeback.py)."""
+    id: str
     batch_id: str
-    status: str                        # completed | completed_with_errors
-    sent: int                          # records SAP committed
-    failed: int                        # records SAP refused or that could not be sent
-    export_only: int                   # fields left for the export
+    status: str                       # queued | running | paused | cancelling | completed | completed_with_errors | cancelled
+    pause_reason: Optional[str] = None
+    records: int                      # records the run sends
+    counts: RunCounts
+    export_only_fields: int           # fields without a BAPI: they stay for the export
     errors: list[str] = []
-    fields: list[FieldSupportOut] = []
-    records: list[RecordResultOut] = []  # per record: simulation, call and commit, with SAP's RETURN messages
+    stale: bool = False               # open, but no worker has reported for a long time: Resume takes it over
+    requested_label: Optional[str] = None
+    created_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+
+
+class RunRecordOut(BaseModel):
+    record_key: str
+    description: Optional[str] = None  # the record's name in the work list
+    module: str
+    state: str
+    fields: list[str] = []
+    error: Optional[str] = None
+    messages: list[dict] = []          # SAP's RETURN messages: the test run first, then the call and commit
+    attempts: int = 0
+
+
+class RunRecordsPage(BaseModel):
+    items: list[RunRecordOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class RetryRequest(BaseModel):
+    include_needs_check: bool = Field(False, description="also requeue the records marked needs_check; only after "
+                                                         "someone has looked in SAP and found the change not there")
 
 
 _LIVE_OFF = ("Live SAP write-back is off on this deployment (setting MERIDIAN_LIVE_WRITEBACK_ENABLED). Until an "
@@ -688,9 +726,69 @@ async def check_batch_writeback(
     )
 
 
+_OPEN = ("queued", "running", "paused", "cancelling")
+_RUN_SQL = """
+    SELECT r.id::text AS id, r.batch_id::text AS batch_id, r.status, r.pause_reason, r.export_only, r.errors,
+           r.requested_label, r.created_at, r.started_at, r.finished_at,
+           (r.status IN ('queued', 'running', 'cancelling')
+            AND COALESCE(r.heartbeat_at, r.created_at) < now() - make_interval(secs => :stale)) AS stale
+      FROM writeback_runs r WHERE r.tenant_id = :tid AND r.batch_id = :bid
+     ORDER BY r.created_at DESC LIMIT 1"""
+
+
+async def _latest_run(db: AsyncSession, tenant: Tenant, batch_id: uuid.UUID) -> Optional[dict]:
+    from api.config import settings
+    from api.routes.remediation import _rls
+
+    await _rls(db, tenant)
+    row = (await db.execute(text(_RUN_SQL), {"tid": str(tenant.id), "bid": batch_id,
+                                             "stale": settings.writeback_stale_seconds})).mappings().fetchone()
+    return dict(row) if row else None
+
+
+async def _run_out(db: AsyncSession, tenant: Tenant, run: dict) -> RunOut:
+    rows = (await db.execute(text("SELECT state, count(*) FROM writeback_run_records WHERE run_id = :r "
+                                  "AND tenant_id = :tid GROUP BY state"),
+                             {"r": run["id"], "tid": str(tenant.id)})).fetchall()
+    c = {k: int(n) for k, n in rows}
+    errs = run["errors"] or []
+    return RunOut(id=run["id"], batch_id=run["batch_id"], status=run["status"], pause_reason=run["pause_reason"],
+                  records=sum(c.values()), counts=RunCounts(**c), export_only_fields=int(run["export_only"] or 0),
+                  errors=errs if isinstance(errs, list) else [], stale=bool(run["stale"]),
+                  requested_label=run["requested_label"], created_at=run["created_at"],
+                  started_at=run["started_at"], finished_at=run["finished_at"])
+
+
+async def _send_guards(request: Request, db: AsyncSession, tenant: Tenant, batch_id: uuid.UUID):
+    """The guards of a send, in the request: live write-back on, approved batch, not its creator, no sandbox hold."""
+    from api.config import settings
+    from api.services.sandbox import held_back
+
+    if not settings.live_writeback_enabled:
+        raise HTTPException(status_code=409, detail=_LIVE_OFF)
+    b, items = await _approved_batch(db, tenant, batch_id)
+    user = _require_user(request)
+    if b.get("created_by") and str(b["created_by"]) == user:
+        raise HTTPException(status_code=403, detail="The batch creator cannot send it to SAP; a second person sends it.")
+    if await held_back(db, str(tenant.id), "write_back", "bapi", str(batch_id)):
+        await db.commit()
+        raise HTTPException(status_code=409, detail="Sandbox mode is on: nothing is written back to SAP. "
+                                                    "Exit the sandbox to send this batch.")
+    return b, items, user
+
+
+def _enqueue(run_id: str, tenant_id: str) -> None:
+    from workers.tasks.run_batch_writeback import run_batch_writeback
+
+    try:
+        run_batch_writeback.delay(run_id, tenant_id)
+    except Exception:  # noqa: BLE001 - the run stays queued; once stale, Resume enqueues it again
+        logger.exception("Batch write-back %s could not be queued", run_id)
+
+
 @router.post(
     "/writeback/batches/{batch_id}/send",
-    response_model=BatchSendResponse,
+    response_model=RunOut,
     dependencies=[Depends(require_permission("approve"))],
 )
 async def send_batch_writeback(
@@ -699,74 +797,210 @@ async def send_batch_writeback(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """Send an approved batch to SAP: each record simulated, then committed only when SAP's RETURN holds no E or A
-    message. Fields without a BAPI mapping are not sent and stay for the export. The batch becomes Sent to SAP once
-    SAP has committed a record."""
-    from api.config import settings
-    from api.routes.remediation import _event
+    """Send an approved batch to SAP. The request checks everything and returns at once with the run; a worker sends
+    the records in chunks (each simulated, committed only when SAP's RETURN holds no E or A message) and the screen
+    follows the run. Fields without a BAPI are not sent and stay for the export. The batch becomes Sent to SAP once
+    SAP has committed a record. A send while a run of this batch is open returns that run."""
+    from sqlalchemy.exc import IntegrityError
 
     tenant_id = str(tenant.id)
-    if not settings.live_writeback_enabled:
-        raise HTTPException(status_code=409, detail=_LIVE_OFF)
-    b, items = await _approved_batch(db, tenant, batch_id)
-    user = _require_user(request)
-    if b.get("created_by") and str(b["created_by"]) == user:
-        raise HTTPException(status_code=403, detail="The batch creator cannot send it to SAP; a second person sends it.")
-    from api.services.sandbox import held_back
-    if await held_back(db, tenant_id, "write_back", "bapi", str(batch_id)):
-        await db.commit()
-        raise HTTPException(status_code=409, detail="Sandbox mode is on: nothing is written back to SAP. "
-                                                    "Exit the sandbox to send this batch.")
+    _, items, user = await _send_guards(request, db, tenant, batch_id)
+    open_run = await _latest_run(db, tenant, batch_id)
+    if open_run and open_run["status"] in _OPEN:
+        return await _run_out(db, tenant, open_run)
 
     support = _batch_support(items)
     errors: list[str] = []
-    # (system, module) -> record_key -> {TABLE.FIELD: proposed value}, only the fields a BAPI carries
-    groups: dict[tuple[str, str], dict[str, dict]] = {}
+    # (system, module, record_key) -> {TABLE.FIELD: proposed value}, only the fields a BAPI carries
+    by_record: dict[tuple[str, str, str], dict] = {}
     for item, sup in zip(items, support):
         if sup["supported"]:
-            groups.setdefault((str(item["scope"]), item["module"]), {}).setdefault(item["record_key"], {})[
+            by_record.setdefault((str(item["scope"]), item["module"], item["record_key"]), {})[
                 sup["field"]] = item["proposed_value"]
     export_only = sum(1 for x in support if not x["supported"])
     if export_only:
         errors.append(f"{export_only} field(s) have no BAPI mapping and were not sent; deliver them with the export")
-    if not groups:
-        errors.append("No field of this batch has a BAPI mapping")
+    if not by_record:
+        raise HTTPException(status_code=409, detail="No field of this batch has a BAPI mapping; deliver it with the "
+                                                    "export.")
+    # a record an earlier run committed, or may have committed, is never sent again by a new run
+    done = {(r[0], r[1], r[2]) for r in (await db.execute(text(
+        "SELECT x.system_id, x.module, x.record_key FROM writeback_run_records x JOIN writeback_runs r ON r.id = x.run_id "
+        "WHERE r.tenant_id = :tid AND r.batch_id = :bid AND x.state IN ('committed', 'needs_check', 'sending')"),
+        {"tid": tenant_id, "bid": batch_id})).fetchall()}
+    todo = {k: v for k, v in by_record.items() if k not in done}
+    if not todo:
+        raise HTTPException(status_code=409, detail="Every record of this batch is already committed in SAP or waits "
+                                                    "for a check there; nothing is left to send.")
+    if done & by_record.keys():
+        errors.append(f"{len(done & by_record.keys())} record(s) were sent by an earlier run and are not sent again")
 
-    records: list[dict] = []
-    for (system_id, module), by_record in groups.items():
-        params = await _system_params(db, tenant_id, system_id)
-        if params is None:
-            msg = "No registered SAP system with stored credentials holds these records; deliver them with the export"
-            records += [{"record_key": k, "error": msg} for k in by_record]
-            continue
-        from sap import get_connector
-        from sap.base import SAPConnectorError
+    run_id = str(uuid.uuid4())
+    try:
+        await db.execute(text(
+            "INSERT INTO writeback_runs (id, tenant_id, batch_id, status, requested_by, requested_label, export_only, "
+            "errors) VALUES (:id, :tid, :bid, 'queued', :u, :l, :eo, CAST(:errs AS jsonb))"),
+            {"id": run_id, "tid": tenant_id, "bid": batch_id, "u": user, "l": current_user_label(), "eo": export_only,
+             "errs": json.dumps(errors)})
+        await db.execute(text(
+            "INSERT INTO writeback_run_records (tenant_id, run_id, seq, system_id, module, record_key, changes) "
+            "VALUES (:tid, :r, :seq, :sys, :m, :k, CAST(:c AS jsonb))"),
+            [{"tid": tenant_id, "r": run_id, "seq": seq, "sys": system_id, "m": module, "k": key,
+              "c": json.dumps(changes, default=str)}
+             for seq, ((system_id, module, key), changes) in enumerate(sorted(todo.items()))])
+        await db.commit()
+    except IntegrityError:  # a second send won the race for the one open run
+        await db.rollback()
+        run = await _latest_run(db, tenant, batch_id)
+        if run and run["status"] in _OPEN:
+            return await _run_out(db, tenant, run)
+        raise
+    _enqueue(run_id, tenant_id)
+    logger.info(f"Batch write-back {batch_id}: run {run_id} queued, records={len(todo)}")
+    return await _run_out(db, tenant, (await _latest_run(db, tenant, batch_id)) or {})
 
-        def _apply(params=params, module=module, by_record=by_record) -> tuple[list[dict], Optional[str]]:
-            try:
-                with get_connector() as conn:
-                    conn.connect(params)
-                    return apply_records(conn, module, by_record), None
-            except SAPConnectorError as e:
-                return [], "PyRFC not installed" if "pyrfc_not_installed" in str(e) else f"RFC connection failed: {e}"
 
-        done, err = await asyncio.to_thread(_apply)
-        records += done or [{"record_key": k, "error": err} for k in by_record]
+@router.get(
+    "/writeback/batches/{batch_id}/run",
+    response_model=RunOut,
+    dependencies=[Depends(require_any_permission("apply", "approve"))],
+)
+async def get_batch_run(batch_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """The latest send of this batch: status, counts, the pause reason. Changes nothing."""
+    run = await _latest_run(db, tenant, batch_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="This batch has not been sent to SAP")
+    return await _run_out(db, tenant, run)
 
-    out = [RecordResultOut(**r) for r in records]
-    sent = sum(1 for r in out if r.committed)
-    failed = sum(1 for r in records if record_failed(r))
-    errors += record_errors(records, support)
-    export_only = sum(1 for x in support if not x["supported"])
-    if sent:
-        await db.execute(text("UPDATE remediation_batches SET status = 'exported', exported_at = now() "
-                              "WHERE id = :id AND tenant_id = :tid"), {"id": batch_id, "tid": tenant_id})
-        await _event(db, tenant, batch_id, "exported", request, to_value="bapi")
-        from api.services import webhooks, worklist
-        await db.run_sync(lambda s: worklist.refresh_batch(s, tenant_id, batch_id))
-        await db.run_sync(lambda s: webhooks.batch_event(s, tenant_id, str(batch_id), "batch.sent"))
+
+@router.get(
+    "/writeback/batches/{batch_id}/run/records",
+    response_model=RunRecordsPage,
+    dependencies=[Depends(require_any_permission("apply", "approve"))],
+)
+async def get_batch_run_records(
+    batch_id: uuid.UUID,
+    state: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Records of the latest send, a page at a time, failed and needs_check by default, with SAP's messages."""
+    run = await _latest_run(db, tenant, batch_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="This batch has not been sent to SAP")
+    states = [state] if state else ["failed", "needs_check"]
+    limit, offset = max(1, min(limit, 200)), max(0, offset)
+    args = {"r": run["id"], "tid": str(tenant.id), "st": states}
+    total = (await db.execute(text("SELECT count(*) FROM writeback_run_records WHERE run_id = :r AND tenant_id = :tid "
+                                   "AND state = ANY(:st)"), args)).scalar() or 0
+    rows = (await db.execute(text("""
+        SELECT x.record_key, x.module, x.state, x.error, x.attempts, x.result, x.changes,
+               (SELECT w.name FROM work_records w WHERE w.tenant_id = x.tenant_id AND w.module = x.module
+                   AND w.record_key = x.record_key AND w.name IS NOT NULL LIMIT 1) AS description
+          FROM writeback_run_records x WHERE x.run_id = :r AND x.tenant_id = :tid AND x.state = ANY(:st)
+         ORDER BY x.seq LIMIT :n OFFSET :o"""), {**args, "n": limit, "o": offset})).mappings().fetchall()
+    items = []
+    for x in rows:
+        res = x["result"] or {}
+        items.append(RunRecordOut(
+            record_key=x["record_key"], description=x["description"], module=x["module"], state=x["state"],
+            fields=sorted((x["changes"] or {}).keys()), error=x["error"], attempts=x["attempts"],
+            messages=list(res.get("simulate_messages") or []) + list(res.get("messages") or [])))
+    return RunRecordsPage(items=items, total=int(total), limit=limit, offset=offset)
+
+
+@router.post(
+    "/writeback/batches/{batch_id}/run/resume",
+    response_model=RunOut,
+    dependencies=[Depends(require_permission("approve"))],
+)
+async def resume_batch_run(request: Request, batch_id: uuid.UUID, db: AsyncSession = Depends(get_db),
+                           tenant: Tenant = Depends(get_tenant)):
+    """Continue a paused run, or take over a run whose worker stopped reporting (stale). A record the dead worker was
+    sending is not sent again: it is marked needs_check, since SAP may already hold the change. Same four eyes as the
+    send: not the batch creator."""
+    tenant_id = str(tenant.id)
+    await _send_guards(request, db, tenant, batch_id)
+    run = await _latest_run(db, tenant, batch_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="This batch has not been sent to SAP")
+    if run["status"] != "paused" and not (run["status"] in ("queued", "running", "cancelling") and run["stale"]):
+        raise HTTPException(status_code=409, detail="The run is neither paused nor stalled; there is nothing to resume.")
+    await db.execute(text(
+        "UPDATE writeback_run_records SET state = 'needs_check', updated_at = now(), error = 'The run stopped while this "
+        "record was being sent; check it in SAP before sending it again' "
+        "WHERE run_id = :r AND tenant_id = :tid AND state = 'sending'"), {"r": run["id"], "tid": tenant_id})
+    await db.execute(text(
+        "UPDATE writeback_runs SET status = 'queued', pause_reason = NULL, conn_failures = 0, heartbeat_at = now() "
+        "WHERE id = :r AND tenant_id = :tid"), {"r": run["id"], "tid": tenant_id})
     await db.commit()
-    logger.info(f"Batch write-back {batch_id}: sent={sent}, failed={failed}, export_only={export_only}")
-    return BatchSendResponse(batch_id=str(batch_id), status="completed" if not errors else "completed_with_errors",
-                             sent=sent, failed=failed, export_only=export_only, errors=errors, fields=support,
-                             records=out)
+    _enqueue(run["id"], tenant_id)
+    return await _run_out(db, tenant, (await _latest_run(db, tenant, batch_id)) or {})
+
+
+@router.post(
+    "/writeback/batches/{batch_id}/run/cancel",
+    response_model=RunOut,
+    dependencies=[Depends(require_permission("approve"))],
+)
+async def cancel_batch_run(batch_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Stop the run after the chunk in progress. A queued, paused or stalled run stops at once; committed records stay
+    committed and the others stay unsent."""
+    tenant_id = str(tenant.id)
+    run = await _latest_run(db, tenant, batch_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="This batch has not been sent to SAP")
+    if run["status"] not in _OPEN:
+        raise HTTPException(status_code=409, detail="The run is already finished.")
+    if run["status"] in ("running", "cancelling") and not run["stale"]:  # the worker is alive: it finishes the stop
+        new = "cancelling"
+    else:
+        new = "cancelled"
+        await db.execute(text(
+            "UPDATE writeback_run_records SET state = 'needs_check', updated_at = now(), error = 'The run stopped while "
+            "this record was being sent; check it in SAP before sending it again' "
+            "WHERE run_id = :r AND tenant_id = :tid AND state = 'sending'"), {"r": run["id"], "tid": tenant_id})
+    await db.execute(text("UPDATE writeback_runs SET status = :s, heartbeat_at = now(), "
+                          "finished_at = CASE WHEN :s = 'cancelled' THEN now() ELSE finished_at END "
+                          "WHERE id = :r AND tenant_id = :tid"), {"s": new, "r": run["id"], "tid": tenant_id})
+    await db.commit()
+    return await _run_out(db, tenant, (await _latest_run(db, tenant, batch_id)) or {})
+
+
+@router.post(
+    "/writeback/batches/{batch_id}/run/retry-failed",
+    response_model=RunOut,
+    dependencies=[Depends(require_permission("approve"))],
+)
+async def retry_failed_batch_run(
+    request: Request,
+    batch_id: uuid.UUID,
+    body: RetryRequest = RetryRequest(),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Send the failed records of the run again (and the needs_check ones only when asked). Committed records are never
+    touched. Works on a finished or paused run; same four eyes as the send."""
+    tenant_id = str(tenant.id)
+    await _send_guards(request, db, tenant, batch_id)
+    run = await _latest_run(db, tenant, batch_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="This batch has not been sent to SAP")
+    if run["status"] in ("queued", "running", "cancelling"):
+        raise HTTPException(status_code=409, detail="The run is still going; retry once it has finished or paused.")
+    states = ["failed", "needs_check"] if body.include_needs_check else ["failed"]
+    n = (await db.execute(text(
+        "UPDATE writeback_run_records SET state = 'pending', error = NULL, updated_at = now() "
+        "WHERE run_id = :r AND tenant_id = :tid AND state = ANY(:st) RETURNING 1"),
+        {"r": run["id"], "tid": tenant_id, "st": states})).rowcount
+    if not n:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="No failed record to send again.")
+    await db.execute(text(
+        "UPDATE writeback_runs SET status = 'queued', pause_reason = NULL, conn_failures = 0, finished_at = NULL, "
+        "heartbeat_at = now() WHERE id = :r AND tenant_id = :tid"), {"r": run["id"], "tid": tenant_id})
+    await db.commit()
+    _enqueue(run["id"], tenant_id)
+    return await _run_out(db, tenant, (await _latest_run(db, tenant, batch_id)) or {})

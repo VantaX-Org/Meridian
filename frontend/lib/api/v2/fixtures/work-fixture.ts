@@ -1,6 +1,9 @@
 import workJson from "./work.json";
 import type { BackAfterClean, Batch, BatchDetail, BatchEvent, BatchItem, MonitorItem } from "@/lib/api/remediation";
-import type { BatchRowApi, BatchWritebackCheck, BatchWritebackSend, SendResult, WritebackField, WritebackRecord } from "../batches";
+import type { BatchRowApi, BatchWritebackCheck, RunCounts, RunRecord, SendResult, WritebackField, WritebackRun } from "../batches";
+
+// Local copy: a value import of ../batches would make a cycle through the fixture index.
+const OPEN_RUN: readonly WritebackRun["status"][] = ["queued", "running", "paused", "cancelling"];
 import rulesJson from "./rules.json";
 import type { Decision, WorkGroup, WorkIssue, WorkRecordDetail, WorkSummary } from "@/lib/api/work";
 import type { RuleRow, WorkPage, WorkRow, WorkStatus } from "../types";
@@ -371,7 +374,10 @@ function stripUndefined<T extends object>(o: T): Partial<T> {
 }
 
 const state = new WorkFixture();
-export const resetWorkFixture = (): void => state.reset();
+export const resetWorkFixture = (): void => {
+  state.reset();
+  fxRuns.clear();
+};
 /** The records the open number has moved since the page loaded: the landscape and the shell counts follow it. */
 export const workOpenDelta = (): number => state.delta.to_fix + state.delta.waiting + state.delta.approved + state.delta.sent;
 
@@ -944,49 +950,172 @@ export function writebackCheckFixture(id: string): BatchWritebackCheck {
   };
 }
 
-/** Every seventh record is refused by SAP in its test run, so the demo shows a refusal with its RETURN message. */
-export function writebackSendFixture(id: string): BatchWritebackSend {
+/*
+ * The send is a run: POST /send queues it and returns at once; each read of the run advances the worker by one step
+ * (the screen polls), so the demo shows queued, running and done. Every seventh record is refused by SAP in its test
+ * run, so the demo shows a failure with its RETURN message. Retry-failed sends the refused records again and SAP
+ * refuses them again; Cancel stops a run before it ends.
+ */
+interface FxRun {
+  run: WritebackRun;
+  records: RunRecord[];
+  step: number;
+}
+const fxRuns = new Map<string, FxRun>();
+const FX_RUN_STEPS = 2;
+const FX_RUN_AT = "2026-10-16T09:05:00Z";
+
+function fxCounts(records: RunRecord[]): RunCounts {
+  const c: RunCounts = { pending: 0, sending: 0, committed: 0, failed: 0, needs_check: 0, export_only: 0 };
+  records.forEach((r) => (c[r.state] += 1));
+  return c;
+}
+function fxSync(fx: FxRun): WritebackRun {
+  const counts = fxCounts(fx.records);
+  fx.run = { ...fx.run, counts, records: fx.records.length };
+  return fx.run;
+}
+function fxMarkSent(id: string): void {
+  const b = findBatch(id);
+  if (b.status !== "approved") return;
+  b.status = "exported";
+  b.exported_at = FX_RUN_AT;
+  b.events = [...b.events, { action: "exported", user_label: ME_LABEL, at: b.exported_at, note: "bapi" }];
+  moveRows(id, "approved", "sent", new Map());
+  const delta = zero();
+  delta.approved -= b.items;
+  delta.sent += b.items;
+  state.delta = add(state.delta, delta);
+}
+function fxSettle(id: string, fx: FxRun): void {
+  const failed = fx.records.some((r) => r.state === "failed");
+  if (fx.records.some((r) => r.state === "committed")) fxMarkSent(id);
+  fx.run = { ...fx.run, status: failed ? "completed_with_errors" : "completed", finished_at: FX_RUN_AT };
+}
+
+export function writebackSendFixture(id: string): WritebackRun {
   const b = findBatch(id);
   const items = fxItems(id);
   if (b.created_by === ME_ID) fail(403, "The batch creator cannot send it to SAP; a second person sends it.");
+  const open = fxRuns.get(id);
+  if (open && OPEN_RUN.includes(open.run.status)) return open.run;
   const fields = items.map(fxSupport);
   const byRecord = new Map<string, string[]>();
   fields.forEach((f) => {
     if (f.supported) byRecord.set(f.record_key, [...(byRecord.get(f.record_key) ?? []), f.field]);
   });
-  const records: WritebackRecord[] = [...byRecord.entries()].map(([key, flds], i) => {
-    const matnr = key.replace(/^MATNR=/, "").split("|")[0].replace(/^0+/, "");
-    if (i % 7 === 6)
-      return { record_key: key, bapis: [FX_BAPI], fields: flds, simulated: true, simulate_messages: [{ type: "E", id: "M3", number: "305", message: `Material group of material ${matnr} is not defined in table T023` }], applied: false, committed: false, messages: [], error: null };
-    return {
-      record_key: key,
-      bapis: [FX_BAPI],
-      fields: flds,
-      simulated: true,
-      simulate_messages: [{ type: "S", id: "M3", number: "801", message: `Material ${matnr} changed (test run)` }],
-      applied: true,
-      committed: true,
-      messages: [{ type: "S", id: "M3", number: "801", message: `Material ${matnr} changed` }],
-      error: null,
-    };
-  });
-  const sent = records.filter((r) => r.committed).length;
   const exportOnly = fields.filter((f) => !f.supported).length;
-  const errors = [
-    ...(exportOnly ? [`${exportOnly} field(s) have no BAPI mapping and were not sent; deliver them with the export`] : []),
-    ...records.filter((r) => !r.committed).map((r) => `${r.record_key}: SAP refused the change; see its RETURN messages`),
-  ];
-  if (sent && b.status === "approved") {
-    b.status = "exported";
-    b.exported_at = "2026-10-16T09:05:00Z";
-    b.events = [...b.events, { action: "exported", user_label: ME_LABEL, at: b.exported_at, note: "bapi" }];
-    moveRows(id, "approved", "sent", new Map());
-    const delta = zero();
-    delta.approved -= b.items;
-    delta.sent += b.items;
-    state.delta = add(state.delta, delta);
+  const records: RunRecord[] = [...byRecord.entries()].map(([key, flds]) => ({
+    record_key: key,
+    description: `Material ${key.replace(/^MATNR=/, "").split("|")[0].replace(/^0+/, "")}`,
+    module: "material_master",
+    state: "pending" as const,
+    fields: flds,
+    error: null,
+    messages: [],
+    attempts: 0,
+  }));
+  const fx: FxRun = {
+    records,
+    step: 0,
+    run: {
+      id: `run-${id}`,
+      batch_id: id,
+      status: "queued",
+      pause_reason: null,
+      records: records.length,
+      counts: fxCounts(records),
+      export_only_fields: exportOnly,
+      errors: exportOnly ? [`${exportOnly} field(s) have no BAPI mapping and were not sent; deliver them with the export`] : [],
+      stale: false,
+      requested_label: ME_LABEL,
+      created_at: FX_RUN_AT,
+      started_at: null,
+      finished_at: null,
+    },
+  };
+  fxRuns.set(id, fx);
+  return fxSync(fx);
+}
+
+/** One worker step: the first half of the records is sent, then the rest. */
+function fxAdvance(id: string, fx: FxRun): void {
+  if (!OPEN_RUN.includes(fx.run.status) || fx.run.status === "paused") return;
+  if (fx.run.status === "cancelling") {
+    fx.run = { ...fx.run, status: "cancelled", finished_at: FX_RUN_AT };
+    if (fx.records.some((r) => r.state === "committed")) fxMarkSent(id);
+    return;
   }
-  return { batch_id: id, status: errors.length ? "completed_with_errors" : "completed", sent, failed: records.length - sent, export_only: exportOnly, errors, fields, records };
+  fx.step += 1;
+  fx.run = { ...fx.run, status: "running", started_at: FX_RUN_AT };
+  const pending = fx.records.map((r, i) => ({ r, i })).filter((x) => x.r.state === "pending");
+  const take = fx.step >= FX_RUN_STEPS ? pending : pending.slice(0, Math.ceil(pending.length / 2));
+  take.forEach(({ r, i }) => {
+    const matnr = r.record_key.replace(/^MATNR=/, "").split("|")[0].replace(/^0+/, "");
+    r.attempts += 1;
+    if (i % 7 === 6) {
+      r.state = "failed";
+      r.error = "SAP refused the change in its test run.";
+      r.messages = [{ type: "E", id: "M3", number: "305", message: `Material group of material ${matnr} is not defined in table T023` }];
+    } else {
+      r.state = "committed";
+      r.error = null;
+      r.messages = [
+        { type: "S", id: "M3", number: "801", message: `Material ${matnr} changed (test run)` },
+        { type: "S", id: "M3", number: "801", message: `Material ${matnr} changed` },
+      ];
+    }
+  });
+  if (!fx.records.some((r) => r.state === "pending")) fxSettle(id, fx);
+}
+
+function fxRun(id: string): FxRun {
+  return fxRuns.get(id) ?? fail(404, "This batch has not been sent to SAP");
+}
+
+/** GET /writeback/batches/{id}/run and /run/records. Each read of the run is one worker step. */
+export function writebackRunRead(path: string, params: Record<string, string | number | boolean>): unknown {
+  const m = /^\/writeback\/batches\/([^/]+)\/run(\/records)?$/.exec(path);
+  if (!m) return undefined;
+  const id = decodeURIComponent(m[1]);
+  const fx = fxRun(id);
+  if (!m[2]) {
+    fxAdvance(id, fx);
+    return fxSync(fx);
+  }
+  const want = params.state ? [String(params.state)] : ["failed", "needs_check"];
+  const hit = fx.records.filter((r) => want.includes(r.state));
+  const limit = Number(params.limit ?? 50);
+  const offset = Number(params.offset ?? 0);
+  return { items: hit.slice(offset, offset + limit), total: hit.length, limit, offset };
+}
+
+/** POST .../run/resume, /cancel and /retry-failed. */
+export function writebackRunAct(id: string, act: "resume" | "cancel" | "retry-failed", body: { include_needs_check?: boolean } | undefined): WritebackRun {
+  const b = findBatch(id);
+  if (act !== "cancel" && b.created_by === ME_ID) fail(403, "The batch creator cannot send it to SAP; a second person sends it.");
+  const fx = fxRun(id);
+  const status = fx.run.status;
+  if (act === "cancel") {
+    if (!OPEN_RUN.includes(status)) fail(409, "The run has ended; there is nothing to cancel.");
+    fx.run = { ...fx.run, status: "cancelling" };
+  } else if (act === "resume") {
+    if (status !== "paused") fail(409, "The run is neither paused nor stalled; there is nothing to resume.");
+    fx.run = { ...fx.run, status: "queued", pause_reason: null };
+  } else {
+    const redo = fx.records.filter((r) => r.state === "failed" || (body?.include_needs_check && r.state === "needs_check"));
+    if (!redo.length) fail(409, "No record is waiting for a retry.");
+    redo.forEach((r) => (r.state = "pending"));
+    fx.step = 0;
+    fx.run = { ...fx.run, status: "queued", finished_at: null };
+  }
+  return fxSync(fx);
+}
+
+/** Pause a run as a stopped connection would; the screen test and the demo use it to show Resume. */
+export function writebackPauseFixture(id: string, reason: string): void {
+  const fx = fxRun(id);
+  fx.run = { ...fx.run, status: "paused", pause_reason: reason };
 }
 
 export function batchesFixture(): { items: BatchRowApi[] } {

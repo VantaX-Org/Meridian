@@ -154,6 +154,17 @@ class Settings(BaseSettings):
     # e.g. "Sun 02:00-04:00" or "02:00-04:00" (daily). Empty = any time.
     update_window: str = Field(default="", validation_alias="MERIDIAN_UPDATE_WINDOW")
     live_writeback_enabled: bool = Field(default=False, validation_alias="MERIDIAN_LIVE_WRITEBACK_ENABLED")
+    # Batch write-back runs (workers/tasks/run_batch_writeback.py): records per SAP connection and database commit,
+    # seconds a worker slice runs before it re-enqueues itself (well inside the task soft limit), pause between
+    # chunks (0 = none), consecutive connection failures that pause a run, seconds without a heartbeat before a
+    # running run counts as stale (above the task hard limit, so a stale worker is already gone), and the wait
+    # between connection attempts.
+    writeback_chunk_size: int = Field(default=50, validation_alias="MERIDIAN_WRITEBACK_CHUNK_SIZE")
+    writeback_slice_seconds: int = Field(default=300, validation_alias="MERIDIAN_WRITEBACK_SLICE_SECONDS")
+    writeback_chunk_pause_seconds: float = Field(default=0.0, validation_alias="MERIDIAN_WRITEBACK_CHUNK_PAUSE_SECONDS")
+    writeback_max_connect_failures: int = Field(default=3, validation_alias="MERIDIAN_WRITEBACK_MAX_CONNECT_FAILURES")
+    writeback_stale_seconds: int = Field(default=900, validation_alias="MERIDIAN_WRITEBACK_STALE_SECONDS")
+    writeback_connect_retry_seconds: float = Field(default=10.0, validation_alias="MERIDIAN_WRITEBACK_CONNECT_RETRY_SECONDS")
 
     # Rule evaluation: decoded-byte budget of one prefetched joined frame (checks/runner.py).
     # It applies per check task, so peak use is about budget x worker concurrency (--concurrency=4 in

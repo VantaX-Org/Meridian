@@ -1932,6 +1932,61 @@ class GoldenWritebackRequest(Base):
     )
 
 
+class WritebackRun(Base):
+    """A live write-back of an approved batch, executed by a worker in chunks (migration 146)."""
+
+    __tablename__ = "writeback_runs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    batch_id = Column(UUID(as_uuid=True), ForeignKey("remediation_batches.id", ondelete="CASCADE"), nullable=False)
+    # queued|running|paused|cancelling are open; completed|completed_with_errors|cancelled are closed
+    status = Column(Text, nullable=False, server_default="queued")
+    pause_reason = Column(Text, nullable=True)
+    requested_by = Column(Text, nullable=False)
+    requested_label = Column(Text, nullable=True)
+    export_only = Column(Integer, nullable=False, server_default="0")
+    errors = Column(JSONB, nullable=False, server_default="[]")
+    conn_failures = Column(Integer, nullable=False, server_default="0")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    heartbeat_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    exported_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_writeback_runs_batch", "tenant_id", "batch_id", "created_at"),
+        Index("uq_writeback_runs_open", "tenant_id", "batch_id", unique=True,
+              postgresql_where=text("status IN ('queued', 'running', 'paused', 'cancelling')")),
+    )
+
+
+class WritebackRunRecord(Base):
+    """One record of a write-back run: the values to write, its state and SAP's answer (migration 146)."""
+
+    __tablename__ = "writeback_run_records"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("writeback_runs.id", ondelete="CASCADE"), nullable=False)
+    seq = Column(Integer, nullable=False)
+    system_id = Column(Text, nullable=False)
+    module = Column(Text, nullable=False)
+    record_key = Column(Text, nullable=False)
+    changes = Column(JSONB, nullable=False)
+    # pending|sending|committed|failed|needs_check (left 'sending' by a crash: not resent)|export_only
+    state = Column(Text, nullable=False, server_default="pending")
+    result = Column(JSONB, nullable=True)
+    error = Column(Text, nullable=True)
+    attempts = Column(Integer, nullable=False, server_default="0")
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("run_id", "system_id", "module", "record_key", name="uq_writeback_run_records_key"),
+        Index("ix_writeback_run_records_state", "tenant_id", "run_id", "state", "seq"),
+    )
+
+
 class SurvivorshipRule(Base):
     __tablename__ = "survivorship_rules"
 

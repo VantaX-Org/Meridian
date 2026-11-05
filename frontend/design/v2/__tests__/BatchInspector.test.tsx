@@ -5,9 +5,9 @@ import * as workApi from "@/lib/api/v2/work";
 import * as batchApi from "@/lib/api/v2/batches";
 import * as adminApi from "@/lib/api/v2/admin";
 import { fixtureWrite, resetAdminFixture } from "@/lib/api/v2/fixtures";
-import type { BatchWritebackCheck, BatchWritebackSend } from "@/lib/api/v2/batches";
+import type { BatchWritebackCheck, WritebackRun } from "@/lib/api/v2/batches";
 import { resetWorkFixture } from "@/lib/api/v2/fixtures";
-import { setFixtureBatchStatus } from "@/lib/api/v2/fixtures/work-fixture";
+import { setFixtureBatchStatus, writebackPauseFixture } from "@/lib/api/v2/fixtures/work-fixture";
 import { resetActions } from "@/lib/v2/undo";
 import { clearPatches } from "@/lib/v2/work-overrides";
 import { Inspector } from "../Inspector";
@@ -266,7 +266,7 @@ describe("live write-back of an approved batch", () => {
     expect(within(live).getByRole("button", { name: "Send to SAP" })).toBeEnabled();
   });
 
-  it("step 2, Send to SAP: confirm with the record count, then each record's result with SAP's RETURN messages and a summary", async () => {
+  it("step 2, Send to SAP: confirm with the record count, the send queues a run, and the panel follows it to the end with SAP's RETURN messages for the refused records", async () => {
     await liveOn();
     const send = vi.spyOn(batchApi, "sendBatchWriteback");
     mount("B-236");
@@ -282,24 +282,61 @@ describe("live write-back of an approved batch", () => {
     expect(send).not.toHaveBeenCalled();
     fireEvent.click(within(dialog).getByRole("button", { name: `Send ${records} records` }));
     await waitFor(() => expect(send).toHaveBeenCalledWith("B-236"));
-    const result = (await send.mock.results[0].value) as BatchWritebackSend;
-    const summary = await within(live).findByTestId("writeback-summary");
-    expect(text(summary)).toBe(`Sent ${result.sent}, failed ${result.failed}, export only ${result.export_only}.`);
-    expect(result.sent).toBeGreaterThan(0);
-    expect(result.failed).toBeGreaterThan(0);
-    const lines = rowsOf(insp, "What SAP answered, per record").map(text);
-    // The first record: the test run's and the commit's RETURN messages, type, class, number and text.
-    const first = result.records[0];
-    expect(lines.some((l) => l.includes(first.record_key) && l.includes("Written to SAP") && l.includes("Test run") && l.includes("M3") && l.includes("801") && l.includes(first.simulate_messages[0].message))).toBe(true);
-    expect(lines.some((l) => l.includes("Commit") && l.includes(first.messages[0].message))).toBe(true);
-    // A refusal shows SAP's error message.
-    const refused = result.records.find((r) => !r.committed);
-    if (refused && lines.length < 20) expect(lines.some((l) => l.includes("Refused by SAP") && l.includes(refused.simulate_messages[0].message))).toBe(true);
-    await waitFor(() => expect(fact(insp, "Status")).toContain("Sent to SAP"));
-    // Once sent, the answer stays on screen and nothing is offered again.
-    expect(within(live).getByTestId("writeback-summary")).toBeInTheDocument();
+    // The request returned at once with a queued run: nothing is committed yet.
+    const queued = (await send.mock.results[0].value) as WritebackRun;
+    expect(queued.status).toBe("queued");
+    expect(queued.counts.committed).toBe(0);
+    // Only the records a BAPI carries are in the run; the others go out with the load file.
+    expect(queued.records).toBeGreaterThan(0);
+    expect(queued.records).toBeLessThanOrEqual(records);
+    // The run ends on its own while the panel polls.
+    const summary = await waitFor(
+      () => {
+        const el = within(live).getByTestId("writeback-summary");
+        expect(text(el)).not.toContain("Sent 0 of");
+        return el;
+      },
+      { timeout: 8000 },
+    );
+    await waitFor(() => expect(fact(live, "Run status")).toContain("Sent with refusals"), { timeout: 8000 });
+    const failed = Number(fact(live, "Failed").replace(/\D/g, ""));
+    const committed = Number(fact(live, "Committed").replace(/\D/g, ""));
+    expect(failed).toBeGreaterThan(0);
+    expect(committed + failed).toBe(queued.records);
+    expect(text(summary)).toContain(`Sent ${committed} of ${queued.records}, refused ${failed}`);
+    expect(fact(live, "Pending")).toContain("0");
+    // A refused record: its key with its description, and SAP's message text beside the message class and number.
+    const lines = (await within(live).findAllByRole("row")).map(text);
+    expect(lines.some((l) => l.includes("MATNR=") && l.includes("Material ") && l.includes("Refused by SAP") && l.includes("M3") && l.includes("305") && l.includes("is not defined in table T023"))).toBe(true);
+    await waitFor(() => expect(fact(insp, "Status")).toContain("Sent to SAP"), { timeout: 8000 });
+    // Once the run ended with refusals, Retry failed is offered, and a new send waits (the batch is sent).
+    expect(within(live).getByRole("button", { name: "Retry failed" })).toBeEnabled();
     expect(within(live).queryByRole("button", { name: "Send to SAP" })).toBeNull();
-  });
+  }, 20000);
+
+  it("a paused run shows its reason and Resume; Resume continues it; Cancel run stops an open run", async () => {
+    await liveOn();
+    mount("B-236");
+    const insp = await body("Batch B-236");
+    const live = await within(insp).findByTestId("live-writeback");
+    fireEvent.click(within(live).getByRole("button", { name: "Check with SAP" }));
+    await within(live).findByTestId("writeback-check");
+    fireEvent.click(within(live).getByRole("button", { name: "Send to SAP" }));
+    const dialog = await screen.findByRole("dialog", { name: "Send batch B-236 to SAP" });
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Send \d+ records$/ }));
+    await within(live).findByTestId("writeback-run");
+    writebackPauseFixture("B-236", "SAP could not be reached 3 times in a row.");
+    const pause = await within(live).findByTestId("writeback-pause", {}, { timeout: 4000 });
+    expect(text(pause)).toBe("Paused: SAP could not be reached 3 times in a row.");
+    const resume = vi.spyOn(batchApi, "resumeBatchRun");
+    fireEvent.click(within(live).getByRole("button", { name: "Resume" }));
+    await waitFor(() => expect(resume).toHaveBeenCalledWith("B-236"));
+    await waitFor(() => expect(within(live).queryByTestId("writeback-pause")).toBeNull());
+    const cancel = vi.spyOn(batchApi, "cancelBatchRun");
+    fireEvent.click(within(live).getByRole("button", { name: "Cancel run" }));
+    await waitFor(() => expect(cancel).toHaveBeenCalledWith("B-236"));
+    await waitFor(() => expect(fact(live, "Run status")).toContain("Cancelled"), { timeout: 8000 });
+  }, 20000);
 
   it("the permission gate: Send to SAP needs approve; a role without it is told why and sends nothing", async () => {
     await liveOn();
