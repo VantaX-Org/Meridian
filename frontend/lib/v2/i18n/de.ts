@@ -7759,7 +7759,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Fixed floor": "Feste Untergrenze",
   "Ceiling": "Obergrenze",
   "Decisions that moved it": "Entscheidungen, die ihn verschoben haben",
-  "{n} points": "{n} Punkte",
   "{n} percentage points": "{n} Prozentpunkte",
   "Run {n}: marked expected by {who} at {effect}, minimum now {min}": "Lauf {n}: von {who} als erwartet markiert bei {effect}, Mindestwert jetzt {min}",
   "Run {n}: confirmed real by {who} at {effect}, minimum now {min}": "Lauf {n}: von {who} als echt bestätigt bei {effect}, Mindestwert jetzt {min}",

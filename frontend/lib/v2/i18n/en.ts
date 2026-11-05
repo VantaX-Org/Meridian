@@ -7758,7 +7758,6 @@ export const en = {
   "Fixed floor": "Fixed floor",
   "Ceiling": "Ceiling",
   "Decisions that moved it": "Decisions that moved it",
-  "{n} points": "{n} points",
   "{n} percentage points": "{n} percentage points",
   "Run {n}: marked expected by {who} at {effect}, minimum now {min}": "Run {n}: marked expected by {who} at {effect}, minimum now {min}",
   "Run {n}: confirmed real by {who} at {effect}, minimum now {min}": "Run {n}: confirmed real by {who} at {effect}, minimum now {min}",

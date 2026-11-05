@@ -7759,7 +7759,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Fixed floor": "固定の下限",
   "Ceiling": "上限",
   "Decisions that moved it": "値を動かした判断",
-  "{n} points": "{n} ポイント",
   "{n} percentage points": "{n} パーセントポイント",
   "Run {n}: marked expected by {who} at {effect}, minimum now {min}": "実行 {n}: {who} が {effect} の変化を想定内と判断。最小値は現在 {min}",
   "Run {n}: confirmed real by {who} at {effect}, minimum now {min}": "実行 {n}: {who} が {effect} の変化を実際のブレークと確認。最小値は現在 {min}",
