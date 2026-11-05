@@ -354,3 +354,50 @@ def test_run_delete_removes_its_snapshots(engines, seeded, store, blobs, monkeyp
     _export(engines, seeded, monkeypatch)
     assert blobs
     assert snapshot.delete_run(seeded.tid, seeded.run) > 0 and not blobs
+
+
+def _ready_to_export(owner, s) -> None:
+    with owner.begin() as c:
+        c.execute(text("UPDATE migration_runs SET status = 'analysed' WHERE id = :r"), {"r": s.run})
+
+
+def _exports(owner, s) -> list:
+    with owner.connect() as c:
+        return c.execute(text("SELECT snapshot_prefix, snapshot_sha256, snapshot_at, snapshot_error "
+                              "FROM migration_export_files WHERE run_id = :r"), {"r": s.run}).fetchall()
+
+
+@pytest.mark.anyio
+async def test_export_route_records_the_snapshot_it_wrote(engines, seeded, store, blobs, monkeypatch):
+    from api.services.migration import snapshot
+
+    owner, worker = engines
+    _ready_to_export(owner, seeded)
+    monkeypatch.setattr("workers.db.get_sync_engine", lambda: worker)
+    async with await _client(monkeypatch, seeded.tid) as c:
+        r = await c.get(f"/api/v1/migration/export/{seeded.run}/csv", headers=H)
+    assert r.status_code == 200, r.text
+    (row,) = _exports(owner, seeded)
+    assert row.snapshot_error is None and row.snapshot_at is not None
+    assert any(k.startswith(row.snapshot_prefix) for k in blobs)
+    load, _held = snapshot.read(seeded.tid, row.snapshot_prefix, row.snapshot_sha256)
+    assert load
+
+
+@pytest.mark.anyio
+async def test_export_route_survives_a_storage_failure_and_records_it(engines, seeded, store, blobs, monkeypatch):
+    from api.services import storage
+
+    def fail(*_a, **_k):
+        raise OSError("bucket down")
+
+    owner, worker = engines
+    _ready_to_export(owner, seeded)
+    monkeypatch.setattr("workers.db.get_sync_engine", lambda: worker)
+    monkeypatch.setattr(storage, "upload_file", fail)
+    async with await _client(monkeypatch, seeded.tid) as c:
+        r = await c.get(f"/api/v1/migration/export/{seeded.run}/csv", headers=H)
+    assert r.status_code == 200, r.text
+    (row,) = _exports(owner, seeded)
+    assert row.snapshot_prefix is None and row.snapshot_sha256 is None and row.snapshot_at is None
+    assert "bucket down" in row.snapshot_error
