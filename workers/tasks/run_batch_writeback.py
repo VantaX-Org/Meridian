@@ -114,7 +114,7 @@ def classify(res: Any) -> tuple[str, Optional[str]]:
     return "failed", (bad or {}).get("message") or "SAP refused the change; see its RETURN messages"
 
 
-def run(session: Any, tenant_id: str, run_id: str, enqueue: Callable[[int], None],
+def run(session: Any, tenant_id: str, run_id: str, enqueue: Callable[[float], None],
         sleep: Callable[[float], None] = time.sleep, clock: Callable[[], float] = time.monotonic) -> dict:
     """One bounded slice of a run on a tenant session. ``enqueue(countdown)`` re-queues the task for the rest."""
     from api.config import settings
