@@ -15,15 +15,18 @@ BASELINE = Path(__file__).with_name("mypy_baseline.txt")
 
 
 def current() -> Counter:
-    out = subprocess.run([sys.executable, "-m", "mypy", "--no-error-summary", "--show-error-codes",
-                          "--no-pretty"], capture_output=True, text=True).stdout
+    run = subprocess.run([sys.executable, "-m", "mypy", "--no-error-summary", "--show-error-codes",
+                          "--no-pretty"], capture_output=True, text=True)
     keys = Counter()
-    for line in out.splitlines():
+    for line in run.stdout.splitlines():
         parts = line.split(":", 2)
         if len(parts) == 3 and " error: " in line:
             keys[f"{parts[0]}:{parts[2].strip()}"] += 1
         elif line.strip() and ": note:" not in line and not line.startswith(" "):
             sys.exit(f"mypy output not understood (crash or config error?): {line}")
+    # mypy exits 0 clean, 1 with errors, 2 on a crash or bad config; those speak on stderr, with stdout empty.
+    if run.returncode not in (0, 1) or (run.returncode == 1 and not keys):
+        sys.exit(f"mypy did not finish (exit {run.returncode}): {run.stderr.strip()[-500:]}")
     return keys
 
 
