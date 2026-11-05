@@ -7825,6 +7825,8 @@ export const en = {
   "Not in the target extraction": "Not in the target extraction",
   "Load file record": "Load file record",
   "Only the first {n} records of each table and kind are kept; the counts above are complete.": "Only the first {n} records of each table and kind are kept; the counts above are complete.",
+  "Withheld": "Withheld",
+  "The expected side is rebuilt from the current field mappings, not from the files handed over. A mapping changed after the load shows as a difference.": "The expected side is rebuilt from the current field mappings, not from the files handed over. A mapping changed after the load shows as a difference.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -7826,4 +7826,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Not in the target extraction": "ターゲットの抽出にありません",
   "Load file record": "ロードファイルのレコード",
   "Only the first {n} records of each table and kind are kept; the counts above are complete.": "テーブルと種別ごとに先頭 {n} 件のみ保持します。上の件数は全件です。",
+  "Withheld": "非表示",
+  "The expected side is rebuilt from the current field mappings, not from the files handed over. A mapping changed after the load shows as a difference.": "期待値は、引き渡したファイルではなく現在のフィールドマッピングから再構築されます。ロード後に変更したマッピングは差異として表示されます。",
 };

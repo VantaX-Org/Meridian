@@ -382,6 +382,7 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                   n: int(sum.comparable ?? 0), m: int(sum.tables ?? 0), e: int(sum.expected ?? 0), f: int(sum.found ?? 0), x: int(sum.missing ?? 0), u: int(sum.unexpected ?? 0), w: int(sum.differing_fields ?? 0),
                 })}
               </p>
+              <p className="m2-meta">{t("The expected side is rebuilt from the current field mappings, not from the files handed over. A mapping changed after the load shows as a difference.")}</p>
               <Table title={t("Data quality score, source, projected and actual")} head={[t("Object"), t("Source"), t("Projected"), t("Actual in target")]}>
                 {d!.scores.map((m) => (
                   <tr key={m.module}>
@@ -453,8 +454,8 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                         <th scope="row" className="m2-card-lead"><Coded code={r.key} text={undefined} first /></th>
                         <td data-label={t("Load file record")}>{r.source_record ?? f1(null)}</td>
                         <td data-label={t("Field")}>{r.field ?? f1(null)}</td>
-                        <td data-label={t("Expected")}>{r.expected ?? f1(null)}</td>
-                        <td data-label={t("Found")}>{r.found ?? f1(null)}</td>
+                        <td data-label={t("Expected")}>{r.withheld ? t("Withheld") : r.expected ?? f1(null)}</td>
+                        <td data-label={t("Found")}>{r.withheld ? t("Withheld") : r.found ?? f1(null)}</td>
                       </tr>
                     ))}
                   </Table>

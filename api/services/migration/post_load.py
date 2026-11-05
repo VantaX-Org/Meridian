@@ -1,7 +1,8 @@
 """Post-load reconciliation: did the records the load files carried land in the target system.
 
-The expected side is exactly what ``export.build_load_tables`` writes (target tables, target field names, values after
-value mapping, SOURCE_RECORD for traceability). The found side is the target system's latest extraction. Records are
+The expected side is rebuilt by ``export.build_load_tables`` when the reconciliation runs (target tables, target field
+names, values after value mapping, SOURCE_RECORD for traceability), so it follows the mappings as they stand then: a
+mapping changed after the files were exported shows up here as a difference. The found side is the target system's latest extraction. Records are
 matched on the target table's DDIC key, with ALPHA / MATN1 keys padded to their internal form on both sides
 (``checks.frames.internal_format``) and values trimmed. Nothing else is normalised: a value that differs only in
 number format or case is reported as different.
@@ -10,7 +11,8 @@ Claims are limited to the loaded key set. A target record that is not in the loa
 whose key matches a record the blocking gaps held back is, because that one was meant to stay out. A table is reported
 not comparable, with the reason, when it cannot be judged honestly: no usable key, table not extracted, or the target
 extraction of it was partial or incomplete. A field the load left blank is not compared, since the target may fill
-its own default. Pure and deterministic; no model sees any value.
+its own default. Pure and deterministic; no model sees any value. A differing personal field (``is_pii_field``) is
+counted and listed with ``withheld`` set and no values, so a stored result never repeats personal data.
 """
 
 from __future__ import annotations
@@ -18,6 +20,8 @@ from __future__ import annotations
 from typing import Any, Optional
 
 import pandas as pd
+
+from api.utils.pii_fields import is_pii_field
 
 from api.services.scoring import score_module
 from checks.base import CheckResult, record_keys
@@ -117,9 +121,11 @@ def _comparison(table: str, exp: pd.DataFrame, held: Optional[pd.DataFrame], tar
             same = (hit[f] == landed[f])[sel]
             info["matched"] = int(same.sum())
             info["differing"] = info["compared"] - info["matched"]
+            personal = is_pii_field(f"{table}.{f}")
             for i in same.index[~same]:
                 add("differing", {"key": hit.at[i, "_key"], "source_record": hit.at[i, "SOURCE_RECORD"], "field": f,
-                                  "expected": hit.at[i, f], "found": landed.at[i, f]})
+                                  "expected": None if personal else hit.at[i, f],
+                                  "found": None if personal else landed.at[i, f], "withheld": personal})
         out["fields"].append(info)
 
     if held is not None and not held.empty and all(k in held.columns for k in keys):

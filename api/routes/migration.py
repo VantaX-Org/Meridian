@@ -359,6 +359,7 @@ class ReconciliationRecord(BaseModel):
     field: Optional[str] = None
     expected: Optional[str] = None
     found: Optional[str] = None
+    withheld: bool = False                 # a personal field: it differs, its values are not kept
 
 
 class ReconciliationRecordsPage(BaseModel):
@@ -422,7 +423,13 @@ async def start_reconciliation(
                      {"id": rec_id, "t": str(tenant.id), "rid": run_id, "u": uid})
     await db.commit()
     from workers.tasks.run_reconciliation import run_reconciliation
-    task = run_reconciliation.delay(str(tenant.id), str(rec_id))
+    try:
+        task = run_reconciliation.delay(str(tenant.id), str(rec_id))
+    except Exception:
+        await db.execute(text("UPDATE migration_reconciliations SET status = 'failed', completed_at = now(), "
+                              "error_detail = 'The task queue could not be reached.' WHERE id = :id"), {"id": rec_id})
+        await db.commit()
+        raise HTTPException(status_code=503, detail="The task queue could not be reached. Try again shortly.")
     await db.execute(text("UPDATE migration_reconciliations SET task_id = :task WHERE id = :id"),
                      {"task": task.id, "id": rec_id})
     await db.execute(text("""
@@ -497,7 +504,8 @@ async def export_reconciliation(
     tables = r.tables or []
     count_cols = ("expected", "found", "missing", "unexpected")
     fields = [{"table": t["table"], **f} for t in tables for f in t["fields"]]
-    recs = [{"table": t, **x} for t, rs in (r.records or {}).items() for x in rs]
+    recs = [{"table": t, **x, **({"expected": "Withheld", "found": "Withheld"} if x.get("withheld") else {})}
+            for t, rs in (r.records or {}).items() for x in rs]
     data = build_workbook(
         tenant_name=tenant.name, run_label=None, run_id=str(run_id), title="Post-load reconciliation",
         sheets=[

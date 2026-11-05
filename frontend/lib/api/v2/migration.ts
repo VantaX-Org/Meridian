@@ -240,6 +240,7 @@ export interface ReconRecord {
   field: string | null;
   expected: string | null;
   found: string | null;
+  withheld?: boolean;
 }
 
 export interface ReconRecordsPage {

@@ -142,7 +142,9 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   target data quality score side by side; `/api/v1/migration/runs/{run_id}/reconcile`). It does not
   execute the load, and the reconciliation has not been run against a live SAP system; it has been
   tested only on synthetic extractions. It compares only against a target extraction someone has
-  already run, and it does not schedule one.
+  already run, and it does not schedule one. The expected side is rebuilt from the current mappings,
+  not kept as a snapshot of the files handed over, and a table extracted with dropped columns reports
+  as not compared even when every record is present.
 - **Governance of creation.** SAP MDG stops bad master data at the point of entry with workflow inside
   SAP. Meridian now also checks at entry for the licensed objects (material master, customer master,
   SuccessFactors employee data): the data quality firewall (`/api/v1/dq-firewall/validate`) returns

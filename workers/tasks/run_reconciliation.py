@@ -1,6 +1,6 @@
 """Celery task: post-load reconciliation of one migration run against the target system.
 
-Deterministic, no LLM. The expected load is rebuilt by ``export.load_run_tables`` (the records the load files carry);
+Deterministic, no LLM. The expected load is rebuilt by ``export.load_run_tables`` from the mappings as they stand now;
 the found side is the target system's latest complete extraction. The result goes to migration_reconciliations.
 """
 
@@ -9,10 +9,9 @@ import logging
 
 from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import text
-from sqlalchemy.orm import Session
 
 from workers.celery_app import celery_app
-from workers.db import get_sync_engine
+from workers.db import get_sync_engine, tenant_session
 
 logger = logging.getLogger("meridian.workers.reconciliation")
 
@@ -40,9 +39,7 @@ def _finish(session, rid, status, error=None, **cols) -> dict:
 @celery_app.task(bind=True, name="workers.tasks.run_reconciliation.run_reconciliation",
                  soft_time_limit=1800, time_limit=1860, acks_late=True, reject_on_worker_lost=True)
 def run_reconciliation(self, tenant_id, reconciliation_id):
-    engine = get_sync_engine()
-    with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    with tenant_session(get_sync_engine(), tenant_id) as session:
         session.execute(text("UPDATE migration_reconciliations SET status = 'running' WHERE id = :rid"),
                         {"rid": reconciliation_id})
         session.commit()

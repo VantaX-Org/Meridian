@@ -1533,7 +1533,7 @@ class MigrationReconciliation(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (Index("ix_migration_reconciliations_run", "tenant_id", "run_id", "created_at"),)
+    __table_args__ = (Index("ix_migration_reconciliations_run", "tenant_id", "run_id", text("created_at DESC")),)
 
 
 class TableProfile(Base):

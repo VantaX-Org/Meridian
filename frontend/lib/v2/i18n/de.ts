@@ -7826,4 +7826,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Not in the target extraction": "Nicht in der Extraktion des Zielsystems",
   "Load file record": "Datensatz der Ladedatei",
   "Only the first {n} records of each table and kind are kept; the counts above are complete.": "Je Tabelle und Art werden nur die ersten {n} Datensätze gespeichert; die obigen Anzahlen sind vollständig.",
+  "Withheld": "Zurückgehalten",
+  "The expected side is rebuilt from the current field mappings, not from the files handed over. A mapping changed after the load shows as a difference.": "Die erwartete Seite wird aus den aktuellen Feldzuordnungen neu aufgebaut, nicht aus den übergebenen Dateien. Eine nach dem Laden geänderte Zuordnung erscheint als Abweichung.",
 };

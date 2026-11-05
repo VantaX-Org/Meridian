@@ -40,6 +40,16 @@ def test_missing_differing_and_alpha_key_match():
     assert kinds == {("missing", None), ("differing", "NAME1")}
 
 
+def test_personal_field_is_counted_but_its_values_are_not_kept():
+    exp = {"LFA1": EXPECTED["LFA1"].assign(LAND1=["DE", "DE", "DE"])}
+    tgt = _target({"LFA1.LIFNR": ["0000000002"], "LFA1.NAME1": ["Changed"], "LFA1.LAND1": ["FR"]})
+    t = reconcile(exp, {}, tgt, D)["tables"][0]
+    rows = {r["field"]: r for r in t["records"] if r["kind"] == "differing"}
+    assert (rows["NAME1"]["expected"], rows["NAME1"]["found"], rows["NAME1"]["withheld"]) == (None, None, True)
+    assert (rows["LAND1"]["expected"], rows["LAND1"]["found"], rows["LAND1"]["withheld"]) == ("DE", "FR", False)
+    assert next(f for f in t["fields"] if f["field"] == "NAME1")["differing"] == 1
+
+
 def test_unexpected_only_for_held_back_keys():
     tgt = _target({"LFA1.LIFNR": ["0000000001", "0000000009", "0000000008"], "LFA1.NAME1": ["Alpha", "x", "y"]})
     held = {"LFA1": pd.DataFrame({"SOURCE_RECORD": ["LIFNR=9"], "LIFNR": ["9"], "NAME1": ["x"]})}
