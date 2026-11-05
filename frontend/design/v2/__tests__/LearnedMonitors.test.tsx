@@ -49,7 +49,7 @@ describe("learned monitors", () => {
     expect(screen.queryByTestId("monitors-actions")).toBeNull();
   });
 
-  it("shows a volume break found between full runs, and its detail says the analysis has not finished", async () => {
+  it("shows a volume break found between full runs, and its detail says it came before the analysis finished", async () => {
     renderWithQuery(<LearnedMonitors />);
     const row = await screen.findByTestId("interim-lm-i1");
     expect(within(row).getByText("SD customer master")).toBeInTheDocument();

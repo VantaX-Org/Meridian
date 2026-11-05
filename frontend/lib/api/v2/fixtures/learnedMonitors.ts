@@ -44,7 +44,7 @@ const INTERIM: LearnedBreak[] = [
     subject_code: "", subject_description: null, severity: "high", expected_low: 11_800, expected_high: 12_600, median: 12_200, observed: 4_100,
     detected_at: "2026-10-23T09:15:00+00:00", citations: cite([7, 8, 9, 10, 11, 12], 13),
     explanation: say([
-      "Found between full runs: the extraction landed 4,100 rows and its analysis has not finished. Compared with the rows of earlier syncs of this object, not with a finished run.",
+      "Found between full runs: the extraction landed 4,100 rows before its analysis finished. Compared with the rows of earlier syncs of this object, not with a finished run.",
       "SD customer master: records checked fell to 4,100; the usual range is 11,800 to 12,600.",
     ]),
   },

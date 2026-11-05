@@ -5,7 +5,7 @@ from workers.scheduler import celery_app
 
 def test_sentence_says_it_is_an_extraction_not_a_finished_run():
     s = interim_sentence(4100.0)
-    assert "4,100 rows" in s and "not finished" in s and "not with a finished run" in s
+    assert "4,100 rows before its analysis finished" in s and "not with a finished run" in s
 
 
 def test_beat_runs_the_interim_check_every_15_minutes_with_time_limits():

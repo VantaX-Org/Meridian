@@ -120,5 +120,5 @@ def store_interim(session: Session, tid: str, breaks: list[dict]) -> int:
 
 def interim_sentence(observed: float) -> str:
     """The line that tells a reader this break is from an extraction, not a finished analysis."""
-    return (f"Found between full runs: the extraction landed {int(observed):,} rows and its analysis has not "
-            f"finished. Compared with the rows of earlier syncs of this object, not with a finished run.")
+    return (f"Found between full runs: the extraction landed {int(observed):,} rows before its analysis finished. "
+            f"Compared with the rows of earlier syncs of this object, not with a finished run.")
