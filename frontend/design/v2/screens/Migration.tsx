@@ -6,7 +6,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
-  deleteFieldMapping, deleteValueEntry, exportLoadFiles, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
+  deleteFieldMapping, deleteMigrationRun, deleteValueEntry, exportLoadFiles, extractMigrationTarget, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
   getMigrationRecords, getMigrationRun, getMigrationRuns, getReconciliation, getReconciliationRecords, getValueCandidates, getValueMap,
   saveValueMap, seedFieldMap, startMigration, startReconciliation, updateFieldMapping, type FieldDef, type MigrationMode, type MigrationRun,
   type ReconKind,
@@ -17,6 +17,7 @@ import { t } from "@/lib/v2/i18n";
 import { fieldDelta, needsTransform, type Delta, type DeltaKind } from "@/lib/v2/field-delta";
 import { useLandscape } from "@/lib/v2/queries";
 import { f1, int } from "@/lib/v2/score";
+import { Confirm } from "../admin/kit";
 import { Sev } from "../inspector/rule";
 import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { useToast } from "../Toast";
@@ -125,7 +126,15 @@ export function Migration() {
   }, [busy, refetch]);
   const [picked, setPicked] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
-  const { can } = useV2Session();
+  const [removing, setRemoving] = useState<MigrationRun | null>(null);
+  const { can, shared, viewAs } = useV2Session();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteMigrationRun(id),
+    onSuccess: () => { toast.show(t("Analysis deleted")); setRemoving(null); setPicked(null); void qc.invalidateQueries({ queryKey: ["migration"] }); },
+    onError: (e) => { setRemoving(null); toast.show(errorSentence(e, t("The analysis could not be deleted.")), "error"); },
+  });
 
   if (runs.isPending) return <CcPage title={t("Migration")}><Skeleton width="100%" height={320} /></CcPage>;
   if (runs.isError) {
@@ -164,6 +173,17 @@ export function Migration() {
         <CcBanner eyebrow={t("Migration analysis")} headline={t("No analysis has finished yet")} why={t("Start one to see which records would not load into the target system.")} action={startBtn} testId="mig-banner" label={t("Migration analysis")} />
       )}
       {starting ? <StartForm onDone={() => setStarting(false)} /> : null}
+      {removing ? (
+        <Confirm
+          title={t("Delete the analysis of {d}", { d: formatDate(removing.created_at, "datetime") })}
+          body={t("The analysis, its gaps, load files and reconciliations are removed, with the stored copies of the records. This cannot be undone.")}
+          confirm={t("Delete the analysis")}
+          danger
+          pending={remove.isPending}
+          onCancel={() => setRemoving(null)}
+          onConfirm={() => remove.mutate(removing.id)}
+        />
+      ) : null}
       <Panel title={t("Analyses")} meta={t("{n} analyses, newest first", { n: int(list.length) })} testId="mig-runs">
         {list.length === 0 ? <EmptyFrame>{t("No analysis has been started.")}</EmptyFrame> : (
           <Table title={t("Analyses")} head={[t("Started"), t("Objects"), t("Status")]}>
@@ -174,7 +194,10 @@ export function Migration() {
                 ) : formatDate(r.created_at, "datetime")}<div className="m2-meta">{MODE[r.mode]?.() ?? r.mode}</div></th>
                 <td data-label={t("Objects")}>{r.modules.map(formatModuleName).join(", ")}</td>
                 <td data-label={t("Status")}>{analysed(r) && r.readiness_verdict ? VERDICT_TEXT[r.readiness_verdict]() : STATUS_TEXT[r.status]?.() ?? r.status}{r.status === "failed" && r.error_detail ? <div className="m2-meta">{r.error_detail}</div> : null}
-                  {analysed(r) ? <div className="m2-meta">{t("Readiness {s}, {n} would not load", { s: f1(r.readiness_score), n: int(r.records_blocked) })}</div> : null}</td>
+                  {analysed(r) ? <div className="m2-meta">{t("Readiness {s}, {n} would not load", { s: f1(r.readiness_score), n: int(r.records_blocked) })}</div> : null}
+                  {can("analyse") && !shared && !viewAs && r.status !== "queued" && r.status !== "running" ? (
+                    <div><button type="button" className="m2-btn m2-sm" aria-label={t("Delete the analysis of {d}", { d: formatDate(r.created_at, "datetime") })} onClick={() => setRemoving(r)}>{t("Delete")}</button></div>
+                  ) : null}</td>
               </tr>
             ))}
           </Table>
@@ -348,6 +371,11 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
     onSuccess: () => { toast.show(t("Reconciliation started")); void qc.invalidateQueries({ queryKey: ["migration", "recon", run.id] }); },
     onError: (e) => toast.show(errorSentence(e, t("The reconciliation could not be started.")), "error"),
   });
+  const extract = useMutation({
+    mutationFn: () => extractMigrationTarget(run.id),
+    onSuccess: () => { toast.show(t("Extraction of the target system started")); void qc.invalidateQueries({ queryKey: ["migration", "recon", run.id] }); },
+    onError: (e) => toast.show(errorSentence(e, t("The target system could not be extracted.")), "error"),
+  });
   const exp = useMutation({
     mutationFn: () => exportReconciliation(run.id),
     onSuccess: (name) => toast.show(t("Reconciliation saved as {name}", { name })),
@@ -374,7 +402,12 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
               <strong>{t("Out of date.")}</strong>{" "}{t("The target system was extracted again on {date}, after this comparison. Run the reconciliation again to compare with the newer extraction.", { date: formatDate(d!.latest_target_synced_at, "date") })}
             </p>
           ) : null}
-          {!done ? (
+          {d!.needs_target_extraction ? (
+            <p role="status" className="m2-meta" data-testid="mig-post-load-needs-target">
+              {t("The target system has not been extracted yet, so there is nothing to compare the load files with. The comparison starts by itself when the extraction has been analysed.")}{" "}
+              {can("trigger_sync") && act ? <button type="button" className="m2-btn" disabled={extract.isPending} onClick={() => extract.mutate()}>{t("Extract the target system")}</button> : null}
+            </p>
+          ) : !done ? (
             <p className="m2-meta">{RECON_STATUS[d!.status]?.() ?? d!.status}{d!.error_detail ? ` ${d!.error_detail}` : ""}</p>
           ) : (
             <>

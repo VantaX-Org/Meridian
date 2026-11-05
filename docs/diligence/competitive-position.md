@@ -107,8 +107,10 @@ side-by-side demo, so each is a hypothesis for the buyer's competitive calls, no
    chosen source is the better value. By default a proved pick is only proposed: it is not applied until a
    steward other than the person who triggered the run approves it, and a rejection needs a written reason.
    Approver, time, decision and reason are stored and audited. A tenant can opt in to auto-approve, which
-   is off by default. A steward's approval is a human check on a well-formed pick; we have no measured
-   evidence yet on how often stewards agree with the model.
+   is off by default. A steward's approval is a human check on a well-formed pick. How often stewards agree with the model is
+   measured and shown (the accuracy view returns accepted, overridden and pending counts with the
+   acceptance and override rate, per object, per field and per week), but no production figure exists
+   yet, so we state none.
 
 Claims we have removed from earlier drafts because we cannot support them:
 
@@ -141,8 +143,11 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   expected, found, missing and different per target table, and the source, projected and actual
   target data quality score side by side; `/api/v1/migration/runs/{run_id}/reconcile`). It does not
   execute the load, and the reconciliation has not been run against a live SAP system; it has been
-  tested only on synthetic extractions. It compares only against a target extraction someone has
-  already run, and it does not schedule one. At export, Meridian keeps a parquet copy of the files
+  tested only on synthetic extractions. It compares only against a target extraction. It does not
+  schedule one: a person starts it from the reconciliation (`POST /api/v1/migration/runs/{run_id}/extract-target`),
+  now or not at all. It reads whole business objects of the run's objects, not only the tables the load files carry; it
+  answers 409 when an extraction on that system is already running and never queues behind or interrupts it. A
+  reconciliation that failed for want of a target analysis starts again by itself when one completes. At export, Meridian keeps a parquet copy of the files
   handed over in object storage (keyed by tenant and export, with a content digest on the export
   record), and the reconciliation compares against the latest copy and says which export it used.
   If the copy cannot be written the export still succeeds and the reconciliation rebuilds the
@@ -150,7 +155,9 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   fields included: it is deleted with its run, version purge and tenant purge, and a data-subject
   erasure rewrites it without the person (matched on the source record key; a copy that cannot be
   rewritten is deleted). Copies are not in backups or in files already downloaded, their size is
-  not bounded, and there is no run-delete route yet. A table extracted with dropped non-key columns
+  not bounded. `DELETE /api/v1/migration/runs/{run_id}` removes a run, its gaps, load files and reconciliations and
+  these copies (409 while the run is running; if the copies cannot be removed the run is kept so the delete can be
+  retried). Copies already downloaded stay with whoever downloaded them. A table extracted with dropped non-key columns
   and every record present is compared on the remaining fields; a windowed or scoped read, and
   older extractions recorded as partial, still report as not compared.
 - **Governance of creation.** SAP MDG stops bad master data at the point of entry with workflow inside
@@ -180,8 +187,8 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   admin registers a connection, picks a table or one SELECT, maps columns, and the rows go through the same path as a file
   upload so existing rules score them (Admin, Database sources). Limits: PostgreSQL only; SQL Server is not supported
   because no driver is installed; Snowflake, Databricks and BigQuery are out of scope. A load is one-off and manual,
-  not scheduled, capped at 100,000 rows and 60 seconds per statement; the credential rotation script does not yet
-  re-encrypt these passwords; a read-only session does not stop a server-side function that writes, so the database
+  not scheduled, capped at 100,000 rows and 60 seconds per statement; the credential rotation script re-encrypts these
+  passwords with the same skip-if-already-rotated rule as SAP passwords; a read-only session does not stop a server-side function that writes, so the database
   user must be SELECT-only; the live read-only and row-cap behaviour was tested only against stubs, not a real PostgreSQL
   server. There is still no catalogue or cross-system lineage for these sources.
 - **Learned monitoring.** Observability tools lead with learned anomaly monitors. Meridian now learns a

@@ -180,3 +180,136 @@ def test_rotation_script_is_idempotent(monkeypatch):
     assert len(updates) == 1
     assert updates[0]["ver"] == 2
     assert updates[0]["cid"] == "cred-1"  # only the v1 row is touched
+
+
+def test_rotation_script_covers_external_db_connections(monkeypatch):
+    """external_db_connections rows are rotated per tenant (row level security) and skipped when already rotated."""
+    import importlib.util
+    import os
+    import sys as _sys
+
+    spec = importlib.util.spec_from_file_location(
+        "rotate_cred_ext", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                        "scripts", "rotate-credential-key.py"))
+    module = importlib.util.module_from_spec(spec)
+    _sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    ext = [("c-1", "warehouse", TENANT_A, encrypt_with_key("old-k", TENANT_A, "pw1"), 1),
+           ("c-2", "reporting", TENANT_A, encrypt_with_key("new-k", TENANT_A, "pw2"), 2)]
+    calls: list[tuple[str, dict]] = []
+
+    class _Res:
+        def __init__(self, data=None):
+            self._d = data or []
+
+        def fetchall(self):
+            return self._d
+
+    class _Conn:
+        def execute(self, stmt, params=None):
+            sql = str(stmt)
+            calls.append((sql, params or {}))
+            if "FROM tenants" in sql:
+                return _Res([(TENANT_A,)])
+            if "FROM external_db_connections" in sql:
+                return _Res(ext)
+            return _Res()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    class _Eng:
+        def begin(self):
+            return _Conn()
+
+    monkeypatch.setattr(module, "create_engine", lambda *a, **kw: _Eng())
+    r = module.rotate("postgresql://fake", "old-k", "new-k", dry_run=False, target_version=2)
+    assert (r.rotated, r.already_new, r.failed) == (1, 1, [])
+    sql_list = [c[0] for c in calls]
+    assert any("set_config('app.tenant_id'" in q for q in sql_list)  # tenant set before the table is read
+    upd = [c for c in calls if "UPDATE external_db_connections" in c[0]]
+    assert len(upd) == 1 and upd[0][1]["cid"] == "c-1" and upd[0][1]["ver"] == 2
+    assert decrypt_with_key("new-k", TENANT_A, upd[0][1]["ct"]) == "pw1"
+
+
+def _load_rotate_script(name):
+    import importlib.util
+    import os
+    import sys as _sys
+
+    spec = importlib.util.spec_from_file_location(
+        name, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           "scripts", "rotate-credential-key.py"))
+    module = importlib.util.module_from_spec(spec)
+    _sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+class _Rows:
+    def __init__(self, rows=(), value=None):
+        self._rows, self._value = list(rows), value
+
+    def fetchall(self):
+        return self._rows
+
+    def scalar(self):
+        return self._value
+
+
+def test_rotation_reads_system_credentials_before_any_tenant_is_set(monkeypatch):
+    """Once app.tenant_id is set, row level security would hide other tenants' system credentials."""
+    module = _load_rotate_script("rotate_cred_order")
+    cred = ("cred-1", "sys-1", TENANT_A, encrypt_with_key("old-k", TENANT_A, "pw"), 1)
+    sql: list[str] = []
+
+    class _Conn:
+        def execute(self, stmt, params=None):
+            q = str(stmt)
+            sql.append(q)
+            if "FROM tenants" in q:
+                return _Rows([(TENANT_A,)])
+            if "FROM system_credentials" in q:
+                return _Rows([cred])
+            return _Rows()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    class _Eng:
+        def begin(self):
+            return _Conn()
+
+    monkeypatch.setattr(module, "create_engine", lambda *a, **kw: _Eng())
+    r = module.rotate("postgresql://fake", "old-k", "new-k", dry_run=False, target_version=2)
+    assert r.rotated == 1
+    first_tenant = next(i for i, q in enumerate(sql) if "set_config" in q)
+    update = next(i for i, q in enumerate(sql) if "UPDATE system_credentials" in q)
+    assert update < first_tenant
+
+
+def test_highest_version_looks_at_both_tables():
+    """An external password above every system password still sets the target."""
+    module = _load_rotate_script("rotate_cred_top")
+    tenant: list[str] = []
+
+    class _Conn:
+        def execute(self, stmt, params=None):
+            q = str(stmt)
+            if "FROM tenants" in q:
+                return _Rows([(TENANT_A,), ("other",)])
+            if "set_config" in q:
+                tenant.append(params["t"])
+                return _Rows()
+            if "FROM external_db_connections" in q:
+                return _Rows(value=5 if tenant[-1] == TENANT_A else 3)
+            return _Rows(value=2)
+
+    assert module._highest_version(_Conn()) == 5

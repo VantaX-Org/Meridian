@@ -10,7 +10,7 @@ export const NONE_MIGRATION = Symbol("not a migration path");
 const ECC = "a1b2c3d4-0001-4000-8000-000000000001";
 const S4 = "a1b2c3d4-0002-4000-8000-000000000002";
 
-const runs = [
+let runs = [
   {
     id: "mig-0002", mode: "source_to_destination", source_system_id: ECC, dest_system_id: S4, source_version_id: "v-mm",
     target_release: "s4hana", target_connected: true, modules: ["material_master", "business_partner"], status: "analysed",
@@ -22,6 +22,12 @@ const runs = [
     target_release: "s4hana", target_connected: false, modules: ["material_master"], status: "analysed",
     readiness_verdict: "conditional", readiness_score: 92.1, critical_count: 0, records_total: 31_500, records_blocked: 2_488,
     error_detail: null, created_at: "2026-10-22T09:03:00Z", completed_at: "2026-10-22T09:20:00Z",
+  },
+  {
+    id: "mig-0003", mode: "source_to_destination", source_system_id: ECC, dest_system_id: S4, source_version_id: "v-mm",
+    target_release: "s4hana", target_connected: true, modules: ["material_master"], status: "analysed",
+    readiness_verdict: "conditional", readiness_score: 90.3, critical_count: 0, records_total: 12_000, records_blocked: 410,
+    error_detail: null, created_at: "2026-10-20T07:00:00Z", completed_at: "2026-10-20T07:12:00Z",
   },
 ];
 
@@ -94,6 +100,11 @@ const recon = {
     { module: "business_partner", source: 81.0, projected: 90.2, actual: null, actual_reason: "no_target_findings_for_module", reasons: [] },
   ],
 };
+/** A reconciliation that failed because the target system was never extracted. */
+const reconNoTarget = {
+  ...recon, reconciliation_id: "rec-0003", run_id: "mig-0003", status: "failed", error_detail: "The target system has no completed analysis. Extract the target first.",
+  needs_target_extraction: true, target_system_id: null, target_version_id: null, target_synced_at: null, completed_at: null, automatic: false, previous: null, summary: {}, tables: [], scores: [],
+};
 let seq = 10;
 
 export function migrationRead(path: string, params: Record<string, unknown> = {}): unknown {
@@ -114,7 +125,7 @@ export function migrationRead(path: string, params: Record<string, unknown> = {}
       const rows = records.filter((x) => x.status === params.status);
       return { total: params.status === "load_fail" ? r.records_blocked : (r.records_total ?? 0) - (r.records_blocked ?? 0), rows };
     }
-    if (rest === "/reconciliation") return r.id === "mig-0002" ? recon : NONE_MIGRATION;
+    if (rest === "/reconciliation") return r.id === "mig-0002" ? recon : r.id === "mig-0003" ? reconNoTarget : NONE_MIGRATION;
     if (rest === "/reconciliation/records" && r.id === "mig-0002") {
       const rows = reconRecords.filter((x) => (!params.kind || x.kind === params.kind) && (!params.table || x.source_record.startsWith(`${params.table}:`)));
       return { table: params.table ?? null, kind: params.kind ?? null, total: rows.length, capped: true, record_cap: 100, rows };
@@ -131,6 +142,10 @@ export function migrationWrite(method: string, path: string, body: unknown): unk
   const b = (body ?? {}) as Record<string, unknown>;
   if (method === "POST" && path === "/migration/analyze") return { run_id: `mig-${++seq}`, task_id: "t-fixture", status: "queued", mode: b.mode, modules: b.modules };
   if (method === "POST" && /^\/migration\/runs\/[^/]+\/reconcile$/.test(path)) return { reconciliation_id: "rec-0002", task_id: "t-fixture", status: "queued" };
+  const ex = /^\/migration\/runs\/([^/]+)\/extract-target$/.exec(path);
+  if (method === "POST" && ex) return { job_id: "dl-fixture", version_id: "v-fixture", status: "queued", modules: runs.find((x) => x.id === ex[1])?.modules ?? [] };
+  const rd = /^\/migration\/runs\/([^/]+)$/.exec(path);
+  if (method === "DELETE" && rd) { runs = runs.filter((x) => x.id !== rd[1]); return {}; }
   if (method === "POST" && path === "/migration/field-map/seed") return { seeded: 0, module: b.module, dest_system_type: b.dest_system_type };
   if (method === "POST" && path === "/migration/field-map") {
     const row = { id: `fm-${++seq}`, module: String(b.module), source_field: String(b.source_field), dest_system_type: String(b.dest_system_type), dest_table: (b.dest_table as string) ?? null, dest_field: (b.dest_field as string) ?? null, value_map: false, origin: "steward", transform_note: (b.transform_note as string) ?? null, is_confirmed: false, source_def: null, target_def: null };
