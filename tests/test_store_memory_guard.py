@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def _store_body() -> str:
     src = (ROOT / "workers" / "tasks" / "run_extraction.py").read_text(encoding="utf-8")
     start = src.index("def store(")
-    return src[start:start + 1200]
+    return src[start:start + 1600]
 
 
 def test_the_guard_does_not_measure_the_whole_frame():

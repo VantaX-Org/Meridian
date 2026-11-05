@@ -15,8 +15,9 @@ Every statement carries ``tenant_id`` and runs under row level security. The led
 and the audit_log row hold an HMAC of the subject and the request id, never the key. The routes sit under a
 path the audit middleware skips, because it would copy the request body, key included.
 
-What erasure cannot do: it does not delete from SAP, so the next extraction brings the record back (there is
-no suppression list; see docs/diligence/data-governance.md); it cannot reach backups; it does not rewrite raw
+What erasure cannot do: it does not delete from SAP. A completed erasure writes the record keys to the suppression
+list (api/services/suppression.py), so extraction and analysis drop them until an admin lifts the suppression, but
+SAP still holds the record and a path that bypasses the shared read and write points would show it again; it cannot reach backups; it does not rewrite raw
 uploads, archives or report files; llm_audit_log is append-only by trigger and holds no record keys. A golden record
 under another key may still carry values merged from the subject. Comments, attachments and workflow events on change
 requests are not scrubbed, and a ``create`` request with no object key cannot be matched at all.
@@ -283,12 +284,15 @@ def _mask(table: Any, keys: list[str]) -> Optional[Any]:
     mask = None
     for key in keys:
         parts = key_parts(key)
-        if not parts or any(f not in by_field for f in parts):
+        if not any(v.strip() for v in parts.values()) or any(f not in by_field for f in parts):
             continue
         m = None
         for f, v in parts.items():
-            col = pc.utf8_trim_whitespace(pc.cast(table.column(by_field[f]), pa.string()))
-            eq = pc.fill_null(pc.equal(col, pa.scalar(v.strip())), False)
+            raw = table.column(by_field[f])
+            if pa.types.is_floating(raw.type):  # arrow casts 1234.0 to "1234", the record key says "1234.0"
+                raw = pa.array([None if x is None else str(x) for x in raw.to_pylist()], pa.string())
+            col = pc.fill_null(pc.utf8_trim_whitespace(pc.cast(raw, pa.string())), "")  # a null is blank in a key
+            eq = pc.equal(col, pa.scalar(v.strip()))
             m = eq if m is None else pc.and_(m, eq)
         mask = m if mask is None else pc.or_(mask, m)
     return mask
@@ -528,7 +532,9 @@ def erase(session: Any, tenant_id: str, subject: str, actor: Actor, *, dry_run: 
         if "ux_subject_requests_executed" in str(e.orig):
             raise SubjectError("already_executed", "That dry run was already executed. Run a new one.", 409) from e
         raise
-    _audit(session, tenant_id, actor, "subject_erase", rid, shmac, done, {"dry_run_id": dry_run_id})
+    suppressed = _suppress(session, tenant_id, keys, rid, actor)
+    _audit(session, tenant_id, actor, "subject_erase", rid, shmac, done,
+           {"dry_run_id": dry_run_id, "suppressed_keys": suppressed})
     session.commit()  # database half is final; extracts follow and may fail without undoing it
 
     # a run may have started during the database half; a rewrite now could lose its writes or race its reads
@@ -555,3 +561,74 @@ def history(session: Any, tenant_id: str, limit: int = 100) -> list[dict[str, An
     return [{"request_id": str(r[0]), "kind": r[1], "dry_run": r[2], "key_count": r[3], "rows_by_table": r[4] or {},
              "extract_rows": (r[5] or {}).get("rows", 0), "reason": r[6], "status": r[7], "actor": r[8],
              "created_at": r[9]} for r in rows]
+
+
+# ── suppression list (api/services/suppression.py) ───────────────────────────
+
+def _suppress(session: Any, tenant_id: str, keys: list[str], request_id: str, actor: Actor) -> int:
+    """One suppression row per erased key that has fields; a key already suppressed is left as it is."""
+    from api.services import suppression
+    n = 0
+    for key in keys:
+        parts = key_parts(key)
+        if not parts:
+            continue  # a keyless "row:N" record cannot be matched in an extract
+        fields, norm = suppression.normalise(parts)
+        n += session.execute(text(
+            "INSERT INTO subject_suppressions (tenant_id, key_hmac, key_fields, request_id, created_by) "
+            "VALUES (:t, :h, :f, :r, :by) ON CONFLICT (tenant_id, key_hmac) WHERE lifted_at IS NULL DO NOTHING"),
+            {"t": str(tenant_id), "h": _hmac(session, tenant_id, "suppress", norm), "f": fields, "r": request_id,
+             "by": actor.email}).rowcount
+    suppression.invalidate(str(tenant_id))
+    return n
+
+
+def suppressions(session: Any, tenant_id: str) -> dict[str, Any]:
+    """The list, one item per erasure: field names, key count, rows dropped so far. No key and no hash."""
+    rows = session.execute(text(
+        "SELECT request_id, min(key_fields), count(*), sum(dropped_count), max(last_dropped_at), min(created_at), "
+        "min(created_by), count(*) FILTER (WHERE lifted_at IS NULL), max(lifted_at), max(lifted_by), max(lift_reason) "
+        "FROM subject_suppressions WHERE tenant_id = :t GROUP BY request_id ORDER BY min(created_at) DESC LIMIT 200"),
+        {"t": str(tenant_id)}).fetchall()
+    items = [{"request_id": str(r[0]) if r[0] else None, "key_fields": r[1].split("|"), "keys": r[2],
+              "dropped": int(r[3] or 0), "last_dropped_at": r[4], "created_at": r[5], "created_by": r[6],
+              "active_keys": r[7], "lifted_at": r[8] if not r[7] else None, "lifted_by": r[9] if not r[7] else None,
+              "lift_reason": r[10] if not r[7] else None} for r in rows]
+    return {"active_keys": sum(i["active_keys"] for i in items), "dropped_total": sum(i["dropped"] for i in items),
+            "field_texts": _field_texts({f for i in items for f in i["key_fields"]}), "items": items}
+
+
+def _field_texts(fields: set[str]) -> dict[str, str]:
+    """DDIC description of each key field, from the first table that defines it. Empty when none does."""
+    try:
+        from sap.ddic import get_dictionary
+        tables = get_dictionary("ecc6").tables.values()
+    except Exception:
+        return {}
+    out: dict[str, str] = {}
+    for f in fields:
+        out[f] = next((fd.description for t in tables if (fd := t.fields.get(f.upper())) and fd.description), "")
+    return out
+
+
+def lift(session: Any, tenant_id: str, request_id: str, actor: Actor, reason: str) -> dict[str, Any]:
+    """Lift every active suppression written by one erasure. The next extraction brings the records back."""
+    from api.services import suppression
+    reason = (reason or "").strip()
+    if len(reason) < MIN_REASON:
+        raise SubjectError("reason_required", f"Give a reason of at least {MIN_REASON} characters.", 400)
+    try:
+        request_id = str(uuid.UUID(request_id))
+    except ValueError as e:
+        raise SubjectError("suppression_unknown", "No suppression for that erasure.", 404) from e
+    n = session.execute(text(
+        "UPDATE subject_suppressions SET lifted_at = now(), lifted_by = :by, lift_reason = :why "
+        "WHERE tenant_id = :t AND request_id = :r AND lifted_at IS NULL"),
+        {"by": actor.email, "why": reason, "t": str(tenant_id), "r": request_id}).rowcount
+    if not n:
+        raise SubjectError("suppression_unknown", "No active suppression for that erasure.", 404)
+    _audit(session, tenant_id, actor, "subject_suppression_lift", request_id, "", {},
+           {"keys_lifted": n, "reason": reason})
+    session.commit()
+    suppression.invalidate(str(tenant_id))
+    return {"request_id": request_id, "lifted": n}

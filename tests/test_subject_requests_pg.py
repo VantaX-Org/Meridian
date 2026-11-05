@@ -140,13 +140,16 @@ def world(monkeypatch):
     monkeypatch.setattr(svc.storage, "download_file", lambda bucket, name: store[name])
     monkeypatch.setattr(svc.storage, "upload_file", lambda bucket, name, data, *a, **k: store.__setitem__(name, data))
     monkeypatch.setattr(svc.jobs, "list_jobs", lambda *a, **k: [])
+    from api.services import suppression
     from workers.db import tenant_session
+    monkeypatch.setattr(suppression, "_db", lambda t: tenant_session(engine, t))
+    suppression._cache.clear()
     yield engine, a, b, store, lambda t: tenant_session(engine, t)
     with engine.begin() as c:
         c.execute(text("SET LOCAL app.subject_erasure = 'on'"))
         for table in ("mdm_pair_constraints", "mdm_merge_events", "golden_writeback_requests",
                       "master_record_history", "master_records", "change_request_field_changes", "change_requests",
-                      "subject_requests", "audit_log", "cleaning_audit", "cleaning_queue", "record_hashes",
+                      "subject_suppressions", "subject_requests", "audit_log", "cleaning_audit", "cleaning_queue", "record_hashes",
                       "work_records", "record_issues", "finding_records", "analysis_versions"):
             c.execute(text(f"DELETE FROM {table} WHERE tenant_id IN (:a, :b)"), {"a": a, "b": b})
         c.execute(text("DELETE FROM tenants WHERE id IN (:a, :b)"), {"a": a, "b": b})

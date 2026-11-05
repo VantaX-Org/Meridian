@@ -36,8 +36,13 @@ def ensure_buckets() -> None:
 
 
 def upload_file(
-    bucket: str, object_name: str, data: bytes, content_type: str = "application/octet-stream"
+    bucket: str, object_name: str, data: bytes, content_type: str = "application/octet-stream",
+    suppress: bool = True,
 ) -> str:
+    if suppress and object_name.endswith(".parquet"):  # erased record keys never come back (D-27)
+        from api.services import suppression
+        data, dropped, tenant = suppression.filter_parquet(object_name, data)
+        suppression.record_dropped(tenant, dropped)
     client = get_minio_client()
     client.put_object(
         bucket,

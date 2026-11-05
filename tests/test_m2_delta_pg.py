@@ -94,7 +94,7 @@ def _patch(monkeypatch, store, calls, mara, mara_delta, events):
     keys = {"MARA": ["MANDT", "MATNR"], "MARC": ["MANDT", "MATNR", "WERKS"]}
     monkeypatch.setattr(source_design, "dictionary_for",
                         lambda s, sid: SimpleNamespace(table=lambda t: SimpleNamespace(keys=keys.get(t, []))))
-    monkeypatch.setattr(storage, "upload_file", lambda b, o, d, ct="": store.__setitem__(o, d))
+    monkeypatch.setattr(storage, "upload_file", lambda b, o, d, ct="", **_: store.__setitem__(o, d))
     monkeypatch.setattr(cm.ConnectivityManager, "extract", _extract_stub(calls, mara, mara_delta))
     monkeypatch.setattr(jobs, "update_job", lambda *a, **k: events.append(k))
 

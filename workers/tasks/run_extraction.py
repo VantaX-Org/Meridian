@@ -316,6 +316,9 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
                 # it, when 17.1 + 14.7 was simply the box's total. The write itself converts one
                 # column at a time, so what it actually needs is a few columns' worth of headroom.
                 from sap.rfc import require_memory
+                from api.services import suppression  # erased record keys never come back (D-27)
+                df, _dropped = suppression.filter_frame(tenant_id, df)
+                suppression.record_dropped(tenant_id, _dropped)
                 _frame = int(df.memory_usage(deep=True).sum())
                 _per_col = _frame // max(len(df.columns), 1)
                 require_memory(_per_col * 4, f"storing {table}")
@@ -334,7 +337,8 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
                 df.to_parquet(buf, index=False)
                 # Upload failure fails the extraction — never report success
                 # for data the checks cannot read.
-                upload_file(settings.minio_bucket_uploads, f"{prefix}{parquet_name(table)}", buf.getvalue())
+                upload_file(settings.minio_bucket_uploads, f"{prefix}{parquet_name(table)}", buf.getvalue(),
+                            suppress=False)
                 del buf
                 stored_rows[table] = len(df)
                 if (d := latest_activity({table: df})) is not None:

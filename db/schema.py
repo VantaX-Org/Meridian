@@ -1511,6 +1511,29 @@ class SubjectRequest(Base):
     )
 
 
+class SubjectSuppression(Base):
+    """A record key erased on request, dropped from every later extract (migration 138). Holds the keyed hash only."""
+    __tablename__ = "subject_suppressions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    key_hmac = Column(Text, nullable=False)  # HMAC-SHA256 of the key under the tenant secret, label "suppress"
+    key_fields = Column(Text, nullable=False)  # field names of the key joined by "|", never values
+    request_id = Column(UUID(as_uuid=True), nullable=True)
+    dropped_count = Column(BigInteger, nullable=False, server_default="0")
+    last_dropped_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    created_by = Column(Text, nullable=True)
+    lifted_at = Column(DateTime(timezone=True), nullable=True)
+    lifted_by = Column(Text, nullable=True)
+    lift_reason = Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ux_subject_suppressions_active", "tenant_id", "key_hmac", unique=True,
+              postgresql_where=text("lifted_at IS NULL")),
+    )
+
+
 class TableProfile(Base):
     """Profile of one extracted table in one version — the anomaly baseline (migration 054)."""
     __tablename__ = "table_profiles"

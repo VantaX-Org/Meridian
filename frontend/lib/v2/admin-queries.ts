@@ -3,7 +3,7 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import * as api from "@/lib/api/v2/admin";
-import { listSubjectRequests } from "@/lib/api/v2/subject-requests";
+import { listSubjectRequests, listSuppressions } from "@/lib/api/v2/subject-requests";
 import { getFirewallSummary } from "@/lib/api/v2/dq-firewall";
 import * as pilot from "@/lib/api/v2/pilot";
 import * as rep from "@/lib/api/v2/reports";
@@ -70,6 +70,10 @@ export const useFirewallSummary = (enabled = true) => {
 export const useSubjectRequests = (enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "subjectrequests"), listSubjectRequests, enabled);
+};
+export const useSuppressions = (enabled = true) => {
+  const f = useFixture();
+  return useRead(k(f, "subjectrequests", "suppressions"), listSuppressions, enabled);
 };
 export const useLicence = () => {
   const f = useFixture();

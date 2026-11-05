@@ -89,7 +89,8 @@ class DuplicateField(BaseModel):
 
 class DuplicateMatch(BaseModel):
     key: str  # the existing record's key; none of its values are returned
-    found_by: str  # "exact" (same normalised value) or "similar" (typo-tolerant pass on a free-text field)
+    found_by: str  # "exact" (same normalised value), "similar" (typo-tolerant pass on a free-text field) or "near" (identifier one edit away)
+    found_field: Optional[str] = None  # for "near": the identifier field whose value is one edit from the stored one
     score: float
     band: str
     threshold: float  # the auto-merge threshold the score is judged against
@@ -101,13 +102,19 @@ class FuzzyRun(BaseModel):
     reason: Optional[str] = None  # extension_missing, index_missing, key_too_short, no_free_text_value, not_searched
 
 
+class NearRun(BaseModel):
+    ran: bool  # false: no identifier of this record was compared for a typo; the other passes still ran
+    reason: Optional[str] = None  # index_missing, key_length, no_identifier_value, not_searched
+
+
 class RecordDuplicates(BaseModel):
-    verdict: str  # "warn" when a match reaches the auto-merge threshold, else "pass"; never "block"
+    verdict: str  # "warn" when a match reaches the auto-merge threshold or is a near-value match, else "pass"; never "block"
     searched: bool  # false: this record had no value to look up, so "pass" does not mean "no duplicates"
     scored: int
     truncated: bool
     matches: list[DuplicateMatch]
     fuzzy: FuzzyRun
+    near: NearRun
 
 
 class DuplicateSearch(BaseModel):
@@ -118,6 +125,7 @@ class DuplicateSearch(BaseModel):
     rules: Optional[int] = None
     skipped_semantic: Optional[int] = None
     fuzzy: Optional[dict[str, Any]] = None  # available, reason, min_key_length, similarity of the typo-tolerant pass
+    near: Optional[dict[str, Any]] = None  # available, reason, min_key_length, max_key_length of the near-value pass
 
 
 class StewardRequest(BaseModel):
@@ -306,7 +314,7 @@ async def validate(body: ValidateBody, request: Request, db: AsyncSession = Depe
         found = await ed.search(db, str(tenant.id), body.module, fw._clean(body.module, body.records, allow))
         res["duplicate_search"] = found["search"]
         for rec, d in zip(res["records"], found["records"]):
-            d["verdict"] = "warn" if any(m["score"] >= m["threshold"] for m in d["matches"]) else "pass"
+            d["verdict"] = "warn" if any(m["score"] >= m["threshold"] or m["found_by"] == "near" for m in d["matches"]) else "pass"
             rec["duplicates"] = d
         ds = found["records"]
         dup_audit = {"duplicates_searched": found["search"]["searched"],
