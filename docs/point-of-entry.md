@@ -79,6 +79,36 @@ The gate stays fast. Opening happens after the verdict is computed, one savepoin
 
 The Entry gate screen has a checkbox for this under Try a record, a table of the requests it opened with their status and a link to each, and a panel listing the latest ten requests opened from the gate with their object and status.
 
+## Hold at the SAP save (opt-in)
+
+Add `"hold": "blocked"` or `"hold": "flagged"` to the body and the firewall also answers whether the SAP save may go on. The default is `"off"`, and with it the response is byte for byte what it was before this field existed. Any other value implies `route_to_steward`: a record the mode covers is opened as a change request and submitted to the tenant's approval workflow, so SAP gets a staging area and an approval chain without MDG. `blocked` covers records with a blocking verdict; `flagged` also covers a record that passes with failures or a duplicate warning. The permission is the same `mdm.write`, workflow self-approval rules are unchanged, and the top-level verdict and each record verdict never change.
+
+Each covered record carries `hold` with `state`, `request_id` and, where it applies, `reason` or `sap_key`. The response carries `save`, `stop` or `go`, only when a hold mode was sent. The decision follows the latest change request for the same content (the same fingerprint as above), whatever its status:
+
+| Latest request | `state` | The save |
+|---|---|---|
+| none, cancelled, or a release older than 24 hours | `held` (a new request is opened) | stops |
+| draft, submitted, in approval, failed | `held` | stops |
+| rejected | `rejected` (`reason` is a fixed code, never the approver's comment) | stops |
+| creating or created | `written` (`sap_key` when SAP has given one) | stops |
+| approved, delivery is the export load file, not yet exported | `released` | may go on, even for a blocked record |
+| approved and the load file was already taken | `written` with `reason` `exported_as_load_file` | stops |
+| no request could be opened | `not_held` with `reason` | the plain verdict decides |
+
+`not_held` reasons are the ones route to a steward gives: `module_has_no_change_request` (this includes `employee_central`), `over_limit` (25 requests per call), `not_accepted` and `not_opened`. `save` is `stop` when any record is held, rejected, written, not held with a blocking verdict, or not covered by the mode with a blocking verdict; otherwise `go`. Under `blocked`, a warned record has no `hold` entry and does not stop the save.
+
+A release is single use and short lived. The first call that finds an approved request stamps `change_requests.entry_released_at` with one atomic update, writes one audit entry with counts and request ids (never values or keys), and answers `released`. The release is valid for 24 hours (`RELEASE_HOURS`); after that the record counts as expired and the next call opens a new request. A released request cannot also leave through the export load file: the export is refused with status 409 once the request is released, the release is refused once the load file was taken (that request answers `written`), and a released request cannot be cancelled. Both paths use a guarded atomic update, so a record is not created twice by SAP and by Meridian. The Requests screen shows such a request as "released to the SAP save".
+
+Migration 141 adds `entry_released_at` and `export_downloaded_at` and puts `entry_released_at IS NULL` into the open-request unique index, so an expired release can be replaced. It marks approved gate requests that already have an export file as exported. Whether such a request was in fact loaded into SAP before this change was never recorded, so they answer `written` with `exported_as_load_file`, the safe side. Parallel calls for the same content still open one request (the unique index and a savepoint).
+
+The audit row of each validate call gains the hold mode and the counts by state, never a value. No candidate value is logged and none goes to a language model.
+
+The Entry gate screen has a Holds panel (held now, and released, rejected and written over the last 7 days, the age of the oldest held request, the median hours from opened to decided, and the latest held requests), a Hold select under Try a record, the hold state of each record and the overall save answer. The counts come from `GET /api/v1/dq-firewall/summary`, computed in SQL over all gate requests, including ones opened with `route_to_steward` alone.
+
+The sample ABAP reads the TVARVC parameter `ZMERIDIAN_GATE_HOLD` (`OFF` by default, `BLOCKED` or `FLAGGED`), sends `hold`, and stops the save when the answer says `stop`. This ABAP edit has not run on a live SAP system, and it has not been syntax checked there. Test it in a sandbox client first.
+
+Added time, a local measurement and not a production figure: Meridian and PostgreSQL 16 on the same laptop, one record per call, 60 calls each, the median of the whole HTTP call through the test client. A blocked record with the hold off took 87 ms. With `hold` set to `blocked` and a new request to open it took 214 ms, which is the same as `route_to_steward` alone (215 ms), so about 127 ms is added when a request is opened. The same call repeated for content that already has an open request took 82 ms, no measurable addition. The 95th percentile of the opening call was 373 ms. A real deployment adds network and a loaded database, so measure it before choosing a timeout.
+
 ## Setup
 
 1. **API key.** In Admin, API keys, create a key for a service account whose only grant is the role holding `mdm.write` (the permission the endpoint requires). Give it no other scope and a short expiry you rotate on a calendar. Keep it in the SAP system, never in code.
@@ -111,4 +141,4 @@ SuccessFactors has no ABAP. The pattern, to be built with your SuccessFactors co
 
 ## What Meridian stores
 
-One audit row per call: the module, record counts, blocked and warned record counts, and the failing rule ids with counts, plus how many requests were opened when `route_to_steward` was used. Never a record value. The Entry gate screen reads these rows. A request opened from the gate is stored as a change request like any other, with the candidate as its payload.
+One audit row per call: the module, record counts, blocked and warned record counts, and the failing rule ids with counts, plus how many requests were opened when `route_to_steward` was used, and the hold mode with the count of records by hold state and the save answer when `hold` was used. Never a record value. The Entry gate screen reads these rows. A request opened from the gate is stored as a change request like any other, with the candidate as its payload.

@@ -21,9 +21,9 @@ function saveBlob(blob: Blob, name: string): void {
 /**
  * Opens a file the API builds (an export, a report): the bearer token rides on the request and the browser saves the
  * result. A refusal's `detail` becomes the Error message. In fixture mode the file is a small text stand-in.
- * `path` is relative to /api/v1. Returns the file name that was saved.
+ * `path` is relative to /api/v1. Use "post" when taking the file changes state. Returns the file name that was saved.
  */
-export async function v2Download(path: string, params: Params | undefined, fallbackName: string): Promise<string> {
+export async function v2Download(path: string, params: Params | undefined, fallbackName: string, method: "get" | "post" = "get"): Promise<string> {
   const query = clean(params);
   if (fixtureActive()) {
     const f = fixtureDownload(path, query, fallbackName);
@@ -31,7 +31,8 @@ export async function v2Download(path: string, params: Params | undefined, fallb
     return f.name;
   }
   try {
-    const res = await uploadApiClient.get<Blob>(`/api/v1${path}`, { responseType: "blob", params: query });
+    const config = { responseType: "blob" as const, params: query };
+    const res = method === "post" ? await uploadApiClient.post<Blob>(`/api/v1${path}`, undefined, config) : await uploadApiClient.get<Blob>(`/api/v1${path}`, config);
     const disposition = String(res.headers?.["content-disposition"] ?? "");
     const hit = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1] ?? /filename="?([^";]+)"?/i.exec(disposition)?.[1];
     const name = hit ? decodeURIComponent(hit) : fallbackName;

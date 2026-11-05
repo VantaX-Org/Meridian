@@ -57,6 +57,15 @@ export function dqFirewallRead(path: string): unknown {
     days: DAYS,
     top_rules: RULES.map((r, i) => ({ rule_id: r.id, description: r.message, blocked: [14, 9, 4][i] })),
     requests: [...opened.map((o) => o.req), ...SEED],
+    holds: {
+      held: 1 + opened.filter((o) => o.req.status === "in_approval").length,
+      released: 6,
+      rejected: 2,
+      written: 4,
+      oldest_held_hours: 31.5,
+      median_decision_hours: 5.2,
+      latest: [...opened.map((o) => o.req), ...SEED],
+    },
     by_module: [
       { module: "material_master", checked: 168, blocked: 27, warned: 31, passed: 110 },
       { module: "sd_customer_master", checked: 58, blocked: 9, warned: 12, passed: 37 },
@@ -136,9 +145,28 @@ function routeToSteward(out: FirewallVerdict, records: Record<string, unknown>[]
   });
 }
 
+/**
+ * Hold answers. Content seen before returns its request. A record with ENTRY-APPROVED as its material number counts as
+ * approved and released; ENTRY-REJECTED as rejected; ENTRY-WRITTEN as written with a synthetic SAP key.
+ */
+function applyHold(out: FirewallVerdict, mode: "blocked" | "flagged", records: Record<string, unknown>[]): void {
+  out.records.forEach((rec, i) => {
+    const warned = rec.verdict === "pass" && (rec.failures.length > 0 || rec.duplicates?.verdict === "warn");
+    if (!(rec.verdict === "block" || (mode === "flagged" && warned))) return;
+    const sr = rec.steward_request;
+    const matnr = String(records[i]?.["MARA.MATNR"] ?? "");
+    if (matnr === "ENTRY-APPROVED") rec.hold = { state: "released", request_id: sr?.request_id ?? null };
+    else if (matnr === "ENTRY-REJECTED") rec.hold = { state: "rejected", request_id: sr?.request_id ?? null };
+    else if (matnr === "ENTRY-WRITTEN") rec.hold = { state: "written", request_id: sr?.request_id ?? null, sap_key: "4711" };
+    else rec.hold = sr?.request_id ? { state: "held", request_id: sr.request_id } : { state: "not_held", request_id: null, reason: sr?.reason ?? "not_opened" };
+  });
+  const stops = (r: FirewallVerdict["records"][number]) => (r.hold ? r.hold.state !== "released" && (r.hold.state !== "not_held" || r.verdict === "block") : r.verdict === "block");
+  out.save = out.records.some(stops) ? "stop" : "go";
+}
+
 export function dqFirewallWrite(method: string, path: string, body: unknown): unknown {
   if (method !== "POST" || path !== "/dq-firewall/validate") return NONE_DQ_FIREWALL;
-  const b = (body ?? {}) as { module?: string; records?: Record<string, unknown>[]; suggest?: boolean; duplicates?: boolean; route_to_steward?: boolean };
+  const b = (body ?? {}) as { module?: string; records?: Record<string, unknown>[]; suggest?: boolean; duplicates?: boolean; route_to_steward?: boolean; hold?: "off" | "blocked" | "flagged" };
   if (b.module !== "material_master") throw new Refused(422, `Unknown module '${String(b.module ?? "").slice(0, 60)}'.`);
   const records = b.records ?? [];
   if (records.length < 1 || records.length > 100) throw new Refused(422, "Send 1 to 100 records.");
@@ -166,6 +194,7 @@ export function dqFirewallWrite(method: string, path: string, body: unknown): un
   };
   if (out.records.some((r) => r.verdict === "block")) out.verdict = "block";
   if (b.duplicates) addDuplicates(out, records);
-  if (b.route_to_steward) routeToSteward(out, records);
+  if (b.route_to_steward || (b.hold && b.hold !== "off")) routeToSteward(out, records);
+  if (b.hold && b.hold !== "off") applyHold(out, b.hold, records);
   return out;
 }
