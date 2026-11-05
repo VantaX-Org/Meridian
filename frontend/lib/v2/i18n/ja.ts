@@ -7860,6 +7860,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Latest date": "最新の日付",
   "Earliest date": "最古の日付",
   "Only the size of the move is shown, not a value of the field.": "表示するのは変化の大きさのみで、項目の値は表示しません。",
+  "Moved from a usual level of zero": "通常の水準ゼロから変動",
   "{effect} from the usual level": "通常の水準から{effect}",
   "Below the minimum": "最小値未満",
   "Below the learned minimum": "学習した最小値未満",

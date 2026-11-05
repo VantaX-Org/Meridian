@@ -7859,6 +7859,7 @@ export const en = {
   "Latest date": "Latest date",
   "Earliest date": "Earliest date",
   "Only the size of the move is shown, not a value of the field.": "Only the size of the move is shown, not a value of the field.",
+  "Moved from a usual level of zero": "Moved from a usual level of zero",
   "{effect} from the usual level": "{effect} from the usual level",
   "Below the minimum": "Below the minimum",
   "Below the learned minimum": "Below the learned minimum",

@@ -71,7 +71,8 @@ const moved = (b: LearnedBreak) => {
 
 /** Usual range and observed cells: a range metric shows how far it moved, never a value of the field. */
 const Usual = ({ b }: { b: LearnedBreak }) => RANGE.has(b.metric) ? <Dash why={t("Only the size of the move is shown, not a value of the field.")} /> : <>{fmt(b.metric, b.expected_low)} {t("to")} {fmt(b.metric, b.expected_high)}</>;
-const Seen = ({ b }: { b: LearnedBreak }) => RANGE.has(b.metric) ? <>{t("{effect} from the usual level", { effect: moved(b) })}</> : <>{fmt(b.metric, b.observed)}</>;
+const Seen = ({ b }: { b: LearnedBreak }) => !RANGE.has(b.metric) ? <>{fmt(b.metric, b.observed)}</>
+  : !isDate(b.metric) && !b.median ? <>{t("Moved from a usual level of zero")}</> : <>{t("{effect} from the usual level", { effect: moved(b) })}</>;
 /** The break kind with, for a range, which figure moved. */
 const Kind = ({ b }: { b: LearnedBreak }) => <>{KIND[b.kind]()}{b.kind === "range_shift" ? <span className="m2-meta"> {METRIC[b.metric]()}</span> : null}</>;
 

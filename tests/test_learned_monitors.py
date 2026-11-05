@@ -346,3 +346,12 @@ def test_the_model_prompt_for_a_range_break_holds_the_effect_not_a_value(monkeyp
     f = lm.facts(_rb("range_shift", "num_mean", "MARA.BRGEW", 3175.0, 1234.5), "Gross weight")
     assert lm.ai_sentences(f, "material master MARA.BRGEW") == ["It moved a lot."]
     assert "157" in seen["p"] and "3175" not in seen["p"] and "1234" not in seen["p"]
+
+
+def test_a_range_break_from_a_zero_median_says_so_instead_of_a_zero_size():
+    b = {"kind": "range_shift", "metric": "num_max", "subject_code": "BRGEW", "observed": 500.0, "expected_low": 0.0,
+         "expected_high": 0.0, "median": 0.0, "baseline_runs": 6, "method": "mad"}
+    f = lm.facts(b, "Gross weight")
+    assert f["effect"] is None
+    text = " ".join(lm.template_explanation(f))
+    assert "usual level of zero" in text and "0.0%" not in text and "500" not in text

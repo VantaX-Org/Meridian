@@ -344,7 +344,7 @@ def collect(session: Session, tid: str, vid: str, module: str) -> tuple[Optional
         bad = _num((num or {}).get("non_numeric")) if isinstance(num, dict) else _num((dat or {}).get("invalid")) if isinstance(dat, dict) else None
         put(rid, at_of(rid), f"unparse_pct|{q}", None if bad is None else 100.0 * bad / filled)  # a count, no value
         if _personal(q, r[2], st):
-            continue  # no shape and no figure of a personal field is read at all
+            continue  # the stats row is fetched whole, but no shape and no figure of a personal field is used
         if isinstance(st.get("shapes"), list):
             shapes.setdefault(q, {})[rid] = {x["shape"]: float(x["share"]) for x in st["shapes"] if "shape" in x and _num(x.get("share")) is not None}
         extreme = not st.get("sampled")  # a sample's min and max are not the table's
@@ -492,7 +492,7 @@ def facts(b: dict, description: Optional[str]) -> dict:
          "median": b["median"], "baseline_runs": b["baseline_runs"], "method": b["method"]}
     if b["metric"] in RANGE:
         f.update(observed=None, expected_low=None, expected_high=None, median=None,
-                 effect=effect_of(b["metric"], b["observed"], b["median"]))
+                 effect=effect_of(b["metric"], b["observed"], b["median"]) or None)  # None: a zero median has no relative size
     return f
 
 
@@ -501,7 +501,8 @@ def template_explanation(f: dict) -> list[str]:
     who = f"{f['subject']} ({f['description']})" if f["subject"] and f["description"] else (f["subject"] or "The object")
     if m in RANGE:
         tail = f"The baseline is the median of {f['baseline_runs']} earlier runs{' on the same weekday' if f['method'] == 'mad_weekday' else ''}."
-        return [f"{who}: {_RANGE_WHAT[m]} by {f['effect']:.1f}{u} from its usual level.", tail]
+        size = f"by {f['effect']:.1f}{u} from its usual level" if f["effect"] else "from a usual level of zero"
+        return [f"{who}: {_RANGE_WHAT[m]} {size}.", tail]
     head = (f"{who}: {_WHAT[f['kind']]} to {_f(f['observed'], m)}{u}; the usual range is {_f(f['expected_low'], m)} to "
             f"{_f(f['expected_high'], m)}{u}.")
     tail = (f"The baseline is the median of {f['baseline_runs']} earlier runs"
@@ -537,8 +538,8 @@ def ai_sentences(f: dict, label: str) -> Optional[list[str]]:
     from llm.provider import get_llm, llm_is_noop, safe_invoke
     if llm_is_noop():
         return None
-    figs = (f"The {f['metric'].replace('_', ' ')} moved {f['effect']:.2f}{_UNIT[f['metric']]} from its usual level, over "
-            f"{f['baseline_runs']} earlier runs" if f["metric"] in RANGE else
+    size = f"{f['effect']:.2f}{_UNIT[f['metric']]} from its usual level" if f.get("effect") else "from a usual level of zero"
+    figs = (f"The {f['metric'].replace('_', ' ')} moved {size}, over {f['baseline_runs']} earlier runs" if f["metric"] in RANGE else
             f"Observed {f['observed']:.2f}; usual range {f['expected_low']:.2f} to {f['expected_high']:.2f}; baseline "
             f"median {f['median']:.2f} over {f['baseline_runs']} earlier runs")
     prompt = (f"A learned monitor on {label} found a break from its baseline. Kind: {f['kind'].replace('_', ' ')}. "

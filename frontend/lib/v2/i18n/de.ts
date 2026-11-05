@@ -7860,6 +7860,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Latest date": "Spätestes Datum",
   "Earliest date": "Frühestes Datum",
   "Only the size of the move is shown, not a value of the field.": "Gezeigt wird nur die Größe der Verschiebung, kein Wert des Felds.",
+  "Moved from a usual level of zero": "Vom üblichen Niveau null abgewichen",
   "{effect} from the usual level": "{effect} vom üblichen Niveau",
   "Below the minimum": "Unter dem Minimum",
   "Below the learned minimum": "Unter dem gelernten Minimum",
