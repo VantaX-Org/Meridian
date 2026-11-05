@@ -92,10 +92,8 @@ def is_pii_value(value: object) -> bool:
 
 def column_is_personal(header: str | None, values: "list[object] | tuple[object, ...]" = (),
                        mapped_field: str | None = None) -> bool:
-    """Fail-safe verdict for one column. With a saved mapping the mapped SAP field decides (the header is not
-    trusted, nor is a stray value). Without one: the header words, then any non-blank value shaped like PII."""
-    if mapped_field:
-        return is_pii_field(mapped_field)
-    if is_pii_header(header):
+    """Fail-safe verdict for one column. A saved mapping can only tighten: the mapped SAP field, the header words or
+    any non-blank value shaped like PII each make the column personal."""
+    if is_pii_field(mapped_field) or is_pii_header(header):
         return True
     return any(is_pii_value(v) for v in values)

@@ -20,7 +20,7 @@ class MatchRequest(BaseModel):
     sample_rows: list[list[str]]
     filename: str
     module_hint: str | None = None
-    saved_mapping: dict[str, str] | None = None  # the tenant's saved {header: SAP field}; the prompt redacts by it
+    saved_mapping: dict[str, str] | None = None  # the tenant's saved {header: SAP field}; can only tighten redaction
 
 
 class ColumnMappingItem(BaseModel):

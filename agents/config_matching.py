@@ -1,7 +1,7 @@
 """Config matching sub-agent — classifies findings as data errors vs config deviations.
 
 Receives findings_summary from AgentState.
-Groups findings by module, extracts config signals, calls the LLM to classify
+Groups findings by module, calls the LLM with counts and value shapes (never a value) to classify
 each finding as data_error, config_deviation, or ambiguous, and writes
 config_matches and config_match_summary back to state.
 """
@@ -11,19 +11,16 @@ import logging
 import pathlib
 import yaml
 
-import pandas as pd
 from jinja2 import Template
 
 from agents.prompts import CONFIG_MATCH_SYSTEM, CONFIG_MATCH_USER_TEMPLATE
 from agents.state import AgentState
-from checks.config_signals import extract_config_signals
 from checks.runner import RULES_DIR, CATEGORIES
 from llm.provider import get_llm_safe, safe_invoke
 
 logger = logging.getLogger("meridian.agents.config_matching")
 
 MAX_RECORDS_PER_MODULE = 30
-MAX_VALUE_SAMPLES = 5
 
 
 def _load_rule_context(module: str, check_ids: list[str]) -> dict:
@@ -66,29 +63,14 @@ def _load_rule_context(module: str, check_ids: list[str]) -> dict:
         return {}
 
 
-def _extract_value_samples(finding: dict, aggregates: bool = False) -> list[str]:
-    """Extract up to MAX_VALUE_SAMPLES distinct bad values from value_fix_map.
-
-    Excludes __blank__ and __null__ sentinel keys.
-    Returns [] if value_fix_map is missing or empty, if the tenant is "aggregates only", or if the field is
-    personal data (by SAP field or header words).
-    """
-    from api.utils.pii_fields import is_pii_field, is_pii_header
-
-    value_fix_map = finding.get("value_fix_map")
-    fld = str(finding.get("field") or "")
-    if not value_fix_map or aggregates or is_pii_field(fld) or is_pii_header(fld):
-        return []
-
-    sentinels = {"__blank__", "__null__"}
-    samples = [k for k in value_fix_map if k not in sentinels]
-    return samples[:MAX_VALUE_SAMPLES]
-
-
 def _build_findings_payload(findings: list[dict], aggregates: bool = False) -> list[dict]:
-    """Build trimmed finding dicts for the LLM, capped at MAX_RECORDS_PER_MODULE."""
+    """Build trimmed finding dicts for the LLM, capped at MAX_RECORDS_PER_MODULE. The bad values of a finding reach
+    the model only as a shape: counts and character masks, none for a personal field or under "aggregates only"."""
+    from api.services.prompt_shapes import column_profile
+
     payload = []
     for finding in findings[:MAX_RECORDS_PER_MODULE]:
+        bad = [k for k in (finding.get("value_fix_map") or {}) if k not in {"__blank__", "__null__"}]
         payload.append({
             "check_id": finding.get("check_id", ""),
             "field": finding.get("field", ""),
@@ -96,7 +78,7 @@ def _build_findings_payload(findings: list[dict], aggregates: bool = False) -> l
             "total_count": finding.get("total_count", 0),
             "pass_rate": finding.get("pass_rate", 0.0),
             "message": finding.get("message", ""),
-            "value_samples": _extract_value_samples(finding, aggregates),
+            "value_shape": column_profile(bad, header=str(finding.get("field") or ""), aggregates=aggregates),
         })
     return payload
 
@@ -104,7 +86,6 @@ def _build_findings_payload(findings: list[dict], aggregates: bool = False) -> l
 def _render_user_prompt(
     module: str,
     findings: list[dict],
-    config_patterns: dict,
     rule_context: dict,
     aggregates: bool = False,
 ) -> str:
@@ -112,7 +93,6 @@ def _render_user_prompt(
     return template.render(
         module=module,
         findings_with_signals_json=json.dumps(_build_findings_payload(findings, aggregates), indent=2),
-        config_patterns_json=json.dumps(config_patterns, indent=2),
         rule_context_json=json.dumps(rule_context, indent=2),
     )
 
@@ -156,7 +136,7 @@ def config_matching_node(state: AgentState) -> dict:
 
     llm = get_llm_safe()
     from api.services.prompt_shapes import aggregates_only
-    agg = aggregates_only(state.get("tenant_id"))  # "aggregates only": no bad value, no value distribution
+    agg = aggregates_only(state.get("tenant_id"))  # "aggregates only": counts, no masks
 
     all_matches: list[dict] = []
     total_data_errors = 0
@@ -188,21 +168,10 @@ def config_matching_node(state: AgentState) -> dict:
             continue
 
         try:
-            rows = []
-            for finding in module_findings:
-                value_fix_map = finding.get("value_fix_map") or {}
-                sentinels = {"__blank__", "__null__"}
-                for val in ({} if agg else value_fix_map):
-                    if val not in sentinels:
-                        rows.append({finding.get("field", "value"): val})
-            reconstructed_df = pd.DataFrame(rows) if rows else pd.DataFrame()
-
-            config_patterns = extract_config_signals(module, reconstructed_df)
-
             check_ids = [f.get("check_id", "") for f in module_findings]
             rule_context = _load_rule_context(module, check_ids)
 
-            user_prompt = _render_user_prompt(module, module_findings, config_patterns, rule_context, agg)
+            user_prompt = _render_user_prompt(module, module_findings, rule_context, agg)
             messages = [
                 {"role": "system", "content": CONFIG_MATCH_SYSTEM},
                 {"role": "user", "content": user_prompt},

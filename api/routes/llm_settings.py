@@ -312,6 +312,7 @@ async def update_llm_config(
         "updated_by": getattr(request.state, "local_user_id", None),
     }
 
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))  # before the reads: RLS must not hide the flag
     if body.api_key:
         from api.services.crypto import encrypt_api_key
         config["api_key_encrypted"] = encrypt_api_key(body.api_key, jwt_secret)
@@ -330,7 +331,6 @@ async def update_llm_config(
     if flag.scalar() is True:  # a provider save never loosens the privacy switch
         config["aggregates_only"] = True
 
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     await db.execute(
         text("UPDATE tenants SET llm_config = CAST(:config AS jsonb) WHERE id = :tid"),
         {"tid": str(tenant.id), "config": json.dumps(config)},

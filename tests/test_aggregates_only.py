@@ -100,14 +100,16 @@ def test_matcher_still_works_on_non_personal_columns_and_masked_ones() -> None:
     assert m.probably_headerless(["1000123", "2024-01-31", "4500.00"], [["1000124", "2024-02-01", "12.50"]])
 
 
-def test_saved_mapping_decides_not_the_header() -> None:
+def test_saved_mapping_only_tightens() -> None:
     from api.services.prompt_shapes import column_profile
     from api.utils.pii_fields import column_is_personal
 
     vals = ["1000", "2000"]
     assert column_profile(vals, header="Plant", mapped_field="STCD1")["masked"] is True  # mapped to a personal field
-    assert "masked" not in column_profile(vals, header="Tax Number", mapped_field="WERKS")  # mapped to a plant
-    assert column_is_personal("Tax Number", [], mapped_field="WERKS") is False
+    assert column_profile(vals, header="Tax Number", mapped_field="WERKS")["masked"] is True  # a mapping never loosens
+    assert column_is_personal("Tax Number", [], mapped_field="WERKS") is True
+    assert column_is_personal("Plant", ["a.person@zebratron.example"], mapped_field="WERKS") is True
+    assert column_is_personal("Plant", ["1000"], mapped_field="WERKS") is False
     assert column_is_personal("Plant", ["1000"], mapped_field=None) is False
     assert column_is_personal("Tax Number", [], None) is True
 
@@ -219,17 +221,30 @@ def test_switch_rule_authoring_drops_shapes(captured, switch) -> None:
     assert captured and "AA-9999" not in captured[-1]
 
 
-def test_switch_config_matching_sends_no_bad_values(switch) -> None:
+def test_config_matching_sends_shapes_never_values(switch) -> None:
     from agents import config_matching as cm
 
     finding = {"check_id": "BP_001", "field": "KTOKK", "module": "business_partner", "count": 3,
                "value_fix_map": {"ZEBR": "Z001", "__blank__": "Z001"}}
-    assert cm._extract_value_samples(finding) == ["ZEBR"]
-    assert cm._extract_value_samples(finding, aggregates=True) == []
-    assert cm._extract_value_samples({**finding, "field": "NAME1"}) == []  # personal field, switch off
-    off = cm._render_user_prompt("business_partner", [finding], {}, {})
-    on = cm._render_user_prompt("business_partner", [finding], {}, {}, True)
-    assert "ZEBR" in off and "ZEBR" not in on
+    off = cm._render_user_prompt("business_partner", [finding], {})
+    on = cm._render_user_prompt("business_partner", [finding], {}, True)
+    personal = cm._render_user_prompt("business_partner", [{**finding, "field": "NAME1"}], {})
+    assert not any("ZEBR" in p for p in (off, on, personal))  # the switch is not what keeps values out
+    assert '"AAAA"' in off and '"AAAA"' not in on and '"AAAA"' not in personal
+    assert '"distinct": 1' in on and '"masked": true' in on
+
+
+def test_unreadable_setting_of_a_known_tenant_fails_closed(monkeypatch) -> None:
+    import workers.db as wdb
+    from api.services.prompt_shapes import aggregates_only
+
+    def down() -> None:
+        raise RuntimeError("database down")
+
+    monkeypatch.setattr(wdb, "get_sync_engine", down)
+    monkeypatch.delenv("MERIDIAN_TENANT_ID", raising=False)
+    assert aggregates_only("00000000-0000-0000-0000-000000000001") is True
+    assert aggregates_only() is False  # no tenant at all
 
 
 def test_triage_still_filters_through_sanitise_for_prompt() -> None:

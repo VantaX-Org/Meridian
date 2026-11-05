@@ -160,7 +160,7 @@ def detect_module_and_match(
 ) -> dict:
     """Detect the SAP module and map columns to TABLE.FIELD format.
 
-    ``saved_mapping`` is the tenant's saved {source header: SAP field}; the model prompt redacts by that field.
+    ``saved_mapping`` is the tenant's saved {source header: SAP field}; it can only tighten the prompt's redaction.
     ``tenant_id`` selects the tenant's "aggregates only" switch (no sample-derived shape reaches the model).
     Returns a dict matching the MatchResponse schema.
     """

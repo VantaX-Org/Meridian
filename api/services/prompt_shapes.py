@@ -33,8 +33,8 @@ def masks_of(values: Iterable[Any]) -> list[str]:
 
 def aggregates_only(tenant_id: str | None = None) -> bool:
     """True when the tenant set "aggregates only to the model" (``tenants.llm_config['aggregates_only']``). Reads
-    the tenant from the argument, else the request context, else MERIDIAN_TENANT_ID. Unknown tenant or any read
-    failure is False: the shape-only rule still holds, this switch only tightens it."""
+    the tenant from the argument, else the request context, else MERIDIAN_TENANT_ID. No tenant is False. When a known
+    tenant's setting cannot be read the answer is True: a database blip must not loosen a privacy switch."""
     import os
 
     from sqlalchemy import text as sql
@@ -54,7 +54,7 @@ def aggregates_only(tenant_id: str | None = None) -> bool:
                             {"t": str(tenant_id)}).scalar()
         return bool(isinstance(cfg, dict) and cfg.get("aggregates_only"))
     except Exception:
-        return False
+        return bool(tenant_id)
 
 
 def _kind(full: list[str]) -> str:
