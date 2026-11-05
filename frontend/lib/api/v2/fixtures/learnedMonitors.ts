@@ -1,5 +1,5 @@
 /**
- * Learned monitors fixture, shaped like api/routes/learned_monitors.py: one active object with four breaks and one
+ * Learned monitors fixture, shaped like api/routes/learned_monitors.py: one active object with four breaks, one below a raised minimum, and one
  * object still learning. Decisions change the in-memory break so the screen shows them; the explanation is the
  * deterministic wording, as the route answers with no model.
  */
@@ -37,6 +37,15 @@ const BREAKS: LearnedBreak[] = [
   },
 ];
 
+/** Outside the usual range, but 3.4 points is under the 4.2 minimum a steward raised for this rule: stored, not alerted. */
+const QUIET: LearnedBreak[] = [
+  {
+    ...base, id: "lm-5", module: "material_master", kind: "fail_rate_jump", metric: "fail_rate", subject_code: "MM021", subject_description: "Material group missing",
+    severity: "low", expected_low: 0.2, expected_high: 1.6, median: 0.9, observed: 4.3, status: "below_minimum",
+    explanation: say(["Material group missing (MM021): the fail rate rose to 4.3; the usual range is 0.2 to 1.6.", "The baseline is the median of 6 earlier runs, 0.9."]),
+  },
+];
+
 /** Run 13 landed 4,100 rows after run 12 and its analysis has not finished: found between full runs. */
 const INTERIM: LearnedBreak[] = [
   {
@@ -64,15 +73,22 @@ const THRESHOLDS: MonitorThreshold[] = [
       { break_id: "lm-0a", run_number: 9, decision: "expected", effect: 3, result: "raised", min_effect_after: 3.15, decided_by: "Demo steward", decided_at: "2026-10-12T09:00:00+00:00" },
     ],
   },
+  {
+    module: "material_master", metric: "fail_rate", subject_code: "MM021", subject_description: "Material group missing",
+    min_effect: 4.2, floor: 2, ceiling: 6, window_days: 90,
+    moves: [
+      { break_id: "lm-0c", run_number: 10, decision: "expected", effect: 4, result: "raised", min_effect_after: 4.2, decided_by: "Demo steward", decided_at: "2026-10-16T09:00:00+00:00" },
+    ],
+  },
 ];
 
-const mem = new Map<string, LearnedBreak>([...BREAKS, ...INTERIM].map((b) => [b.id, { ...b }]));
-export const resetLearnedMonitors = () => [...BREAKS, ...INTERIM].forEach((b) => mem.set(b.id, { ...b }));
+const mem = new Map<string, LearnedBreak>([...BREAKS, ...QUIET, ...INTERIM].map((b) => [b.id, { ...b }]));
+export const resetLearnedMonitors = () => [...BREAKS, ...QUIET, ...INTERIM].forEach((b) => mem.set(b.id, { ...b }));
 
 export function learnedMonitorsRead(path: string): unknown {
   if (path !== "/aletheia/monitors") return NONE_LEARNED_MONITORS;
   const all = [...mem.values()];
-  return { min_runs: 5, history: 30, coverage: COVERAGE, breaks: all.filter((b) => b.source === "run"), thresholds: THRESHOLDS, interim: all.filter((b) => b.source === "interim") } satisfies LearnedMonitors;
+  return { min_runs: 5, history: 30, coverage: COVERAGE, breaks: all.filter((b) => b.source === "run" && b.status !== "below_minimum"), below_minimum: all.filter((b) => b.status === "below_minimum"), thresholds: THRESHOLDS, interim: all.filter((b) => b.source === "interim") } satisfies LearnedMonitors;
 }
 
 export function learnedMonitorsWrite(method: string, path: string, body: unknown): unknown {

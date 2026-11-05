@@ -145,3 +145,60 @@ def test_events_are_per_monitor_and_map_status_to_decision():
 
 def test_events_query_filters_tenant_and_window():
     assert "b.tenant_id = :tid" in lm.EVENTS_SQL and "v.tenant_id = b.tenant_id" in lm.EVENTS_SQL and "decided_at >= :since" in lm.EVENTS_SQL
+
+
+# -- below-minimum storage, empty share and distinct share learn too -----------------------------------------------------
+
+def test_a_break_under_a_raised_minimum_is_kept_only_on_request_and_marked():
+    b = _base([1.0, 1.1, 0.9, 1.0, 1.05, 1.0], "fail_rate")
+    assert lm.judge("fail_rate", "R1", 6.0, b, 5.25) is None
+    j = lm.judge("fail_rate", "R1", 6.0, b, 5.25, keep_suppressed=True)
+    assert j["below_minimum"] is True and j["kind"] == "fail_rate_jump"
+    assert lm.judge("fail_rate", "R1", 12.0, b, 5.25, keep_suppressed=True)["below_minimum"] is False
+    assert lm.judge("fail_rate", "R1", 1.0, b, 5.25, keep_suppressed=True) is None  # inside the band: nothing to keep
+
+
+def test_empty_share_has_an_effect_and_fires_exactly_as_before_at_the_floor():
+    assert lm.FLOOR["blank_pct"] == lm.EMPTY_AT - lm.POPULATED_BELOW
+    assert lm.effect_of("blank_pct", 100, 4) == 96
+    b = _base([49, 48, 49.5, 49, 48.5, 49], "blank_pct")          # just under POPULATED_BELOW, the narrowest case
+    j = lm.judge("blank_pct", "MARA.MATKL", 95, b)
+    assert j["kind"] == "field_emptied" and not j["below_minimum"]
+    assert lm.judge("blank_pct", "MARA.MATKL", 94.9, b) is None
+    assert lm.judge("blank_pct", "MARA.MATKL", 100, _base([2, 3, 2, 4, 3, 2], "blank_pct"))["severity"] == "critical"
+
+
+def test_empty_share_learns_from_decisions_within_its_own_ceiling():
+    L = lm.learn("blank_pct", [ev("expected", 70.0, 1)])
+    assert L["min_effect"] == 70.0 * lm.LEARN_MARGIN and L["ceiling"] == 90.0
+    assert lm.learn("blank_pct", [ev("expected", 99.0, 1)])["min_effect"] == 90.0
+    assert lm.learn("blank_pct", [ev("expected", 80.0, 1), ev("confirmed", 60.0, 2)])["min_effect"] == 60.0
+    b = _base([2, 3, 2, 4, 3, 2], "blank_pct")
+    assert lm.judge("blank_pct", "T.F", 70, b, 84.0) is None      # under the raised minimum (and under EMPTY_AT)
+    assert lm.judge("blank_pct", "T.F", 100, b, 84.0)["severity"] == "critical"
+
+
+def test_distinct_share_shift_fires_either_way_and_only_from_aggregates():
+    b = _base([80, 81, 79, 80.5, 79.5, 80], "distinct_pct")
+    drop = lm.judge("distinct_pct", "MARA.MATKL", 5, b)
+    assert drop["kind"] == "cardinality_shift" and drop["metric"] == "distinct_pct" and drop["severity"] == "critical"
+    assert lm.judge("distinct_pct", "MARA.MATKL", 40, b)["severity"] == "high"       # 40 points
+    assert lm.judge("distinct_pct", "MARA.MATKL", 55, b)["severity"] == "medium"     # 25 points
+    assert lm.judge("distinct_pct", "MARA.MATKL", 99, b) is None                 # 19 points: under the floor
+    up = lm.judge("distinct_pct", "MARA.MATKL", 100, _base([30, 31, 29, 30, 30.5, 29.5], "distinct_pct"))
+    assert up["kind"] == "cardinality_shift"
+    assert lm.effect_of("distinct_pct", 5, 80) == 75 == lm.effect_of("distinct_pct", 155, 80)
+    assert lm.learn("distinct_pct", [])["min_effect"] == lm.DISTINCT_MIN_SHIFT
+
+
+def test_distinct_share_explanation_is_grounded():
+    b = {"kind": "cardinality_shift", "metric": "distinct_pct", "subject_code": "MARA.MATKL", "expected_low": 77.0,
+         "expected_high": 83.0, "median": 80.0, "observed": 5.0, "baseline_runs": 6, "method": "mad"}
+    f = lm.facts(b, "Material group")
+    e = lm.explanation(f, None)
+    assert e["source"] == "template" and "MARA.MATKL" in e["sentences"][0] and "5.0" in e["sentences"][0]
+    assert lm.explanation(f, ["The distinct share fell to 5.0%.", "It was 99 yesterday."])["dropped"] == 1
+
+
+def test_events_cover_every_learned_metric():
+    assert all(f"'{m}'" in lm.EVENTS_SQL for m in lm.LEARNED)

@@ -4,7 +4,7 @@
  * Endpoints (api/routes/learned_monitors.py):
  *   GET  /aletheia/monitors                  the latest run's breaks and, per object, how many earlier runs its baseline has;
  *                                            `interim`: volume breaks found between full runs (extraction landed, analysis pending)
- *   POST /aletheia/monitors/{id}/acknowledge { note? }
+ *   POST /aletheia/monitors/{id}/acknowledge { note? }  also confirms a below_minimum break as real, which lowers the minimum
  *   POST /aletheia/monitors/{id}/expected    { effect: "exclude" | "accept", note? }  mark expected; feeds the baseline
  *   POST /aletheia/monitors/{id}/snooze      { days, note? }
  *   POST /aletheia/monitors/{id}/explain     Aletheia's wording of the figures; aggregates only, never a record
@@ -12,9 +12,9 @@
  */
 import { v2Get, v2Send } from "./client";
 
-export type BreakKind = "volume_drop" | "volume_spike" | "fail_rate_jump" | "score_drop" | "field_emptied";
-export type BreakMetric = "records" | "score" | "fail_rate" | "blank_pct";
-export type BreakStatus = "open" | "acknowledged" | "expected" | "snoozed";
+export type BreakKind = "volume_drop" | "volume_spike" | "fail_rate_jump" | "score_drop" | "field_emptied" | "cardinality_shift";
+export type BreakMetric = "records" | "score" | "fail_rate" | "blank_pct" | "distinct_pct";
+export type BreakStatus = "open" | "acknowledged" | "expected" | "snoozed" | "below_minimum";
 
 export interface BreakCitation {
   run_id: string;
@@ -30,7 +30,7 @@ export interface LearnedBreak {
   module: string;
   kind: BreakKind;
   metric: BreakMetric;
-  /** A rule id for fail_rate, TABLE.FIELD for blank_pct, empty for records and score. */
+  /** A rule id for fail_rate, TABLE.FIELD for blank_pct and distinct_pct, empty for records and score. */
   subject_code: string;
   subject_description: string | null;
   severity: "critical" | "high" | "medium" | "low";
@@ -77,7 +77,7 @@ export interface ThresholdMove {
 /** One monitor's learned minimum effect. Records: a share of the median (0.3 is 30%); score and fail rate: points. */
 export interface MonitorThreshold {
   module: string;
-  metric: "records" | "score" | "fail_rate";
+  metric: "records" | "score" | "fail_rate" | "blank_pct" | "distinct_pct";
   subject_code: string;
   subject_description: string | null;
   min_effect: number;
@@ -92,6 +92,8 @@ export interface LearnedMonitors {
   history: number;
   coverage: MonitorCoverage[];
   breaks: LearnedBreak[];
+  /** Outside the usual range but under a raised learned minimum: no alert, not counted open. Acknowledge confirms one and lowers the minimum. */
+  below_minimum: LearnedBreak[];
   thresholds: MonitorThreshold[];
   /** Volume breaks of syncs whose extraction landed after the latest finished run and whose analysis has not finished. */
   interim: LearnedBreak[];

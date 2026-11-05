@@ -1,11 +1,12 @@
 """Learned monitors: a baseline learned from the system's own run history, and the breaks from it.
 
-For each object (module) of a run, four kinds of metric are compared with the same system's earlier finished runs:
+For each object (module) of a run, five kinds of metric are compared with the same system's earlier finished runs:
 
   records     records checked              volume_drop / volume_spike
   score       composite DQ score           score_drop
   fail_rate   per rule, failed / checked   fail_rate_jump
   blank_pct   per TABLE.FIELD, blank share field_emptied (populated before, empty now)
+  distinct_pct per TABLE.FIELD, distinct values as a share of the filled rows   cardinality_shift (either way)
 
 Baseline: median and MAD (``checks.anomaly.expected_range``, the same band the extraction anomalies use) over the last
 ``HISTORY`` earlier runs. Fewer than ``MIN_RUNS`` earlier runs of a metric: the monitor is learning and raises nothing.
@@ -15,18 +16,24 @@ those same-weekday runs only. A steward can mark a break expected: ``exclude`` d
 
 Minimum effect, learned per monitor (module, metric, rule or field). A break is raised only when its effect is at least
 the monitor's minimum effect. Effect: records |observed - median| / median, score median - observed (points), fail
-rate observed - median (percentage points). The fixed constants VOLUME_REL, SCORE_MIN_DROP and RATE_MIN_RISE are the
-FLOOR. ``learn`` folds the steward decisions of the last ``LEARN_DAYS`` days on that monitor, oldest first, starting at
+rate observed - median (percentage points), empty share observed - median (percentage points), distinct share
+|observed - median| (percentage points). The fixed constants VOLUME_REL, SCORE_MIN_DROP, RATE_MIN_RISE, EMPTY_AT -
+POPULATED_BELOW and DISTINCT_MIN_SHIFT are the FLOOR. ``learn`` folds the steward decisions of the last ``LEARN_DAYS`` days on that monitor, oldest first, starting at
 the floor:
   expected break of effect e   minimum = max(minimum, min(e * LEARN_MARGIN, ceiling))
   confirmed break (acknowledged) of effect e below the minimum    minimum = max(floor, e)
-The ceiling is ``CEILING_MULT`` times the floor, so a monitor can never be silenced; the minimum is never below the
+The ceiling is ``CEILING_MULT`` times the floor (empty share: 90 points, since 100 is the largest possible effect), so a
+monitor can never be silenced; the minimum is never below the
 floor. Decisions older than the window drop out, so a raised minimum relaxes by itself. Severity cut points scale with
-minimum / floor, capped at ``SEV_SCALE_MAX`` (unchanged at the floor). ``field_emptied`` has no effect size and stays fixed. A break suppressed by a
-raised minimum is not stored, so only a break that was already open can be confirmed to lower it; that is a limit.
+minimum / floor, capped at ``SEV_SCALE_MAX`` (unchanged at the floor; ``field_emptied`` keeps its fixed critical/high rule
+and is only filtered by the minimum). A break outside the usual range but below a raised minimum is stored with status
+``below_minimum``: it raises no alert and is not counted as open, and a steward can confirm it (the acknowledge action),
+which feeds ``learn`` as a confirmed break and lowers the minimum. Still not done: the minimum is one number per monitor,
+learned from decisions alone, not a model of the monitor's noise; a field profile other than blank share and distinct
+share (value patterns, numeric or date ranges) is not watched.
 
-Aggregates only: the input is ``analysis_versions.dqs_summary``, ``findings`` counts and ``field_profiles`` blank
-shares, never a record value. Deterministic; the explanation text lives at the bottom of this file and is the fallback
+Aggregates only: the input is ``analysis_versions.dqs_summary``, ``findings`` counts and ``field_profiles`` row, blank
+and distinct counts, never a record value. Deterministic; the explanation text lives at the bottom of this file and is the fallback
 for the model's (api/routes/learned_monitors.py), whose output is checked against the figures before it is shown.
 """
 
@@ -53,12 +60,18 @@ VOLUME_REL, VOLUME_SPREAD = 0.30, 0.02
 SCORE_SPREAD, SCORE_MIN_DROP = 0.005, 1.0       # points
 RATE_SPREAD, RATE_MIN_RISE = 1.0, 2.0           # percentage points
 EMPTY_AT, POPULATED_BELOW = 95.0, 50.0          # blank share now / median blank share before
+DISTINCT_MIN_SHIFT = 20.0                       # distinct share of filled rows must move this many percentage points
 
 LEARN_DAYS = 90       # steward decisions older than this no longer move a minimum effect
 LEARN_MARGIN = 1.05   # the minimum sits 5% above the largest effect marked expected
 CEILING_MULT = 3.0    # a minimum effect never exceeds this multiple of its floor
 SEV_SCALE_MAX = 1.5   # severity cuts stretch at most this far, so losing every record is still critical
-FLOOR = {"records": VOLUME_REL, "score": SCORE_MIN_DROP, "fail_rate": RATE_MIN_RISE}
+# blank_pct: a field fires only when it is >= EMPTY_AT now and < POPULATED_BELOW before, so its effect is always above
+# EMPTY_AT - POPULATED_BELOW; that is the floor, and firing at the floor is exactly the old rule.
+FLOOR = {"records": VOLUME_REL, "score": SCORE_MIN_DROP, "fail_rate": RATE_MIN_RISE,
+         "blank_pct": EMPTY_AT - POPULATED_BELOW, "distinct_pct": DISTINCT_MIN_SHIFT}
+CEILING = {"blank_pct": 90.0}  # an effect cannot exceed 100 points, so three times the floor would silence the monitor
+LEARNED = tuple(FLOOR)
 
 Point = tuple[str, datetime, float]  # (run id, run_at, value), oldest first
 
@@ -90,6 +103,8 @@ def effect_of(metric: str, observed: float, median: float) -> float:
     """The size of a break in the metric's own unit (see the module docstring)."""
     if metric == "records":
         return abs(observed - median) / median if median else 1.0
+    if metric == "distinct_pct":
+        return abs(observed - median)
     return median - observed if metric == "score" else observed - median
 
 
@@ -98,7 +113,7 @@ def learn(metric: str, events: list[dict]) -> dict:
     Returns {min_effect, floor, ceiling, moves}; each move is its event plus ``result`` raised|lowered|kept and the
     minimum after it."""
     floor = FLOOR[metric]
-    ceiling = floor * CEILING_MULT
+    ceiling = CEILING.get(metric, floor * CEILING_MULT)
     cur, moves = floor, []
     for e in events:
         was = cur
@@ -114,7 +129,8 @@ EVENTS_SQL = """
     SELECT b.id::text, v.run_number, b.module, b.metric, b.subject_code, b.status, b.observed, b.median, b.decided_by,
            b.decided_at
       FROM learned_monitor_breaks b JOIN analysis_versions v ON v.id = b.version_id AND v.tenant_id = b.tenant_id
-     WHERE b.tenant_id = :tid AND b.status IN ('expected', 'acknowledged') AND b.metric IN ('records', 'score', 'fail_rate')
+     WHERE b.tenant_id = :tid AND b.status IN ('expected', 'acknowledged')
+       AND b.metric IN ('records', 'score', 'fail_rate', 'blank_pct', 'distinct_pct')
        AND b.median IS NOT NULL AND b.decided_at >= :since AND (CAST(:m AS text) IS NULL OR b.module = :m)
      ORDER BY b.decided_at, b.id"""
 
@@ -134,32 +150,40 @@ def _sev(step: float, cuts: tuple[float, float], scale: float = 1.0) -> str:
     return "critical" if step >= cuts[1] else "high" if step >= cuts[0] else "medium"
 
 
-def judge(metric: str, subject: str, obs: float, base: dict, min_effect: Optional[float] = None) -> Optional[dict]:
+def judge(metric: str, subject: str, obs: float, base: dict, min_effect: Optional[float] = None,
+          keep_suppressed: bool = False) -> Optional[dict]:
     """The break, if ``obs`` is outside the band in the direction that matters for ``metric`` and its effect reaches
-    ``min_effect`` (default: the floor)."""
+    ``min_effect`` (default: the floor). With ``keep_suppressed`` a break outside the band whose effect is below
+    ``min_effect`` is returned with ``below_minimum`` True instead of None."""
     low, high, med = base["low"], base["high"], base["median"]
     floor = FLOOR.get(metric, 0.0)
     me = floor if min_effect is None else min_effect
     scale = min(me / floor, SEV_SCALE_MAX) if floor else 1.0
     kind = sev = None
     if metric == "records":
-        if (obs < low or obs > high) and effect_of(metric, obs, med) >= me:
+        if obs < low or obs > high:
             kind = "volume_drop" if obs < low else "volume_spike"
             sev = _sev(effect_of(metric, obs, med), (0.25, 0.5), scale)
     elif metric == "score":
-        if obs < low and med - obs >= me:
+        if obs < low:
             kind, sev = "score_drop", _sev(med - obs, (5, 10), scale)
     elif metric == "fail_rate":
-        if obs > high and obs - med >= me:
+        if obs > high:
             kind, sev = "fail_rate_jump", _sev(obs - med, (10, 25), scale)
     elif metric == "blank_pct":
         if obs >= EMPTY_AT and med < POPULATED_BELOW and obs > high:
             kind, sev = "field_emptied", "critical" if med < 10 else "high"
+    elif metric == "distinct_pct":
+        if obs < low or obs > high:
+            kind, sev = "cardinality_shift", _sev(abs(obs - med), (35, 50), scale)
     if not kind:
+        return None
+    below = effect_of(metric, obs, med) < me
+    if below and not keep_suppressed:
         return None
     return {"kind": kind, "metric": metric, "subject_code": subject, "severity": sev, "observed": obs,
             "low": low, "high": high, "median": med, "method": base["method"], "baseline_runs": base["runs"],
-            "baseline_run_ids": base["run_ids"]}
+            "baseline_run_ids": base["run_ids"], "below_minimum": below}
 
 
 def apply_decisions(points: list[Point], decisions: list[tuple[str, str]], when: dict[str, datetime]) -> list[Point]:
@@ -230,11 +254,15 @@ def collect(session: Session, tid: str, vid: str, module: str) -> tuple[Optional
         if r[3] and int(r[3]) >= MIN_POP:
             put(r[0], at_of(r[0]), f"fail_rate|{r[1]}", 100.0 * int(r[2]) / int(r[3]))
     for r in session.execute(text("""
-            SELECT version_id::text, table_name, field, (stats->>'rows')::float, (stats->>'blank_pct')::float
+            SELECT version_id::text, table_name, field, (stats->>'rows')::float, (stats->>'blank_pct')::float,
+                   (stats->>'blank')::float, (stats->>'distinct')::float
               FROM field_profiles WHERE tenant_id = :tid AND version_id = ANY(CAST(:ids AS uuid[])) AND module = :m"""),
                              {**p, "ids": ids}):
         if r[3] is not None and r[4] is not None and r[3] >= MIN_ROWS:
             put(r[0], at_of(r[0]), f"blank_pct|{r[1]}.{r[2]}", float(r[4]))
+        filled = r[3] - r[5] if r[3] is not None and r[5] is not None else 0.0
+        if r[6] is not None and filled >= MIN_ROWS:  # distinct values as a share of the filled rows: a count, no value
+            put(r[0], at_of(r[0]), f"distinct_pct|{r[1]}.{r[2]}", 100.0 * float(r[6]) / filled)
     for pts in series.values():
         pts.sort(key=lambda x: x[1])
     return {"run_at": cur[0], "run_number": cur[1]}, series, mine
@@ -256,7 +284,8 @@ def settings(metric: str, min_effect: Optional[float] = None) -> dict:
     table: dict[str, dict] = {"records": dict(rel=me, min_spread=VOLUME_SPREAD),
                               "score": dict(min_spread=SCORE_SPREAD),
                               "fail_rate": dict(abs_=me, min_spread=RATE_SPREAD, relative_floor=False),
-                              "blank_pct": dict(abs_=10.0, min_spread=RATE_SPREAD, relative_floor=False)}
+                              "blank_pct": dict(abs_=10.0, min_spread=RATE_SPREAD, relative_floor=False),
+                              "distinct_pct": dict(abs_=me, min_spread=RATE_SPREAD, relative_floor=False)}
     return table[metric]
 
 
@@ -286,6 +315,12 @@ def detect(session: Session, tid: str, vid: str, module: str, now: Optional[date
             learning += 1
             continue
         b = judge(metric, subject, cur["value"], base, me)
+        if not b and me is not None and me > FLOOR[metric]:
+            # Outside the usual range as it stood at the floor, but below the raised minimum: kept so a steward can
+            # confirm it. A break the raised band still swallows stays unreported, as before.
+            fb = baseline(pts, run["run_at"], **settings(metric))
+            s = judge(metric, subject, cur["value"], fb, me, keep_suppressed=True) if fb else None
+            b = s if s and s["below_minimum"] else None
         if b:
             breaks.append(b)
     return {"breaks": breaks, "series": len(mine), "learning": learning,
@@ -293,20 +328,22 @@ def detect(session: Session, tid: str, vid: str, module: str, now: Optional[date
 
 
 def detect_and_store(session: Session, tid: str, vid: str, module: str) -> int:
-    """Replace the run's open breaks of ``module`` (stewards' decisions are kept) and return how many were found.
+    """Replace the run's open and below-minimum breaks of ``module`` (stewards' decisions are kept) and return how many
+    were raised (below-minimum ones are stored but raise nothing).
     A break whose kind and subject a steward snoozed in an earlier run stays snoozed until that time."""
     res = detect(session, str(tid), str(vid), module)
     p = {"tid": str(tid), "vid": str(vid), "m": module}
     session.execute(text("DELETE FROM learned_monitor_breaks WHERE tenant_id = :tid AND version_id = :vid "
-                         "AND module = :m AND status = 'open'"), p)
+                         "AND module = :m AND status IN ('open', 'below_minimum')"), p)
     rows = [{**p, "k": b["kind"], "me": b["metric"], "s": b["subject_code"], "sev": b["severity"], "lo": b["low"],
              "hi": b["high"], "md": b["median"], "o": b["observed"], "n": b["baseline_runs"],
-             "ids": json.dumps(b["baseline_run_ids"]), "meth": b["method"]} for b in res["breaks"]]
+             "ids": json.dumps(b["baseline_run_ids"]), "meth": b["method"],
+             "st": "below_minimum" if b["below_minimum"] else "open"} for b in res["breaks"]]
     if rows:
         session.execute(text("""
             INSERT INTO learned_monitor_breaks (tenant_id, version_id, module, kind, metric, subject_code, severity,
-                expected_low, expected_high, median, observed, baseline_runs, baseline_run_ids, method)
-            VALUES (:tid, :vid, :m, :k, :me, :s, :sev, :lo, :hi, :md, :o, :n, CAST(:ids AS jsonb), :meth)
+                expected_low, expected_high, median, observed, baseline_runs, baseline_run_ids, method, status)
+            VALUES (:tid, :vid, :m, :k, :me, :s, :sev, :lo, :hi, :md, :o, :n, CAST(:ids AS jsonb), :meth, :st)
             ON CONFLICT ON CONSTRAINT uq_learned_monitor_breaks DO NOTHING"""), rows)
         session.execute(text("""
             UPDATE learned_monitor_breaks b SET status = 'snoozed', snoozed_until = s.until
@@ -315,15 +352,16 @@ def detect_and_store(session: Session, tid: str, vid: str, module: str) -> int:
                      GROUP BY 1, 2) s
              WHERE b.tenant_id = :tid AND b.version_id = :vid AND b.module = :m AND b.status = 'open'
                AND b.kind = s.kind AND b.subject_code = s.subject_code"""), p)
-    return len(rows)
+    return sum(1 for r in rows if r["st"] == "open")
 
 
 # -- explanation --------------------------------------------------------------------------------------------------------
 
 _NUM = re.compile(r"\d+(?:\.\d+)?")
-_UNIT = {"records": "", "score": " points", "fail_rate": "%", "blank_pct": "%"}
+_UNIT = {"records": "", "score": " points", "fail_rate": "%", "blank_pct": "%", "distinct_pct": "%"}
 _WHAT = {"volume_drop": "records checked fell", "volume_spike": "records checked rose",
-         "fail_rate_jump": "the fail rate rose", "score_drop": "the score fell", "field_emptied": "the field is now empty"}
+         "fail_rate_jump": "the fail rate rose", "score_drop": "the score fell", "field_emptied": "the field is now empty",
+         "cardinality_shift": "the share of distinct values among the filled rows moved"}
 
 
 def _f(x: Optional[float], metric: str) -> str:

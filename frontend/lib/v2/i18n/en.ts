@@ -7844,6 +7844,14 @@ export const en = {
   "Near value, one character off": "Near value, one character off",
   "Record {record}: a tax or part number one character off was not searched, because {why}.": "Record {record}: a tax or part number one character off was not searched, because {why}.",
   "one character different, or two neighbouring characters swapped": "one character different, or two neighbouring characters swapped",
+  "Distinct values shifted": "Distinct values shifted",
+  "Distinct share": "Distinct share",
+  "Below the minimum": "Below the minimum",
+  "Below the learned minimum": "Below the learned minimum",
+  "Outside the usual range but smaller than the minimum a steward raised. Nothing is alerted. Confirm one that is real and the minimum drops.": "Outside the usual range but smaller than the minimum a steward raised. Nothing is alerted. Confirm one that is real and the minimum drops.",
+  "Confirm as real": "Confirm as real",
+  "No break sits below a raised minimum.": "No break sits below a raised minimum.",
+  "Breaks below the learned minimum table, scrollable": "Breaks below the learned minimum table, scrollable",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

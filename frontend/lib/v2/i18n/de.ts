@@ -7845,4 +7845,12 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Near value, one character off": "Naher Wert, ein Zeichen abweichend",
   "Record {record}: a tax or part number one character off was not searched, because {why}.": "Datensatz {record}: Eine um ein Zeichen abweichende Steuer- oder Teilenummer wurde nicht gesucht, weil {why}.",
   "one character different, or two neighbouring characters swapped": "ein Zeichen anders oder zwei benachbarte Zeichen vertauscht",
+  "Distinct values shifted": "Anteil verschiedener Werte verschoben",
+  "Distinct share": "Anteil verschiedener Werte",
+  "Below the minimum": "Unter dem Minimum",
+  "Below the learned minimum": "Unter dem gelernten Minimum",
+  "Outside the usual range but smaller than the minimum a steward raised. Nothing is alerted. Confirm one that is real and the minimum drops.": "Außerhalb des üblichen Bereichs, aber kleiner als das von einem Steward angehobene Minimum. Es wird nichts gemeldet. Bestätigen Sie einen echten Fall, dann sinkt das Minimum.",
+  "Confirm as real": "Als echt bestätigen",
+  "No break sits below a raised minimum.": "Keine Abweichung liegt unter einem angehobenen Minimum.",
+  "Breaks below the learned minimum table, scrollable": "Tabelle der Abweichungen unter dem gelernten Minimum, scrollbar",
 };
