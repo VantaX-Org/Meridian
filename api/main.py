@@ -357,8 +357,9 @@ _DOCS_CSP = (
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
-        response.headers["Content-Security-Policy"] = (
-            _DOCS_CSP if request.url.path in ("/docs", "/redoc") else _API_CSP
+        # setdefault: a route that sets its own policy keeps it (the theme logo needs a sandboxing one).
+        response.headers.setdefault(
+            "Content-Security-Policy", _DOCS_CSP if request.url.path in ("/docs", "/redoc") else _API_CSP,
         )
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
