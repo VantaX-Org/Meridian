@@ -357,6 +357,7 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
   const sum = d?.summary ?? {};
   const rules = (d?.scores ?? []).flatMap((m) => m.reasons.map((r) => ({ ...r, module: m.module })));
   const tablesWithRecords = (d?.tables ?? []).filter((x) => x.comparable);
+  const fieldText = new Map(tablesWithRecords.flatMap((x) => x.fields.map((f) => [f.field, f.description ?? undefined] as const)));
   return (
     <Panel title={t("Post-load reconciliation")} meta={d?.completed_at ? t("Compared on {date}", { date: formatDate(d.completed_at, "date") }) : t("Load files against the target system")} testId="mig-post-load">
       <p>
@@ -427,7 +428,7 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
               <Table title={t("Fields compared")} head={[t("Table"), t("Field"), t("Compared"), t("Matched"), t("Different")]}>
                 {tablesWithRecords.flatMap((x) => x.fields.map((f) => (
                   <tr key={`${x.table}-${f.field}`}>
-                    <th scope="row" className="m2-card-lead">{x.table}</th>
+                    <th scope="row" className="m2-card-lead"><Coded code={x.table} text={x.description} first /></th>
                     <td data-label={t("Field")}><Coded code={f.field} text={f.description} first /></td>
                     <td data-label={t("Compared")}>{f.in_target_extract ? int(f.compared) : t("Not in the target extraction")}</td>
                     <td data-label={t("Matched")}>{f.in_target_extract ? int(f.matched) : f1(null)}</td>
@@ -453,7 +454,7 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                       <tr key={`${r.source_record}-${r.key}-${r.field}`}>
                         <th scope="row" className="m2-card-lead"><Coded code={r.key} text={undefined} first /></th>
                         <td data-label={t("Load file record")}>{r.source_record ?? f1(null)}</td>
-                        <td data-label={t("Field")}>{r.field ?? f1(null)}</td>
+                        <td data-label={t("Field")}>{r.field ? <Coded code={r.field} text={fieldText.get(r.field)} first /> : f1(null)}</td>
                         <td data-label={t("Expected")}>{r.withheld ? t("Withheld") : r.expected ?? f1(null)}</td>
                         <td data-label={t("Found")}>{r.withheld ? t("Withheld") : r.found ?? f1(null)}</td>
                       </tr>

@@ -75,6 +75,7 @@ const reconRecords = [
   { kind: "missing", key: "MATNR=000000000010004802", source_record: "MARA:000000000010004802", field: null, expected: null, found: null },
   { kind: "differing", key: "MATNR=000000000010004711", source_record: "MARA:000000000010004711", field: "MTART", expected: "ROH", found: "HALB" },
   { kind: "differing", key: "MATNR=000000000010009001|SPRAS=E", source_record: "MAKT:000000000010009001", field: "MAKTX", expected: "Hydraulic hose assembly 3/4in 2-wire", found: "Hydraulic hose assembly 3/4in 2-wi" },
+  { kind: "differing", key: "LIFNR=0000100234", source_record: "LFA1:0000100234", field: "NAME1", expected: null, found: null, withheld: true },
   { kind: "unexpected", key: "MATNR=000000000010004711", source_record: "MARA:000000000010004711", field: null, expected: null, found: null },
 ] as const;
 const recon = {
