@@ -1,7 +1,10 @@
 """Celery task: post-load reconciliation of one migration run against the target system.
 
-Deterministic, no LLM. The expected load is rebuilt by ``export.load_run_tables`` from the mappings as they stand now;
-the found side is the target system's latest complete extraction. The result goes to migration_reconciliations.
+Deterministic, no LLM. The expected side is the snapshot of the files handed over at the run's latest export
+(``migration.snapshot``), checked against its stored digest. When the run has no snapshot, or it cannot be read or
+fails the digest, the load is rebuilt by ``export.load_run_tables`` from the mappings as they stand now. Either way the
+summary carries ``basis`` ("snapshot" or "rebuilt"), and for a snapshot the export id and date; a skipped snapshot adds
+``snapshot_skipped``. The found side is the target system's latest complete extraction. The result goes to migration_reconciliations.
 """
 
 import json
@@ -71,8 +74,25 @@ def run_reconciliation(self, tenant_id, reconciliation_id):
                                "The target system has no completed analysis. Extract the target first.",
                                scores=scores(None))
 
-            held: dict = {}
-            expected, target_dict = load_run_tables(session, run, held)
+            from api.services.migration import snapshot
+            from api.services.migration.export import target_dictionary
+
+            basis: dict = {"basis": "rebuilt"}
+            snap = snapshot.latest(session, run.id)
+            expected = held = None
+            if snap:
+                try:
+                    expected, held = snapshot.read(tenant_id, snap.snapshot_prefix, snap.snapshot_sha256)
+                    target_dict = target_dictionary(session, run)
+                    basis = {"basis": "snapshot", "snapshot_export_id": str(snap.id),
+                             "snapshot_exported_at": snap.created_at.isoformat()}
+                except Exception as e:  # unreadable or altered snapshot: rebuild, and say why
+                    logger.warning("export snapshot not used: %s", e)
+                    expected = held = None
+                    basis["snapshot_skipped"] = str(e)[:200]
+            if expected is None:
+                held = {}
+                expected, target_dict = load_run_tables(session, run, held)
             if not expected:
                 return _finish(session, reconciliation_id, "failed", "No transfer-ready records in the load.",
                                scores=scores(None))
@@ -85,7 +105,7 @@ def run_reconciliation(self, tenant_id, reconciliation_id):
             records = {t["table"]: t.pop("records") for t in result["tables"]}
             synced = session.execute(text("SELECT run_at FROM analysis_versions WHERE id = :v"),
                                      {"v": version_id}).scalar()
-            return _finish(session, reconciliation_id, "done", None, summary=result["totals"], tables=result["tables"],
+            return _finish(session, reconciliation_id, "done", None, summary={**result["totals"], **basis}, tables=result["tables"],
                            records=records, record_cap=result["record_cap"], target_version_id=version_id,
                            target_synced_at=synced, target_system_id=run.dest_system_id,
                            scores=scores(_findings(session, tenant_id, version_id, run.modules)))

@@ -108,7 +108,7 @@ def seeded(engines):
                   {"i": str(uuid.uuid4()), "t": tid, "r": run})
     yield SimpleNamespace(tid=tid, run=run, dst=dst, tv=tv)
     with owner.begin() as c:
-        for table in ("audit_log", "migration_reconciliations", "transfer_field_mappings", "migration_runs",
+        for table in ("audit_log", "migration_reconciliations", "migration_export_files", "transfer_field_mappings", "migration_runs",
                       "analysis_versions", "users", "sap_systems", "tenants"):
             col = "id" if table == "tenants" else "tenant_id"
             c.execute(text(f"DELETE FROM {table} WHERE {col} = :t"), {"t": tid})
@@ -231,3 +231,173 @@ async def test_a_viewer_cannot_start_a_reconciliation(seeded, monkeypatch):
         r = await client.post(f"/api/v1/migration/runs/{seeded.run}/reconcile",
                               headers={**H, "X-User-Role": "viewer"})
     assert r.status_code == 403
+
+
+# ---- export snapshots -----------------------------------------------------------------------------------------
+
+@pytest.fixture
+def blobs(monkeypatch):
+    """In-memory stand-in for the snapshot bucket."""
+    b: dict[str, bytes] = {}
+    from api.services import storage
+
+    monkeypatch.setattr(storage, "upload_file", lambda bucket, name, data, content_type="", suppress=True: b.__setitem__(name, data))
+    monkeypatch.setattr(storage, "download_file", lambda bucket, name: b[name])
+    monkeypatch.setattr(storage, "list_prefix", lambda bucket, pre: [(k, len(v)) for k, v in b.items() if k.startswith(pre)])
+
+    def drop(bucket, pre):
+        gone = [k for k in b if k.startswith(pre)]
+        for k in gone:
+            del b[k]
+        return len(gone), 0
+
+    monkeypatch.setattr(storage, "delete_prefix", drop)
+    return b
+
+
+def _export(engines, s, monkeypatch) -> str:
+    """What the export route does: build the load from the mappings as they stand, snapshot it, record the pointer."""
+    from api.services.migration import snapshot
+    from api.services.migration.export import load_run_tables
+    from workers.db import tenant_session
+
+    owner, worker = engines
+    eid = str(uuid.uuid4())
+    with tenant_session(worker, s.tid) as session:
+        run = session.execute(text("SELECT * FROM migration_runs WHERE id = :r"), {"r": s.run}).fetchone()
+        held: dict = {}
+        load, _ = load_run_tables(session, run, held)
+    pre, dig = snapshot.write(s.tid, s.run, eid, load, held)
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO migration_export_files (id, tenant_id, run_id, export_format, filename, "
+                       "snapshot_prefix, snapshot_sha256, snapshot_at) VALUES (:i, :t, :r, 'csv', 'x.csv', :p, :d, now())"),
+                  {"i": eid, "t": s.tid, "r": s.run, "p": pre, "d": dig})
+    return eid
+
+
+def _summary(owner, rid):
+    return _row(owner, rid)["summary"]
+
+
+def test_mapping_changed_after_export_still_compares_against_the_snapshot(engines, seeded, store, blobs, monkeypatch):
+    owner, worker = engines
+    eid = _export(engines, seeded, monkeypatch)
+    with owner.begin() as c:  # the rebuilt side would no longer have MTART
+        c.execute(text("DELETE FROM transfer_field_mappings WHERE tenant_id = :t AND source_field = 'MARA.MTART'"),
+                  {"t": seeded.tid})
+    rid = _queued(owner, seeded)
+    assert _execute(monkeypatch, worker, seeded, rid)["status"] == "done"
+    sm = _summary(owner, rid)
+    assert sm["basis"] == "snapshot" and sm["snapshot_export_id"] == eid and sm["snapshot_exported_at"]
+    assert sm["differing_fields"] == 1
+
+
+def test_no_snapshot_rebuilds_and_says_so(engines, seeded, store, blobs, monkeypatch):
+    owner, worker = engines
+    rid = _queued(owner, seeded)
+    assert _execute(monkeypatch, worker, seeded, rid)["status"] == "done"
+    sm = _summary(owner, rid)
+    assert sm["basis"] == "rebuilt" and "snapshot_export_id" not in sm and "snapshot_skipped" not in sm
+
+
+def test_altered_snapshot_is_refused_and_rebuilt(engines, seeded, store, blobs, monkeypatch):
+    owner, worker = engines
+    _export(engines, seeded, monkeypatch)
+    name = next(iter(blobs))
+    blobs[name] = blobs[name] + b"x"
+    rid = _queued(owner, seeded)
+    assert _execute(monkeypatch, worker, seeded, rid)["status"] == "done"
+    sm = _summary(owner, rid)
+    assert sm["basis"] == "rebuilt" and "digest" in sm["snapshot_skipped"]
+
+
+def test_erasure_removes_the_person_from_snapshots(engines, seeded, store, blobs, monkeypatch):
+    from api.services import subject_requests
+    from api.services.migration import snapshot
+    from workers.db import tenant_session
+
+    owner, worker = engines
+    eid = _export(engines, seeded, monkeypatch)
+    with tenant_session(worker, seeded.tid) as session:
+        found = subject_requests.scan_snapshots(session, seeded.tid, ["MATNR=M2"], rewrite=False)
+        assert found["rows"] >= 1
+        done = subject_requests.scan_snapshots(session, seeded.tid, ["MATNR=M2"], rewrite=True)
+        assert done["complete"] and done["rows"] >= 1
+        row = session.execute(text("SELECT snapshot_prefix, snapshot_sha256 FROM migration_export_files WHERE id = :i"),
+                              {"i": eid}).one()
+    load, held = snapshot.read(seeded.tid, row[0], row[1])  # digest was recomputed, so it still verifies
+    assert "M2" not in {v for df in (*load.values(), *held.values()) for v in df["MATNR"]}
+    assert "M1" in set(load["MARA"]["MATNR"])
+    with tenant_session(worker, seeded.tid) as session:
+        assert subject_requests.scan_snapshots(session, seeded.tid, ["MATNR=M2"], rewrite=False)["rows"] == 0
+
+
+def test_erasure_deletes_a_snapshot_it_cannot_verify(engines, seeded, store, blobs, monkeypatch):
+    from api.services import subject_requests
+    from workers.db import tenant_session
+
+    owner, worker = engines
+    eid = _export(engines, seeded, monkeypatch)
+    name = next(iter(blobs))
+    blobs[name] = blobs[name] + b"x"
+    with tenant_session(worker, seeded.tid) as session:
+        out = subject_requests.scan_snapshots(session, seeded.tid, ["MATNR=M2"], rewrite=True)
+    assert out["complete"] and not blobs
+    with owner.connect() as c:
+        assert c.execute(text("SELECT snapshot_prefix FROM migration_export_files WHERE id = :i"), {"i": eid}).scalar() is None
+
+
+def test_run_delete_removes_its_snapshots(engines, seeded, store, blobs, monkeypatch):
+    from api.services.migration import snapshot
+
+    _export(engines, seeded, monkeypatch)
+    _export(engines, seeded, monkeypatch)
+    assert blobs
+    assert snapshot.delete_run(seeded.tid, seeded.run) > 0 and not blobs
+
+
+def _ready_to_export(owner, s) -> None:
+    with owner.begin() as c:
+        c.execute(text("UPDATE migration_runs SET status = 'analysed' WHERE id = :r"), {"r": s.run})
+
+
+def _exports(owner, s) -> list:
+    with owner.connect() as c:
+        return c.execute(text("SELECT snapshot_prefix, snapshot_sha256, snapshot_at, snapshot_error "
+                              "FROM migration_export_files WHERE run_id = :r"), {"r": s.run}).fetchall()
+
+
+@pytest.mark.anyio
+async def test_export_route_records_the_snapshot_it_wrote(engines, seeded, store, blobs, monkeypatch):
+    from api.services.migration import snapshot
+
+    owner, worker = engines
+    _ready_to_export(owner, seeded)
+    monkeypatch.setattr("workers.db.get_sync_engine", lambda: worker)
+    async with await _client(monkeypatch, seeded.tid) as c:
+        r = await c.get(f"/api/v1/migration/export/{seeded.run}/csv", headers=H)
+    assert r.status_code == 200, r.text
+    (row,) = _exports(owner, seeded)
+    assert row.snapshot_error is None and row.snapshot_at is not None
+    assert any(k.startswith(row.snapshot_prefix) for k in blobs)
+    load, _held = snapshot.read(seeded.tid, row.snapshot_prefix, row.snapshot_sha256)
+    assert load
+
+
+@pytest.mark.anyio
+async def test_export_route_survives_a_storage_failure_and_records_it(engines, seeded, store, blobs, monkeypatch):
+    from api.services import storage
+
+    def fail(*_a, **_k):
+        raise OSError("bucket down")
+
+    owner, worker = engines
+    _ready_to_export(owner, seeded)
+    monkeypatch.setattr("workers.db.get_sync_engine", lambda: worker)
+    monkeypatch.setattr(storage, "upload_file", fail)
+    async with await _client(monkeypatch, seeded.tid) as c:
+        r = await c.get(f"/api/v1/migration/export/{seeded.run}/csv", headers=H)
+    assert r.status_code == 200, r.text
+    (row,) = _exports(owner, seeded)
+    assert row.snapshot_prefix is None and row.snapshot_sha256 is None and row.snapshot_at is None
+    assert "bucket down" in row.snapshot_error

@@ -1,8 +1,9 @@
 """Post-load reconciliation: did the records the load files carried land in the target system.
 
-The expected side is rebuilt by ``export.build_load_tables`` when the reconciliation runs (target tables, target field
-names, values after value mapping, SOURCE_RECORD for traceability), so it follows the mappings as they stand then: a
-mapping changed after the files were exported shows up here as a difference. The found side is the target system's latest extraction. Records are
+The expected side is whatever the caller passes: the parquet snapshot of the files handed over at export when one
+exists (``snapshot.py``), else a rebuild from the current mappings by ``export.build_load_tables``, in which case a
+mapping changed after export shows up as a difference. Both carry target tables, target field names, values after value
+mapping and SOURCE_RECORD. The found side is the target system's latest extraction. Records are
 matched on the target table's DDIC key, with ALPHA / MATN1 keys padded to their internal form on both sides
 (``checks.frames.internal_format``) and values trimmed. Nothing else is normalised: a value that differs only in
 number format or case is reported as different.
@@ -10,7 +11,9 @@ number format or case is reported as different.
 Claims are limited to the loaded key set. A target record that is not in the load is not "unexpected"; only a record
 whose key matches a record the blocking gaps held back is, because that one was meant to stay out. A table is reported
 not comparable, with the reason, when it cannot be judged honestly: no usable key, table not extracted, or the target
-extraction of it was partial or incomplete. A field the load left blank is not compared, since the target may fill
+extraction of it was windowed, scoped or incomplete (``partial``). A table that merely lost non-key columns is
+compared on the fields present; the lost ones carry ``in_target_extract`` false. A missing key column is a table-level
+``key_not_in_target_extract``. A field the load left blank is not compared, since the target may fill
 its own default. Pure and deterministic; no model sees any value. A differing personal field (``is_pii_field``) is
 counted and listed with ``withheld`` set and no values, so a stored result never repeats personal data.
 """

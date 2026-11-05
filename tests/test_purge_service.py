@@ -54,6 +54,8 @@ class _Session:
         if sql.startswith("SELECT count(*) FROM"):
             table = sql.split("FROM ")[1].split()[0]
             return _Result([(self.counts.get(table, 0),)])
+        if sql.startswith("SELECT id FROM migration_runs"):
+            return _Result([])
         if sql.startswith("SELECT pdf_path FROM reports"):
             return _Result([(p,) for p in self.pdf_paths])
         if sql.startswith("INSERT INTO purge_log"):

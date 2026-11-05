@@ -82,7 +82,7 @@ const recon = {
   reconciliation_id: "rec-0001", run_id: "mig-0002", status: "done", error_detail: null, target_system_id: S4, target_version_id: "v-s4-3",
   target_synced_at: "2026-11-02T04:10:00Z", created_at: "2026-11-02T06:00:00Z", completed_at: "2026-11-02T06:04:00Z", stale: false,
   latest_target_synced_at: "2026-11-02T04:10:00Z", record_cap: 100,
-  summary: { tables: 3, comparable: 2, expected: 83_980, found: 83_782, missing: 198, unexpected: 3, differing_fields: 143 },
+  summary: { tables: 3, comparable: 2, expected: 83_980, found: 83_782, missing: 198, unexpected: 3, differing_fields: 143, basis: "snapshot", snapshot_export_id: "exp-0001", snapshot_exported_at: "2026-11-01T09:30:00Z" },
   tables: reconTables,
   scores: [
     { module: "material_master", source: 78.2, projected: 91.4, actual: 88.9, actual_reason: null, reasons: [

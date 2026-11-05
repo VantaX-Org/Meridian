@@ -142,9 +142,17 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   target data quality score side by side; `/api/v1/migration/runs/{run_id}/reconcile`). It does not
   execute the load, and the reconciliation has not been run against a live SAP system; it has been
   tested only on synthetic extractions. It compares only against a target extraction someone has
-  already run, and it does not schedule one. The expected side is rebuilt from the current mappings,
-  not kept as a snapshot of the files handed over, and a table extracted with dropped columns reports
-  as not compared even when every record is present.
+  already run, and it does not schedule one. At export, Meridian keeps a parquet copy of the files
+  handed over in object storage (keyed by tenant and export, with a content digest on the export
+  record), and the reconciliation compares against the latest copy and says which export it used.
+  If the copy cannot be written the export still succeeds and the reconciliation rebuilds the
+  expected side from the current mappings and says so. The copy holds record values, personal
+  fields included: it is deleted with its run, version purge and tenant purge, and a data-subject
+  erasure rewrites it without the person (matched on the source record key; a copy that cannot be
+  rewritten is deleted). Copies are not in backups or in files already downloaded, their size is
+  not bounded, and there is no run-delete route yet. A table extracted with dropped non-key columns
+  and every record present is compared on the remaining fields; a windowed or scoped read, and
+  older extractions recorded as partial, still report as not compared.
 - **Governance of creation.** SAP MDG stops bad master data at the point of entry with workflow inside
   SAP. Meridian now also checks at entry for the licensed objects (material master, customer master,
   SuccessFactors employee data): the data quality firewall (`/api/v1/dq-firewall/validate`) returns

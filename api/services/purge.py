@@ -123,6 +123,12 @@ UNLINK: tuple[tuple[str, str, str], ...] = (
      "target_version_id = NULLIF(target_version_id, :v), records = CAST('{}' AS jsonb)",
      "tenant_id = :t AND (target_version_id = :v OR run_id IN "
      "(SELECT id FROM migration_runs WHERE tenant_id = :t AND source_version_id = :v))"),
+    # The export snapshots copy this version's record values; their objects go with the version (_storage_targets).
+    # Must stay before migration_runs for the same reason.
+    ("migration_export_files",
+     "snapshot_prefix = NULL, snapshot_sha256 = NULL, snapshot_error = 'removed with the source version'",
+     "tenant_id = :t AND snapshot_prefix IS NOT NULL AND run_id IN "
+     "(SELECT id FROM migration_runs WHERE tenant_id = :t AND source_version_id = :v)"),
     ("migration_runs", "source_version_id = NULL", "tenant_id = :t AND source_version_id = :v"),
     ("process_discovery_runs", "extraction_version_id = NULL", "tenant_id = :t AND extraction_version_id = :v"),
 )
@@ -241,6 +247,12 @@ def _storage_targets(session: Any, tenant_id: str, version_id: str, metadata: Op
             skipped.append(str(key))
         elif not any(b == bucket and ok.startswith(pfx) for b, pfx in prefixes):
             objects.append((bucket, ok))
+
+    from api.services.migration import snapshot
+    for (run_id,) in session.execute(text(
+            "SELECT id FROM migration_runs WHERE tenant_id = :t AND source_version_id = :v"),
+            {"t": str(tenant_id), "v": str(version_id)}).fetchall():
+        prefixes.append((uploads, snapshot.run_prefix(tenant_id, run_id)))
 
     pdf_paths = session.execute(text(
         "SELECT pdf_path FROM reports WHERE tenant_id = :t AND version_id = :v AND pdf_path IS NOT NULL"),

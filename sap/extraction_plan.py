@@ -230,6 +230,7 @@ class TablePlan:
     purpose: str = "data"              # data | config
     modules: set[str] = field(default_factory=set)
     partial: bool = False              # windowed / parent-keyed / scoped: not every record of the table
+    columns_dropped: bool = False      # every record read, but a wanted column is not in the system's dictionary
     slices: list[str] = field(default_factory=list)   # one full WHERE per month slice (process events)
     also_via: list[str] = field(default_factory=list)  # further via parents, IN-lists concatenated
     in_field: Optional[str] = None     # via: child field of the IN-list (default: most selective join field)
@@ -440,7 +441,7 @@ def _plan_process_events(modules: list[str], dictionary: Dictionary, system_type
         if tt is None or tt.category == "VIEW":
             continue
         keep = {f for f in cols if dictionary.field(t, f) is not None}
-        plans[t] = TablePlan(table=t, fields=keep, modules=set(mods), partial=keep != cols,
+        plans[t] = TablePlan(table=t, fields=keep, modules=set(mods), columns_dropped=keep != cols,
                              keys=[] if t in _PE_NO_KEYS else list(dictionary.keys(t)),
                              purpose="config" if t in _PE_CONFIG else "data")
     for t, p in plans.items():

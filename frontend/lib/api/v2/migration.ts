@@ -228,7 +228,9 @@ export interface Reconciliation {
   stale: boolean;
   latest_target_synced_at: string | null;
   record_cap: number | null;
-  summary: { tables?: number; comparable?: number; expected?: number; found?: number; missing?: number; unexpected?: number; differing_fields?: number };
+  summary: { tables?: number; comparable?: number; expected?: number; found?: number; missing?: number; unexpected?: number; differing_fields?: number;
+    /** What the expected side was built from: the files exported (snapshot) or the mappings as they stand (rebuilt). Absent on older results. */
+    basis?: "snapshot" | "rebuilt"; snapshot_export_id?: string; snapshot_exported_at?: string; snapshot_skipped?: string };
   tables: ReconTable[];
   scores: ReconScores[];
 }
