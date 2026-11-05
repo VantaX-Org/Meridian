@@ -22,6 +22,7 @@ import { dqFirewallRead, dqFirewallWrite, NONE_DQ_FIREWALL } from "./dq-firewall
 import { enterpriseFixtureDownload, enterpriseFixtureResponse, enterpriseFixtureWrite, NONE_ENTERPRISE } from "./enterprise";
 import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, step9Read, step9Write, withContractMarks } from "./step9";
 import { NONE_REQ, requestsDownload, requestsRead, requestsWrite, resetRequestsFixture } from "./requests";
+import { externalDbRead, externalDbWrite, NONE_EXTERNAL_DB } from "./external-db";
 import { configRead, configWrite, NONE_CONFIG } from "./config";
 import { cleaningRead, cleaningWrite, NONE_CLEANING, resetCleaningFixture } from "./cleaning";
 import { matchRead, matchWrite, NONE_MATCH } from "./match-rules";
@@ -154,6 +155,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   const step10 = step10Write(method, path, body);
   if (step10 !== NONE_STEP10) return step10 as T;
   if (method === "POST" && (path === "/work/decide" || /^\/work\/groups\/[^/]+\/(accept-all|set-value)$/.test(path))) guardDecision();
+  const xdb = externalDbWrite(method, path, body);
+  if (xdb !== NONE_EXTERNAL_DB) return xdb as T;
   const step9 = step9Write(method, path, body);
   if (step9 !== NONE_STEP9) return step9 as T;
   const cfg = configWrite(method, path);
@@ -372,6 +375,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (req !== NONE_REQ) return req as T;
   const step10 = step10Read(path, params);
   if (step10 !== NONE_STEP10) return step10 as T;
+  const xdb = externalDbRead(path);
+  if (xdb !== NONE_EXTERNAL_DB) return xdb as T;
   const step9 = step9Read(path, params);
   if (step9 !== NONE_STEP9) return step9 as T;
   const lin = lineageRead(path, params);

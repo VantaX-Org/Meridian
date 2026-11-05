@@ -3663,3 +3663,27 @@ class ChangeRequestComment(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (Index("ix_change_request_comments_request", "tenant_id", "request_id", "created_at"),)
+
+
+class ExternalDbConnection(Base):
+    """A read-only connection to a non-SAP SQL database (migration 147). The password is encrypted, never returned."""
+
+    __tablename__ = "external_db_connections"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    name = Column(Text, nullable=False)
+    engine = Column(Text, nullable=False, server_default="postgres")
+    host = Column(Text, nullable=False)
+    port = Column(Integer, nullable=False, server_default="5432")
+    database = Column(Text, nullable=False)
+    username = Column(Text, nullable=False)
+    encrypted_password = Column(Text, nullable=False)
+    ssl_mode = Column(Text, nullable=False, server_default="require")
+    created_by = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    last_tested_at = Column(DateTime(timezone=True), nullable=True)
+    last_test_ok = Column(Integer, nullable=True)
+    last_loaded_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (UniqueConstraint("tenant_id", "name"),)

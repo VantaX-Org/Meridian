@@ -20,6 +20,7 @@ import { UsersSection } from "./users";
 import { MatchRulesSection } from "./matchrules";
 import { WebhooksSection } from "./webhooks";
 import { DqFirewallSection } from "./dqfirewall";
+import { ExternalDbSection } from "./externaldb";
 import { SubjectRequestsSection } from "./subjectrequests";
 import { DigestsSection, PolicyPacksSection } from "./step10";
 import { t } from "@/lib/v2/i18n";
@@ -244,6 +245,8 @@ function Section({ slug }: { slug: AdminSlug }) {
       return <WebhooksSection />;
     case "subjectrequests":
       return <SubjectRequestsSection />;
+    case "externaldb":
+      return <ExternalDbSection />;
     case "dqfirewall":
       return <DqFirewallSection />;
     case "policypacks":

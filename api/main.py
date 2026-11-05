@@ -21,6 +21,7 @@ from api.routes.settings import router as settings_router
 from api.routes.llm_settings import router as llm_settings_router
 from api.routes.connect import router as connect_router
 from api.routes.writeback import router as writeback_router
+from api.routes.external_db import router as external_db_router
 from api.routes.cleaning import router as cleaning_router
 from api.routes.migration import router as migration_router
 from api.routes.exceptions import router as exceptions_router
@@ -424,6 +425,7 @@ app.include_router(settings_router)
 app.include_router(llm_settings_router)
 app.include_router(connect_router)
 app.include_router(writeback_router)
+app.include_router(external_db_router)
 app.include_router(cleaning_router)
 app.include_router(migration_router)
 app.include_router(exceptions_router)
