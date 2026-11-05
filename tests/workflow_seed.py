@@ -15,7 +15,7 @@ _CLEAN = ("notifications", "audit_log", "webhook_deliveries", "webhooks", "skipp
           "escalation_steps", "data_owners", "glossary_terms", "policy_field_classes", "change_request_comments",
           "change_request_attachments", "change_request_field_changes", "request_defaults", "request_derivations", "request_critical_fields", "change_requests", "workflow_events", "workflow_tasks", "workflow_instances",
           "workflow_definitions", "match_rules", "master_records", "remediation_events", "remediation_items",
-          "remediation_batches", "system_credentials", "sap_systems", "user_role_scopes", "users")
+          "writeback_run_records", "writeback_runs", "remediation_batches", "system_credentials", "sap_systems", "user_role_scopes", "users")
 
 
 def engine():

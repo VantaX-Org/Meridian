@@ -217,6 +217,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     if (method === "POST" && loaded) return wf.loadedBatchFixture(decodeURIComponent(loaded[1]));
     const live = /^\/writeback\/batches\/([^/]+)\/(check|send)$/.exec(path);
     if (method === "POST" && live) return live[2] === "check" ? wf.writebackCheckFixture(decodeURIComponent(live[1])) : wf.writebackSendFixture(decodeURIComponent(live[1]));
+    const runAct = /^\/writeback\/batches\/([^/]+)\/run\/(resume|cancel|retry-failed)$/.exec(path);
+    if (method === "POST" && runAct) return wf.writebackRunAct(decodeURIComponent(runAct[1]), runAct[2] as "resume" | "cancel" | "retry-failed", body as { include_needs_check?: boolean } | undefined);
     const read = /^\/notifications\/([^/]+)\/read$/.exec(path);
     if (method === "PUT" && path === "/notifications/read-all") return ap.readAllFixture();
     if (method === "PUT" && read) return ap.readFixture(decodeURIComponent(read[1]));
@@ -362,6 +364,8 @@ function forecastRead(path: string): unknown {
 }
 
 export function fixtureResponse<T>(path: string, params: Params): T {
+  const wbr = wf.writebackRunRead(path, params as Record<string, string | number | boolean>);
+  if (wbr !== undefined) return wbr as T;
   const ms = migrationScenariosRead(path, params);
   if (ms !== NONE_MIGRATION_SCENARIOS) return ms as T;
   const req = requestsRead(path, params);

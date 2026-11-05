@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { load } from "js-yaml";
 import { beforeAll, describe, expect, it } from "vitest";
 import { fixtureResponse, fixtureWrite, resetWorkFixture } from "./index";
+import { writebackPauseFixture } from "./work-fixture";
 import { LIBRARY } from "./library";
 import type { Landscape, Receipt, RuleRow } from "../types";
 
@@ -170,12 +171,26 @@ describe("the reconciliation pack fixture answers in the API's shape", () => {
 
 describe("the live write-back fixtures answer in the API's shapes", () => {
   const post = (route: string) => api.paths[route]?.post?.responses?.["200"]?.content?.["application/json"]?.schema as Schema;
-  it("POST /writeback/batches/{id}/check and /send", () => {
+  it("POST /writeback/batches/{id}/check, /send and the run routes", () => {
     resetWorkFixture();
-    const check = fixtureWrite("POST", "/writeback/batches/B-236/check", undefined, {});
-    expect(validate(post("/api/v1/writeback/batches/{batch_id}/check"), JSON.parse(JSON.stringify(check)))).toEqual([]);
-    const send = fixtureWrite("POST", "/writeback/batches/B-236/send", undefined, {});
-    expect(validate(post("/api/v1/writeback/batches/{batch_id}/send"), JSON.parse(JSON.stringify(send)))).toEqual([]);
+    const ok = (route: string, method: "get" | "post", body: unknown) => {
+      const schema = (api.paths[route] as Record<string, { responses?: Record<string, { content?: Record<string, { schema?: Schema }> }> }>)?.[method]?.responses?.["200"]?.content?.["application/json"]?.schema as Schema;
+      expect(schema, route).toBeDefined();
+      expect(validate(schema, JSON.parse(JSON.stringify(body))), route).toEqual([]);
+    };
+    const base = "/api/v1/writeback/batches/{batch_id}";
+    ok(`${base}/check`, "post", fixtureWrite("POST", "/writeback/batches/B-236/check", undefined, {}));
+    ok(`${base}/send`, "post", fixtureWrite("POST", "/writeback/batches/B-236/send", undefined, {}));
+    // each read of the run is one worker step: queued, running, ended with a refused record
+    ok(`${base}/run`, "get", fixtureResponse("/writeback/batches/B-236/run", {}));
+    ok(`${base}/run`, "get", fixtureResponse("/writeback/batches/B-236/run", {}));
+    ok(`${base}/run/records`, "get", fixtureResponse("/writeback/batches/B-236/run/records", {}));
+    const page = fixtureResponse<{ items: unknown[] }>("/writeback/batches/B-236/run/records", {});
+    expect(page.items.length).toBeGreaterThan(0);
+    ok(`${base}/run/retry-failed`, "post", fixtureWrite("POST", "/writeback/batches/B-236/run/retry-failed", { include_needs_check: false }, {}));
+    ok(`${base}/run/cancel`, "post", fixtureWrite("POST", "/writeback/batches/B-236/run/cancel", undefined, {}));
+    writebackPauseFixture("B-236", "SAP could not be reached 3 times in a row.");
+    ok(`${base}/run/resume`, "post", fixtureWrite("POST", "/writeback/batches/B-236/run/resume", undefined, {}));
     resetWorkFixture();
   });
 });

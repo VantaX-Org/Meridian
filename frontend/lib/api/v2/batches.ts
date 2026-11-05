@@ -49,19 +49,6 @@ export interface SapMessage {
   message: string;
 }
 
-/** One record sent: the simulation, the call and the commit, with SAP's RETURN messages. */
-export interface WritebackRecord {
-  record_key: string;
-  bapis: string[];
-  fields: string[];
-  simulated: boolean;
-  simulate_messages: SapMessage[];
-  applied: boolean;
-  committed: boolean;
-  messages: SapMessage[];
-  error: string | null;
-}
-
 /** Check with SAP: nothing is sent. */
 export interface BatchWritebackCheck {
   batch_id: string;
@@ -73,22 +60,79 @@ export interface BatchWritebackCheck {
   errors: string[];
 }
 
-/** Send to SAP: what SAP committed, refused, and what stays for the export. */
-export interface BatchWritebackSend {
-  batch_id: string;
-  status: "completed" | "completed_with_errors";
-  sent: number;
+export type RunStatus = "queued" | "running" | "paused" | "cancelling" | "completed" | "completed_with_errors" | "cancelled";
+export type RunRecordState = "pending" | "sending" | "committed" | "failed" | "needs_check" | "export_only";
+export const OPEN_RUN: readonly RunStatus[] = ["queued", "running", "paused", "cancelling"];
+
+export interface RunCounts {
+  pending: number;
+  sending: number;
+  committed: number;
   failed: number;
+  needs_check: number;
   export_only: number;
+}
+
+/** The send of a batch to SAP: a worker sends it in chunks and this is its progress. */
+export interface WritebackRun {
+  id: string;
+  batch_id: string;
+  status: RunStatus;
+  /** Why a paused run stopped, in a sentence. */
+  pause_reason: string | null;
+  /** Records the run sends. */
+  records: number;
+  counts: RunCounts;
+  export_only_fields: number;
   errors: string[];
-  fields: WritebackField[];
-  records: WritebackRecord[];
+  /** The worker stopped reporting; Resume takes the run over. */
+  stale: boolean;
+  requested_label: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+/** A message of SAP's RETURN table. */
+export interface SapMessage {
+  type: string;
+  id: string;
+  number: string;
+  message: string;
+}
+
+export interface RunRecord {
+  record_key: string;
+  description: string | null;
+  module: string;
+  state: RunRecordState;
+  fields: string[];
+  error: string | null;
+  messages: SapMessage[];
+  attempts: number;
+}
+
+export interface RunRecordsPage {
+  items: RunRecord[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 /** POST /writeback/batches/{id}/check (apply): per field, BAPI or export and why. */
 export const checkBatchWriteback = (id: string): Promise<BatchWritebackCheck> => v2Send("POST", `/writeback/batches/${enc(id)}/check`);
-/** POST /writeback/batches/{id}/send (approve, never the batch creator, only with live write-back on). */
-export const sendBatchWriteback = (id: string): Promise<BatchWritebackSend> => v2Send("POST", `/writeback/batches/${enc(id)}/send`);
+/** POST /writeback/batches/{id}/send (approve, never the batch creator, only with live write-back on): queues the run and returns it; a send while a run is open returns that run. */
+export const sendBatchWriteback = (id: string): Promise<WritebackRun> => v2Send("POST", `/writeback/batches/${enc(id)}/send`);
+/** GET /writeback/batches/{id}/run: the latest run, 404 when the batch was never sent. */
+export const getBatchRun = (id: string): Promise<WritebackRun> => v2Get(`/writeback/batches/${enc(id)}/run`);
+/** GET .../run/records: records of the latest run, failed and needs_check first unless a state is given. */
+export const getBatchRunRecords = (id: string, state?: RunRecordState, limit = 50, offset = 0): Promise<RunRecordsPage> => v2Get(`/writeback/batches/${enc(id)}/run/records`, { state, limit, offset });
+/** POST .../run/resume (approve, never the batch creator): continue a paused run or take over a stalled one. */
+export const resumeBatchRun = (id: string): Promise<WritebackRun> => v2Send("POST", `/writeback/batches/${enc(id)}/run/resume`);
+/** POST .../run/cancel (approve): stop after the record in flight. */
+export const cancelBatchRun = (id: string): Promise<WritebackRun> => v2Send("POST", `/writeback/batches/${enc(id)}/run/cancel`);
+/** POST .../run/retry-failed (approve, never the batch creator); needs_check records only when someone has looked in SAP. */
+export const retryFailedBatchRun = (id: string, includeNeedsCheck = false): Promise<WritebackRun> => v2Send("POST", `/writeback/batches/${enc(id)}/run/retry-failed`, { include_needs_check: includeNeedsCheck });
 
 export interface SendResult {
   /** The load file handed over. */
