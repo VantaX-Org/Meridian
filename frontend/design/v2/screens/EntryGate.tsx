@@ -3,13 +3,16 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
-import { getFirewallSummary, validateRecords, type FirewallFailure, type FirewallModuleRow, type FirewallSuggestion, type FirewallSummary } from "@/lib/api/v2/dq-firewall";
+import { getFirewallSummary, validateRecords, type FirewallFailure, type FirewallModuleRow, type FirewallSuggestion, type FirewallSummary, type StewardRequest } from "@/lib/api/v2/dq-firewall";
 import { useFixture } from "@/lib/api/v2/fixture";
+import { formatDate } from "@/lib/format";
+import { useOpenItem } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, TrendChart, niceTicks, type TrendPoint } from "../charts";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
+import { objectWord, statusWord } from "../inspector/request";
+import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { DuplicateResults } from "./EntryDuplicates";
 import { Panel } from "./Mining";
@@ -79,18 +82,97 @@ function Suggested({ s }: { s?: FirewallSuggestion | null }) {
   );
 }
 
+/** Why the gate opened no request, in words. */
+export function notOpenedWord(r: StewardRequest["reason"]): string {
+  switch (r) {
+    case "module_has_no_change_request": return t("This object has no change request, so nothing was opened. Hand the record to a steward another way.");
+    case "over_limit": return t("Too many records in one call. Only the first 25 flagged records open a request.");
+    case "not_accepted": return t("The change request refused this record, so nothing was opened.");
+    default: return t("The request could not be opened. The verdict above still stands.");
+  }
+}
+
+/** The request each flagged record opened, or why none was. */
+function StewardResults({ records }: { records: { index: number; steward_request?: StewardRequest | null }[] }) {
+  const { hrefFor } = useOpenItem();
+  const rows = records.filter((r) => r.steward_request);
+  if (rows.length === 0) return null;
+  return (
+    <ScrollFrame label={t("Requests opened for flagged records table, scrollable")}>
+      <table className="m2-tbl m2-cards" data-testid="entry-gate-steward">
+        <thead>
+          <tr>
+            <th scope="col">{t("Record")}</th>
+            <th scope="col">{t("Request")}</th>
+            <th scope="col">{t("Status")}</th>
+            <th scope="col">{t("Note")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ index, steward_request: sr }) => (
+            <tr key={index}>
+              <td data-label={t("Record")} className="m2-num">{index + 1}</td>
+              <td data-label={t("Request")}>
+                {sr?.request_id ? <V2Link href={hrefFor({ kind: "request", id: sr.request_id })} className="m2-rowlink">{t("Open the request")}</V2Link> : <Dash />}
+              </td>
+              <td data-label={t("Status")}>{sr?.status ? statusWord(sr.status) : <Dash />}</td>
+              <td data-label={t("Note")}>{sr?.request_id ? (sr.existing ? t("Already open for this record. No second request was added.") : t("Opened and sent to the approval workflow.")) : notOpenedWord(sr?.reason)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </ScrollFrame>
+  );
+}
+
+/** The latest requests the gate opened, each linking into the change request view. */
+function GateRequests({ rows }: { rows: FirewallSummary["requests"] }) {
+  const { hrefFor } = useOpenItem();
+  return (
+    <Panel title={t("Requests opened from the gate")} meta={t("A flagged record can be sent to a steward as a create request. The latest ten are listed.")} testId="entry-gate-requests">
+      {rows.length === 0 ? <EmptyFrame>{t("The gate has not opened a request yet.")}</EmptyFrame> : (
+        <ScrollFrame label={t("Requests opened from the gate table, scrollable")}>
+          <table className="m2-tbl m2-cards">
+            <thead>
+              <tr>
+                <th scope="col">{t("Request")}</th>
+                <th scope="col">{t("Object")}</th>
+                <th scope="col">{t("Status")}</th>
+                <th scope="col">{t("Opened")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} data-testid={`entry-gate-request-${r.id}`}>
+                  <th scope="row" className="m2-card-lead">
+                    <V2Link href={hrefFor({ kind: "request", id: r.id })} className="m2-rowlink">{r.title || t("Untitled request")}</V2Link>
+                  </th>
+                  <td data-label={t("Object")}>{objectWord(r.object)}</td>
+                  <td data-label={t("Status")}>{statusWord(r.status)}</td>
+                  <td data-label={t("Opened")}>{formatDate(r.created_at, "date")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ScrollFrame>
+      )}
+    </Panel>
+  );
+}
+
 function TryPanel({ modules }: { modules: readonly string[] }) {
   const qc = useQueryClient();
   const [obj, setObj] = useState<string>(modules[0] ?? "material_master");
   const [text, setText] = useState(SAMPLE);
   const [suggest, setSuggest] = useState(true);
   const [duplicates, setDuplicates] = useState(false);
+  const [route, setRoute] = useState(false);
   const [bad, setBad] = useState<string | null>(null);
   const run = useMutation({
     mutationFn: async () => {
       const parsed: unknown = JSON.parse(text);
       if (!Array.isArray(parsed)) throw new SyntaxError("array");
-      return validateRecords(obj, parsed as Record<string, string>[], { suggest, duplicates });
+      return validateRecords(obj, parsed as Record<string, string>[], { suggest, duplicates, route_to_steward: route });
     },
     onMutate: () => setBad(null),
     onError: (e) => { if (e instanceof SyntaxError) setBad(t("The records must be a JSON list of objects, each with TABLE.FIELD values.")); },
@@ -117,6 +199,9 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
         </label>
         <label>
           <input type="checkbox" checked={duplicates} onChange={(e) => setDuplicates(e.target.checked)} data-testid="entry-gate-duplicates" /> {t("Look for duplicates among existing records")}
+        </label>
+        <label>
+          <input type="checkbox" checked={route} onChange={(e) => setRoute(e.target.checked)} data-testid="entry-gate-route" /> {t("Send blocked or warned records to a steward as a change request")}
         </label>
       </div>
       <button type="button" className="m2-btn m2-strong" disabled={run.isPending} onClick={() => run.mutate()} data-testid="entry-gate-run">{t("Check records")}</button>
@@ -156,6 +241,7 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
             </ScrollFrame>
           )}
           <DuplicateResults res={res} />
+          <StewardResults records={res.records} />
         </>
       ) : null}
     </Panel>
@@ -276,6 +362,8 @@ export function EntryGate() {
           </ScrollFrame>
         </Panel>
       </div>
+
+      <GateRequests rows={s.requests ?? []} />
 
       <TryPanel modules={tryModules.length ? tryModules : LICENSED_MODULES} />
     </CcPage>

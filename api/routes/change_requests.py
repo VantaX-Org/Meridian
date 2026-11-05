@@ -213,6 +213,14 @@ def _queue(tenant: Tenant, cr: dict) -> None:
 async def create_request(body: RequestCreate, request: Request, db: AsyncSession = Depends(get_db),
                          tenant: Tenant = Depends(get_tenant)) -> RequestOut:
     """A draft request. The proposal is checked for fields SAP has; the rules run at validate and submit."""
+    cr = await draft_request(body, request, db, tenant)
+    await db.commit()
+    return RequestOut(**cr)
+
+
+async def draft_request(body: RequestCreate, request: Request, db: AsyncSession, tenant: Tenant,
+                        entry_fingerprint: Optional[str] = None) -> dict:
+    """create_request without the commit (the entry gate opens its request inside a savepoint)."""
     uid = _uid(request)
     await _rls(db, tenant)
     payload, defaulted = crs.normalise(body.payload), []
@@ -224,20 +232,18 @@ async def create_request(body: RequestCreate, request: Request, db: AsyncSession
     await _system_ok(db, tenant, body.target_system_id)
     cid = (await db.execute(text(
         "INSERT INTO change_requests (tenant_id, kind, object, target_system_id, object_key, title, payload, "
-        "record_keys, requester_id, requester_label) VALUES (:t, :k, :o, CAST(:s AS uuid), :key, :title, "
-        "CAST(:p AS jsonb), CAST(:rk AS jsonb), CAST(:u AS uuid), :l) RETURNING id::text"),
+        "record_keys, requester_id, requester_label, entry_fingerprint) VALUES (:t, :k, :o, CAST(:s AS uuid), :key, "
+        ":title, CAST(:p AS jsonb), CAST(:rk AS jsonb), CAST(:u AS uuid), :l, :fp) RETURNING id::text"),
         {"t": str(tenant.id), "k": body.kind, "o": body.object,
          "s": str(body.target_system_id) if body.target_system_id else None, "key": body.object_key,
          "title": body.title, "p": json.dumps(payload, default=str),
          "rk": json.dumps(list(dict.fromkeys(keys))) if keys else None, "u": uid,
-         "l": current_user_label()})).scalar()
+         "l": current_user_label(), "fp": entry_fingerprint})).scalar()
     await db.run_sync(lambda s: crs.record_changes(s, str(tenant.id), cid, {}, payload, uid, current_user_label(),
                                                    defaulted, derived))
     await db.run_sync(lambda s: workflow.event(s, str(tenant.id), crs.KIND, cid, "drafted", to_status="draft",
                                                actor_id=uid, actor_label=current_user_label()))
-    cr = await _load(db, tenant, uuid.UUID(cid))
-    await db.commit()
-    return RequestOut(**cr)
+    return await _load(db, tenant, uuid.UUID(cid))
 
 
 @router.patch("/{request_id}", response_model=RequestOut, dependencies=[Depends(require_permission("mdm.write"))])
@@ -307,6 +313,17 @@ async def validate_request(request_id: uuid.UUID, request: Request, db: AsyncSes
 async def submit_request(request_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
                          tenant: Tenant = Depends(get_tenant)) -> RequestDetail:
     """Validate once more and hand the request to the tenant's change request workflow."""
+    try:
+        await start_approval(request_id, request, db, tenant)
+    except HTTPException:
+        await db.rollback()
+        raise
+    await db.commit()
+    return await get_request(request_id, db, tenant)
+
+
+async def start_approval(request_id: uuid.UUID, request: Request, db: AsyncSession, tenant: Tenant) -> None:
+    """submit_request without the commit and without reading the result back."""
     uid = _uid(request)
     cr = await _load(db, tenant, request_id, lock=True)
     _own(cr, uid)
@@ -325,10 +342,7 @@ async def submit_request(request_id: uuid.UUID, request: Request, db: AsyncSessi
     try:
         await db.run_sync(go)
     except (crs.RequestError, workflow.WorkflowError) as e:
-        await db.rollback()
         raise _err(e)
-    await db.commit()
-    return await get_request(request_id, db, tenant)
 
 
 async def decide(db: AsyncSession, tenant: Tenant, request: Request, cr_id: str, task_id: Optional[str],

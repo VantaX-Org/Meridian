@@ -7768,6 +7768,19 @@ export const en = {
   "Rows extracted": "Rows extracted",
   "Earlier syncs used": "Earlier syncs used",
   "Analysis pending": "Analysis pending",
+  "This object has no change request, so nothing was opened. Hand the record to a steward another way.": "This object has no change request, so nothing was opened. Hand the record to a steward another way.",
+  "Too many records in one call. Only the first 25 flagged records open a request.": "Too many records in one call. Only the first 25 flagged records open a request.",
+  "The change request refused this record, so nothing was opened.": "The change request refused this record, so nothing was opened.",
+  "The request could not be opened. The verdict above still stands.": "The request could not be opened. The verdict above still stands.",
+  "Requests opened for flagged records table, scrollable": "Requests opened for flagged records table, scrollable",
+  "Open the request": "Open the request",
+  "Already open for this record. No second request was added.": "Already open for this record. No second request was added.",
+  "Opened and sent to the approval workflow.": "Opened and sent to the approval workflow.",
+  "Requests opened from the gate": "Requests opened from the gate",
+  "A flagged record can be sent to a steward as a create request. The latest ten are listed.": "A flagged record can be sent to a steward as a create request. The latest ten are listed.",
+  "The gate has not opened a request yet.": "The gate has not opened a request yet.",
+  "Requests opened from the gate table, scrollable": "Requests opened from the gate table, scrollable",
+  "Send blocked or warned records to a steward as a change request": "Send blocked or warned records to a steward as a change request",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
