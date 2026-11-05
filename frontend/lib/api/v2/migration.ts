@@ -233,6 +233,10 @@ export interface Reconciliation {
     basis?: "snapshot" | "rebuilt"; snapshot_export_id?: string; snapshot_exported_at?: string; snapshot_skipped?: string };
   tables: ReconTable[];
   scores: ReconScores[];
+  /** Started by a finished target analysis, not by a person. */
+  automatic: boolean;
+  /** The reconciliation before this one, counts only. Null when there is none. */
+  previous: { created_at: string; summary: Reconciliation["summary"] } | null;
 }
 
 export interface ReconRecord {

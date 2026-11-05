@@ -7826,6 +7826,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Load file record": "Datensatz der Ladedatei",
   "Only the first {n} records of each table and kind are kept; the counts above are complete.": "Je Tabelle und Art werden nur die ersten {n} Datensätze gespeichert; die obigen Anzahlen sind vollständig.",
   "Withheld": "Zurückgehalten",
+  "Started automatically when the target system was analysed again.": "Automatisch gestartet, als das Zielsystem erneut analysiert wurde.",
+  "Since the comparison of {date}: {x} missing ({dx}), {w} fields differ ({dw}), {f} found ({df}).": "Seit dem Vergleich vom {date}: {x} fehlend ({dx}), {w} abweichende Felder ({dw}), {f} gefunden ({df}).",
   "Compared against the files exported on {date}.": "Verglichen mit den am {date} exportierten Dateien.",
   "Rebuilt from the current field mappings. No export snapshot was kept for this run, so a mapping changed after the load shows as a difference.": "Aus den aktuellen Feldzuordnungen neu aufgebaut. Für diesen Lauf wurde kein Export-Snapshot aufbewahrt, daher erscheint eine nach dem Laden geänderte Zuordnung als Abweichung.",
   "The export snapshot could not be used, so the expected side was rebuilt from the current field mappings.": "Der Export-Snapshot konnte nicht verwendet werden, daher wurde die erwartete Seite aus den aktuellen Feldzuordnungen neu aufgebaut.",

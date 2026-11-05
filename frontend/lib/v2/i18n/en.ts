@@ -7825,6 +7825,8 @@ export const en = {
   "Load file record": "Load file record",
   "Only the first {n} records of each table and kind are kept; the counts above are complete.": "Only the first {n} records of each table and kind are kept; the counts above are complete.",
   "Withheld": "Withheld",
+  "Started automatically when the target system was analysed again.": "Started automatically when the target system was analysed again.",
+  "Since the comparison of {date}: {x} missing ({dx}), {w} fields differ ({dw}), {f} found ({df}).": "Since the comparison of {date}: {x} missing ({dx}), {w} fields differ ({dw}), {f} found ({df}).",
   "Compared against the files exported on {date}.": "Compared against the files exported on {date}.",
   "Rebuilt from the current field mappings. No export snapshot was kept for this run, so a mapping changed after the load shows as a difference.": "Rebuilt from the current field mappings. No export snapshot was kept for this run, so a mapping changed after the load shows as a difference.",
   "The export snapshot could not be used, so the expected side was rebuilt from the current field mappings.": "The export snapshot could not be used, so the expected side was rebuilt from the current field mappings.",
