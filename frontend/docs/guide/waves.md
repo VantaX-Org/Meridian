@@ -53,6 +53,16 @@ The Migration analysis page, under Migration in the map, shows how ready the sou
 
 Every gap comes from the target data dictionary or configuration; a gap that is not grounded in either says so. Nothing is estimated: an analysis that has not finished shows a dash.
 
+## Workbook from the new system
+
+When SuccessFactors is being migrated, the new system's workbook sets the load format. The Workbook from the new system panel on the Migration analysis page fills that workbook from a finished SuccessFactors run. It appears only with the export permission and a SuccessFactors system.
+
+1. **Choose the run and workbook.** Pick the run, then choose the `.xlsx` workbook, up to 25 MB.
+2. **Check what fits.** **Check the workbook** reads the workbook and stores nothing. It shows the rows ready, the rows held back, how many columns each sheet can fill, and any required column with no data in this run. Open **Rows held back** to see each record, column and reason.
+3. **Export the data.** **Export as Excel** gives one workbook; **Export as CSV files** gives a zip. Ready rows are in the workbook's own columns. Held rows are on a Held back tab. The export is recorded in the audit log.
+
+A row is held back when a required value is empty, a value is longer than the workbook allows, a date or yes or no value is not valid, or a value is not in the workbook's list. A column with no source in the run stays empty and does not hold a row back, so check **Required columns with no data** before loading: the new system refuses those rows until the columns are filled.
+
 ## S/4HANA readiness
 
 The S/4HANA readiness page, under Migration in the map, groups the conversion-readiness rules by SAP simplification area, such as Business Partner / CVI, Material master or the Universal Journal, over every object at its latest run. The banner says whether the landscape is ready to convert, with the areas ready, the blocking and warning rules failing and the records to fix beside it. Under it:

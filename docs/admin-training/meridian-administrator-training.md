@@ -475,6 +475,21 @@ every write-back back.
 
 Live write-back has not yet been run against a live SAP system by the vendor; run it first on a quality system.
 
+### SuccessFactors target workbook
+
+For a SuccessFactors migration, the new system's workbook is the input. On the Migration analysis page, a user with
+the export permission picks a finished SuccessFactors run, uploads the workbook and runs **Check the workbook**, then
+exports Excel or CSV in the workbook's own columns. The workbook is read in memory and never stored. Each export is
+recorded in the audit log as `migration.target_workbook.export`.
+
+Before a real load, confirm three things with the target system's team:
+
+- Key columns. Definition sheets leave out person and user ids, so Meridian adds them under source property names
+  (`personIdExternal`, `userId`). The import template may spell them differently.
+- Required columns with no data. Meridian fills only what the run extracted. It leaves other columns empty and does
+  not hold those rows back, so the check lists them and the new system refuses those rows until they are filled.
+- Lists of values. A workbook with no list values cannot check those columns.
+
 ### Checks
 
 - With write-back off, an approval answers that live write-back is off on this deployment and points to the export.
