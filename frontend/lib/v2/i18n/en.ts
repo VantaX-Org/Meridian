@@ -8198,6 +8198,17 @@ export const en = {
   "The item opens where you can act on it.": "The item opens where you can act on it.",
   "Opening an item changes nothing. Start triage walks the same list one item at a time.": "Opening an item changes nothing. Start triage walks the same list one item at a time.",
   "Breakdown by kind": "Breakdown by kind",
+  "Request steps": "Request steps",
+  "Start a request": "Start a request",
+  "Choose New request and fill in the record.": "Choose New request and fill in the record.",
+  "Submit it": "Submit it",
+  "A saved draft does nothing until you submit it.": "A saved draft does nothing until you submit it.",
+  "Approvers decide": "Approvers decide",
+  "Each approval step has a due time.": "Each approval step has a due time.",
+  "It reaches SAP": "It reaches SAP",
+  "The count shows requests that did not reach SAP.": "The count shows requests that did not reach SAP.",
+  "Submitting sends the request for approval. Nothing reaches SAP until every approval step is done.": "Submitting sends the request for approval. Nothing reaches SAP until every approval step is done.",
+  "Charts, entry defaults and derivation rules": "Charts, entry defaults and derivation rules",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
