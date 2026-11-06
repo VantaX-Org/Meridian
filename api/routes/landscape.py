@@ -63,6 +63,7 @@ class LandscapeSystemOut(BaseModel):
     version: Optional[str] = None              # sap_systems.sap_release
     client: Optional[str] = None
     health_status: Optional[str] = None
+    is_active: bool = True                     # False: retired, kept on the landscape for the runs it still holds
     last_extracted_at: Optional[datetime] = None
     records: Optional[int] = None              # rows of the system's latest completed extraction, summed over profiles
     state: SystemState
@@ -199,8 +200,9 @@ _CELL_RUNS_SQL = f"""
            AND av.metadata->>'archived' IS DISTINCT FROM 'true'
     ) x ORDER BY sid, module, run_at DESC, run_id DESC"""
 
-_SYSTEMS_SQL = """
-    SELECT s.id::text AS id, s.name, s.system_type, s.sap_release, s.client, s.health_status,
+# Active systems, plus inactive ones that still hold finished runs: their results stay on the landscape, labelled.
+_SYSTEMS_SQL = f"""
+    SELECT s.id::text AS id, s.name, s.system_type, s.sap_release, s.client, s.health_status, s.is_active,
            (SELECT max(sr.completed_at) FROM sync_runs sr JOIN sync_profiles sp ON sp.id = sr.profile_id
              WHERE sp.system_id = s.id AND sp.tenant_id = s.tenant_id AND sr.tenant_id = s.tenant_id
                AND sr.status = 'completed') AS last_extracted_at,
@@ -209,7 +211,15 @@ _SYSTEMS_SQL = """
                                    WHERE sr.profile_id = sp.id AND sr.tenant_id = s.tenant_id AND sr.status = 'completed'
                                    ORDER BY sr.completed_at DESC LIMIT 1) x
              WHERE sp.system_id = s.id AND sp.tenant_id = s.tenant_id) AS records
-      FROM sap_systems s WHERE s.tenant_id = CAST(:t AS uuid) AND s.is_active ORDER BY s.name, s.id"""
+      FROM sap_systems s
+     WHERE s.tenant_id = CAST(:t AS uuid)
+       AND (s.is_active OR EXISTS (
+            SELECT 1 FROM analysis_versions av
+             WHERE av.tenant_id = s.tenant_id AND av.metadata->>'system_id' = s.id::text
+               AND {finished_sql('av.status')}
+               AND av.metadata->>'purpose' IS DISTINCT FROM 'process_discovery'
+               AND av.metadata->>'archived' IS DISTINCT FROM 'true'))
+     ORDER BY s.name, s.id"""
 
 
 def _verdict(score: Optional[float], mod_summary: dict, thresholds: dict) -> Optional[str]:
@@ -342,7 +352,8 @@ async def _landscape(scope: str, run: uuid.UUID | None, db: AsyncSession, tenant
         state = ("analysed" if latest or by_system.get(s["id"]) else "extracted" if s["last_extracted_at"] else "not_extracted")
         out_systems.append({
             "id": s["id"], "name": s["name"], "system_type": s["system_type"], "version": s["sap_release"],
-            "client": s["client"], "health_status": s["health_status"], "last_extracted_at": s["last_extracted_at"],
+            "client": s["client"], "health_status": s["health_status"], "is_active": s["is_active"],
+            "last_extracted_at": s["last_extracted_at"],
             "records": int(s["records"]) if s["records"] is not None else None,
             "state": state, "latest_run_id": latest,
             "sign_in_failed": s["health_status"] == "auth_failed" or s["id"] in refused})
@@ -362,5 +373,5 @@ async def _landscape(scope: str, run: uuid.UUID | None, db: AsyncSession, tenant
         "counts": {"go": sum(1 for c in cells if c["verdict"] == "go"),
                    "at_risk": sum(1 for c in cells if c["verdict"] == "at-risk"),
                    "no_go": sum(1 for c in cells if c["verdict"] == "no-go")},
-        "basis_next_step": basis_next_step(out_systems),
+        "basis_next_step": basis_next_step([s for s in out_systems if s["is_active"]]),
     }

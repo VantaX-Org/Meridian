@@ -187,7 +187,7 @@ function SystemBody({ system, ext }: { system: LandscapeSystem; ext: SAPSystemEx
         <Fact label={t("Type")}>{systemTypeText(system.system_type)}</Fact>
         <Fact label={t("Version")}>{system.version ?? "—"}</Fact>
         <Fact label={t("Client")}>{system.client ?? "—"}</Fact>
-        <Fact label={t("State")}>{STATE_WORD[system.state]}</Fact>
+        <Fact label={t("State")}>{system.is_active === false ? t("Inactive") : STATE_WORD[system.state]}</Fact>
         <Fact label={t("Last extraction")}>{system.last_extracted_at ? formatDate(system.last_extracted_at, "datetime") : t("Never")}</Fact>
         <Fact label={t("Records")}>{int(system.records)}</Fact>
         <Fact label={t("Configuration")}>

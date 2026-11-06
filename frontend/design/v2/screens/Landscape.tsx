@@ -206,7 +206,7 @@ function SystemHead({ system }: { system: LandscapeSystem }) {
   const link = (label: string) => <V2Link href={hrefFor({ kind: "system", id: system.id })}>{label}</V2Link>;
   return (
     <>
-      <div className="m2-hn">{system.name}</div>
+      <div className="m2-hn">{system.name}{system.is_active === false ? ` (${t("Inactive")})` : ""}</div>
       <div className="m2-hs">{[system.version, system.client ? t("client {client}", { client: system.client }) : null].filter(Boolean).join(", ") || " "}</div>
       <div className="m2-hs">
         {system.state === "not_extracted" ? (
@@ -504,7 +504,7 @@ function NextWork({ landscape }: { landscape: Landscape }) {
 
 function BasisTasks({ landscape }: { landscape: Landscape }) {
   const { hrefFor } = useOpenItem();
-  const tasks = landscape.systems.map((s) => ({
+  const tasks = landscape.systems.filter((s) => s.is_active !== false).map((s) => ({
     s,
     task: s.state === "not_extracted" ? t("Extract {name}", { name: s.name }) : s.state === "extracted" ? t("Run analysis on {name}", { name: s.name }) : t("Extract {name} again", { name: s.name }),
     when: s.state === "not_extracted" ? t("Never run") : s.state === "extracted" ? t("Extracted {last_extracted_at}", { last_extracted_at: formatDate(s.last_extracted_at, "datetime") }) : t("Last extraction {last_extracted_at}", { last_extracted_at: formatDate(s.last_extracted_at, "datetime") }),
