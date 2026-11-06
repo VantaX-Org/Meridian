@@ -73,7 +73,7 @@ export function MappingsSection() {
       actions={
         write && selfService ? (
           <>
-            <button type="button" className="m2-btn" disabled={adding} onClick={() => setAdding(true)}>
+            <button type="button" className="m2-btn m2-next" disabled={adding} onClick={() => setAdding(true)}>
               {t("Add a mapping")}
             </button>
             <button type="button" className="m2-btn" disabled={custom === 0 || pending !== null} onClick={() => setResetting(true)}>
@@ -198,7 +198,7 @@ function NewMapping({ objects, initial, onDone }: { objects: string[]; initial: 
       <div className="m2-adm-acts">
         <button
           type="button"
-          className="m2-btn m2-strong"
+          className="m2-btn m2-next"
           disabled={!ready || pending !== null}
           onClick={() =>
             void run("add", async () => {
@@ -302,7 +302,7 @@ export function ReferenceSection() {
               <div className="m2-adm-acts">
                 <button
                   type="button"
-                  className="m2-btn"
+                  className="m2-btn m2-next"
                   disabled={!csv.trim() || !id || pending !== null}
                   onClick={() =>
                     void run("upload", async () => {

@@ -8,6 +8,7 @@
  * POST /versions/{id}/analyse, GET /jobs, GET /jobs/{id}, POST /jobs/{id}/retry, GET /systems, POST /systems/{id}/test,
  * GET and POST /connectivity/config-load, GET /systems/{id}/objects, /versions, /profiles, POST /systems/{id}/downloads.
  */
+import { scoreRunsOnly } from "./timeline-scope";
 import apiClient from "@/lib/api/client";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getReportDownloadUrl } from "@/lib/api/reports";
@@ -148,7 +149,7 @@ export interface VersionCompare {
 }
 
 export function getTimeline(systemId: string | null, limit = 8, module?: string): Promise<Timeline> {
-  return v2Get<Timeline>("/runs/timeline", { system_id: systemId ?? undefined, module, limit });
+  return v2Get<Timeline>("/runs/timeline", { system_id: systemId ?? undefined, module, limit }).then(scoreRunsOnly);
 }
 
 export function getCompareSummary(a: string, b: string): Promise<CompareSummary> {

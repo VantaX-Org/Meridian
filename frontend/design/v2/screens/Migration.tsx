@@ -1,4 +1,6 @@
 "use client";
+import { Disclose, Guide } from "./Guide";
+import { PairedQuality } from "./PairedQuality";
 import "../runs.css";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -154,6 +156,15 @@ export function Migration() {
   ) : undefined;
   return (
     <CcPage title={t("Migration")}>
+      <Guide
+        steps={{ labels: [t("Start an analysis"), t("Fix what would not load"), t("Load into the target"), t("Check the result")], current: !latest ? 0 : (latest.records_blocked ?? 0) > 0 ? 1 : 2 }}
+        shows={t("Each analysis checks whether your records would load into the target system, and compares the quality of every object before and after.")}
+        means={[
+          [t("Readiness"), t("A score from 0 to 100 for how ready the records are to load.")],
+          [t("Records that would not load"), t("Records the target system would reject, so they need fixing first.")],
+          [t("Source, projected and actual"), t("Quality in the old system, the score the load should reach, and the score measured in the target after loading.")],
+        ]}
+      />
       {latest ? (
         <CcBanner
           eyebrow={t("Migration analysis of {date}", { date: formatDate(latest.completed_at ?? latest.created_at, "date") })}
@@ -172,6 +183,7 @@ export function Migration() {
       ) : (
         <CcBanner eyebrow={t("Migration analysis")} headline={t("No analysis has finished yet")} why={t("Start one to see which records would not load into the target system.")} action={startBtn} testId="mig-banner" label={t("Migration analysis")} />
       )}
+      {starting ? <p className="m2-meta">{t("Starting an analysis only checks your records. The page updates by itself while it runs.")}</p> : null}
       {starting ? <StartForm onDone={() => setStarting(false)} /> : null}
       {removing ? (
         <Confirm
@@ -184,6 +196,8 @@ export function Migration() {
           onConfirm={() => remove.mutate(removing.id)}
         />
       ) : null}
+      <Disclose title={t("Quality in the source and in the target")} hint={t("Source quality, projected and actual target quality, and why they differ.")}><PairedQuality /></Disclose>
+      <Disclose title={t("All analyses")} hint={t("{n} analyses, newest first", { n: int(list.length) })} open={!latest}>
       <Panel title={t("Analyses")} meta={t("{n} analyses, newest first", { n: int(list.length) })} testId="mig-runs">
         {list.length === 0 ? <EmptyFrame>{t("No analysis has been started.")}</EmptyFrame> : (
           <Table title={t("Analyses")} head={[t("Started"), t("Objects"), t("Status")]}>
@@ -203,6 +217,7 @@ export function Migration() {
           </Table>
         )}
       </Panel>
+      </Disclose>
       {current && analysed(current) ? <RunDetail run={current} /> : null}
       <FieldMapPanel modules={current?.modules ?? []} />
     </CcPage>

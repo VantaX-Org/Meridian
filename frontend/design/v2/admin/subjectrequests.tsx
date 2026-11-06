@@ -201,7 +201,7 @@ export function SubjectRequestsSection() {
           </Fld>
         </div>
         <div className="m2-adm-acts">
-          <button type="button" className="m2-btn m2-strong" disabled={busy || !subj} onClick={search}>{t("Search")}</button>
+          <button type="button" className="m2-btn m2-next" disabled={busy || !subj} onClick={search}>{t("Search")}</button>
         </div>
         {error ? <Note tone="bad">{error}</Note> : null}
         {notice ? <p role="status">{notice}</p> : null}

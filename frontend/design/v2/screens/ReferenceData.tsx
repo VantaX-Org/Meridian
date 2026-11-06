@@ -16,6 +16,7 @@ import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, StackedBar, TrendChart, type StackPart } from "../charts";
 import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -266,6 +267,16 @@ export function ReferenceData() {
   const total = (k: keyof RefCoverage) => all.reduce((n, l) => n + l.coverage[k], 0);
   return (
     <CcPage title={title}>
+      <Guide
+        steps={{ labels: [t("Pick a code list"), t("Map every code to a target"), t("Get a second approval"), t("Use it in the migration")], current: listId ? 1 : 0 }}
+        shows={t("Lists the code lists extracted from the source system and the target each code maps to.")}
+        next={{ href: "/migration", label: t("Open the migration analysis") }}
+        means={[
+          [t("Same code on both sides"), t("Codes that keep the same value in source and target.")],
+          [t("Waiting for approval"), t("Mappings proposed and waiting for a second person.")],
+          [t("No target yet"), t("Codes with no target chosen, which block the migration of records that use them.")],
+        ]}
+      />
       <CcBanner
         testId="reference-data"
         label={title}

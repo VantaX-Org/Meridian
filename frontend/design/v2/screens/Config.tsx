@@ -11,6 +11,7 @@ import { labelText, moneyCompactText } from "@/lib/v2/labels";
 import { DASH, f1, int } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
+import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
 
@@ -114,6 +115,16 @@ export function Config() {
 
   return (
     <CcPage title={t("Configuration")}>
+      <Guide
+        shows={t("Reads how the SAP system is configured, which settings carry transactions and the health of each area.")}
+        next={{ href: "/s4", label: t("Open S/4HANA readiness") }}
+        why={t("Reading again asks SAP for its settings. Nothing in SAP is changed.")}
+        means={[
+          [t("Average health"), t("Each area starts at 100 and loses points for its findings; this is the average.")],
+          [t("Critical and high"), t("Findings to act on first.")],
+          [t("Settings in use"), t("The share of configured settings that carry at least one transaction.")],
+        ]}
+      />
       <CcBanner
         testId="config"
         label={t("Configuration")}
@@ -133,45 +144,6 @@ export function Config() {
           ) : null
         }
       />
-
-      <Panel title={t("Processes")} meta={t("Each step sized by the documents that reached it. The step with the most exceptions is marked; the days are the wait before the next step.")} testId="config-processes">
-        {processes.isPending ? <Skeleton width="100%" height={200} /> : processes.isError ? <Dash why={t("The processes could not be read.")} /> : (
-          <div className="m2-cf-flows">
-            {processes.data.processes.map((p) => <Flow key={p.process_id} p={p} />)}
-          </div>
-        )}
-      </Panel>
-
-      <div className="m2-cc-split">
-        <Panel title={t("Health by area")} meta={t("100 less 3 per critical, 2 per high, 1 per medium and half per low finding.")} testId="config-health">
-          {health.isError ? <Dash why={t("The health scores could not be read.")} /> : (
-            <CcHBars
-              label={t("Health by area")}
-              rows={[...scores].sort((a, b) => a.chs - b.chs).map((s) => ({
-                key: s.module,
-                label: <Area code={s.module} />,
-                value: s.chs,
-                text: t("{score}, {n} findings", { score: int(s.chs), n: int(s.critical_count + s.high_count + s.medium_count + s.low_count) }),
-                tone: s.critical_count + s.high_count > 0 ? "crit" : s.medium_count > 0 ? "warn" : "pass",
-              }))}
-            />
-          )}
-        </Panel>
-        <Panel title={t("Settings in use")} meta={t("The share of each area's configured values that carry at least one transaction.")} testId="config-licence">
-          {licence.isError ? <Dash why={t("The usage could not be read.")} /> : (
-            <CcHBars
-              label={t("Settings in use")}
-              rows={(licence.data?.modules ?? []).map((m) => ({
-                key: m.module,
-                label: <Area code={m.module} />,
-                value: m.utilisation_pct,
-                text: t("{pct}% of {n}, {txn} transactions", { pct: f1(m.utilisation_pct), n: int(m.total_config_elements), txn: int(m.total_transactions) }),
-                tone: m.status === "active" ? "pass" : m.status === "underutilised" ? "warn" : "crit",
-              }))}
-            />
-          )}
-        </Panel>
-      </div>
 
       <Panel title={t("Findings")} meta={t("{n} findings, worst first", { n: int(shown.length) })} testId="config-findings">
         {kinds.length > 1 ? (
@@ -221,6 +193,47 @@ export function Config() {
         )}
       </Panel>
 
+      <Disclose title={t("How the system is used")} hint={t("Processes, health by area and settings in use.")}>
+      <Panel title={t("Processes")} meta={t("Each step sized by the documents that reached it. The step with the most exceptions is marked; the days are the wait before the next step.")} testId="config-processes">
+        {processes.isPending ? <Skeleton width="100%" height={200} /> : processes.isError ? <Dash why={t("The processes could not be read.")} /> : (
+          <div className="m2-cf-flows">
+            {processes.data.processes.map((p) => <Flow key={p.process_id} p={p} />)}
+          </div>
+        )}
+      </Panel>
+
+      <div className="m2-cc-split">
+        <Panel title={t("Health by area")} meta={t("100 less 3 per critical, 2 per high, 1 per medium and half per low finding.")} testId="config-health">
+          {health.isError ? <Dash why={t("The health scores could not be read.")} /> : (
+            <CcHBars
+              label={t("Health by area")}
+              rows={[...scores].sort((a, b) => a.chs - b.chs).map((s) => ({
+                key: s.module,
+                label: <Area code={s.module} />,
+                value: s.chs,
+                text: t("{score}, {n} findings", { score: int(s.chs), n: int(s.critical_count + s.high_count + s.medium_count + s.low_count) }),
+                tone: s.critical_count + s.high_count > 0 ? "crit" : s.medium_count > 0 ? "warn" : "pass",
+              }))}
+            />
+          )}
+        </Panel>
+        <Panel title={t("Settings in use")} meta={t("The share of each area's configured values that carry at least one transaction.")} testId="config-licence">
+          {licence.isError ? <Dash why={t("The usage could not be read.")} /> : (
+            <CcHBars
+              label={t("Settings in use")}
+              rows={(licence.data?.modules ?? []).map((m) => ({
+                key: m.module,
+                label: <Area code={m.module} />,
+                value: m.utilisation_pct,
+                text: t("{pct}% of {n}, {txn} transactions", { pct: f1(m.utilisation_pct), n: int(m.total_config_elements), txn: int(m.total_transactions) }),
+                tone: m.status === "active" ? "pass" : m.status === "underutilised" ? "warn" : "crit",
+              }))}
+            />
+          )}
+        </Panel>
+      </div>
+      </Disclose>
+      <Disclose title={t("Changes since the last run")} hint={t("Settings that differ from the previous reading.")}>
       <Panel title={t("Changes since the last run")} meta={drift.data ? t("{n} settings changed", { n: int(drift.data.drift_entries.length) }) : undefined} testId="config-changes">
         {drift.isPending ? <Skeleton width="100%" height={80} /> : notFound(drift.error) ? (
           <EmptyFrame>{t("Changes show once the configuration has been read twice.")}</EmptyFrame>
@@ -253,6 +266,7 @@ export function Config() {
           </ScrollFrame>
         )}
       </Panel>
+      </Disclose>
     </CcPage>
   );
 }

@@ -133,7 +133,7 @@ export function DqFirewallSection() {
           </Fld>
         </div>
         <div className="m2-adm-acts">
-          <button type="button" className="m2-btn m2-strong" disabled={pending} onClick={() => void run()}>{t("Check records")}</button>
+          <button type="button" className="m2-btn m2-next" disabled={pending} onClick={() => void run()}>{t("Check records")}</button>
         </div>
         {error ? <Note tone="bad">{error}</Note> : null}
         {result ? (

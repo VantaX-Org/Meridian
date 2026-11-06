@@ -8,6 +8,7 @@ import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, DeltaBar, niceTicks, scoreDomain, Sparkline, TrendChart } from "../charts";
 import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { retry, Section, status, Table } from "./WorkAnalytics";
 
@@ -58,6 +59,16 @@ export function ScoreLens() {
   const shift = diff(last?.under_current.composite, last?.at_the_time.composite);
   return (
     <CcPage title={t("Score lens")}>
+      <Guide
+        shows={t("Compares each run scored with the weights in force then and with today's weights, so a weight change is not mistaken for a data change.")}
+        next={{ href: "/runs", label: t("Open the runs") }}
+        why={t("This screen only reads. No run is rescored and no weight is changed.")}
+        means={[
+          [t("Latest run, today's weights"), t("The newest run scored with the weights you use now.")],
+          [t("Latest run, as scored then"), t("The same run with the weights it was scored with when it ran.")],
+          [t("Config-aware score"), t("The score counting only the rules your configuration says apply.")],
+        ]}
+      />
       <CcBanner
         eyebrow={t("Score lens")}
         headline={
@@ -75,10 +86,16 @@ export function ScoreLens() {
         label={t("Score lens")}
       />
       <TrendPanel runs={runs} />
-      <RunsPanel runs={runs} />
-      <HeatPanel q={heat} />
-      <ModulesPanel modules={hist.data.modules} />
-      <AwarePanel q={aware} />
+      <Disclose title={t("Run by run")} hint={t("Each run scored then and now.")}>
+        <RunsPanel runs={runs} />
+      </Disclose>
+      <Disclose title={t("Where the score moved")} hint={t("Heat map by rule and the score by area.")}>
+        <HeatPanel q={heat} />
+        <ModulesPanel modules={hist.data.modules} />
+      </Disclose>
+      <Disclose title={t("Config-aware view")} hint={t("The score counting only the rules your configuration applies.")}>
+        <AwarePanel q={aware} />
+      </Disclose>
     </CcPage>
   );
 }

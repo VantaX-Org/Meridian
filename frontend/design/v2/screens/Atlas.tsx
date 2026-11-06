@@ -14,6 +14,7 @@ import { runKeys } from "@/lib/v2/runs-queries";
 import { DASH, f1, int, moduleSlug, systemSlug } from "@/lib/v2/score";
 import { EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { band, signed } from "./Cockpit";
+import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 
 /**
@@ -69,6 +70,17 @@ export function Atlas() {
 
   return (
     <CcPage title={t("Landscape atlas")}>
+      <Guide
+        shows={t("Replays the system landscape run by run, showing which objects moved up or down after each run.")}
+        next={{ href: "/runs", label: t("Open the runs") }}
+        why={t("This screen only reads the latest score of each system.")}
+        system={system?.name ?? null}
+        means={[
+          [t("Run"), t("Which run of the series you are looking at.")],
+          [t("Records checked"), t("Records the rules looked at in that run.")],
+          [t("Capped"), t("Objects whose score a critical rule holds down.")],
+        ]}
+      />
       <CcBanner
         testId="atlas"
         label={t("Landscape atlas")}
