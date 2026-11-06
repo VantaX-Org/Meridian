@@ -8226,5 +8226,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Approve or reject": "Freigeben oder ablehnen",
   "SAP saves what passes": "SAP speichert, was besteht",
   "Trends over time": "Verlauf",
+  "Opens the causes behind these losses. Nothing is changed.": "Öffnet die Ursachen dieser Verluste. Es wird nichts geändert.",
+  "Value at risk by object": "Risikowert je Objekt",
+  "Priced failing records per object, over the last runs": "Bewertete fehlerhafte Datensätze je Objekt über die letzten Läufe",
+  "No run has priced the failing records of an object yet. The cost model prices them when it is set.": "Noch kein Lauf hat die fehlerhaften Datensätze eines Objekts bewertet. Das Kostenmodell bewertet sie, sobald es gesetzt ist.",
+  "Over the last runs": "Über die letzten Läufe",
+  "Value at risk of {object} over the last runs": "Risikowert von {object} über die letzten Läufe",
+  "KPIs, processes and S/4HANA features": "KPIs, Prozesse und S/4HANA-Funktionen",
+  "Steps no rule guards come first": "Schritte ohne Regel stehen zuerst",
   // stage 6 end
 };

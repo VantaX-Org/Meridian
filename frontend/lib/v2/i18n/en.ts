@@ -8225,6 +8225,14 @@ export const en = {
   "Approve or reject": "Approve or reject",
   "SAP saves what passes": "SAP saves what passes",
   "Trends over time": "Trends over time",
+  "Opens the causes behind these losses. Nothing is changed.": "Opens the causes behind these losses. Nothing is changed.",
+  "Value at risk by object": "Value at risk by object",
+  "Priced failing records per object, over the last runs": "Priced failing records per object, over the last runs",
+  "No run has priced the failing records of an object yet. The cost model prices them when it is set.": "No run has priced the failing records of an object yet. The cost model prices them when it is set.",
+  "Over the last runs": "Over the last runs",
+  "Value at risk of {object} over the last runs": "Value at risk of {object} over the last runs",
+  "KPIs, processes and S/4HANA features": "KPIs, processes and S/4HANA features",
+  "Steps no rule guards come first": "Steps no rule guards come first",
   // stage 6 end
 } as const satisfies Record<string, string>;
 

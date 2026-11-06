@@ -10,7 +10,11 @@ import { useRunList } from "@/lib/v2/queries";
 import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
 import { EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
-import { Guide } from "./Guide";
+import { Disclose, Guide } from "./Guide";
+import { Sparkline } from "../charts";
+import { valueRibbons } from "@/lib/v2/value-ribbon";
+import { useTimeline } from "@/lib/v2/runs-queries";
+import { formatModuleName } from "@/lib/format";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { pctOf, retry, Section, status, Table } from "./WorkAnalytics";
 
@@ -75,6 +79,7 @@ export function Value() {
       <Guide
         shows={t("Prices the failing records of the latest run as money at risk and shows what fixing them has saved.")}
         next={{ href: "/insights", label: t("Open cost and causes") }}
+        why={t("Opens the causes behind these losses. Nothing is changed.")}
         means={[
           [t("Annual risk found"), t("What the failing records would cost over a year, from your cost model.")],
           [t("Risk mitigated a year"), t("The share of that risk that fixing removes.")],
@@ -96,9 +101,10 @@ export function Value() {
         label={t("Value delivered")}
       />
       <ImpactPanel rows={impacts} />
-      <MonthsPanel rows={months} currency={cur} />
-      <GuardsPanel />
-      <RunImpactPanel currency={cur} />
+      <RibbonPanel />
+      <Disclose title={t("Cost avoided month by month")}><MonthsPanel rows={months} currency={cur} /></Disclose>
+      <Disclose title={t("What the latest run puts at risk")} hint={t("KPIs, processes and S/4HANA features")}><RunImpactPanel currency={cur} /></Disclose>
+      <Disclose title={t("Rules guarding each KPI")} hint={t("Steps no rule guards come first")}><GuardsPanel /></Disclose>
     </CcPage>
   );
 }
@@ -268,6 +274,30 @@ function RunImpactPanel({ currency }: { currency: string }) {
           </>
         );
       }}
+    </Section>
+  );
+}
+
+/** Value at risk per object, run by run, from the run timeline. An object no run priced shows a dash and the reason. */
+function RibbonPanel() {
+  const tl = useTimeline(null, 8);
+  const title = t("Value at risk by object");
+  const rows = tl.data ? valueRibbons(tl.data) : [];
+  return (
+    <Section q={tl} title={title} meta={t("Priced failing records per object, over the last runs")} testId="val-ribbon">
+      {() => rows.length === 0 ? (
+        <EmptyFrame>{f1(null)} {t("No run has priced the failing records of an object yet. The cost model prices them when it is set.")}</EmptyFrame>
+      ) : (
+        <Table title={title} head={[t("Object"), t("Over the last runs"), t("Latest run")]}>
+          {rows.map((r) => (
+            <tr key={r.object}>
+              <th scope="row" className="m2-card-lead">{formatModuleName(r.object)}</th>
+              <td data-label={t("Over the last runs")}><Sparkline values={r.series} label={t("Value at risk of {object} over the last runs", { object: formatModuleName(r.object) })} width={120} height={24} domain={[0, Math.max(1, ...r.series.map((v) => v ?? 0))]} /></td>
+              <td data-label={t("Latest run")} className="m2-num">{r.latest == null ? f1(null) : money(r.latest, r.currency)}</td>
+            </tr>
+          ))}
+        </Table>
+      )}
     </Section>
   );
 }
