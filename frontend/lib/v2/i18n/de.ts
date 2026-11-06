@@ -8108,5 +8108,18 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Records the target system would reject, so they need fixing first.": "Datensätze, die das Zielsystem ablehnen würde und die zuerst korrigiert werden müssen.",
   "Source, projected and actual": "Quelle, erwartet und tatsächlich",
   "Quality in the old system, the score the load should reach, and the score measured in the target after loading.": "Qualität im Altsystem, der Wert, den das Laden erreichen sollte, und der nach dem Laden im Zielsystem gemessene Wert.",
+  "S/4HANA target": "S/4HANA-Ziel",
+  "Shows whether your data meets the conversion rules, by SAP simplification area, and how quality changes between the source and the target.": "Zeigt, ob Ihre Daten die Konvertierungsregeln erfüllen, nach SAP-Vereinfachungsbereich, und wie sich die Qualität zwischen Quelle und Ziel ändert.",
+  "Open the migration analysis": "Migrationsanalyse öffnen",
+  "The analysis gives the projected and actual target scores shown below.": "Die Analyse liefert die unten gezeigten erwarteten und tatsächlichen Zielwerte.",
+  "Rules that stop the conversion until their records are fixed.": "Regeln, die die Konvertierung stoppen, bis ihre Datensätze korrigiert sind.",
+  "Rules that need cleansing but do not stop the conversion.": "Regeln, die eine Bereinigung erfordern, die Konvertierung aber nicht stoppen.",
+  "Records that fail at least one failing rule.": "Datensätze, die mindestens eine fehlschlagende Regel verletzen.",
+  "Quality in the source and in the target": "Qualität in Quelle und Ziel",
+  "Per object: the score before the move, the score the load should reach, and the score measured after": "Je Objekt: der Wert vor der Migration, der Wert, den das Laden erreichen sollte, und der danach gemessene Wert",
+  "The quality figures could not be read.": "Die Qualitätswerte konnten nicht gelesen werden.",
+  "No migration analysis has finished yet. Start one in Migration to see source and target quality side by side.": "Noch keine Migrationsanalyse abgeschlossen. Starten Sie eine unter Migration, um Quell- und Zielqualität nebeneinander zu sehen.",
+  "The newest analysis has not been reconciled against the target system, so only the source score exists.": "Die neueste Analyse wurde nicht mit dem Zielsystem abgeglichen, daher gibt es nur den Quellwert.",
+  "Why they differ": "Warum sie abweichen",
   // stage 6 end
 };

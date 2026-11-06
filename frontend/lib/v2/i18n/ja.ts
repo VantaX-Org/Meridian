@@ -8108,5 +8108,18 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Records the target system would reject, so they need fixing first.": "ターゲットシステムが拒否するレコード。先に修正が必要です。",
   "Source, projected and actual": "ソース、予測、実績",
   "Quality in the old system, the score the load should reach, and the score measured in the target after loading.": "旧システムでの品質、読み込みで到達すべきスコア、読み込み後にターゲットで測定したスコア。",
+  "S/4HANA target": "S/4HANAターゲット",
+  "Shows whether your data meets the conversion rules, by SAP simplification area, and how quality changes between the source and the target.": "データが変換ルールを満たしているかをSAP簡素化領域ごとに示し、ソースとターゲット間で品質がどう変わるかを表示します。",
+  "Open the migration analysis": "移行分析を開く",
+  "The analysis gives the projected and actual target scores shown below.": "分析により、以下に示す予測および実績のターゲットスコアが得られます。",
+  "Rules that stop the conversion until their records are fixed.": "該当レコードが修正されるまで変換を止めるルール。",
+  "Rules that need cleansing but do not stop the conversion.": "クレンジングが必要だが変換は止めないルール。",
+  "Records that fail at least one failing rule.": "不合格のルールを少なくとも1つ満たさないレコード。",
+  "Quality in the source and in the target": "ソースとターゲットの品質",
+  "Per object: the score before the move, the score the load should reach, and the score measured after": "オブジェクトごと:移行前のスコア、読み込みで到達すべきスコア、移行後に測定したスコア",
+  "The quality figures could not be read.": "品質の数値を読み取れませんでした。",
+  "No migration analysis has finished yet. Start one in Migration to see source and target quality side by side.": "完了した移行分析がまだありません。移行で開始すると、ソースとターゲットの品質を並べて確認できます。",
+  "The newest analysis has not been reconciled against the target system, so only the source score exists.": "最新の分析はターゲットシステムと照合されていないため、ソースのスコアのみです。",
+  "Why they differ": "差が生じる理由",
   // stage 6 end
 };

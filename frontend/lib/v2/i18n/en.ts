@@ -8107,6 +8107,19 @@ export const en = {
   "Records the target system would reject, so they need fixing first.": "Records the target system would reject, so they need fixing first.",
   "Source, projected and actual": "Source, projected and actual",
   "Quality in the old system, the score the load should reach, and the score measured in the target after loading.": "Quality in the old system, the score the load should reach, and the score measured in the target after loading.",
+  "S/4HANA target": "S/4HANA target",
+  "Shows whether your data meets the conversion rules, by SAP simplification area, and how quality changes between the source and the target.": "Shows whether your data meets the conversion rules, by SAP simplification area, and how quality changes between the source and the target.",
+  "Open the migration analysis": "Open the migration analysis",
+  "The analysis gives the projected and actual target scores shown below.": "The analysis gives the projected and actual target scores shown below.",
+  "Rules that stop the conversion until their records are fixed.": "Rules that stop the conversion until their records are fixed.",
+  "Rules that need cleansing but do not stop the conversion.": "Rules that need cleansing but do not stop the conversion.",
+  "Records that fail at least one failing rule.": "Records that fail at least one failing rule.",
+  "Quality in the source and in the target": "Quality in the source and in the target",
+  "Per object: the score before the move, the score the load should reach, and the score measured after": "Per object: the score before the move, the score the load should reach, and the score measured after",
+  "The quality figures could not be read.": "The quality figures could not be read.",
+  "No migration analysis has finished yet. Start one in Migration to see source and target quality side by side.": "No migration analysis has finished yet. Start one in Migration to see source and target quality side by side.",
+  "The newest analysis has not been reconciled against the target system, so only the source score exists.": "The newest analysis has not been reconciled against the target system, so only the source score exists.",
+  "Why they differ": "Why they differ",
   // stage 6 end
 } as const satisfies Record<string, string>;
 

@@ -6,8 +6,10 @@ import { getS4Readiness, type S4Area, type S4Readiness as S4Data, type S4Status 
 import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
 import { DqWord } from "../inspector/step";
-import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { Guide } from "./Guide";
+import { PairedQuality } from "./PairedQuality";
 import { pctOf, retry, Section, status, Table, useRuleName } from "./WorkAnalytics";
 
 /**
@@ -64,6 +66,17 @@ export function S4Readiness() {
       : t("{n} blocking rules stand in the way", { n: int(d.blocking_failing) });
   return (
     <CcPage title={t("S/4HANA readiness")}>
+      <Guide
+        system={t("S/4HANA target")}
+        shows={t("Shows whether your data meets the conversion rules, by SAP simplification area, and how quality changes between the source and the target.")}
+        action={<V2Link className="m2-btn m2-strong" href="/migration">{t("Open the migration analysis")}</V2Link>}
+        why={t("The analysis gives the projected and actual target scores shown below.")}
+        means={[
+          [t("Blocking rules failing"), t("Rules that stop the conversion until their records are fixed.")],
+          [t("Warning rules failing"), t("Rules that need cleansing but do not stop the conversion.")],
+          [t("Records to fix"), t("Records that fail at least one failing rule.")],
+        ]}
+      />
       <CcBanner
         eyebrow={t("S/4HANA readiness")}
         verdict={d.evaluated === 0 ? undefined : d.ready ? (d.warning_failing ? "at-risk" : "go") : "no-go"}
@@ -78,6 +91,7 @@ export function S4Readiness() {
         testId="s4-banner"
         label={t("S/4HANA readiness")}
       />
+      <PairedQuality />
       <AreaPanel rows={d.areas} />
       <BlockerPanel rows={d.areas} />
     </CcPage>
