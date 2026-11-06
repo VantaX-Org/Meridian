@@ -8212,4 +8212,11 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Charts, entry defaults and derivation rules": "グラフ、入力の既定値、導出ルール",
   "Remind sends the person a note about their overdue work. It does not reassign anything.": "リマインドは、期限超過の作業について本人に通知します。再割り当てはしません。",
   "Open work and overdue work, charted": "未完了・期限超過の作業をグラフで見る",
+  "Fixing steps": "修正の手順",
+  "Rows still to fix. Pick one to see its failing value.": "未修正の行です。1行を選ぶと、問題のある値が表示されます。",
+  "Accept the suggested value or enter your own.": "提案された値を受け入れるか、独自の値を入力します。",
+  "A second person approves before anything is sent.": "送信前に2人目の担当者が承認します。",
+  "Approved fixes are applied to the current run only.": "承認済みの修正は現在の実行にのみ適用されます。",
+  "Accepting or editing a value only proposes it. Nothing reaches SAP until it is approved and applied.": "値の受け入れや編集は提案にすぎません。承認されて適用されるまで、SAPには何も反映されません。",
+  "Rules, pipeline and open records, charted": "ルール・進行状況・未処理レコードをグラフで見る",
 };

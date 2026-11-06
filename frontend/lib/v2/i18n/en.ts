@@ -8211,6 +8211,13 @@ export const en = {
   "Charts, entry defaults and derivation rules": "Charts, entry defaults and derivation rules",
   "Remind sends the person a note about their overdue work. It does not reassign anything.": "Remind sends the person a note about their overdue work. It does not reassign anything.",
   "Open work and overdue work, charted": "Open work and overdue work, charted",
+  "Fixing steps": "Fixing steps",
+  "Rows still to fix. Pick one to see its failing value.": "Rows still to fix. Pick one to see its failing value.",
+  "Accept the suggested value or enter your own.": "Accept the suggested value or enter your own.",
+  "A second person approves before anything is sent.": "A second person approves before anything is sent.",
+  "Approved fixes are applied to the current run only.": "Approved fixes are applied to the current run only.",
+  "Accepting or editing a value only proposes it. Nothing reaches SAP until it is approved and applied.": "Accepting or editing a value only proposes it. Nothing reaches SAP until it is approved and applied.",
+  "Rules, pipeline and open records, charted": "Rules, pipeline and open records, charted",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

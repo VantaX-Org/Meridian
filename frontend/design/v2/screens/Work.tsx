@@ -60,7 +60,7 @@ import { FixOrderHint } from "./object/Related";
 import { WorkTabs } from "./WorkTabs";
 import { AletheiaDock } from "./CommandCentre";
 import { FixPipeline, RuleBoard } from "./Cockpit";
-import { FixHead, RowRunChip } from "../FixParts";
+import { Consequence, FixHead, FlowSteps, MoreDetail, RowRunChip } from "../FixParts";
 import { RuleSpark, WorkBanner, WorkBreakdown, type Bar } from "./work-banner";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { Sparkline } from "../charts";
@@ -824,10 +824,22 @@ export function WorkCanvas() {
           [tr("Value at risk"), tr("The cost model's estimate of what a failing value costs. A dash means the model has no price for it.")],
         ]}
       />
-      <RuleBoard label={(m) => objectName(m, labels)} module={state.module} limit={8} />
-      <FixPipeline label={(m) => objectName(m, labels)} module={state.module} />
-      <WorkBreakdown title={state.module ? tr("Open records by rule") : tr("Open records by object")} bars={bars} />
-      <FixOrderHint module={state.module} />
+      <FlowSteps
+        label={tr("Fixing steps")}
+        current={state.chip === "proposed" ? 1 : state.chip === "approvals" ? 2 : state.chip === "approved" || state.chip === "sent" || state.chip === "fixed" ? 3 : 0}
+        steps={[
+          { label: tr("Find"), count: counts.get("tofix") == null ? undefined : int(counts.get("tofix") as number), hint: tr("Rows still to fix. Pick one to see its failing value.") },
+          { label: tr("Propose"), count: counts.get("proposed") == null ? undefined : int(counts.get("proposed") as number), hint: tr("Accept the suggested value or enter your own.") },
+          { label: tr("Approve"), count: counts.get("approvals") == null ? undefined : int(counts.get("approvals") as number), hint: tr("A second person approves before anything is sent.") },
+          { label: tr("Apply"), count: counts.get("approved") == null ? undefined : int(counts.get("approved") as number), hint: tr("Approved fixes are applied to the current run only.") },
+        ]}
+      />
+      <MoreDetail title={tr("Rules, pipeline and open records, charted")}>
+        <RuleBoard label={(m) => objectName(m, labels)} module={state.module} limit={8} />
+        <FixPipeline label={(m) => objectName(m, labels)} module={state.module} />
+        <WorkBreakdown title={state.module ? tr("Open records by rule") : tr("Open records by object")} bars={bars} />
+        <FixOrderHint module={state.module} />
+      </MoreDetail>
       {state.asOf ? (
         <div className="m2-asof" role="status" data-testid="ledger-as-of">
           <span>
@@ -911,6 +923,7 @@ export function WorkCanvas() {
           </span>
         </ResultFrame>
       ) : null}
+      <Consequence>{tr("Accepting or editing a value only proposes it. Nothing reaches SAP until it is approved and applied.")}</Consequence>
       <div className="m2-lcount" aria-live="polite">
         <span>{countText}</span>
         {loadedNote ? <span className="m2-meta m2-only-wide">{loadedNote}</span> : null}

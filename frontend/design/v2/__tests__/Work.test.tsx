@@ -767,3 +767,26 @@ describe("read-only", () => {
     expect(screen.queryByRole("button", { name: /Accept .* suggested values on/ })).toBeNull();
   });
 });
+
+describe("Work: the steps, the consequence, the charts one click away", () => {
+  it("shows four steps with the current one marked, and says nothing reaches SAP until applied", async () => {
+    mount();
+    const steps = await screen.findByTestId("flow-steps");
+    expect(within(steps).getAllByRole("listitem").map((li) => (li.textContent ?? "").replace(/[\d,]/g, "").slice(0, 4))).toEqual(["Find", "Prop", "Appr", "Appl"]);
+    expect(screen.getByText(/Nothing reaches SAP until it is approved and applied\./)).toBeInTheDocument();
+  });
+
+  it("moves the current step to Approve on the approvals chip", async () => {
+    mount("&filter=approvals");
+    const steps = await screen.findByTestId("flow-steps");
+    await waitFor(() => expect(within(steps).getAllByRole("listitem")[2]).toHaveAttribute("aria-current", "step"));
+  });
+
+  it("keeps the rule board and breakdown in a closed disclosure after the steps", async () => {
+    mount();
+    const more = await screen.findByTestId("more-detail");
+    expect(more).not.toHaveAttribute("open");
+    const steps = screen.getByTestId("flow-steps");
+    expect(steps.compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});

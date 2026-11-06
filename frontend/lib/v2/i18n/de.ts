@@ -8212,4 +8212,11 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Charts, entry defaults and derivation rules": "Diagramme, Eingabevorgaben und Ableitungsregeln",
   "Remind sends the person a note about their overdue work. It does not reassign anything.": "Erinnern sendet der Person eine Nachricht über ihre überfällige Arbeit. Es weist nichts neu zu.",
   "Open work and overdue work, charted": "Offene und überfällige Arbeit im Diagramm",
+  "Fixing steps": "Schritte der Korrektur",
+  "Rows still to fix. Pick one to see its failing value.": "Noch zu korrigierende Zeilen. Wählen Sie eine, um den fehlerhaften Wert zu sehen.",
+  "Accept the suggested value or enter your own.": "Übernehmen Sie den vorgeschlagenen Wert oder geben Sie einen eigenen ein.",
+  "A second person approves before anything is sent.": "Eine zweite Person gibt frei, bevor etwas gesendet wird.",
+  "Approved fixes are applied to the current run only.": "Freigegebene Korrekturen werden nur auf den aktuellen Lauf angewendet.",
+  "Accepting or editing a value only proposes it. Nothing reaches SAP until it is approved and applied.": "Das Übernehmen oder Ändern eines Werts schlägt ihn nur vor. Nichts erreicht SAP, bevor es freigegeben und angewendet wurde.",
+  "Rules, pipeline and open records, charted": "Regeln, Ablauf und offene Datensätze im Diagramm",
 };
