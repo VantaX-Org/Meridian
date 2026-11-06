@@ -153,3 +153,13 @@ describe("the rule canvas /r/{check_id}", () => {
     expect(screen.getByTestId("rule-canvas-loading")).toHaveAttribute("aria-busy", "true");
   });
 });
+
+describe("stage 5: rule canvas primary action", () => {
+  it("explains the page and offers one filled link to the failing records", async () => {
+    renderWithQuery(<RuleCanvas id="MM142" />);
+    const link = await screen.findByRole("link", { name: "Show the failing records" });
+    expect(link).toHaveClass("m2-next");
+    expect(link.getAttribute("href")).toContain("tab=failing");
+    expect(screen.getByText(/One rule and what it finds in the newest run/)).toBeInTheDocument();
+  });
+});

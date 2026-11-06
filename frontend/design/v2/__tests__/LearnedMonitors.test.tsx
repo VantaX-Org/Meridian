@@ -126,3 +126,14 @@ describe("steward decision", () => {
     expect(await screen.findByText(/Acknowledged by Demo steward/)).toBeInTheDocument();
   });
 });
+
+describe("stage 5: primary action", () => {
+  it("opens the breached monitor and is the filled action when a break is open", async () => {
+    renderWithQuery(<LearnedMonitors />);
+    const open = await screen.findByTestId("monitors-open-breached");
+    expect(open).toHaveClass("m2-next");
+    expect(open).toHaveTextContent("Open the breached monitor");
+    fireEvent.click(open);
+    await waitFor(() => expect(screen.getAllByTestId(/^break-/).length).toBeGreaterThan(0));
+  });
+});

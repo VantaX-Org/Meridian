@@ -70,3 +70,10 @@ describe("anomaly rules", () => {
     expect(g.map((x) => [x.first.id, x.count])).toEqual([["3", 2], ["1", 1]]);
   });
 });
+
+describe("stage 5: explanation", () => {
+  it("says what the screen shows and what to do next", async () => {
+    renderWithQuery(<AnomalyRules />);
+    expect(await screen.findByText(/Aletheia finds values far outside the usual range/)).toBeInTheDocument();
+  });
+});

@@ -13,6 +13,7 @@ import { f1, int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
+import { Lede, PrimaryAction } from "../RunParts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -160,15 +161,23 @@ export function LearnedMonitors() {
   const open = [...breaks, ...interim].filter((b) => b.status === "open").length;
   const sel = [...interim, ...breaks].find((b) => b.id === picked) ?? breaks[0] ?? interim[0] ?? null;
   const allowed = can("mdm.write");
+  const firstOpen = [...breaks, ...interim].find((b) => b.status === "open") ?? null;
 
   return (
     <CcPage title={title}>
+      <Lede>{t("Aletheia learns the usual range of each figure from earlier runs and raises a break when a new run falls outside it. Open a break to confirm it is real or mark it expected.")}</Lede>
       <CcBanner
         testId="monitors"
         label={title}
         eyebrow={title}
         headline={t("{n, plural, =0 {No open break against the learned baseline} one {# open break against the learned baseline} other {# open breaks against the learned baseline}}", { n: open })}
         why={t("Each object is compared with its own earlier runs. With fewer than {n} earlier runs it only learns and raises nothing.", { n: minRuns })}
+        action={firstOpen ? (
+          <PrimaryAction
+            action={<button type="button" className="m2-btn m2-next" onClick={() => setPicked(firstOpen.id)} data-testid="monitors-open-breached">{t("Open the breached monitor")}</button>}
+            why={t("It is the first break still waiting for a decision.")}
+          />
+        ) : undefined}
       />
 
       <Panel title={t("What is learned")} meta={t("Earlier runs of the same system used for each object.")} testId="monitors-coverage">

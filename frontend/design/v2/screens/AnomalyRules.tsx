@@ -13,6 +13,7 @@ import { f1, int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
+import { Lede, PrimaryAction } from "../RunParts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -72,6 +73,7 @@ export function AnomalyRules() {
 
   return (
     <CcPage title={t("Anomaly rules")}>
+      <Lede>{t("Aletheia finds values far outside the usual range of a field. Open an outlier, see the rule it would become, and approve it to keep watching that field.")}</Lede>
       <CcBanner
         testId="anomaly-rules"
         label={t("Anomaly rules")}

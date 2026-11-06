@@ -15,6 +15,8 @@ import { moduleText } from "@/lib/v2/labels";
 import { int, pct1 } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, StackedBar, TrendChart, type StackPart } from "../charts";
 import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { Lede } from "../RunParts";
+import { VerifiedMark } from "./rules-parts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -295,14 +297,20 @@ export function AletheiaSurvivorship() {
   const rejected = domains.reduce((n, d) => n + d.rejected, 0);
   return (
     <CcPage title={t("Aletheia verified survivorship")}>
+      <Lede>{t("When duplicate records disagree, the model picks which source wins for each field and the server proves the pick. Review the picks that wait for a steward below.")}</Lede>
       <CcBanner
         testId="survivorship"
         label={t("Aletheia verified survivorship")}
         eyebrow={t("Aletheia verified survivorship")}
         headline={t("{n, plural, one {# model pick did not pass its proof} other {# model picks did not pass their proof}}", { n: rejected })}
         why={t("The model sees only the shape of each source's value, never a value. A pick wins only when the server proves it against the contributing sources.")}
-        figs={[{ label: t("Proved"), value: int(verified) }, { label: t("Not proved"), value: int(rejected) }, { label: t("Waiting for a steward"), value: int(counts.proposed) }]}
+        figs={[
+          { label: t("Proved"), value: int(verified), hint: t("Picks the server checked against the contributing sources and confirmed.") },
+          { label: t("Not proved"), value: int(rejected), hint: t("Picks the server could not confirm. They are never applied.") },
+          { label: t("Waiting for a steward"), value: int(counts.proposed), hint: t("Proved picks that need a person to approve them.") },
+        ]}
       />
+      <p className="m2-why1"><VerifiedMark /> {t("Only picks the server proved against the sources carry this mark.")}</p>
       <Panel title={t("Steward decisions on proved picks")} meta={t("Proposed picks wait for a steward. Auto-applied picks were applied under the opt-in auto-approve.")} testId="survivorship-counts">
         <ul className="m2-cl-changes" data-testid="surv-counts">
           <li data-testid="surv-count-proposed"><Coded code="proposed" text={t("Proposed, waiting for approval")} /> <strong>{int(counts.proposed)}</strong></li>

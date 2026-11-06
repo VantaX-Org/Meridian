@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { RuleActions, RuleAuthority, RuleBlocks, RuleContract, RuleDefinition, RuleFacts, RuleHistory, RuleLineage, RuleProve, RuleScopeSection, RuleVersions, SectionLevel, ruleStatLine, useRule } from "../inspector/rule";
 import { EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { int } from "@/lib/v2/score";
+import { Lede, PrimaryAction } from "../RunParts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { LedgerSlot } from "./object/LedgerSlot";
 import { RuleOverview } from "./RuleOverview";
@@ -85,6 +86,7 @@ export function RuleCanvas({ id }: { id: string }) {
   return (
     <CcPage>
       <PageTitle sub={name ? <Mono>{id}</Mono> : undefined}>{name ?? <Mono>{id}</Mono>}</PageTitle>
+      <Lede>{tr("One rule and what it finds in the newest run. Start with the failing records, then use the tabs for where the rule comes from and who changed the values.")}</Lede>
       <CcBanner
         testId="rule-banner"
         label={tr("Rule summary")}
@@ -103,13 +105,14 @@ export function RuleCanvas({ id }: { id: string }) {
           ) : undefined
         }
         figs={[
-          { label: tr("Failing records"), value: int(v.scope.failing_records), note: v.failingPct != null ? tr("{pct2} of records checked", { pct2: `${v.failingPct.toFixed(2)}%` }) : undefined },
-          { label: tr("Objects affected"), value: int(v.scope.objects.length) },
+          { label: tr("Failing records"), value: int(v.scope.failing_records), note: v.failingPct != null ? tr("{pct2} of records checked", { pct2: `${v.failingPct.toFixed(2)}%` }) : undefined, hint: tr("Records in the newest run that do not meet this rule.") },
+          { label: tr("Objects affected"), value: int(v.scope.objects.length), hint: tr("Objects that use this rule.") },
         ]}
         action={
-          <V2Link href={href("failing")} className="m2-btn m2-next">
-            {tr("Show the failing records")}
-          </V2Link>
+          <PrimaryAction
+            action={<V2Link href={href("failing")} className="m2-btn m2-next">{tr("Show the failing records")}</V2Link>}
+            why={tr("Seeing the records shows what to fix first.")}
+          />
         }
       />
       <p className="m2-statusline" data-testid="rule-stat-line">

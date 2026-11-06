@@ -64,6 +64,13 @@ describe("steward decision on a verified pick", () => {
     expect(state).toHaveTextContent("The picked value is out of date");
   });
 
+  it("marks only the server-checked picks with Verified and says so", async () => {
+    renderWithQuery(<AletheiaSurvivorship />);
+    await screen.findByTestId("surv-pick-MAT-000101-MARA.MTART");
+    expect(screen.getAllByTestId("verified-mark").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Only picks the server proved/)).toBeInTheDocument();
+  });
+
   it("a viewer sees the picks but no actions", async () => {
     window.history.pushState({}, "", "/aletheia-survivorship?fixture=1&persona=owner&role=viewer");
     setUrl("/aletheia-survivorship?fixture=1&persona=owner&role=viewer");
