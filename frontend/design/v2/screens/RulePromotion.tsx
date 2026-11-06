@@ -13,7 +13,8 @@ import { Field, Gate } from "../forms";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { Lede, PrimaryAction } from "../RunParts";
-import { CcBanner, CcPage } from "./cc-parts";
+import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { Consequence, Steps } from "./rules-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
 
@@ -129,6 +130,12 @@ function ObjectPanel({ object }: { object: string }) {
 
   return (
     <Panel title={t("{object} rules", { object: moduleText(object) })} meta={t("Preview changes nothing. Apply promotes the ready rules.")} testId="rule-promotion-detail">
+      <Steps
+        label={t("Promotion steps")}
+        testId="promo-steps"
+        steps={[t("Pick an object"), t("Preview on your data"), t("Approve the ready rules"), t("Watch for drift")]}
+        current={!data ? 1 : data.counts.promote > 0 ? 2 : 3}
+      />
       <div className="m2-acts">
         <button type="button" className={`m2-btn${data && data.counts.promote > 0 && allowed ? "" : " m2-next"}`} disabled={q.isFetching} onClick={() => (run ? void q.refetch() : setRun(true))} data-testid="promo-preview">
           {q.isFetching ? t("Working…") : t("Preview")}
@@ -145,7 +152,7 @@ function ObjectPanel({ object }: { object: string }) {
         ) : null}
       </div>
       {!allowed ? <Gate>{t("Managing rules needs the manage rules permission.")}</Gate> : null}
-      {data && data.counts.promote > 0 ? <p className="m2-why1">{t("These rules failed on few enough records to be safe. Approving switches them on and can be reverted.")}</p> : null}
+      {data && data.counts.promote > 0 ? <Consequence>{t("Approving switches on {n, plural, one {# rule} other {# rules}} for {object}. From the next run each raises an issue on every record it fails. Revert switches them off again.", { n: data.counts.promote, object: moduleText(object) })}</Consequence> : null}
       {!run ? <EmptyFrame>{t("Press Preview to dry-run the generated rules on the latest extraction.")}</EmptyFrame> : q.isPending ? <Skeleton width="100%" height={200} /> : q.isError ? (
         <ErrorFrame onRetry={() => void q.refetch()}>{errorSentence(q.error, t("The rules could not be evaluated."))}</ErrorFrame>
       ) : data ? (
@@ -182,6 +189,11 @@ function Evaluated({ data, filter, setFilter, rows, allowed, onAnyway, onRevert 
           </ul>
         </div>
       ) : null}
+      <CcHBars
+        label={t("Rules by outcome of the preview")}
+        testId="promo-buckets"
+        rows={BUCKETS.map((b) => ({ key: b, label: bucketName(b), value: data.counts[b], text: int(data.counts[b]), tone: b === "promote" ? "pass" : b === "review" ? "warn" : "data" }))}
+      />
       <div className="m2-chips" role="group" aria-label={t("Bucket")}>
         {[...BUCKETS, "promoted" as const].map((b) => (
           <button key={b} type="button" className="m2-chip" aria-pressed={filter === b} onClick={() => setFilter(b)} data-testid={`promo-chip-${b}`}>
