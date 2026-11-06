@@ -8083,4 +8083,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Fix queue": "Korrekturschlange",
   "Records to fix, the ones with the most value at risk first.": "Zu korrigierende Datensätze, zuerst die mit dem höchsten Risikowert.",
   "Main, bottom bar": "Hauptnavigation, untere Leiste",
+  "No object has a run yet. Extract a system and run an analysis to score it, then this page shows each system at its newest run.": "Noch kein Objekt hat einen Lauf. Extrahieren Sie ein System und starten Sie eine Analyse; danach zeigt diese Seite jedes System mit seinem neuesten Lauf.",
+  "This page shows every connected system at its newest run: {systems} systems and {objects} objects. {held_under_85} cannot reach 85 yet. Start with the fix queue, or open any object to see its run.": "Diese Seite zeigt jedes verbundene System mit seinem neuesten Lauf: {systems} Systeme und {objects} Objekte. {held_under_85} erreichen 85 noch nicht. Beginnen Sie mit der Korrekturliste oder öffnen Sie ein Objekt, um seinen Lauf zu sehen.",
+  "Each box counts failing records at that stage of being fixed, across the newest run of every object; the bar is relative to the largest stage.": "Jedes Feld zählt fehlerhafte Datensätze in dieser Korrekturstufe, über den neuesten Lauf jedes Objekts; der Balken ist relativ zur größten Stufe.",
+  "Money per month the blocked or degraded features cost, from the cost model in the currency it is set up in; the biggest features come first.": "Monatliche Kosten der blockierten oder eingeschränkten Funktionen laut Kostenmodell, in dessen Währung; die größten zuerst.",
+  "Rules ordered by records failing; the bar is the share of that rule's population that fails, worked out from the newest run of each object.": "Regeln nach fehlerhaften Datensätzen geordnet; der Balken ist der Anteil der Grundgesamtheit der Regel, der fehlschlägt, aus dem neuesten Lauf jedes Objekts.",
 };

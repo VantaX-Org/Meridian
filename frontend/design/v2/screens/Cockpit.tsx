@@ -173,6 +173,7 @@ export function FixPipeline({ label, module }: { label: (m: string) => string; m
         <h2 className="m2-h2">{t("Fix pipeline")}</h2>
         <V2Link href="/work">{t("Open Work")}</V2Link>
       </header>
+      <p className="m2-meta m2-ck-note">{t("Each box counts failing records at that stage of being fixed, across the newest run of every object; the bar is relative to the largest stage.")}</p>
       {s ? (
         <>
           <ol className="m2-ck-stages">
@@ -240,6 +241,7 @@ export function RiskWaterfall() {
         <h2 className="m2-h2">{t("Value at risk")}</h2>
         <span className="m2-meta">{m?.as_of ? t("as of {date}", { date: formatDate(m.as_of, "date") }) : null}</span>
       </header>
+      <p className="m2-meta m2-ck-note">{t("Money per month the blocked or degraded features cost, from the cost model in the currency it is set up in; the biggest features come first.")}</p>
       {!m ? (
         <p className="m2-cc-empty">{q.isError ? t("No cost model is set up.") : t("Reading the cost model")}</p>
       ) : !steps.length ? (
@@ -288,6 +290,7 @@ export function RuleBoard({ label, module, limit = 12 }: { label: (m: string) =>
         <h2 className="m2-h2">{t("Rules failing the most records")}</h2>
         <V2Link href="/rules">{t("Open the rule library")}</V2Link>
       </header>
+      <p className="m2-meta m2-ck-note">{t("Rules ordered by records failing; the bar is the share of that rule's population that fails, worked out from the newest run of each object.")}</p>
       {rows.length ? (
         <div className="m2-ck-scroll">
           <table className="m2-ck-rules">

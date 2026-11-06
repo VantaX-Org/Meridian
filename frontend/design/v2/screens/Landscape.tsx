@@ -1,8 +1,8 @@
 "use client";
 
+import { Lede } from "../RunParts";
 import { HomeHeadlines } from "./HomeStrips";
 import { Welcome } from "./Welcome";
-import { AletheiaFound } from "./AletheiaFound";
 import { AletheiaDock, CommandRow, GoLiveBanner } from "./CommandCentre";
 import { FixPipeline, ReadinessMatrix, RiskWaterfall, RuleBoard } from "./Cockpit";
 import { Explain } from "../Explain";
@@ -12,25 +12,22 @@ import type { MigrationWave } from "@/types/api";
 import { useWaves } from "@/lib/v2/admin-queries";
 import { daysUntil, groupByWave, nextWave, type WaveGroup } from "@/lib/v2/waves";
 import { formatDate, formatModuleName } from "@/lib/format";
-import type { Landscape, LandscapeCell, LandscapeSystem, WorkRow } from "@/lib/api/v2/types";
+import type { Landscape, LandscapeCell, LandscapeSystem } from "@/lib/api/v2/types";
 import { useOpenItem, useRunParam, useV2Session, type V2Persona } from "@/lib/v2/hooks";
 import { useBatches, usePeople } from "@/lib/v2/approvals-queries";
 import { slaMet } from "@/lib/v2/people";
 import { useWorkGroups, useWorkSummary } from "@/lib/v2/work-queries";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { BasisHome } from "./BasisHome";
-import { useLandscape, useStatus, useTopWork } from "@/lib/v2/queries";
+import { useLandscape } from "@/lib/v2/queries";
 import { byMeasured, f1, int, moduleSlug, readingText, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
-import { type GridColumn } from "../Grid";
 import { IconCheck, VerdictMark } from "../marks";
-import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { Dash, Dot, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { Ruler } from "../Ruler";
 import { ProcessNextStep } from "./object/ProcessNext";
 import { dimsOf, ScoreTrend, useTrends } from "../shell/ObjectsTree";
 import { GateMark } from "../inspector/governance";
-import { NextList } from "../inspector/inbox";
 import { RequestAccess } from "../admin/kit";
-import { ToolGrid } from "../GridTools";
 import { contractMark } from "@/lib/v2/step9";
 import { policyMark } from "@/lib/v2/step10";
 import { WavesByValue } from "./step9/Money";
@@ -448,61 +445,6 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
   );
 }
 
-function recordKey(r: WorkRow): string {
-  return `${r.module}:${r.record_key}`;
-}
-
-const NEXT_WORK_COLUMNS: GridColumn<WorkRow>[] = [
-  { id: "record", get header() { return t("Record"); }, width: 200, pin: true, locked: true, cell: (r) => <Mono>{r.record_key.split("=").slice(1).join("=") || r.record_key}</Mono> },
-  { id: "name", get header() { return t("Name"); }, width: 200, cell: (r) => r.name ?? <Dash /> },
-  { id: "problem", get header() { return t("Problem"); }, width: 260, cell: (r) => r.top_message ?? <Dash /> },
-  { id: "value", get header() { return t("Current to suggested"); }, width: 200, cell: (r) => (r.suggested_value ? <Mono>{r.suggested_value}</Mono> : <Dash why={t("No suggested value")} />) },
-  { id: "var", get header() { return t("Value at risk"); }, width: 130, numeric: true, cell: (r) => (r.value_at_risk == null ? <Dash /> : <>{int(r.value_at_risk)} <span className="m2-meta">ZAR</span></>) },
-];
-
-function NextWork({ landscape }: { landscape: Landscape }) {
-  const q = useTopWork(5);
-  const { openItem, open } = useOpenItem();
-  const status = useStatus().data;
-  const rows = q.data?.items ?? [];
-  const total = q.data?.total ?? 0;
-  return (
-    <section className="m2-sec" aria-label={t("Your next work")}>
-      <div className="m2-sechead">
-        <h2 className="m2-h2">{t("Your next work")}</h2>
-        {total > 0 ? <V2Link href="/work">{t("View all {total}", { total: int(total) })}</V2Link> : null}
-      </div>
-      <ToolGrid<WorkRow>
-          toolsTitle={t("Top of the ledger")}
-        id="landscape-next-work"
-        ariaLabel={t("Your next work")}
-        columns={NEXT_WORK_COLUMNS}
-        rows={rows}
-        rowId={(r) => recordKey(r)}
-        compact
-        hideBar
-        height={32 + Math.max(rows.length, 1) * 28 + 2}
-        loading={q.isPending}
-        error={q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The next rows to fix could not be read.")}</ErrorFrame> : undefined}
-        emptyFrame={
-          <EmptyFrame
-            action={
-              <V2Link href="/runs" className="m2-btn">
-                {t("Open the runs")}
-              </V2Link>
-            }
-          >
-            {landscape.cells.length === 0 ? t("Nothing is waiting because no run has scored an object yet. Run an analysis and the rows that fail land here, ranked by value at risk.") : t("No record is waiting to be fixed in the current state.")}
-          </EmptyFrame>
-        }
-        onOpen={(r) => openItem({ kind: "record", id: recordKey(r) })}
-        openRowId={open?.kind === "record" ? open.id : null}
-      />
-      <p className="m2-prov">{t("Rows ranked by value at risk{value}.", { value: status?.cost_model ? t(", cost model {cost_model}", { cost_model: status.cost_model }) : "" })}</p>
-    </section>
-  );
-}
-
 function BasisTasks({ landscape }: { landscape: Landscape }) {
   const { hrefFor } = useOpenItem();
   const tasks = landscape.systems.filter((s) => s.is_active !== false).map((s) => ({
@@ -737,13 +679,17 @@ export function LandscapeCanvas() {
         </div>
       ) : null}
       <PageTitle sub={scopeName}>{t("Landscape")}</PageTitle>
+      <Lede>
+        {L.sentence.objects === 0
+          ? t("No object has a run yet. Extract a system and run an analysis to score it, then this page shows each system at its newest run.")
+          : t("This page shows every connected system at its newest run: {systems} systems and {objects} objects. {held_under_85} cannot reach 85 yet. Start with the fix queue, or open any object to see its run.", { systems: L.systems.length, objects: L.sentence.objects, held_under_85: L.sentence.held_under_85 })}
+      </Lede>
       <Welcome />
       <HomeHeadlines L={L} />
       <GoLiveBanner landscape={L} waves={waves} />
       {L.cells.length ? <ReadinessMatrix landscape={L} run={run} /> : null}
       <div className="m2-cc">
         <div className="m2-cc-main">
-          <AletheiaFound />
           <p className="m2-finding" data-testid="landscape-sentence">
             <LandscapeSentence landscape={L} />
           </p>
@@ -764,7 +710,6 @@ export function LandscapeCanvas() {
               <CommandRow landscape={L} />
             </>
           ) : null}
-          <NextList quiet />
         </div>
         <AletheiaDock />
       </div>
@@ -776,7 +721,6 @@ export function LandscapeCanvas() {
       {session.persona === "basis" ? <BasisTasks landscape={L} /> : null}
       {session.persona === "basis" ? <BasisHome landscape={L} /> : null}
       <Coverage landscape={L} run={run} view={view} waves={waves} />
-      {session.persona === "basis" ? null : <NextWork landscape={L} />}
     </>
   );
 }

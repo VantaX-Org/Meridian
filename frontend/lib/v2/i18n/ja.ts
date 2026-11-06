@@ -8083,4 +8083,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Fix queue": "修正キュー",
   "Records to fix, the ones with the most value at risk first.": "修正するレコード。リスク金額が大きいものが先頭です。",
   "Main, bottom bar": "メイン(下部バー)",
+  "No object has a run yet. Extract a system and run an analysis to score it, then this page shows each system at its newest run.": "まだ実行されたオブジェクトはありません。システムを抽出して分析を実行すると、このページに各システムの最新の実行が表示されます。",
+  "This page shows every connected system at its newest run: {systems} systems and {objects} objects. {held_under_85} cannot reach 85 yet. Start with the fix queue, or open any object to see its run.": "このページは接続済みの各システムを最新の実行で表示します。{systems} システム、{objects} オブジェクト。{held_under_85} 件はまだ 85 に届きません。修正キューから始めるか、オブジェクトを開いて実行を確認してください。",
+  "Each box counts failing records at that stage of being fixed, across the newest run of every object; the bar is relative to the largest stage.": "各ボックスは、各オブジェクトの最新の実行における、その修正段階の不良レコード数です。バーは最大の段階を基準にしています。",
+  "Money per month the blocked or degraded features cost, from the cost model in the currency it is set up in; the biggest features come first.": "ブロックまたは低下した機能の月額コスト。コストモデルの通貨で表示し、大きい順に並べています。",
+  "Rules ordered by records failing; the bar is the share of that rule's population that fails, worked out from the newest run of each object.": "不良レコード数の多い順。バーは、各オブジェクトの最新の実行から求めた、そのルールの母集団に占める不良の割合です。",
 };

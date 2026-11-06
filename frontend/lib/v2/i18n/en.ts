@@ -8082,6 +8082,11 @@ export const en = {
   "Fix queue": "Fix queue",
   "Records to fix, the ones with the most value at risk first.": "Records to fix, the ones with the most value at risk first.",
   "Main, bottom bar": "Main, bottom bar",
+  "No object has a run yet. Extract a system and run an analysis to score it, then this page shows each system at its newest run.": "No object has a run yet. Extract a system and run an analysis to score it, then this page shows each system at its newest run.",
+  "This page shows every connected system at its newest run: {systems} systems and {objects} objects. {held_under_85} cannot reach 85 yet. Start with the fix queue, or open any object to see its run.": "This page shows every connected system at its newest run: {systems} systems and {objects} objects. {held_under_85} cannot reach 85 yet. Start with the fix queue, or open any object to see its run.",
+  "Each box counts failing records at that stage of being fixed, across the newest run of every object; the bar is relative to the largest stage.": "Each box counts failing records at that stage of being fixed, across the newest run of every object; the bar is relative to the largest stage.",
+  "Money per month the blocked or degraded features cost, from the cost model in the currency it is set up in; the biggest features come first.": "Money per month the blocked or degraded features cost, from the cost model in the currency it is set up in; the biggest features come first.",
+  "Rules ordered by records failing; the bar is the share of that rule's population that fails, worked out from the newest run of each object.": "Rules ordered by records failing; the bar is the share of that rule's population that fails, worked out from the newest run of each object.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

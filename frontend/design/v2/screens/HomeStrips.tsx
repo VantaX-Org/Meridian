@@ -15,7 +15,7 @@ import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { Money } from "../Money";
 import { ObjectTrend } from "../ObjectTrend";
-import { CodeWithText, InactiveChip, Lede, PrimaryAction } from "../RunParts";
+import { CodeWithText, InactiveChip, PrimaryAction } from "../RunParts";
 import { Ruler } from "../Ruler";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { dimsOf } from "../shell/ObjectsTree";
@@ -154,9 +154,9 @@ export function HomeHeadlines({ L }: { L: Landscape }) {
   const nSys = systems.length;
   return (
     <>
-      <Lede>
+      <p className="m2-meta" data-testid="home-strips-note">
         {t("{s} {s, plural, one {system} other {systems}} at their newest finished runs. Scores are measured out of 100; open any system's object for its run detail.", { s: nSys })}
-      </Lede>
+      </p>
       {first ? (
         <PrimaryAction
           action={<V2Link className="m2-btn m2-strong" href={objectHref(first.system.name, first.module)}>{t("Open {object} on {system}", { object: first.label, system: first.system.name })}</V2Link>}
