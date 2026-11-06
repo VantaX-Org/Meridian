@@ -12,7 +12,7 @@ import { int } from "@/lib/v2/score";
 import { Field, Gate } from "../forms";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { useToast } from "../Toast";
-import { Lede, PrimaryAction } from "../RunParts";
+import { Lede } from "../RunParts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Consequence, Steps } from "./rules-parts";
 import { Panel } from "./Mining";

@@ -8,7 +8,7 @@ import pytest
 from openpyxl import Workbook as Book
 
 from api.services.migration import workbook as wb
-from checks.frames import TableFrames
+from checks.frames import ParquetTable, TableFrames
 from sap.ddic import get_dictionary
 
 HEAD = ["", "", "System Field Id", "SF Label", "Type", "Max Length", "Visibility", "Mandatory", "Picklist"]
@@ -90,6 +90,16 @@ def test_fills_workbook_columns_and_holds_back_only_rule_breakers():
     assert {"id": "second-title", "label": "Second Title", "mandatory": True} in row["unmapped"]
     assert {h["record"] for h in report["held"]} == {"PERSON_ID=P2", "PERSON_ID=P3", "PERSON_ID=P4"}
     assert all("value" not in h for h in report["held"])  # personal data stays out of the report
+
+
+def test_a_table_held_compressed_fills_the_same_as_a_decoded_one():
+    plain = frames()
+    lazy = TableFrames({t: ParquetTable(df.to_parquet()) for t, df in plain.frames.items()}, plain.dictionary)
+    book = wb.parse_workbook(sample())
+    tabs, report = wb.fill(book, lazy)
+    want, want_report = wb.fill(book, frames())
+    assert report == want_report
+    assert all(tabs[name].equals(want[name]) for name in want)
 
 
 def test_grid_keeps_its_exact_headers_and_leaves_unknown_columns_empty():

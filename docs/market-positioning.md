@@ -8,8 +8,8 @@ scrutiny.
 
 | claim | evidence |
 |---|---|
-| **9,245 validation rules** | `checks/rules/**/*.yaml`, counted now (6,541 hand-authored + 2,704 DDIC-derived); machine-checked against the tree by `tests/checks/test_claim_hygiene.py` — these numbers cannot go stale silently |
-| 6,541 hand-authored + 2,704 DDIC-derived | `checks/rules/<cat>/<module>.yaml` + `<module>.generated.yaml` |
+| **9,348 validation rules** | `checks/rules/**/*.yaml`, counted now (6,581 hand-authored + 2,767 DDIC-derived); machine-checked against the tree by `tests/checks/test_claim_hygiene.py` — these numbers cannot go stale silently |
+| 6,581 hand-authored + 2,767 DDIC-derived | `checks/rules/<cat>/<module>.yaml` + `<module>.generated.yaml` |
 | **45 modules** | the packs on disk |
 | **24 check classes** | `checks/runner.py::REGISTRY` |
 | **6 DQS dimensions** (DAMA DMBOK) | `api/services/scoring.py::DEFAULT_WEIGHTS` |
@@ -79,7 +79,7 @@ rates Syniti "Innovative" — not a leader.
 
 ## The honest one-line positioning
 
-> A customer-deployed SAP data-quality engine whose **9,245 rules are each proved against
+> A customer-deployed SAP data-quality engine whose **9,348 rules are each proved against
 > fixtures and reconciled against the customer's own data dictionary** — with no data
 > leaving the customer's environment.
 

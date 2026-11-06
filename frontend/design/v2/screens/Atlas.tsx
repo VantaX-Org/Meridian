@@ -14,7 +14,7 @@ import { runKeys } from "@/lib/v2/runs-queries";
 import { DASH, f1, int, moduleSlug, systemSlug } from "@/lib/v2/score";
 import { EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { band, signed } from "./Cockpit";
-import { Disclose, Guide } from "./Guide";
+import { Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 
 /**

@@ -1031,7 +1031,7 @@ tables:
     keys: [EXTERNAL_CODE]
     fields:
       EXTERNAL_CODE:               {source: FOGeozone.externalCode, type: STRING, length: 32, verify: true, description: External code}
-      END_DATE:                    {source: FOGeozone.endDate, type: STRING, verify: true, description: End date}
+      END_DATE:                    {source: FOGeozone.endDate, type: DATE, verify: true, description: End date}
       NAME:                        {source: FOGeozone.name, type: STRING, length: 32, verify: true, description: Name}
       START_DATE:                  {source: FOGeozone.startDate, type: DATE, verify: true, description: Start date}
       DESCRIPTION:                 {source: FOGeozone.description, type: STRING, length: 128, verify: true, description: Description}

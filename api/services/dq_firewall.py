@@ -146,7 +146,7 @@ def validate(tid: str, module: str, records: list[dict[str, Any]], overrides: Op
         fails = [{"rule_id": r.check_id, "description": desc.get(r.check_id) or r.message, "field": r.field,
                   "field_description": field_label(r.field), "severity": r.severity, "dimension": r.dimension, "reason": (r.message or "")[:300]}
                  for r in results if not r.passed and not r.error and r.affected_count]
-        fails.sort(key=lambda f: (_ORDER.get(f["severity"], 9), f["rule_id"]))
+        fails.sort(key=lambda f: (_ORDER.get(str(f["severity"]), 9), f["rule_id"]))
         if suggest and fails:
             _suggestions(tid, module, row, fails, by_id, overrides, extra_rules)
         out.append({"index": i, "verdict": "block" if any(f["severity"] == BLOCK_SEVERITY for f in fails) else "pass",

@@ -16,7 +16,7 @@ import re
 import zipfile
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -213,7 +213,8 @@ def parse_workbook(data: bytes) -> Workbook:
     except (zipfile.BadZipFile, KeyError, OSError) as e:
         raise WorkbookError("This file is not an Excel workbook (.xlsx).") from e
 
-    definitions, grids, picklists = [], [], {}
+    definitions, grids = [], []
+    picklists: dict[str, set[str]] = {}
     try:
         for ws in book.worksheets:
             ws.reset_dimensions()
@@ -276,7 +277,7 @@ def _candidates(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Fie
         index = {_norm(k): table.fields[k] for k in table.keys}
         index |= {_norm(f.source.split(".", 1)[1]): table.fields[k]
                   for k in table.keys for f in [table.fields[k]] if f.source}
-        index |= {_norm(f.source.split(".", 1)[1]): f for f in fields}
+        index |= {_norm((f.source or "").split(".", 1)[1]): f for f in fields}
         if "status" in index:  # foundation load files call the status field effectiveStatus
             index["effectivestatus"] = index["status"]
         if "externalcode" in index:  # friendly grids head the code column with the object's name
@@ -362,27 +363,27 @@ def fill(workbook: Workbook, frames: TableFrames) -> tuple[dict[str, pd.DataFram
     tabs: dict[str, pd.DataFrame] = {}
     held: list[dict] = []
     reasons: Counter = Counter()
-    report = []
+    report: list[dict[str, Any]] = []
     for sheet in workbook.sheets:
         options = _candidates(sheet, frames.dictionary)
         present = {}
-        for table, hits in options.items():
-            df = frames.frames.get(table)
-            if df is not None:
-                live = {h: f for h, f in hits.items() if f.qualified in df.columns}
+        for name, found in options.items():
+            held_table = frames.frames.get(name)
+            if held_table is not None:
+                live = {h: f for h, f in found.items() if f.qualified in held_table.columns}
                 if live:
-                    present[table] = live
+                    present[name] = live
         table = max(present, key=lambda t: len(present[t]), default=None)
-        hits = dict(present.get(table, {}))
+        hits = dict(present[table]) if table else {}
         columns = list(sheet.columns)
-        added = []
+        added: list[str] = []
         # Most definition sheets leave out whose record a row is. A load without that id cannot work, so it is
         # added under the source system's own property name, and the report says so.
         if table and sheet.kind == "definition":  # a grid is the exact load format, so nothing is added to it
             have = {f.name for f in hits.values()}
             for key in frames.dictionary.keys(table):
                 f = frames.dictionary.field(table, key)
-                if key not in have and f.qualified in frames.frames[table].columns:
+                if f and key not in have and f.qualified in frames.frames[table].columns:
                     header = f.source.split(".", 1)[1] if f.source else key
                     columns.insert(len(added), Column(header, header, f.description or key, mandatory=True))
                     hits[header] = f
@@ -397,8 +398,11 @@ def fill(workbook: Workbook, frames: TableFrames) -> tuple[dict[str, pd.DataFram
         if not table:
             continue
 
-        df = frames.frames[table]
-        keys = record_keys(df, [f"{table}.{k}" for k in frames.dictionary.keys(table)])
+        # A large table stays compressed (checks/frames.ParquetTable), so decode only the columns this sheet reads.
+        stored = frames.frames[table]
+        key_cols = [c for c in (f"{table}.{k}" for k in frames.dictionary.keys(table)) if c in stored.columns]
+        df = stored[list({*key_cols, *(f.qualified for f in hits.values())})]
+        keys = record_keys(df, key_cols)
         bad = pd.Series(False, index=df.index)
         for col in columns:
             if col.header not in hits:

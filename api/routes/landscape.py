@@ -185,7 +185,7 @@ async def _status_systems(db: AsyncSession, t: str) -> list[StatusSystemOut]:
         for mod, rid in sorted(cells.get(sys["id"], [])):
             h = heads.get(rid)
             m = (h["dqs_summary"] or {}).get(mod) if h and isinstance(h["dqs_summary"], dict) else None
-            if not isinstance(m, dict):
+            if h is None or not isinstance(m, dict):
                 continue
             n = m.get("total_checks") if isinstance(m.get("total_checks"), int) else None
             objs.append(StatusObjectOut(module=mod, label=_label(mod), run_id=rid, run_number=h["run_number"],
