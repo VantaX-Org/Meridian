@@ -4,7 +4,7 @@
  */
 
 /* Run timeline overlay and chart */
-.m2-root .m2-tlpop { position: fixed; z-index: 80; width: min(560px, calc(100vw - 16px)); background: var(--m2-sheet); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); box-shadow: var(--m2-shadow); padding: var(--m2-s3) var(--m2-s4) var(--m2-s4); font-size: var(--m2-fs-13); }
+.m2-root .m2-tlpop { position: fixed; z-index: 80; width: min(560px, calc(100vw - 16px)); background: var(--m2-glass-sheet); border: 1px solid var(--m2-glass-line); border-radius: var(--m2-r2); box-shadow: var(--m2-glass-edge); padding: var(--m2-s3) var(--m2-s4) var(--m2-s4); font-size: var(--m2-fs-13); }
 .m2-root .m2-pop-h { margin: 0 0 var(--m2-s2); font-size: var(--m2-fs-13); font-weight: 600; }
 .m2-root .m2-pop-p { margin: var(--m2-s1) 0 0; color: var(--m2-ink-2); font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); }
 .m2-root .m2-pop-cmp { display: flex; gap: var(--m2-s2); align-items: center; flex-wrap: wrap; margin-top: var(--m2-s3); }

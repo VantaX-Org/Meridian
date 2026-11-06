@@ -91,6 +91,15 @@
   --m2-seg: var(--m2-n-600);
   --m2-scrim: #151A1E59;
   --m2-shadow: 0 8px 28px #151A1E2E;
+  --m2-ambient: radial-gradient(1100px 620px at 8% -8%, #2F5FD01A, #2F5FD000 70%), radial-gradient(900px 560px at 96% 104%, #1F8A7A17, #1F8A7A00 70%);
+  --m2-glass-sheet: #FFFFFFE6;
+  --m2-glass-sheet-floor: #E6E8EA;
+  --m2-glass-inverse: #151A1EE6;
+  --m2-glass-inverse-floor: #2C3135;
+  --m2-glass-line: #14191D1F;
+  --m2-glass-hi: #FFFFFF8C;
+  --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
+  --m2-glass-filter: blur(16px) saturate(140%);
   /* Ledger: no decorative shadow; only the menu, popover and dialog (--m2-shadow) lift. The card token stays so callers resolve. */
   --m2-shadow-card: none;
   --m2-inverse: var(--m2-n-925);
@@ -164,8 +173,8 @@
   --m2-header-h: 48px;
 
   /* Radius */
-  --m2-r1: 4px;
-  --m2-r2: 6px;
+  --m2-r1: 6px;
+  --m2-r2: 12px;
   --m2-r-round: 999px;
 
   /* Layout */
@@ -323,6 +332,15 @@
     --m2-seg: var(--m2-n-400);
     --m2-scrim: #000000A6;
     --m2-shadow: 0 8px 28px #000000B3;
+    --m2-ambient: radial-gradient(1100px 620px at 8% -8%, #5B8DEF1F, #5B8DEF00 70%), radial-gradient(900px 560px at 96% 104%, #3FB8A51A, #3FB8A500 70%);
+    --m2-glass-sheet: #161C22E6;
+    --m2-glass-sheet-floor: #2B3136;
+    --m2-glass-inverse: #E6EBEFE6;
+    --m2-glass-inverse-floor: #D1D6DA;
+    --m2-glass-line: #FFFFFF1F;
+    --m2-glass-hi: #FFFFFF14;
+    --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
+    --m2-glass-filter: blur(16px) saturate(120%);
   --m2-shadow-card: none;
     --m2-inverse: var(--m2-n-100);
     --m2-on-inverse: var(--m2-n-950);
@@ -444,6 +462,15 @@ html[data-theme="dark"] .m2-root {
   --m2-seg: var(--m2-n-400);
   --m2-scrim: #000000A6;
   --m2-shadow: 0 8px 28px #000000B3;
+  --m2-ambient: radial-gradient(1100px 620px at 8% -8%, #5B8DEF1F, #5B8DEF00 70%), radial-gradient(900px 560px at 96% 104%, #3FB8A51A, #3FB8A500 70%);
+  --m2-glass-sheet: #161C22E6;
+  --m2-glass-sheet-floor: #2B3136;
+  --m2-glass-inverse: #E6EBEFE6;
+  --m2-glass-inverse-floor: #D1D6DA;
+  --m2-glass-line: #FFFFFF1F;
+  --m2-glass-hi: #FFFFFF14;
+  --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
+  --m2-glass-filter: blur(16px) saturate(120%);
   --m2-shadow-card: none;
   --m2-inverse: var(--m2-n-100);
   --m2-on-inverse: var(--m2-n-950);
@@ -724,5 +751,25 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
   .m2-root, html[data-theme="dark"] .m2-root {
     --m2-bg: #FFFFFF; --m2-sheet: #FFFFFF; --m2-fg: #000000; --m2-ink-2: #2B2F36; --m2-meta: #4A505A;
     --m2-line: #C9CDD3; --m2-line-2: #9AA0A9; --m2-rule: #DADDE1;
+    --m2-ambient: none; --m2-glass-sheet: #FFFFFF; --m2-glass-inverse: #FFFFFF; --m2-glass-filter: none;
   }
+}
+
+/* Glass: floating chrome only. Content never blurs. Budget: 3 layers at once. */
+.m2-root .m2-menu, .m2-root .m2-pal, .m2-root .m2-pop, .m2-root .m2-tlpop, .m2-root .m2-toast, .m2-root .m2-bulk,
+.m2-root .m2-railwrap:not([data-pinned]) .m2-fly {
+  -webkit-backdrop-filter: var(--m2-glass-filter);
+  backdrop-filter: var(--m2-glass-filter);
+}
+@media (max-width: 1180px) {
+  .m2-root .m2-insp { -webkit-backdrop-filter: var(--m2-glass-filter); backdrop-filter: var(--m2-glass-filter); }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .m2-root { --m2-glass-sheet: var(--m2-sheet); --m2-glass-inverse: var(--m2-inverse); --m2-glass-hi: var(--m2-line); }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .m2-root { --m2-glass-sheet: var(--m2-sheet); --m2-glass-inverse: var(--m2-inverse); --m2-glass-hi: var(--m2-line); --m2-glass-filter: none; }
+}
+@media (forced-colors: active) {
+  .m2-root { --m2-glass-filter: none; }
 }
