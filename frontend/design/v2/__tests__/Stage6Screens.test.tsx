@@ -63,3 +63,13 @@ describe("Share landing", () => {
     expect(await screen.findByText(/Ask the person who shared it for a new link/)).toBeTruthy();
   });
 });
+
+describe("Process discovery run chip", () => {
+  it("shows the discovery run as a run chip without a run number", async () => {
+    setUrl("/processes?run=pd-run-ptp");
+    renderWithQuery(<ProcessDiscovery />);
+    const chip = await screen.findByTestId("run-chip", undefined, { timeout: 8000 });
+    expect(chip.textContent).toMatch(/run/);
+    expect(chip.textContent).not.toMatch(/run \d/);
+  });
+});
