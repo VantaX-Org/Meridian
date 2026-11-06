@@ -13,6 +13,7 @@ import { int } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, TrendChart, niceTicks, type TrendPoint } from "../charts";
 import { ageWord, objectWord, statusWord } from "../inspector/request";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { DuplicateResults } from "./EntryDuplicates";
 import { Panel } from "./Mining";
@@ -393,6 +394,15 @@ export function EntryGate() {
 
   return (
     <CcPage title={t("Entry gate")}>
+      <Guide
+        shows={t("Shows the records the entry gate checked before SAP saved them: how many passed, were held for approval, rejected or written.")}
+        next={{ href: "/requests", label: t("Open the requests") }}
+        means={[
+          [t("Held"), t("Records waiting for the approval workflow before SAP may save them.")],
+          [t("Rejected"), t("Records the gate stopped because they failed a rule.")],
+          [t("Written"), t("Records that passed and SAP saved.")],
+        ]}
+      />
       <CcBanner
         testId="entry-gate"
         label={t("Entry gate")}

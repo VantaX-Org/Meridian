@@ -10,6 +10,7 @@ import { useRunList } from "@/lib/v2/queries";
 import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
 import { EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
+import { Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { pctOf, retry, Section, status, Table } from "./WorkAnalytics";
 
@@ -71,6 +72,15 @@ export function Value() {
       : t("Returns {n} times its cost", { n: f1(roi.roi_multiple) });
   return (
     <CcPage title={t("Value delivered")}>
+      <Guide
+        shows={t("Prices the failing records of the latest run as money at risk and shows what fixing them has saved.")}
+        next={{ href: "/insights", label: t("Open cost and causes") }}
+        means={[
+          [t("Annual risk found"), t("What the failing records would cost over a year, from your cost model.")],
+          [t("Risk mitigated a year"), t("The share of that risk that fixing removes.")],
+          [t("Payback"), t("Months until the risk removed covers the subscription; a dash means the subscription cost is not set.")],
+        ]}
+      />
       <CcBanner
         eyebrow={t("Value delivered")}
         verdict={roi.roi_multiple == null ? undefined : roi.roi_multiple >= 1 ? "go" : "at-risk"}

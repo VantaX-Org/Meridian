@@ -10,6 +10,7 @@ import { f1, int } from "@/lib/v2/score";
 import { Sparkline } from "../charts";
 import { Sev } from "../inspector/rule";
 import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { retry, Section, status, Table, useRuleName } from "./WorkAnalytics";
 
@@ -95,6 +96,15 @@ export function Forecast() {
         : t("No object has enough history to forecast");
   return (
     <CcPage title={t("Forecast and plan")}>
+      <Guide
+        shows={t("Projects each score from its history and ranks the open work that would lift it fastest.")}
+        next={{ href: "/work", label: t("Open the work queue") }}
+        means={[
+          [t("Below the floor"), t("Objects already under the lowest score you accept.")],
+          [t("Heading below"), t("Objects forecast to fall under the floor within the range shown.")],
+          [t("Sprints to clear the open work"), t("How many sprints of the stated hours the plan needs for all open work.")],
+        ]}
+      />
       <CcBanner
         eyebrow={t("Forecast and plan")}
         verdict={red.length ? "no-go" : amber.length ? "at-risk" : p.early_warnings.length ? "go" : undefined}

@@ -12,6 +12,7 @@ import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -85,6 +86,15 @@ export function Material() {
   const submit = (e: FormEvent) => { e.preventDefault(); setM(draft.trim()); };
   return (
     <CcPage title={t("Material 360")}>
+      <Guide
+        shows={t("Gathers one material across its views, plants, rule findings and follow-up chain.")}
+        next={{ href: "/issues", label: t("Open the issues") }}
+        means={[
+          [t("Rules failing"), t("Rules this material fails, out of all rules that apply to it.")],
+          [t("Views missing"), t("Material views that are not maintained at the levels expected.")],
+          [t("Plants phasing out"), t("Plants where the material is being phased out.")],
+        ]}
+      />
       <form className="m2-rfilters" onSubmit={submit} aria-label={t("Find a material")} data-testid="material-search">
         <label>
           {t("Material number")}

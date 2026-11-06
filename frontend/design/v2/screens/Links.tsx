@@ -9,6 +9,7 @@ import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int, pct1 } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
+import { Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -94,6 +95,15 @@ export function Links() {
 
   return (
     <CcPage title={t("Record links")}>
+      <Guide
+        shows={t("Shows how records of different objects point at each other, and which links SAP defines and which were inferred.")}
+        next={{ href: "/objects", label: t("Open the objects") }}
+        means={[
+          [t("Link types"), t("Kinds of relationship between two objects.")],
+          [t("Objects linked"), t("Objects that take part in at least one link.")],
+          [t("Inferred, not read from SAP"), t("Links Meridian worked out from the data rather than read from an SAP table.")],
+        ]}
+      />
       <CcBanner
         eyebrow={t("Links between records")}
         headline={

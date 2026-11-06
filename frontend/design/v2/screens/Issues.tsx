@@ -14,6 +14,7 @@ import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
+import { Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -110,6 +111,15 @@ export function Issues() {
 
   return (
     <CcPage title={t("Issues")}>
+      <Guide
+        shows={t("Lists the failing records people are working on, with who owns each and where it stands.")}
+        next={{ href: "/work", label: t("Open the work queue") }}
+        means={[
+          [t("In progress"), t("Issues someone is working on now.")],
+          [t("Waiting on SAP"), t("Issues waiting for a change in SAP.")],
+          [t("Closed"), t("Issues accepted or resolved.")],
+        ]}
+      />
       <CcBanner
         eyebrow={t("Record issues")}
         headline={t("{n} issues still to close", { n: int(active) })}

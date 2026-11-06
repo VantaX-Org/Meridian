@@ -8,6 +8,7 @@ import { t } from "@/lib/v2/i18n";
 import { f1, int, pct1 } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, niceTicks, Sparkline, TrendChart } from "../charts";
 import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -64,6 +65,15 @@ export function MdmHealth() {
   const change = first ? s.mdm_health_score - first.mdm_health_score : null;
   return (
     <CcPage title={t("MDM health")}>
+      <Guide
+        shows={t("Scores how healthy your master data management is: golden records, the stewardship backlog and how many systems stay in sync.")}
+        next={{ href: "/issues", label: t("Open the issues") }}
+        means={[
+          [t("Golden records"), t("Records confirmed as the single trusted version.")],
+          [t("Stewardship backlog"), t("Items still waiting for a data steward.")],
+          [t("Systems synced"), t("The share of active systems whose data is in sync.")],
+        ]}
+      />
       <CcBanner
         eyebrow={t("MDM health on {date}", { date: formatDate(s.snapshot_date, "date") })}
         headline={t("Health {score} out of 100", { score: f1(s.mdm_health_score) })}

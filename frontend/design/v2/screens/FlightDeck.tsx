@@ -17,6 +17,7 @@ import { useMoney, useTopFixes } from "@/lib/v2/step9-queries";
 import { dayFromToday, daysUntil, nextWave } from "@/lib/v2/waves";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { useMeasuredWidth } from "../RunTimeline";
+import { Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 
 /**
@@ -98,6 +99,15 @@ export function FlightDeck() {
 
   return (
     <CcPage title={t("Go-live flight deck")}>
+      <Guide
+        shows={t("Counts down to the go-live date of a migration wave and shows how ready each object is against its target.")}
+        next={{ href: "/forecast", label: t("Open the forecast and plan") }}
+        means={[
+          [t("Readiness today"), t("The latest measured score for the wave.")],
+          [t("Weakest at go-live"), t("The lowest forecast score among the objects on the go-live date.")],
+          [t("Line meets target"), t("The date the forecast line reaches the target; a dash means it does not within the forecast.")],
+        ]}
+      />
       <CcBanner
         testId="flight-deck"
         label={t("Go-live flight deck")}

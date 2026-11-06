@@ -11,6 +11,7 @@ import { labelText, moneyCompactText } from "@/lib/v2/labels";
 import { DASH, f1, int } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
+import { Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
 
@@ -114,6 +115,15 @@ export function Config() {
 
   return (
     <CcPage title={t("Configuration")}>
+      <Guide
+        shows={t("Reads how the SAP system is configured, which settings carry transactions and the health of each area.")}
+        next={{ href: "/s4", label: t("Open S/4HANA readiness") }}
+        means={[
+          [t("Average health"), t("Each area starts at 100 and loses points for its findings; this is the average.")],
+          [t("Critical and high"), t("Findings to act on first.")],
+          [t("Settings in use"), t("The share of configured settings that carry at least one transaction.")],
+        ]}
+      />
       <CcBanner
         testId="config"
         label={t("Configuration")}

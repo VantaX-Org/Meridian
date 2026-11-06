@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { V2Link } from "../parts";
 import { InactiveChip, Lede, PrimaryAction } from "../RunParts";
 import { t } from "@/lib/v2/i18n";
 import "./stage6.css";
@@ -19,7 +20,7 @@ export function SystemChip({ name, inactive }: { name: string; inactive?: boolea
  * The top of a screen for a new reader: what it shows, the one next action (the only filled button, passed in), and
  * what each figure means. `means` pairs a figure's name with its definition.
  */
-export function Guide({ shows, action, why, means, system, inactive, extra }: { shows: ReactNode; action?: ReactNode; why?: ReactNode; means?: readonly (readonly [string, string])[]; system?: string | null; inactive?: boolean; extra?: ReactNode }) {
+export function Guide({ shows, action, next, why, means, system, inactive, extra }: { shows: ReactNode; action?: ReactNode; next?: { href: string; label: string }; why?: ReactNode; means?: readonly (readonly [string, string])[]; system?: string | null; inactive?: boolean; extra?: ReactNode }) {
   return (
     <div className="m2-guide" data-testid="guide">
       {system || extra ? (
@@ -29,7 +30,7 @@ export function Guide({ shows, action, why, means, system, inactive, extra }: { 
         </div>
       ) : null}
       <Lede>{shows}</Lede>
-      {action ? <PrimaryAction action={action} why={why} /> : null}
+      {action ?? next ? <PrimaryAction action={action ?? <V2Link className="m2-btn m2-strong" href={next!.href}>{next!.label}</V2Link>} why={why} /> : null}
       {means?.length ? (
         <details className="m2-guide-means">
           <summary>{t("What the figures mean")}</summary>

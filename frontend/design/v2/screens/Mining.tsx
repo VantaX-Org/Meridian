@@ -14,6 +14,7 @@ import { f1, int, pct1 } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
+import { Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
 
@@ -83,6 +84,15 @@ export function Mining() {
 
   return (
     <CcPage title={t("Data mining")}>
+      <Guide
+        shows={t("Finds outliers, duplicates and fields that depend on each other by comparing records and values, not by rules.")}
+        next={{ href: "/rule-promotion", label: t("Review rule candidates") }}
+        means={[
+          [t("Patterns"), t("Groups of outliers by field and of duplicates by object.")],
+          [t("Objects mined"), t("The share of analysed objects that have mining results.")],
+          [t("Runs mined"), t("Analysis runs that have mining results.")],
+        ]}
+      />
       <CcBanner
         testId="mining"
         label={t("Data mining")}
