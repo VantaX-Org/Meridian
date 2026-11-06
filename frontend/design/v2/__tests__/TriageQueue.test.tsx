@@ -66,4 +66,44 @@ describe("Triage", () => {
     fireEvent.click(second);
     await waitFor(() => expect(within(screen.getByTestId("triage-rules")).getAllByRole("rowheader")[0].textContent).toContain("Finance modules"));
   });
+
+  it("leads with the queue and three steps; charts, teams and rules sit in closed disclosures after it", async () => {
+    renderWithQuery(<Triage />);
+    const overdue = await screen.findByTestId("triage-overdue");
+    const steps = screen.getByTestId("flow-steps");
+    expect(within(steps).getAllByRole("listitem")).toHaveLength(3);
+    const more = screen.getAllByTestId("more-detail");
+    expect(more).toHaveLength(2);
+    for (const d of more) {
+      expect(d).not.toHaveAttribute("open");
+      expect(overdue.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    expect(more[0]).toContainElement(screen.getByTestId("triage-owners"));
+    expect(more[1]).toContainElement(await screen.findByTestId("triage-rules"));
+  });
+
+  it("moves to step two and states what Apply does once items are picked", async () => {
+    renderWithQuery(<Triage />);
+    const overdue = await screen.findByTestId("triage-overdue");
+    expect(screen.queryByText(/Apply changes every picked item at once/)).toBeNull();
+    fireEvent.click(within(overdue).getAllByRole("checkbox")[0]);
+    expect(await screen.findByText(/Apply changes every picked item at once/)).toBeInTheDocument();
+    expect(within(screen.getByTestId("flow-steps")).getAllByRole("listitem")[1]).toHaveAttribute("aria-current", "step");
+  });
+
+  it("offers no bulk change or consequence line to a role that cannot assign", async () => {
+    h.allowed = ["view"];
+    renderWithQuery(<Triage />);
+    await screen.findByTestId("triage-overdue");
+    expect(screen.queryByTestId("triage-primary")).toBeNull();
+    expect(screen.queryByText(/Apply changes every picked item at once/)).toBeNull();
+  });
+
+  it("says what failed and offers a retry when the queue cannot be read", async () => {
+    const api = await import("@/lib/api/v2/triage");
+    vi.spyOn(api, "getTriageQueue").mockRejectedValue(new Error("boom"));
+    renderWithQuery(<Triage />);
+    expect(await screen.findByText("The triage queue could not be read.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+  });
 });

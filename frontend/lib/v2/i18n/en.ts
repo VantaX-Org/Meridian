@@ -8218,6 +8218,16 @@ export const en = {
   "Approved fixes are applied to the current run only.": "Approved fixes are applied to the current run only.",
   "Accepting or editing a value only proposes it. Nothing reaches SAP until it is approved and applied.": "Accepting or editing a value only proposes it. Nothing reaches SAP until it is approved and applied.",
   "Rules, pipeline and open records, charted": "Rules, pipeline and open records, charted",
+  "Triage steps": "Triage steps",
+  "Pick": "Pick",
+  "Change them": "Change them",
+  "Watch the SLA": "Watch the SLA",
+  "Tick the items to deal with. Past-SLA items come first.": "Tick the items to deal with. Past-SLA items come first.",
+  "Assign, set priority, snooze or pause the picked items together.": "Assign, set priority, snooze or pause the picked items together.",
+  "The count shows items already past their SLA.": "The count shows items already past their SLA.",
+  "Apply changes every picked item at once. Assigning gives them a new owner; snoozing hides them from the queue until the date you choose.": "Apply changes every picked item at once. Assigning gives them a new owner; snoozing hides them from the queue until you include snoozed items.",
+  "Backlog and load, charted": "Backlog and load, charted",
+  "Teams and assignment rules": "Teams and assignment rules",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
