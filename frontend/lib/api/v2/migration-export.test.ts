@@ -19,3 +19,16 @@ describe("exportLoadFiles", () => {
     expect(download).toHaveBeenCalledWith("/migration/export/r2/xlsx", undefined, "migration_r2.xlsx");
   });
 });
+
+describe("exportTargetWorkbook", () => {
+  afterEach(() => download.mockClear());
+
+  it("posts the workbook as a form and names a csv export a zip", async () => {
+    const { exportTargetWorkbook } = await import("./migration");
+    const file = new File(["x"], "target.xlsx");
+    await exportTargetWorkbook("r 1", file, "csv");
+    const [path, params, name, method, body] = download.mock.calls[0] as unknown as [string, unknown, string, string, FormData];
+    expect([path, params, name, method]).toEqual(["/migration/target-workbook/r%201/export", { format: "csv" }, "target_workbook_r 1.zip", "post"]);
+    expect((body.get("file") as File).name).toBe("target.xlsx");
+  });
+});

@@ -172,6 +172,18 @@ function failedHead(): VersionHead {
   };
 }
 const FAILED_RUN = "f0000000-0000-4000-8000-0000000000f1";
+/** The one finished run of the SuccessFactors system, for the target workbook step. */
+const sfHead = (): VersionHead => ({
+  id: "5f000000-0000-4000-8000-000000000001",
+  run_at: "2026-10-14T05:10:00Z",
+  label: null,
+  run_number: 1,
+  parent_version_id: null,
+  status: "complete",
+  dqs_summary: null,
+  metadata: { system_id: SF.id, trigger: "manual", baseline: false, archived: false, modules: ["employee_central"] },
+  severity_counts: null,
+});
 
 function versionsPage(params: Params) {
   const includeArchived = params.include_archived === true || params.include_archived === "true";
@@ -180,7 +192,8 @@ function versionsPage(params: Params) {
   const failedShown = includeArchived || !state.archived.has(FAILED_RUN);
   if (params.status === "failed") rows = failedShown ? [failedHead()] : [];
   else if (failedShown && (!params.system_id || params.system_id === S4.id)) rows = [...rows, failedHead()].sort((a, b) => b.run_at.localeCompare(a.run_at));
-  if (params.system_id && params.system_id !== ECC.id && params.system_id !== S4.id) rows = [];
+  if (params.system_id === SF.id) rows = params.status === "failed" ? [] : [sfHead()];
+  else if (params.system_id && params.system_id !== ECC.id && params.system_id !== S4.id) rows = [];
   else if (params.system_id === ECC.id) rows = rows.filter((r) => r.metadata?.system_id === ECC.id);
   else if (params.system_id === S4.id) rows = rows.filter((r) => r.metadata?.system_id === S4.id);
   const limit = Number(params.limit ?? 20);

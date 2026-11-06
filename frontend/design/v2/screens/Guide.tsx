@@ -17,10 +17,10 @@ export function SystemChip({ name, inactive }: { name: string; inactive?: boolea
 }
 
 /** Where the user is in multi-step work: steps before the current one are done, the current one is marked, the rest follow. */
-export function Steps({ labels, current }: { labels: readonly string[]; current: number }) {
+export function Steps({ labels, current, label, testId = "steps" }: { labels: readonly string[]; current: number; label?: string; testId?: string }) {
   const next = labels[current + 1];
   return (
-    <nav className="m2-steps" aria-label={t("Steps")} data-testid="steps">
+    <nav className="m2-steps" aria-label={label ?? t("Steps")} data-testid={testId}>
       <ol>
         {labels.map((l, i) => (
           <li key={l} className={i < current ? "m2-step-done" : i === current ? "m2-step-now" : "m2-step-next"} aria-current={i === current ? "step" : undefined}>

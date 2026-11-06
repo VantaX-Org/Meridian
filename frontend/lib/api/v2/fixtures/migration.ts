@@ -3,7 +3,7 @@
  * business partner data against S/4HANA, their gaps, the records that will not load, and an editable field map and
  * value map. Writes change the in-memory map until the page reloads.
  */
-import type { FieldMapping, ValueEntry } from "../migration";
+import type { FieldMapping, ValueEntry, WorkbookReport } from "../migration";
 
 export const NONE_MIGRATION = Symbol("not a migration path");
 
@@ -105,6 +105,21 @@ const reconNoTarget = {
   ...recon, reconciliation_id: "rec-0003", run_id: "mig-0003", status: "failed", error_detail: "The target system has no completed analysis. Extract the target first.",
   needs_target_extraction: true, target_system_id: null, target_version_id: null, target_synced_at: null, completed_at: null, automatic: false, previous: null, summary: {}, tables: [], scores: [],
 };
+/** A check of a target workbook: one sheet filled with a held row, one short of a required column, one not filled. */
+export const fixtureWorkbookReport = (): WorkbookReport => ({
+  summary: { sheets: 3, filled_sheets: 2, columns: 24, matched_columns: 11, mandatory_unmapped: 2, rows: 120, ready: 118, held: 2 },
+  sheets: [
+    { name: "Biographical Information", kind: "definition", table: "PERPERSON", columns: 8, added_keys: ["personIdExternal"], matched: 6, rows: 60, ready: 59, held: 1, known: true, unmapped: [{ id: "country-of-birth", label: "Country Of Birth", mandatory: false }] },
+    { name: "Job Information", kind: "definition", table: "EMPJOB", columns: 12, added_keys: ["userId"], matched: 5, rows: 60, ready: 59, held: 1, known: true, unmapped: [{ id: "event-reason", label: "Event Reason", mandatory: true }, { id: "pay-grade", label: "Pay Grade", mandatory: true }] },
+    { name: "Social Accounts", kind: "definition", table: null, columns: 4, added_keys: [], matched: 0, rows: 0, ready: 0, held: 0, known: false, unmapped: [] },
+  ],
+  reasons: { too_long: 1, bad_date: 1 },
+  held: [
+    { sheet: "Biographical Information", record: "EMP-0001", field: "Date Of Birth", reason: "bad_date" },
+    { sheet: "Job Information", record: "EMP-0002", field: "Job Title", reason: "too_long" },
+  ],
+  held_total: 2,
+});
 let seq = 10;
 
 export function migrationRead(path: string, params: Record<string, unknown> = {}): unknown {
