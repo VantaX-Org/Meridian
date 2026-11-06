@@ -36,7 +36,19 @@ export function measuredChange(o: Pick<CompareObject, "before" | "after">): numb
   return b == null || a == null ? null : r1(a - b);
 }
 
-/** Run numbers restart per system, so two runs compare only within one system. Unknown is not refused: the API has the last word. */
+/** Objects up and down, counted from the measured scores as the bars are, so the sentence and the chart agree. */
+export function changeCounts(S: CompareSummary): { up: number; dn: number } {
+  const deltas = S.objects.map(measuredChange);
+  return { up: deltas.filter((d) => d != null && d > 0).length, dn: deltas.filter((d) => d != null && d < 0).length };
+}
+
+/** The one sentence a run gives about the run before it. */
+export function changeSentence(S: CompareSummary): string {
+  const { up, dn } = changeCounts(S);
+  return tr("{up} {up, plural, one {object scored} other {objects scored}} higher and {dn} lower. {newly} rules started failing and {fixed} stopped.", { up, dn, newly: int(S.totals.newly_failing), fixed: int(S.totals.fixed) });
+}
+
+/** Run numbers restart per system, so two runs compare only within one system. An unknown system is not refused. This is the only guard: GET /versions/compare accepts any two runs of the tenant. */
 export function sameSystem(a: string | null | undefined, b: string | null | undefined): boolean {
   return !a || !b || a === b;
 }
@@ -213,8 +225,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
     );
   }
 
-  const up = rows.filter((r) => r.d != null && r.d > 0).length;
-  const dn = rows.filter((r) => r.d != null && r.d < 0).length;
+  const { up, dn } = S ? changeCounts(S) : { up: 0, dn: 0 };
   const held = (S?.objects ?? []).filter((o) => o.after?.capped).length;
   const t = S?.totals;
   const title = chipA && chipB ? tr("{b} vs {a}", { b: nameB, a: nameA }) : tr("Compare runs");

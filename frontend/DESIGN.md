@@ -318,7 +318,7 @@ words above it. Object names come from `formatModuleName` (`lib/format.ts`), nev
 | `/r/{id}` | A rule across objects |
 | `/rules` | The rules library (`?view=drafts`) |
 | `/work` | The Work ledger (`?filter=`, `module`, `rule`, `severity`, `assigned`, `due`, `batch`) |
-| `/runs`, `/run/{id}`, `/run/{a}/vs/{b}` | Runs and jobs, one run, two runs |
+| `/runs`, `/run/{id}`, `/run/{a}/vs/{b}` (`?view=records`) | Runs ledger and jobs, one run, two runs of one system |
 | `/s/{id}`, `/s/new` | A system (`?tab=`), connect a system |
 | `/people`, `/reports` | People, Reports |
 | `/admin`, `/admin/{section}` | Administration |
@@ -346,3 +346,5 @@ table in `docs/guide/redirects.md`, asserted by `__tests__/legacy-redirects.test
 ## Stage 2 screens: the spine
 
 Every stage 2 screen opens with one plain sentence (`Lede`) saying what it shows for which object, system and run, then one primary action with its reason (`PrimaryAction`). Codes in tables go through `CodeWithText`. Home (`screens/HomeStrips.tsx`) is always Current: a strip per system with its newest run, mean score and trend, then three columns, worst movers, the fix queue and what Aletheia found (marked Unverified). An empty system shows a connect prompt, a loading one skeletons, a failed one a band on that system only, and an inactive one the Inactive chip without "Run again". The Object opens on Overview (score over runs, card-size `ObjectTrend`); the Trend tab replaces the Runs tab. The Verified column of the design doc is left out of the Objects board because no per-object verified figure exists yet. The breadcrumb links each part above the last and ends with the tab.
+
+The Runs ledger groups runs by system with `groupRuns` (active systems first, inactive ones kept and labelled), each group with its own date axis and table. Run detail states its change from the run before with `changeSentence`, counted from measured scores so the sentence and the bars agree. Compare shows both run chips, and `sameSystem` refuses a pair of different systems before any figure is drawn; this guard lives in the client, because `GET /versions/compare` accepts any two runs of the tenant. The swap lists offer only runs of the same system. Its primary action, "Open what got worse", opens Work with `as_of_run`, `system` and `module`; Work has no filter for what is new in a run, so the list is everything open at that run. Compare shows measured scores because the compare payload has no per-object verified figure.

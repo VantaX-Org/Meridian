@@ -1,17 +1,18 @@
 # Runs
 
-A run is one measurement of your data at a point in time: an extraction from a system scored against the rules as they stood. Every score, failing record and report belongs to a run. **Runs** lists them on a timeline with their jobs, so you can see what ran, what failed and which run is the baseline. Open it from the map, with `g` then `r`, or at `/runs`.
+A run is one measurement of your data at a point in time: an extraction from a system scored against the rules as they stood. Every score, failing record and report belongs to a run. **Runs** lists every run of every system, so you can see what ran, what failed and what changed. Open it from the rail, with `g` then `r`, or at `/runs`.
+
+Run numbers restart for each system, so outside a system's own page a run is always named with its system: "ECC production run 12". What the product calls the current state is each object at its own newest finished run, not one latest run for everything.
 
 ## What is on it
 
-- **The banner**: the small line says "Latest run" and the headline "Finished on 16 Oct 2026" ("No run has finished yet" before the first). The line under it says which way the data moved: "The average score rose by 2.1 points since the run before.", "did not change", or "A second run is needed to say whether the data got better or worse." when there is only one. The headline is marked at risk when the average fell. Three figures: **Runs shown** (with the baseline date or "no baseline set"), **Average score** ("out of 100") and **Took** for the latest run. The one button is **Start a run**, for people who may start an analysis.
-- **The charts**: **Score over time**, the average object score over the last runs as a line ("Two runs are needed to draw a trend." until there are two), and **How long each run took**, a horizontal bar per run for the last eight, on one scale from zero. A long bar is a slow run; compare it with its records in the table.
-- **Aletheia**, docked on the right: ask about the runs in plain words (see the Ask Meridian chapter).
-- **The sentence**: "The timeline shows the last 8 finished runs, the latest on 16 Oct 2026. The baseline is 2 Oct 2026." Over the table, its own count: "9 runs in the table, 1 of them failed."
-- **The run timeline**: one mark per run, the baseline labelled. Select a mark to open that run.
-- **Runs and Jobs**: two views. **Start a run** opens the start panel.
-- **Runs** table: date, system, label, trigger (Scheduled, Started by hand, or upload for a run made from a file), records, rules, score range across objects (for example "70.0 to 93.4"), status (Complete, Failed, Queued or running) and how long it took. Filter by system and status; **Show archived runs** brings back archived ones.
+- **The sentence**: "Every run of every system, newest first within each system. Open a run to see what it scored, or compare it with the one before to see what changed."
+- **The banner**: the small line says "Latest run" and the headline "Finished on 16 Oct 2026" ("No run has finished yet" before the first). The line under it says which way the data moved: "The average score rose by 2.1 points since the run before.", "did not change", or "A second run is needed to say whether the data got better or worse." when there is only one. Three figures: **Runs shown** (with the baseline date or "no baseline set"), **Average score** ("out of 100") and **Took** for the latest run. The one button is **Start a run**, for people who may start an analysis, with the reason beside it.
+- **The charts**: **Score over time**, the average object score over the last runs as a line ("Two runs are needed to draw a trend." until there are two), and **How long each run took**, a bar per run on one scale from zero. A long bar is a slow run.
+- **Runs and Jobs**: two views.
+- **The runs ledger**: one group per system, active systems first, each headed by its name and its count, for example "9 runs, 1 failed". A system that is no longer active keeps its runs, marked Inactive, and they still open. Each group has a date axis with one square per run, then a table: run, status, records checked, objects scored, score range across objects (for example "70.0 to 93.4"), how long it took, and **Compare with previous** on every run but the first of its system. Filter by system and status; **Show archived runs** brings back archived ones.
 - **Jobs** table: every background job (extraction, analysis, configuration load, configuration sync, upload, simulation, process discovery) with its object, system, state, progress, start and duration.
+- **Trend per object**: small charts, one per object, of the score across runs.
 
 ## The job line and the job inspector
 

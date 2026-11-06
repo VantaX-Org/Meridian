@@ -219,26 +219,28 @@ function LedgerGroup({ name, inactive, rows, meta }: { name: string; inactive: b
   );
 }
 
+/** Runs by system, newest first in each; active systems before inactive ones, then by name. A system that was removed still groups. */
+export function groupRuns(rows: readonly VersionHead[], systems: readonly { id: string; name: string; is_active?: boolean }[]) {
+  const by = new Map<string, VersionHead[]>();
+  for (const v of rows) {
+    const k = v.metadata?.system_id ?? "";
+    by.set(k, [...(by.get(k) ?? []), v]);
+  }
+  const stamp = (v: VersionHead) => new Date(v.run_at ?? 0).getTime();
+  const out = [...by.entries()].map(([id, list]) => {
+    const sys = systems.find((s) => s.id === id);
+    return { id, name: sys?.name ?? t("Unknown system"), inactive: sys?.is_active === false, rows: [...list].sort((a, b) => stamp(b) - stamp(a)) };
+  });
+  return out.sort((a, b) => Number(a.inactive) - Number(b.inactive) || a.name.localeCompare(b.name));
+}
+
 function RunsLedger({ systemFilter, statusFilter, showArchived }: { systemFilter: string; statusFilter: string; showArchived: boolean }) {
   const land = useLandscape(null);
   const page = useVersionsPage({ limit: 50, include_archived: showArchived });
   const timeline = useTimeline(null, 50);
   const meta = useMemo(() => new Map((timeline.data?.runs ?? []).map((r) => [r.id, r])), [timeline.data]);
   const rows = (page.data?.versions ?? []).filter((v) => (systemFilter === "all" || v.metadata?.system_id === systemFilter) && (statusFilter === "all" || statusGroup(v.status) === statusFilter));
-  const groups = (() => {
-    const systems = land.data?.systems ?? [];
-    const by = new Map<string, VersionHead[]>();
-    for (const v of rows) {
-      const k = v.metadata?.system_id ?? "";
-      by.set(k, [...(by.get(k) ?? []), v]);
-    }
-    const stamp = (v: VersionHead) => new Date(v.run_at ?? 0).getTime();
-    const out = [...by.entries()].map(([id, list]) => {
-      const sys = systems.find((s) => s.id === id);
-      return { id, name: sys?.name ?? t("Unknown system"), inactive: sys?.is_active === false, rows: [...list].sort((a, b) => stamp(b) - stamp(a)) };
-    });
-    return out.sort((a, b) => Number(a.inactive) - Number(b.inactive) || a.name.localeCompare(b.name));
-  })();
+  const groups = groupRuns(rows, land.data?.systems ?? []);
   if (page.isLoading) return <Skeleton width="100%" height={200} />;
   if (page.isError) return <ErrorFrame onRetry={() => void page.refetch()}>{t("The runs could not be read.")}</ErrorFrame>;
   if (rows.length === 0) {

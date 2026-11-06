@@ -25,7 +25,7 @@ import { breachWords } from "@/lib/v2/step9";
 import { moduleText } from "@/lib/v2/labels";
 import { runLabel } from "@/lib/v2/run-label";
 import { Lede } from "../RunParts";
-import { ObjectChangeBars, measuredChange } from "./Compare";
+import { ObjectChangeBars, changeSentence } from "./Compare";
 import { CcBanner, CcPage } from "./cc-parts";
 import { WhatIf } from "./WhatIf";
 import { RunSteps } from "./RunSteps";
@@ -328,15 +328,11 @@ function SincePrevious({ id, prevId, prevAt, prevName }: { id: string; prevId: s
   const q = useCompareSummary(prevId, id);
   const S = q.data;
   if (!S) return null;
-  // Count from the measured scores, as the bars below do, so the sentence and the chart agree.
-  const deltas = S.objects.map(measuredChange);
-  const up = deltas.filter((d) => d != null && d > 0).length;
-  const dn = deltas.filter((d) => d != null && d < 0).length;
   return (
     <section className="m2-cc-card" aria-label={tr("Since the run before")} data-testid="run-since">
       <h3>{tr("Since {name}, on {run_at}", { name: prevName, run_at: formatDate(prevAt, "date") })}</h3>
       <p className="m2-cc-lede">
-        {tr("{up} {up, plural, one {object scored} other {objects scored}} higher and {dn} lower. {newly} rules started failing and {fixed} stopped.", { up, dn, newly: int(S.totals.newly_failing), fixed: int(S.totals.fixed) })}{" "}
+        {changeSentence(S)}{" "}
         <V2Link href={`/run/${prevId}/vs/${id}`}>{tr("See every change")}</V2Link>
       </p>
       <ObjectChangeBars S={S} />
