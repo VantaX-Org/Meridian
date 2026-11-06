@@ -136,7 +136,7 @@ export function StewardshipSection() {
                   <button type="button" className="m2-btn" disabled={Boolean(draft)} title={draft ? tr("Save the template first") : undefined} onClick={() => void run(async () => setPlan(await applyTemplate(true)))}>
                     {tr("Check what applying does")}
                   </button>
-                  <button type="button" className="m2-btn m2-strong" disabled={!plan || Boolean(draft)} onClick={() => void run(async () => {
+                  <button type="button" className="m2-btn m2-next" disabled={!plan || Boolean(draft)} onClick={() => void run(async () => {
                     const done = await applyTemplate(false);
                     setPlan(null);
                     setMsg(tr("Applied: {add} added, {change} changed.", { add: done.totals.add, change: done.totals.change }));
@@ -290,7 +290,7 @@ export function ConfigBundleSection() {
                   )),
               )}
             </ul>
-            <button type="button" className="m2-btn m2-strong" disabled={!diff.dry_run || diff.totals.add + diff.totals.change === 0} onClick={() => void importBundle(bundle, false).then((d) => (setDiff(d), setMsg(tr("Imported: {add} added, {change} changed.", { add: d.totals.add, change: d.totals.change })))).catch((e) => setError(failureText(e)))}>
+            <button type="button" className="m2-btn m2-next" disabled={!diff.dry_run || diff.totals.add + diff.totals.change === 0} onClick={() => void importBundle(bundle, false).then((d) => (setDiff(d), setMsg(tr("Imported: {add} added, {change} changed.", { add: d.totals.add, change: d.totals.change })))).catch((e) => setError(failureText(e)))}>
               {tr("Import")}
             </button>
           </div>
@@ -342,7 +342,7 @@ export function ViewAsSection() {
                 ))}
               </select>
             </label>
-            <button type="button" className="m2-btn m2-strong" onClick={() => void start()}>
+            <button type="button" className="m2-btn m2-next" onClick={() => void start()}>
               {tr("View as this role")}
             </button>
           </div>
@@ -397,7 +397,7 @@ export function RulesIoSection() {
               <button type="button" className="m2-btn" disabled={!file} onClick={() => void send(true)}>
                 {tr("Check the file")}
               </button>
-              <button type="button" className="m2-btn m2-strong" disabled={!result || !result.dry_run || result.valid === 0} onClick={() => void send(false)}>
+              <button type="button" className="m2-btn m2-next" disabled={!result || !result.dry_run || result.valid === 0} onClick={() => void send(false)}>
                 {result ? tr("Create {valid} {valid, plural, one {draft} other {drafts}}", { valid: result.valid }) : tr("Create drafts")}
               </button>
             </div>

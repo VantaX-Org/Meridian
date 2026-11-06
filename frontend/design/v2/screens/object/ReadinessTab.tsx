@@ -11,7 +11,7 @@ import { useLandscape, useObjectRules, useReceipt } from "@/lib/v2/queries";
 import { f1, int, moduleFromSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { SeverityMark, VerdictMark, type SeverityKey } from "../../marks";
 import { Ruler } from "../../Ruler";
-import { dimsOf } from "../../shell/MapPane";
+import { dimsOf } from "../../shell/ObjectsTree";
 import { objectHref } from "@/lib/v2/people";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
 import { ObjectMoney } from "../step9/Money";

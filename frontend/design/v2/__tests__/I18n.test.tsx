@@ -63,30 +63,31 @@ describe("switching the locale", () => {
     await waitFor(() => expect(screen.getByTestId("figure")).toHaveTextContent("Score 71.8"));
   });
 
-  it("the language picker in Preferences changes the shell, the map and the panel, and puts the language on the page", async () => {
+  it("the language picker in Preferences changes the shell, the menu and the panel, and puts the language on the page", async () => {
     renderWithQuery(<V2Shell><h1>Page</h1></V2Shell>);
     const dialog = await screen.findByRole("dialog", { name: "Preferences" });
-    await waitFor(() => expect(screen.getByRole("navigation", { name: "Places" })).toHaveTextContent("Landscape"));
+    await waitFor(() => expect(screen.getByTestId("rail")).toHaveTextContent("Home"));
     fireEvent.change(within(dialog).getByTestId("language-picker"), { target: { value: "de" } });
     expect(readPrefs().locale).toBe("de-DE");
-    await waitFor(() => expect(screen.getByRole("navigation", { name: "Orte" })).toHaveTextContent("Landschaft"));
+    await waitFor(() => expect(screen.getByTestId("rail")).toHaveTextContent("Start"));
     const de = screen.getByRole("dialog", { name: "Benutzereinstellungen" });
     expect(within(de).getByRole("heading", { name: "Sprache und Region" })).toBeInTheDocument();
     expect(within(de).getByTestId("format-sample")).toHaveTextContent("Scores 71,8, Anzahlen 1.234.567");
     expect(within(de).getByTestId("format-sample")).toHaveTextContent("16. Okt. 2026, 05:17");
     expect(document.querySelector(".m2-root")).toHaveAttribute("lang", "de-DE");
     expect(document.documentElement.lang).toBe("de-DE");
-    // The map's object names follow: Material master reads Materialstamm.
-    await waitFor(() => expect(screen.getByTestId("map")).toHaveTextContent("Materialstamm"));
+    // The flyout's object names follow: Material master reads Materialstamm.
+    fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Objekte" }));
+    await waitFor(() => expect(screen.getByTestId("flyout")).toHaveTextContent("Materialstamm"));
 
     fireEvent.change(within(de).getByTestId("language-picker"), { target: { value: "ja" } });
     expect(readPrefs().locale).toBe("ja-JP");
-    await waitFor(() => expect(screen.getByRole("navigation", { name: "移動先" })).toHaveTextContent("ランドスケープ"));
-    expect(screen.getByTestId("map")).toHaveTextContent("品目マスタ");
+    await waitFor(() => expect(screen.getByTestId("rail")).toHaveTextContent("ホーム"));
+    await waitFor(() => expect(screen.getByTestId("flyout")).toHaveTextContent("品目マスタ"));
     expect(within(screen.getByRole("dialog", { name: "環境設定" })).getByTestId("format-sample")).toHaveTextContent("2026年10月16日 05:17");
 
     fireEvent.change(within(screen.getByRole("dialog", { name: "環境設定" })).getByTestId("language-picker"), { target: { value: "en" } });
-    await waitFor(() => expect(screen.getByRole("navigation", { name: "Places" })).toHaveTextContent("Landscape"));
+    await waitFor(() => expect(screen.getByTestId("rail")).toHaveTextContent("Home"));
   });
 
   it("keeps the region when the language stays the same", async () => {

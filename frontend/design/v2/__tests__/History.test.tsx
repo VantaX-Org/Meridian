@@ -120,29 +120,24 @@ describe("the Work ledger as of a run", () => {
   });
 });
 
-describe("the Object canvas as of a run", () => {
-  it("shows the object as it stood with its band, ruler and rules, and goes back to today", async () => {
+describe("the Object canvas with a legacy ?as_of=", () => {
+  it("redirects to ?run= and the run menu has no As of picker", async () => {
     setUrl(`/o/ecc-production/material-master?fixture=1&as_of=${R3}`);
     renderWithQuery(
       <ObjectFrame system="ecc-production" module="material-master">
         <RulesTab system="ecc-production" module="material-master" />
       </ObjectFrame>,
     );
-    const band = await screen.findByTestId("as-of-band");
-    await waitFor(() => expect(norm(band)).toContain("As it stood at the run of 18 Sept 2026, 05:16."));
-    const rules = await screen.findByTestId("as-of-rules");
-    expect(norm(rules)).toContain("MM142");
-    expect(screen.queryByTestId("receipt")).toBeNull();
-    expect(within(band).getByRole("link", { name: "Back to today" })).toHaveAttribute("href", expect.not.stringContaining("as_of"));
+    await waitFor(() => expect(getUrl()).toContain(`run=${R3}`));
+    expect(getUrl()).not.toContain("as_of=");
+    expect(screen.queryByTestId("as-of-band")).toBeNull();
   });
 
-  it("the run menu on an object offers As of", async () => {
+  it("the run menu on an object offers no As of", async () => {
     setUrl("/o/ecc-production/material-master?fixture=1");
     renderWithQuery(<RunTimelineMenu />);
     fireEvent.click(await screen.findByRole("button", { name: /^Run / }));
-    const picker = await screen.findByTestId("as-of-picker");
-    fireEvent.change(within(picker).getByLabelText("As of"), { target: { value: R3 } });
-    fireEvent.click(within(picker).getByRole("button", { name: "Show the object as it stood" }));
-    await waitFor(() => expect(getUrl()).toContain(`as_of=${R3}`));
+    await screen.findByTestId("run-popover");
+    expect(screen.queryByTestId("as-of-picker")).toBeNull();
   });
 });

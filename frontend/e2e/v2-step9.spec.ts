@@ -58,7 +58,7 @@ for (const size of SIZES) {
 
       test("fix simulation: Simulate fixing and Top fixes on the Rules tab, and from the Work bulk bar", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load" });
+        await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load" });
         await page.getByTestId("simulate-rules").click(NAV);
         const dialog = page.getByRole("dialog", { name: "Simulate fixing, Material master" });
         await dialog.getByRole("button", { name: "Simulate fixing 2 rules" }).click(NAV);
@@ -143,7 +143,7 @@ for (const size of SIZES) {
 
       test("rule mining: the Learned view with the evidence of mined rules", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load" });
+        await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load" });
         await page.getByRole("button", { name: "Learned 4" }).click(NAV);
         await expect(page.getByTestId("learned-evidence").first()).toContainText("From fixes: 30 records", NAV);
         await shot(page, "learned");
@@ -151,7 +151,7 @@ for (const size of SIZES) {
 
       test("contracts: the mark on the matrix and the ruler, the editor, and the refused baseline", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load" });
+        await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load" });
         await expect(page.getByTestId("contract-mark").first()).toBeVisible(NAV);
         await page.getByTestId("object-contracts").locator("summary").click();
         const one = page.getByTestId("object-contract");

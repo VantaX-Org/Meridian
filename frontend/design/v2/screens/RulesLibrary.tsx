@@ -26,6 +26,8 @@ import "../object.css";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { Lede, PrimaryAction } from "../RunParts";
+import { Consequence, RibbonDash } from "./rules-parts";
 import { RuleBoard } from "./Cockpit";
 import { t, tx } from "@/lib/v2/i18n";
 
@@ -37,6 +39,7 @@ const columns: GridColumn<LibRow>[] = [
   { id: "severity", get header() { return t("Severity"); }, width: 110, cell: (r) => <Sev severity={r.severity} /> },
   { id: "failing", get header() { return t("Failing"); }, width: 90, numeric: true, cell: (r) => (r.failing == null ? <Dash why={t("Not run yet")} /> : int(r.failing)) },
   { id: "pass", get header() { return t("Pass rate"); }, width: 90, numeric: true, cell: (r) => (r.passRate == null ? <Dash why={t("Not run yet")} /> : `${r.passRate.toFixed(1)}%`) },
+  { id: "ribbon", get header() { return t("Across runs"); }, width: 110, cell: () => <RibbonDash /> },
   { id: "state", get header() { return t("State"); }, width: 110, cell: (r) => (r.suppressed ? t("Suppressed") : r.enabled ? t("Enabled") : t("Disabled")) },
   { id: "source", get header() { return t("Source"); }, width: 90, cell: (r) => (r.source === "yaml" ? t("Shipped") : t("Custom")) },
   { id: "dimension", get header() { return t("Dimension"); }, width: 120, cell: (r) => (r.dimension ? labelOf(r.dimension) : <Dash why={t("Read from the object's rules when you filter by dimension")} />) },
@@ -385,6 +388,7 @@ export function RulesLibrary() {
   return (
     <CcPage>
       <PageTitle>{t("Rules")}</PageTitle>
+      <Lede>{t("Every check Meridian runs on your data. Counts come from each object's newest finished run. Open a rule to see its failing records and where it is used.")}</Lede>
       {!list.isLoading && !list.isError ? (
         <>
           <CcBanner
@@ -395,15 +399,16 @@ export function RulesLibrary() {
             headline={failingRows.length > 0 ? t("{n} {count, plural, one {rule fails} other {rules fail}} on live data", { n: int(failingRows.length), count: failingRows.length }) : t("No enabled rule fails")}
             why={worst ? <>{t("The worst is")} <Coded code={worst.checkId} text={worst.message} />, {t("{n} failing records", { n: int(worst.failing ?? 0) })}</> : undefined}
             figs={[
-              { label: t("Rules"), value: int(rows.length), note: t("across {n} objects", { n: modules.length }) },
-              { label: t("Enabled"), value: int(rows.filter((r) => r.enabled).length), note: t("run on every analysis") },
-              { label: t("Suppressed"), value: int(suppressed.size), note: t("kept out of the score") },
+              { label: t("Rules"), value: int(rows.length), note: t("across {n} objects", { n: modules.length }), hint: t("Every rule in the library, enabled or not.") },
+              { label: t("Enabled"), value: int(rows.filter((r) => r.enabled).length), note: t("run on every analysis"), hint: t("Enabled rules are measured in each run and move the score.") },
+              { label: t("Suppressed"), value: int(suppressed.size), note: t("kept out of the score"), hint: t("Suppressed rules are still measured but do not count against the score.") },
             ]}
             action={
               worst ? (
-                <V2Link href={`/r/${encodeURIComponent(worst.checkId)}`} className="m2-btn m2-next">
-                  {t("Open the worst failing rule")}
-                </V2Link>
+                <PrimaryAction
+                  action={<V2Link href={`/r/${encodeURIComponent(worst.checkId)}`} className="m2-btn m2-next">{t("Open the rule with most findings")}</V2Link>}
+                  why={t("It has the most failing records, so fixing it moves the score most.")}
+                />
               ) : canManage ? (
                 <button type="button" className="m2-btn m2-next" onClick={() => { setView("drafts"); setEditing("new"); }}>
                   {t("New rule draft")}
@@ -446,6 +451,7 @@ export function RulesLibrary() {
           </button>
         ) : null}
       </div>
+      <Consequence>{view === "drafts" ? t("A draft is not live. It runs on every analysis only after you publish it.") : view === "suppressions" ? t("A suppressed rule is still measured but stays out of the score until the suppression ends.") : t("Enabled rules run on every analysis and move the score. Select rules to switch them on or off.")}</Consequence>
       {!canManage ? <Gate>{t("Writing a rule draft and enabling or disabling rules needs the manage rules permission.")}</Gate> : null}
 
       {view === "drafts" && canManage ? (
@@ -481,6 +487,7 @@ export function RulesLibrary() {
               initialViewport={2000}
               bulkBar={({ selected, clear }) => (
                 <>
+                  <span className="m2-meta" data-testid="bulk-consequence">{t("{n, plural, one {Enable switches the selected rule on and Disable switches it off} other {Enable switches the # selected rules on and Disable switches them off}}, both from the next analysis. Disabled rules leave the score.", { n: selected.length })}</span>
                   <button type="button" className="m2-btn m2-sm" disabled={pending !== null} onClick={() => toggle(selected, true, clear)}>{t("Enable")}</button>
                   <button type="button" className="m2-btn m2-sm" disabled={pending !== null} onClick={() => toggle(selected, false, clear)}>{t("Disable")}</button>
                 </>

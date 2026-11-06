@@ -8,13 +8,13 @@ scrutiny.
 
 | claim | evidence |
 |---|---|
-| **9,245 validation rules** | `checks/rules/**/*.yaml`, counted now (6,541 hand-authored + 2,704 DDIC-derived); machine-checked against the tree by `tests/checks/test_claim_hygiene.py` — these numbers cannot go stale silently |
-| 6,541 hand-authored + 2,704 DDIC-derived | `checks/rules/<cat>/<module>.yaml` + `<module>.generated.yaml` |
+| **9,348 validation rules** | `checks/rules/**/*.yaml`, counted now (6,581 hand-authored + 2,767 DDIC-derived); machine-checked against the tree by `tests/checks/test_claim_hygiene.py` — these numbers cannot go stale silently |
+| 6,581 hand-authored + 2,767 DDIC-derived | `checks/rules/<cat>/<module>.yaml` + `<module>.generated.yaml` |
 | **45 modules** | the packs on disk |
 | **24 check classes** | `checks/runner.py::REGISTRY` |
 | **6 DQS dimensions** (DAMA DMBOK) | `api/services/scoring.py::DEFAULT_WEIGHTS` |
-| every rule **proved** to fail ≥1 and pass ≥1 record | `tests/checks/test_rule_proofs.py` — 11,009 cases |
-| every rule field **resolves** in the SAP dictionary | `tests/checks/test_rule_integrity.py` — 2,271 cases |
+| every rule **proved** to fail ≥1 and pass ≥1 record | `tests/checks/test_rule_proofs.py` — 11,112 cases |
+| every rule field **resolves** in the SAP dictionary | `tests/checks/test_rule_integrity.py` — 2,278 cases |
 | rules reconciled against the dictionary the engine runs on | `checks/rule_reconciler.py` — every `domain_value_check` on a dictionary field with fixed values is compared (curated dictionary first, then the DDIC bundle's domain fixed values); 0 rules admit a value SAP does not define, held by `tests/test_rule_reconciler.py::test_live_ruleset_has_no_dangerous_drift` |
 | runs **entirely inside the customer boundary** | no egress in the data path; self-hosted compose |
 
@@ -79,7 +79,7 @@ rates Syniti "Innovative" — not a leader.
 
 ## The honest one-line positioning
 
-> A customer-deployed SAP data-quality engine whose **9,245 rules are each proved against
+> A customer-deployed SAP data-quality engine whose **9,348 rules are each proved against
 > fixtures and reconciled against the customer's own data dictionary** — with no data
 > leaving the customer's environment.
 

@@ -79,7 +79,7 @@ addresses without sign-in.
 - After the password change you should land on the Landscape with **Administration** in your account menu.
 - `curl -s https://<server>/health` should print `"status": "ok"`.
 
-![Administration: the health of the setup with its one action, people by role, and every section in the map, grouped as People and access, Tenant, Data, Notifications and Operations.](img/admin-index.png)
+![Administration: the health of the setup with its one action, people by role, and every section, grouped as People and access, Tenant, Data, Notifications and Operations.](img/admin-index.png)
 
 ### Exercise
 
@@ -275,8 +275,8 @@ or path).
 
 ### Steps
 
-1. Open **Systems** (`/s`), which lists every connected system with its connection health and last sync, and choose
-   **Connect a system**, or go straight to `/s/new`. **Set up Meridian** runs in six steps: **Connect SAP**, **Connect
+1. Open **Objects** on the rail and choose **Connect a system** beside Systems in its menu, or go straight to `/s/new`.
+   **Systems** (`/s`) lists every connected system with its connection health and last sync. **Set up Meridian** runs in six steps: **Connect SAP**, **Connect
    SuccessFactors** (optional; **Skip for now**), **Choose objects**, **Choose policy packs**, **Schedule runs** and
    **Invite people**, with **What the first run will do** beside them. In **Connect SAP**, name the system, choose the **System type**
    and the **Environment**, then for RFC systems **Host**, **Client** (3 digits), **Instance number** (2 digits) and
@@ -294,7 +294,7 @@ or path).
 
 ### Checks
 
-- You should now see the system on the map and on **Systems** (`/s`) and, for the SAP Basis role, a row under **Connections** on the Basis
+- You should now see the system in the **Objects** menu and on **Systems** (`/s`) and, for the SAP Basis role, a row under **Connections** on the Basis
   home with "Connected" and what the last test said.
 - A table the user may not read shows "No authorisation to read this table. The user needs read access to it."; SU53
   on the SAP side shows the failed check.
@@ -372,7 +372,7 @@ of rows or 25 rows).
 
 Where a cap applies, the score reads with both numbers, for example "70.0 capped, 71.8 measured", and the receipt
 says "Measured 71.8, the tick on the ruler. Capped at 70 by MM003 and MM035, two critical rules over tolerance." The
-landscape and the map rank objects by the measured score, so capped objects still sort by how good they are.
+landscape and the Objects board rank objects by the measured score, so capped objects still sort by how good they are.
 
 ![The object receipt: measured, capped, by which critical rules.](img/object-receipt.png)
 
@@ -474,6 +474,21 @@ every write-back back.
 - Vendor fields with no mapping (tax numbers, blocks, the bank key itself) and every other object.
 
 Live write-back has not yet been run against a live SAP system by the vendor; run it first on a quality system.
+
+### SuccessFactors target workbook
+
+For a SuccessFactors migration, the new system's workbook is the input. On the Migration analysis page, a user with
+the export permission picks a finished SuccessFactors run, uploads the workbook and runs **Check the workbook**, then
+exports Excel or CSV in the workbook's own columns. The workbook is read in memory and never stored. Each export is
+recorded in the audit log as `migration.target_workbook.export`.
+
+Before a real load, confirm three things with the target system's team:
+
+- Key columns. Definition sheets leave out person and user ids, so Meridian adds them under source property names
+  (`personIdExternal`, `userId`). The import template may spell them differently.
+- Required columns with no data. Meridian fills only what the run extracted. It leaves other columns empty and does
+  not hold those rows back, so the check lists them and the new system refuses those rows until they are filled.
+- Lists of values. A workbook with no list values cannot check those columns.
 
 ### Checks
 

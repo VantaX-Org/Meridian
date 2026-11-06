@@ -92,6 +92,8 @@ export interface FirewallFailure {
   rule_id: string;
   description: string;
   field: string;
+  /** The field's business name; the SAP name again when the dictionary does not know it. */
+  field_description?: string | null;
   severity: "critical" | "high" | "medium" | "low";
   dimension: string;
   reason: string;

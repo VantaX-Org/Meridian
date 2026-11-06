@@ -29,6 +29,8 @@ import { useLandscape } from "@/lib/v2/queries";
 import { DASH, int } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
+import { RunChip } from "../RunChip";
+import { Guide } from "./Guide";
 import { CcBanner, CcDelta, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
 
@@ -98,6 +100,16 @@ export function ProcessDiscovery() {
 
   return (
     <CcPage title={t("Process discovery")}>
+      <Guide
+        steps={{ labels: [t("Pick a process"), t("Read how it really runs"), t("Compare the variants"), t("Export the flow")], current: selected ? 1 : 0 }}
+        shows={t("Rebuilds how each process really runs from the system's event tables, down to level 5, and compares it with the reference model.")}
+        next={{ href: "/config", label: t("Open the configuration") }}
+        means={[
+          [t("Median fitness"), t("How closely the real flows match the reference model; 1 is a perfect match.")],
+          [t("Cases mined"), t("Process instances read from the event tables.")],
+          [t("Behind schedule"), t("Processes whose latest discovery is older than its schedule allows.")],
+        ]}
+      />
       <div className="m2-cc-split">
         <label className="m2-meta">
           {t("System")}{" "}
@@ -107,6 +119,10 @@ export function ProcessDiscovery() {
             ))}
           </select>
         </label>
+        {selected?.last_run ? (
+          // A discovery run has no analysis run number and is not a score run, so it never joins a score trend.
+          <RunChip system={system?.name} run={{ run_number: null, run_at: selected.last_run.finished_at ?? "", status: selected.last_run.status === "failed" ? "failed" : selected.last_run.status === "completed" ? "finished" : "running", baseline: false }} />
+        ) : null}
         {selected ? <Exports runId={selected.last_run?.id ?? ""} /> : null}
       </div>
       <CcBanner

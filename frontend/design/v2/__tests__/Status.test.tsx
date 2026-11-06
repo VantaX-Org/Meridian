@@ -140,3 +140,17 @@ describe("the status strip's health word", () => {
     expect(link).toHaveAccessibleName("Platform Degraded, open the status page");
   });
 });
+
+describe("the status strip per system", () => {
+  it("shows each system at its own newest run and marks an inactive one", async () => {
+    setUrl("/?fixture=1");
+    const base = { run_at: null, records_checked: 5, rules_measured: 2, scored_in_s: null, cost_model: null, cost_model_source: null, licence_valid_to: null };
+    const sys = (name: string, n: number, is_active: boolean) => ({ system_id: name, name, is_active, latest_run_id: `r${n}`, run_number: n, run_at: "2026-10-16T05:17:00+00:00", status: "finished", records_checked: 1000 * n, rules_measured: 2, scored_in_s: null, objects: [] });
+    const api = await import("@/lib/api/v2/landscape");
+    vi.spyOn(api, "getStatus").mockResolvedValue({ ...base, systems: [sys("Alpha", 3, true), sys("Beta", 7, false)] } as never);
+    renderWithQuery(<StatusStrip />);
+    const text = await screen.findByText(/Alpha, Run 3/);
+    expect(text).toBeInTheDocument();
+    expect(screen.getByText(/Beta, Run 7.*Inactive/)).toBeInTheDocument();
+  });
+});

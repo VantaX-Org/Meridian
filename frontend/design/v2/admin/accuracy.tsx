@@ -280,7 +280,7 @@ export function RuleAccuracySection() {
               <div className="m2-adm-acts">
                 <button
                   type="button"
-                  className="m2-btn"
+                  className="m2-btn m2-next"
                   disabled={!csv.trim() || !id || pending !== null}
                   onClick={() =>
                     void run("upload", async () => {

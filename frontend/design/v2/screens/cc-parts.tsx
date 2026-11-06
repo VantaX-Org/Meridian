@@ -25,6 +25,8 @@ export interface CcFig {
   label: string;
   value: ReactNode;
   note?: string;
+  /** What the figure means, on hover. */
+  hint?: string;
 }
 
 /** The headline of a page: one sentence of state, up to three figures, and the one thing to do next. */
@@ -41,7 +43,7 @@ export function CcBanner({ eyebrow, headline, verdict, why, figs = [], action, t
       {figs.length ? (
         <dl className="m2-cc-figs">
           {figs.map((f) => (
-            <div key={f.label}>
+            <div key={f.label} title={f.hint}>
               <dt>{f.label}</dt>
               <dd>{f.value}</dd>
               {f.note ? <dd className="m2-cc-note">{f.note}</dd> : null}

@@ -17,9 +17,14 @@
  *   GET/POST/PUT/DELETE /migration/field-map    (source field to target field, per object and target type)
  *   POST   /migration/field-map/seed            (propose the field map from the analysed source)
  *   GET/PUT/DELETE /migration/value-map         (source value to target value, per target field)
+ *   POST   /migration/target-workbook/{version_id}/check   (what a finished run can fill in the new system's workbook)
+ *   POST   /migration/target-workbook/{version_id}/export  (that data in the workbook's own columns, as Excel or a zip of CSV)
  */
+import { uploadApiClient } from "@/lib/api/client";
 import { v2Get, v2Send } from "./client";
 import { v2Download } from "./download";
+import { fixtureActive } from "./fixture";
+import { fixtureWorkbookReport } from "./fixtures/migration";
 
 const P = "/migration";
 
@@ -149,6 +154,41 @@ export type LoadFileFormat = "csv" | "xlsx";
 /** Target load files for the records without blocking gaps; csv arrives as a zip (migration.py export). */
 export const exportLoadFiles = (id: string, fmt: LoadFileFormat) =>
   v2Download(`${P}/export/${encodeURIComponent(id)}/${fmt}`, undefined, `migration_${id}.${fmt === "xlsx" ? "xlsx" : "zip"}`);
+
+export interface WorkbookSheet {
+  name: string;
+  kind: string;
+  /** The source table that fills the sheet; null when nothing in the run does. */
+  table: string | null;
+  columns: number;
+  added_keys: string[];
+  matched: number;
+  rows: number;
+  ready: number;
+  held: number;
+  known: boolean;
+  unmapped: { id: string; label: string; mandatory: boolean }[];
+}
+export interface WorkbookHeldRow { sheet: string; record: string; field: string; reason: string }
+export interface WorkbookReport {
+  summary: { sheets: number; filled_sheets: number; columns: number; matched_columns: number; mandatory_unmapped: number; rows: number; ready: number; held: number };
+  sheets: WorkbookSheet[];
+  reasons: Record<string, number>;
+  /** The first 200 held rows; `held_total` counts them all. */
+  held: WorkbookHeldRow[];
+  held_total: number;
+}
+const workbookForm = (file: File) => { const form = new FormData(); form.append("file", file); return form; };
+/** Reads the new system's workbook against a finished run. Nothing is stored. */
+export async function checkTargetWorkbook(versionId: string, file: File): Promise<WorkbookReport> {
+  if (fixtureActive()) return fixtureWorkbookReport();
+  const { data } = await uploadApiClient.post<WorkbookReport>(`/api/v1${P}/target-workbook/${encodeURIComponent(versionId)}/check`, workbookForm(file), { headers: { "Content-Type": "multipart/form-data" } });
+  return data;
+}
+/** The run's data in the workbook's own columns; csv arrives as a zip. */
+export const exportTargetWorkbook = (versionId: string, file: File, fmt: LoadFileFormat) =>
+  v2Download(`${P}/target-workbook/${encodeURIComponent(versionId)}/export`, { format: fmt }, `target_workbook_${versionId}.${fmt === "xlsx" ? "xlsx" : "zip"}`, "post", workbookForm(file));
+
 export const startMigration = (body: AnalyzeBody) => v2Send<{ run_id: string; status: string }>("POST", `${P}/analyze`, body);
 
 export const getFieldMap = (module: string, destType: string) => v2Get<{ mappings: FieldMapping[] }>(`${P}/field-map`, { module, dest_system_type: destType });

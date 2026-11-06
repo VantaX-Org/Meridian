@@ -127,7 +127,7 @@ describe("policy breaches on the cell, the ruler and the receipt", () => {
   });
 
   it("the object's ruler has the shield beside the contract diamond and the receipt names the breached classes", async () => {
-    setUrl("/o/ecc-production/material-master?fixture=1");
+    setUrl("/o/ecc-production/material-master/rules?fixture=1");
     renderWithQuery(
       <ObjectFrame system="ecc-production" module="material-master">
         <RulesTab system="ecc-production" module="material-master" />

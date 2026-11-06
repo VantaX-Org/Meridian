@@ -11,6 +11,7 @@ import { f1, int, pct1 } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, niceTicks, TrendChart } from "../charts";
 import { Sev } from "../inspector/rule";
 import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { pctOf, retry, Section, status, Table, useRuleName } from "./WorkAnalytics";
 
@@ -93,6 +94,16 @@ export function Insights() {
   const top = risk[0];
   return (
     <CcPage title={t("Cost and causes")}>
+      <Guide
+        shows={t("Shows where failing rules put money at risk, what has already been lost in posted documents, and the fields behind the failures.")}
+        next={{ href: "/value", label: t("Open value delivered") }}
+        why={t("This screen only reads. Open a cause to see the records behind it.")}
+        means={[
+          [t("Largest value at risk"), t("The business area with the most money at risk from failing rules.")],
+          [t("Largest proven cost"), t("The business area with the most money already lost in posted documents.")],
+          [t("Root causes"), t("Failing rules grouped by the field they fail on.")],
+        ]}
+      />
       <CcBanner
         eyebrow={t("Cost and causes")}
         headline={top && top.value_at_risk > 0 ? t("{area} carries the most value at risk", { area: area(top.l1) }) : t("No priced SAP feature is at risk")}
@@ -123,10 +134,14 @@ export function Insights() {
           </Table>
         )}
       </Section>
-      <ProvenCostPanel rows={c.rows} />
       <ImpactPanel q={impact} cur={cur} />
       <CausesPanel q={causes} />
-      <TrendPanel />
+      <Disclose title={t("Money already lost")} hint={t("Proven cost in posted documents, by business area.")}>
+        <ProvenCostPanel rows={c.rows} />
+      </Disclose>
+      <Disclose title={t("Trend over time")} hint={t("How the cost and the causes moved run by run.")}>
+        <TrendPanel />
+      </Disclose>
     </CcPage>
   );
 }

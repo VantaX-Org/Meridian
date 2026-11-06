@@ -4,7 +4,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as runsApi from "@/lib/api/v2/runs";
 import { fixtureCompare, fixtureTimeline, resetRunsFixture } from "@/lib/api/v2/fixtures/runs";
-import { CompareCanvas, measuredChange, signed } from "../screens/Compare";
+import { CompareCanvas, measuredChange, sameSystem, signed, worstObject } from "../screens/Compare";
 import { getUrl, setUrl } from "./nav-store";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
@@ -40,9 +40,13 @@ describe("sign and change helpers", () => {
 });
 
 describe("Compare canvas", () => {
-  it("is titled with the later run against the baseline, and says it in one sentence", async () => {
+  it("is titled by both run names, shows both chips, and says it in one sentence", async () => {
     renderWithQuery(<CompareCanvas a={A} b={B} />);
-    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Run 16 Oct 2026, 05:17 vs baseline 2 Oct 2026"));
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^ECC production run \d+ vs ECC production run \d+/));
+    const chips = within(screen.getByTestId("compare-chips")).getAllByTestId("run-chip");
+    expect(chips).toHaveLength(2);
+    expect(chips[1]).toHaveTextContent("2 Oct 2026");
+    expect(screen.getByTestId("lede")).toHaveTextContent("object by object");
     const sentence = await screen.findByTestId("compare-sentence");
     expect(norm(sentence)).toBe("12 of 15 objects scored higher and 3 lower. 14 rules started failing and 37 stopped. 12 objects are held down by a critical rule, so the score shown hides part of the problem.");
   });
@@ -63,10 +67,10 @@ describe("Compare canvas", () => {
     expect(rows).toHaveLength(15);
     const mm = rows.find((r) => /Material master/.test(norm(r))) as HTMLElement;
     const cells = within(mm).getAllByRole("cell").map((c) => norm(c));
-    expect(cells.slice(0, 4)).toEqual(["69.8 to 71.8", "", "+2.0", "69.8 to 70.0"]);
+    expect(cells.slice(0, 5)).toEqual(["69.8", "71.8", "", "+2.0", "69.8 to 70.0"]);
     expect(mm.querySelector(".m2-dbar .m2-up")).not.toBeNull();
     const vm = rows.find((r) => /Accounts payable/.test(norm(r))) as HTMLElement;
-    expect(norm(within(vm).getAllByRole("cell")[2])).toBe("−0.4");
+    expect(norm(within(vm).getAllByRole("cell")[3])).toBe("−0.4");
     expect(vm.querySelector(".m2-dbar .m2-dn")).not.toBeNull();
     // the mark beside the sign: a circle for a rise and a square for a fall, always with the sign
     expect(within(within(mm).getByTestId("change")).getByText("+2.0").parentElement?.querySelector("svg.go")).not.toBeNull();
@@ -83,12 +87,12 @@ describe("Compare canvas", () => {
     const rows = await within(table).findAllByTestId("compare-row");
     const totals = within(screen.getByTestId("compare-totals")).getAllByRole("cell").map((c) => norm(c));
     const col = (i: number) => rows.reduce((sum, r) => sum + num(norm(within(r).getAllByRole("cell")[i])), 0);
-    expect([num(totals[6]), num(totals[7]), num(totals[8]), num(totals[9])]).toEqual([col(6), col(7), col(8), col(9)]);
-    expect([col(6), col(7), col(8), col(9)]).toEqual([14, 37, 23, 61]);
+    expect([num(totals[7]), num(totals[8]), num(totals[9]), num(totals[10])]).toEqual([col(7), col(8), col(9), col(10)]);
+    expect([col(7), col(8), col(9), col(10)]).toEqual([14, 37, 23, 61]);
     const S = fixtureCompare(A, B);
     const before = S.objects.reduce((s, o) => s + (o.before?.records_checked ?? 0), 0);
     const after = S.objects.reduce((s, o) => s + (o.after?.records_checked ?? 0), 0);
-    expect(totals[4]).toBe(`${before.toLocaleString("en-US")} to ${after.toLocaleString("en-US")}`);
+    expect(totals[5]).toBe(`${before.toLocaleString("en-US")} to ${after.toLocaleString("en-US")}`);
     expect(norm(screen.getByTestId("compare-totals").querySelector("th") as HTMLElement)).toBe("All 15 objects");
   });
 
@@ -126,6 +130,43 @@ describe("Compare canvas", () => {
     expect(getUrl()).toContain(`/run/${RUNS[0].id}/vs/${B}`);
   });
 
+  it("offers only runs of the same system in the swap, by name", async () => {
+    vi.spyOn(runsApi, "getTimeline").mockResolvedValue({ system_id: null, limit: 50, runs: [...RUNS, { ...RUNS[7], id: "other", system_id: "elsewhere" }] });
+    renderWithQuery(<CompareCanvas a={A} b={B} />);
+    const from = await screen.findByRole("combobox", { name: "From run" });
+    await waitFor(() => expect(within(from).getAllByRole("option")).toHaveLength(8));
+    expect(within(from).getAllByRole("option")[0]).toHaveTextContent(/^ECC production run \d+, /);
+  });
+
+  it("refuses two runs of different systems, in words, with a way out, and draws no figure", async () => {
+    vi.spyOn(runsApi, "getTimeline").mockResolvedValue({ system_id: null, limit: 50, runs: [RUNS[5], { ...RUNS[7], system_id: "elsewhere" }] });
+    renderWithQuery(<CompareCanvas a={A} b={B} />);
+    const guard = await screen.findByTestId("compare-guard");
+    expect(guard).toHaveTextContent("Compare runs of the same system.");
+    expect(within(guard).getByRole("link")).toHaveAttribute("href", expect.stringContaining(`/run/${B}`));
+    expect(screen.queryByTestId("compare-table")).toBeNull();
+  });
+
+  it("the primary action opens Work as of the later run, for its system and the object that lost the most", async () => {
+    renderWithQuery(<CompareCanvas a={A} b={B} />);
+    const link = await screen.findByTestId("compare-worse");
+    const q = new URLSearchParams((link.getAttribute("href") ?? "").split("?")[1]);
+    const S = fixtureCompare(A, B);
+    expect(q.get("as_of_run")).toBe(B);
+    expect(q.get("system")).toBe(RUNS[7].system_id);
+    expect(q.get("module")).toBe(worstObject(S)?.module);
+    expect(screen.getByTestId("primary-action")).toHaveTextContent(`${worstObject(S)?.label} lost the most`);
+  });
+
+  it("the guard refuses only two known, different systems; no object lower means no worst object", () => {
+    expect(sameSystem("x", "y")).toBe(false);
+    expect(sameSystem("x", "x")).toBe(true);
+    expect(sameSystem(null, "y")).toBe(true);
+    const side = { score: 70, raw_score: 70, capped: false, records_checked: 1, coverage: 1 };
+    const S = fixtureCompare(A, B);
+    expect(worstObject({ ...S, objects: S.objects.map((o) => ({ ...o, before: side, after: side })) })).toBeNull();
+  });
+
   it("as a list below 760px each object is a two-line row with the same figures", async () => {
     renderWithQuery(<CompareCanvas a={A} b={B} />);
     const list = await screen.findByTestId("compare-list");
@@ -155,7 +196,9 @@ describe("Compare canvas", () => {
 
 describe("Compare records", () => {
   it("counts records per rule, dashes the rules that cannot be compared, and drills into one rule's keys", async () => {
+    setUrl(`/run/${A}/vs/${B}?fixture=1&view=records`);
     renderWithQuery(<CompareCanvas a={A} b={B} />);
+    expect(screen.queryByTestId("what-changed")).toBeNull();
     const section = await screen.findByTestId("compare-records");
     const rows = await within(section).findAllByTestId("compare-records-row");
     const open = rows.find((r) => r.getAttribute("data-comparable") === "true");

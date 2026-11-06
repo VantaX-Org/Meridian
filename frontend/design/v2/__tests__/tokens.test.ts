@@ -66,10 +66,10 @@ describe("v2 tokens", () => {
     expect(styles).toMatch(/font-variant-numeric:\s*tabular-nums/);
   });
 
-  it("spaces on a 4 pixel grid, rounds at 4 and 6, and moves in 150 and 200 milliseconds", () => {
+  it("spaces on a 4 pixel grid, rounds at 6 and 12, and moves in 150 and 200 milliseconds", () => {
     for (const [k, v] of Object.entries(LIGHT).filter(([k]) => /^--m2-s\d+$/.test(k))) expect(parseInt(v, 10) % 4, k).toBe(0);
-    expect(LIGHT["--m2-r1"]).toBe("4px");
-    expect(LIGHT["--m2-r2"]).toBe("6px");
+    expect(LIGHT["--m2-r1"]).toBe("6px");
+    expect(LIGHT["--m2-r2"]).toBe("12px");
     expect(LIGHT["--m2-t-fast"]).toBe("150ms");
     expect(LIGHT["--m2-t-med"]).toBe("200ms");
   });
@@ -101,6 +101,8 @@ const TEXT: [string, string][] = [
   ["--m2-meta", "--m2-bg"], ["--m2-meta", "--m2-sheet"], ["--m2-meta", "--m2-hover"], ["--m2-meta", "--m2-active"],
   ["--m2-data", "--m2-bg"], ["--m2-data", "--m2-sheet"], ["--m2-data", "--m2-hover"], ["--m2-data", "--m2-active"], ["--m2-data", "--m2-data-bg"],
   ["--m2-on-data", "--m2-data"], ["--m2-on-inverse", "--m2-inverse"], ["--m2-chart-text", "--m2-sheet"],
+  ["--m2-fg", "--m2-glass-sheet-floor"], ["--m2-ink-2", "--m2-glass-sheet-floor"], ["--m2-meta", "--m2-glass-sheet-floor"],
+  ["--m2-on-inverse", "--m2-glass-inverse-floor"], ["--m2-on-inverse-crit", "--m2-glass-inverse-floor"],
   ...(["--m2-hero-fg", "--m2-hero-fg-2", "--m2-hero-meta", "--m2-hero-accent", "--m2-on-hero-pass", "--m2-on-hero-warn", "--m2-on-hero-crit"] as const).flatMap((c): [string, string][] => [[c, "--m2-hero-bg"], [c, "--m2-hero-bg-2"]]),
   ...[0, 1, 2, 3].map((i): [string, string] => [`--m2-heat-${i}-ink`, `--m2-heat-${i}`]),
   ...(["pass", "warn", "crit", "fail", "info"] as const).flatMap((s): [string, string][] => [
@@ -109,7 +111,7 @@ const TEXT: [string, string][] = [
 ];
 const MARKS: [string, string][] = [
   ["--m2-ink-3", "--m2-bg"], ["--m2-ink-3", "--m2-sheet"], ["--m2-seg", "--m2-track"], ["--m2-focus", "--m2-sheet"], ["--m2-focus", "--m2-bg"],
-  ["--m2-chart-line", "--m2-sheet"], ["--m2-on-inverse-crit", "--m2-inverse"], ["--m2-chart-quiet", "--m2-sheet"],
+  ["--m2-chart-line", "--m2-sheet"], ["--m2-on-inverse-crit", "--m2-inverse"], ["--m2-chart-quiet", "--m2-sheet"], ["--m2-data", "--m2-glass-sheet-floor"],
   ...[1, 2, 3, 4, 5, 6, 7, 8].map((i): [string, string] => [`--m2-chart-${i}`, "--m2-sheet"]),
   ...["crit", "high", "med"].map((s): [string, string] => [`--m2-sev-${s}`, "--m2-sheet"]),
 ];

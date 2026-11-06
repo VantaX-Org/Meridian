@@ -52,16 +52,11 @@ for (const size of SIZES) {
       const shot = (page: Page, name: string) => page.screenshot({ path: path.join(SHOTS, `runs-${name}_${size.name}_${scheme}.png`) });
       const phone = size.width < 500;
 
-      test("the run timeline opens from the top bar, marks the baseline, and picking a run re-scopes the canvas", async ({ page }) => {
+      test("the run timeline opens from the Runs page, marks the baseline, and picking a run puts it in the address", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/?fixture=1", { waitUntil: "load" });
-        await expect(page.getByTestId("landscape-sentence")).toBeVisible(NAV);
-        if (phone) {
-          await page.getByRole("button", { name: "Map" }).click();
-          await page.getByTestId("map").getByRole("button", { name: /^Run 16 Oct/ }).click();
-        } else {
-          await page.getByRole("button", { name: /^Run 16 Oct/ }).click();
-        }
+        await page.goto("/runs?fixture=1", { waitUntil: "load" });
+        await expect(page.getByRole("heading", { level: 1 })).toHaveText("Runs", NAV);
+        await page.getByRole("button", { name: "Run 16 Oct 2026, 05:17", exact: true }).click();
         const dialog = page.getByRole("dialog", { name: /^Runs, 28 Aug 2026 to 16 Oct 2026/ });
         await expect(dialog).toBeVisible();
         await expect(dialog.getByTestId("run-timeline").getByRole("button")).toHaveCount(8);
@@ -72,16 +67,15 @@ for (const size of SIZES) {
         await shot(page, "timeline");
         await axe(page, `timeline ${size.name} ${scheme}`);
 
-        // Picking a run puts it in the URL; the landscape says which run its scores come from.
+        // Picking a run puts it in the address.
         await dialog.getByRole("button", { name: /^Run 2 Oct 2026/ }).click();
         await expect(page).toHaveURL(new RegExp(`run=${R6}`));
-        await expect(page.getByRole("status").filter({ hasText: "Viewing one run" })).toBeVisible();
       });
 
       test("the Run canvas: status line, per-object table, actions and jobs", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto(`/run/${R8}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
-        await expect(page.getByRole("heading", { level: 1 })).toContainText("Run 16 Oct 2026, 05:17", NAV);
+        await expect(page.getByRole("heading", { level: 1 })).toContainText("ECC production run 1", NAV);
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
         await expect(page.getByTestId("run-status-line")).toContainText("400,662 records checked");
         await expect(page.getByTestId("run-status-line")).toContainText("scored in 11 m 42 s");
@@ -99,7 +93,7 @@ for (const size of SIZES) {
       test("the Compare canvas: sentence, rows, totals that add up, method and what changed", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto(`/run/${R6}/vs/${R8}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
-        await expect(page.getByRole("heading", { level: 1 })).toContainText("Run 16 Oct 2026, 05:17 vs baseline 2 Oct 2026", NAV);
+        await expect(page.getByRole("heading", { level: 1 })).toContainText("ECC production run 1 vs ECC production run 3", NAV);
         await expect(page.getByTestId("compare-sentence")).toContainText("12 of 15 objects scored higher and 3 lower. 14 rules started failing and 37 stopped.");
         await expect(page.getByTestId("compare-method")).toContainText("11 rules added since the baseline of 2 Oct 2026 are excluded");
         if (phone) {
@@ -107,11 +101,12 @@ for (const size of SIZES) {
           await expect(page.getByTestId("compare-list-totals")).toContainText("14 new, 37 fixed, 23 worse, 61 better");
         } else {
           await expect(page.getByTestId("compare-row")).toHaveCount(15);
+          // The Coverage column was added after the records column, so the four counts sit one cell later.
           const totals = page.getByTestId("compare-totals").getByRole("cell");
-          await expect(totals.nth(6)).toHaveText("14");
-          await expect(totals.nth(7)).toHaveText("37");
-          await expect(totals.nth(8)).toHaveText("23");
-          await expect(totals.nth(9)).toHaveText("61");
+          await expect(totals.nth(7)).toHaveText("14");
+          await expect(totals.nth(8)).toHaveText("37");
+          await expect(totals.nth(9)).toHaveText("23");
+          await expect(totals.nth(10)).toHaveText("61");
         }
         await expect(page.getByTestId("what-changed").getByRole("heading", { level: 3 })).toHaveCount(4);
         expect(await noSideways(page)).toBe(true);

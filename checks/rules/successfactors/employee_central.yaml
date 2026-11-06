@@ -12326,3 +12326,536 @@ rules:
   record_fix_template: 'Employee {EMPJOBRELATIONSHIPS.USERID}: {EMPJOBRELATIONSHIPS.RELATIONSHIP_TYPE} relationship
     with {EMPJOBRELATIONSHIPS.RELATED_USER_ID} ({EMPJOBRELATIONSHIPS.START_DATE} to {EMPJOBRELATIONSHIPS.END_DATE})
     overlaps another one.'
+- id: EC654
+  field: FOPAYGRADE.EXTERNAL_CODE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EXTERNAL_CODE is mandatory on FOPayGrade
+  why_it_matters: EXTERNAL_CODE is a key or effective-dating field of FOPayGrade. A row without it is rejected by the import
+    or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOPayGrade row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EXTERNAL_CODE in the FOPayGrade import file.
+  record_fix_template: 'FOPayGrade {FOPAYGRADE.EXTERNAL_CODE}: EXTERNAL_CODE is missing.'
+- id: EC655
+  field: FOPAYGROUP.EXTERNAL_CODE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EXTERNAL_CODE is mandatory on FOPayGroup
+  why_it_matters: EXTERNAL_CODE is a key or effective-dating field of FOPayGroup. A row without it is rejected by the import
+    or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOPayGroup row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EXTERNAL_CODE in the FOPayGroup import file.
+  record_fix_template: 'FOPayGroup {FOPAYGROUP.EXTERNAL_CODE}: EXTERNAL_CODE is missing.'
+- id: EC656
+  field: FOPAYGROUP.EFFECTIVE_START_DATE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EFFECTIVE_START_DATE is mandatory on FOPayGroup
+  why_it_matters: EFFECTIVE_START_DATE is a key or effective-dating field of FOPayGroup. A row without it is rejected by the
+    import or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOPayGroup row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EFFECTIVE_START_DATE in the FOPayGroup import file.
+  record_fix_template: 'FOPayGroup {FOPAYGROUP.EXTERNAL_CODE}: EFFECTIVE_START_DATE is missing.'
+- id: EC657
+  field: FOPAYGROUP.EFFECTIVE_STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: EFFECTIVE_STATUS is mandatory on FOPayGroup
+  why_it_matters: EFFECTIVE_STATUS is marked mandatory in the SuccessFactors import template for FOPayGroup. A row without
+    it is rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The FOPayGroup row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EFFECTIVE_STATUS in the FOPayGroup import file.
+  record_fix_template: 'FOPayGroup {FOPAYGROUP.EXTERNAL_CODE}: EFFECTIVE_STATUS is missing.'
+- id: EC658
+  field: FOFREQUENCY.EXTERNAL_CODE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EXTERNAL_CODE is mandatory on FOFrequency
+  why_it_matters: EXTERNAL_CODE is a key or effective-dating field of FOFrequency. A row without it is rejected by the import
+    or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOFrequency row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EXTERNAL_CODE in the FOFrequency import file.
+  record_fix_template: 'FOFrequency {FOFREQUENCY.EXTERNAL_CODE}: EXTERNAL_CODE is missing.'
+- id: EC659
+  field: FOGEOZONE.EXTERNAL_CODE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EXTERNAL_CODE is mandatory on FOGeozone
+  why_it_matters: EXTERNAL_CODE is a key or effective-dating field of FOGeozone. A row without it is rejected by the import
+    or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOGeozone row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EXTERNAL_CODE in the FOGeozone import file.
+  record_fix_template: 'FOGeozone {FOGEOZONE.EXTERNAL_CODE}: EXTERNAL_CODE is missing.'
+- id: EC660
+  field: FOGEOZONE.START_DATE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: START_DATE is mandatory on FOGeozone
+  why_it_matters: START_DATE is a key or effective-dating field of FOGeozone. A row without it is rejected by the import or
+    cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOGeozone row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for START_DATE in the FOGeozone import file.
+  record_fix_template: 'FOGeozone {FOGEOZONE.EXTERNAL_CODE}: START_DATE is missing.'
+- id: EC661
+  field: FOGEOZONE.STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: STATUS is mandatory on FOGeozone
+  why_it_matters: STATUS is marked mandatory in the SuccessFactors import template for FOGeozone. A row without it is rejected
+    by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The FOGeozone row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for STATUS in the FOGeozone import file.
+  record_fix_template: 'FOGeozone {FOGEOZONE.EXTERNAL_CODE}: STATUS is missing.'
+- id: EC662
+  field: FOLOCATIONGROUP.EXTERNAL_CODE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EXTERNAL_CODE is mandatory on FOLocationGroup
+  why_it_matters: EXTERNAL_CODE is a key or effective-dating field of FOLocationGroup. A row without it is rejected by the
+    import or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOLocationGroup row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EXTERNAL_CODE in the FOLocationGroup import file.
+  record_fix_template: 'FOLocationGroup {FOLOCATIONGROUP.EXTERNAL_CODE}: EXTERNAL_CODE is missing.'
+- id: EC663
+  field: FOLOCATIONGROUP.START_DATE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: START_DATE is mandatory on FOLocationGroup
+  why_it_matters: START_DATE is a key or effective-dating field of FOLocationGroup. A row without it is rejected by the import
+    or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOLocationGroup row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for START_DATE in the FOLocationGroup import file.
+  record_fix_template: 'FOLocationGroup {FOLOCATIONGROUP.EXTERNAL_CODE}: START_DATE is missing.'
+- id: EC664
+  field: FOJOBFUNCTION.EXTERNAL_CODE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EXTERNAL_CODE is mandatory on FOJobFunction
+  why_it_matters: EXTERNAL_CODE is a key or effective-dating field of FOJobFunction. A row without it is rejected by the import
+    or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOJobFunction row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EXTERNAL_CODE in the FOJobFunction import file.
+  record_fix_template: 'FOJobFunction {FOJOBFUNCTION.EXTERNAL_CODE}: EXTERNAL_CODE is missing.'
+- id: EC665
+  field: FOJOBFUNCTION.EFFECTIVE_START_DATE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EFFECTIVE_START_DATE is mandatory on FOJobFunction
+  why_it_matters: EFFECTIVE_START_DATE is a key or effective-dating field of FOJobFunction. A row without it is rejected by
+    the import or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOJobFunction row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EFFECTIVE_START_DATE in the FOJobFunction import file.
+  record_fix_template: 'FOJobFunction {FOJOBFUNCTION.EXTERNAL_CODE}: EFFECTIVE_START_DATE is missing.'
+- id: EC666
+  field: FOJOBFUNCTION.EFFECTIVE_STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: EFFECTIVE_STATUS is mandatory on FOJobFunction
+  why_it_matters: EFFECTIVE_STATUS is marked mandatory in the SuccessFactors import template for FOJobFunction. A row without
+    it is rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The FOJobFunction row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EFFECTIVE_STATUS in the FOJobFunction import file.
+  record_fix_template: 'FOJobFunction {FOJOBFUNCTION.EXTERNAL_CODE}: EFFECTIVE_STATUS is missing.'
+- id: EC667
+  field: FOPAYCOMPONENTGROUP.EXTERNAL_CODE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EXTERNAL_CODE is mandatory on FOPayComponentGroup
+  why_it_matters: EXTERNAL_CODE is a key or effective-dating field of FOPayComponentGroup. A row without it is rejected by
+    the import or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOPayComponentGroup row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EXTERNAL_CODE in the FOPayComponentGroup import file.
+  record_fix_template: 'FOPayComponentGroup {FOPAYCOMPONENTGROUP.EXTERNAL_CODE}: EXTERNAL_CODE is missing.'
+- id: EC668
+  field: FOPAYCOMPONENTGROUP.START_DATE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: START_DATE is mandatory on FOPayComponentGroup
+  why_it_matters: START_DATE is a key or effective-dating field of FOPayComponentGroup. A row without it is rejected by the
+    import or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOPayComponentGroup row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for START_DATE in the FOPayComponentGroup import file.
+  record_fix_template: 'FOPayComponentGroup {FOPAYCOMPONENTGROUP.EXTERNAL_CODE}: START_DATE is missing.'
+- id: EC669
+  field: FOPAYCOMPONENTGROUP.STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: STATUS is mandatory on FOPayComponentGroup
+  why_it_matters: STATUS is marked mandatory in the SuccessFactors import template for FOPayComponentGroup. A row without
+    it is rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The FOPayComponentGroup row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for STATUS in the FOPayComponentGroup import file.
+  record_fix_template: 'FOPayComponentGroup {FOPAYCOMPONENTGROUP.EXTERNAL_CODE}: STATUS is missing.'
+- id: EC670
+  field: FOPAYSCALEAREA.CODE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: CODE is mandatory on FOPayScaleArea
+  why_it_matters: CODE is a key or effective-dating field of FOPayScaleArea. A row without it is rejected by the import or
+    cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOPayScaleArea row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for CODE in the FOPayScaleArea import file.
+  record_fix_template: 'FOPayScaleArea {FOPAYSCALEAREA.CODE}: CODE is missing.'
+- id: EC671
+  field: FOPAYSCALEAREA.PAY_SCALE_AREA
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: PAY_SCALE_AREA is mandatory on FOPayScaleArea
+  why_it_matters: PAY_SCALE_AREA is marked mandatory in the SuccessFactors import template for FOPayScaleArea. A row without
+    it is rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The FOPayScaleArea row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for PAY_SCALE_AREA in the FOPayScaleArea import file.
+  record_fix_template: 'FOPayScaleArea {FOPAYSCALEAREA.CODE}: PAY_SCALE_AREA is missing.'
+- id: EC672
+  field: FOPAYSCALETYPE.CODE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: CODE is mandatory on FOPayScaleType
+  why_it_matters: CODE is a key or effective-dating field of FOPayScaleType. A row without it is rejected by the import or
+    cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOPayScaleType row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for CODE in the FOPayScaleType import file.
+  record_fix_template: 'FOPayScaleType {FOPAYSCALETYPE.CODE}: CODE is missing.'
+- id: EC673
+  field: FOPAYSCALETYPE.PAY_SCALE_TYPE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: PAY_SCALE_TYPE is mandatory on FOPayScaleType
+  why_it_matters: PAY_SCALE_TYPE is marked mandatory in the SuccessFactors import template for FOPayScaleType. A row without
+    it is rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The FOPayScaleType row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for PAY_SCALE_TYPE in the FOPayScaleType import file.
+  record_fix_template: 'FOPayScaleType {FOPAYSCALETYPE.CODE}: PAY_SCALE_TYPE is missing.'
+- id: EC674
+  field: FOCORPORATEADDRESSDEFLT.COUNTRY
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: COUNTRY is mandatory on FOCorporateAddressDEFLT
+  why_it_matters: COUNTRY is marked mandatory in the SuccessFactors import template for FOCorporateAddressDEFLT. A row without
+    it is rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The FOCorporateAddressDEFLT row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for COUNTRY in the FOCorporateAddressDEFLT import file.
+  record_fix_template: 'FOCorporateAddressDEFLT {FOCORPORATEADDRESSDEFLT.EXTERNAL_CODE}: COUNTRY is missing.'
+- id: EC675
+  field: FOBUSINESSUNIT.EFFECTIVE_START_DATE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EFFECTIVE_START_DATE is mandatory on FOBusinessUnit
+  why_it_matters: EFFECTIVE_START_DATE is a key or effective-dating field of FOBusinessUnit. A row without it is rejected
+    by the import or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOBusinessUnit row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EFFECTIVE_START_DATE in the FOBusinessUnit import file.
+  record_fix_template: 'FOBusinessUnit {FOBUSINESSUNIT.EXTERNAL_CODE}: EFFECTIVE_START_DATE is missing.'
+- id: EC676
+  field: FOCOMPANY.EFFECTIVE_START_DATE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EFFECTIVE_START_DATE is mandatory on FOCompany
+  why_it_matters: EFFECTIVE_START_DATE is a key or effective-dating field of FOCompany. A row without it is rejected by the
+    import or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOCompany row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EFFECTIVE_START_DATE in the FOCompany import file.
+  record_fix_template: 'FOCompany {FOCOMPANY.EXTERNAL_CODE}: EFFECTIVE_START_DATE is missing.'
+- id: EC677
+  field: FODEPARTMENT.EFFECTIVE_START_DATE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EFFECTIVE_START_DATE is mandatory on FODepartment
+  why_it_matters: EFFECTIVE_START_DATE is a key or effective-dating field of FODepartment. A row without it is rejected by
+    the import or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FODepartment row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EFFECTIVE_START_DATE in the FODepartment import file.
+  record_fix_template: 'FODepartment {FODEPARTMENT.EXTERNAL_CODE}: EFFECTIVE_START_DATE is missing.'
+- id: EC678
+  field: FODIVISION.EFFECTIVE_START_DATE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EFFECTIVE_START_DATE is mandatory on FODivision
+  why_it_matters: EFFECTIVE_START_DATE is a key or effective-dating field of FODivision. A row without it is rejected by the
+    import or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FODivision row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EFFECTIVE_START_DATE in the FODivision import file.
+  record_fix_template: 'FODivision {FODIVISION.EXTERNAL_CODE}: EFFECTIVE_START_DATE is missing.'
+- id: EC679
+  field: FOJOBCODE.EFFECTIVE_START_DATE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: EFFECTIVE_START_DATE is mandatory on FOJobCode
+  why_it_matters: EFFECTIVE_START_DATE is a key or effective-dating field of FOJobCode. A row without it is rejected by the
+    import or cannot be matched to its record.
+  rule_authority: sap_hard_constraint
+  sap_impact: The FOJobCode row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for EFFECTIVE_START_DATE in the FOJobCode import file.
+  record_fix_template: 'FOJobCode {FOJOBCODE.EXTERNAL_CODE}: EFFECTIVE_START_DATE is missing.'
+- id: EC680
+  field: FOPAYRANGE.FREQUENCY_CODE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: FREQUENCY_CODE is mandatory on FOPayRange
+  why_it_matters: FREQUENCY_CODE is marked mandatory in the SuccessFactors import template for FOPayRange. A row without it
+    is rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The FOPayRange row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for FREQUENCY_CODE in the FOPayRange import file.
+  record_fix_template: 'FOPayRange {FOPAYRANGE.EXTERNAL_CODE}: FREQUENCY_CODE is missing.'
+- id: EC681
+  field: PERSOCIALACCOUNT.IM_ID
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: IM_ID is mandatory on PerSocialAccount
+  why_it_matters: IM_ID is marked mandatory in the SuccessFactors import template for PerSocialAccount. A row without it is
+    rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The PerSocialAccount row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for IM_ID in the PerSocialAccount import file.
+  record_fix_template: 'PerSocialAccount {PERSOCIALACCOUNT.PERSON_ID}: IM_ID is missing.'
+- id: EC682
+  field: DEPENDENT.RELATIONSHIP_TYPE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: RELATIONSHIP_TYPE is mandatory on PerPersonRelationship, PerPerson
+  why_it_matters: RELATIONSHIP_TYPE is marked mandatory in the SuccessFactors import template for PerPersonRelationship, PerPerson.
+    A row without it is rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The PerPersonRelationship, PerPerson row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for RELATIONSHIP_TYPE in the PerPersonRelationship, PerPerson import file.
+  record_fix_template: 'PerPersonRelationship, PerPerson {DEPENDENT.PERSON_ID}: RELATIONSHIP_TYPE is missing.'
+- id: EC683
+  field: PERINFO.IS_PRIMARY
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: IS_PRIMARY is mandatory on PerPersonal, PerPerson, PerNationalId
+  why_it_matters: IS_PRIMARY is marked mandatory in the SuccessFactors import template for PerPersonal, PerPerson, PerNationalId.
+    A row without it is rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The PerPersonal, PerPerson, PerNationalId row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for IS_PRIMARY in the PerPersonal, PerPerson, PerNationalId import file.
+  record_fix_template: 'PerPersonal, PerPerson, PerNationalId {PERINFO.PERSON_ID}: IS_PRIMARY is missing.'
+- id: EC684
+  field: PERINFO.NATIONAL_ID_COUNTRY
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: NATIONAL_ID_COUNTRY is mandatory on PerPersonal, PerPerson, PerNationalId
+  why_it_matters: NATIONAL_ID_COUNTRY is marked mandatory in the SuccessFactors import template for PerPersonal, PerPerson,
+    PerNationalId. A row without it is rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The PerPersonal, PerPerson, PerNationalId row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for NATIONAL_ID_COUNTRY in the PerPersonal, PerPerson, PerNationalId import file.
+  record_fix_template: 'PerPersonal, PerPerson, PerNationalId {PERINFO.PERSON_ID}: NATIONAL_ID_COUNTRY is missing.'
+- id: EC685
+  field: EMPWORKPERMIT.ISSUE_DATE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: ISSUE_DATE is mandatory on EmpWorkPermit
+  why_it_matters: ISSUE_DATE is marked mandatory in the SuccessFactors import template for EmpWorkPermit. A row without it
+    is rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The EmpWorkPermit row is rejected on import or cannot be referenced by other records.
+  fix_map:
+    __blank__: Provide a value for ISSUE_DATE in the EmpWorkPermit import file.
+  record_fix_template: 'EmpWorkPermit {EMPWORKPERMIT.USERID}: ISSUE_DATE is missing.'
+- id: EC686
+  field: COMPINFO.SALARY
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: SALARY is mandatory on EmpCompensation, EmpPayCompRecurring, FOPayRange
+  why_it_matters: SALARY is marked mandatory in the SuccessFactors import template for EmpCompensation, EmpPayCompRecurring,
+    FOPayRange. A row without it is rejected by the import or cannot be matched to its record.
+  rule_authority: customer_configured
+  sap_impact: The EmpCompensation, EmpPayCompRecurring, FOPayRange row is rejected on import or cannot be referenced by other
+    records.
+  fix_map:
+    __blank__: Provide a value for SALARY in the EmpCompensation, EmpPayCompRecurring, FOPayRange import file.
+  record_fix_template: 'EmpCompensation, EmpPayCompRecurring, FOPayRange {COMPINFO.USERID}: SALARY is missing.'
+- id: EC687
+  field: FOPAYGRADE.START_DATE
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Start date must not be after end date
+  why_it_matters: When an end date is present the start date must come before it. An inverted pair makes the effective period
+    empty.
+  rule_authority: best_practice
+  sap_impact: FOPayGrade rows with inverted values are rejected or give wrong results.
+  fix_map:
+    __other__: Correct START_DATE and END_DATE so the first does not pass the second.
+  record_fix_template: 'FOPayGrade {FOPAYGRADE.EXTERNAL_CODE}: START_DATE is after END_DATE.'
+  fail_when: '`FOPAYGRADE.START_DATE` > `FOPAYGRADE.END_DATE`'
+  require_populated: true
+- id: EC688
+  field: FOGEOZONE.START_DATE
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Start date must not be after end date
+  why_it_matters: When an end date is present the start date must come before it. An inverted pair makes the effective period
+    empty.
+  rule_authority: best_practice
+  sap_impact: FOGeozone rows with inverted values are rejected or give wrong results.
+  fix_map:
+    __other__: Correct START_DATE and END_DATE so the first does not pass the second.
+  record_fix_template: 'FOGeozone {FOGEOZONE.EXTERNAL_CODE}: START_DATE is after END_DATE.'
+  fail_when: '`FOGEOZONE.START_DATE` > `FOGEOZONE.END_DATE`'
+  require_populated: true
+- id: EC689
+  field: FOLOCATIONGROUP.START_DATE
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Start date must not be after end date
+  why_it_matters: When an end date is present the start date must come before it. An inverted pair makes the effective period
+    empty.
+  rule_authority: best_practice
+  sap_impact: FOLocationGroup rows with inverted values are rejected or give wrong results.
+  fix_map:
+    __other__: Correct START_DATE and END_DATE so the first does not pass the second.
+  record_fix_template: 'FOLocationGroup {FOLOCATIONGROUP.EXTERNAL_CODE}: START_DATE is after END_DATE.'
+  fail_when: '`FOLOCATIONGROUP.START_DATE` > `FOLOCATIONGROUP.END_DATE`'
+  require_populated: true
+- id: EC690
+  field: FOPAYCOMPONENTGROUP.START_DATE
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Start date must not be after end date
+  why_it_matters: When an end date is present the start date must come before it. An inverted pair makes the effective period
+    empty.
+  rule_authority: best_practice
+  sap_impact: FOPayComponentGroup rows with inverted values are rejected or give wrong results.
+  fix_map:
+    __other__: Correct START_DATE and END_DATE so the first does not pass the second.
+  record_fix_template: 'FOPayComponentGroup {FOPAYCOMPONENTGROUP.EXTERNAL_CODE}: START_DATE is after END_DATE.'
+  fail_when: '`FOPAYCOMPONENTGROUP.START_DATE` > `FOPAYCOMPONENTGROUP.END_DATE`'
+  require_populated: true
+- id: EC691
+  field: FOPAYCOMPONENT.START_DATE
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Start date must not be after end date
+  why_it_matters: When an end date is present the start date must come before it. An inverted pair makes the effective period
+    empty.
+  rule_authority: best_practice
+  sap_impact: FOPayComponent rows with inverted values are rejected or give wrong results.
+  fix_map:
+    __other__: Correct START_DATE and END_DATE so the first does not pass the second.
+  record_fix_template: 'FOPayComponent {FOPAYCOMPONENT.EXTERNAL_CODE}: START_DATE is after END_DATE.'
+  fail_when: '`FOPAYCOMPONENT.START_DATE` > `FOPAYCOMPONENT.END_DATE`'
+  require_populated: true
+- id: EC692
+  field: FOPAYRANGE.MINIMUM_PAY
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Pay range minimum must not exceed the midpoint
+  why_it_matters: A pay range runs from minimum through midpoint to maximum. A minimum above the midpoint inverts the range.
+  rule_authority: best_practice
+  sap_impact: FOPayRange rows with inverted values are rejected or give wrong results.
+  fix_map:
+    __other__: Correct MINIMUM_PAY and MID_POINT so the first does not pass the second.
+  record_fix_template: 'FOPayRange {FOPAYRANGE.EXTERNAL_CODE}: MINIMUM_PAY is above MID_POINT.'
+  fail_when: '`FOPAYRANGE.MINIMUM_PAY` > `FOPAYRANGE.MID_POINT`'
+  require_populated: true
+- id: EC693
+  field: FOPAYRANGE.MID_POINT
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Pay range midpoint must not exceed the maximum
+  why_it_matters: A pay range runs from minimum through midpoint to maximum. A midpoint above the maximum inverts the range.
+  rule_authority: best_practice
+  sap_impact: FOPayRange rows with inverted values are rejected or give wrong results.
+  fix_map:
+    __other__: Correct MID_POINT and MAXIMUM_PAY so the first does not pass the second.
+  record_fix_template: 'FOPayRange {FOPAYRANGE.EXTERNAL_CODE}: MID_POINT is above MAXIMUM_PAY.'
+  fail_when: '`FOPAYRANGE.MID_POINT` > `FOPAYRANGE.MAXIMUM_PAY`'
+  require_populated: true

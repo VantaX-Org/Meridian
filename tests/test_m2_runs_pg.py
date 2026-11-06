@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 from tests.m2_client import USER, headers, make_client
 from tests.m2_seed import seed_m2
 
-pytestmark = pytest.mark.skipif(not os.environ.get("MERIDIAN_TEST_DB_URL"), reason="MERIDIAN_TEST_DB_URL not set")
+needs_db = pytest.mark.skipif(not os.environ.get("MERIDIAN_TEST_DB_URL"), reason="MERIDIAN_TEST_DB_URL not set")
 
 
 @pytest.fixture(scope="module")
@@ -29,6 +29,7 @@ async def start(monkeypatch, tid, sub=USER):
     return client
 
 
+@needs_db
 @pytest.mark.anyio
 async def test_timeline_order_baseline_and_shape(owner, monkeypatch):
     s = seed_m2(owner)
@@ -46,9 +47,13 @@ async def test_timeline_order_baseline_and_shape(owner, monkeypatch):
         assert [x["label"] for x in runs] == ["ECC production baseline", "ECC production mid", "ECC production run"]
         assert [x["duration_s"] for x in runs] == [120, None, 702]
         assert [x["records_checked"] for x in runs] == [60000 + 5000, 61000 + 5000, 61816 + 5000]
-        assert runs[2]["objects"] == {"fi_gl": {"score": 92.5, "raw_score": 92.5, "capped": False},
-                                      "material_master": {"score": 70.0, "raw_score": 71.8, "capped": True}}
-        assert runs[0]["objects"]["material_master"] == {"score": 78.0, "raw_score": 78.0, "capped": False}
+        pick = lambda o: {k: o[k] for k in ("score", "raw_score", "capped")}  # noqa: E731 - the score fields only
+        assert {k: pick(o) for k, o in runs[2]["objects"].items()} == {
+            "fi_gl": {"score": 92.5, "raw_score": 92.5, "capped": False},
+            "material_master": {"score": 70.0, "raw_score": 71.8, "capped": True}}
+        assert pick(runs[0]["objects"]["material_master"]) == {"score": 78.0, "raw_score": 78.0, "capped": False}
+        assert [x["run_number"] for x in runs] == [1, 2, 3]
+        assert [x["status"] for x in runs] == ["complete", "agents_complete", "complete"]
         assert all(x["system_id"] == s["ecc"] for x in runs)
 
         # the last N, still oldest first
@@ -63,6 +68,113 @@ async def test_timeline_order_baseline_and_shape(owner, monkeypatch):
         assert (await client.get("/api/v1/runs/timeline", params={"system_id": "x"}, headers=headers())).status_code == 422
 
 
+@needs_db
+@pytest.mark.anyio
+async def test_timeline_module_filter_limits_runs_of_that_object(owner, monkeypatch):
+    s = seed_m2(owner)
+    client = await start(monkeypatch, s["tid"])
+    async with client:
+        get = lambda **p: client.get("/api/v1/runs/timeline", params={"system_id": s["ecc"], **p}, headers=headers())  # noqa: E731
+        one = (await get(module="material_master", limit=1)).json()["runs"]
+        assert [x["id"] for x in one] == [s["run"]] and "material_master" in one[0]["objects"]
+        assert (await get(module="no_such_object")).json()["runs"] == []
+        every = (await get(module="material_master")).json()["runs"]
+        assert all("material_master" in x["objects"] for x in every)
+
+
+@needs_db
+@pytest.mark.anyio
+async def test_timeline_findings_and_value_at_risk(owner, monkeypatch):
+    from sqlalchemy import text
+    s = seed_m2(owner)
+    with owner.begin() as c:  # run_mid measured the object too, so the landscape run has a previous run to compare with
+        for chk, n in (("MM014", 200), ("MM100", 5), ("MM300", 7)):
+            c.execute(text("INSERT INTO findings (version_id, tenant_id, module, check_id, severity, dimension, affected_count, "
+                           "total_count, details) VALUES (:v, :t, 'material_master', :c, 'low', 'validity', :n, 61000, CAST('{}' AS jsonb))"),
+                      {"v": s["run_mid"], "t": s["tid"], "c": chk, "n": n})
+    client = await start(monkeypatch, s["tid"])
+    async with client:
+        runs = (await client.get("/api/v1/runs/timeline", params={"system_id": s["ecc"]}, headers=headers())).json()["runs"]
+        mm = [x["objects"]["material_master"] for x in runs]
+        gl = [x["objects"]["fi_gl"] for x in runs]
+        # run0: first run of the system, nothing to compare, nothing priced
+        assert (mm[0]["findings_open"], mm[0]["findings_new"], mm[0]["findings_closed"], mm[0]["value_at_risk"]) == (105, None, None, None)
+        # run_mid vs run0: MM014 100 -> 200 and MM300 appears (+107); MM100 unchanged
+        assert (mm[1]["findings_open"], mm[1]["findings_new"], mm[1]["findings_closed"]) == (212, 107, 0)
+        # landscape run vs run_mid: MM014 +3440, MM031 +1000, MM200 +3; MM100 -5, MM300 -7 (errored rules never counted)
+        assert (mm[2]["findings_open"], mm[2]["findings_new"], mm[2]["findings_closed"]) == (4643, 4443, 12)
+        assert mm[2]["value_at_risk"]["amount"] == 4_200_000 and mm[2]["value_at_risk"]["currency"]  # MM014 + MM031 priced
+        # fi_gl was never measured in run_mid: no comparison; GL001 carries no cost, so no value
+        assert (gl[2]["findings_open"], gl[2]["findings_new"], gl[2]["findings_closed"], gl[2]["value_at_risk"]) == (12, None, None, None)
+
+
+@needs_db
+@pytest.mark.anyio
+async def test_status_per_system_reads_each_object_at_its_own_run(owner, monkeypatch):
+    import json
+    import uuid
+    from datetime import timedelta
+    from sqlalchemy import text
+    from api.middleware import cache
+    from tests.landscape_seed import FI_GL, RUN_AT
+    cache._memo.clear()
+    monkeypatch.setattr(cache, "get_redis", lambda: None)
+    s = seed_m2(owner)
+    newer = str(uuid.uuid4())
+    with owner.begin() as c:  # a newer ECC run that measured fi_gl only: material_master stays at its older run
+        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, run_at, run_number, label, metadata, dqs_summary) "
+                       "VALUES (:v, :t, 'complete', :at, 4, 'ECC newer', CAST(:m AS jsonb), CAST(:s AS jsonb))"),
+                  {"v": newer, "t": s["tid"], "at": RUN_AT + timedelta(days=1),
+                   "m": json.dumps({"system_id": s["ecc"], "modules": ["fi_gl"]}), "s": json.dumps({"fi_gl": {**FI_GL, "composite_score": 95.0}})})
+    client = await start(monkeypatch, s["tid"])
+    async with client:
+        b = (await client.get("/api/v1/status", headers=headers())).json()
+        by = {x["system_id"]: x for x in b["systems"]}
+        ecc, spare = by[s["ecc"]], by[s["spare"]]
+        assert (ecc["name"], ecc["latest_run_id"], ecc["run_number"], ecc["status"]) == ("ECC production", newer, 4, "complete")
+        objs = {o["module"]: o for o in ecc["objects"]}
+        assert (objs["fi_gl"]["run_id"], objs["fi_gl"]["run_number"], objs["fi_gl"]["score"]) == (newer, 4, 95.0)
+        assert (objs["material_master"]["run_id"], objs["material_master"]["run_number"]) == (s["run"], 3)
+        assert objs["material_master"]["label"] == "Material master" and objs["material_master"]["records_checked"] == 61816
+        assert ecc["records_checked"] == 61816 + 5000 and ecc["rules_measured"] == 913 + 40
+        assert (spare["latest_run_id"], spare["run_number"], [o["module"] for o in spare["objects"]]) == (s["run_spare"], 1, ["material_master"])
+        # the tenant-wide fields stay as before
+        assert b["run_at"] is not None and b["cost_model"]
+
+
+@needs_db
+@pytest.mark.anyio
+async def test_status_cache_is_keyed_per_system(owner, monkeypatch):
+    """A newer run on one system shows up inside the TTL even when it is older than another system's newest run."""
+    import json
+    import uuid
+    from datetime import timedelta
+    from sqlalchemy import text
+    from api.middleware import cache
+    from tests.landscape_seed import RUN_AT
+    cache._memo.clear()
+    monkeypatch.setattr(cache, "get_redis", lambda: None)
+    s = seed_m2(owner)
+    client = await start(monkeypatch, s["tid"])
+    async with client:
+        first = {x["system_id"]: x for x in (await client.get("/api/v1/status", headers=headers())).json()["systems"]}
+        assert first[s["spare"]]["run_number"] == 1
+        newer = str(uuid.uuid4())
+        with owner.begin() as c:  # spare run 2: newer than spare run 1, still older than the tenant's newest run
+            c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, run_at, run_number, label, metadata, dqs_summary) "
+                           "SELECT :v, tenant_id, 'complete', :at, 2, 'spare 2', metadata, dqs_summary FROM analysis_versions WHERE id = :src"),
+                      {"v": newer, "at": RUN_AT - timedelta(hours=1), "src": s["run_spare"]})
+        again = {x["system_id"]: x for x in (await client.get("/api/v1/status", headers=headers())).json()["systems"]}
+        assert (again[s["spare"]]["latest_run_id"], again[s["spare"]]["run_number"]) == (newer, 2)
+
+
+def test_findings_delta():
+    from api.routes.run_timeline import findings_delta
+    assert findings_delta({"a": 5, "b": 2}, {"a": 3, "c": 4}) == (4, 4)  # a +2, b +2 | c -4
+    assert findings_delta({"a": 1}, None) == (None, None)
+
+
+@needs_db
 @pytest.mark.anyio
 async def test_compare_counts_reconcile_with_the_object_rows(owner, monkeypatch):
     s = seed_m2(owner)
@@ -105,6 +217,7 @@ async def test_compare_counts_reconcile_with_the_object_rows(owner, monkeypatch)
         assert (await client.get(f"/api/v1/runs/{s['run0']}/vs/00000000-0000-0000-0000-000000000000/summary", headers=headers())).status_code == 404
 
 
+@needs_db
 @pytest.mark.anyio
 async def test_runs_are_tenant_scoped(owner, monkeypatch):
     s, t2 = seed_m2(owner), seed_m2(owner)

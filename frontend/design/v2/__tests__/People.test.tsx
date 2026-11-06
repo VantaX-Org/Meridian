@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as workApi from "@/lib/api/v2/work";
+import * as peopleApi from "@/lib/api/v2/people";
 import { resetWorkFixture } from "@/lib/api/v2/fixtures";
 import { resetActions } from "@/lib/v2/undo";
 import { clearPatches } from "@/lib/v2/work-overrides";
@@ -212,5 +213,24 @@ describe("people add up to the work list", () => {
     expect(all).toBeGreaterThan(held);
     expect(screen.getByTestId("people-sentence")).toHaveTextContent(/of the [\d,]+ open records are assigned to nobody\./);
     expect(within(row).getByRole("link", { name: "Unassigned" })).toHaveAttribute("href", expect.stringContaining("/work?assigned=unassigned"));
+  });
+});
+
+describe("people: next step first, charts one click away", () => {
+  it("shows the table before the charts, which sit in a closed disclosure, and says what Remind does", async () => {
+    mount();
+    const t = await table();
+    const more = await screen.findByTestId("more-detail");
+    expect(more).not.toHaveAttribute("open");
+    expect(more).toContainElement(screen.getByTestId("people-workload"));
+    expect(t.compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText(/Remind sends the person a note about their overdue work\. It does not reassign anything\./)).toBeInTheDocument();
+  });
+
+  it("says what went wrong and offers a way on when the list cannot load", async () => {
+    vi.spyOn(peopleApi, "getPeople").mockRejectedValue(new Error("boom"));
+    mount();
+    expect(await screen.findByText(/The people could not be read\. Check that the API is reachable, then retry\./)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 });

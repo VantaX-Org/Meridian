@@ -87,7 +87,7 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
         </div>
         <p className="m2-prov" role="status">{weightsOk ? tr("The weights add up to 100.") : tr("The weights add up to {sum}. Adjust them to 100 to save.", { sum: fixed(sum, 1) })}</p>
         <div className="m2-adm-acts" style={{ marginTop: "var(--m2-s2)" }}>
-          <button type="button" className="m2-btn" disabled={!weightsOk || pending !== null} onClick={() => save("weights", tr("Weights saved"), { dimension_weights: Object.fromEntries(DIMS.map((d) => [d, num(w[d])])) as unknown as DimensionScores }, { dimension_weights: s.dimension_weights })}>
+          <button type="button" className="m2-btn m2-next" disabled={!weightsOk || pending !== null} onClick={() => save("weights", tr("Weights saved"), { dimension_weights: Object.fromEntries(DIMS.map((d) => [d, num(w[d])])) as unknown as DimensionScores }, { dimension_weights: s.dimension_weights })}>
             {pending === "weights" ? tr("Saving…") : tr("Save weights")}
           </button>
           <button type="button" className="m2-btn m2-ghost" onClick={() => setW(Object.fromEntries(DIMS.map((d) => [d, String(toPercent(DAMA)[d])])))}>
@@ -105,7 +105,7 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
         </div>
         {!bandsOk ? <p className="m2-prov" role="alert">{tr("Critical must not exceed warning, and warning must not exceed target.")}</p> : null}
         <div className="m2-adm-acts" style={{ marginTop: "var(--m2-s2)" }}>
-          <button type="button" className="m2-btn" disabled={!bandsOk || pending !== null} onClick={() => save("bands", tr("Score bands saved"), { thresholds: { target: num(bands.target), warning: num(bands.warning), critical: num(bands.critical) } }, { thresholds: s.thresholds })}>
+          <button type="button" className="m2-btn m2-next" disabled={!bandsOk || pending !== null} onClick={() => save("bands", tr("Score bands saved"), { thresholds: { target: num(bands.target), warning: num(bands.warning), critical: num(bands.critical) } }, { thresholds: s.thresholds })}>
             {pending === "bands" ? tr("Saving…") : tr("Save bands")}
           </button>
           <button type="button" className="m2-btn m2-ghost" onClick={() => setBands({ target: String(s.defaults.thresholds.target), warning: String(s.defaults.thresholds.warning), critical: String(s.defaults.thresholds.critical) })}>
@@ -149,7 +149,7 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
         <div className="m2-adm-acts" style={{ marginTop: "var(--m2-s2)" }}>
           <button
             type="button"
-            className="m2-btn"
+            className="m2-btn m2-next"
             disabled={!tolOk || !sevOk || pending !== null}
             onClick={() =>
               save(
@@ -318,7 +318,7 @@ function CostBlock({ model }: { model: CostModel }) {
       ) : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <div className="m2-adm-acts">
-        <button type="button" className="m2-btn" disabled={!valid || pending !== null} onClick={save}>
+        <button type="button" className="m2-btn m2-next" disabled={!valid || pending !== null} onClick={save}>
           {pending === "cost" ? tr("Saving…") : tr("Save cost model")}
         </button>
       </div>
@@ -358,7 +358,7 @@ function PlannerBlock({ initial, currency }: { initial: PlannerConfig; currency:
       <div className="m2-adm-acts">
         <button
           type="button"
-          className="m2-btn"
+          className="m2-btn m2-next"
           disabled={!valid || pending !== null}
           onClick={() =>
             void run("planner", async () => {
@@ -419,7 +419,7 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
       <div className="m2-adm-acts">
         <button
           type="button"
-          className="m2-btn"
+          className="m2-btn m2-next"
           disabled={!valid || pending !== null}
           onClick={() =>
             void run("retention", async () => {

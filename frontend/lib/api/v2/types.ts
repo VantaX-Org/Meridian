@@ -34,6 +34,33 @@ export interface StatusStrip {
   licence_valid_to: string | null;
   /** Step 10: the tenant is in sandbox mode, so nothing leaves the deployment. Absent on a server from before it. */
   sandbox?: boolean;
+  /** Per-system read, each object at its own newest finished run. Only GET /status sends it. */
+  systems?: StatusSystem[];
+}
+
+export interface StatusObject {
+  module: string;
+  label: string;
+  run_id: string;
+  run_number: number | null;
+  run_at: string | null;
+  records_checked: number | null;
+  rules_measured: number | null;
+  score: number | null;
+}
+
+export interface StatusSystem {
+  system_id: string;
+  name: string;
+  is_active: boolean;
+  latest_run_id: string | null;
+  run_number: number | null;
+  run_at: string | null;
+  status: string | null;
+  records_checked: number | null;
+  rules_measured: number | null;
+  scored_in_s: number | null;
+  objects: StatusObject[];
 }
 
 export interface LandscapeSystem {

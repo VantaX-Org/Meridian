@@ -37,6 +37,13 @@ def test_result_shape_and_block_policy():
     assert res["verdict"] == rec["verdict"]
 
 
+def test_failure_names_the_field_in_words():
+    res = fw.validate(T, "material_master", [{"MARA.MATNR": "ABC", "MARA.MTART": ""}], overrides={}, extra_rules=[])
+    fails = res["records"][0]["failures"]
+    assert fails and all(f["field_description"] for f in fails)
+    assert any(f["field_description"] != f["field"] for f in fails)
+
+
 def test_default_response_has_no_suggestion():
     res = fw.validate(T, "material_master", [{"MARA.GEWEI": "XX"}], overrides={}, extra_rules=[])
     assert all(f.get("suggestion") is None for r in res["records"] for f in r["failures"])

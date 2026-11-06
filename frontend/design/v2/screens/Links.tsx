@@ -9,6 +9,7 @@ import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int, pct1 } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
+import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -94,6 +95,16 @@ export function Links() {
 
   return (
     <CcPage title={t("Record links")}>
+      <Guide
+        shows={t("Shows how records of different objects point at each other, and which links SAP defines and which were inferred.")}
+        next={{ href: "/objects", label: t("Open the objects") }}
+        why={t("This screen only reads. Nothing is linked or unlinked here.")}
+        means={[
+          [t("Link types"), t("Kinds of relationship between two objects.")],
+          [t("Objects linked"), t("Objects that take part in at least one link.")],
+          [t("Inferred, not read from SAP"), t("Links Meridian worked out from the data rather than read from an SAP table.")],
+        ]}
+      />
       <CcBanner
         eyebrow={t("Links between records")}
         headline={
@@ -136,6 +147,7 @@ export function Links() {
         </EmptyFrame>
       ) : (
         <>
+          <Disclose title={t("Links by type")} hint={t("How many links of each kind the latest rows hold.")}>
           <Panel title={t("Links by type")} meta={partial ? t("Of the latest {n}", { n: int(rows.length) }) : t("All {n}", { n: int(rows.length) })} testId="links-types">
             <CcHBars
               label={t("Links by type")}
@@ -147,6 +159,7 @@ export function Links() {
               }))}
             />
           </Panel>
+          </Disclose>
           <Panel title={t("Links")} meta={t("Newest first")} testId="links-table">
             <ScrollFrame label={t("Links")}>
               <table className="m2-tbl m2-cards">
@@ -168,6 +181,7 @@ export function Links() {
           </Panel>
         </>
       )}
+      <Disclose title={t("Link types SAP defines")} hint={t("The relationships SAP knows, shared by every system.")}>
       <Panel title={t("Link types SAP defines")} meta={t("Shared by every system")} testId="links-known">
         {types.isError ? (
           <Dash why={t("The link types could not be read.")} />
@@ -199,6 +213,7 @@ export function Links() {
           </ScrollFrame>
         )}
       </Panel>
+      </Disclose>
     </CcPage>
   );
 }

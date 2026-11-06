@@ -16,8 +16,8 @@ import re
 import uuid
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, model_validator
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, csv_response
 from api.services.migration.post_load import NO_TARGET_ANALYSIS
-from api.services.rbac import Scope, current_user_id, require_permission, require_scope, scope_from_path
+from api.services.rbac import Scope, current_user_id, require_permission, require_scope, scope_from_path, write_audit
 
 logger = logging.getLogger("meridian.migration")
 
@@ -1315,6 +1315,102 @@ def _stream(data: bytes, media_type: str, filename: str) -> StreamingResponse:
         io.BytesIO(data), media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename={safe_name}"},
     )
+
+
+# ── Target workbook (the new system's own load format) ────────────────────────
+MAX_WORKBOOK_BYTES = 25 * 1024 * 1024
+
+
+async def _read_workbook(file: UploadFile) -> bytes:
+    data = await file.read(MAX_WORKBOOK_BYTES + 1)
+    if len(data) > MAX_WORKBOOK_BYTES:
+        raise HTTPException(status_code=413, detail="The workbook is larger than 25 MB.")
+    return data
+
+
+def _fill_workbook(tenant_id, version_id: str, data: bytes) -> tuple[dict, dict]:
+    """Parse an uploaded workbook and fill it from one finished run. Nothing is stored."""
+    from api.services.migration import workbook as wb
+    from api.services.source_design import dictionary_for
+    from checks.field_status_rules import conversions_for
+    from workers.dataset import load_dataset
+    from workers.db import get_sync_engine, tenant_session
+
+    try:
+        book = wb.parse_workbook(data)
+    except wb.WorkbookError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    with tenant_session(get_sync_engine(), tenant_id) as s:
+        row = s.execute(text("SELECT status, metadata FROM analysis_versions WHERE CAST(id AS text) = :v AND tenant_id = :t"),
+                        {"v": version_id.lower(), "t": str(tenant_id)}).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Run not found.")
+        meta = row[1] or {}
+        if "complete" not in (row[0] or "") or not meta.get("dataset_path"):
+            raise HTTPException(status_code=409, detail="This run has not finished, so it holds no data to export.")
+        system_id = meta.get("system_id")
+        dictionary = dictionary_for(s, system_id)
+        needed = wb.tables_needed(book, dictionary)
+        no_match = HTTPException(status_code=422, detail="Nothing in this run matches the sheets in this workbook.")
+        if not needed:
+            raise no_match
+        try:
+            frames = load_dataset(meta["dataset_path"], dictionary, None,
+                                  conversions=conversions_for(s, system_id), tables=needed)[0]
+        except ValueError as e:
+            if not str(e).startswith("No table parquet files"):  # a storage fault must not read as "no match"
+                raise
+            raise no_match
+    return wb.fill(book, frames)
+
+
+@router.post("/target-workbook/{version_id}/check")
+async def check_target_workbook(
+    version_id: str, file: UploadFile = File(...), tenant: Tenant = Depends(get_tenant),
+    _=Depends(require_permission("export", scope=scope_from_path)),
+):
+    """What this run can fill in the uploaded workbook, before anything is exported."""
+    from starlette.concurrency import run_in_threadpool
+    from api.services.migration.workbook import HELD_SAMPLE
+
+    _, report = await run_in_threadpool(_fill_workbook, tenant.id, version_id, await _read_workbook(file))
+    return {**report, "held": report["held"][:HELD_SAMPLE], "held_total": len(report["held"])}
+
+
+@router.post("/target-workbook/{version_id}/export")
+async def export_target_workbook(
+    version_id: str, request: Request, file: UploadFile = File(...),
+    export_format: Literal["xlsx", "csv"] = Query("xlsx", alias="format"),
+    tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("export", scope=scope_from_path)),
+):
+    """The run's data in the workbook's own columns, with a tab naming every row held back and why."""
+    import pandas as pd
+    from starlette.concurrency import run_in_threadpool
+    from api.services.branded_xlsx import guard_frame
+    from api.services.migration.export import to_csv_zip, to_xlsx
+    from api.services.migration.workbook import HELD_BACK_TAB
+
+    data = await _read_workbook(file)
+
+    def _build() -> tuple[bytes, dict]:
+        tabs, report = _fill_workbook(tenant.id, version_id, data)
+        if not tabs:
+            raise HTTPException(status_code=422, detail="Nothing in this run matches the sheets in this workbook.")
+        if report["held"]:  # record keys are source values, so this tab takes the formula guard; load tabs stay exact
+            tabs[HELD_BACK_TAB] = guard_frame(pd.DataFrame(report["held"]))
+        return (to_xlsx(tabs) if export_format == "xlsx" else to_csv_zip(tabs)), report["summary"]
+
+    content, summary = await run_in_threadpool(_build)
+    await _set_rls(db, tenant.id)
+    await write_audit(db, tenant.id, request, "migration.target_workbook.export", "analysis_version", version_id,
+                      None, {"format": export_format, **summary})
+    await db.commit()
+    media = ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if export_format == "xlsx"
+             else "application/zip")
+    # Not _stream: a StreamingResponse after an uploaded body trips BaseHTTPMiddleware ("Unexpected message received").
+    name = f"target_workbook_{version_id}.{'xlsx' if export_format == 'xlsx' else 'zip'}"
+    return Response(content, media_type=media, headers={"Content-Disposition": f"attachment; filename={name}"})
 
 
 # ── Field map ─────────────────────────────────────────────────────────────────

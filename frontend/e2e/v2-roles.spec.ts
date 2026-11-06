@@ -98,6 +98,7 @@ test.describe("v2 role capabilities at 1440, light", () => {
     await page.getByTestId("comments").scrollIntoViewIfNeeded();
     await shot(page, "steward", "comments");
     await go(page, "/work?module=mm_purchasing", "data_steward");
+    await page.getByText("Rules, pipeline and open records, charted", { exact: true }).click(); // the fix order sits one click away
     await expect(page.getByTestId("fix-hint")).toBeVisible(NAV);
     // The fixture has no Purchasing rows, and an empty Grid (Grid.tsx, the step 8 accessibility pass) draws role=grid
     // without a row: that one rule is out of this step's reach and is skipped for this screenshot only.

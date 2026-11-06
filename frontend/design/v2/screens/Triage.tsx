@@ -15,6 +15,7 @@ import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
+import { Consequence, FixHead, FlowSteps, MoreDetail, ObjectRunChip } from "../FixParts";
 import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { CcBanner, CcDelta, CcHBars, CcPage } from "./cc-parts";
@@ -104,58 +105,32 @@ export function Triage() {
           { label: t("Time to resolve"), value: hours(m.mttr_hours), note: t("Average") },
           { label: t("SLA breaches"), value: int(m.breach_count), note: t("{w} weeks", { w: int(m.weeks) }) },
         ]}
+        action={can("assign") && q.overdue.items.length ? (
+          <button type="button" className="m2-btn m2-strong" data-testid="triage-primary" onClick={() => setPicked(new Set(q.overdue.items.map(keyOf)))}>
+            {t("Pick the {n} past their SLA", { n: int(q.overdue.items.length) })}
+          </button>
+        ) : undefined}
         testId="triage-banner"
         label={t("Triage")}
       />
-      <div className="m2-cc-split">
-        <Panel title={t("Backlog burn by week")} meta={t("Resolved minus opened")} testId="triage-flow">
-          {m.weekly.length === 0 ? (
-            <Dash why={t("No week has closed yet.")} />
-          ) : (
-            <CcDelta
-              label={t("Backlog burn by week")}
-              rows={m.weekly.map((w) => ({
-                key: w.week,
-                label: t("Week of {d}", { d: formatDate(w.week, "date") }),
-                delta: w.resolved - w.opened,
-                text: t("{r} resolved, {o} opened", { r: int(w.resolved), o: int(w.opened) }),
-              }))}
-            />
-          )}
-        </Panel>
-        <Panel title={t("Open items by owner")} meta={t("{n} without an owner", { n: int(m.unassigned) })} testId="triage-owners">
-          {m.backlog_by_owner.length === 0 ? (
-            <Dash why={t("No one owns open items.")} />
-          ) : (
-            <CcHBars
-              label={t("Open items by owner")}
-              rows={m.backlog_by_owner.map((o) => ({
-                key: o.user_id,
-                label: nameOf(o.user_id, people.data) ?? o.email ?? o.user_id,
-                value: o.open,
-                tone: o.breached ? "crit" : undefined,
-                text: t("{n} open, {b} breached", { n: int(o.open), b: int(o.breached) }),
-              }))}
-            />
-          )}
-        </Panel>
-        <Panel title={t("Open items by team")} testId="triage-teams-load">
-          {m.backlog_by_team.length === 0 ? (
-            <Dash why={t("No team is set up yet.")} />
-          ) : (
-            <CcHBars
-              label={t("Open items by team")}
-              rows={m.backlog_by_team.map((x) => ({
-                key: x.team_id,
-                label: x.name,
-                value: x.open,
-                tone: x.breached ? "crit" : undefined,
-                text: t("{n} open, {b} breached", { n: int(x.open), b: int(x.breached) }),
-              }))}
-            />
-          )}
-        </Panel>
-      </div>
+      <FixHead
+        lede={t("The queue of findings and stewardship items waiting for someone, split by how close each is to its deadline. Pick items, then assign, snooze or pause them in bulk.")}
+        means={[
+          [t("SLA"), t("The time a team promised to deal with an item. Past SLA means the time has run out.")],
+          [t("Rank score"), t("Impact of the item combined with how much of its SLA is used. Higher comes first.")],
+          [t("Resolved within SLA"), t("Share of items closed on time over the weeks shown.")],
+          [t("Time to acknowledge"), t("Average time from an item arriving to someone taking it.")],
+        ]}
+      />
+      <FlowSteps
+        label={t("Triage steps")}
+        current={picked.size ? 1 : 0}
+        steps={[
+          { label: t("Pick"), count: int(items.length), hint: t("Tick the items to deal with. Past-SLA items come first.") },
+          { label: t("Change them"), count: int(picked.size), hint: t("Assign, set priority, snooze or pause the picked items together.") },
+          { label: t("Watch the SLA"), count: int(breached), hint: t("The count shows items already past their SLA.") },
+        ]}
+      />
       <div className="m2-rfilters" data-testid="triage-filter">
         <label>
           {t("Show the work of")}
@@ -175,6 +150,7 @@ export function Triage() {
       {can("assign") && chosen.length ? (
         <Bulk chosen={chosen} people={people.data ?? []} teams={teams.data ?? []} onDone={() => setPicked(new Set())} />
       ) : null}
+      {can("assign") && chosen.length ? <Consequence>{t("Apply changes every picked item at once. Assigning gives them a new owner; snoozing hides them from the queue until the date you choose.")}</Consequence> : null}
       {items.length === 0 ? (
         <EmptyFrame>{t("Nothing is waiting here. Choose someone else or include snoozed items.")}</EmptyFrame>
       ) : (
@@ -205,8 +181,61 @@ export function Triage() {
           </Panel>
         ) : null)
       )}
-      <Teams people={people.data ?? []} />
-      <Rules people={people.data ?? []} teams={teams.data ?? []} modules={[...new Set(items.map((x) => x.module).filter((x): x is string => !!x))]} />
+      <MoreDetail title={t("Backlog and load, charted")}>
+        <div className="m2-cc-split">
+          <Panel title={t("Backlog burn by week")} meta={t("Resolved minus opened")} testId="triage-flow">
+            {m.weekly.length === 0 ? (
+              <Dash why={t("No week has closed yet.")} />
+            ) : (
+              <CcDelta
+                label={t("Backlog burn by week")}
+                rows={m.weekly.map((w) => ({
+                  key: w.week,
+                  label: t("Week of {d}", { d: formatDate(w.week, "date") }),
+                  delta: w.resolved - w.opened,
+                  text: t("{r} resolved, {o} opened", { r: int(w.resolved), o: int(w.opened) }),
+                }))}
+              />
+            )}
+          </Panel>
+          <Panel title={t("Open items by owner")} meta={t("{n} without an owner", { n: int(m.unassigned) })} testId="triage-owners">
+            {m.backlog_by_owner.length === 0 ? (
+              <Dash why={t("No one owns open items.")} />
+            ) : (
+              <CcHBars
+                label={t("Open items by owner")}
+                rows={m.backlog_by_owner.map((o) => ({
+                  key: o.user_id,
+                  label: nameOf(o.user_id, people.data) ?? o.email ?? o.user_id,
+                  value: o.open,
+                  tone: o.breached ? "crit" : undefined,
+                  text: t("{n} open, {b} breached", { n: int(o.open), b: int(o.breached) }),
+                }))}
+              />
+            )}
+          </Panel>
+          <Panel title={t("Open items by team")} testId="triage-teams-load">
+            {m.backlog_by_team.length === 0 ? (
+              <Dash why={t("No team is set up yet.")} />
+            ) : (
+              <CcHBars
+                label={t("Open items by team")}
+                rows={m.backlog_by_team.map((x) => ({
+                  key: x.team_id,
+                  label: x.name,
+                  value: x.open,
+                  tone: x.breached ? "crit" : undefined,
+                  text: t("{n} open, {b} breached", { n: int(x.open), b: int(x.breached) }),
+                }))}
+              />
+            )}
+          </Panel>
+        </div>
+      </MoreDetail>
+      <MoreDetail title={t("Teams and assignment rules")}>
+        <Teams people={people.data ?? []} />
+        <Rules people={people.data ?? []} teams={teams.data ?? []} modules={[...new Set(items.map((x) => x.module).filter((x): x is string => !!x))]} />
+      </MoreDetail>
     </CcPage>
   );
 }
@@ -224,7 +253,7 @@ function Row({ x, people, teams, pick }: { x: QueueItem; people: AssignableUser[
         </td>
       ) : null}
       <th scope="row" className="m2-card-lead">
-        {x.module ? moduleText(x.module) : <Dash why={t("No object is stored.")} />}
+        <ObjectRunChip module={x.module} />
         {x.check_id ? <> <Mono>{x.check_id}</Mono></> : null}
         <span className="m2-meta">
           {" "}{x.kind === "queue" ? t("Stewardship item") : t("Issue")}

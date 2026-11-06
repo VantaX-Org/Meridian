@@ -48,7 +48,7 @@ export function ObjectBanner({ cell, receipt, label, system, module, cap }: { ce
             {t("Fix {n} records", { n: int(open) })}
           </V2Link>
         ) : (
-          <V2Link href={`/o/${system}/${module}/runs`} className="m2-btn m2-next">
+          <V2Link href={`/o/${system}/${module}/trend`} className="m2-btn m2-next">
             {t("Review the runs")}
           </V2Link>
         )}

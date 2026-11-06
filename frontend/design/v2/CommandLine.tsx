@@ -21,6 +21,7 @@ const PLACES: CommandGroup = {
   get label() { return tr("Go to"); },
   items: [
     { id: "landscape", get title() { return tr("Landscape"); }, href: "/" },
+    { id: "objects", get title() { return tr("Objects"); }, href: "/objects" },
     { id: "work", get title() { return tr("Work"); }, href: "/work" },
     { id: "runs", get title() { return tr("Runs"); }, href: "/runs" },
     { id: "people", get title() { return tr("People"); }, href: "/people" },

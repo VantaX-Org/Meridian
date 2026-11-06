@@ -6,15 +6,16 @@
       "steps": [
         {"caption": "Meridian checks your SAP data against fixed rules and scores every object on every system.", "go": "/"},
         {"caption": "The Demo data bar says these figures are sample data. A customer installation never shows it.", "point": {"text": "Demo data", "nth": 0}},
-        {"caption": "Three surfaces: the map of systems and objects on the left, the canvas in the middle, the inspector on the right.", "point": {"text": "ECC production", "nth": 0}},
-        {"caption": "The landscape is the start screen. One sentence says what holds the data back.", "point": {"testid": "landscape-sentence"}},
+        {"caption": "Three parts: the rail on the left, the canvas in the middle, the inspector on the right.", "point": {"text": "ECC production", "nth": 0}},
+        {"caption": "Home is the start screen. One sentence says what holds the data back.", "point": {"testid": "landscape-sentence"}},
         {"caption": "Every cell is a small ruler: the shown score, the word capped, the measured score beside it, and the verdict.", "point": {"testid": "matrix-cell", "nth": 0}},
         {"caption": "The next-step button is shaped for your role. For a programme lead it follows the nearest wave.", "point": {"testid": "wave-next-step"}},
         {"caption": "Open Material master on ECC production.", "click": {"testid": "matrix-cell", "nth": 0}},
+        {"caption": "The Rules tab carries the ruler and the receipt.", "go": "/o/ecc-production/material-master/rules"},
         {"caption": "The ruler: six segments sized by the dimension weights, each filled to its score.", "point": {"testid": "ruler-score"}},
         {"caption": "Measured 71.8, the tick on the ruler. Capped at 70 by MM003 and MM035, two critical rules over tolerance.", "scroll": 300},
         {"caption": "The receipt adds the score up, dimension by dimension, then the cap and the score shown.", "scroll": 300},
-        {"caption": "The tabs sit under the title: rules, records, fixes, runs, readiness, processes, lineage, glossary, golden records.", "scroll": -600},
+        {"caption": "The tabs sit under the title: overview, rules, records, fixes, trend, readiness, processes, lineage, profile, glossary, golden records.", "scroll": -600},
         {"caption": "Rules are ranked by value at risk, each with what goes wrong in SAP while it fails.", "go": "/o/ecc-production/material-master/rules"},
         {"caption": "Select a rule and it opens in the inspector, beside the canvas.", "go": "/o/ecc-production/material-master/rules?open=rule%3AMM142"},
         {"caption": "Esc closes the inspector and returns you to where you were.", "press": "Escape"},
@@ -55,16 +56,17 @@
       "video": "guide2-object", "chapter": "object", "params": "persona=lead",
       "steps": [
         {"caption": "An object is one area of SAP data scored as a whole on one system.", "go": "/o/ecc-production/material-master"},
-        {"caption": "The tabs sit under the title. The Rules view comes first and carries the receipt.", "point": {"text": "Golden records", "nth": 0}},
+        {"caption": "The tabs sit under the title. The object opens on Overview; the Rules tab carries the ruler and the receipt.", "point": {"text": "Golden records", "nth": 0}},
         {"caption": "The facts line: run, records checked, rules measured, records to fix, value at risk marked est., features blocked, wave verdict.", "point": {"text": "records checked", "nth": 0}},
         {"caption": "Related objects, upstream and downstream. Fix upstream first.", "point": {"text": "upstream", "nth": 0}},
+        {"caption": "The Rules tab carries the ruler and the receipt.", "go": "/o/ecc-production/material-master/rules"},
         {"caption": "The ruler: the tick is the measured score, the number is the score shown. It reads 70.0 capped, 71.8 measured.", "point": {"testid": "ruler-score"}},
         {"caption": "Capped at 70 by MM003 and MM035: two critical rules over tolerance.", "scroll": 320},
         {"caption": "The receipt: each dimension's weight, score and points, then measured, cap and score shown.", "scroll": 260},
         {"caption": "Every i explains its figure from the run itself.", "click": {"role": "button", "name": "About Tolerance", "nth": 0, "optional": true}},
         {"caption": "Rules, ranked by value at risk, with tolerance and whether each is over it.", "go": "/o/ecc-production/material-master/rules"},
         {"caption": "Pivot the rules by field, dimension, severity or S/4 feature.", "click": {"role": "button", "name": "By dimension"}},
-        {"caption": "Runs: the measured score over eight runs, and why it moved against the baseline.", "go": "/o/ecc-production/material-master/runs"},
+        {"caption": "Trend: the measured score over eight runs, and why it moved against the baseline.", "go": "/o/ecc-production/material-master/trend"},
         {"caption": "The shown score moved only to 70.0, because the cap holds it.", "scroll": 900},
         {"caption": "Readiness: the waves this object is in, and what its failing rules block in S/4HANA.", "go": "/o/ecc-production/material-master/readiness"},
         {"caption": "Fixes lists the object's fix batches.", "go": "/o/ecc-production/material-master/fixes"},
@@ -320,7 +322,7 @@
         {"caption": "Type a rule id to open the rule.", "fill": {"label": "Search, ask, or type a command", "text": "MM142"}},
         {"caption": "Or a word such as approve.", "fill": {"label": "Search, ask, or type a command", "text": "approve"}},
         {"caption": "Enter opens it.", "press": "Enter"},
-        {"caption": "G then W goes to Work; g then l, r or p to Landscape, Runs or People.", "go": "/work"},
+        {"caption": "G then W goes to Work; g then h, o, r, f, u, m or i goes to Home, Objects, Runs, Fix, Rules, Master data or Migration, and g then p to People.", "go": "/work"},
         {"caption": "In the ledger, j and k move, x selects, Enter opens the row.", "focus": "#m2-canvas", "press": "j"},
         {"caption": "a accepts the suggested value, n marks not an issue, r accepts the risk, e exports the fix sheet.", "press": "j"},
         {"caption": "In the inspector, the square brackets step to the previous and next row.", "press": "Enter"}
@@ -432,6 +434,7 @@
         {"caption": "A clean is never one-off. After a batch loads, the next run shows which records failed again.", "go": "/work/monitor"},
         {"caption": "Per system: the score before and after the batch, records failing again and records fixed since.", "point": {"text": "ECC production", "nth": 0}},
         {"caption": "Rules failing again names the checks behind the records that came back on each system.", "point": {"text": "Rules failing again", "nth": 0}},
+        {"caption": "The weekly trend, the drift by rule and the still-clean-by-batch tables sit under one fold. Open it.", "click": {"text": "Weekly trend, drift by rule and still clean by batch"}},
         {"caption": "Failing again by week, against the records fixed. A rising line means the source keeps creating bad data.", "point": {"text": "Failing again after a clean, by week", "nth": 0}},
         {"caption": "Drift by rule names the rules that come back, so the fix goes upstream to the process, not the record.", "point": {"role": "table", "name": "Drift by rule"}},
         {"caption": "Before and change show how far each rule has moved since the batch, so a growing gap stands out.", "point": {"text": "Change", "nth": 0, "optional": true}},
@@ -449,6 +452,46 @@
         {"caption": "Figures in the answer are drawn to scale, so the size of each number is plain at a glance.", "point": {"role": "list", "name": "Figures in the answer", "optional": true}},
         {"caption": "The facts used and the rules cited sit under the answer, so you can check each figure.", "point": {"text": "Facts used", "nth": 0}},
         {"caption": "Rules cited link to the checks behind the answer. Open one to see its definition and its failing records.", "point": {"text": "Rules cited", "nth": 0, "optional": true}}
+      ]
+    },
+    {
+      "video": "guide2-objects", "chapter": "objects", "params": "persona=lead",
+      "steps": [
+        {"caption": "Objects lists every object of every system, so you can find the one to open.", "go": "/objects"},
+        {"caption": "One sentence says which object holds the most back.", "point": {"testid": "lede"}},
+        {"caption": "The one button is the next step for your role.", "point": {"testid": "primary-action"}},
+        {"caption": "One table per system. The object with the lowest measured score comes first.", "point": {"testid": "objects-system", "nth": 0}},
+        {"caption": "Each row shows the score out of 100, the trend, open findings, records at risk and the latest run.", "point": {"testid": "objects-row", "nth": 0}},
+        {"caption": "Open Material master to see the object.", "click": {"role": "link", "name": "Material master", "exact": false, "nth": 0}},
+        {"caption": "The run picker sets which run you read. The run stays in the address, so a link shows the same run.", "point": {"testid": "run-picker"}}
+      ]
+    },
+    {
+      "video": "guide2-menu", "chapter": "menu", "params": "persona=lead",
+      "steps": [
+        {"caption": "The rail on the left is the menu. It has seven places: Home, Objects, Runs, Fix, Rules, Master data and Migration.", "go": "/", "point": {"testid": "rail"}},
+        {"caption": "Point at Objects: the menu lists the systems and their objects, and a link to connect a system. Every place opens a menu like this, and Pin keeps it open.", "point": {"role": "link", "name": "Objects", "nth": 0}},
+        {"caption": "Fix holds the Action centre, Work, verified fixes, Cleansing, Requests and People. The badge counts open items.", "point": {"role": "link", "name": "Fix", "exact": false, "nth": 0}},
+        {"caption": "Rules holds the rules, the dry run, anomaly rules, learned monitors and the evidence ledger.", "point": {"role": "link", "name": "Rules", "nth": 0}},
+        {"caption": "Master data holds MDM health, the entry gate, reference data, record links, Material 360 and data mining.", "point": {"role": "link", "name": "Master data", "nth": 0}},
+        {"caption": "Migration holds S/4HANA readiness, go-live, the forecast, value delivered and configuration.", "point": {"role": "link", "name": "Migration", "nth": 0}},
+        {"caption": "Reports, the Atlas and Administration sit under More, below the rail.", "point": {"role": "navigation", "name": "More"}},
+        {"caption": "Press g then a letter to jump: g then o opens Objects.", "press": "g"},
+        {"caption": "The letter completes the jump.", "press": "o"}
+      ]
+    },
+    {
+      "video": "guide2-migration", "chapter": "migration", "params": "persona=lead",
+      "steps": [
+        {"caption": "Migration shows whether your records would load into the new system, and what to fix first.", "go": "/migration", "point": {"testid": "steps"}},
+        {"caption": "The banner gives the current verdict from the latest analysis.", "point": {"testid": "mig-banner"}},
+        {"caption": "Workbook from the new system: fill the new system's own workbook from a finished SuccessFactors run.", "point": {"testid": "mig-workbook"}},
+        {"caption": "Three steps: choose the run and workbook, check what fits, export the data.", "point": {"testid": "mig-workbook-steps"}},
+        {"caption": "Choose the workbook file (.xlsx) the new system gave you.", "point": {"testid": "mig-workbook-file"}},
+        {"caption": "Check the workbook only reads it. Nothing is stored and nothing is exported yet.", "point": {"role": "button", "name": "Check the workbook"}},
+        {"caption": "After a check: how many rows are ready, how many are held back, and how many sheets can be filled.", "point": {"testid": "mig-workbook-summary", "optional": true}},
+        {"caption": "Required columns with no data are named, because the new system refuses those rows.", "point": {"testid": "mig-workbook-required", "optional": true}},
+        {"caption": "Gaps by kind: why records would not load, grouped by the kind of problem.", "point": {"testid": "mig-gaps"}}
       ]
     }
   ]

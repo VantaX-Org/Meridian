@@ -6,7 +6,7 @@ import { t } from "@/lib/v2/i18n";
  */
 
 export type KeyScope = "global" | "go" | "grid" | "ledger" | "inspector" | "command";
-export type GoDestination = "landscape" | "work" | "runs" | "people";
+export type GoDestination = "home" | "objects" | "runs" | "fix" | "rules" | "master" | "migration" | "work" | "people";
 
 /** What a focused or registered grid lets the keyboard do. */
 export interface GridTarget {
@@ -66,9 +66,14 @@ export const KEYS: readonly KeyDef[] = [
   { id: "undo", keys: ["mod+z"], display: "⌘Z", scope: "global", get label() { return t("Undo the last change"); }, run: (c, e) => (isTyping(e.target) || !c.undoLast ? false : handled(() => c.undoLast?.())) },
   { id: "escape", keys: ["Escape"], display: "Esc", scope: "global", get label() { return t("Close the top layer: menu, then inspector, then the selection"); }, run: (c) => Boolean(c.escape?.()) },
 
-  { id: "go.landscape", keys: ["g l"], get display() { return t("g then l"); }, scope: "go", get label() { return t("Landscape"); }, run: (c) => handled(() => c.go?.("landscape")) },
-  { id: "go.work", keys: ["g w"], get display() { return t("g then w"); }, scope: "go", get label() { return t("Work"); }, run: (c) => handled(() => c.go?.("work")) },
+  { id: "go.home", keys: ["g h"], get display() { return t("g then h"); }, scope: "go", get label() { return t("Home"); }, run: (c) => handled(() => c.go?.("home")) },
+  { id: "go.objects", keys: ["g o"], get display() { return t("g then o"); }, scope: "go", get label() { return t("Objects"); }, run: (c) => handled(() => c.go?.("objects")) },
   { id: "go.runs", keys: ["g r"], get display() { return t("g then r"); }, scope: "go", get label() { return t("Runs"); }, run: (c) => handled(() => c.go?.("runs")) },
+  { id: "go.fix", keys: ["g f"], get display() { return t("g then f"); }, scope: "go", get label() { return t("Fix"); }, run: (c) => handled(() => c.go?.("fix")) },
+  { id: "go.rules", keys: ["g u"], get display() { return t("g then u"); }, scope: "go", get label() { return t("Rules"); }, run: (c) => handled(() => c.go?.("rules")) },
+  { id: "go.master", keys: ["g m"], get display() { return t("g then m"); }, scope: "go", get label() { return t("Master data"); }, run: (c) => handled(() => c.go?.("master")) },
+  { id: "go.migration", keys: ["g i"], get display() { return t("g then i"); }, scope: "go", get label() { return t("Migration"); }, run: (c) => handled(() => c.go?.("migration")) },
+  { id: "go.work", keys: ["g w"], get display() { return t("g then w"); }, scope: "go", get label() { return t("Work"); }, run: (c) => handled(() => c.go?.("work")) },
   { id: "go.people", keys: ["g p"], get display() { return t("g then p"); }, scope: "go", get label() { return t("People"); }, run: (c) => handled(() => c.go?.("people")) },
 
   { id: "grid.next", keys: ["j", "ArrowDown"], get display() { return t("j or ↓"); }, scope: "grid", get label() { return t("Next row"); }, run: (c) => handled(() => c.grid?.move(1, false)) },

@@ -64,8 +64,8 @@ for (const size of SIZES) {
         await expect(page.getByText("ERR-7F3A91")).toBeVisible();
         await expect(page.getByTestId("maintenance")).toContainText("Planned maintenance");
         await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
-        // No map, canvas or inspector here.
-        await expect(page.locator("#m2-map")).toHaveCount(0);
+        // No rail, canvas or inspector here.
+        await expect(page.getByTestId("inspector")).toHaveCount(0);
         expect(await noSideways(page)).toBe(true);
         await page.waitForLoadState("networkidle");
         await shot(page, "status");

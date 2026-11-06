@@ -15,7 +15,7 @@ import { refreshAdmin, useAudit, useAuditActors, useMappings, useReference } fro
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { int } from "@/lib/v2/score";
 import { type GridColumn } from "../Grid";
-import { Dash, EmptyFrame, ErrorFrame, Mono } from "../parts";
+import { Coded, Dash, EmptyFrame, ErrorFrame, Mono } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Confirm, Fld, Loaded, NeedsPermission, Note, Pager, StatusWord, since, useCan } from "./kit";
 import { ToolGrid } from "../GridTools";
@@ -73,7 +73,7 @@ export function MappingsSection() {
       actions={
         write && selfService ? (
           <>
-            <button type="button" className="m2-btn" disabled={adding} onClick={() => setAdding(true)}>
+            <button type="button" className="m2-btn m2-next" disabled={adding} onClick={() => setAdding(true)}>
               {t("Add a mapping")}
             </button>
             <button type="button" className="m2-btn" disabled={custom === 0 || pending !== null} onClick={() => setResetting(true)}>
@@ -198,7 +198,7 @@ function NewMapping({ objects, initial, onDone }: { objects: string[]; initial: 
       <div className="m2-adm-acts">
         <button
           type="button"
-          className="m2-btn m2-strong"
+          className="m2-btn m2-next"
           disabled={!ready || pending !== null}
           onClick={() =>
             void run("add", async () => {
@@ -302,7 +302,7 @@ export function ReferenceSection() {
               <div className="m2-adm-acts">
                 <button
                   type="button"
-                  className="m2-btn"
+                  className="m2-btn m2-next"
                   disabled={!csv.trim() || !id || pending !== null}
                   onClick={() =>
                     void run("upload", async () => {
@@ -335,7 +335,7 @@ const AUDIT_COLUMNS = (who: (e: AuditEntry) => string): GridColumn<AuditEntry>[]
   { id: "who", header: t("Who"), width: 180, cell: (e) => who(e) },
   { id: "what", header: t("What happened"), width: 380, cell: (e) => auditSentence(e, who(e)) },
   { id: "action", header: t("Action"), width: 150, cell: (e) => <Mono>{e.action}</Mono> },
-  { id: "object", header: t("Target"), width: 140, cell: (e) => (e.entity_id ? <Mono>{e.entity_id}</Mono> : <Dash />) },
+  { id: "object", header: t("Target"), width: 200, cell: (e) => (e.entity_id ? <Coded code={e.entity_id} text={e.entity_type ? labelText(e.entity_type) : null} /> : <Dash />) },
   { id: "status", header: t("Result"), width: 110, cell: (e) => (e.status_code >= 400 ? <StatusWord tone="no-go">{t("Refused {status_code}", { status_code: e.status_code })}</StatusWord> : <StatusWord tone="go">{t("Done")}</StatusWord>) },
 ];
 

@@ -8,6 +8,7 @@
  * POST /versions/{id}/analyse, GET /jobs, GET /jobs/{id}, POST /jobs/{id}/retry, GET /systems, POST /systems/{id}/test,
  * GET and POST /connectivity/config-load, GET /systems/{id}/objects, /versions, /profiles, POST /systems/{id}/downloads.
  */
+import { scoreRunsOnly } from "./timeline-scope";
 import apiClient from "@/lib/api/client";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getReportDownloadUrl } from "@/lib/api/reports";
@@ -30,10 +31,21 @@ export interface TimelineObject {
   /** The measured score before the cap. */
   raw_score: number | null;
   capped: boolean;
+  /** Failing records summed over the object's rules. Null when the run stored no findings for it. */
+  findings_open?: number | null;
+  /** Net rise in failing records against the previous run of the system; null with no previous run. */
+  findings_new?: number | null;
+  /** Net fall in failing records against the previous run of the system; null with no previous run. */
+  findings_closed?: number | null;
+  /** Priced cost of the open findings; null when nothing could be priced, never invented. */
+  value_at_risk?: { amount: number; currency: string } | null;
 }
 
 export interface TimelineRun {
   id: string;
+  run_number?: number | null;
+  /** finished | agents_complete | running | failed | archived. */
+  status?: string;
   run_at: string | null;
   label: string | null;
   system_id: string | null;
@@ -136,8 +148,8 @@ export interface VersionCompare {
   checks: Record<ChangeKind, CheckChange[]>;
 }
 
-export function getTimeline(systemId: string | null, limit = 8): Promise<Timeline> {
-  return v2Get<Timeline>("/runs/timeline", { system_id: systemId ?? undefined, limit });
+export function getTimeline(systemId: string | null, limit = 8, module?: string): Promise<Timeline> {
+  return v2Get<Timeline>("/runs/timeline", { system_id: systemId ?? undefined, module, limit }).then(scoreRunsOnly);
 }
 
 export function getCompareSummary(a: string, b: string): Promise<CompareSummary> {

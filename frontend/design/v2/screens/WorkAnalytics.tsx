@@ -12,7 +12,8 @@ import { useRuleList } from "@/lib/v2/sys-queries";
 import { ChartFrame, ChartTable, niceTicks, Sparkline, TrendChart } from "../charts";
 import { Fact, Facts } from "../Inspector";
 import { Sev } from "../inspector/rule";
-import { Coded, EmptyFrame, ErrorFrame, PageTitle, Skeleton } from "../parts";
+import { Consequence, FixHead, FlowSteps, MoreDetail, ObjectRunChip } from "../FixParts";
+import { Coded, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -96,7 +97,27 @@ export function WorkAnalytics() {
         ]}
         testId="wa-banner"
         label={t("Work analytics")}
+        action={b.open_now > 0 ? <V2Link href="/work" className="m2-btn m2-strong" data-testid="wa-primary">{t("Open the work list")}</V2Link> : undefined}
       />
+      <FixHead
+        lede={t("This page shows how fast the work list is being cleared. Read the trend first, then the panels, which each answer one question. Every figure comes from the work list and the latest run of each object.")}
+        means={[
+          [t("Open"), t("Issues on the work list that nobody has closed.")],
+          [t("Closed a day"), t("Issues closed per day over the pace window.")],
+          [t("Median"), t("Half of the fixed issues took this long or less.")],
+          [t("Slowest tenth"), t("One in ten fixed issues took this long or more.")],
+        ]}
+      />
+      <FlowSteps
+        label={t("Analytics steps")}
+        current={0}
+        steps={[
+          { label: t("Read the trend"), count: int(b.open_now), hint: t("Is the list getting shorter, and when will it be clear?") },
+          { label: t("Find what slows it"), hint: t("Check the run changes and the time to fix below.") },
+          { label: t("Open the work list"), hint: t("Work the oldest issues first.") },
+        ]}
+      />
+      <Consequence>{t("This page only reads. Nothing on it changes data or the work list.")}</Consequence>
       <ChartFrame
         title={title}
         sub={t("Open at the end of each day")}
@@ -111,12 +132,14 @@ export function WorkAnalytics() {
       </ChartFrame>
       <RunChangePanel />
       <TimeToFixPanel />
-      <ThroughputPanel />
-      <CleaningPacePanel />
-      <RecurrencePanel />
-      <RootCausePanel />
-      <ProposalPanel />
-      <RuleFeedbackPanel />
+      <MoreDetail title={t("Who works the list, why issues come back and how rules are judged")}>
+        <ThroughputPanel />
+        <CleaningPacePanel />
+        <RecurrencePanel />
+        <RootCausePanel />
+        <ProposalPanel />
+        <RuleFeedbackPanel />
+      </MoreDetail>
     </CcPage>
   );
 }
@@ -156,11 +179,11 @@ function RunChangePanel() {
   const title = t("What the latest run changed");
   return (
     <Section q={q} title={title} meta={t("Each object at its latest run against the run before")} testId="wa-run-change">
-      {(d) => d.objects.length === 0 ? <EmptyFrame>{t("No object has two runs to compare yet.")}</EmptyFrame> : (
+      {(d) => d.objects.length === 0 ? <EmptyFrame action={<V2Link href="/runs" className="m2-btn">{t("Open the runs")}</V2Link>}>{t("No object has two runs to compare yet.")}</EmptyFrame> : (
         <Table title={title} head={[t("Object"), t("New"), t("Fixed"), t("Still failing"), t("Rules newly failing"), t("Rules recovered")]}>
           {d.objects.map((o) => (
             <tr key={o.module}>
-              <th scope="row" className="m2-card-lead">{formatModuleName(o.module)}</th>
+              <th scope="row" className="m2-card-lead"><ObjectRunChip module={o.module} /></th>
               <td data-label={t("New")} className="m2-num">{int(o.new)}</td>
               <td data-label={t("Fixed")} className="m2-num">{int(o.fixed)}</td>
               <td data-label={t("Still failing")} className="m2-num">{int(o.still_failing)}</td>
@@ -206,7 +229,7 @@ function TimeToFixPanel() {
             {d.by_severity.map((s) => <tr key={s.severity}><th scope="row" className="m2-card-lead"><Sev severity={s.severity} /></th>{statCells(s)}</tr>)}
           </Table>
           <Table title={t("Time to fix by object")} head={head(t("Object"))}>
-            {d.by_object.map((s) => <tr key={s.module}><th scope="row" className="m2-card-lead">{formatModuleName(s.module)}</th>{statCells(s)}</tr>)}
+            {d.by_object.map((s) => <tr key={s.module}><th scope="row" className="m2-card-lead"><ObjectRunChip module={s.module} /></th>{statCells(s)}</tr>)}
           </Table>
           <Table title={t("Slowest rules to fix")} head={head(t("Rule"))}>
             {d.by_check.map((s) => <tr key={s.check_id}><th scope="row" className="m2-card-lead">{rule(s.check_id)}</th>{statCells(s)}</tr>)}

@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { parseFields, parseKeys, RequestsCanvas } from "../screens/Requests";
 import { RequestInspector } from "../inspector/request";
 import { fireEvent } from "@testing-library/react";
 import { WorkflowsSection } from "../admin/workflows";
 import { setUrl } from "./nav-store";
+import * as reqApi from "@/lib/api/v2/requests";
 import { stubLayout } from "./layout-stub";
 
 const h = vi.hoisted(() => ({ allowed: "all" as "all" | string[] }));
@@ -134,5 +135,40 @@ describe("Requests", () => {
     setUrl("/admin/workflows?fixture=1");
     renderWithQuery(<WorkflowsSection />);
     await waitFor(() => expect(document.querySelector("[data-testid^='workflow-']")).not.toBeNull());
+  });
+});
+
+describe("Requests task flow", () => {
+  it("shows four steps, puts the table before the charts and defaults, and says what submitting does", async () => {
+    setUrl("/requests?fixture=1&view=all");
+    renderWithQuery(<RequestsCanvas />);
+    const table = await screen.findByTestId("requests-table");
+    expect(within(screen.getByTestId("flow-steps")).getAllByRole("listitem")).toHaveLength(4);
+    const pipeline = await screen.findByTestId("requests-pipeline");
+    expect(table.compareDocumentPosition(pipeline) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(pipeline.closest("details")).not.toBeNull();
+    expect(screen.getByTestId("consequence")).toHaveTextContent(/Nothing reaches SAP until every approval step is done/);
+  });
+
+  it("disables New request and says why without the write permission", async () => {
+    h.allowed = [];
+    setUrl("/requests?fixture=1&view=all");
+    renderWithQuery(<RequestsCanvas />);
+    const btn = await screen.findByRole("button", { name: "New request" });
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute("title", "A new request needs the master data write permission");
+  });
+
+  it("tells the user the next step for an empty to-approve list", async () => {
+    setUrl("/requests?fixture=1&view=to_approve&status=failed");
+    renderWithQuery(<RequestsCanvas />);
+    expect(await screen.findByText(/No request waits for your approval\./)).toBeInTheDocument();
+  });
+
+  it("gives a next step when the change requests cannot be read", async () => {
+    vi.spyOn(reqApi, "listRequests").mockRejectedValue(Object.assign(new Error("x"), { status: 500 }));
+    setUrl("/requests?fixture=1&view=all");
+    renderWithQuery(<RequestsCanvas />);
+    expect(await screen.findByText(/Check that the API is reachable, then retry/, {}, { timeout: 5000 })).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 # Systems
 
-A system is one SAP or cloud source Meridian reads from: ECC, S/4HANA on premise or Cloud, Extended Warehouse Management, SuccessFactors, Concur, Ariba or BTP. Meridian reads from SAP with a read-only role; live write-back is off unless an administrator turns it on (see the Approvals chapter). The system canvas is where SAP Basis connects a system, tests it, extracts with a scope, schedules extractions, loads the configuration and reviews custom objects. Open a system from its heading on the landscape or the map (`/s/{id}`); connect a new one from the command line ("Connect a system") or at `/s/new`. Every system is listed at `/s`.
+A system is one SAP or cloud source Meridian reads from: ECC, S/4HANA on premise or Cloud, Extended Warehouse Management, SuccessFactors, Concur, Ariba or BTP. Meridian reads from SAP with a read-only role; live write-back is off unless an administrator turns it on (see the Approvals chapter). The system canvas is where SAP Basis connects a system, tests it, extracts with a scope, schedules extractions, loads the configuration and reviews custom objects. Open a system from its heading on the landscape or the Objects menu (`/s/{id}`); connect a new one from the Objects menu, the command line ("Connect a system") or at `/s/new`. Every system is listed at `/s`.
 
 ## The systems list
 

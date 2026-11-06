@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
+import * as impactApi from "@/lib/api/v2/rule-impact";
 import { RuleDryRun, parseChanges, pct } from "../screens/RuleDryRun";
 import { stubLayout } from "./layout-stub";
 import { setUrl } from "./nav-store";
@@ -16,11 +17,34 @@ beforeEach(() => {
 });
 afterEach(() => {
   undo();
+  window.history.pushState({}, "", "/");
   window.sessionStorage.clear();
   vi.restoreAllMocks();
 });
 
 describe("rule dry run", () => {
+  it("says the dry run failed and runs it again on retry", async () => {
+    const call = vi.spyOn(impactApi, "runImpactDryRun").mockRejectedValue(new Error("Network Error"));
+    renderWithQuery(<RuleDryRun />);
+    fireEvent.click(screen.getByTestId("dry-run-go"));
+    expect(await screen.findByText("The dry run could not be done.")).toBeInTheDocument();
+    expect(screen.queryByTestId("dry-run-result")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(call).toHaveBeenCalledTimes(2));
+  });
+
+  it("explains the missing permission and keeps the run button off", () => {
+    const u = "/rule-dry-run?fixture=1&role=viewer&rule=AP002&module=accounts_payable";
+    window.history.pushState({}, "", u);
+    setUrl(u);
+    const call = vi.spyOn(impactApi, "runImpactDryRun");
+    renderWithQuery(<RuleDryRun />);
+    expect(screen.getByText("Running a dry run needs the manage rules permission.")).toBeInTheDocument();
+    expect(screen.getByTestId("dry-run-go")).toBeDisabled();
+    fireEvent.submit(screen.getByTestId("dry-run-go").closest("form") as HTMLFormElement);
+    expect(call).not.toHaveBeenCalled();
+  });
+
   it("parses the changes box and formats a rate", () => {
     expect(parseChanges("  ")).toBeNull();
     expect(parseChanges('{"pattern": "^[0-9]+$"}')).toEqual({ pattern: "^[0-9]+$" });
@@ -57,5 +81,37 @@ describe("rule dry run", () => {
     fireEvent.click(screen.getByTestId("dry-run-go"));
     expect(await screen.findByText(/must be a JSON object of rule fields/)).toBeInTheDocument();
     expect(screen.queryByTestId("dry-run-result")).toBeNull();
+  });
+});
+
+describe("stage 5: primary action", () => {
+  it("is the filled action to run the draft against current data", async () => {
+    renderWithQuery(<RuleDryRun />);
+    const go = screen.getByTestId("dry-run-go");
+    expect(go).toHaveClass("m2-next");
+    expect(go).toHaveTextContent("Run the draft against current data");
+  });
+});
+
+describe("stage 5: steps, consequence, next step", () => {
+  const current = () => screen.getByTestId("dry-run-steps").querySelector('[aria-current="step"]');
+  it("moves from choosing to reading the effect and offers the rule as the next step", async () => {
+    renderWithQuery(<RuleDryRun />);
+    expect(screen.getAllByRole("listitem").length).toBeGreaterThanOrEqual(4);
+    expect(current()).toHaveTextContent("Run it on current data");
+    expect(screen.getByTestId("consequence")).toHaveTextContent(/writes nothing and does not call SAP/);
+    fireEvent.click(screen.getByTestId("dry-run-go"));
+    await screen.findByTestId("dry-run-result");
+    expect(current()).toHaveTextContent("Read the effect");
+    expect(screen.queryByTestId("consequence")).toBeNull();
+    expect(within(screen.getByTestId("dry-run-next")).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("/r/AP002"));
+  });
+
+  it("stays on choosing the rule while the form is incomplete, and blocks the run", () => {
+    setUrl("/rule-dry-run");
+    renderWithQuery(<RuleDryRun />);
+    expect(current()).toHaveTextContent("Choose the rule");
+    expect(screen.getByTestId("dry-run-go")).toBeDisabled();
+    expect(screen.getByText("Run a dry run to see the effect here.")).toBeInTheDocument();
   });
 });

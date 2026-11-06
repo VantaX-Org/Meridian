@@ -1,45 +1,45 @@
 WEBVTT
 
 1
-00:00:00.004 --> 00:00:05.596
+00:00:00.004 --> 00:00:05.805
 Meridian can be driven from the keyboard. Question mark shows every shortcut.
 
 2
-00:00:05.596 --> 00:00:10.848
+00:00:05.805 --> 00:00:11.074
 The shortcut sheet: everywhere, go to, tables, the ledger, the inspector, the command line.
 
 3
-00:00:10.848 --> 00:00:15.663
+00:00:11.074 --> 00:00:15.893
 Esc closes the top layer.
 
 4
-00:00:15.663 --> 00:00:20.482
+00:00:15.893 --> 00:00:20.710
 Command K, or slash, opens the command line.
 
 5
-00:00:20.482 --> 00:00:25.868
+00:00:20.710 --> 00:00:26.105
 Type a rule id to open the rule.
 
 6
-00:00:25.868 --> 00:00:31.485
+00:00:26.105 --> 00:00:31.765
 Or a word such as approve.
 
 7
-00:00:31.485 --> 00:00:36.307
+00:00:31.765 --> 00:00:36.592
 Enter opens it.
 
 8
-00:00:36.307 --> 00:00:43.250
-G then W goes to Work; g then l, r or p to Landscape, Runs or People.
+00:00:36.592 --> 00:00:49.092
+G then W goes to Work; g then h, o, r, f, u, m or i goes to Home, Objects, Runs, Fix, Rules, Master data or Migration, and g then p to People.
 
 9
-00:00:43.250 --> 00:00:48.165
+00:00:49.092 --> 00:00:54.036
 In the ledger, j and k move, x selects, Enter opens the row.
 
 10
-00:00:48.165 --> 00:00:55.050
+00:00:54.036 --> 00:01:00.923
 a accepts the suggested value, n marks not an issue, r accepts the risk, e exports the fix sheet.
 
 11
-00:00:55.050 --> 00:00:59.955
+00:01:00.923 --> 00:01:05.829
 In the inspector, the square brackets step to the previous and next row.

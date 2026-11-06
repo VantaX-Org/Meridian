@@ -74,6 +74,9 @@ export function screenOf(pathname: string): Screen | null {
 const APPLIES: Record<string, Screen[]> = {
   "v2:overview": ["landscape"],
   "v2:landscape": ["landscape"],
+  "v2:menu": ["landscape"],
+  "v2:objects": ["landscape", "object"],
+  "v2:migration": ["landscape"],
   "v2:object": ["object"],
   "v2:rules": ["rule", "object"],
   "v2:work": ["work", "object"],
@@ -114,12 +117,14 @@ export const appliesTo = (id: string, screen: Screen | null): boolean => screen 
  */
 export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/": "v2:landscape",
+  "/objects": "v2:objects",
   "/o/[system]/[module]": "v2:object",
   "/o/[system]/[module]/rules": "v2:object",
   "/o/[system]/[module]/records": "v2:work",
   "/o/[system]/[module]/records/[key]": "v2:work",
   "/o/[system]/[module]/fixes": "v2:approvals",
   "/o/[system]/[module]/runs": "v2:run-compare",
+  "/o/[system]/[module]/trend": "v2:run-compare",
   "/o/[system]/[module]/readiness": "v2:waves",
   "/go-live": "v2:waves",
   "/atlas": "v2:landscape",
@@ -134,6 +139,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/rule-dry-run": "v2:rules",
   "/fix-drafts": "v2:rules",
   "/aletheia-survivorship": "v2:monitoring",
+  "/aletheia/evidence": "v2:monitoring",
   "/reference-data": "v2:monitoring",
   "/mdm": "v2:monitoring",
   "/links": "v2:monitoring",
@@ -152,7 +158,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/work/monitor": "v2:monitoring",
   "/work/analytics": "v2:monitoring",
   "/work/exceptions": "v2:work", "/work/triage": "v2:work",
-  "/migration": "v2:waves",
+  "/migration": "v2:migration",
   "/s4": "v2:waves",
   "/insights": "v2:monitoring",
   "/forecast": "v2:monitoring",
@@ -212,6 +218,7 @@ export function routeOf(pathname: string): string | null {
   if (a === "r" && b) return "/r/[id]";
   if (a === "run" && b) return c === "vs" && d ? "/run/[id]/vs/[b]" : "/run/[id]";
   if (a === "s" && b) return b === "new" ? "/s/new" : "/s/[id]";
+  if (a === "aletheia" && b) return `/aletheia/${b}`;
   if (a === "share" && b) return "/share/[token]";
   if (a === "admin") return b ? "/admin/[section]" : "/admin";
   if (a === "work" && b === "monitor") return "/work/monitor";

@@ -147,7 +147,8 @@ for (const [who, label] of Object.entries(ROLES) as [keyof typeof ROLES, string]
 
 test("3. lead: the object canvas, its receipt and every tab", async ({ page }) => {
   await signIn(page, "lead");
-  await page.goto(`/o/${SYSTEM}/${OBJECT}`);
+  // The receipt lives on the Rules tab (design spec 2.4: Overview is the default tab).
+  await page.goto(`/o/${SYSTEM}/${OBJECT}/rules`);
   await expect(page.getByTestId("receipt")).toBeVisible({ timeout: 30_000 });
   note((await page.getByTestId("receipt").getByRole("row", { name: /^Measured/ }).first().innerText()).replace(/\s+/g, " ").trim());
   for (const tab of ["records", "fixes", "runs", "readiness", "processes", "lineage", "glossary", "golden"]) {

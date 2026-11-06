@@ -29,10 +29,10 @@ const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").tr
 const n = (s: string) => Number(s.replace(/[^\d]/g, ""));
 
 describe("Run canvas", () => {
-  it("is titled by the run's date, with the system beside it, and one h1", async () => {
+  it("is titled by the run's name, system first, with its date in the lede, and one h1", async () => {
     renderWithQuery(<RunCanvas id={R8} />);
-    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Run 16 Oct 2026, 05:17"));
-    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("ECC production"));
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^ECC production run \d+/));
+    expect(screen.getByRole("heading", { level: 1 }).parentElement).toHaveTextContent("16 Oct 2026, 05:17");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 

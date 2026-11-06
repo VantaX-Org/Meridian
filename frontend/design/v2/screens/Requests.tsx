@@ -15,6 +15,7 @@ import { describeField } from "@/lib/v2/sap-fields";
 import { t } from "@/lib/v2/i18n";
 import { ageWord, kindWord, objectWord, PrecheckView, statusWord } from "../inspector/request";
 import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { Consequence, FixHead, FlowSteps, MoreDetail } from "../FixParts";
 import { CcBanner, CcHBars, CcPage, type CcBarRow } from "./cc-parts";
 
 const VIEWS: readonly RequestView[] = ["mine", "to_approve", "all"];
@@ -631,47 +632,30 @@ export function RequestsCanvas() {
           { label: t("Drafts"), value: drafts, note: t("not yet submitted") },
         ]}
         action={
-          <button type="button" className="m2-btn m2-next" aria-expanded={composing} disabled={!canWrite} title={canWrite ? undefined : t("A new request needs the master data write permission")} onClick={() => setComposing((c) => !c)}>
+          <button type="button" className="m2-btn m2-strong" aria-expanded={composing} disabled={!canWrite} title={canWrite ? undefined : t("A new request needs the master data write permission")} onClick={() => setComposing((c) => !c)}>
             {t("New request")}
           </button>
         }
       />
-      {rows.length > 0 ? (
-        <div className="m2-cc-row">
-          <section className="m2-cc-card" aria-label={t("Requests by stage")} data-testid="requests-pipeline">
-            <h3>{t("Requests by stage")}</h3>
-            <CcHBars label={t("Requests by stage, from draft to SAP")} rows={pipeline} />
-          </section>
-          {byPerson.length > 0 ? (
-            <section className="m2-cc-card" aria-label={t("Requests per person")} data-testid="requests-workload">
-              <h3>{t("Requests per person")}</h3>
-              <CcHBars label={t("Requests per person")} rows={byPerson} />
-            </section>
-          ) : null}
-        </div>
-      ) : null}
-      <div className="m2-cta">
-        <div className="m2-seg" role="group" aria-label={t("Requests views")}>
-          {VIEWS.map((v) => (
-            <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)}>
-              {viewWord(v)}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="m2-btn" aria-expanded={showDefaults} onClick={() => setShowDefaults((v) => !v)}>
-          {t("Entry defaults")}
-        </button>
-        <button type="button" className="m2-btn" aria-expanded={showRules} onClick={() => setShowRules((v) => !v)}>
-          {t("Derivations and critical fields")}
-        </button>
-      </div>
-      {showDefaults ? <EntryDefaults canEdit={session.can("manage_workflows") && !session.shared} /> : null}
-      {showRules ? (
-        <>
-          <DerivationRules canEdit={session.can("manage_workflows") && !session.shared} />
-          <CriticalFields canEdit={session.can("manage_workflows") && !session.shared} />
-        </>
-      ) : null}
+      <FixHead
+        lede={t("This page lists requests to create or change master data. Each goes through approval before it reaches SAP. A request belongs to a record, not to a scoring run, so rows carry no run. Start with New request, or open one that waits for you.")}
+        means={[
+          [t("Waiting"), t("Requests submitted or in approval.")],
+          [t("Overdue"), t("Waiting requests past the due time of the current approval step.")],
+          [t("Failed"), t("Requests approved that did not reach SAP.")],
+          [t("Drafts"), t("Requests saved but not yet submitted.")],
+        ]}
+      />
+      <FlowSteps
+        label={t("Request steps")}
+        current={failed > 0 ? 3 : waiting > 0 ? 2 : drafts > 0 ? 1 : 0}
+        steps={[
+          { label: t("Start a request"), hint: t("Choose New request and fill in the record.") },
+          { label: t("Submit it"), count: String(drafts), hint: t("A saved draft does nothing until you submit it.") },
+          { label: t("Approvers decide"), count: String(waiting), hint: t("Each approval step has a due time.") },
+          { label: t("It reaches SAP"), count: String(failed), hint: t("The count shows requests that did not reach SAP.") },
+        ]}
+      />
       {composing ? (
         <NewRequest
           initialKeys={keysParam}
@@ -681,6 +665,15 @@ export function RequestsCanvas() {
           }}
         />
       ) : null}
+      <div className="m2-cta">
+        <div className="m2-seg" role="group" aria-label={t("Requests views")}>
+          {VIEWS.map((v) => (
+            <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)}>
+              {viewWord(v)}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="m2-rfilters">
         <label>
           {t("Status")}
@@ -725,6 +718,38 @@ export function RequestsCanvas() {
       ) : (
         <Table rows={rows} />
       )}
+      <Consequence>{t("Submitting sends the request for approval. Nothing reaches SAP until every approval step is done.")}</Consequence>
+      <MoreDetail title={t("Charts, entry defaults and derivation rules")}>
+      {rows.length > 0 ? (
+        <div className="m2-cc-row">
+          <section className="m2-cc-card" aria-label={t("Requests by stage")} data-testid="requests-pipeline">
+            <h3>{t("Requests by stage")}</h3>
+            <CcHBars label={t("Requests by stage, from draft to SAP")} rows={pipeline} />
+          </section>
+          {byPerson.length > 0 ? (
+            <section className="m2-cc-card" aria-label={t("Requests per person")} data-testid="requests-workload">
+              <h3>{t("Requests per person")}</h3>
+              <CcHBars label={t("Requests per person")} rows={byPerson} />
+            </section>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="m2-cta">
+        <button type="button" className="m2-btn" aria-expanded={showDefaults} onClick={() => setShowDefaults((v) => !v)}>
+          {t("Entry defaults")}
+        </button>
+        <button type="button" className="m2-btn" aria-expanded={showRules} onClick={() => setShowRules((v) => !v)}>
+          {t("Derivations and critical fields")}
+        </button>
+      </div>
+      {showDefaults ? <EntryDefaults canEdit={session.can("manage_workflows") && !session.shared} /> : null}
+      {showRules ? (
+        <>
+          <DerivationRules canEdit={session.can("manage_workflows") && !session.shared} />
+          <CriticalFields canEdit={session.can("manage_workflows") && !session.shared} />
+        </>
+      ) : null}
+      </MoreDetail>
     </div>
     </CcPage>
   );

@@ -3,11 +3,15 @@
 import { ScrollFrame } from "./ScrollFrame";
 import { useMemo, useState } from "react";
 import { formatDate } from "@/lib/format";
-import type { ChangedCheck, ChangeKind, TimelineRun } from "@/lib/api/v2/object";
+import type { ChangedCheck, ChangeKind } from "@/lib/api/v2/object";
+import type { TimelineRun } from "@/lib/api/v2/runs";
 import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
-import { useChangedChecks, useCompare, useTimeline } from "@/lib/v2/object-queries";
+import { useChangedChecks, useCompare } from "@/lib/v2/object-queries";
+import { useTimeline } from "@/lib/v2/runs-queries";
 import { useNarrow } from "@/lib/v2/narrow";
 import { useLandscape, useReceipt } from "@/lib/v2/queries";
+import { runLabel } from "@/lib/v2/run-label";
+import { Lede } from "../../RunParts";
 import { f1, findSystem, int, moduleFromSlug } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
 import { ScoreChart, type ChartPoint } from "./ScoreChart";
@@ -36,7 +40,7 @@ const signed = (n: number): string => `${n > 0 ? "+" : n < 0 ? "−" : ""}${int(
 
 /** The runs behind the chart that the object has a score in, oldest first. */
 function seriesOf(runs: readonly TimelineRun[], module: string): TimelineRun[] {
-  return runs.filter((r) => r.objects[module] != null && (r.objects[module].raw_score ?? r.objects[module].score) != null).slice(-8);
+  return runs.filter((r) => r.objects[module] != null && (r.objects[module].raw_score ?? r.objects[module].score) != null)
 }
 
 function WhyMoved({ module, baseline, current }: { module: string; baseline: TimelineRun; current: TimelineRun }) {
@@ -113,10 +117,10 @@ function WhyMoved({ module, baseline, current }: { module: string; baseline: Tim
 }
 
 /** Compare any two runs: the canvas for that is /run/{a}/vs/{b}. */
-function ComparePicker({ runs, from, to }: { runs: TimelineRun[]; from: string; to: string }) {
+function ComparePicker({ runs, from, to, system }: { runs: TimelineRun[]; from: string; to: string; system: string }) {
   const [a, setA] = useState(from);
   const [b, setB] = useState(to);
-  const label = (r: TimelineRun) => t("Run {run_at}", { run_at: formatDate(r.run_at, "datetime") });
+  const label = (r: TimelineRun) => t("{run}, {date}", { run: runLabel(system, r.run_number), date: formatDate(r.run_at, "datetime") });
   return (
     <form className="m2-cmp" aria-label={t("Compare two runs")} onSubmit={(e) => e.preventDefault()}>
       <span className="m2-cmp-t">{t("Compare with…")}</span>
@@ -146,14 +150,14 @@ function ComparePicker({ runs, from, to }: { runs: TimelineRun[]; from: string; 
   );
 }
 
-/** The Runs tab: the measured score over the last 8 runs, why it moved since the baseline, and any two runs to compare. */
-export function RunsTab({ system: systemSegment, module: moduleSegment }: { system: string; module: string }) {
+/** The Trend tab: the measured score over every finished run of the object (up to 50), why it moved since the baseline, and any two runs to compare. */
+export function TrendTab({ system: systemSegment, module: moduleSegment }: { system: string; module: string }) {
   const runParam = useRunParam();
   const apiModule = moduleFromSlug(moduleSegment);
   const L = useLandscape(runParam);
   const system = L.data ? findSystem(L.data.systems, decodeURIComponent(systemSegment)) : undefined;
   const label = `${L.data?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ")}`;
-  const timeline = useTimeline(system?.id);
+  const timeline = useTimeline(system?.id ?? null, 50, apiModule);
   const receipt = useReceipt(apiModule, runParam, Boolean(system)).data;
   const { hrefFor } = useOpenItem();
   const narrow = useNarrow();
@@ -175,9 +179,9 @@ export function RunsTab({ system: systemSegment, module: moduleSegment }: { syst
     () =>
       series.map((r) => {
         const m = r.objects[apiModule].raw_score ?? r.objects[apiModule].score ?? 0;
-        return { id: r.id, label: shortDate(r.run_at), title: t("{longDate}: measured {m}", { longDate: longDate(r.run_at), m: f1(m) }), measured: m, baseline: baseline?.id === r.id };
+        return { id: r.id, label: shortDate(r.run_at), title: t("{name}, {date}: measured {score}", { name: runLabel(system?.name, r.run_number), date: longDate(r.run_at), score: f1(m) }), measured: m, baseline: baseline?.id === r.id };
       }),
-    [series, apiModule, baseline],
+    [series, apiModule, baseline, system?.name],
   );
 
   if (L.isPending || (Boolean(system) && timeline.isPending)) {
@@ -208,11 +212,13 @@ export function RunsTab({ system: systemSegment, module: moduleSegment }: { syst
   return (
     <div className="m2-rungrid">
       <div>
+        <Lede>{t("{object} on {system}: measured score at each of its {n} finished runs, newest {run}.", { object: label, system: system.name, n: points.length, run: runLabel(system.name, current.run_number) })}</Lede>
         <div className="m2-sechead">
           <h2 className="m2-h2">{t("Measured score, last {pointsCount} runs", { pointsCount: points.length })}</h2>
           <span className="m2-sub">{cap != null ? t("Held at {cap}.0 because {breachesCount, plural, one {# critical rule fails} other {# critical rules fail}}", { cap, breachesCount: receipt?.breaches.length ?? 0 }) : t("Nothing holds the score down")}</span>
         </div>
         <ScoreChart points={points} capLevel={cap} label={aria} compact={narrow} />
+        <p className="m2-prov">{t("{object}, measured score per finished run (before any cap). Hover a point for its run and date.", { object: label })}</p>
         <ScrollFrame label={t("Runs, scrollable")} style={{ marginTop: "var(--m2-s4)" }}>
           <table className="m2-tbl" aria-label={t("Runs shown in the chart")}>
             <thead>
@@ -227,7 +233,7 @@ export function RunsTab({ system: systemSegment, module: moduleSegment }: { syst
               {rows.map((r) => (
                 <tr key={r.id}>
                   <th scope="row">
-                    <V2Link href={hrefFor({ kind: "run", id: r.id })}>{t("Run {run_at}", { run_at: formatDate(r.run_at, "datetime") })}</V2Link>
+                    <V2Link href={hrefFor({ kind: "run", id: r.id })}>{t("{run}, {date}", { run: runLabel(system.name, r.run_number), date: formatDate(r.run_at, "datetime") })}</V2Link>
                     {r.baseline ? <span className="m2-meta">{" "}{t("baseline")}</span> : null}
                   </th>
                   <td className="m2-r">{f1(r.objects[apiModule].raw_score)}</td>
@@ -239,7 +245,7 @@ export function RunsTab({ system: systemSegment, module: moduleSegment }: { syst
           </table>
 </ScrollFrame>
         <p className="m2-prov">{t("Scores are as stored with each run; the measured score is before the cap, the shown score after it.")}</p>
-        <ComparePicker runs={series} from={(baseline ?? series[0]).id} to={current.id} />
+        <ComparePicker runs={series} from={(baseline ?? series[0]).id} to={current.id} system={system.name} />
       </div>
       {baseline ? (
         <WhyMoved module={apiModule} baseline={baseline} current={current} />

@@ -6,7 +6,7 @@ import * as reportsApi from "@/lib/api/v2/reports";
 import * as workApi from "@/lib/api/v2/work";
 import { landscapeFixture } from "@/lib/api/v2/fixtures";
 import { LandscapeCanvas } from "../screens/Landscape";
-import { getUrl, setUrl } from "./nav-store";
+import { setUrl } from "./nav-store";
 import { stubLayout } from "./layout-stub";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
@@ -172,24 +172,11 @@ describe("landscape canvas, fixture mode", () => {
     expect(isAuthError("Connection timed out after 30 s")).toBe(false);
   });
 
-  it("Your next work: the top 5 rows by value at risk in the grid, with View all N", async () => {
+  it("opens with one plain sentence saying what the page shows and what to do next", async () => {
     renderWithQuery(<LandscapeCanvas />);
-    const grid = await screen.findByRole("grid", { name: "Your next work" });
-    await waitFor(() => expect(within(grid).getAllByRole("row")).toHaveLength(6)); // header plus 5
-    const rows = within(grid).getAllByRole("row").slice(1);
-    const values = rows.map((r) => Number(text(within(r).getAllByRole("gridcell").at(-1) as HTMLElement).replace(/[^\d]/g, "")));
-    expect(values).toEqual([...values].sort((a, b) => b - a));
-    expect(within(grid).getByRole("columnheader", { name: "Value at risk" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View all 25,712" })).toHaveAttribute("href", expect.stringContaining("/work"));
-    expect(screen.getByText("Rows ranked by value at risk, cost model ZAR.")).toBeInTheDocument();
-  });
-
-  it("opens a row's record in the inspector through the URL", async () => {
-    renderWithQuery(<LandscapeCanvas />);
-    const grid = await screen.findByRole("grid", { name: "Your next work" });
-    await waitFor(() => expect(within(grid).getAllByRole("row")).toHaveLength(6));
-    fireEvent.click(within(grid).getAllByRole("row")[1]);
-    expect(getUrl()).toContain("open=record%3Amaterial_master%3AMATNR%3D");
+    const lede = await screen.findByTestId("lede");
+    expect(lede).toHaveTextContent(/newest run/);
+    expect(lede).toHaveTextContent(/Start with the fix queue/);
   });
 
   it("has one h1 and names the scope and the coverage counts", async () => {
@@ -306,8 +293,7 @@ describe("landscape canvas, honest states", () => {
     });
     vi.spyOn(landscapeApi, "getTopWork").mockResolvedValue({ version_id: null, total: 0, total_capped: false, next: null, items: [] });
     renderWithQuery(<LandscapeCanvas />);
-    expect(await screen.findByText("No object has a run yet. Extract a system and run an analysis to score it.")).toBeInTheDocument();
-    expect(await screen.findByText(/Nothing is waiting because no run has scored an object yet/)).toBeInTheDocument();
+    expect(await screen.findByTestId("lede")).toHaveTextContent(/No object has a run yet\. Extract a system and run an analysis to score it/);
     expect(screen.getByText("0 go, 0 at risk, 0 no-go")).toBeInTheDocument();
   });
 });

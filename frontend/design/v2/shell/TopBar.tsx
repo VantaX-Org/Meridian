@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useAuroraPrefs } from "@/hooks/use-theme";
 import type { Theme } from "@/lib/preferences";
@@ -9,56 +9,40 @@ import { PERSONA_LABEL, useOpenItem, useRunParam, useV2Session } from "@/lib/v2/
 import { canAdminister } from "@/lib/v2/admin-sections";
 import { useUnread } from "@/lib/v2/approvals-queries";
 import { useLandscape } from "@/lib/v2/queries";
-import { int, systemSlug } from "@/lib/v2/score";
+import { int, moduleSlug, systemSlug } from "@/lib/v2/score";
 import { productName, useTenantTheme } from "@/lib/v2/theme";
 import { APP_VERSION } from "@/lib/version";
 import { Dialog } from "../admin/kit";
 import { IconDown, IconSearch, Mark } from "../marks";
 import { MenuButton, type MenuEntry } from "../Menu";
-import { RunTimelineMenu } from "../RunTimeline";
 import { V2Link } from "../parts";
 import { t as tr } from "@/lib/v2/i18n";
 
-/** The current URL with one query parameter set or removed, for the scope and run menus. */
-function useWith(): (name: string, value: string | null) => string {
-  const pathname = usePathname();
-  const params = useSearchParams();
-  return (name, value) => {
-    const next = new URLSearchParams(params.toString());
-    next.delete("open");
-    if (value) next.set(name, value);
-    else next.delete(name);
-    const qs = next.toString();
-    return qs ? `${pathname}?${qs}` : pathname;
-  };
-}
-
-const STATE_SUB = { get analysed() { return tr("Analysed"); }, get extracted() { return tr("Extracted, not analysed"); }, get not_extracted() { return tr("Not extracted yet"); } } as const;
-
-/** Which systems the canvas shows: all of them, or one. */
-export function ScopeMenu({ compact }: { compact?: boolean }) {
+/** Where you are: Objects, the system, the object. Each part but the last is a link back up. */
+function Breadcrumb() {
+  const parts = usePathname().split("/").filter(Boolean);
   const run = useRunParam();
-  const params = useSearchParams();
-  const withParam = useWith();
-  const systems = useLandscape(run).data?.systems ?? [];
-  const chosen = params.get("system");
-  const current = systems.find((s) => systemSlug(s.name) === chosen);
-  const entries: MenuEntry[] = [
-    { kind: "heading", label: tr("Scope") },
-    { kind: "item", id: "all", label: tr("All systems"), sub: tr("{systemsCount} {systemsCount, plural, one {system} other {systems}}", { systemsCount: systems.length }), checked: !current, href: withParam("system", null) },
-    ...systems.map<MenuEntry>((s) => ({ kind: "item", id: s.id, label: s.name, sub: STATE_SUB[s.state], checked: current?.id === s.id, href: withParam("system", systemSlug(s.name)) })),
+  const L = useLandscape(run).data;
+  if (parts[0] !== "o" || parts.length < 2) return null;
+  const tab = ({ rules: tr("Rules"), trend: tr("Trend"), runs: tr("Trend") } as Record<string, string>)[parts[3] ?? ""];
+  const sys = L?.systems.find((x) => systemSlug(x.name) === parts[1]);
+  const cell = L?.cells.find((c) => c.system_id === sys?.id && moduleSlug(c.module) === parts[2]);
+  const object = cell ? (L?.objects.find((o) => o.module === cell.module)?.label ?? cell.module) : parts[2];
+  const trail = [
+    { href: "/objects", label: tr("Objects") },
+    { href: sys ? `/s/${sys.id}` : "", label: sys?.name ?? parts[1] },
+    ...(parts[2] ? [{ href: `/o/${parts[1]}/${parts[2]}`, label: object }] : []),
+    ...(tab ? [{ href: "", label: tab }] : []),
   ];
   return (
-    <MenuButton label={tr("Scope")} buttonLabel={tr("Scope, {name}", { name: current?.name ?? tr("All systems") })} entries={entries} className={compact ? "m2-btn m2-sm" : "m2-tbtn m2-scope"}>
-      {current?.name ?? tr("All systems")}
-      <IconDown />
-    </MenuButton>
+    <nav className="m2-crumb" aria-label={tr("Breadcrumb")}>
+      {trail.map((c, i) => (
+        <span key={i}>
+          {c.href && i < trail.length - 1 ? <V2Link href={c.href}>{c.label}</V2Link> : <span aria-current={i === trail.length - 1 ? "page" : undefined}>{c.label}</span>}
+        </span>
+      ))}
+    </nav>
   );
-}
-
-/** Which run the numbers come from: the timeline of the last eight runs (design/v2/RunTimeline.tsx). */
-export function RunMenu({ compact }: { compact?: boolean }) {
-  return <RunTimelineMenu compact={compact} />;
 }
 
 const THEMES: { value: Theme; label: string }[] = [
@@ -136,12 +120,10 @@ function FixtureAccountMenu({ onShortcuts }: { onShortcuts: () => void }) {
 
 export interface TopBarProps {
   onOpenCommand: () => void;
-  onToggleMap: () => void;
   onShortcuts: () => void;
-  mapOpen: boolean;
 }
 
-export function TopBar({ onOpenCommand, onToggleMap, onShortcuts, mapOpen }: TopBarProps) {
+export function TopBar({ onOpenCommand, onShortcuts }: TopBarProps) {
   const session = useV2Session();
   const unread = useUnread().data;
   const { open, openItem, close } = useOpenItem();
@@ -159,11 +141,7 @@ export function TopBar({ onOpenCommand, onToggleMap, onShortcuts, mapOpen }: Top
           {tenant?.logo_url ? <img src={tenant.logo_url} alt="" className="m2-logo" /> : <Mark />}
           <span className="m2-bn">{name}</span>
         </V2Link>
-        <button type="button" className="m2-tbtn m2-mapbtn" aria-haspopup="dialog" aria-controls="m2-map" aria-expanded={mapOpen} onClick={onToggleMap}>
-          {tr("Map")}
-        </button>
-        <ScopeMenu />
-        <RunMenu />
+        <Breadcrumb />
       </div>
       <button type="button" className="m2-search" aria-haspopup="dialog" aria-label={tr("Search, ask, or type a command")} onClick={onOpenCommand}>
         <IconSearch />

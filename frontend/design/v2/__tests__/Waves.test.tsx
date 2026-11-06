@@ -111,7 +111,9 @@ describe("the Waves view of the landscape", () => {
     expect(decodeURIComponent(edit.getAttribute("href") as string)).toContain("open=waves:w-2");
     // Following the link is the router's job; here the address it leads to is opened.
     setUrl(edit.getAttribute("href") as string);
-    expect(await screen.findByRole("dialog", { name: "Migration waves" })).toBeInTheDocument();
+    // The test id keeps this cheap: a role query walks the whole coverage matrix on every retry, which ran out the
+    // timeout on a loaded CI runner. The accessible name still proves it is the waves editor.
+    expect(await screen.findByTestId("inspector")).toHaveAccessibleName("Migration waves");
   });
 
   it("at phone width the list keeps each wave's heading with its gate, Edit and Certificate", async () => {

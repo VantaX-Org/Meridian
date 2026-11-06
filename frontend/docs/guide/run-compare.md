@@ -1,10 +1,11 @@
 # Run and Compare
 
-The **run canvas** shows one run: what it scored, object by object, and the jobs that made it. **Compare** puts two runs side by side and explains why each score moved. Open a run from the timeline or the Runs table (`/run/{id}`); open a comparison with **Compare with** on a run or an object's Runs tab (`/run/{earlier}/vs/{later}`).
+The **run canvas** shows one run: what it scored, object by object, and the jobs that made it. **Compare** puts two runs side by side and explains why each score moved. Open a run from the Runs ledger or an object's Trend tab (`/run/{id}`); open a comparison with **Compare with previous** in the ledger, **See every change** on a run, or **Compare with** on an object's Trend tab (`/run/{earlier}/vs/{later}`).
 
 ## One run
 
-- **The title**: "Run 16 Oct 2026, 05:17" and the system.
+- **The title**: the system and the run number, for example "ECC production run 12", with its run chip: date, status and whether it is the baseline.
+- **Since the run before**: "12 objects scored higher and 3 lower. 14 rules started failing and 37 stopped.", a bar per object, and **See every change**. The first run of a system says there is nothing earlier to compare with.
 - **The banner**: the small line says "This run", the headline is the run's worst verdict and the line under it sums up the objects: "15 objects scored: 2 go, 2 at risk, 11 no-go." Three figures: **Ready** ("of 15 objects"), **At risk** ("below target") and **Blocking** ("block go-live"). The one button is **Show scores from this run**.
 - **The facts line**: the system, records checked, rules measured, scoring time and trigger, for example "ECC production, 400,662 records checked, 794 rules measured, scored in 11 m 42 s, trigger scheduled".
 - **The sentence**: "15 objects scored: 2 go, 2 at risk, 11 no-go."
@@ -14,7 +15,13 @@ The **run canvas** shows one run: what it scored, object by object, and the jobs
 
 ## Compare
 
-The title names both runs, for example "Run 16 Oct 2026, 05:17 vs baseline 2 Oct 2026". The banner under it says "Compared with 2 Oct 2026" and gives the answer as its headline: **Data quality improved**, **Data quality got worse** or **Data quality is about the same**. Three figures follow: **Rules newly failing** (with "37 stopped failing" under it), **Objects higher** and **Objects lower**, and the one button **Open run details**.
+Compare works on two runs of one system. The title names both, for example "ECC production run 12 vs ECC production run 9", and a run chip for each sits under it with two lists, **Earlier run** and **Later run**, that offer only runs of that system. If a link pairs runs of different systems the page says so and shows no figures: "Compare runs of the same system. ECC production run 3 and SuccessFactors run 2 belong to different systems, and run numbers restart per system."
+
+The one button is **Open what got worse**, with its reason beside it, for example "Material master lost the most, -3.2 points. This opens its open records as they stood at ECC production run 12." It opens Work as of the later run for that system and object. Work cannot yet filter to what is new in that run, so the list is everything open at the time. When nothing got worse the button is **Open run details**.
+
+The banner says "Compared with" the earlier run and gives the answer as its headline: **Data quality improved**, **Data quality got worse** or **Data quality is about the same**. Three figures follow: **Rules newly failing** (with "37 stopped failing" under it), **Objects higher** and **Objects lower**.
+
+Two tabs sit under the banner. **Scores and rules** holds everything below. **Records** lists the records behind each changed rule.
 
 **Change in score by object** is a diverging bar chart: one row per object, worst first, with bars to the left for objects that got worse and to the right for objects that got better, the change at the end ("-3.2 points"). The legend reads **Worse** on the left and **Better** on the right. A long bar to the left is where to look first.
 
@@ -24,12 +31,12 @@ The sentence sums it up: "12 of 15 objects scored higher and 3 lower. 14 rules s
 
 The method is stated under it, exactly as the product states it: "Rules are compared on the common set: the 5167 rules that ran cleanly in both runs. 11 rules added since the baseline of 2 Oct 2026 are excluded. A rule counts as changed when it flips between failing no records and some, or fails at least 10% and 10 records more or fewer. Coverage is the share of records a rule could evaluate."
 
-- **By object**: measured before and after, the change in points, shown before and after, records checked, coverage, and the counts of rules new, fixed, worse and better. The total row adds them.
+- **By object**: **Before** and **After** (measured scores out of 100), the change in points, shown before and after, records checked, coverage, and the counts of rules **New**, **Closed**, **Worse** and **Better**. The total row adds them. Scores here are measured, because a verified figure exists per run and not per object.
 - **What changed**: "Rule counts match the table above." Four lists: **Newly failing rules**, **Fixed rules**, **Worse** and **Better**, each rule with its object and its failing records before and after, for example "MM201 Base unit of measure not in the check table, Material master, 0 to 316 records failing".
 
 Above the object table, the **Why the score moved** panel explains one object at a time; pick it in the **Object** list, which starts on the object that moved most. A bar chart shows **Points by rule**: each rule with its code and description, and how many points it added or cost, whether its failing records changed, the records checked changed, the rule is new, or the rule no longer ran. Separate bars show the dimension weighting and the critical cap when they moved the score. The contributions are computed from the same scoring code as the run, and the line above the chart states how many of the changed points they add up to; they agree within 0.05 points. The sentences below the chart are written by Aletheia from the largest contributions only, and each sentence is dropped if a number in it is not in the figures. If no model is available, the sentences come from a fixed template and the panel says so.
 
-On an object's Runs tab the same comparison appears as **Why the score moved**, and ends with what the cap did, for example "The shown score moved only 69.8 to 70.0, because the cap holds it at 70.0."
+On an object's Trend tab the same comparison appears as **Why the score moved**, and ends with what the cap did, for example "The shown score moved only 69.8 to 70.0, because the cap holds it at 70.0."
 
 ## The numbers and where they come from
 
@@ -51,6 +58,7 @@ On an object's Runs tab the same comparison appears as **Why the score moved**, 
 ## When something is wrong
 
 - **The shown score did not move although many records were fixed**: the cap holds it. Read the measured score, and fix the critical rules over tolerance to release it.
+- **"Compare runs of the same system."** The two runs belong to different systems, and their numbers mean nothing side by side. Open one of them and use **Compare with previous**.
 - **A comparison says few rules were compared**: one of the runs ran fewer rules cleanly (a failed extraction or a narrower scope). Compare runs of the same scope.
 - **Pin as baseline or Archive is missing**: changing a run needs the analyse permission; archived runs stay readable from **Show archived runs** on Runs.
 - **"This run could not be read. It may belong to another tenant or have been removed."** Check the link, or open the run from the Runs table.

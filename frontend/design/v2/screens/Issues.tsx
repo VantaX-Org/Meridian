@@ -14,6 +14,7 @@ import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
+import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -110,6 +111,16 @@ export function Issues() {
 
   return (
     <CcPage title={t("Issues")}>
+      <Guide
+        shows={t("Lists the failing records people are working on, with who owns each and where it stands.")}
+        next={{ href: "/work", label: t("Open the work queue") }}
+        why={t("Changing a status or assigning an issue records it here. Nothing in SAP is changed.")}
+        means={[
+          [t("In progress"), t("Issues someone is working on now.")],
+          [t("Waiting on SAP"), t("Issues waiting for a change in SAP.")],
+          [t("Closed"), t("Issues accepted or resolved.")],
+        ]}
+      />
       <CcBanner
         eyebrow={t("Record issues")}
         headline={t("{n} issues still to close", { n: int(active) })}
@@ -122,12 +133,14 @@ export function Issues() {
         testId="issues-banner"
         label={t("Record issues")}
       />
+      <Disclose title={t("Where the issues stand")} hint={t("The issues counted by status.")}>
       <Panel title={t("Where the issues stand")} meta={t("All {n}", { n: int(all) })} testId="issues-status">
         <CcHBars
           label={t("Where the issues stand")}
           rows={ISSUE_STATUSES.map((s) => ({ key: s, label: STATUS_TEXT[s](), value: n(s), text: int(n(s)) }))}
         />
       </Panel>
+      </Disclose>
       <div className="m2-rfilters" role="group" aria-label={t("Show issues by status")} data-testid="issues-tabs">
         {(["", ...ISSUE_STATUSES] as const).map((s) => (
           <button key={s || "all"} type="button" className="m2-btn" aria-pressed={tab === s} onClick={() => pickTab(s)}>

@@ -16,6 +16,7 @@ import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
+import { Consequence, FixHead, FlowSteps, MoreDetail } from "../FixParts";
 import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
@@ -126,15 +127,28 @@ export function Exceptions() {
           { label: t("Average time to resolve"), value: t("{n} h", { n: m.avg_resolution_hours.toFixed(1) }) },
           { label: t("SAP transactions"), value: sap === undefined ? "—" : int(sap), note: t("Last 24 hours") },
         ]}
+        action={items.length ? <button type="button" className="m2-btn m2-strong" data-testid="exceptions-primary" onClick={() => setPicked(items[0].id)}>{t("Open the exception with the nearest deadline")}</button> : undefined}
         testId="exceptions-banner"
         label={t("Exceptions")}
       />
-      <Panel title={t("Open exceptions by severity")} meta={t("All {n}", { n: int(m.open_count) })} testId="exceptions-severity">
-        <CcHBars
-          label={t("Open exceptions by severity")}
-          rows={SEVERITIES.map((s) => ({ key: s, label: SEV_TEXT[s](), value: m.by_severity[s] ?? 0, text: int(m.by_severity[s] ?? 0), tone: s === "critical" ? "crit" : s === "high" ? "warn" : undefined }))}
-        />
-      </Panel>
+      <FixHead
+        lede={t("Cases that need a person: a failed job, a stuck posting or a breached promise. Each has a deadline, an owner and a status. Exceptions come from systems and jobs, not from one object, so they carry no run.")}
+        means={[
+          [t("SLA"), t("The deadline to resolve an exception. Overdue means the deadline passed.")],
+          [t("Within SLA"), t("Share of resolved exceptions closed before their deadline.")],
+          [t("Value at risk"), t("The estimated cost of leaving the exception open. A dash means nobody estimated it.")],
+          [t("SAP transactions"), t("Transactions SAP logged as failed in the last 24 hours.")],
+        ]}
+      />
+      <FlowSteps
+        label={t("Exception steps")}
+        current={picked ? 1 : 0}
+        steps={[
+          { label: t("Open one"), count: int(m.open_count), hint: t("Pick the exception with the nearest deadline.") },
+          { label: t("Assign or escalate"), count: int(m.overdue_count), hint: t("Give it an owner, or raise it a tier. The count shows overdue ones.") },
+          { label: t("Resolve"), count: int(m.resolved_count), hint: t("Record how it was fixed and the root cause. The count shows resolved ones.") },
+        ]}
+      />
       <div className="m2-rfilters" role="group" aria-label={t("Show exceptions by status")} data-testid="exceptions-tabs">
         {(["", ...EXCEPTION_STATUSES] as const).map((s) => (
           <button key={s || "all"} type="button" className="m2-btn" aria-pressed={tab === s} onClick={() => { setView(s || "all"); setPage(1); }}>
@@ -198,7 +212,15 @@ export function Exceptions() {
         </Panel>
       )}
       {picked ? <Detail id={picked} onClose={() => setPicked(null)} /> : null}
-      <Rules />
+      <MoreDetail title={t("Severity chart and the rules that raise exceptions")}>
+        <Panel title={t("Open exceptions by severity")} meta={t("All {n}", { n: int(m.open_count) })} testId="exceptions-severity">
+          <CcHBars
+            label={t("Open exceptions by severity")}
+            rows={SEVERITIES.map((s) => ({ key: s, label: SEV_TEXT[s](), value: m.by_severity[s] ?? 0, text: int(m.by_severity[s] ?? 0), tone: s === "critical" ? "crit" : s === "high" ? "warn" : undefined }))}
+          />
+        </Panel>
+        <Rules />
+      </MoreDetail>
     </CcPage>
   );
 }
@@ -309,6 +331,7 @@ function Detail({ id, onClose }: { id: string; onClose: () => void }) {
               <button type="submit" className="m2-btn" disabled={!owner || assign.isPending}>{t("Assign")}</button>
             </form>
           ) : null}
+          {open(x.status) && can("assign") ? <Consequence>{t("Assign makes the person the owner. The exception stays open.")}</Consequence> : null}
           {open(x.status) && can("approve") ? (
             <>
               <form className="m2-rfilters" aria-label={t("Escalate the exception")} onSubmit={(e) => { e.preventDefault(); escalate.mutate(); }}>
@@ -338,6 +361,7 @@ function Detail({ id, onClose }: { id: string; onClose: () => void }) {
                 </label>
                 <button type="submit" className="m2-btn m2-next" disabled={!fix.resolution_type || resolve.isPending}>{t("Resolve")}</button>
               </form>
+              <Consequence>{t("Escalate raises the exception one tier. Resolve closes it and records how it was fixed.")}</Consequence>
             </>
           ) : null}
           <h3 className="m2-h3">{t("Comments")}</h3>

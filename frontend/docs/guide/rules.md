@@ -50,7 +50,7 @@ Rules can also be imported and exported in bulk under Administration, Rules impo
 
 ## Aletheia rule promotion
 
-Meridian ships about 2,700 rules that were generated from the SAP data dictionary. They are all switched off, because a rule that is sound in general is not yet proved on your data. The Aletheia rule promotion page, under Aletheia rule promotion in the map or at `/rule-promotion`, switches them on for your tenant, and only on evidence. No AI is used and no record leaves Meridian.
+Meridian ships about 2,700 rules that were generated from the SAP data dictionary. They are all switched off, because a rule that is sound in general is not yet proved on your data. The Aletheia rule promotion page, under Rules, Aletheia rule promotion, or at `/rule-promotion`, switches them on for your tenant, and only on evidence. No AI is used and no record leaves Meridian.
 
 The page lists each object with its generated rules, how many are promoted and how many fall in each bucket. Open an object and press **Preview**. Meridian runs each switched-off rule on the latest extraction, changes nothing, and sorts the rules into four buckets:
 
@@ -67,7 +67,7 @@ Promoting is not the end. A promoted rule is checked again each time you press P
 
 ## Rule dry run
 
-Before you switch a rule on, edit it or add one, the Rule dry run page shows what it would do. Open it from Rule dry run in the map, from the Dry run button on a rule, or at `/rule-dry-run`. It needs the manage rules permission.
+Before you switch a rule on, edit it or add one, the Rule dry run page shows what it would do. Open it from Rules, Rule dry run, from the Dry run button on a rule, or at `/rule-dry-run`. It needs the manage rules permission.
 
 Name the object and the rule, switched on or off. To test an edit, give the fields to change as JSON, for example a new pattern. To test a new rule, leave the rule id empty and give the whole draft. Meridian runs the rule on the latest stored extraction, on at most the number of rows per table that you choose. It never calls SAP and writes nothing to the findings.
 
@@ -75,7 +75,7 @@ The page shows how many records were checked and how many fail, the failure rate
 
 ## Aletheia verified fixes
 
-Many rules can tell you a value is wrong but cannot say how to correct it. A rule has an automatic fix only when it carries `auto_fix` steps. The Aletheia verified fixes page, under Aletheia verified fixes in the map or at `/fix-drafts`, closes that gap for one rule at a time and never applies anything by itself.
+Many rules can tell you a value is wrong but cannot say how to correct it. A rule has an automatic fix only when it carries `auto_fix` steps. The Aletheia verified fixes page, under Fix, Aletheia verified fixes, or at `/fix-drafts`, closes that gap for one rule at a time and never applies anything by itself.
 
 The top of the page charts, for each object, how many rules have a fix and how many do not. Below it, each drafted fix is a card with the rule and its description, the field and its description, and the aggregated shape of the failing values: the most common masks (letters as A or a, digits as 9), lengths, case, and how many values carry leading, trailing or inner spaces. The drafter sees this shape and nothing else. No field value ever reaches the model.
 

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 import { fireEvent, screen, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
+import * as promotionApi from "@/lib/api/v2/rule-promotion";
 import { resetRulePromotion } from "@/lib/api/v2/fixtures/rulePromotion";
 import { RulePromotion, ratePct } from "../screens/RulePromotion";
 import { ToastProvider } from "../Toast";
@@ -19,11 +20,39 @@ beforeEach(() => {
 });
 afterEach(() => {
   undo();
+  window.history.pushState({}, "", "/");
   window.sessionStorage.clear();
   vi.restoreAllMocks();
 });
 
 describe("rule promotion", () => {
+  it("says when the generated rules cannot be read", async () => {
+    vi.spyOn(promotionApi, "getPromotionModules").mockRejectedValue(new Error("Network Error"));
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    expect(await screen.findByText("The generated rules could not be read.")).toBeInTheDocument();
+  });
+
+  it("says when the preview fails and keeps approval away", async () => {
+    vi.spyOn(promotionApi, "getPromotionPreview").mockRejectedValue(new Error("Network Error"));
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    fireEvent.click(await screen.findByTestId("promo-preview"));
+    expect(await screen.findByText("The rules could not be evaluated.")).toBeInTheDocument();
+    expect(screen.queryByTestId("promo-revert")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Approve the top/ })).toBeNull();
+  });
+
+  it("lets a viewer preview but not approve or revert", async () => {
+    const u = "/rule-promotion?fixture=1&role=viewer";
+    window.history.pushState({}, "", u);
+    setUrl(u);
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    expect(await screen.findByText("Managing rules needs the manage rules permission.")).toBeInTheDocument();
+    fireEvent.click(await screen.findByTestId("promo-preview"));
+    await screen.findByTestId("promo-rules");
+    expect(screen.queryByTestId("promo-revert")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Approve the top/ })).toBeNull();
+  });
+
   it("formats a small rate without rounding it to zero", () => {
     expect(ratePct(0.000249)).toBe("0.025%");
     expect(ratePct(0.082555)).toBe("8.3%");
@@ -62,5 +91,33 @@ describe("rule promotion", () => {
     expect(confirm).toBeEnabled();
     fireEvent.click(confirm);
     expect(await screen.findByText("Rule promoted. The reason is in the audit log.")).toBeInTheDocument();
+  });
+});
+
+describe("stage 5: primary action gating", () => {
+  it("makes Preview the filled action before any preview, then Approve once candidates exist", async () => {
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    const preview = await screen.findByTestId("promo-preview");
+    expect(preview).toHaveClass("m2-next");
+    fireEvent.click(preview);
+    const apply = await screen.findByTestId("promo-apply");
+    expect(apply).toHaveClass("m2-next");
+    expect(apply).toHaveTextContent(/Approve the top candidate/);
+    expect(screen.getByTestId("promo-preview")).not.toHaveClass("m2-next");
+  });
+
+  it("shows the current step, says what approving does before it runs, and charts the outcomes", async () => {
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    const steps = await screen.findByTestId("promo-steps");
+    expect(within(steps).getAllByRole("listitem")).toHaveLength(4);
+    expect(steps.querySelector('[aria-current="step"]')).toHaveTextContent("Preview on your data");
+    expect(screen.queryByTestId("consequence")).toBeNull();
+    expect(screen.queryByTestId("promo-buckets")).toBeNull();
+    fireEvent.click(screen.getByTestId("promo-preview"));
+    await screen.findByTestId("promo-rules");
+    expect(screen.getByTestId("promo-steps").querySelector('[aria-current="step"]')).toHaveTextContent("Approve the ready rules");
+    expect(screen.getByTestId("consequence")).toHaveTextContent(/Approving switches on 2 rules/);
+    expect(screen.getByTestId("consequence")).toHaveTextContent(/Revert switches them off again/);
+    expect(screen.getByTestId("promo-buckets")).toBeInTheDocument();
   });
 });

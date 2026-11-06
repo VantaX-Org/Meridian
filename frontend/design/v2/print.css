@@ -8,7 +8,7 @@
   @page { size: A4 landscape; margin: 12mm; }
   /* The light ground and inks for paper are set in tokens.css (its print section). */
   .m2-root { height: auto !important; overflow: visible !important; padding: 0 !important; }
-  .m2-root .m2-top, .m2-root .m2-map, .m2-root .m2-insp, .m2-root .m2-status, .m2-root .m2-job, .m2-root .m2-skips,
+  .m2-root .m2-top, .m2-root .m2-map, .m2-root .m2-railwrap, .m2-root .m2-ptabs, .m2-root .m2-insp, .m2-root .m2-status, .m2-root .m2-job, .m2-root .m2-skips,
   .m2-root .m2-scrim, .m2-root .m2-toasts, .m2-root .m2-grid-overlay, .m2-root .m2-rbanner, .m2-root .m2-bulk,
   .m2-root .m2-cta, .m2-root .m2-gridbar, .m2-root .m2-tool, .m2-root .m2-tabs, .m2-root button, .m2-root select,
   .m2-attribution { display: none !important; }

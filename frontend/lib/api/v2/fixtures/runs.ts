@@ -123,18 +123,20 @@ function timelineRun(k: number): TimelineRun {
   let records = 0;
   for (const m of MODULES) {
     const s = shownAt(m, k);
-    objects[m] = { score: s.score, raw_score: measuredAt(m, k), capped: s.capped };
+    const open = Math.round((recordsAt(m, k) * (100 - measuredAt(m, k))) / 1000);
+    objects[m] = { score: s.score, raw_score: measuredAt(m, k), capped: s.capped, findings_open: open, findings_new: null, findings_closed: null, value_at_risk: { amount: open * 3.5, currency: "USD" } };
     records += recordsAt(m, k);
   }
-  return { id: run.id, run_at: run.run_at, label: null, system_id: ECC.id, baseline: state.baseline === run.id, kind: KINDS[k - 1], objects, records_checked: records, duration_s: DURATIONS[k - 1] };
+  return { id: run.id, run_number: RUNS.length - k + 1, status: "complete", run_at: run.run_at, label: null, system_id: ECC.id, baseline: state.baseline === run.id, kind: KINDS[k - 1], objects, records_checked: records, duration_s: DURATIONS[k - 1] };
 }
 
 const visibleRuns = (): number[] => [1, 2, 3, 4, 5, 6, 7, 8].filter((k) => !state.archived.has(RUNS[RUNS.length - k].id));
 
-export function fixtureTimeline(systemId: string | undefined, limit: number): { system_id: string | null; limit: number; runs: TimelineRun[] } {
+export function fixtureTimeline(systemId: string | undefined, limit: number, module?: string): { system_id: string | null; limit: number; runs: TimelineRun[] } {
   if (systemId && systemId !== ECC.id) return { system_id: systemId, limit, runs: [] };
   const ks = visibleRuns().slice(-limit);
-  return { system_id: systemId ?? null, limit, runs: ks.map(timelineRun) };
+  const runs = ks.map(timelineRun).filter((r) => !module || module in r.objects);
+  return { system_id: systemId ?? null, limit, runs };
 }
 
 function head(k: number): VersionHead {
@@ -171,6 +173,18 @@ function failedHead(): VersionHead {
   };
 }
 const FAILED_RUN = "f0000000-0000-4000-8000-0000000000f1";
+/** The one finished run of the SuccessFactors system, for the target workbook step. */
+const sfHead = (): VersionHead => ({
+  id: "5f000000-0000-4000-8000-000000000001",
+  run_at: "2026-10-14T05:10:00Z",
+  label: null,
+  run_number: 1,
+  parent_version_id: null,
+  status: "complete",
+  dqs_summary: null,
+  metadata: { system_id: SF.id, trigger: "manual", baseline: false, archived: false, modules: ["employee_central"] },
+  severity_counts: null,
+});
 
 function versionsPage(params: Params) {
   const includeArchived = params.include_archived === true || params.include_archived === "true";
@@ -179,7 +193,8 @@ function versionsPage(params: Params) {
   const failedShown = includeArchived || !state.archived.has(FAILED_RUN);
   if (params.status === "failed") rows = failedShown ? [failedHead()] : [];
   else if (failedShown && (!params.system_id || params.system_id === S4.id)) rows = [...rows, failedHead()].sort((a, b) => b.run_at.localeCompare(a.run_at));
-  if (params.system_id && params.system_id !== ECC.id && params.system_id !== S4.id) rows = [];
+  if (params.system_id === SF.id) rows = params.status === "failed" ? [] : [sfHead()];
+  else if (params.system_id && params.system_id !== ECC.id && params.system_id !== S4.id) rows = [];
   else if (params.system_id === ECC.id) rows = rows.filter((r) => r.metadata?.system_id === ECC.id);
   else if (params.system_id === S4.id) rows = rows.filter((r) => r.metadata?.system_id === S4.id);
   const limit = Number(params.limit ?? 20);
@@ -612,7 +627,7 @@ function configLoadOf(systemId: string): ConfigLoad | { status: "never_loaded" }
 
 /** The answer to one step 3 read, or NONE when the path is not one of this step's. */
 export function runsFixtureResponse(path: string, params: Params): unknown {
-  if (path === "/runs/timeline") return fixtureTimeline(params.system_id ? String(params.system_id) : undefined, Number(params.limit ?? 8));
+  if (path === "/runs/timeline") return fixtureTimeline(params.system_id ? String(params.system_id) : undefined, Number(params.limit ?? 8), params.module ? String(params.module) : undefined);
   const vs = /^\/runs\/([^/]+)\/vs\/([^/]+)\/summary$/.exec(path);
   if (vs) return fixtureCompare(decodeURIComponent(vs[1]), decodeURIComponent(vs[2]));
   const sd = /^\/runs\/([^/]+)\/vs\/([^/]+)\/score-delta$/.exec(path);

@@ -45,4 +45,28 @@ describe("Action centre", () => {
     // The system list keeps every system seen, so the filter can be widened again.
     expect(within(form).getAllByRole("combobox")[1]).toHaveTextContent("SuccessFactors");
   });
+
+  it("leads with the list to act on, keeps the kind breakdown behind a disclosure and says opening changes nothing", async () => {
+    renderWithQuery(<Attention />);
+    const table = await screen.findByTestId("attention-table");
+    const kinds = screen.getByTestId("attention-kinds");
+    expect(table.compareDocumentPosition(kinds) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(kinds.closest("details")).not.toBeNull();
+    expect(within(screen.getByTestId("flow-steps")).getAllByRole("listitem")).toHaveLength(3);
+    expect(screen.getByTestId("consequence")).toHaveTextContent(/changes nothing/);
+    expect(screen.getByTestId("attention-primary")).toHaveClass("m2-strong");
+  });
+
+  it("says what to do next when nothing needs the viewer", async () => {
+    vi.spyOn(api, "getAttention").mockResolvedValue({ items: [], total: 0, counts: { critical: 0, high: 0, medium: 0, low: 0 }, generated_at: new Date().toISOString() } as never);
+    renderWithQuery(<Attention />);
+    expect(await screen.findByText(/Nothing needs your attention\. New items appear here/)).toBeInTheDocument();
+    expect(screen.queryByTestId("attention-primary")).toBeNull();
+  });
+
+  it("gives a retry when the list cannot be read", async () => {
+    vi.spyOn(api, "getAttention").mockRejectedValue(new Error("down"));
+    renderWithQuery(<Attention />);
+    expect(await screen.findByRole("button", { name: /retry|try again/i })).toBeInTheDocument();
+  });
 });

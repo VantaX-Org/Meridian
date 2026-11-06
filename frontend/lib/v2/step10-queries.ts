@@ -15,7 +15,6 @@ export const s10Keys = {
   html: (f: boolean, id: string) => ["v2", "s10", "digest-html", f, id] as const,
   sandbox: (f: boolean) => ["v2", "s10", "sandbox", f] as const,
   history: (f: boolean, module: string, key: string) => ["v2", "s10", "history", f, module, key] as const,
-  asOf: (f: boolean, module: string, run: string) => ["v2", "s10", "as-of", f, module, run] as const,
   predict: (f: boolean, system: string | null, modules: string, delta: boolean) => ["v2", "s10", "predict", f, system, modules, delta] as const,
   nl: (f: boolean, q: string) => ["v2", "command", "nl", f, q] as const,
 };
@@ -58,11 +57,6 @@ export function useSandbox(enabled = true) {
 export function useRecordHistory(module: string, key: string, enabled = true) {
   const f = useFixture();
   return useQuery({ queryKey: s10Keys.history(f, module, key), queryFn: () => s10.getRecordHistory(module, key), staleTime: 30_000, retry: false, enabled: enabled && Boolean(module && key) });
-}
-
-export function useObjectAsOf(module: string, run: string | null) {
-  const f = useFixture();
-  return useQuery({ queryKey: s10Keys.asOf(f, module, run ?? ""), queryFn: () => s10.getObjectAsOf(module, run ?? ""), staleTime: 300_000, retry: false, enabled: Boolean(module && run) });
 }
 
 export function useRunPrediction(q: { system_id: string | null; modules: readonly string[]; delta: boolean }, enabled = true) {

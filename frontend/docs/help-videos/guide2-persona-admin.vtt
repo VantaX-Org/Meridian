@@ -1,37 +1,37 @@
 WEBVTT
 
 1
-00:00:00.003 --> 00:00:05.512
+00:00:00.007 --> 00:00:06.095
 Administrator: set the tenant up and keep it right.
 
 2
-00:00:05.512 --> 00:00:10.975
+00:00:06.095 --> 00:00:11.852
 Step 1, Users: invite people and give each a role.
 
 3
-00:00:10.975 --> 00:00:16.416
+00:00:11.852 --> 00:00:17.707
 Step 2, Single sign-on: connect your identity provider and test it.
 
 4
-00:00:16.416 --> 00:00:21.874
+00:00:17.707 --> 00:00:23.517
 Step 3, Settings: weights, bands, cap rule and tolerance, cost model, retention.
 
 5
-00:00:21.874 --> 00:00:27.425
+00:00:23.517 --> 00:00:29.516
 Step 4, Stewardship: owners and stewards, check the diff, apply, close the gaps.
 
 6
-00:00:27.425 --> 00:00:32.896
+00:00:29.516 --> 00:00:35.583
 Step 5, Platform and updates: health checks and the platform version.
 
 7
-00:00:32.896 --> 00:00:38.993
+00:00:35.583 --> 00:00:42.059
 Support: copy the diagnostics from help. They hold no record values and no secrets.
 
 8
-00:00:38.993 --> 00:00:45.183
+00:00:42.059 --> 00:00:48.770
 View as a role: see the product as one role sees it, read-only, for support.
 
 9
-00:00:45.183 --> 00:00:50.621
+00:00:48.770 --> 00:00:54.693
 Configuration bundle: move a configuration between tenants, with a diff first.

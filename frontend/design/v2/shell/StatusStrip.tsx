@@ -10,6 +10,7 @@ import { useCanvasRun } from "@/lib/v2/scope";
 import { int } from "@/lib/v2/score";
 import { useStatusPage } from "@/lib/v2/enterprise-queries";
 import { overallVerdict, overallWord } from "@/lib/v2/status";
+import { runLabel } from "@/lib/v2/run-label";
 import { SeverityMark, VerdictMark } from "../marks";
 import { Dot, V2Link } from "../parts";
 import { useAuroraPrefs } from "@/hooks/use-theme";
@@ -93,7 +94,17 @@ export function StatusStrip() {
   const scoped = useLandscape(run);
   const q = run ? scoped : current;
   const s = run ? scoped.data?.status_strip : current.data;
-  const parts: string[] = s
+  // Unscoped, the strip reads each system at its own newest run when the server sends them (GET /status), so one stream never speaks for all.
+  const systems = !run ? current.data?.systems : undefined;
+  const parts: string[] = systems?.length
+    ? systems.map((x) => [
+        x.name,
+        x.latest_run_id ? runLabel(null, x.run_number) : t("No run yet"),
+        x.run_at ? formatDate(x.run_at, "datetime") : "",
+        x.records_checked == null ? "" : t("{records_checked} records checked", { records_checked: int(x.records_checked) }),
+        x.is_active ? "" : t("Inactive"),
+      ].filter(Boolean).join(", "))
+    : s
     ? [
         s.run_at ? t("Run {run_at}", { run_at: formatDate(s.run_at, "datetime") }) : t("No run yet"),
         t("{records_checked} records checked", { records_checked: int(s.records_checked) }),

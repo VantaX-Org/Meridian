@@ -1,37 +1,37 @@
 WEBVTT
 
 1
-00:00:00.003 --> 00:00:05.597
+00:00:00.014 --> 00:00:06.024
 Processes shows which business process steps this object's data blocks.
 
 2
-00:00:05.597 --> 00:00:11.582
+00:00:06.024 --> 00:00:12.022
 2 of 4 process steps are blocked by Material master: PTP step 3, PP step 1.
 
 3
-00:00:11.582 --> 00:00:16.909
+00:00:12.022 --> 00:00:17.358
 A blocked step names the activity, the field, its pass rate and failing records.
 
 4
-00:00:16.909 --> 00:00:22.570
+00:00:17.358 --> 00:00:23.038
 What if these rules were fixed: tick rules and see which steps would be ready.
 
 5
-00:00:22.570 --> 00:00:27.845
+00:00:23.038 --> 00:00:28.087
 Nothing is changed and no data is read.
 
 6
-00:00:27.845 --> 00:00:33.566
+00:00:28.087 --> 00:00:34.223
 Open a step to hand its blocking rule to a steward.
 
 7
-00:00:33.566 --> 00:00:39.208
+00:00:34.223 --> 00:00:40.508
 The process designer: the model, its levels, and the fields each activity reads.
 
 8
-00:00:39.208 --> 00:00:45.195
+00:00:40.508 --> 00:00:46.503
 Save as a new version, then publish. The Processes tab shows it on the next run.
 
 9
-00:00:45.195 --> 00:00:50.463
+00:00:46.503 --> 00:00:51.474
 Versions keep every saved model with what changed.

@@ -6,7 +6,7 @@ import { formatDate } from "@/lib/format";
 import type { Landscape, LandscapeCell, LandscapeSystem } from "@/lib/api/v2/types";
 import { useOpenItem, useRunParam, useV2Session } from "@/lib/v2/hooks";
 import "../basis.css";
-import { useCounts, useLandscape } from "@/lib/v2/queries";
+import { useLandscape } from "@/lib/v2/queries";
 import { DIMENSIONS } from "@/lib/api/v2/types";
 import { byMeasured, f1, int, moduleSlug, readingText, systemSlug } from "@/lib/v2/score";
 import { Ruler } from "../Ruler";
@@ -14,7 +14,6 @@ import { Sparkline } from "../charts";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { IconChevron } from "../marks";
 import { ErrorFrame, Skeleton, V2Link } from "../parts";
-import { RunMenu, ScopeMenu } from "./TopBar";
 import { t } from "@/lib/v2/i18n";
 
 export function dimsOf(cell: LandscapeCell): (number | null)[] {
@@ -119,134 +118,19 @@ function SystemStatus({ system, landscape }: { system: LandscapeSystem; landscap
 }
 
 /**
- * The map: the whole landscape as a tree. Four places at the top (Landscape, Work, Runs, People), then each system
- * with its objects, each object a row with its 48 ruler, its score and the work waiting. A system that was never
- * extracted keeps its row and says so. On a phone it is a bottom sheet.
+ * The Objects flyout: every system as a tree of its objects, each object a row with its 48 ruler, its score, its trend
+ * and the work waiting. A system that was never extracted keeps its row and says so.
  */
-export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () => void; phone: boolean }) {
+export function ObjectsTree() {
   const pathname = usePathname();
   const run = useRunParam();
   const q = useLandscape(run);
-  const counts = useCounts();
   const { can } = useV2Session();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const current = (href: string, exact = false) => (exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
   const L = q.data;
   const isOpen = (s: LandscapeSystem) => expanded[s.id] ?? s.state === "analysed";
   return (
-    <aside
-      id="m2-map"
-      className={`m2-map${open ? " m2-open" : ""}`}
-      aria-label={t("Map")}
-      role={phone && open ? "dialog" : undefined}
-      aria-modal={phone && open ? true : undefined}
-      data-testid="map"
-    >
-      <div className="m2-map-head">
-        <span>{t("Map")}</span>
-        <button type="button" className="m2-x" onClick={onClose} aria-label={t("Close map")}>
-          <span className="m2-x-t">{t("Close")}</span>
-        </button>
-      </div>
-      {phone ? (
-        <div className="m2-map-sw">
-          <ScopeMenu compact />
-          <RunMenu compact />
-        </div>
-      ) : null}
-      <nav className="m2-mnav" aria-label={t("Places")}>
-        <V2Link href="/" className="m2-mi" aria-current={current("/", true) ? "page" : undefined}>
-          <span>{t("Landscape")}</span>
-          <kbd className="m2-kb">g l</kbd>
-        </V2Link>
-        <V2Link href="/attention" className="m2-mi" aria-current={current("/attention") ? "page" : undefined}>
-          <span>{t("Action centre")}</span>
-        </V2Link>
-        <V2Link href="/work" className="m2-mi" aria-current={current("/work") ? "page" : undefined}>
-          <span>{t("Work")}</span>
-          {counts.data?.fix ? <span className="m2-n">{int(counts.data.fix)}</span> : <kbd className="m2-kb">g w</kbd>}
-        </V2Link>
-        <V2Link href="/runs" className="m2-mi" aria-current={current("/runs") || current("/run") ? "page" : undefined}>
-          <span>{t("Runs")}</span>
-          <kbd className="m2-kb">g r</kbd>
-        </V2Link>
-        <V2Link href="/people" className="m2-mi" aria-current={current("/people") ? "page" : undefined}>
-          <span>{t("People")}</span>
-          <kbd className="m2-kb">g p</kbd>
-        </V2Link>
-        <V2Link href="/requests" className="m2-mi" aria-current={current("/requests") ? "page" : undefined}>
-          <span>{t("Requests")}</span>
-        </V2Link>
-        <div className="m2-mgrp">{t("Rules and Aletheia")}</div>
-        <V2Link href="/anomaly-rules" className="m2-mi" aria-current={current("/anomaly-rules") ? "page" : undefined}>
-          <span>{t("Anomaly rules")}</span>
-        </V2Link>
-        <V2Link href="/rule-promotion" className="m2-mi" aria-current={current("/rule-promotion") ? "page" : undefined}>
-          <span>{t("Aletheia rule promotion")}</span>
-        </V2Link>
-        <V2Link href="/rule-dry-run" className="m2-mi" aria-current={current("/rule-dry-run") ? "page" : undefined}>
-          <span>{t("Rule dry run")}</span>
-        </V2Link>
-        <V2Link href="/fix-drafts" className="m2-mi" aria-current={current("/fix-drafts") ? "page" : undefined}>
-          <span>{t("Aletheia verified fixes")}</span>
-        </V2Link>
-        <V2Link href="/aletheia-survivorship" className="m2-mi" aria-current={current("/aletheia-survivorship") ? "page" : undefined}>
-          <span>{t("Aletheia verified survivorship")}</span>
-        </V2Link>
-        <V2Link href="/cleansing" className="m2-mi" aria-current={current("/cleansing") ? "page" : undefined}>
-          <span>{t("Cleansing")}</span>
-        </V2Link>
-        <V2Link href="/monitors" className="m2-mi" aria-current={current("/monitors") ? "page" : undefined}>
-          <span>{t("Learned monitors")}</span>
-        </V2Link>
-        <div className="m2-mgrp">{t("Master data")}</div>
-        <V2Link href="/entry-gate" className="m2-mi" aria-current={current("/entry-gate") ? "page" : undefined}>
-          <span>{t("Entry gate")}</span>
-        </V2Link>
-        <V2Link href="/reference-data" className="m2-mi" aria-current={current("/reference-data") ? "page" : undefined}>
-          <span>{t("Reference data")}</span>
-        </V2Link>
-        <V2Link href="/mdm" className="m2-mi" aria-current={current("/mdm") ? "page" : undefined}>
-          <span>{t("MDM health")}</span>
-        </V2Link>
-        <V2Link href="/links" className="m2-mi" aria-current={current("/links") ? "page" : undefined}>
-          <span>{t("Record links")}</span>
-        </V2Link>
-        <V2Link href="/materials" className="m2-mi" aria-current={current("/materials") ? "page" : undefined}>
-          <span>{t("Material 360")}</span>
-        </V2Link>
-        <V2Link href="/issues" className="m2-mi" aria-current={current("/issues") ? "page" : undefined}>
-          <span>{t("Issues")}</span>
-        </V2Link>
-        <V2Link href="/mining" className="m2-mi" aria-current={current("/mining") ? "page" : undefined}>
-          <span>{t("Data mining")}</span>
-        </V2Link>
-        <V2Link href="/processes" className="m2-mi" aria-current={current("/processes") ? "page" : undefined}>
-          <span>{t("Process discovery")}</span>
-        </V2Link>
-        <div className="m2-mgrp">{t("Programme")}</div>
-        <V2Link href="/migration" className="m2-mi" aria-current={current("/migration") ? "page" : undefined}>
-          <span>{t("Migration")}</span>
-        </V2Link>
-        <V2Link href="/s4" className="m2-mi" aria-current={current("/s4") ? "page" : undefined}>
-          <span>{t("S/4HANA readiness")}</span>
-        </V2Link>
-        <V2Link href="/insights" className="m2-mi" aria-current={current("/insights") ? "page" : undefined}>
-          <span>{t("Cost and causes")}</span>
-        </V2Link>
-        <V2Link href="/forecast" className="m2-mi" aria-current={current("/forecast") ? "page" : undefined}>
-          <span>{t("Forecast and plan")}</span>
-        </V2Link>
-        <V2Link href="/value" className="m2-mi" aria-current={current("/value") ? "page" : undefined}>
-          <span>{t("Value delivered")}</span>
-        </V2Link>
-        <V2Link href="/score" className="m2-mi" aria-current={current("/score") ? "page" : undefined}>
-          <span>{t("Score lens")}</span>
-        </V2Link>
-        <V2Link href="/config" className="m2-mi" aria-current={current("/config") ? "page" : undefined}>
-          <span>{t("Configuration")}</span>
-        </V2Link>
-      </nav>
+    <>
       <div className="m2-mgrp m2-mgrp-act">
         <span>{t("Systems")}</span>
         {can("manage_systems") ? <V2Link href="/s/new" data-testid="map-connect">{t("Connect a system")}</V2Link> : null}
@@ -286,6 +170,6 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
           })}
         </div>
       )}
-    </aside>
+    </>
   );
 }

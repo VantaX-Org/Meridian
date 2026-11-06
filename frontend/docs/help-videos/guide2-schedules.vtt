@@ -1,41 +1,41 @@
 WEBVTT
 
 1
-00:00:00.004 --> 00:00:06.993
+00:00:00.005 --> 00:00:07.162
 Reports are built from stored runs, so a number in a report matches the run it names.
 
 2
-00:00:06.993 --> 00:00:12.248
+00:00:07.162 --> 00:00:12.157
 Every report: its run, format, who made it and the download.
 
 3
-00:00:12.248 --> 00:00:17.155
+00:00:12.158 --> 00:00:17.072
 Schedules build a report from the latest run and send it.
 
 4
-00:00:17.155 --> 00:00:22.682
+00:00:17.072 --> 00:00:23.139
 Open a schedule: report, which run, cadence, recipients.
 
 5
-00:00:22.682 --> 00:00:27.752
+00:00:23.139 --> 00:00:28.178
 Run it now, pause, or delete. Files already made stay in the list.
 
 6
-00:00:27.752 --> 00:00:33.305
+00:00:28.178 --> 00:00:33.844
 Create a report from any run.
 
 7
-00:00:33.305 --> 00:00:39.183
+00:00:33.844 --> 00:00:39.418
 Choose the report and the run it is built from.
 
 8
-00:00:39.183 --> 00:00:46.063
+00:00:39.418 --> 00:00:46.298
 Reports come from a run: the board pack, the analyst workbook, the analysis and trend reports, the rule catalogue.
 
 9
-00:00:46.063 --> 00:00:51.296
+00:00:46.298 --> 00:00:51.282
 A schedule that partly delivered or failed says so in Last result.
 
 10
-00:00:51.296 --> 00:00:56.767
+00:00:51.282 --> 00:00:57.605
 Channels that can take reports are set under Administration, Alerts.

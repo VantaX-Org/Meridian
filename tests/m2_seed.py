@@ -66,6 +66,8 @@ def seed_m2(owner) -> dict:
                            "VALUES (:v, :t, :st, :at, :l, CAST(:m AS jsonb), CAST(:s AS jsonb))"),
                       {"v": vid, "t": tid, "st": status, "at": at, "l": label, "m": json.dumps(meta), "s": json.dumps(summary)})
 
+        # run numbers the way the pipeline stamps them: 1-based within a system (the landscape run is ECC's third)
+        c.execute(text("UPDATE analysis_versions SET run_number = 3 WHERE id = :v"), {"v": run})
         version(run0, ecc, RUN_AT - timedelta(days=12), "complete", _summary(78.0, 78.0, False, 88.0, 60000, []),
                 trigger="scheduled", baseline=True, label="ECC production baseline")
         version(run_mid, ecc, RUN_AT - timedelta(days=5), "agents_complete", _summary(74.0, 76.0, True, 90.0, 61000, ["MM014: 1.0% of MARA rows"]),
@@ -74,6 +76,8 @@ def seed_m2(owner) -> dict:
                 label="Spare run")
         version(run_arch, ecc, RUN_AT - timedelta(days=3), "complete", _summary(70.0, 70.0, False, 80.0, 1, []), archived=True, label="Archived")
         version(run_failed, ecc, RUN_AT - timedelta(days=2), "failed", {}, label="Failed")
+        for vid, n in ((run0, 1), (run_mid, 2), (run_spare, 1)):
+            c.execute(text("UPDATE analysis_versions SET run_number = :n WHERE id = :v"), {"n": n, "v": vid})
         for n, (a, b) in enumerate(((0, 50), (50, 120)), start=1):
             c.execute(text("INSERT INTO analysis_run_steps (tenant_id, version_id, step_number, step_name, status, started_at, finished_at) "
                            "VALUES (:t, :v, :n, 'step', 'complete', :a, :b)"),

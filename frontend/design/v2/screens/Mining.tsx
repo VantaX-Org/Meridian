@@ -14,6 +14,7 @@ import { f1, int, pct1 } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
+import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
 
@@ -83,6 +84,16 @@ export function Mining() {
 
   return (
     <CcPage title={t("Data mining")}>
+      <Guide
+        shows={t("Finds outliers, duplicates and fields that depend on each other by comparing records and values, not by rules.")}
+        next={{ href: "/rule-promotion", label: t("Review rule candidates") }}
+        why={t("Mining again reads the data and lists candidates. No record and no rule is changed until you promote a candidate.")}
+        means={[
+          [t("Patterns"), t("Groups of outliers by field and of duplicates by object.")],
+          [t("Objects mined"), t("The share of analysed objects that have mining results.")],
+          [t("Runs mined"), t("Analysis runs that have mining results.")],
+        ]}
+      />
       <CcBanner
         testId="mining"
         label={t("Data mining")}
@@ -97,6 +108,7 @@ export function Mining() {
         action={<MineAction />}
       />
 
+        <Disclose title={t("Findings by object")} hint={t("Duplicate pairs and outliers counted per object.")}>
         <Panel title={t("Findings by object")} meta={t("Duplicate pairs and outliers per object.")} testId="mining-objects">
           {dupes.isPending || outliers.isPending ? <Skeleton width="100%" height={120} /> : dupes.isError || outliers.isError ? (
             <Dash why={t("The findings could not be read.")} />
@@ -116,7 +128,10 @@ export function Mining() {
             );
           })()}
         </Panel>
-      <Patterns query={patterns} />
+        </Disclose>
+      <Disclose title={t("Patterns")} hint={t("Outliers grouped by field, duplicates by object.")}>
+        <Patterns query={patterns} />
+      </Disclose>
 
       <Panel title={t("Likely duplicates")} meta={nd != null ? t("{n} pairs, highest match first", { n: more(nd, LIMITS.duplicates) }) : undefined} testId="mining-duplicates">
         <List query={dupes} empty={t("No likely duplicate was found.")} what={t("The duplicates could not be read.")}>
@@ -186,6 +201,7 @@ export function Mining() {
         </List>
       </Panel>
 
+      <Disclose title={t("Fields that depend on each other")} hint={t("Candidates for a cross-field rule.")}>
       <Panel title={t("Fields that depend on each other")} meta={t("Candidates for a cross-field rule, strongest first.")} testId="mining-relationships">
         <List query={links} empty={t("No relationship between fields was found.")} what={t("The relationships could not be read.")}>
           {(rows) => (
@@ -216,6 +232,7 @@ export function Mining() {
           )}
         </List>
       </Panel>
+      </Disclose>
     </CcPage>
   );
 }

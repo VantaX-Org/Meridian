@@ -85,7 +85,11 @@ for (const size of SIZES) {
           await expect(matrix.getByText("Extracted 16 Oct 2026, 04:41, 400,662 records")).toBeVisible();
           await expect(matrix.getByText("Not extracted yet.")).toBeVisible();
         }
-        await expect(page.getByRole("grid", { name: "Your next work" })).toBeVisible();
+        // The top-of-ledger grid moved into the Home fix queue strip (6f3b0a15d).
+        const fixQueue = page.getByTestId("home-fixqueue");
+        await expect(fixQueue).toBeVisible();
+        await expect(fixQueue.getByRole("listitem").first()).toBeVisible();
+        await expect(fixQueue.getByRole("link", { name: "Open the whole fix queue (25,712)" })).toHaveAttribute("href", /\/work/);
         await expect(page.getByTestId("status-strip")).toContainText("794 rules measured");
 
         // No page scroll sideways, at any width.
@@ -103,10 +107,13 @@ for (const size of SIZES) {
         await expect(page).toHaveURL(/\/o\/ecc-production\/material-master/, NAV);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Material master", NAV);
         await expect(page.getByTestId("cap-sentence")).toContainText("Held at 70 because");
+        await expect(page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link")).toHaveCount(11); // spec 2.4: Overview plus ten more tabs
+        // The ruler, the receipt and the rules grid moved to the Rules tab (design spec 2.4: Overview is the default tab).
+        await page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link", { name: /^Rules/ }).click(NAV);
+        await expect(page).toHaveURL(/\/material-master\/rules/, NAV);
         await expect(page.locator('svg[data-size="240"]')).toBeVisible();
         await expect(page.getByTestId("receipt")).toBeVisible();
         await expect(page.getByTestId("receipt-footer")).toContainText("tolerance 10% of rows or 25 rows");
-        await expect(page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link")).toHaveCount(10);
         await expect(page.getByRole(phone ? "list" : "grid", { name: "Rules for Material master" })).toBeVisible(); // two-line rows on a phone
         await page.waitForLoadState("networkidle");
         await shot(page, "object");
@@ -168,23 +175,6 @@ for (const size of SIZES) {
         await expect(palette).toBeHidden();
       });
 
-      if (phone) {
-        test("the map is a bottom sheet behind the Map button", async ({ page }) => {
-          await prepare(page, scheme);
-          await page.goto("/?fixture=1", { waitUntil: "load" });
-          await expect(page.getByTestId("landscape-sentence")).toBeVisible();
-          const map = page.getByTestId("map");
-          await expect(map).toBeHidden();
-          await page.getByRole("button", { name: "Map" }).click();
-          await expect(map).toBeVisible();
-          await expect(map.getByRole("link", { name: /Material master/ })).toBeVisible();
-          await page.waitForTimeout(350);
-          await shot(page, "map-sheet");
-          await axe(page, `map sheet ${size.name} ${scheme}`);
-          await page.keyboard.press("Escape");
-          await expect(map).toBeHidden();
-        });
-      }
     });
   }
 }
@@ -200,7 +190,7 @@ test.describe("a long list of rules", () => {
         for (const e of list.getEntries() as unknown as { hadRecentInput: boolean; value: number }[]) if (!e.hadRecentInput) (window as unknown as { __cls: number }).__cls += e.value;
       }).observe({ type: "layout-shift", buffered: true });
     });
-    await page.goto("/o/ecc-production/material-master?fixture=1&rows=100000", { waitUntil: "load", timeout: 90_000 });
+    await page.goto("/o/ecc-production/material-master/rules?fixture=1&rows=100000", { waitUntil: "load", timeout: 90_000 });
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
     await expect(grid).toBeVisible(NAV);
     await expect(grid).toContainText("and 99,975 more rules");
@@ -216,7 +206,7 @@ test.describe("a long list of rules", () => {
 
   test("j and k move through the rules and Enter opens one in the inspector", async ({ page }) => {
     await prepare(page, "light");
-    await page.goto("/o/ecc-production/material-master?fixture=1", { waitUntil: "load", timeout: 90_000 });
+    await page.goto("/o/ecc-production/material-master/rules?fixture=1", { waitUntil: "load", timeout: 90_000 });
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
     await expect(grid.getByRole("row")).toHaveCount(11, NAV);
     await grid.focus();

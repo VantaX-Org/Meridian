@@ -91,6 +91,15 @@
   --m2-seg: var(--m2-n-600);
   --m2-scrim: #151A1E59;
   --m2-shadow: 0 8px 28px #151A1E2E;
+  --m2-ambient: radial-gradient(1100px 620px at 8% -8%, #2F5FD01A, #2F5FD000 70%), radial-gradient(900px 560px at 96% 104%, #1F8A7A17, #1F8A7A00 70%);
+  --m2-glass-sheet: #FFFFFFE6;
+  --m2-glass-sheet-floor: #E6E8EA;
+  --m2-glass-inverse: #151A1EE6;
+  --m2-glass-inverse-floor: #2C3135;
+  --m2-glass-line: #14191D1F;
+  --m2-glass-hi: #FFFFFF8C;
+  --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
+  --m2-glass-filter: blur(16px) saturate(140%);
   /* Ledger: no decorative shadow; only the menu, popover and dialog (--m2-shadow) lift. The card token stays so callers resolve. */
   --m2-shadow-card: none;
   --m2-inverse: var(--m2-n-925);
@@ -164,13 +173,19 @@
   --m2-header-h: 48px;
 
   /* Radius */
-  --m2-r1: 4px;
-  --m2-r2: 6px;
+  --m2-r1: 6px;
+  --m2-r2: 12px;
   --m2-r-round: 999px;
 
   /* Layout */
   --m2-bar-h: 48px;
   --m2-map-w: 280px;
+  --m2-rail-w: 64px;
+  --m2-flyout-w: 280px;
+  /* Run Ribbon heights: inline (table), header, card */
+  --m2-ribbon-h: 20px;
+  --m2-ribbon-h-header: 48px;
+  --m2-ribbon-h-card: 72px;
   --m2-insp-w: 400px;
   --m2-row-h: 36px;
   --m2-row-h-compact: 28px;
@@ -210,6 +225,18 @@
   --m2-ai-line: #86CDD2;
   --m2-on-ai: #FFFFFF;
   --m2-ai-glow-ink: #0B707966;
+  /* Verified ring: the Aletheia hue on a run ribbon's latest point (an alias, so the tenant accent never moves it) */
+  --m2-ring-verified: var(--m2-ai);
+  /* Categorical hues, one per object by a fixed order, stable across every screen */
+  --m2-cat-1: #0072B2;
+  --m2-cat-2: #D55E00;
+  --m2-cat-3: #009E73;
+  --m2-cat-4: #B5528A;
+  --m2-cat-5: #B07A00;
+  --m2-cat-6: #3A8FBF;
+  --m2-cat-7: #6F4C9B;
+  --m2-cat-8: #8C6D31;
+  --m2-cat-9: #4F6B7A;
 
   /* Depth: three lifts, each a pair of shadows (a contact shadow and an ambient one), and the glow inks for the loud moments only */
   --m2-shadow-1: 0 1px 2px #151A1E14, 0 2px 10px #151A1E0A;
@@ -305,6 +332,15 @@
     --m2-seg: var(--m2-n-400);
     --m2-scrim: #000000A6;
     --m2-shadow: 0 8px 28px #000000B3;
+    --m2-ambient: radial-gradient(1100px 620px at 8% -8%, #5B8DEF1F, #5B8DEF00 70%), radial-gradient(900px 560px at 96% 104%, #3FB8A51A, #3FB8A500 70%);
+    --m2-glass-sheet: #161C22E6;
+    --m2-glass-sheet-floor: #2B3136;
+    --m2-glass-inverse: #E6EBEFE6;
+    --m2-glass-inverse-floor: #D1D6DA;
+    --m2-glass-line: #FFFFFF1F;
+    --m2-glass-hi: #FFFFFF14;
+    --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
+    --m2-glass-filter: blur(16px) saturate(120%);
   --m2-shadow-card: none;
     --m2-inverse: var(--m2-n-100);
     --m2-on-inverse: var(--m2-n-950);
@@ -334,6 +370,15 @@
     --m2-ai-line: #1E5A61;
     --m2-on-ai: #0F1419;
     --m2-ai-glow-ink: #5CCAD259;
+    --m2-cat-1: #5AB0E6;
+    --m2-cat-2: #F08A4B;
+    --m2-cat-3: #3CC9A0;
+    --m2-cat-4: #E08FBE;
+    --m2-cat-5: #E6B84A;
+    --m2-cat-6: #7FC0EA;
+    --m2-cat-7: #A98BD6;
+    --m2-cat-8: #C4A25E;
+    --m2-cat-9: #8FAAB8;
     --m2-shadow-1: 0 1px 2px #00000052, 0 2px 10px #00000033;
     --m2-shadow-2: 0 2px 6px #00000066, 0 14px 36px #00000080;
     --m2-shadow-3: 0 10px 28px #00000099, 0 36px 72px #000000B3;
@@ -417,6 +462,15 @@ html[data-theme="dark"] .m2-root {
   --m2-seg: var(--m2-n-400);
   --m2-scrim: #000000A6;
   --m2-shadow: 0 8px 28px #000000B3;
+  --m2-ambient: radial-gradient(1100px 620px at 8% -8%, #5B8DEF1F, #5B8DEF00 70%), radial-gradient(900px 560px at 96% 104%, #3FB8A51A, #3FB8A500 70%);
+  --m2-glass-sheet: #161C22E6;
+  --m2-glass-sheet-floor: #2B3136;
+  --m2-glass-inverse: #E6EBEFE6;
+  --m2-glass-inverse-floor: #D1D6DA;
+  --m2-glass-line: #FFFFFF1F;
+  --m2-glass-hi: #FFFFFF14;
+  --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
+  --m2-glass-filter: blur(16px) saturate(120%);
   --m2-shadow-card: none;
   --m2-inverse: var(--m2-n-100);
   --m2-on-inverse: var(--m2-n-950);
@@ -445,6 +499,15 @@ html[data-theme="dark"] .m2-root {
   --m2-ai-line: #1E5A61;
   --m2-on-ai: #0F1419;
   --m2-ai-glow-ink: #5CCAD259;
+  --m2-cat-1: #5AB0E6;
+  --m2-cat-2: #F08A4B;
+  --m2-cat-3: #3CC9A0;
+  --m2-cat-4: #E08FBE;
+  --m2-cat-5: #E6B84A;
+  --m2-cat-6: #7FC0EA;
+  --m2-cat-7: #A98BD6;
+  --m2-cat-8: #C4A25E;
+  --m2-cat-9: #8FAAB8;
   --m2-shadow-1: 0 1px 2px #00000052, 0 2px 10px #00000033;
   --m2-shadow-2: 0 2px 6px #00000066, 0 14px 36px #00000080;
   --m2-shadow-3: 0 10px 28px #00000099, 0 36px 72px #000000B3;
@@ -549,8 +612,6 @@ html[data-theme="dark"] .m2-root {
 .m2-root textarea { transition: background-color var(--m2-t-fast) var(--m2-ease), border-color var(--m2-t-fast) var(--m2-ease), color var(--m2-t-fast) var(--m2-ease), box-shadow var(--m2-t-fast) var(--m2-ease); }
 .m2-root .m2-job-bar { transition: width var(--m2-t-med) var(--m2-ease); }
 .m2-root .m2-chev { transition: transform var(--m2-t-fast) var(--m2-ease); }
-.m2-root .m2-map { transition: transform var(--m2-t-med) var(--m2-ease), visibility 0s linear var(--m2-t-med); }
-.m2-root .m2-map.m2-open { transition: transform var(--m2-t-med) var(--m2-ease); }
 .m2-root .m2-stack-s,
 .m2-root .m2-chart .m2-col { transition: fill var(--m2-t-fast) var(--m2-ease), stroke var(--m2-t-fast) var(--m2-ease); }
 
@@ -678,6 +739,8 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
     repeating-linear-gradient(to right, rgba(214, 0, 110, 0.12) 0 1px, transparent 1px 8px);
 }
 .m2-root[data-grid] .m2-map,
+.m2-root[data-grid] .m2-rail,
+.m2-root[data-grid] .m2-fly,
 .m2-root[data-grid] .m2-canvas,
 .m2-root[data-grid] .m2-insp { outline: 1px solid rgba(0, 102, 255, 0.55); outline-offset: -1px; }
 .m2-root[data-grid] .m2-canvas { box-shadow: inset var(--m2-gutter) 0 0 0 rgba(0, 102, 255, 0.07), inset calc(-1 * var(--m2-gutter)) 0 0 0 rgba(0, 102, 255, 0.07); }
@@ -688,5 +751,25 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
   .m2-root, html[data-theme="dark"] .m2-root {
     --m2-bg: #FFFFFF; --m2-sheet: #FFFFFF; --m2-fg: #000000; --m2-ink-2: #2B2F36; --m2-meta: #4A505A;
     --m2-line: #C9CDD3; --m2-line-2: #9AA0A9; --m2-rule: #DADDE1;
+    --m2-ambient: none; --m2-glass-sheet: #FFFFFF; --m2-glass-inverse: #FFFFFF; --m2-glass-filter: none;
   }
+}
+
+/* Glass: floating chrome only. Content never blurs. Budget: 3 layers at once. */
+.m2-root .m2-menu, .m2-root .m2-pal, .m2-root .m2-pop, .m2-root .m2-tlpop, .m2-root .m2-toast, .m2-root .m2-bulk,
+.m2-root .m2-railwrap:not([data-pinned]) .m2-fly {
+  -webkit-backdrop-filter: var(--m2-glass-filter);
+  backdrop-filter: var(--m2-glass-filter);
+}
+@media (max-width: 1180px) {
+  .m2-root .m2-insp { -webkit-backdrop-filter: var(--m2-glass-filter); backdrop-filter: var(--m2-glass-filter); }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .m2-root { --m2-glass-sheet: var(--m2-sheet); --m2-glass-inverse: var(--m2-inverse); --m2-glass-hi: var(--m2-line); }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .m2-root { --m2-glass-sheet: var(--m2-sheet); --m2-glass-inverse: var(--m2-inverse); --m2-glass-hi: var(--m2-line); --m2-glass-filter: none; }
+}
+@media (forced-colors: active) {
+  .m2-root { --m2-glass-filter: none; }
 }

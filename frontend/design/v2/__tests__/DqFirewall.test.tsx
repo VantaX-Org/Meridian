@@ -54,6 +54,7 @@ describe("Admin, Data quality firewall", () => {
     await waitFor(() => expect(norm(grid)).toContain("MM003"));
     expect(norm(grid)).toContain("Material type is mandatory");
     expect(norm(grid)).toContain("MARA.MTART");
+    expect(grid.querySelector("[title=\"Material type (MARA.MTART)\"]")).not.toBeNull();
     expect(screen.getByRole("status").textContent).toContain("Blocked");
     expect(screen.getByRole("status").textContent).toContain("1 of 2 records blocked");
   });
