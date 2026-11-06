@@ -298,21 +298,59 @@ def tables_needed(workbook: Workbook, dictionary: Dictionary) -> set[str]:
     return {t for s in workbook.sheets for t in _candidates(s, dictionary)}
 
 
+_WHOLE = r"[+-]?\d+(?:\.0+)?"
+_LONG_MAX = 2**63 - 1
+# Identifier columns by spelling: externalCode, code, id, userId, person-id-external, ...Code, ...-id, ...Id (camel case)
+_ID_COLUMN = re.compile(r"(?i:^(?:external-?code|code|id|person-?id(?:-?external)?|user-?id)$)|[a-z]Id$|[a-z]Code$|-id$|-code$")
+_CONTROL = r"[\x00-\x1f\x7f]"
+_WHY = {
+    "mandatory": "is mandatory in the workbook definition and the value is blank",
+    "too_long": "holds a value longer than the {n} characters the definition allows",
+    "bad_date": "holds a value that is not a date",
+    "bad_boolean": "holds a value that is not true or false (accepted: true, false, yes, no, y, n, t, f, 0, 1)",
+    "bad_whole_number": "holds a value that is not a whole number, which type {type} requires",
+    "bad_number": "holds a value that is not a finite number, which type {type} requires",
+    "not_in_picklist": "holds a value that is not in picklist {picklist}",
+    "bad_id": "holds an identifier with leading or trailing spaces or a control character",
+}
+
+
+def explain(col: Column, reason: str) -> str:
+    """Why a value was held back, read from the column definition alone; no free text, no values."""
+    why = _WHY.get(reason, reason).format(n=col.max_length, type=col.type, picklist=col.picklist)
+    return f"Column {col.id}{f' ({col.label})' if col.label else ''} {why}."
+
+
 def _problems(col: Column, values: pd.Series, picklists: dict[str, set[str]]) -> list[tuple[pd.Series, str]]:
+    """Each way a column's values break its definition, as a row mask and a reason code.
+
+    Checks follow the declared type. A blank type, or STRING, GO, COUNTRY, USER and the other text types, carry
+    only the length, mandatory, picklist and identifier checks: nothing else in the definition can be tested."""
     text = values.astype("string").fillna("").str.strip()
     filled = text != ""
+    kind = col.type.upper()
     found = []
     if col.mandatory and not col.country:  # a country field is mandatory for that country only
         found.append((~filled, "mandatory"))
     if col.max_length:
         found.append((filled & (text.str.len() > col.max_length), "too_long"))
-    if col.type == "DATE":
+    if kind == "DATE":
         found.append((filled & pd.to_datetime(text, errors="coerce", format="mixed").isna(), "bad_date"))
-    if col.type == "BOOLEAN":
+    elif kind == "BOOLEAN":
         found.append((filled & ~text.str.lower().isin(BOOLEANS), "bad_boolean"))
+    elif kind == "LONG":
+        whole = text.str.fullmatch(_WHOLE).fillna(False)
+        size = pd.to_numeric(text.where(whole), errors="coerce").abs() <= _LONG_MAX
+        found.append((filled & ~(whole & size.fillna(False)), "bad_whole_number"))
+    elif kind in ("DOUBLE", "DECIMAL", "NUMBER"):
+        num = pd.to_numeric(text.where(filled), errors="coerce")
+        found.append((filled & (num.isna() | num.isin([float("inf"), float("-inf")])), "bad_number"))
     allowed = picklists.get(col.picklist.casefold()) if col.picklist else None
-    if allowed:
+    if allowed:  # any column that names a picklist is bound to it, whatever its declared type
         found.append((filled & ~text.isin(allowed), "not_in_picklist"))
+    if _ID_COLUMN.search(col.id.split(".")[-1]):
+        raw = values.astype("string").fillna("")
+        found.append(((raw != raw.str.strip()) | raw.str.contains(_CONTROL, regex=True), "bad_id"))
     return found
 
 
@@ -371,7 +409,9 @@ def fill(workbook: Workbook, frames: TableFrames) -> tuple[dict[str, pd.DataFram
                     continue
                 bad |= mask
                 reasons[reason] += count
-                held += [{"sheet": sheet.name, "record": k, "field": col.id, "reason": reason} for k in keys[mask]]
+                why = explain(col, reason)
+                held += [{"sheet": sheet.name, "record": k, "field": col.id, "reason": reason, "detail": why}
+                         for k in keys[mask]]
 
         out = pd.DataFrame({c.header: df.loc[~bad, hits[c.header].qualified].values if c.header in hits else None
                             for c in columns}, index=range(int((~bad).sum())))
