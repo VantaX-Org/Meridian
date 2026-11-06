@@ -9,7 +9,7 @@ import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from tests.landscape_seed import seed
 
@@ -106,6 +106,23 @@ async def test_landscape_matrix(seeded, client_for):
         assert (await client.get("/api/v1/landscape", params={"scope": "run"}, headers=HEADERS)).status_code == 422
         assert (await client.get("/api/v1/landscape", params={"scope": "run", "run": str(uuid.uuid4())},
                                  headers=HEADERS)).status_code == 404
+
+
+@pytest.mark.anyio
+async def test_inactive_system_keeps_its_runs(seeded, owner, client_for):
+    """A retired system with a finished run stays on the landscape, labelled; one without runs is hidden. Neither is
+    offered as the next step."""
+    s = seeded
+    with owner.begin() as c:
+        c.execute(text("UPDATE sap_systems SET is_active = false, health_status = 'auth_failed' "
+                       "WHERE id = ANY(CAST(:ids AS uuid[]))"), {"ids": [s["ecc"], s["spare"]]})
+    deps, client = client_for(s["tid"])
+    await deps.engine.dispose()
+    async with client:
+        body = (await client.get("/api/v1/landscape", headers=HEADERS)).json()
+    assert [(x["id"], x["is_active"]) for x in body["systems"]] == [(s["ecc"], False)]
+    assert {c["module"] for c in body["cells"]} == {"material_master", "fi_gl"}
+    assert body["basis_next_step"] is None
 
 
 @pytest.mark.anyio

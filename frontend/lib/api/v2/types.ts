@@ -43,6 +43,8 @@ export interface LandscapeSystem {
   version: string | null;
   client: string | null;
   health_status: string | null;
+  /** False: retired, listed for the finished runs it still holds. Absent on a server from before it: treated as active. */
+  is_active?: boolean;
   last_extracted_at: string | null;
   records: number | null;
   state: SystemState;
