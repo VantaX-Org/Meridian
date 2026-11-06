@@ -8542,4 +8542,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The export holds the ready rows in the workbook's own columns, and held rows on a Held back tab. It is recorded in the audit log. The workbook itself is not stored.": "Der Export enthält die bereiten Zeilen in den Spalten der Arbeitsmappe und die zurückgehaltenen Zeilen auf einem eigenen Blatt „Held back“. Er wird im Audit-Protokoll erfasst. Die Arbeitsmappe selbst wird nicht gespeichert.",
   "Export as Excel": "Als Excel exportieren",
   "Export as CSV files": "Als CSV-Dateien exportieren",
+  "Rules table, scrollable": "Regeltabelle, scrollbar",
 };

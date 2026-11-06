@@ -8541,6 +8541,7 @@ export const en = {
   "The export holds the ready rows in the workbook's own columns, and held rows on a Held back tab. It is recorded in the audit log. The workbook itself is not stored.": "The export holds the ready rows in the workbook's own columns, and held rows on a Held back tab. It is recorded in the audit log. The workbook itself is not stored.",
   "Export as Excel": "Export as Excel",
   "Export as CSV files": "Export as CSV files",
+  "Rules table, scrollable": "Rules table, scrollable",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
