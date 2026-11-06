@@ -4,6 +4,7 @@
  * (MM001, MM003, MM008, each critical and completeness: a blank material number, type or base unit).
  */
 import type { DuplicateMatch, FirewallDay, FirewallFailure, FirewallSummary, FirewallVerdict, GateRequest } from "../dq-firewall";
+import { describeField } from "@/lib/v2/sap-fields";
 
 export const NONE_DQ_FIREWALL = Symbol("no-dq-firewall-fixture");
 
@@ -181,6 +182,7 @@ export function dqFirewallWrite(method: string, path: string, body: unknown): un
         rule_id: x.id,
         description: x.message,
         field: x.field,
+        field_description: describeField(x.field),
         severity: "critical",
         dimension: "completeness",
         reason: `${x.field} is blank.`,

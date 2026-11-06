@@ -16,6 +16,7 @@ from typing import Any, Optional
 import pandas as pd
 
 from checks import auto_fix
+from api.services.fix_sheet import field_label
 from checks.runner import CATEGORIES, RULES_DIR, is_overlay, module_rules, rule_columns, run_checks
 
 MAX_RECORDS = 100
@@ -143,7 +144,7 @@ def validate(tid: str, module: str, records: list[dict[str, Any]], overrides: Op
         results = run_checks(module, pd.DataFrame([row]), tid, overrides=overrides, extra_rules=extra_rules)
         rules_run = max(rules_run, len(results))
         fails = [{"rule_id": r.check_id, "description": desc.get(r.check_id) or r.message, "field": r.field,
-                  "severity": r.severity, "dimension": r.dimension, "reason": (r.message or "")[:300]}
+                  "field_description": field_label(r.field), "severity": r.severity, "dimension": r.dimension, "reason": (r.message or "")[:300]}
                  for r in results if not r.passed and not r.error and r.affected_count]
         fails.sort(key=lambda f: (_ORDER.get(f["severity"], 9), f["rule_id"]))
         if suggest and fails:

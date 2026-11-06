@@ -8,7 +8,7 @@ import { useFirewallSummary, refreshAdmin } from "@/lib/v2/admin-queries";
 import { relTime } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
 import { Grid, type GridColumn } from "../Grid";
-import { EmptyFrame, Mono } from "../parts";
+import { Coded, EmptyFrame, Mono } from "../parts";
 import { DuplicateResults } from "../screens/EntryDuplicates";
 import { AdminPage, Block, copyText, Fld, Kv, Loaded, NeedsPermission, Note, StatusWord, useCan } from "./kit";
 
@@ -33,7 +33,7 @@ const COLUMNS: GridColumn<Row>[] = [
   { id: "record", get header() { return t("Record"); }, width: 80, cell: (r) => r.record + 1 },
   { id: "rule", get header() { return t("Rule"); }, width: 100, pin: true, locked: true, cell: (r) => <Mono>{r.rule_id}</Mono> },
   { id: "about", get header() { return t("What the rule requires"); }, width: 380, cell: (r) => r.description },
-  { id: "field", get header() { return t("Field"); }, width: 130, cell: (r) => <Mono>{r.field}</Mono> },
+  { id: "field", get header() { return t("Field"); }, width: 220, cell: (r) => <Coded code={r.field} text={r.field_description} first /> },
   { id: "severity", get header() { return t("Severity"); }, width: 110, cell: (r) => <StatusWord tone={r.severity === "critical" ? "no-go" : r.severity === "high" ? "at-risk" : "neutral"}>{SEVERITY[r.severity]}</StatusWord> },
   { id: "dimension", get header() { return t("Dimension"); }, width: 130, cell: (r) => DIMENSION[r.dimension] ?? r.dimension },
   { id: "reason", get header() { return t("Why it failed"); }, width: 260, cell: (r) => r.reason },
