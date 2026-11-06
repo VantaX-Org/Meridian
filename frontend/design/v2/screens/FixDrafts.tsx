@@ -11,7 +11,7 @@ import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { StackedBar, type StackPart } from "../charts";
 import { Field, Gate } from "../forms";
-import { FixHead, ObjectRunChip } from "../FixParts";
+import { Consequence, FixHead, FlowSteps, MoreDetail, ObjectRunChip } from "../FixParts";
 import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { CcBanner, CcPage } from "./cc-parts";
@@ -88,6 +88,7 @@ function DraftForm({ onDone }: { onDone: (d: FixDraft) => void }) {
       <button type="button" className="m2-btn" disabled={!objectInput.trim() || !rule.trim() || m.isPending} onClick={() => m.mutate()} data-testid="fix-draft-go">
         {m.isPending ? t("Working…") : t("Draft and verify")}
       </button>
+      <Consequence>{t("Drafting only proposes steps and tests them on your extraction. It changes no data.")}</Consequence>
     </div>
   );
 }
@@ -111,12 +112,6 @@ function Card({ d, allowed, onDecide, busy }: { d: FixDraft; allowed: boolean; o
         </span>
       </header>
       <p>{d.module ? <><ObjectRunChip module={d.module} />{" "}</> : null}<Coded code={d.field} text={d.field_text} /> <span className="m2-meta">{t("{n} failing values", { n: int(s.total_failing) })}</span></p>
-      <h4 className="m2-h3">{t("Aggregated shape")}</h4>
-      <StackedBar parts={masks} label={t("Shapes of the failing values")} format={int} />
-      <p className="m2-meta">
-        {t("{lead} with leading spaces, {trail} with trailing spaces, {inner} with inner spaces", { lead: int(s.leading_ws), trail: int(s.trailing_ws), inner: int(s.inner_ws) })}
-        {" "}{Object.entries(s.legend).map(([k, x]) => `${k} ${x}`).join(", ")}
-      </p>
       <h4 className="m2-h3">{t("Drafted steps")}</h4>
       <ol data-testid={`fix-steps-${d.rule_id}`}>
         {d.steps.map((st, i) => <li key={i}><Coded code={String(st.op)} text={opText(String(st.op))} /></li>)}
@@ -128,12 +123,23 @@ function Card({ d, allowed, onDecide, busy }: { d: FixDraft; allowed: boolean; o
           <p className="m2-meta">{t("{n} passing values changed", { n: int(v.touched_passing + v.broken) })}</p>
         </>
       ) : null}
+      <MoreDetail title={t("What the failing values look like")}>
+        <h4 className="m2-h3">{t("Aggregated shape")}</h4>
+        <StackedBar parts={masks} label={t("Shapes of the failing values")} format={int} />
+        <p className="m2-meta">
+          {t("{lead} with leading spaces, {trail} with trailing spaces, {inner} with inner spaces", { lead: int(s.leading_ws), trail: int(s.trailing_ws), inner: int(s.inner_ws) })}
+          {" "}{Object.entries(s.legend).map(([k, x]) => `${k} ${x}`).join(", ")}
+        </p>
+      </MoreDetail>
       {d.errors.length ? <p className="m2-meta">{d.errors.join(" ")}</p> : null}
       {allowed && d.status === "pending" ? (
+        <>
+        <Consequence>{t("Approving makes these steps the rule's fix. Nothing in SAP changes until a cleansing run uses it.")}</Consequence>
         <div className="m2-acts">
           <button type="button" className="m2-btn m2-strong" disabled={busy} onClick={() => onDecide(d.rule_id, true)} data-testid={`fix-approve-${d.rule_id}`}>{t("Approve")}</button>
           <button type="button" className="m2-btn m2-ghost" disabled={busy} onClick={() => onDecide(d.rule_id, false)} data-testid={`fix-reject-${d.rule_id}`}>{t("Reject")}</button>
         </div>
+        </>
       ) : null}
     </article>
   );
@@ -176,7 +182,16 @@ export function FixDrafts() {
           [t("Fixed"), t("Values the rule accepts after the steps ran in the proof.")],
         ]}
       />
-      <Panel title={t("Fix coverage")} meta={t("Rules with a fix, by object.")} testId="fix-coverage-panel"><Coverage /></Panel>
+      <FlowSteps
+        label={t("Fix steps")}
+        current={pending > 0 ? 3 : 0}
+        steps={[
+          { label: t("Choose the rule"), hint: t("Enter the object and the rule that fails.") },
+          { label: t("Draft the fix"), hint: t("Aletheia proposes steps from the shape of the failing values.") },
+          { label: t("See the proof"), hint: t("The steps are tried on your extraction first.") },
+          { label: t("Approve or reject"), count: int(pending), hint: t("A steward decides. Approved steps become the rule's fix.") },
+        ]}
+      />
       <Panel title={t("Drafts")} meta={t("Approve or reject. A rejected draft is kept in the audit log.")} testId="fix-drafts-list">
         {allowed ? <DraftForm onDone={refresh} /> : <Gate>{t("Managing rules needs the manage rules permission.")}</Gate>}
         {drafts.length === 0 ? <EmptyFrame>{t("No fix is drafted yet. Enter an object and a rule above, then choose Draft and verify.")}</EmptyFrame> : (
@@ -185,6 +200,9 @@ export function FixDrafts() {
           </ScrollFrame>
         )}
       </Panel>
+      <MoreDetail title={t("Fix coverage by object")}>
+      <Panel title={t("Fix coverage")} meta={t("Rules with a fix, by object.")} testId="fix-coverage-panel"><Coverage /></Panel>
+      </MoreDetail>
     </CcPage>
   );
 }

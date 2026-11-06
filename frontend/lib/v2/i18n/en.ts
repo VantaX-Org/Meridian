@@ -8176,6 +8176,19 @@ export const en = {
   "Approving only marks a proposal as accepted. SAP is not changed until you write it in the next step.": "Approving only marks a proposal as accepted. SAP is not changed until you write it in the next step.",
   "Write to SAP changes the record in SAP now. It can be rolled back for 72 hours.": "Write to SAP changes the record in SAP now. It can be rolled back for 72 hours.",
   "Merging keeps the record you pick as the survivor and folds the other into it.": "Merging keeps the record you pick as the survivor and folds the other into it.",
+  "Drafting only proposes steps and tests them on your extraction. It changes no data.": "Drafting only proposes steps and tests them on your extraction. It changes no data.",
+  "What the failing values look like": "What the failing values look like",
+  "Approving makes these steps the rule's fix. Nothing in SAP changes until a cleansing run uses it.": "Approving makes these steps the rule's fix. Nothing in SAP changes until a cleansing run uses it.",
+  "Fix steps": "Fix steps",
+  "Choose the rule": "Choose the rule",
+  "Enter the object and the rule that fails.": "Enter the object and the rule that fails.",
+  "Draft the fix": "Draft the fix",
+  "Aletheia proposes steps from the shape of the failing values.": "Aletheia proposes steps from the shape of the failing values.",
+  "See the proof": "See the proof",
+  "The steps are tried on your extraction first.": "The steps are tried on your extraction first.",
+  "Approve or reject": "Approve or reject",
+  "A steward decides. Approved steps become the rule's fix.": "A steward decides. Approved steps become the rule's fix.",
+  "Fix coverage by object": "Fix coverage by object",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
