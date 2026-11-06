@@ -8264,6 +8264,7 @@ export const en = {
   "This page only reads. If a part is down, work that needs it waits; nothing you saved is lost.": "This page only reads. If a part is down, work that needs it waits; nothing you saved is lost.",
   "Uptime day by day.": "Uptime day by day.",
   "This screen only reads the latest score of each system.": "This screen only reads the latest score of each system.",
+  "Source quality, projected and actual target quality, and why they differ.": "Source quality, projected and actual target quality, and why they differ.",
   // stage 6 end
 } as const satisfies Record<string, string>;
 

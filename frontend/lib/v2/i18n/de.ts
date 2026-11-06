@@ -8265,5 +8265,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "This page only reads. If a part is down, work that needs it waits; nothing you saved is lost.": "Diese Seite liest nur. Fällt ein Teil aus, wartet die Arbeit, die ihn braucht; Gespeichertes geht nicht verloren.",
   "Uptime day by day.": "Verfügbarkeit Tag für Tag.",
   "This screen only reads the latest score of each system.": "Diese Ansicht liest nur den neuesten Wert jedes Systems.",
+  "Source quality, projected and actual target quality, and why they differ.": "Qualität in der Quelle, prognostizierte und tatsächliche Zielqualität und warum sie abweichen.",
   // stage 6 end
 };

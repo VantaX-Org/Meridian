@@ -1,5 +1,6 @@
 "use client";
 import { Disclose, Guide } from "./Guide";
+import { PairedQuality } from "./PairedQuality";
 import "../runs.css";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -195,6 +196,7 @@ export function Migration() {
           onConfirm={() => remove.mutate(removing.id)}
         />
       ) : null}
+      <Disclose title={t("Quality in the source and in the target")} hint={t("Source quality, projected and actual target quality, and why they differ.")}><PairedQuality /></Disclose>
       <Disclose title={t("All analyses")} hint={t("{n} analyses, newest first", { n: int(list.length) })} open={!latest}>
       <Panel title={t("Analyses")} meta={t("{n} analyses, newest first", { n: int(list.length) })} testId="mig-runs">
         {list.length === 0 ? <EmptyFrame>{t("No analysis has been started.")}</EmptyFrame> : (

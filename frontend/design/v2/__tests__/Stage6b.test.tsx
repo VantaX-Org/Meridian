@@ -118,3 +118,15 @@ describe("error states", () => {
     expect(await screen.findByRole("button", { name: /retry|try again/i }, { timeout: 8000 })).toBeTruthy();
   });
 });
+
+describe("Migration paired quality", () => {
+  it("offers source, projected and actual target quality in a fold", async () => {
+    const { Migration } = await import("../screens/Migration");
+    renderWithQuery(<Migration />);
+    await screen.findByTestId("guide", undefined, { timeout: 8000 });
+    const f = (await screen.findAllByTestId("disclose")).find((d) => d.textContent?.includes("Quality in the source and in the target")) as HTMLDetailsElement | undefined;
+    expect(f).toBeTruthy();
+    expect(f!.open).toBe(false);
+    expect(f!.querySelector('[data-testid="paired-quality"]')).toBeTruthy();
+  });
+});

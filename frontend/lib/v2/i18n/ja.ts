@@ -8265,5 +8265,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "This page only reads. If a part is down, work that needs it waits; nothing you saved is lost.": "このページは読み取り専用です。ある部分が停止していれば、それを使う作業は待機します。保存済みの内容は失われません。",
   "Uptime day by day.": "日ごとの稼働状況。",
   "This screen only reads the latest score of each system.": "この画面は各システムの最新スコアを読み取るだけです。",
+  "Source quality, projected and actual target quality, and why they differ.": "ソースの品質、予測および実績のターゲット品質、そして差が出る理由。",
   // stage 6 end
 };
