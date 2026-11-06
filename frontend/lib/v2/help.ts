@@ -114,6 +114,7 @@ export const appliesTo = (id: string, screen: Screen | null): boolean => screen 
  */
 export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/": "v2:landscape",
+  "/objects": "v2:landscape",
   "/o/[system]/[module]": "v2:object",
   "/o/[system]/[module]/rules": "v2:object",
   "/o/[system]/[module]/records": "v2:work",

@@ -106,8 +106,8 @@ describe("dispatcher", () => {
   it("goes to a place on g then a letter inside the window, and not after it", () => {
     const { ctx, d } = setup();
     d.handle(press("g"), 1_000);
-    expect(d.handle(press("l"), 1_500)).toBe(true);
-    expect(ctx.go).toHaveBeenLastCalledWith("landscape");
+    expect(d.handle(press("h"), 1_500)).toBe(true);
+    expect(ctx.go).toHaveBeenLastCalledWith("home");
     d.handle(press("g"), 2_000);
     d.handle(press("w"), 2_100);
     expect(ctx.go).toHaveBeenLastCalledWith("work");
@@ -119,7 +119,7 @@ describe("dispatcher", () => {
     expect(ctx.go).toHaveBeenLastCalledWith("people");
     const calls = (ctx.go as ReturnType<typeof vi.fn>).mock.calls.length;
     d.handle(press("g"), 5_000);
-    expect(d.handle(press("l"), 7_000)).toBe(false);
+    expect(d.handle(press("h"), 7_000)).toBe(false);
     expect((ctx.go as ReturnType<typeof vi.fn>).mock.calls.length).toBe(calls);
   });
 

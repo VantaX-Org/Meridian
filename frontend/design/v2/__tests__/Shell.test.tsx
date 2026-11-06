@@ -29,60 +29,32 @@ const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").tr
 const keyOnBody = (key: string, init: KeyboardEventInit = {}) => fireEvent.keyDown(document.body, { key, ...init });
 
 describe("top bar", () => {
-  it("has the mark and name, the scope and run menus, a command line field with its shortcut, the inbox count and the persona", async () => {
+  it("has the mark and name, a command line field with its shortcut, the inbox count and the persona, and no scope or run menu", async () => {
     mount();
     const brand = screen.getByRole("link", { name: "Meridian, go to the landscape" });
     expect(brand.querySelector("svg.m2-mark")).not.toBeNull();
     expect(brand).toHaveTextContent("Meridian");
-    expect(screen.getByRole("button", { name: "Scope, All systems" })).toHaveTextContent("All systems");
-    expect(await screen.findByRole("button", { name: "Run 16 Oct 2026, 05:17" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Scope/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Run \d/ })).toBeNull();
     const search = screen.getByRole("button", { name: "Search, ask, or type a command" });
-    expect(search).toHaveTextContent("⌘K");
+    expect(search).toHaveTextContent("\u2318K");
     expect(await screen.findByRole("button", { name: "Inbox 7, unread" })).toHaveTextContent("Inbox 7");
     expect(screen.getByRole("button", { name: "Account, Programme lead" })).toHaveTextContent("Programme lead");
   });
 
-  it("the scope menu lists the systems with their state, and chooses one through the URL", async () => {
+  it("shows Objects, system, object as a breadcrumb on an object page, and only Objects is a link", async () => {
+    setUrl("/o/ecc-production/material-master");
     mount();
-    await screen.findByRole("button", { name: /^Run 16 Oct/ });
-    fireEvent.click(screen.getByRole("button", { name: /^Scope/ }));
-    const menu = await screen.findByRole("menu", { name: "Scope" });
-    await waitFor(() => expect(within(menu).getAllByRole("menuitemradio")).toHaveLength(4));
-    const items = within(menu).getAllByRole("menuitemradio");
-    expect(items.map((i) => norm(i))).toEqual(["All systems3 systems", "ECC productionAnalysed", "S/4HANA sandboxExtracted, not analysed", "SuccessFactorsNot extracted yet"]);
-    expect(items[0]).toHaveAttribute("aria-checked", "true");
-    expect(items[1]).toHaveAttribute("href", expect.stringContaining("system=ecc-production"));
+    const crumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    await waitFor(() => expect(norm(crumb)).toBe("ObjectsECC productionMaterial master"));
+    expect(within(crumb).getAllByRole("link")).toHaveLength(1);
+    expect(within(crumb).getByRole("link", { name: "Objects" })).toHaveAttribute("href", expect.stringMatching(/^\/objects/));
+    expect(within(crumb).getByText("Material master")).toHaveAttribute("aria-current", "page");
   });
 
-  it("the run control opens the timeline of the last 8 runs: oldest to newest on a date axis, the latest selected, the baseline marked", async () => {
+  it("has no breadcrumb off an object page", () => {
     mount();
-    fireEvent.click(await screen.findByRole("button", { name: /^Run 16 Oct/ }));
-    const dialog = await screen.findByRole("dialog", { name: /^Runs, 28 Aug 2026 to 16 Oct 2026/ });
-    const chart = await within(dialog).findByTestId("run-timeline");
-    const runs = within(chart).getAllByRole("button");
-    expect(runs).toHaveLength(8);
-    expect(runs[7]).toHaveAttribute("aria-pressed", "true");
-    expect(runs[0]).toHaveAccessibleName("Run 28 Aug 2026, 05:11");
-    expect(within(chart).getByTestId("tl-baseline")).toHaveTextContent("baseline");
-    expect(norm(runs[5])).toContain("2 Oct");
-  });
-
-  it("menus move with the arrow keys, close with Esc and give focus back to the button", async () => {
-    mount();
-    const scope = screen.getByRole("button", { name: /^Scope/ });
-    scope.focus();
-    fireEvent.click(scope);
-    const menu = await screen.findByRole("menu", { name: "Scope" });
-    await waitFor(() => expect(within(menu).getAllByRole("menuitemradio")).toHaveLength(4));
-    const items = within(menu).getAllByRole("menuitemradio");
-    await waitFor(() => expect(items[0]).toHaveFocus());
-    fireEvent.keyDown(items[0], { key: "ArrowDown" });
-    expect(items[1]).toHaveFocus();
-    fireEvent.keyDown(items[1], { key: "End" });
-    expect(items[3]).toHaveFocus();
-    fireEvent.keyDown(items[3], { key: "Escape" });
-    expect(screen.queryByRole("menu")).toBeNull();
-    expect(scope).toHaveFocus();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
   });
 
   it("the account menu offers theme, shortcuts and no way back to a second interface", async () => {
@@ -95,53 +67,76 @@ describe("top bar", () => {
   });
 });
 
-describe("map", () => {
-  it("lists Landscape, Work, Runs, People and Requests, with the open-work count on Work and a neutral active pill", async () => {
+describe("rail and flyout", () => {
+  it("lists the seven destinations, Home first and current, with Reports and Atlas below", () => {
     mount();
-    const nav = screen.getByRole("navigation", { name: "Places" });
-    const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Landscape", "Action centre", "Work", "Runs", "People", "Requests", "Anomaly rules", "Aletheia rule promotion", "Rule dry run", "Aletheia verified fixes", "Aletheia verified survivorship", "Cleansing", "Learned monitors", "Entry gate", "Reference data", "MDM health", "Record links", "Material 360", "Issues", "Data mining", "Process discovery", "Migration", "S/4HANA readiness", "Cost and causes", "Forecast and plan", "Value delivered", "Score lens", "Configuration"]);
-    expect(links[0]).toHaveAttribute("aria-current", "page");
-    expect(links[2]).not.toHaveAttribute("aria-current");
-    await waitFor(() => expect(links[2]).toHaveTextContent("25,712"));
-    expect(links[2]).toHaveAttribute("href", expect.stringMatching(/^\/work/));
+    const rail = screen.getByTestId("rail");
+    const links = within(rail).getAllByRole("link").map((l) => norm(l));
+    expect(links.slice(0, 7).map((l) => l.replace(/\d[\d,]*$/, ""))).toEqual(["Home", "Objects", "Runs", "Fix", "Rules", "Master data", "Migration"]);
+    expect(links).toEqual(expect.arrayContaining(["Reports", "Atlas"]));
+    expect(within(rail).getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
+    expect(within(rail).getByRole("link", { name: "Objects" })).toHaveAttribute("href", expect.stringMatching(/^\/objects/));
+    expect(screen.queryByTestId("flyout")).toBeNull();
   });
 
-  it("draws systems then objects: each object a row with its name, score, 48 ruler and the work waiting", async () => {
+  it("opens a flyout on hover with the destination's pages and the open-work count on Work, and Esc closes it", async () => {
     mount();
-    const map = screen.getByTestId("map");
-    await within(map).findByText("ECC production");
-    const rows = await within(map).findAllByRole("link", { name: /^(Material master|Business partner)/ });
+    fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Fix" }));
+    const fly = await screen.findByTestId("flyout");
+    const links = within(within(fly).getByRole("navigation", { name: "Fix" })).getAllByRole("link");
+    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Action centre", "Work", "Aletheia verified fixes", "Cleansing", "Requests", "People"]);
+    await waitFor(() => expect(links[1]).toHaveTextContent("25,712"));
+    expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/work/));
+    keyOnBody("Escape");
+    expect(screen.queryByTestId("flyout")).toBeNull();
+  });
+
+  it("the Objects flyout draws systems then objects: each object a row with its name, score, 48 ruler and the work waiting", async () => {
+    mount();
+    fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Objects" }));
+    const fly = await screen.findByTestId("flyout");
+    await within(fly).findByText("ECC production");
+    const rows = await within(fly).findAllByRole("link", { name: /^(Material master|Business partner)/ });
     const mm = rows.find((r) => /^Material master/.test(norm(r))) as HTMLElement;
     expect(mm).toHaveAttribute("href", expect.stringMatching(/^\/o\/ecc-production\/material-master/));
     expect(norm(mm)).toContain("25,712");
     expect(norm(mm)).toContain("70.0");
     expect(mm.querySelector('svg[data-size="48"]')).not.toBeNull();
     expect(mm.getAttribute("title")).toContain("held down from 71.8 because MM003 and MM035 fail");
-    expect(map.querySelectorAll(".m2-orow")).toHaveLength(15);
+    expect(fly.querySelectorAll(".m2-orow")).toHaveLength(15);
   });
 
   it("says honestly what each system is: analysed, extracted and not analysed, never extracted", async () => {
     mount();
-    const map = screen.getByTestId("map");
-    expect(await within(map).findByText(/16 Oct 2026, 04:41, 15 objects/)).toBeInTheDocument();
-    expect(within(map).getByText(/Extracted, not analysed\./)).toBeInTheDocument();
-    expect(within(map).getByRole("link", { name: "Run analysis" })).toHaveAttribute("href", expect.stringContaining("open=system%3Aa1b2c3d4-0002"));
-    expect(within(map).getByText(/Not extracted yet\./)).toBeInTheDocument();
-    expect(within(map).getByRole("link", { name: "Extract" })).toHaveAttribute("href", expect.stringContaining("open=system%3Aa1b2c3d4-0003"));
+    fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Objects" }));
+    const fly = await screen.findByTestId("flyout");
+    expect(await within(fly).findByText(/16 Oct 2026, 04:41, 15 objects/)).toBeInTheDocument();
+    expect(within(fly).getByText(/Extracted, not analysed\./)).toBeInTheDocument();
+    expect(within(fly).getByRole("link", { name: "Run analysis" })).toHaveAttribute("href", expect.stringContaining("open=system%3Aa1b2c3d4-0002"));
+    expect(within(fly).getByText(/Not extracted yet\./)).toBeInTheDocument();
+    expect(within(fly).getByRole("link", { name: "Extract" })).toHaveAttribute("href", expect.stringContaining("open=system%3Aa1b2c3d4-0003"));
   });
 
   it("collapses and expands a system, and marks the object you are on", async () => {
     setUrl("/o/ecc-production/material-master");
     mount();
-    const map = screen.getByTestId("map");
-    const toggle = await within(map).findByRole("button", { name: "ECC production" });
+    fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Objects" }));
+    const fly = await screen.findByTestId("flyout");
+    const toggle = await within(fly).findByRole("button", { name: "ECC production" });
     expect(toggle).toHaveAttribute("aria-expanded", "true");
-    const current = await within(map).findByRole("link", { current: "page", name: /Material master/ });
-    expect(current).toBeInTheDocument();
+    expect(await within(fly).findByRole("link", { current: "page", name: /Material master/ })).toBeInTheDocument();
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(map.querySelectorAll(".m2-orow")).toHaveLength(0);
+    expect(fly.querySelectorAll(".m2-orow")).toHaveLength(0);
+  });
+
+  it("pins the menu open for this browser and unpins it", () => {
+    mount();
+    fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Fix" }));
+    fireEvent.click(within(screen.getByTestId("flyout")).getByRole("button", { name: "Pin the menu open" }));
+    expect(window.localStorage.getItem("m2.rail.pin")).toBe("1");
+    fireEvent.click(screen.getByRole("button", { name: "Unpin the menu" }));
+    expect(window.localStorage.getItem("m2.rail.pin")).toBe("0");
   });
 });
 
@@ -216,14 +211,17 @@ describe("keyboard", () => {
     expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).toBeNull();
   });
 
-  it("g then w goes to Work, g then l to the landscape", () => {
+  it("g then w goes to Work, g then h to Home, g then o to Objects", () => {
     mount();
     keyOnBody("g");
     keyOnBody("w");
     expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/work/));
     keyOnBody("g");
-    keyOnBody("l");
+    keyOnBody("h");
     expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/(\?|$)/));
+    keyOnBody("g");
+    keyOnBody("o");
+    expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/objects/));
   });
 
   it("Esc closes the inspector and takes ?open= out of the URL", async () => {
@@ -238,20 +236,18 @@ describe("keyboard", () => {
 });
 
 describe("phone", () => {
-  it("the map is a bottom sheet behind a Map button, one pane at a time", async () => {
+  it("the destinations are a bottom bar, and one opens its flyout as a sheet that Esc closes", async () => {
     stubMatchMedia(true);
     mount();
-    const map = screen.getByTestId("map");
-    expect(map).not.toHaveClass("m2-open");
-    expect(map).not.toHaveAttribute("role", "dialog");
-    const button = screen.getByRole("button", { name: "Map" });
-    expect(button).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(button);
-    expect(map).toHaveClass("m2-open");
-    expect(map).toHaveAttribute("role", "dialog");
-    expect(button).toHaveAttribute("aria-expanded", "true");
+    const tabs = screen.getByTestId("bottom-tabs");
+    const fix = within(tabs).getByRole("button", { name: "Fix" });
+    expect(fix).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByTestId("flyout")).toBeNull();
+    fireEvent.click(fix);
+    expect(fix).toHaveAttribute("aria-expanded", "true");
+    expect(await screen.findByTestId("flyout")).toBeInTheDocument();
     keyOnBody("Escape");
-    await waitFor(() => expect(map).not.toHaveClass("m2-open"));
+    await waitFor(() => expect(screen.queryByTestId("flyout")).toBeNull());
   });
 });
 

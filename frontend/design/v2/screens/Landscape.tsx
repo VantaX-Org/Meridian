@@ -1,5 +1,6 @@
 "use client";
 
+import { RunTimelineMenu } from "../RunTimeline";
 import { Welcome } from "./Welcome";
 import { AletheiaFound } from "./AletheiaFound";
 import { AletheiaDock, CommandRow, GoLiveBanner } from "./CommandCentre";
@@ -25,7 +26,7 @@ import { IconCheck, VerdictMark } from "../marks";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { Ruler } from "../Ruler";
 import { ProcessNextStep } from "./object/ProcessNext";
-import { dimsOf, ScoreTrend, useTrends } from "../shell/MapPane";
+import { dimsOf, ScoreTrend, useTrends } from "../shell/ObjectsTree";
 import { GateMark } from "../inspector/governance";
 import { NextList } from "../inspector/inbox";
 import { RequestAccess } from "../admin/kit";
@@ -736,6 +737,7 @@ export function LandscapeCanvas() {
         </div>
       ) : null}
       <PageTitle sub={scopeName}>{t("Landscape")}</PageTitle>
+      <RunTimelineMenu />
       <Welcome />
       <GoLiveBanner landscape={L} waves={waves} />
       {L.cells.length ? <ReadinessMatrix landscape={L} run={run} /> : null}

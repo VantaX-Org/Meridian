@@ -13,7 +13,7 @@ import { useLandscape } from "@/lib/v2/queries";
 import { useSystemExtractions, useTimeline, useV2Jobs, useVersionsPage } from "@/lib/v2/runs-queries";
 import { useScopeSystem } from "@/lib/v2/scope";
 import { f1, int } from "@/lib/v2/score";
-import { RunTimelineChart, kindWord, triggerOf } from "../RunTimeline";
+import { RunTimelineChart, RunTimelineMenu, kindWord, triggerOf } from "../RunTimeline";
 import { VerdictMark } from "../marks";
 import { ChartFrame, ChartTable, MULTI_H, SmallMultiples, TrendChart, niceTicks, scoreDomain } from "../charts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
@@ -349,6 +349,7 @@ export function RunsCanvas() {
   return (
     <CcPage>
       <PageTitle sub={scope?.name}>{t("Runs")}</PageTitle>
+      <RunTimelineMenu />
       <CcBanner
         testId="runs-banner"
         label={t("Latest run")}

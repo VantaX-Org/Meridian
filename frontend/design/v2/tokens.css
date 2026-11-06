@@ -585,8 +585,6 @@ html[data-theme="dark"] .m2-root {
 .m2-root textarea { transition: background-color var(--m2-t-fast) var(--m2-ease), border-color var(--m2-t-fast) var(--m2-ease), color var(--m2-t-fast) var(--m2-ease), box-shadow var(--m2-t-fast) var(--m2-ease); }
 .m2-root .m2-job-bar { transition: width var(--m2-t-med) var(--m2-ease); }
 .m2-root .m2-chev { transition: transform var(--m2-t-fast) var(--m2-ease); }
-.m2-root .m2-map { transition: transform var(--m2-t-med) var(--m2-ease), visibility 0s linear var(--m2-t-med); }
-.m2-root .m2-map.m2-open { transition: transform var(--m2-t-med) var(--m2-ease); }
 .m2-root .m2-stack-s,
 .m2-root .m2-chart .m2-col { transition: fill var(--m2-t-fast) var(--m2-ease), stroke var(--m2-t-fast) var(--m2-ease); }
 
@@ -714,6 +712,8 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
     repeating-linear-gradient(to right, rgba(214, 0, 110, 0.12) 0 1px, transparent 1px 8px);
 }
 .m2-root[data-grid] .m2-map,
+.m2-root[data-grid] .m2-rail,
+.m2-root[data-grid] .m2-fly,
 .m2-root[data-grid] .m2-canvas,
 .m2-root[data-grid] .m2-insp { outline: 1px solid rgba(0, 102, 255, 0.55); outline-offset: -1px; }
 .m2-root[data-grid] .m2-canvas { box-shadow: inset var(--m2-gutter) 0 0 0 rgba(0, 102, 255, 0.07), inset calc(-1 * var(--m2-gutter)) 0 0 0 rgba(0, 102, 255, 0.07); }

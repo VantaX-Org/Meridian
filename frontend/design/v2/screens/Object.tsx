@@ -1,5 +1,6 @@
 "use client";
 
+import { RunTimelineMenu } from "../RunTimeline";
 import { EstimateNote, Money } from "../Money";
 import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -15,7 +16,7 @@ import { AletheiaDock, LandscapeTrend } from "./CommandCentre";
 import { FixPipeline } from "./Cockpit";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { Ruler } from "../Ruler";
-import { dimsOf } from "../shell/MapPane";
+import { dimsOf } from "../shell/ObjectsTree";
 import { contractMark } from "@/lib/v2/step9";
 import { policyMark } from "@/lib/v2/step10";
 import { RelatedObjects } from "./object/Related";
@@ -302,6 +303,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
   return (
     <>
       <PageTitle sub={system.name}>{label}</PageTitle>
+      <RunTimelineMenu />
       <RelatedObjects module={apiModule} system={systemSegment} systemId={system.id} label={label} />
       {tabs}
       {!cell ? (
