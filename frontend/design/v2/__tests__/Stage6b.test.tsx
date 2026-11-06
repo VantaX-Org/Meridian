@@ -1,3 +1,4 @@
+import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 import { screen } from "@testing-library/react";
