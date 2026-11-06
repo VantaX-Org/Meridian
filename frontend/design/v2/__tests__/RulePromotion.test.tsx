@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 import { fireEvent, screen, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
+import * as promotionApi from "@/lib/api/v2/rule-promotion";
 import { resetRulePromotion } from "@/lib/api/v2/fixtures/rulePromotion";
 import { RulePromotion, ratePct } from "../screens/RulePromotion";
 import { ToastProvider } from "../Toast";
@@ -19,11 +20,39 @@ beforeEach(() => {
 });
 afterEach(() => {
   undo();
+  window.history.pushState({}, "", "/");
   window.sessionStorage.clear();
   vi.restoreAllMocks();
 });
 
 describe("rule promotion", () => {
+  it("says when the generated rules cannot be read", async () => {
+    vi.spyOn(promotionApi, "getPromotionModules").mockRejectedValue(new Error("Network Error"));
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    expect(await screen.findByText("The generated rules could not be read.")).toBeInTheDocument();
+  });
+
+  it("says when the preview fails and keeps approval away", async () => {
+    vi.spyOn(promotionApi, "getPromotionPreview").mockRejectedValue(new Error("Network Error"));
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    fireEvent.click(await screen.findByTestId("promo-preview"));
+    expect(await screen.findByText("The rules could not be evaluated.")).toBeInTheDocument();
+    expect(screen.queryByTestId("promo-revert")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Approve the top/ })).toBeNull();
+  });
+
+  it("lets a viewer preview but not approve or revert", async () => {
+    const u = "/rule-promotion?fixture=1&role=viewer";
+    window.history.pushState({}, "", u);
+    setUrl(u);
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    expect(await screen.findByText("Managing rules needs the manage rules permission.")).toBeInTheDocument();
+    fireEvent.click(await screen.findByTestId("promo-preview"));
+    await screen.findByTestId("promo-rules");
+    expect(screen.queryByTestId("promo-revert")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Approve the top/ })).toBeNull();
+  });
+
   it("formats a small rate without rounding it to zero", () => {
     expect(ratePct(0.000249)).toBe("0.025%");
     expect(ratePct(0.082555)).toBe("8.3%");

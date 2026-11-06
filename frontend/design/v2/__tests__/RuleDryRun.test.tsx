@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
+import * as impactApi from "@/lib/api/v2/rule-impact";
 import { RuleDryRun, parseChanges, pct } from "../screens/RuleDryRun";
 import { stubLayout } from "./layout-stub";
 import { setUrl } from "./nav-store";
@@ -16,11 +17,34 @@ beforeEach(() => {
 });
 afterEach(() => {
   undo();
+  window.history.pushState({}, "", "/");
   window.sessionStorage.clear();
   vi.restoreAllMocks();
 });
 
 describe("rule dry run", () => {
+  it("says the dry run failed and runs it again on retry", async () => {
+    const call = vi.spyOn(impactApi, "runImpactDryRun").mockRejectedValue(new Error("Network Error"));
+    renderWithQuery(<RuleDryRun />);
+    fireEvent.click(screen.getByTestId("dry-run-go"));
+    expect(await screen.findByText("The dry run could not be done.")).toBeInTheDocument();
+    expect(screen.queryByTestId("dry-run-result")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(call).toHaveBeenCalledTimes(2));
+  });
+
+  it("explains the missing permission and keeps the run button off", () => {
+    const u = "/rule-dry-run?fixture=1&role=viewer&rule=AP002&module=accounts_payable";
+    window.history.pushState({}, "", u);
+    setUrl(u);
+    const call = vi.spyOn(impactApi, "runImpactDryRun");
+    renderWithQuery(<RuleDryRun />);
+    expect(screen.getByText("Running a dry run needs the manage rules permission.")).toBeInTheDocument();
+    expect(screen.getByTestId("dry-run-go")).toBeDisabled();
+    fireEvent.submit(screen.getByTestId("dry-run-go").closest("form") as HTMLFormElement);
+    expect(call).not.toHaveBeenCalled();
+  });
+
   it("parses the changes box and formats a rate", () => {
     expect(parseChanges("  ")).toBeNull();
     expect(parseChanges('{"pattern": "^[0-9]+$"}')).toEqual({ pattern: "^[0-9]+$" });
