@@ -74,7 +74,7 @@ describe("Value", () => {
   });
 });
 
-const FOLDED: [string, () => JSX.Element, RegExp, string[]][] = [
+const FOLDED: [string, () => React.ReactElement, RegExp, string[]][] = [
   ["Config", () => <Config />, /Nothing in SAP is changed/, ["How the system is used", "Changes since the last run"]],
   ["ScoreLens", () => <ScoreLens />, /only reads/, ["Run by run", "Where the score moved", "Config-aware view"]],
   ["Insights", () => <Insights />, /only reads/, ["Money already lost", "Trend over time"]],
