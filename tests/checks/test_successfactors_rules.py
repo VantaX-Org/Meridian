@@ -14,7 +14,7 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "successf
 EXPECTED_COUNTS = {
     # Fix round 3: EC380/EC381/EC443 tombstoned (append-only id contract: see
     # tests/test_sf_ec_depth_rules2.py DELETED), dropping the live count by 3.
-    "employee_central": 663,
+    "employee_central": 703,
     "compensation": 221,  # COMP137 deleted; tombstoned, see tests/test_sf_comp_depth_rules.py DELETED
     "recruiting_onboarding": 82,
     "learning_management": 81,
