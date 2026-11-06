@@ -73,6 +73,131 @@ tables:
       HOLIDAY_CALENDAR: {source: EmpJob.holidayCalendarCode, type: STRING, length: 128, verify: true, description: Holiday calendar code}
       TIME_TYPE_PROFILE: {source: EmpJob.timeTypeProfileCode, type: STRING, length: 128, verify: true, description: Time type profile code}
       JOB_END_DATE:    {source: EmpJob.endDate, type: DATE, verify: true, description: Effective end date of the current job record}
+      ELIGIBLE_FOR_STOCK:          {source: EmpEmployment.eligibleForStock, type: BOOLEAN, verify: true, description: Eligible for stock}
+      INITIAL_STOCK_GRANT:         {source: EmpEmployment.initialStockGrant, type: DECIMAL, verify: true, description: Initial stock grant}
+      PROFESSIONAL_SERVICE_DATE:   {source: EmpEmployment.professionalServiceDate, type: DATE, verify: true, description: Professional service date}
+      INITIAL_OPTION_GRANT:        {source: EmpEmployment.initialOptionGrant, type: DECIMAL, verify: true, description: Initial option grant}
+      EMPLOYEE_FIRST_EMPLOYMENT:   {source: EmpEmployment.employeeFirstEmployment, type: STRING, length: 10, verify: true, description: Employee first employment}
+      REGRET_TERMINATION:          {source: EmpEmployment.regretTermination, type: BOOLEAN, verify: true, description: Regret termination}
+      ELIGIBLE_FOR_SAL_CONTINUATION: {source: EmpEmployment.eligibleForSalContinuation, type: BOOLEAN, verify: true, description: Eligible for sal continuation}
+      STOCK_END_DATE:              {source: EmpEmployment.stockEndDate, type: DATE, verify: true, description: Stock end date}
+      SALARY_END_DATE:             {source: EmpEmployment.salaryEndDate, type: DATE, verify: true, description: Salary end date}
+      BENEFITS_END_DATE:           {source: EmpEmployment.benefitsEndDate, type: DATE, verify: true, description: Benefits end date}
+      POSITION_ENTRY_DATE:         {source: EmpJob.positionEntryDate, type: DATE, verify: true, description: Position entry date}
+      TIME_IN_POSITION:            {source: EmpJob.timeInPosition, type: STRING, length: 128, verify: true, description: Time in position}
+      LOCAL_JOB_TITLE:             {source: EmpJob.localJobTitle, type: STRING, length: 256, verify: true, description: Local job title (country-specific)}
+      IS_SHIFT_EMPLOYEE:           {source: EmpJob.isShiftEmployee, type: BOOLEAN, verify: true, description: Is shift employee}
+      SHIFT_CODE:                  {source: EmpJob.shiftCode, type: STRING, length: 256, verify: true, description: Shift code}
+      SHIFT_RATE:                  {source: EmpJob.shiftRate, type: DECIMAL, verify: true, description: Shift rate}
+      SHIFT_FACTOR:                {source: EmpJob.shiftFactor, type: DECIMAL, verify: true, description: Shift factor}
+      IS_CROSS_BORDER_WORKER:      {source: EmpJob.isCrossBorderWorker, type: BOOLEAN, verify: true, description: Is cross border worker}
+      IS_COMPETITION_CLAUSE_ACTIVE: {source: EmpJob.isCompetitionClauseActive, type: BOOLEAN, verify: true, description: Is competition clause active (country-specific)}
+      IS_SIDE_LINE_JOB_ALLOWED:    {source: EmpJob.isSideLineJobAllowed, type: BOOLEAN, verify: true, description: Is side line job allowed (country-specific)}
+      SICK_PAY_SUPPLEMENT:         {source: EmpJob.sickPaySupplement, type: STRING, length: 256, verify: true, picklist: SICKPAYSUPP, description: Sick pay supplement (country-specific)}
+      JOB_ENTRY_DATE:              {source: EmpJob.jobEntryDate, type: DATE, verify: true, description: Job entry date}
+      TIME_IN_JOB:                 {source: EmpJob.timeInJob, type: STRING, length: 256, verify: true, description: Time in job}
+      COMPANY_ENTRY_DATE:          {source: EmpJob.companyEntryDate, type: DATE, verify: true, description: Company entry date}
+      TIME_IN_COMPANY:             {source: EmpJob.timeInCompany, type: STRING, length: 128, verify: true, description: Time in company}
+      LOCATION_ENTRY_DATE:         {source: EmpJob.locationEntryDate, type: DATE, verify: true, description: Location entry date}
+      TIME_IN_LOCATION:            {source: EmpJob.timeInLocation, type: STRING, length: 128, verify: true, description: Time in location}
+      DEPARTMENT_ENTRY_DATE:       {source: EmpJob.departmentEntryDate, type: DATE, verify: true, description: Department entry date}
+      TIME_IN_DEPARTMENT:          {source: EmpJob.timeInDepartment, type: STRING, length: 128, verify: true, description: Time in department}
+      PAY_SCALE_LEVEL_ENTRY_DATE:  {source: EmpJob.payScaleLevelEntryDate, type: DATE, verify: true, description: Pay scale level entry date}
+      TIME_IN_PAY_SCALE_LEVEL:     {source: EmpJob.timeInPayScaleLevel, type: STRING, length: 128, verify: true, description: Time in pay scale level}
+      HIRE_DATE:                   {source: EmpJob.hireDate, type: DATE, verify: true, description: Hire date}
+      TERMINATION_DATE:            {source: EmpJob.terminationDate, type: DATE, verify: true, description: Termination date}
+      LEAVE_OF_ABSENCE_START_DATE: {source: EmpJob.leaveOfAbsenceStartDate, type: DATE, verify: true, description: Leave of absence start date}
+      LEAVE_OF_ABSENCE_RETURN_DATE: {source: EmpJob.leaveOfAbsenceReturnDate, type: DATE, verify: true, description: Leave of absence return date}
+      EMPLOYEE_NOTICE_PERIOD:      {source: EmpJob.employeeNoticePeriod, type: STRING, length: 256, verify: true, picklist: EENoticePeriod, description: Employee notice period}
+      TIME_RECORDING_ADMISSIBILITY_CODE: {source: EmpJob.timeRecordingAdmissibilityCode, type: STRING, verify: true, description: Time recording admissibility code}
+      DEFAULT_OVERTIME_COMPENSATION_VARIANT: {source: EmpJob.defaultOvertimeCompensationVariant, type: STRING, verify: true, description: Default overtime compensation variant}
+      INITIAL_ENTRY_DATE:          {source: EmpJob.initialEntryDate, type: DATE, verify: true, description: Initial entry date (country-specific)}
+      ENTRY_INTO_GROUP:            {source: EmpJob.entryIntoGroup, type: DATE, verify: true, description: Entry into group (country-specific)}
+      CONTINUED_SICKNESS_PAY_PERIOD: {source: EmpJob.continuedSicknessPayPeriod, type: INTEGER, verify: true, description: Continued sickness pay period (country-specific)}
+      CONTINUED_SICKNESS_PAY_MEASURE: {source: EmpJob.continuedSicknessPayMeasure, type: STRING, length: 256, verify: true, picklist: periodIndicator, description: Continued sickness pay measure (country-specific)}
+      CORPORATION:                 {source: EmpJob.corporation, type: STRING, length: 256, verify: true, description: Corporation (country-specific)}
+      TRAVEL_DISTANCE:             {source: EmpJob.travelDistance, type: DECIMAL, verify: true, description: Travel distance (country-specific)}
+      TRANSPORTATION_SUBSIDY:      {source: EmpJob.transportationSubsidy, type: STRING, length: 256, verify: true, picklist: transportationSubsidy, description: Transportation subsidy (country-specific)}
+      EMP_RELATIONSHIP:            {source: EmpJob.empRelationship, type: STRING, length: 256, verify: true, picklist: employmentRelationship, description: Emp relationship (country-specific)}
+      WORKER_CATEGORY:             {source: EmpJob.workerCategory, type: STRING, length: 256, verify: true, picklist: workerCategory, description: Worker category (country-specific)}
+      MANDATORY_WORK_BREAK_RECORD: {source: EmpJob.mandatoryWorkBreakRecord, type: STRING, length: 38, verify: true, picklist: yesNo, description: Mandatory work break record (country-specific)}
+      HARMFUL_AGENT_EXPOSURE:      {source: EmpJob.harmfulAgentExposure, type: STRING, length: 256, verify: true, picklist: harmfulAgentExposureCode, description: Harmful agent exposure (country-specific)}
+      COMMITMENT_INDICATOR:        {source: EmpJob.commitmentIndicator, type: STRING, length: 256, verify: true, picklist: commitmentIndicator, description: Commitment indicator (country-specific)}
+      PERMIT_INDICATOR:            {source: EmpJob.permitIndicator, type: BOOLEAN, verify: true, description: Permit indicator (country-specific)}
+      PCFM:                        {source: EmpJob.pcfm, type: BOOLEAN, verify: true, description: Pcfm (country-specific)}
+      RETIRED:                     {source: EmpJob.retired, type: BOOLEAN, verify: true, description: Retired (country-specific)}
+      HEALTH_RISK:                 {source: EmpJob.healthRisk, type: BOOLEAN, verify: true, description: Health risk (country-specific)}
+      HAZARD:                      {source: EmpJob.hazard, type: BOOLEAN, verify: true, description: Hazard (country-specific)}
+      FGTS_OPTANT:                 {source: EmpJob.fgtsOptant, type: BOOLEAN, verify: true, description: Fgts optant (country-specific)}
+      FGTS_DATE:                   {source: EmpJob.fgtsDate, type: DATE, verify: true, description: Fgts date (country-specific)}
+      FGTS_PERCENT:                {source: EmpJob.fgtsPercent, type: DECIMAL, verify: true, description: Fgts percent (country-specific)}
+      PROBATIONARY_PERIOD:         {source: EmpJob.probationaryPeriod, type: INTEGER, verify: true, description: Probationary period (country-specific)}
+      PROBATIONARY_PERIOD_MEASURE: {source: EmpJob.probationaryPeriodMeasure, type: STRING, length: 256, verify: true, picklist: periodIndicator, description: Probationary period measure (country-specific)}
+      INCLUDED_CHALLENGED_PERSON_QUOTA: {source: EmpJob.includedChallengedPersonQuota, type: STRING, length: 256, verify: true, picklist: yesNo, description: Included challenged person quota (country-specific)}
+      INTERNSHIP_SCHOOL:           {source: EmpJob.internshipSchool, type: STRING, length: 256, verify: true, picklist: InternshipSchool_BRA, description: Internship school (country-specific)}
+      MANDATORY_INTERNSHIP:        {source: EmpJob.mandatoryInternship, type: STRING, length: 256, verify: true, picklist: yesNo, description: Mandatory internship (country-specific)}
+      INTERNSHIP_LEVEL:            {source: EmpJob.internshipLevel, type: STRING, length: 256, verify: true, picklist: InternshipLevel_BRA, description: Internship level (country-specific)}
+      INTEGRATION_AGENT:           {source: EmpJob.integrationAgent, type: STRING, length: 256, verify: true, description: Integration agent (country-specific)}
+      EDUCATIONAL_ENTITY:          {source: EmpJob.educationalEntity, type: STRING, length: 256, verify: true, description: Educational entity (country-specific)}
+      WORK_LOCATION:               {source: EmpJob.workLocation, type: STRING, length: 256, verify: true, description: Work location (country-specific)}
+      LABOR_PROTECTION:            {source: EmpJob.laborProtection, type: BOOLEAN, verify: true, description: Labor protection (country-specific)}
+      OCCUPATION_CRI:              {source: EmpJob.occupationCri, type: STRING, length: 256, verify: true, picklist: OccupCode_CRI, description: Occupation cri (country-specific)}
+      NEW_CALC_AVG_PPU:            {source: EmpJob.newCalcAvgPpu, type: BOOLEAN, verify: true, description: New calc avg ppu (country-specific)}
+      NEW_CALC_AVG_DNP:            {source: EmpJob.newCalcAvgDnp, type: BOOLEAN, verify: true, description: New calc avg dnp (country-specific)}
+      CODE_OF_JOB_FOR_ELDP:        {source: EmpJob.codeOfJobForEldp, type: STRING, length: 256, verify: true, picklist: codeOfJobELDP, description: Code of job for eldp (country-specific)}
+      ASSEDIC_CERT_INITIAL_STATE_NUM: {source: EmpJob.assedicCertInitialStateNum, type: INTEGER, verify: true, description: Assedic cert initial state num (country-specific)}
+      ASSEDIC_CERT_OBJECT_NUM:     {source: EmpJob.assedicCertObjectNum, type: INTEGER, verify: true, description: Assedic cert object num (country-specific)}
+      FAMILY_RELATIONSHIP_WITH_EMPLOYER: {source: EmpJob.familyRelationshipWithEmployer, type: STRING, length: 256, verify: true, picklist: familyRelationship, description: Family relationship with employer (country-specific)}
+      CONTRACT_REFERENCE_FOR_AED:  {source: EmpJob.contractReferenceForAed, type: STRING, length: 256, verify: true, description: Contract reference for aed (country-specific)}
+      ELECTORAL_COLLEGE_FOR_WORKERS_REPRESENTATIVES: {source: EmpJob.electoralCollegeForWorkersRepresentatives, type: STRING, length: 256, verify: true, picklist: electoralCollegeRepresentativesCouncil, description: Electoral college for workers representatives (country-specific)}
+      ELECTORAL_COLLEGE_FOR_WORKS_COUNCIL: {source: EmpJob.electoralCollegeForWorksCouncil, type: STRING, length: 256, verify: true, picklist: electoralCollegeRepresentativesCouncil, description: Electoral college for works council (country-specific)}
+      ELECTORAL_COLLEGE_FOR_LABOR_COURT: {source: EmpJob.electoralCollegeForLaborCourt, type: STRING, length: 256, verify: true, picklist: electoralCollegeLaborCourt, description: Electoral college for labor court (country-specific)}
+      LABOR_COURT_SECTOR:          {source: EmpJob.laborCourtSector, type: STRING, length: 256, verify: true, picklist: laborCourtSector, description: Labor court sector (country-specific)}
+      EXCL_EXECUTIVE_SECTOR:       {source: EmpJob.exclExecutiveSector, type: BOOLEAN, verify: true, description: Excl executive sector (country-specific)}
+      RESIDENT_VOTE:               {source: EmpJob.residentVote, type: BOOLEAN, verify: true, description: Resident vote (country-specific)}
+      MUNICIPAL_INSEE_CODE:        {source: EmpJob.municipalInseeCode, type: INTEGER, verify: true, description: Municipal insee code (country-specific)}
+      EMPLOYEE_WORKGROUP_MEMBERSHIP: {source: EmpJob.employeeWorkgroupMembership, type: STRING, length: 60, verify: true, picklist: yesNo, description: Employee workgroup membership (country-specific)}
+      NOTICE_PERIOD:               {source: EmpJob.noticePeriod, type: STRING, length: 256, verify: true, description: Notice period (country-specific)}
+      OCCUPATION_GTM:              {source: EmpJob.occupationGtm, type: STRING, length: 256, verify: true, picklist: OccupCode_GTM, description: Occupation gtm (country-specific)}
+      CONTRACT_ID:                 {source: EmpJob.contractId, type: STRING, length: 256, verify: true, description: Contract id (country-specific)}
+      CONTRACT_NUMBER:             {source: EmpJob.contractNumber, type: INTEGER, verify: true, description: Contract number (country-specific)}
+      INELIGIBLE_STATUTORY_MIN_WAGE: {source: EmpJob.ineligibleStatutoryMinWage, type: BOOLEAN, verify: true, description: Ineligible statutory min wage (country-specific)}
+      SPCL_RULE_NON_MANUAL_WORKER: {source: EmpJob.spclRuleNonManualWorker, type: BOOLEAN, verify: true, description: Spcl rule non manual worker (country-specific)}
+      PAYMENT_IN_LIEU_OF_NOTICE:   {source: EmpJob.paymentInLieuOfNotice, type: BOOLEAN, verify: true, description: Payment in lieu of notice (country-specific)}
+      GUARANTEED_PAYMENT:          {source: EmpJob.guaranteedPayment, type: INTEGER, verify: true, description: Guaranteed payment (country-specific)}
+      PERIOD_INDICATOR:            {source: EmpJob.periodIndicator, type: STRING, length: 256, verify: true, picklist: periodIndicator, description: Period indicator (country-specific)}
+      CALCULATION_BASE:            {source: EmpJob.calculationBase, type: STRING, length: 256, verify: true, description: Calculation base (country-specific)}
+      WORK_PERMIT_EXPIRY:          {source: EmpJob.workPermitExpiry, type: DATE, verify: true, description: Work permit expiry (country-specific)}
+      CREDIT_FOR_PREVIOUS_SERVICE: {source: EmpJob.creditForPreviousService, type: STRING, length: 256, verify: true, description: Credit for previous service (country-specific)}
+      ASSESSMENT_STATUS:           {source: EmpJob.assessmentStatus, type: STRING, length: 256, verify: true, picklist: assessmentStatus, description: Assessment status (country-specific)}
+      CURRENT_WAGE_LEVEL:          {source: EmpJob.currentWageLevel, type: DECIMAL, verify: true, description: Current wage level (country-specific)}
+      DEGREE_OF_PRODUCTIVITY:      {source: EmpJob.degreeOfProductivity, type: DECIMAL, verify: true, description: Degree of productivity (country-specific)}
+      SICK_PAY_SUPPLEMENT_PERIOD:  {source: EmpJob.sickPaySupplementPeriod, type: INTEGER, verify: true, description: Sick pay supplement period (country-specific)}
+      SICK_PAY_SUPPLEMENT_MEASURE: {source: EmpJob.sickPaySupplementMeasure, type: STRING, length: 256, verify: true, picklist: periodIndicator, description: Sick pay supplement measure (country-specific)}
+      OCCUPATIONAL_LEVEL_KEN:      {source: EmpJob.occupationalLevelKen, type: STRING, length: 256, verify: true, picklist: occupationalLevel_KEN, description: Occupational level ken (country-specific)}
+      OCCUPATIONAL_LEVELS:         {source: EmpJob.occupationalLevels, type: STRING, length: 256, verify: true, picklist: occupationalLevels, description: Occupational levels (country-specific)}
+      OCCUPATION_PER:              {source: EmpJob.occupationPer, type: STRING, length: 256, verify: true, picklist: OccupCode_PER, description: Occupation per (country-specific)}
+      JOB_GROUP:                   {source: EmpJob.jobGroup, type: STRING, length: 256, verify: true, picklist: jobGroup_Per, description: Job group (country-specific)}
+      FLSA_STATUS:                 {source: EmpJob.flsaStatus, type: STRING, length: 256, verify: true, picklist: FLSASTATUS_USA, description: Flsa status (country-specific)}
+      EEO_CLASS:                   {source: EmpJob.eeoClass, type: STRING, length: 256, verify: true, picklist: EEOJOBGROUP_USA, description: Eeo class (country-specific)}
+      CHANGE_REASON:               {source: EmpJob.changeReason, type: STRING, length: 128, verify: true, description: Change reason (country-specific)}
+      CHANGE_REASON_EXTERNAL:      {source: EmpJob.changeReasonExternal, type: STRING, length: 128, verify: true, description: Change reason external (country-specific)}
+      EEO1_JOB_CATEGORY:           {source: EmpJob.eeo1JobCategory, type: STRING, length: 256, verify: true, picklist: EEO1CODE_USA, description: Eeo1 job category (country-specific)}
+      EEO4_JOB_CATEGORY:           {source: EmpJob.eeo4JobCategory, type: STRING, length: 256, verify: true, picklist: EEO4CODE_USA, description: Eeo4 job category (country-specific)}
+      EEO5_JOB_CATEGORY:           {source: EmpJob.eeo5JobCategory, type: STRING, length: 256, verify: true, picklist: EEO5CODE_USA, description: Eeo5 job category (country-specific)}
+      EEO6_JOB_CATEGORY:           {source: EmpJob.eeo6JobCategory, type: STRING, length: 256, verify: true, picklist: EEO6CODE_USA, description: Eeo6 job category (country-specific)}
+      FROM_CURRENCY:               {source: EmpJob.fromCurrency, type: STRING, length: 256, verify: true, picklist: currency, description: From currency (country-specific)}
+      TO_CURRENCY:                 {source: EmpJob.toCurrency, type: STRING, length: 256, verify: true, picklist: currency, description: To currency (country-specific)}
+      EXCHANGE_RATE:               {source: EmpJob.exchangeRate, type: DECIMAL, verify: true, description: Exchange rate (country-specific)}
+      VALID_FROM:                  {source: EmpJob.validFrom, type: DATE, verify: true, description: Valid from (country-specific)}
+      DISMISSALS_NOTICE_PERIOD_FOR_EMPLOYER: {source: EmpJob.dismissalsNoticePeriodForEmployer, type: STRING, length: 256, verify: true, picklist: dismissalsNoticePeriod, description: Dismissals notice period for employer (country-specific)}
+      CONTRACT_DATE:               {source: EmpJob.contractDate, type: DATE, verify: true, description: Contract date (country-specific)}
+      CALC_METHOD_INDICATOR:       {source: EmpJob.calcMethodIndicator, type: BOOLEAN, verify: true, description: Calc method indicator (country-specific)}
+      WORKING_TIME_DIRECTIVE:      {source: EmpJob.workingTimeDirective, type: BOOLEAN, verify: true, description: Working time directive (country-specific)}
+      WTD_HOURS_LIMIT:             {source: EmpJob.wtdHoursLimit, type: STRING, length: 256, verify: true, description: Wtd hours limit (country-specific)}
+      TUPE_ORG_NUMBER:             {source: EmpJob.tupeOrgNumber, type: STRING, length: 256, verify: true, description: Tupe org number (country-specific)}
+      PENSION_PROTECTION:          {source: EmpJob.pensionProtection, type: BOOLEAN, verify: true, description: Pension protection (country-specific)}
+      TEACHERS_PENSION:            {source: EmpJob.teachersPension, type: BOOLEAN, verify: true, description: Teachers pension (country-specific)}
 
   PERINFO:
     description: Personal information (PerPersonal ⋈ PerPerson ⋈ primary PerNationalId)
@@ -97,6 +222,45 @@ tables:
       SECOND_NATIONALITY: {source: PerPersonal.secondNationality, type: STRING, length: 128, verify: true, check_table: Country, description: Second nationality}
       PLACE_OF_BIRTH: {source: PerPerson.placeOfBirth, type: STRING, length: 128, verify: true, description: Place of birth}
       PERSON_UUID:    {source: PerPerson.perPersonUuid, type: STRING, length: 128, verify: true, description: Person UUID (stable surrogate key)}
+      REGION_OF_BIRTH:             {source: PerPerson.regionOfBirth, type: STRING, length: 100, verify: true, description: Region of birth}
+      SECOND_LAST_NAME:            {source: PerPersonal.secondLastName, type: STRING, length: 128, verify: true, description: Second last name}
+      SUFFIX:                      {source: PerPersonal.suffix, type: STRING, length: 128, verify: true, picklist: namesuffix, description: Suffix}
+      FIRST_NAME_ALT1:             {source: PerPersonal.firstNameAlt1, type: STRING, length: 128, verify: true, description: First name alt1}
+      MIDDLE_NAME_ALT1:            {source: PerPersonal.middleNameAlt1, type: STRING, length: 128, verify: true, description: Middle name alt1}
+      LAST_NAME_ALT1:              {source: PerPersonal.lastNameAlt1, type: STRING, length: 128, verify: true, description: Last name alt1}
+      FIRST_NAME_ALT2:             {source: PerPersonal.firstNameAlt2, type: STRING, length: 128, verify: true, description: First name alt2}
+      MIDDLE_NAME_ALT2:            {source: PerPersonal.middleNameAlt2, type: STRING, length: 128, verify: true, description: Middle name alt2}
+      LAST_NAME_ALT2:              {source: PerPersonal.lastNameAlt2, type: STRING, length: 128, verify: true, description: Last name alt2}
+      DISPLAY_NAME:                {source: PerPersonal.displayName, type: STRING, length: 128, verify: true, description: Display name}
+      FORMAL_NAME:                 {source: PerPersonal.formalName, type: STRING, length: 128, verify: true, description: Formal name}
+      TITLE:                       {source: PerPersonal.title, type: STRING, length: 128, verify: true, description: Title}
+      BIRTH_NAME_ALT1:             {source: PerPersonal.birthNameAlt1, type: STRING, length: 128, verify: true, description: Birth name alt1}
+      BIRTH_NAME_ALT2:             {source: PerPersonal.birthNameAlt2, type: STRING, length: 128, verify: true, description: Birth name alt2}
+      INITIALS:                    {source: PerPersonal.initials, type: STRING, length: 128, verify: true, description: Initials}
+      SECOND_TITLE:                {source: PerPersonal.secondTitle, type: STRING, length: 128, verify: true, picklist: secondTitle, description: Second title}
+      NAME_PREFIX:                 {source: PerPersonal.namePrefix, type: STRING, length: 128, verify: true, picklist: nameprefix, description: Name prefix}
+      DISPLAY_NAME_ALT1:           {source: PerPersonal.displayNameAlt1, type: STRING, length: 128, verify: true, description: Display name alt1}
+      DISPLAY_NAME_ALT2:           {source: PerPersonal.displayNameAlt2, type: STRING, length: 128, verify: true, description: Display name alt2}
+      FORMAL_NAME_ALT1:            {source: PerPersonal.formalNameAlt1, type: STRING, length: 128, verify: true, description: Formal name alt1}
+      FORMAL_NAME_ALT2:            {source: PerPersonal.formalNameAlt2, type: STRING, length: 128, verify: true, description: Formal name alt2}
+      SINCE:                       {source: PerPersonal.since, type: DATE, verify: true, description: Since}
+      THIRD_NATIONALITY:           {source: PerPersonal.thirdNationality, type: STRING, length: 128, verify: true, description: Third nationality}
+      NATIVE_PREFERRED_LANG:       {source: PerPersonal.nativePreferredLang, type: STRING, length: 256, verify: true, picklist: language, description: Native preferred lang}
+      CHALLENGE_STATUS:            {source: PerPersonal.challengeStatus, type: BOOLEAN, verify: true, description: Challenge status}
+      CERTIFICATE_START_DATE:      {source: PerPersonal.certificateStartDate, type: DATE, verify: true, description: Certificate start date}
+      CERTIFICATE_END_DATE:        {source: PerPersonal.certificateEndDate, type: DATE, verify: true, description: Certificate end date}
+      PARTNER_NAME:                {source: PerPersonal.partnerName, type: STRING, length: 128, verify: true, description: Partner name}
+      PARTNER_NAME_PREFIX:         {source: PerPersonal.partnerNamePrefix, type: STRING, length: 128, verify: true, picklist: nameprefix, description: Partner name prefix}
+      NAME_FORMAT_CODE:            {source: PerPersonal.nameFormatCode, type: STRING, length: 128, verify: true, description: Name format code}
+      SCRIPT:                      {source: PerPersonal.script, type: STRING, length: 128, verify: true, description: Script}
+      SCRIPT_ALT1:                 {source: PerPersonal.scriptAlt1, type: STRING, length: 128, verify: true, description: Script alt1}
+      SCRIPT_ALT2:                 {source: PerPersonal.scriptAlt2, type: STRING, length: 128, verify: true, description: Script alt2}
+      THIRD_NAME:                  {source: PerPersonal.thirdName, type: STRING, length: 128, verify: true, description: Third name}
+      THIRD_NAME_ALT1:             {source: PerPersonal.thirdNameAlt1, type: STRING, length: 128, verify: true, description: Third name alt1}
+      THIRD_NAME_ALT2:             {source: PerPersonal.thirdNameAlt2, type: STRING, length: 128, verify: true, description: Third name alt2}
+      IS_PRIMARY:                  {source: PerNationalId.isPrimary, type: BOOLEAN, verify: true, description: Is primary}
+      IS_TEMPORARY:                {source: PerNationalId.isTemporary, type: BOOLEAN, verify: true, description: Is temporary}
+      TEMPORARY_ID:                {source: PerNationalId.temporaryId, type: STRING, length: 256, verify: true, description: Temporary id}
 
   PEREMAIL:
     description: E-mail addresses
@@ -140,6 +304,25 @@ tables:
       STATE:         {source: PerAddressDEFLT.state, type: STRING, length: 256}
       ZIPCODE:       {source: PerAddressDEFLT.zipCode, type: STRING, length: 256}
       COUNTRY:       {source: PerAddressDEFLT.country, type: STRING, length: 128, check_table: Country}
+      ADDRESS3:                    {source: PerAddressDEFLT.address3, type: STRING, length: 256, verify: true, description: Address3 (country-specific)}
+      PROVINCE:                    {source: PerAddressDEFLT.province, type: STRING, length: 256, verify: true, picklist: Province_AGO, description: Province (country-specific)}
+      ADDRESS4:                    {source: PerAddressDEFLT.address4, type: STRING, length: 256, verify: true, description: Address4 (country-specific)}
+      ADDRESS5:                    {source: PerAddressDEFLT.address5, type: STRING, length: 256, verify: true, description: Address5 (country-specific)}
+      COUNTY:                      {source: PerAddressDEFLT.county, type: STRING, length: 256, verify: true, description: County (country-specific)}
+      ADDRESS6:                    {source: PerAddressDEFLT.address6, type: STRING, length: 256, verify: true, description: Address6 (country-specific)}
+      ADDRESS7:                    {source: PerAddressDEFLT.address7, type: STRING, length: 256, verify: true, picklist: District_BLR, description: Address7 (country-specific)}
+      ADDRESS8:                    {source: PerAddressDEFLT.address8, type: STRING, length: 256, verify: true, description: Address8 (country-specific)}
+      ADDRESS9:                    {source: PerAddressDEFLT.address9, type: STRING, length: 256, verify: true, picklist: STRTYPE_HUN, description: Address9 (country-specific)}
+      ADDRESS13:                   {source: PerAddressDEFLT.address13, type: STRING, length: 256, verify: true, description: Address13 (country-specific)}
+      ADDRESS10:                   {source: PerAddressDEFLT.address10, type: STRING, length: 256, verify: true, description: Address10 (country-specific)}
+      ADDRESS11:                   {source: PerAddressDEFLT.address11, type: STRING, length: 256, verify: true, description: Address11 (country-specific)}
+      ADDRESS12:                   {source: PerAddressDEFLT.address12, type: STRING, length: 256, verify: true, picklist: CITY_QAT, description: Address12 (country-specific)}
+      ADDRESS18:                   {source: PerAddressDEFLT.address18, type: STRING, length: 256, verify: true, picklist: REGIONTYPE_RUS, description: Address18 (country-specific)}
+      ADDRESS17:                   {source: PerAddressDEFLT.address17, type: STRING, length: 256, verify: true, picklist: COUNTYTYPE_RUS, description: Address17 (country-specific)}
+      ADDRESS14:                   {source: PerAddressDEFLT.address14, type: STRING, length: 256, verify: true, picklist: CITYDISTRICTTYPE_RUS, description: Address14 (country-specific)}
+      ADDRESS15:                   {source: PerAddressDEFLT.address15, type: STRING, length: 256, verify: true, description: Address15 (country-specific)}
+      ADDRESS16:                   {source: PerAddressDEFLT.address16, type: STRING, length: 256, verify: true, picklist: PLANSTRUCTURETYPE_RUS, description: Address16 (country-specific)}
+      ADDRESS20:                   {source: PerAddressDEFLT.address20, type: STRING, length: 256, verify: true, description: Address20 (country-specific)}
 
   COMPINFO:
     description: Compensation (EmpCompensation ⋈ recurring pay component ⋈ pay range)
@@ -182,6 +365,13 @@ tables:
       ANNUALIZATION_FACTOR:    {source: FOFrequency.annualizationFactor, type: DECIMAL, verify: true, description: Periods per year of the pay component frequency}
       ANNUAL_SALARY:       {source: EmpCompensationCalculatedNavigation.yearlyBaseSalary, type: DECIMAL, verify: true, description: Calculated annual base salary}
       RANGE_PENETRATION:   {source: EmpCompensationCalculatedNavigation.rangePenetration, type: DECIMAL, verify: true, description: 'Calculated position in the pay range (0 at minimum, 1 at maximum)'}
+      SEQ_NUMBER:                  {source: EmpCompensation.seqNumber, type: INTEGER, verify: true, description: Seq number}
+      IS_ELIGIBLE_FOR_BENEFITS:    {source: EmpCompensation.isEligibleForBenefits, type: BOOLEAN, verify: true, description: Is eligible for benefits}
+      IS_ELIGIBLE_FOR_CAR:         {source: EmpCompensation.isEligibleForCar, type: BOOLEAN, verify: true, description: Is eligible for car}
+      BENEFITS_RATE:               {source: EmpCompensation.benefitsRate, type: DECIMAL, verify: true, description: Benefits rate}
+      IS_HIGHLY_COMPENSATED_EMPLOYEE: {source: EmpCompensation.isHighlyCompensatedEmployee, type: BOOLEAN, verify: true, description: Is highly compensated employee}
+      IS_INSIDER:                  {source: EmpCompensation.isInsider, type: BOOLEAN, verify: true, description: Is insider}
+      PENSIONABLE_SALARY:          {source: EmpCompensation.pensionableSalary, type: DECIMAL, verify: true, description: Pensionable salary}
 
   PAYCOMPNONREC:
     description: One-time pay components (EmpPayCompNonRecurring)
@@ -286,6 +476,8 @@ tables:
       END_DATE:          {source: PerPersonRelationship.endDate, type: DATE}
       IS_BENEFICIARY:    {source: PerPersonRelationship.isBeneficiary, type: BOOLEAN, verify: true}
       DEPENDENT_BIRTH:   {source: PerPerson.dateOfBirth (related person), type: DATE, verify: true, description: Date of birth of the dependent}
+      IS_ACCOMPANYING_DEPENDENT:   {source: PerPersonRelationship.isAccompanyingDependent, type: BOOLEAN, verify: true, description: Is accompanying dependent}
+      IS_ADDRESS_SAME_AS_PERSON:   {source: PerPersonRelationship.isAddressSameAsPerson, type: BOOLEAN, verify: true, description: Is address same as person}
 
   GOALPLAN:
     description: Performance goals (Goal_<planId>)
@@ -518,6 +710,17 @@ tables:
       LOCATION:         {source: Position.location, type: STRING, length: 128, verify: true, check_table: FOLocation, description: Location of the position}
       PAY_GRADE:        {source: Position.payGrade, type: STRING, length: 128, verify: true, check_table: FOPayGrade, description: Pay grade of the position}
       EXTERNAL_NAME:    {source: Position.externalName_defaultValue, type: STRING, length: 256, verify: true, description: External (job-board facing) position name}
+      POSITION_TITLE:              {source: Position.positionTitle, type: STRING, length: 255, verify: true, description: Position title}
+      POSITION_CONTROLLED:         {source: Position.positionControlled, type: BOOLEAN, verify: true, description: Position controlled}
+      COMMENT:                     {source: Position.comment, type: STRING, length: 255, verify: true, description: Comment}
+      INCUMBENT:                   {source: Position.incumbent, type: STRING, length: 255, verify: true, description: Incumbent}
+      DESCRIPTION:                 {source: Position.description, type: STRING, length: 255, verify: true, description: Description}
+      JOB_TITLE:                   {source: Position.jobTitle, type: STRING, length: 255, verify: true, description: Job title}
+      CREATED_BY:                  {source: Position.createdBy, type: STRING, length: 255, verify: true, description: Created by}
+      LAST_MODIFIED_BY:            {source: Position.lastModifiedBy, type: STRING, length: 255, verify: true, description: Last modified by}
+      PARENT_POSITION:             {source: Position.parentPosition, type: STRING, verify: true, description: Parent position}
+      POSITION_MATRIX_RELATIONSHIP: {source: Position.positionMatrixRelationship, type: STRING, verify: true, description: Position matrix relationship}
+      RIGHT_TO_RETURN:             {source: Position.rightToReturn, type: STRING, verify: true, description: Right to return}
 
   # I4 (review): every FO* target below (FOCompany, FODepartment, FODivision, FOLocation,
   # FOJobCode, FOCostCenter, FOBusinessUnit, FOEventReason, ...) also extracts with
@@ -535,6 +738,9 @@ tables:
       COUNTRY:       {source: FOCompany.country, type: STRING, length: 128, description: Country of the legal entity}
       CURRENCY:      {source: FOCompany.currency, type: STRING, length: 20, description: Default currency of the legal entity}
       STATUS:        {source: FOCompany.status, type: STRING, length: 2, description: A active / I inactive}
+      EFFECTIVE_START_DATE:        {source: FOCompany.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
+      NAME:                        {source: FOCompany.name, type: STRING, verify: true, description: Name}
+      DESCRIPTION:                 {source: FOCompany.description, type: STRING, verify: true, description: Description}
 
   FODEPARTMENT:
     description: Departments (Foundation Object), current record
@@ -544,6 +750,11 @@ tables:
       EXTERNAL_CODE: {source: FODepartment.externalCode, type: STRING, length: 128, description: Department code}
       COST_CENTER:   {source: FODepartment.costCenter, type: STRING, length: 128, verify: true, description: Default cost centre of the department}
       STATUS:        {source: FODepartment.status, type: STRING, length: 2, description: A active / I inactive}
+      EFFECTIVE_START_DATE:        {source: FODepartment.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
+      NAME:                        {source: FODepartment.name, type: STRING, verify: true, description: Name}
+      DESCRIPTION:                 {source: FODepartment.description, type: STRING, verify: true, description: Description}
+      HEAD_OF_UNIT:                {source: FODepartment.headOfUnit, type: STRING, length: 128, verify: true, description: Head of unit}
+      PARENT_DEPARTMENT:           {source: FODepartment.parentDepartment, type: STRING, verify: true, check_table: FODepartment, description: Parent department}
 
   # Employee Central depth (EC121+): full job history, permits, payment, emergency
   # contacts, global assignments and the remaining Foundation Objects.
@@ -593,6 +804,9 @@ tables:
       ISSUE_DATE:      {source: EmpWorkPermit.issueDate, type: DATE, verify: true}
       EXPIRATION_DATE: {source: EmpWorkPermit.expirationDate, type: DATE, verify: true}
       IS_VALIDATED:    {source: EmpWorkPermit.isValidated, type: BOOLEAN, verify: true}
+      DOCUMENT_TITLE:              {source: EmpWorkPermit.documentTitle, type: STRING, length: 256, verify: true, description: Document title}
+      ISSUE_PLACE:                 {source: EmpWorkPermit.issuePlace, type: STRING, length: 256, verify: true, description: Issue place}
+      ISSUING_AUTHORITY:           {source: EmpWorkPermit.issuingAuthority, type: STRING, length: 256, verify: true, description: Issuing authority}
 
   PAYMENTINFO:
     description: Payment information details (bank accounts), MDF PaymentInformationDetailV3
@@ -614,6 +828,11 @@ tables:
       CURRENCY:       {source: PaymentInformationDetailV3.currency, type: STRING, length: 20, verify: true}
       PERCENT:        {source: PaymentInformationDetailV3.percent, type: DECIMAL, verify: true}
       AMOUNT:         {source: PaymentInformationDetailV3.amount, type: DECIMAL, verify: true}
+      WORKER:                      {source: PaymentInformationDetailV3.worker, type: STRING, length: 100, verify: true, description: Worker}
+      JOB_COUNTRY:                 {source: PaymentInformationDetailV3.jobCountry, type: STRING, length: 38, verify: true, description: Job country}
+      EFFECTIVE_START_DATE:        {source: PaymentInformationDetailV3.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
+      EFFECTIVE_END_DATE:          {source: PaymentInformationDetailV3.effectiveEndDate, type: DATE, verify: true, description: Effective end date}
+      PURPOSE:                     {source: PaymentInformationDetailV3.purpose, type: STRING, length: 40, verify: true, description: Purpose}
 
   PEREMERGENCY:
     description: Emergency contacts
@@ -626,6 +845,17 @@ tables:
       PHONE:        {source: PerEmergencyContacts.phone, type: STRING, length: 256, verify: true}
       EMAIL:        {source: PerEmergencyContacts.email, type: STRING, length: 256, verify: true}
       PRIMARY_FLAG: {source: PerEmergencyContacts.primaryFlag, type: STRING, length: 1, verify: true, description: Y primary / N}
+      SECOND_PHONE:                {source: PerEmergencyContacts.secondPhone, type: STRING, length: 256, verify: true, description: Second phone}
+      IS_DEPENDENT:                {source: PerEmergencyContacts.isDependent, type: BOOLEAN, verify: true, description: Is dependent}
+      IS_EMERGENCY_CONTACT:        {source: PerEmergencyContacts.isEmergencyContact, type: BOOLEAN, verify: true, description: Is emergency contact}
+      GENDER:                      {source: PerEmergencyContacts.gender, type: STRING, length: 2, verify: true, description: Gender}
+      IS_DISABLED:                 {source: PerEmergencyContacts.isDisabled, type: BOOLEAN, verify: true, description: Is disabled}
+      IS_STUDENT:                  {source: PerEmergencyContacts.isStudent, type: BOOLEAN, verify: true, description: Is student}
+      IS_ADD_SAME_AS_EMPLOYEE:     {source: PerEmergencyContacts.isAddSameAsEmployee, type: BOOLEAN, verify: true, description: Is add same as employee}
+      EC_NAME_ALT1:                {source: PerEmergencyContacts.ecNameAlt1, type: STRING, length: 256, verify: true, description: Ec name alt1}
+      EC_NAME_ALT2:                {source: PerEmergencyContacts.ecNameAlt2, type: STRING, length: 256, verify: true, description: Ec name alt2}
+      DATE_OF_BIRTH:               {source: PerEmergencyContacts.dateOfBirth, type: DATE, verify: true, description: Date of birth}
+      ADDRESS:                     {source: PerEmergencyContacts.address, type: STRING, length: 1000, verify: true, description: Address}
 
   EMPGLOBALASSIGNMENT:
     description: Global assignment details of a host employment
@@ -657,6 +887,9 @@ tables:
       STATUS:         {source: FOLocation.status, type: STRING, length: 2, verify: true}
       TIMEZONE:       {source: FOLocation.timezone, type: STRING, length: 128, verify: true}
       STANDARD_HOURS: {source: FOLocation.standardHours, type: DECIMAL, verify: true}
+      LOCATION_GROUP:              {source: FOLocation.locationGroup, type: STRING, verify: true, check_table: FOLocationGroup, description: Location group}
+      GEOZONE:                     {source: FOLocation.geozone, type: STRING, verify: true, check_table: FOGeozone, description: Geozone}
+      CITY:                        {source: FOLocation.city, type: STRING, verify: true, description: City}
 
   FOJOBCODE:
     description: Job classifications (Foundation Object)
@@ -668,6 +901,16 @@ tables:
       IS_FULLTIME:    {source: FOJobCode.isFulltimeEmployee, type: BOOLEAN, verify: true}
       EMPLOYEE_CLASS: {source: FOJobCode.employeeClass, type: STRING, length: 128, verify: true}
       REGULAR_TEMP:   {source: FOJobCode.regularTemporary, type: STRING, length: 128, verify: true}
+      EFFECTIVE_START_DATE:        {source: FOJobCode.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
+      NAME:                        {source: FOJobCode.name, type: STRING, verify: true, description: Name}
+      DESCRIPTION:                 {source: FOJobCode.description, type: STRING, verify: true, description: Description}
+      WORKER_COMP_CODE:            {source: FOJobCode.workerCompCode, type: STRING, length: 32, verify: true, description: Worker comp code}
+      PARENT_JOB_CLASSIFICATION:   {source: FOJobCode.parentJobClassification, type: STRING, verify: true, check_table: FOJobCode, description: Parent job classification}
+      DEFAULT_JOB_LEVEL:           {source: FOJobCode.defaultJobLevel, type: STRING, verify: true, description: Default job level}
+      STANDARD_WEEKLY_HOURS:       {source: FOJobCode.standardWeeklyHours, type: STRING, verify: true, description: Standard weekly hours}
+      FULLTIME_EMPLOYEE:           {source: FOJobCode.fulltimeEmployee, type: STRING, verify: true, description: Fulltime employee}
+      PAY_GRADE:                   {source: FOJobCode.payGrade, type: STRING, verify: true, check_table: FOPayGrade, description: Pay grade}
+      JOB_FUNCTION:                {source: FOJobCode.jobFunction, type: STRING, verify: true, check_table: FOJobFunction, description: Job function}
 
   FODIVISION:
     description: Divisions (Foundation Object)
@@ -676,6 +919,10 @@ tables:
     fields:
       EXTERNAL_CODE: {source: FODivision.externalCode, type: STRING, length: 128, verify: true}
       STATUS:        {source: FODivision.status, type: STRING, length: 2, verify: true}
+      EFFECTIVE_START_DATE:        {source: FODivision.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
+      NAME:                        {source: FODivision.name, type: STRING, verify: true, description: Name}
+      HEAD_OF_UNIT:                {source: FODivision.headOfUnit, type: STRING, length: 128, verify: true, description: Head of unit}
+      PARENT_DIVISION:             {source: FODivision.parentDivision, type: STRING, verify: true, check_table: FODivision, description: Parent division}
 
   FOBUSINESSUNIT:
     description: Business units (Foundation Object)
@@ -684,6 +931,10 @@ tables:
     fields:
       EXTERNAL_CODE: {source: FOBusinessUnit.externalCode, type: STRING, length: 128, verify: true}
       STATUS:        {source: FOBusinessUnit.status, type: STRING, length: 2, verify: true}
+      EFFECTIVE_START_DATE:        {source: FOBusinessUnit.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
+      NAME:                        {source: FOBusinessUnit.name, type: STRING, verify: true, description: Name}
+      DESCRIPTION:                 {source: FOBusinessUnit.description, type: STRING, verify: true, description: Description}
+      HEAD_OF_UNIT:                {source: FOBusinessUnit.headOfUnit, type: STRING, length: 128, verify: true, description: Head of unit}
 
   FOCOSTCENTER:
     description: Cost centres (Foundation Object)
@@ -733,3 +984,183 @@ tables:
       # related-person property on EmpJobRelationships inconsistently across
       # versions (relUserId vs. a navigation-only "relUser"). verify: true
       # flags it for the connector's $metadata check on this tenant.
+
+  PERSOCIALACCOUNT:
+    description: Social accounts / instant-messaging ids (PerSocialAccount)
+    source: PerSocialAccount
+    keys: [PERSON_ID, DOMAIN]
+    fields:
+      PERSON_ID:                   {source: PerSocialAccount.personIdExternal, type: STRING, length: 100, verify: true, description: Person id}
+      DOMAIN:                      {source: PerSocialAccount.domain, type: STRING, length: 100, verify: true, description: Domain}
+      URL:                         {source: PerSocialAccount.url, type: STRING, length: 256, verify: true, description: Url}
+      IM_ID:                       {source: PerSocialAccount.imId, type: STRING, length: 100, verify: true, description: Im id}
+
+  FOCORPORATEADDRESSDEFLT:
+    description: Corporate address, default country template (Foundation Object)
+    source: FOCorporateAddressDEFLT
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:               {source: FOCorporateAddressDEFLT.externalCode, type: STRING, length: 32, verify: true, description: External code}
+      ADDRESS1:                    {source: FOCorporateAddressDEFLT.address1, type: STRING, length: 256, verify: true, description: Address1 (country-specific)}
+      ADDRESS2:                    {source: FOCorporateAddressDEFLT.address2, type: STRING, length: 256, verify: true, description: Address2 (country-specific)}
+      ADDRESS3:                    {source: FOCorporateAddressDEFLT.address3, type: STRING, length: 256, verify: true, description: Address3 (country-specific)}
+      CITY:                        {source: FOCorporateAddressDEFLT.city, type: STRING, length: 256, verify: true, description: City (country-specific)}
+      COUNTY:                      {source: FOCorporateAddressDEFLT.county, type: STRING, length: 256, verify: true, description: County (country-specific)}
+      STATE:                       {source: FOCorporateAddressDEFLT.state, type: STRING, length: 256, verify: true, picklist: STATE_USA, description: State (country-specific)}
+      PROVINCE:                    {source: FOCorporateAddressDEFLT.province, type: STRING, length: 256, verify: true, description: Province (country-specific)}
+      ZIP_CODE:                    {source: FOCorporateAddressDEFLT.zipCode, type: STRING, length: 256, verify: true, description: Zip code (country-specific)}
+      COUNTRY:                     {source: FOCorporateAddressDEFLT.country, type: STRING, length: 256, verify: true, description: Country (country-specific)}
+      ADDRESS4:                    {source: FOCorporateAddressDEFLT.address4, type: STRING, length: 256, verify: true, description: Address4 (country-specific)}
+      ADDRESS5:                    {source: FOCorporateAddressDEFLT.address5, type: STRING, length: 256, verify: true, description: Address5 (country-specific)}
+      ADDRESS6:                    {source: FOCorporateAddressDEFLT.address6, type: STRING, length: 256, verify: true, description: Address6 (country-specific)}
+
+  FOLOCATIONGROUP:
+    description: Location groups (Foundation Object)
+    source: FOLocationGroup
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:               {source: FOLocationGroup.externalCode, type: STRING, length: 32, verify: true, description: External code}
+      END_DATE:                    {source: FOLocationGroup.endDate, type: DATE, verify: true, description: End date}
+      NAME:                        {source: FOLocationGroup.name, type: STRING, length: 32, verify: true, description: Name}
+      START_DATE:                  {source: FOLocationGroup.startDate, type: DATE, verify: true, description: Start date}
+      DESCRIPTION:                 {source: FOLocationGroup.description, type: STRING, length: 128, verify: true, description: Description}
+
+  FOGEOZONE:
+    description: Geozones (Foundation Object)
+    source: FOGeozone
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:               {source: FOGeozone.externalCode, type: STRING, length: 32, verify: true, description: External code}
+      END_DATE:                    {source: FOGeozone.endDate, type: STRING, verify: true, description: End date}
+      NAME:                        {source: FOGeozone.name, type: STRING, length: 32, verify: true, description: Name}
+      START_DATE:                  {source: FOGeozone.startDate, type: DATE, verify: true, description: Start date}
+      DESCRIPTION:                 {source: FOGeozone.description, type: STRING, length: 128, verify: true, description: Description}
+      STATUS:                      {source: FOGeozone.status, type: STRING, verify: true, description: Status}
+      ADJUSTMENT_PERCENTAGE:       {source: FOGeozone.adjustmentPercentage, type: STRING, verify: true, description: Adjustment percentage}
+
+  FOJOBFUNCTION:
+    description: Job functions (Foundation Object)
+    source: FOJobFunction
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:               {source: FOJobFunction.externalCode, type: STRING, length: 32, verify: true, description: External code}
+      EFFECTIVE_START_DATE:        {source: FOJobFunction.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
+      NAME:                        {source: FOJobFunction.name, type: STRING, verify: true, description: Name}
+      DESCRIPTION:                 {source: FOJobFunction.description, type: STRING, verify: true, description: Description}
+      EFFECTIVE_STATUS:            {source: FOJobFunction.effectiveStatus, type: STRING, length: 128, verify: true, description: Effective status}
+
+  FOPAYGRADE:
+    description: Pay grades (Foundation Object)
+    source: FOPayGrade
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:               {source: FOPayGrade.externalCode, type: STRING, length: 32, verify: true, description: External code}
+      END_DATE:                    {source: FOPayGrade.endDate, type: DATE, verify: true, description: End date}
+      NAME:                        {source: FOPayGrade.name, type: STRING, length: 32, verify: true, description: Name}
+      START_DATE:                  {source: FOPayGrade.startDate, type: DATE, verify: true, description: Start date}
+      DESCRIPTION:                 {source: FOPayGrade.description, type: STRING, length: 128, verify: true, description: Description}
+      PAYGRADE_LEVEL:              {source: FOPayGrade.paygradeLevel, type: INTEGER, verify: true, description: Paygrade level}
+
+  FOPAYGROUP:
+    description: Pay groups (Foundation Object)
+    source: FOPayGroup
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:               {source: FOPayGroup.externalCode, type: STRING, length: 32, verify: true, description: External code}
+      EFFECTIVE_START_DATE:        {source: FOPayGroup.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
+      NAME:                        {source: FOPayGroup.name, type: STRING, verify: true, description: Name}
+      DESCRIPTION:                 {source: FOPayGroup.description, type: STRING, verify: true, description: Description}
+      EFFECTIVE_STATUS:            {source: FOPayGroup.effectiveStatus, type: STRING, length: 128, verify: true, description: Effective status}
+      PAYROLL_VENDOR_ID:           {source: FOPayGroup.payrollVendorId, type: STRING, length: 32, verify: true, description: Payroll vendor id}
+      PRIMARY_CONTACT_ID:          {source: FOPayGroup.primaryContactId, type: STRING, length: 255, verify: true, description: Primary contact id}
+      PRIMARY_CONTACT_EMAIL:       {source: FOPayGroup.primaryContactEmail, type: STRING, length: 255, verify: true, description: Primary contact email}
+      PRIMARY_CONTACT_NAME:        {source: FOPayGroup.primaryContactName, type: STRING, length: 255, verify: true, description: Primary contact name}
+      SECONDARY_CONTACT_ID:        {source: FOPayGroup.secondaryContactID, type: STRING, length: 255, verify: true, description: Secondary contact id}
+      SECONDARY_CONTACT_EMAIL:     {source: FOPayGroup.secondaryContactEmail, type: STRING, length: 255, verify: true, description: Secondary contact email}
+      SECONDARY_CONTACT_NAME:      {source: FOPayGroup.secondaryContactName, type: STRING, length: 255, verify: true, description: Secondary contact name}
+      WEEKS_IN_PAY_PERIOD:         {source: FOPayGroup.weeksInPayPeriod, type: DECIMAL, verify: true, description: Weeks in pay period}
+      DATA_DELIMITER:              {source: FOPayGroup.dataDelimiter, type: STRING, length: 32, verify: true, description: Data delimiter}
+      DECIMAL_POINT:               {source: FOPayGroup.decimalPoint, type: STRING, length: 32, verify: true, description: Decimal point}
+      LAG:                         {source: FOPayGroup.lag, type: DECIMAL, verify: true, description: Lag}
+      EARLIEST_CHANGE_DATE:        {source: FOPayGroup.earliestChangeDate, type: STRING, verify: true, description: Earliest change date}
+
+  FOFREQUENCY:
+    description: Pay frequencies (Foundation Object)
+    source: FOFrequency
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:               {source: FOFrequency.externalCode, type: STRING, length: 32, verify: true, description: External code}
+      NAME:                        {source: FOFrequency.name, type: STRING, length: 32, verify: true, description: Name}
+      DESCRIPTION:                 {source: FOFrequency.description, type: STRING, length: 128, verify: true, description: Description}
+
+  FOPAYCOMPONENT:
+    description: Pay components (Foundation Object)
+    source: FOPayComponent
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:               {source: FOPayComponent.externalCode, type: STRING, length: 32, verify: true, description: External code}
+      END_DATE:                    {source: FOPayComponent.endDate, type: DATE, verify: true, description: End date}
+      NAME:                        {source: FOPayComponent.name, type: STRING, length: 32, verify: true, description: Name}
+      START_DATE:                  {source: FOPayComponent.startDate, type: DATE, verify: true, description: Start date}
+      DESCRIPTION:                 {source: FOPayComponent.description, type: STRING, length: 128, verify: true, description: Description}
+      BASE_PAY_COMPONENT_GROUP:    {source: FOPayComponent.basePayComponentGroup, type: STRING, verify: true, check_table: FOPayComponentGroup, description: Base pay component group}
+      TAX_TREATMENT:               {source: FOPayComponent.taxTreatment, type: STRING, length: 32, verify: true, picklist: TAXTREATMENT, description: Tax treatment}
+      SELF_SERVICE_DESCRIPTION:    {source: FOPayComponent.selfServiceDescription, type: STRING, length: 32, verify: true, description: Self service description}
+      DISPLAY_ON_SELF_SERVICE:     {source: FOPayComponent.displayOnSelfService, type: BOOLEAN, verify: true, description: Display on self service}
+      USED_FOR_COMP_PLANNING:      {source: FOPayComponent.usedForCompPlanning, type: STRING, length: 32, verify: true, description: Used for comp planning}
+      TARGET:                      {source: FOPayComponent.target, type: BOOLEAN, verify: true, description: Target}
+      MAX_FRACTION_DIGITS:         {source: FOPayComponent.maxFractionDigits, type: INTEGER, verify: true, description: Max fraction digits}
+      LEGAL_ENTITY:                {source: FOPayComponent.legalEntity, type: STRING, verify: true, description: Legal entity}
+      IS_END_DATED_PAYMENT:        {source: FOPayComponent.isEndDatedPayment, type: STRING, verify: true, description: Is end dated payment}
+
+  FOPAYCOMPONENTGROUP:
+    description: Pay component groups (Foundation Object)
+    source: FOPayComponentGroup
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:               {source: FOPayComponentGroup.externalCode, type: STRING, length: 32, verify: true, description: External code}
+      END_DATE:                    {source: FOPayComponentGroup.endDate, type: DATE, verify: true, description: End date}
+      NAME:                        {source: FOPayComponentGroup.name, type: STRING, length: 32, verify: true, description: Name}
+      START_DATE:                  {source: FOPayComponentGroup.startDate, type: DATE, verify: true, description: Start date}
+      DESCRIPTION:                 {source: FOPayComponentGroup.description, type: STRING, length: 128, verify: true, description: Description}
+      STATUS:                      {source: FOPayComponentGroup.status, type: STRING, verify: true, description: Status}
+      CURRENCY:                    {source: FOPayComponentGroup.currency, type: STRING, verify: true, description: Currency}
+      SHOW_ON_COMP_UI:             {source: FOPayComponentGroup.showOnCompUI, type: BOOLEAN, verify: true, description: Show on comp ui}
+      USE_FOR_COMPARATIO_CALC:     {source: FOPayComponentGroup.useForComparatioCalc, type: BOOLEAN, verify: true, description: Use for comparatio calc}
+      USE_FOR_RANGE_PENETRATION:   {source: FOPayComponentGroup.useForRangePenetration, type: BOOLEAN, verify: true, description: Use for range penetration}
+      SORT_ORDER:                  {source: FOPayComponentGroup.sortOrder, type: STRING, verify: true, description: Sort order}
+      MAX_FRACTION_DIGITS:         {source: FOPayComponentGroup.maxFractionDigits, type: STRING, verify: true, description: Max fraction digits}
+      PAY_COMPONENT:               {source: FOPayComponentGroup.payComponent, type: STRING, verify: true, check_table: FOPayComponent, description: Pay component}
+
+  FOPAYSCALETYPE:
+    description: Pay scale types (Foundation Object)
+    source: FOPayScaleType
+    keys: [CODE]
+    fields:
+      CODE:                        {source: FOPayScaleType.code, type: STRING, length: 128, verify: true, description: Code}
+      PAY_SCALE_TYPE:              {source: FOPayScaleType.payScaleType, type: STRING, length: 128, verify: true, description: Pay scale type}
+      EXTERNAL_NAME:               {source: FOPayScaleType.externalName, type: STRING, verify: true, description: External name}
+      COUNTRY:                     {source: FOPayScaleType.country, type: STRING, verify: true, description: Country}
+
+  FOPAYSCALEAREA:
+    description: Pay scale areas (Foundation Object)
+    source: FOPayScaleArea
+    keys: [CODE]
+    fields:
+      CODE:                        {source: FOPayScaleArea.code, type: STRING, length: 128, verify: true, description: Code}
+      PAY_SCALE_AREA:              {source: FOPayScaleArea.payScaleArea, type: STRING, length: 128, verify: true, description: Pay scale area}
+      EXTERNAL_NAME:               {source: FOPayScaleArea.externalName, type: STRING, verify: true, description: External name}
+      COUNTRY:                     {source: FOPayScaleArea.country, type: STRING, verify: true, description: Country}
+
+  FOPAYRANGE:
+    description: Pay ranges (Foundation Object)
+    source: FOPayRange
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:               {source: FOPayRange.externalCode, type: STRING, length: 32, verify: true, description: External code}
+      STATUS:                      {source: FOPayRange.status, type: STRING, verify: true, description: Status}
+      MINIMUM_PAY:                 {source: FOPayRange.minimumPay, type: DECIMAL, verify: true, description: Minimum pay}
+      MID_POINT:                   {source: FOPayRange.midPoint, type: DECIMAL, verify: true, description: Mid point}
+      MAXIMUM_PAY:                 {source: FOPayRange.maximumPay, type: DECIMAL, verify: true, description: Maximum pay}
+      CURRENCY:                    {source: FOPayRange.currency, type: STRING, verify: true, description: Currency}
+      FREQUENCY_CODE:              {source: FOPayRange.frequencyCode, type: STRING, verify: true, description: Frequency code}
