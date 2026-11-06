@@ -105,6 +105,678 @@ rules:
     __other__: EMPEMPLOYMENT.PAY_GRADE '{invalid_value}' is not defined in the check table FOPayGrade.externalCode. Correct
       it there or add the missing entry.
   record_fix_template: EMPEMPLOYMENT.PAY_GRADE points at a check table FOPayGrade.externalCode entry that does not exist.
+- id: DXRda737886
+  enabled: false
+  field: EMPEMPLOYMENT.SICK_PAY_SUPPLEMENT
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Sick pay supplement (country-specific) must exist in the picklist SICKPAYSUPP
+  why_it_matters: SICK_PAY_SUPPLEMENT (Sick pay supplement (country-specific)) is a SuccessFactors picklist field (picklist
+    SICKPAYSUPP). Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's
+    own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read SICK_PAY_SUPPLEMENT resolve it through picklist SICKPAYSUPP; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.SICK_PAY_SUPPLEMENT '{invalid_value}' is not defined in the picklist SICKPAYSUPP. Correct it
+      there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.SICK_PAY_SUPPLEMENT points at a picklist SICKPAYSUPP entry that does not exist.
+- id: DXR04717c3c
+  enabled: false
+  field: EMPEMPLOYMENT.EMPLOYEE_NOTICE_PERIOD
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Employee notice period must exist in the picklist EENoticePeriod
+  why_it_matters: EMPLOYEE_NOTICE_PERIOD (Employee notice period) is a SuccessFactors picklist field (picklist EENoticePeriod).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read EMPLOYEE_NOTICE_PERIOD resolve it through picklist EENoticePeriod; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.EMPLOYEE_NOTICE_PERIOD '{invalid_value}' is not defined in the picklist EENoticePeriod. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.EMPLOYEE_NOTICE_PERIOD points at a picklist EENoticePeriod entry that does not exist.
+- id: DXRcb311e51
+  enabled: false
+  field: EMPEMPLOYMENT.CONTINUED_SICKNESS_PAY_MEASURE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Continued sickness pay measure (country-specific) must exist in the picklist periodIndicator
+  why_it_matters: CONTINUED_SICKNESS_PAY_MEASURE (Continued sickness pay measure (country-specific)) is a SuccessFactors picklist
+    field (picklist periodIndicator). Its permitted values are tenant configuration, so a value outside the configured set
+    is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read CONTINUED_SICKNESS_PAY_MEASURE resolve it through picklist periodIndicator; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.CONTINUED_SICKNESS_PAY_MEASURE '{invalid_value}' is not defined in the picklist periodIndicator.
+      Correct it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.CONTINUED_SICKNESS_PAY_MEASURE points at a picklist periodIndicator entry that does not
+    exist.
+- id: DXR75620d16
+  enabled: false
+  field: EMPEMPLOYMENT.TRANSPORTATION_SUBSIDY
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Transportation subsidy (country-specific) must exist in the picklist transportationSubsidy
+  why_it_matters: TRANSPORTATION_SUBSIDY (Transportation subsidy (country-specific)) is a SuccessFactors picklist field (picklist
+    transportationSubsidy). Its permitted values are tenant configuration, so a value outside the configured set is not one
+    the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read TRANSPORTATION_SUBSIDY resolve it through picklist transportationSubsidy; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.TRANSPORTATION_SUBSIDY '{invalid_value}' is not defined in the picklist transportationSubsidy.
+      Correct it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.TRANSPORTATION_SUBSIDY points at a picklist transportationSubsidy entry that does not
+    exist.
+- id: DXRd6493307
+  enabled: false
+  field: EMPEMPLOYMENT.EMP_RELATIONSHIP
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Emp relationship (country-specific) must exist in the picklist employmentRelationship
+  why_it_matters: EMP_RELATIONSHIP (Emp relationship (country-specific)) is a SuccessFactors picklist field (picklist employmentRelationship).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read EMP_RELATIONSHIP resolve it through picklist employmentRelationship; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.EMP_RELATIONSHIP '{invalid_value}' is not defined in the picklist employmentRelationship. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.EMP_RELATIONSHIP points at a picklist employmentRelationship entry that does not exist.
+- id: DXRe50e365d
+  enabled: false
+  field: EMPEMPLOYMENT.WORKER_CATEGORY
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Worker category (country-specific) must exist in the picklist workerCategory
+  why_it_matters: WORKER_CATEGORY (Worker category (country-specific)) is a SuccessFactors picklist field (picklist workerCategory).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read WORKER_CATEGORY resolve it through picklist workerCategory; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.WORKER_CATEGORY '{invalid_value}' is not defined in the picklist workerCategory. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.WORKER_CATEGORY points at a picklist workerCategory entry that does not exist.
+- id: DXRb0a4b559
+  enabled: false
+  field: EMPEMPLOYMENT.MANDATORY_WORK_BREAK_RECORD
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Mandatory work break record (country-specific) must exist in the picklist yesNo
+  why_it_matters: MANDATORY_WORK_BREAK_RECORD (Mandatory work break record (country-specific)) is a SuccessFactors picklist
+    field (picklist yesNo). Its permitted values are tenant configuration, so a value outside the configured set is not one
+    the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read MANDATORY_WORK_BREAK_RECORD resolve it through picklist yesNo; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.MANDATORY_WORK_BREAK_RECORD '{invalid_value}' is not defined in the picklist yesNo. Correct it
+      there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.MANDATORY_WORK_BREAK_RECORD points at a picklist yesNo entry that does not exist.
+- id: DXR00172648
+  enabled: false
+  field: EMPEMPLOYMENT.HARMFUL_AGENT_EXPOSURE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Harmful agent exposure (country-specific) must exist in the picklist harmfulAgentExposureCode
+  why_it_matters: HARMFUL_AGENT_EXPOSURE (Harmful agent exposure (country-specific)) is a SuccessFactors picklist field (picklist
+    harmfulAgentExposureCode). Its permitted values are tenant configuration, so a value outside the configured set is not
+    one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read HARMFUL_AGENT_EXPOSURE resolve it through picklist harmfulAgentExposureCode; an unknown
+    value leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.HARMFUL_AGENT_EXPOSURE '{invalid_value}' is not defined in the picklist harmfulAgentExposureCode.
+      Correct it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.HARMFUL_AGENT_EXPOSURE points at a picklist harmfulAgentExposureCode entry that does
+    not exist.
+- id: DXR18a18021
+  enabled: false
+  field: EMPEMPLOYMENT.COMMITMENT_INDICATOR
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Commitment indicator (country-specific) must exist in the picklist commitmentIndicator
+  why_it_matters: COMMITMENT_INDICATOR (Commitment indicator (country-specific)) is a SuccessFactors picklist field (picklist
+    commitmentIndicator). Its permitted values are tenant configuration, so a value outside the configured set is not one
+    the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read COMMITMENT_INDICATOR resolve it through picklist commitmentIndicator; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.COMMITMENT_INDICATOR '{invalid_value}' is not defined in the picklist commitmentIndicator. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.COMMITMENT_INDICATOR points at a picklist commitmentIndicator entry that does not exist.
+- id: DXR8761a040
+  enabled: false
+  field: EMPEMPLOYMENT.PROBATIONARY_PERIOD_MEASURE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Probationary period measure (country-specific) must exist in the picklist periodIndicator
+  why_it_matters: PROBATIONARY_PERIOD_MEASURE (Probationary period measure (country-specific)) is a SuccessFactors picklist
+    field (picklist periodIndicator). Its permitted values are tenant configuration, so a value outside the configured set
+    is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read PROBATIONARY_PERIOD_MEASURE resolve it through picklist periodIndicator; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.PROBATIONARY_PERIOD_MEASURE '{invalid_value}' is not defined in the picklist periodIndicator.
+      Correct it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.PROBATIONARY_PERIOD_MEASURE points at a picklist periodIndicator entry that does not
+    exist.
+- id: DXR76bd197e
+  enabled: false
+  field: EMPEMPLOYMENT.INCLUDED_CHALLENGED_PERSON_QUOTA
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Included challenged person quota (country-specific) must exist in the picklist yesNo
+  why_it_matters: INCLUDED_CHALLENGED_PERSON_QUOTA (Included challenged person quota (country-specific)) is a SuccessFactors
+    picklist field (picklist yesNo). Its permitted values are tenant configuration, so a value outside the configured set
+    is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read INCLUDED_CHALLENGED_PERSON_QUOTA resolve it through picklist yesNo; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.INCLUDED_CHALLENGED_PERSON_QUOTA '{invalid_value}' is not defined in the picklist yesNo. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.INCLUDED_CHALLENGED_PERSON_QUOTA points at a picklist yesNo entry that does not exist.
+- id: DXR8b080315
+  enabled: false
+  field: EMPEMPLOYMENT.INTERNSHIP_SCHOOL
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Internship school (country-specific) must exist in the picklist InternshipSchool_BRA
+  why_it_matters: INTERNSHIP_SCHOOL (Internship school (country-specific)) is a SuccessFactors picklist field (picklist InternshipSchool_BRA).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read INTERNSHIP_SCHOOL resolve it through picklist InternshipSchool_BRA; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.INTERNSHIP_SCHOOL '{invalid_value}' is not defined in the picklist InternshipSchool_BRA. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.INTERNSHIP_SCHOOL points at a picklist InternshipSchool_BRA entry that does not exist.
+- id: DXR23e0fdf4
+  enabled: false
+  field: EMPEMPLOYMENT.MANDATORY_INTERNSHIP
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Mandatory internship (country-specific) must exist in the picklist yesNo
+  why_it_matters: MANDATORY_INTERNSHIP (Mandatory internship (country-specific)) is a SuccessFactors picklist field (picklist
+    yesNo). Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own
+    system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read MANDATORY_INTERNSHIP resolve it through picklist yesNo; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.MANDATORY_INTERNSHIP '{invalid_value}' is not defined in the picklist yesNo. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.MANDATORY_INTERNSHIP points at a picklist yesNo entry that does not exist.
+- id: DXR3d8b8261
+  enabled: false
+  field: EMPEMPLOYMENT.INTERNSHIP_LEVEL
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Internship level (country-specific) must exist in the picklist InternshipLevel_BRA
+  why_it_matters: INTERNSHIP_LEVEL (Internship level (country-specific)) is a SuccessFactors picklist field (picklist InternshipLevel_BRA).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read INTERNSHIP_LEVEL resolve it through picklist InternshipLevel_BRA; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.INTERNSHIP_LEVEL '{invalid_value}' is not defined in the picklist InternshipLevel_BRA. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.INTERNSHIP_LEVEL points at a picklist InternshipLevel_BRA entry that does not exist.
+- id: DXR0ee65b2a
+  enabled: false
+  field: EMPEMPLOYMENT.OCCUPATION_CRI
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Occupation cri (country-specific) must exist in the picklist OccupCode_CRI
+  why_it_matters: OCCUPATION_CRI (Occupation cri (country-specific)) is a SuccessFactors picklist field (picklist OccupCode_CRI).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read OCCUPATION_CRI resolve it through picklist OccupCode_CRI; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.OCCUPATION_CRI '{invalid_value}' is not defined in the picklist OccupCode_CRI. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.OCCUPATION_CRI points at a picklist OccupCode_CRI entry that does not exist.
+- id: DXR8c4cdf2f
+  enabled: false
+  field: EMPEMPLOYMENT.CODE_OF_JOB_FOR_ELDP
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Code of job for eldp (country-specific) must exist in the picklist codeOfJobELDP
+  why_it_matters: CODE_OF_JOB_FOR_ELDP (Code of job for eldp (country-specific)) is a SuccessFactors picklist field (picklist
+    codeOfJobELDP). Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's
+    own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read CODE_OF_JOB_FOR_ELDP resolve it through picklist codeOfJobELDP; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.CODE_OF_JOB_FOR_ELDP '{invalid_value}' is not defined in the picklist codeOfJobELDP. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.CODE_OF_JOB_FOR_ELDP points at a picklist codeOfJobELDP entry that does not exist.
+- id: DXR7925fb92
+  enabled: false
+  field: EMPEMPLOYMENT.FAMILY_RELATIONSHIP_WITH_EMPLOYER
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Family relationship with employer (country-specific) must exist in the picklist familyRelationship
+  why_it_matters: FAMILY_RELATIONSHIP_WITH_EMPLOYER (Family relationship with employer (country-specific)) is a SuccessFactors
+    picklist field (picklist familyRelationship). Its permitted values are tenant configuration, so a value outside the configured
+    set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read FAMILY_RELATIONSHIP_WITH_EMPLOYER resolve it through picklist familyRelationship; an unknown
+    value leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.FAMILY_RELATIONSHIP_WITH_EMPLOYER '{invalid_value}' is not defined in the picklist familyRelationship.
+      Correct it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.FAMILY_RELATIONSHIP_WITH_EMPLOYER points at a picklist familyRelationship entry that
+    does not exist.
+- id: DXR08a06c24
+  enabled: false
+  field: EMPEMPLOYMENT.ELECTORAL_COLLEGE_FOR_WORKERS_REPRESENTATIVES
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Electoral college for workers representatives (country-specific) must exist in the picklist electoralCollegeRepresentativesCouncil
+  why_it_matters: ELECTORAL_COLLEGE_FOR_WORKERS_REPRESENTATIVES (Electoral college for workers representatives (country-specific))
+    is a SuccessFactors picklist field (picklist electoralCollegeRepresentativesCouncil). Its permitted values are tenant
+    configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read ELECTORAL_COLLEGE_FOR_WORKERS_REPRESENTATIVES resolve it through picklist electoralCollegeRepresentativesCouncil;
+    an unknown value leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.ELECTORAL_COLLEGE_FOR_WORKERS_REPRESENTATIVES '{invalid_value}' is not defined in the picklist
+      electoralCollegeRepresentativesCouncil. Correct it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.ELECTORAL_COLLEGE_FOR_WORKERS_REPRESENTATIVES points at a picklist electoralCollegeRepresentativesCouncil
+    entry that does not exist.
+- id: DXR5a195519
+  enabled: false
+  field: EMPEMPLOYMENT.ELECTORAL_COLLEGE_FOR_WORKS_COUNCIL
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Electoral college for works council (country-specific) must exist in the picklist electoralCollegeRepresentativesCouncil
+  why_it_matters: ELECTORAL_COLLEGE_FOR_WORKS_COUNCIL (Electoral college for works council (country-specific)) is a SuccessFactors
+    picklist field (picklist electoralCollegeRepresentativesCouncil). Its permitted values are tenant configuration, so a
+    value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read ELECTORAL_COLLEGE_FOR_WORKS_COUNCIL resolve it through picklist electoralCollegeRepresentativesCouncil;
+    an unknown value leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.ELECTORAL_COLLEGE_FOR_WORKS_COUNCIL '{invalid_value}' is not defined in the picklist electoralCollegeRepresentativesCouncil.
+      Correct it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.ELECTORAL_COLLEGE_FOR_WORKS_COUNCIL points at a picklist electoralCollegeRepresentativesCouncil
+    entry that does not exist.
+- id: DXR5b9bf3aa
+  enabled: false
+  field: EMPEMPLOYMENT.ELECTORAL_COLLEGE_FOR_LABOR_COURT
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Electoral college for labor court (country-specific) must exist in the picklist electoralCollegeLaborCourt
+  why_it_matters: ELECTORAL_COLLEGE_FOR_LABOR_COURT (Electoral college for labor court (country-specific)) is a SuccessFactors
+    picklist field (picklist electoralCollegeLaborCourt). Its permitted values are tenant configuration, so a value outside
+    the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read ELECTORAL_COLLEGE_FOR_LABOR_COURT resolve it through picklist electoralCollegeLaborCourt;
+    an unknown value leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.ELECTORAL_COLLEGE_FOR_LABOR_COURT '{invalid_value}' is not defined in the picklist electoralCollegeLaborCourt.
+      Correct it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.ELECTORAL_COLLEGE_FOR_LABOR_COURT points at a picklist electoralCollegeLaborCourt entry
+    that does not exist.
+- id: DXRd88ff7d3
+  enabled: false
+  field: EMPEMPLOYMENT.LABOR_COURT_SECTOR
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Labor court sector (country-specific) must exist in the picklist laborCourtSector
+  why_it_matters: LABOR_COURT_SECTOR (Labor court sector (country-specific)) is a SuccessFactors picklist field (picklist
+    laborCourtSector). Its permitted values are tenant configuration, so a value outside the configured set is not one the
+    tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read LABOR_COURT_SECTOR resolve it through picklist laborCourtSector; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.LABOR_COURT_SECTOR '{invalid_value}' is not defined in the picklist laborCourtSector. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.LABOR_COURT_SECTOR points at a picklist laborCourtSector entry that does not exist.
+- id: DXR35997575
+  enabled: false
+  field: EMPEMPLOYMENT.EMPLOYEE_WORKGROUP_MEMBERSHIP
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Employee workgroup membership (country-specific) must exist in the picklist yesNo
+  why_it_matters: EMPLOYEE_WORKGROUP_MEMBERSHIP (Employee workgroup membership (country-specific)) is a SuccessFactors picklist
+    field (picklist yesNo). Its permitted values are tenant configuration, so a value outside the configured set is not one
+    the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read EMPLOYEE_WORKGROUP_MEMBERSHIP resolve it through picklist yesNo; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.EMPLOYEE_WORKGROUP_MEMBERSHIP '{invalid_value}' is not defined in the picklist yesNo. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.EMPLOYEE_WORKGROUP_MEMBERSHIP points at a picklist yesNo entry that does not exist.
+- id: DXR792f34d3
+  enabled: false
+  field: EMPEMPLOYMENT.OCCUPATION_GTM
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Occupation gtm (country-specific) must exist in the picklist OccupCode_GTM
+  why_it_matters: OCCUPATION_GTM (Occupation gtm (country-specific)) is a SuccessFactors picklist field (picklist OccupCode_GTM).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read OCCUPATION_GTM resolve it through picklist OccupCode_GTM; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.OCCUPATION_GTM '{invalid_value}' is not defined in the picklist OccupCode_GTM. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.OCCUPATION_GTM points at a picklist OccupCode_GTM entry that does not exist.
+- id: DXR08cc35a2
+  enabled: false
+  field: EMPEMPLOYMENT.PERIOD_INDICATOR
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Period indicator (country-specific) must exist in the picklist periodIndicator
+  why_it_matters: PERIOD_INDICATOR (Period indicator (country-specific)) is a SuccessFactors picklist field (picklist periodIndicator).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read PERIOD_INDICATOR resolve it through picklist periodIndicator; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.PERIOD_INDICATOR '{invalid_value}' is not defined in the picklist periodIndicator. Correct it
+      there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.PERIOD_INDICATOR points at a picklist periodIndicator entry that does not exist.
+- id: DXR2f15221e
+  enabled: false
+  field: EMPEMPLOYMENT.ASSESSMENT_STATUS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Assessment status (country-specific) must exist in the picklist assessmentStatus
+  why_it_matters: ASSESSMENT_STATUS (Assessment status (country-specific)) is a SuccessFactors picklist field (picklist assessmentStatus).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read ASSESSMENT_STATUS resolve it through picklist assessmentStatus; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.ASSESSMENT_STATUS '{invalid_value}' is not defined in the picklist assessmentStatus. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.ASSESSMENT_STATUS points at a picklist assessmentStatus entry that does not exist.
+- id: DXRc35a865e
+  enabled: false
+  field: EMPEMPLOYMENT.SICK_PAY_SUPPLEMENT_MEASURE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Sick pay supplement measure (country-specific) must exist in the picklist periodIndicator
+  why_it_matters: SICK_PAY_SUPPLEMENT_MEASURE (Sick pay supplement measure (country-specific)) is a SuccessFactors picklist
+    field (picklist periodIndicator). Its permitted values are tenant configuration, so a value outside the configured set
+    is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read SICK_PAY_SUPPLEMENT_MEASURE resolve it through picklist periodIndicator; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.SICK_PAY_SUPPLEMENT_MEASURE '{invalid_value}' is not defined in the picklist periodIndicator.
+      Correct it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.SICK_PAY_SUPPLEMENT_MEASURE points at a picklist periodIndicator entry that does not
+    exist.
+- id: DXRbb1f1295
+  enabled: false
+  field: EMPEMPLOYMENT.OCCUPATIONAL_LEVEL_KEN
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Occupational level ken (country-specific) must exist in the picklist occupationalLevel_KEN
+  why_it_matters: OCCUPATIONAL_LEVEL_KEN (Occupational level ken (country-specific)) is a SuccessFactors picklist field (picklist
+    occupationalLevel_KEN). Its permitted values are tenant configuration, so a value outside the configured set is not one
+    the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read OCCUPATIONAL_LEVEL_KEN resolve it through picklist occupationalLevel_KEN; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.OCCUPATIONAL_LEVEL_KEN '{invalid_value}' is not defined in the picklist occupationalLevel_KEN.
+      Correct it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.OCCUPATIONAL_LEVEL_KEN points at a picklist occupationalLevel_KEN entry that does not
+    exist.
+- id: DXR90d877b1
+  enabled: false
+  field: EMPEMPLOYMENT.OCCUPATIONAL_LEVELS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Occupational levels (country-specific) must exist in the picklist occupationalLevels
+  why_it_matters: OCCUPATIONAL_LEVELS (Occupational levels (country-specific)) is a SuccessFactors picklist field (picklist
+    occupationalLevels). Its permitted values are tenant configuration, so a value outside the configured set is not one the
+    tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read OCCUPATIONAL_LEVELS resolve it through picklist occupationalLevels; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.OCCUPATIONAL_LEVELS '{invalid_value}' is not defined in the picklist occupationalLevels. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.OCCUPATIONAL_LEVELS points at a picklist occupationalLevels entry that does not exist.
+- id: DXR9605de98
+  enabled: false
+  field: EMPEMPLOYMENT.OCCUPATION_PER
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Occupation per (country-specific) must exist in the picklist OccupCode_PER
+  why_it_matters: OCCUPATION_PER (Occupation per (country-specific)) is a SuccessFactors picklist field (picklist OccupCode_PER).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read OCCUPATION_PER resolve it through picklist OccupCode_PER; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.OCCUPATION_PER '{invalid_value}' is not defined in the picklist OccupCode_PER. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.OCCUPATION_PER points at a picklist OccupCode_PER entry that does not exist.
+- id: DXRb2f92e55
+  enabled: false
+  field: EMPEMPLOYMENT.JOB_GROUP
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Job group (country-specific) must exist in the picklist jobGroup_Per
+  why_it_matters: JOB_GROUP (Job group (country-specific)) is a SuccessFactors picklist field (picklist jobGroup_Per). Its
+    permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read JOB_GROUP resolve it through picklist jobGroup_Per; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.JOB_GROUP '{invalid_value}' is not defined in the picklist jobGroup_Per. Correct it there or
+      add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.JOB_GROUP points at a picklist jobGroup_Per entry that does not exist.
+- id: DXR74852c71
+  enabled: false
+  field: EMPEMPLOYMENT.FLSA_STATUS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Flsa status (country-specific) must exist in the picklist FLSASTATUS_USA
+  why_it_matters: FLSA_STATUS (Flsa status (country-specific)) is a SuccessFactors picklist field (picklist FLSASTATUS_USA).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read FLSA_STATUS resolve it through picklist FLSASTATUS_USA; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.FLSA_STATUS '{invalid_value}' is not defined in the picklist FLSASTATUS_USA. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.FLSA_STATUS points at a picklist FLSASTATUS_USA entry that does not exist.
+- id: DXRb2f97b12
+  enabled: false
+  field: EMPEMPLOYMENT.EEO_CLASS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Eeo class (country-specific) must exist in the picklist EEOJOBGROUP_USA
+  why_it_matters: EEO_CLASS (Eeo class (country-specific)) is a SuccessFactors picklist field (picklist EEOJOBGROUP_USA).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read EEO_CLASS resolve it through picklist EEOJOBGROUP_USA; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.EEO_CLASS '{invalid_value}' is not defined in the picklist EEOJOBGROUP_USA. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.EEO_CLASS points at a picklist EEOJOBGROUP_USA entry that does not exist.
+- id: DXR3455a0eb
+  enabled: false
+  field: EMPEMPLOYMENT.EEO1_JOB_CATEGORY
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Eeo1 job category (country-specific) must exist in the picklist EEO1CODE_USA
+  why_it_matters: EEO1_JOB_CATEGORY (Eeo1 job category (country-specific)) is a SuccessFactors picklist field (picklist EEO1CODE_USA).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read EEO1_JOB_CATEGORY resolve it through picklist EEO1CODE_USA; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.EEO1_JOB_CATEGORY '{invalid_value}' is not defined in the picklist EEO1CODE_USA. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.EEO1_JOB_CATEGORY points at a picklist EEO1CODE_USA entry that does not exist.
+- id: DXR4c3ed59f
+  enabled: false
+  field: EMPEMPLOYMENT.EEO4_JOB_CATEGORY
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Eeo4 job category (country-specific) must exist in the picklist EEO4CODE_USA
+  why_it_matters: EEO4_JOB_CATEGORY (Eeo4 job category (country-specific)) is a SuccessFactors picklist field (picklist EEO4CODE_USA).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read EEO4_JOB_CATEGORY resolve it through picklist EEO4CODE_USA; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.EEO4_JOB_CATEGORY '{invalid_value}' is not defined in the picklist EEO4CODE_USA. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.EEO4_JOB_CATEGORY points at a picklist EEO4CODE_USA entry that does not exist.
+- id: DXR312822c5
+  enabled: false
+  field: EMPEMPLOYMENT.EEO5_JOB_CATEGORY
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Eeo5 job category (country-specific) must exist in the picklist EEO5CODE_USA
+  why_it_matters: EEO5_JOB_CATEGORY (Eeo5 job category (country-specific)) is a SuccessFactors picklist field (picklist EEO5CODE_USA).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read EEO5_JOB_CATEGORY resolve it through picklist EEO5CODE_USA; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.EEO5_JOB_CATEGORY '{invalid_value}' is not defined in the picklist EEO5CODE_USA. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.EEO5_JOB_CATEGORY points at a picklist EEO5CODE_USA entry that does not exist.
+- id: DXR3a2f3d44
+  enabled: false
+  field: EMPEMPLOYMENT.EEO6_JOB_CATEGORY
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Eeo6 job category (country-specific) must exist in the picklist EEO6CODE_USA
+  why_it_matters: EEO6_JOB_CATEGORY (Eeo6 job category (country-specific)) is a SuccessFactors picklist field (picklist EEO6CODE_USA).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read EEO6_JOB_CATEGORY resolve it through picklist EEO6CODE_USA; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.EEO6_JOB_CATEGORY '{invalid_value}' is not defined in the picklist EEO6CODE_USA. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.EEO6_JOB_CATEGORY points at a picklist EEO6CODE_USA entry that does not exist.
+- id: DXR0aeb980c
+  enabled: false
+  field: EMPEMPLOYMENT.FROM_CURRENCY
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: From currency (country-specific) must exist in the picklist currency
+  why_it_matters: FROM_CURRENCY (From currency (country-specific)) is a SuccessFactors picklist field (picklist currency).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read FROM_CURRENCY resolve it through picklist currency; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.FROM_CURRENCY '{invalid_value}' is not defined in the picklist currency. Correct it there or
+      add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.FROM_CURRENCY points at a picklist currency entry that does not exist.
+- id: DXR1b7107d8
+  enabled: false
+  field: EMPEMPLOYMENT.TO_CURRENCY
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: To currency (country-specific) must exist in the picklist currency
+  why_it_matters: TO_CURRENCY (To currency (country-specific)) is a SuccessFactors picklist field (picklist currency). Its
+    permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read TO_CURRENCY resolve it through picklist currency; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.TO_CURRENCY '{invalid_value}' is not defined in the picklist currency. Correct it there or add
+      the missing entry.
+  record_fix_template: EMPEMPLOYMENT.TO_CURRENCY points at a picklist currency entry that does not exist.
+- id: DXR10a6ddd6
+  enabled: false
+  field: EMPEMPLOYMENT.DISMISSALS_NOTICE_PERIOD_FOR_EMPLOYER
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Dismissals notice period for employer (country-specific) must exist in the picklist dismissalsNoticePeriod
+  why_it_matters: DISMISSALS_NOTICE_PERIOD_FOR_EMPLOYER (Dismissals notice period for employer (country-specific)) is a SuccessFactors
+    picklist field (picklist dismissalsNoticePeriod). Its permitted values are tenant configuration, so a value outside the
+    configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read DISMISSALS_NOTICE_PERIOD_FOR_EMPLOYER resolve it through picklist dismissalsNoticePeriod;
+    an unknown value leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: EMPEMPLOYMENT.DISMISSALS_NOTICE_PERIOD_FOR_EMPLOYER '{invalid_value}' is not defined in the picklist dismissalsNoticePeriod.
+      Correct it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.DISMISSALS_NOTICE_PERIOD_FOR_EMPLOYER points at a picklist dismissalsNoticePeriod entry
+    that does not exist.
 - id: DXR56be2fb1
   enabled: false
   field: EMPJOBHIST.STATUS
@@ -187,6 +859,57 @@ rules:
     __other__: EMPJOBHIST.PAY_GROUP '{invalid_value}' is not defined in the check table FOPayGroup.externalCode. Correct it
       there or add the missing entry.
   record_fix_template: EMPJOBHIST.PAY_GROUP points at a check table FOPayGroup.externalCode entry that does not exist.
+- id: DXR82b11781
+  enabled: false
+  field: FOCORPORATEADDRESSDEFLT.STATE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: State (country-specific) must exist in the picklist STATE_USA
+  why_it_matters: STATE (State (country-specific)) is a SuccessFactors picklist field (picklist STATE_USA). Its permitted
+    values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read STATE resolve it through picklist STATE_USA; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOCORPORATEADDRESSDEFLT.STATE '{invalid_value}' is not defined in the picklist STATE_USA. Correct it there
+      or add the missing entry.
+  record_fix_template: FOCORPORATEADDRESSDEFLT.STATE points at a picklist STATE_USA entry that does not exist.
+- id: DXR072aeebe
+  enabled: false
+  field: FODEPARTMENT.PARENT_DEPARTMENT
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Parent department must exist in the check table FODepartment.externalCode
+  why_it_matters: PARENT_DEPARTMENT (Parent department) is defined in the SAP Data Dictionary with check table FODepartment.externalCode
+    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read PARENT_DEPARTMENT resolve it through check table FODepartment.externalCode; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FODEPARTMENT.PARENT_DEPARTMENT '{invalid_value}' is not defined in the check table FODepartment.externalCode.
+      Correct it there or add the missing entry.
+  record_fix_template: FODEPARTMENT.PARENT_DEPARTMENT points at a check table FODepartment.externalCode entry that does not
+    exist.
+- id: DXR6b707629
+  enabled: false
+  field: FODIVISION.PARENT_DIVISION
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Parent division must exist in the check table FODivision.externalCode
+  why_it_matters: PARENT_DIVISION (Parent division) is defined in the SAP Data Dictionary with check table FODivision.externalCode
+    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read PARENT_DIVISION resolve it through check table FODivision.externalCode; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FODIVISION.PARENT_DIVISION '{invalid_value}' is not defined in the check table FODivision.externalCode. Correct
+      it there or add the missing entry.
+  record_fix_template: FODIVISION.PARENT_DIVISION points at a check table FODivision.externalCode entry that does not exist.
 - id: DXR1b02321f
   enabled: false
   field: FOEVENTREASON.EVENT
@@ -203,6 +926,275 @@ rules:
     __other__: FOEVENTREASON.EVENT '{invalid_value}' is not defined in the picklist event. Correct it there or add the missing
       entry.
   record_fix_template: FOEVENTREASON.EVENT points at a picklist event entry that does not exist.
+- id: DXR87ccfb57
+  enabled: false
+  field: FOJOBCODE.PARENT_JOB_CLASSIFICATION
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Parent job classification must exist in the check table FOJobCode.externalCode
+  why_it_matters: PARENT_JOB_CLASSIFICATION (Parent job classification) is defined in the SAP Data Dictionary with check table
+    FOJobCode.externalCode on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent
+    with the configuration it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read PARENT_JOB_CLASSIFICATION resolve it through check table FOJobCode.externalCode; an unknown
+    value leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOJOBCODE.PARENT_JOB_CLASSIFICATION '{invalid_value}' is not defined in the check table FOJobCode.externalCode.
+      Correct it there or add the missing entry.
+  record_fix_template: FOJOBCODE.PARENT_JOB_CLASSIFICATION points at a check table FOJobCode.externalCode entry that does
+    not exist.
+- id: DXR38c9b7e0
+  enabled: false
+  field: FOJOBCODE.PAY_GRADE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Pay grade must exist in the check table FOPayGrade.externalCode
+  why_it_matters: PAY_GRADE (Pay grade) is defined in the SAP Data Dictionary with check table FOPayGrade.externalCode on
+    domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read PAY_GRADE resolve it through check table FOPayGrade.externalCode; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOJOBCODE.PAY_GRADE '{invalid_value}' is not defined in the check table FOPayGrade.externalCode. Correct it
+      there or add the missing entry.
+  record_fix_template: FOJOBCODE.PAY_GRADE points at a check table FOPayGrade.externalCode entry that does not exist.
+- id: DXRbbd9dba2
+  enabled: false
+  field: FOJOBCODE.JOB_FUNCTION
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Job function must exist in the check table FOJobFunction.externalCode
+  why_it_matters: JOB_FUNCTION (Job function) is defined in the SAP Data Dictionary with check table FOJobFunction.externalCode
+    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read JOB_FUNCTION resolve it through check table FOJobFunction.externalCode; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOJOBCODE.JOB_FUNCTION '{invalid_value}' is not defined in the check table FOJobFunction.externalCode. Correct
+      it there or add the missing entry.
+  record_fix_template: FOJOBCODE.JOB_FUNCTION points at a check table FOJobFunction.externalCode entry that does not exist.
+- id: DXR778dc9b0
+  enabled: false
+  field: FOLOCATION.LOCATION_GROUP
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Location group must exist in the check table FOLocationGroup.externalCode
+  why_it_matters: LOCATION_GROUP (Location group) is defined in the SAP Data Dictionary with check table FOLocationGroup.externalCode
+    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read LOCATION_GROUP resolve it through check table FOLocationGroup.externalCode; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOLOCATION.LOCATION_GROUP '{invalid_value}' is not defined in the check table FOLocationGroup.externalCode.
+      Correct it there or add the missing entry.
+  record_fix_template: FOLOCATION.LOCATION_GROUP points at a check table FOLocationGroup.externalCode entry that does not
+    exist.
+- id: DXR1e73ecf2
+  enabled: false
+  field: FOLOCATION.GEOZONE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Geozone must exist in the check table FOGeozone.externalCode
+  why_it_matters: GEOZONE (Geozone) is defined in the SAP Data Dictionary with check table FOGeozone.externalCode on domain
+    n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it
+    depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read GEOZONE resolve it through check table FOGeozone.externalCode; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOLOCATION.GEOZONE '{invalid_value}' is not defined in the check table FOGeozone.externalCode. Correct it there
+      or add the missing entry.
+  record_fix_template: FOLOCATION.GEOZONE points at a check table FOGeozone.externalCode entry that does not exist.
+- id: DXR63b5fd8c
+  enabled: false
+  field: FOPAYCOMPONENT.BASE_PAY_COMPONENT_GROUP
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Base pay component group must exist in the check table FOPayComponentGroup.externalCode
+  why_it_matters: BASE_PAY_COMPONENT_GROUP (Base pay component group) is defined in the SAP Data Dictionary with check table
+    FOPayComponentGroup.externalCode on domain n/a. A value outside that table is not a value SAP recognises, so the record
+    is inconsistent with the configuration it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read BASE_PAY_COMPONENT_GROUP resolve it through check table FOPayComponentGroup.externalCode;
+    an unknown value leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOPAYCOMPONENT.BASE_PAY_COMPONENT_GROUP '{invalid_value}' is not defined in the check table FOPayComponentGroup.externalCode.
+      Correct it there or add the missing entry.
+  record_fix_template: FOPAYCOMPONENT.BASE_PAY_COMPONENT_GROUP points at a check table FOPayComponentGroup.externalCode entry
+    that does not exist.
+- id: DXRffa2f870
+  enabled: false
+  field: FOPAYCOMPONENT.TAX_TREATMENT
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Tax treatment must exist in the picklist TAXTREATMENT
+  why_it_matters: TAX_TREATMENT (Tax treatment) is a SuccessFactors picklist field (picklist TAXTREATMENT). Its permitted
+    values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read TAX_TREATMENT resolve it through picklist TAXTREATMENT; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOPAYCOMPONENT.TAX_TREATMENT '{invalid_value}' is not defined in the picklist TAXTREATMENT. Correct it there
+      or add the missing entry.
+  record_fix_template: FOPAYCOMPONENT.TAX_TREATMENT points at a picklist TAXTREATMENT entry that does not exist.
+- id: DXRf0611778
+  enabled: false
+  field: FOPAYCOMPONENTGROUP.PAY_COMPONENT
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Pay component must exist in the check table FOPayComponent.externalCode
+  why_it_matters: PAY_COMPONENT (Pay component) is defined in the SAP Data Dictionary with check table FOPayComponent.externalCode
+    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read PAY_COMPONENT resolve it through check table FOPayComponent.externalCode; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOPAYCOMPONENTGROUP.PAY_COMPONENT '{invalid_value}' is not defined in the check table FOPayComponent.externalCode.
+      Correct it there or add the missing entry.
+  record_fix_template: FOPAYCOMPONENTGROUP.PAY_COMPONENT points at a check table FOPayComponent.externalCode entry that does
+    not exist.
+- id: DXRffc7ee61
+  enabled: false
+  field: PERADDRESS.PROVINCE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Province (country-specific) must exist in the picklist Province_AGO
+  why_it_matters: PROVINCE (Province (country-specific)) is a SuccessFactors picklist field (picklist Province_AGO). Its permitted
+    values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read PROVINCE resolve it through picklist Province_AGO; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERADDRESS.PROVINCE '{invalid_value}' is not defined in the picklist Province_AGO. Correct it there or add
+      the missing entry.
+  record_fix_template: PERADDRESS.PROVINCE points at a picklist Province_AGO entry that does not exist.
+- id: DXRd847a782
+  enabled: false
+  field: PERADDRESS.ADDRESS7
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Address7 (country-specific) must exist in the picklist District_BLR
+  why_it_matters: ADDRESS7 (Address7 (country-specific)) is a SuccessFactors picklist field (picklist District_BLR). Its permitted
+    values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read ADDRESS7 resolve it through picklist District_BLR; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERADDRESS.ADDRESS7 '{invalid_value}' is not defined in the picklist District_BLR. Correct it there or add
+      the missing entry.
+  record_fix_template: PERADDRESS.ADDRESS7 points at a picklist District_BLR entry that does not exist.
+- id: DXRe9086e42
+  enabled: false
+  field: PERADDRESS.ADDRESS9
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Address9 (country-specific) must exist in the picklist STRTYPE_HUN
+  why_it_matters: ADDRESS9 (Address9 (country-specific)) is a SuccessFactors picklist field (picklist STRTYPE_HUN). Its permitted
+    values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read ADDRESS9 resolve it through picklist STRTYPE_HUN; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERADDRESS.ADDRESS9 '{invalid_value}' is not defined in the picklist STRTYPE_HUN. Correct it there or add the
+      missing entry.
+  record_fix_template: PERADDRESS.ADDRESS9 points at a picklist STRTYPE_HUN entry that does not exist.
+- id: DXRfff3e763
+  enabled: false
+  field: PERADDRESS.ADDRESS12
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Address12 (country-specific) must exist in the picklist CITY_QAT
+  why_it_matters: ADDRESS12 (Address12 (country-specific)) is a SuccessFactors picklist field (picklist CITY_QAT). Its permitted
+    values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read ADDRESS12 resolve it through picklist CITY_QAT; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERADDRESS.ADDRESS12 '{invalid_value}' is not defined in the picklist CITY_QAT. Correct it there or add the
+      missing entry.
+  record_fix_template: PERADDRESS.ADDRESS12 points at a picklist CITY_QAT entry that does not exist.
+- id: DXRaca4d0be
+  enabled: false
+  field: PERADDRESS.ADDRESS18
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Address18 (country-specific) must exist in the picklist REGIONTYPE_RUS
+  why_it_matters: ADDRESS18 (Address18 (country-specific)) is a SuccessFactors picklist field (picklist REGIONTYPE_RUS). Its
+    permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read ADDRESS18 resolve it through picklist REGIONTYPE_RUS; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERADDRESS.ADDRESS18 '{invalid_value}' is not defined in the picklist REGIONTYPE_RUS. Correct it there or add
+      the missing entry.
+  record_fix_template: PERADDRESS.ADDRESS18 points at a picklist REGIONTYPE_RUS entry that does not exist.
+- id: DXR12f90e3e
+  enabled: false
+  field: PERADDRESS.ADDRESS17
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Address17 (country-specific) must exist in the picklist COUNTYTYPE_RUS
+  why_it_matters: ADDRESS17 (Address17 (country-specific)) is a SuccessFactors picklist field (picklist COUNTYTYPE_RUS). Its
+    permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read ADDRESS17 resolve it through picklist COUNTYTYPE_RUS; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERADDRESS.ADDRESS17 '{invalid_value}' is not defined in the picklist COUNTYTYPE_RUS. Correct it there or add
+      the missing entry.
+  record_fix_template: PERADDRESS.ADDRESS17 points at a picklist COUNTYTYPE_RUS entry that does not exist.
+- id: DXRd97bb7c9
+  enabled: false
+  field: PERADDRESS.ADDRESS14
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Address14 (country-specific) must exist in the picklist CITYDISTRICTTYPE_RUS
+  why_it_matters: ADDRESS14 (Address14 (country-specific)) is a SuccessFactors picklist field (picklist CITYDISTRICTTYPE_RUS).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read ADDRESS14 resolve it through picklist CITYDISTRICTTYPE_RUS; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERADDRESS.ADDRESS14 '{invalid_value}' is not defined in the picklist CITYDISTRICTTYPE_RUS. Correct it there
+      or add the missing entry.
+  record_fix_template: PERADDRESS.ADDRESS14 points at a picklist CITYDISTRICTTYPE_RUS entry that does not exist.
+- id: DXR0407bcda
+  enabled: false
+  field: PERADDRESS.ADDRESS16
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Address16 (country-specific) must exist in the picklist PLANSTRUCTURETYPE_RUS
+  why_it_matters: ADDRESS16 (Address16 (country-specific)) is a SuccessFactors picklist field (picklist PLANSTRUCTURETYPE_RUS).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read ADDRESS16 resolve it through picklist PLANSTRUCTURETYPE_RUS; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERADDRESS.ADDRESS16 '{invalid_value}' is not defined in the picklist PLANSTRUCTURETYPE_RUS. Correct it there
+      or add the missing entry.
+  record_fix_template: PERADDRESS.ADDRESS16 points at a picklist PLANSTRUCTURETYPE_RUS entry that does not exist.
 - id: DXR8d590558
   enabled: false
   field: PERINFO.COUNTRY_OF_BIRTH
@@ -237,6 +1229,86 @@ rules:
     __other__: PERINFO.SECOND_NATIONALITY '{invalid_value}' is not defined in the check table Country.externalCode. Correct
       it there or add the missing entry.
   record_fix_template: PERINFO.SECOND_NATIONALITY points at a check table Country.externalCode entry that does not exist.
+- id: DXR96f5e312
+  enabled: false
+  field: PERINFO.SUFFIX
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Suffix must exist in the picklist namesuffix
+  why_it_matters: SUFFIX (Suffix) is a SuccessFactors picklist field (picklist namesuffix). Its permitted values are tenant
+    configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read SUFFIX resolve it through picklist namesuffix; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERINFO.SUFFIX '{invalid_value}' is not defined in the picklist namesuffix. Correct it there or add the missing
+      entry.
+  record_fix_template: PERINFO.SUFFIX points at a picklist namesuffix entry that does not exist.
+- id: DXRb15c42bd
+  enabled: false
+  field: PERINFO.SECOND_TITLE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Second title must exist in the picklist secondTitle
+  why_it_matters: SECOND_TITLE (Second title) is a SuccessFactors picklist field (picklist secondTitle). Its permitted values
+    are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read SECOND_TITLE resolve it through picklist secondTitle; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERINFO.SECOND_TITLE '{invalid_value}' is not defined in the picklist secondTitle. Correct it there or add
+      the missing entry.
+  record_fix_template: PERINFO.SECOND_TITLE points at a picklist secondTitle entry that does not exist.
+- id: DXR57673b2f
+  enabled: false
+  field: PERINFO.NAME_PREFIX
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Name prefix must exist in the picklist nameprefix
+  why_it_matters: NAME_PREFIX (Name prefix) is a SuccessFactors picklist field (picklist nameprefix). Its permitted values
+    are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read NAME_PREFIX resolve it through picklist nameprefix; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERINFO.NAME_PREFIX '{invalid_value}' is not defined in the picklist nameprefix. Correct it there or add the
+      missing entry.
+  record_fix_template: PERINFO.NAME_PREFIX points at a picklist nameprefix entry that does not exist.
+- id: DXR4b088d63
+  enabled: false
+  field: PERINFO.NATIVE_PREFERRED_LANG
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Native preferred lang must exist in the picklist language
+  why_it_matters: NATIVE_PREFERRED_LANG (Native preferred lang) is a SuccessFactors picklist field (picklist language). Its
+    permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read NATIVE_PREFERRED_LANG resolve it through picklist language; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERINFO.NATIVE_PREFERRED_LANG '{invalid_value}' is not defined in the picklist language. Correct it there or
+      add the missing entry.
+  record_fix_template: PERINFO.NATIVE_PREFERRED_LANG points at a picklist language entry that does not exist.
+- id: DXR99ed5252
+  enabled: false
+  field: PERINFO.PARTNER_NAME_PREFIX
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Partner name prefix must exist in the picklist nameprefix
+  why_it_matters: PARTNER_NAME_PREFIX (Partner name prefix) is a SuccessFactors picklist field (picklist nameprefix). Its
+    permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read PARTNER_NAME_PREFIX resolve it through picklist nameprefix; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERINFO.PARTNER_NAME_PREFIX '{invalid_value}' is not defined in the picklist nameprefix. Correct it there or
+      add the missing entry.
+  record_fix_template: PERINFO.PARTNER_NAME_PREFIX points at a picklist nameprefix entry that does not exist.
 - id: DXR59a8b68f
   enabled: false
   field: POSITION.PAY_GRADE
