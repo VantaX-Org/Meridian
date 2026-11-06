@@ -23,7 +23,7 @@ import { useLandscape } from "@/lib/v2/queries";
 import { f1, int } from "@/lib/v2/score";
 import { Confirm } from "../admin/kit";
 import { Sev } from "../inspector/rule";
-import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { Coded, EmptyFrame, ErrorFrame, PageTitle, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
@@ -157,7 +157,7 @@ export function Migration() {
     <button type="button" className="m2-btn m2-next" aria-expanded={starting} onClick={() => setStarting((s) => !s)}>{t("Start an analysis")}</button>
   ) : undefined;
   return (
-    <CcPage title={t("Migration")}>
+    <CcPage><PageTitle>{t("Migration")}</PageTitle>
       <Guide
         steps={{ labels: [t("Start an analysis"), t("Fix what would not load"), t("Load into the target"), t("Check the result")], current: !latest ? 0 : (latest.records_blocked ?? 0) > 0 ? 1 : 2 }}
         shows={t("Each analysis checks whether your records would load into the target system, and compares the quality of every object before and after.")}
