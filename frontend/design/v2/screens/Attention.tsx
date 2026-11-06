@@ -8,10 +8,10 @@ import { formatDate } from "@/lib/format";
 import { relTime } from "@/lib/v2/format";
 import { useUrlParam } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
-import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
+import { FixHead, ObjectRunChip } from "../FixParts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -102,8 +102,18 @@ export function Attention() {
           { label: t("High"), value: int(counts.high) },
           { label: t("Medium and low"), value: int(counts.medium + counts.low) },
         ]}
+        action={total > 0 ? <V2Link href="/work/triage" className="m2-btn m2-strong" data-testid="attention-primary">{t("Start triage")}</V2Link> : undefined}
         testId="attention-banner"
         label={t("Action centre")}
+      />
+      <FixHead
+        lede={t("Everything that needs you across your systems, most urgent first. Start triage to work through it, or use the button on a row to go straight to it.")}
+        means={[
+          [t("Severity"), t("How soon the item needs you: critical first, then high, medium and low.")],
+          [t("Since"), t("When the item was first raised.")],
+          [t("Count"), t("How many records or items it covers.")],
+          [t("Where"), t("The system and object it concerns, with the run it stands at now.")],
+        ]}
       />
       <form className="m2-rfilters" aria-label={t("Filter what needs attention")} data-testid="attention-filter" onSubmit={(e) => e.preventDefault()}>
         <label>
@@ -158,7 +168,6 @@ export function Attention() {
 }
 
 function Row({ i }: { i: AttentionItem }) {
-  const where = [i.system_name, i.object ? moduleText(i.object) : null].filter(Boolean).join(", ");
   return (
     <tr>
       <th scope="row" className="m2-card-lead">
@@ -166,7 +175,10 @@ function Row({ i }: { i: AttentionItem }) {
         <span className="m2-meta"> {kindText(i.kind)}. {i.detail}</span>
       </th>
       <td data-label={t("Severity")}><Sev severity={i.severity} /></td>
-      <td data-label={t("Where")}>{where || <Dash why={t("Not tied to one system")} />}</td>
+      <td data-label={t("Where")}>
+        {i.system_name ? <>{i.system_name}{i.object ? ", " : ""}</> : null}
+        {i.object ? <ObjectRunChip module={i.object} systemId={i.system_id} /> : i.system_name ? null : <Dash why={t("Not tied to one system")} />}
+      </td>
       <td data-label={t("Since")} className="m2-num">{i.since ? formatDate(i.since, "date") : <Dash />}</td>
       <td data-label={t("Count")} className="m2-num">{int(i.count)}</td>
       <td data-label={t("Action")}>

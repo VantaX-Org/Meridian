@@ -1,0 +1,5 @@
+.m2-root .m2-means { margin: 0 0 var(--m2-s4); font-size: var(--m2-fs-13); color: var(--m2-ink-2); }
+.m2-root .m2-means summary { cursor: pointer; width: fit-content; }
+.m2-root .m2-means dl { margin: var(--m2-s2) 0 0; display: grid; gap: var(--m2-s2); max-width: 78ch; }
+.m2-root .m2-means dd { margin: 0; }
+.m2-root .m2-objrun { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: var(--m2-s2); }
