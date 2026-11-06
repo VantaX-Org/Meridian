@@ -11,6 +11,7 @@ import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { StackedBar, type StackPart } from "../charts";
 import { Field, Gate } from "../forms";
+import { FixHead, ObjectRunChip } from "../FixParts";
 import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { CcBanner, CcPage } from "./cc-parts";
@@ -62,7 +63,7 @@ function Coverage() {
         ];
         return (
           <li key={m.module} data-testid={`fix-cov-${m.module}`}>
-            <strong>{moduleText(m.module)}</strong> <span className="m2-meta">{t("{n} of {total} rules, {pct}", { n: int(m.with_fix), total: int(m.rules), pct: coveragePct(m.with_fix, m.rules) })}</span>
+            <strong><ObjectRunChip module={m.module} /></strong> <span className="m2-meta">{t("{n} of {total} rules, {pct}", { n: int(m.with_fix), total: int(m.rules), pct: coveragePct(m.with_fix, m.rules) })}</span>
             <StackedBar parts={parts} label={t("Rules with a fix in {object}", { object: moduleText(m.module) })} format={int} />
           </li>
         );
@@ -84,7 +85,7 @@ function DraftForm({ onDone }: { onDone: (d: FixDraft) => void }) {
     <div className="m2-acts" role="group" aria-label={t("Draft a fix")} data-testid="fix-draft-form">
       <Field label={t("Object")}>{(p) => <input {...p} value={objectInput} onChange={(e) => setObjectInput(e.target.value)} data-testid="fix-module" />}</Field>
       <Field label={t("Rule")}>{(p) => <input {...p} value={rule} onChange={(e) => setRule(e.target.value)} data-testid="fix-rule" />}</Field>
-      <button type="button" className="m2-btn m2-next" disabled={!objectInput.trim() || !rule.trim() || m.isPending} onClick={() => m.mutate()} data-testid="fix-draft-go">
+      <button type="button" className="m2-btn" disabled={!objectInput.trim() || !rule.trim() || m.isPending} onClick={() => m.mutate()} data-testid="fix-draft-go">
         {m.isPending ? t("Working…") : t("Draft and verify")}
       </button>
     </div>
@@ -109,7 +110,7 @@ function Card({ d, allowed, onDecide, busy }: { d: FixDraft; allowed: boolean; o
           {" "}{d.source === "llm" ? t("Drafted by the model") : t("Drafted by rule")}
         </span>
       </header>
-      <p>{d.module ? <>{moduleText(d.module)}{" "}</> : null}<Coded code={d.field} text={d.field_text} /> <span className="m2-meta">{t("{n} failing values", { n: int(s.total_failing) })}</span></p>
+      <p>{d.module ? <><ObjectRunChip module={d.module} />{" "}</> : null}<Coded code={d.field} text={d.field_text} /> <span className="m2-meta">{t("{n} failing values", { n: int(s.total_failing) })}</span></p>
       <h4 className="m2-h3">{t("Aggregated shape")}</h4>
       <StackedBar parts={masks} label={t("Shapes of the failing values")} format={int} />
       <p className="m2-meta">
@@ -130,7 +131,7 @@ function Card({ d, allowed, onDecide, busy }: { d: FixDraft; allowed: boolean; o
       {d.errors.length ? <p className="m2-meta">{d.errors.join(" ")}</p> : null}
       {allowed && d.status === "pending" ? (
         <div className="m2-acts">
-          <button type="button" className="m2-btn m2-next" disabled={busy} onClick={() => onDecide(d.rule_id, true)} data-testid={`fix-approve-${d.rule_id}`}>{t("Approve")}</button>
+          <button type="button" className="m2-btn m2-strong" disabled={busy} onClick={() => onDecide(d.rule_id, true)} data-testid={`fix-approve-${d.rule_id}`}>{t("Approve")}</button>
           <button type="button" className="m2-btn m2-ghost" disabled={busy} onClick={() => onDecide(d.rule_id, false)} data-testid={`fix-reject-${d.rule_id}`}>{t("Reject")}</button>
         </div>
       ) : null}
@@ -164,11 +165,21 @@ export function FixDrafts() {
         headline={t("{n, plural, one {# drafted fix waits for a decision} other {# drafted fixes wait for a decision}}", { n: pending })}
         why={t("The drafter sees only the shape of the failing values, never a value. Each draft is proved on your extraction first, and nothing applies until a steward approves it.")}
         figs={[{ label: t("Pending"), value: int(pending) }, { label: t("Drafts"), value: int(drafts.length) }]}
+        action={pending > 0 ? <a className="m2-btn m2-strong" href={`#fix-draft-${drafts.find((d) => d.status === "pending")?.rule_id}`} data-testid="fix-primary">{t("Review the first pending draft")}</a> : undefined}
+      />
+      <FixHead
+        lede={t("This page drafts a fix for a rule that has none. A draft is proved on the latest extraction, then waits for a steward. Read the coverage, review the pending drafts, approve or reject.")}
+        means={[
+          [t("Pending"), t("A drafted fix that no steward has decided on.")],
+          [t("With a fix"), t("Rules that already carry fix steps.")],
+          [t("Still failing"), t("Values the rule still rejects after the steps ran in the proof.")],
+          [t("Fixed"), t("Values the rule accepts after the steps ran in the proof.")],
+        ]}
       />
       <Panel title={t("Fix coverage")} meta={t("Rules with a fix, by object.")} testId="fix-coverage-panel"><Coverage /></Panel>
       <Panel title={t("Drafts")} meta={t("Approve or reject. A rejected draft is kept in the audit log.")} testId="fix-drafts-list">
         {allowed ? <DraftForm onDone={refresh} /> : <Gate>{t("Managing rules needs the manage rules permission.")}</Gate>}
-        {drafts.length === 0 ? <EmptyFrame>{t("No fix is drafted yet.")}</EmptyFrame> : (
+        {drafts.length === 0 ? <EmptyFrame>{t("No fix is drafted yet. Enter an object and a rule above, then choose Draft and verify.")}</EmptyFrame> : (
           <ScrollFrame label={t("Drafted fixes, scrollable")}>
             {drafts.map((d) => <Card key={d.rule_id} d={d} allowed={allowed} busy={decide.isPending} onDecide={(id, ok) => decide.mutate({ id, ok })} />)}
           </ScrollFrame>
