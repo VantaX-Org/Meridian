@@ -123,7 +123,8 @@ function timelineRun(k: number): TimelineRun {
   let records = 0;
   for (const m of MODULES) {
     const s = shownAt(m, k);
-    objects[m] = { score: s.score, raw_score: measuredAt(m, k), capped: s.capped, findings_open: null, findings_new: null, findings_closed: null, value_at_risk: null };
+    const open = Math.round((recordsAt(m, k) * (100 - measuredAt(m, k))) / 1000);
+    objects[m] = { score: s.score, raw_score: measuredAt(m, k), capped: s.capped, findings_open: open, findings_new: null, findings_closed: null, value_at_risk: { amount: open * 3.5, currency: "USD" } };
     records += recordsAt(m, k);
   }
   return { id: run.id, run_number: RUNS.length - k + 1, status: "complete", run_at: run.run_at, label: null, system_id: ECC.id, baseline: state.baseline === run.id, kind: KINDS[k - 1], objects, records_checked: records, duration_s: DURATIONS[k - 1] };

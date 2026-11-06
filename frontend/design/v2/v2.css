@@ -96,9 +96,9 @@
 .m2-rail-i:hover { background: var(--m2-hover); }
 .m2-rail-i[aria-current="page"] { background: var(--m2-data-bg); color: var(--m2-fg) !important; box-shadow: inset 0 0 0 1px var(--m2-data), inset 0 1px 0 var(--m2-glass-hi); }
 .m2-rail-i .m2-n { font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
-.m2-more { display: flex; flex-direction: column; gap: var(--m2-s1); padding: var(--m2-s2) var(--m2-s1); font-size: var(--m2-fs-12); text-align: center; }
-.m2-more a[aria-current] { font-weight: 600; }
-.m2-more a { max-width: 100%; overflow-wrap: anywhere; hyphens: auto; }
+nav.m2-more { display: flex; flex-direction: column; gap: var(--m2-s1); padding: var(--m2-s2) var(--m2-s1); font-size: var(--m2-fs-12); text-align: center; }
+nav.m2-more a[aria-current] { font-weight: 600; }
+nav.m2-more a { max-width: 100%; overflow-wrap: anywhere; hyphens: auto; }
 .m2-fly { position: absolute; left: 100%; top: 0; bottom: 0; width: var(--m2-flyout-w); overflow: auto; background: var(--m2-glass-sheet); border: 1px solid var(--m2-glass-line); border-radius: var(--m2-r2); box-shadow: var(--m2-glass-edge); padding: var(--m2-s3); z-index: 45; }
 .m2-railwrap[data-pinned] .m2-fly { position: static; background: var(--m2-sheet); box-shadow: none; border: 0; border-right: 1px solid var(--m2-line); border-radius: 0; }
 .m2-fly-h { display: flex; align-items: center; gap: var(--m2-s2); font-weight: 600; }
@@ -476,7 +476,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
   .m2-fly-x { display: inline-flex; }
   .m2-fly-pin { display: none; }
   .m2-fly-more { display: block; }
-  .m2-more { flex-direction: row; justify-content: flex-start; gap: var(--m2-s4); }
+  nav.m2-more { flex-direction: row; justify-content: flex-start; gap: var(--m2-s4); }
   .m2-canvas { padding-bottom: calc(var(--m2-s12) + var(--m2-s6) + var(--m2-s2)); }
 }
 
@@ -981,6 +981,8 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 .m2-btn.m2-next { background: var(--m2-data); border-color: transparent; box-shadow: var(--m2-shadow-1); font-weight: 500; }
 .m2-btn.m2-next:hover { background: var(--m2-data); filter: brightness(1.08); }
 .m2-btn.m2-next:active { transform: none; }
+/* A primary action that cannot run yet reads as waiting, so the rule above must not paint it solid. */
+.m2-btn.m2-next[disabled], .m2-btn.m2-next[disabled]:hover, .m2-btn.m2-next[disabled]:active { background: transparent; border-color: var(--m2-line-2); box-shadow: none; filter: none; font-weight: 400; }
 .m2-chip[aria-pressed="true"] { background: var(--m2-data-bg); border-color: var(--m2-data); color: var(--m2-data); }
 .m2-seg[aria-pressed="true"], .m2-segs > button[aria-pressed="true"] { box-shadow: inset 0 -2px 0 var(--m2-data); }
 .m2-tab[aria-current="page"]::after { background: var(--m2-data); height: 2px; border-radius: var(--m2-r1) var(--m2-r1) 0 0; }

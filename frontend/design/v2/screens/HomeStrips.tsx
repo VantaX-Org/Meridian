@@ -89,7 +89,6 @@ function SystemStrip({ L, system, runs, failed }: { L: Landscape; system: Landsc
           <span className="m2-hs-run" title={newest ? formatDate(newest.run_at, "datetime") : undefined}>{newest ? runLabel(system.name, newest.run_number) : <Dash why={t("The run list does not hold the newest run")} />}</span>
           <span className="m2-hs-score" title={t("Mean measured score of this system's objects at their newest runs, out of 100.")}>
             {rep ? <Ruler size={48} dims={dimsOf(rep)} measured={mean} score={mean} capped={false} capLevel={null} breaches={[]} label={system.name} records={null} rules={null} coverage={null} lowConfidence={false} /> : null}
-            <b>{f1(mean)}</b>
             {verdict ? <span className="m2-meta">{VERDICT_LABEL[verdict]}</span> : null}
           </span>
           <span className="m2-hs-trend">

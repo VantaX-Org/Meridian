@@ -73,12 +73,12 @@ function MoreLinks() {
   const links = [
     { href: "/reports", label: t("Reports") },
     { href: "/atlas", label: t("Atlas") },
-    ...(canAdminister(can) ? [{ href: "/admin", label: t("Administration") }] : []),
+    ...(canAdminister(can) ? [{ href: "/admin", label: t("Admin"), title: t("Administration") }] : []),
   ];
   return (
     <nav className="m2-more" aria-label={t("More")}>
       {links.map((l) => (
-        <V2Link key={l.href} href={l.href} title={l.label} aria-current={pathname === l.href || pathname.startsWith(`${l.href}/`) ? "page" : undefined}>
+        <V2Link key={l.href} href={l.href} title={"title" in l ? l.title : l.label} aria-current={pathname === l.href || pathname.startsWith(`${l.href}/`) ? "page" : undefined}>
           {l.label}
         </V2Link>
       ))}

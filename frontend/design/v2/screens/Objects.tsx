@@ -44,7 +44,7 @@ function SystemBlock({ L, system, pinned }: { L: Landscape; system: LandscapeSys
           {system.state === "extracted" ? t("{system} is extracted but no run has scored it yet. Start an analysis from the systems page.", { system: system.name }) : t("{system} has no finished run. Extract it, then run an analysis.", { system: system.name })}
         </EmptyFrame>
       ) : (
-        <table className="m2-table m2-ob-table">
+        <table className="m2-tbl m2-ob-table">
           <caption className="m2-sr">{t("Objects of {system}, lowest measured score first", { system: system.name })}</caption>
           <thead>
             <tr>
@@ -71,7 +71,6 @@ function SystemBlock({ L, system, pinned }: { L: Landscape; system: LandscapeSys
                   <td>
                     <span className="m2-ob-score">
                       <Ruler size={48} dims={dimsOf(c)} measured={c.raw_score} score={c.score} capped={c.capped} capLevel={c.cap_level} breaches={c.breaches} label={label} records={c.records_checked} rules={c.rules_measured} coverage={c.coverage} lowConfidence={c.low_confidence} />
-                      <b>{f1(c.raw_score ?? c.score)}</b>
                     </span>
                   </td>
                   <td>
