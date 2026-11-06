@@ -64,3 +64,16 @@ describe("rule promotion", () => {
     expect(await screen.findByText("Rule promoted. The reason is in the audit log.")).toBeInTheDocument();
   });
 });
+
+describe("stage 5: primary action gating", () => {
+  it("makes Preview the filled action before any preview, then Approve once candidates exist", async () => {
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    const preview = await screen.findByTestId("promo-preview");
+    expect(preview).toHaveClass("m2-next");
+    fireEvent.click(preview);
+    const apply = await screen.findByTestId("promo-apply");
+    expect(apply).toHaveClass("m2-next");
+    expect(apply).toHaveTextContent(/Approve the top candidate/);
+    expect(screen.getByTestId("promo-preview")).not.toHaveClass("m2-next");
+  });
+});
