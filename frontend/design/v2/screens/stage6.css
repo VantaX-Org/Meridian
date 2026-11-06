@@ -1,0 +1,10 @@
+.m2-root .m2-guide { margin: 0 0 var(--m2-s3); }
+.m2-root .m2-guide-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--m2-s2); margin: 0 0 var(--m2-s2); }
+.m2-root .m2-syschip { display: inline-block; padding: 0 var(--m2-s2); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r1); background: var(--m2-surface-2, transparent); color: var(--m2-ink-1); font-size: var(--m2-fs-12); font-weight: 600; }
+.m2-root .m2-guide-means { margin: 0 0 var(--m2-s3); font-size: var(--m2-fs-13); color: var(--m2-ink-2); }
+.m2-root .m2-guide-means summary { cursor: pointer; color: var(--m2-ink-1); }
+.m2-root .m2-guide-means dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--m2-s1) var(--m2-s3); margin: var(--m2-s2) 0 0; max-width: 90ch; }
+.m2-root .m2-guide-means dt { font-weight: 600; color: var(--m2-ink-1); }
+.m2-root .m2-guide-means dd { margin: 0; }
+.m2-root .m2-pq-why { margin: 0; padding-left: var(--m2-s3); font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
+@media (max-width: 640px) { .m2-root .m2-guide-means dl { grid-template-columns: 1fr; } }

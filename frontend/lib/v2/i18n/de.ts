@@ -8100,4 +8100,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The score after the critical cap, before to after": "Die Punktzahl nach der kritischen Obergrenze, vorher zu nachher",
   "Records the rules looked at, before to after": "Von den Regeln geprüfte Datensätze, vorher zu nachher",
   "Share of records a rule could evaluate in the later run": "Anteil der Datensätze, die eine Regel im späteren Lauf auswerten konnte",
+  // stage 6 (master data, migration, other) begin
+  "What the figures mean": "Was die Zahlen bedeuten",
+  "Reasons are not yet calculated": "Gründe sind noch nicht berechnet",
+  "Each analysis checks whether your records would load into the target system, and compares the quality of every object before and after.": "Jede Analyse prüft, ob Ihre Datensätze in das Zielsystem geladen werden könnten, und vergleicht die Qualität jedes Objekts vorher und nachher.",
+  "A score from 0 to 100 for how ready the records are to load.": "Ein Wert von 0 bis 100 dafür, wie bereit die Datensätze zum Laden sind.",
+  "Records the target system would reject, so they need fixing first.": "Datensätze, die das Zielsystem ablehnen würde und die zuerst korrigiert werden müssen.",
+  "Source, projected and actual": "Quelle, erwartet und tatsächlich",
+  "Quality in the old system, the score the load should reach, and the score measured in the target after loading.": "Qualität im Altsystem, der Wert, den das Laden erreichen sollte, und der nach dem Laden im Zielsystem gemessene Wert.",
+  // stage 6 end
 };

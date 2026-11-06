@@ -1,4 +1,5 @@
 "use client";
+import { Guide } from "./Guide";
 import "../runs.css";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -154,6 +155,14 @@ export function Migration() {
   ) : undefined;
   return (
     <CcPage title={t("Migration")}>
+      <Guide
+        shows={t("Each analysis checks whether your records would load into the target system, and compares the quality of every object before and after.")}
+        means={[
+          [t("Readiness"), t("A score from 0 to 100 for how ready the records are to load.")],
+          [t("Records that would not load"), t("Records the target system would reject, so they need fixing first.")],
+          [t("Source, projected and actual"), t("Quality in the old system, the score the load should reach, and the score measured in the target after loading.")],
+        ]}
+      />
       {latest ? (
         <CcBanner
           eyebrow={t("Migration analysis of {date}", { date: formatDate(latest.completed_at ?? latest.created_at, "date") })}

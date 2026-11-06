@@ -8100,4 +8100,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The score after the critical cap, before to after": "重大ルールの上限を適用した後のスコア(前から後)",
   "Records the rules looked at, before to after": "ルールが確認したレコード(前から後)",
   "Share of records a rule could evaluate in the later run": "後の実行でルールが評価できたレコードの割合",
+  // stage 6 (master data, migration, other) begin
+  "What the figures mean": "数値の意味",
+  "Reasons are not yet calculated": "理由はまだ計算されていません",
+  "Each analysis checks whether your records would load into the target system, and compares the quality of every object before and after.": "各分析は、レコードがターゲットシステムに読み込めるかを確認し、各オブジェクトの前後の品質を比較します。",
+  "A score from 0 to 100 for how ready the records are to load.": "レコードが読み込みにどれだけ適しているかを示す0から100のスコア。",
+  "Records the target system would reject, so they need fixing first.": "ターゲットシステムが拒否するレコード。先に修正が必要です。",
+  "Source, projected and actual": "ソース、予測、実績",
+  "Quality in the old system, the score the load should reach, and the score measured in the target after loading.": "旧システムでの品質、読み込みで到達すべきスコア、読み込み後にターゲットで測定したスコア。",
+  // stage 6 end
 };

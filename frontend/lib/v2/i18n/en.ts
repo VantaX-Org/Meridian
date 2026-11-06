@@ -8099,6 +8099,15 @@ export const en = {
   "The score after the critical cap, before to after": "The score after the critical cap, before to after",
   "Records the rules looked at, before to after": "Records the rules looked at, before to after",
   "Share of records a rule could evaluate in the later run": "Share of records a rule could evaluate in the later run",
+  // stage 6 (master data, migration, other) begin
+  "What the figures mean": "What the figures mean",
+  "Reasons are not yet calculated": "Reasons are not yet calculated",
+  "Each analysis checks whether your records would load into the target system, and compares the quality of every object before and after.": "Each analysis checks whether your records would load into the target system, and compares the quality of every object before and after.",
+  "A score from 0 to 100 for how ready the records are to load.": "A score from 0 to 100 for how ready the records are to load.",
+  "Records the target system would reject, so they need fixing first.": "Records the target system would reject, so they need fixing first.",
+  "Source, projected and actual": "Source, projected and actual",
+  "Quality in the old system, the score the load should reach, and the score measured in the target after loading.": "Quality in the old system, the score the load should reach, and the score measured in the target after loading.",
+  // stage 6 end
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
