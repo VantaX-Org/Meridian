@@ -227,3 +227,16 @@ describe("rule drafts", () => {
     expect(await screen.findByTestId("drafts-table")).toBeInTheDocument();
   });
 });
+
+describe("stage 5: primary action and ribbon", () => {
+  it("offers one filled action to the rule with most findings, and a dash with a reason for findings across runs", async () => {
+    render();
+    const g = await grid();
+    await waitFor(() => expect(count(g)).toBeGreaterThan(30));
+    const link = await screen.findByRole("link", { name: "Open the rule with most findings" });
+    expect(link).toHaveClass("m2-next");
+    expect(link.getAttribute("href")).toMatch(/^\/r\//);
+    expect(screen.getByRole("columnheader", { name: /Across runs/ })).toBeInTheDocument();
+    expect(within(rowsOf(g)[0]).getByTitle(/not available yet/i)).toBeInTheDocument();
+  });
+});
