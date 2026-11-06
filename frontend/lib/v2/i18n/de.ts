@@ -8210,4 +8210,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The count shows requests that did not reach SAP.": "Die Zahl zeigt Anfragen, die SAP nicht erreicht haben.",
   "Submitting sends the request for approval. Nothing reaches SAP until every approval step is done.": "Das Einreichen sendet die Anfrage zur Genehmigung. In SAP kommt nichts an, bis jeder Genehmigungsschritt abgeschlossen ist.",
   "Charts, entry defaults and derivation rules": "Diagramme, Eingabevorgaben und Ableitungsregeln",
+  "Remind sends the person a note about their overdue work. It does not reassign anything.": "Erinnern sendet der Person eine Nachricht über ihre überfällige Arbeit. Es weist nichts neu zu.",
+  "Open work and overdue work, charted": "Offene und überfällige Arbeit im Diagramm",
 };

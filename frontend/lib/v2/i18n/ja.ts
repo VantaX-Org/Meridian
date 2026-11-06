@@ -8210,4 +8210,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The count shows requests that did not reach SAP.": "件数はSAPに届かなかったリクエストです。",
   "Submitting sends the request for approval. Nothing reaches SAP until every approval step is done.": "送信すると承認に回ります。すべての承認ステップが終わるまでSAPには何も反映されません。",
   "Charts, entry defaults and derivation rules": "グラフ、入力の既定値、導出ルール",
+  "Remind sends the person a note about their overdue work. It does not reassign anything.": "リマインドは、期限超過の作業について本人に通知します。再割り当てはしません。",
+  "Open work and overdue work, charted": "未完了・期限超過の作業をグラフで見る",
 };

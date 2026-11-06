@@ -12,7 +12,7 @@ import { PEOPLE_SORT_LABEL, objectsLine, roleWord, slaMet, sortPeople, type Peop
 import { usePeople } from "@/lib/v2/approvals-queries";
 import { useWorkSummary } from "@/lib/v2/work-queries";
 import { int } from "@/lib/v2/score";
-import { FixHead } from "../FixParts";
+import { Consequence, FixHead, MoreDetail } from "../FixParts";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { PeopleActions } from "./PeopleActions";
 import { t } from "@/lib/v2/i18n";
@@ -195,7 +195,6 @@ export function PeopleCanvas() {
           [t("SLA met"), t("Share of a person's closed records that were closed inside the due date.")],
         ]}
       />
-      <PeopleOverview rows={rows} unassigned={unassigned} />
       <p className="m2-finding" data-testid="people-sentence">
         {sentenceOf(rows)}
         {unassigned != null && summary ? <>{" "}{t("{unassigned} of the {total} open records are assigned to nobody.", { unassigned: int(unassigned), total: int(summary.totals.open) })}</> : null}
@@ -309,6 +308,10 @@ export function PeopleCanvas() {
           </table>
         </div>
       )}
+      <Consequence>{t("Remind sends the person a note about their overdue work. It does not reassign anything.")}</Consequence>
+      <MoreDetail title={t("Open work and overdue work, charted")}>
+        <PeopleOverview rows={rows} unassigned={unassigned} />
+      </MoreDetail>
     </div>
     </CcPage>
   );

@@ -8209,6 +8209,8 @@ export const en = {
   "The count shows requests that did not reach SAP.": "The count shows requests that did not reach SAP.",
   "Submitting sends the request for approval. Nothing reaches SAP until every approval step is done.": "Submitting sends the request for approval. Nothing reaches SAP until every approval step is done.",
   "Charts, entry defaults and derivation rules": "Charts, entry defaults and derivation rules",
+  "Remind sends the person a note about their overdue work. It does not reassign anything.": "Remind sends the person a note about their overdue work. It does not reassign anything.",
+  "Open work and overdue work, charted": "Open work and overdue work, charted",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
