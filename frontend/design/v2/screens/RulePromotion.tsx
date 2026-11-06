@@ -12,7 +12,9 @@ import { int } from "@/lib/v2/score";
 import { Field, Gate } from "../forms";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { useToast } from "../Toast";
-import { CcBanner, CcPage } from "./cc-parts";
+import { Lede, PrimaryAction } from "../RunParts";
+import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { Consequence, Steps } from "./rules-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
 
@@ -61,13 +63,17 @@ export function RulePromotion() {
   const promoted = list.reduce((n, m) => n + m.promoted, 0);
   return (
     <CcPage title={t("Aletheia rule promotion")}>
+      <Lede>{t("Aletheia generated these rules from the SAP data dictionary. Pick an object, preview what each rule does on your data, then approve the ones that hold.")}</Lede>
       <CcBanner
         testId="rule-promotion"
         label={t("Aletheia rule promotion")}
         eyebrow={t("Aletheia rule promotion")}
         headline={t("{n, plural, one {# generated rule} other {# generated rules}} wait to be proved on your data", { n: total - promoted })}
         why={t("Each rule is dry-run on your latest extraction first. Only rules that hold on your data are promoted, and every promotion is audited and can be reverted.")}
-        figs={[{ label: t("Promoted"), value: int(promoted) }, { label: t("Generated"), value: int(total) }]}
+        figs={[
+          { label: t("Promoted"), value: int(promoted), hint: t("Rules switched on after proving themselves on your data.") },
+          { label: t("Generated"), value: int(total), hint: t("All rules Aletheia wrote for the objects below.") },
+        ]}
       />
       <Panel title={t("Objects")} meta={t("Bucket counts from the last evaluation.")} testId="rule-promotion-modules">
         {list.length === 0 ? <EmptyFrame>{t("No object has generated rules.")}</EmptyFrame> : (
@@ -124,14 +130,20 @@ function ObjectPanel({ object }: { object: string }) {
 
   return (
     <Panel title={t("{object} rules", { object: moduleText(object) })} meta={t("Preview changes nothing. Apply promotes the ready rules.")} testId="rule-promotion-detail">
+      <Steps
+        label={t("Promotion steps")}
+        testId="promo-steps"
+        steps={[t("Pick an object"), t("Preview on your data"), t("Approve the ready rules"), t("Watch for drift")]}
+        current={!data ? 1 : data.counts.promote > 0 ? 2 : 3}
+      />
       <div className="m2-acts">
-        <button type="button" className="m2-btn m2-next" disabled={q.isFetching} onClick={() => (run ? void q.refetch() : setRun(true))} data-testid="promo-preview">
+        <button type="button" className={`m2-btn${data && data.counts.promote > 0 && allowed ? "" : " m2-next"}`} disabled={q.isFetching} onClick={() => (run ? void q.refetch() : setRun(true))} data-testid="promo-preview">
           {q.isFetching ? t("Working…") : t("Preview")}
         </button>
         {allowed && data ? (
           <>
-            <button type="button" className="m2-btn" disabled={apply.isPending || data.counts.promote === 0} onClick={() => apply.mutate()} data-testid="promo-apply">
-              {t("{n, plural, one {Apply: promote # rule} other {Apply: promote # rules}}", { n: data.counts.promote })}
+            <button type="button" className={`m2-btn${data.counts.promote > 0 ? " m2-next" : ""}`} disabled={apply.isPending || data.counts.promote === 0} onClick={() => apply.mutate()} data-testid="promo-apply">
+              {t("{n, plural, one {Approve the top candidate: promote # rule} other {Approve the top candidates: promote # rules}}", { n: data.counts.promote })}
             </button>
             <button type="button" className="m2-btn m2-ghost" disabled={revert.isPending || data.promoted === 0} onClick={() => revert.mutate(undefined)} data-testid="promo-revert">
               {t("Revert all promotions")}
@@ -140,6 +152,7 @@ function ObjectPanel({ object }: { object: string }) {
         ) : null}
       </div>
       {!allowed ? <Gate>{t("Managing rules needs the manage rules permission.")}</Gate> : null}
+      {data && data.counts.promote > 0 ? <Consequence>{t("Approving switches on {n, plural, one {# rule} other {# rules}} for {object}. From the next run each raises an issue on every record it fails. Revert switches them off again.", { n: data.counts.promote, object: moduleText(object) })}</Consequence> : null}
       {!run ? <EmptyFrame>{t("Press Preview to dry-run the generated rules on the latest extraction.")}</EmptyFrame> : q.isPending ? <Skeleton width="100%" height={200} /> : q.isError ? (
         <ErrorFrame onRetry={() => void q.refetch()}>{errorSentence(q.error, t("The rules could not be evaluated."))}</ErrorFrame>
       ) : data ? (
@@ -176,6 +189,11 @@ function Evaluated({ data, filter, setFilter, rows, allowed, onAnyway, onRevert 
           </ul>
         </div>
       ) : null}
+      <CcHBars
+        label={t("Rules by outcome of the preview")}
+        testId="promo-buckets"
+        rows={BUCKETS.map((b) => ({ key: b, label: bucketName(b), value: data.counts[b], text: int(data.counts[b]), tone: b === "promote" ? "pass" : b === "review" ? "warn" : "data" }))}
+      />
       <div className="m2-chips" role="group" aria-label={t("Bucket")}>
         {[...BUCKETS, "promoted" as const].map((b) => (
           <button key={b} type="button" className="m2-chip" aria-pressed={filter === b} onClick={() => setFilter(b)} data-testid={`promo-chip-${b}`}>

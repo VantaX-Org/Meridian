@@ -25,7 +25,7 @@ describe("anomaly rules", () => {
     renderWithQuery(<AnomalyRules />);
     const fields = await screen.findByTestId("anomaly-rules-fields");
     // every field is shown by its description with the SAP name beside it
-    expect(await within(fields).findByText("Gross weight")).toBeInTheDocument();
+    expect((await within(fields).findAllByText("Gross weight")).length).toBeGreaterThan(0);
     fireEvent.click(await screen.findByTestId("propose-anom-1"));
     const yaml = await screen.findByTestId("anomaly-rules-yaml");
     expect(yaml.textContent).toContain("MARA.BRGEW");
@@ -68,5 +68,35 @@ describe("anomaly rules", () => {
     const row = (id: string, f: string, severity: string) => ({ id, module_id: "m", field_name: f, severity }) as never;
     const g = groupByField([row("1", "A", "low"), row("2", "B", "low"), row("3", "B", "high")]);
     expect(g.map((x) => [x.first.id, x.count])).toEqual([["3", 2], ["1", 1]]);
+  });
+});
+
+describe("stage 5: explanation", () => {
+  it("says what the screen shows and what to do next", async () => {
+    renderWithQuery(<AnomalyRules />);
+    expect(await screen.findByText(/Aletheia finds values far outside the usual range/)).toBeInTheDocument();
+  });
+});
+
+describe("stage 5: anomaly rules second pass", () => {
+  const cur = () => screen.getByTestId("anomaly-steps").querySelector('[aria-current="step"]')?.textContent ?? "";
+
+  it("shows where the user is from outlier to rule and moves on with each step", async () => {
+    renderWithQuery(<AnomalyRules />);
+    await screen.findByTestId("anomaly-rules-fields");
+    expect(cur()).toContain("Pick a field");
+    fireEvent.click(await screen.findByTestId("propose-anom-1"));
+    await screen.findByTestId("anomaly-rules-yaml");
+    expect(cur()).toContain("Save it as a draft");
+    expect(screen.getAllByTestId("consequence").some((e) => /flags nothing until a steward publishes/.test(e.textContent ?? ""))).toBe(true);
+    fireEvent.click(screen.getByTestId("anomaly-rules-save"));
+    await screen.findByText("Saved as draft");
+    expect(cur()).toContain("Publish it in the rule workbench");
+  });
+
+  it("states what proposing does before any button is pressed, and charts outliers by field", async () => {
+    renderWithQuery(<AnomalyRules />);
+    expect(await screen.findByTestId("anomaly-rules-chart")).toBeInTheDocument();
+    expect(screen.getAllByTestId("consequence")[0]).toHaveTextContent(/Nothing is saved and nothing is flagged until you save the draft/);
   });
 });

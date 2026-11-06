@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { RuleActions, RuleAuthority, RuleBlocks, RuleContract, RuleDefinition, RuleFacts, RuleHistory, RuleLineage, RuleProve, RuleScopeSection, RuleVersions, SectionLevel, ruleStatLine, useRule } from "../inspector/rule";
 import { EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { int } from "@/lib/v2/score";
+import { Lede, PrimaryAction } from "../RunParts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { LedgerSlot } from "./object/LedgerSlot";
 import { RuleOverview } from "./RuleOverview";
@@ -16,14 +17,14 @@ import { useToast } from "../Toast";
 import { errorSentence } from "@/lib/api/v2/work";
 
 type TabKey = "overview" | "blast" | "definition" | "failing" | "prove" | "impact" | "history";
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "overview", get label() { return tr("Overview"); } },
-  { key: "blast", get label() { return tr("Blast radius"); } },
-  { key: "definition", get label() { return tr("Definition"); } },
-  { key: "failing", get label() { return tr("Failing records"); } },
-  { key: "prove", get label() { return tr("Prove in SAP"); } },
-  { key: "impact", get label() { return tr("Impact"); } },
-  { key: "history", get label() { return tr("History"); } },
+const TABS: { key: TabKey; label: string; hint: string }[] = [
+  { key: "overview", get label() { return tr("Overview"); }, get hint() { return tr("Where the failures are, who set the values, and why the rule exists."); } },
+  { key: "blast", get label() { return tr("Blast radius"); }, get hint() { return tr("What this rule's failures reach."); } },
+  { key: "definition", get label() { return tr("Definition"); }, get hint() { return tr("How the rule is written, where it comes from and what you can do to it."); } },
+  { key: "failing", get label() { return tr("Failing records"); }, get hint() { return tr("The records to fix, one per row."); } },
+  { key: "prove", get label() { return tr("Prove in SAP"); }, get hint() { return tr("Reproduce the failing count in SAP yourself."); } },
+  { key: "impact", get label() { return tr("Impact"); }, get hint() { return tr("Facts about the rule's effect and what it depends on."); } },
+  { key: "history", get label() { return tr("History"); }, get hint() { return tr("How the rule and its failures changed over runs."); } },
 ];
 
 function tabOf(value: string | null): TabKey {
@@ -85,6 +86,7 @@ export function RuleCanvas({ id }: { id: string }) {
   return (
     <CcPage>
       <PageTitle sub={name ? <Mono>{id}</Mono> : undefined}>{name ?? <Mono>{id}</Mono>}</PageTitle>
+      <Lede>{tr("One rule and what it finds in the newest run. Start with the failing records, then use the tabs for where the rule comes from and who changed the values.")}</Lede>
       <CcBanner
         testId="rule-banner"
         label={tr("Rule summary")}
@@ -103,13 +105,14 @@ export function RuleCanvas({ id }: { id: string }) {
           ) : undefined
         }
         figs={[
-          { label: tr("Failing records"), value: int(v.scope.failing_records), note: v.failingPct != null ? tr("{pct2} of records checked", { pct2: `${v.failingPct.toFixed(2)}%` }) : undefined },
-          { label: tr("Objects affected"), value: int(v.scope.objects.length) },
+          { label: tr("Failing records"), value: int(v.scope.failing_records), note: v.failingPct != null ? tr("{pct2} of records checked", { pct2: `${v.failingPct.toFixed(2)}%` }) : undefined, hint: tr("Records in the newest run that do not meet this rule.") },
+          { label: tr("Objects affected"), value: int(v.scope.objects.length), hint: tr("Objects that use this rule.") },
         ]}
         action={
-          <V2Link href={href("failing")} className="m2-btn m2-next">
-            {tr("Show the failing records")}
-          </V2Link>
+          <PrimaryAction
+            action={<V2Link href={href("failing")} className="m2-btn m2-next">{tr("Show the failing records")}</V2Link>}
+            why={tr("Seeing the records shows what to fix first.")}
+          />
         }
       />
       <p className="m2-statusline" data-testid="rule-stat-line">
@@ -127,6 +130,7 @@ export function RuleCanvas({ id }: { id: string }) {
           </V2Link>
         ))}
       </nav>
+      <p className="m2-why1" data-testid="rule-tab-hint">{TABS.find((x) => x.key === tab)?.hint}</p>
       <div className="m2-tabpanel">
         <SectionLevel level="h2">
           {tab === "overview" ? (

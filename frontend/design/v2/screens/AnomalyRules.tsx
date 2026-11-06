@@ -13,7 +13,9 @@ import { f1, int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
-import { CcBanner, CcPage } from "./cc-parts";
+import { Lede, PrimaryAction } from "../RunParts";
+import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { Consequence, Steps } from "./rules-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
 
@@ -57,7 +59,12 @@ export function AnomalyRules() {
   const { can } = useV2Session();
   const out = useQuery({ queryKey: ["mining", fixture, "anomalies"], queryFn: getAnomalies, staleTime: 60_000 });
   const [picked, setPicked] = useState<AnomalyItem | null>(null);
-  const propose = useMutation({ mutationFn: (a: AnomalyItem) => proposeAnomalyRule(a.id), onMutate: (a) => setPicked(a) });
+  const [saved, setSaved] = useState(false);
+  const propose = useMutation({ mutationFn: (a: AnomalyItem) => proposeAnomalyRule(a.id), onMutate: (a) => {
+      setPicked(a);
+      setSaved(false);
+    },
+  });
 
   if (out.isPending) return <CcPage title={t("Anomaly rules")}><Skeleton width="100%" height={320} /></CcPage>;
   if (out.isError) {
@@ -72,6 +79,7 @@ export function AnomalyRules() {
 
   return (
     <CcPage title={t("Anomaly rules")}>
+      <Lede>{t("Aletheia finds values far outside the usual range of a field. Open an outlier, see the rule it would become, and approve it to keep watching that field.")}</Lede>
       <CcBanner
         testId="anomaly-rules"
         label={t("Anomaly rules")}
@@ -80,10 +88,22 @@ export function AnomalyRules() {
         why={t("The rule is a template on the usual range of the field. It runs on the same data first, so you see what it would flag before you approve it.")}
       />
 
-      <FieldShifts allowed={allowed} />
+      <Steps
+        testId="anomaly-steps"
+        label={t("Steps from an outlier to a rule")}
+        steps={[t("Pick a field"), t("Check what the rule would flag"), t("Save it as a draft"), t("Publish it in the rule workbench")]}
+        current={!picked ? 0 : saved ? 3 : propose.data?.rule_yaml ? 2 : 1}
+      />
+      {allowed ? <Consequence>{t("Proposing a rule only drafts it and runs it once on the same data. Nothing is saved and nothing is flagged until you save the draft.")}</Consequence> : null}
 
       <Panel title={t("Fields with outliers")} meta={t("Most outliers first.")} testId="anomaly-rules-fields">
         {groups.length === 0 ? <EmptyFrame>{t("No outlier was found.")}</EmptyFrame> : (
+          <>
+          <CcHBars
+            label={t("Outliers by field")}
+            testId="anomaly-rules-chart"
+            rows={groups.slice(0, 8).map(({ first: a, count }) => ({ key: a.id, label: a.field_description ?? a.field_name, value: count, text: int(count), tone: "warn" as const }))}
+          />
           <ScrollFrame label={t("Fields with outliers table, scrollable")}>
             <table className="m2-tbl m2-cards">
               <thead>
@@ -116,6 +136,7 @@ export function AnomalyRules() {
               </tbody>
             </table>
           </ScrollFrame>
+          </>
         )}
       </Panel>
 
@@ -123,9 +144,11 @@ export function AnomalyRules() {
         <Panel title={t("Proposed rule")} meta={picked.field_description ?? picked.field_name} testId="anomaly-rules-proposal">
           {propose.isPending ? <Skeleton width="100%" height={160} /> : propose.isError ? (
             <Dash why={errorSentence(propose.error, t("The rule could not be proposed."))} />
-          ) : propose.data ? <Proposal p={propose.data} /> : null}
+          ) : propose.data ? <Proposal p={propose.data} onSaved={() => setSaved(true)} /> : null}
         </Panel>
       ) : null}
+
+      <FieldShifts allowed={allowed} />
     </CcPage>
   );
 }
@@ -201,14 +224,15 @@ function ProposeShift({ shift }: { shift: FieldShift }) {
   );
 }
 
-function Proposal({ p }: { p: AnomalyRuleProposal }) {
+function Proposal({ p, onSaved }: { p: AnomalyRuleProposal; onSaved: () => void }) {
   const toast = useToast();
   const g = p.grounding;
-  const [saved, setSaved] = useState(false);
+  const [saved, setSavedLocal] = useState(false);
   const save = useMutation({
     mutationFn: () => approveAnomalyRule(g.module, p.rule_yaml ?? "", t("Proposed by Aletheia from an outlier in {field}", { field: g.field })),
     onSuccess: () => {
-      setSaved(true);
+      setSavedLocal(true);
+      onSaved();
       toast.show(t("Draft saved. Find it in the rule workbench."));
     },
     onError: (e) => toast.show(errorSentence(e, t("The draft could not be saved.")), "error"),
@@ -239,6 +263,7 @@ function Proposal({ p }: { p: AnomalyRuleProposal }) {
         <li>{p.source === "template" ? t("No AI was used. The rule is a template, and the check is deterministic.") : t("The AI drafted this rule from the field, the statistic and the counts. It saw no record.")}</li>
         {!p.valid ? p.errors.map((e) => <li key={e}>{e}</li>) : null}
       </ul>
+      {p.valid && !saved ? <Consequence>{t("Saving adds this rule to the rule workbench as a draft. It flags nothing until a steward publishes it.")}</Consequence> : null}
       {p.valid ? (
         <button type="button" className="m2-btn m2-next" disabled={save.isPending || saved} onClick={() => save.mutate()} data-testid="anomaly-rules-save">
           {saved ? t("Saved as draft") : t("Save as draft")}

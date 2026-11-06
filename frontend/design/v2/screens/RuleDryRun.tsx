@@ -11,9 +11,11 @@ import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { DeltaBar, StackedBar, type StackPart } from "../charts";
 import { Field, Gate } from "../forms";
-import { Coded, EmptyFrame, ErrorFrame, Mono } from "../parts";
+import { Coded, EmptyFrame, ErrorFrame, Mono, V2Link } from "../parts";
+import { Lede, PrimaryAction } from "../RunParts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
+import { Consequence, Steps } from "./rules-parts";
 
 /**
  * Rule impact dry run: what enabling, editing or adding one rule would do to an object, before anyone does it. The rule
@@ -61,6 +63,7 @@ export function RuleDryRun() {
 
   return (
     <CcPage title={t("Rule dry run")}>
+      <Lede>{t("Test a rule or a draft on the latest stored data before it goes live. Nothing is written. Fill in the form, then run it.")}</Lede>
       <CcBanner
         testId="rule-dry-run"
         label={t("Rule dry run")}
@@ -68,10 +71,16 @@ export function RuleDryRun() {
         headline={r?.evaluated ? t("{n, plural, one {# record fails} other {# records fail}} this rule", { n: r.records_failing ?? 0 }) : t("See what a rule would do before you change it")}
         why={t("The rule runs on the latest stored extraction. Nothing is written and SAP is not called.")}
         figs={r?.evaluated ? [
-          { label: t("Records checked"), value: int(r.records_evaluated ?? 0) },
-          { label: t("Failure rate"), value: pct(r.failure_rate ?? 0) },
-          { label: t("Score change"), value: signed(r.dqs?.delta ?? 0) },
+          { label: t("Records checked"), value: int(r.records_evaluated ?? 0), hint: t("Records the rule could read, scaled from the rows tested.") },
+          { label: t("Failure rate"), value: pct(r.failure_rate ?? 0), hint: t("Share of checked records that fail the rule.") },
+          { label: t("Score change"), value: signed(r.dqs?.delta ?? 0), hint: t("Points the object score would move if the rule were live.") },
         ] : []}
+      />
+      <Steps
+        label={t("Dry run steps")}
+        testId="dry-run-steps"
+        steps={[t("Choose the rule"), t("Run it on current data"), t("Read the effect"), t("Decide what to do")]}
+        current={r ? 2 : ready ? 1 : 0}
       />
       <Panel title={t("Rule to test")} meta={t("Name an existing rule, switched on or off. Add changes to test an edit, or leave the rule id empty and give a whole draft.")} testId="dry-run-form">
         <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
@@ -91,11 +100,15 @@ export function RuleDryRun() {
               </select>
             )}
           </Field>
-          <div className="m2-acts">
-            <button type="submit" className="m2-btn m2-next" disabled={!allowed || !ready || run.isPending} data-testid="dry-run-go">
-              {run.isPending ? t("Working…") : t("Run dry run")}
-            </button>
-          </div>
+          <PrimaryAction
+            action={(
+              <button type="submit" className="m2-btn m2-next" disabled={!allowed || !ready || run.isPending} data-testid="dry-run-go">
+                {run.isPending ? t("Working…") : t("Run the draft against current data")}
+              </button>
+            )}
+            why={ready ? t("Shows how many records would fail, before anything changes.") : t("Name an object and a rule id or changes first.")}
+          />
+          {!r ? <Consequence>{t("A dry run reads up to {cap} rows per table from the latest stored extraction. It writes nothing and does not call SAP.", { cap: int(cap) })}</Consequence> : null}
           {!allowed ? <Gate>{t("Running a dry run needs the manage rules permission.")}</Gate> : null}
         </form>
       </Panel>
@@ -130,6 +143,7 @@ function Result({ r }: { r: ImpactResult }) {
           <span className="m2-meta">{moduleText(r.module)}</span>
         </p>
         <StackedBar parts={split} label={t("Records failing and passing")} format={int} testId="dry-run-split" />
+        <p data-testid="dry-run-next">{t("Happy with the effect? Open the rule to switch it on or edit it.")} <V2Link href={`/r/${encodeURIComponent(r.rule_id)}`} className="m2-btn m2-sm">{t("Open the rule")}</V2Link></p>
         <p className="m2-meta" data-testid="dry-run-cap-note">
           {r.row_cap.sampled
             ? t("{cap} rows per table were tested and the counts are scaled to the full table.", { cap: int(r.row_cap.cap) })

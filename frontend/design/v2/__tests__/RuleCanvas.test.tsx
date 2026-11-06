@@ -153,3 +153,39 @@ describe("the rule canvas /r/{check_id}", () => {
     expect(screen.getByTestId("rule-canvas-loading")).toHaveAttribute("aria-busy", "true");
   });
 });
+
+describe("stage 5: rule canvas primary action", () => {
+  it("explains the page and offers one filled link to the failing records", async () => {
+    renderWithQuery(<RuleCanvas id="MM142" />);
+    const link = await screen.findByRole("link", { name: "Show the failing records" });
+    expect(link).toHaveClass("m2-next");
+    expect(link.getAttribute("href")).toContain("tab=failing");
+    expect(screen.getByText(/One rule and what it finds in the newest run/)).toBeInTheDocument();
+  });
+});
+
+describe("stage 5: rule canvas second pass", () => {
+  it("says in one line what the open tab shows", async () => {
+    renderWithQuery(<RuleCanvas id="MM142" />);
+    await waitFor(() => expect(norm(screen.getByTestId("rule-tab-hint"))).toBe("Where the failures are, who set the values, and why the rule exists."));
+  });
+
+  it("says what the Definition tab holds when it is open", async () => {
+    setUrl("/r/MM142?fixture=1&tab=definition");
+    renderWithQuery(<RuleCanvas id="MM142" />);
+    await waitFor(() => expect(norm(screen.getByTestId("rule-tab-hint"))).toMatch(/How the rule is written/));
+  });
+
+  it("charts who set the failing values beside the origin table", async () => {
+    renderWithQuery(<RuleCanvas id="MM142" />);
+    const chart = await screen.findByTestId("root-cause-chart");
+    expect(chart).toHaveTextContent("60.0%");
+    expect(chart).toHaveTextContent("10.0%");
+  });
+
+  it("puts the failing records before the why and history columns", async () => {
+    renderWithQuery(<RuleCanvas id="MM142" />);
+    const why = await screen.findByTestId("rule-why");
+    expect(screen.getByTestId("ledger-slot").compareDocumentPosition(why) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});

@@ -64,6 +64,13 @@ describe("steward decision on a verified pick", () => {
     expect(state).toHaveTextContent("The picked value is out of date");
   });
 
+  it("marks only the server-checked picks with Verified and says so", async () => {
+    renderWithQuery(<AletheiaSurvivorship />);
+    await screen.findByTestId("surv-pick-MAT-000101-MARA.MTART");
+    expect(screen.getAllByTestId("verified-mark").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Only picks the server proved/)).toBeInTheDocument();
+  });
+
   it("a viewer sees the picks but no actions", async () => {
     window.history.pushState({}, "", "/aletheia-survivorship?fixture=1&persona=owner&role=viewer");
     setUrl("/aletheia-survivorship?fixture=1&persona=owner&role=viewer");
@@ -147,5 +154,32 @@ describe("accuracy panel", () => {
     const fields = within(panel).getByTestId("surv-by-field");
     expect(within(fields).getByTitle("Material type (MARA.MTART)")).toBeInTheDocument();
     expect(within(fields).getByText("Material type")).toBeInTheDocument();
+  });
+});
+
+describe("stage 5: survivorship second pass", () => {
+  beforeEach(() => { resetSurvivorship(); asSteward(); });
+
+  it("shows the process steps with the steward step current while picks wait, and charts decisions", async () => {
+    renderWithQuery(<AletheiaSurvivorship />);
+    const steps = await screen.findByTestId("surv-steps");
+    expect(within(steps).getByText(/Steward approves/).closest("li")).toHaveAttribute("aria-current", "step");
+    expect(screen.getByTestId("surv-chart")).toBeInTheDocument();
+  });
+
+  it("puts the waiting queue before the counts and says what approve and reject do", async () => {
+    renderWithQuery(<AletheiaSurvivorship />);
+    const queue = await screen.findByTestId("survivorship-queue");
+    const counts = screen.getByTestId("survivorship-counts");
+    expect(queue.compareDocumentPosition(counts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(queue).getByTestId("consequence")).toHaveTextContent("Approving applies the pick to the golden record");
+  });
+
+  it("states what the approval setting does, and a viewer gets no queue consequence", async () => {
+    const u = "/aletheia-survivorship?fixture=1&persona=owner&role=viewer"; window.history.pushState({}, "", u); setUrl(u);
+    renderWithQuery(<AletheiaSurvivorship />);
+    const q = await screen.findByTestId("survivorship-queue");
+    expect(within(q).queryByTestId("consequence")).toBeNull();
+    expect(await within(await screen.findByTestId("survivorship-approval")).findByTestId("consequence")).toHaveTextContent(/approval/i);
   });
 });

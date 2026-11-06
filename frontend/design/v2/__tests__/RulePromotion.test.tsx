@@ -64,3 +64,31 @@ describe("rule promotion", () => {
     expect(await screen.findByText("Rule promoted. The reason is in the audit log.")).toBeInTheDocument();
   });
 });
+
+describe("stage 5: primary action gating", () => {
+  it("makes Preview the filled action before any preview, then Approve once candidates exist", async () => {
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    const preview = await screen.findByTestId("promo-preview");
+    expect(preview).toHaveClass("m2-next");
+    fireEvent.click(preview);
+    const apply = await screen.findByTestId("promo-apply");
+    expect(apply).toHaveClass("m2-next");
+    expect(apply).toHaveTextContent(/Approve the top candidate/);
+    expect(screen.getByTestId("promo-preview")).not.toHaveClass("m2-next");
+  });
+
+  it("shows the current step, says what approving does before it runs, and charts the outcomes", async () => {
+    renderWithQuery(<ToastProvider><RulePromotion /></ToastProvider>);
+    const steps = await screen.findByTestId("promo-steps");
+    expect(within(steps).getAllByRole("listitem")).toHaveLength(4);
+    expect(steps.querySelector('[aria-current="step"]')).toHaveTextContent("Preview on your data");
+    expect(screen.queryByTestId("consequence")).toBeNull();
+    expect(screen.queryByTestId("promo-buckets")).toBeNull();
+    fireEvent.click(screen.getByTestId("promo-preview"));
+    await screen.findByTestId("promo-rules");
+    expect(screen.getByTestId("promo-steps").querySelector('[aria-current="step"]')).toHaveTextContent("Approve the ready rules");
+    expect(screen.getByTestId("consequence")).toHaveTextContent(/Approving switches on 2 rules/);
+    expect(screen.getByTestId("consequence")).toHaveTextContent(/Revert switches them off again/);
+    expect(screen.getByTestId("promo-buckets")).toBeInTheDocument();
+  });
+});

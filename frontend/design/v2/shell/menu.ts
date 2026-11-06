@@ -54,8 +54,9 @@ export function destinations(): Destination[] {
         { href: "/anomaly-rules", label: t("Anomaly rules") },
         { href: "/monitors", label: t("Learned monitors") },
         { href: "/aletheia-survivorship", label: t("Aletheia verified survivorship") },
+        { href: "/aletheia/evidence", label: t("Evidence ledger") },
       ],
-      also: ["/r"],
+      also: ["/r", "/aletheia"],
     },
     {
       id: "master",
