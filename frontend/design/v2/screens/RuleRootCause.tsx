@@ -8,6 +8,7 @@ import { t as tr } from "@/lib/v2/i18n";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import type { RuleView } from "../inspector/rule";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { CcHBars } from "./cc-parts";
 
 const ORIGIN: Record<RootCauseOrigin["origin"], () => string> = {
   interface: () => tr("Interface or batch user"),
@@ -36,6 +37,11 @@ export function RuleRootCause({ view }: { view: RuleView }) {
           {d.field ? <Coded code={d.field} text={describeField(d.field)} /> : <Dash />}{" "}
           {tr("{analysed} of {total} failing records traced.", { analysed: int(d.analysed), total: int(d.total) })}
         </p>
+        <CcHBars
+          label={tr("Failing records by who set the value")}
+          testId="root-cause-chart"
+          rows={d.origins.map((o) => ({ key: `${o.origin}|${o.username}|${o.tcode}`, label: `${ORIGIN[o.origin]()}${o.username ? ` ${o.username}` : ""}`, value: o.records, text: `${f1(o.share)}%`, tone: "data" as const }))}
+        />
         <ScrollFrame label={tr("Who set these values, scrollable")}>
           <table className="m2-tbl" aria-label={title}>
             <thead>
