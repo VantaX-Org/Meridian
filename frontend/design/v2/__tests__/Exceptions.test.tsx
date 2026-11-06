@@ -56,4 +56,39 @@ describe("Exceptions", () => {
     expect(screen.queryByRole("form", { name: "Escalate the exception" })).toBeNull();
     expect(screen.queryByRole("form", { name: "Resolve the exception" })).toBeNull();
   });
+
+  it("leads with the table and three steps; the severity chart and rules sit in one closed disclosure after it", async () => {
+    renderWithQuery(<Exceptions />);
+    const table = await screen.findByTestId("exceptions-table");
+    expect(within(screen.getByTestId("flow-steps")).getAllByRole("listitem")).toHaveLength(3);
+    const more = screen.getByTestId("more-detail");
+    expect(more).not.toHaveAttribute("open");
+    expect(more).toContainElement(screen.getByTestId("exceptions-severity"));
+    expect(table.compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("moves to step two and says what Assign, Escalate and Resolve do once one is open", async () => {
+    renderWithQuery(<Exceptions />);
+    fireEvent.click(await screen.findByRole("button", { name: "Goods receipt posted to a blocked material" }));
+    expect(await screen.findByText("Assign makes the person the owner. The exception stays open.")).toBeInTheDocument();
+    expect(screen.getByText(/Escalate raises the exception one tier\. Resolve closes it/)).toBeInTheDocument();
+    expect(within(screen.getByTestId("flow-steps")).getAllByRole("listitem")[1]).toHaveAttribute("aria-current", "step");
+  });
+
+  it("shows no consequence lines to a role that can neither assign nor approve", async () => {
+    h.allowed = ["view"];
+    renderWithQuery(<Exceptions />);
+    fireEvent.click(await screen.findByRole("button", { name: "Goods receipt posted to a blocked material" }));
+    await screen.findByTestId("exceptions-detail");
+    expect(screen.queryByText(/Assign makes the person the owner/)).toBeNull();
+    expect(screen.queryByText(/Escalate raises the exception/)).toBeNull();
+  });
+
+  it("says what failed and offers a retry when the exceptions cannot be read", async () => {
+    const api = await import("@/lib/api/v2/exceptions");
+    vi.spyOn(api, "getExceptions").mockRejectedValue(new Error("boom"));
+    renderWithQuery(<Exceptions />);
+    expect(await screen.findByText("The exceptions could not be read.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+  });
 });

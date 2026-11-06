@@ -8,6 +8,11 @@ import { ToastProvider } from "../Toast";
 import { stubLayout } from "./layout-stub";
 import { setUrl } from "./nav-store";
 
+const perm = vi.hoisted(() => ({ manage: true }));
+vi.mock("@/lib/v2/hooks", async (orig) => {
+  const m = await orig<typeof import("@/lib/v2/hooks")>();
+  return { ...m, useV2Session: () => ({ ...m.useV2Session(), can: (a: string) => (a === "manage_rules" ? perm.manage : true) }) };
+});
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 
 let undo: () => void = () => undefined;
@@ -16,6 +21,7 @@ beforeEach(() => {
   undo = stubLayout();
   setUrl("/fix-drafts");
   resetFixDrafts();
+  perm.manage = true;
 });
 afterEach(() => {
   undo();
@@ -44,5 +50,40 @@ describe("verified fixes", () => {
     renderWithQuery(<ToastProvider><FixDrafts /></ToastProvider>);
     fireEvent.click(await screen.findByTestId("fix-reject-SD_FIX_DEMO_2"));
     expect(await screen.findByText("Fix rejected.")).toBeInTheDocument();
+  });
+});
+
+describe("verified fixes task flow", () => {
+  it("shows four steps with the approve step current while drafts wait", async () => {
+    renderWithQuery(<ToastProvider><FixDrafts /></ToastProvider>);
+    const items = within(await screen.findByTestId("flow-steps")).getAllByRole("listitem");
+    expect(items).toHaveLength(4);
+    expect(items[3]).toHaveAttribute("aria-current", "step");
+  });
+
+  it("puts the drafts before coverage, keeps coverage and shape behind a disclosure, and states the consequence of approving", async () => {
+    renderWithQuery(<ToastProvider><FixDrafts /></ToastProvider>);
+    const list = await screen.findByTestId("fix-drafts-list");
+    const card = await screen.findByTestId("fix-draft-MM_FIX_DEMO_1");
+    const cov = await screen.findByTestId("fix-coverage-panel");
+    expect(list.compareDocumentPosition(cov) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(cov.closest("details")).not.toBeNull();
+    expect(within(card).getByText("What the failing values look like").closest("details")).not.toBeNull();
+    expect(within(card).getAllByTestId("consequence")[0]).toHaveTextContent(/Nothing in SAP changes/);
+  });
+
+  it("hides approve and reject and says why without the manage rules permission", async () => {
+    perm.manage = false;
+    renderWithQuery(<ToastProvider><FixDrafts /></ToastProvider>);
+    await screen.findByTestId("fix-draft-MM_FIX_DEMO_1");
+    expect(screen.queryByTestId("fix-approve-MM_FIX_DEMO_1")).toBeNull();
+    expect(screen.getByText("Managing rules needs the manage rules permission.")).toBeInTheDocument();
+  });
+
+  it("gives a next step when the list cannot be read", async () => {
+    vi.spyOn(await import("@/lib/api/v2/fix-drafts"), "getFixDrafts").mockRejectedValue(new Error("down"));
+    renderWithQuery(<ToastProvider><FixDrafts /></ToastProvider>);
+    expect(await screen.findByText("The fix drafts could not be read.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry|try again/i })).toBeInTheDocument();
   });
 });

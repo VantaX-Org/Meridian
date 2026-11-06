@@ -60,6 +60,7 @@ import { FixOrderHint } from "./object/Related";
 import { WorkTabs } from "./WorkTabs";
 import { AletheiaDock } from "./CommandCentre";
 import { FixPipeline, RuleBoard } from "./Cockpit";
+import { Consequence, FixHead, FlowSteps, MoreDetail, RowRunChip } from "../FixParts";
 import { RuleSpark, WorkBanner, WorkBreakdown, type Bar } from "./work-banner";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { Sparkline } from "../charts";
@@ -467,16 +468,16 @@ export function WorkCanvas() {
     : [...(summary?.objects ?? [])].filter((o) => o.open > 0).sort((a, b) => b.open - a.open).slice(0, 8).map((o) => ({ key: o.module, label: objectName(o.module, labels), n: o.open, active: false, onPick: () => go({ module: o.module }), spark: objectSpark(o.module) }));
   // One action, chosen by the data: accept what is ready, else approve what waits, else start on the biggest rule.
   const action =
-    session.persona === "steward" && can.apply && topGroup && state.chip !== "approvals" && state.chip !== "exceptions" ? (
-      <button type="button" className="m2-btn m2-next" onClick={() => ask(topGroup.proposed, tr("Accept {count} suggested values for {check}?", { count: int(topGroup.proposed), check: topGroup.check_id }), tr("Accept {count} values", { count: int(topGroup.proposed) }), () => void actions.acceptRule(topGroup.check_id, topGroup.proposed, topGroup.version_id, recordRows))}>
+    pastRun ? null : session.persona === "steward" && can.apply && topGroup && state.chip !== "approvals" && state.chip !== "exceptions" ? (
+      <button type="button" className="m2-btn m2-next m2-strong" onClick={() => ask(topGroup.proposed, tr("Accept {count} suggested values for {check}?", { count: int(topGroup.proposed), check: topGroup.check_id }), tr("Accept {count} values", { count: int(topGroup.proposed) }), () => void actions.acceptRule(topGroup.check_id, topGroup.proposed, topGroup.version_id, recordRows))}>
         {tr("Accept {count} suggested values on {check}", { count: int(topGroup.proposed), check: topGroup.check_id })}
       </button>
     ) : can.approve && waiting > 0 && state.chip !== "approvals" ? (
-      <button type="button" className="m2-btn m2-next" onClick={() => go({ chip: "approvals", group: false })}>
+      <button type="button" className="m2-btn m2-next m2-strong" onClick={() => go({ chip: "approvals", group: false })}>
         {tr("Review the {waiting} waiting for approval", { waiting: int(waiting) })}
       </button>
     ) : topRule && state.rule !== topRule.check_id ? (
-      <button type="button" className="m2-btn m2-next" onClick={() => go({ module: topRule.module, rule: topRule.check_id, group: false })}>
+      <button type="button" className="m2-btn m2-next m2-strong" onClick={() => go({ module: topRule.module, rule: topRule.check_id, group: false })}>
         {tr("Start with the {n} records failing {check}", { n: int(topRule.open), check: topRule.check_id })}
       </button>
     ) : null;
@@ -493,6 +494,7 @@ export function WorkCanvas() {
       { id: "second", header: headers.second, width: 70, title: tr("{second}, the second part of the record key. A dash when the record has none.", { second: headers.second }), cell: r((x) => (keyValue(x, 1) ? <Mono>{keyValue(x, 1)}</Mono> : <Dash why={tr("This record has no second key part")} />)) },
       { id: "name", header: tr("Name"), width: 170, title: tr("The record's name."), cell: r((x) => (x.name ? <span title={x.name}>{x.name}</span> : <Dash />)) },
       { id: "rule", header: tr("Rule"), width: 300, title: tr("What the rule that rejected the value says, with its check id."), cell: r((x) => (x.checks[0] ? <Coded code={x.checks[0]} text={x.top_message} /> : <Dash />)) },
+      { id: "object", header: tr("Object and run"), width: 290, title: tr("The object the record belongs to and the run its row was read at."), cell: r((x) => <RowRunChip module={x.module} versionId={x.version_id} />) },
       {
         id: "severity",
         header: tr("Severity"),
@@ -520,7 +522,7 @@ export function WorkCanvas() {
     ];
     if (state.chip === "exceptions") {
       // Signed off: what the decision was, why, by whom and when; stewards can reopen it.
-      const keep = new Set(["record", "second", "name", "rule", "severity", "fdesc", "sapfield", "problem", "current"]);
+      const keep = new Set(["record", "second", "name", "rule", "object", "severity", "fdesc", "sapfield", "problem", "current"]);
       const value = base.find((c) => c.id === "value");
       return [
         ...base.filter((c) => keep.has(c.id)),
@@ -536,12 +538,12 @@ export function WorkCanvas() {
           locked: true,
           title: tr("Puts the record back to rows to fix. Needs the apply permission."),
           cell: r((x) =>
-            can.apply ? (
+            can.apply && !pastRun ? (
               <button type="button" className="m2-btn m2-sm m2-reopen" aria-label={tr("Reopen {keyValue}", { keyValue: keyValue(x, 0) ?? x.record_key })} onClick={() => void actions.decide([x], "reopen")}>
                 {tr("Reopen")}
               </button>
             ) : (
-              <Dash why={tr("Reopening needs the apply permission")} />
+              <Dash why={pastRun ? tr("Actions are off here; go back to today to act.") : tr("Reopening needs the apply permission")} />
             ),
           ),
         },
@@ -554,7 +556,7 @@ export function WorkCanvas() {
       return [...base.slice(0, at + 1), status, ...base.slice(at + 1)];
     }
     return base;
-  }, [headers, h, onChoose, now, state.chip, can.apply, actions]);
+  }, [headers, h, onChoose, now, state.chip, can.apply, pastRun, actions]);
 
   // Views menu -------------------------------------------------------------------------------------------------
   const goView = (id: string | null) => {
@@ -813,15 +815,36 @@ export function WorkCanvas() {
       <PageTitle sub={objectLabel ?? tr("All objects")}>{tr("Work")}</PageTitle>
       <WorkTabs current="ledger" />
       <WorkBanner why={text} open={fig.open} critical={fig.critical} proposed={fig.proposed} pending={summaryQ.isPending} action={action} />
-      <RuleBoard label={(m) => objectName(m, labels)} module={state.module} limit={8} />
-      <FixPipeline label={(m) => objectName(m, labels)} module={state.module} />
-      <WorkBreakdown title={state.module ? tr("Open records by rule") : tr("Open records by object")} bars={bars} />
-      <FixOrderHint module={state.module} />
+      <FixHead
+        lede={tr("Every failing value with a suggested fix, one row per record, each object at its newest run. Work down the rows, accept a suggestion or enter your own, and a second person approves.")}
+        means={[
+          [tr("Open"), tr("Records with at least one failing value still to fix. A record with three failed rules counts once.")],
+          [tr("Critical"), tr("Open records that fail a critical rule.")],
+          [tr("Suggested"), tr("Records where Aletheia proposes a value you can accept as it is.")],
+          [tr("Value at risk"), tr("The cost model's estimate of what a failing value costs. A dash means the model has no price for it.")],
+        ]}
+      />
+      <FlowSteps
+        label={tr("Fixing steps")}
+        current={state.chip === "proposed" ? 1 : state.chip === "approvals" ? 2 : state.chip === "approved" || state.chip === "sent" || state.chip === "fixed" ? 3 : 0}
+        steps={[
+          { label: tr("Find"), count: counts.get("tofix") == null ? undefined : int(counts.get("tofix") as number), hint: tr("Rows still to fix. Pick one to see its failing value.") },
+          { label: tr("Propose"), count: counts.get("proposed") == null ? undefined : int(counts.get("proposed") as number), hint: tr("Accept the suggested value or enter your own.") },
+          { label: tr("Approve"), count: counts.get("approvals") == null ? undefined : int(counts.get("approvals") as number), hint: tr("A second person approves before anything is sent.") },
+          { label: tr("Apply"), count: counts.get("approved") == null ? undefined : int(counts.get("approved") as number), hint: tr("Approved fixes are applied to the current run only.") },
+        ]}
+      />
+      <MoreDetail title={tr("Rules, pipeline and open records, charted")}>
+        <RuleBoard label={(m) => objectName(m, labels)} module={state.module} limit={8} />
+        <FixPipeline label={(m) => objectName(m, labels)} module={state.module} />
+        <WorkBreakdown title={state.module ? tr("Open records by rule") : tr("Open records by object")} bars={bars} />
+        <FixOrderHint module={state.module} />
+      </MoreDetail>
       {state.asOf ? (
         <div className="m2-asof" role="status" data-testid="ledger-as-of">
           <span>
             <strong>{tr("As it stood at run {when}; statuses are today's.", { when: asOfRun ? formatDate(asOfRun.run_at, "datetime") : state.asOf.slice(0, 8) })}</strong>{" "}
-            {tr("Each object is read at its newest run up to then. Counts on the chips are today's.")}
+            {tr("Each object is read at its newest run up to then. Counts on the chips are today's.")}{" "}{tr("Actions are off here; go back to today to act.")}
           </span>
           <button type="button" className="m2-btn m2-sm" onClick={() => go({ asOf: null })}>
             {tr("Back to today")}
@@ -900,6 +923,7 @@ export function WorkCanvas() {
           </span>
         </ResultFrame>
       ) : null}
+      <Consequence>{tr("Accepting or editing a value only proposes it. Nothing reaches SAP until it is approved and applied.")}</Consequence>
       <div className="m2-lcount" aria-live="polite">
         <span>{countText}</span>
         {loadedNote ? <span className="m2-meta m2-only-wide">{loadedNote}</span> : null}

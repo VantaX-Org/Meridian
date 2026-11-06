@@ -12,6 +12,7 @@ import { PEOPLE_SORT_LABEL, objectsLine, roleWord, slaMet, sortPeople, type Peop
 import { usePeople } from "@/lib/v2/approvals-queries";
 import { useWorkSummary } from "@/lib/v2/work-queries";
 import { int } from "@/lib/v2/score";
+import { Consequence, FixHead, MoreDetail } from "../FixParts";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { PeopleActions } from "./PeopleActions";
 import { t } from "@/lib/v2/i18n";
@@ -109,11 +110,11 @@ function PeopleOverview({ rows, unassigned }: { rows: readonly Person[]; unassig
         ]}
         action={
           worst ? (
-            <V2Link href={`/work?assigned=${encodeURIComponent(worst.id)}&due=overdue`} className="m2-btn m2-next">
+            <V2Link href={`/work?assigned=${encodeURIComponent(worst.id)}&due=overdue`} className="m2-btn m2-strong">
               {t("Open {name}'s overdue work", { name: worst.name })}
             </V2Link>
           ) : (
-            <V2Link href="/work" className="m2-btn m2-next">
+            <V2Link href="/work" className="m2-btn m2-strong">
               {t("Open the work list")}
             </V2Link>
           )
@@ -185,7 +186,15 @@ export function PeopleCanvas() {
     <CcPage>
     <div data-testid="people-canvas">
       <PageTitle sub={t("Owners and stewards")}>{t("People")}</PageTitle>
-      <PeopleOverview rows={rows} unassigned={unassigned} />
+      <FixHead
+        lede={t("This page shows who holds the open work and who is late. Counts are per person and carry no run, because work is assigned to a person, not to a run. Open the person with the most overdue work first.")}
+        means={[
+          [t("Open records"), t("Records assigned to a person that nobody has closed.")],
+          [t("Overdue"), t("Open records past their due date.")],
+          [t("Unassigned"), t("Open records that no person holds.")],
+          [t("SLA met"), t("Share of a person's closed records that were closed inside the due date.")],
+        ]}
+      />
       <p className="m2-finding" data-testid="people-sentence">
         {sentenceOf(rows)}
         {unassigned != null && summary ? <>{" "}{t("{unassigned} of the {total} open records are assigned to nobody.", { unassigned: int(unassigned), total: int(summary.totals.open) })}</> : null}
@@ -299,6 +308,10 @@ export function PeopleCanvas() {
           </table>
         </div>
       )}
+      <Consequence>{t("Remind sends the person a note about their overdue work. It does not reassign anything.")}</Consequence>
+      <MoreDetail title={t("Open work and overdue work, charted")}>
+        <PeopleOverview rows={rows} unassigned={unassigned} />
+      </MoreDetail>
     </div>
     </CcPage>
   );

@@ -5,6 +5,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import { WorkAnalytics } from "../screens/WorkAnalytics";
 import { stubLayout } from "./layout-stub";
 import { setUrl } from "./nav-store";
+import * as wa from "@/lib/api/v2/work-analytics";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 
@@ -54,5 +55,29 @@ describe("Work analytics", () => {
     expect(row.textContent).toContain("77.8%");
     fireEvent.click(within(row).getByRole("button", { name: "Show why" }));
     expect(await within(fb).findByText("Plant is closed; the material is kept only for history")).toBeInTheDocument();
+  });
+
+  it("puts the trend and the steps first and keeps the diagnostic panels one click away", async () => {
+    renderWithQuery(<WorkAnalytics />);
+    const steps = await screen.findByTestId("flow-steps");
+    expect(steps.querySelector("[aria-current=step]")?.textContent).toContain("Read the trend");
+    expect(screen.getByTestId("consequence").textContent).toContain("only reads");
+    const more = screen.getByTestId("more-detail");
+    expect(more.hasAttribute("open")).toBe(false);
+    expect(screen.getByTestId("wa-burndown").compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(more.contains(await screen.findByTestId("wa-throughput"))).toBe(true);
+    expect(more.contains(screen.getByTestId("wa-run-change"))).toBe(false);
+  });
+
+  it("shows a retry when the analytics cannot be read", async () => {
+    vi.spyOn(wa, "getBurndown").mockRejectedValue(Object.assign(new Error("x"), { status: 500 }));
+    renderWithQuery(<WorkAnalytics />);
+    expect(await screen.findByText("The work analytics could not be read.", {}, { timeout: 4000 })).toBeInTheDocument();
+  });
+
+  it("tells a role without access that it cannot read the analytics", async () => {
+    vi.spyOn(wa, "getBurndown").mockRejectedValue(Object.assign(new Error("x"), { status: 403 }));
+    renderWithQuery(<WorkAnalytics />);
+    expect(await screen.findByText("Your role cannot read the work analytics.")).toBeInTheDocument();
   });
 });
