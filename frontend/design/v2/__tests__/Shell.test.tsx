@@ -292,3 +292,13 @@ describe("job line and status strip", () => {
     act(() => undefined);
   });
 });
+
+describe("stage 5: evidence ledger entry", () => {
+  it("lists Evidence ledger in the menu and resolves its route to a destination", async () => {
+    const { destinations, destinationAt } = await import("../shell/menu");
+    const all = destinations();
+    const links = all.flatMap((d) => d.kids);
+    expect(links.some((l) => l.href === "/aletheia/evidence" && l.label === "Evidence ledger")).toBe(true);
+    expect(destinationAt("/aletheia/evidence", all)).toBeDefined();
+  });
+});

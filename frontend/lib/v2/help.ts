@@ -136,6 +136,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/rule-dry-run": "v2:rules",
   "/fix-drafts": "v2:rules",
   "/aletheia-survivorship": "v2:monitoring",
+  "/aletheia/evidence": "v2:monitoring",
   "/reference-data": "v2:monitoring",
   "/mdm": "v2:monitoring",
   "/links": "v2:monitoring",
@@ -214,6 +215,7 @@ export function routeOf(pathname: string): string | null {
   if (a === "r" && b) return "/r/[id]";
   if (a === "run" && b) return c === "vs" && d ? "/run/[id]/vs/[b]" : "/run/[id]";
   if (a === "s" && b) return b === "new" ? "/s/new" : "/s/[id]";
+  if (a === "aletheia" && b) return `/aletheia/${b}`;
   if (a === "share" && b) return "/share/[token]";
   if (a === "admin") return b ? "/admin/[section]" : "/admin";
   if (a === "work" && b === "monitor") return "/work/monitor";
