@@ -93,6 +93,7 @@ describe("the Work ledger, fixture mode", () => {
       "Plant",
       "Name",
       "Rule",
+      "Object and run",
       "Severity",
       "Current value",
       "Suggested value",
