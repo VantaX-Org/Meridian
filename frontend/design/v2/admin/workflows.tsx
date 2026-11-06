@@ -146,7 +146,7 @@ function Workflow({ versions }: { versions: WorkflowDefinition[] }) {
         >
           {tr("Dry run")}
         </button>
-        <button type="button" className="m2-btn m2-strong" disabled={busy || "error" in def} onClick={() => "value" in def && void act(() => newVersion(active.id, def.value, activate), activate ? tr("New version saved and active.") : tr("New version saved."))}>
+        <button type="button" className="m2-btn m2-next" disabled={busy || "error" in def} onClick={() => "value" in def && void act(() => newVersion(active.id, def.value, activate), activate ? tr("New version saved and active.") : tr("New version saved."))}>
           {tr("Save as a new version")}
         </button>
       </div>
@@ -190,7 +190,7 @@ function NewWorkflow() {
   if (!open) {
     return (
       <div className="m2-adm-acts">
-        <button type="button" className="m2-btn" onClick={() => setOpen(true)}>
+        <button type="button" className="m2-btn m2-next" onClick={() => setOpen(true)}>
           {tr("New workflow")}
         </button>
       </div>
@@ -223,7 +223,7 @@ function NewWorkflow() {
         </button>
         <button
           type="button"
-          className="m2-btn m2-strong"
+          className="m2-btn m2-next"
           disabled={busy || !name.trim() || "error" in def}
           onClick={async () => {
             if ("error" in def) return;
