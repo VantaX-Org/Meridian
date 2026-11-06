@@ -38,8 +38,8 @@ describe("the help index", () => {
   });
 
   it("lists the guide's chapters and nothing of the retired interface", () => {
-    expect(v2).toHaveLength(28);
-    expect(chapters).toHaveLength(28);
+    expect(v2).toHaveLength(31);
+    expect(chapters).toHaveLength(31);
     expect(chapters.every((c) => c.kind === "v2" && c.interface === "v2")).toBe(true);
     expect(chapters.every((c) => c.sections.length > 0 && c.title && c.summary)).toBe(true);
   });

@@ -8,7 +8,7 @@ The landscape is the start screen for every role. It answers three questions in 
 - **The top sentence**: one plain line above everything that says what state the data is in and what to do next, for example "This page shows every connected system at its newest run: 2 systems and 15 objects. 11 cannot reach 85 yet. Start with the fix queue, or open any object to see its run." Before any run it says so and tells you to extract a system and run an analysis.
 - **One strip per system**, at that system's own newest run (there is no run picker on Home): the system name and whether it is active (an inactive system that still holds finished runs stays listed and is labelled **Inactive**), its newest run as "{System} run N" with the date on hover, the mean measured score of its objects out of 100 with its verdict, a small trend of its lowest-scoring object across runs, its open findings and their priced cost from the cost model. A system never extracted or never scored says so and links to Systems; a strip whose runs cannot be read says so with a link.
 - **Three columns under the strips**: **Worst movers**, the objects that fell furthest since their previous run (select one to open it; the primary button opens the worst); **Fix queue**, the top of the work ledger; and **Found by Aletheia**, measured facts nobody has confirmed yet. Confirm one before you act on it.
-- **The title and scope**: "Landscape" and the systems in scope, such as "All systems". Change the scope and the run from the top bar.
+- **The title and scope**: "Landscape" and the systems in scope, such as "All systems".
 - **The go-live banner**, at the top: one headline that gives the verdict of the next go-live. The small line above it names the next migration wave ("Next go-live: Wave 1: finance foundations"), or reads "All objects in scope" when no wave is planned. The headline is the worst verdict among the objects in that wave: **Go**, **At risk** or **No-go**. The line under it says why, for example "3 objects block go-live: Material master, Customer master, Vendor master", "Nothing blocks go-live, but some objects are below target." or "Every object in scope meets its target." Three figures follow: **Days to go-live** with the wave's date ("no date set" without one), **Cost of waiting** per month from the cost model ("no cost model" without one) and **Objects ready**, such as 4/15, with the critical issues still open. The banner has one button, chosen by the state: **Fix 3 blockers** opens Work on the no-go objects, **Clear 12 critical issues** opens Work on the critical rows, and **Sign off the wave** opens the waves when nothing is left.
 - **The sentence**: one line that says what holds the landscape back, for example "11 of 15 objects are held under 85 by 30 critical rules over tolerance; fixing MM003 and MM035 would release 1 of them."
 - **The provenance line**: records checked, rules measured and the run, for example "400,662 records checked, 794 rules measured, run 16 Oct 2026, 05:17".
@@ -52,7 +52,7 @@ The **Runs** strip under the banner has one bar per stored run, oldest first, co
 - **Process analyst**: "Open PTP step 3" opens the first blocked process step.
 - **Auditor and viewer**: read everything; actions are not offered.
 
-Selecting a tile in the map or a cell in the matrix opens the object canvas. Selecting a system heading opens the system in the inspector.
+Selecting a tile in the heat map or a cell in the matrix opens the object page. Selecting a system heading opens the system in the inspector.
 
 ## Keyboard
 

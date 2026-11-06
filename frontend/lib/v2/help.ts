@@ -74,6 +74,9 @@ export function screenOf(pathname: string): Screen | null {
 const APPLIES: Record<string, Screen[]> = {
   "v2:overview": ["landscape"],
   "v2:landscape": ["landscape"],
+  "v2:menu": ["landscape"],
+  "v2:objects": ["landscape", "object"],
+  "v2:migration": ["landscape"],
   "v2:object": ["object"],
   "v2:rules": ["rule", "object"],
   "v2:work": ["work", "object"],
@@ -114,7 +117,7 @@ export const appliesTo = (id: string, screen: Screen | null): boolean => screen 
  */
 export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/": "v2:landscape",
-  "/objects": "v2:landscape",
+  "/objects": "v2:objects",
   "/o/[system]/[module]": "v2:object",
   "/o/[system]/[module]/rules": "v2:object",
   "/o/[system]/[module]/records": "v2:work",
@@ -155,7 +158,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/work/monitor": "v2:monitoring",
   "/work/analytics": "v2:monitoring",
   "/work/exceptions": "v2:work", "/work/triage": "v2:work",
-  "/migration": "v2:waves",
+  "/migration": "v2:migration",
   "/s4": "v2:waves",
   "/insights": "v2:monitoring",
   "/forecast": "v2:monitoring",

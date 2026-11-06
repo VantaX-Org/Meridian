@@ -1,6 +1,6 @@
 # An object and its tabs
 
-An object is one area of SAP data scored as a whole on one system, such as Material master on ECC production. The object canvas is where you read its score with the receipt that proves it, and where every view of the object lives as a tab: Overview, Rules, Records, Fixes, Trend, Readiness, Processes, Lineage, Glossary and Golden records. Open it from a cell on the landscape, from an object row in the map, or by typing its name in the command line. Its address is `/o/{system}/{object}`, for example `/o/ecc-production/material-master`.
+An object is one area of SAP data scored as a whole on one system, such as Material master on ECC production. The object canvas is where you read its score with the receipt that proves it, and where every view of the object lives as a tab: Overview, Rules, Records, Fixes, Trend, Readiness, Processes, Lineage, Profile, Glossary and Golden records. Open it from a cell on the landscape, from **Objects** on the rail (the board lists every object of every system with its score, or choose it from the Objects menu), or by typing its name in the command line. Its address is `/o/{system}/{object}`, for example `/o/ecc-production/material-master`.
 
 ## The header
 
@@ -8,7 +8,7 @@ Under the title, the **S/4 readiness** banner says where the object stands. The 
 
 Aletheia is docked on the right of the page, as on every screen: ask about this object in plain words and the answer is checked against the run's facts (see the Ask Meridian chapter).
 
-The tabs sit under the banner: **Overview**, **Rules** (with its count), **Records** (with the records to fix), **Fixes**, **Trend**, **Readiness**, **Processes**, **Lineage**, **Glossary** and **Golden records**. The object opens on Overview: one sentence on what you are reading, the one next step with its reason, the dimension bars, the top failing rules and the score at each finished run. Rules carries the ruler and the receipt.
+The tabs sit under the banner: **Overview**, **Rules** (with its count), **Records** (with the records to fix), **Fixes**, **Trend**, **Readiness**, **Processes**, **Lineage**, **Profile** (the fields of each table, with type, how many are blank and the range or common values), **Glossary** and **Golden records**. The object opens on Overview: one sentence on what you are reading, the one next step with its reason, the dimension bars, the top failing rules and the score at each finished run. Rules carries the ruler and the receipt.
 
 
 - **Watch**: "You hear about runs, score drops, new critical breaches and comments on Material master." Watching is per person; what reaches you is set under Preferences, What you hear about.
@@ -70,7 +70,7 @@ The **run picker** beside the object's name chooses which of this object's runs 
 
 ## When something is wrong
 
-- **"... has no object called ..."**: the address names an object Meridian does not know; the page says so instead of showing a real-looking page. Open the landscape and choose an object from the map. A record key that is not in the latest run says so the same way.
+- **"... has no object called ..."**: the address names an object Meridian does not know; the page says so instead of showing a real-looking page. Open **Objects** on the rail and choose an object. A record key that is not in the latest run says so the same way.
 - **"No run yet"** and an empty ruler: this object has never been analysed on this system. Ask SAP Basis to extract and analyse it.
 - **The measured and shown scores are the same, but the receipt names a critical rule**: "A critical rule is over tolerance, but the score is already below its cap."
 - **The Records tab says the ledger could not be loaded**: open Work from the link under the message; the ledger reads the latest run of each object.

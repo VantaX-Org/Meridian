@@ -1,6 +1,6 @@
 # Old addresses and where they go
 
-In October 2026 the map, canvas and inspector became the whole product. The landscape moved from `/v2` to `/`, and
+In October 2026 the rail, canvas and inspector became the whole product. The landscape moved from `/v2` to `/`, and
 every page of the earlier interface was removed. No job was lost: each page's work lives on a canvas,
 a tab of an object, a panel or an inspector (see `docs/roles-and-features.md` at the repository root for every job and
 its verb). Every old address, bookmarks and links in old emails included, answers with a permanent redirect (308) to
@@ -20,7 +20,7 @@ The `/v2` addresses are kept for one release, so links shared before October 202
 Administration kept its addresses: `/admin/users`, `/admin/roles`, `/admin/settings`, `/admin/licence`,
 `/admin/billing`, `/admin/mappings`, `/admin/reference`, `/admin/audit`, `/admin/alerts` and
 `/admin/notifications` open the same section as before, and `/rules` and `/runs` are the rules library and the runs.
-`/attention`, `/insights`, `/issues`, `/mining`, `/mdm` and `/migration` are live pages of the map again (Action centre,
+`/attention`, `/insights`, `/issues`, `/mining`, `/mdm` and `/migration` are live pages again (Action centre,
 Cost and causes, Issues, Data mining, MDM health, Migration), so they are not redirected; their old sub-pages still are. The redirects are defined in `frontend/next.config.ts`;
 `frontend/__tests__/legacy-redirects.test.ts` checks that each of the 78 routes the old interface served opens a page,
 and `frontend/e2e/redirects.spec.ts` follows a sample of them in the browser.

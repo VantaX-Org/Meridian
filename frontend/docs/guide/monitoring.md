@@ -4,7 +4,7 @@ Cleaning a record is not the end of the job. Monitoring, under Work, shows wheth
 
 ## Cleansing
 
-The Cleansing page, under Cleansing in the map, shows what the cleaning engine did. The banner gives the records cleansed in SAP and rolled back at the latest weekly snapshot. Under it:
+The Cleansing page, under Fix, Cleansing, shows what the cleaning engine did. The banner gives the records cleansed in SAP and rolled back at the latest weekly snapshot. Under it:
 
 - **Proposals to decide.** The proposals waiting for a decision, grouped by object and fix, with the number of records, the average confidence and how many are at 85% confidence or more. Users who may approve can approve the confident ones of a group in one step, or open a group and approve or reject each proposal. A rejection needs a reason, which is kept in the audit trail and sent back to the AI as feedback. **Review the proposals** in the banner jumps here.
 - **Duplicate records to merge.** Each pair of records the cleaning engine found to be the same, with the object, the fields that matched and the match score. Open a pair to compare the two records field by field, with the value the merge would keep. Users who may approve choose the record to keep, give a reason and press **Merge**; the reason is kept in the audit trail.
@@ -17,7 +17,7 @@ The Cleansing page, under Cleansing in the map, shows what the cleaning engine d
 
 ## Data mining
 
-The Data mining page, under Data mining in the map, shows what the mining tasks found by comparing records and values rather than by running the rules. Every list keeps each object at its latest complete run, so it is the current state. The banner counts the likely duplicate pairs and outliers, with the patterns of the last 30 days, the share of analysed objects mined and the runs mined beside it. Under it:
+The Data mining page, under Master data, Data mining, shows what the mining tasks found by comparing records and values rather than by running the rules. Every list keeps each object at its latest complete run, so it is the current state. The banner counts the likely duplicate pairs and outliers, with the patterns of the last 30 days, the share of analysed objects mined and the runs mined beside it. Under it:
 
 - **Findings by object.** Duplicate pairs and outliers per object, most first.
 - **Patterns.** The outliers grouped by field and the duplicates grouped by object, with severity, how often each was found and the confidence.
@@ -29,7 +29,7 @@ Users who may change master data can press **Mine the latest runs** to mine the 
 
 ## Anomaly rules
 
-The Anomaly rules page, under Anomaly rules in the map, turns an outlier that mining found into a proposed rule. It lists each field that has outliers, with the field description, how many outliers it has and the usual range. Users who may manage rules press **Propose a rule** on a field. The page then shows:
+The Anomaly rules page, under Rules, Anomaly rules, turns an outlier that mining found into a proposed rule. It lists each field that has outliers, with the field description, how many outliers it has and the usual range. Users who may manage rules press **Propose a rule** on a field. The page then shows:
 
 - **The proposed rule.** A deterministic rule that flags values outside the usual range of the field. It is a template, so no AI is used. The AI drafts a rule only when no template fits, and then it sees the field, the statistic and counts, never a record.
 - **The evidence.** The outliers found, how many records the rule would flag when it runs on the same data, and the confidence.
@@ -49,7 +49,7 @@ Press **Propose rule** on a row to draft a rule from the shift. A null spike dra
 
 ## Learned monitors
 
-The Learned monitors page, under Learned monitors in the map, compares the latest run of each object with that object's own earlier runs. It needs no setup: material master, customer master and SuccessFactors get it as soon as they have runs. Every figure comes from the stored run results, so no record value is read and none is sent to a model.
+The Learned monitors page, under Rules, Learned monitors, compares the latest run of each object with that object's own earlier runs. It needs no setup: material master, customer master and SuccessFactors get it as soon as they have runs. Every figure comes from the stored run results, so no record value is read and none is sent to a model.
 
 Each object keeps a baseline of up to 30 earlier runs of the same system for these figures: records checked, score, and the fail rate of each rule. It also keeps the empty share and the distinct share (distinct values as a share of the filled rows, for fields with at least 100 filled rows) of each field that has field statistics. The usual range is the median of those runs plus or minus a robust spread (the median absolute deviation), so one bad run does not move it much. When an object has at least 28 earlier runs, the baseline also compares like weekdays with like. The table **What is learned** shows, per object, the latest run, how many earlier runs the baseline uses against how many it needs, and whether the object is **Watching** or still **Learning**. An object with fewer than 5 earlier runs only learns: it raises nothing and shows a dash for breaks.
 
@@ -106,7 +106,7 @@ Limits. The minimum is one number per monitor, learned from decisions alone. The
 
 ## Entry gate
 
-The Entry gate page, under Entry gate in the map, shows the data quality firewall: the check SAP calls before it saves a master data record. It covers the licensed objects, Material master, Customer master (sales) and SuccessFactors employee data. The page shows only what the firewall's audit trail holds. Where the trail did not record a figure, the page shows a dash and not a zero.
+The Entry gate page, under Master data, Entry gate, shows the data quality firewall: the check SAP calls before it saves a master data record. It covers the licensed objects, Material master, Customer master (sales) and SuccessFactors employee data. The page shows only what the firewall's audit trail holds. Where the trail did not record a figure, the page shows a dash and not a zero.
 
 - **Records checked and blocked.** Two charts of the last 7 days, with a table of each day. A record is blocked when it fails a critical rule. A record that passes but fails a lesser rule is warned. The warned and passed counts were not kept before this release, so earlier days show a dash.
 - **Rules that block most.** The critical rules that stopped the most records, each with its code and what it requires.
@@ -121,7 +121,7 @@ The page is a view of the firewall. The SAP side, the API key and the choice to 
 
 ## MDM health
 
-The MDM health page, under MDM health in the map, shows the daily snapshot of how well master data is governed. The banner gives the health score out of 100 and its change over the last 90 days, with the golden records, the open stewardship items and the share of systems synced beside it. Under it:
+The MDM health page, under Master data, MDM health, shows the daily snapshot of how well master data is governed. The banner gives the health score out of 100 and its change over the last 90 days, with the golden records, the open stewardship items and the share of systems synced beside it. Under it:
 
 - **What makes the score.** The four shares the score is built from, each with its weight and the points it adds: golden record coverage (40%), match confidence (30%), steward SLA (20%) and source consistency (10%). The points add up to the score. A small line beside each share shows its last 90 days.
 - **Health score, day by day.** The score at each daily snapshot on a 0 to 100 scale.
@@ -131,7 +131,7 @@ The snapshot runs once a day. Until the first one has run the page says so, and 
 
 ## Record links
 
-The Record links page, under Record links in the map, shows which records are linked across objects: a business partner and the customer it is, a material and its plants, a vendor and its company codes. Relationship discovery reads these links from the SAP link tables at each sync, and the AI impact scorer adds links it infers. The banner counts the links, with the link types in use, the objects they join and the share that was inferred rather than read from SAP. Under it:
+The Record links page, under Master data, Record links, shows which records are linked across objects: a business partner and the customer it is, a material and its plants, a vendor and its company codes. Relationship discovery reads these links from the SAP link tables at each sync, and the AI impact scorer adds links it infers. The banner counts the links, with the link types in use, the objects they join and the share that was inferred rather than read from SAP. Under it:
 
 - **Find the links of one record.** Pick an object and type a record key to see every link to and from that record. Tick **Include ended links** to see links that no longer exist in SAP.
 - **Links by type.** How many links of each type, most first. The list holds the latest 200 links; when there are more, the bars cover only those, and the banner says so.
@@ -142,7 +142,7 @@ Roles without permission to see AI confidence see a dash instead of the confiden
 
 ## Record issues
 
-The Issues page, under Issues in the map, is the steward work list. Each issue is one record failing one rule, carried from run to run with its status, the person it is assigned to, its due date and its history. The banner counts the issues still to close, with those in progress, those waiting on SAP or on the requester, and those closed. Under it:
+The Issues page, under Master data, Issues, is the steward work list. Each issue is one record failing one rule, carried from run to run with its status, the person it is assigned to, its due date and its history. The banner counts the issues still to close, with those in progress, those waiting on SAP or on the requester, and those closed. Under it:
 
 - **Where the issues stand.** How many issues are in each status.
 - **Status buttons and filter.** Show one status or all of them, then narrow by severity, by who the issue is assigned to (you, no one or anyone) and by record key. Users with the export permission can export the list to Excel with the same filters.
@@ -152,7 +152,7 @@ The Issues page, under Issues in the map, is the steward work list. Each issue i
 
 ## Action centre
 
-The Action centre, second in the map, lists everything that needs you, most urgent first: fixes waiting for your approval, systems that cannot be reached, records failing again, overdue stewardship items, failed jobs, rules waiting for review and, for administrators, access requests and expiring keys. You see only what your role can act on. The banner counts the items by severity and says when the list was last checked; it refreshes every minute. Under it:
+The Action centre, the first page under Fix and the page the Fix item opens, lists everything that needs you, most urgent first: fixes waiting for your approval, systems that cannot be reached, records failing again, overdue stewardship items, failed jobs, rules waiting for review and, for administrators, access requests and expiring keys. You see only what your role can act on. The banner counts the items by severity and says when the list was last checked; it refreshes every minute. Under it:
 
 - **Filter.** Narrow the list to one kind or one system. The choice stays in the address, so a link to it opens the same view.
 - **What needs attention, by kind.** How many items of each kind.
@@ -160,7 +160,7 @@ The Action centre, second in the map, lists everything that needs you, most urge
 
 ## Material 360
 
-The Material 360 page, under Material 360 in the map, shows one material across every view and organisational level. Type a material number; leading zeros may be left off. The banner gives the description, the material type, group and base unit, with the rules it fails, the views missing and the plants phasing it out beside it. Under it:
+The Material 360 page, under Master data, Material 360, shows one material across every view and organisational level. Type a material number; leading zeros may be left off. The banner gives the description, the material type, group and base unit, with the rules it fails, the views missing and the plants phasing it out beside it. Under it:
 
 - **Views by level.** A grid of the material views (basic data, sales, purchasing, MRP, storage, accounting and the rest) against each level that carries them: client, plant, sales area, valuation area and storage location. Each cell says whether the view is maintained, missing or not needed there, and marks it failing when a rule fails on that view at that level. A view the material type does not expect says so.
 - **Rules failing, by view.** Each failing rule with its description, the view and level, the field, the value found, the severity and a link to its issue when one is open.
@@ -187,7 +187,7 @@ A role that cannot read a list sees a short note in its place.
 
 ## Cost and causes
 
-Cost and causes, under Migration on the map, shows what bad data costs and where it comes from. Money is always shown per business area, such as procure to pay or order to cash, and never added across areas. The banner names the area with the most value at risk, with the largest value at risk, the largest proven cost, the SAP features at risk and the number of root causes. Under it:
+Cost and causes, under Migration on the rail, shows what bad data costs and where it comes from. Money is always shown per business area, such as procure to pay or order to cash, and never added across areas. The banner names the area with the most value at risk, with the largest value at risk, the largest proven cost, the SAP features at risk and the number of root causes. Under it:
 
 - **By business area.** The proven cost and the value at risk of each area side by side.
 - **Money already lost.** Costs measured in posted documents, such as late purchase orders or duplicate vendor payments, with the documents counted and the rules behind them. A cost in more than one currency lists each currency on its own.
@@ -199,7 +199,7 @@ Before the first scored run the page says so instead of showing figures.
 
 ## Forecast and plan
 
-Forecast and plan, under Cost and causes on the map, shows where each object's score is heading, what to fix next and whether the data stewards can keep up. The banner counts the objects below their floor and the objects heading below it, with the sprints needed to clear the open work and the score once they are done. Under it:
+Forecast and plan, under Migration on the rail, shows where each object's score is heading, what to fix next and whether the data stewards can keep up. The banner counts the objects below their floor and the objects heading below it, with the sprints needed to clear the open work and the score once they are done. Under it:
 
 - **Where each score is heading.** Each object with its floor, its score now, its last four weeks, its trend and its forecast in 30 and 90 days, each with a 95% range. A forecast needs scores from at least three days; until then the page says how many days there are.
 - **Next best work.** The failing rules, cleaning items and exceptions ranked by the severity-weighted records fixed an hour, with the records, the effort and the cost where a cost per record is set.
@@ -210,7 +210,7 @@ The effort and cost assumptions are shown above the sprint plan.
 
 ## Value delivered
 
-Value delivered, under Forecast and plan on the map, prices what the latest finished run found. Each failing record is given the unit cost of the loss it can cause, taken from your cost model, and the mitigation share is what fixing it removes. The banner shows the annual risk found, the risk mitigated a year, the return on the subscription and the payback in months. When no subscription cost is set in the cost model the return and payback show as a dash with a note instead of an invented fee. Under it:
+Value delivered, under Migration on the rail, prices what the latest finished run found. Each failing record is given the unit cost of the loss it can cause, taken from your cost model, and the mitigation share is what fixing it removes. The banner shows the annual risk found, the risk mitigated a year, the return on the subscription and the payback in months. When no subscription cost is set in the cost model the return and payback show as a dash with a note instead of an invented fee. Under it:
 
 - **Where the risk sits.** The eight kinds of loss (duplicate payments, missed warranty claims, compliance penalties, inventory write-offs, blocked invoices, failed postings, contract violations and steward time saved), each with what counts towards it, how many findings or exceptions feed it, its annual risk, the amount mitigated and the formula used to price it.
 - **Cost avoided month by month.** The monthly report records the subscription, the risk mitigated and the return to date on the first of each month. Until the first month is recorded the page says so.
@@ -230,7 +230,7 @@ To require approval before any AI pick is applied, use the Steward approval of A
 
 ## Reference data
 
-Reference data, on the map, manages the code lists of an ECC to S/4HANA migration: country, unit of measure, material group, payment terms and, for SuccessFactors, the picklist values. Lists come only from the check tables Meridian has already extracted. A list with no extracted check table is not shown, and a code with no extracted text shows the code alone.
+Reference data, under Master data on the rail, manages the code lists of an ECC to S/4HANA migration: country, unit of measure, material group, payment terms and, for SuccessFactors, the picklist values. Lists come only from the check tables Meridian has already extracted. A list with no extracted check table is not shown, and a code with no extracted text shows the code alone.
 
 - **Versions.** Each completed load of a check table is a version. Pick one to see the codes it held, and read the trend of codes per version.
 - **Source codes.** Every source code with the target it goes to: the same code on both sides, a mapping, or no target yet. Each code sits beside its description.
@@ -239,7 +239,7 @@ Reference data, on the map, manages the code lists of an ECC to S/4HANA migratio
 
 ## Post-load reconciliation
 
-Post-load reconciliation, on a migration analysis (Migration on the map, select an analysed run), compares the load files Meridian prepared with what the target system holds afterwards. Meridian does not run the load. You load the files with your own tool, extract the target system again, and then run the comparison. Until the target has been extracted, nothing is compared.
+Post-load reconciliation, on a migration analysis (Migration on the rail, select an analysed run), compares the load files Meridian prepared with what the target system holds afterwards. Meridian does not run the load. You load the files with your own tool, extract the target system again, and then run the comparison. Until the target has been extracted, nothing is compared.
 
 - **Extract the target system.** When the target has no completed analysis, the panel says the target system has not been extracted yet and offers **Extract the target system**. It needs the trigger sync permission and starts the extraction now, for the run's objects that the target system type supports. It reads whole business objects, not only the tables the load files carry. If an extraction on that system is already running, Meridian refuses and starts nothing: it never queues behind a running extraction or interrupts it. The run must name a target system. When the extraction has been analysed, the comparison starts by itself.
 - **Delete an analysis.** **Delete** in the Analyses list needs the analyse permission and asks for confirmation. It removes the analysis with its gaps, load files and reconciliations and the stored copies of the files exported, and it cannot be undone. A running analysis cannot be deleted. If the stored copies cannot be removed, the analysis is kept so you can try again. Files you already downloaded are not covered.
@@ -255,7 +255,7 @@ Post-load reconciliation, on a migration analysis (Migration on the map, select 
 
 ## Score lens
 
-Score lens, under Value delivered on the map, scores every run two ways. The first is the score as it was recorded when the run finished, with the weights in force then. The second re-weights the same run under today's weights, so a change of weights never reads as a change in the data. The banner shows the latest run both ways, how many points the weight change accounts for, and the config-aware score. Under it:
+Score lens, under Migration on the rail, scores every run two ways. The first is the score as it was recorded when the run finished, with the weights in force then. The second re-weights the same run under today's weights, so a change of weights never reads as a change in the data. The banner shows the latest run both ways, how many points the weight change accounts for, and the config-aware score. Under it:
 
 - **Score under today's weights, run by run.** A trend line over the runs, oldest on the left. The table under the chart gives both scores for each run.
 - **Each run, then and now.** Each run with its score then, its score under today's weights, the change the weights make, and whether the weights were recorded with the run. Runs scored before weights were recorded are re-weighted from the default weights, and the table says so.

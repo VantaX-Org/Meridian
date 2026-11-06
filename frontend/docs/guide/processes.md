@@ -60,7 +60,7 @@ Open a step for its transaction, its activities and fields, the rules failing on
 
 ## Configuration
 
-**Configuration** (`/config`, in the map under Requests and in the command line) shows the SAP configuration Meridian reads back out of the transactions of the latest run. Nothing on it is typed in by hand: every setting, step and finding comes from the stored config run.
+**Configuration** (`/config`, on the rail under Migration, Configuration, and in the command line) shows the SAP configuration Meridian reads back out of the transactions of the latest run. Nothing on it is typed in by hand: every setting, step and finding comes from the stored config run.
 
 - **The headline**: "14 configuration findings, R 2.1m at stake", with the average health across the areas, the critical and high findings, and the share of settings that carry transactions.
 - **Processes**: each end-to-end flow (Procure-to-pay `PTP`, Order-to-cash `OTC`, Record-to-report `RTR` and the others) as a chain of steps. Each step is sized by the documents that reached it and names its SAP table; the red share is its exceptions, the step with the most exceptions is marked, and the days are the wait before the next step. A step the system never ran is drawn hollow and reads "Not found".

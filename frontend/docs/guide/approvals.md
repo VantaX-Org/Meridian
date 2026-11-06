@@ -39,7 +39,7 @@ The sentence reads "48 records are signed off as not an issue or an accepted ris
 
 ## Change requests
 
-**Requests** in the map lists change requests: a request to create a material, customer, vendor or business partner in SAP, or to change one. The views are **Mine**, **To approve** and **All**, with filters by status, object and kind. Each row opens the request on the right (`?open=request:{id}`).
+**Requests**, under Fix on the rail, lists change requests: a request to create a material, customer, vendor or business partner in SAP, or to change one. The views are **Mine**, **To approve** and **All**, with filters by status, object and kind. Each row opens the request on the right (`?open=request:{id}`).
 
 The banner on top says "Change requests". Its headline counts what waits ("3 requests wait for approval", or "No request waits for approval") and the line under it says whether any failed ("1 request failed to reach SAP and need a new look." or "Nothing has failed in this list."). Three figures: **Waiting** ("submitted or in approval"), **Failed** ("did not reach SAP") and **Drafts** ("not yet submitted"), all counted over the requests in the current view and filters. The one button is **New request**. Under the banner, **Requests per person** is a horizontal bar per requester, the eight with most requests, with "4 requests" at the end of the row. Aletheia is docked on the right.
 

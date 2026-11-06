@@ -42,7 +42,7 @@ The flight deck at `/go-live` reads the next wave with a go-live date against th
 
 ## Migration analysis
 
-The Migration analysis page, under Migration in the map, shows how ready the source data is to load into the target system. The banner gives the verdict of the latest finished analysis (ready to load, ready with conditions or not ready to load), with the readiness score, the critical gaps and the records that will not load beside it. Under it:
+The Migration analysis page, the Migration item on the rail, shows how ready the source data is to load into the target system. The banner gives the verdict of the latest finished analysis (ready to load, ready with conditions or not ready to load), with the readiness score, the critical gaps and the records that will not load beside it. Under it:
 
 - **Start an analysis.** Users who may analyse choose the kind of analysis (a dry run against S/4HANA, source to target, or source to source), the systems and the objects, then press **Start**. The analysis runs in the background and appears in the list when it finishes.
 - **Analyses.** Each analysis with its kind, objects, verdict, score, critical gaps and records blocked. Press **Open** to see one; the latest finished analysis opens by default.
@@ -65,7 +65,7 @@ A row is held back when a required value is empty, a value is longer than the wo
 
 ## S/4HANA readiness
 
-The S/4HANA readiness page, under Migration in the map, groups the conversion-readiness rules by SAP simplification area, such as Business Partner / CVI, Material master or the Universal Journal, over every object at its latest run. The banner says whether the landscape is ready to convert, with the areas ready, the blocking and warning rules failing and the records to fix beside it. Under it:
+The S/4HANA readiness page, under Migration, groups the conversion-readiness rules by SAP simplification area, such as Business Partner / CVI, Material master or the Universal Journal, over every object at its latest run. The banner says whether the landscape is ready to convert, with the areas ready, the blocking and warning rules failing and the records to fix beside it. Under it:
 
 - **Simplification areas.** Each area with the SAP simplification item it answers, its status, how many of its rules ran, the blocking and warning rules failing and the records to fix, worst first. An area none of whose rules ran shows as not measured, never as ready.
 - **What stands in the way.** Every failing rule with its name, its area, whether it blocks the conversion or only needs cleansing, the records it affects and its pass rate, blocking rules first.
