@@ -7989,4 +7989,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The target system could not be extracted.": "Das Zielsystem konnte nicht extrahiert werden.",
   "The target system has not been extracted yet, so there is nothing to compare the load files with. The comparison starts by itself when the extraction has been analysed.": "Das Zielsystem wurde noch nicht extrahiert, daher gibt es nichts, womit die Ladedateien verglichen werden könnten. Der Vergleich startet von selbst, sobald die Extraktion analysiert ist.",
   "Extract the target system": "Zielsystem extrahieren",
+  "Finished, Aletheia checked": "Abgeschlossen, von Aletheia geprüft",
+  "Finished": "Abgeschlossen",
+  "{system} run": "{system}-Lauf",
+  "{system} run {n}": "{system}-Lauf {n}",
 };

@@ -19,7 +19,7 @@ import { dimsOf } from "../shell/MapPane";
 import { contractMark } from "@/lib/v2/step9";
 import { policyMark } from "@/lib/v2/step10";
 import { RelatedObjects } from "./object/Related";
-import { AsOfView, PolicyBreaches } from "./step10/ObjectParts";
+import { PolicyBreaches } from "./step10/ObjectParts";
 import { ObjectContractsBlock } from "./step9/Contracts";
 import { TopFailing } from "./object/TopFailing";
 import { ObjectMonitorStrip } from "./ObjectMonitors";
@@ -228,6 +228,14 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
   useEffect(() => {
     if (canonical) router.replace(canonical);
   }, [canonical, router]);
+  // `?as_of=<run>` is the old way to look at a past run; the run is now `?run=`.
+  useEffect(() => {
+    if (!asOf) return;
+    const next = new URLSearchParams(window.location.search);
+    next.delete("as_of");
+    next.set("run", asOf);
+    router.replace(`${pathname}?${next.toString()}`);
+  }, [asOf, pathname, router]);
   if (anySystem && (!L.data || holder)) {
     return (
       <div aria-busy="true" data-testid="object-loading">
@@ -309,11 +317,6 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               {tr("No run yet. The ruler fills when an analysis scores this object.")}
             </EmptyFrame>
           </div>
-          <div className="m2-tabpanel">{children}</div>
-        </>
-      ) : asOf ? (
-        <>
-          <AsOfView module={apiModule} label={label} asOf={asOf} />
           <div className="m2-tabpanel">{children}</div>
         </>
       ) : (

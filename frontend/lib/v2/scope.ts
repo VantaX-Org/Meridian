@@ -4,7 +4,9 @@ import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useV2Href } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
+import { useTimeline } from "@/lib/v2/runs-queries";
 import { systemSlug } from "@/lib/v2/score";
+import type { TimelineRun } from "@/lib/api/v2/runs";
 import type { LandscapeSystem } from "@/lib/api/v2/types";
 
 /**
@@ -56,4 +58,19 @@ export function useRunPicker(latestId: string | null): (runId: string) => void {
     },
     [router, pathname, params, v2Href, latestId],
   );
+}
+
+/**
+ * The run an object page shows: `?run=` when it names a run of that object, else the object's own newest finished run.
+ * `chip` is that run (null until the timeline loads), `isLatest` is false when an older run is chosen.
+ */
+export function useObjectRun(systemId: string | null, module: string): { runId: string | null; isLatest: boolean; chip: TimelineRun | null } {
+  const param = useSearchParams().get("run");
+  const runs = useTimeline(systemId, 8).data?.runs;
+  return useMemo(() => {
+    const mine = (runs ?? []).filter((r) => module in r.objects);
+    const latest = mine.length ? mine[mine.length - 1] : null;
+    const chip = mine.find((r) => r.id === param) ?? latest;
+    return { runId: chip?.id ?? param, isLatest: !chip || chip.id === latest?.id, chip };
+  }, [runs, module, param]);
 }

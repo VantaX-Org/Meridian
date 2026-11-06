@@ -7989,4 +7989,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The target system could not be extracted.": "ターゲットシステムを抽出できませんでした。",
   "The target system has not been extracted yet, so there is nothing to compare the load files with. The comparison starts by itself when the extraction has been analysed.": "ターゲットシステムはまだ抽出されていないため、ロードファイルと比較するものがありません。抽出の分析が終わると、比較は自動的に始まります。",
   "Extract the target system": "ターゲットシステムを抽出",
+  "Finished, Aletheia checked": "完了、Aletheia 確認済み",
+  "Finished": "完了",
+  "{system} run": "{system} の実行",
+  "{system} run {n}": "{system} の実行 {n}",
 };

@@ -7988,6 +7988,10 @@ export const en = {
   "The target system could not be extracted.": "The target system could not be extracted.",
   "The target system has not been extracted yet, so there is nothing to compare the load files with. The comparison starts by itself when the extraction has been analysed.": "The target system has not been extracted yet, so there is nothing to compare the load files with. The comparison starts by itself when the extraction has been analysed.",
   "Extract the target system": "Extract the target system",
+  "Finished, Aletheia checked": "Finished, Aletheia checked",
+  "Finished": "Finished",
+  "{system} run": "{system} run",
+  "{system} run {n}": "{system} run {n}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
