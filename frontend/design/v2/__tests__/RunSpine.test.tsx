@@ -130,6 +130,17 @@ describe("Home headlines, Objects board and Overview tab (fixture)", () => {
     expect(within(rows[0]).getAllByRole("link")[0].getAttribute("href")).toMatch(/\/o\//);
   });
 
+  it("the Objects board prints each score once, from the ruler", async () => {
+    setUrl("/objects?fixture=1");
+    renderWithQuery(<ObjectsCanvas />);
+    await screen.findAllByTestId("objects-system");
+    for (const row of screen.getAllByTestId("objects-row")) {
+      const score = within(row).getByTestId("ruler-score").textContent ?? "";
+      expect(row.querySelector(".m2-ob-score b")).toBeNull();
+      expect(score).not.toBe("");
+    }
+  });
+
   it("the Overview tab shows the score-over-runs chart with a sentence on how to read it", async () => {
     setUrl("/o/ecc-production/material-master?fixture=1");
     renderWithQuery(<OverviewTab system="ecc-production" module="material-master" />);
