@@ -8101,6 +8101,10 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Records the rules looked at, before to after": "ルールが確認したレコード(前から後)",
   "Share of records a rule could evaluate in the later run": "後の実行でルールが評価できたレコードの割合",
   // Stage 5: Rules and Aletheia
+  "{n, plural, one {Enable switches the selected rule on and Disable switches it off} other {Enable switches the # selected rules on and Disable switches them off}}, both from the next analysis. Disabled rules leave the score.": "{n, plural, other {選択した#件のルールを、有効化で有効に、無効化で無効に切り替えます}}。どちらも次の分析から反映されます。無効なルールはスコアから外れます。",
+  "A draft is not live. It runs on every analysis only after you publish it.": "下書きはまだ有効ではありません。公開すると、以降の分析ごとに実行されます。",
+  "A suppressed rule is still measured but stays out of the score until the suppression ends.": "抑制中のルールは計測されますが、抑制が終わるまでスコアには含まれません。",
+  "Enabled rules run on every analysis and move the score. Select rules to switch them on or off.": "有効なルールは分析のたびに実行され、スコアに影響します。ルールを選ぶと、有効と無効を切り替えられます。",
   "Dry run steps": "試行の手順",
   "Choose the rule": "ルールを選ぶ",
   "Run it on current data": "現在のデータで実行",

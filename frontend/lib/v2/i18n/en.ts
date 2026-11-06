@@ -8100,6 +8100,10 @@ export const en = {
   "Records the rules looked at, before to after": "Records the rules looked at, before to after",
   "Share of records a rule could evaluate in the later run": "Share of records a rule could evaluate in the later run",
   // Stage 5: Rules and Aletheia
+  "{n, plural, one {Enable switches the selected rule on and Disable switches it off} other {Enable switches the # selected rules on and Disable switches them off}}, both from the next analysis. Disabled rules leave the score.": "{n, plural, one {Enable switches the selected rule on and Disable switches it off} other {Enable switches the # selected rules on and Disable switches them off}}, both from the next analysis. Disabled rules leave the score.",
+  "A draft is not live. It runs on every analysis only after you publish it.": "A draft is not live. It runs on every analysis only after you publish it.",
+  "A suppressed rule is still measured but stays out of the score until the suppression ends.": "A suppressed rule is still measured but stays out of the score until the suppression ends.",
+  "Enabled rules run on every analysis and move the score. Select rules to switch them on or off.": "Enabled rules run on every analysis and move the score. Select rules to switch them on or off.",
   "Dry run steps": "Dry run steps",
   "Choose the rule": "Choose the rule",
   "Run it on current data": "Run it on current data",

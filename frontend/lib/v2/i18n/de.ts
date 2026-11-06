@@ -8101,6 +8101,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Records the rules looked at, before to after": "Von den Regeln geprüfte Datensätze, vorher zu nachher",
   "Share of records a rule could evaluate in the later run": "Anteil der Datensätze, die eine Regel im späteren Lauf auswerten konnte",
   // Stage 5: Rules and Aletheia
+  "{n, plural, one {Enable switches the selected rule on and Disable switches it off} other {Enable switches the # selected rules on and Disable switches them off}}, both from the next analysis. Disabled rules leave the score.": "{n, plural, one {Aktivieren schaltet die gewählte Regel ein, Deaktivieren schaltet sie aus} other {Aktivieren schaltet die # gewählten Regeln ein, Deaktivieren schaltet sie aus}}, jeweils ab der nächsten Analyse. Deaktivierte Regeln zählen nicht zur Bewertung.",
+  "A draft is not live. It runs on every analysis only after you publish it.": "Ein Entwurf ist nicht aktiv. Er läuft erst nach der Veröffentlichung in jeder Analyse.",
+  "A suppressed rule is still measured but stays out of the score until the suppression ends.": "Eine unterdrückte Regel wird weiter gemessen, zählt aber nicht zur Bewertung, bis die Unterdrückung endet.",
+  "Enabled rules run on every analysis and move the score. Select rules to switch them on or off.": "Aktive Regeln laufen in jeder Analyse und bewegen die Bewertung. Wählen Sie Regeln, um sie ein- oder auszuschalten.",
   "Dry run steps": "Schritte des Probelaufs",
   "Choose the rule": "Regel wählen",
   "Run it on current data": "Auf aktuellen Daten ausführen",

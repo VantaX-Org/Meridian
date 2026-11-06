@@ -27,7 +27,7 @@ import { ScrollFrame } from "./object/ScrollFrame";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Lede, PrimaryAction } from "../RunParts";
-import { RibbonDash } from "./rules-parts";
+import { Consequence, RibbonDash } from "./rules-parts";
 import { RuleBoard } from "./Cockpit";
 import { t, tx } from "@/lib/v2/i18n";
 
@@ -451,6 +451,7 @@ export function RulesLibrary() {
           </button>
         ) : null}
       </div>
+      <Consequence>{view === "drafts" ? t("A draft is not live. It runs on every analysis only after you publish it.") : view === "suppressions" ? t("A suppressed rule is still measured but stays out of the score until the suppression ends.") : t("Enabled rules run on every analysis and move the score. Select rules to switch them on or off.")}</Consequence>
       {!canManage ? <Gate>{t("Writing a rule draft and enabling or disabling rules needs the manage rules permission.")}</Gate> : null}
 
       {view === "drafts" && canManage ? (
@@ -486,6 +487,7 @@ export function RulesLibrary() {
               initialViewport={2000}
               bulkBar={({ selected, clear }) => (
                 <>
+                  <span className="m2-meta" data-testid="bulk-consequence">{t("{n, plural, one {Enable switches the selected rule on and Disable switches it off} other {Enable switches the # selected rules on and Disable switches them off}}, both from the next analysis. Disabled rules leave the score.", { n: selected.length })}</span>
                   <button type="button" className="m2-btn m2-sm" disabled={pending !== null} onClick={() => toggle(selected, true, clear)}>{t("Enable")}</button>
                   <button type="button" className="m2-btn m2-sm" disabled={pending !== null} onClick={() => toggle(selected, false, clear)}>{t("Disable")}</button>
                 </>
