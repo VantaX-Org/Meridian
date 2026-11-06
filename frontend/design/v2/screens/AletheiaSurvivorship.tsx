@@ -16,8 +16,8 @@ import { int, pct1 } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, StackedBar, TrendChart, type StackPart } from "../charts";
 import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { Lede } from "../RunParts";
-import { VerifiedMark } from "./rules-parts";
-import { CcBanner, CcPage } from "./cc-parts";
+import { Consequence, Steps, VerifiedMark } from "./rules-parts";
+import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
 
@@ -189,6 +189,7 @@ function ApprovalQueue({ picks, queryKeys }: { picks: SurvivorshipPick[]; queryK
     <Panel title={t("Picks waiting for a steward")} meta={t("A proved pick is not applied to the golden record until a steward other than the one who ran it approves it.")} testId="survivorship-queue">
       {queue.length === 0 ? <EmptyFrame>{t("No pick is waiting for approval.")}</EmptyFrame> : (
         <>
+          {allowed ? <Consequence>{t("Approving applies the pick to the golden record. Rejecting keeps the value the rules chose and asks for a reason.")}</Consequence> : null}
           {allowed ? (
             <p>
               <button type="button" className="m2-btn m2-sm" disabled={chosen.length === 0 || bulk.isPending} onClick={() => bulk.mutate()}>{t("Approve selected ({n})", { n: int(chosen.length) })}</button>
@@ -231,6 +232,9 @@ function ApprovalSetting() {
             <li><Coded code="required" text={t("A proved AI pick waits for a steward to accept it before it is applied.")} /></li>
             <li><Coded code="not_required" text={t("Opt-in auto-approve: a proved AI pick is applied at once; stewards can still override it later.")} /></li>
           </ul>
+          <Consequence>{required === false
+            ? t("Turning approval on makes new proved picks wait for a steward. Picks already applied stay applied.")
+            : t("Turning approval off applies every new proved pick at once. Stewards can still override it later.")}</Consequence>
           <label>
             <input type="checkbox" checked={Boolean(required)} disabled={!allowed || q.isPending || save.isPending} onChange={(e) => save.mutate({ required: e.target.checked })} />{" "}
             {t("Require steward approval")}
@@ -310,8 +314,25 @@ export function AletheiaSurvivorship() {
           { label: t("Waiting for a steward"), value: int(counts.proposed), hint: t("Proved picks that need a person to approve them.") },
         ]}
       />
+      <Steps
+        label={t("Where a pick is in the process")}
+        testId="surv-steps"
+        current={counts.proposed > 0 ? 2 : 3}
+        steps={[t("Model picks a source"), t("Server proves the pick"), t("Steward approves"), t("Applied to the golden record")]}
+      />
+      <ApprovalQueue picks={picks} queryKeys={queryKeys} />
       <p className="m2-why1"><VerifiedMark /> {t("Only picks the server proved against the sources carry this mark.")}</p>
       <Panel title={t("Steward decisions on proved picks")} meta={t("Proposed picks wait for a steward. Auto-applied picks were applied under the opt-in auto-approve.")} testId="survivorship-counts">
+        <CcHBars
+          label={t("Decisions by outcome")}
+          testId="surv-chart"
+          rows={[
+            { key: "proposed", label: t("Proposed, waiting for approval"), value: counts.proposed, text: int(counts.proposed), tone: "warn" },
+            { key: "approved", label: t("Approved by a steward"), value: counts.approved, text: int(counts.approved), tone: "pass" },
+            { key: "rejected", label: t("Rejected by a steward"), value: counts.rejected, text: int(counts.rejected), tone: "crit" },
+            { key: "auto", label: t("Applied by auto-approve"), value: counts.auto_applied, text: int(counts.auto_applied), tone: "data" },
+          ]}
+        />
         <ul className="m2-cl-changes" data-testid="surv-counts">
           <li data-testid="surv-count-proposed"><Coded code="proposed" text={t("Proposed, waiting for approval")} /> <strong>{int(counts.proposed)}</strong></li>
           <li data-testid="surv-count-approved"><Coded code="approved" text={t("Approved by a steward")} /> <strong>{int(counts.approved)}</strong></li>
@@ -319,7 +340,6 @@ export function AletheiaSurvivorship() {
           <li data-testid="surv-count-auto"><Coded code="auto_applied" text={t("Applied by auto-approve")} /> <strong>{int(counts.auto_applied)}</strong></li>
         </ul>
       </Panel>
-      <ApprovalQueue picks={picks} queryKeys={queryKeys} />
       <Panel title={t("Picks by object")} meta={t("Model picks that were proved and that were not.")} testId="survivorship-domains">
         {domains.length === 0 ? <EmptyFrame>{t("The model has not picked a winner yet.")}</EmptyFrame> : (
           <ul className="m2-cl-changes">
@@ -338,7 +358,6 @@ export function AletheiaSurvivorship() {
           </ul>
         )}
       </Panel>
-      <ApprovalSetting />
       {acc.data ? <Accuracy a={acc.data} /> : null}
       <Panel title={t("Newest picks")} meta={t("Each pick with the checks the server ran.")} testId="survivorship-picks">
         {decided.length === 0 ? <EmptyFrame>{t("The model has not picked a winner yet.")}</EmptyFrame> : (
@@ -347,6 +366,7 @@ export function AletheiaSurvivorship() {
           </ScrollFrame>
         )}
       </Panel>
+      <ApprovalSetting />
     </CcPage>
   );
 }
