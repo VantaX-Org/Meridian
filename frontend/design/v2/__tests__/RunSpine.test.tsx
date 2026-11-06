@@ -114,6 +114,13 @@ describe("Home headlines, Objects board and Overview tab (fixture)", () => {
     expect(screen.queryByRole("button", { name: /Run 1/ })).toBeNull();
   });
 
+  it("Home never renders an empty link for a cross-system finding, which has no rule name", async () => {
+    renderWithQuery(<HomeHeadlines L={landscape()} />);
+    const across = await within(screen.getByTestId("home-verified")).findByRole("link", { name: /more than one connected system/ });
+    expect(across.getAttribute("href")).toMatch(/\/golden.*#across-systems$/);
+    for (const a of within(screen.getByTestId("home-verified")).getAllByRole("link")) expect(a.textContent?.trim()).not.toBe("");
+  });
+
   it("the Objects board lists a section per system with a row per object, each linking to its object", async () => {
     setUrl("/objects?fixture=1");
     renderWithQuery(<ObjectsCanvas />);

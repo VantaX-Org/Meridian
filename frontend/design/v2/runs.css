@@ -131,6 +131,7 @@ p.m2-ot-empty { margin: 0; font-size: var(--m2-fs-14); color: var(--m2-ink-2); m
 .m2-root .m2-hs-strip[data-inactive="true"] { border-style: dashed; }
 .m2-root .m2-hs-score { display: inline-flex; align-items: center; gap: var(--m2-s2); font-variant-numeric: tabular-nums; }
 .m2-root .m2-hs-err, .m2-root .m2-hs-none { grid-column: 2 / -1; color: var(--m2-ink-2); }
+.m2-root .m2-hs-err a, .m2-root .m2-hs-none a { text-decoration: underline; }
 .m2-root .m2-hs-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--m2-s6); margin: var(--m2-s4) 0; }
 .m2-root .m2-hs-list { list-style: none; margin: var(--m2-s2) 0; padding: 0; display: grid; gap: var(--m2-s2); font-size: var(--m2-fs-13); }
 @media (max-width: 900px) {

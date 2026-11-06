@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/format";
 import { runKeys } from "@/lib/v2/runs-queries";
 import { useTopWork } from "@/lib/v2/queries";
 import { runLabel } from "@/lib/v2/run-label";
+import { moduleText } from "@/lib/v2/labels";
 import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { Money } from "../Money";
@@ -126,8 +127,17 @@ function FindingsUnverified() {
         <ul className="m2-hs-list">
           {items.map((f) => (
             <li key={f.id}>
-              <V2Link href={`/o/_/${moduleSlug(f.module)}/rules`}>{f.name}</V2Link>{" "}
-              <span className="m2-meta">{t("{n} records affected", { n: int(f.affected) })}</span>
+              {f.action.kind === "across" ? (
+                // A cross-system finding has no rule, so the backend sends an empty name: say what it is and open the duplicates.
+                <V2Link href={`/o/_/${moduleSlug(f.module)}/golden#across-systems`}>
+                  {t("{n} {n2, plural, one {pair} other {pairs}} of {label} records exist in more than one connected system as separate records", { n: int(f.affected), n2: f.affected, label: moduleText(f.module) })}
+                </V2Link>
+              ) : (
+                <>
+                  <V2Link href={`/o/_/${moduleSlug(f.module)}/rules`}>{f.name}</V2Link>{" "}
+                  <span className="m2-meta">{t("{n} records affected", { n: int(f.affected) })}</span>
+                </>
+              )}
             </li>
           ))}
         </ul>
