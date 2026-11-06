@@ -23,6 +23,8 @@ import { t as tr, lc } from "@/lib/v2/i18n";
 import { baselineRefusalOf, type BaselineRefusal } from "@/lib/api/v2/step9";
 import { breachWords } from "@/lib/v2/step9";
 import { moduleText } from "@/lib/v2/labels";
+import { runLabel } from "@/lib/v2/run-label";
+import { Lede } from "../RunParts";
 import { ObjectChangeBars, measuredChange } from "./Compare";
 import { CcBanner, CcPage } from "./cc-parts";
 import { WhatIf } from "./WhatIf";
@@ -118,7 +120,12 @@ function PinRefusal({ refusal, canForce, pending, onForce }: { refusal: Baseline
 }
 
 /** The "Compare with" control: the other runs of the scope, newest first, and the link that opens the pair. */
-export function CompareControl({ id, runs }: { id: string; runs: readonly TimelineRun[] }) {
+export function CompareControl({ id, runs: all, system }: { id: string; runs: readonly TimelineRun[]; system?: string | null }) {
+  // Only runs of the same system compare: another system scored other objects, so a pair across systems says nothing.
+  const runs = useMemo(() => {
+    const sys = all.find((r) => r.id === id)?.system_id;
+    return sys ? all.filter((r) => r.system_id === sys) : all;
+  }, [all, id]);
   const others = useMemo(() => runs.filter((r) => r.id !== id).reverse(), [runs, id]);
   // The default partner measured the same objects: a run of another object compares nothing ("0 rules that ran
   // cleanly in both runs"). The baseline when it shares an object, else the newest earlier run that does.
@@ -147,7 +154,7 @@ export function CompareControl({ id, runs }: { id: string; runs: readonly Timeli
       <select id="run-compare-with" className="m2-sel" value={other ?? ""} onChange={(e) => setPicked(e.target.value)}>
         {others.map((r) => (
           <option key={r.id} value={r.id}>
-            {`${formatDate(r.run_at, "datetime")}${r.baseline ? tr(" (baseline)") : ""}`}
+            {`${runLabel(system, r.run_number)}, ${formatDate(r.run_at, "datetime")}${r.baseline ? tr(" (baseline)") : ""}`}
           </option>
         ))}
       </select>
@@ -317,7 +324,7 @@ function ProveThree({ run, modules }: { run: string; modules: string[] }) {
 }
 
 /** What moved since the run before it, in words and as one diverging bar per object. */
-function SincePrevious({ id, prevId, prevAt }: { id: string; prevId: string; prevAt: string | null }) {
+function SincePrevious({ id, prevId, prevAt, prevName }: { id: string; prevId: string; prevAt: string | null; prevName: string }) {
   const q = useCompareSummary(prevId, id);
   const S = q.data;
   if (!S) return null;
@@ -327,7 +334,7 @@ function SincePrevious({ id, prevId, prevAt }: { id: string; prevId: string; pre
   const dn = deltas.filter((d) => d != null && d < 0).length;
   return (
     <section className="m2-cc-card" aria-label={tr("Since the run before")} data-testid="run-since">
-      <h3>{tr("Since the run before, on {run_at}", { run_at: formatDate(prevAt, "date") })}</h3>
+      <h3>{tr("Since {name}, on {run_at}", { name: prevName, run_at: formatDate(prevAt, "date") })}</h3>
       <p className="m2-cc-lede">
         {tr("{up} {up, plural, one {object scored} other {objects scored}} higher and {dn} lower. {newly} rules started failing and {fixed} stopped.", { up, dn, newly: int(S.totals.newly_failing), fixed: int(S.totals.fixed) })}{" "}
         <V2Link href={`/run/${prevId}/vs/${id}`}>{tr("See every change")}</V2Link>
@@ -393,7 +400,7 @@ export function RunCanvas({ id }: { id: string }) {
 
   return (
     <CcPage>
-      <PageTitle sub={system?.name}>{v ? tr("Run {run_at}", { run_at: formatDate(v.run_at, "datetime") }) : tr("Run")}</PageTitle>
+      <PageTitle sub={v ? formatDate(v.run_at, "datetime") : undefined}>{v ? runLabel(system?.name, meta?.run_number ?? v.run_number) : tr("Run")}</PageTitle>
       <p className="m2-statusline" data-testid="run-status-line">
         {v ? (
           <>
@@ -422,6 +429,14 @@ export function RunCanvas({ id }: { id: string }) {
           <Skeleton width={420} height={14} />
         )}
       </p>
+      <Lede>{tr("What this run scored, object by object, and what changed since the earlier run of the same system. Choose an object to open it as this run measured it.")}</Lede>
+      {prev ? (
+        <SincePrevious id={id} prevId={prev.id} prevAt={prev.run_at} prevName={runLabel(system?.name, prev.run_number)} />
+      ) : meta ? (
+        <p className="m2-prov" data-testid="run-first">
+          {tr("This is the first run of {name}, so there is no earlier run to compare with.", { name: system?.name ?? tr("its system") })}
+        </p>
+      ) : null}
       {cells.length > 0 ? (
         <CcBanner
           testId="run-banner"
@@ -446,8 +461,7 @@ export function RunCanvas({ id }: { id: string }) {
           }
         />
       ) : null}
-      {prev ? <SincePrevious id={id} prevId={prev.id} prevAt={prev.run_at} /> : null}
-
+      
       <div className="m2-cta" data-testid="run-actions">
         <button
           type="button"
@@ -548,7 +562,7 @@ export function RunCanvas({ id }: { id: string }) {
         >
           {pending === "analyse" ? tr("Starting…") : tr("Score again")}
         </button>
-        <CompareControl id={id} runs={timeline.data?.runs ?? []} />
+        <CompareControl id={id} runs={timeline.data?.runs ?? []} system={system?.name} />
       </div>
       {!canChange ? <p className="m2-prov">{tr("Pinning, archiving and restoring need the analyse permission.")}</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
@@ -573,7 +587,7 @@ export function RunCanvas({ id }: { id: string }) {
       <section className="m2-sec" aria-label={tr("By object")}>
         <div className="m2-sechead">
           <h2 className="m2-h2">{tr("By object")}</h2>
-          <span className="m2-sub">{tr("Measured score, then the score shown after the cap")}</span>
+          <span className="m2-sub">{tr("Scores out of 100 as this run measured them. Choose an object to open it at this run.")}</span>
         </div>
         {land.isLoading ? (
           <Skeleton width="100%" height={160} />

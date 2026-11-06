@@ -42,7 +42,7 @@ const LABEL_GAP = 46;
  * month looks like a month. The selected run and the baseline always keep their label; the others keep theirs when
  * there is room. Pure, so the axis can be tested without a DOM.
  */
-export function timelineLayout(runs: readonly Pick<TimelineRun, "id" | "run_at" | "baseline">[], width: number, selectedId: string | null): TimelineGeometry {
+export function timelineLayout<R extends Pick<TimelineRun, "id" | "run_at" | "baseline">>(runs: readonly R[], width: number, selectedId: string | null, tick: (r: R) => string = (r) => shortDate(r.run_at)): TimelineGeometry {
   const left = 28;
   const right = 28;
   const times = runs.map((r) => (r.run_at ? new Date(r.run_at).getTime() : 0));
@@ -63,7 +63,7 @@ export function timelineLayout(runs: readonly Pick<TimelineRun, "id" | "run_at" 
     axisY: 52,
     left,
     right,
-    points: runs.map((r, i) => ({ id: r.id, x: xs[i], label: shown.has(i) ? shortDate(r.run_at) : null, selected: r.id === selectedId, baseline: r.baseline })),
+    points: runs.map((r, i) => ({ id: r.id, x: xs[i], label: shown.has(i) ? tick(r) : null, selected: r.id === selectedId, baseline: r.baseline })),
   };
 }
 
@@ -93,16 +93,18 @@ export interface RunTimelineChartProps {
   /** Accessible name of the group. */
   label?: string;
   fallbackWidth?: number;
+  /** The axis label of a run; the short date when absent. */
+  tick?: (r: TimelineRun) => string;
 }
 
 /**
  * The timeline: a date axis with one square per run, the baseline marked by a rule and the word, the selected run
  * in the data hue with a bold label. Every run is a button; Enter or Space picks it, the arrow keys move between them.
  */
-export function RunTimelineChart({ runs, selectedId, onPick, label = tr("Runs on a date axis"), fallbackWidth = 520 }: RunTimelineChartProps) {
+export function RunTimelineChart({ runs, selectedId, onPick, label = tr("Runs on a date axis"), fallbackWidth = 520, tick }: RunTimelineChartProps) {
   const box = useRef<HTMLDivElement>(null);
   const width = useMeasuredWidth(box, fallbackWidth);
-  const g = useMemo(() => timelineLayout(runs, width, selectedId), [runs, width, selectedId]);
+  const g = useMemo(() => timelineLayout(runs, width, selectedId, tick), [runs, width, selectedId, tick]);
   const runOf = (id: string) => runs.find((r) => r.id === id);
   const onKey = (e: ReactKeyboardEvent<SVGGElement>, i: number) => {
     if (e.key === "Enter" || e.key === " ") {

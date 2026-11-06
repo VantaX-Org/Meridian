@@ -13,7 +13,9 @@ import { useLandscape } from "@/lib/v2/queries";
 import { useSystemExtractions, useTimeline, useV2Jobs, useVersionsPage } from "@/lib/v2/runs-queries";
 import { useScopeSystem } from "@/lib/v2/scope";
 import { f1, int } from "@/lib/v2/score";
-import { RunTimelineChart, RunTimelineMenu, kindWord, triggerOf } from "../RunTimeline";
+import { RunTimelineChart, RunTimelineMenu } from "../RunTimeline";
+import { RunChip } from "../RunChip";
+import { InactiveChip, Lede, PrimaryAction } from "../RunParts";
 import { VerdictMark } from "../marks";
 import { ChartFrame, ChartTable, MULTI_H, SmallMultiples, TrendChart, niceTicks, scoreDomain } from "../charts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
@@ -129,83 +131,124 @@ function StartRun({ onClose }: { onClose: () => void }) {
   );
 }
 
-function RunsTable({ systemFilter, statusFilter, showArchived }: { systemFilter: string; statusFilter: string; showArchived: boolean }) {
-  const land = useLandscape(null);
-  const page = useVersionsPage({ limit: 50, include_archived: showArchived });
-  const timeline = useTimeline(null, 50);
-  const meta = useMemo(() => new Map((timeline.data?.runs ?? []).map((r) => [r.id, r])), [timeline.data]);
-  const systemName = (id: string | undefined) => land.data?.systems.find((s) => s.id === id)?.name;
-  const rows = (page.data?.versions ?? []).filter((v) => (systemFilter === "all" || v.metadata?.system_id === systemFilter) && (statusFilter === "all" || statusGroup(v.status) === statusFilter));
-  if (page.isLoading) return <Skeleton width="100%" height={200} />;
-  if (page.isError) return <ErrorFrame onRetry={() => void page.refetch()}>{t("The runs could not be read.")}</ErrorFrame>;
-  if (rows.length === 0) {
-    return <EmptyFrame>{(page.data?.versions.length ?? 0) === 0 ? t("No run has been made yet. Extract a system and run an analysis to see it here.") : t("No run matches these filters.")}</EmptyFrame>;
-  }
-  const failedRows = rows.filter((v) => statusGroup(v.status) === "failed").length;
+/** The runs of one system, newest first, each row naming its run in full and offering the comparison with the one before. */
+function LedgerGroup({ name, inactive, rows, meta }: { name: string; inactive: boolean; rows: readonly VersionHead[]; meta: Map<string, TimelineRun> }) {
+  const router = useRouter();
+  const v2Href = useV2Href();
+  const chartRuns = [...rows].reverse().map((v) => meta.get(v.id)).filter((r): r is TimelineRun => Boolean(r));
+  const failed = rows.filter((v) => statusGroup(v.status) === "failed").length;
+  const tick = (r: TimelineRun) => (r.run_number != null ? t("run {n}", { n: r.run_number }) : formatDate(r.run_at, "date").replace(/\s+\d{4}$/, ""));
   return (
-    <div className="m2-frame">
-      <p className="m2-prov" data-testid="runs-count" style={{ margin: "var(--m2-s2) var(--m2-s3)" }}>
-        {failedRows ? t("{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table, {failedRows} of them failed.", { rowsCount: rows.length, failedRows }) : t("{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table.", { rowsCount: rows.length })}
-      </p>
+    <section className="m2-frame m2-ledger-group" aria-label={name} data-testid="runs-group">
+      <h3 className="m2-ledger-h">
+        {name} {inactive ? <InactiveChip /> : null}
+        <span className="m2-meta" data-testid="runs-count">
+          {" "}
+          {failed ? t("{rowsCount} {rowsCount, plural, one {run} other {runs}}, {failed} failed", { rowsCount: rows.length, failed }) : t("{rowsCount} {rowsCount, plural, one {run} other {runs}}", { rowsCount: rows.length })}
+        </span>
+      </h3>
       <table className="m2-tbl" data-testid="runs-table">
         <thead>
           <tr>
-            <th scope="col">{t("Date")}</th>
-            <th scope="col">{t("System")}</th>
-            <th scope="col">{t("Label")}</th>
-            <th scope="col">{t("Trigger")}</th>
-            <th scope="col" className="m2-r">
-              {t("Records")}
-            </th>
-            <th scope="col" className="m2-r">
-              {t("Rules")}
-            </th>
-            <th scope="col" className="m2-r" title={t("Lowest and highest shown score over the objects the run scored")}>
-              {t("Score")}
-            </th>
+            <th scope="col">{t("Run")}</th>
             <th scope="col">{t("Status")}</th>
+            <th scope="col" className="m2-r" title={t("Records the rules read in this run")}>
+              {t("Records checked")}
+            </th>
             <th scope="col" className="m2-r">
               {t("Took")}
             </th>
+            <th scope="col" className="m2-r" title={t("How many objects this run gave a score")}>
+              {t("Objects scored")}
+            </th>
+            <th scope="col" className="m2-r" title={t("Lowest and highest shown score over the objects the run scored, out of 100")}>
+              {t("Scores, out of 100")}
+            </th>
+            <th scope="col">{t("Compare")}</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((v) => {
+          {rows.map((v, i) => {
             const m = meta.get(v.id);
             const st = runStatus(v.status);
             const range = scoreRange(v);
-            const rules = rulesOf(v);
-            const sys = systemName(v.metadata?.system_id);
+            const scored = m ? Object.keys(m.objects).length : Object.keys(v.dqs_summary ?? {}).length;
+            const prev = rows[i + 1];
             return (
               <tr key={v.id} data-testid="run-row">
                 <th scope="row">
                   <V2Link href={`/run/${v.id}`} className="m2-rowlink">
-                    {formatDate(v.run_at, "datetime")}
+                    <RunChip run={{ run_number: m?.run_number ?? v.run_number ?? null, run_at: v.run_at, status: v.status, baseline: Boolean(v.metadata?.baseline) }} system={name} />
                   </V2Link>
-                </th>
-                <td>{sys ?? <Dash />}</td>
-                <td>
-                  {v.metadata?.baseline ? t("Baseline") : null}
-                  {v.metadata?.baseline && v.label ? ", " : null}
-                  {v.label ?? (v.metadata?.baseline ? null : <Dash />)}
+                  {v.label ? <span className="m2-meta">{" "}{v.label}</span> : null}
                   {v.metadata?.archived ? <span className="m2-meta">{" "}{t("archived")}</span> : null}
-                </td>
-                <td>{kindWord(triggerOf(m?.kind, v.metadata))}</td>
-                <td className="m2-r">{m?.records_checked == null ? <Dash /> : int(m.records_checked)}</td>
-                <td className="m2-r">{rules == null ? <Dash /> : int(rules)}</td>
-                <td className="m2-r">{range ? t("{range} to {range2}", { range: f1(range[0]), range2: f1(range[1]) }) : <Dash />}</td>
+                </th>
                 <td>
                   <span className="m2-v">
                     {st.mark ? <VerdictMark verdict={st.mark} /> : null}
                     {st.word}
                   </span>
                 </td>
+                <td className="m2-r">{m?.records_checked == null ? <Dash /> : int(m.records_checked)}</td>
                 <td className="m2-r">{m?.duration_s == null ? <Dash /> : duration(m.duration_s)}</td>
+                <td className="m2-r">{scored ? int(scored) : <Dash />}</td>
+                <td className="m2-r">{range ? t("{range} to {range2}", { range: f1(range[0]), range2: f1(range[1]) }) : <Dash />}</td>
+                <td>
+                  {prev ? (
+                    <V2Link href={`/run/${prev.id}/vs/${v.id}`} className="m2-btn m2-sm" data-testid="compare-previous">
+                      {t("Compare with previous")}
+                    </V2Link>
+                  ) : (
+                    <span className="m2-meta" title={t("This is the first run of the system, so there is nothing earlier to compare with.")}>
+                      {t("First run")}
+                    </span>
+                  )}
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      {chartRuns.length > 1 ? (
+        <div className="m2-ledger-chart" data-testid="runs-group-chart">
+          <p className="m2-prov">{t("Where each {name} run falls in time. The table above lists the same runs. Choose a square to open that run.", { name })}</p>
+          <RunTimelineChart runs={chartRuns} selectedId={chartRuns[chartRuns.length - 1].id} onPick={(id) => router.push(v2Href(`/run/${id}`))} label={t("{name} runs on a date axis, choose one to open it", { name })} fallbackWidth={900} tick={tick} />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function RunsLedger({ systemFilter, statusFilter, showArchived }: { systemFilter: string; statusFilter: string; showArchived: boolean }) {
+  const land = useLandscape(null);
+  const page = useVersionsPage({ limit: 50, include_archived: showArchived });
+  const timeline = useTimeline(null, 50);
+  const meta = useMemo(() => new Map((timeline.data?.runs ?? []).map((r) => [r.id, r])), [timeline.data]);
+  const rows = (page.data?.versions ?? []).filter((v) => (systemFilter === "all" || v.metadata?.system_id === systemFilter) && (statusFilter === "all" || statusGroup(v.status) === statusFilter));
+  const groups = (() => {
+    const systems = land.data?.systems ?? [];
+    const by = new Map<string, VersionHead[]>();
+    for (const v of rows) {
+      const k = v.metadata?.system_id ?? "";
+      by.set(k, [...(by.get(k) ?? []), v]);
+    }
+    const stamp = (v: VersionHead) => new Date(v.run_at ?? 0).getTime();
+    const out = [...by.entries()].map(([id, list]) => {
+      const sys = systems.find((s) => s.id === id);
+      return { id, name: sys?.name ?? t("Unknown system"), inactive: sys?.is_active === false, rows: [...list].sort((a, b) => stamp(b) - stamp(a)) };
+    });
+    return out.sort((a, b) => Number(a.inactive) - Number(b.inactive) || a.name.localeCompare(b.name));
+  })();
+  if (page.isLoading) return <Skeleton width="100%" height={200} />;
+  if (page.isError) return <ErrorFrame onRetry={() => void page.refetch()}>{t("The runs could not be read.")}</ErrorFrame>;
+  if (rows.length === 0) {
+    return <EmptyFrame>{(page.data?.versions.length ?? 0) === 0 ? t("No run has been made yet. Extract a system and run an analysis to see it here.") : t("No run matches these filters. Choose Any status and All systems to see every run.")}</EmptyFrame>;
+  }
+  return (
+    <div data-testid="runs-ledger">
+      {groups.map((g) => (
+        <LedgerGroup key={g.id} name={g.name} inactive={g.inactive} rows={g.rows} meta={meta} />
+      ))}
     </div>
   );
 }
@@ -298,9 +341,7 @@ export function RunsExport({ system, archived }: { system: string; archived: boo
  * filters by system and status, and "Start a run".
  */
 export function RunsCanvas() {
-  const router = useRouter();
   const params = useSearchParams();
-  const v2Href = useV2Href();
   const session = useV2Session();
   const scope = useScopeSystem();
   const view = params.get("view") === "jobs" ? "jobs" : "runs";
@@ -349,6 +390,9 @@ export function RunsCanvas() {
   return (
     <CcPage>
       <PageTitle sub={scope?.name}>{t("Runs")}</PageTitle>
+      <Lede>
+        {t("Every run of every system, newest first within each system. Open a run to see what it scored, or compare it with the one before to see what changed.")}
+      </Lede>
       <RunTimelineMenu />
       <CcBanner
         testId="runs-banner"
@@ -370,7 +414,7 @@ export function RunsCanvas() {
           { label: t("Average score"), value: f1(nowScore), note: t("out of 100") },
           { label: t("Took"), value: latest?.duration_s != null ? duration(latest.duration_s) : "—", note: t("latest run") },
         ]}
-        action={startButton}
+        action={<PrimaryAction action={startButton} why={t("A new run measures the data again, so you can compare it with the last one.")} />}
       />
 
       <section className="m2-sec" aria-label={t("Timeline")}>
@@ -394,9 +438,6 @@ export function RunsCanvas() {
                     .map((r) => ({ key: r.id, label: r.run_at ? formatDate(r.run_at, "date") : r.id.slice(0, 8), value: r.duration_s as number, text: duration(r.duration_s as number) }))}
                 />
               </section>
-            </div>
-            <div className="m2-frame" style={{ padding: "var(--m2-s3) var(--m2-s4)", marginTop: "var(--m2-s4)" }}>
-              <RunTimelineChart runs={runs} selectedId={latest?.id ?? null} onPick={(id) => router.push(v2Href(`/run/${id}`))} label={t("Runs on a date axis, choose one to open it")} fallbackWidth={900} />
             </div>
           </>
         )}
@@ -435,7 +476,7 @@ export function RunsCanvas() {
             </label>
             <RunsExport system={system} archived={archived} />
           </div>
-          <RunsTable systemFilter={system} statusFilter={status} showArchived={archived} />
+          <RunsLedger systemFilter={system} statusFilter={status} showArchived={archived} />
         </section>
       ) : (
         <section className="m2-sec" aria-label={t("Jobs")} style={{ marginTop: "var(--m2-s4)" }}>
