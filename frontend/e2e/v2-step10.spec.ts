@@ -35,8 +35,8 @@ async function prepare(page: Page, scheme: "light" | "dark") {
   await page.route("**/api/v1/**", (route) => route.fulfill({ status: 404, contentType: "application/json", body: "{}" }));
 }
 
-async function axe(page: Page, label: string) {
-  const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+async function axe(page: Page, label: string, skip: string[] = []) {
+  const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).disableRules(skip).analyze();
   const blockers = result.violations.filter((v) => v.impact === "critical" || v.impact === "serious");
   const summary = blockers.map((v) => `${v.id} (${v.impact}): ${v.nodes.length} node(s), ${v.help}\n  ${v.nodes.map((n) => n.target.join(" ")).join("\n  ")}`).join("\n");
   expect(blockers, `${label}\n${summary}`).toEqual([]);
@@ -55,9 +55,9 @@ for (const size of SIZES) {
     test.describe(`v2 step 10 at ${size.name}, ${scheme}`, () => {
       test.use({ viewport: { width: size.width, height: size.height }, colorScheme: scheme });
       test.setTimeout(180_000);
-      const shot = async (page: Page, name: string) => {
+      const shot = async (page: Page, name: string, skip: string[] = []) => {
         await page.waitForLoadState("networkidle");
-        await axe(page, `${name} ${size.name} ${scheme}`);
+        await axe(page, `${name} ${size.name} ${scheme}`, skip);
         await page.screenshot({ path: path.join(SHOTS, `step10-${name}_${size.name}_${scheme}.png`) });
       };
 
@@ -148,7 +148,19 @@ for (const size of SIZES) {
         await expect(page.getByTestId("old-run-band")).toContainText("actions are off");
         await expect(page.locator(`[aria-label="Rules for Material master"]`)).toContainText("MM142");
         expect(await noSideways(page)).toBe(true);
-        await shot(page, "object-as-of");
+        // An old run gates its actions with <fieldset disabled>. axe then reports the scroll frame inside as out of
+        // keyboard reach, but browsers keep tabindex elements focusable there, so the real keys are asserted instead.
+        // Phone width shows cards, with no scroll frame.
+        if (size.width > 500) {
+          const frame = page.getByRole("region", { name: "Rules table, scrollable" });
+          await frame.focus();
+          await expect(frame).toBeFocused();
+          if (await frame.evaluate((el) => el.scrollWidth > el.clientWidth)) {
+            await page.keyboard.press("ArrowRight");
+            await expect.poll(() => frame.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+          }
+        }
+        await shot(page, "object-as-of", ["scrollable-region-focusable"]);
       });
 
       test("prediction: the start forms and a queued job", async ({ page }) => {
