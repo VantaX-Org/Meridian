@@ -8165,6 +8165,17 @@ export const en = {
   "The data quality score of the earlier run, out of 100.": "The data quality score of the earlier run, out of 100.",
   "The data quality score of the latest run, out of 100.": "The data quality score of the latest run, out of 100.",
   "Compared with": "Compared with",
+  "Cleansing steps": "Cleansing steps",
+  "Decide on the proposals": "Decide on the proposals",
+  "Approve the ones you trust, reject the rest. Nothing changes in SAP yet.": "Approve the ones you trust, reject the rest. Nothing changes in SAP yet.",
+  "Write the approved changes to SAP": "Write the approved changes to SAP",
+  "This changes the records in SAP. You can undo it for 72 hours.": "This changes the records in SAP. You can undo it for 72 hours.",
+  "Check the records stayed clean": "Check the records stayed clean",
+  "Each change is read back from SAP. Undo any that look wrong.": "Each change is read back from SAP. Undo any that look wrong.",
+  "Trends, breakdown by object, export and audit trail": "Trends, breakdown by object, export and audit trail",
+  "Approving only marks a proposal as accepted. SAP is not changed until you write it in the next step.": "Approving only marks a proposal as accepted. SAP is not changed until you write it in the next step.",
+  "Write to SAP changes the record in SAP now. It can be rolled back for 72 hours.": "Write to SAP changes the record in SAP now. It can be rolled back for 72 hours.",
+  "Merging keeps the record you pick as the survivor and folds the other into it.": "Merging keeps the record you pick as the survivor and folds the other into it.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -118,3 +118,21 @@ describe("Fix parts", () => {
     await waitFor(() => expect(container.querySelector(".m2-dash")).toHaveAttribute("title", "This run is not in the recent list."));
   });
 });
+
+describe("Cleansing task flow", () => {
+  it("shows the current step with what follows, puts decisions before trends, and says what each action does", async () => {
+    visit("/cleansing");
+    renderWithQuery(<ToastProvider><Cleansing /></ToastProvider>);
+    const flow = await screen.findByTestId("flow-steps");
+    const items = within(flow).getAllByRole("listitem");
+    expect(items).toHaveLength(3);
+    expect(items.filter((li) => li.getAttribute("aria-current") === "step")).toHaveLength(1);
+    const proposals = await screen.findByTestId("cleansing-proposals");
+    const detail = screen.getByTestId("more-detail");
+    // Decisions come first; the trends and audit trail sit behind a disclosure.
+    expect(proposals.compareDocumentPosition(detail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(detail.querySelector("[data-testid=cleansing-audit]")).not.toBeNull();
+    expect(within(proposals).getByTestId("consequence")).toHaveTextContent(/SAP is not changed/);
+    expect(within(screen.getByTestId("cleansing-approved")).getByTestId("consequence")).toHaveTextContent(/rolled back for 72 hours/);
+  });
+});

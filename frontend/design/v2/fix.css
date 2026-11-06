@@ -3,3 +3,14 @@
 .m2-root .m2-means dl { margin: var(--m2-s2) 0 0; display: grid; gap: var(--m2-s2); max-width: 78ch; }
 .m2-root .m2-means dd { margin: 0; }
 .m2-root .m2-objrun { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: var(--m2-s2); }
+.m2-root .m2-flow { list-style: none; margin: 0 0 var(--m2-s4); padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--m2-s2); }
+.m2-root .m2-flow li { display: flex; gap: var(--m2-s2); padding: var(--m2-s2) var(--m2-s3); border: 1px solid var(--m2-line); border-radius: var(--m2-r2, 6px); color: var(--m2-ink-2); }
+.m2-root .m2-flow-on { border-color: var(--m2-data); color: var(--m2-ink); background: var(--m2-surface-2, transparent); }
+.m2-root .m2-flow-done { opacity: .75; }
+.m2-root .m2-flow-n { font-weight: 600; min-width: 1.4em; }
+.m2-root .m2-flow-t { display: grid; gap: 2px; }
+.m2-root .m2-flow-h { font-size: var(--m2-fs-13); }
+.m2-root .m2-conseq { margin: var(--m2-s2) 0 0; }
+.m2-root .m2-more { margin: var(--m2-s4) 0; }
+.m2-root .m2-more > summary { cursor: pointer; font-weight: 600; width: fit-content; }
+.m2-root .m2-more-body { margin-top: var(--m2-s3); display: grid; gap: var(--m2-s4); }

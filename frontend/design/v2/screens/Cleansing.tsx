@@ -16,7 +16,7 @@ import { DASH, f1, int } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, niceTicks, StackedBar, TrendChart } from "../charts";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
-import { FixHead, ObjectRunChip } from "../FixParts";
+import { Consequence, FixHead, FlowSteps, MoreDetail, ObjectRunChip } from "../FixParts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { Fld } from "../admin/kit";
@@ -116,6 +116,21 @@ export function Cleansing() {
         ]}
       />
 
+      <FlowSteps
+        label={t("Cleansing steps")}
+        current={waiting(s) > 0 ? 0 : s.approved > 0 ? 1 : 2}
+        steps={[
+          { label: t("Decide on the proposals"), count: int(waiting(s)), hint: t("Approve the ones you trust, reject the rest. Nothing changes in SAP yet.") },
+          { label: t("Write the approved changes to SAP"), count: int(s.approved), hint: t("This changes the records in SAP. You can undo it for 72 hours.") },
+          { label: t("Check the records stayed clean"), count: int(s.verified), hint: t("Each change is read back from SAP. Undo any that look wrong.") },
+        ]}
+      />
+
+      <Proposals />
+      <Rollbacks query={queue} />
+      <Duplicates />
+
+      <MoreDetail title={t("Trends, breakdown by object, export and audit trail")}>
       <Panel title={t("Where every proposal stands")} meta={t("The latest snapshot of the queue, all objects.")} testId="cleansing-status">
         <StackedBar
           label={t("Proposals by status")}
@@ -130,9 +145,6 @@ export function Cleansing() {
           ]}
         />
       </Panel>
-
-      <Proposals />
-      <Duplicates />
 
       <div className="m2-cc-split">
         <Trend weeks={weeks} />
@@ -156,7 +168,6 @@ export function Cleansing() {
         </Panel>
       </div>
 
-      <Rollbacks query={queue} />
       <Export />
 
       <Panel title={t("Audit trail")} meta={audit.data ? t("The last {n} decisions", { n: int(audit.data.items.length) }) : undefined} testId="cleansing-audit">
@@ -191,6 +202,7 @@ export function Cleansing() {
           </ScrollFrame>
         )}
       </Panel>
+      </MoreDetail>
 
       <p className="m2-meta">
         {t("Whether the cleansed records stayed clean is tracked week by week on")} <V2Link href="/work/monitor">{t("Work, Monitor")}</V2Link>.
@@ -341,6 +353,7 @@ function Proposals() {
         meta={groups.data ? t("{n} proposals in {g} groups, {c} at {p} confidence or more", { n: int(groups.data.records), g: int(list.length), c: int(groups.data.confident), p: pct(CONFIDENT) }) : undefined}
         testId="cleansing-proposals"
       >
+        <Consequence>{t("Approving only marks a proposal as accepted. SAP is not changed until you write it in the next step.")}</Consequence>
         {groups.isPending ? <Skeleton width="100%" height={120} /> : status(groups.error) === 403 ? (
           <Dash why={t("Your role cannot see the cleansing proposals.")} />
         ) : groups.isError ? <Dash why={t("The proposals could not be read.")} /> : list.length === 0 ? (
@@ -399,6 +412,7 @@ function Proposals() {
         meta={approved.data ? t("{n} approved", { n: int(approved.data.total) }) : undefined}
         testId="cleansing-approved"
       >
+        <Consequence>{t("Write to SAP changes the record in SAP now. It can be rolled back for 72 hours.")}</Consequence>
         {approved.isPending ? <Skeleton width="100%" height={80} /> : approved.isError ? <Dash why={t("The approved proposals could not be read.")} /> : approved.data.items.length === 0 ? (
           <EmptyFrame>{t("No approved proposal is waiting to be applied.")}</EmptyFrame>
         ) : (
@@ -553,6 +567,7 @@ function Merge({ pair, onDone }: { pair: DedupCandidate; onDone: () => void }) {
   const rows = Object.entries(fields.data.merge_preview);
   return (
     <div data-testid={`cleansing-dedup-merge-${pair.id}`}>
+      <Consequence>{t("Merging keeps the record you pick as the survivor and folds the other into it.")}</Consequence>
       {rows.length ? (
         <table className="m2-tbl">
           <thead>
