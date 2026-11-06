@@ -15,6 +15,7 @@ import { describeField } from "@/lib/v2/sap-fields";
 import { t } from "@/lib/v2/i18n";
 import { ageWord, kindWord, objectWord, PrecheckView, statusWord } from "../inspector/request";
 import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { FixHead } from "../FixParts";
 import { CcBanner, CcHBars, CcPage, type CcBarRow } from "./cc-parts";
 
 const VIEWS: readonly RequestView[] = ["mine", "to_approve", "all"];
@@ -631,10 +632,19 @@ export function RequestsCanvas() {
           { label: t("Drafts"), value: drafts, note: t("not yet submitted") },
         ]}
         action={
-          <button type="button" className="m2-btn m2-next" aria-expanded={composing} disabled={!canWrite} title={canWrite ? undefined : t("A new request needs the master data write permission")} onClick={() => setComposing((c) => !c)}>
+          <button type="button" className="m2-btn m2-strong" aria-expanded={composing} disabled={!canWrite} title={canWrite ? undefined : t("A new request needs the master data write permission")} onClick={() => setComposing((c) => !c)}>
             {t("New request")}
           </button>
         }
+      />
+      <FixHead
+        lede={t("This page lists requests to create or change master data. Each goes through approval before it reaches SAP. A request belongs to a record, not to a scoring run, so rows carry no run. Start with New request, or open one that waits for you.")}
+        means={[
+          [t("Waiting"), t("Requests submitted or in approval.")],
+          [t("Overdue"), t("Waiting requests past the due time of the current approval step.")],
+          [t("Failed"), t("Requests approved that did not reach SAP.")],
+          [t("Drafts"), t("Requests saved but not yet submitted.")],
+        ]}
       />
       {rows.length > 0 ? (
         <div className="m2-cc-row">

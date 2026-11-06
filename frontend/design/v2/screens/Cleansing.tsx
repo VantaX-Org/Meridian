@@ -16,6 +16,7 @@ import { DASH, f1, int } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, niceTicks, StackedBar, TrendChart } from "../charts";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
+import { FixHead, ObjectRunChip } from "../FixParts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { Fld } from "../admin/kit";
@@ -103,7 +104,16 @@ export function Cleansing() {
           { label: t("Approved, not yet in SAP"), value: int(s.approved), note: t("written at the next apply") },
           { label: t("Verified"), value: int(s.verified), note: t("applied and read back from SAP") },
         ]}
-        action={<a href="#cleansing-proposals" className="m2-btn m2-next" data-testid="cleansing-review">{t("Review the proposals")}</a>}
+        action={<a href="#cleansing-proposals" className="m2-btn m2-strong" data-testid="cleansing-review">{t("Review the proposals")}</a>}
+      />
+      <FixHead
+        lede={t("Cleansing proposes changes to records, a steward approves them, and the engine writes them to SAP and reads them back. Review the proposals first, then apply the approved ones. Each object shows the run it was last scored in.")}
+        means={[
+          [t("Waiting for a decision"), t("Proposed changes that nobody has approved or rejected.")],
+          [t("Approved, not yet in SAP"), t("Approved changes that the next apply will write.")],
+          [t("Verified"), t("Applied changes that were read back from SAP and match.")],
+          [t("Rolled back"), t("Applied changes that were reversed inside the rollback window.")],
+        ]}
       />
 
       <Panel title={t("Where every proposal stands")} meta={t("The latest snapshot of the queue, all objects.")} testId="cleansing-status">
@@ -172,7 +182,7 @@ export function Cleansing() {
                     <td data-label={t("When")}>{formatDate(a.created_at, "datetime")}</td>
                     <th scope="row" className="m2-card-lead">{ACTION[a.action]?.() ?? labelText(a.action)}</th>
                     <td data-label={t("Record")}>{a.record_key ? <Mono>{a.record_key}</Mono> : <Dash />}</td>
-                    <td data-label={t("Object")}>{a.object_type ? moduleText(a.object_type) : <Dash />}</td>
+                    <td data-label={t("Object")}>{a.object_type ? <ObjectRunChip module={a.object_type} /> : <Dash />}</td>
                     <td data-label={t("By")}>{a.actor_name === "scheduler" ? t("Weekly task") : a.actor_name ?? <Dash />}</td>
                   </tr>
                 ))}
@@ -249,7 +259,7 @@ function Rollbacks({ query }: { query: ReturnType<typeof useCleaning<{ items: Cl
                 return (
                   <tr key={i.id} data-testid={`cleansing-row-${i.id}`}>
                     <th scope="row" className="m2-card-lead"><Mono>{i.record_key}</Mono></th>
-                    <td data-label={t("Object")}>{moduleText(i.object_type)}</td>
+                    <td data-label={t("Object")}><ObjectRunChip module={i.object_type} /></td>
                     <td data-label={t("Change")}><Changes item={i} /></td>
                     <td data-label={t("Undo until")}>{i.rollback_deadline ? (open ? formatDate(i.rollback_deadline, "datetime") : t("Window closed")) : DASH}</td>
                     <td data-label={t("Action")}>
@@ -334,7 +344,7 @@ function Proposals() {
         {groups.isPending ? <Skeleton width="100%" height={120} /> : status(groups.error) === 403 ? (
           <Dash why={t("Your role cannot see the cleansing proposals.")} />
         ) : groups.isError ? <Dash why={t("The proposals could not be read.")} /> : list.length === 0 ? (
-          <EmptyFrame>{t("No proposal is waiting for a decision.")}</EmptyFrame>
+          <EmptyFrame>{t("No proposal is waiting for a decision. New proposals appear after the next cleansing task has run.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Proposals table, scrollable")}>
             <table className="m2-tbl m2-cards">
@@ -355,7 +365,7 @@ function Proposals() {
                   return [
                     <tr key={k} data-testid={`cleansing-group-${g.kind}`}>
                       <th scope="row" className="m2-card-lead">{what(g)}</th>
-                      <td data-label={t("Object")}>{moduleText(g.object_type)} <Mono>{g.object_type}</Mono></td>
+                      <td data-label={t("Object")}><ObjectRunChip module={g.object_type} /> <Mono>{g.object_type}</Mono></td>
                       <td data-label={t("Run")}>{g.run_label ?? (g.run_at ? formatDate(g.run_at, "date") : DASH)}</td>
                       <td data-label={t("Records")} className="m2-num">{int(g.records)}</td>
                       <td data-label={t("Average confidence")} className="m2-num">{pct(g.avg_confidence)}</td>
@@ -407,7 +417,7 @@ function Proposals() {
                 {approved.data.items.map((i) => (
                   <tr key={i.id} data-testid={`cleansing-approved-${i.id}`}>
                     <th scope="row" className="m2-card-lead"><Mono>{i.record_key}</Mono></th>
-                    <td data-label={t("Object")}>{moduleText(i.object_type)}</td>
+                    <td data-label={t("Object")}><ObjectRunChip module={i.object_type} /></td>
                     <td data-label={t("Change")}><Changes item={i} /></td>
                     <td data-label={t("Confidence")} className="m2-num">{pct(i.confidence)}</td>
                     <td data-label={t("Action")}>
@@ -496,7 +506,7 @@ function Duplicates() {
               {pairs.data.items.map((c) => [
                 <tr key={c.id} data-testid={`cleansing-dedup-${c.id}`}>
                   <th scope="row" className="m2-card-lead"><Mono>{c.record_key_a}</Mono> {t("and")} <Mono>{c.record_key_b}</Mono></th>
-                  <td data-label={t("Object")}>{moduleText(c.object_type)}</td>
+                  <td data-label={t("Object")}><ObjectRunChip module={c.object_type} /></td>
                   <td data-label={t("Matched on")}>
                     {Object.keys(c.match_fields ?? {}).length ? Object.keys(c.match_fields ?? {}).map((f, i) => <span key={f}>{i ? ", " : ""}<Mono>{f}</Mono> {labelText(f)}</span>) : <Dash />}
                   </td>
