@@ -9,6 +9,8 @@ import { EntryGate } from "../screens/EntryGate";
 import { MdmHealth } from "../screens/MdmHealth";
 import { Mining } from "../screens/Mining";
 import { S4Readiness } from "../screens/S4Readiness";
+import { ReportsCanvas } from "../screens/Reports";
+import { StatusScreen } from "../screens/Status";
 import { FlightDeck } from "../screens/FlightDeck";
 import { Forecast } from "../screens/Forecast";
 import { Insights } from "../screens/Insights";
@@ -19,6 +21,8 @@ import { ProcessDiscovery } from "../screens/ProcessDiscovery";
 import { ReferenceData } from "../screens/ReferenceData";
 import { ScoreLens } from "../screens/ScoreLens";
 import { Value } from "../screens/Value";
+import * as roles from "@/lib/api/v2/roles";
+import { ShareLanding } from "../shell/RoleBanners";
 import { stubLayout } from "./layout-stub";
 import { setUrl } from "./nav-store";
 
@@ -37,7 +41,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const screens = { EntryGate, MdmHealth, Mining, S4Readiness, Atlas, Config, FlightDeck, Forecast, Insights, Issues, Links, Material, ProcessDiscovery, ReferenceData, ScoreLens, Value };
+const screens = { ReportsCanvas, StatusScreen, EntryGate, MdmHealth, Mining, S4Readiness, Atlas, Config, FlightDeck, Forecast, Insights, Issues, Links, Material, ProcessDiscovery, ReferenceData, ScoreLens, Value };
 
 describe("stage 6 screens open with a guide", () => {
   for (const [name, C] of Object.entries(screens)) {
@@ -48,4 +52,14 @@ describe("stage 6 screens open with a guide", () => {
       expect(g.querySelectorAll("dt").length).toBeGreaterThan(0);
     });
   }
+});
+
+describe("Share landing", () => {
+  it("says what it does and gives a next step when the link fails", async () => {
+    setUrl("/share/abc");
+    vi.spyOn(roles, "resolveShareLink").mockRejectedValue(new Error("gone"));
+    renderWithQuery(<ShareLanding />);
+    expect(screen.getByText(/Opens a shared view of one page, read only/)).toBeTruthy();
+    expect(await screen.findByText(/Ask the person who shared it for a new link/)).toBeTruthy();
+  });
 });

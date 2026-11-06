@@ -1,5 +1,6 @@
 "use client";
 
+import { Guide } from "./Guide";
 import Link from "next/link";
 import type { ComponentStatus, OverallStatus, StatusPage } from "@/lib/api/v2/enterprise";
 import { formatDate } from "@/lib/format";
@@ -176,6 +177,10 @@ export function StatusScreen({ signedIn = false }: { signedIn?: boolean }) {
       </header>
       <main id="m2-status-main" tabIndex={-1} className="m2-stat-main">
         <PageTitle>{t("Status")}</PageTitle>
+        <Guide
+          shows={t("Shows whether Meridian is running normally, with any planned maintenance.")}
+          means={[[t("Overall state"), t("Whether every part of Meridian works; one failing part changes it.")]]}
+        />
         {q.isError ? (
           <ErrorFrame onRetry={() => void q.refetch()}>{t("The status could not be read. The server may be restarting.")}</ErrorFrame>
         ) : !page || !overall ? (

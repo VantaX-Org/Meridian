@@ -8189,6 +8189,15 @@ export const en = {
   "Which run of the series you are looking at.": "Which run of the series you are looking at.",
   "Records the rules looked at in that run.": "Records the rules looked at in that run.",
   "Objects whose score a critical rule holds down.": "Objects whose score a critical rule holds down.",
+  "Opens a shared view of one page, read only, then takes you to it.": "Opens a shared view of one page, read only, then takes you to it.",
+  "Ask the person who shared it for a new link, or sign in to open the page directly.": "Ask the person who shared it for a new link, or sign in to open the page directly.",
+  "Lists the reports made from stored runs and the schedules that make more.": "Lists the reports made from stored runs and the schedules that make more.",
+  "Shows whether Meridian is running normally, with any planned maintenance.": "Shows whether Meridian is running normally, with any planned maintenance.",
+  "Reports are made from stored runs": "Reports are made from stored runs",
+  "A file built from one stored run, so its numbers match that run.": "A file built from one stored run, so its numbers match that run.",
+  "A rule that makes a report on its own at set times.": "A rule that makes a report on its own at set times.",
+  "Overall state": "Overall state",
+  "Whether every part of Meridian works; one failing part changes it.": "Whether every part of Meridian works; one failing part changes it.",
   // stage 6 end
 } as const satisfies Record<string, string>;
 

@@ -83,7 +83,13 @@ export function ShareLanding() {
   return (
     <>
       <PageTitle>{t("Shared view")}</PageTitle>
-      {error ? <EmptyFrame>{error}</EmptyFrame> : <Skeleton width={320} height={14} />}
+      <p className="m2-prov">{t("Opens a shared view of one page, read only, then takes you to it.")}</p>
+      {error ? (
+        <>
+          <EmptyFrame>{error}</EmptyFrame>
+          <p className="m2-prov">{t("Ask the person who shared it for a new link, or sign in to open the page directly.")}</p>
+        </>
+      ) : <Skeleton width={320} height={14} />}
     </>
   );
 }

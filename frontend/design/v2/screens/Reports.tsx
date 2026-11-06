@@ -1,5 +1,6 @@
 "use client";
 
+import { Guide } from "./Guide";
 import { useState, type ReactNode } from "react";
 import type { ReportFile, ReportSchedule } from "@/lib/api/reports";
 import * as rep from "@/lib/api/v2/reports";
@@ -175,6 +176,13 @@ export function ReportsCanvas() {
   return (
     <CcPage>
       <PageTitle>{t("Reports")}</PageTitle>
+      <Guide
+        shows={t("Lists the reports made from stored runs and the schedules that make more.")}
+        means={[
+          [t("Report"), t("A file built from one stored run, so its numbers match that run.")],
+          [t("Schedule"), t("A rule that makes a report on its own at set times.")],
+        ]}
+      />
       {schedules.data && !history.isPending ? <ReportsOverview files={files} total={history.data?.total ?? null} list={list} names={names} action={create} /> : <div className="m2-cta">{create}</div>}
       {!exportAllowed ? <p className="m2-prov">{t("Creating and scheduling reports needs the export permission.")}</p> : null}
       {error ? <ErrorFrame>{t("The download did not finish. {error}", { error })}</ErrorFrame> : null}

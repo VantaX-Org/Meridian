@@ -8190,5 +8190,14 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Which run of the series you are looking at.": "表示している系列の何番目の実行か。",
   "Records the rules looked at in that run.": "その実行でルールが検査したレコード数。",
   "Objects whose score a critical rule holds down.": "重大ルールによりスコアが抑えられているオブジェクト。",
+  "Opens a shared view of one page, read only, then takes you to it.": "1ページの共有ビューを読み取り専用で開き、そのページへ移動します。",
+  "Ask the person who shared it for a new link, or sign in to open the page directly.": "共有した人に新しいリンクを依頼するか、サインインしてページを直接開いてください。",
+  "Lists the reports made from stored runs and the schedules that make more.": "保存済みの実行から作成したレポートと、追加で作成するスケジュールを一覧にします。",
+  "Shows whether Meridian is running normally, with any planned maintenance.": "Meridianが正常に動作しているか、予定されたメンテナンスとともに示します。",
+  "Reports are made from stored runs": "レポートは保存済みの実行から作成されます",
+  "A file built from one stored run, so its numbers match that run.": "保存済みの1回の実行から作成したファイルで、数値はその実行と一致します。",
+  "A rule that makes a report on its own at set times.": "決まった時刻に自動でレポートを作成する設定。",
+  "Overall state": "全体の状態",
+  "Whether every part of Meridian works; one failing part changes it.": "Meridianの全部分が動作しているか。1つでも障害があれば変わります。",
   // stage 6 end
 };

@@ -8190,5 +8190,14 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Which run of the series you are looking at.": "Welchen Lauf der Serie Sie ansehen.",
   "Records the rules looked at in that run.": "Datensätze, die die Regeln in diesem Lauf geprüft haben.",
   "Objects whose score a critical rule holds down.": "Objekte, deren Wert durch eine kritische Regel gedeckelt wird.",
+  "Opens a shared view of one page, read only, then takes you to it.": "Öffnet eine geteilte Ansicht einer Seite, schreibgeschützt, und leitet Sie dorthin.",
+  "Ask the person who shared it for a new link, or sign in to open the page directly.": "Bitten Sie die Person, die den Link geteilt hat, um einen neuen, oder melden Sie sich an, um die Seite direkt zu öffnen.",
+  "Lists the reports made from stored runs and the schedules that make more.": "Listet die aus gespeicherten Läufen erstellten Berichte und die Zeitpläne, die weitere erstellen.",
+  "Shows whether Meridian is running normally, with any planned maintenance.": "Zeigt, ob Meridian normal läuft, einschließlich geplanter Wartung.",
+  "Reports are made from stored runs": "Berichte entstehen aus gespeicherten Läufen",
+  "A file built from one stored run, so its numbers match that run.": "Eine aus einem gespeicherten Lauf erstellte Datei, deren Zahlen mit diesem Lauf übereinstimmen.",
+  "A rule that makes a report on its own at set times.": "Eine Regel, die zu festen Zeiten selbst einen Bericht erstellt.",
+  "Overall state": "Gesamtzustand",
+  "Whether every part of Meridian works; one failing part changes it.": "Ob jeder Teil von Meridian funktioniert; ein ausfallender Teil ändert ihn.",
   // stage 6 end
 };
