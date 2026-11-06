@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { t } from "@/lib/v2/i18n";
+import { Consequence, FlowSteps } from "../FixParts";
 import { Dash } from "../parts";
 
 /* Stage 5 parts for the Rules and Aletheia screens. Kept in one file so no shared component changes. */
@@ -25,25 +26,9 @@ export function RibbonDash() {
   return <Dash why={t("Findings for one rule across several runs are not available yet. Open the rule to see the newest run.")} />;
 }
 
-/** Where the user is in multi-step work: done steps, the current one (aria-current) and what follows. */
-export function Steps({ steps, current, label, testId }: { steps: string[]; current: number; label: string; testId?: string }) {
-  return (
-    <ol aria-label={label} data-testid={testId} style={{ display: "flex", flexWrap: "wrap", gap: "var(--m2-s4)", listStyle: "none", padding: 0, margin: 0 }}>
-      {steps.map((s, i) => {
-        const state = i < current ? "done" : i === current ? "current" : "next";
-        return (
-          <li key={s} aria-current={state === "current" ? "step" : undefined} data-state={state} style={{ display: "flex", alignItems: "center", gap: "var(--m2-s2)", opacity: state === "next" ? 0.6 : 1, fontWeight: state === "current" ? 600 : 400 }}>
-            <span aria-hidden="true" style={{ display: "inline-grid", placeItems: "center", width: 20, height: 20, borderRadius: "50%", border: "1px solid var(--m2-data)", background: state === "done" ? "var(--m2-data)" : "transparent", fontSize: "var(--m2-fs-12)" }}>{i + 1}</span>
-            <span>{s}</span>
-            <span className="m2-sr">{state === "done" ? t("done") : state === "current" ? t("current step") : t("next")}</span>
-          </li>
-        );
-      })}
-    </ol>
-  );
+/** The shared step strip, for rule screens whose steps are labels only. */
+export function Steps({ steps, ...rest }: { steps: string[]; current: number; label: string; testId?: string }) {
+  return <FlowSteps steps={steps.map((label) => ({ label }))} {...rest} />;
 }
 
-/** What an action will do, said before it runs. */
-export function Consequence({ children }: { children: ReactNode }) {
-  return <p className="m2-why1" data-testid="consequence">{children}</p>;
-}
+export { Consequence };

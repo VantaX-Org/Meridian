@@ -71,16 +71,16 @@ export function RunById({ id, systemId, system }: { id: string | null | undefine
   return run ? <RunChip run={run} system={system} /> : <Dash why={tl.isPending ? t("Reading the run.") : t("This run is not in the recent list.")} />;
 }
 
-export type FlowStep = { label: string; hint: string; count?: string };
+export type FlowStep = { label: string; hint?: string; count?: string };
 
 /** Multi-step work: the step the user is on, and what follows. Plain words first; detail stays in the panels below. */
-export function FlowSteps({ steps, current, label }: { steps: FlowStep[]; current: number; label: string }) {
+export function FlowSteps({ steps, current, label, testId = "flow-steps" }: { steps: FlowStep[]; current: number; label: string; testId?: string }) {
   return (
-    <ol className="m2-flow" aria-label={label} data-testid="flow-steps">
+    <ol className="m2-flow" aria-label={label} data-testid={testId}>
       {steps.map((s, i) => (
         <li key={s.label} className={i === current ? "m2-flow-on" : i < current ? "m2-flow-done" : undefined} aria-current={i === current ? "step" : undefined}>
           <span className="m2-flow-n">{i + 1}</span>
-          <span className="m2-flow-t"><b>{s.label}</b>{s.count ? <span className="m2-meta"> {s.count}</span> : null}<span className="m2-meta m2-flow-h">{s.hint}</span></span>
+          <span className="m2-flow-t"><b>{s.label}</b>{s.count ? <span className="m2-meta"> {s.count}</span> : null}{s.hint ? <span className="m2-meta m2-flow-h">{s.hint}</span> : null}</span>
         </li>
       ))}
     </ol>
