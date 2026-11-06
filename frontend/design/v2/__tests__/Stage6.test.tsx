@@ -3,7 +3,7 @@ vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout:
 import { render, screen } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as mig from "@/lib/api/v2/migration";
-import { Guide } from "../screens/Guide";
+import { Disclose, Guide } from "../screens/Guide";
 import { PairedQuality } from "../screens/PairedQuality";
 import { stubLayout } from "./layout-stub";
 import { setUrl } from "./nav-store";
@@ -56,5 +56,27 @@ describe("PairedQuality states", () => {
     vi.spyOn(mig, "getMigrationRuns").mockRejectedValue(new Error("boom"));
     renderWithQuery(<PairedQuality />);
     expect(await screen.findByText(/could not be read/, undefined, { timeout: 8000 })).toBeTruthy();
+  });
+});
+
+describe("Steps and Disclose", () => {
+  it("marks done, now and next steps and names what follows", () => {
+    render(<Guide shows="x" steps={{ labels: ["One", "Two", "Three"], current: 1 }} />);
+    const items = screen.getByTestId("steps").querySelectorAll("li");
+    expect(items[0].className).toContain("m2-step-done");
+    expect(items[1].className).toContain("m2-step-now");
+    expect(items[1].getAttribute("aria-current")).toBe("step");
+    expect(items[2].className).toContain("m2-step-next");
+    expect(screen.getByTestId("steps").textContent).toContain("Three");
+  });
+  it("shows no follow-up line on the last step", () => {
+    render(<Guide shows="x" steps={{ labels: ["One", "Two"], current: 1 }} />);
+    expect(screen.getByTestId("steps").textContent).not.toContain("After this");
+  });
+  it("folds detail until opened and can start open", () => {
+    render(<><Disclose title="Folded">body</Disclose><Disclose title="Open" open>b2</Disclose></>);
+    const d = screen.getAllByTestId("disclose") as HTMLDetailsElement[];
+    expect(d[0].open).toBe(false);
+    expect(d[1].open).toBe(true);
   });
 });

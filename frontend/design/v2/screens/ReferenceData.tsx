@@ -268,6 +268,7 @@ export function ReferenceData() {
   return (
     <CcPage title={title}>
       <Guide
+        steps={{ labels: [t("Pick a code list"), t("Map every code to a target"), t("Get a second approval"), t("Use it in the migration")], current: listId ? 1 : 0 }}
         shows={t("Lists the code lists extracted from the source system and the target each code maps to.")}
         next={{ href: "/migration", label: t("Open the migration analysis") }}
         means={[

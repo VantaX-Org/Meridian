@@ -8,7 +8,7 @@ import { f1, int } from "@/lib/v2/score";
 import { DqWord } from "../inspector/step";
 import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
-import { Guide } from "./Guide";
+import { Disclose, Guide } from "./Guide";
 import { PairedQuality } from "./PairedQuality";
 import { pctOf, retry, Section, status, Table, useRuleName } from "./WorkAnalytics";
 
@@ -67,6 +67,7 @@ export function S4Readiness() {
   return (
     <CcPage title={t("S/4HANA readiness")}>
       <Guide
+        steps={{ labels: [t("Read the verdict"), t("Fix the blocking rules"), t("Check again"), t("Convert")], current: d.evaluated === 0 ? 0 : d.ready ? 3 : 1 }}
         system={t("S/4HANA target")}
         shows={t("Shows whether your data meets the conversion rules, by SAP simplification area, and how quality changes between the source and the target.")}
         action={<V2Link className="m2-btn m2-strong" href="/migration">{t("Open the migration analysis")}</V2Link>}
@@ -91,9 +92,9 @@ export function S4Readiness() {
         testId="s4-banner"
         label={t("S/4HANA readiness")}
       />
-      <PairedQuality />
-      <AreaPanel rows={d.areas} />
       <BlockerPanel rows={d.areas} />
+      <Disclose title={t("Quality in the source and in the target")}><PairedQuality /></Disclose>
+      <Disclose title={t("Readiness by SAP simplification area")}><AreaPanel rows={d.areas} /></Disclose>
     </CcPage>
   );
 }

@@ -54,6 +54,16 @@ describe("stage 6 screens open with a guide", () => {
   }
 });
 
+describe("multi-step screens show where you are", () => {
+  for (const [name, C] of Object.entries({ S4Readiness, EntryGate, Forecast, ReferenceData, ProcessDiscovery })) {
+    it(`${name} shows the current step`, async () => {
+      renderWithQuery(<C />);
+      const st = await screen.findByTestId("steps", undefined, { timeout: 8000 });
+      expect(st.querySelectorAll("[aria-current='step']")).toHaveLength(1);
+    });
+  }
+});
+
 describe("Share landing", () => {
   it("says what it does and gives a next step when the link fails", async () => {
     setUrl("/share/abc");

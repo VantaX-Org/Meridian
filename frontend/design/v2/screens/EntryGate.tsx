@@ -13,7 +13,7 @@ import { int } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, TrendChart, niceTicks, type TrendPoint } from "../charts";
 import { ageWord, objectWord, statusWord } from "../inspector/request";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
-import { Guide } from "./Guide";
+import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { DuplicateResults } from "./EntryDuplicates";
 import { Panel } from "./Mining";
@@ -395,6 +395,7 @@ export function EntryGate() {
   return (
     <CcPage title={t("Entry gate")}>
       <Guide
+        steps={{ labels: [t("Try a record"), t("Review what is held"), t("Approve or reject"), t("SAP saves what passes")], current: 1 }}
         shows={t("Shows the records the entry gate checked before SAP saved them: how many passed, were held for approval, rejected or written.")}
         next={{ href: "/requests", label: t("Open the requests") }}
         means={[
@@ -420,6 +421,7 @@ export function EntryGate() {
         <DayChart days={days} title={t("Records blocked")} pick={(d) => d.blocked} testId="entry-gate-blocked" />
       </div>
 
+      <Disclose title={t("Each day")}>
       <Panel title={t("Each day")} meta={t("Warned and passed were not kept before this release, so earlier days show a dash.")} testId="entry-gate-days">
         {days.length === 0 ? <EmptyFrame>{t("The firewall has not been called in the last 7 days.")}</EmptyFrame> : (
           <ScrollFrame label={t("Firewall traffic by day table, scrollable")}>
@@ -448,6 +450,7 @@ export function EntryGate() {
           </ScrollFrame>
         )}
       </Panel>
+      </Disclose>
 
       <div className="m2-ck-row">
         <Panel title={t("Rules that block most")} meta={t("Critical rules, most blocked records first.")} testId="entry-gate-rules">

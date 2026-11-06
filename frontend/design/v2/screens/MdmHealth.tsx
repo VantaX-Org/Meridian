@@ -8,7 +8,7 @@ import { t } from "@/lib/v2/i18n";
 import { f1, int, pct1 } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, niceTicks, Sparkline, TrendChart } from "../charts";
 import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
-import { Guide } from "./Guide";
+import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -122,7 +122,9 @@ export function MdmHealth() {
           </table>
         </ScrollFrame>
       </Panel>
+      <Disclose title={t("Trends over time")}>
       <Trend days={days} pick={(d) => d.mdm_health_score} title={t("Health score, day by day")} unit={t("points")} testId="mdm-trend" format={f1} fixed />
+      </Disclose>
       <Trend days={days} pick={(d) => d.backlog_count} title={t("Stewardship backlog, day by day")} unit={t("items")} testId="mdm-backlog" format={int} />
     </CcPage>
   );

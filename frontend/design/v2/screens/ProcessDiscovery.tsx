@@ -101,6 +101,7 @@ export function ProcessDiscovery() {
   return (
     <CcPage title={t("Process discovery")}>
       <Guide
+        steps={{ labels: [t("Pick a process"), t("Read how it really runs"), t("Compare the variants"), t("Export the flow")], current: selected ? 1 : 0 }}
         shows={t("Rebuilds how each process really runs from the system's event tables, down to level 5, and compares it with the reference model.")}
         next={{ href: "/config", label: t("Open the configuration") }}
         means={[

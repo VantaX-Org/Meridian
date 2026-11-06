@@ -10,7 +10,7 @@ import { f1, int } from "@/lib/v2/score";
 import { Sparkline } from "../charts";
 import { Sev } from "../inspector/rule";
 import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
-import { Guide } from "./Guide";
+import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { retry, Section, status, Table, useRuleName } from "./WorkAnalytics";
 
@@ -97,6 +97,7 @@ export function Forecast() {
   return (
     <CcPage title={t("Forecast and plan")}>
       <Guide
+        steps={{ labels: [t("See what is heading below the floor"), t("Pick the work that lifts most"), t("Plan the sprints"), t("Do the work")], current: 0 }}
         shows={t("Projects each score from its history and ranks the open work that would lift it fastest.")}
         next={{ href: "/work", label: t("Open the work queue") }}
         means={[
@@ -121,8 +122,12 @@ export function Forecast() {
       />
       <WarningsPanel forecasts={p.forecasts} warnings={p.early_warnings} reason={p.reason} days={p.days_seen} />
       <ActionsPanel q={plan} />
+      <Disclose title={t("Sprint plan")}>
       <SprintsPanel q={plan} />
+      </Disclose>
+      <Disclose title={t("Open work queue")}>
       <QueuePanel />
+      </Disclose>
     </CcPage>
   );
 }
