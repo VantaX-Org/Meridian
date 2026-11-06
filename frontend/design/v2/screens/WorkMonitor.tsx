@@ -6,6 +6,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { formatDate } from "@/lib/format";
 import { int, f1 } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
+import { FixHead, RunById } from "../FixParts";
 import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { batchLabel } from "@/lib/v2/batches";
 import { ChartFrame, ChartTable, DeltaBar, TrendChart, niceTicks } from "../charts";
@@ -32,7 +33,7 @@ export function WorkMonitor() {
         ) : q.isError ? (
           <ErrorFrame onRetry={() => void q.refetch()}>{t("The monitor could not be read.")}</ErrorFrame>
         ) : items.length === 0 ? (
-          <EmptyFrame>{t("Nothing to monitor yet. Once a run follows a cleaning batch, records that fail again show here.")}</EmptyFrame>
+          <EmptyFrame action={<V2Link href="/cleansing" className="m2-btn">{t("Open cleansing")}</V2Link>}>{t("Nothing to monitor yet. Once a run follows a cleaning batch, records that fail again show here.")}</EmptyFrame>
         ) : (
           <>
             <CcBanner
@@ -45,6 +46,16 @@ export function WorkMonitor() {
               figs={[
                 { label: t("Failing again"), value: int(back) },
                 { label: t("Fixed since"), value: int(fixed) },
+              ]}
+              action={back > 0 ? <V2Link href="/work" className="m2-btn m2-strong" data-testid="monitor-primary">{t("Open the work list")}</V2Link> : undefined}
+            />
+            <FixHead
+              lede={t("After a cleaning batch, the next run checks the same records again. This page shows the ones that fail again and the ones that stayed fixed, per system, current run against the run before the clean.")}
+              means={[
+                [t("Failing again"), t("Records a batch fixed that fail a rule in the later run.")],
+                [t("Fixed since"), t("Records that failed before and pass now.")],
+                [t("Score then"), t("The data quality score of the earlier run, out of 100.")],
+                [t("Score now"), t("The data quality score of the latest run, out of 100.")],
               ]}
             />
             <ScrollFrame label={t("Monitor")}>
@@ -84,7 +95,8 @@ function Row({ i }: { i: MonitorItem }) {
     <tr>
       <td>
         {i.system_name ?? i.scope}
-        <div className="m2-meta">{t("Compared with {when}", { when: i.baseline.run_at ? formatDate(i.baseline.run_at, "date") : "—" })}</div>
+        <div className="m2-meta">{t("Compared with")} <RunById id={i.baseline.id} systemId={i.scope} system={i.system_name} /></div>
+        <div className="m2-meta">{t("Latest")} <RunById id={i.latest.id} systemId={i.scope} system={i.system_name} /></div>
       </td>
       <td className="m2-r">{score(i.baseline.dqs)}</td>
       <td className="m2-r">{score(i.latest.dqs)}</td>

@@ -63,3 +63,10 @@ export function RowRunChip({ module, versionId }: { module: string | null | unde
   const name = land.data?.systems.find((s) => s.id === run.system_id)?.name ?? null;
   return <span className="m2-objrun">{module ? moduleText(module) : null}{" "}<RunChip run={run} system={name} /></span>;
 }
+
+/** A run named in words from its id; a dash with the reason when the id is not in the system's recent runs. */
+export function RunById({ id, systemId, system }: { id: string | null | undefined; systemId: string | null | undefined; system?: string | null }) {
+  const tl = useTimeline(systemId && systemId !== "upload" ? systemId : null, 50);
+  const run = id ? tl.data?.runs.find((r) => r.id === id) : undefined;
+  return run ? <RunChip run={run} system={system} /> : <Dash why={tl.isPending ? t("Reading the run.") : t("This run is not in the recent list.")} />;
+}

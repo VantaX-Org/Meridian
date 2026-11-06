@@ -15,6 +15,7 @@ import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
+import { FixHead, ObjectRunChip } from "../FixParts";
 import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { CcBanner, CcDelta, CcHBars, CcPage } from "./cc-parts";
@@ -104,8 +105,22 @@ export function Triage() {
           { label: t("Time to resolve"), value: hours(m.mttr_hours), note: t("Average") },
           { label: t("SLA breaches"), value: int(m.breach_count), note: t("{w} weeks", { w: int(m.weeks) }) },
         ]}
+        action={can("assign") && q.overdue.items.length ? (
+          <button type="button" className="m2-btn m2-strong" data-testid="triage-primary" onClick={() => setPicked(new Set(q.overdue.items.map(keyOf)))}>
+            {t("Pick the {n} past their SLA", { n: int(q.overdue.items.length) })}
+          </button>
+        ) : undefined}
         testId="triage-banner"
         label={t("Triage")}
+      />
+      <FixHead
+        lede={t("The queue of findings and stewardship items waiting for someone, split by how close each is to its deadline. Pick items, then assign, snooze or pause them in bulk.")}
+        means={[
+          [t("SLA"), t("The time a team promised to deal with an item. Past SLA means the time has run out.")],
+          [t("Rank score"), t("Impact of the item combined with how much of its SLA is used. Higher comes first.")],
+          [t("Resolved within SLA"), t("Share of items closed on time over the weeks shown.")],
+          [t("Time to acknowledge"), t("Average time from an item arriving to someone taking it.")],
+        ]}
       />
       <div className="m2-cc-split">
         <Panel title={t("Backlog burn by week")} meta={t("Resolved minus opened")} testId="triage-flow">
@@ -224,7 +239,7 @@ function Row({ x, people, teams, pick }: { x: QueueItem; people: AssignableUser[
         </td>
       ) : null}
       <th scope="row" className="m2-card-lead">
-        {x.module ? moduleText(x.module) : <Dash why={t("No object is stored.")} />}
+        <ObjectRunChip module={x.module} />
         {x.check_id ? <> <Mono>{x.check_id}</Mono></> : null}
         <span className="m2-meta">
           {" "}{x.kind === "queue" ? t("Stewardship item") : t("Issue")}

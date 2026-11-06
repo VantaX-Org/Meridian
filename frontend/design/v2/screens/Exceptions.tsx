@@ -16,6 +16,7 @@ import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
+import { FixHead } from "../FixParts";
 import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
@@ -126,8 +127,18 @@ export function Exceptions() {
           { label: t("Average time to resolve"), value: t("{n} h", { n: m.avg_resolution_hours.toFixed(1) }) },
           { label: t("SAP transactions"), value: sap === undefined ? "—" : int(sap), note: t("Last 24 hours") },
         ]}
+        action={items.length ? <button type="button" className="m2-btn m2-strong" data-testid="exceptions-primary" onClick={() => setPicked(items[0].id)}>{t("Open the exception with the nearest deadline")}</button> : undefined}
         testId="exceptions-banner"
         label={t("Exceptions")}
+      />
+      <FixHead
+        lede={t("Cases that need a person: a failed job, a stuck posting or a breached promise. Each has a deadline, an owner and a status. Exceptions come from systems and jobs, not from one object, so they carry no run.")}
+        means={[
+          [t("SLA"), t("The deadline to resolve an exception. Overdue means the deadline passed.")],
+          [t("Within SLA"), t("Share of resolved exceptions closed before their deadline.")],
+          [t("Value at risk"), t("The estimated cost of leaving the exception open. A dash means nobody estimated it.")],
+          [t("SAP transactions"), t("Transactions SAP logged as failed in the last 24 hours.")],
+        ]}
       />
       <Panel title={t("Open exceptions by severity")} meta={t("All {n}", { n: int(m.open_count) })} testId="exceptions-severity">
         <CcHBars
