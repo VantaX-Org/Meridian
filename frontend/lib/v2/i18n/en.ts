@@ -8100,6 +8100,9 @@ export const en = {
   "Records the rules looked at, before to after": "Records the rules looked at, before to after",
   "Share of records a rule could evaluate in the later run": "Share of records a rule could evaluate in the later run",
   // Stage 5: Rules and Aletheia
+  "Breaks by object": "Breaks by object",
+  "Acknowledge confirms the break is real and lowers the minimum for similar breaks. Mark expected leaves this run out of later baselines. Snooze only sets the break aside for {n, plural, one {# day} other {# days}}.": "Acknowledge confirms the break is real and lowers the minimum for similar breaks. Mark expected leaves this run out of later baselines. Snooze only sets the break aside for {n, plural, one {# day} other {# days}}.",
+  "Acknowledge confirms the break is real and lowers the minimum for similar breaks. Mark expected restarts the baseline at this run. Snooze only sets the break aside for {n, plural, one {# day} other {# days}}.": "Acknowledge confirms the break is real and lowers the minimum for similar breaks. Mark expected restarts the baseline at this run. Snooze only sets the break aside for {n, plural, one {# day} other {# days}}.",
   "Steps from an outlier to a rule": "Steps from an outlier to a rule",
   "Pick a field": "Pick a field",
   "Check what the rule would flag": "Check what the rule would flag",

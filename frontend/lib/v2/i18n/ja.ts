@@ -8101,6 +8101,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Records the rules looked at, before to after": "ルールが確認したレコード(前から後)",
   "Share of records a rule could evaluate in the later run": "後の実行でルールが評価できたレコードの割合",
   // Stage 5: Rules and Aletheia
+  "Breaks by object": "オブジェクト別の逸脱",
+  "Acknowledge confirms the break is real and lowers the minimum for similar breaks. Mark expected leaves this run out of later baselines. Snooze only sets the break aside for {n, plural, one {# day} other {# days}}.": "確認すると逸脱が実際のものと扱われ、同様の逸脱の最小値が下がります。想定内にするとこの実行は以後の基準から除外されます。スヌーズは逸脱を{n}日間だけ脇に置きます。",
+  "Acknowledge confirms the break is real and lowers the minimum for similar breaks. Mark expected restarts the baseline at this run. Snooze only sets the break aside for {n, plural, one {# day} other {# days}}.": "確認すると逸脱が実際のものと扱われ、同様の逸脱の最小値が下がります。想定内にすると基準がこの実行から再開されます。スヌーズは逸脱を{n}日間だけ脇に置きます。",
   "Steps from an outlier to a rule": "外れ値からルールまでの手順",
   "Pick a field": "項目を選ぶ",
   "Check what the rule would flag": "ルールが検出する内容を確認する",

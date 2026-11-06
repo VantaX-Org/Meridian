@@ -8101,6 +8101,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Records the rules looked at, before to after": "Von den Regeln geprüfte Datensätze, vorher zu nachher",
   "Share of records a rule could evaluate in the later run": "Anteil der Datensätze, die eine Regel im späteren Lauf auswerten konnte",
   // Stage 5: Rules and Aletheia
+  "Breaks by object": "Abweichungen nach Objekt",
+  "Acknowledge confirms the break is real and lowers the minimum for similar breaks. Mark expected leaves this run out of later baselines. Snooze only sets the break aside for {n, plural, one {# day} other {# days}}.": "Bestätigen heißt, die Abweichung ist echt, und senkt das Minimum für ähnliche Abweichungen. Als erwartet markieren nimmt diesen Lauf aus späteren Basislinien heraus. Zurückstellen legt die Abweichung nur für {n, plural, one {# Tag} other {# Tage}} beiseite.",
+  "Acknowledge confirms the break is real and lowers the minimum for similar breaks. Mark expected restarts the baseline at this run. Snooze only sets the break aside for {n, plural, one {# day} other {# days}}.": "Bestätigen heißt, die Abweichung ist echt, und senkt das Minimum für ähnliche Abweichungen. Als erwartet markieren startet die Basislinie bei diesem Lauf neu. Zurückstellen legt die Abweichung nur für {n, plural, one {# Tag} other {# Tage}} beiseite.",
   "Steps from an outlier to a rule": "Schritte vom Ausreißer zur Regel",
   "Pick a field": "Feld wählen",
   "Check what the rule would flag": "Prüfen, was die Regel melden würde",

@@ -14,7 +14,8 @@ import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { Lede, PrimaryAction } from "../RunParts";
-import { CcBanner, CcPage } from "./cc-parts";
+import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { Consequence } from "./rules-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
 
@@ -180,35 +181,6 @@ export function LearnedMonitors() {
         ) : undefined}
       />
 
-      <Panel title={t("What is learned")} meta={t("Earlier runs of the same system used for each object.")} testId="monitors-coverage">
-        {coverage.length === 0 ? <EmptyFrame>{t("No finished run yet.")}</EmptyFrame> : (
-          <ScrollFrame label={t("Learned objects table, scrollable")}>
-            <table className="m2-tbl m2-cards">
-              <thead>
-                <tr>
-                  <th scope="col">{t("Object")}</th>
-                  <th scope="col">{t("Latest run")}</th>
-                  <th scope="col">{t("Earlier runs used")}</th>
-                  <th scope="col">{t("State")}</th>
-                  <th scope="col">{t("Breaks")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {coverage.map((c) => (
-                  <tr key={c.module} data-testid={`monitor-object-${c.module}`}>
-                    <th scope="row" className="m2-card-lead">{moduleText(c.module)}</th>
-                    <td data-label={t("Latest run")}>{c.run_number == null ? <Dash /> : t("Run {n}", { n: c.run_number })}</td>
-                    <td data-label={t("Earlier runs used")} className="m2-num">{t("{n} of {min} needed", { n: int(c.baseline_runs), min: int(c.min_runs) })}</td>
-                    <td data-label={t("State")}>{c.state === "active" ? t("Watching") : t("Learning")}</td>
-                    <td data-label={t("Breaks")} className="m2-num">{c.state === "active" ? int(c.breaks) : <Dash why={t("Raises nothing until it has enough earlier runs.")} />}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollFrame>
-        )}
-      </Panel>
-
       <Panel title={t("Breaks in the latest run")} meta={t("Most severe first.")} testId="monitors-breaks">
         {breaks.length === 0 ? <EmptyFrame>{t("No break. Every watched figure is inside its usual range.")}</EmptyFrame> : (
           <ScrollFrame label={t("Breaks table, scrollable")}>
@@ -287,11 +259,47 @@ export function LearnedMonitors() {
         )}
       </Panel>
 
+      {sel ? <Detail b={sel} allowed={allowed} onChanged={() => void qc.invalidateQueries({ queryKey: key })} /> : null}
+
+      <Panel title={t("What is learned")} meta={t("Earlier runs of the same system used for each object.")} testId="monitors-coverage">
+        {coverage.length === 0 ? <EmptyFrame>{t("No finished run yet.")}</EmptyFrame> : (
+          <>
+          <CcHBars
+            label={t("Breaks by object")}
+            testId="monitors-chart"
+            rows={coverage.filter((c) => c.state === "active").map((c) => ({ key: c.module, label: moduleText(c.module), value: c.breaks, text: int(c.breaks), tone: c.breaks > 0 ? "warn" as const : "pass" as const }))}
+          />
+          <ScrollFrame label={t("Learned objects table, scrollable")}>
+            <table className="m2-tbl m2-cards">
+              <thead>
+                <tr>
+                  <th scope="col">{t("Object")}</th>
+                  <th scope="col">{t("Latest run")}</th>
+                  <th scope="col">{t("Earlier runs used")}</th>
+                  <th scope="col">{t("State")}</th>
+                  <th scope="col">{t("Breaks")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {coverage.map((c) => (
+                  <tr key={c.module} data-testid={`monitor-object-${c.module}`}>
+                    <th scope="row" className="m2-card-lead">{moduleText(c.module)}</th>
+                    <td data-label={t("Latest run")}>{c.run_number == null ? <Dash /> : t("Run {n}", { n: c.run_number })}</td>
+                    <td data-label={t("Earlier runs used")} className="m2-num">{t("{n} of {min} needed", { n: int(c.baseline_runs), min: int(c.min_runs) })}</td>
+                    <td data-label={t("State")}>{c.state === "active" ? t("Watching") : t("Learning")}</td>
+                    <td data-label={t("Breaks")} className="m2-num">{c.state === "active" ? int(c.breaks) : <Dash why={t("Raises nothing until it has enough earlier runs.")} />}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollFrame>
+          </>
+        )}
+      </Panel>
+
       <BelowMinimum rows={quiet} thresholds={q.data.thresholds ?? []} allowed={allowed} onChanged={() => void qc.invalidateQueries({ queryKey: key })} />
 
       <Thresholds rows={q.data.thresholds ?? []} />
-
-      {sel ? <Detail b={sel} allowed={allowed} onChanged={() => void qc.invalidateQueries({ queryKey: key })} /> : null}
     </CcPage>
   );
 }
@@ -373,6 +381,12 @@ function Detail({ b, allowed, onChanged }: { b: LearnedBreak; allowed: boolean; 
         <button type="button" className="m2-btn m2-sm" disabled={why.isPending} onClick={() => why.mutate()} data-testid="monitors-explain">{t("Ask Aletheia to explain")}</button>
       </div>
       {allowed ? (
+        <>
+        <Consequence>
+          {effect === "exclude"
+            ? t("Acknowledge confirms the break is real and lowers the minimum for similar breaks. Mark expected leaves this run out of later baselines. Snooze only sets the break aside for {n, plural, one {# day} other {# days}}.", { n: days })
+            : t("Acknowledge confirms the break is real and lowers the minimum for similar breaks. Mark expected restarts the baseline at this run. Snooze only sets the break aside for {n, plural, one {# day} other {# days}}.", { n: days })}
+        </Consequence>
         <div className="m2-gtools" data-testid="monitors-actions">
           <button type="button" className="m2-btn m2-sm" disabled={busy} onClick={() => ack.mutate()}>{t("Acknowledge")}</button>
           <label>
@@ -391,6 +405,7 @@ function Detail({ b, allowed, onChanged }: { b: LearnedBreak; allowed: boolean; 
           </label>
           <button type="button" className="m2-btn m2-sm" disabled={busy} onClick={() => snz.mutate()}>{t("Snooze")}</button>
         </div>
+        </>
       ) : null}
     </Panel>
   );

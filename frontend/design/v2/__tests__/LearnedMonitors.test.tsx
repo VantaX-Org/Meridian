@@ -137,3 +137,30 @@ describe("stage 5: primary action", () => {
     await waitFor(() => expect(screen.getAllByTestId(/^break-/).length).toBeGreaterThan(0));
   });
 });
+
+describe("stage 5: monitors second pass", () => {
+  it("charts breaks by watched object only, with learning objects left out", async () => {
+    renderWithQuery(<LearnedMonitors />);
+    const chart = await screen.findByTestId("monitors-chart");
+    expect(within(chart).queryByText(/customer/i)).not.toBeInTheDocument();
+  });
+
+  it("states what each decision does before it runs, and hides it from a viewer", async () => {
+    const u = "/monitors?fixture=1&persona=steward&role=viewer"; window.history.pushState({}, "", u); setUrl(u);
+    renderWithQuery(<LearnedMonitors />);
+    fireEvent.click(within(await screen.findByTestId("break-lm-2")).getByRole("button", { name: "Fail rate jump" }));
+    await screen.findByTestId("monitors-detail");
+    expect(screen.queryByTestId("consequence")).not.toBeInTheDocument();
+  });
+});
+
+describe("stage 5: monitors steward consequence", () => {
+  beforeEach(() => { const u = "/monitors?fixture=1&persona=owner"; window.history.pushState({}, "", u); setUrl(u); });
+  it("says Acknowledge confirms the break and changes the Mark expected wording with the effect", async () => {
+    renderWithQuery(<LearnedMonitors />);
+    fireEvent.click(within(await screen.findByTestId("break-lm-2")).getByRole("button", { name: "Fail rate jump" }));
+    const c = await screen.findByTestId("consequence");
+    expect(c).toHaveTextContent("Acknowledge confirms the break is real");
+    expect(c).toHaveTextContent("Mark expected");
+  });
+});
