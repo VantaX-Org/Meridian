@@ -12,6 +12,7 @@ import { int } from "@/lib/v2/score";
 import { DeltaBar, StackedBar, type StackPart } from "../charts";
 import { Field, Gate } from "../forms";
 import { Coded, EmptyFrame, ErrorFrame, Mono } from "../parts";
+import { Lede, PrimaryAction } from "../RunParts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 
@@ -61,6 +62,7 @@ export function RuleDryRun() {
 
   return (
     <CcPage title={t("Rule dry run")}>
+      <Lede>{t("Test a rule or a draft on the latest stored data before it goes live. Nothing is written. Fill in the form, then run it.")}</Lede>
       <CcBanner
         testId="rule-dry-run"
         label={t("Rule dry run")}
@@ -68,9 +70,9 @@ export function RuleDryRun() {
         headline={r?.evaluated ? t("{n, plural, one {# record fails} other {# records fail}} this rule", { n: r.records_failing ?? 0 }) : t("See what a rule would do before you change it")}
         why={t("The rule runs on the latest stored extraction. Nothing is written and SAP is not called.")}
         figs={r?.evaluated ? [
-          { label: t("Records checked"), value: int(r.records_evaluated ?? 0) },
-          { label: t("Failure rate"), value: pct(r.failure_rate ?? 0) },
-          { label: t("Score change"), value: signed(r.dqs?.delta ?? 0) },
+          { label: t("Records checked"), value: int(r.records_evaluated ?? 0), hint: t("Records the rule could read, scaled from the rows tested.") },
+          { label: t("Failure rate"), value: pct(r.failure_rate ?? 0), hint: t("Share of checked records that fail the rule.") },
+          { label: t("Score change"), value: signed(r.dqs?.delta ?? 0), hint: t("Points the object score would move if the rule were live.") },
         ] : []}
       />
       <Panel title={t("Rule to test")} meta={t("Name an existing rule, switched on or off. Add changes to test an edit, or leave the rule id empty and give a whole draft.")} testId="dry-run-form">
@@ -91,11 +93,14 @@ export function RuleDryRun() {
               </select>
             )}
           </Field>
-          <div className="m2-acts">
-            <button type="submit" className="m2-btn m2-next" disabled={!allowed || !ready || run.isPending} data-testid="dry-run-go">
-              {run.isPending ? t("Working…") : t("Run dry run")}
-            </button>
-          </div>
+          <PrimaryAction
+            action={(
+              <button type="submit" className="m2-btn m2-next" disabled={!allowed || !ready || run.isPending} data-testid="dry-run-go">
+                {run.isPending ? t("Working…") : t("Run the draft against current data")}
+              </button>
+            )}
+            why={ready ? t("Shows how many records would fail, before anything changes.") : t("Name an object and a rule id or changes first.")}
+          />
           {!allowed ? <Gate>{t("Running a dry run needs the manage rules permission.")}</Gate> : null}
         </form>
       </Panel>

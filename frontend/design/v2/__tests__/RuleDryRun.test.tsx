@@ -59,3 +59,12 @@ describe("rule dry run", () => {
     expect(screen.queryByTestId("dry-run-result")).toBeNull();
   });
 });
+
+describe("stage 5: primary action", () => {
+  it("is the filled action to run the draft against current data", async () => {
+    renderWithQuery(<RuleDryRun />);
+    const go = screen.getByTestId("dry-run-go");
+    expect(go).toHaveClass("m2-next");
+    expect(go).toHaveTextContent("Run the draft against current data");
+  });
+});
