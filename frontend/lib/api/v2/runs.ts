@@ -30,10 +30,21 @@ export interface TimelineObject {
   /** The measured score before the cap. */
   raw_score: number | null;
   capped: boolean;
+  /** Failing records summed over the object's rules. Null when the run stored no findings for it. */
+  findings_open?: number | null;
+  /** Net rise in failing records against the previous run of the system; null with no previous run. */
+  findings_new?: number | null;
+  /** Net fall in failing records against the previous run of the system; null with no previous run. */
+  findings_closed?: number | null;
+  /** Priced cost of the open findings; null when nothing could be priced, never invented. */
+  value_at_risk?: { amount: number; currency: string } | null;
 }
 
 export interface TimelineRun {
   id: string;
+  run_number?: number | null;
+  /** finished | agents_complete | running | failed | archived. */
+  status?: string;
   run_at: string | null;
   label: string | null;
   system_id: string | null;

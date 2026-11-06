@@ -1,7 +1,8 @@
 """The run timeline and the before/after summary of two runs.
 
 GET /api/v1/runs/timeline?system_id=&limit=8   the last N finished runs of the scope, oldest first, each with its
-                                               per-object scores, records checked, duration, baseline flag and job kind
+                                               run number, status, per-object scores, findings and value at risk,
+                                               records checked, duration, baseline flag and job kind
 GET /api/v1/runs/{a}/vs/{b}/summary            per object before and after, and the rules that started failing,
                                                were fixed, got worse or better (api/routes/versions.py rules)
 GET /api/v1/runs/{a}/vs/{b}/score-delta        one object's score change split into points per rule and dimension
@@ -10,6 +11,13 @@ GET /api/v1/runs/{a}/vs/{b}/score-delta        one object's score change split i
 Read-only and additive. Scores come from analysis_versions.dqs_summary exactly as stored (``score`` is the capped
 composite, ``raw_score`` the measured score before the cap); durations from analysis_run_steps; the baseline is the run
 pinned through POST /versions/{id}/baseline (``metadata.baseline``). A value that was not stored is null.
+
+Per object, ``findings_open`` is the failing records summed over the run's rules (findings.affected_count, rules that
+errored left out). ``findings_new`` and ``findings_closed`` compare each rule with the same object in the previous
+finished run of the same system: the rise and the fall in failing records, summed per rule. Findings do not store
+record identities, so a record that moves from one rule to another counts as both; both are null for a system's first
+run and when the previous run did not measure the object. ``value_at_risk`` is the sum of the findings' cost at risk in
+the tenant's cost-model currency (the object receipt's figure); null when no finding was priced, never estimated.
 """
 from __future__ import annotations
 
@@ -30,20 +38,32 @@ from api.routes.versions import CHANGE_MIN_PERCENT, CHANGE_MIN_RECORDS, _CHECK_C
 from api.services.rbac import require_permission
 from api.services.receipt_math import records_checked_of, rule_names
 from api.services.version_status import finished_sql
+from checks.cost import effective as effective_cost_model
 
 router = APIRouter(prefix="/api/v1/runs", tags=["runs"], dependencies=[Depends(require_permission("view"))])
+
+
+class MoneyOut(BaseModel):
+    amount: float
+    currency: str                          # the tenant's cost model currency
 
 
 class TimelineObjectOut(BaseModel):
     score: Optional[float] = None          # the composite score, after the critical cap
     raw_score: Optional[float] = None      # the measured score before the cap
     capped: bool = False
+    findings_open: Optional[int] = None    # failing records over the object's rules in this run; null: no findings stored
+    findings_new: Optional[int] = None     # rise in failing records since the previous run of the system; null: none to compare
+    findings_closed: Optional[int] = None  # fall in failing records since the previous run of the system
+    value_at_risk: Optional[MoneyOut] = None  # null when no finding was priced
 
 
 class TimelineRunOut(BaseModel):
     id: str
     run_at: Optional[datetime] = None
     label: Optional[str] = None
+    run_number: Optional[int] = None       # 1-based within the system's lineage; null for runs that never got one
+    status: str                            # the stored run status (complete, agents_complete, ...)
     system_id: Optional[str] = None
     baseline: bool                         # the run pinned as its lineage's comparison baseline
     kind: Optional[str] = None             # scheduled | manual | recheck | upload; null for runs from before it was stamped
@@ -59,16 +79,38 @@ class TimelineOut(BaseModel):
 
 
 _RUNS_SQL = f"""
-    SELECT id::text AS id, run_at, label, metadata->>'system_id' AS system_id,
+    SELECT id::text AS id, run_at, label, run_number, status, metadata->>'system_id' AS system_id,
            COALESCE((metadata->>'baseline') = 'true', false) AS baseline,
            COALESCE(metadata->>'trigger', CASE WHEN metadata->>'system_id' IS NULL OR metadata->>'upload_path' IS NOT NULL THEN 'upload' END) AS kind,
-           dqs_summary
-      FROM analysis_versions
+           dqs_summary,
+           (SELECT p.id::text FROM analysis_versions p
+             WHERE p.tenant_id = av.tenant_id AND {finished_sql('p.status')}
+               AND p.metadata->>'purpose' IS DISTINCT FROM 'process_discovery'
+               AND p.metadata->>'archived' IS DISTINCT FROM 'true'
+               AND p.metadata->>'system_id' = av.metadata->>'system_id'
+               AND (p.run_at, p.id) < (av.run_at, av.id)
+             ORDER BY p.run_at DESC, p.id DESC LIMIT 1) AS prev_id
+      FROM analysis_versions av
      WHERE tenant_id = CAST(:t AS uuid) AND {finished_sql()}
        AND metadata->>'purpose' IS DISTINCT FROM 'process_discovery'
        AND metadata->>'archived' IS DISTINCT FROM 'true'
        AND (CAST(:sid AS text) IS NULL OR metadata->>'system_id' = CAST(:sid AS text))
      ORDER BY run_at DESC, id DESC LIMIT :n"""
+
+# failing records and priced cost per (run, object, rule), for the listed runs and the runs before them
+_FINDINGS_SQL = """
+    SELECT version_id::text, module, check_id, affected_count, cost_at_risk FROM findings
+     WHERE tenant_id = CAST(:t AS uuid) AND version_id = ANY(CAST(:ids AS uuid[])) AND details->>'error' IS NULL"""
+
+
+def findings_delta(cur: dict[str, int], prev: Optional[dict[str, int]]) -> tuple[Optional[int], Optional[int]]:
+    """(new, closed) failing records between two runs of one object, per rule (rule -> failing records); (None, None)
+    when there is no previous run of the object to compare with."""
+    if prev is None:
+        return None, None
+    rules = cur.keys() | prev.keys()
+    return (sum(max(0, cur.get(c, 0) - prev.get(c, 0)) for c in rules),
+            sum(max(0, prev.get(c, 0) - cur.get(c, 0)) for c in rules))
 
 
 async def _widest(db: AsyncSession, t: str, ids: list[str]) -> dict[tuple[str, str], int]:
@@ -85,6 +127,14 @@ def _records(summary: dict, run: str, widest: dict[tuple[str, str], int]) -> Opt
     return sum(g for g in got if g) if any(got) else None
 
 
+def _object(m: dict, run, mod: str, fails: dict, cost: dict, currency: str) -> dict:
+    cur = fails.get((run["id"], mod))
+    new, closed = findings_delta(cur, fails.get((run["prev_id"], mod))) if cur is not None else (None, None)
+    return {"score": m.get("composite_score"), "raw_score": m.get("raw_score"), "capped": bool(m.get("capped")),
+            "findings_open": sum(cur.values()) if cur is not None else None, "findings_new": new, "findings_closed": closed,
+            "value_at_risk": {"amount": cost[(run["id"], mod)], "currency": currency} if (run["id"], mod) in cost else None}
+
+
 @router.get("/timeline", response_model=TimelineOut)
 async def timeline(system_id: Optional[uuid.UUID] = Query(None), limit: int = Query(8, ge=1, le=50),
                    db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
@@ -94,6 +144,16 @@ async def timeline(system_id: Optional[uuid.UUID] = Query(None), limit: int = Qu
     rows = (await db.execute(text(_RUNS_SQL), {"t": t, "sid": str(system_id) if system_id else None, "n": limit})).mappings().all()
     ids = [r["id"] for r in rows]
     widest = await _widest(db, t, ids)
+    currency = str(effective_cost_model((await db.execute(text("SELECT cost_model FROM tenants WHERE id = CAST(:t AS uuid)"),
+                                                           {"t": t})).scalar())["currency"])
+    # (run, object) -> {rule: failing records}, and (run, object) -> summed cost at risk (None when nothing was priced)
+    fails: dict[tuple[str, str], dict[str, int]] = {}
+    cost: dict[tuple[str, str], float] = {}
+    needed = sorted(set(ids) | {r["prev_id"] for r in rows if r["prev_id"]})
+    for vid, mod, check, n, c in (await db.execute(text(_FINDINGS_SQL), {"t": t, "ids": needed})).fetchall() if needed else []:
+        fails.setdefault((vid, mod), {})[check] = int(n or 0)
+        if c is not None and (n or 0) > 0:
+            cost[(vid, mod)] = cost.get((vid, mod), 0.0) + float(c)
     took: dict[str, int] = {}
     if ids:
         took = {r[0]: int(round(float(r[1]))) for r in (await db.execute(text(
@@ -104,10 +164,10 @@ async def timeline(system_id: Optional[uuid.UUID] = Query(None), limit: int = Qu
     for r in reversed(rows):
         summary = r["dqs_summary"] if isinstance(r["dqs_summary"], dict) else {}
         runs.append({
-            "id": r["id"], "run_at": r["run_at"], "label": r["label"], "system_id": r["system_id"],
+            "id": r["id"], "run_at": r["run_at"], "label": r["label"], "run_number": r["run_number"],
+            "status": r["status"], "system_id": r["system_id"],
             "baseline": bool(r["baseline"]), "kind": r["kind"],
-            "objects": {mod: {"score": m.get("composite_score"), "raw_score": m.get("raw_score"),
-                              "capped": bool(m.get("capped"))}
+            "objects": {mod: _object(m, r, mod, fails, cost, currency)
                         for mod, m in sorted(summary.items()) if isinstance(m, dict)},
             "records_checked": _records(summary, r["id"], widest), "duration_s": took.get(r["id"]),
         })

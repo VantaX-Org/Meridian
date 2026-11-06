@@ -45,6 +45,31 @@ Verdict = Literal["no-go", "at-risk", "go"]
 SystemState = Literal["analysed", "extracted", "not_extracted"]
 
 
+class StatusObjectOut(BaseModel):
+    module: str
+    label: str
+    run_id: str                                # the object's own newest finished run in this system
+    run_number: Optional[int] = None
+    run_at: Optional[datetime] = None
+    score: Optional[float] = None
+    records_checked: Optional[int] = None
+    rules_measured: Optional[int] = None
+
+
+class StatusSystemOut(BaseModel):
+    system_id: str
+    name: str
+    is_active: bool
+    latest_run_id: Optional[str] = None        # the newest of the system's objects' runs; null before the first run
+    run_number: Optional[int] = None
+    run_at: Optional[datetime] = None
+    status: Optional[str] = None               # that run's stored status
+    records_checked: Optional[int] = None      # summed over the objects, each at its own run
+    rules_measured: Optional[int] = None
+    scored_in_s: Optional[int] = None          # first analysis step started to last one finished, of latest_run_id
+    objects: list[StatusObjectOut] = []
+
+
 class StatusStripOut(BaseModel):
     run_at: Optional[datetime] = None          # when the latest finished run started
     records_checked: Optional[int] = None      # driving-object records of that run's objects; null if it stored none
@@ -54,6 +79,8 @@ class StatusStripOut(BaseModel):
     cost_model_source: Optional[str] = None    # "tenant" once the tenant saved a cost model, else "default"
     licence_valid_to: Optional[str] = None     # YYYY-MM-DD from the cached licence manifest
     sandbox: bool = False                      # the tenant is in sandbox mode: nothing leaves (migration 115)
+    # per system and object, each object at its own newest finished run; filled by GET /status only, not the landscape
+    systems: list[StatusSystemOut] = []
 
 
 class LandscapeSystemOut(BaseModel):
@@ -139,8 +166,47 @@ class LandscapeOut(BaseModel):
     basis_next_step: Optional[NextStepOut] = None
 
 
-async def build_status(db: AsyncSession, tenant: Tenant) -> StatusStripOut:
-    """The status strip for the tenant's latest finished run. Caller has set ``app.tenant_id``."""
+async def _status_systems(db: AsyncSession, t: str) -> list[StatusSystemOut]:
+    """Every system with its objects, each at its own newest finished run (_CELL_RUNS_SQL), never a tenant-wide latest."""
+    cells: dict[str, list[tuple[str, str]]] = {}
+    for r in (await db.execute(text(_CELL_RUNS_SQL), {"t": t})).mappings().all():
+        cells.setdefault(r["sid"], []).append((r["module"], r["run_id"]))
+    ids = sorted({rid for c in cells.values() for _m, rid in c})
+    heads = {r["id"]: r for r in (await db.execute(text(
+        "SELECT id::text AS id, run_at, run_number, status, dqs_summary FROM analysis_versions "
+        "WHERE tenant_id = CAST(:t AS uuid) AND id = ANY(CAST(:ids AS uuid[]))"), {"t": t, "ids": ids})).mappings().all()} if ids else {}
+    took = {r[0]: int(round(float(r[1]))) for r in (await db.execute(text(
+        "SELECT version_id::text, extract(epoch FROM max(finished_at) - min(started_at)) FROM analysis_run_steps "
+        "WHERE tenant_id = CAST(:t AS uuid) AND version_id = ANY(CAST(:ids AS uuid[])) AND finished_at IS NOT NULL "
+        "GROUP BY 1"), {"t": t, "ids": ids})).fetchall() if r[1] is not None} if ids else {}
+    out = []
+    for sys in (await db.execute(text(_SYSTEMS_SQL), {"t": t})).mappings().all():
+        objs, recs, rules = [], [], []
+        for mod, rid in sorted(cells.get(sys["id"], [])):
+            h = heads.get(rid)
+            m = (h["dqs_summary"] or {}).get(mod) if h and isinstance(h["dqs_summary"], dict) else None
+            if not isinstance(m, dict):
+                continue
+            n = m.get("total_checks") if isinstance(m.get("total_checks"), int) else None
+            objs.append(StatusObjectOut(module=mod, label=_label(mod), run_id=rid, run_number=h["run_number"],
+                                        run_at=h["run_at"], score=m.get("composite_score"),
+                                        records_checked=records_checked_of(m), rules_measured=n))
+            recs.append(objs[-1].records_checked)
+            rules.append(n)
+        latest = max(objs, key=lambda o: (o.run_at.timestamp() if o.run_at else 0, o.run_id), default=None)
+        out.append(StatusSystemOut(
+            system_id=sys["id"], name=sys["name"], is_active=bool(sys["is_active"]), objects=objs,
+            latest_run_id=latest.run_id if latest else None, run_number=latest.run_number if latest else None,
+            run_at=latest.run_at if latest else None, status=heads[latest.run_id]["status"] if latest else None,
+            records_checked=sum(r for r in recs if r) if any(recs) else None,
+            rules_measured=sum(r for r in rules if r) if any(rules) else None,
+            scored_in_s=took.get(latest.run_id) if latest else None))
+    return out
+
+
+async def build_status(db: AsyncSession, tenant: Tenant, per_system: bool = False) -> StatusStripOut:
+    """The status strip for the tenant's latest finished run; ``per_system`` adds each system's objects at their own
+    newest runs. Caller has set ``app.tenant_id``."""
     t = str(tenant.id)
     run_id = await latest_run(db, tenant.id)
     trow = (await db.execute(text("SELECT cost_model, sandbox FROM tenants WHERE id = :t"), {"t": t})).fetchone()
@@ -150,6 +216,8 @@ async def build_status(db: AsyncSession, tenant: Tenant) -> StatusStripOut:
     valid_to = str(expiry)[:10] if expiry and re.match(r"\d{4}-\d{2}-\d{2}", str(expiry)) else None
     out = StatusStripOut(cost_model=currency, cost_model_source=cost_model_meta(cost_model)["source"],
                          licence_valid_to=valid_to, sandbox=bool(trow and trow[1]))
+    if per_system:
+        out.systems = await _status_systems(db, t)
     if run_id is None:
         return out
     row = (await db.execute(text("SELECT run_at, dqs_summary FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
@@ -175,12 +243,12 @@ CACHE_PREFIX = "work"  # keyed per tenant; bumped by api.middleware.cache.mark_w
 
 @router.get("/status", response_model=StatusStripOut, dependencies=[Depends(require_permission("view"))])
 async def get_status(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
-    """The status strip (latest run, records and rules checked, time to score, cost model, licence), cached 30 s per
-    tenant and latest run (Redis; in this process when Redis is down)."""
+    """The status strip (latest run, records and rules checked, time to score, cost model, licence) and each system's
+    objects at their own newest runs, cached 30 s per tenant and latest run (Redis; in this process when Redis is down)."""
     await _rls(db, tenant)
 
     async def produce() -> dict:
-        return (await build_status(db, tenant)).model_dump(mode="json")
+        return (await build_status(db, tenant, per_system=True)).model_dump(mode="json")
 
     return await cached_json(CACHE_PREFIX, "status", tenant.id, {"latest": await latest_run(db, tenant.id)},
                              int(STATUS_TTL_SECONDS), produce, memo_fallback=True)
