@@ -70,7 +70,7 @@ for (const size of SIZES) {
         await page.goto("/admin/policypacks?fixture=1&open=policypack:sox", { waitUntil: "load" });
         await expect(page.getByTestId("class-vendor_bank")).toContainText("Breached", NAV);
         await shot(page, "policy-pack");
-        await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load" });
+        await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load" });
         await expect(page.getByTestId("receipt-policy")).toContainText("Inventory valuation", NAV);
         await page.getByTestId("receipt-policy").scrollIntoViewIfNeeded();
         expect(await noSideways(page)).toBe(true);
@@ -142,9 +142,11 @@ for (const size of SIZES) {
         await expect(page.getByTestId("ledger-as-of")).toContainText("statuses are today's", NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "work-as-of");
-        await page.goto(`${OBJECT}?fixture=1&as_of=${R3}`, { waitUntil: "load" });
-        await expect(page.getByTestId("as-of-band")).toContainText("As it stood at the run of 18 Sept 2026", NAV);
-        await expect(page.getByTestId("as-of-rules")).toContainText("MM142");
+        // The object's time travel is now the run it is shown at (?run=); the old ?as_of= address redirects to it.
+        await page.goto(`${OBJECT}/rules?fixture=1&run=${R3}`, { waitUntil: "load" });
+        await expect(page.getByTestId("old-run-band")).toContainText("from 18 Sept 2026", NAV);
+        await expect(page.getByTestId("old-run-band")).toContainText("actions are off");
+        await expect(page.locator(`[aria-label="Rules for Material master"]`)).toContainText("MM142");
         expect(await noSideways(page)).toBe(true);
         await shot(page, "object-as-of");
       });

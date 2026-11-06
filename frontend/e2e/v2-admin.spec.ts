@@ -133,6 +133,7 @@ for (const size of SIZES) {
         await expect(page.getByRole("button", { name: "Create a report" })).toBeVisible(NAV);
         if (!phone) {
           await expect(page.getByRole("grid", { name: "Reports" }).getByText("Board pack").first()).toBeVisible(NAV);
+          await page.locator("summary", { hasText: "Schedules" }).click(); // the schedules sit in a closed group under the reports
           await expect(page.getByRole("grid", { name: "Schedules" }).getByText("Every Monday at 07:00").first()).toBeVisible(NAV);
         }
         expect(await noSideways(page)).toBe(true);

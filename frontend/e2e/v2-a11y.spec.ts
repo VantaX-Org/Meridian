@@ -297,6 +297,7 @@ test.describe("keyboard only", () => {
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/o\/ecc-production\/material-master/, NAV);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Material master", NAV);
+    await page.goto(`${new URL(page.url()).pathname}/rules?fixture=1`, { waitUntil: "load", timeout: 90_000 });
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
     await grid.focus();
     await focusVisible(page);
