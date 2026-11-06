@@ -25,6 +25,7 @@ cloudpickle==3.1.2
 croniter==6.2.4
 cryptography==50.0.2
 cssselect2==0.10.1
+defusedxml==0.7.1
 distro==1.9.0
 docstring_parser==0.18.0
 et_xmlfile==2.0.0
