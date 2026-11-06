@@ -12,7 +12,7 @@ import { useRuleList } from "@/lib/v2/sys-queries";
 import { ChartFrame, ChartTable, niceTicks, Sparkline, TrendChart } from "../charts";
 import { Fact, Facts } from "../Inspector";
 import { Sev } from "../inspector/rule";
-import { FixHead, ObjectRunChip } from "../FixParts";
+import { Consequence, FixHead, FlowSteps, MoreDetail, ObjectRunChip } from "../FixParts";
 import { Coded, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
@@ -108,6 +108,16 @@ export function WorkAnalytics() {
           [t("Slowest tenth"), t("One in ten fixed issues took this long or more.")],
         ]}
       />
+      <FlowSteps
+        label={t("Analytics steps")}
+        current={0}
+        steps={[
+          { label: t("Read the trend"), count: int(b.open_now), hint: t("Is the list getting shorter, and when will it be clear?") },
+          { label: t("Find what slows it"), hint: t("Check the run changes and the time to fix below.") },
+          { label: t("Open the work list"), hint: t("Work the oldest issues first.") },
+        ]}
+      />
+      <Consequence>{t("This page only reads. Nothing on it changes data or the work list.")}</Consequence>
       <ChartFrame
         title={title}
         sub={t("Open at the end of each day")}
@@ -122,12 +132,14 @@ export function WorkAnalytics() {
       </ChartFrame>
       <RunChangePanel />
       <TimeToFixPanel />
-      <ThroughputPanel />
-      <CleaningPacePanel />
-      <RecurrencePanel />
-      <RootCausePanel />
-      <ProposalPanel />
-      <RuleFeedbackPanel />
+      <MoreDetail title={t("Who works the list, why issues come back and how rules are judged")}>
+        <ThroughputPanel />
+        <CleaningPacePanel />
+        <RecurrencePanel />
+        <RootCausePanel />
+        <ProposalPanel />
+        <RuleFeedbackPanel />
+      </MoreDetail>
     </CcPage>
   );
 }

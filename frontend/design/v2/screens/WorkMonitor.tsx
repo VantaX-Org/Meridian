@@ -6,7 +6,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { formatDate } from "@/lib/format";
 import { int, f1 } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
-import { FixHead, RunById } from "../FixParts";
+import { Consequence, FixHead, FlowSteps, MoreDetail, RunById } from "../FixParts";
 import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { batchLabel } from "@/lib/v2/batches";
 import { ChartFrame, ChartTable, DeltaBar, TrendChart, niceTicks } from "../charts";
@@ -58,6 +58,16 @@ export function WorkMonitor() {
                 [t("Score now"), t("The data quality score of the latest run, out of 100.")],
               ]}
             />
+            <FlowSteps
+              label={t("Monitor steps")}
+              current={back > 0 ? 1 : 2}
+              steps={[
+                { label: t("Read what failed again"), count: int(back), hint: t("The table below lists each system, the rules failing again and the batch that fixed them.") },
+                { label: t("Open the work list"), hint: t("Fix the records that failed again.") },
+                { label: t("Check the next run"), hint: t("The next run shows whether the fixes held.") },
+              ]}
+            />
+            {back > 0 ? <Consequence>{t("Opening the work list changes nothing. It shows the records to fix.")}</Consequence> : null}
             <ScrollFrame label={t("Monitor")}>
             <table className="m2-tbl" data-testid="monitor-table">
               <thead>
@@ -78,7 +88,9 @@ export function WorkMonitor() {
               </tbody>
             </table>
             </ScrollFrame>
-            <Trend />
+            <MoreDetail title={t("Weekly trend, drift by rule and still clean by batch")}>
+              <Trend />
+            </MoreDetail>
           </>
         )}
         <ObjectsMonitor />

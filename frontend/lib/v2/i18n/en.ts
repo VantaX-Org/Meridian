@@ -8237,6 +8237,22 @@ export const en = {
   "Assign makes the person the owner. The exception stays open.": "Assign makes the person the owner. The exception stays open.",
   "Escalate raises the exception one tier. Resolve closes it and records how it was fixed.": "Escalate raises the exception one tier. Resolve closes it and records how it was fixed.",
   "Severity chart and the rules that raise exceptions": "Severity chart and the rules that raise exceptions",
+  "Monitor steps": "Monitor steps",
+  "Read what failed again": "Read what failed again",
+  "Fix the records that failed again.": "Fix the records that failed again.",
+  "Check the next run": "Check the next run",
+  "The next run shows whether the fixes held.": "The next run shows whether the fixes held.",
+  "The table below lists each system, the rules failing again and the batch that fixed them.": "The table below lists each system, the rules failing again and the batch that fixed them.",
+  "Opening the work list changes nothing. It shows the records to fix.": "Opening the work list changes nothing. It shows the records to fix.",
+  "Weekly trend, drift by rule and still clean by batch": "Weekly trend, drift by rule and still clean by batch",
+  "Analytics steps": "Analytics steps",
+  "Read the trend": "Read the trend",
+  "Is the list getting shorter, and when will it be clear?": "Is the list getting shorter, and when will it be clear?",
+  "Find what slows it": "Find what slows it",
+  "Check the run changes and the time to fix below.": "Check the run changes and the time to fix below.",
+  "Work the oldest issues first.": "Work the oldest issues first.",
+  "This page only reads. Nothing on it changes data or the work list.": "This page only reads. Nothing on it changes data or the work list.",
+  "Who works the list, why issues come back and how rules are judged": "Who works the list, why issues come back and how rules are judged",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
