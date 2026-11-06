@@ -25,7 +25,8 @@ function SessionLoading({ onRetry }: { onRetry: () => void }) {
           <ErrorFrame onRetry={onRetry}>{t("This is taking longer than expected. The server has not answered the session check. Retry, or check that the API is running.")}</ErrorFrame>
         </div>
       ) : (
-        <span role="status" aria-busy="true" aria-label={t("Loading Meridian")}>
+        // The server renders in English; the browser may already hold a saved language, so the first paint may differ.
+        <span role="status" aria-busy="true" aria-label={t("Loading Meridian")} suppressHydrationWarning>
           {t("Loading Meridian")}
         </span>
       )}

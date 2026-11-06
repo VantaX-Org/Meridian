@@ -266,7 +266,7 @@ test.describe("keyboard only", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
   test.setTimeout(180_000);
 
-  test("skip links lead to the content and the inspector", async ({ page }) => {
+  test("skip links lead to the content, the menu and the inspector", async ({ page }) => {
     await prepare(page, "light", null);
     await open(page, "/?fixture=1&open=rule:MM142");
     // The inspector took focus when it opened; start from the top of the page, as a fresh visit would.
@@ -276,6 +276,8 @@ test.describe("keyboard only", () => {
     await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
     await expect(page.getByRole("link", { name: "Skip to content" })).toBeVisible();
     await focusVisible(page);
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("link", { name: "Skip to the menu" })).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: "Skip to the inspector" })).toBeFocused();
     await page.keyboard.press("Enter");
