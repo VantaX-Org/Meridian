@@ -6,6 +6,7 @@ import { RequestInspector } from "../inspector/request";
 import { fireEvent } from "@testing-library/react";
 import { WorkflowsSection } from "../admin/workflows";
 import { setUrl } from "./nav-store";
+import * as reqApi from "@/lib/api/v2/requests";
 import { stubLayout } from "./layout-stub";
 
 const h = vi.hoisted(() => ({ allowed: "all" as "all" | string[] }));
@@ -162,5 +163,12 @@ describe("Requests task flow", () => {
     setUrl("/requests?fixture=1&view=to_approve&status=failed");
     renderWithQuery(<RequestsCanvas />);
     expect(await screen.findByText(/No request waits for your approval\./)).toBeInTheDocument();
+  });
+
+  it("gives a next step when the change requests cannot be read", async () => {
+    vi.spyOn(reqApi, "listRequests").mockRejectedValue(Object.assign(new Error("x"), { status: 500 }));
+    setUrl("/requests?fixture=1&view=all");
+    renderWithQuery(<RequestsCanvas />);
+    expect(await screen.findByText(/Check that the API is reachable, then retry/, {}, { timeout: 5000 })).toBeInTheDocument();
   });
 });
