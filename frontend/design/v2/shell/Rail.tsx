@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useV2Session } from "@/lib/v2/hooks";
 import { canAdminister } from "@/lib/v2/admin-sections";
@@ -16,25 +16,34 @@ export type FlyId = Destination["id"] | null;
 
 const PIN_KEY = "m2.rail.pin";
 
-/** Pinned-open is a convenience kept in this browser only; it renders the same without it. */
+const pinListeners = new Set<() => void>();
+const readPin = () => {
+  try {
+    return localStorage.getItem(PIN_KEY) === "1";
+  } catch {
+    return false; // private window or blocked storage: stay unpinned
+  }
+};
+
+/** Pinned-open is a convenience kept in this browser only; it renders unpinned on the server and without storage. */
 function usePinned(): [boolean, (v: boolean) => void] {
-  const [pinned, setPinned] = useState(false);
-  useEffect(() => {
-    try {
-      setPinned(localStorage.getItem(PIN_KEY) === "1");
-    } catch {
-      /* private window or blocked storage: stay unpinned */
-    }
-  }, []);
+  const pinned = useSyncExternalStore(
+    (cb) => {
+      pinListeners.add(cb);
+      return () => void pinListeners.delete(cb);
+    },
+    readPin,
+    () => false,
+  );
   return [
     pinned,
     (v) => {
-      setPinned(v);
       try {
         localStorage.setItem(PIN_KEY, v ? "1" : "0");
       } catch {
-        /* the pin lasts this visit only */
+        /* the pin lasts until the next read */
       }
+      pinListeners.forEach((f) => f());
     },
   ];
 }

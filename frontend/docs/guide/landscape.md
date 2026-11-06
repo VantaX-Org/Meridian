@@ -1,6 +1,6 @@
 # Landscape
 
-The landscape is the start screen for every role. It answers three questions in order: how ready is the data across every system and object, what holds it back, and what is the one thing you should do next. It opens at `/`, from **Landscape** at the top of the map, or with `g` then `l`.
+The landscape is the start screen for every role. It answers three questions in order: how ready is the data across every system and object, what holds it back, and what is the one thing you should do next. It opens at `/`, from **Home** on the rail, or with `g` then `h`.
 
 ## What is on it
 
@@ -54,7 +54,7 @@ Selecting a tile in the map or a cell in the matrix opens the object canvas. Sel
 
 ## Keyboard
 
-- `g` then `l` returns here from anywhere.
+- `g` then `h` returns here from anywhere.
 - `⌘K` opens the command line ("Search, ask, or type a command"); type an object name and system, such as "material master ECC".
 - In the matrix and in Your next work, `j` and `k` move, `Enter` opens.
 

@@ -25,9 +25,14 @@ With nothing typed it offers **Go to**: Landscape, Work, Runs, People, Rules and
 
 ## Go to
 
-- `g` then `l`: Landscape.
-- `g` then `w`: Work.
+- `g` then `h`: Home.
+- `g` then `o`: Objects.
 - `g` then `r`: Runs.
+- `g` then `f`: Fix.
+- `g` then `w`: Work.
+- `g` then `u`: Rules.
+- `g` then `m`: Master data.
+- `g` then `i`: Migration.
 - `g` then `p`: People.
 
 ## Tables and lists

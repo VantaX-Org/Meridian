@@ -1,10 +1,10 @@
 # Meridian in three minutes
 
-Meridian checks your SAP data against fixed rules, scores every object, lists every record that fails and routes each fix through a second person before it goes back to SAP. It puts all of that on three surfaces: the **map** of systems and objects on the left, the **canvas** in the middle and the **inspector** on the right. There is no menu of pages. Every screen is a place on the map, every piece of work is a row in the ledger, and anything you select opens in the same inspector.
+Meridian checks your SAP data against fixed rules, scores every object, lists every record that fails and routes each fix through a second person before it goes back to SAP. It puts all of that on three surfaces: the **rail** on the left, the **canvas** in the middle and the **inspector** on the right. Every screen is a place on the map, every piece of work is a row in the ledger, and anything you select opens in the same inspector.
 
 ## The three surfaces
 
-- **The map** lists **Landscape**, **Work**, **Runs** and **People** at the top, then each connected system with its objects. Every object row carries its score and, where there is work, the number of records to fix. On a phone the map is a sheet you open from the top bar.
+- **The rail** is a narrow strip of places: **Home**, **Objects**, **Runs**, **Work**, **People**, **Migration** and, for administrators, **Admin**. Point at one, or tab to it, and a flyout opens beside it with that place's pages; pin the flyout to keep it open. **Objects** lists each connected system with its objects, and each object row carries its score. Under 1100 px the rail becomes tabs along the bottom of the screen. The top bar shows where you are as a breadcrumb.
 - **The canvas** shows the place you chose: the landscape, one object with its tabs, one rule, the Work ledger, a run or a comparison of two runs, a system, People, Reports or Administration.
 - **The inspector** opens beside the canvas when you select a row: a record, a rule, a run, a job, a batch, a person, a system. It always has the same order: title, status line, facts, actions, history. `Esc` closes it and returns you to where you were.
 
@@ -37,7 +37,7 @@ Under **Preferences**, **Start screen**, you can open Meridian as another role's
 ## Keyboard
 
 - `⌘K` or `/` opens the command line. Type a material number, a rule id such as `MM142`, an object, a run, or a word such as approve or export.
-- `g` then `l`, `w`, `r` or `p` goes to Landscape, Work, Runs or People.
+- `g` then `h`, `o`, `r`, `f`, `w`, `u`, `m`, `i` or `p` goes to Home, Objects, Runs, Fix, Work, Rules, Master data, Migration or People.
 - `?` shows every shortcut. `⌘Z` undoes the last change. `Esc` closes the top layer.
 
 ## When something is wrong

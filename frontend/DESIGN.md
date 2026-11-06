@@ -1,4 +1,4 @@
-# Meridian design system: one map, one canvas, one inspector
+# Meridian design system: one rail, one canvas, one inspector
 
 Source of truth for the visual layer. Values live in `frontend/design/v2/tokens.css`, the only file of the interface
 that may hold colour, shadow or motion literals. When this file and the code disagree, the code is right and this file
@@ -14,12 +14,16 @@ attribution).
 ## 1. Direction
 
 Every SAP system, object, rule, record, run and person is a place on the map; everything that needs a person is a line
-in the ledger; anything you select opens in the same inspector. There is no menu of pages.
+in the ledger; anything you select opens in the same inspector. The rail names the few places; objects and runs are
+the two things everything else hangs from.
 
-1. **The map** (left, `--m2-map-w` 280px): Landscape, Work, Runs and People at the top, then each connected system with
-   its objects. Each object row carries its score as a number and a small ruler, and the records to fix only where
-   there is work. On a phone the map is a sheet opened from the top bar. Administration has its own index in the same
-   place (`design/v2/admin/Admin.tsx`).
+1. **The rail** (left, `--m2-rail-w` 64px): Home, Objects, Runs, Work, People, Migration and, for administrators, Admin
+   (`shell/Rail.tsx`, items in `shell/menu.ts`). Hover or focus on an item opens a flyout (`--m2-flyout-w` 280px) with
+   that place's pages; Esc, a click outside or leaving closes it, and the pin keeps it open (`m2.rail.pin` in local
+   storage). Only Work carries a count badge. Below 1100px the same items are the bottom tabs (`.m2-ptabs`); CSS
+   switches between the two, both are always rendered. Objects (`/objects`) holds the tree of systems and objects
+   (`shell/ObjectsTree.tsx`), each row with its score and a ruler. Administration keeps its own index column
+   (`design/v2/admin/Admin.tsx`).
 2. **The canvas** (middle): the place chosen on the map. Landscape (`/`), an object (`/o/{system}/{object}` and its
    tabs), a rule (`/r/{id}`), the Work ledger (`/work`), the runs (`/runs`), one run (`/run/{id}`) and two runs
    (`/run/{a}/vs/{b}`), a system (`/s/{id}`, `/s/new`), People, Reports, the rules library (`/rules`) and
@@ -28,7 +32,7 @@ in the ledger; anything you select opens in the same inspector. There is no menu
    (`lib/v2/hooks.ts` `parseOpen`). Always the same order: title, status line, facts, actions, history. `Esc` closes
    it. The bare panels (`?open=inbox`, `help`, `preferences`, `waves`, `triage`, `contracts`, `balance`, `away`) use the
    same frame.
-4. **The top bar** (`--m2-bar-h` 48px): the scope, the run you are reading (the run timeline), the command line (`⌘K`
+4. **The top bar** (`--m2-bar-h` 48px): the breadcrumb (Objects, system, object), the command line (`⌘K`
    or `/`), the inbox count, help (`?`) and the account menu with Preferences, Reports and, for administrators,
    Administration. Jobs show as one thin line under the bar, never as a tray.
 5. **The score is a ruler**, never a gauge: six segments whose widths are the dimension weights, each filled to its
@@ -222,13 +226,16 @@ Before and after screenshots of the refresh are in `docs/design-refresh.md`.
 
 All under `design/v2`. Screens compose these and draw nothing of their own.
 
-- **Shell** (`shell/V2Shell.tsx`, `TopBar.tsx`, `MapPane.tsx`, `StatusStrip.tsx`, `Standalone.tsx`): the gate
+- **Run chip and run picker** (`RunChip.tsx`, `lib/v2/run-label.ts`, `lib/v2/scope.ts` `useObjectRun`): a run is named by
+  its number ("SAP ECC run 12") with the date as secondary text and a status word (Running, Finished, Failed, Archived).
+  A screen reads one object at one run, written as `?run=`; `?as_of=` redirects to it. The tenant-wide scope and run
+  menus are gone from the top bar; Runs, Landscape and Object carry a `RunTimelineMenu` until the object board lands.
+  The status strip lists each system at its own newest run (from `GET /status` `systems`), with an Inactive mark.
+- **Shell** (`shell/V2Shell.tsx`, `TopBar.tsx`, `Rail.tsx`, `ObjectsTree.tsx`, `StatusStrip.tsx`, `Standalone.tsx`): the gate
   (`auth/Guard.tsx`: session check, the forced password change), the permissions provider, the request for access
-  (`RequestAccess.tsx`), the top bar, the map, the canvas, the inspector, the job line and the toasts. Pages that stand
-  without the shell (the status page, the signed-out pages, not found) use `StandaloneRoot`. The map's links sit in
-  four groups: the first unlabelled (Landscape, Action centre, Work, Runs, People, Requests), then "Rules and
-  Aletheia", "Master data" and "Programme", each under a small label (`.m2-mgrp`); the current page is the
-  3px data bar on the data wash at weight 500.
+  (`RequestAccess.tsx`), the top bar, the rail, the canvas, the inspector, the job line and the toasts. Pages that stand
+  without the shell (the status page, the signed-out pages, not found) use `StandaloneRoot`. The rail's items and their flyout pages are
+  defined once in `shell/menu.ts`; the current place is the 3px data bar on the data wash at weight 500.
 - **Signed-out pages** (`auth/AuthFrame.tsx`): two columns on the hero ground (`--m2-grad-hero` with its corner glow). On the left the tenant's mark and name in the hero ink, the one sentence of what the product does at the headline
   size, three facts in the second hero ink with accent bullets and the ruler drawn as the brand's picture (six segments
   as wide as their weights, the tick across them; decorative; filled in the hero inks). On the right one white sheet
@@ -304,7 +311,8 @@ words above it. Object names come from `formatModuleName` (`lib/format.ts`), nev
 
 | Address | Canvas |
 |---|---|
-| `/` | Landscape (`?view=waves` the waves view) |
+| `/` | Home, the landscape (`?view=waves` the waves view; `?run=` reads a chosen run) |
+| `/objects` | Objects: every system and object with its score |
 | `/o/{system}/{object}` and `/rules`, `/records`, `/fixes`, `/runs`, `/readiness`, `/processes`, `/processes/design`, `/lineage`, `/glossary`, `/golden` | An object and its tabs; `_` as the system means "the system that holds it" |
 | `/r/{id}` | A rule across objects |
 | `/rules` | The rules library (`?view=drafts`) |

@@ -71,7 +71,7 @@ A failing blocking rule always makes its area red, whatever its pass rate.
 
 ## Keyboard
 
-- `g` then `l`, then the **Waves** view switch.
+- `g` then `h`, then the **Waves** view switch.
 - `Esc` closes the panel.
 
 ## When something is wrong

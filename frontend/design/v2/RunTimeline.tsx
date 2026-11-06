@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import type { TimelineRun } from "@/lib/api/v2/runs";
 import { useV2Href } from "@/lib/v2/hooks";
@@ -187,7 +187,6 @@ function inOrder(runs: readonly TimelineRun[], x: string, y: string): [string, s
  */
 export function RunTimelineMenu({ compact }: { compact?: boolean }) {
   const router = useRouter();
-  const pathname = usePathname();
   const v2Href = useV2Href();
   const system = useScopeSystem();
   const canvasRun = useCanvasRun();

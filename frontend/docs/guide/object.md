@@ -26,7 +26,7 @@ The receipt table then adds the score up: one row per dimension with its weight,
 
 **Policy classes breached** follows when an applied policy pack's class has a failing critical rule of this object: the class, its authority and the rules. A filled shield beside the score says the same on the ruler and the landscape cell; the diamond beside it is a data contract.
 
-**As of** in the run menu shows the object as it stood when an earlier run finished: a band says so, the ruler and the rules are that run's, and **Back to today** returns.
+The **run picker** beside the object's name chooses which of this object's runs you read. Each run is named by its number, such as "SAP ECC run 12", with its date beside it. An earlier run shows a band that says so, the ruler and the rules are that run's, and choosing the latest run returns. The choice is written in the address as `?run=`; an old `?as_of=` address is redirected to it.
 
 **Score by dimension**, on the Rules tab, is a bar chart of the six dimensions on one scale from 0 to 100: each bar is the dimension's score, with its share of the score beside the name ("25% of the score") and the value at the end of the row, or "not measured" when no rule of that dimension produced a result. The shortest bar is the dimension that costs the most.
 
