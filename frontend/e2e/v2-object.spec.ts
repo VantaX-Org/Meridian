@@ -58,7 +58,7 @@ for (const size of SIZES) {
 
       test("Rules: ranked by value at risk, with the pivot, the i popovers and the totals", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load", timeout: 90_000 });
         if (phone) {
           const list = page.getByRole("list", { name: "Rules for Material master" });
           await expect(list).toBeVisible(NAV);
@@ -115,7 +115,7 @@ for (const size of SIZES) {
 
       test("Rules: Learned and Drafts, with their decisions", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load", timeout: 90_000 });
         await page.getByRole("button", { name: "Learned 4" }).click(NAV);
         const learned = page.getByRole("table", { name: "Learned rules waiting for a decision" });
         await expect(learned).toBeVisible();
@@ -138,7 +138,7 @@ for (const size of SIZES) {
       test("Rules: Accept all puts the suggested values in the draft batch", async ({ page }) => {
         test.skip(phone, "The phone list shows the same action; the wide table is the one asserted.");
         await prepare(page, scheme);
-        await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load", timeout: 90_000 });
         const grid = page.getByRole("grid", { name: "Rules for Material master" });
         await grid.getByRole("button", { name: "Accept all 112 suggested values for MM142" }).click(NAV);
         await expect(page.getByTestId("rules-note")).toContainText("112 suggested values for MM142 are in your draft batch B-243");
@@ -147,7 +147,7 @@ for (const size of SIZES) {
 
       test("the rule inspector opens from a rule and shows facts, definition, authority, scope, blocks, lineage, versions, contract, actions and history", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load", timeout: 90_000 });
         const link = phone ? page.getByRole("list", { name: "Rules for Material master" }).getByRole("link", { name: "MM142" }) : page.getByRole("grid", { name: "Rules for Material master" }).getByRole("link", { name: "MM142" });
         await link.click(NAV);
         const dialog = page.getByRole("dialog", { name: "MM142" });
@@ -262,7 +262,7 @@ test.describe("keyboard", () => {
 
   test("the i is reachable by Tab, opens with Enter and closes with Esc back onto itself", async ({ page }) => {
     await prepare(page, "light");
-    await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
+    await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load", timeout: 90_000 });
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
     await expect(grid).toBeVisible(NAV);
     const i = grid.getByRole("button", { name: "About Tolerance" });
@@ -278,7 +278,7 @@ test.describe("keyboard", () => {
 
   test("a rule opens from the keyboard with j, k and Enter", async ({ page }) => {
     await prepare(page, "light");
-    await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
+    await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load", timeout: 90_000 });
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
     await expect(grid.getByRole("row")).toHaveCount(11, NAV);
     await grid.focus();
