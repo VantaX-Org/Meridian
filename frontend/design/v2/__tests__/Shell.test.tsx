@@ -42,14 +42,24 @@ describe("top bar", () => {
     expect(screen.getByRole("button", { name: "Account, Programme lead" })).toHaveTextContent("Programme lead");
   });
 
-  it("shows Objects, system, object as a breadcrumb on an object page, and only Objects is a link", async () => {
+  it("shows Objects, system, object as a breadcrumb on an object page, and each part above the last is a link", async () => {
     setUrl("/o/ecc-production/material-master");
     mount();
     const crumb = screen.getByRole("navigation", { name: "Breadcrumb" });
     await waitFor(() => expect(norm(crumb)).toBe("ObjectsECC productionMaterial master"));
-    expect(within(crumb).getAllByRole("link")).toHaveLength(1);
+    expect(within(crumb).getAllByRole("link")).toHaveLength(2);
+    expect(within(crumb).getByRole("link", { name: "ECC production" })).toHaveAttribute("href", expect.stringMatching(/^\/s\//));
     expect(within(crumb).getByRole("link", { name: "Objects" })).toHaveAttribute("href", expect.stringMatching(/^\/objects/));
     expect(within(crumb).getByText("Material master")).toHaveAttribute("aria-current", "page");
+  });
+
+  it("adds the tab as the last crumb and links the object back to Overview", async () => {
+    setUrl("/o/ecc-production/material-master/trend");
+    mount();
+    const crumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    await waitFor(() => expect(norm(crumb)).toBe("ObjectsECC productionMaterial masterTrend"));
+    expect(within(crumb).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringMatching(/^\/o\/ecc-production\/material-master/));
+    expect(within(crumb).getByText("Trend")).toHaveAttribute("aria-current", "page");
   });
 
   it("has no breadcrumb off an object page", () => {

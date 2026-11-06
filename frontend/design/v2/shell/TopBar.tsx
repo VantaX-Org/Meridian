@@ -24,13 +24,15 @@ function Breadcrumb() {
   const run = useRunParam();
   const L = useLandscape(run).data;
   if (parts[0] !== "o" || parts.length < 2) return null;
+  const tab = ({ rules: tr("Rules"), trend: tr("Trend"), runs: tr("Trend") } as Record<string, string>)[parts[3] ?? ""];
   const sys = L?.systems.find((x) => systemSlug(x.name) === parts[1]);
   const cell = L?.cells.find((c) => c.system_id === sys?.id && moduleSlug(c.module) === parts[2]);
   const object = cell ? (L?.objects.find((o) => o.module === cell.module)?.label ?? cell.module) : parts[2];
   const trail = [
     { href: "/objects", label: tr("Objects") },
-    { href: "", label: sys?.name ?? parts[1] },
-    ...(parts[2] ? [{ href: "", label: object }] : []),
+    { href: sys ? `/s/${sys.id}` : "", label: sys?.name ?? parts[1] },
+    ...(parts[2] ? [{ href: `/o/${parts[1]}/${parts[2]}`, label: object }] : []),
+    ...(tab ? [{ href: "", label: tab }] : []),
   ];
   return (
     <nav className="m2-crumb" aria-label={tr("Breadcrumb")}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { RunTimelineMenu } from "../RunTimeline";
+import { HomeHeadlines } from "./HomeStrips";
 import { Welcome } from "./Welcome";
 import { AletheiaFound } from "./AletheiaFound";
 import { AletheiaDock, CommandRow, GoLiveBanner } from "./CommandCentre";
@@ -737,8 +737,8 @@ export function LandscapeCanvas() {
         </div>
       ) : null}
       <PageTitle sub={scopeName}>{t("Landscape")}</PageTitle>
-      <RunTimelineMenu />
       <Welcome />
+      <HomeHeadlines L={L} />
       <GoLiveBanner landscape={L} waves={waves} />
       {L.cells.length ? <ReadinessMatrix landscape={L} run={run} /> : null}
       <div className="m2-cc">

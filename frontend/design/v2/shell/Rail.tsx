@@ -173,7 +173,7 @@ export function BottomTabs({ fly, setFly }: { fly: FlyId; setFly: (id: FlyId) =>
   const pathname = usePathname();
   const active = destinationAt(pathname, destinations());
   return (
-    <nav className="m2-ptabs" aria-label={t("Main")} data-testid="bottom-tabs">
+    <nav className="m2-ptabs" aria-label={t("Main, bottom bar")} data-testid="bottom-tabs">
       {destinations().map((d) => (
         <button key={d.id} type="button" aria-haspopup="dialog" aria-expanded={fly === d.id} aria-current={active?.id === d.id ? "page" : undefined} onClick={() => setFly(fly === d.id ? null : d.id)}>
           <Glyph id={d.id} />
