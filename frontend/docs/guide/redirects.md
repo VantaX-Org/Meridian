@@ -104,12 +104,12 @@ The inbox, approvals and exceptions: the inbox panel, or the ledger's chip for t
 
 ### Objects
 
-Objects: the object canvas and its tabs.
+Objects: the object canvas and its tabs. An object's run history is its **Trend** tab (`/o/{system}/{object}/trend`); the old `/runs` tab address still opens it.
 
 | Old address | When | New address |
 |---|---|---|
 | `/objects` | always | `/` |
-| `/objects/:object` | `?tab=history` | `/o/_/:object/runs` |
+| `/objects/:object` | `?tab=history` | `/o/_/:object/trend` |
 | `/objects/:object` | `?tab=(?:rules|records)` | `/o/_/:object/rules` |
 | `/objects/:object` | `?check_id=…` | `/o/_/:object/rules?open=rule%3A:check` |
 | `/objects/:object` | `?rule=…` | `/o/_/:object/rules?open=rule%3A:check` |
