@@ -2,6 +2,11 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 
+// The suite expects en-US number formats and UTC clock times; a developer machine set to another locale or zone (en-ZA, SAST) fails 9 format and time tests otherwise.
+process.env.LC_ALL = "en_US.UTF-8";
+process.env.LANG = "en_US.UTF-8";
+process.env.TZ = "UTC";
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
