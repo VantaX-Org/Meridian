@@ -1,6 +1,7 @@
 "use client";
 
-import { RunTimelineMenu } from "../RunTimeline";
+import { ObjectTrend } from "../ObjectTrend";
+import { Lede, OldRunBand, OLD_RUN_REASON, PrimaryAction, RunPicker } from "../RunParts";
 import { EstimateNote, Money } from "../Money";
 import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -8,6 +9,9 @@ import { formatDate, formatModuleName, MODULE_LABELS } from "@/lib/format";
 import type { Landscape, LandscapeCell, LandscapeSystem, Receipt } from "@/lib/api/v2/types";
 import { useOpenItem, usePhone, useRunParam } from "@/lib/v2/hooks";
 import { useLandscape, useReceipt } from "@/lib/v2/queries";
+import { useTimeline } from "@/lib/v2/runs-queries";
+import { useObjectRun } from "@/lib/v2/scope";
+import { runLabel } from "@/lib/v2/run-label";
 import { ANY_SYSTEM, f1, findSystem, int, moduleFromSlug, pct1, systemForModule, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { Explain } from "../Explain";
 import { VerdictMark } from "../marks";
@@ -27,12 +31,13 @@ import { ObjectMonitorStrip } from "./ObjectMonitors";
 import { AletheiaFound } from "./AletheiaFound";
 import { t as tr, tn } from "@/lib/v2/i18n";
 
-type TabKey = "rules" | "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "profile" | "glossary" | "golden";
+type TabKey = "overview" | "rules" | "trend" | "records" | "fixes" | "readiness" | "processes" | "lineage" | "profile" | "glossary" | "golden";
 const TABS: { key: TabKey; label: string; segment: string }[] = [
-  { key: "rules", get label() { return tr("Rules"); }, segment: "" },
+  { key: "overview", get label() { return tr("Overview"); }, segment: "" },
+  { key: "rules", get label() { return tr("Rules"); }, segment: "/rules" },
   { key: "records", get label() { return tr("Records"); }, segment: "/records" },
   { key: "fixes", get label() { return tr("Fixes"); }, segment: "/fixes" },
-  { key: "runs", get label() { return tr("Runs"); }, segment: "/runs" },
+  { key: "trend", get label() { return tr("Trend"); }, segment: "/trend" },
   { key: "readiness", get label() { return tr("Readiness"); }, segment: "/readiness" },
   { key: "processes", get label() { return tr("Processes"); }, segment: "/processes" },
   { key: "lineage", get label() { return tr("Lineage"); }, segment: "/lineage" },
@@ -220,6 +225,8 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
   const { system, cell, label } = resolve(L.data, systemSegment, moduleSegment);
   const apiModule = moduleFromSlug(moduleSegment);
   const receiptQ = useReceipt(apiModule, run, Boolean(cell));
+  const objRuns = useTimeline(system?.id ?? null, 50, apiModule).data?.runs ?? [];
+  const objRun = useObjectRun(system?.id ?? null, apiModule);
   const base = `/o/${systemSegment}/${moduleSegment}`;
   const query = run ? `?run=${run}` : "";
   // An address without its system (`/o/_/{module}`, from an old link): replace it with the system that holds the object.
@@ -284,12 +291,16 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
   const receipt = receiptQ.data;
   // The score's working (the receipt and the contracts) belongs to the Rules view; the other views keep the ruler and
   // put their own content straight under it.
-  const onRules = pathname === base || pathname === `${base}/rules`;
+  const onOverview = pathname === base;
+  const onRules = pathname === `${base}/rules`;
+  const latestRun = objRuns.length ? objRuns[objRuns.length - 1] : null;
+  const shownRun = objRun.chip;
+  const oldRun = !objRun.isLatest;
   const tabs = (
     <nav className="m2-tabs" aria-label={tr("Views of {label}", { label })}>
       {TABS.map((t) => {
         const href = `${base}${t.segment}${query}`;
-        const active = t.key === "rules" ? pathname === base || pathname === `${base}/rules` : (pathname === `${base}${t.segment}` || pathname.startsWith(`${base}${t.segment}/`));
+        const active = t.key === "overview" ? pathname === base : (pathname === `${base}${t.segment}` || pathname.startsWith(`${base}${t.segment}/`));
         const count = t.key === "rules" ? receipt?.rules_measured : t.key === "records" ? receipt?.open_work : null;
         return (
           <V2Link key={t.key} href={href} className="m2-tab" aria-current={active ? "page" : undefined}>
@@ -303,7 +314,16 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
   return (
     <>
       <PageTitle sub={system.name}>{label}</PageTitle>
-      <RunTimelineMenu />
+      <div className="m2-oh" data-testid="object-header">
+        <RunPicker runs={objRuns} system={system.name} selectedId={objRun.runId} />
+        <ObjectTrend size="header" runs={objRuns} module={apiModule} system={system.name} object={label} selectedId={objRun.runId} />
+      </div>
+      {oldRun ? <OldRunBand shown={shownRun} system={system.name} latest={latestRun} /> : null}
+      {cell && shownRun ? (
+        <Lede>
+          {tr("{object} on {system}, {run} from {date}: measured {score} out of 100.", { object: label, system: system.name, run: runLabel(system.name, shownRun.run_number), date: formatDate(shownRun.run_at, "date"), score: f1(cell.raw_score ?? cell.score) })}
+        </Lede>
+      ) : null}
       <RelatedObjects module={apiModule} system={systemSegment} systemId={system.id} label={label} />
       {tabs}
       {!cell ? (
@@ -342,7 +362,17 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               ) : (
                 <p className="m2-statusline"><Skeleton width={420} height={14} /></p>
               )}
-              {onRules ? (
+              {onOverview && !oldRun ? (
+                <PrimaryAction
+                  action={
+                    <V2Link className="m2-btn m2-strong" href={`${base}${cell.open_work ? "/records" : "/rules"}${query}`}>
+                      {cell.open_work ? tr("Open the failing records") : tr("Open the rules")}
+                    </V2Link>
+                  }
+                  why={cell.open_work ? tr("{n} records fail at least one rule, so fixing them is what moves this score.", { n: int(cell.open_work) }) : tr("No record is waiting for a fix. The rules show what was measured and how.")}
+                />
+              ) : null}
+              {onRules || onOverview ? (
                 <div className="m2-co-grid">
                   <DimensionBars cell={cell} />
                   <TopFailing module={apiModule} run={run} />
@@ -368,7 +398,15 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
                 <ReceiptSkeleton capRow={cell.cap_level != null} breaches={cell.breaches.length} />
               )}
               {onRules ? <ObjectContractsBlock module={apiModule} label={label} run={run} /> : null}
-              <div className="m2-tabpanel">{children}</div>
+              <div className="m2-tabpanel">
+                {oldRun ? (
+                  <fieldset disabled className="m2-gate" title={OLD_RUN_REASON()} data-testid="action-gate">
+                    {children}
+                  </fieldset>
+                ) : (
+                  children
+                )}
+              </div>
             </div>
             <AletheiaDock />
           </div>
@@ -381,10 +419,9 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
 /** The Rules tab lives in object/RulesTab.tsx; it is re-exported here so the object screen keeps one front door. */
 export { RulesTab } from "./object/RulesTab";
 
-const EMPTY: Record<Exclude<TabKey, "rules">, { text: (label: string) => string; action: string; href: (system: string, module: string) => string }> = {
+const EMPTY: Record<Exclude<TabKey, "overview" | "rules" | "trend">, { text: (label: string) => string; action: string; href: (system: string, module: string) => string }> = {
   records: { text: (l) => tr("No failing records are listed for {l} yet. Rows appear when an analysis finds rules with a fixable or suggested value.", { l }), get action() { return tr("Open Work"); }, href: () => "/work" },
   fixes: { text: (l) => tr("No fix batches for {l} yet. A batch starts when a steward accepts suggested values or imports a filled fix sheet.", { l }), get action() { return tr("Open Work"); }, href: () => "/work" },
-  runs: { text: (l) => tr("{l} has no run history here yet. Each run adds a point once two runs have scored this object.", { l }), get action() { return tr("Open the runs"); }, href: () => "/runs" },
   readiness: { text: (l) => tr("Feature impact for {l} is calculated from the rules that fail. It fills when the impact model has run for this object.", { l }), get action() { return tr("Open the capping rules"); }, href: () => "" },
   processes: { text: (l) => tr("No process step reads {l} yet. Process readiness fills when a step of the process model reads the fields of the object.", { l }), get action() { return tr("Open the designer"); }, href: (s, m) => `/o/${s}/${m}/processes/design` },
   lineage: { text: (l) => tr("Lineage fills when a field map is loaded for {l}: it shows where its fields come from and which rules read them.", { l }), get action() { return tr("Open the landscape"); }, href: () => "/" },
@@ -394,7 +431,7 @@ const EMPTY: Record<Exclude<TabKey, "rules">, { text: (label: string) => string;
 };
 
 /** A tab that has no data behind it in this step: a designed empty frame with its one action. */
-export function EmptyTab({ tab, system: systemSegment, module: moduleSegment }: { tab: Exclude<TabKey, "rules">; system: string; module: string }) {
+export function EmptyTab({ tab, system: systemSegment, module: moduleSegment }: { tab: Exclude<TabKey, "overview" | "rules" | "trend">; system: string; module: string }) {
   const run = useRunParam();
   const { label } = resolve(useLandscape(run).data, systemSegment, moduleSegment);
   const def = EMPTY[tab];

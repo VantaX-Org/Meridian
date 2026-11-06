@@ -151,7 +151,7 @@ describe("the cut-over redirects", () => {
     expect(when("/fix", "batch")?.destination).toBe("/work?batch=:batch");
     expect(when("/inbox", "kind")?.destination).toBe("/work?filter=approvals");
     expect(when("/insights/readiness", "module")?.destination).toBe("/o/_/:module/readiness");
-    expect(when("/objects/:object", "tab")?.destination).toBe("/o/_/:object/runs");
+    expect(when("/objects/:object", "tab")?.destination).toBe("/o/_/:object/trend");
     // A conditional rule comes before the plain rule for the same address: the first match wins.
     for (const [i, rule] of rules.entries()) {
       if (!rule.has) continue;

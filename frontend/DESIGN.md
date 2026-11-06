@@ -21,7 +21,7 @@ the two things everything else hangs from.
    (`shell/Rail.tsx`, items in `shell/menu.ts`). Hover or focus on an item opens a flyout (`--m2-flyout-w` 280px) with
    that place's pages; Esc, a click outside or leaving closes it, and the pin keeps it open (`m2.rail.pin` in local
    storage). Only Work carries a count badge. Below 1100px the same items are the bottom tabs (`.m2-ptabs`); CSS
-   switches between the two, both are always rendered. Objects (`/objects`) holds the tree of systems and objects
+   switches between the two, both are always rendered (the rail nav is "Main", the bottom bar "Main, bottom bar"). The Objects board (`/objects`, `screens/Objects.tsx`) is a table per system with a score, a small trend and a link per object; an inactive system with finished runs stays listed with an Inactive chip. The rail's Objects flyout holds the tree of systems and objects
    (`shell/ObjectsTree.tsx`), each row with its score and a ruler. Administration keeps its own index column
    (`design/v2/admin/Admin.tsx`).
 2. **The canvas** (middle): the place chosen on the map. Landscape (`/`), an object (`/o/{system}/{object}` and its
@@ -229,7 +229,7 @@ All under `design/v2`. Screens compose these and draw nothing of their own.
 - **Run chip and run picker** (`RunChip.tsx`, `lib/v2/run-label.ts`, `lib/v2/scope.ts` `useObjectRun`): a run is named by
   its number ("SAP ECC run 12") with the date as secondary text and a status word (Running, Finished, Failed, Archived).
   A screen reads one object at one run, written as `?run=`; `?as_of=` redirects to it. The tenant-wide scope and run
-  menus are gone from the top bar; Runs, Landscape and Object carry a `RunTimelineMenu` until the object board lands.
+  menus are gone from the top bar. Home has no run picker (every strip reads its system's newest run); the Object header carries `RunPicker` (`RunParts.tsx`), which lists only that object's finished runs, and an older run shows `OldRunBand` and switches actions off with the reason "Open the current run to act".
   The status strip lists each system at its own newest run (from `GET /status` `systems`), with an Inactive mark.
 - **Shell** (`shell/V2Shell.tsx`, `TopBar.tsx`, `Rail.tsx`, `ObjectsTree.tsx`, `StatusStrip.tsx`, `Standalone.tsx`): the gate
   (`auth/Guard.tsx`: session check, the forced password change), the permissions provider, the request for access
@@ -276,6 +276,7 @@ words; the chart draws. Never a chart of a screen's own.
 | `Sparkline` | The trend in a row: a 1.5px line in the quiet ink, the latest as a dot in the data hue, no axis | The map (under each object's ruler, one scale per system), the rule inspector's history |
 | `StackedBar` | One whole in parts: a 12px bar, parts separated by 2px of sheet, never by strokes; the legend under it carries each part's mark, word and count | Run, findings by severity (`severityParts`); `verdictParts` for objects by verdict |
 | `Distribution` | How values spread: columns of a count per bin, at most 24px wide, data end rounded, foot square; the verdict bands as named dashed hairlines | Run, objects by measured score |
+| `ObjectTrend` | An object's measured score over its finished runs in three sizes: inline 120x20 in a table row, header 320x44, and card full width with axes; a one-run object says so in words instead of drawing | Objects board, Object header, Overview and Home strips (`design/v2/ObjectTrend.tsx`) |
 | `SmallMultiples` | Many trends side by side on one shared scale, each panel with its name and last value | Runs, objects over the last runs |
 | `DeltaBar` | A change either side of zero inside a table row, the signed number beside it | Compare two runs |
 
@@ -313,7 +314,7 @@ words above it. Object names come from `formatModuleName` (`lib/format.ts`), nev
 |---|---|
 | `/` | Home, the landscape (`?view=waves` the waves view; `?run=` reads a chosen run) |
 | `/objects` | Objects: every system and object with its score |
-| `/o/{system}/{object}` and `/rules`, `/records`, `/fixes`, `/runs`, `/readiness`, `/processes`, `/processes/design`, `/lineage`, `/glossary`, `/golden` | An object and its tabs; `_` as the system means "the system that holds it" |
+| `/o/{system}/{object}` (Overview) and `/rules`, `/records`, `/fixes`, `/trend` (`/runs` is an alias), `/readiness`, `/processes`, `/processes/design`, `/lineage`, `/glossary`, `/golden` | An object and its tabs; `_` as the system means "the system that holds it" |
 | `/r/{id}` | A rule across objects |
 | `/rules` | The rules library (`?view=drafts`) |
 | `/work` | The Work ledger (`?filter=`, `module`, `rule`, `severity`, `assigned`, `due`, `batch`) |
@@ -341,3 +342,7 @@ table in `docs/guide/redirects.md`, asserted by `__tests__/legacy-redirects.test
   `e2e/redirects.spec.ts` does the same for the pages outside the shell. Fix a failure in the component or the
   tokens, never with an axe rule exclusion.
 - Reduced motion turns off every animation. Focus rings always show.
+
+## Stage 2 screens: the spine
+
+Every stage 2 screen opens with one plain sentence (`Lede`) saying what it shows for which object, system and run, then one primary action with its reason (`PrimaryAction`). Codes in tables go through `CodeWithText`. Home (`screens/HomeStrips.tsx`) is always Current: a strip per system with its newest run, mean score and trend, then three columns, worst movers, the fix queue and what Aletheia found (marked Unverified). An empty system shows a connect prompt, a loading one skeletons, a failed one a band on that system only, and an inactive one the Inactive chip without "Run again". The Object opens on Overview (score over runs, card-size `ObjectTrend`); the Trend tab replaces the Runs tab. The Verified column of the design doc is left out of the Objects board because no per-object verified figure exists yet. The breadcrumb links each part above the last and ends with the tab.

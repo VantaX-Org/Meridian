@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as objectApi from "@/lib/api/v2/object";
-import { RunsTab } from "../screens/object/RunsTab";
+import * as runsApi from "@/lib/api/v2/runs";
+import { TrendTab } from "../screens/object/TrendTab";
 import { chartGeometry, yOf, GRID, Y_MAX, Y_MIN, type ChartPoint } from "../screens/object/ScoreChart";
 import { setUrl } from "./nav-store";
 
@@ -28,7 +29,7 @@ afterEach(() => {
 const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 /** A list row read as its columns, joined by a space: the columns are separate grid cells on screen. */
 const cols = (li: Element) => Array.from(li.children).map((c) => norm(c as HTMLElement)).filter(Boolean).join(" ");
-const render = () => renderWithQuery(<RunsTab system="ecc-production" module="material-master" />);
+const render = () => renderWithQuery(<TrendTab system="ecc-production" module="material-master" />);
 const css = readFileSync(join(__dirname, "..", "charts.css"), "utf8");
 
 describe("the score chart geometry", () => {
@@ -121,7 +122,7 @@ describe("the Runs tab chart", () => {
     const t = await screen.findByRole("table", { name: "Runs shown in the chart" });
     const rows = within(t).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(8);
-    expect(Array.from(rows[0].querySelectorAll("th,td")).map((c) => norm(c as HTMLElement))).toEqual(["Run 16 Oct 2026, 05:17", "71.8", "70.0", "400,662"]);
+    expect(Array.from(rows[0].querySelectorAll("th,td")).map((c) => norm(c as HTMLElement))).toEqual(["ECC production run 1, 16 Oct 2026, 05:17", "71.8", "70.0", "400,662"]);
     expect(norm(rows[2])).toContain("baseline"); // 2 Oct
     expect(within(rows[0]).getByRole("link")).toHaveAttribute("href", expect.stringContaining(`open=run%3A${CURRENT}`));
   });
@@ -196,14 +197,14 @@ describe("Compare with…", () => {
 describe("states", () => {
   it("fills from the second run: one run says so", async () => {
     const real = await import("@/lib/api/v2/fixtures");
-    const full = real.fixtureResponse<objectApi.Timeline>("/runs/timeline", {});
-    vi.spyOn(objectApi, "getTimeline").mockResolvedValue({ ...full, runs: [full.runs[7]] });
+    const full = real.fixtureResponse<runsApi.Timeline>("/runs/timeline", {});
+    vi.spyOn(runsApi, "getTimeline").mockResolvedValue({ ...full, runs: [full.runs[7]] });
     render();
     expect(await screen.findByText(/Material master has one scored run so far, measured 71\.8 and shown 70\.0\./)).toBeInTheDocument();
   });
 
   it("a failed read is an error with Retry", async () => {
-    vi.spyOn(objectApi, "getTimeline").mockRejectedValue(new Error("down"));
+    vi.spyOn(runsApi, "getTimeline").mockRejectedValue(new Error("down"));
     render();
     const alert = await screen.findByTestId("error-frame");
     expect(alert).toHaveTextContent("The run history could not be read.");

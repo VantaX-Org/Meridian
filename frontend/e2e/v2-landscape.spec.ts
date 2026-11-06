@@ -168,23 +168,6 @@ for (const size of SIZES) {
         await expect(palette).toBeHidden();
       });
 
-      if (phone) {
-        test("the map is a bottom sheet behind the Map button", async ({ page }) => {
-          await prepare(page, scheme);
-          await page.goto("/?fixture=1", { waitUntil: "load" });
-          await expect(page.getByTestId("landscape-sentence")).toBeVisible();
-          const map = page.getByTestId("map");
-          await expect(map).toBeHidden();
-          await page.getByRole("button", { name: "Map" }).click();
-          await expect(map).toBeVisible();
-          await expect(map.getByRole("link", { name: /Material master/ })).toBeVisible();
-          await page.waitForTimeout(350);
-          await shot(page, "map-sheet");
-          await axe(page, `map sheet ${size.name} ${scheme}`);
-          await page.keyboard.press("Escape");
-          await expect(map).toBeHidden();
-        });
-      }
     });
   }
 }

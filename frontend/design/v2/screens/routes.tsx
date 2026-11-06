@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { EmptyTab, ObjectFrame, RulesTab } from "./Object";
+import { OverviewTab } from "./object/OverviewTab";
 import { Skeleton } from "../parts";
 
 /** A tab loads with its own address, not with every object page: until it arrives its place shows the skeleton of a table. */
@@ -22,7 +23,7 @@ function TabLoading() {
 type TabProps = { system: string; module: string };
 const ReadinessTab = dynamic<TabProps>(() => import("./object/ReadinessTab").then((m) => m.ReadinessTab), { loading: TabLoading });
 const RecordsTab = dynamic<TabProps>(() => import("./object/LedgerSlot").then((m) => m.RecordsTab), { loading: TabLoading });
-const RunsTab = dynamic<TabProps>(() => import("./object/RunsTab").then((m) => m.RunsTab), { loading: TabLoading });
+const TrendTab = dynamic<TabProps>(() => import("./object/TrendTab").then((m) => m.TrendTab), { loading: TabLoading });
 const GoldenTab = dynamic<TabProps>(() => import("./object/GoldenTab").then((m) => m.GoldenTab), { loading: TabLoading });
 const GlossaryTab = dynamic<TabProps>(() => import("./object/GlossaryTab").then((m) => m.GlossaryTab), { loading: TabLoading });
 const ProfileTab = dynamic<TabProps>(() => import("./object/ProfileTab").then((m) => m.ProfileTab), { loading: TabLoading });
@@ -52,11 +53,16 @@ export function ObjectRulesRoute() {
   return <RulesTab system={String(p.system)} module={String(p.module)} />;
 }
 
-export function ObjectTabRoute({ tab }: { tab: "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "profile" | "glossary" | "golden" }) {
+export function ObjectOverviewRoute() {
+  const p = useParams<ObjectParams>();
+  return <OverviewTab system={String(p.system)} module={String(p.module)} />;
+}
+
+export function ObjectTabRoute({ tab }: { tab: "records" | "fixes" | "runs" | "trend" | "readiness" | "processes" | "lineage" | "profile" | "glossary" | "golden" }) {
   const p = useParams<ObjectParams>();
   const [system, module] = [String(p.system), String(p.module)];
   if (tab === "records") return <RecordsTab system={system} module={module} />;
-  if (tab === "runs") return <RunsTab system={system} module={module} />;
+  if (tab === "runs" || tab === "trend") return <TrendTab system={system} module={module} />;
   if (tab === "readiness") return <ReadinessTab system={system} module={module} />;
   if (tab === "processes") return <ProcessesTab system={system} module={module} />;
   if (tab === "lineage") return <LineageTab system={system} module={module} />;

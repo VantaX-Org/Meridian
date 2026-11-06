@@ -143,7 +143,6 @@ for (const size of [
     test.describe(`layout, ${loc.lang}, ${size.name}`, () => {
       test.use({ viewport: { width: size.width, height: size.height }, colorScheme: "light" });
       test.setTimeout(240_000);
-      const phone = size.width < 500;
       const shot = (page: Page, name: string) => (loc.lang === "en" ? Promise.resolve() : page.screenshot({ path: path.join(SHOTS, `i18n-${loc.lang}-${name}_${size.name}.png`) }));
 
       test("the top bar, the map and the inspector hold the longer and the Japanese words", async ({ page }) => {
@@ -167,13 +166,6 @@ for (const size of [
           return out;
         });
         expect(crowded).toEqual([]);
-        if (!phone) {
-          const map = await page.locator("#m2-map").boundingBox();
-          expect(Math.round(map?.width ?? 0)).toBe(280);
-          expect(await noneClipped(page, "#m2-map a, #m2-map button")).toEqual([]);
-          const overflow = await page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>("#m2-map .m2-mi, #m2-map .m2-sysrow")).filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent));
-          expect(overflow).toEqual([]);
-        }
         await shot(page, "landscape");
         await open(page, "/o/ecc-production/material-master?fixture=1&open=rule:MM142");
         const insp = page.getByTestId("inspector");
@@ -274,7 +266,7 @@ test.describe("keyboard only", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
   test.setTimeout(180_000);
 
-  test("skip links lead to the content, the map and the inspector", async ({ page }) => {
+  test("skip links lead to the content and the inspector", async ({ page }) => {
     await prepare(page, "light", null);
     await open(page, "/?fixture=1&open=rule:MM142");
     // The inspector took focus when it opened; start from the top of the page, as a fresh visit would.
@@ -285,15 +277,12 @@ test.describe("keyboard only", () => {
     await expect(page.getByRole("link", { name: "Skip to content" })).toBeVisible();
     await focusVisible(page);
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: "Skip to the map" })).toBeFocused();
-    await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: "Skip to the inspector" })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/#m2-inspector/);
-    // Landmarks: banner, main, the map and the inspector as complementary regions, the status strip as contentinfo.
+    // Landmarks: banner, main, the inspector as a complementary region, the status strip as contentinfo.
     await expect(page.getByRole("main")).toHaveCount(1);
     await expect(page.getByRole("banner")).toHaveCount(1);
-    await expect(page.getByRole("complementary", { name: "Map" })).toHaveCount(1);
     await expect(page.getByRole("complementary", { name: "Inspector" })).toHaveCount(1);
     await expect(page.getByRole("contentinfo", { name: "Status" })).toHaveCount(1);
   });

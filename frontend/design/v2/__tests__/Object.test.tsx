@@ -14,7 +14,7 @@ let undo: () => void = () => undefined;
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   undo = stubLayout();
-  setUrl("/o/ecc-production/material-master");
+  setUrl("/o/ecc-production/material-master/rules");
 });
 afterEach(() => {
   undo();
@@ -114,17 +114,18 @@ describe("the receipt", () => {
 });
 
 describe("tabs as route segments", () => {
-  it("lists Rules, Records, Fixes, Runs, Readiness, Processes, Lineage, Profile, Glossary and Golden records as links to their segments", async () => {
+  it("lists Overview, Rules, Records, Fixes, Trend, Readiness, Processes, Lineage, Profile, Glossary and Golden records as links to their segments", async () => {
     frame();
     const nav = await screen.findByRole("navigation", { name: "Views of Material master" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => (l.firstChild as Text).textContent)).toEqual(["Rules", "Records", "Fixes", "Runs", "Readiness", "Processes", "Lineage", "Profile", "Glossary", "Golden records"]);
+    expect(links.map((l) => (l.firstChild as Text).textContent)).toEqual(["Overview", "Rules", "Records", "Fixes", "Trend", "Readiness", "Processes", "Lineage", "Profile", "Glossary", "Golden records"]);
     expect(links[0]).toHaveAttribute("href", expect.stringMatching(/^\/o\/ecc-production\/material-master(\?|$)/));
-    expect(links[1]).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master/records"));
-    expect(links[5]).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master/processes"));
-    expect(links[9]).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master/golden"));
-    expect(links[0]).toHaveAttribute("aria-current", "page");
-    expect(links[1]).not.toHaveAttribute("aria-current");
+    expect(links[2]).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master/records"));
+    expect(links[4]).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master/trend"));
+    expect(links[6]).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master/processes"));
+    expect(links[10]).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master/golden"));
+    expect(links[1]).toHaveAttribute("aria-current", "page");
+    expect(links[0]).not.toHaveAttribute("aria-current");
   });
 
   it("marks the segment you are on", async () => {
@@ -138,7 +139,6 @@ describe("tabs as route segments", () => {
   it.each([
     ["records", /No failing records are listed for Material master yet/, "Open Work"],
     ["fixes", /No fix batches for Material master yet/, "Open Work"],
-    ["runs", /Material master has no run history here yet/, "Open the runs"],
     ["readiness", /Feature impact for Material master is calculated from the rules that fail/, "Open the capping rules"],
     ["lineage", /Lineage fills when a field map is loaded/, "Open the landscape"],
     ["glossary", /No glossary terms are linked to Material master yet/, "Open the rules"],

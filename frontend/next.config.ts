@@ -79,8 +79,7 @@ export const REDIRECTS: Redirect[] = [
   r("/exceptions/:id", "/work?filter=exceptions"),
 
   // Objects: the object canvas and its tabs.
-  r("/objects", "/"),
-  q("/objects/:object", "tab", "history", "/o/_/:object/runs"),
+  q("/objects/:object", "tab", "history", "/o/_/:object/trend"),
   q("/objects/:object", "tab", "(?:rules|records)", "/o/_/:object/rules"),
   q("/objects/:object", "check_id", "(?<check>[^&]+)", "/o/_/:object/rules?open=rule%3A:check"),
   q("/objects/:object", "rule", "(?<check>[^&]+)", "/o/_/:object/rules?open=rule%3A:check"),
