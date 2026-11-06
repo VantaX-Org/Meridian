@@ -1,41 +1,41 @@
 WEBVTT
 
 1
-00:00:00.004 --> 00:00:05.673
+00:00:00.006 --> 00:00:06.300
 The glossary: one business term per SAP field.
 
 2
-00:00:05.673 --> 00:00:12.340
+00:00:06.300 --> 00:00:12.720
 Each term has a definition, its field, the owner, the status and the rules that cite it.
 
 3
-00:00:12.340 --> 00:00:17.582
+00:00:12.720 --> 00:00:17.671
 Under review means a data owner has not approved it yet.
 
 4
-00:00:17.582 --> 00:00:22.489
+00:00:17.671 --> 00:00:22.600
 Fields without a term: read by failing rules, with no term yet.
 
 5
-00:00:22.489 --> 00:00:27.731
+00:00:22.600 --> 00:00:27.531
 Add terms from the rule library drafts them; the owner approves each.
 
 6
-00:00:27.731 --> 00:00:33.458
+00:00:27.531 --> 00:00:33.447
 Open a term for its fields, rules, review cycle and history.
 
 7
-00:00:33.458 --> 00:00:39.511
+00:00:33.447 --> 00:00:39.479
 A data owner edits and approves a term. Mark as reviewed keeps an active term current.
 
 8
-00:00:39.511 --> 00:00:45.402
+00:00:39.479 --> 00:00:45.388
 Each term cites the rules that read its field, so the definition and the check agree.
 
 9
-00:00:45.402 --> 00:00:50.760
+00:00:45.388 --> 00:00:50.782
 Search finds a term by its name, its definition or its SAP field.
 
 10
-00:00:50.760 --> 00:00:56.305
+00:00:50.782 --> 00:00:56.810
 The glossary is per object: every object has its own tab.

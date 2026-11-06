@@ -1,65 +1,73 @@
 WEBVTT
 
 1
-00:00:00.004 --> 00:00:06.030
+00:00:00.007 --> 00:00:06.317
 Work is the ledger: every failing record and field, ranked by value at risk.
 
 2
-00:00:06.030 --> 00:00:11.384
+00:00:06.317 --> 00:00:11.440
 The chips are the filter: to fix, fix proposed, waiting for approval, exceptions.
 
 3
-00:00:11.384 --> 00:00:19.690
+00:00:11.440 --> 00:00:19.482
 Each row holds the current value, the suggested value, the new value and the decision. Possible values are in the column chooser.
 
 4
-00:00:19.690 --> 00:00:25.550
+00:00:19.482 --> 00:00:25.088
 Choose a decision: fix, not an issue or accept risk.
 
 5
-00:00:25.550 --> 00:00:30.798
+00:00:25.088 --> 00:00:30.040
 Every change shows a notice with Undo.
 
 6
-00:00:30.798 --> 00:00:35.613
+00:00:30.040 --> 00:00:34.902
 Command Z takes the last change back.
 
 7
-00:00:35.613 --> 00:00:40.868
+00:00:34.902 --> 00:00:40.033
 Select rows with x or the checkboxes; Shift J extends the selection.
 
 8
-00:00:40.868 --> 00:00:46.130
+00:00:40.033 --> 00:00:45.340
 The bulk bar acts on every selected row.
 
 9
-00:00:46.130 --> 00:00:52.751
+00:00:45.340 --> 00:00:51.738
 A change of more than 25 rows waits on a confirmation bar with the count.
 
 10
-00:00:52.751 --> 00:00:57.568
+00:00:51.738 --> 00:00:56.557
 Enter confirms; Escape keeps the rows as they are.
 
 11
-00:00:57.568 --> 00:01:04.527
+00:00:56.557 --> 00:01:03.215
 By rule groups the rows under their rule, so a whole rule is decided at once.
 
 12
-00:01:04.527 --> 00:01:10.078
+00:01:03.215 --> 00:01:09.076
 Open a record: every failing field, its possible values and the decision.
 
 13
-00:01:10.078 --> 00:01:15.060
+00:01:09.076 --> 00:01:14.066
 Feature impact, provenance and history are on the record too.
 
 14
-00:01:15.060 --> 00:01:21.007
-Export fix sheet saves the rows on screen to Excel, with the same columns.
+00:01:14.066 --> 00:01:20.192
+Back on the ledger, More holds the fix sheet.
 
 15
-00:01:21.007 --> 00:01:27.668
-Fill it in offline and import it back: Meridian checks keys, fields and values before anything changes.
+00:01:20.192 --> 00:01:26.237
+Export fix sheet saves the rows on screen to Excel, with the same columns.
 
 16
-00:01:27.668 --> 00:01:34.317
+00:01:26.237 --> 00:01:32.751
+Fill it in offline and import it back: Meridian checks keys, fields and values before anything changes.
+
+17
+00:01:32.751 --> 00:01:37.576
+Escape closes the menu.
+
+18
+00:01:37.576 --> 00:01:43.948
 Share and export saves a view, exports any grid, or shares the page as a read-only link.
