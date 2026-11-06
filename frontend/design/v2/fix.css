@@ -8,7 +8,7 @@
 .m2-root .m2-flow-on { border-color: var(--m2-data); color: var(--m2-ink); background: var(--m2-surface-2, transparent); }
 .m2-root .m2-flow-done { opacity: .75; }
 .m2-root .m2-flow-n { font-weight: 600; min-width: 1.4em; }
-.m2-root .m2-flow-t { display: grid; gap: 2px; }
+.m2-root .m2-flow-t { display: grid; gap: var(--m2-s1); }
 .m2-root .m2-flow-h { font-size: var(--m2-fs-13); }
 .m2-root .m2-conseq { margin: var(--m2-s2) 0 0; }
 .m2-root .m2-more { margin: var(--m2-s4) 0; }
