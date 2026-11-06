@@ -102,6 +102,7 @@ export function FlightDeck() {
       <Guide
         shows={t("Counts down to the go-live date of a migration wave and shows how ready each object is against its target.")}
         next={{ href: "/forecast", label: t("Open the forecast and plan") }}
+        why={t("Lifting an object opens its fix list. Nothing is changed until you approve a fix.")}
         means={[
           [t("Readiness today"), t("The latest measured score for the wave.")],
           [t("Weakest at go-live"), t("The lowest forecast score among the objects on the go-live date.")],

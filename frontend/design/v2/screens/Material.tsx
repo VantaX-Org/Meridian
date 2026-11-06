@@ -12,7 +12,7 @@ import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
-import { Guide } from "./Guide";
+import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -89,6 +89,7 @@ export function Material() {
       <Guide
         shows={t("Gathers one material across its views, plants, rule findings and follow-up chain.")}
         next={{ href: "/issues", label: t("Open the issues") }}
+        why={t("This screen only reads. Nothing in SAP is changed.")}
         means={[
           [t("Rules failing"), t("Rules this material fails, out of all rules that apply to it.")],
           [t("Views missing"), t("Material views that are not maintained at the levels expected.")],
@@ -218,6 +219,7 @@ function MaterialBody({ m }: { m: string }) {
       <Panel title={t("Rules failing, by view")} meta={fin.data ? t("{n} failing", { n: int(failing.length) }) : ""} testId="material-findings">
         {fin.isError ? <Dash why={t("The findings could not be read.")} /> : !fin.data ? <Skeleton width="100%" height={120} /> : <Findings f={fin.data} />}
       </Panel>
+      <Disclose title={t("Follow-up chain")} hint={t("Which material replaces this one, plant by plant.")}>
       <Panel title={t("Follow-up chain")} meta={t("{n} plants phasing out", { n: int(d.phasing.phasing_out) })} testId="material-chain">
         {sup.isError ? <Dash why={t("The follow-up chain could not be read.")} /> : !sup.data ? <Skeleton width="100%" height={120} /> : (
           <>
@@ -260,6 +262,8 @@ function MaterialBody({ m }: { m: string }) {
           </>
         )}
       </Panel>
+      </Disclose>
+      <Disclose title={t("Materials that look like it")} hint={t("Possible duplicates of this material.")}>
       <Panel title={t("Materials that look like it")} meta={dup.data ? t("Match score {n} and up", { n: int(dup.data.threshold) }) : ""} testId="material-duplicates">
         {dup.isError ? <Dash why={t("The likely duplicates could not be read.")} /> : !dup.data ? <Skeleton width="100%" height={80} /> : dup.data.items.length === 0 ? (
           <p className="m2-meta">{t("No other material looks like this one.")}</p>
@@ -285,6 +289,7 @@ function MaterialBody({ m }: { m: string }) {
           </ScrollFrame>
         )}
       </Panel>
+      </Disclose>
     </>
   );
 }

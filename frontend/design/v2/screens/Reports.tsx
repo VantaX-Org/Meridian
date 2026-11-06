@@ -1,6 +1,6 @@
 "use client";
 
-import { Guide } from "./Guide";
+import { Disclose, Guide } from "./Guide";
 import { useState, type ReactNode } from "react";
 import type { ReportFile, ReportSchedule } from "@/lib/api/reports";
 import * as rep from "@/lib/api/v2/reports";
@@ -177,7 +177,7 @@ export function ReportsCanvas() {
     <CcPage>
       <PageTitle>{t("Reports")}</PageTitle>
       <Guide
-        shows={t("Lists the reports made from stored runs and the schedules that make more.")}
+        shows={<>{t("Lists the reports made from stored runs and the schedules that make more.")} {t("Creating a report stores a file from a stored run. A schedule sends it to its recipients without asking again, so check the recipients first.")}</>}
         means={[
           [t("Report"), t("A file built from one stored run, so its numbers match that run.")],
           [t("Schedule"), t("A rule that makes a report on its own at set times.")],
@@ -206,6 +206,7 @@ export function ReportsCanvas() {
           compact
         />
       </section>
+      <Disclose title={t("Schedules")} hint={t("Each builds a report from the latest run and sends it.")}>
       <section className="m2-sec" aria-label={t("Schedules")}>
         <div className="m2-sechead">
           <h2 className="m2-h2">{t("Schedules")}</h2>
@@ -230,6 +231,7 @@ export function ReportsCanvas() {
           compact
         />
       </section>
+      </Disclose>
     </CcPage>
   );
 }

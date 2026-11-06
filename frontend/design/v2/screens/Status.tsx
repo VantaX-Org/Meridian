@@ -1,6 +1,6 @@
 "use client";
 
-import { Guide } from "./Guide";
+import { Disclose, Guide } from "./Guide";
 import Link from "next/link";
 import type { ComponentStatus, OverallStatus, StatusPage } from "@/lib/api/v2/enterprise";
 import { formatDate } from "@/lib/format";
@@ -178,7 +178,7 @@ export function StatusScreen({ signedIn = false }: { signedIn?: boolean }) {
       <main id="m2-status-main" tabIndex={-1} className="m2-stat-main">
         <PageTitle>{t("Status")}</PageTitle>
         <Guide
-          shows={t("Shows whether Meridian is running normally, with any planned maintenance.")}
+          shows={<>{t("Shows whether Meridian is running normally, with any planned maintenance.")} {t("This page only reads. If a part is down, work that needs it waits; nothing you saved is lost.")}</>}
           means={[[t("Overall state"), t("Whether every part of Meridian works; one failing part changes it.")]]}
         />
         {q.isError ? (
@@ -198,10 +198,12 @@ export function StatusScreen({ signedIn = false }: { signedIn?: boolean }) {
             </p>
             <p className="m2-prov">{t("Checked {updated}. This page reads the status again every minute.", { updated: formatDate(page.generated_at, "datetime") })}</p>
             <Maintenance page={page} />
+            <Disclose title={t("Last 30 days")} hint={t("Uptime day by day.")}>
             <section className="m2-sec" aria-labelledby="m2-st-up">
               <h2 className="m2-h2" id="m2-st-up">{t("Last 30 days")}</h2>
               <UptimeBar page={page} />
             </section>
+            </Disclose>
             <section className="m2-sec" aria-labelledby="m2-st-c">
               <h2 className="m2-h2" id="m2-st-c">{t("Components")}</h2>
               <Components page={page} />
