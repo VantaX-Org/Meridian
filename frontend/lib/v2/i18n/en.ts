@@ -8228,6 +8228,15 @@ export const en = {
   "Apply changes every picked item at once. Assigning gives them a new owner; snoozing hides them from the queue until the date you choose.": "Apply changes every picked item at once. Assigning gives them a new owner; snoozing hides them from the queue until you include snoozed items.",
   "Backlog and load, charted": "Backlog and load, charted",
   "Teams and assignment rules": "Teams and assignment rules",
+  "Exception steps": "Exception steps",
+  "Open one": "Open one",
+  "Assign or escalate": "Assign or escalate",
+  "Pick the exception with the nearest deadline.": "Pick the exception with the nearest deadline.",
+  "Give it an owner, or raise it a tier. The count shows overdue ones.": "Give it an owner, or raise it a tier. The count shows overdue ones.",
+  "Record how it was fixed and the root cause. The count shows resolved ones.": "Record how it was fixed and the root cause. The count shows resolved ones.",
+  "Assign makes the person the owner. The exception stays open.": "Assign makes the person the owner. The exception stays open.",
+  "Escalate raises the exception one tier. Resolve closes it and records how it was fixed.": "Escalate raises the exception one tier. Resolve closes it and records how it was fixed.",
+  "Severity chart and the rules that raise exceptions": "Severity chart and the rules that raise exceptions",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

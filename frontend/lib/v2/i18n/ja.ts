@@ -8229,4 +8229,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Apply changes every picked item at once. Assigning gives them a new owner; snoozing hides them from the queue until the date you choose.": "「適用」は選んだ項目すべてを一度に変更します。割り当てると新しい担当者になり、スヌーズすると選んだ日付までキューから隠れます。",
   "Backlog and load, charted": "滞留と負荷をグラフで見る",
   "Teams and assignment rules": "チームと割り当てルール",
+  "Exception steps": "例外対応の手順",
+  "Open one": "1件を開く",
+  "Assign or escalate": "割り当てまたはエスカレーション",
+  "Pick the exception with the nearest deadline.": "期限が最も近い例外を選びます。",
+  "Give it an owner, or raise it a tier. The count shows overdue ones.": "担当者を付けるか、1段階上げます。件数は期限超過のものです。",
+  "Record how it was fixed and the root cause. The count shows resolved ones.": "どう直したかと根本原因を記録します。件数は解決済みのものです。",
+  "Assign makes the person the owner. The exception stays open.": "割り当てるとその人が担当者になります。例外は未解決のままです。",
+  "Escalate raises the exception one tier. Resolve closes it and records how it was fixed.": "エスカレーションは例外を1段階上げます。解決すると例外が閉じ、対処内容が記録されます。",
+  "Severity chart and the rules that raise exceptions": "重大度のグラフと例外を発生させるルール",
 };

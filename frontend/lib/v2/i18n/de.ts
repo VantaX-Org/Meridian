@@ -8229,4 +8229,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Apply changes every picked item at once. Assigning gives them a new owner; snoozing hides them from the queue until the date you choose.": "Anwenden ändert alle gewählten Einträge auf einmal. Zuweisen gibt ihnen einen neuen Eigentümer; Verschieben blendet sie aus der Warteschlange aus, bis zum gewählten Datum.",
   "Backlog and load, charted": "Rückstand und Last im Diagramm",
   "Teams and assignment rules": "Teams und Zuweisungsregeln",
+  "Exception steps": "Schritte bei Ausnahmen",
+  "Open one": "Eine öffnen",
+  "Assign or escalate": "Zuweisen oder eskalieren",
+  "Pick the exception with the nearest deadline.": "Wählen Sie die Ausnahme mit der nächsten Frist.",
+  "Give it an owner, or raise it a tier. The count shows overdue ones.": "Geben Sie ihr einen Verantwortlichen oder heben Sie sie eine Stufe an. Die Zahl zeigt überfällige.",
+  "Record how it was fixed and the root cause. The count shows resolved ones.": "Halten Sie fest, wie sie behoben wurde und was die Ursache war. Die Zahl zeigt gelöste.",
+  "Assign makes the person the owner. The exception stays open.": "Zuweisen macht die Person zum Verantwortlichen. Die Ausnahme bleibt offen.",
+  "Escalate raises the exception one tier. Resolve closes it and records how it was fixed.": "Eskalieren hebt die Ausnahme eine Stufe an. Lösen schließt sie und hält fest, wie sie behoben wurde.",
+  "Severity chart and the rules that raise exceptions": "Schweregrad-Diagramm und die Regeln, die Ausnahmen auslösen",
 };
