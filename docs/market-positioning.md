@@ -13,8 +13,8 @@ scrutiny.
 | **45 modules** | the packs on disk |
 | **24 check classes** | `checks/runner.py::REGISTRY` |
 | **6 DQS dimensions** (DAMA DMBOK) | `api/services/scoring.py::DEFAULT_WEIGHTS` |
-| every rule **proved** to fail ≥1 and pass ≥1 record | `tests/checks/test_rule_proofs.py` — 11,009 cases |
-| every rule field **resolves** in the SAP dictionary | `tests/checks/test_rule_integrity.py` — 2,271 cases |
+| every rule **proved** to fail ≥1 and pass ≥1 record | `tests/checks/test_rule_proofs.py` — 11,112 cases |
+| every rule field **resolves** in the SAP dictionary | `tests/checks/test_rule_integrity.py` — 2,278 cases |
 | rules reconciled against the dictionary the engine runs on | `checks/rule_reconciler.py` — every `domain_value_check` on a dictionary field with fixed values is compared (curated dictionary first, then the DDIC bundle's domain fixed values); 0 rules admit a value SAP does not define, held by `tests/test_rule_reconciler.py::test_live_ruleset_has_no_dangerous_drift` |
 | runs **entirely inside the customer boundary** | no egress in the data path; self-hosted compose |
 
