@@ -68,3 +68,26 @@ describe("stage 5: primary action", () => {
     expect(go).toHaveTextContent("Run the draft against current data");
   });
 });
+
+describe("stage 5: steps, consequence, next step", () => {
+  const current = () => screen.getByTestId("dry-run-steps").querySelector('[aria-current="step"]');
+  it("moves from choosing to reading the effect and offers the rule as the next step", async () => {
+    renderWithQuery(<RuleDryRun />);
+    expect(screen.getAllByRole("listitem").length).toBeGreaterThanOrEqual(4);
+    expect(current()).toHaveTextContent("Run it on current data");
+    expect(screen.getByTestId("consequence")).toHaveTextContent(/writes nothing and does not call SAP/);
+    fireEvent.click(screen.getByTestId("dry-run-go"));
+    await screen.findByTestId("dry-run-result");
+    expect(current()).toHaveTextContent("Read the effect");
+    expect(screen.queryByTestId("consequence")).toBeNull();
+    expect(within(screen.getByTestId("dry-run-next")).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("/r/AP002"));
+  });
+
+  it("stays on choosing the rule while the form is incomplete, and blocks the run", () => {
+    setUrl("/rule-dry-run");
+    renderWithQuery(<RuleDryRun />);
+    expect(current()).toHaveTextContent("Choose the rule");
+    expect(screen.getByTestId("dry-run-go")).toBeDisabled();
+    expect(screen.getByText("Run a dry run to see the effect here.")).toBeInTheDocument();
+  });
+});

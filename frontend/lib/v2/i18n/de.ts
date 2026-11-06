@@ -8101,6 +8101,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Records the rules looked at, before to after": "Von den Regeln geprüfte Datensätze, vorher zu nachher",
   "Share of records a rule could evaluate in the later run": "Anteil der Datensätze, die eine Regel im späteren Lauf auswerten konnte",
   // Stage 5: Rules and Aletheia
+  "Dry run steps": "Schritte des Probelaufs",
+  "Choose the rule": "Regel wählen",
+  "Run it on current data": "Auf aktuellen Daten ausführen",
+  "Read the effect": "Wirkung lesen",
+  "Decide what to do": "Entscheiden, was folgt",
+  "A dry run reads up to {cap} rows per table from the latest stored extraction. It writes nothing and does not call SAP.": "Ein Probelauf liest bis zu {cap} Zeilen je Tabelle aus der letzten gespeicherten Extraktion. Er schreibt nichts und ruft SAP nicht auf.",
+  "Happy with the effect? Open the rule to switch it on or edit it.": "Wirkung in Ordnung? Öffnen Sie die Regel, um sie einzuschalten oder zu bearbeiten.",
   "Promotion steps": "Schritte der Freigabe",
   "Pick an object": "Objekt wählen",
   "Preview on your data": "Vorschau auf Ihren Daten",

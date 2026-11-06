@@ -8100,6 +8100,13 @@ export const en = {
   "Records the rules looked at, before to after": "Records the rules looked at, before to after",
   "Share of records a rule could evaluate in the later run": "Share of records a rule could evaluate in the later run",
   // Stage 5: Rules and Aletheia
+  "Dry run steps": "Dry run steps",
+  "Choose the rule": "Choose the rule",
+  "Run it on current data": "Run it on current data",
+  "Read the effect": "Read the effect",
+  "Decide what to do": "Decide what to do",
+  "A dry run reads up to {cap} rows per table from the latest stored extraction. It writes nothing and does not call SAP.": "A dry run reads up to {cap} rows per table from the latest stored extraction. It writes nothing and does not call SAP.",
+  "Happy with the effect? Open the rule to switch it on or edit it.": "Happy with the effect? Open the rule to switch it on or edit it.",
   "Promotion steps": "Promotion steps",
   "Pick an object": "Pick an object",
   "Preview on your data": "Preview on your data",

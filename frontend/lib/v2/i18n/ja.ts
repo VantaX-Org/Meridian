@@ -8101,6 +8101,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Records the rules looked at, before to after": "ルールが確認したレコード(前から後)",
   "Share of records a rule could evaluate in the later run": "後の実行でルールが評価できたレコードの割合",
   // Stage 5: Rules and Aletheia
+  "Dry run steps": "試行の手順",
+  "Choose the rule": "ルールを選ぶ",
+  "Run it on current data": "現在のデータで実行",
+  "Read the effect": "影響を確認",
+  "Decide what to do": "次の対応を決める",
+  "A dry run reads up to {cap} rows per table from the latest stored extraction. It writes nothing and does not call SAP.": "試行では、最新の保存済み抽出データから各テーブル最大{cap}行を読みます。何も書き込まず、SAPも呼び出しません。",
+  "Happy with the effect? Open the rule to switch it on or edit it.": "影響に問題なければ、ルールを開いて有効化または編集します。",
   "Promotion steps": "承認の手順",
   "Pick an object": "オブジェクトを選ぶ",
   "Preview on your data": "自社データで試す",
