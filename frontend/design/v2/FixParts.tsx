@@ -53,3 +53,13 @@ export function Means({ items }: { items: [string, string][] }) {
 export function FixHead({ lede, means }: { lede: ReactNode; means: [string, string][] }) {
   return <><p className="m2-lede" data-testid="lede">{lede}</p><Means items={means} /></>;
 }
+
+/** The run a row was read at when it says so (version_id), else the object's current run. */
+export function RowRunChip({ module, versionId }: { module: string | null | undefined; versionId?: string | null }) {
+  const tl = useTimeline(null, 50);
+  const land = useLandscape(null);
+  const run = versionId ? tl.data?.runs.find((r) => r.id === versionId) : undefined;
+  if (!run) return <ObjectRunChip module={module} />;
+  const name = land.data?.systems.find((s) => s.id === run.system_id)?.name ?? null;
+  return <span className="m2-objrun">{module ? moduleText(module) : null}{" "}<RunChip run={run} system={name} /></span>;
+}
