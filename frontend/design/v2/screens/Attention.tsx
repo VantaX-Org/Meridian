@@ -11,7 +11,7 @@ import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
-import { FixHead, ObjectRunChip } from "../FixParts";
+import { Consequence, FixHead, FlowSteps, MoreDetail, ObjectRunChip } from "../FixParts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -135,12 +135,11 @@ export function Attention() {
         <EmptyFrame>{filtered ? t("Nothing of this kind needs attention.") : t("Nothing needs your attention. New items appear here as runs, approvals and checks raise them.")}</EmptyFrame>
       ) : (
         <>
-          <Panel title={t("What needs attention, by kind")} meta={t("{n} items", { n: int(items.length) })} testId="attention-kinds">
-            <CcHBars
-              label={t("What needs attention, by kind")}
-              rows={[...byKind].sort((a, b) => b[1] - a[1]).map(([k, n]) => ({ key: k, label: kindText(k), value: n, text: int(n) }))}
-            />
-          </Panel>
+          <FlowSteps label={t("Action centre steps")} current={1} steps={[
+            { label: t("See what is most urgent"), count: int(total), hint: t("The list is sorted with the most urgent first.") },
+            { label: t("Open an item"), hint: t("The button on a row goes straight to it.") },
+            { label: t("Decide there"), hint: t("The item opens where you can act on it.") },
+          ]} />
           <Panel title={t("Act on these")} meta={t("Most urgent first")} testId="attention-table">
             <ScrollFrame label={t("Act on these")}>
               <table className="m2-tbl m2-cards">
@@ -161,6 +160,15 @@ export function Attention() {
               </table>
             </ScrollFrame>
           </Panel>
+          <Consequence>{t("Opening an item changes nothing. Start triage walks the same list one item at a time.")}</Consequence>
+          <MoreDetail title={t("Breakdown by kind")}>
+          <Panel title={t("What needs attention, by kind")} meta={t("{n} items", { n: int(items.length) })} testId="attention-kinds">
+            <CcHBars
+              label={t("What needs attention, by kind")}
+              rows={[...byKind].sort((a, b) => b[1] - a[1]).map(([k, n]) => ({ key: k, label: kindText(k), value: n, text: int(n) }))}
+            />
+          </Panel>
+          </MoreDetail>
         </>
       )}
     </CcPage>

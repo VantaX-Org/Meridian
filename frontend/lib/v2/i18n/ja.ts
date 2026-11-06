@@ -8190,4 +8190,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Approve or reject": "承認または却下",
   "A steward decides. Approved steps become the rule's fix.": "担当者が判断します。承認された手順がルールの修正になります。",
   "Fix coverage by object": "オブジェクト別の修正カバレッジ",
+  "Action centre steps": "アクションセンターの手順",
+  "See what is most urgent": "最も緊急なものを確認する",
+  "The list is sorted with the most urgent first.": "一覧は緊急度の高い順に並んでいます。",
+  "Open an item": "項目を開く",
+  "The button on a row goes straight to it.": "行のボタンで直接移動できます。",
+  "Decide there": "そこで判断する",
+  "The item opens where you can act on it.": "項目は操作できる画面で開きます。",
+  "Opening an item changes nothing. Start triage walks the same list one item at a time.": "項目を開いても何も変わりません。トリアージは同じ一覧を1件ずつ進めます。",
+  "Breakdown by kind": "種類別の内訳",
 };

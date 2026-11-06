@@ -8189,6 +8189,15 @@ export const en = {
   "Approve or reject": "Approve or reject",
   "A steward decides. Approved steps become the rule's fix.": "A steward decides. Approved steps become the rule's fix.",
   "Fix coverage by object": "Fix coverage by object",
+  "Action centre steps": "Action centre steps",
+  "See what is most urgent": "See what is most urgent",
+  "The list is sorted with the most urgent first.": "The list is sorted with the most urgent first.",
+  "Open an item": "Open an item",
+  "The button on a row goes straight to it.": "The button on a row goes straight to it.",
+  "Decide there": "Decide there",
+  "The item opens where you can act on it.": "The item opens where you can act on it.",
+  "Opening an item changes nothing. Start triage walks the same list one item at a time.": "Opening an item changes nothing. Start triage walks the same list one item at a time.",
+  "Breakdown by kind": "Breakdown by kind",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

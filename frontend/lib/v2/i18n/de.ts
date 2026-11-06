@@ -8190,4 +8190,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Approve or reject": "Genehmigen oder ablehnen",
   "A steward decides. Approved steps become the rule's fix.": "Ein Datenverantwortlicher entscheidet. Genehmigte Schritte werden zur Korrektur der Regel.",
   "Fix coverage by object": "Abdeckung der Korrekturen nach Objekt",
+  "Action centre steps": "Schritte im Aktionszentrum",
+  "See what is most urgent": "Das Dringendste erkennen",
+  "The list is sorted with the most urgent first.": "Die Liste ist nach Dringlichkeit sortiert, das Dringendste zuerst.",
+  "Open an item": "Eintrag öffnen",
+  "The button on a row goes straight to it.": "Die Schaltfläche in der Zeile führt direkt dorthin.",
+  "Decide there": "Dort entscheiden",
+  "The item opens where you can act on it.": "Der Eintrag öffnet sich dort, wo Sie handeln können.",
+  "Opening an item changes nothing. Start triage walks the same list one item at a time.": "Das Öffnen eines Eintrags ändert nichts. Die Triage geht dieselbe Liste Eintrag für Eintrag durch.",
+  "Breakdown by kind": "Aufschlüsselung nach Art",
 };
