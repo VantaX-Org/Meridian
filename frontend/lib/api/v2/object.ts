@@ -1,4 +1,5 @@
 import apiClient from "@/lib/api/client";
+import { scoreRunsOnly } from "./timeline-scope";
 import { fixtureActive } from "./fixture";
 import { v2Get, v2Send } from "./client";
 import { v2Download } from "./download";
@@ -306,7 +307,7 @@ export interface Timeline {
 }
 
 export function getTimeline(systemId: string | null | undefined, limit = 8): Promise<Timeline> {
-  return v2Get<Timeline>("/runs/timeline", { system_id: systemId ?? undefined, limit });
+  return v2Get<Timeline>("/runs/timeline", { system_id: systemId ?? undefined, limit }).then(scoreRunsOnly);
 }
 
 export interface CompareSide {
