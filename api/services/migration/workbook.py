@@ -39,10 +39,10 @@ BOOLEANS = {"true", "false", "yes", "no", "y", "n", "t", "f", "0", "1"}
 SHEET_ENTITIES = {
     "biographicalinfo": {"PerPerson"},
     "personalinfo": {"PerPersonal"},
-    "csfpersonalinfoglobalinfo": {"PerPersonal"},
     "nationalid": {"PerNationalId"},
     "phoneinfo": {"PerPhone"},
     "emailinfo": {"PerEmail"},
+    "socialaccounts": {"PerSocialAccount"},
     "csfaddresses": {"PerAddressDEFLT"},
     "paymentinfo": {"PaymentInformationDetailV3"},
     "emergencycontact": {"PerEmergencyContacts"},
@@ -63,6 +63,18 @@ SHEET_ENTITIES = {
     "businessunit": {"FOBusinessUnit"},
     "costcenter": {"FOCostCenter"},
     "jobclassification": {"FOJobCode"},
+    "paygrade": {"FOPayGrade"},
+    "payrange": {"FOPayRange"},
+    "paygroup": {"FOPayGroup"},
+    "frequency": {"FOFrequency"},
+    "jobfunction": {"FOJobFunction"},
+    "geozone": {"FOGeozone"},
+    "locationgroup": {"FOLocationGroup"},
+    "paycomponentgroup": {"FOPayComponentGroup"},
+    "payscaletype": {"FOPayScaleType"},
+    "payscalearea": {"FOPayScaleArea"},
+    "corporateaddress": {"FOCorporateAddressDEFLT"},
+    "csfcorporateaddress": {"FOCorporateAddressDEFLT"},
 }
 
 
