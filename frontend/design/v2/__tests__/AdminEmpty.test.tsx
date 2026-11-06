@@ -12,7 +12,8 @@ import { ApiKeysSection } from "../admin/apikeys";
 import { ExternalDbSection } from "../admin/externaldb";
 import { MatchRulesSection } from "../admin/matchrules";
 import { AlertsSection } from "../admin/notify";
-import { DigestsSection } from "../admin/step10";
+import { RuleAccuracySection } from "../admin/accuracy";
+import { DigestsSection, PolicyPacksSection } from "../admin/step10";
 import { SystemSection } from "../admin/system";
 import { RolesSection } from "../admin/roles";
 import { UsersSection } from "../admin/users";
@@ -141,5 +142,26 @@ describe("Admin: a failed read says what failed and offers a retry", () => {
     vi.spyOn(matchApi, "listMatchRules").mockRejectedValue(offline());
     renderWithQuery(<MatchRulesSection />);
     expect(await screen.findByText(/The match rules could not/)).toBeInTheDocument();
+  });
+});
+
+describe("Admin: rule accuracy and policy packs, empty and failed", () => {
+  it("rule accuracy: no system says to connect one first", async () => {
+    vi.spyOn(jobsApi, "getSystemsExtended").mockResolvedValue([]);
+    renderWithQuery(<RuleAccuracySection />);
+    expect(await screen.findByText(/Connect a system first/)).toBeInTheDocument();
+  });
+
+  it("policy packs: an empty list says none ships with this version", async () => {
+    vi.spyOn(step10Api, "listPolicyPacks").mockResolvedValue({ packs: [], applied: 0 });
+    renderWithQuery(<PolicyPacksSection />);
+    expect(await screen.findByText(/No policy pack ships with this version/)).toBeInTheDocument();
+  });
+
+  it("policy packs: a failed read offers a retry", async () => {
+    vi.spyOn(step10Api, "listPolicyPacks").mockRejectedValue(new Error("Network Error"));
+    renderWithQuery(<PolicyPacksSection />);
+    expect(await screen.findByText(/The policy packs could not be read/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 });
