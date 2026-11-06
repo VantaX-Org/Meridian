@@ -4,9 +4,9 @@ import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useV2Href } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
-import { useTimeline } from "@/lib/v2/runs-queries";
+import { useTimeline, useVersionHead } from "@/lib/v2/runs-queries";
 import { systemSlug } from "@/lib/v2/score";
-import type { TimelineRun } from "@/lib/api/v2/runs";
+import type { TimelineRun, VersionHead } from "@/lib/api/v2/runs";
 import type { LandscapeSystem } from "@/lib/api/v2/types";
 
 /**
@@ -61,16 +61,27 @@ export function useRunPicker(latestId: string | null): (runId: string) => void {
 }
 
 /**
- * The run an object page shows: `?run=` when it names a run of that object, else the object's own newest finished run.
- * `chip` is that run (null until the timeline loads), `isLatest` is false when an older run is chosen.
+ * The run an object page shows: `?run=` when set, else the object's own newest finished run. The timeline is asked for
+ * runs of this object only, so an object last run long ago still has its runs. A `?run=` outside that list is honoured,
+ * never swapped: `chip` then comes from a single-run read, or stays null.
  */
 export function useObjectRun(systemId: string | null, module: string): { runId: string | null; isLatest: boolean; chip: TimelineRun | null } {
   const param = useSearchParams().get("run");
-  const runs = useTimeline(systemId, 8).data?.runs;
+  const mine = useTimeline(systemId, 50, module).data?.runs;
+  const listed = param ? (mine ?? []).some((r) => r.id === param) : true;
+  const head = useVersionHead(param && mine && !listed ? param : "").data;
   return useMemo(() => {
-    const mine = (runs ?? []).filter((r) => module in r.objects);
-    const latest = mine.length ? mine[mine.length - 1] : null;
-    const chip = mine.find((r) => r.id === param) ?? latest;
+    const latest = mine?.length ? mine[mine.length - 1] : null;
+    if (param && mine && !listed) return { runId: param, isLatest: false, chip: head ? headToRun(head, systemId) : null };
+    const chip = (param && mine?.find((r) => r.id === param)) || latest;
     return { runId: chip?.id ?? param, isLatest: !chip || chip.id === latest?.id, chip };
-  }, [runs, module, param]);
+  }, [mine, listed, head, param, systemId]);
+}
+
+function headToRun(h: VersionHead, systemId: string | null): TimelineRun {
+  const objects: TimelineRun["objects"] = {};
+  for (const [m, d] of Object.entries(h.dqs_summary ?? {})) {
+    objects[m] = { score: d.composite_score ?? null, raw_score: d.raw_score ?? null, capped: Boolean(d.capped), findings_open: null, findings_new: null, findings_closed: null, value_at_risk: null };
+  }
+  return { id: h.id, run_number: h.run_number ?? 0, status: h.status, run_at: h.run_at, label: h.label, system_id: h.metadata?.system_id ?? systemId ?? "", baseline: Boolean(h.metadata?.baseline), kind: h.metadata?.trigger ?? "manual", objects, records_checked: 0, duration_s: 0 };
 }

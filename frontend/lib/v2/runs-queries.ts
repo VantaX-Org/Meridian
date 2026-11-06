@@ -24,7 +24,7 @@ import { JOBS_QUERY_OPTIONS } from "@/hooks/use-jobs";
 
 /** Query keys of the step 3 reads. Every key starts with "v2" and carries the fixture flag, like the landscape keys. */
 export const runKeys = {
-  timeline: (fixture: boolean, systemId: string | null, limit: number) => ["v2", "timeline", fixture, systemId, limit] as const,
+  timeline: (fixture: boolean, systemId: string | null, limit: number, module?: string) => ["v2", "timeline", fixture, systemId, limit, module ?? null] as const,
   compare: (fixture: boolean, a: string, b: string) => ["v2", "compare", fixture, a, b] as const,
   changes: (fixture: boolean, a: string, b: string) => ["v2", "compare-changes", fixture, a, b] as const,
   head: (fixture: boolean, id: string) => ["v2", "run-head", fixture, id] as const,
@@ -39,9 +39,9 @@ export const runKeys = {
 };
 
 /** The last `limit` runs of the scope (one system, or all), oldest first. */
-export function useTimeline(systemId: string | null, limit = 8) {
+export function useTimeline(systemId: string | null, limit = 8, module?: string) {
   const fixture = useFixture();
-  return useQuery({ queryKey: runKeys.timeline(fixture, systemId, limit), queryFn: () => getTimeline(systemId, limit), staleTime: 30_000 });
+  return useQuery({ queryKey: runKeys.timeline(fixture, systemId, limit, module), queryFn: () => getTimeline(systemId, limit, module), staleTime: 30_000 });
 }
 
 export function useCompareSummary(a: string, b: string) {
@@ -76,7 +76,7 @@ export function useCompareRecordKeys(checkId: string, q: CompareKeysQuery) {
 
 export function useVersionHead(id: string) {
   const fixture = useFixture();
-  return useQuery({ queryKey: runKeys.head(fixture, id), queryFn: () => getVersionHead(id), staleTime: 15_000, retry: false });
+  return useQuery({ queryKey: runKeys.head(fixture, id), queryFn: () => getVersionHead(id), staleTime: 15_000, retry: false, enabled: Boolean(id) });
 }
 
 export function useVersionsPage(q: VersionsQuery) {

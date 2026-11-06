@@ -131,10 +131,11 @@ function timelineRun(k: number): TimelineRun {
 
 const visibleRuns = (): number[] => [1, 2, 3, 4, 5, 6, 7, 8].filter((k) => !state.archived.has(RUNS[RUNS.length - k].id));
 
-export function fixtureTimeline(systemId: string | undefined, limit: number): { system_id: string | null; limit: number; runs: TimelineRun[] } {
+export function fixtureTimeline(systemId: string | undefined, limit: number, module?: string): { system_id: string | null; limit: number; runs: TimelineRun[] } {
   if (systemId && systemId !== ECC.id) return { system_id: systemId, limit, runs: [] };
   const ks = visibleRuns().slice(-limit);
-  return { system_id: systemId ?? null, limit, runs: ks.map(timelineRun) };
+  const runs = ks.map(timelineRun).filter((r) => !module || module in r.objects);
+  return { system_id: systemId ?? null, limit, runs };
 }
 
 function head(k: number): VersionHead {
@@ -612,7 +613,7 @@ function configLoadOf(systemId: string): ConfigLoad | { status: "never_loaded" }
 
 /** The answer to one step 3 read, or NONE when the path is not one of this step's. */
 export function runsFixtureResponse(path: string, params: Params): unknown {
-  if (path === "/runs/timeline") return fixtureTimeline(params.system_id ? String(params.system_id) : undefined, Number(params.limit ?? 8));
+  if (path === "/runs/timeline") return fixtureTimeline(params.system_id ? String(params.system_id) : undefined, Number(params.limit ?? 8), params.module ? String(params.module) : undefined);
   const vs = /^\/runs\/([^/]+)\/vs\/([^/]+)\/summary$/.exec(path);
   if (vs) return fixtureCompare(decodeURIComponent(vs[1]), decodeURIComponent(vs[2]));
   const sd = /^\/runs\/([^/]+)\/vs\/([^/]+)\/score-delta$/.exec(path);

@@ -1,6 +1,7 @@
 """The run timeline and the before/after summary of two runs.
 
-GET /api/v1/runs/timeline?system_id=&limit=8   the last N finished runs of the scope, oldest first, each with its
+GET /api/v1/runs/timeline?system_id=&module=&limit=8  the last N finished runs of the scope (of the runs that
+                                               scored ``module`` when given), oldest first, each with its
                                                run number, status, per-object scores, findings and value at risk,
                                                records checked, duration, baseline flag and job kind
 GET /api/v1/runs/{a}/vs/{b}/summary            per object before and after, and the rules that started failing,
@@ -95,6 +96,7 @@ _RUNS_SQL = f"""
        AND metadata->>'purpose' IS DISTINCT FROM 'process_discovery'
        AND metadata->>'archived' IS DISTINCT FROM 'true'
        AND (CAST(:sid AS text) IS NULL OR metadata->>'system_id' = CAST(:sid AS text))
+       AND (CAST(:mod AS text) IS NULL OR (dqs_summary -> CAST(:mod AS text)) IS NOT NULL)
      ORDER BY run_at DESC, id DESC LIMIT :n"""
 
 # failing records and priced cost per (run, object, rule), for the listed runs and the runs before them
@@ -136,12 +138,14 @@ def _object(m: dict, run, mod: str, fails: dict, cost: dict, currency: str) -> d
 
 
 @router.get("/timeline", response_model=TimelineOut)
-async def timeline(system_id: Optional[uuid.UUID] = Query(None), limit: int = Query(8, ge=1, le=50),
+async def timeline(system_id: Optional[uuid.UUID] = Query(None), module: Optional[str] = Query(None, max_length=64),
+                   limit: int = Query(8, ge=1, le=50),
                    db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
-    """The last ``limit`` finished runs of one system (or of every system), oldest first."""
+    """The last ``limit`` finished runs of one system (or of every system), oldest first. With ``module`` the limit
+    counts only runs that scored that object, so an object last run long ago still has its runs."""
     await _rls(db, tenant)
     t = str(tenant.id)
-    rows = (await db.execute(text(_RUNS_SQL), {"t": t, "sid": str(system_id) if system_id else None, "n": limit})).mappings().all()
+    rows = (await db.execute(text(_RUNS_SQL), {"t": t, "sid": str(system_id) if system_id else None, "mod": module, "n": limit})).mappings().all()
     ids = [r["id"] for r in rows]
     widest = await _widest(db, t, ids)
     currency = str(effective_cost_model((await db.execute(text("SELECT cost_model FROM tenants WHERE id = CAST(:t AS uuid)"),

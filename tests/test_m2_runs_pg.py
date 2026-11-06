@@ -70,6 +70,20 @@ async def test_timeline_order_baseline_and_shape(owner, monkeypatch):
 
 @needs_db
 @pytest.mark.anyio
+async def test_timeline_module_filter_limits_runs_of_that_object(owner, monkeypatch):
+    s = seed_m2(owner)
+    client = await start(monkeypatch, s["tid"])
+    async with client:
+        get = lambda **p: client.get("/api/v1/runs/timeline", params={"system_id": s["ecc"], **p}, headers=headers())  # noqa: E731
+        one = (await get(module="material_master", limit=1)).json()["runs"]
+        assert [x["id"] for x in one] == [s["run"]] and "material_master" in one[0]["objects"]
+        assert (await get(module="no_such_object")).json()["runs"] == []
+        every = (await get(module="material_master")).json()["runs"]
+        assert all("material_master" in x["objects"] for x in every)
+
+
+@needs_db
+@pytest.mark.anyio
 async def test_timeline_findings_and_value_at_risk(owner, monkeypatch):
     from sqlalchemy import text
     s = seed_m2(owner)

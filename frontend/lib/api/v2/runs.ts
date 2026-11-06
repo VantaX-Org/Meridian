@@ -147,8 +147,8 @@ export interface VersionCompare {
   checks: Record<ChangeKind, CheckChange[]>;
 }
 
-export function getTimeline(systemId: string | null, limit = 8): Promise<Timeline> {
-  return v2Get<Timeline>("/runs/timeline", { system_id: systemId ?? undefined, limit });
+export function getTimeline(systemId: string | null, limit = 8, module?: string): Promise<Timeline> {
+  return v2Get<Timeline>("/runs/timeline", { system_id: systemId ?? undefined, module, limit });
 }
 
 export function getCompareSummary(a: string, b: string): Promise<CompareSummary> {
