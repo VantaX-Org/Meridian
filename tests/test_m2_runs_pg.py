@@ -142,6 +142,32 @@ async def test_status_per_system_reads_each_object_at_its_own_run(owner, monkeyp
         assert b["run_at"] is not None and b["cost_model"]
 
 
+@needs_db
+@pytest.mark.anyio
+async def test_status_cache_is_keyed_per_system(owner, monkeypatch):
+    """A newer run on one system shows up inside the TTL even when it is older than another system's newest run."""
+    import json
+    import uuid
+    from datetime import timedelta
+    from sqlalchemy import text
+    from api.middleware import cache
+    from tests.landscape_seed import RUN_AT
+    cache._memo.clear()
+    monkeypatch.setattr(cache, "get_redis", lambda: None)
+    s = seed_m2(owner)
+    client = await start(monkeypatch, s["tid"])
+    async with client:
+        first = {x["system_id"]: x for x in (await client.get("/api/v1/status", headers=headers())).json()["systems"]}
+        assert first[s["spare"]]["run_number"] == 1
+        newer = str(uuid.uuid4())
+        with owner.begin() as c:  # spare run 2: newer than spare run 1, still older than the tenant's newest run
+            c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, run_at, run_number, label, metadata, dqs_summary) "
+                           "SELECT :v, tenant_id, 'complete', :at, 2, 'spare 2', metadata, dqs_summary FROM analysis_versions WHERE id = :src"),
+                      {"v": newer, "at": RUN_AT - timedelta(hours=1), "src": s["run_spare"]})
+        again = {x["system_id"]: x for x in (await client.get("/api/v1/status", headers=headers())).json()["systems"]}
+        assert (again[s["spare"]]["latest_run_id"], again[s["spare"]]["run_number"]) == (newer, 2)
+
+
 def test_findings_delta():
     from api.routes.run_timeline import findings_delta
     assert findings_delta({"a": 5, "b": 2}, {"a": 3, "c": 4}) == (4, 4)  # a +2, b +2 | c -4

@@ -244,14 +244,18 @@ CACHE_PREFIX = "work"  # keyed per tenant; bumped by api.middleware.cache.mark_w
 @router.get("/status", response_model=StatusStripOut, dependencies=[Depends(require_permission("view"))])
 async def get_status(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """The status strip (latest run, records and rules checked, time to score, cost model, licence) and each system's
-    objects at their own newest runs, cached 30 s per tenant and latest run (Redis; in this process when Redis is down)."""
+    objects at their own newest runs, cached 30 s per tenant and per-system run set (Redis; in this process when Redis is down)."""
     await _rls(db, tenant)
 
     async def produce() -> dict:
         return (await build_status(db, tenant, per_system=True)).model_dump(mode="json")
 
-    return await cached_json(CACHE_PREFIX, "status", tenant.id, {"latest": await latest_run(db, tenant.id)},
-                             int(STATUS_TTL_SECONDS), produce, memo_fallback=True)
+    # The body reads every system's objects at their own newest runs, so the key is that whole set: a newer run on
+    # any one system changes it, where the tenant-wide latest run id alone would miss a run older than another system's.
+    cells = [(r["sid"], r["module"], r["run_id"]) for r in
+             (await db.execute(text(_CELL_RUNS_SQL), {"t": str(tenant.id)})).mappings().all()]
+    key = {"latest": await latest_run(db, tenant.id), "cells": sorted(cells)}
+    return await cached_json(CACHE_PREFIX, "status", tenant.id, key, int(STATUS_TTL_SECONDS), produce, memo_fallback=True)
 
 
 # The newest finished run of every (system, object): the run set of api/services/run_context.py (no archived or

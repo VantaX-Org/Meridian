@@ -157,9 +157,9 @@ async def test_status_strip_and_cache(seeded, client_for, monkeypatch):
     calls = []
     real = landscape.build_status
 
-    async def counting(db, tenant):
+    async def counting(db, tenant, **kw):
         calls.append(str(tenant.id))
-        return await real(db, tenant)
+        return await real(db, tenant, **kw)
     monkeypatch.setattr(landscape, "build_status", counting)
     async with client:
         first = (await client.get("/api/v1/status", headers=HEADERS)).json()
