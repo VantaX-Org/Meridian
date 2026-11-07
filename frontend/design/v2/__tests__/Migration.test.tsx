@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
+import { fixtureWorkbookReport } from "@/lib/api/v2/fixtures/migration";
 import * as migrationApi from "@/lib/api/v2/migration";
 import * as runsApi from "@/lib/api/v2/runs";
 import { Migration } from "../screens/Migration";
@@ -104,6 +105,37 @@ describe("Workbook from the new system", () => {
     expect(panel.textContent).toContain("Biographical Information");
     expect(panel.textContent).toContain("Not filled");
     expect(panel.textContent).toContain("Not a valid date");
+    expect(within(panel).getByTestId("mig-workbook-format").textContent).toContain("Excel workbook");
+    expect(within(panel).getByTestId("mig-workbook-mapped").textContent).toContain("14 values");
+    expect(panel.textContent).toContain("Country rules not checked");
+  });
+
+  it("names the upload's format and offers the same layout back", async () => {
+    vi.spyOn(migrationApi, "checkTargetWorkbook").mockResolvedValue({
+      ...fixtureWorkbookReport(), format: { id: "xml2003", same: true, written_as: "xml", skipped: ["notes.pdf"] },
+      summary: { ...fixtureWorkbookReport().summary, mandatory_sheets_empty: 1 },
+    });
+    const save = vi.spyOn(migrationApi, "exportTargetWorkbook").mockResolvedValue("target_workbook.xml");
+    renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
+    const { panel, button } = await pick();
+    choose(panel);
+    fireEvent.click(button);
+    expect((await within(panel).findByTestId("mig-workbook-format")).textContent).toContain("Migration Cockpit");
+    expect(within(panel).getByTestId("mig-workbook-skipped").textContent).toContain("notes.pdf");
+    expect(within(panel).getByTestId("mig-workbook-empty").textContent).toContain("1 mandatory sheets");
+    fireEvent.click(within(panel).getByRole("button", { name: "Export in the same format" }));
+    await screen.findByText("Workbook data saved as target_workbook.xml");
+    expect(save.mock.calls[0].slice(2)).toEqual(["source", "xml"]);
+  });
+
+  it("does not offer the same layout when the upload cannot come back in it", async () => {
+    vi.spyOn(migrationApi, "checkTargetWorkbook").mockResolvedValue({ ...fixtureWorkbookReport(), format: { id: "xlsx", same: false, written_as: "xlsx", skipped: [] } });
+    renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
+    const { panel, button } = await pick();
+    choose(panel);
+    fireEvent.click(button);
+    await within(panel).findByTestId("mig-workbook-summary");
+    expect(within(panel).queryByRole("button", { name: "Export in the same format" })).toBeNull();
   });
 
   it("exports the checked workbook in the chosen format", async () => {
@@ -140,7 +172,7 @@ describe("Workbook from the new system", () => {
     vi.spyOn(runsApi, "getVersionsPage").mockResolvedValue({ versions: [], total: 0 });
     renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
     expect((await screen.findByTestId("mig-workbook")).textContent).toBeTruthy();
-    expect(await screen.findByText(/No SuccessFactors run has finished yet/)).toBeTruthy();
+    expect(await screen.findByText(/No run has finished yet/)).toBeTruthy();
   });
 
   it("offers a retry when the runs cannot be read", async () => {

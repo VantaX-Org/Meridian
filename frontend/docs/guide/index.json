@@ -24,7 +24,7 @@
         { "slug": "lineage", "title": "Lineage", "summary": "From source table to field to rule to the S/4 feature it blocks, and the related objects to fix first.", "video": "guide2-lineage" },
         { "slug": "processes", "title": "Processes and the designer", "summary": "Which process steps the data blocks, what fixing a rule would release, handing a rule off, and editing the process model.", "video": "guide2-processes" },
         { "slug": "schedules", "title": "Reports and schedules", "summary": "Reports built from a stored run, and schedules that build and send them on a rhythm.", "video": "guide2-schedules" },
-        { "slug": "migration", "title": "Migration", "summary": "Whether your records would load into the new system, the gaps by kind, and filling the new system's workbook from a finished SuccessFactors run.", "video": "guide2-migration" },
+        { "slug": "migration", "title": "Migration", "summary": "Whether your records would load into the new system, the gaps by kind, and filling the new system's workbook or load file from a finished run.", "video": "guide2-migration" },
         { "slug": "waves", "title": "Waves and gates", "summary": "Migration waves with their verdict counts, gate criteria and readiness certificate, and assigning objects to waves.", "video": "guide2-waves" }
       ]
     },

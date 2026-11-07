@@ -92,6 +92,22 @@ async def test_export_is_the_workbook_format_and_is_audited(owner, monkeypatch, 
 
 @needs_db
 @pytest.mark.anyio
+async def test_same_format_export_comes_back_as_the_uploaded_file(owner, monkeypatch, tmp_path):
+    s = seed_run(owner, tmp_path)
+    csv = {"file": ("Personal Info.csv", b"first-name,gender\r\nFirst Name,Gender\r\n", "text/csv")}
+    async with await start(monkeypatch, s) as client:
+        check = await client.post(f"{P}/{s['run']}/check", files=csv, headers=headers())
+        same = await client.post(f"{P}/{s['run']}/export", params={"format": "source"}, files=csv, headers=headers())
+        refused = await client.post(f"{P}/{s['run']}/export", params={"format": "source"}, files=upload(), headers=headers())
+    assert check.json()["format"] == {"id": "delimited", "same": True, "written_as": "csv", "skipped": []}
+    assert same.status_code == 200, same.text
+    assert same.headers["content-disposition"].endswith(".csv") and same.headers["content-type"].startswith("text/csv")
+    assert same.content.startswith(b"first-name,gender\r\nFirst Name,Gender\r\nAnn,F\r\n")
+    assert refused.status_code == 422  # a definition workbook has no load layout to write back
+
+
+@needs_db
+@pytest.mark.anyio
 async def test_refusals(owner, monkeypatch, tmp_path):
     s = seed_run(owner, tmp_path)
     unfinished = seed_run(owner, tmp_path, status="running")

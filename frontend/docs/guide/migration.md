@@ -12,15 +12,15 @@ Migration shows whether your records would load into the new system, and what to
 
 ## The workbook from the new system
 
-The panel **Workbook from the new system** fills the new system's own workbook from a finished SuccessFactors run. It has three steps: choose the run and workbook, check what fits, export the data.
+The panel **Workbook from the new system** fills the new system's own workbook or load file from a finished run. It has three steps: choose the run and workbook, check what fits, export the data.
 
-1. Choose a finished run, and the workbook file (.xlsx) the new system gave you.
+1. Choose a finished run, and the file the new system gave you. Excel (.xlsx, .xlsm, .xls, .xlsb), OpenDocument (.ods), Migration Cockpit XML (.xml), delimited text (.csv, .tsv, .txt, .dat) and ZIP files can be read.
 2. Select **Check the workbook**. The check only reads the workbook. Nothing is stored and nothing is exported yet.
 3. Read the result: how many rows are ready and how many are held back, and how many sheets can be filled. A table lists each sheet with what it is filled from, the columns filled, the rows ready and the rows held back.
 4. Where required columns have no data in the run, the panel names them: the new system will refuse those rows until the columns are filled.
-5. Export the data as Excel or as CSV files. The export holds the ready rows in the workbook's own columns, and held rows on a Held back tab. It is recorded in the audit log. The workbook itself is not stored.
+5. Export the data in the same format, as Excel or as CSV files. The export holds the ready rows in the workbook's own columns, and held rows on a Held back tab. In the same format, held rows travel in a separate file, and .xls, .xlsb, .xlsm and .ods files come back as .xlsx. Every export is recorded in the audit log. The workbook itself is not stored.
 
-Without a finished SuccessFactors run, the panel says so; a finished run is needed before the workbook can be filled.
+Without a finished run, the panel says so; a finished run is needed before the workbook can be filled.
 
 ## What you can do, by role
 
@@ -32,9 +32,9 @@ Gaps by kind come from the latest analysis of your records against the target sy
 
 ## When something is wrong
 
-- **The workbook could not be checked**: the page shows the reason in plain words. Check that the file is the .xlsx workbook from the new system and try again.
+- **The workbook could not be checked**: the page shows the reason in plain words. Check that the file is the one from the new system and try again.
 - **Rows are held back**: read the table of required columns with no data, and the reasons per row, then fix the source and run again.
-- **No SuccessFactors run has finished yet**: finish a run first. The workbook cannot be filled without one.
+- **No run has finished yet**: finish a run first. The workbook cannot be filled without one.
 
 ## Keyboard
 

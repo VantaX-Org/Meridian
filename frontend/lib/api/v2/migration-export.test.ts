@@ -31,4 +31,10 @@ describe("exportTargetWorkbook", () => {
     expect([path, params, name, method]).toEqual(["/migration/target-workbook/r%201/export", { format: "csv" }, "target_workbook_r 1.zip", "post"]);
     expect((body.get("file") as File).name).toBe("target.xlsx");
   });
+
+  it("names a same-format export by the extension the check reported", async () => {
+    const { exportTargetWorkbook } = await import("./migration");
+    await exportTargetWorkbook("r1", new File(["x"], "target.xml"), "source", "xml");
+    expect((download.mock.calls.at(-1) as unknown as unknown[]).slice(1, 3)).toEqual([{ format: "source" }, "target_workbook_r1.xml"]);
+  });
 });

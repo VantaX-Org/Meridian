@@ -8,6 +8,7 @@ import pytest
 from openpyxl import Workbook as Book
 
 from api.services.migration import workbook as wb
+from api.services.migration import workbook_formats
 from checks.frames import ParquetTable, TableFrames
 from sap.ddic import get_dictionary
 
@@ -143,7 +144,7 @@ def test_rejects_a_zip_with_no_workbook_inside():
 
 
 def test_rejects_a_zip_bomb(monkeypatch):
-    monkeypatch.setattr(wb, "MAX_UNPACKED_BYTES", 10)
+    monkeypatch.setattr(workbook_formats, "MAX_UNPACKED_BYTES", 10)
     with pytest.raises(wb.WorkbookError, match="too large"):
         wb.parse_workbook(sample())
 
