@@ -252,8 +252,10 @@ def _read_picklist(rows: list[tuple], picklists: dict[str, set[str]]) -> None:
 def _cockpit(raw: list[tuple[str, list[tuple]]]) -> list[Sheet]:
     """The sheets of an S/4HANA Migration Cockpit template, whose Field List sheet defines all the others."""
     listing = next((rows for name, rows in raw if _norm(name) == "fieldlist"), None)
+    if listing is None:
+        return []
     head = None
-    for at, row in enumerate((listing or [])[:10]):
+    for at, row in enumerate(listing[:10]):
         names = {_norm(c): i for i, c in enumerate(row) if _text(c)}
         if "sheetname" in names:
             head = names
@@ -288,10 +290,10 @@ def _cockpit(raw: list[tuple[str, list[tuple]]]) -> list[Sheet]:
 
     sheets = []
     for name, rows in raw:
-        columns = fields.get(_norm(re.sub("mandatory", "", name, flags=re.I)))
-        if not columns or _norm(name) == "fieldlist":
+        listed = fields.get(_norm(re.sub("mandatory", "", name, flags=re.I)))
+        if not listed or _norm(name) == "fieldlist":
             continue
-        columns = list(columns.values())
+        columns = list(listed.values())
 
         def cells(row):
             return [_norm(_text(c).replace("*", "")) for c in row]
@@ -667,6 +669,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
 
 def same_format(workbook: Workbook, tabs: dict[str, pd.DataFrame], held_csv: Optional[bytes]) -> tuple[bytes, str]:
     """The filled tabs written back in the upload's own layout, each value in its column's own place."""
+    assert workbook.source is not None, "only an uploaded file has a layout to write back"
     loads: dict[str, dict] = {}
     for sheet in workbook.sheets:
         tab = tabs.get(sheet.name)

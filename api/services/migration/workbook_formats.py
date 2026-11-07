@@ -147,12 +147,11 @@ _TOO_LARGE = "This workbook is too large once unpacked."
 
 
 def _zip(data: bytes, name: str, budget: Optional[list[int]]) -> Source:
-    nested = budget is not None
-    budget = budget if nested else [MAX_UNPACKED_BYTES]
+    left = [MAX_UNPACKED_BYTES] if budget is None else budget
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as z:
-            budget[0] -= sum(i.file_size for i in z.infolist())
-            if budget[0] < 0:
+            left[0] -= sum(i.file_size for i in z.infolist())
+            if left[0] < 0:
                 raise WorkbookError(_TOO_LARGE)
             names = set(z.namelist())
             if "xl/workbook.xml" in names:
@@ -161,9 +160,9 @@ def _zip(data: bytes, name: str, budget: Optional[list[int]]) -> Source:
                 return _calamine(data, "xlsb", name)
             if "mimetype" in names and z.read("mimetype").startswith(_ODS):
                 return _calamine(data, "ods", name)
-            if nested:
+            if budget is not None:
                 raise WorkbookError(_UNKNOWN)  # one level of archive only
-            return _archive(z, name, budget)
+            return _archive(z, name, left)
     except zipfile.BadZipFile as e:
         raise WorkbookError(_DAMAGED) from e
 
@@ -358,8 +357,11 @@ def _splice_xml(source: Source, loads: dict) -> bytes:
         if load is None:
             continue
         pre = m.group(1) or ""
-        opened = re.compile(rf"<{pre}Table\b[^>]*>").search(text, m.end())
-        close = text.index(f"</{pre}Table>", opened.end())
+        end = text.find(f"</{pre}Worksheet>", m.end())
+        opened = re.compile(rf"<{pre}Table\b[^>]*>").search(text, m.end(), max(end, 0))
+        close = text.find(f"</{pre}Table>", opened.end(), end) if opened else -1
+        if opened is None or close < 0:  # a sheet with no table has nowhere to take rows
+            raise WorkbookError(_DAMAGED)
         inner = text[opened.end():close]
         while (at := inner.rfind(f"<{pre}Row")) >= 0 and "Data" not in inner[at:]:  # blank rows Excel left at the end
             inner = inner[:at].rstrip()

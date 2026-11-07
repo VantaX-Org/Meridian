@@ -244,6 +244,16 @@ def test_cockpit_values_are_escaped():
     assert list(dict(wf.read_source(out, "m.xml").sheets)["Basic Data Mandatory"][2])[0] == "A&B<C"
 
 
+def test_a_sheet_with_no_table_is_refused_and_never_takes_the_next_sheets_rows():
+    xml = ('<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" '
+           'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Empty"></Worksheet>'
+           '<Worksheet ss:Name="Full"><Table><Row><Cell><Data ss:Type="String">A</Data></Cell></Row></Table></Worksheet>'
+           '</Workbook>').encode()
+    source = wf.read_source(xml, "a.xml")
+    with pytest.raises(wb.WorkbookError):
+        wf._splice_xml(source, {"Empty": ([], [["x"]])})
+
+
 def test_held_rows_travel_beside_the_load_file_never_inside_it():
     book = wb.parse_workbook(cockpit(), "materials.xml")
     long = TableFrames({"MARA": pd.DataFrame({"MARA.MATNR": ["M1", "M2"], "MARA.MTART": ["ROH", "TOOLONG"]})},
