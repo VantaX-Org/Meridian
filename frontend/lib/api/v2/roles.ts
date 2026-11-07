@@ -323,6 +323,8 @@ export interface StewardAssignment {
   module: string;
   slice_kind: SliceKind;
   slice_value: string;
+  /** The plant or company name from the newest run. Absent where no run holds one: the code stands alone. */
+  slice_text?: string | null;
   steward_user_id: string | null;
   steward_name: string | null;
   source: "template" | "manual";

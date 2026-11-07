@@ -28,6 +28,10 @@ export interface WorkFilters {
   system?: string;
   /** Step 10: the ledger as it stood at this run; GET /work/records only, never with scope=current. */
   as_of_run?: string;
+  /** One run, not today: sent without scope. */
+  version_id?: string;
+  /** With version_id: a baseline run; only the records failing a check they did not fail in it. */
+  since?: string;
   /** A migration wave id: only the objects in that wave. */
   wave?: string;
   /** With a wave: only its objects with this verdict (go, no-go). */
@@ -43,7 +47,7 @@ export interface WorkQuery extends WorkFilters {
 const scoped = { scope: "current" } as const;
 
 /** GET /work/records. As of a run, the server reads the current state as it stood then: no scope is sent with it. */
-export const getWork = (q: WorkQuery): Promise<WorkPage> => v2Get<WorkPage>("/work/records", q.as_of_run ? { ...q } : { ...scoped, ...q });
+export const getWork = (q: WorkQuery): Promise<WorkPage> => v2Get<WorkPage>("/work/records", q.as_of_run || q.version_id ? { ...q } : { ...scoped, ...q });
 export const getSummary = (f: WorkFilters = {}): Promise<WorkSummary> => v2Get<WorkSummary>("/work/summary", { ...scoped, ...f });
 export const getGroups = (
   f: Pick<WorkFilters, "module" | "severity" | "proposed" | "q"> & { limit?: number } = {},
@@ -158,8 +162,8 @@ export interface ExportQuery extends WorkFilters {
 
 /** The query an export sends: the ledger's filters, batch, policy and sort included; a past run is not exported. */
 export function exportParams(f: ExportQuery): Record<string, string | boolean> {
-  const { as_of_run: _asOf, ...rest } = f;
-  void _asOf;
+  const { as_of_run: _asOf, version_id: _run, since: _since, ...rest } = f;
+  void [_asOf, _run, _since];
   return Object.fromEntries(Object.entries({ ...scoped, ...rest }).filter(([, v]) => v !== undefined && v !== null && v !== "")) as Record<string, string | boolean>;
 }
 

@@ -167,8 +167,8 @@ export function WorkCanvas() {
   const can = useMemo(() => ({ apply: wc.apply, approve: wc.approve, assign: wc.assign }), [wc.apply, wc.approve, wc.assign]);
   // A policy class or a past run is read by GET /work/records alone: the rule groups do not take them. The fix
   // sheets take the policy (and the batch and the sort) but not a past run.
-  const narrowed = Boolean(state.policy || state.asOf);
-  const pastRun = Boolean(state.asOf);
+  const narrowed = Boolean(state.policy || state.asOf || state.since);
+  const pastRun = Boolean(state.asOf || state.since);
   const grouped = state.group && GROUPABLE.has(state.chip) && !narrowed;
   const packs = usePolicyPacks().data?.packs;
   const runList = useRunList();
@@ -176,6 +176,10 @@ export function WorkCanvas() {
   // At phone width the chips and one Filters button sit above the rows; the tags and the toolbar open under it (F28).
   const [filtersOpen, setFiltersOpen] = useState(false);
   const asOfRun = state.asOf ? runList.data?.versions.find((v) => v.id === state.asOf) : undefined;
+  const runWhen = (id: string | null) => {
+    const run = runList.data?.versions.find((v) => v.id === id);
+    return run ? formatDate(run.run_at, "datetime") : (id ?? "").slice(0, 8);
+  };
   const groupsQ = useWorkGroups({ module: state.module ?? undefined, severity: state.severity ?? undefined }, true);
   const rowsQ = useWorkRows(filters, state.sort, !grouped && !viewPending);
 
@@ -775,7 +779,7 @@ export function WorkCanvas() {
           </label>
           <label className="m2-selbox">
             <span className="m2-meta">{tr("As of run")}</span>
-            <select className="m2-sel" aria-label={tr("As of run")} value={state.asOf ?? ""} onChange={(e) => go({ asOf: e.target.value || null, group: false })} data-testid="as-of-run">
+            <select className="m2-sel" aria-label={tr("As of run")} value={state.asOf ?? ""} onChange={(e) => go({ version: null, since: null, asOf: e.target.value || null, group: false })} data-testid="as-of-run">
               <option value="">{tr("Today")}</option>
               {(runList.data?.versions ?? []).map((v) => (
                 <option key={v.id} value={v.id}>
@@ -847,6 +851,17 @@ export function WorkCanvas() {
             {tr("Each object is read at its newest run up to then. Counts on the chips are today's.")}{" "}{tr("Actions are off here; go back to today to act.")}
           </span>
           <button type="button" className="m2-btn m2-sm" onClick={() => go({ asOf: null })}>
+            {tr("Back to today")}
+          </button>
+        </div>
+      ) : null}
+      {state.since ? (
+        <div className="m2-asof" role="status" data-testid="ledger-since">
+          <span>
+            <strong>{tr("New in run {b}: records failing a check they did not fail in run {a}.", { b: runWhen(state.version), a: runWhen(state.since) })}</strong>{" "}
+            {tr("Counts on the chips are today's.")}{" "}{tr("Actions are off here; go back to today to act.")}
+          </span>
+          <button type="button" className="m2-btn m2-sm" onClick={() => go({ version: null, since: null })}>
             {tr("Back to today")}
           </button>
         </div>

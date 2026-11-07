@@ -230,7 +230,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
   const t = S?.totals;
   const title = chipA && chipB ? tr("{b} vs {a}", { b: nameB, a: nameA }) : tr("Compare runs");
   const worst = S ? worstObject(S) : null;
-  const workQuery = new URLSearchParams({ as_of_run: b });
+  const workQuery = new URLSearchParams({ version_id: b, since: a, filter: "open" });
   if (sysB) workQuery.set("system", sysB);
   if (worst) workQuery.set("module", worst.module);
 
@@ -451,7 +451,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
                     <Change d={d} />
                   </div>
                   <div className="m2-c">
-                    {tr("{raw_score} to {raw_score2} measured, shown {score} to {score2}, {records_checked} to {records_checked2} records checked. {newly_failing} new, {fixed} fixed, {worse} worse, {better} better.", { raw_score: f1(o.before?.raw_score), raw_score2: f1(o.after?.raw_score), score: f1(o.before?.score), score2: f1(o.after?.score), records_checked: int(o.before?.records_checked), records_checked2: int(o.after?.records_checked), newly_failing: o.newly_failing, fixed: o.fixed, worse: o.worse, better: o.better })}
+                    {tr("{raw_score} to {raw_score2} measured, shown {score} to {score2}, {records_checked} to {records_checked2} records checked, coverage {coverage} to {coverage2}. {newly_failing} new, {fixed} fixed, {worse} worse, {better} better.", { coverage: pct1(o.before?.coverage), coverage2: pct1(o.after?.coverage), raw_score: f1(o.before?.raw_score), raw_score2: f1(o.after?.raw_score), score: f1(o.before?.score), score2: f1(o.after?.score), records_checked: int(o.before?.records_checked), records_checked2: int(o.after?.records_checked), newly_failing: o.newly_failing, fixed: o.fixed, worse: o.worse, better: o.better })}
                   </div>
                 </V2Link>
               ))}

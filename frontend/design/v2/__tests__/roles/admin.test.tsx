@@ -65,6 +65,7 @@ describe("the admin's jobs", () => {
     const bp = await waitFor(() => within(screen.getByTestId("steward-assignments")).getByRole("row", { name: /^Business partner/ }));
     expect(within(bp).getAllByRole("cell").map((c) => c.textContent)).toEqual(["Whole object", "All", "A. Naidoo", "The template"]);
     expect(norm(screen.getByTestId("steward-assignments"))).toContain("By hand");
+    expect(norm(screen.getByTestId("steward-assignments"))).toContain("Johannesburg plant"); // plant 3000 has no name: code alone
     const gaps = await screen.findByTestId("template-gaps");
     expect(norm(gaps)).toContain("No owner");
   });

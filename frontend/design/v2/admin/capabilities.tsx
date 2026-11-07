@@ -16,7 +16,7 @@ import { getAllDelegations } from "@/lib/api/v2/roles";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { ROLE_NAMES, setViewAs, VIEW_AS_ROLES } from "@/lib/v2/view-as";
 import { int } from "@/lib/v2/score";
-import { Mono } from "../parts";
+import { Coded, Mono } from "../parts";
 import { AdminPage, Block, Loaded, NeedsPermission, Note, StatusWord, useCan } from "./kit";
 import "../roles.css";
 import { t as tr, lc } from "@/lib/v2/i18n";
@@ -171,7 +171,7 @@ export function StewardshipSection() {
                               <tr key={`${a.module}|${a.slice_kind}|${a.slice_value}`}>
                                 <th scope="row">{t.labels[a.module] ?? a.module}</th>
                                 <td>{SLICE_WORD[a.slice_kind] ?? a.slice_kind}</td>
-                                <td>{a.slice_value === "*" ? tr("All") : <Mono>{a.slice_value}</Mono>}</td>
+                                <td>{a.slice_value === "*" ? tr("All") : a.slice_text ? <Coded code={a.slice_value} text={a.slice_text} /> : <Mono>{a.slice_value}</Mono>}</td>
                                 <td>{a.steward_name ?? "—"}</td>
                                 <td className="m2-meta">{a.source === "template" ? tr("The template") : tr("By hand")}</td>
                               </tr>

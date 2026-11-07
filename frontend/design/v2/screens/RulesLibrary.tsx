@@ -12,6 +12,8 @@ import {
 } from "@/lib/api/v2/rulelib";
 import { useOpenItem, useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
+import { useRuleTrend } from "@/lib/v2/runs-queries";
+import { useScopeSystem } from "@/lib/v2/scope";
 import { filterRows, NO_FILTERS, rankRows, toRows, activeFilterCount, type LibFilters, type LibRow, type StateFilter } from "@/lib/v2/rules-library";
 import { int } from "@/lib/v2/score";
 import { sysKeys, useAllDrafts, useMigrationScenarios, useRefreshV2, useRuleList, useSuppressions } from "@/lib/v2/sys-queries";
@@ -27,19 +29,19 @@ import { ScrollFrame } from "./object/ScrollFrame";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Lede, PrimaryAction } from "../RunParts";
-import { Consequence, RibbonDash } from "./rules-parts";
+import { Consequence, RuleRibbon } from "./rules-parts";
 import { RuleBoard } from "./Cockpit";
 import { t, tx } from "@/lib/v2/i18n";
 
 type View = "rules" | "drafts" | "suppressions";
 
-const columns: GridColumn<LibRow>[] = [
+const columnsFor = (trend: Map<string, readonly (number | null)[]>): GridColumn<LibRow>[] => [
   { id: "rule", get header() { return t("Rule"); }, width: 300, pin: true, locked: true, cell: (r) => <Coded code={r.checkId} text={r.message} /> },
   { id: "object", get header() { return t("Object"); }, width: 170, cell: (r) => labelOf(r.module) },
   { id: "severity", get header() { return t("Severity"); }, width: 110, cell: (r) => <Sev severity={r.severity} /> },
   { id: "failing", get header() { return t("Failing"); }, width: 90, numeric: true, cell: (r) => (r.failing == null ? <Dash why={t("Not run yet")} /> : int(r.failing)) },
   { id: "pass", get header() { return t("Pass rate"); }, width: 90, numeric: true, cell: (r) => (r.passRate == null ? <Dash why={t("Not run yet")} /> : `${r.passRate.toFixed(1)}%`) },
-  { id: "ribbon", get header() { return t("Across runs"); }, width: 110, cell: () => <RibbonDash /> },
+  { id: "ribbon", get header() { return t("Across runs"); }, width: 110, cell: (r) => <RuleRibbon values={trend.get(`${r.module}|${r.checkId}`)} /> },
   { id: "state", get header() { return t("State"); }, width: 110, cell: (r) => (r.suppressed ? t("Suppressed") : r.enabled ? t("Enabled") : t("Disabled")) },
   { id: "source", get header() { return t("Source"); }, width: 90, cell: (r) => (r.source === "yaml" ? t("Shipped") : t("Custom")) },
   { id: "dimension", get header() { return t("Dimension"); }, width: 120, cell: (r) => (r.dimension ? labelOf(r.dimension) : <Dash why={t("Read from the object's rules when you filter by dimension")} />) },
@@ -354,7 +356,12 @@ export function RulesLibrary() {
   const scen = useMigrationScenarios(scenario || null);
   const scenarios = (summary.data ?? scen.data)?.scenarios ?? [];
   const byId = useMemo(() => new Map((scen.data?.rules ?? []).map((m) => [m.id, m] as const)), [scen.data]);
-  const gridColumns = useMemo(() => (scenario ? [...columns, ...scenarioColumns(byId)] : columns), [scenario, byId]);
+  const scopeSystem = useScopeSystem();
+  const ruleTrend = useRuleTrend((scopeSystem ?? landscape?.systems[0])?.id ?? null).data;
+  const gridColumns = useMemo(() => {
+    const base = columnsFor(new Map((ruleTrend?.rules ?? []).map((x) => [`${x.module}|${x.check_id}`, x.failing] as const)));
+    return scenario ? [...base, ...scenarioColumns(byId)] : base;
+  }, [scenario, byId, ruleTrend]);
   const shown = useMemo(() => {
     const base = filterRows(rows, filters);
     return scenario ? base.filter((r) => { const m = byId.get(r.checkId); return m && (!relevance || m.relevance === relevance); }) : base;

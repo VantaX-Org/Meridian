@@ -106,6 +106,31 @@ describe("the Work ledger as of a run", () => {
     await waitFor(() => expect(getUrl()).not.toContain("as_of_run"));
   });
 
+  it("shows what is new in a run: version_id and since go to the API without scope, and actions stay off", async () => {
+    const spy = vi.spyOn(workApi, "getWork");
+    expect(readState(new URLSearchParams(`since=${R3}`)).since).toBeNull();
+    setUrl(`/work?fixture=1&version_id=${R6}&since=${R3}&filter=open`);
+    renderWithQuery(
+      <ToastProvider>
+        <WorkCanvas />
+      </ToastProvider>,
+    );
+    const band = await screen.findByTestId("ledger-since");
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy.mock.calls[0][0]).toMatchObject({ version_id: R6, since: R3 });
+    const all = fixtureResponse<WorkPage>("/work/records", { scope: "current", status: "open", limit: 500 });
+    const fresh = fixtureResponse<WorkPage>("/work/records", { version_id: R6, since: R3, status: "open", limit: 500 });
+    expect(fresh.total).toBeGreaterThan(0);
+    expect(fresh.total).toBeLessThan(all.total);
+    expect(fixtureResponse<WorkPage>("/work/records", { version_id: R6, since: R6, limit: 500 }).total).toBe(0);
+    expect(() => fixtureResponse("/work/records", { since: R3, scope: "current" })).toThrow(/since compares one run/);
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(await screen.findByRole("menuitem", { name: /Export fix sheet/ })).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(within(band).getByRole("button", { name: "Back to today" }));
+    await waitFor(() => expect(getUrl()).not.toContain("since="));
+    expect(getUrl()).not.toContain("version_id");
+  });
+
   it("the As of run picker writes the run into the address", async () => {
     setUrl("/work?fixture=1");
     renderWithQuery(

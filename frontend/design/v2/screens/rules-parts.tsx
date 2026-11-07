@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { int } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
+import { Sparkline } from "../charts/Sparkline";
 import { Consequence, FlowSteps } from "../FixParts";
 import { Dash } from "../parts";
 
@@ -21,9 +23,12 @@ export function VerifiedMark({ children }: { children?: ReactNode }) {
   );
 }
 
-/** Findings across more than two runs: no endpoint gives it per rule, so the cell is a dash that says why. */
-export function RibbonDash() {
-  return <Dash why={t("Findings for one rule across several runs are not available yet. Open the rule to see the newest run.")} />;
+/** One rule's failing records across a system's latest runs, oldest first. A null is a run where the rule did not run. */
+export function RuleRibbon({ values }: { values?: readonly (number | null)[] }) {
+  const ran = (values ?? []).filter((v): v is number => v != null);
+  if (!ran.length) return <Dash why={t("No runs of this rule in this system yet.")} />;
+  const label = t("Failing records over the last {count} runs: {first} to {last}", { count: ran.length, first: int(ran[0]), last: int(ran[ran.length - 1]) });
+  return <Sparkline values={values as (number | null)[]} width={80} height={16} domain={[0, Math.max(1, ...ran)]} label={label} />;
 }
 
 /** The shared step strip, for rule screens whose steps are labels only. */

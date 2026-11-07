@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useV2Session } from "@/lib/v2/hooks";
 import { canAdminister } from "@/lib/v2/admin-sections";
@@ -15,6 +15,9 @@ import { ObjectsTree } from "./ObjectsTree";
 export type FlyId = Destination["id"] | null;
 
 const PIN_KEY = "m2.rail.pin";
+/** Hover intent: crossing the rail on the way somewhere opens nothing, and a slip off the flyout does not close it. */
+const OPEN_MS = 120;
+const CLOSE_MS = 200;
 
 const pinListeners = new Set<() => void>();
 const readPin = () => {
@@ -133,11 +136,18 @@ export function Rail({ fly, setFly }: { fly: FlyId; setFly: (id: FlyId) => void 
   const all = destinations();
   const active = destinationAt(pathname, all);
   const shown = all.find((d) => d.id === (fly ?? (pinned ? active?.id ?? "objects" : null)));
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const flyAfter = (id: FlyId, ms: number) => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setFly(id), ms);
+  };
   return (
     <div
       className="m2-railwrap"
       data-pinned={pinned && shown ? "" : undefined}
-      onMouseLeave={() => setFly(null)}
+      onMouseEnter={() => clearTimeout(timer.current)}
+      onMouseLeave={() => flyAfter(null, CLOSE_MS)}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFly(null);
       }}
@@ -152,8 +162,11 @@ export function Rail({ fly, setFly }: { fly: FlyId; setFly: (id: FlyId) => void 
               aria-current={active?.id === d.id ? "page" : undefined}
               aria-controls={shown?.id === d.id ? "m2-fly" : undefined}
               aria-expanded={shown?.id === d.id}
-              onMouseEnter={() => setFly(d.id)}
-              onFocus={() => setFly(d.id)}
+              onMouseEnter={() => flyAfter(d.id, fly ? 0 : OPEN_MS)}
+              onFocus={() => {
+                clearTimeout(timer.current);
+                setFly(d.id);
+              }}
             >
               <Glyph id={d.id} />
               <span>{d.label}</span>

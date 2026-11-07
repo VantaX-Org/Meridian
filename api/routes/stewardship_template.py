@@ -215,7 +215,10 @@ async def list_assignments(db: AsyncSession = Depends(get_db), tenant: Tenant = 
     t = await _rls(db, tenant)
     rows = (await db.execute(text(
         "SELECT a.module, a.slice_kind, a.slice_value, a.steward_user_id::text AS steward_user_id, "
-        "COALESCE(u.name, u.email) AS steward_name, a.source FROM steward_assignments a "
-        "LEFT JOIN users u ON u.id = a.steward_user_id WHERE a.tenant_id = CAST(:t AS uuid) "
+        "COALESCE(u.name, u.email) AS steward_name, a.source, n.name AS slice_text FROM steward_assignments a "
+        "LEFT JOIN users u ON u.id = a.steward_user_id "
+        "LEFT JOIN org_unit_names n ON n.tenant_id = a.tenant_id AND n.value = a.slice_value "
+        "AND n.field = CASE a.slice_kind WHEN 'plant' THEN 'WERKS' WHEN 'company_code' THEN 'BUKRS' END "
+        "WHERE a.tenant_id = CAST(:t AS uuid) "
         "ORDER BY a.module, a.slice_kind, a.slice_value"), {"t": t})).mappings().all()
     return {"assignments": [dict(r) for r in rows]}

@@ -237,6 +237,8 @@ nav.m2-more a { max-width: 100%; overflow-wrap: anywhere; hyphens: auto; }
 .m2-menu-s { font-size: var(--m2-fs-12); color: var(--m2-meta); font-weight: 400; }
 .m2-menu-hr { border: 0; border-top: 1px solid var(--m2-line); margin: var(--m2-s2) 0; }
 .m2-scrim { position: fixed; inset: 0; background: var(--m2-scrim); z-index: 70; }
+/* The scrim belongs to the phone sheet. Beside the rail it would cover the rail, the pointer would leave it, and the flyout would close and reopen. */
+@media (min-width: 1101px) { .m2-fly-scrim { display: none; } }
 .m2-pal { position: fixed; z-index: 90; left: 50%; top: 12vh; transform: translateX(-50%); width: min(640px, calc(100vw - 32px)); background: var(--m2-glass-sheet); border: 1px solid var(--m2-glass-line); border-radius: var(--m2-r2); box-shadow: var(--m2-shadow); overflow: hidden; color: var(--m2-fg); }
 .m2-pal input { width: 100%; height: 48px; border: 0; border-bottom: 1px solid var(--m2-line); background: transparent; padding: 0 var(--m2-s4); font-size: var(--m2-fs-16); outline: 0; }
 .m2-pal input:focus-visible { outline: 0; box-shadow: inset 0 -2px 0 var(--m2-data); }

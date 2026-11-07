@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { AletheiaEvidence } from "../screens/AletheiaEvidence";
-import { VerifiedMark, RibbonDash } from "../screens/rules-parts";
+import { VerifiedMark, RuleRibbon } from "../screens/rules-parts";
 import { setUrl } from "./nav-store";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
@@ -24,8 +24,12 @@ describe("rules parts", () => {
     renderWithQuery(<VerifiedMark />);
     expect(screen.getByTestId("verified-mark")).toHaveTextContent("Verified");
   });
-  it("gives a dash with a reason for findings across runs", () => {
-    renderWithQuery(<RibbonDash />);
-    expect(screen.getByTitle(/not available yet/i)).toHaveTextContent("\u2014");
+  it("gives a dash with a reason when the rule has no runs in the system", () => {
+    renderWithQuery(<RuleRibbon values={[null, null]} />);
+    expect(screen.getByTitle(/no runs of this rule/i)).toHaveTextContent("\u2014");
+  });
+  it("draws failing records across runs and says the range, skipping runs the rule missed", () => {
+    renderWithQuery(<RuleRibbon values={[40, null, 12]} />);
+    expect(screen.getByRole("img", { name: "Failing records over the last 2 runs: 40 to 12" })).toBeInTheDocument();
   });
 });
