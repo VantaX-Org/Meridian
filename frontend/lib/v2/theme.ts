@@ -17,7 +17,7 @@ import { t as tr } from "@/lib/v2/i18n";
 /** Relative luminance of --m2-sheet in light (white). */
 export const LIGHT_GROUND_LUMINANCE = 1;
 /** Relative luminance of --m2-sheet in dark. */
-export const DARK_GROUND_LUMINANCE = 0.01117;
+export const DARK_GROUND_LUMINANCE = 0.006467;
 /** WCAG 2.1 AA for text and for the accent as a link colour. */
 export const MIN_CONTRAST = 4.5;
 

@@ -15,14 +15,13 @@ const GUIDE = path.join(root, "docs", "guide");
 const OUT = path.join(GUIDE, "meridian-guide.pdf");
 const FONTS = path.join(path.dirname(GUIDE), "..", "app", "_fonts");
 
-/** The product's own faces (IBM Plex, app/_fonts), embedded so the PDF reads like the screens on any machine. */
+/** The product's own faces (Geist, app/_fonts), embedded so the PDF reads like the screens on any machine. */
 export function fontFaces() {
   const face = (family, file, weight) =>
     `@font-face { font-family: "${family}"; font-weight: ${weight}; src: url(data:font/woff2;base64,${readFileSync(path.join(FONTS, file)).toString("base64")}) format("woff2"); }`;
   return [
-    face("IBM Plex Sans", "IBMPlexSans-latin-400.woff2", 400),
-    face("IBM Plex Sans", "IBMPlexSans-latin-600.woff2", 600),
-    face("IBM Plex Mono", "IBMPlexMono-latin-400.woff2", 400),
+    face("Geist", "Geist-latin-wght.woff2", "100 900"),
+    face("Geist Mono", "GeistMono-latin-wght.woff2", "100 900"),
   ].join("\n  ");
 }
 
@@ -129,13 +128,13 @@ export function guideHtml(date = new Date()) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(index.title)}</title><style>
   @page { size: A4; margin: 18mm 16mm 20mm; }
   ${fontFaces()}
-  body { font: 10.5pt/1.5 "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; color: #1A2233; font-variant-numeric: tabular-nums; }
+  body { font: 10.5pt/1.5 "Geist", "Helvetica Neue", Arial, sans-serif; color: #111112; font-variant-numeric: tabular-nums; }
   h1 { font-size: 20pt; margin: 0 0 8pt; break-after: avoid; }
   h2 { font-size: 13pt; margin: 16pt 0 4pt; break-after: avoid; }
   h3 { font-size: 11pt; margin: 12pt 0 4pt; break-after: avoid; }
   p, li { margin: 0 0 6pt; orphans: 3; widows: 3; }
   ul, ol { padding-left: 16pt; margin: 0 0 8pt; }
-  code { font-family: "IBM Plex Mono", "DejaVu Sans Mono", monospace; font-size: 9pt; }
+  code { font-family: "Geist Mono", "DejaVu Sans Mono", monospace; font-size: 9pt; }
   .chapter { break-before: page; }
   .cover { height: 240mm; display: flex; flex-direction: column; justify-content: flex-end; }
   .cover h1 { font-size: 30pt; } .cover p { color: #4A5568; }

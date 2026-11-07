@@ -211,7 +211,7 @@ nav.m2-more a { max-width: 100%; overflow-wrap: anywhere; hyphens: auto; }
 .m2-v { display: inline-flex; align-items: center; gap: var(--m2-s2); white-space: nowrap; }
 
 /* Buttons */
-.m2-btn { height: 32px; padding: 0 var(--m2-s3); border: 1px solid var(--m2-line-2); background: var(--m2-sheet); border-radius: var(--m2-r2); font-size: var(--m2-fs-13); font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: var(--m2-s2); white-space: nowrap; color: var(--m2-fg) !important; }
+.m2-btn { height: 32px; padding: 0 var(--m2-s3); border: 1px solid var(--m2-line-2); background: var(--m2-sheet); border-radius: var(--m2-r-round); font-size: var(--m2-fs-13); font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: var(--m2-s2); white-space: nowrap; color: var(--m2-fg) !important; }
 .m2-btn:hover { border-color: var(--m2-ink-3); background: var(--m2-hover); text-decoration: none !important; }
 .m2-btn.m2-next { background: var(--m2-data); border-color: var(--m2-data); color: var(--m2-on-data) !important; height: 36px; padding: 0 var(--m2-s4); font-size: var(--m2-fs-14); }
 .m2-btn.m2-next:hover { background: var(--m2-data); filter: brightness(1.08); }
@@ -651,7 +651,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-dock .m2-ask-log:empty { flex: 0; }
 .m2-cc-dock .m2-ask-log:empty + .m2-ask-dock { border-top: 0; margin-top: 0; }
 .m2-cc-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--m2-s4); }
-.m2-cc-card { display: flex; flex-direction: column; gap: var(--m2-s2); padding: var(--m2-s4); border: 1px solid var(--m2-line); border-radius: var(--m2-r2); background: var(--m2-sheet); min-width: 0; }
+.m2-cc-card { display: flex; flex-direction: column; gap: var(--m2-s2); padding: var(--m2-s4); border: 1px solid var(--m2-line); border-radius: var(--m2-r3); box-shadow: var(--m2-shadow-card); background: var(--m2-sheet); min-width: 0; }
 .m2-cc-card h3 { margin: 0; font-size: var(--m2-fs-14); font-weight: 600; }
 .m2-cc-bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--m2-s2); }
 .m2-cc-bars a { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--m2-s1); color: var(--m2-fg) !important; text-decoration: none !important; }
@@ -677,7 +677,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 @media (max-width: 900px) { .m2-cc-banner, .m2-cc-row { grid-template-columns: minmax(0, 1fr); } }
 
 /* Data cockpit: the readiness matrix, fix pipeline, value at risk and the failing rules */
-.m2-ck-panel { display: flex; flex-direction: column; gap: var(--m2-s3); padding: var(--m2-s4); border: 1px solid var(--m2-line); border-radius: var(--m2-r2); background: var(--m2-sheet); min-width: 0; }
+.m2-ck-panel { display: flex; flex-direction: column; gap: var(--m2-s3); padding: var(--m2-s4); border: 1px solid var(--m2-line); border-radius: var(--m2-r3); box-shadow: var(--m2-shadow-card); background: var(--m2-sheet); min-width: 0; }
 .m2-ck-panel + .m2-cc { margin-top: var(--m2-s4); }
 .m2-cc-banner + .m2-ck-panel { margin-top: 0; }
 .m2-ck-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--m2-s3); flex-wrap: wrap; }
@@ -969,7 +969,7 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 .m2-sysrow-nm { font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
 
 /* Headlines: tighter, heavier; the big score at one and a half times the headline size */
-.m2-h1, .m2-cc-verdict strong { letter-spacing: -0.02em; }
+.m2-h1, .m2-cc-verdict strong { letter-spacing: -0.025em; }
 .m2-cc-figs dd { letter-spacing: -0.02em; }
 .m2-ruler-box-lg .m2-ruler-num .m2-sc { letter-spacing: -0.02em; font-size: calc(var(--m2-fs-24) * 1.5); line-height: 1; }
 .m2-ruler-box-lg .m2-ruler-num { align-items: baseline; }
@@ -1038,7 +1038,7 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
  * large; the readiness matrix wears a true heat ramp; the map is grouped and tighter; headline numbers carry tight
  * tracking. Everything here is a token in tokens.css; the signed-out pages share the hero in auth.css.
  */
-.m2-h1 { letter-spacing: -0.02em; }
+.m2-h1 { letter-spacing: -0.025em; }
 .m2-cc-banner { background: var(--m2-grad-hero); border-color: var(--m2-hero-line); box-shadow: var(--m2-shadow-hero); color: var(--m2-hero-fg); gap: var(--m2-s6); padding: var(--m2-s6) var(--m2-s6) var(--m2-s5); }
 .m2-cc-banner::after { content: ""; position: absolute; inset: 0; background: var(--m2-grad-hero-light); pointer-events: none; }
 .m2-cc-banner > * { position: relative; z-index: 1; }
