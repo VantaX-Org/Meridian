@@ -47,3 +47,17 @@ def test_ecc_kna1_has_stcd1():
                     f"KNA1 in module '{module}' missing STCD1. "
                     f"Fields: {target.fields}"
                 )
+
+
+def test_plan_builds_each_empty_frame_once_not_once_per_rule(monkeypatch):
+    """One frame per table per rule was 915,186 calls, enough to time out a CI shard."""
+    import sap.extraction_plan as ep
+    from checks.frames import _graph
+    from sap.ddic import get_dictionary
+
+    built = []
+    real = ep._empty
+    monkeypatch.setattr(ep, "_empty", lambda d, t: built.append(t) or real(d, t))
+    ep.plan_modules(["material_master"], get_dictionary("s4hana"))
+    joinable = {t for e in _graph()[0] for t in (e.parent, e.child)}
+    assert len(built) - len(joinable) < 200, "empty frames are being rebuilt for every rule"

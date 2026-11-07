@@ -492,6 +492,9 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
 
     edges, _ = _graph()
     joinable = {t for e in edges for t in (e.parent, e.child)}
+    # built once: path_tables reads only which tables exist, and TableFrames replaces entries
+    # in the dict it gets rather than changing a frame, so every rule can share these
+    empties = {t: _empty(dictionary, t) for t in joinable}
     plans: dict[str, TablePlan] = {}
 
     def add(table: str, cols: set[str], module: str, purpose: str = "data") -> None:
@@ -526,8 +529,8 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
                 if dictionary.resolve(c) is None and c in _MOVED:
                     cols.append(_MOVED[c])
             # tables on the join path the engine will use for this rule
-            skeleton = {t: [] for t in set(tables_of(cols)) | joinable}
-            tf = TableFrames({t: _empty(dictionary, t) for t in skeleton}, dictionary, module=module)
+            own = {t: _empty(dictionary, t) for t in set(tables_of(cols)) - joinable}
+            tf = TableFrames(empties | own, dictionary, module=module)
             path_tables = tf.path_tables(cols, grain=rule.get("grain")) or set(tables_of(cols))
             for t in path_tables:
                 add(t, {c.split(".", 1)[1] for c in cols if c.startswith(t + ".")}, module)
