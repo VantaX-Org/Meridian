@@ -232,6 +232,28 @@ describe("command line", () => {
   });
 });
 
+describe("canvas", () => {
+  const scrolled = () => {
+    const canvas = document.getElementById("m2-canvas") as HTMLElement;
+    canvas.scrollTop = 500;
+    return canvas;
+  };
+
+  it("opens a new page at the top, however far down the last page was", () => {
+    mount();
+    const canvas = scrolled();
+    act(() => setUrl("/runs"));
+    expect(canvas.scrollTop).toBe(0);
+  });
+
+  it("keeps the place when only the query changes", () => {
+    mount();
+    const canvas = scrolled();
+    act(() => setUrl("/?open=rule:1"));
+    expect(canvas.scrollTop).toBe(500);
+  });
+});
+
 describe("keyboard", () => {
   it("? opens the sheet drawn from the registry, Esc closes it", async () => {
     mount();
