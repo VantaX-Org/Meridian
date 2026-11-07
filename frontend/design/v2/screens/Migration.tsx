@@ -10,7 +10,7 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import {
   checkTargetWorkbook, deleteFieldMapping, deleteMigrationRun, deleteValueEntry, exportLoadFiles, exportTargetWorkbook, extractMigrationTarget, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
   getMigrationRecords, getMigrationRun, getMigrationRuns, getReconciliation, getReconciliationRecords, getValueCandidates, getValueMap,
-  saveValueMap, seedFieldMap, startMigration, startReconciliation, updateFieldMapping, type FieldDef, type LoadFileFormat, type MigrationMode, type MigrationRun,
+  saveValueMap, seedFieldMap, startMigration, startReconciliation, updateFieldMapping, type FieldDef, type MigrationMode, type WorkbookFormat, type MigrationRun,
   type ReconKind,
 } from "@/lib/api/v2/migration";
 import { getVersionsPage } from "@/lib/api/v2/runs";
@@ -328,17 +328,33 @@ const HOLD: Record<string, () => string> = {
   bad_date: () => t("Not a valid date"),
   bad_boolean: () => t("Not a yes or no value"),
   not_in_picklist: () => t("Not in the workbook's list of values"),
+  bad_whole_number: () => t("Not a whole number"),
+  bad_number: () => t("Not a number"),
+  bad_id: () => t("Identifier has spaces at the ends or a control character"),
+  bad_text: () => t("Holds a control character"),
+  mandatory_for_country: () => t("Required for this country and empty"),
+  value_map: () => t("No confirmed value mapping"),
 };
 const holdText = (reason: string) => HOLD[reason]?.() ?? reason;
+const WORKBOOK_FORMAT: Record<string, () => string> = {
+  xlsx: () => t("Excel workbook"),
+  xls: () => t("Excel 97-2003 workbook"),
+  xlsb: () => t("Excel binary workbook"),
+  ods: () => t("OpenDocument spreadsheet"),
+  xml2003: () => t("XML Spreadsheet 2003, the Migration Cockpit template"),
+  delimited: () => t("Delimited text file"),
+  archive: () => t("ZIP of load files"),
+};
+const WORKBOOK_TYPES = ".xlsx,.xlsm,.xltx,.xltm,.xls,.xlsb,.ods,.xml,.csv,.tsv,.txt,.dat,.zip";
 
 /**
- * Migrating SuccessFactors: the new system's workbook is the input, and a finished run fills it in the workbook's own
- * columns (migration.py /target-workbook). The check comes first, so the user sees what fits before anything is exported.
+ * The new system's workbook or load file is the input, and a finished run fills it in that file's own columns
+ * (migration.py /target-workbook). The check comes first, so the user sees what fits before anything is exported.
  */
 function TargetWorkbookPanel() {
   const { can, shared, viewAs } = useV2Session();
   const toast = useToast();
-  const systems = (useLandscape(null).data?.systems ?? []).filter((s) => s.system_type === "successfactors");
+  const systems = useLandscape(null).data?.systems ?? [];
   const allowed = can("export") && !shared && !viewAs && systems.length > 0;
   const versions = useMig(["target-workbook-runs", systems.map((s) => s.id)], async () => {
     const pages = await Promise.all(systems.map(async (s) => ({ s, page: await getVersionsPage({ system_id: s.id, limit: 50 }) })));
@@ -351,16 +367,16 @@ function TargetWorkbookPanel() {
   const run = picked || versions.data?.[0]?.v.id || "";
   const check = useMutation({ mutationFn: (a: { run: string; file: File }) => checkTargetWorkbook(a.run, a.file) });
   const exp = useMutation({
-    mutationFn: (fmt: LoadFileFormat) => exportTargetWorkbook(run, file as File, fmt),
+    mutationFn: (fmt: WorkbookFormat) => exportTargetWorkbook(run, file as File, fmt, check.data?.format.written_as),
     onSuccess: (name) => toast.show(t("Workbook data saved as {name}", { name })),
     onError: (e) => toast.show(errorSentence(e, t("The workbook data could not be prepared.")), "error"),
   });
   if (!allowed) return null;
   const title = t("Workbook from the new system");
-  const meta = t("Fill the new system's workbook from a finished SuccessFactors run");
+  const meta = t("Fill the new system's workbook or load file from a finished run");
   if (versions.isPending) return <Panel title={title} meta={meta} testId="mig-workbook"><Skeleton width="100%" height={120} /></Panel>;
-  if (versions.isError) return <Panel title={title} meta={meta} testId="mig-workbook"><ErrorFrame onRetry={() => void versions.refetch()}>{t("The SuccessFactors runs could not be read.")}</ErrorFrame></Panel>;
-  if (versions.data.length === 0) return <Panel title={title} meta={meta} testId="mig-workbook"><EmptyFrame>{t("No SuccessFactors run has finished yet. A finished run is needed before the workbook can be filled.")}</EmptyFrame></Panel>;
+  if (versions.isError) return <Panel title={title} meta={meta} testId="mig-workbook"><ErrorFrame onRetry={() => void versions.refetch()}>{t("The runs could not be read.")}</ErrorFrame></Panel>;
+  if (versions.data.length === 0) return <Panel title={title} meta={meta} testId="mig-workbook"><EmptyFrame>{t("No run has finished yet. A finished run is needed before the workbook can be filled.")}</EmptyFrame></Panel>;
   const report = check.data;
   const missing = report?.sheets.flatMap((s) => s.unmapped.filter((u) => u.mandatory).map((u) => ({ sheet: s.name, ...u }))) ?? [];
   const change = () => { check.reset(); exp.reset(); };
@@ -378,8 +394,8 @@ function TargetWorkbookPanel() {
             })}
           </select>
         </label>
-        <label>{t("Workbook (.xlsx)")}
-          <input type="file" accept=".xlsx" data-testid="mig-workbook-file" onChange={(e) => { setFile(e.target.files?.[0] ?? null); change(); }} />
+        <label>{t("Workbook or load file")}
+          <input type="file" accept={WORKBOOK_TYPES} data-testid="mig-workbook-file" onChange={(e) => { setFile(e.target.files?.[0] ?? null); change(); }} />
         </label>
         <button type="submit" className="m2-btn m2-next" disabled={!file || check.isPending}>{check.isPending ? t("Checking the workbook") : t("Check the workbook")}</button>
       </form>
@@ -388,6 +404,10 @@ function TargetWorkbookPanel() {
       {report ? (
         <>
           <p data-testid="mig-workbook-summary">{t("{ready} rows are ready and {held} are held back. {filled} of {sheets} sheets can be filled, with {matched} of {columns} columns.", { ready: int(report.summary.ready), held: int(report.summary.held), filled: int(report.summary.filled_sheets), sheets: int(report.summary.sheets), matched: int(report.summary.matched_columns), columns: int(report.summary.columns) })}</p>
+          <p className="m2-meta" data-testid="mig-workbook-format">{t("Read as: {format}", { format: WORKBOOK_FORMAT[report.format.id]?.() ?? report.format.id })}</p>
+          {report.format.skipped.length > 0 ? <p role="status" data-testid="mig-workbook-skipped">{t("Not read from the ZIP: {files}", { files: report.format.skipped.join(", ") })}</p> : null}
+          {report.summary.mandatory_sheets_empty > 0 ? <p role="status" data-testid="mig-workbook-empty">{t("{n} mandatory sheets have no ready rows. The load tool will refuse the file until they do.", { n: int(report.summary.mandatory_sheets_empty) })}</p> : null}
+          {report.summary.mapped_values > 0 ? <p className="m2-meta" data-testid="mig-workbook-mapped">{t("{n} values were changed by confirmed value mappings.", { n: int(report.summary.mapped_values) })}</p> : null}
           {report.summary.mandatory_unmapped > 0 ? <p role="status" data-testid="mig-workbook-required">{t("{n} required columns have no data in this run. The new system will refuse those rows until the columns are filled.", { n: int(report.summary.mandatory_unmapped) })}</p> : null}
           <Table title={t("Sheets in the workbook")} head={[t("Sheet"), t("Filled from"), t("Columns filled"), t("Rows ready"), t("Held back"), t("Required columns with no data")]}>
             {report.sheets.map((s) => (
@@ -413,6 +433,19 @@ function TargetWorkbookPanel() {
               </Table>
             </Disclose>
           ) : null}
+          {report.country_unchecked.length > 0 ? (
+            <Disclose title={t("Country rules not checked")} hint={t("{n} columns", { n: int(report.country_unchecked.length) })}>
+              <p className="m2-meta">{t("These columns are required for some countries, but the sheet does not show each record's country. Check them before the load.")}</p>
+              <Table title={t("Country rules not checked")} head={[t("Sheet"), t("Column")]}>
+                {report.country_unchecked.map((m) => (
+                  <tr key={`${m.sheet}-${m.id}`}>
+                    <th scope="row" className="m2-card-lead">{m.sheet}</th>
+                    <td data-label={t("Column")}><Coded code={m.id} text={m.label} /></td>
+                  </tr>
+                ))}
+              </Table>
+            </Disclose>
+          ) : null}
           {report.held_total > 0 ? (
             <Disclose title={t("Rows held back")} hint={report.held.length < report.held_total ? t("First {n} of {total}", { n: int(report.held.length), total: int(report.held_total) }) : t("{n} rows", { n: int(report.held_total) })}>
               <p className="m2-meta">{Object.entries(report.reasons).map(([r, n]) => `${holdText(r)}: ${int(n)}`).join(", ")}</p>
@@ -428,8 +461,9 @@ function TargetWorkbookPanel() {
               </Table>
             </Disclose>
           ) : null}
-          <p className="m2-meta">{t("The export holds the ready rows in the workbook's own columns, and held rows on a Held back tab. It is recorded in the audit log. The workbook itself is not stored.")}</p>
+          <p className="m2-meta">{t("The export holds the ready rows in the workbook's own columns, and held rows on a Held back tab. In the same format, held rows travel in a separate file. Every export is recorded in the audit log. The workbook itself is not stored.")}</p>
           <p>
+            {report.format.same ? <><button type="button" className="m2-btn m2-next" disabled={exp.isPending || report.summary.filled_sheets === 0} onClick={() => exp.mutate("source")}>{t("Export in the same format")}</button>{" "}</> : null}
             <button type="button" className="m2-btn" disabled={exp.isPending || report.summary.filled_sheets === 0} onClick={() => exp.mutate("xlsx")}>{t("Export as Excel")}</button>{" "}
             <button type="button" className="m2-btn" disabled={exp.isPending || report.summary.filled_sheets === 0} onClick={() => exp.mutate("csv")}>{t("Export as CSV files")}</button>
           </p>

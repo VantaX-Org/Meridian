@@ -8,7 +8,7 @@
 
 :root {
   /* ---------- Surfaces (light: off-white canvas, white cards) ---------- */
-  --m-canvas: #F4F6F8;          /* page background: paper */
+  --m-canvas: #F4F5F7;          /* page background: paper */
   --m-sheet: #FFFFFF;           /* cards, tables, forms, popovers */
   --m-sheet-raised: #EEF1F5;    /* table header rows, hover rows, inset wells */
   --m-sheet-sunken: #E4E8EE;    /* code/sample wells, bar tracks, ghost shapes */
@@ -123,9 +123,9 @@
   --m-grad-count-settle: linear-gradient(90deg, var(--m-accent-soft) 0%, transparent 100%);
 
   /* ---------- Type ---------- */
-  --m-font-ui: var(--font-plex-sans, system-ui), system-ui, sans-serif;
+  --m-font-ui: var(--font-geist-sans, system-ui), system-ui, sans-serif;
   --m-font-sans: var(--m-font-ui);
-  --m-font-mono: var(--font-plex-mono, ui-monospace), ui-monospace, monospace;
+  --m-font-mono: var(--font-geist-mono, ui-monospace), ui-monospace, monospace;
 
   --m-text-hero: 96px;      --m-leading-hero: 88px;      /* the score: a plain large number */
   --m-text-verdict: 22px;   --m-leading-verdict: 30px;   /* verdict sentence */
@@ -209,7 +209,7 @@
 
 /* ---------- Dark: neutral graphite ---------- */
 [data-theme="dark"] {
-  --m-canvas: #0F1420;
+  --m-canvas: #0B0718;
   --m-sheet: #171D2B;
   --m-sheet-raised: #1F2635;
   --m-sheet-sunken: #0B0F18;
@@ -294,7 +294,7 @@
 /* System preference when no explicit theme is set. Generated from the dark block above: keep value for value. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"]) {
-    --m-canvas: #0F1420;
+    --m-canvas: #0B0718;
     --m-sheet: #171D2B;
     --m-sheet-raised: #1F2635;
     --m-sheet-sunken: #0B0F18;

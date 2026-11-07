@@ -169,9 +169,14 @@ export interface WorkbookSheet {
   known: boolean;
   unmapped: { id: string; label: string; mandatory: boolean }[];
 }
+export type WorkbookFormat = LoadFileFormat | "source";
 export interface WorkbookHeldRow { sheet: string; record: string; field: string; reason: string }
 export interface WorkbookReport {
-  summary: { sheets: number; filled_sheets: number; columns: number; matched_columns: number; mandatory_unmapped: number; rows: number; ready: number; held: number };
+  summary: { sheets: number; filled_sheets: number; columns: number; matched_columns: number; mandatory_unmapped: number; rows: number; ready: number; held: number; mandatory_sheets_empty: number; mapped_values: number };
+  /** What the upload was read as, and whether it can come back in that layout (`written_as` is the file extension). */
+  format: { id: string; same: boolean; written_as: string; skipped: string[] };
+  /** Columns a country rule covers on a sheet that does not show the record's country. */
+  country_unchecked: { sheet: string; id: string; label: string }[];
   sheets: WorkbookSheet[];
   reasons: Record<string, number>;
   /** The first 200 held rows; `held_total` counts them all. */
@@ -186,8 +191,8 @@ export async function checkTargetWorkbook(versionId: string, file: File): Promis
   return data;
 }
 /** The run's data in the workbook's own columns; csv arrives as a zip. */
-export const exportTargetWorkbook = (versionId: string, file: File, fmt: LoadFileFormat) =>
-  v2Download(`${P}/target-workbook/${encodeURIComponent(versionId)}/export`, { format: fmt }, `target_workbook_${versionId}.${fmt === "xlsx" ? "xlsx" : "zip"}`, "post", workbookForm(file));
+export const exportTargetWorkbook = (versionId: string, file: File, fmt: WorkbookFormat, writtenAs = "zip") =>
+  v2Download(`${P}/target-workbook/${encodeURIComponent(versionId)}/export`, { format: fmt }, `target_workbook_${versionId}.${fmt === "source" ? writtenAs : fmt === "xlsx" ? "xlsx" : "zip"}`, "post", workbookForm(file));
 
 export const startMigration = (body: AnalyzeBody) => v2Send<{ run_id: string; status: string }>("POST", `${P}/analyze`, body);
 

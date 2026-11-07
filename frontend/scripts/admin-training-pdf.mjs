@@ -1,7 +1,7 @@
 /**
  * Prints the administrator training guide (docs/admin-training/meridian-administrator-training.md) to
  * docs/admin-training/meridian-administrator-training.pdf with the main guide's renderer and typography
- * (scripts/guide-pdf.mjs: the same markdown subset, IBM Plex embedded, headless Chromium through Playwright). The
+ * (scripts/guide-pdf.mjs: the same markdown subset, Geist embedded, headless Chromium through Playwright). The
  * screenshots under docs/admin-training/img are embedded in the file.
  *
  *   npm run training:pdf                         (PW_CHROMIUM=/path/to/chrome to use a browser you already have)
@@ -42,13 +42,13 @@ export function trainingHtml() {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
   @page { size: A4; margin: 18mm 16mm 20mm; }
   ${fontFaces()}
-  body { font: 10.5pt/1.5 "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; color: #1A2233; font-variant-numeric: tabular-nums; }
+  body { font: 10.5pt/1.5 "Geist", "Helvetica Neue", Arial, sans-serif; color: #111112; font-variant-numeric: tabular-nums; }
   h1 { font-size: 20pt; margin: 0 0 8pt; break-after: avoid; }
   h2 { font-size: 13pt; margin: 16pt 0 4pt; break-after: avoid; }
   h3 { font-size: 11pt; margin: 12pt 0 4pt; break-after: avoid; }
   p, li { margin: 0 0 6pt; orphans: 3; widows: 3; }
   ul, ol { padding-left: 16pt; margin: 0 0 8pt; } li ul { margin: 4pt 0 0; }
-  code { font-family: "IBM Plex Mono", "DejaVu Sans Mono", monospace; font-size: 9pt; }
+  code { font-family: "Geist Mono", "DejaVu Sans Mono", monospace; font-size: 9pt; }
   pre { background: #F4F5F7; border: 1px solid #D9DDE3; border-radius: 4px; padding: 6pt 8pt; white-space: pre-wrap; break-inside: avoid; }
   table { width: 100%; border-collapse: collapse; margin: 4pt 0 10pt; font-size: 9pt; }
   th, td { border-bottom: 1px solid #D9DDE3; padding: 3pt 5pt; text-align: left; vertical-align: top; }

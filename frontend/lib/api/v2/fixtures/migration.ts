@@ -107,7 +107,9 @@ const reconNoTarget = {
 };
 /** A check of a target workbook: one sheet filled with a held row, one short of a required column, one not filled. */
 export const fixtureWorkbookReport = (): WorkbookReport => ({
-  summary: { sheets: 3, filled_sheets: 2, columns: 24, matched_columns: 11, mandatory_unmapped: 2, rows: 120, ready: 118, held: 2 },
+  summary: { sheets: 3, filled_sheets: 2, columns: 24, matched_columns: 11, mandatory_unmapped: 2, rows: 120, ready: 118, held: 2, mandatory_sheets_empty: 0, mapped_values: 14 },
+  format: { id: "xlsx", same: true, written_as: "zip", skipped: [] },
+  country_unchecked: [{ sheet: "Biographical Information", id: "national-id", label: "National ID" }],
   sheets: [
     { name: "Biographical Information", kind: "definition", table: "PERPERSON", columns: 8, added_keys: ["personIdExternal"], matched: 6, rows: 60, ready: 59, held: 1, known: true, unmapped: [{ id: "country-of-birth", label: "Country Of Birth", mandatory: false }] },
     { name: "Job Information", kind: "definition", table: "EMPJOB", columns: 12, added_keys: ["userId"], matched: 5, rows: 60, ready: 59, held: 1, known: true, unmapped: [{ id: "event-reason", label: "Event Reason", mandatory: true }, { id: "pay-grade", label: "Pay Grade", mandatory: true }] },

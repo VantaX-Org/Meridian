@@ -485,9 +485,9 @@
       "steps": [
         {"caption": "Migration shows whether your records would load into the new system, and what to fix first.", "go": "/migration", "point": {"testid": "steps"}},
         {"caption": "The banner gives the current verdict from the latest analysis.", "point": {"testid": "mig-banner"}},
-        {"caption": "Workbook from the new system: fill the new system's own workbook from a finished SuccessFactors run.", "point": {"testid": "mig-workbook"}},
+        {"caption": "Workbook from the new system: fill the new system's own workbook or load file from a finished run.", "point": {"testid": "mig-workbook"}},
         {"caption": "Three steps: choose the run and workbook, check what fits, export the data.", "point": {"testid": "mig-workbook-steps"}},
-        {"caption": "Choose the workbook file (.xlsx) the new system gave you.", "point": {"testid": "mig-workbook-file"}},
+        {"caption": "Choose the workbook or load file the new system gave you.", "point": {"testid": "mig-workbook-file"}},
         {"caption": "Check the workbook only reads it. Nothing is stored and nothing is exported yet.", "point": {"role": "button", "name": "Check the workbook"}},
         {"caption": "After a check: how many rows are ready, how many are held back, and how many sheets can be filled.", "point": {"testid": "mig-workbook-summary", "optional": true}},
         {"caption": "Required columns with no data are named, because the new system refuses those rows.", "point": {"testid": "mig-workbook-required", "optional": true}},

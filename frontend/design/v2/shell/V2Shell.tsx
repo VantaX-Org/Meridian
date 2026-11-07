@@ -1,7 +1,7 @@
 "use client";
 
 import { GridOverlay, useGridOverlay } from "./GridOverlay";
-import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AuthGuard } from "../auth/Guard";
 import { useAuth } from "@/context/auth-context";
@@ -63,6 +63,12 @@ function ChromeBody({ children }: { children: ReactNode }) {
 
   // The flyout closes when you go somewhere.
   useEffect(() => setFly(null), [pathname]);
+
+  // The canvas outlives the page inside it, so a new page opens at the top, unless the link names a place on the page.
+  const canvas = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    if (canvas.current && !window.location.hash) canvas.current.scrollTop = 0;
+  }, [pathname]);
 
   // The help panel's "Keyboard shortcuts" button asks for the sheet.
   useEffect(() => {
@@ -143,7 +149,7 @@ function ChromeBody({ children }: { children: ReactNode }) {
         {pathname.startsWith("/admin") ? <AdminMap key={`${localeKey}:admin`} /> : null}
         <div className="m2-sheetwrap">
           <div className="m2-cwrap">
-            <main key={localeKey} id="m2-canvas" className="m2-canvas" tabIndex={-1}>
+            <main ref={canvas} key={localeKey} id="m2-canvas" className="m2-canvas" tabIndex={-1}>
               {children}
             </main>
             <StatusStrip />

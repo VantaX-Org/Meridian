@@ -55,7 +55,7 @@ gradient. Light is spent only on the moments below, and glow and gradient are al
 - the charts: glows on end points, selected columns, sparkline dots and small-multiple dots, and the large ruler's
   glowing fill that grows from the baseline;
 - Aletheia, the product's main differentiator: the breathing ring on its mark, the gradient and glowing avatar, the
-  verdigris confidence bar, the verified badge's glow, the verdigris wash on the dock header and on answers, and the
+  violet confidence bar, the verified badge's glow, the violet wash on the dock header and on answers, and the
   glowing ask field on focus (an AI surface);
 - the landscape's first screen: the staggered rise of the banner, cards, panels, dock and their rows;
 - the signed-out hero: the radial wash and the lit tile.
@@ -66,7 +66,7 @@ Four things make the interface recognisable at a glance.
    own inks (`--m2-bar-fg`, `--m2-bar-fg-2`) and a glass search field (`--m2-bar-field`, `--m2-bar-line`). It is the one
    dark surface of the light theme, so the product is recognisable before a word is read. The job line under it is the
    flat data hue. The same deep ground is the hero: the go-live banner on the landscape and the whole
-   signed-out page sit on `--m2-grad-hero` (deep meridian blue through the brand blue to a dark verdigris) with its own
+   signed-out page sit on `--m2-grad-hero` (deep navy into violet) with its own
    inks (`--m2-hero-fg`, `--m2-hero-fg-2`, `--m2-hero-meta`, the accent `--m2-hero-accent`, the hairline
    `--m2-hero-line`, the glass field `--m2-hero-field`), a radial glow in the corner (`--m2-grad-hero-light`), its own lift (`--m2-shadow-hero`) and a 4px verdict
    stripe on its top edge in the on-hero status inks (`--m2-on-hero-pass`, `-warn`, `-crit`). The verdict is set in the
@@ -92,11 +92,11 @@ Four things make the interface recognisable at a glance.
    The heat matrix is a confident four-step ramp (`--m2-heat-0` pass green, `-1` the quiet neutral, `-2` warn amber,
    `-3` critical red, each with its `-ink` at AA), cells divided by 2px sheet gutters so the matrix reads as tiles, the
    figure in each at 500; the critical cell is the darkest tile and the one band that glows (`--m2-glow-crit`).
-4. **The Aletheia signature.** Anything an AI has proved wears verdigris (`--m2-ai`, one step from the data blue on the
+4. **The Aletheia signature.** Anything an AI has proved wears violet (`--m2-ai`, one step from the data blue on the
    wheel): a 3px left bar with a wash fading into the sheet (`--m2-grad-ai-wash`), the Aletheia mark as a round glowing
-   avatar with a breathing ring (`--m2-grad-ai`, `--m2-glow-ai`, `m2-ring`), confidence bars in the verdigris gradient,
-   the verified badge in the verdigris wash with a soft glow when the tone is pass, cited links underlined in
-   verdigris, and the ask field glowing verdigris on focus. The data hue stays for the user's own selections, so the
+   avatar with a breathing ring (`--m2-grad-ai`, `--m2-glow-ai`, `m2-ring`), confidence bars in the violet gradient,
+   the verified badge in the violet wash with a soft glow when the tone is pass, cited links underlined in
+   violet, and the ask field glowing violet on focus. The data hue stays for the user's own selections, so the
    eye never confuses "chosen" with "proved". No other component may use `--m2-ai*`.
 
 Motion follows the same rule. The landscape's first screen rises into place in sibling order (`m2-rise`, staggered by
@@ -186,7 +186,7 @@ Before and after screenshots of the refresh are in `docs/design-refresh.md`.
 
 ### Type, space, motion
 
-- **Type**: IBM Plex Sans for words and figures (`--m2-font`, tabular figures), IBM Plex Mono for SAP identifiers only
+- **Type**: Geist for words and figures (`--m2-font`, tabular figures), Geist Mono for SAP identifiers only
   (`--m2-mono`: check ids, `TABLE.FIELD`, record keys, run ids). Both self-hosted from `app/_fonts`. Scale
   12/13/14/16/20/24 (`--m2-fs-*`, `--m2-lh-*`), plus two headline sizes outside the scale, `--m2-fs-hero` 36/40 for
   the hero's verdict and the signed-out promise and `--m2-fs-stat` 34/38 for the hero's figures; nothing else may use
@@ -258,10 +258,10 @@ All under `design/v2`. Screens compose these and draw nothing of their own.
 - **Administration kit** (`admin/kit.tsx`): `AdminPage`, `Block`, `Fld`, `Dialog`, `Confirm`, `NeedsPermission`,
   `StatusWord`.
 - **Aletheia** (the dock on the landscape, `.m2-cc-dock`; the ask panel, `.m2-ask-*`): the only components that draw
-  in `--m2-ai*`. The dock's header is the verdigris wash with the round glowing avatar and its breathing ring; a proved
-  answer (`.m2-ask-a`) sits on the verdigris left bar and wash, a refused one on a grey bar with no wash; the badge
-  (`.m2-ask-badge`) is verdigris, glowing when the tone is pass; the confidence bar is the verdigris gradient; cited
-  links underline in verdigris. The signature rules live at the end of `design/v2/v2.css` under "Meridian signature";
+  in `--m2-ai*`. The dock's header is the violet wash with the round glowing avatar and its breathing ring; a proved
+  answer (`.m2-ask-a`) sits on the violet left bar and wash, a refused one on a grey bar with no wash; the badge
+  (`.m2-ask-badge`) is violet, glowing when the tone is pass; the confidence bar is the violet gradient; cited
+  links underline in violet. The signature rules live at the end of `design/v2/v2.css` under "Meridian signature";
   the hero, heat ramp, grouped map and headline rules follow them under "The second pass", and the signed-out hero
   closes `design/v2/auth/auth.css`.
 

@@ -3,7 +3,7 @@
  * every other v2 file reads these through var(--m2-*). Everything is scoped to .m2-root, so the root layout's base
  * (design/tokens.css: the attribution strip, the global error page) stays apart from it.
  *
- * Colour follows the Ledger palette. Two ramps still hold the neutrals and the Meridian blue (--m2-n-*, hue 240;
+ * Colour follows the Aletheia palette: neutral ink on a pale ground, one blue, deep navy for the bar and hero, lavender for proved content. Two ramps still hold the neutrals and the Meridian blue (--m2-n-*, hue 240;
  * --m2-b-*, hue 263, step 700 the brand blue), but the semantic tokens (ground, sheet, rules, inks, data, status) are
  * set to the Ledger values themselves, one set for light and one for dark, so the two themes are chosen, not inverted.
  * Status and chart hues sit beside the ramps with their light and dark steps. design/v2/__tests__/tokens.test.ts holds
@@ -18,61 +18,61 @@
 .m2-root {
   /* The neutral ramp: white to near black, one hue. Grounds, rules and inks are steps of it. */
   --m2-n-0: #FFFFFF;
-  --m2-n-25: #F7F9FB;
-  --m2-n-50: #F0F3F6;
-  --m2-n-100: #E6EBEF;
-  --m2-n-150: #DEE4E8;
-  --m2-n-200: #CAD1D6;
-  --m2-n-300: #A9B3BB;
-  --m2-n-400: #8C979F;
-  --m2-n-500: #6B767E;
-  --m2-n-600: #59646C;
-  --m2-n-700: #3E4A53;
-  --m2-n-800: #2D373E;
-  --m2-n-850: #242D33;
-  --m2-n-875: #1E262B;
-  --m2-n-900: #1A2024;
-  --m2-n-925: #151A1E;
-  --m2-n-950: #0E1215;
+  --m2-n-25: #F4F5F7;
+  --m2-n-50: #F0F0F3;
+  --m2-n-100: #E6E7EB;
+  --m2-n-150: #DFE0E5;
+  --m2-n-200: #D0D1D7;
+  --m2-n-300: #AEAFB8;
+  --m2-n-400: #8A8A94;
+  --m2-n-500: #6C6C76;
+  --m2-n-600: #5A5A64;
+  --m2-n-700: #3E3E46;
+  --m2-n-800: #2C2A36;
+  --m2-n-850: #231F30;
+  --m2-n-875: #1D1829;
+  --m2-n-900: #181324;
+  --m2-n-925: #120D20;
+  --m2-n-950: #0B0718;
   /* The Meridian blue ramp. 700 is the brand blue (the mark, the data hue in light); 300 is the data hue in dark. */
-  --m2-b-50: #F2F6FE;
-  --m2-b-100: #DFEAFE;
-  --m2-b-200: #C0D5FD;
-  --m2-b-300: #8EB1F5;
-  --m2-b-400: #648FE7;
-  --m2-b-500: #406FD1;
-  --m2-b-600: #2A54B0;
-  --m2-b-700: #1B3F8F;
-  --m2-b-800: #132E6A;
-  --m2-b-900: #0C1F47;
-  --m2-b-950: #08152F;
+  --m2-b-50: #F3F7FF;
+  --m2-b-100: #E8F0FF;
+  --m2-b-200: #D2E2FF;
+  --m2-b-300: #8FB5FF;
+  --m2-b-400: #6A9CFF;
+  --m2-b-500: #3F84FF;
+  --m2-b-600: #0866FF;
+  --m2-b-700: #0759DB;
+  --m2-b-800: #0A3F9C;
+  --m2-b-900: #1B1238;
+  --m2-b-950: #0B0718;
 
   /* Ground and ink */
-  --m2-bg: #F6F7F8;
+  --m2-bg: #F4F5F7;
   --m2-sheet: #FFFFFF;
-  --m2-line: #E3E7EA;
-  --m2-line-2: #CBD2D7;
+  --m2-line: #E6E6EA;
+  --m2-line-2: #D9DADF;
   --m2-rule: var(--m2-line);
   --m2-chrome: var(--m2-sheet);
-  --m2-fg: #14191D;
-  --m2-ink-2: #4A555D;
-  --m2-ink-3: #67727A;
+  --m2-fg: #111112;
+  --m2-ink-2: #5A5A64;
+  --m2-ink-3: #6C6C76;
   --m2-meta: var(--m2-ink-2);
   /* Data hue: the one strong colour of a canvas, its wash under a selection, and the text on it */
-  --m2-data: #2F5FD0;
-  --m2-data-bg: #E8EFFC;
+  --m2-data: #0759DB;
+  --m2-data-bg: #E8F0FF;
   --m2-on-data: var(--m2-n-0);
   /* Semantic: pass, warn, fail, critical and info, each a mark colour, a wash and the text on the wash. A status hue
      is always paired with a shape and a word, never alone. Fail and critical share the stop red: two reds in one
      ledger would read as a difference that is not there; critical adds the square mark. */
-  --m2-pass: #1F7A45;
-  --m2-pass-bg: #E4F3EA;
-  --m2-pass-ink: #124A2B;
-  --m2-warn: #8A580C;
-  --m2-warn-bg: #FBF0DC;
+  --m2-pass: #0A7D45;
+  --m2-pass-bg: #E6F6EE;
+  --m2-pass-ink: #07512D;
+  --m2-warn: #945405;
+  --m2-warn-bg: #FDF3E2;
   --m2-warn-ink: #5E3500;
-  --m2-crit: #B8322A;
-  --m2-crit-bg: #FBE7E5;
+  --m2-crit: #C42B1C;
+  --m2-crit-bg: #FDECEA;
   --m2-crit-ink: #74190F;
   --m2-fail: var(--m2-crit);
   --m2-fail-bg: var(--m2-crit-bg);
@@ -85,23 +85,23 @@
   --m2-high-bg: var(--m2-warn-bg);
   --m2-high-ink: var(--m2-warn-ink);
   /* Surfaces and states */
-  --m2-hover: #F0F2F4;
-  --m2-active: #E8ECEF;
+  --m2-hover: #F0F0F3;
+  --m2-active: #E6E7EB;
   --m2-track: var(--m2-n-100);
   --m2-seg: var(--m2-n-600);
-  --m2-scrim: #151A1E59;
-  --m2-shadow: 0 8px 28px #151A1E2E;
-  --m2-ambient: radial-gradient(1100px 620px at 8% -8%, #2F5FD01A, #2F5FD000 70%), radial-gradient(900px 560px at 96% 104%, #1F8A7A17, #1F8A7A00 70%);
+  --m2-scrim: #0B071859;
+  --m2-shadow: 0 1px 2px #1111120A, 0 30px 70px -30px #11111247;
+  --m2-ambient: none;
   --m2-glass-sheet: #FFFFFFE6;
   --m2-glass-sheet-floor: #E6E8EA;
   --m2-glass-inverse: #151A1EE6;
   --m2-glass-inverse-floor: #2C3135;
-  --m2-glass-line: #14191D1F;
+  --m2-glass-line: #1111121F;
   --m2-glass-hi: #FFFFFF8C;
   --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
   --m2-glass-filter: blur(16px) saturate(140%);
-  /* Ledger: no decorative shadow; only the menu, popover and dialog (--m2-shadow) lift. The card token stays so callers resolve. */
-  --m2-shadow-card: none;
+  /* The Aletheia lift: a hairline contact shadow and one soft drop, on cards and floating chrome alike. */
+  --m2-shadow-card: 0 1px 2px #1111120A, 0 14px 36px -18px #1111122E;
   --m2-inverse: var(--m2-n-925);
   --m2-on-inverse: var(--m2-n-25);
   /* The stop red where it marks an error on the inverse ground (a toast) */
@@ -124,7 +124,7 @@
   --m2-seq-2: var(--m2-b-400);
   --m2-seq-3: var(--m2-b-500);
   --m2-seq-4: var(--m2-b-600);
-  --m2-seq-5: var(--m2-b-700);
+  --m2-seq-5: var(--m2-b-800);
   --m2-sev-crit: var(--m2-crit);
   --m2-sev-high: var(--m2-warn);
   --m2-sev-med: var(--m2-n-500);
@@ -137,9 +137,9 @@
   --m2-chart-quiet: var(--m2-n-500);
   --m2-chart-ring: var(--m2-sheet);
 
-  /* Type: IBM Plex Sans for words and figures, IBM Plex Mono for SAP identifiers only. Scale 12/13/14/16/20/24. */
-  --m2-font: var(--font-plex-sans), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --m2-mono: var(--font-plex-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Type: Geist for words and figures, Geist Mono for SAP identifiers only. Scale 12/13/14/16/20/24. */
+  --m2-font: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --m2-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --m2-fs-12: 12px;
   --m2-fs-13: 13px;
   --m2-fs-14: 14px;
@@ -173,8 +173,9 @@
   --m2-header-h: 48px;
 
   /* Radius */
-  --m2-r1: 6px;
+  --m2-r1: 8px;
   --m2-r2: 12px;
+  --m2-r3: 16px;
   --m2-r-round: 999px;
 
   /* Layout */
@@ -217,14 +218,14 @@
   --m2-focus-w: 2px;
 
 
-  /* Signature: the Aletheia hue. Verdigris, one step away from the data blue, kept for content an AI has proved.
+  /* Signature: the Aletheia hue. Violet, from the navy and lavender of the Aletheia brand, kept for content an AI has proved.
      A verified pick, its proof and its confidence are the only things drawn in it. AA on the sheet and the ground. */
-  --m2-ai: #0B7079;
-  --m2-ai-bg: #DDF3F4;
-  --m2-ai-ink: #07545B;
-  --m2-ai-line: #86CDD2;
+  --m2-ai: #5B46C4;
+  --m2-ai-bg: #F0ECFE;
+  --m2-ai-ink: #3B2A94;
+  --m2-ai-line: #B9A7F5;
   --m2-on-ai: #FFFFFF;
-  --m2-ai-glow-ink: #0B707966;
+  --m2-ai-glow-ink: #5B46C433;
   /* Verified ring: the Aletheia hue on a run ribbon's latest point (an alias, so the tenant accent never moves it) */
   --m2-ring-verified: var(--m2-ai);
   /* Categorical hues, one per object by a fixed order, stable across every screen */
@@ -239,10 +240,10 @@
   --m2-cat-9: #4F6B7A;
 
   /* Depth: three lifts, each a pair of shadows (a contact shadow and an ambient one), and the glow inks for the loud moments only */
-  --m2-shadow-1: 0 1px 2px #151A1E14, 0 2px 10px #151A1E0A;
-  --m2-shadow-2: 0 2px 6px #151A1E14, 0 14px 36px #151A1E1F;
-  --m2-shadow-3: 0 10px 28px #151A1E29, 0 36px 72px #151A1E2E;
-  --m2-data-glow-ink: #2F5FD066;
+  --m2-shadow-1: 0 1px 2px #1111120A, 0 6px 16px -10px #11111224;
+  --m2-shadow-2: 0 1px 2px #1111120A, 0 14px 36px -18px #1111122E;
+  --m2-shadow-3: 0 1px 2px #1111120A, 0 30px 70px -30px #11111247;
+  --m2-data-glow-ink: #0759DB4D;
   --m2-crit-glow-ink: #B8322A4D;
   --m2-glow-ai: 0 0 0 1px var(--m2-ai), 0 0 20px var(--m2-ai-glow-ink);
   --m2-glow-crit: 0 0 18px var(--m2-crit-glow-ink);
@@ -250,13 +251,13 @@
 
   /* Light: the bar is one flat deep blue; gradient lives only on the hero ground and the Aletheia surfaces. */
   --m2-bar-bg: var(--m2-b-950);
-  --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, var(--m2-b-900) 52%, var(--m2-hero-bg-2) 100%);
-  --m2-grad-ai: linear-gradient(135deg, #1796A1 0%, var(--m2-ai) 100%);
+  --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, var(--m2-hero-bg-2) 100%);
+  --m2-grad-ai: linear-gradient(135deg, #1B1238 0%, var(--m2-ai) 100%);
   --m2-grad-ai-wash: linear-gradient(90deg, var(--m2-ai-bg) 0%, var(--m2-sheet) 42%);
 
   /* The bar's own inks: on the deep ground in both themes */
   --m2-bar-fg: var(--m2-n-25);
-  --m2-bar-fg-2: var(--m2-b-200);
+  --m2-bar-fg-2: #D5CDF2;
   --m2-bar-hover: #FFFFFF1F;
   --m2-bar-line: #FFFFFF2E;
   --m2-bar-field: #FFFFFF14;
@@ -266,25 +267,25 @@
   --m2-stagger: 45ms;
   --m2-rise-lg: 14px;
   /* Hero: the deep ground the verdict and the signed-out pages stand on, and the inks that read on it (all AA on both ends) */
-  --m2-hero-bg: #0B1B3F;
-  --m2-hero-bg-2: #0F3D52;
+  --m2-hero-bg: #0B0718;
+  --m2-hero-bg-2: #1B1238;
   --m2-hero-fg: #FFFFFF;
-  --m2-hero-fg-2: #C9D6F2;
-  --m2-hero-meta: #9FB2DC;
-  --m2-hero-accent: #8FB4FF;
+  --m2-hero-fg-2: #D5CDF2;
+  --m2-hero-meta: #B4AAD9;
+  --m2-hero-accent: #B9A7F5;
   --m2-hero-line: #FFFFFF29;
   --m2-hero-field: #FFFFFF14;
-  --m2-hero-glow-ink: #4D8BFF40;
+  --m2-hero-glow-ink: #B9A7F533;
   --m2-on-hero-pass: #6FD39A;
   --m2-on-hero-warn: #F2C063;
   --m2-on-hero-crit: #FF8F86;
   --m2-grad-hero-light: radial-gradient(ellipse at 82% 0%, var(--m2-hero-glow-ink) 0%, transparent 58%);
-  --m2-shadow-hero: 0 2px 6px #0B1B3F33, 0 18px 48px #0B1B3F52;
+  --m2-shadow-hero: 0 1px 2px #0B071833, 0 30px 70px -30px #0B071880;
 
   /* Heat: the readiness ramp. Four fills with their own inks, strong enough to read as a heat map from across the room. */
   --m2-heat-0: #9ED9B6;
   --m2-heat-0-ink: #0A3F22;
-  --m2-heat-1: #E6EEF8;
+  --m2-heat-1: #E8F0FF;
   --m2-heat-1-ink: var(--m2-fg);
   --m2-heat-2: #F6CF88;
   --m2-heat-2-ink: #4E3200;
@@ -301,19 +302,19 @@
 
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) .m2-root {
-    --m2-bg: #0F1419;
-    --m2-sheet: #161C22;
-    --m2-line: #252D35;
-    --m2-line-2: #34404A;
+    --m2-bg: #0B0718;
+    --m2-sheet: #141024;
+    --m2-line: #262139;
+    --m2-line-2: #3A3452;
     --m2-rule: var(--m2-line);
     --m2-chrome: var(--m2-sheet);
-    --m2-fg: #E6EAED;
-    --m2-ink-2: #AEB7BE;
-    --m2-ink-3: #86919A;
+    --m2-fg: #ECEAF3;
+    --m2-ink-2: #B6B2C6;
+    --m2-ink-3: #938EA8;
     --m2-meta: var(--m2-ink-2);
-    --m2-data: #7FA2F0;
-    --m2-data-bg: #1C2A47;
-    --m2-on-data: #0F1419;
+    --m2-data: #7FA9FF;
+    --m2-data-bg: #17244A;
+    --m2-on-data: #0B0718;
     --m2-pass: #5CC08A;
     --m2-pass-bg: #163024;
     --m2-pass-ink: #94D4AE;
@@ -326,22 +327,22 @@
     --m2-info: #6EA8E0;
     --m2-info-bg: #15283C;
     --m2-info-ink: #A9CFF7;
-    --m2-hover: #1C232A;
-    --m2-active: #232B33;
-    --m2-track: #232B33;
+    --m2-hover: #1B1630;
+    --m2-active: #231D3B;
+    --m2-track: #231D3B;
     --m2-seg: var(--m2-n-400);
     --m2-scrim: #000000A6;
     --m2-shadow: 0 8px 28px #000000B3;
-    --m2-ambient: radial-gradient(1100px 620px at 8% -8%, #5B8DEF1F, #5B8DEF00 70%), radial-gradient(900px 560px at 96% 104%, #3FB8A51A, #3FB8A500 70%);
-    --m2-glass-sheet: #161C22E6;
-    --m2-glass-sheet-floor: #2B3136;
+    --m2-ambient: none;
+    --m2-glass-sheet: #141024E6;
+    --m2-glass-sheet-floor: #2B2740;
     --m2-glass-inverse: #E6EBEFE6;
     --m2-glass-inverse-floor: #D1D6DA;
     --m2-glass-line: #FFFFFF1F;
     --m2-glass-hi: #FFFFFF14;
     --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
     --m2-glass-filter: blur(16px) saturate(120%);
-  --m2-shadow-card: none;
+  --m2-shadow-card: 0 1px 2px #00000052, 0 14px 36px -18px #00000080;
     --m2-inverse: var(--m2-n-100);
     --m2-on-inverse: var(--m2-n-950);
   --m2-on-inverse-crit: #A3221A;
@@ -364,12 +365,12 @@
     --m2-chart-axis: var(--m2-n-800);
     --m2-chart-text: var(--m2-n-400);
 
-    --m2-ai: #5CCAD2;
-    --m2-ai-bg: #0F2E33;
-    --m2-ai-ink: #9FE3E8;
-    --m2-ai-line: #1E5A61;
-    --m2-on-ai: #0F1419;
-    --m2-ai-glow-ink: #5CCAD259;
+    --m2-ai: #B9A7F5;
+    --m2-ai-bg: #231B47;
+    --m2-ai-ink: #D8CEFB;
+    --m2-ai-line: #4A3D85;
+    --m2-on-ai: #0B0718;
+    --m2-ai-glow-ink: #B9A7F559;
     --m2-cat-1: #5AB0E6;
     --m2-cat-2: #F08A4B;
     --m2-cat-3: #3CC9A0;
@@ -382,17 +383,17 @@
     --m2-shadow-1: 0 1px 2px #00000052, 0 2px 10px #00000033;
     --m2-shadow-2: 0 2px 6px #00000066, 0 14px 36px #00000080;
     --m2-shadow-3: 0 10px 28px #00000099, 0 36px 72px #000000B3;
-    --m2-data-glow-ink: #7FA2F066;
+    --m2-data-glow-ink: #7FA9FF66;
     --m2-crit-glow-ink: #F07A7059;
     --m2-glow-ai: 0 0 0 1px var(--m2-ai), 0 0 20px var(--m2-ai-glow-ink);
     --m2-glow-crit: 0 0 18px var(--m2-crit-glow-ink);
     --m2-glow-chart: 0 0 0 2px var(--m2-sheet), 0 0 14px var(--m2-data-glow-ink);
-    --m2-bar-bg: #0D1B3A;
-    --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, #0D2452 52%, var(--m2-hero-bg-2) 100%);
-    --m2-grad-ai: linear-gradient(135deg, #8FE2E8 0%, var(--m2-ai) 100%);
+    --m2-bar-bg: #0B0718;
+    --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, var(--m2-hero-bg-2) 100%);
+    --m2-grad-ai: linear-gradient(135deg, #D8CEFB 0%, var(--m2-ai) 100%);
     --m2-grad-ai-wash: linear-gradient(90deg, var(--m2-ai-bg) 0%, var(--m2-sheet) 42%);
     --m2-bar-fg: var(--m2-n-25);
-    --m2-bar-fg-2: var(--m2-b-200);
+    --m2-bar-fg-2: #D5CDF2;
     --m2-bar-hover: #FFFFFF1F;
     --m2-bar-line: #FFFFFF2E;
     --m2-bar-field: #FFFFFF14;
@@ -400,15 +401,15 @@
     --m2-stagger: 45ms;
     --m2-rise-lg: 14px;
     /* Hero and heat on the dark ground: the hero keeps its navy, the heat fills deepen and their inks lighten */
-    --m2-hero-bg: #0B1B3F;
-    --m2-hero-bg-2: #0F3D52;
+    --m2-hero-bg: #0B0718;
+    --m2-hero-bg-2: #1B1238;
     --m2-hero-fg: #FFFFFF;
-    --m2-hero-fg-2: #C9D6F2;
-    --m2-hero-meta: #9FB2DC;
-    --m2-hero-accent: #8FB4FF;
+    --m2-hero-fg-2: #D5CDF2;
+    --m2-hero-meta: #B4AAD9;
+    --m2-hero-accent: #B9A7F5;
     --m2-hero-line: #FFFFFF29;
     --m2-hero-field: #FFFFFF14;
-    --m2-hero-glow-ink: #4D8BFF40;
+    --m2-hero-glow-ink: #B9A7F533;
     --m2-on-hero-pass: #6FD39A;
     --m2-on-hero-warn: #F2C063;
     --m2-on-hero-crit: #FF8F86;
@@ -416,7 +417,7 @@
     --m2-shadow-hero: 0 2px 6px #00000066, 0 18px 48px #00000099;
     --m2-heat-0: #1C5A38;
     --m2-heat-0-ink: #CFF2DC;
-    --m2-heat-1: #1D2A40;
+    --m2-heat-1: #1C1F40;
     --m2-heat-1-ink: var(--m2-fg);
     --m2-heat-2: #6B4A0E;
     --m2-heat-2-ink: #FFE2A8;
@@ -431,19 +432,19 @@
 }
 
 html[data-theme="dark"] .m2-root {
-  --m2-bg: #0F1419;
-  --m2-sheet: #161C22;
-  --m2-line: #252D35;
-  --m2-line-2: #34404A;
+  --m2-bg: #0B0718;
+  --m2-sheet: #141024;
+  --m2-line: #262139;
+  --m2-line-2: #3A3452;
   --m2-rule: var(--m2-line);
   --m2-chrome: var(--m2-sheet);
-  --m2-fg: #E6EAED;
-  --m2-ink-2: #AEB7BE;
-  --m2-ink-3: #86919A;
+  --m2-fg: #ECEAF3;
+  --m2-ink-2: #B6B2C6;
+  --m2-ink-3: #938EA8;
   --m2-meta: var(--m2-ink-2);
-  --m2-data: #7FA2F0;
-  --m2-data-bg: #1C2A47;
-  --m2-on-data: #0F1419;
+  --m2-data: #7FA9FF;
+  --m2-data-bg: #17244A;
+  --m2-on-data: #0B0718;
   --m2-pass: #5CC08A;
   --m2-pass-bg: #163024;
   --m2-pass-ink: #94D4AE;
@@ -456,22 +457,22 @@ html[data-theme="dark"] .m2-root {
   --m2-info: #6EA8E0;
   --m2-info-bg: #15283C;
   --m2-info-ink: #A9CFF7;
-  --m2-hover: #1C232A;
-  --m2-active: #232B33;
-  --m2-track: #232B33;
+  --m2-hover: #1B1630;
+  --m2-active: #231D3B;
+  --m2-track: #231D3B;
   --m2-seg: var(--m2-n-400);
   --m2-scrim: #000000A6;
   --m2-shadow: 0 8px 28px #000000B3;
-  --m2-ambient: radial-gradient(1100px 620px at 8% -8%, #5B8DEF1F, #5B8DEF00 70%), radial-gradient(900px 560px at 96% 104%, #3FB8A51A, #3FB8A500 70%);
-  --m2-glass-sheet: #161C22E6;
-  --m2-glass-sheet-floor: #2B3136;
+  --m2-ambient: none;
+  --m2-glass-sheet: #141024E6;
+  --m2-glass-sheet-floor: #2B2740;
   --m2-glass-inverse: #E6EBEFE6;
   --m2-glass-inverse-floor: #D1D6DA;
   --m2-glass-line: #FFFFFF1F;
   --m2-glass-hi: #FFFFFF14;
   --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
   --m2-glass-filter: blur(16px) saturate(120%);
-  --m2-shadow-card: none;
+  --m2-shadow-card: 0 1px 2px #00000052, 0 14px 36px -18px #00000080;
   --m2-inverse: var(--m2-n-100);
   --m2-on-inverse: var(--m2-n-950);
   --m2-on-inverse-crit: #A3221A;
@@ -493,12 +494,12 @@ html[data-theme="dark"] .m2-root {
   --m2-chart-grid: var(--m2-n-875);
   --m2-chart-axis: var(--m2-n-800);
   --m2-chart-text: var(--m2-n-400);
-  --m2-ai: #5CCAD2;
-  --m2-ai-bg: #0F2E33;
-  --m2-ai-ink: #9FE3E8;
-  --m2-ai-line: #1E5A61;
-  --m2-on-ai: #0F1419;
-  --m2-ai-glow-ink: #5CCAD259;
+  --m2-ai: #B9A7F5;
+  --m2-ai-bg: #231B47;
+  --m2-ai-ink: #D8CEFB;
+  --m2-ai-line: #4A3D85;
+  --m2-on-ai: #0B0718;
+  --m2-ai-glow-ink: #B9A7F559;
   --m2-cat-1: #5AB0E6;
   --m2-cat-2: #F08A4B;
   --m2-cat-3: #3CC9A0;
@@ -511,17 +512,17 @@ html[data-theme="dark"] .m2-root {
   --m2-shadow-1: 0 1px 2px #00000052, 0 2px 10px #00000033;
   --m2-shadow-2: 0 2px 6px #00000066, 0 14px 36px #00000080;
   --m2-shadow-3: 0 10px 28px #00000099, 0 36px 72px #000000B3;
-  --m2-data-glow-ink: #7FA2F066;
+  --m2-data-glow-ink: #7FA9FF66;
   --m2-crit-glow-ink: #F07A7059;
   --m2-glow-ai: 0 0 0 1px var(--m2-ai), 0 0 20px var(--m2-ai-glow-ink);
   --m2-glow-crit: 0 0 18px var(--m2-crit-glow-ink);
   --m2-glow-chart: 0 0 0 2px var(--m2-sheet), 0 0 14px var(--m2-data-glow-ink);
-  --m2-bar-bg: #0D1B3A;
-  --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, #0D2452 52%, var(--m2-hero-bg-2) 100%);
-  --m2-grad-ai: linear-gradient(135deg, #8FE2E8 0%, var(--m2-ai) 100%);
+  --m2-bar-bg: #0B0718;
+  --m2-grad-hero: linear-gradient(135deg, var(--m2-hero-bg) 0%, var(--m2-hero-bg-2) 100%);
+  --m2-grad-ai: linear-gradient(135deg, #D8CEFB 0%, var(--m2-ai) 100%);
   --m2-grad-ai-wash: linear-gradient(90deg, var(--m2-ai-bg) 0%, var(--m2-sheet) 42%);
   --m2-bar-fg: var(--m2-n-25);
-  --m2-bar-fg-2: var(--m2-b-200);
+  --m2-bar-fg-2: #D5CDF2;
   --m2-bar-hover: #FFFFFF1F;
   --m2-bar-line: #FFFFFF2E;
   --m2-bar-field: #FFFFFF14;
@@ -529,15 +530,15 @@ html[data-theme="dark"] .m2-root {
   --m2-stagger: 45ms;
   --m2-rise-lg: 14px;
   /* Hero and heat on the dark ground: the hero keeps its navy, the heat fills deepen and their inks lighten */
-  --m2-hero-bg: #0B1B3F;
-  --m2-hero-bg-2: #0F3D52;
+  --m2-hero-bg: #0B0718;
+  --m2-hero-bg-2: #1B1238;
   --m2-hero-fg: #FFFFFF;
-  --m2-hero-fg-2: #C9D6F2;
-  --m2-hero-meta: #9FB2DC;
-  --m2-hero-accent: #8FB4FF;
+  --m2-hero-fg-2: #D5CDF2;
+  --m2-hero-meta: #B4AAD9;
+  --m2-hero-accent: #B9A7F5;
   --m2-hero-line: #FFFFFF29;
   --m2-hero-field: #FFFFFF14;
-  --m2-hero-glow-ink: #4D8BFF40;
+  --m2-hero-glow-ink: #B9A7F533;
   --m2-on-hero-pass: #6FD39A;
   --m2-on-hero-warn: #F2C063;
   --m2-on-hero-crit: #FF8F86;
@@ -545,7 +546,7 @@ html[data-theme="dark"] .m2-root {
   --m2-shadow-hero: 0 2px 6px #00000066, 0 18px 48px #00000099;
   --m2-heat-0: #1C5A38;
   --m2-heat-0-ink: #CFF2DC;
-  --m2-heat-1: #1D2A40;
+  --m2-heat-1: #1C1F40;
   --m2-heat-1-ink: var(--m2-fg);
   --m2-heat-2: #6B4A0E;
   --m2-heat-2-ink: #FFE2A8;
@@ -704,9 +705,9 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
   --m2-on-data: var(--m2-b-950);
 }
 
-/* Japanese: the Plex faces carry no kana or kanji, so the system's Japanese face follows them. */
+/* Japanese: the Geist faces carry no kana or kanji, so the system's Japanese face follows them. */
 .m2-root:lang(ja) {
-  --m2-font: var(--font-plex-sans), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", system-ui, sans-serif;
+  --m2-font: var(--font-geist-sans), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", system-ui, sans-serif;
 }
 
 /* Arrival of a change notice and of the run timeline's marks. Both stop under prefers-reduced-motion (above). */

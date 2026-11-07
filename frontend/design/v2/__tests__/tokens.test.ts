@@ -24,9 +24,9 @@ describe("v2 tokens", () => {
       for (let i = 1; i < L.length; i++) expect(L[i], `${ramp[i][0]} is darker than ${ramp[i - 1][0]}`).toBeLessThan(L[i - 1]);
     }
     // The brand blue is a step of its ramp, not a colour of its own.
-    expect(LIGHT["--m2-b-700"]).toBe("#1B3F8F");
+    expect(LIGHT["--m2-b-700"]).toBe("#0759DB");
     // The Ledger data blue is a literal of its own (boards/*.dc.html), the dark one too.
-    expect(LIGHT["--m2-data"]).toBe("#2F5FD0");
+    expect(LIGHT["--m2-data"]).toBe("#0759DB");
   });
 
   it("sets the same tokens for dark by system preference and by data-theme, and only tokens light defines", () => {
@@ -44,13 +44,13 @@ describe("v2 tokens", () => {
   });
 
   it("uses the brand palette: the blue data hue, the status hues and the slate grounds", () => {
-    expect(resolve("light", "--m2-data")).toBe("#2F5FD0");
-    expect(resolve("light", "--m2-crit")).toBe("#B8322A");
-    expect(resolve("light", "--m2-pass")).toBe("#1F7A45");
+    expect(resolve("light", "--m2-data")).toBe("#0759DB");
+    expect(resolve("light", "--m2-crit")).toBe("#C42B1C");
+    expect(resolve("light", "--m2-pass")).toBe("#0A7D45");
     expect(resolve("light", "--m2-sheet")).toBe("#FFFFFF");
-    expect(resolve("light", "--m2-bg")).toBe("#F6F7F8");
-    expect(resolve("dark", "--m2-bg")).toBe("#0F1419");
-    expect(resolve("dark", "--m2-data")).toBe("#7FA2F0");
+    expect(resolve("light", "--m2-bg")).toBe("#F4F5F7");
+    expect(resolve("dark", "--m2-bg")).toBe("#0B0718");
+    expect(resolve("dark", "--m2-data")).toBe("#7FA9FF");
     // Fail and critical share the stop red; high severity reads in the warn hue.
     for (const theme of THEMES) {
       expect(resolve(theme, "--m2-fail")).toBe(resolve(theme, "--m2-crit"));
@@ -58,17 +58,17 @@ describe("v2 tokens", () => {
     }
   });
 
-  it("has the type scale 12, 13, 14, 16, 20 and 24, the Plex faces and tabular figures", () => {
+  it("has the type scale 12, 13, 14, 16, 20 and 24, the Geist faces and tabular figures", () => {
     const sizes = Object.entries(LIGHT).filter(([k]) => /^--m2-fs-\d+$/.test(k)).map(([, v]) => parseInt(v, 10));
     expect(sizes).toEqual([12, 13, 14, 16, 20, 24]);
-    expect(LIGHT["--m2-font"]).toContain("--font-plex-sans");
-    expect(LIGHT["--m2-mono"]).toContain("--font-plex-mono");
+    expect(LIGHT["--m2-font"]).toContain("--font-geist-sans");
+    expect(LIGHT["--m2-mono"]).toContain("--font-geist-mono");
     expect(styles).toMatch(/font-variant-numeric:\s*tabular-nums/);
   });
 
-  it("spaces on a 4 pixel grid, rounds at 6 and 12, and moves in 150 and 200 milliseconds", () => {
+  it("spaces on a 4 pixel grid, rounds at 8 and 12, and moves in 150 and 200 milliseconds", () => {
     for (const [k, v] of Object.entries(LIGHT).filter(([k]) => /^--m2-s\d+$/.test(k))) expect(parseInt(v, 10) % 4, k).toBe(0);
-    expect(LIGHT["--m2-r1"]).toBe("6px");
+    expect(LIGHT["--m2-r1"]).toBe("8px");
     expect(LIGHT["--m2-r2"]).toBe("12px");
     expect(LIGHT["--m2-t-fast"]).toBe("150ms");
     expect(LIGHT["--m2-t-med"]).toBe("200ms");

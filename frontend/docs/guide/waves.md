@@ -55,7 +55,7 @@ Every gap comes from the target data dictionary or configuration; a gap that is 
 
 ## Workbook from the new system
 
-When SuccessFactors is being migrated, the new system's workbook sets the load format. The Workbook from the new system panel on the Migration analysis page fills that workbook from a finished SuccessFactors run. It appears only with the export permission and a SuccessFactors system.
+In a migration, the new system's workbook or load file sets the load format. The Workbook from the new system panel on the Migration analysis page fills that file from a finished run. It appears only with the export permission.
 
 1. **Choose the run and workbook.** Pick the run, then choose the `.xlsx` workbook, up to 25 MB.
 2. **Check what fits.** **Check the workbook** reads the workbook and stores nothing. It shows the rows ready, the rows held back, how many columns each sheet can fill, and any required column with no data in this run. Open **Rows held back** to see each record, column and reason.
