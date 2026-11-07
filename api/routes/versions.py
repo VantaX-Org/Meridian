@@ -266,17 +266,24 @@ def _is_upload(scope: str) -> bool:
 NO_BASELINE = {"reason": "no_baseline", "message": "No earlier run of this system or uploaded object to compare with."}
 
 
+def _run_id(value: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(value)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="That is not a run id.") from None
+
+
 async def _resolve_pair(db: AsyncSession, v1: Optional[str], v2: str) -> tuple[uuid.UUID, uuid.UUID]:
     """v1 defaults to the pinned baseline of v2's lineage, else the newest earlier finished run of it.
     A system run's lineage is its system; an upload's is the uploads of the same objects, so a
     controlling upload never defaults to a business_partner baseline.
-    Raises 404 ``NO_BASELINE`` when there is none (also for the only upload of its objects)."""
-    vid2 = uuid.UUID(v2)
+    Raises 404 ``NO_BASELINE`` when there is none (also for the only upload of its objects), 422 for a malformed id."""
+    vid2 = _run_id(v2)
     scope = await _scope_of(db, vid2)
     if scope is None:
         raise HTTPException(status_code=404, detail="Version not found")
     if v1:
-        vid1 = uuid.UUID(v1)
+        vid1 = _run_id(v1)
         scope1 = await _scope_of(db, vid1)
         if scope1 is None:
             raise HTTPException(status_code=404, detail="Version not found")

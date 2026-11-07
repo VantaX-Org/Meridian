@@ -218,3 +218,26 @@ test.describe("a long list of rules", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
   });
 });
+
+test("the rail's flyout opens once under a moving pointer and does not flash", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await prepare(page, "light");
+  await page.goto("/?fixture=1", NAV);
+  const link = page.getByTestId("rail").getByRole("link", { name: "Fix" });
+  await expect(link).toBeVisible(NAV);
+  await page.evaluate(() => {
+    document.body.dataset.flyChanges = "0";
+    new MutationObserver((records) => {
+      const changes = records.flatMap((r) => [...r.addedNodes, ...r.removedNodes]).filter((n) => n instanceof HTMLElement && n.dataset.testid === "flyout");
+      document.body.dataset.flyChanges = String(Number(document.body.dataset.flyChanges) + changes.length);
+    }).observe(document.querySelector(".m2-railwrap") as Element, { childList: true });
+  });
+  const box = (await link.boundingBox())!;
+  for (let i = 0; i < 12; i++) {
+    await page.mouse.move(box.x + box.width / 2 + (i % 3), box.y + box.height / 2);
+    await page.waitForTimeout(60);
+  }
+  await expect(page.getByTestId("flyout")).toBeVisible();
+  expect(await page.evaluate(() => document.body.dataset.flyChanges)).toBe("1");
+  expect(await page.evaluate(([x, y]) => Boolean(document.elementFromPoint(x, y)?.closest(".m2-rail")), [box.x + 4, box.y + 4])).toBe(true);
+});

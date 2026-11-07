@@ -16,18 +16,22 @@ import io
 import os
 import uuid
 from datetime import date, timedelta
+from types import SimpleNamespace
 
+import pandas as pd
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
+from api.services.worklist import name_records
 from tests.m2_client import headers, make_client
 from tests.m2_seed import R1, seed_m2
 
 pytestmark = pytest.mark.skipif(not os.environ.get("MERIDIAN_TEST_DB_URL"), reason="MERIDIAN_TEST_DB_URL not set")
 
 NEW_TABLES = ("comments", "watches", "notification_subscriptions", "delegations", "escalation_steps",
-              "contract_versions", "wave_gates", "share_links", "assignment_templates", "steward_assignments")
+              "contract_versions", "wave_gates", "share_links", "assignment_templates", "steward_assignments",
+              "org_unit_names")
 
 
 @pytest.fixture(scope="module")
@@ -532,6 +536,16 @@ async def test_assignment_template_apply_and_gaps(owner, monkeypatch):
         assert done.status_code == 200
         gaps = (await c.get("/api/v1/admin/assignment-template/gaps", headers=headers("viewer"))).json()["gaps"]
         assert not [g for g in gaps if g["module"] in ("material_master", "fi_gl")]
+        def slices():
+            return c.get("/api/v1/admin/steward-assignments", headers=headers("viewer"))
+        rows = {r["slice_value"]: r for r in (await slices()).json()["assignments"]}
+        assert rows["3000"]["slice_text"] is None and rows["*"]["slice_text"] is None
+        frames = SimpleNamespace(frames={"T001W": pd.DataFrame({"T001W.WERKS": ["3000"], "T001W.NAME1": ["North plant"]})})
+        with Session(owner) as db:
+            name_records(db, {"tid": tid, "vid": str(uuid.uuid4())}, frames)
+            db.commit()
+        rows = {r["slice_value"]: r for r in (await slices()).json()["assignments"]}
+        assert rows["3000"]["slice_text"] == "North plant" and rows["*"]["slice_text"] is None
         plan = (await c.post("/api/v1/people/balance/plan", json={"by": "slice", "user_ids": [ann, bob]},
                              headers=headers("manager"))).json()
         assert plan["by"] == "slice" and all(m["to"] == bob for m in plan["moves"])
@@ -581,6 +595,7 @@ def test_rls_isolates_every_new_table(owner):
             c.execute(text("INSERT INTO assignment_templates (tenant_id, template) VALUES (:t, '{}')"), p)
             c.execute(text("INSERT INTO steward_assignments (tenant_id, module, slice_kind, slice_value, steward_user_id) "
                            "VALUES (:t, 'fi_gl', 'none', '*', :u)"), p)
+            c.execute(text("INSERT INTO org_unit_names (tenant_id, field, value, name) VALUES (:t, 'WERKS', '1000', 'x')"), p)
         c.execute(text("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'm2_roles_rls_app') THEN "
                        "CREATE ROLE m2_roles_rls_app NOSUPERUSER NOBYPASSRLS; END IF; END $$"))
         for t in NEW_TABLES:

@@ -147,12 +147,14 @@ describe("Compare canvas", () => {
     expect(screen.queryByTestId("compare-table")).toBeNull();
   });
 
-  it("the primary action opens Work as of the later run, for its system and the object that lost the most", async () => {
+  it("the primary action opens what is new in the later run, for its system and the object that lost the most", async () => {
     renderWithQuery(<CompareCanvas a={A} b={B} />);
     const link = await screen.findByTestId("compare-worse");
     const q = new URLSearchParams((link.getAttribute("href") ?? "").split("?")[1]);
     const S = fixtureCompare(A, B);
-    expect(q.get("as_of_run")).toBe(B);
+    expect(q.get("version_id")).toBe(B);
+    expect(q.get("since")).toBe(A);
+    expect(q.has("as_of_run")).toBe(false);
     expect(q.get("system")).toBe(RUNS[7].system_id);
     expect(q.get("module")).toBe(worstObject(S)?.module);
     expect(screen.getByTestId("primary-action")).toHaveTextContent(`${worstObject(S)?.label} lost the most`);
@@ -173,6 +175,7 @@ describe("Compare canvas", () => {
     await waitFor(() => expect(within(list).getAllByRole("link")).toHaveLength(15));
     const mm = within(list).getAllByRole("link").find((l) => /Material master/.test(norm(l))) as HTMLElement;
     expect(norm(mm)).toContain("69.8 to 71.8 measured, shown 69.8 to 70.0");
+    expect(norm(mm)).toMatch(/records checked, coverage [\d.]+% to [\d.]+%\./);
     expect(norm(mm)).toContain("+2.0");
     expect(screen.getByTestId("compare-list-totals")).toHaveTextContent("All 15 objects: 14 new, 37 fixed, 23 worse, 61 better.");
   });

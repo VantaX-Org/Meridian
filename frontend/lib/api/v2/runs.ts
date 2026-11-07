@@ -152,6 +152,17 @@ export function getTimeline(systemId: string | null, limit = 8, module?: string)
   return v2Get<Timeline>("/runs/timeline", { system_id: systemId ?? undefined, module, limit }).then(scoreRunsOnly);
 }
 
+/** Failing records per rule across a system's latest runs, oldest first. A null is a run where the rule did not run. */
+export interface RuleTrend {
+  system_id: string;
+  runs: { id: string; run_at: string | null; run_number: number | null }[];
+  rules: { module: string; check_id: string; failing: (number | null)[] }[];
+}
+
+export function getRuleTrend(systemId: string, limit = 8): Promise<RuleTrend> {
+  return v2Get<RuleTrend>("/runs/rule-trend", { system_id: systemId, limit });
+}
+
 export function getCompareSummary(a: string, b: string): Promise<CompareSummary> {
   return v2Get<CompareSummary>(`/runs/${encodeURIComponent(a)}/vs/${encodeURIComponent(b)}/summary`);
 }

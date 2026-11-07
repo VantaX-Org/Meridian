@@ -122,6 +122,8 @@ NAME_FIELDS: dict[str, tuple[str, str, Optional[str]]] = {
     "CHARG": ("MCH1", "MATNR", None),
 }
 _LANG_PREFERENCE = ("E", "EN")
+# T001W.NAME1 is a site name. is_sensitive flags every NAME* field, which is right for people but not for plants.
+_ORG_NAME_TABLES = {"T001W"}
 
 
 def _p(tenant_id: str, version_id: str, scope: str) -> dict:
@@ -266,7 +268,7 @@ def name_records(session, p: dict, frames) -> int:
     session.execute(text("TRUNCATE tmp_names"))
     rows: list[tuple[str, str, str]] = []
     for field, (table, name_col, lang_col) in NAME_FIELDS.items():
-        if is_sensitive(table, name_col):
+        if table not in _ORG_NAME_TABLES and is_sensitive(table, name_col):
             continue
         df = getattr(frames, "frames", {}).get(table)
         cols = [f"{table}.{field}", f"{table}.{name_col}"] + ([f"{table}.{lang_col}"] if lang_col else [])
@@ -284,6 +286,11 @@ def name_records(session, p: dict, frames) -> int:
         return 0
     _copy(session, "tmp_names", ("field", "value", "name"), rows)
     session.execute(text("CREATE INDEX ON tmp_names (field, value)"))
+    session.execute(text("""
+        INSERT INTO org_unit_names (tenant_id, field, value, name)
+        SELECT CAST(:tid AS uuid), field, value, min(name) FROM tmp_names
+         WHERE field IN ('WERKS', 'BUKRS') GROUP BY field, value
+        ON CONFLICT (tenant_id, field, value) DO UPDATE SET name = EXCLUDED.name"""), p)
     named = 0
     for field in sorted({r[0] for r in rows}):
         named += session.execute(text("""

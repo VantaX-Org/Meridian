@@ -140,10 +140,33 @@ describe("rail and flyout", () => {
     expect(fly.querySelectorAll(".m2-orow")).toHaveLength(0);
   });
 
-  it("pins the menu open for this browser and unpins it", () => {
+  it("opens nothing on a quick pass over the rail, and a slip off the flyout does not close it", async () => {
+    mount();
+    const rail = screen.getByTestId("rail");
+    const fix = within(rail).getByRole("link", { name: "Fix" });
+    const wrap = rail.parentElement as HTMLElement;
+    fireEvent.mouseEnter(wrap);
+    fireEvent.mouseEnter(fix);
+    fireEvent.mouseLeave(wrap);
+    await new Promise((r) => setTimeout(r, 160));
+    expect(screen.queryByTestId("flyout")).toBeNull();
+
+    fireEvent.mouseEnter(wrap);
+    fireEvent.mouseEnter(fix);
+    await screen.findByTestId("flyout");
+    fireEvent.mouseLeave(wrap);
+    fireEvent.mouseEnter(wrap);
+    await new Promise((r) => setTimeout(r, 240));
+    expect(screen.getByTestId("flyout")).toBeInTheDocument();
+
+    fireEvent.mouseLeave(wrap);
+    await waitFor(() => expect(screen.queryByTestId("flyout")).toBeNull());
+  });
+
+  it("pins the menu open for this browser and unpins it", async () => {
     mount();
     fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Fix" }));
-    fireEvent.click(within(screen.getByTestId("flyout")).getByRole("button", { name: "Pin the menu open" }));
+    fireEvent.click(within(await screen.findByTestId("flyout")).getByRole("button", { name: "Pin the menu open" }));
     expect(window.localStorage.getItem("m2.rail.pin")).toBe("1");
     fireEvent.click(screen.getByRole("button", { name: "Unpin the menu" }));
     expect(window.localStorage.getItem("m2.rail.pin")).toBe("0");

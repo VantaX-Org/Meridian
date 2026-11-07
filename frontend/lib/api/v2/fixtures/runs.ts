@@ -139,6 +139,18 @@ export function fixtureTimeline(systemId: string | undefined, limit: number, mod
   return { system_id: systemId ?? null, limit, runs };
 }
 
+/** Each rule's failing count across the visible runs: a steady fall that ends at the library's newest figure. */
+function fixtureRuleTrend(systemId: string, limit: number) {
+  if (systemId !== ECC.id) return { system_id: systemId, runs: [], rules: [] };
+  const runs = visibleRuns().slice(-limit).map(timelineRun);
+  const rules = LIBRARY.map((r) => ({
+    module: r.module,
+    check_id: r.check_id,
+    failing: runs.map((_, i) => Math.round(r.failing * (1 + ((runs.length - 1 - i) * (r.check_id.length % 3)) / 20))),
+  }));
+  return { system_id: systemId, runs: runs.map(({ id, run_at, run_number }) => ({ id, run_at, run_number })), rules };
+}
+
 function head(k: number): VersionHead {
   const run = RUNS[RUNS.length - k];
   const summary: NonNullable<VersionHead["dqs_summary"]> = {};
@@ -627,6 +639,7 @@ function configLoadOf(systemId: string): ConfigLoad | { status: "never_loaded" }
 
 /** The answer to one step 3 read, or NONE when the path is not one of this step's. */
 export function runsFixtureResponse(path: string, params: Params): unknown {
+  if (path === "/runs/rule-trend") return fixtureRuleTrend(String(params.system_id), Number(params.limit ?? 8));
   if (path === "/runs/timeline") return fixtureTimeline(params.system_id ? String(params.system_id) : undefined, Number(params.limit ?? 8), params.module ? String(params.module) : undefined);
   const vs = /^\/runs\/([^/]+)\/vs\/([^/]+)\/summary$/.exec(path);
   if (vs) return fixtureCompare(decodeURIComponent(vs[1]), decodeURIComponent(vs[2]));

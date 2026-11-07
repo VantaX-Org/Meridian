@@ -60,6 +60,10 @@ export interface LedgerState {
   system: string | null;
   /** Time travel: the ledger as it stood when this run finished; the statuses are today's. */
   asOf: string | null;
+  /** With `since`: read this run, not today. */
+  version: string | null;
+  /** A baseline run: only the records of `version` failing a check they did not fail in it. */
+  since: string | null;
   /** A migration wave id: only the records of that wave's objects. */
   wave: string | null;
   /** go, at-risk or no-go: only the objects with that verdict (with wave, the wave's). */
@@ -70,10 +74,10 @@ export interface LedgerState {
   density: Density | null;
 }
 
-export const DEFAULT_STATE: LedgerState = { chip: "tofix", module: null, rule: null, severity: null, assigned: null, due: null, batch: null, policy: null, system: null, asOf: null, wave: null, verdict: null, group: false, sort: "value", density: null };
+export const DEFAULT_STATE: LedgerState = { chip: "tofix", module: null, rule: null, severity: null, assigned: null, due: null, batch: null, policy: null, system: null, asOf: null, version: null, since: null, wave: null, verdict: null, group: false, sort: "value", density: null };
 
 /** The query keys the ledger owns; everything else in the address (fixture, persona, open) is left alone. */
-export const MANAGED = ["filter", "status", "proposed", "module", "rule", "check_id", "severity", "assigned", "due", "batch", "policy", "system", "as_of_run", "wave", "verdict", "group", "sort", "density", "view"] as const;
+export const MANAGED = ["filter", "status", "proposed", "module", "rule", "check_id", "severity", "assigned", "due", "batch", "policy", "system", "as_of_run", "version_id", "since", "wave", "verdict", "group", "sort", "density", "view"] as const;
 
 function chipFrom(get: (k: string) => string | null, fallback: ChipId | null): ChipId | null {
   const filter = get("filter");
@@ -98,6 +102,8 @@ export function readState(params: URLSearchParams, view?: SavedView): LedgerStat
   const chip = urlHasChip || view ? chipFrom(get, view ? null : "tofix") : get("batch") ? null : "tofix";
   const sort = get("sort");
   const density = params.get("density") ?? view?.density ?? view?.filters.density ?? null;
+  // The API refuses since beside as_of_run, and since needs its run.
+  const newSince = Boolean(params.get("since") && params.get("version_id")) && !params.get("as_of_run");
   return {
     chip,
     module: get("module"),
@@ -109,6 +115,8 @@ export function readState(params: URLSearchParams, view?: SavedView): LedgerStat
     policy: get("policy"),
     system: get("system"),
     asOf: params.get("as_of_run"),
+    version: newSince ? params.get("version_id") : null,
+    since: newSince ? params.get("since") : null,
     wave: get("wave"),
     verdict: get("verdict"),
     group: get("group") === "rule",
@@ -130,6 +138,8 @@ export function filtersOf(s: LedgerState): WorkFilters {
     policy: s.policy ?? undefined,
     system: s.system ?? undefined,
     as_of_run: s.asOf ?? undefined,
+    version_id: s.version ?? undefined,
+    since: s.since ?? undefined,
     wave: s.wave ?? undefined,
     verdict: s.verdict ?? undefined,
     status: c ? c.status : "open",
@@ -155,6 +165,8 @@ export function toParams(s: LedgerState): Record<string, string> {
   if (s.policy) out.policy = s.policy;
   if (s.system) out.system = s.system;
   if (s.asOf) out.as_of_run = s.asOf;
+  if (s.version) out.version_id = s.version;
+  if (s.since) out.since = s.since;
   if (s.wave) out.wave = s.wave;
   if (s.verdict) out.verdict = s.verdict;
   if (s.group) out.group = "rule";

@@ -4,6 +4,8 @@ GET /api/v1/runs/timeline?system_id=&module=&limit=8  the last N finished runs o
                                                scored ``module`` when given), oldest first, each with its
                                                run number, status, per-object scores, findings and value at risk,
                                                records checked, duration, baseline flag and job kind
+GET /api/v1/runs/rule-trend?system_id=&limit=8  failing records of every rule across the last N finished runs of one
+                                               system, oldest first; null where the rule did not run in that run
 GET /api/v1/runs/{a}/vs/{b}/summary            per object before and after, and the rules that started failing,
                                                were fixed, got worse or better (api/routes/versions.py rules)
 GET /api/v1/runs/{a}/vs/{b}/score-delta        one object's score change split into points per rule and dimension
@@ -235,6 +237,48 @@ def _side(summary: dict, mod: str, run: str, widest: dict) -> Optional[dict]:
     return {"score": m.get("composite_score"), "raw_score": m.get("raw_score"), "capped": bool(m.get("capped")),
             "records_checked": records_checked_of(m, widest.get((run, mod))),
             "coverage": cov if isinstance(cov, (int, float)) else None}
+
+
+class RuleTrendRunOut(BaseModel):
+    id: str
+    run_at: Optional[datetime] = None
+    run_number: Optional[int] = None
+
+
+class RuleTrendRowOut(BaseModel):
+    module: str
+    check_id: str
+    failing: list[Optional[int]]           # one per run, in the order of ``runs``; null: the rule did not run cleanly
+
+
+class RuleTrendOut(BaseModel):
+    system_id: str
+    runs: list[RuleTrendRunOut]            # oldest first
+    rules: list[RuleTrendRowOut]
+
+
+def rule_series(ids: list[str], found: list[tuple]) -> list[dict]:
+    """Per (module, rule) its failing records in each run of ``ids``, from (run, module, rule, failing, ...) rows."""
+    at = {vid: i for i, vid in enumerate(ids)}
+    series: dict[tuple[str, str], list[Optional[int]]] = {}
+    for vid, mod, check, n, *_ in found:
+        series.setdefault((mod, check), [None] * len(ids))[at[vid]] = int(n or 0)
+    return [{"module": m, "check_id": c, "failing": v} for (m, c), v in sorted(series.items())]
+
+
+@router.get("/rule-trend", response_model=RuleTrendOut)
+async def rule_trend(system_id: uuid.UUID = Query(...), limit: int = Query(8, ge=1, le=50),
+                     db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Every rule's failing records across the last ``limit`` finished runs of one system, oldest first. One system
+    only, because a rule's counts from two systems are not one trend."""
+    await _rls(db, tenant)
+    t = str(tenant.id)
+    rows = (await db.execute(text(_RUNS_SQL), {"t": t, "sid": str(system_id), "mod": None, "n": limit})).mappings().all()
+    runs = list(reversed(rows))
+    ids = [r["id"] for r in runs]
+    found = (await db.execute(text(_FINDINGS_SQL), {"t": t, "ids": ids})).fetchall() if ids else []
+    return {"system_id": str(system_id), "rules": rule_series(ids, found),
+            "runs": [{"id": r["id"], "run_at": r["run_at"], "run_number": r["run_number"]} for r in runs]}
 
 
 @router.get("/{a}/vs/{b}/summary", response_model=CompareOut)

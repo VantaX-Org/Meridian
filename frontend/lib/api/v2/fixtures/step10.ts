@@ -288,11 +288,13 @@ function policyRules(policy: string): string[] {
 export function ledgerRecords(params: Params): WorkPage | typeof NONE_STEP10 {
   const policy = params.policy ? String(params.policy) : null;
   const asOf = params.as_of_run ? String(params.as_of_run) : null;
-  if (!policy && !asOf) return NONE_STEP10;
+  const since = params.since ? String(params.since) : null;
+  if (!policy && !asOf && !since) return NONE_STEP10;
+  if (since && !params.version_id) throw new Refused(422, "since compares one run: pass version_id, not scope=current");
   if (asOf && (params.version_id || params.scope === "current")) throw new Refused(422, "as_of_run is exclusive with version_id and scope=current");
   const run = asOf ? runs.find((r) => r.id === asOf) : null;
   if (asOf && !run) throw new Refused(404, "Run not found.");
-  const rest = { ...params, policy: undefined, as_of_run: undefined, after: undefined, limit: 100000 } as Record<string, string | number | boolean | undefined>;
+  const rest = { ...params, policy: undefined, as_of_run: undefined, version_id: undefined, since: undefined, after: undefined, limit: 100000 } as Record<string, string | number | boolean | undefined>;
   let rows: WorkRow[] = wf.workRecords(rest).items;
   if (policy) {
     const ids = new Set(policyRules(policy));
@@ -303,6 +305,8 @@ export function ledgerRecords(params: Params): WorkPage | typeof NONE_STEP10 {
     const back = runs.indexOf(run);
     rows = rows.filter((r) => (r.first_seen_at ?? "") <= run.run_at && hashOf(r.record_key) % 10 >= back);
   }
+  // About a fifth of a run's records are new against a baseline; a run has nothing new against itself.
+  if (since) rows = since === params.version_id ? [] : rows.filter((r) => hashOf(`${since}${r.record_key}`) % 5 === 0);
   const offset = params.after ? Number(params.after) || 0 : 0;
   const limit = Number(params.limit ?? 50);
   return { version_id: null, total: rows.length, total_capped: false, next: offset + limit < rows.length ? String(offset + limit) : null, items: rows.slice(offset, offset + limit) };

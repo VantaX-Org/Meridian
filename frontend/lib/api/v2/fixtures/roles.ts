@@ -271,7 +271,7 @@ export function rolesFixtureResponse(path: string, params: Params): unknown {
     return {
       assignments: Object.entries(s.stewards).sort(([a], [b]) => a.localeCompare(b)).map(([k, id]) => {
         const [module, slice_kind, slice_value] = k.split("|");
-        return { module, slice_kind, slice_value, steward_user_id: id, steward_name: PEOPLE[id] ?? null, source: seeded.has(k) ? "manual" : "template" };
+        return { module, slice_kind, slice_value, steward_user_id: id, steward_name: PEOPLE[id] ?? null, source: seeded.has(k) ? "manual" : "template", slice_text: slice_kind === "plant" && slice_value === "1000" ? "Johannesburg plant" : null };
       }),
     };
   }

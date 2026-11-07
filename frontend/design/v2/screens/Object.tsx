@@ -400,7 +400,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               {onRules ? <ObjectContractsBlock module={apiModule} label={label} run={run} /> : null}
               <div className="m2-tabpanel">
                 {oldRun ? (
-                  <fieldset disabled className="m2-gate" title={OLD_RUN_REASON()} data-testid="action-gate">
+                  <fieldset disabled className="m2-oldrun-gate" title={OLD_RUN_REASON()} data-testid="action-gate">
                     {children}
                   </fieldset>
                 ) : (

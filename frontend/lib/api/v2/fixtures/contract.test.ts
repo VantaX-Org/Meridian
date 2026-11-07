@@ -98,7 +98,7 @@ const IDS: Record<string, string> = {
 };
 
 /** Values for the required query parameters of a route. */
-const QUERY: Record<string, string> = { target_kind: "object", target_id: "material_master", module: "material_master" };
+const QUERY: Record<string, string> = { target_kind: "object", target_id: "material_master", module: "material_master", system_id: L.systems[0].id };
 
 interface Case { route: string; path: string; query: Record<string, string>; schema: Schema }
 const CASES: Case[] = Object.entries(api.paths).flatMap(([route, ops]) => {

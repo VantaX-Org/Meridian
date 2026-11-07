@@ -122,7 +122,7 @@ p.m2-ot-empty { margin: 0; font-size: var(--m2-fs-14); color: var(--m2-ink-2); m
 
 /* Object header, action gate, Objects board and Home headlines. */
 .m2-root .m2-oh { display: flex; flex-wrap: wrap; align-items: center; gap: var(--m2-s4); margin: 0 0 var(--m2-s3); }
-.m2-root .m2-gate { border: 0; margin: 0; padding: 0; min-width: 0; opacity: 0.6; }
+.m2-root .m2-oldrun-gate { border: 0; margin: 0; padding: 0; min-width: 0; }
 .m2-root .m2-ob-table { width: 100%; }
 .m2-root .m2-ob-score { display: inline-flex; align-items: center; gap: var(--m2-s2); font-variant-numeric: tabular-nums; }
 .m2-root .m2-ob-gap th, .m2-root .m2-ob-gap td { color: var(--m2-ink-3); font-size: var(--m2-fs-13); }

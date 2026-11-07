@@ -168,6 +168,13 @@ async def test_status_cache_is_keyed_per_system(owner, monkeypatch):
         assert (again[s["spare"]]["latest_run_id"], again[s["spare"]]["run_number"]) == (newer, 2)
 
 
+def test_rule_series():
+    from api.routes.run_timeline import rule_series
+    found = [("r1", "mm", "A", 5, None), ("r2", "mm", "A", 0, None), ("r2", "bp", "B", None, 1.0)]
+    assert rule_series(["r1", "r2"], found) == [{"module": "bp", "check_id": "B", "failing": [None, 0]},
+                                                {"module": "mm", "check_id": "A", "failing": [5, 0]}]
+
+
 def test_findings_delta():
     from api.routes.run_timeline import findings_delta
     assert findings_delta({"a": 5, "b": 2}, {"a": 3, "c": 4}) == (4, 4)  # a +2, b +2 | c -4
@@ -215,6 +222,11 @@ async def test_compare_counts_reconcile_with_the_object_rows(owner, monkeypatch)
         # different systems cannot be compared; unknown runs are not found
         assert (await client.get(f"/api/v1/runs/{s['run0']}/vs/{s['run_spare']}/summary", headers=headers())).status_code == 400
         assert (await client.get(f"/api/v1/runs/{s['run0']}/vs/00000000-0000-0000-0000-000000000000/summary", headers=headers())).status_code == 404
+        # the versions route refuses the same pair, and says a malformed id is one
+        pair = lambda a, b: client.get("/api/v1/versions/compare", params={"v1": a, "v2": b}, headers=headers())
+        assert (await pair(s["run0"], s["run_spare"])).status_code == 400
+        assert (await pair("not-a-run", s["run"])).status_code == 422
+        assert (await pair(s["run0"], "not-a-run")).status_code == 422
 
 
 @needs_db
