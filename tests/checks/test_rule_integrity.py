@@ -68,13 +68,15 @@ def test_every_rule_resolves_a_grain():
     edges, _ = _graph()
     joinable = {t for e in edges for t in (e.parent, e.child)}
     problems = []
+
+    def frame(t, cols=()):
+        keys = [f"{t}.{k}" for k in d.keys(t)]
+        return pd.DataFrame(columns=list(dict.fromkeys(keys + [c for c in cols if c.startswith(t + ".")])))
+
+    keys_only = {t: frame(t) for t in joinable}  # shared: a rule rebuilds only the tables it reads
     for fname, module, rule in ALL:
         cols = rule_columns(rule)
-        frames = {}
-        for t in set(tables_of(cols)) | joinable:
-            keys = [f"{t}.{k}" for k in d.keys(t)]
-            frames[t] = pd.DataFrame(columns=list(dict.fromkeys(keys + [c for c in cols if c.startswith(t + ".")])))
-        tf = TableFrames(frames, module=module)
+        tf = TableFrames(keys_only | {t: frame(t, cols) for t in tables_of(cols)}, module=module)
         try:
             built = tf.frame_for(cols, grain=rule.get("grain"))
         except ValueError as e:
