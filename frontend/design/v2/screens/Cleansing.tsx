@@ -310,6 +310,7 @@ function what(g: CleaningGroup): ReactNode {
 
 function useDecide() {
   const toast = useToast();
+  const { can } = useV2Session();
   const qc = useQueryClient();
   const done = (msg: string) => () => {
     toast.show(msg);
@@ -327,7 +328,7 @@ function useDecide() {
       mutationFn: async ({ item, reason }: { item: Proposal; reason: string }) => {
         const r = await rejectProposal(item.id, reason);
         // Teaches Aletheia which proposals stewards turn down; a failure here must not undo the rejection.
-        await sendAiFeedback(item.id, item.object_type, reason).catch(() => undefined);
+        if (can("ai_feedback")) await sendAiFeedback(item.id, item.object_type, reason).catch(() => undefined);
         return r;
       },
       onSuccess: done(t("The proposal was rejected. The reason is kept in the audit trail.")),

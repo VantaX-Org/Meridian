@@ -1,0 +1,680 @@
+[
+  {
+    "id": "admin-setup",
+    "role": "platform_admin",
+    "object": null,
+    "steps": [
+      {
+        "route": "/",
+        "control": "Open Administration",
+        "expect": "Landscape"
+      },
+      {
+        "route": "/admin",
+        "control": "Users",
+        "expect": "Administration"
+      },
+      {
+        "route": "/admin/users",
+        "control": "Roles and permissions",
+        "expect": "Users"
+      },
+      {
+        "route": "/admin/roles",
+        "control": null,
+        "expect": "Roles and permissions"
+      }
+    ]
+  },
+  {
+    "id": "admin-connect-system",
+    "role": "platform_admin",
+    "object": null,
+    "steps": [
+      {
+        "route": "/s",
+        "control": "Connect a system",
+        "expect": "Systems"
+      },
+      {
+        "route": "/s/new",
+        "control": null,
+        "expect": "Set up Meridian"
+      }
+    ]
+  },
+  {
+    "id": "admin-view-as",
+    "role": "platform_admin",
+    "object": null,
+    "steps": [
+      {
+        "route": "/admin",
+        "control": "View as a role",
+        "expect": "Administration"
+      },
+      {
+        "route": "/admin/viewas",
+        "control": null,
+        "expect": "View as a role"
+      }
+    ]
+  },
+  {
+    "id": "admin-audit",
+    "role": "platform_admin",
+    "object": null,
+    "steps": [
+      {
+        "route": "/admin",
+        "control": "Audit log",
+        "expect": "Administration"
+      },
+      {
+        "route": "/admin/audit",
+        "control": null,
+        "expect": "Audit log"
+      }
+    ]
+  },
+  {
+    "id": "basis-extract-analyse",
+    "role": "sap_basis",
+    "object": null,
+    "steps": [
+      {
+        "route": "/",
+        "control": "Extract",
+        "expect": "Landscape"
+      },
+      {
+        "route": "/?open=system:{system_id}",
+        "control": "Extract",
+        "expect": "Test connection"
+      },
+      {
+        "route": "/?open=system:{system_id}",
+        "control": "Extract {n} objects",
+        "expect": "Analyse straight after extracting",
+        "needs": "Extract pressed on the system card"
+      },
+      {
+        "route": "/runs?view=jobs",
+        "control": null,
+        "expect": "Jobs"
+      }
+    ]
+  },
+  {
+    "id": "basis-fix-signin",
+    "role": "sap_basis",
+    "object": null,
+    "steps": [
+      {
+        "route": "/",
+        "control": "Fix the {system} sign-in",
+        "expect": "Landscape"
+      },
+      {
+        "route": "/?open=connection:{system_id}",
+        "control": null,
+        "expect": "Test connection"
+      }
+    ]
+  },
+  {
+    "id": "basis-schedule",
+    "role": "sap_basis",
+    "object": null,
+    "steps": [
+      {
+        "route": "/?open=system:{system_id}",
+        "control": "Schedule",
+        "expect": "Test connection"
+      },
+      {
+        "route": "/s/{system_id}?tab=schedules",
+        "control": null,
+        "expect": "Schedules"
+      }
+    ]
+  },
+  {
+    "id": "steward-accept-material",
+    "role": "data_steward",
+    "object": "material_master",
+    "steps": [
+      {
+        "route": "/o/_/material-master",
+        "control": "Rules",
+        "expect": "out of 100"
+      },
+      {
+        "route": "/o/_/material-master/rules",
+        "control": "Accept all",
+        "expect": "All rules"
+      },
+      {
+        "route": "/work",
+        "control": null,
+        "expect": "Nothing reaches SAP until it is approved and applied."
+      }
+    ]
+  },
+  {
+    "id": "steward-accept-next-step",
+    "role": "data_steward",
+    "object": null,
+    "steps": [
+      {
+        "route": "/",
+        "control": "Accept {count} suggested values for {check}",
+        "expect": "Landscape"
+      },
+      {
+        "route": "/work?rule={rule_id}",
+        "control": "Accept {count} suggested values on {check}",
+        "expect": "Nothing reaches SAP until it is approved and applied."
+      },
+      {
+        "route": "/work",
+        "control": null,
+        "expect": "Work"
+      }
+    ]
+  },
+  {
+    "id": "steward-monitor-after-clean",
+    "role": "data_steward",
+    "object": null,
+    "steps": [
+      {
+        "route": "/work/monitor",
+        "control": "Open cleansing",
+        "expect": "records failed a rule again since the last run"
+      },
+      {
+        "route": "/cleansing",
+        "control": "Review the proposals",
+        "expect": "Cleansing"
+      },
+      {
+        "route": "/cleansing",
+        "control": null,
+        "expect": "rolled back"
+      }
+    ]
+  },
+  {
+    "id": "steward-make-rule",
+    "role": "data_steward",
+    "object": "material_master",
+    "steps": [
+      {
+        "route": "/o/_/material-master/profile",
+        "control": "Make it a rule",
+        "expect": "Mined dependencies"
+      },
+      {
+        "route": "/o/_/material-master/profile",
+        "control": null,
+        "expect": "It runs from the next analysis.",
+        "needs": "Make it a rule pressed on a mined dependency"
+      }
+    ]
+  },
+  {
+    "id": "steward-verified-fixes",
+    "role": "data_steward",
+    "object": null,
+    "steps": [
+      {
+        "route": "/fix-drafts",
+        "control": "Review the first pending draft",
+        "expect": "Aletheia verified fixes"
+      },
+      {
+        "route": "/fix-drafts",
+        "control": null,
+        "expect": "Approve"
+      }
+    ]
+  },
+  {
+    "id": "owner-approve-batch",
+    "role": "data_owner",
+    "object": null,
+    "steps": [
+      {
+        "route": "/",
+        "control": "Approve batch {label}",
+        "expect": "for your approval"
+      },
+      {
+        "route": "/?open=batch:{batch_id}",
+        "control": "Approve",
+        "expect": "Send back"
+      },
+      {
+        "route": "/?open=batch:{batch_id}",
+        "control": "Export load file",
+        "expect": "Export load file",
+        "needs": "the batch approved"
+      },
+      {
+        "route": "/?open=batch:{batch_id}",
+        "control": "Loaded in SAP",
+        "expect": "Who loads it in SAP",
+        "needs": "the batch approved"
+      },
+      {
+        "route": "/?open=batch:{batch_id}",
+        "control": null,
+        "expect": "Sent to SAP",
+        "needs": "the batch approved"
+      }
+    ]
+  },
+  {
+    "id": "owner-approvals-list",
+    "role": "data_owner",
+    "object": null,
+    "steps": [
+      {
+        "route": "/work?filter=approvals",
+        "control": null,
+        "expect": "Nothing reaches SAP until it is approved and applied."
+      }
+    ]
+  },
+  {
+    "id": "owner-approve-request",
+    "role": "data_owner",
+    "object": null,
+    "steps": [
+      {
+        "route": "/requests",
+        "control": "To approve",
+        "expect": "Create and change master data with approval"
+      },
+      {
+        "route": "/requests?open=request:{request_id}",
+        "control": "Approve",
+        "expect": "Approve"
+      },
+      {
+        "route": "/requests",
+        "control": null,
+        "expect": "Requests"
+      }
+    ]
+  },
+  {
+    "id": "steward-new-request",
+    "role": "data_steward",
+    "object": null,
+    "steps": [
+      {
+        "route": "/requests",
+        "control": "New request",
+        "expect": "Create and change master data with approval"
+      },
+      {
+        "route": "/requests",
+        "control": null,
+        "expect": "Requests"
+      }
+    ]
+  },
+  {
+    "id": "lead-waves",
+    "role": "programme_lead",
+    "object": null,
+    "steps": [
+      {
+        "route": "/?view=waves",
+        "control": "Open {wave}",
+        "expect": "Waves"
+      },
+      {
+        "route": "/?view=waves&open=waves",
+        "control": null,
+        "expect": "Analyse the whole wave"
+      }
+    ]
+  },
+  {
+    "id": "lead-no-go",
+    "role": "programme_lead",
+    "object": null,
+    "steps": [
+      {
+        "route": "/",
+        "control": "Clear the {n} no-go objects in {wave}",
+        "expect": "Landscape"
+      },
+      {
+        "route": "/work?verdict=no-go",
+        "control": null,
+        "expect": "Work"
+      }
+    ]
+  },
+  {
+    "id": "lead-people",
+    "role": "programme_lead",
+    "object": null,
+    "steps": [
+      {
+        "route": "/people",
+        "control": "Open {name}'s overdue work",
+        "expect": "Owners and stewards"
+      },
+      {
+        "route": "/work",
+        "control": null,
+        "expect": "Work"
+      }
+    ]
+  },
+  {
+    "id": "lead-migration-status",
+    "role": "programme_lead",
+    "object": null,
+    "steps": [
+      {
+        "route": "/migration",
+        "control": null,
+        "expect": "Migration"
+      }
+    ]
+  },
+  {
+    "id": "lead-go-live",
+    "role": "programme_lead",
+    "object": null,
+    "steps": [
+      {
+        "route": "/go-live",
+        "control": null,
+        "expect": "Go-live flight deck"
+      }
+    ]
+  },
+  {
+    "id": "lead-reports",
+    "role": "programme_lead",
+    "object": null,
+    "steps": [
+      {
+        "route": "/reports",
+        "control": null,
+        "expect": "Schedules"
+      }
+    ]
+  },
+  {
+    "id": "sf-workbook-export",
+    "role": "data_steward",
+    "object": "employee_central",
+    "steps": [
+      {
+        "route": "/migration",
+        "control": "Check the workbook",
+        "expect": "Workbook from the new system"
+      },
+      {
+        "route": "/migration",
+        "control": "Export in the same format",
+        "expect": "Check what fits",
+        "needs": "a workbook from the new system uploaded and checked"
+      },
+      {
+        "route": "/migration",
+        "control": null,
+        "expect": "Export the data",
+        "needs": "a workbook from the new system uploaded and checked"
+      }
+    ]
+  },
+  {
+    "id": "sf-employee-central-findings",
+    "role": "analyst",
+    "object": "employee_central",
+    "steps": [
+      {
+        "route": "/objects",
+        "control": "Employee central",
+        "expect": "Objects",
+        "needs": "a SuccessFactors system connected and analysed"
+      },
+      {
+        "route": "/o/_/employee-central",
+        "control": "Rules",
+        "expect": "out of 100",
+        "needs": "a SuccessFactors system connected and analysed"
+      },
+      {
+        "route": "/o/_/employee-central/rules",
+        "control": null,
+        "expect": "All rules",
+        "needs": "a SuccessFactors system connected and analysed"
+      }
+    ]
+  },
+  {
+    "id": "customer-findings",
+    "role": "data_steward",
+    "object": "sd_customer_master",
+    "steps": [
+      {
+        "route": "/o/_/sd-customer-master",
+        "control": "Rules",
+        "expect": "out of 100"
+      },
+      {
+        "route": "/o/_/sd-customer-master/rules",
+        "control": "Accept all",
+        "expect": "All rules",
+        "needs": "suggested values for a customer rule"
+      },
+      {
+        "route": "/work",
+        "control": null,
+        "expect": "Nothing reaches SAP until it is approved and applied."
+      }
+    ]
+  },
+  {
+    "id": "migration-start",
+    "role": "programme_lead",
+    "object": null,
+    "steps": [
+      {
+        "route": "/migration",
+        "control": "Start an analysis",
+        "expect": "Migration"
+      },
+      {
+        "route": "/migration",
+        "control": null,
+        "expect": "Source to target system"
+      }
+    ]
+  },
+  {
+    "id": "analyst-compare-runs",
+    "role": "analyst",
+    "object": null,
+    "steps": [
+      {
+        "route": "/runs",
+        "control": "Compare with previous",
+        "expect": "Every run of every system"
+      },
+      {
+        "route": "/run/{a}/vs/{b}",
+        "control": null,
+        "expect": "What changed between"
+      }
+    ]
+  },
+  {
+    "id": "analyst-trend",
+    "role": "analyst",
+    "object": "material_master",
+    "steps": [
+      {
+        "route": "/o/_/material-master",
+        "control": "Trend",
+        "expect": "out of 100"
+      },
+      {
+        "route": "/o/_/material-master/trend",
+        "control": null,
+        "expect": "Why the score moved"
+      }
+    ]
+  },
+  {
+    "id": "analyst-run",
+    "role": "analyst",
+    "object": null,
+    "steps": [
+      {
+        "route": "/runs",
+        "control": "{run}",
+        "expect": "Every run of every system"
+      },
+      {
+        "route": "/run/{run_id}",
+        "control": "Export findings",
+        "expect": "What this run scored"
+      },
+      {
+        "route": "/run/{run_id}",
+        "control": null,
+        "expect": "What this run scored"
+      }
+    ]
+  },
+  {
+    "id": "process-next-step",
+    "role": "process_analyst",
+    "object": null,
+    "steps": [
+      {
+        "route": "/",
+        "control": "Open {l1} step {n}",
+        "expect": "Landscape"
+      },
+      {
+        "route": "/o/{system}/{object}/processes",
+        "control": null,
+        "expect": "Processes"
+      }
+    ]
+  },
+  {
+    "id": "process-discovery",
+    "role": "process_analyst",
+    "object": null,
+    "steps": [
+      {
+        "route": "/processes",
+        "control": null,
+        "expect": "Process discovery"
+      }
+    ]
+  },
+  {
+    "id": "auditor-rules",
+    "role": "auditor",
+    "object": null,
+    "steps": [
+      {
+        "route": "/",
+        "control": "Open the rules library",
+        "expect": "Landscape"
+      },
+      {
+        "route": "/rules",
+        "control": "{rule_id}",
+        "expect": "Rules"
+      },
+      {
+        "route": "/r/{rule_id}",
+        "control": null,
+        "expect": "One rule and what it finds in the newest run."
+      }
+    ]
+  },
+  {
+    "id": "auditor-audit-log",
+    "role": "auditor",
+    "object": null,
+    "steps": [
+      {
+        "route": "/admin",
+        "control": "Audit log",
+        "expect": "Administration"
+      },
+      {
+        "route": "/admin/audit",
+        "control": null,
+        "expect": "Audit log"
+      }
+    ]
+  },
+  {
+    "id": "viewer-objects",
+    "role": "viewer",
+    "object": null,
+    "steps": [
+      {
+        "route": "/objects",
+        "control": "{object}",
+        "expect": "Objects"
+      },
+      {
+        "route": "/o/{system}/{object}",
+        "control": null,
+        "expect": "out of 100"
+      }
+    ]
+  },
+  {
+    "id": "exceptions",
+    "role": "data_steward",
+    "object": null,
+    "steps": [
+      {
+        "route": "/work/exceptions",
+        "control": "Open the exception with the nearest deadline",
+        "expect": "exceptions still open"
+      },
+      {
+        "route": "/work/exceptions",
+        "control": null,
+        "expect": "Resolve"
+      }
+    ]
+  },
+  {
+    "id": "triage",
+    "role": "data_steward",
+    "object": null,
+    "steps": [
+      {
+        "route": "/attention",
+        "control": "Start triage",
+        "expect": "Action centre"
+      },
+      {
+        "route": "/work/triage",
+        "control": null,
+        "expect": "items waiting"
+      }
+    ]
+  }
+]

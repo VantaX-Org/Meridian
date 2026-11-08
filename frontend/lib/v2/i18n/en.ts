@@ -8568,6 +8568,17 @@ export const en = {
   "These columns are required for some countries, but the sheet does not show each record's country. Check them before the load.": "These columns are required for some countries, but the sheet does not show each record's country. Check them before the load.",
   "The export holds the ready rows in the workbook's own columns, and held rows on a Held back tab. In the same format, held rows travel in a separate file. Every export is recorded in the audit log. The workbook itself is not stored.": "The export holds the ready rows in the workbook's own columns, and held rows on a Held back tab. In the same format, held rows travel in a separate file. Every export is recorded in the audit log. The workbook itself is not stored.",
   "Export in the same format": "Export in the same format",
+  "Built by": "Built by",
+  "The batch does not name who built it": "The batch does not name who built it",
+  "Fixed after load": "Fixed after load",
+  "No run has read the records since the load": "No run has read the records since the load",
+  "The fix batches could not be read.": "The fix batches could not be read.",
+  "Fix batches": "Fix batches",
+  "{n} {n, plural, one {batch} other {batches}} with {label} records": "{n} {n, plural, one {batch} other {batches}} with {label} records",
+  "Fix batches of {label}": "Fix batches of {label}",
+  "These settings set the clocks of the triage queue.": "These settings set the clocks of the triage queue.",
+  "Open the triage queue": "Open the triage queue",
+  "SLA days per severity and the escalation that follows are set in": "SLA days per severity and the escalation that follows are set in",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

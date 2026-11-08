@@ -233,7 +233,7 @@ async def _config_drift(c: _Ctx) -> list[Item]:
                   title=f"{_n(r.n, 'configuration change')} detected"
                         + (f" on {c.name(r.system_id)}" if c.name(r.system_id) else ""),
                   detail="Found in the last 7 days. Check that they were intended.",
-                  href=app_links.system(r.system_id, "configuration") if r.system_id else app_links.LANDSCAPE, since=r.since)
+                  href=app_links.system(r.system_id, "changes") if r.system_id else app_links.LANDSCAPE, since=r.since)
             for r in rows]
 
 

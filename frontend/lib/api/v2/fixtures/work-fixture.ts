@@ -1140,6 +1140,7 @@ export function batchesFixture(): { items: BatchRowApi[] } {
     due_at: b.due_at,
     steward_label: b.steward_label,
     verification: b.verification ?? null,
+    modules: [...new Set(state.rows.filter((r) => state.now(r).batch_id === b.id).map((r) => r.module))].sort(),
   }));
   return { items };
 }

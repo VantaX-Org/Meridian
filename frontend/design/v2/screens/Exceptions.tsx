@@ -374,13 +374,13 @@ function Detail({ id, onClose }: { id: string; onClose: () => void }) {
               ))}
             </ol>
           )}
-          <form className="m2-rfilters" aria-label={t("Add a comment")} onSubmit={(e) => { e.preventDefault(); comment.mutate(); }}>
+          {can("analyse") ? <form className="m2-rfilters" aria-label={t("Add a comment")} onSubmit={(e) => { e.preventDefault(); comment.mutate(); }}>
             <label>
               {t("Comment")}
               <input className="m2-inp" value={body} maxLength={4000} onChange={(e) => setBody(e.target.value)} />
             </label>
             <button type="submit" className="m2-btn" disabled={!body.trim() || comment.isPending}>{t("Add comment")}</button>
-          </form>
+          </form> : null}
         </>
       ) : null}
       <button type="button" className="m2-btn" onClick={onClose}>{t("Close")}</button>

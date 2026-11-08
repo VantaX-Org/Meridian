@@ -233,6 +233,7 @@ export function Triage() {
         </div>
       </MoreDetail>
       <MoreDetail title={t("Teams and assignment rules")}>
+        <p className="m2-hint">{t("SLA days per severity and the escalation that follows are set in")}{" "}<V2Link href="/work/triage?open=triage">{t("Triage and SLA")}</V2Link></p>
         <Teams people={people.data ?? []} />
         <Rules people={people.data ?? []} teams={teams.data ?? []} modules={[...new Set(items.map((x) => x.module).filter((x): x is string => !!x))]} />
       </MoreDetail>

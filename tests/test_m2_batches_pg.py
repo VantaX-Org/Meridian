@@ -130,6 +130,7 @@ async def test_batch_list_and_detail_carry_value_due_steward_records(owner, monk
         # a batch with no records: no value, no due date, no records
         e = listed[empty]
         assert (e["records"], e["value_at_risk"], e["due_at"]) == (0, None, None)
+        assert (b["modules"], e["modules"]) == (["material_master"], [])  # the object page's Fixes tab filters on it
         # Bob's seeded batch holds one record failing MM014 only
         assert listed[s["bob_batch"]]["value_at_risk"] == 10.0 and listed[s["bob_batch"]]["records"] == 1
 

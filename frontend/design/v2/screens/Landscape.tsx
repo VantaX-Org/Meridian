@@ -511,7 +511,7 @@ function LandscapeSkeleton() {
  * analysis, read the landscape. A step that is done says so; the current one carries the canvas's one strong button
  * when the viewer may take it, and names the permission when not.
  */
-export function FirstSteps({ connected, analysed }: { connected: boolean; analysed: boolean }) {
+export function FirstSteps({ connected, analysed, systemId }: { connected: boolean; analysed: boolean; systemId?: string }) {
   const session = useV2Session();
   const canConnect = session.can("manage_systems");
   const canUpload = session.can("upload");
@@ -573,7 +573,7 @@ export function FirstSteps({ connected, analysed }: { connected: boolean; analys
           t("Run an analysis"),
           t("Every rule of every object is checked against the extracted records. Before it starts you see how long it should take; the job line under the top bar shows its progress."),
           canRun ? (
-            <V2Link href="/runs" className="m2-btn m2-next">
+            <V2Link href={systemId ? hrefFor({ kind: "system", id: systemId }) : "/runs"} className="m2-btn m2-next">
               {t("Run analysis")}
             </V2Link>
           ) : (
@@ -713,7 +713,7 @@ export function LandscapeCanvas() {
         </div>
         <AletheiaDock />
       </div>
-      {L.cells.length === 0 ? <FirstSteps connected analysed={false} /> : null}
+      {L.cells.length === 0 ? <FirstSteps connected analysed={false} systemId={L.systems[0]?.id} /> : null}
       {session.persona === "owner" ? <OwnerLine /> : null}
       <div className="m2-cta">
         <NextStep landscape={L} persona={session.persona} waves={waves} />

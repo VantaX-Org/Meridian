@@ -47,7 +47,12 @@ export function WorkMonitor() {
                 { label: t("Failing again"), value: int(back) },
                 { label: t("Fixed since"), value: int(fixed) },
               ]}
-              action={back > 0 ? <V2Link href="/work" className="m2-btn m2-strong" data-testid="monitor-primary">{t("Open the work list")}</V2Link> : undefined}
+              action={
+                <>
+                  {back > 0 ? <V2Link href="/work" className="m2-btn m2-strong" data-testid="monitor-primary">{t("Open the work list")}</V2Link> : null}
+                  <V2Link href="/cleansing" className="m2-btn">{t("Open cleansing")}</V2Link>
+                </>
+              }
             />
             <FixHead
               lede={t("After a cleaning batch, the next run checks the same records again. This page shows the ones that fail again and the ones that stayed fixed, per system, current run against the run before the clean.")}

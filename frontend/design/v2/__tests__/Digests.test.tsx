@@ -49,6 +49,7 @@ describe("Admin, Digests", () => {
   it("is a Notifications section for manage_settings only", () => {
     expect(visibleSections((a) => a === "manage_settings").find((s) => s.slug === "digests")?.group).toBe("Notifications");
     expect(visibleSections((a) => a === "view").some((s) => s.slug === "digests")).toBe(false);
+    expect(visibleSections((a) => a === "manage_digests").some((s) => s.slug === "digests")).toBe(true);
   });
 
   it("lists the digests with who they are for, the cadence in words, the channel and the last send", async () => {

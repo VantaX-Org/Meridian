@@ -312,7 +312,8 @@ async def list_batches(
                COUNT(i.id) FILTER (WHERE NOT {has}) AS no_value,
                COUNT(i.id) FILTER (WHERE i.proposal_source = 'rule' AND i.confidence = 'high') AS auto_approvable,
                COUNT(i.id) FILTER (WHERE i.recon_status = 'fixed') AS fixed,
-               COUNT(i.id) FILTER (WHERE i.recon_status = 'still_failing') AS still_failing
+               COUNT(i.id) FILTER (WHERE i.recon_status = 'still_failing') AS still_failing,
+               ARRAY_REMOVE(ARRAY_AGG(DISTINCT i.module), NULL) AS modules
           FROM remediation_batches b LEFT JOIN remediation_items i ON i.batch_id = b.id
          WHERE b.tenant_id = :tid GROUP BY b.id ORDER BY b.created_at DESC
     """.replace("{has}", remediation.has_value_sql("i.proposed_value"))), {"tid": str(tenant.id)})
