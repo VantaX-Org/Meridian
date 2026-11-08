@@ -74,8 +74,10 @@ def test_persona_grant_loses_nothing(legacy: str) -> None:
     before, after = set(permissions_for(legacy)), set(permissions_for(persona_for(legacy)))
     assert before <= after
     # run_process_discovery: owner decision 2026-10-26; manage_triage: leads and stewards edit triage teams and rules;
-    # manage_digests: the programme lead runs the committee's digests (F29)
-    assert after - before <= {"run_process_discovery", "manage_triage", "manage_digests"}
+    # manage_digests: the programme lead runs the committee's digests (F29);
+    # manage_rules (programme lead) and ai_feedback (data owner): owner decision 2026-11-08
+    allowed = {"run_process_discovery", "manage_triage", "manage_digests", "manage_rules", "ai_feedback"}
+    assert after - before <= allowed
 
 
 # ── ranking ──────────────────────────────────────────────────────────────────

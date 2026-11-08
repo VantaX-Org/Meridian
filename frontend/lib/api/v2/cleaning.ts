@@ -6,6 +6,8 @@
  *        the weekly cleaning task in workers/scheduler.py writes them, so the weekly series is the one that exists)
  *   GET  /cleaning/queue?status=applied        (the applied proposals; each can be rolled back until its deadline)
  *   GET  /cleaning/audit                       (every decision on a proposal, newest first; needs the export permission)
+ *   POST /cleaning/apply/{id}                  (marks an approved change as loaded in SAP; Meridian does not write to SAP
+ *        here, and the approver cannot mark their own approval; needs the apply permission)
  *   POST /cleaning/rollback/{id}               (needs the apply permission)
  *   GET  /cleaning/export-options              (the objects and statuses in the queue with counts; needs export)
  *   GET  /cleaning/export/{format}?status=     (the load file: csv, xlsx, lsmw, bapi, idoc or sf_csv; needs export)
@@ -99,6 +101,8 @@ export interface Proposal extends CleaningItem {
   priority: number | null;
   detected_at: string | null;
   merge_preview: RecordData;
+  /** Who approved it; that person cannot mark it loaded (the API answers 403). Null when the scheduler approved it. */
+  approved_by?: string | null;
 }
 
 export const WAITING = "detected,recommended";

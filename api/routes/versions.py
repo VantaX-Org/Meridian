@@ -505,9 +505,27 @@ async def _analysis_options(db: AsyncSession, vid: uuid.UUID, tenant_id: uuid.UU
     return out
 
 
+def _licensed_options(request: Request, options: Optional[dict], held: list[str]) -> Optional[dict]:
+    """The licence applies to analysis as well as to extraction. Modules asked for by name must be licensed (402).
+    A default run of a version that also holds unlicensed modules checks only the licensed ones; a version with no
+    licensed module is refused."""
+    from api.middleware.licence import enforce_licensed_modules
+
+    if options and options.get("modules"):
+        enforce_licensed_modules(request, options["modules"])
+        return options
+    licensed = getattr(request.state, "licensed_modules", None)
+    if licensed is None or "*" in licensed or all(m in licensed for m in held):
+        return options
+    keep = [m for m in held if m in licensed]
+    if not keep:
+        enforce_licensed_modules(request, held)
+    return {**(options or {}), "modules": keep}
+
+
 @router.post("/versions/{version_id}/analyse", status_code=202, dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
-async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
-                          body: Optional[AnalyseOptions] = Body(None)):
+async def analyse_version(version_id: str, request: Request, db: AsyncSession = Depends(get_db),
+                          tenant: Tenant = Depends(get_tenant), body: Optional[AnalyseOptions] = Body(None)):
     """Run (or re-run, e.g. after a rule change) the analysis on a stored version's data.
 
     The optional body ``{rule_set_id?, modules?}`` limits the run: ``modules`` must be modules of the version and only
@@ -519,7 +537,7 @@ async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), t
     vid = uuid.UUID(version_id)
     # Extractions store the data under ``dataset_path``; uploads under ``parquet_path`` (api/routes/upload.py).
     row = (await db.execute(text("SELECT status, COALESCE(metadata->>'dataset_path', metadata->>'parquet_path'), "
-                                 "metadata->>'system_id', label, metadata->>'purpose' "
+                                 "metadata->>'system_id', label, metadata->>'purpose', metadata->'modules' "
                                  "FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
                           {"v": vid, "t": str(tenant.id)})).fetchone()
     if not row:
@@ -531,6 +549,7 @@ async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), t
     if row[0] in ("pending", "running"):
         raise HTTPException(status_code=409, detail="An analysis of this version is already running.")
     options = await _analysis_options(db, vid, tenant.id, body)
+    options = _licensed_options(request, options, row[5] or [])
     if options is None:  # a default run clears the options an earlier limited run left
         await db.execute(text("UPDATE analysis_versions SET status = 'pending', "
                               "metadata = COALESCE(metadata, '{}'::jsonb) - 'analysis_options' WHERE id = :v AND tenant_id = :t"),

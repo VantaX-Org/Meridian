@@ -17,6 +17,8 @@ export interface BatchRowApi extends BatchSummary {
   value_at_risk?: number | null;
   due_at?: string | null;
   steward_label?: string | null;
+  /** The objects of the batch's records (module keys); the object page's Fixes tab filters on it. */
+  modules?: string[];
   /** The first run after the load: how many records of the batch it found fixed, and how many still fail. */
   verification?: { version_id: string; run_at: string | null; records: number; fixed: number; still_failing: number; verified_at: string | null; sentence: string } | null;
 }

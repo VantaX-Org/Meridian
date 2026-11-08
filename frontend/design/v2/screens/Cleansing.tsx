@@ -310,6 +310,7 @@ function what(g: CleaningGroup): ReactNode {
 
 function useDecide() {
   const toast = useToast();
+  const { can } = useV2Session();
   const qc = useQueryClient();
   const done = (msg: string) => () => {
     toast.show(msg);
@@ -319,7 +320,7 @@ function useDecide() {
   return {
     group: useMutation({
       mutationFn: (g: CleaningGroup) => approveGroup(g, CONFIDENT),
-      onSuccess: (r) => done(t("{n} proposals approved. They are written to SAP when applied.", { n: int(r.approved_count) }))(),
+      onSuccess: (r) => done(t("{n} proposals approved. Export them as a load file and load it in SAP.", { n: int(r.approved_count) }))(),
       onError: fail(t("The proposals could not be approved.")),
     }),
     approve: useMutation({ mutationFn: approveProposal, onSuccess: done(t("The proposal was approved.")), onError: fail(t("The proposal could not be approved.")) }),
@@ -327,18 +328,18 @@ function useDecide() {
       mutationFn: async ({ item, reason }: { item: Proposal; reason: string }) => {
         const r = await rejectProposal(item.id, reason);
         // Teaches Aletheia which proposals stewards turn down; a failure here must not undo the rejection.
-        await sendAiFeedback(item.id, item.object_type, reason).catch(() => undefined);
+        if (can("ai_feedback")) await sendAiFeedback(item.id, item.object_type, reason).catch(() => undefined);
         return r;
       },
       onSuccess: done(t("The proposal was rejected. The reason is kept in the audit trail.")),
       onError: fail(t("The proposal could not be rejected.")),
     }),
-    apply: useMutation({ mutationFn: applyProposal, onSuccess: done(t("The change was written to SAP. It can be rolled back for 72 hours.")), onError: fail(t("The change could not be applied.")) }),
+    apply: useMutation({ mutationFn: applyProposal, onSuccess: done(t("Marked as loaded in SAP. The next run checks the record. The mark can be undone for 72 hours.")), onError: fail(t("The change could not be marked as loaded.")) }),
   };
 }
 
 function Proposals() {
-  const { can } = useV2Session();
+  const { can, id: me } = useV2Session();
   const groups = useCleaning("groups", getCleaningGroups);
   const approved = useCleaning("approved", () => getProposals({ status: "approved" }));
   const decide = useDecide();
@@ -408,13 +409,13 @@ function Proposals() {
       </Panel>
 
       <Panel
-        title={t("Approved, waiting to be written to SAP")}
+        title={t("Approved, waiting to be loaded in SAP")}
         meta={approved.data ? t("{n} approved", { n: int(approved.data.total) }) : undefined}
         testId="cleansing-approved"
       >
-        <Consequence>{t("Write to SAP changes the record in SAP now. It can be rolled back for 72 hours.")}</Consequence>
+        <Consequence>{t("Meridian does not change SAP from here. Export the approved changes as a load file, load it in SAP, then mark each change loaded. The person who approved a change cannot mark it.")}</Consequence>
         {approved.isPending ? <Skeleton width="100%" height={80} /> : approved.isError ? <Dash why={t("The approved proposals could not be read.")} /> : approved.data.items.length === 0 ? (
-          <EmptyFrame>{t("No approved proposal is waiting to be applied.")}</EmptyFrame>
+          <EmptyFrame>{t("No approved proposal is waiting to be loaded.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Approved proposals table, scrollable")}>
             <table className="m2-tbl m2-cards">
@@ -435,11 +436,13 @@ function Proposals() {
                     <td data-label={t("Change")}><Changes item={i} /></td>
                     <td data-label={t("Confidence")} className="m2-num">{pct(i.confidence)}</td>
                     <td data-label={t("Action")}>
-                      {can("apply") ? (
+                      {!can("apply") ? null : i.approved_by && i.approved_by === me ? (
+                        <span className="m2-meta" data-testid={`cleansing-second-${i.id}`}>{t("Waits for a second person")}</span>
+                      ) : (
                         <button type="button" className="m2-btn m2-next" disabled={decide.apply.isPending} onClick={() => decide.apply.mutate(i.id)} data-testid={`cleansing-apply-${i.id}`}>
-                          {t("Write to SAP")}
+                          {t("Mark as loaded in SAP")}
                         </button>
-                      ) : null}
+                      )}
                     </td>
                   </tr>
                 ))}

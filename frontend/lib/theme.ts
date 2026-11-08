@@ -11,24 +11,19 @@ export const DEFAULT_THEME: Theme = "light";
 export const PREFS_STORAGE_KEY = "meridian:prefs";
 /** The per-key mirror lib/preferences.ts writes beside the document. */
 export const THEME_STORAGE_KEY = "meridian:theme";
-/** Written by builds before the rename; read as a last fallback. */
-export const LEGACY_THEME_STORAGE_KEY = "aurora:theme";
 
 /**
  * Sets data-theme on <html> before first paint from the same keys lib/preferences.ts reads (the document's
- * theme, then the mirror, then the legacy key), falling back to DEFAULT_THEME. "system" is resolved against
- * prefers-color-scheme so dark users never flash light.
+ * theme, then the mirror). Only an explicit "dark" gives dark; anything else, including "system" and the
+ * pre-rename key, gives the light default.
  */
 export function themeBootScript(): string {
   const prefs = JSON.stringify(PREFS_STORAGE_KEY);
   const mirror = JSON.stringify(THEME_STORAGE_KEY);
-  const legacy = JSON.stringify(LEGACY_THEME_STORAGE_KEY);
   const fallback = JSON.stringify(DEFAULT_THEME);
   return (
     `try{var s=localStorage,t=null;try{var d=JSON.parse(s.getItem(${prefs})||"{}");if(d&&typeof d.theme==="string")t=d.theme}catch(e){}` +
-    `t=t||s.getItem(${mirror})||s.getItem(${legacy})||${fallback};` +
-    `if(t!=="dark"&&t!=="light"&&t!=="system")t=${fallback};` +
-    `if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";` +
+    `t=t||s.getItem(${mirror});if(t!=="dark")t=${fallback};` +
     `document.documentElement.dataset.theme=t}catch(e){}`
   );
 }

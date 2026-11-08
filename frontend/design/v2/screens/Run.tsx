@@ -529,7 +529,7 @@ export function RunCanvas({ id }: { id: string }) {
         >
           {tr("Download report")}
         </button>
-        <button
+        {session.can("export") ? <button
           type="button"
           className="m2-btn"
           disabled={pending !== null || !v}
@@ -543,7 +543,7 @@ export function RunCanvas({ id }: { id: string }) {
           }
         >
           {tr("Export findings")}
-        </button>
+        </button> : null}
         <button
           type="button"
           className="m2-btn"

@@ -44,7 +44,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { slug: "alerts", get label() { return t("Alerts"); }, get group() { return t("Notifications"); }, get lead() { return t("When an alert fires and which channels carry it."); }, needs: ["manage_settings", "view"] },
   { slug: "notifications", get label() { return t("Default digest"); }, get group() { return t("Notifications"); }, get lead() { return t("The tenant's default digest."); }, needs: ["manage_settings", "view"] },
   { slug: "webhooks", get label() { return t("Webhooks"); }, get group() { return t("Notifications"); }, get lead() { return t("Signed events to Slack, Teams or any https endpoint, the delivery log, and what runs by itself."); }, needs: ["manage_settings"] },
-  { slug: "digests", get label() { return t("Digests"); }, get group() { return t("Notifications"); }, get lead() { return t("Scheduled summaries by role or by wave: the landscape, score moves, gates, approvals and value at risk."); }, needs: ["manage_settings"] },
+  { slug: "digests", get label() { return t("Digests"); }, get group() { return t("Notifications"); }, get lead() { return t("Scheduled summaries by role or by wave: the landscape, score moves, gates, approvals and value at risk."); }, needs: ["manage_settings", "manage_digests"] },
   { slug: "runs", get label() { return t("Start and schedule"); }, get group() { return t("Operations"); }, get lead() { return t("Start an extraction, an analysis, a configuration load or an upload, and schedule them. The runs themselves are on Runs."); }, needs: ["trigger_sync", "analyse", "manage_systems", "upload"] },
   { slug: "system", get label() { return t("Platform and updates"); }, get group() { return t("Operations"); }, get lead() { return t("Background jobs, the platform version and health checks."); }, needs: ["manage_system", "view"] },
 ];
@@ -56,7 +56,7 @@ export function visibleSections(can: (action: string) => boolean): AdminSection[
   return ADMIN_SECTIONS.filter((s) => s.needs.some((n) => can(n)));
 }
 
-const ADMIN_ACTIONS = ["manage_users", "manage_settings", "manage_system", "view_audit", "manage_field_mappings", "manage_systems"] as const;
+const ADMIN_ACTIONS = ["manage_users", "manage_settings", "manage_system", "view_audit", "manage_field_mappings", "manage_systems", "manage_digests"] as const;
 
 /** True when the viewer holds any administrative permission: that is what puts "Administration" in the account menu. */
 export const canAdminister = (can: (action: string) => boolean): boolean => ADMIN_ACTIONS.some((a) => can(a));

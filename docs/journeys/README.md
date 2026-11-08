@@ -5,9 +5,33 @@ starts it, every step with the exact address and the control used, the decisions
 people (and how the next person hears about it), what "done" looks like, and the time and number of clicks we aim
 for.
 
-The journeys describe the product as it is at v0.0.542 (`main`, the one interface served from `frontend/app/(v2)`),
+The journeys describe the product as it is at v0.0.630 (`main`, the one interface served from `frontend/app/(v2)`),
 except the last one, which describes a feature that is being built. Where today's product makes a step harder than it
 should be, the step links to the finding in the [friction audit](friction-audit.md).
+
+Two newer files cover the same product by role and by object, and a machine-readable file lists the steps:
+
+- [by-role.md](by-role.md): one section per role in code, with its rights, daily and weekly journeys, hand-offs and
+  what done looks like.
+- [by-object.md](by-object.md): one section per scored object, with every action, the route and control, and a role
+  by action table.
+- [steps.json](steps.json): each journey as a list of steps (route, control, visible text). Values in braces, such as
+  `{system_id}` or `{batch_id}`, are filled from the tenant's data.
+
+Routes that changed since the older journeys were written:
+
+- [New master data request](new-master-data-request.md) uses `/requests/new` and `/requests/{id}`. Both addresses now
+  redirect: `/requests/new` opens `/requests`, where **New request** starts the form, and `/requests/{id}` opens the
+  request in its panel (`/requests?open=request:{id}`).
+- [Find, fix, approve, send](find-fix-approve-send.md) uses the fixture batch `B-241`. Real batch ids differ; open the
+  batch from its row on `/work`.
+- [Monthly governance](monthly-governance.md) uses `/admin/digests`. The section opens with `manage_settings` or
+  `manage_digests`, so a programme lead can open it.
+
+`frontend/e2e/v2-journeys.spec.ts` walks every journey in steps.json in fixture mode. At each step the page must draw,
+show the expected text and offer the next control. A step with `needs` depends on an action or data the fixture
+cannot reach (an upload, an approval, a SuccessFactors analysis). For those the spec checks only that the route draws;
+the component tests cover the state itself.
 
 | Journey | Roles | Trigger | Target time | Target clicks |
 |---|---|---|---|---|
@@ -33,18 +57,23 @@ should be, the step links to the finding in the [friction audit](friction-audit.
 
 ## Roles
 
-The role keys are those of `lib/api/v2/fixtures/role-actions.json`; each role lands on its own start screen
-(`frontend/docs/guide/persona-*.md`).
+The role keys are those of `api/services/rbac.py`. Every role lands on `/` (Landscape). The next-step button under the
+title depends on the role (`frontend/design/v2/screens/Landscape.tsx`). Values in braces come from the tenant's data.
 
-| Role | Key | Start screen |
+| Role | Key | Next-step button on `/` |
 |---|---|---|
-| Administrator | `platform_admin` | Landscape with **Open Administration** |
-| SAP Basis | `sap_basis` | Landscape with the Basis home (Connections, Last extraction, Failed jobs to triage, Authorisation errors, Schedules) |
-| Data steward | `data_steward` | Landscape with **Accept the suggested values** |
-| Data owner | `data_owner` | Landscape with "2 batches wait for your approval" and **Approve batch B-241** |
-| Programme lead | `programme_lead` | Landscape with the nearest wave's next step |
-| Process analyst | `process_analyst` | Landscape with **Open PTP step 3** |
-| Auditor, viewer | `auditor`, `viewer` | Landscape, read-only |
+| Platform admin | `platform_admin` | **Open Administration** |
+| SAP Basis / integration admin | `sap_basis` | **Fix the {system} sign-in**, else **Extract {system}** or **Run analysis on {system}**; the Basis home below |
+| Data steward | `data_steward` | **Accept {count} suggested values for {check}**, else **Accept the suggested values** |
+| Data owner / approver | `data_owner` | **Approve batch {label}**, else **See who holds the work**; "{n} batches wait for your approval" |
+| Programme lead / CIO | `programme_lead` | The nearest wave: **Clear the {n} no-go objects in {wave}**, **Review the {n} at-risk objects in {wave}** or **Open {wave}**; with no wave **Open the no-go objects** |
+| Process analyst | `process_analyst` | **Open {process} step {n}**, else **Open the process readiness** |
+| Analyst | `analyst` | Same as the programme lead |
+| Auditor | `auditor` | **Open the rules library** |
+| Viewer | `viewer` | Same as the programme lead, read-only |
+
+Legacy roles `admin`, `manager`, `steward`, `approver` and `ai_reviewer` still work and show with "(legacy)". See
+[by-role.md](by-role.md) for rights.
 
 ## The other files
 

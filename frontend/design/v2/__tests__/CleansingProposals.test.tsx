@@ -41,6 +41,14 @@ describe("cleansing proposals", () => {
     expect(within(approved).queryByTestId("cleansing-approved-cq-2003")).toBeNull();
   });
 
+  it("leaves the change the user approved for a second person to mark loaded", async () => {
+    renderWithQuery(<Cleansing />);
+    fireEvent.click(await screen.findByTestId("cleansing-approve-group-MEINS"));
+    expect(await screen.findByTestId("cleansing-second-cq-2001")).toHaveTextContent("Waits for a second person");
+    expect(screen.queryByTestId("cleansing-apply-cq-2001")).toBeNull();
+    expect(screen.getByTestId("cleansing-apply-cq-2008")).toBeInTheDocument();
+  });
+
   it("rejects a proposal only with a reason", async () => {
     renderWithQuery(<Cleansing />);
     fireEvent.click(await screen.findByTestId("cleansing-open-TEL_NUMBER"));
@@ -53,7 +61,7 @@ describe("cleansing proposals", () => {
     expect(screen.getByTestId("cleansing-item-cq-2006")).toBeInTheDocument();
   });
 
-  it("writes an approved proposal to SAP and offers the rollback", async () => {
+  it("marks a proposal another steward approved as loaded and offers the undo", async () => {
     renderWithQuery(<Cleansing />);
     fireEvent.click(await screen.findByTestId("cleansing-apply-cq-2008"));
     await waitFor(() => expect(screen.queryByTestId("cleansing-approved-cq-2008")).toBeNull());

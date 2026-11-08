@@ -11,7 +11,7 @@ import { moduleText } from "@/lib/v2/labels";
 import { useV2Session } from "@/lib/v2/hooks";
 import { useWorkCan } from "@/lib/v2/work-actions";
 import { InspectorFrame } from "../Inspector";
-import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { ResultFrame, type Outcome } from "./shared";
 import { EscalationChainEditor } from "./governance";
 import { t } from "@/lib/v2/i18n";
@@ -101,6 +101,7 @@ function Body() {
 
   return (
     <>
+      <p className="m2-hint">{t("These settings set the clocks of the triage queue.")}{" "}<V2Link href="/work/triage">{t("Open the triage queue")}</V2Link></p>
       <h3>{t("SLA days to resolve")}</h3>
       <div className="m2-form" role="group" aria-label={t("SLA days per severity")}>
         {SEVERITIES.map((s) => {

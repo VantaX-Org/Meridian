@@ -604,7 +604,7 @@ function DigestBodyView({ d, onClose }: { d: Digest; onClose: () => void }) {
 /** `?open=digest:<id>`: one digest, Send now, Preview, its edits and its delivery log. `digest:new` adds one. */
 export function DigestInspector({ id, onClose }: { id: string; onClose: () => void }) {
   const session = useV2Session();
-  const allowed = session.can("manage_settings");
+  const allowed = session.can("manage_settings") || session.can("manage_digests");
   const q = useDigests(allowed && id !== "new");
   const { openItem } = useOpenItem();
   if (!allowed) {

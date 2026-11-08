@@ -42,7 +42,7 @@ class _DB:
         if sql.startswith("SELECT status, COALESCE(metadata->>'dataset_path', metadata->>'parquet_path')"):
             m = self.meta
             return _Result((self.status, m.get("dataset_path") or m.get("parquet_path"), m.get("system_id"),
-                            m.get("label"), m.get("purpose")))
+                            m.get("label"), m.get("purpose"), m.get("modules")))
         if sql.startswith("UPDATE analysis_versions SET status = 'pending'"):
             self.status = "pending"
         return _Result(None)

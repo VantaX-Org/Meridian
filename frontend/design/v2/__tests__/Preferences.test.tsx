@@ -89,8 +89,9 @@ describe("the preferences panel", () => {
     await waitFor(() => expect(document.documentElement.dataset.theme).toBe("dark"));
     expect(within(theme).getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
     expect(within(theme).getByRole("button", { name: "Light" })).toHaveAttribute("aria-pressed", "false");
-    fireEvent.click(within(theme).getByRole("button", { name: "System" }));
-    await waitFor(() => expect(document.documentElement.dataset.theme).toBeUndefined());
+    expect(within(theme).queryByRole("button", { name: "System" })).toBeNull();
+    fireEvent.click(within(theme).getByRole("button", { name: "Light" }));
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe("light"));
     const density = within(dialog).getByRole("group", { name: "Row density" });
     fireEvent.click(within(density).getByRole("button", { name: "Compact" }));
     await waitFor(() => expect(document.documentElement.dataset.density).toBe("compact"));

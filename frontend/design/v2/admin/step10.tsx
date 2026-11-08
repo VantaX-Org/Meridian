@@ -152,7 +152,7 @@ export function PolicyPacksSection() {
 /** Admin › Digests: the scheduled summaries by role or wave, their cadence, channel and last send. */
 export function DigestsSection() {
   const can = useCan();
-  const allowed = can("manage_settings");
+  const allowed = can("manage_settings") || can("manage_digests");
   const q = useDigests(allowed);
   const waves = useWaves(allowed);
   const { openItem, open } = useOpenItem();

@@ -48,6 +48,22 @@ describe("Migration analysis", () => {
     expect(within(map).getByTestId("mig-delta-bars").textContent).toContain("Change with no transformation yet");
   });
 
+  it("lets a second person approve a proposed value and keeps the proposer's own entry waiting", async () => {
+    renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
+    const map = await screen.findByTestId("mig-field-map");
+    fireEvent.click(await within(map).findByRole("button", { name: "Values" }));
+    const vm = await screen.findByTestId("mig-value-map");
+    expect(await within(vm).findByTestId("mig-vm-status-ZFRT")).toHaveTextContent("Approved");
+    expect(within(vm).queryByTestId("mig-vm-approve-ZFRT")).toBeNull();
+    expect(within(vm).getByTestId("mig-vm-status-ZROH")).toHaveTextContent("Waits for a second person");
+    fireEvent.click(within(vm).getByTestId("mig-vm-approve-ZROH"));
+    await waitFor(() => expect(within(vm).getByTestId("mig-vm-status-ZROH")).toHaveTextContent("Approved"));
+    fireEvent.change(within(vm).getByLabelText("Target value for HALB"), { target: { value: "HALB" } });
+    fireEvent.click(within(vm).getByRole("button", { name: "Propose these values" }));
+    await waitFor(() => expect(within(vm).getByTestId("mig-vm-status-HALB")).toHaveTextContent("Waits for a second person"));
+    expect(within(vm).queryByTestId("mig-vm-approve-HALB")).toBeNull();
+  });
+
   it("marks an automatic reconciliation and shows the count change since the previous one", async () => {
     renderWithQuery(<Migration />);
     const panel = await screen.findByTestId("mig-post-load");

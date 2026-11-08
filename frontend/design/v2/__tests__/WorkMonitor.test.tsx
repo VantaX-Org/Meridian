@@ -48,6 +48,7 @@ describe("WorkMonitor", () => {
     expect(steps.querySelector("[aria-current=step]")?.textContent).toContain("Check the next run");
     expect(screen.queryByTestId("consequence")).toBeNull();
     expect(screen.queryByTestId("monitor-primary")).toBeNull();
+    expect(screen.getByRole("link", { name: "Open cleansing" }).getAttribute("href")).toContain("/cleansing");
   });
 
   it("keeps the weekly trend one click away, after the table", async () => {

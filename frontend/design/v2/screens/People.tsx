@@ -7,7 +7,7 @@ import { useMutation } from "@tanstack/react-query";
 import { remindPerson, type Person } from "@/lib/api/v2/people";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useToast } from "../Toast";
-import { useOpenItem, usePhone } from "@/lib/v2/hooks";
+import { useOpenItem, usePhone, useV2Session } from "@/lib/v2/hooks";
 import { PEOPLE_SORT_LABEL, objectsLine, roleWord, slaMet, sortPeople, type PeopleSort } from "@/lib/v2/people";
 import { usePeople } from "@/lib/v2/approvals-queries";
 import { useWorkSummary } from "@/lib/v2/work-queries";
@@ -36,11 +36,13 @@ function Head({ label, k, sort, reverse, set, right, title }: { label: string; k
 /** Sends the person a notice about their overdue work (POST /people/{id}/remind); the API sends at most one a day. */
 function RemindButton({ id, name }: { id: string; name: string }) {
   const toast = useToast();
+  const { can } = useV2Session();
   const m = useMutation({
     mutationFn: () => remindPerson(id),
     onSuccess: () => toast.show(t("{name} was reminded of their overdue work.", { name })),
     onError: (e) => toast.show(errorSentence(e, t("The reminder could not be sent.")), "error"),
   });
+  if (!can("assign")) return null;
   return (
     <button type="button" className="m2-btn m2-sm" disabled={m.isPending || m.isSuccess} onClick={() => m.mutate()} aria-label={t("Remind {name}", { name })}>
       {t("Remind")}

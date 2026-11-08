@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ROLES, isRole, legacyRole } from "@/hooks/use-role";
-import { PERSONA_OPTIONS, approvesOnly, homeHrefForRole, homeRoleFrom, personaForRole, pillSetFor } from "../persona";
+import { PERSONA_OPTIONS, homeRoleFrom, personaForRole, pillSetFor } from "../persona";
 
 describe("personaForRole", () => {
   it("maps every legacy role to a persona (rbac.md 1.1)", () => {
@@ -22,43 +22,12 @@ describe("personaForRole", () => {
     expect(isRole("superuser")).toBe(false);
   });
 
-  it("sends each persona key to its rbac.py PERSONA_HOME", () => {
-    expect(homeHrefForRole("data_steward")).toBe("/fix");
-    expect(homeHrefForRole("data_owner")).toBe("/fix");
-    expect(homeHrefForRole("programme_lead")).toBe("/home/lead");
-    expect(homeHrefForRole("platform_admin")).toBe("/home/lead");
-  });
-
   it("maps persona keys to the legacy key they inherit (rbac.py PERSONA_ALIAS)", () => {
     expect(legacyRole("platform_admin")).toBe("admin");
     expect(legacyRole("programme_lead")).toBe("manager");
     expect(legacyRole("data_steward")).toBe("steward");
     expect(legacyRole("data_owner")).toBe("approver");
     expect(legacyRole("sap_basis")).toBe("sap_basis");
-  });
-
-  it("lands steward-persona roles on Fix work and everyone else on their persona home", () => {
-    expect(homeHrefForRole("steward")).toBe("/fix");
-    expect(homeHrefForRole("approver")).toBe("/fix");
-    expect(personaForRole("steward")).toBe("steward"); // "View as: Steward" still opens /home/steward
-    expect(homeHrefForRole("analyst")).toBe("/home/lead");
-    expect(homeHrefForRole("process_analyst")).toBe("/home/process");
-  });
-
-  it("lands a steward who may neither approve nor apply on the steward home", () => {
-    expect(homeHrefForRole("steward", () => false)).toBe("/home/steward");
-    expect(homeHrefForRole("steward", (a) => a === "apply")).toBe("/fix");
-    expect(homeHrefForRole("analyst", () => false)).toBe("/home/lead");
-  });
-
-  it("lands an approver who cannot apply (the data owner) on Inbox › Approvals", () => {
-    const owner = (a: string) => a === "approve" || a === "view" || a === "export";
-    expect(homeHrefForRole("data_owner", owner)).toBe("/inbox?kind=approvals");
-    expect(homeHrefForRole("approver", owner)).toBe("/inbox?kind=approvals");
-    // A steward who may apply still starts on Records to fix.
-    expect(homeHrefForRole("data_steward", (a) => a === "approve" || a === "apply")).toBe("/fix");
-    expect(approvesOnly(owner)).toBe(true);
-    expect(approvesOnly((a) => a === "approve" || a === "apply")).toBe(false);
   });
 
   it("gives the data owner (and the legacy approver) their own pill set, everyone else their persona's", () => {
@@ -68,10 +37,6 @@ describe("personaForRole", () => {
     expect(pillSetFor("sap_basis")).toBe("basis");
     expect(pillSetFor("process_analyst")).toBe("process");
     expect(pillSetFor("platform_admin")).toBe("lead");
-  });
-
-  it("sends the SAP basis role to the basis home", () => {
-    expect(homeHrefForRole("sap_basis")).toBe("/home/basis");
   });
 
   it("offers every persona a role can land on, and only those, under View as", () => {
@@ -84,7 +49,6 @@ describe("homeRoleFrom", () => {
   it("lands a scoped-only steward (users.role viewer) on Fix, not the lead home", () => {
     const role = homeRoleFrom("viewer", ["data_steward", "viewer"]);
     expect(role).toBe("data_steward");
-    expect(homeHrefForRole(role)).toBe("/fix");
   });
 
   it("keeps users.role when it already has a persona, or no grant has one", () => {

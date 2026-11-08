@@ -28,6 +28,7 @@ const GoldenTab = dynamic<TabProps>(() => import("./object/GoldenTab").then((m) 
 const GlossaryTab = dynamic<TabProps>(() => import("./object/GlossaryTab").then((m) => m.GlossaryTab), { loading: TabLoading });
 const ProfileTab = dynamic<TabProps>(() => import("./object/ProfileTab").then((m) => m.ProfileTab), { loading: TabLoading });
 const LineageTab = dynamic<TabProps>(() => import("./object/LineageTab").then((m) => m.LineageTab), { loading: TabLoading });
+const FixesTab = dynamic<TabProps>(() => import("./object/FixesTab").then((m) => m.FixesTab), { loading: TabLoading });
 const ProcessesTab = dynamic<TabProps>(() => import("./object/ProcessesTab").then((m) => m.ProcessesTab), { loading: TabLoading });
 const RecordCanvas = dynamic<{ module: string; recordKey: string }>(() => import("./RecordCanvas").then((m) => m.RecordCanvas), { loading: TabLoading });
 const RuleCanvas = dynamic<{ id: string }>(() => import("./Rule").then((m) => m.RuleCanvas), { loading: TabLoading });
@@ -69,6 +70,7 @@ export function ObjectTabRoute({ tab }: { tab: "records" | "fixes" | "runs" | "t
   if (tab === "profile") return <ProfileTab system={system} module={module} />;
   if (tab === "glossary") return <GlossaryTab system={system} module={module} />;
   if (tab === "golden") return <GoldenTab system={system} module={module} />;
+  if (tab === "fixes") return <FixesTab system={system} module={module} />;
   return <EmptyTab tab={tab} system={system} module={module} />;
 }
 

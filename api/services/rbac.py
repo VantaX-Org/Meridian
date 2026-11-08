@@ -86,9 +86,13 @@ PERSONA_ROLES: dict[str, set[str]] = {
     # manage_triage: edit teams, assignment rules and SLA policies (not the tenant clock, which stays manage_settings).
     # manage_digests: read, create and send the scheduled digests (the committee's monthly pack) without the tenant's
     # settings (manage_settings stays the administrator's).
-    "programme_lead": PERMISSIONS["manager"] | {"run_process_discovery", "manage_triage", "manage_digests"},
+    # manage_rules: leads own the rule set of their programme (owner decision 2026-11-08).
+    "programme_lead": PERMISSIONS["manager"] | {
+        "run_process_discovery", "manage_triage", "manage_digests", "manage_rules",
+    },
     "data_steward": PERMISSIONS["steward"] | {"run_process_discovery", "manage_triage"},
-    "data_owner": PERMISSIONS["approver"],
+    # ai_feedback: an owner who rejects a cleansing proposal records the reason, which tunes the suggestions.
+    "data_owner": PERMISSIONS["approver"] | {"ai_feedback"},
     # No manage_system: in code it gates platform update/restart and admin doctor
     # (system_update.py, admin_doctor.py), not SAP systems. manage_systems covers those.
     "sap_basis": PERMISSIONS["analyst"] | {

@@ -314,7 +314,7 @@ def test_every_kind_fires_from_its_fixture(owner, full):
     (cm,) = k["config_missing"]
     assert cm["system_name"] == "Cloud HR" and cm["href"].startswith("/s/") and cm["href"].endswith("?tab=configuration")
     (cd,) = k["config_drift"]
-    assert (cd["count"], cd["system_id"], cd["href"]) == (3, full["mm"], f"/s/{full['mm']}?tab=configuration")  # not the 30-day-old one
+    assert (cd["count"], cd["system_id"], cd["href"]) == (3, full["mm"], f"/s/{full['mm']}?tab=changes")  # not the 30-day-old one
 
     (ap_batch,) = [i for i in k["approvals"] if i["module"]]
     (ap_gold,) = [i for i in k["approvals"] if not i["module"]]

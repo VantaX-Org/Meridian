@@ -18,8 +18,8 @@ export function useAuroraPrefs() {
   const theme: Theme = prefs.theme ?? DEFAULT_THEME;
   const density: DensityTier = prefs.density ?? DEFAULT_DENSITY;
   useEffect(() => {
-    if (theme === "system") delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = theme;
+    // Light unless dark was chosen; "system" from older builds reads as the light default.
+    document.documentElement.dataset.theme = theme === "dark" ? "dark" : "light";
     document.documentElement.dataset.density = density;
   }, [theme, density]);
   const setTheme = useCallback((t: Theme) => update({ theme: t }), [update]);
