@@ -347,3 +347,17 @@ describe("stage 5: evidence ledger entry", () => {
     expect(destinationAt("/aletheia/evidence", all)).toBeDefined();
   });
 });
+
+describe("menu for every role", () => {
+  it("leaves out rule tools a role cannot use and keeps them for a role that manages rules, while the routes still resolve", async () => {
+    const { destinations, destinationAt, kidsFor } = await import("../shell/menu");
+    const all = destinations();
+    const rules = all.find((d) => d.id === "rules")!;
+    const viewer = kidsFor(rules, () => false).map((k) => k.href);
+    expect(viewer).not.toContain("/rule-dry-run");
+    expect(viewer).not.toContain("/rule-promotion");
+    expect(viewer).toContain("/rules");
+    expect(kidsFor(rules, (p) => p === "manage_rules").map((k) => k.href)).toEqual(rules.kids.map((k) => k.href));
+    expect(destinationAt("/rule-dry-run", all)?.id).toBe("rules");
+  });
+});

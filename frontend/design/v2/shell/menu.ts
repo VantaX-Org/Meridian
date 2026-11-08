@@ -3,6 +3,8 @@ import { t } from "@/lib/v2/i18n";
 export interface MenuLink {
   href: string;
   label: string;
+  /** Permission without which the screen is only a locked form; the link is left out of the menu, the route still opens. */
+  need?: string;
 }
 
 export interface Destination {
@@ -49,8 +51,8 @@ export function destinations(): Destination[] {
       key: "u",
       kids: [
         { href: "/rules", label: t("Rules") },
-        { href: "/rule-promotion", label: t("Aletheia rule promotion") },
-        { href: "/rule-dry-run", label: t("Rule dry run") },
+        { href: "/rule-promotion", label: t("Aletheia rule promotion"), need: "manage_rules" },
+        { href: "/rule-dry-run", label: t("Rule dry run"), need: "manage_rules" },
         { href: "/anomaly-rules", label: t("Anomaly rules") },
         { href: "/monitors", label: t("Learned monitors") },
         { href: "/aletheia-survivorship", label: t("Aletheia verified survivorship") },
@@ -104,3 +106,6 @@ export function destinationAt(path: string, all: Destination[]): Destination | u
   if (path === "/") return all[0];
   return all.slice(1).find((d) => [d.href, ...d.kids.map((k) => k.href), ...d.also].some((b) => within(path, b)));
 }
+
+/** The links this person can use: each role sees only the tools it can act with. */
+export const kidsFor = (dest: Destination, can: (p: string) => boolean): MenuLink[] => dest.kids.filter((k) => !k.need || can(k.need));
