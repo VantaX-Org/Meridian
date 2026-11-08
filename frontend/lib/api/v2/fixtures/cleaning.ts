@@ -80,12 +80,15 @@ let rolledBack = new Set<string>();
 let extraAudit: CleaningAudit[] = [];
 let decided = new Map<string, string>();
 let appliedNow = new Map<string, string>();
+// Who approved: preset approvals belong to another steward; approvals made in the demo belong to the demo user.
+let approvedBy = new Map<string, string>();
 
 export const resetCleaningFixture = (): void => {
   rolledBack = new Set();
   extraAudit = [];
   decided = new Map();
   appliedNow = new Map();
+  approvedBy = new Map();
   merged = new Set();
 };
 
@@ -123,6 +126,7 @@ function proposals(): Proposal[] {
       id, object_type, status: statusOf(p), record_key, confidence, priority: null, detected_at: RUN.run_at,
       applied_at: appliedNow.get(id) ?? null, rollback_deadline: null, record_data_before: before, record_data_after: after,
       merge_preview: {}, version_id: RUN.version_id, rule_id: RULE_ID[kind],
+      approved_by: statusOf(p) === "approved" ? (approvedBy.get(id) ?? "u-steward") : null,
     };
   });
 }
@@ -209,7 +213,7 @@ export function cleaningWrite(method: string, path: string, body: Record<string,
   if (path === "/cleaning/bulk-approve") {
     const min = Number(body.min_confidence ?? 0);
     const hit = PROPOSALS.filter((p) => ["detected", "recommended"].includes(statusOf(p)) && (!body.kind || p[2] === body.kind) && p[5] >= min);
-    for (const p of hit) { decided.set(p[0], "approved"); audit("approved", p); }
+    for (const p of hit) { decided.set(p[0], "approved"); approvedBy.set(p[0], "u-me"); audit("approved", p); }
     return { approved_count: hit.length, skipped_count: 0 };
   }
   const d = /^\/cleaning\/(approve|reject|apply)\/([^/]+)$/.exec(path);
@@ -219,6 +223,7 @@ export function cleaningWrite(method: string, path: string, body: Record<string,
     const st = statusOf(p);
     if (d[1] === "apply") {
       if (st !== "approved") return refuse("Item must be approved before applying");
+      if (approvedBy.get(p[0]) === "u-me") return refuse("A different user must mark this change as loaded");
       decided.set(p[0], "applied");
       appliedNow.set(p[0], new Date().toISOString());
       audit("applied", p);
@@ -228,6 +233,7 @@ export function cleaningWrite(method: string, path: string, body: Record<string,
     if (d[1] === "reject" && !String(body.reason ?? "").trim()) return refuse("A reason is required");
     const to = d[1] === "approve" ? "approved" : "rejected";
     decided.set(p[0], to);
+    if (to === "approved") approvedBy.set(p[0], "u-me");
     audit(to, p);
     return { id: p[0], status: to };
   }

@@ -5,6 +5,10 @@
  */
 import type { FieldMapping, ValueEntry, WorkbookReport } from "../migration";
 
+const refuse = (detail: string, code = 409): never => {
+  throw Object.assign(new Error(detail), { status: code, response: { status: code, data: { detail } } });
+};
+
 export const NONE_MIGRATION = Symbol("not a migration path");
 
 const ECC = "a1b2c3d4-0001-4000-8000-000000000001";
@@ -65,7 +69,8 @@ let fieldMap: FieldMapping[] = [
   { id: "fm-4", module: "material_master", source_field: "MARC.PLIFZ", dest_system_type: "s4hana", dest_table: "MARC", dest_field: "PLIFZ", value_map: false, origin: "identity", transform_note: null, is_confirmed: false, source_def: def("NUMC", 3, "Planned delivery time in days"), target_def: def("DEC", 3, "Planned delivery time in days") },
 ];
 let valueMap: ValueEntry[] = [
-  { id: "vm-1", target_field: "MARA.MTART", source_value: "ZFRT", target_value: "FERT", note: "Finished goods", updated_at: "2026-10-28T10:00:00Z" },
+  { id: "vm-1", target_field: "MARA.MTART", source_value: "ZFRT", target_value: "FERT", note: "Finished goods", updated_at: "2026-10-28T10:00:00Z", status: "confirmed", proposed_by: "u-steward", decided_by: "u-owner" },
+  { id: "vm-2", target_field: "MARA.MTART", source_value: "ZROH", target_value: "ROH", note: "Raw materials", updated_at: "2026-11-02T09:00:00Z", status: "proposed", proposed_by: "u-steward", decided_by: null },
 ];
 
 const field = (f: string, description: string, compared: number, differing: number) => ({ field: f, description, in_target_extract: true, compared, matched: compared - differing, differing });
@@ -179,9 +184,19 @@ export function migrationWrite(method: string, path: string, body: unknown): unk
     const entries = (b.entries ?? []) as { source_value: string; target_value: string; note?: string }[];
     for (const e of entries) {
       valueMap = [...valueMap.filter((v) => !(v.target_field === b.target_field && v.source_value === e.source_value)),
-        { id: `vm-${++seq}`, target_field: String(b.target_field), source_value: e.source_value, target_value: e.target_value, note: e.note ?? null, updated_at: new Date().toISOString() }];
+        { id: `vm-${++seq}`, target_field: String(b.target_field), source_value: e.source_value, target_value: e.target_value, note: e.note ?? null, updated_at: new Date().toISOString(), status: "proposed", proposed_by: "u-me", decided_by: null }];
     }
-    return { saved: entries.length };
+    return { saved: entries.length, status: "proposed" };
+  }
+  const vd = /^\/migration\/value-map\/([^/]+)\/decision$/.exec(path);
+  if (vd && method === "POST") {
+    const e = valueMap.find((v) => v.id === vd[1]);
+    if (!e) return refuse("Value map entry not found", 404);
+    if (e.status !== "proposed") return refuse("This value map entry is not waiting for a decision");
+    if (e.proposed_by === "u-me") return refuse("A different user must approve this value map entry", 403);
+    const to = b.decision === "approve" ? "confirmed" : "rejected";
+    valueMap = to === "rejected" ? valueMap.filter((v) => v.id !== e.id) : valueMap.map((v) => (v.id === e.id ? { ...v, status: "confirmed", decided_by: "u-me" } : v));
+    return { id: e.id, status: to };
   }
   const vm = /^\/migration\/value-map\/([^/]+)$/.exec(path);
   if (vm && method === "DELETE") { valueMap = valueMap.filter((v) => v.id !== vm[1]); return { deleted: true }; }

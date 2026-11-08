@@ -28,14 +28,14 @@ sap_basis, PrA process_analyst, An analyst, Au auditor, Vi viewer.
 
 | Right (code) | What it allows | PA | PL | DS | DO | SB | PrA | An | Au | Vi |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `analyse` (analyse) | Start an analysis, comment, open field maps | Y | Y | Y | | Y | | Y | | |
+| `analyse` (analyse) | Start an analysis, comment, propose field maps and value maps | Y | Y | Y | | Y | | Y | | |
 | `trigger_sync` (trigger sync) | Test, load configuration, extract | Y | Y | Y | | Y | | Y | | |
 | `upload` (upload) | Upload extract files | Y | Y | Y | | Y | | Y | | |
-| `apply` (apply) | Accept or edit suggested values, write to SAP from cleansing | Y | Y | Y | | | | | | |
-| `approve` (approve) | Approve batches, requests, value maps, waves | Y | Y | Y | Y | | | | | |
+| `apply` (apply) | Accept or edit suggested values, mark a cleansing change as loaded in SAP (never the person who approved it) | Y | Y | Y | | | | | | |
+| `approve` (approve) | Approve batches, requests, waves, and value maps another person proposed | Y | Y | Y | Y | | | | | |
 | `assign` (assign) | Assign work, remind, balance work | Y | Y | Y | | | | | | |
 | `export` (export) | Excel, CSV, load files, workbook export | Y | Y | Y | Y | Y | | Y | Y | |
-| `manage_rules` (manage rules) | Edit rules, verified fixes, promotion, dry runs | Y | | Y | | | | | | |
+| `manage_rules` (manage rules) | Edit rules, verified fixes, promotion, dry runs | Y | Y | Y | | | | | | |
 | `review_ai_rules` (review AI rules) | Approve learned rules | Y | | Y | | | | | | |
 | `mdm.write` (master data write) | New request, entry gate, mining, monitors | Y | Y | Y | | | | | | |
 | `manage_triage` (manage triage) | Teams and routing rules | Y | Y | Y | | | | | | |
@@ -209,17 +209,16 @@ Load file formats: `cockpit_xlsx` (Migration Cockpit Excel), `cockpit_csv` (Migr
 1. `/requests` ("Create and change master data with approval"). Choose the view **To approve**.
 2. Click a row (`?open=request:{id}`). Click **Approve** or **Reject**.
 
-**Can.** Approve, export.
+**Can.** Approve, export, reject a cleansing proposal with a reason (`ai_feedback`), read the migration field map and
+value map, and approve or reject value-map entries that another person proposed.
 
 **Cannot.**
 
 - Accept suggested values (`apply` missing).
-- Comment on an exception. **Add comment** shows on `/work/exceptions` but the API refuses without `analyse`.
-- Remind a person. **Remind** shows on `/people` but the API refuses without `assign`.
-- Choose a loader other than the default in the load file dialog (the list needs `assign`).
-- Reject a cleansing proposal with a reason. The reason post needs `ai_feedback`; the failure is not shown.
-- Open a migration field map or value map (`analyse` missing), so they cannot approve a value map.
-- Sign a readiness certificate (needs `approve` and `view_audit`).
+- Comment on an exception or remind a person. Both buttons are hidden for this role (`analyse` and `assign` missing).
+- Choose a loader in the load file dialog. The picker is hidden without `assign` and the default loader is used.
+- Propose or edit field-map and value-map entries (`analyse` missing).
+- Sign a readiness certificate. Signing needs `approve` and `view_audit`, so it is for owners named as signatories.
 
 **Hand-off.** After approval, the export goes to the loader. The SAP team hears outside Meridian. The steward sees the
 batch status change on `/work`.

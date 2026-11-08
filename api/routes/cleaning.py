@@ -232,7 +232,7 @@ async def list_cleaning_queue(
             SELECT id, object_type, status, {CONF_SQL} AS confidence, record_key, priority,
                    detected_at, applied_at, rollback_deadline, rule_id, batch_id,
                    version_id, merge_preview, record_data_before, record_data_after,
-                   golden_record_id, golden_field_value
+                   golden_record_id, golden_field_value, approved_by
             FROM cleaning_queue
             WHERE {where}
             ORDER BY priority DESC, detected_at DESC
@@ -542,6 +542,13 @@ async def apply_cleaning_item(
     row = _row_to_dict(item)
     if row["status"] != "approved":
         raise HTTPException(status_code=400, detail="Item must be approved before applying")
+    # Four-eyes: the person who approved a change cannot also mark it written, and an edit made now would
+    # skip the approval, so edited values go back through approve.
+    me = current_user_id()
+    if row.get("approved_by") and (me is None or str(row["approved_by"]) == str(me)):
+        raise HTTPException(status_code=403, detail="A different user must write a change they approved")
+    if body.override_data and any((row.get("record_data_after") or {}).get(k) != v for k, v in body.override_data.items()):
+        raise HTTPException(status_code=409, detail="Edited values need a new approval")
 
     now = datetime.now(timezone.utc)
     deadline = now + timedelta(hours=72)

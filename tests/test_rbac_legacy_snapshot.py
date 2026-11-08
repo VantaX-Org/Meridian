@@ -42,7 +42,9 @@ def test_unknown_role_and_action_still_denied() -> None:
 def test_persona_roles_equal_the_legacy_role_they_replace() -> None:
     # Leads and stewards also run process discovery (owner decision 2026-10-26); nothing else differs.
     # They also edit triage teams, rules and SLA policies (manage_triage); the legacy keys stay unchanged.
-    extra = {"programme_lead": ["run_process_discovery", "manage_triage", "manage_digests"],
+    # Leads manage the rule set of their programme and owners record reject reasons (owner decision 2026-11-08).
+    extra = {"programme_lead": ["run_process_discovery", "manage_triage", "manage_digests", "manage_rules"],
+             "data_owner": ["ai_feedback"],
              "data_steward": ["run_process_discovery", "manage_triage"]}
     for persona, legacy in (("programme_lead", "manager"), ("data_steward", "steward"),
                             ("data_owner", "approver"), ("platform_admin", "admin")):

@@ -129,6 +129,10 @@ export interface ValueEntry {
   target_value: string;
   note: string | null;
   updated_at: string | null;
+  /** proposed waits for a second person; the load reads confirmed entries only. */
+  status?: "proposed" | "confirmed";
+  proposed_by?: string | null;
+  decided_by?: string | null;
 }
 
 export interface AnalyzeBody {
@@ -207,7 +211,10 @@ export const seedFieldMap = (module: string, destType: string, sourceSystemId?: 
 
 export const getValueMap = (module: string, targetField: string) => v2Get<{ entries: ValueEntry[] }>(`${P}/value-map`, { module, target_field: targetField });
 export const saveValueMap = (module: string, targetField: string, entries: { source_value: string; target_value: string; note?: string }[]) =>
-  v2Send<{ saved: number }>("PUT", `${P}/value-map`, { module, target_field: targetField, entries });
+  v2Send<{ saved: number; status: string }>("PUT", `${P}/value-map`, { module, target_field: targetField, entries });
+/** Four eyes: a different user from the one who proposed the entry approves or rejects it. */
+export const decideValueEntry = (id: string, decision: "approve" | "reject") =>
+  v2Send<{ id: string; status: string }>("POST", `${P}/value-map/${encodeURIComponent(id)}/decision`, { decision });
 export const deleteValueEntry = (id: string) => v2Send<unknown>("DELETE", `${P}/value-map/${encodeURIComponent(id)}`);
 
 // Post-load reconciliation: did the records the load files carried land in the target system (migration.py).

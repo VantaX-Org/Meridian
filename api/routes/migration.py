@@ -167,6 +167,9 @@ async def start_migration(
         raise HTTPException(status_code=400, detail="s4_dry_run does not take a destination system.")
     if not body.modules:
         raise HTTPException(status_code=400, detail="At least one module is required.")
+    from api.middleware.licence import enforce_licensed_modules
+
+    enforce_licensed_modules(request, body.modules)
 
     await _set_rls(db, tenant.id)
 
@@ -1217,7 +1220,7 @@ async def value_candidates(
     target_field: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """Distinct source values that still need a target value mapping (with record counts)."""
     await _set_rls(db, tenant.id)
@@ -1444,7 +1447,7 @@ async def get_field_map(
     source_system_type: str = Query("ecc"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """Mappings with source and target field definitions side by side."""
     from sap.ddic import dictionary_for_system
@@ -1593,14 +1596,15 @@ async def get_value_map(
     target_field: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
-    where, params = "module = :m AND status = 'confirmed'", {"m": module}
+    where, params = "module = :m AND status IN ('confirmed', 'proposed')", {"m": module}
     if target_field:
         where += " AND target_field = :tf"
         params["tf"] = target_field
-    rows = await db.execute(text(f"SELECT id, target_field, source_value, target_value, note, updated_at "
+    rows = await db.execute(text(f"SELECT id, target_field, source_value, target_value, note, updated_at, status, "
+                                 f"proposed_by::text AS proposed_by, decided_by::text AS decided_by "
                                  f"FROM transfer_value_mappings WHERE {where} ORDER BY target_field, source_value"),
                             params)
     return {"entries": [_row(x) for x in rows.fetchall()]}
@@ -1612,27 +1616,63 @@ async def upsert_value_map(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    # Writing a confirmed mapping directly is an approval, so it needs the approve
-    # permission; proposals from analysts go through /api/v1/reference-data/mappings.
-    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
+    # Saving an entry is a proposal. It only feeds a load after a different user approves it
+    # through /value-map/{id}/decision, so one person can never both make and check a mapping.
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
+    uid = current_user_id(request)
     for e in body.entries:
         await db.execute(
             text("""
                 INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, target_value,
-                                                     note, updated_by, updated_at, decided_by, decided_at)
-                VALUES (gen_random_uuid(), :tid, :m, :tf, :sv, :tv, :note, :uid, now(), :uid, now())
+                                                     note, updated_by, updated_at, status, proposed_by)
+                VALUES (gen_random_uuid(), :tid, :m, :tf, :sv, :tv, :note, :uid, now(), 'proposed', :uid)
                 ON CONFLICT ON CONSTRAINT uq_transfer_value_mappings_scope
                 DO UPDATE SET target_value = EXCLUDED.target_value, note = EXCLUDED.note,
-                              updated_by = EXCLUDED.updated_by, updated_at = now(), status = 'confirmed',
-                              decided_by = EXCLUDED.updated_by, decided_at = now()
+                              updated_by = EXCLUDED.updated_by, updated_at = now(), status = 'proposed',
+                              proposed_by = EXCLUDED.proposed_by, decided_by = NULL, decided_at = NULL
             """),
             {"tid": str(tenant.id), "m": body.module, "tf": body.target_field.upper(), "sv": e.source_value,
-             "tv": e.target_value, "note": e.note, "uid": current_user_id(request)},
+             "tv": e.target_value, "note": e.note, "uid": uid},
         )
+    await write_audit(db, tenant.id, request, "value_map.propose", "value_map", body.target_field.upper(), None,
+                      {"module": body.module, "entries": len(body.entries)})
     await db.commit()
-    return {"saved": len(body.entries)}
+    return {"saved": len(body.entries), "status": "proposed"}
+
+
+class ValueMapDecision(BaseModel):
+    decision: Literal["approve", "reject"]
+
+
+@router.post("/value-map/{entry_id}/decision")
+async def decide_value_map(
+    entry_id: uuid.UUID,
+    body: ValueMapDecision,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
+):
+    await _set_rls(db, tenant.id)
+    r = (await db.execute(text("SELECT status, proposed_by::text, target_field, source_value, target_value "
+                               "FROM transfer_value_mappings WHERE id = :id FOR UPDATE"), {"id": entry_id})).fetchone()
+    if r is None:
+        raise HTTPException(status_code=404, detail="Value map entry not found")
+    if r[0] != "proposed":
+        raise HTTPException(status_code=409, detail="Only a proposed entry can be decided")
+    me = current_user_id(request)
+    if me is None or (r[1] is not None and str(r[1]) == str(me)):
+        raise HTTPException(status_code=403, detail="A different user must approve this value map entry")
+    new = "confirmed" if body.decision == "approve" else "rejected"
+    await db.execute(text("UPDATE transfer_value_mappings SET status = :s, decided_by = :u, decided_at = now(), "
+                          "updated_at = now() WHERE id = :id"), {"s": new, "u": me, "id": entry_id})
+    await write_audit(db, tenant.id, request, f"value_map.{body.decision}", "value_map", str(entry_id),
+                      {"status": r[0]}, {"status": new, "target_field": r[2], "source_value": r[3],
+                                         "target_value": r[4]})
+    await db.commit()
+    return {"id": str(entry_id), "status": new}
 
 
 @router.delete("/value-map/{entry_id}")

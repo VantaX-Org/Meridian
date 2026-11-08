@@ -213,9 +213,10 @@ def test_schema_declares_nullsafe_grant_index() -> None:
 def test_steward_breakdown_and_ai_panel_follow_the_resolver(role: str) -> None:
     from api.routes.mdm_metrics import _should_see_ai_panel
     from api.routes.stewardship import sees_steward_breakdown
-    # Legacy behaviour kept; personas follow their legacy equivalent; nobody else gains it.
+    # Legacy behaviour kept; personas follow their legacy equivalent; nobody else gains it. Programme leads hold
+    # manage_rules since 2026-11-08, so they also see the per-steward breakdown of their programme.
     legacy_breakdown = {"admin", "steward"}
     legacy_ai = {"admin", "steward", "ai_reviewer"}
     alias = rbac.PERSONA_ALIAS.get(role, role)
-    assert sees_steward_breakdown(role) == (alias in legacy_breakdown)
+    assert sees_steward_breakdown(role) == (alias in legacy_breakdown or role == "programme_lead")
     assert _should_see_ai_panel(role) == (alias in legacy_ai)

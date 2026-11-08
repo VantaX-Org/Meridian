@@ -8,7 +8,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
-  checkTargetWorkbook, deleteFieldMapping, deleteMigrationRun, deleteValueEntry, exportLoadFiles, exportTargetWorkbook, extractMigrationTarget, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
+  checkTargetWorkbook, deleteFieldMapping, deleteMigrationRun, deleteValueEntry, decideValueEntry, exportLoadFiles, exportTargetWorkbook, extractMigrationTarget, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
   getMigrationRecords, getMigrationRun, getMigrationRuns, getReconciliation, getReconciliationRecords, getValueCandidates, getValueMap,
   saveValueMap, seedFieldMap, startMigration, startReconciliation, updateFieldMapping, type FieldDef, type MigrationMode, type WorkbookFormat, type MigrationRun,
   type ReconKind,
@@ -880,7 +880,7 @@ function FieldMapPanel({ modules }: { modules: string[] }) {
 }
 
 function ValueMap({ module, field }: { module: string; field: string }) {
-  const { can } = useV2Session();
+  const { can, id: me } = useV2Session();
   const toast = useToast();
   const qc = useQueryClient();
   const runs = useMig(["runs"], getMigrationRuns);
@@ -891,12 +891,18 @@ function ValueMap({ module, field }: { module: string; field: string }) {
   const done = (msg: string) => () => { toast.show(msg); setDraft({}); void qc.invalidateQueries({ queryKey: ["migration", "value-map"] }); };
   const save = useMutation({
     mutationFn: () => saveValueMap(module, field, Object.entries(draft).filter(([, v]) => v.trim()).map(([source_value, target_value]) => ({ source_value, target_value: target_value.trim() }))),
-    onSuccess: done(t("The value map was saved.")),
+    onSuccess: done(t("The values were proposed. A second person approves them before the load uses them.")),
     onError: (e) => toast.show(errorSentence(e, t("The value map could not be saved.")), "error"),
   });
   const remove = useMutation({ mutationFn: deleteValueEntry, onSuccess: done(t("The value was removed from the map.")), onError: (e) => toast.show(errorSentence(e, t("The value could not be removed.")), "error") });
-  // Saving here confirms the mapping at once, so it needs the approve permission.
-  const edit = can("approve");
+  const decide = useMutation({
+    mutationFn: ({ id, decision }: { id: string; decision: "approve" | "reject" }) => decideValueEntry(id, decision),
+    onSuccess: (r) => done(r.status === "confirmed" ? t("The value is approved. The next load uses it.") : t("The proposed value was rejected."))(),
+    onError: (e) => toast.show(errorSentence(e, t("The decision could not be saved.")), "error"),
+  });
+  // Four eyes: analysts propose values, a different approver confirms them; the load reads confirmed values only.
+  const edit = can("analyse");
+  const approver = can("approve");
   const byValue = new Map((saved.data?.entries ?? []).map((e) => [e.source_value, e]));
   const values = cands.data?.values ?? (saved.data?.entries ?? []).map((e) => ({ source_value: e.source_value, records: null as number | null }));
   const title = t("Value map for {field}", { field });
@@ -907,7 +913,7 @@ function ValueMap({ module, field }: { module: string; field: string }) {
         <EmptyFrame>{t("No source values are known for this field yet.")}</EmptyFrame>
       ) : (
         <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
-          <Table title={title} head={[t("Source value"), t("Records"), t("Target value"), ""]}>
+          <Table title={title} head={[t("Source value"), t("Records"), t("Target value"), t("Status"), ""]}>
             {values.map((v) => {
               const e = byValue.get(v.source_value);
               return (
@@ -919,12 +925,23 @@ function ValueMap({ module, field }: { module: string; field: string }) {
                       <input className="m2-inp" aria-label={t("Target value for {v}", { v: v.source_value })} value={draft[v.source_value] ?? e?.target_value ?? ""} onChange={(ev) => setDraft((d) => ({ ...d, [v.source_value]: ev.target.value }))} />
                     ) : e?.target_value ?? f1(null)}
                   </td>
-                  <td>{edit && e ? <button type="button" className="m2-btn" onClick={() => remove.mutate(e.id)}>{t("Remove")}</button> : null}</td>
+                  <td data-label={t("Status")} data-testid={`mig-vm-status-${v.source_value}`}>
+                    {!e ? t("Not mapped") : e.status === "proposed" ? t("Waits for a second person") : t("Approved")}
+                  </td>
+                  <td>
+                    {approver && e?.status === "proposed" && e.proposed_by !== me ? (
+                      <>
+                        <button type="button" className="m2-btn" data-testid={`mig-vm-approve-${v.source_value}`} disabled={decide.isPending} onClick={() => decide.mutate({ id: e.id, decision: "approve" })}>{t("Approve")}</button>{" "}
+                        <button type="button" className="m2-btn" data-testid={`mig-vm-reject-${v.source_value}`} disabled={decide.isPending} onClick={() => decide.mutate({ id: e.id, decision: "reject" })}>{t("Reject")}</button>{" "}
+                      </>
+                    ) : null}
+                    {approver && e ? <button type="button" className="m2-btn" onClick={() => remove.mutate(e.id)}>{t("Remove")}</button> : null}
+                  </td>
                 </tr>
               );
             })}
           </Table>
-          {edit ? <button type="submit" className="m2-btn m2-next" disabled={save.isPending || Object.keys(draft).length === 0}>{t("Save the value map")}</button> : null}
+          {edit ? <button type="submit" className="m2-btn m2-next" disabled={save.isPending || Object.keys(draft).length === 0}>{t("Propose these values")}</button> : null}
         </form>
       )}
     </section>

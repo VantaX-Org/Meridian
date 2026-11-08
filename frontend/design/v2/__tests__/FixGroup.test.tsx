@@ -133,6 +133,6 @@ describe("Cleansing task flow", () => {
     expect(proposals.compareDocumentPosition(detail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(detail.querySelector("[data-testid=cleansing-audit]")).not.toBeNull();
     expect(within(proposals).getByTestId("consequence")).toHaveTextContent(/SAP is not changed/);
-    expect(within(screen.getByTestId("cleansing-approved")).getByTestId("consequence")).toHaveTextContent(/rolled back for 72 hours/);
+    expect(within(screen.getByTestId("cleansing-approved")).getByTestId("consequence")).toHaveTextContent(/does not change SAP from here.*cannot mark it/);
   });
 });

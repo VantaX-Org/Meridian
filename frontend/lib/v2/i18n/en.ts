@@ -8579,6 +8579,18 @@ export const en = {
   "These settings set the clocks of the triage queue.": "These settings set the clocks of the triage queue.",
   "Open the triage queue": "Open the triage queue",
   "SLA days per severity and the escalation that follows are set in": "SLA days per severity and the escalation that follows are set in",
+  "{n} proposals approved. Export them as a load file and load it in SAP.": "{n} proposals approved. Export them as a load file and load it in SAP.",
+  "Marked as loaded in SAP. The next run checks the record. The mark can be undone for 72 hours.": "Marked as loaded in SAP. The next run checks the record. The mark can be undone for 72 hours.",
+  "The change could not be marked as loaded.": "The change could not be marked as loaded.",
+  "Approved, waiting to be loaded in SAP": "Approved, waiting to be loaded in SAP",
+  "Meridian does not change SAP from here. Export the approved changes as a load file, load it in SAP, then mark each change loaded. The person who approved a change cannot mark it.": "Meridian does not change SAP from here. Export the approved changes as a load file, load it in SAP, then mark each change loaded. The person who approved a change cannot mark it.",
+  "No approved proposal is waiting to be loaded.": "No approved proposal is waiting to be loaded.",
+  "Waits for a second person": "Waits for a second person",
+  "Mark as loaded in SAP": "Mark as loaded in SAP",
+  "The values were proposed. A second person approves them before the load uses them.": "The values were proposed. A second person approves them before the load uses them.",
+  "The value is approved. The next load uses it.": "The value is approved. The next load uses it.",
+  "The proposed value was rejected.": "The proposed value was rejected.",
+  "Propose these values": "Propose these values",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -31,7 +31,7 @@ Glossary, Golden records.
 | Live write-back | apply (`apply`) or approve (`approve`); approve to send | `/work?open=batch:{id}` | **Check with SAP**, **Send to SAP** | Only when the live write-back setting is on |
 | Auto-cleanse: review | view (`view`) | `/cleansing` | **Review the proposals** | The proposals list |
 | Auto-cleanse: approve | approve (`approve`) | `/cleansing` | **Approve the {n} confident**, **Approve**, **Reject**, **Compare and merge** | Proposals approved or rejected |
-| Auto-cleanse: write | apply (`apply`) | `/cleansing` | **Write to SAP**, **Roll back** | Status changes in Meridian; see the note below |
+| Auto-cleanse: mark loaded | apply (`apply`), not the approver | `/cleansing` | **Mark as loaded in SAP**, **Roll back** | Status changes in Meridian; see the note below |
 | Auto-cleanse: export | export (`export`) | `/cleansing` | **Export the corrected records**, **Download** | A file |
 | Monitoring after clean | view (`view`) | `/work/monitor` | **Open cleansing**, **Open the work list** | "{n} records failed a rule again since the last run." |
 | Acknowledge a monitor | master data write (`mdm.write`) | `/monitors` | acknowledge | The break is acknowledged |
@@ -41,12 +41,12 @@ Glossary, Golden records.
 | Compare runs | view (`view`) | `/o/{system}/{object}/trend` or `/runs` | "Compare two runs", or **Compare with previous** | `/run/{a}/vs/{b}` |
 | Migration analysis | analyse (`analyse`) | `/migration` | **Start an analysis** | Verdict "Ready to load", "Ready with conditions" or "Not ready to load" |
 | Field map | analyse (`analyse`) | `/migration` | **Propose from the source**, **Confirm** | The source to target field map |
-| Value map | analyse to open, approve (`approve`) to save | `/migration` | "Value map for {field}", **Save the value map** | Saved and in force at once (no second approver) |
+| Value map | view (`view`) to read, analyse (`analyse`) to propose, approve (`approve`) to decide | `/migration` | "Value map for {field}", **Propose these values**, **Approve**, **Reject** | Proposed values wait for a second person; the load uses approved values only |
 | Migration workbook | export (`export`), at least one system | `/migration` | "Workbook from the new system", **Check the workbook**, **Export in the same format** | A file in the new system's format; audited |
 | Reconcile after load | analyse (`analyse`) | `/migration` | **Run reconciliation**, **Extract the target system** | Post-load reconciliation |
 | New master data request | master data write (`mdm.write`) | `/requests` | **New request** | A request waits for approval |
 | Approve a request | approve (`approve`) | `/requests?open=request:{id}` | **Approve**, **Reject** | The request is decided |
-| Watch the object | none | `/o/{system}/{object}` | **Watch** | Shows **Watching** |
+| Watch the object | view (`view`) | `/o/{system}/{object}` | **Watch** | Shows **Watching** |
 
 Load file formats:
 
@@ -61,11 +61,13 @@ Load file formats:
 
 Notes:
 
-- **Write to SAP** on `/cleansing` sets a status in Meridian. The handler makes no SAP call.
+- **Mark as loaded in SAP** on `/cleansing` records that the change is in SAP. The handler makes no SAP call. The person
+  who approved a change cannot mark it loaded; the API refuses with 403 and the screen shows "Waits for a second person".
 - The **Fixes** tab on the object page lists the fix batches that hold records of the object: batch, name, status,
   records, who built it, when, and how many records the next run found fixed. A row opens the batch.
 - The licence is checked where data enters (extract, upload, connectivity, process discovery, reference data,
-  migration, database sources). It is not checked on analyse or on reading.
+  migration, database sources) and when an analysis or a migration analysis starts. A default re-analysis keeps only
+  the licensed objects; naming an unlicensed object returns 402. It is not checked on reading.
 
 ## Role by action, for every object
 
@@ -87,12 +89,13 @@ analyst), An analyst (Analyst), Au auditor (Auditor), Vi viewer (Viewer).
 | Export the load file (not own) | Y | Y | Y | Y | Y | | Y | Y | |
 | Mark loaded in SAP | Y | Y | Y | Y | Y | | | | |
 | Auto-cleanse approve | Y | Y | Y | Y | | | | | |
-| Auto-cleanse write | Y | Y | Y | | | | | | |
+| Auto-cleanse mark loaded | Y | Y | Y | | | | | | |
 | Acknowledge a monitor | Y | Y | Y | | | | | | |
-| Make a rule, verified fixes | Y | | Y | | | | | | |
+| Make a rule, verified fixes | Y | Y | Y | | | | | | |
 | Approve a learned rule | Y | Y | Y | Y | | | | | |
 | Migration analysis, field map | Y | Y | Y | | Y | | Y | | |
-| Save a value map | Y | Y | Y | | | | | | |
+| Propose a value map | Y | Y | Y | | Y | | Y | | |
+| Approve a value map | Y | Y | Y | Y | | | | | |
 | Migration workbook export | Y | Y | Y | Y | Y | | Y | Y | |
 | New master data request | Y | Y | Y | | | | | | |
 | Approve a request | Y | Y | Y | Y | | | | | |

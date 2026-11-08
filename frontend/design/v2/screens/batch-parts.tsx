@@ -36,7 +36,7 @@ export function useBatchControls(onResult?: (o: Outcome) => void) {
   // F08: the batch whose load file is about to be exported, and who loads it ("" for the SAP Basis people).
   const [exporting, setExporting] = useState<BatchRow | null>(null);
   const [loader, setLoader] = useState("");
-  const people = useAssignable(exporting !== null);
+  const people = useAssignable(exporting !== null && can.assign);
 
   const fail = useCallback(
     (e: unknown, fallback: string) => {
@@ -106,7 +106,7 @@ export function useBatchControls(onResult?: (o: Outcome) => void) {
       description={t("Batch {label}: {records} {records2, plural, one {record goes} other {records go}} out as a Migration Cockpit file. Nothing changes in SAP until the file is loaded, and the export cannot be taken back.", { label: exporting.label, records: int(exporting.records), records2: exporting.records })}
       onClose={() => setExporting(null)}
     >
-      <label>
+      {can.assign ? <label>
         {t("Who loads it in SAP")}
         <select value={loader} onChange={(e) => setLoader(e.target.value)} disabled={people.isLoading}>
           <option value="">{t("The SAP Basis people")}</option>
@@ -116,7 +116,7 @@ export function useBatchControls(onResult?: (o: Outcome) => void) {
             </option>
           ))}
         </select>
-      </label>
+      </label> : null}
       <p className="m2-dlg-d" data-testid="export-loader">{t("{who} gets the file in the inbox, loads it and confirms the load here.", { who: loaderName })}</p>
       <div className="m2-dlg-a">
         <button type="button" className="m2-btn" onClick={() => setExporting(null)}>
