@@ -754,7 +754,7 @@ def test_source_only_map_survives_target_assignment_and_pair_row_wins(app_engine
 
 
 @pg
-def test_value_map_routes_upsert_confirm_and_hide_proposed(app_engine, monkeypatch):
+def test_value_map_routes_upsert_and_list_proposed_with_status(app_engine, monkeypatch):
     from sqlalchemy import text
 
     from api.routes.migration import router
@@ -778,7 +778,9 @@ def test_value_map_routes_upsert_confirm_and_hide_proposed(app_engine, monkeypat
         return (await c.get("/api/v1/migration/value-map", params={"module": "accounts_payable"})).json()
 
     entries = _client_run(app, tid, router, calls, monkeypatch)["entries"]
-    assert [(e["source_value"], e["target_value"]) for e in entries] == [("LIEF", "BP02")]  # one row, proposed hidden
+    # One LIEF row; proposed entries are listed with their status so a second person can decide them (2026-11-08).
+    got = [(e["source_value"], e["target_value"], e["status"]) for e in entries]
+    assert got == [("LIEF", "BP02", "proposed"), ("PROP", "X", "proposed")]
     with _session(app, tid) as s:
         n = s.execute(text("SELECT count(*) FROM transfer_value_mappings WHERE source_value = 'LIEF'")).scalar()
     assert n == 1  # the PUT updated the proposed row in place instead of duplicating it

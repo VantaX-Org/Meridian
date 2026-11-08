@@ -18,7 +18,7 @@ export function FixesTab({ module: moduleSegment }: { system: string; module: st
   const label = useLandscape(run).data?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ");
   const q = useBatches();
   const { openItem, open } = useOpenItem();
-  const rows = useMemo(() => q.rows.filter((b) => b.modules.includes(apiModule)), [q.rows, apiModule]);
+  const rows = q.rows.filter((b) => b.modules.includes(apiModule));
   const columns = useMemo<GridColumn<BatchRow>[]>(
     () => [
       { id: "batch", header: tr("Batch"), width: 90, pin: true, locked: true, cell: (b) => <Mono>{b.label}</Mono> },
