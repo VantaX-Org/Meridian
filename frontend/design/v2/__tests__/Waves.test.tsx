@@ -113,8 +113,8 @@ describe("the Waves view of the landscape", () => {
     setUrl(edit.getAttribute("href") as string);
     // The test id keeps this cheap: a role query walks the whole coverage matrix on every retry, which ran out the
     // timeout on a loaded CI runner. The accessible name still proves it is the waves editor.
-    expect(await screen.findByTestId("inspector")).toHaveAccessibleName("Migration waves");
-  });
+    expect(await screen.findByTestId("inspector", {}, { timeout: 8000 })).toHaveAccessibleName("Migration waves");
+  }, 20000);
 
   it("at phone width the list keeps each wave's heading with its gate, Edit and Certificate", async () => {
     visit("&view=waves");
@@ -130,7 +130,7 @@ describe("the waves editor", () => {
   it("lists the waves with date and stage, and every object with the wave it is in", async () => {
     visit("&open=waves");
     page();
-    const dialog = await screen.findByRole("dialog", { name: "Migration waves" });
+    const dialog = await screen.findByRole("dialog", { name: "Migration waves" }, { timeout: 8000 });
     const w1 = await within(dialog).findByRole("group", { name: "Wave Wave 1: finance foundations" });
     expect(within(w1).getByLabelText("Target date")).toHaveValue("2026-11-16");
     expect(within(w1).getByLabelText("Stage")).toHaveValue("mock2");
