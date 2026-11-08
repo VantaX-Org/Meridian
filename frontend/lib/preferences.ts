@@ -1,5 +1,5 @@
 import { setFormatPrefs } from "./format";
-import { LEGACY_THEME_STORAGE_KEY, PREFS_STORAGE_KEY, THEME_STORAGE_KEY } from "./theme";
+import { PREFS_STORAGE_KEY, THEME_STORAGE_KEY } from "./theme";
 
 /** Row density tiers; mirrors the CSS `[data-density]` values. */
 export type DensityTier = "compact" | "default" | "comfortable";
@@ -101,7 +101,7 @@ let cacheValue: Preferences = EMPTY;
 export function readPrefs(): Preferences {
   if (typeof window === "undefined") return EMPTY;
   const doc = readKey(PREFS_KEY);
-  const theme = readKey(THEME_KEY) ?? readKey(LEGACY_THEME_STORAGE_KEY);
+  const theme = readKey(THEME_KEY);
   const density = readKey(DENSITY_KEY) ?? readKey("aurora:density");
   const raw = `${doc}|${theme}|${density}`;
   if (raw === cacheRaw) return cacheValue;

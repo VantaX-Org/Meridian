@@ -53,16 +53,16 @@ describe("themeBootScript", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
-  it("still reads the legacy key", () => {
+  it("ignores the pre-rename key", () => {
     window.localStorage.setItem("aurora:theme", "dark");
     boot();
-    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("light");
   });
 
-  it("resolves system against the colour scheme and ignores a value it does not know", () => {
+  it("gives light for system and for a value it does not know", () => {
     window.localStorage.setItem("meridian:theme", "system");
     boot();
-    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("light");
     window.localStorage.setItem("meridian:theme", "sepia");
     boot();
     expect(document.documentElement.dataset.theme).toBe(DEFAULT_THEME);

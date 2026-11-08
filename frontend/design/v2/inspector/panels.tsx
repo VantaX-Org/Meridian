@@ -86,7 +86,7 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
           <Seg<Theme>
             label={tr("Theme")}
             value={theme}
-            options={[{ value: "light", label: tr("Light") }, { value: "dark", label: tr("Dark") }, { value: "system", label: tr("System") }]}
+            options={[{ value: "light", label: tr("Light") }, { value: "dark", label: tr("Dark") }] }
             onChange={(t) => (setTheme(t), fixture && void api.patchMyPreferences({ theme: t }))}
           />
         </div>

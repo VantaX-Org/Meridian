@@ -46,7 +46,6 @@ function Breadcrumb() {
 }
 
 const THEMES: { value: Theme; label: string }[] = [
-  { value: "system", get label() { return tr("System"); } },
   { value: "light", get label() { return tr("Light"); } },
   { value: "dark", get label() { return tr("Dark"); } },
 ];

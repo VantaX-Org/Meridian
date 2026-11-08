@@ -71,7 +71,7 @@ describe("top bar", () => {
     mount();
     fireEvent.click(screen.getByRole("button", { name: /^Account/ }));
     const menu = await screen.findByRole("menu", { name: "Account" });
-    expect(within(menu).getAllByRole("menuitemradio").map((i) => norm(i))).toEqual(["System", "Light", "Dark"]);
+    expect(within(menu).getAllByRole("menuitemradio").map((i) => norm(i))).toEqual(["Light", "Dark"]);
     expect(within(menu).getByRole("menuitem", { name: /Keyboard shortcuts/ })).toBeInTheDocument();
     expect(within(menu).queryByRole("menuitem", { name: /current interface/ })).toBeNull();
   });

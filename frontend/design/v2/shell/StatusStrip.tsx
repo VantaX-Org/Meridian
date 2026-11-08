@@ -72,10 +72,10 @@ function FailureLine() {
   );
 }
 
-/** The dark-mode switch in the strip's foot: light is the default; "system" counts as whatever the OS shows. */
+/** The dark-mode switch in the strip's foot: light is the default; only an explicit dark choice turns it on. */
 function DarkToggle() {
   const { theme, setTheme } = useAuroraPrefs();
-  const dark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const dark = theme === "dark";
   return (
     <button type="button" className="m2-thl" role="switch" aria-checked={dark} onClick={() => setTheme(dark ? "light" : "dark")} data-testid="dark-toggle">
       <span className="m2-thl-t" aria-hidden="true" />
