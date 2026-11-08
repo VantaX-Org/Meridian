@@ -9,7 +9,7 @@ import { int } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { IconClose } from "../marks";
 import { V2Link } from "../parts";
-import { destinationAt, destinations, type Destination } from "./menu";
+import { destinationAt, destinations, kidsFor, type Destination } from "./menu";
 import { ObjectsTree } from "./ObjectsTree";
 
 export type FlyId = Destination["id"] | null;
@@ -92,6 +92,7 @@ function MoreLinks() {
 function FlyoutBody({ dest, onClose, pinned, setPinned }: { dest: Destination; onClose: () => void; pinned: boolean; setPinned: (v: boolean) => void }) {
   const pathname = usePathname();
   const fix = useCounts().data?.fix;
+  const { can } = useV2Session();
   const here = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   return (
     <aside id="m2-fly" className="m2-fly" aria-label={dest.label} data-testid="flyout">
@@ -110,7 +111,7 @@ function FlyoutBody({ dest, onClose, pinned, setPinned }: { dest: Destination; o
         <ObjectsTree />
       ) : dest.kids.length ? (
         <nav className="m2-mnav" aria-label={dest.label}>
-          {dest.kids.map((k) => (
+          {kidsFor(dest, can).map((k) => (
             <V2Link key={k.href} href={k.href} className="m2-mi" aria-current={here(k.href) ? "page" : undefined}>
               <span>{k.label}</span>
               {k.href === "/work" && fix ? <span className="m2-n">{int(fix)}</span> : null}
