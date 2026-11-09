@@ -4,6 +4,9 @@
 .m2-mgrp-act a { font-size: var(--m2-fs-12); }
 .m2-dirty { color: var(--m2-warn); font-size: var(--m2-fs-12); font-weight: 400; margin-left: var(--m2-s2); }
 
+/* A select is sized by its longest option; it, and the label around it, stay inside their container. */
+.m2-root label:has(> select), .m2-root select { max-width: 100%; min-width: 0; }
+
 @media (max-width: 760px) {
   .m2-cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .m2-cards, .m2-cards tbody { display: block; }
@@ -12,8 +15,12 @@
   .m2-cards th, .m2-cards td { display: block; height: auto; padding: 0; border: 0; white-space: normal; text-align: left; }
   .m2-cards tbody th { order: -2; font-weight: 500; }
   .m2-cards td.m2-card-lead { order: -1; }
-  .m2-cards td.m2-r { text-align: left; }
+  .m2-cards td.m2-r, .m2-cards td.m2-num { text-align: left; }
   .m2-cards td[data-label]::before { content: attr(data-label); display: block; color: var(--m2-meta); font-size: var(--m2-fs-12); }
+  /* A table that is not a card list scrolls inside itself, so a wide table never scrolls the page sideways. */
+  .m2-root :is(.m2-tbl, .m2-rcpt, .m2-ck-matrix, .m2-ck-rules, .m2-ck-mini):not(.m2-cards):not(.m2-frame *) { display: block; max-width: 100%; overflow-x: auto; }
+  /* A row of actions wraps inside the canvas. */
+  .m2-root .m2-gtools { flex-wrap: wrap; max-width: 100%; }
 }
 
 /* The status strip is one line at phone width, the full strip above it. */

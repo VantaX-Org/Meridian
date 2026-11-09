@@ -113,7 +113,7 @@ html[data-m2-hints="off"] .m2-root .m2-kb { display: none; }
 .m2-root .m2-digname { display: grid; }
 .m2-root .m2-digname small { color: var(--m2-ink-3); font-size: var(--m2-fs-12); }
 .m2-root .m2-digrows li[data-open="true"] .m2-digname small { color: var(--m2-ink-2); }
-@media (max-width: 720px) { .m2-root .m2-digrow { grid-template-columns: minmax(0, 1fr) auto; } }
+@media (max-width: 720px) { .m2-root .m2-digrow { grid-template-columns: minmax(0, 1fr); gap: var(--m2-s1); } }
 .m2-root .m2-switch { position: relative; display: inline-flex; align-items: center; gap: var(--m2-s3); min-height: 44px; background: none; border: 0; padding: 0; color: var(--m2-ink); font: inherit; cursor: pointer; }
 .m2-root .m2-switch::before { content: ""; width: var(--m2-s8); height: var(--m2-s5); border: 1px solid var(--m2-line-2); border-radius: var(--m2-s5); background: var(--m2-sheet); order: 0; }
 .m2-root .m2-switch[aria-checked="true"]::before { background: var(--m2-data); border-color: var(--m2-data); }
