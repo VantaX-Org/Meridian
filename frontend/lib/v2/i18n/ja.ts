@@ -8525,7 +8525,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Workbook (.xlsx)": "ワークブック (.xlsx)",
   "Checking the workbook": "ワークブックを確認中",
   "Check the workbook": "ワークブックを確認",
-  "The check only reads the workbook. Nothing is stored and nothing is exported yet.": "確認ではワークブックを読み取るだけです。保存もエクスポートもまだ行われません。",
+  "The check reads the workbook and keeps only the column names it learns. The workbook itself is not stored, and nothing is exported yet.": "確認ではワークブックを読み取り、学習した列名だけを保持します。ワークブック自体は保存されず、まだ何もエクスポートされません。",
   "The workbook could not be checked.": "ワークブックを確認できませんでした。",
   "{ready} rows are ready and {held} are held back. {filled} of {sheets} sheets can be filled, with {matched} of {columns} columns.": "{ready} 行が準備完了で、{held} 行は保留です。{sheets} シートのうち {filled} シート、{columns} 列のうち {matched} 列を埋められます。",
   "{n} required columns have no data in this run. The new system will refuse those rows until the columns are filled.": "必須の {n} 列にこの実行のデータがありません。これらの列が埋まるまで、新しいシステムはその行を拒否します。",

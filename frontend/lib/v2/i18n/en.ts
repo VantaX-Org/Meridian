@@ -8524,7 +8524,7 @@ export const en = {
   "Workbook (.xlsx)": "Workbook (.xlsx)",
   "Checking the workbook": "Checking the workbook",
   "Check the workbook": "Check the workbook",
-  "The check only reads the workbook. Nothing is stored and nothing is exported yet.": "The check only reads the workbook. Nothing is stored and nothing is exported yet.",
+  "The check reads the workbook and keeps only the column names it learns. The workbook itself is not stored, and nothing is exported yet.": "The check reads the workbook and keeps only the column names it learns. The workbook itself is not stored, and nothing is exported yet.",
   "The workbook could not be checked.": "The workbook could not be checked.",
   "{ready} rows are ready and {held} are held back. {filled} of {sheets} sheets can be filled, with {matched} of {columns} columns.": "{ready} rows are ready and {held} are held back. {filled} of {sheets} sheets can be filled, with {matched} of {columns} columns.",
   "{n} required columns have no data in this run. The new system will refuse those rows until the columns are filled.": "{n} required columns have no data in this run. The new system will refuse those rows until the columns are filled.",

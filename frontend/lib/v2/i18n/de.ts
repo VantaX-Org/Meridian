@@ -8525,7 +8525,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Workbook (.xlsx)": "Arbeitsmappe (.xlsx)",
   "Checking the workbook": "Arbeitsmappe wird geprüft",
   "Check the workbook": "Arbeitsmappe prüfen",
-  "The check only reads the workbook. Nothing is stored and nothing is exported yet.": "Die Prüfung liest die Arbeitsmappe nur. Es wird nichts gespeichert und noch nichts exportiert.",
+  "The check reads the workbook and keeps only the column names it learns. The workbook itself is not stored, and nothing is exported yet.": "Die Prüfung liest die Arbeitsmappe und behält nur die Spaltennamen, die sie lernt. Die Arbeitsmappe selbst wird nicht gespeichert, und es wird noch nichts exportiert.",
   "The workbook could not be checked.": "Die Arbeitsmappe konnte nicht geprüft werden.",
   "{ready} rows are ready and {held} are held back. {filled} of {sheets} sheets can be filled, with {matched} of {columns} columns.": "{ready} Zeilen sind bereit und {held} werden zurückgehalten. {filled} von {sheets} Blättern können gefüllt werden, mit {matched} von {columns} Spalten.",
   "{n} required columns have no data in this run. The new system will refuse those rows until the columns are filled.": "{n} Pflichtspalten haben in diesem Lauf keine Daten. Das neue System weist diese Zeilen ab, bis die Spalten gefüllt sind.",

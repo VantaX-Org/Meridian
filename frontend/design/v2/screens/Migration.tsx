@@ -404,7 +404,7 @@ function TargetWorkbookPanel() {
         </label>
         <button type="submit" className="m2-btn m2-next" disabled={!file || check.isPending}>{check.isPending ? t("Checking the workbook") : t("Check the workbook")}</button>
       </form>
-      <p className="m2-meta">{t("The check only reads the workbook. Nothing is stored and nothing is exported yet.")}</p>
+      <p className="m2-meta">{t("The check reads the workbook and keeps only the column names it learns. The workbook itself is not stored, and nothing is exported yet.")}</p>
       {check.isError ? <p role="alert">{errorSentence(check.error, t("The workbook could not be checked."))}</p> : null}
       {report ? (
         <>
