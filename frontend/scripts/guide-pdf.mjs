@@ -27,6 +27,38 @@ export function fontFaces() {
 
 export const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+/** Brand colours as data (public/brand/brand.json), so the PDFs match the screens and lint:tokens stays clean. */
+export const BRAND = JSON.parse(readFileSync(path.join(root, "public", "brand", "brand.json"), "utf8"));
+
+/** The two-tone mark (public/brand/README.md): the ink arc and the accent meridian line. */
+export const mark = (size) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M21.74 7.81A10 10 0 1 1 10.26 7.81" stroke="${BRAND.ink}" stroke-width="3" stroke-linecap="round"/><path d="M16 3V29" stroke="${BRAND.accent}" stroke-width="3" stroke-linecap="round"/></svg>`;
+
+/** Branded cover, chapter and contents styling shared by every Meridian PDF. */
+export const brandCss = () => `
+  h1 { color: ${BRAND.ink}; } h2 { color: ${BRAND.accent}; }
+  .chapter > h1:first-child { padding-bottom: 6pt; border-bottom: 2pt solid ${BRAND.accent}; }
+  .cover { height: 240mm; padding: 4mm 0 0; box-sizing: border-box;
+    display: flex; flex-direction: column; justify-content: space-between; break-after: page; }
+  .cover .lockup { display: flex; align-items: center; gap: 10pt; font-size: 20pt; font-weight: 600; letter-spacing: -0.01em; color: ${BRAND.ink}; }
+  .cover .kicker { color: ${BRAND.accent}; font-weight: 600; font-size: 10pt; margin: 0 0 6pt; }
+  .cover h1 { font-size: 32pt; line-height: 1.1; margin: 0 0 12pt; } .cover p { color: ${BRAND.ink2}; max-width: 140mm; }
+  .cover .rule { height: 3pt; width: 40mm; background: ${BRAND.accent}; border-radius: 2pt; margin: 0 0 14pt; }
+  .cover .foot { font-size: 9pt; color: ${BRAND.ink2}; border-top: 1px solid #D9DDE3; padding-top: 8pt; display: flex; justify-content: space-between; }
+  .toc h1 { border-bottom: 2pt solid ${BRAND.accent}; padding-bottom: 6pt; }`;
+
+/** The cover page: lockup at the top, title block, edition at the foot. */
+export const cover = ({ kicker, title, lede, edition }) => `<section class="cover">
+  <div class="lockup">${mark(34)}<span>Meridian</span></div>
+  <div><p class="kicker">${esc(kicker)}</p><div class="rule"></div><h1>${esc(title)}</h1><p>${esc(lede)}</p></div>
+  <div class="foot"><span>SAP data quality, measured</span><span>Edition of ${esc(edition)}</span></div></section>`;
+
+/** Page header and footer for page.pdf: the mark and name on top, the document name and page count below. */
+export const pageChrome = (label) => ({
+  headerTemplate: `<div style="font: 600 8pt Arial, sans-serif; color: ${BRAND.ink}; width: 100%; padding: 0 16mm; display: flex; align-items: center; gap: 5px;">${mark(11)}<span>Meridian</span></div>`,
+  footerTemplate: `<div style="font: 8pt Arial, sans-serif; color: ${BRAND.ink2}; width: 100%; margin: 0 16mm; padding-top: 4px; border-top: 1px solid ${BRAND.accent}; display: flex; justify-content: space-between;"><span>${esc(label)}</span><span><span class="pageNumber"></span> of <span class="totalPages"></span></span></div>`,
+});
+
 /** Bold, code and links of one line of markdown; a link keeps its text and drops its target. */
 export function inline(text) {
   return esc(text)
@@ -136,13 +168,12 @@ export function guideHtml(date = new Date()) {
   ul, ol { padding-left: 16pt; margin: 0 0 8pt; }
   code { font-family: "Geist Mono", "DejaVu Sans Mono", monospace; font-size: 9pt; }
   .chapter { break-before: page; }
-  .cover { height: 240mm; display: flex; flex-direction: column; justify-content: flex-end; }
-  .cover h1 { font-size: 30pt; } .cover p { color: #4A5568; }
   .toc { break-before: page; } .toc ol { list-style: none; padding-left: 0; } .toc .sec { font-weight: 600; margin-top: 10pt; }
   .toc .sec ol li { font-weight: 400; margin: 2pt 0 2pt 12pt; } .toc a { color: inherit; text-decoration: none; }
+  ${brandCss()}
   .part { break-before: page; height: 200mm; display: flex; align-items: center; } .partname { font-size: 22pt; font-weight: 600; }
   </style></head><body>
-  <section class="cover"><h1>${esc(index.title)}</h1><p>Every screen, what its numbers mean and where they come from, what each role can do, the keyboard, and what to do when something is wrong.</p><p>Edition of ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(date)}.</p></section>
+  ${cover({ kicker: "User guide", title: index.title, lede: "Every screen, what its numbers mean and where they come from, what each role can do, the keyboard, and what to do when something is wrong.", edition: new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(date) })}
   <nav class="toc"><h1>Contents</h1><ol>${toc.join("")}</ol></nav>
   ${body.join("\n")}
   </body></html>`;
@@ -157,8 +188,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     format: "A4",
     printBackground: true,
     displayHeaderFooter: true,
-    headerTemplate: "<span></span>",
-    footerTemplate: '<div style="font: 8pt Arial, sans-serif; color: #4A5568; width: 100%; padding: 0 16mm; display: flex; justify-content: space-between;"><span>Meridian guide</span><span><span class="pageNumber"></span> of <span class="totalPages"></span></span></div>',
+    ...pageChrome("Meridian guide"),
     margin: { top: "18mm", bottom: "20mm", left: "16mm", right: "16mm" },
   });
   await browser.close();
