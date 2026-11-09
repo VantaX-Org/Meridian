@@ -29,7 +29,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import create_engine, text
 
-DEV_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+# The deployment's own tenant, the same setting the API reads (api/config.py deployment_tenant_id).
+DEV_TENANT_ID = (os.environ.get("MERIDIAN_TENANT_ID") or os.environ.get("DEPLOYMENT_TENANT_ID")
+                 or "00000000-0000-0000-0000-000000000001")
 VALID_ROLES = {"admin", "manager", "viewer", "analyst", "steward", "approver", "auditor", "ai_reviewer", "process_analyst",
                "programme_lead", "data_steward", "data_owner", "sap_basis", "platform_admin"}
 # A legacy --role becomes its persona (api/services/rbac.py persona_for): roles are grants now.
@@ -48,7 +50,7 @@ def get_engine():
 
 
 def ensure_tenant(conn):
-    """Ensure the dev tenant exists."""
+    """Ensure the deployment tenant exists."""
     conn.execute(text("SET app.tenant_id = :tid"), {"tid": str(DEV_TENANT_ID)})
     row = conn.execute(
         text("SELECT id FROM tenants WHERE id = :tid"),
@@ -114,7 +116,7 @@ def cmd_create(args):
         name = args.name or email.split("@")[0]
         role = PERSONA_FOR.get(args.role, args.role)
 
-        conn.execute(text(f"SET app.tenant_id = '{DEV_TENANT_ID}'"))
+        conn.execute(text("SET app.tenant_id = :tid"), {"tid": DEV_TENANT_ID})
         conn.execute(
             text("""
                 INSERT INTO users (id, tenant_id, email, name, role, password_hash, is_active, created_at)

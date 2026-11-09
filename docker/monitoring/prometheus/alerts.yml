@@ -1,3 +1,5 @@
+# Each alert's `runbook` label names its row in the first-response table at
+# docs/sustain/monitoring-and-alerting.md (annotation runbook_url), which links the runbooks.
 groups:
   - name: meridian-api
     rules:
@@ -9,6 +11,7 @@ groups:
           severity: critical
           runbook: api-down
         annotations:
+          runbook_url: docs/sustain/monitoring-and-alerting.md#alert-rules-and-first-response
           summary: "Meridian API is unreachable"
           description: |
             Prometheus has been unable to scrape api:8000 for 2 minutes.
@@ -28,6 +31,7 @@ groups:
           severity: warning
           runbook: high-error-rate
         annotations:
+          runbook_url: docs/sustain/monitoring-and-alerting.md#alert-rules-and-first-response
           summary: "HTTP 5xx rate over 1%"
           description: |
             More than 1% of requests are returning 5xx for the last 5 min.
@@ -47,6 +51,7 @@ groups:
           severity: warning
           runbook: high-latency
         annotations:
+          runbook_url: docs/sustain/monitoring-and-alerting.md#alert-rules-and-first-response
           summary: "p95 latency over 2s on {{ $labels.route }}"
           description: |
             p95 latency on route {{ $labels.route }} has been above 2s for
@@ -67,6 +72,7 @@ groups:
           severity: critical
           runbook: db-down
         annotations:
+          runbook_url: docs/sustain/monitoring-and-alerting.md#alert-rules-and-first-response
           summary: "Sustained 503s — likely DB issue"
           description: |
             The API is returning 503s at >0.1/s for 5 minutes. Most
@@ -84,6 +90,7 @@ groups:
           severity: warning
           runbook: audit-backlog
         annotations:
+          runbook_url: docs/sustain/monitoring-and-alerting.md#alert-rules-and-first-response
           summary: "audit_log write backlog over 100 pending"
           description: |
             {{ $value }} audit writes are in flight. The DB or the
@@ -109,6 +116,7 @@ groups:
           severity: warning
           runbook: llm-unreachable
         annotations:
+          runbook_url: docs/sustain/monitoring-and-alerting.md#alert-rules-and-first-response
           summary: "LLM provider error rate over 50%"
           description: |
             More than half of LLM calls have been erroring for 10 min.
@@ -130,6 +138,7 @@ groups:
           severity: critical
           runbook: licence-validation-failing
         annotations:
+          runbook_url: docs/sustain/monitoring-and-alerting.md#alert-rules-and-first-response
           summary: "Licence validation failing"
           description: |
             /api/v1/licence has returned non-2xx at >0.1/s for 15 min.

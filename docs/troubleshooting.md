@@ -7,21 +7,21 @@
 **Symptoms:** Health endpoint shows `llm_connected: false`, agent tasks fail.
 
 **Solutions:**
-- Check `OLLAMA_BASE_URL` in `.env` (default: `http://llm:11434`)
-- Verify the Ollama container is running: `docker compose ps llm`
+- The customer stack has no language model container unless the overlay `docker/docker-compose.customer.ollama.yml` is used. Its service is `ollama`, so `OLLAMA_BASE_URL` in `docker/.env` must be `http://ollama:11434`. A provider set in Administration overrides the environment (see [llm-configuration.md](llm-configuration.md)).
+- Verify the Ollama container is running: `docker compose -f docker/docker-compose.customer.yml -f docker/docker-compose.customer.ollama.yml ps ollama`
 - Check GPU driver: `nvidia-smi`
-- Verify model is pulled: `docker compose exec llm ollama list`
-- Check Ollama logs: `docker compose logs llm`
+- Verify model is pulled: `docker compose -f docker/docker-compose.customer.yml -f docker/docker-compose.customer.ollama.yml exec ollama ollama list`
+- Check Ollama logs: `docker compose -f docker/docker-compose.customer.yml -f docker/docker-compose.customer.ollama.yml logs ollama`
 
 ### "Licence invalid"
 
 **Symptoms:** API returns 402, dashboard shows "Licence expired".
 
 **Solutions:**
-- Verify `LICENCE_KEY` in `.env`
+- Verify `MERIDIAN_LICENCE_KEY` (online) or `MERIDIAN_LICENCE_TOKEN` (offline) in `docker/.env`; see runbook 6 in [sustain/runbooks.md](sustain/runbooks.md#6-check-or-renew-the-meridian-licence)
 - Check outbound connectivity: `curl -s https://licence.meridian.vantax.co.za/status?key=YOUR_KEY`
 - Visit [portal.meridian.vantax.co.za](https://portal.meridian.vantax.co.za) to check licence status
-- For air-gapped: verify `LICENCE_FILE` path and JSON format
+- For air-gapped: use `MERIDIAN_LICENCE_TOKEN`; a missing network gives `offline_grace` for `MERIDIAN_LICENCE_OFFLINE_GRACE_DAYS`
 
 ### "Database migration failed"
 
@@ -29,28 +29,28 @@
 
 **Solutions:**
 - Check `DB_PASSWORD` matches between `.env` and the running Postgres container
-- Verify Postgres is running: `docker compose ps db`
-- Check Postgres logs: `docker compose logs db`
-- Try connecting manually: `docker compose exec db psql -U vantax -d vantax`
+- Verify Postgres is running: `docker compose -f docker/docker-compose.customer.yml ps db`
+- Check Postgres logs: `docker compose -f docker/docker-compose.customer.yml logs db`
+- Try connecting manually: `docker compose -f docker/docker-compose.customer.yml exec db psql -U meridian -d meridian`
 
 ### "Analysis stuck in running"
 
 **Symptoms:** Version status stays `running` indefinitely.
 
 **Solutions:**
-- Check Celery worker status: `docker compose ps worker`
-- Check worker logs: `docker compose logs worker`
-- Verify Redis connectivity: `docker compose exec redis redis-cli ping`
-- Restart workers: `docker compose restart worker`
+- Check Celery worker status: `docker compose -f docker/docker-compose.customer.yml ps worker`
+- Check worker logs: `docker compose -f docker/docker-compose.customer.yml logs worker`
+- Verify Redis connectivity: `docker compose -f docker/docker-compose.customer.yml exec redis redis-cli ping`
+- Restart workers: `docker compose -f docker/docker-compose.customer.yml restart worker`
 
 ### "PDF not generated"
 
 **Symptoms:** Report shows complete but no PDF download available.
 
 **Solutions:**
-- Check worker logs for WeasyPrint errors: `docker compose logs worker | grep -i weasyprint`
-- Verify object storage is healthy: `docker compose ps storage` (Garage; the stack reaches it as `minio:9000`)
-- Check its setup log: `docker compose logs storage | grep '^storage:'` — the last line should be `storage: ready`
+- Check worker logs for WeasyPrint errors: `docker compose -f docker/docker-compose.customer.yml logs worker | grep -i weasyprint`
+- Verify object storage is healthy: `docker compose -f docker/docker-compose.customer.yml ps storage` (Garage; the stack reaches it as `minio:9000`)
+- Check its setup log: `docker compose -f docker/docker-compose.customer.yml logs storage | grep '^storage:'` — the last line should be `storage: ready`
 
 ### "Upload fails with 422"
 
@@ -64,45 +64,45 @@
 
 ### "Services won't start"
 
-**Symptoms:** `docker compose up` fails or containers keep restarting.
+**Symptoms:** `docker compose -f docker/docker-compose.customer.yml up` fails or containers keep restarting.
 
 **Solutions:**
 - Check available disk space: `df -h`
 - Check available memory: `free -h`
-- Check Docker logs: `docker compose logs`
-- Verify port availability: `ss -tlnp | grep -E '(8000|3000)'`
+- Check Docker logs: `docker compose -f docker/docker-compose.customer.yml logs`
+- Verify port availability: `ss -tlnp | grep -E ':(80|443) '` (only nginx publishes ports; api and frontend have no host port)
 - Check for conflicting containers: `docker ps`
 
 ## Diagnostic Commands
 
 ```bash
 # Service status
-docker compose ps
+docker compose -f docker/docker-compose.customer.yml ps
 
 # Full health check
 ./scripts/healthcheck.sh
 
 # API logs
-docker compose logs api --tail 100
+docker compose -f docker/docker-compose.customer.yml logs api --tail 100
 
 # Worker logs
-docker compose logs worker --tail 100
+docker compose -f docker/docker-compose.customer.yml logs worker --tail 100
 
 # Database connectivity
-docker compose exec db psql -U vantax -d vantax -c "SELECT count(*) FROM tenants;"
+docker compose -f docker/docker-compose.customer.yml exec db psql -U meridian -d meridian -c "SELECT count(*) FROM tenants;"
 
 # Redis connectivity
-docker compose exec redis redis-cli ping
+docker compose -f docker/docker-compose.customer.yml exec redis redis-cli ping
 
 # Object storage (Garage) status
-docker compose exec storage curl -fsS http://127.0.0.1:3903/health
+docker compose -f docker/docker-compose.customer.yml exec storage curl -fsS http://127.0.0.1:3903/health
 
 # Ollama model list
-docker compose exec llm ollama list
+docker compose -f docker/docker-compose.customer.yml -f docker/docker-compose.customer.ollama.yml exec ollama ollama list
 ```
 
 ## Getting Help
 
-- Check the API health endpoint: `curl http://localhost:8000/health | python3 -m json.tool`
-- Review full logs: `docker compose logs > vantax-logs.txt 2>&1`
+- Check the API health endpoint: `curl -s http://127.0.0.1/health | python3 -m json.tool` (through nginx)
+- Review full logs: `docker compose -f docker/docker-compose.customer.yml logs > meridian-logs.txt 2>&1`
 - Contact support with the health endpoint output and relevant log excerpts
