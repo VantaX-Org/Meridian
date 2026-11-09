@@ -220,7 +220,8 @@ BRAND_ELEMENTS = [
      "the licensor of Vantax Aletheia (VANTA X), a separate product of the same group",
      "the Aletheia name, logo and get-up are reserved to their owner; the Vantax Aletheia Software Licence, section 6, "
      "requires the mark on every screen of an Aletheia deployment and forbids altering it. Used in Meridian unaltered. "
-     "Whether and on what terms it is licensed to Meridian is set out in `docs/diligence/licences.md` section 6",
+     "Licensed to Meridian by the written grant on the Aletheia licensees page (`docs/LICENSEES.md` in the Aletheia "
+     "repository, granted 9 November 2026), summarised in `docs/diligence/licences.md` section 6",
      "`frontend/public/brand/aletheia-mark.svg`, rendered by `frontend/design/brand/Attribution.tsx`"),
 ]
 
