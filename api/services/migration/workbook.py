@@ -657,10 +657,10 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                 mine = frames.dictionary.field(table, key)
                 if mine is None or mine.qualified not in frames.frames[table].columns:
                     continue
-                for h, f in present[other].items():
+                for h, extra in present[other].items():
                     if h not in hits:
-                        hits[h] = f
-                        joins.setdefault(other, []).append((key, f))
+                        hits[h] = extra
+                        joins.setdefault(other, []).append((key, extra))
                         on.add(mine.qualified)
         columns = list(sheet.columns)
         added: list[str] = []
