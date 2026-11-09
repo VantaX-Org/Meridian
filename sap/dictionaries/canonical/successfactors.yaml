@@ -465,8 +465,8 @@ tables:
       STATUS:         {source: BenefitEnrollment.status, type: STRING, length: 128, verify: true}
 
   DEPENDENT:
-    description: Dependents and beneficiaries (PerPersonRelationship ⋈ related PerPerson)
-    source: PerPersonRelationship, PerPerson
+    description: Dependents and beneficiaries (PerPersonRelationship ⋈ the related person's PerPerson, PerPersonal and PerNationalId)
+    source: PerPersonRelationship, PerPerson, PerPersonal, PerNationalId
     keys: [PERSON_ID, RELATED_PERSON_ID, START_DATE]
     fields:
       PERSON_ID:         {source: PerPersonRelationship.personIdExternal, type: STRING, length: 100}
@@ -478,6 +478,12 @@ tables:
       DEPENDENT_BIRTH:   {source: PerPerson.dateOfBirth (related person), type: DATE, verify: true, description: Date of birth of the dependent}
       IS_ACCOMPANYING_DEPENDENT:   {source: PerPersonRelationship.isAccompanyingDependent, type: BOOLEAN, verify: true, description: Is accompanying dependent}
       IS_ADDRESS_SAME_AS_PERSON:   {source: PerPersonRelationship.isAddressSameAsPerson, type: BOOLEAN, verify: true, description: Is address same as person}
+      FIRST_NAME:            {source: PerPersonal.firstName (related person), type: STRING, length: 128, description: First name of the dependent}
+      LAST_NAME:             {source: PerPersonal.lastName (related person), type: STRING, length: 128, description: Last name of the dependent}
+      GENDER:                {source: PerPersonal.gender (related person), type: STRING, length: 2, description: Gender of the dependent}
+      NATIONAL_ID_COUNTRY:   {source: PerNationalId.country (related person), type: STRING, length: 128, description: Country that issued the dependent's national ID}
+      NATIONAL_ID_CARD_TYPE: {source: PerNationalId.cardType (related person), type: STRING, length: 256, verify: true, description: Dependent's national ID card type}
+      NATIONAL_ID:           {source: PerNationalId.nationalId (related person), type: STRING, length: 256, description: Dependent's national ID}
 
   GOALPLAN:
     description: Performance goals (Goal_<planId>)
@@ -1060,6 +1066,7 @@ tables:
       START_DATE:                  {source: FOPayGrade.startDate, type: DATE, verify: true, description: Start date}
       DESCRIPTION:                 {source: FOPayGrade.description, type: STRING, length: 128, verify: true, description: Description}
       PAYGRADE_LEVEL:              {source: FOPayGrade.paygradeLevel, type: INTEGER, verify: true, description: Paygrade level}
+      STATUS:                      {source: FOPayGrade.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
 
   FOPAYGROUP:
     description: Pay groups (Foundation Object)
@@ -1092,6 +1099,7 @@ tables:
       EXTERNAL_CODE:               {source: FOFrequency.externalCode, type: STRING, length: 32, verify: true, description: External code}
       NAME:                        {source: FOFrequency.name, type: STRING, length: 32, verify: true, description: Name}
       DESCRIPTION:                 {source: FOFrequency.description, type: STRING, length: 128, verify: true, description: Description}
+      ANNUALIZATION_FACTOR:        {source: FOFrequency.annualizationFactor, type: DECIMAL, verify: true, description: Periods per year}
 
   FOPAYCOMPONENT:
     description: Pay components (Foundation Object)

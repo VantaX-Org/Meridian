@@ -50,7 +50,7 @@ SHEET_ENTITIES = {
     "csfaddresses": {"PerAddressDEFLT"},
     "paymentinfo": {"PaymentInformationDetailV3"},
     "emergencycontact": {"PerEmergencyContacts"},
-    "dependents": {"PerPersonRelationship"},
+    "dependents": {"PerPersonRelationship", "PerPersonal", "PerNationalId"},
     "workpermit": {"EmpWorkPermit"},
     "employmentinfoathire": {"EmpEmployment"},
     "employmentinfoatterm": {"EmpEmployment"},
@@ -58,7 +58,8 @@ SHEET_ENTITIES = {
     "csfjobinfo": {"EmpJob"},
     "jobrelationships": {"EmpJobRelationships"},
     "compinfo": {"EmpCompensation"},
-    "paycomponent": {"EmpPayCompRecurring"},
+    # one Pay Component sheet holds both: the non-recurring table carries its pay date and code
+    "paycomponent": {"EmpPayCompRecurring", "EmpPayCompNonRecurring"},
     "legalentity": {"FOCompany"},
     "location": {"FOLocation"},
     "position": {"Position"},
@@ -99,6 +100,8 @@ SHEET_ENTITIES = {
     "nationalidcard": {"PerNationalId"},
     "workpermitinfo": {"EmpWorkPermit"},
     "personrelationship": {"PerPersonRelationship"},
+    # contingent workers are loaded as a person, an email and an employment with job data
+    "contingentworker": {"PerPerson", "PerPersonal", "PerEmail", "EmpEmployment", "EmpJob"},
 }
 
 
@@ -424,17 +427,21 @@ def _candidates(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Fie
         return _by_field(sheet, dictionary)
     out: dict[str, dict[str, Field]] = {}
     for table in dictionary.tables.values():
-        fields = [f for f in table.fields.values() if f.source and "." in f.source and f.source.split(".")[0] in entities]
+        fields = [f for f in table.fields.values() if f.source and "." in f.source and f.source.split(".")[0] in entities
+                  # a related person's name is a dependant's, never the employee's own
+                  and ("related person" not in f.source or "PerPersonRelationship" in entities)]
         if not fields:
             continue
         index = {_norm(k): table.fields[k] for k in table.keys}
         index |= {_norm(f.source.split(".", 1)[1]): table.fields[k]
                   for k in table.keys for f in [table.fields[k]] if f.source and "." in f.source}
-        index |= {_norm((f.source or "").split(".", 1)[1]): f for f in fields}
+        index |= {_norm((f.source or "").split(".", 1)[1].split(" ")[0]): f for f in fields}
         if "status" in index:  # foundation load files call the status field effectiveStatus
             index["effectivestatus"] = index["status"]
         if "externalcode" in index:  # friendly grids head the code column with the object's name
             index[sheet.base + "code"] = index["externalcode"]
+        if "EmpEmployment" in entities and "company" not in index:  # at hire, the new assignment's company is the job's
+            index.update({"company": f for f in table.fields.values() if f.source == "EmpJob.company"})
         hits = {}
         for col in sheet.columns:
             # name.en_US is the localised form of name.
@@ -636,6 +643,25 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                     present[name] = live
         table = max(present, key=lambda t: len(present[t]), default=None)
         hits = dict(present[table]) if table else {}
+        # A sheet that spans several entities (a contingent worker's name, email and assignment) takes the columns
+        # its main table lacks from another table, joined on that table's key. Only when the main table holds one
+        # row per person, so a dependant's sheet never takes the employee's own name.
+        joins: dict[str, list[tuple[str, Any]]] = {}
+        on: set[str] = set()
+        if table and len(frames.dictionary.keys(table)) == 1:
+            for other in sorted(present, key=lambda t: -len(present[t])):
+                other_keys = frames.dictionary.keys(other)
+                if other == table or not other_keys:
+                    continue
+                key = other_keys[0]
+                mine = frames.dictionary.field(table, key)
+                if mine is None or mine.qualified not in frames.frames[table].columns:
+                    continue
+                for h, extra in present[other].items():
+                    if h not in hits:
+                        hits[h] = extra
+                        joins.setdefault(other, []).append((key, extra))
+                        on.add(mine.qualified)
         columns = list(sheet.columns)
         added: list[str] = []
         # Most definition sheets leave out whose record a row is. A load without that id cannot work, so it is
@@ -646,6 +672,8 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                 f = frames.dictionary.field(table, key)
                 if f and key not in have and f.qualified in frames.frames[table].columns:
                     header = f.source.split(".", 1)[1] if f.source else key
+                    if sum("-" in c.id for c in sheet.columns) * 2 > len(sheet.columns):  # kebab sheet: person-id-external
+                        header = re.sub(r"(?<!^)(?=[A-Z])", "-", header).lower()
                     columns.insert(len(added), Column(header, header, f.description or key, mandatory=True))
                     hits[header] = f
                     added.append(header)
@@ -663,8 +691,19 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         stored = frames.frames[table]
         key_cols = [c for c in (f"{table}.{k}" for k in frames.dictionary.keys(table)) if c in stored.columns]
         country = _country_field(frames.dictionary, table, stored.columns)
-        reads = {*key_cols, *(f.qualified for f in hits.values()), *([country.qualified] if country else [])}
-        df = stored[list(reads)]
+        joined = {f.qualified for fs in joins.values() for _, f in fs}
+        reads = {*key_cols, *on, *(f.qualified for f in hits.values() if f.qualified not in joined),
+                 *([country.qualified] if country else [])}
+        df = stored[list(reads)].copy()
+        for other, fs in joins.items():
+            key = fs[0][0]
+            # ponytail: first row per key wins (a person's first email); prefer isPrimary if several get loaded
+            side = frames.frames[other][[f"{other}.{key}", *(f.qualified for _, f in fs)]].drop_duplicates(f"{other}.{key}")
+            side = side.set_index(f"{other}.{key}")
+            mine = frames.dictionary.field(table, key)
+            assert mine is not None  # checked when the join was planned
+            for _, f in fs:
+                df[f.qualified] = df[mine.qualified].map(side[f.qualified])
         keys = record_keys(df, key_cols)
         bad = pd.Series(False, index=df.index)
         countries = _row_countries(df[country.qualified]) if country else None

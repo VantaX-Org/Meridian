@@ -6,6 +6,7 @@ This folder holds one release-notes file for each Meridian release. The file is 
 
 | Release | Previous | Notes |
 |---|---|---|
+| v0.0.635 | v0.0.634 | [v0.0.635.md](v0.0.635.md) |
 | v0.0.634 | v0.0.633 | [v0.0.634.md](v0.0.634.md) |
 | v0.0.633 | v0.0.632 | [v0.0.633.md](v0.0.633.md) |
 

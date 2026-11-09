@@ -22,15 +22,12 @@ The go-live acceptance run in [docs/journeys/go-live-acceptance-test.md](../jour
 
 These items move to the support team with the hand-over in [docs/sustain/README.md](../sustain/README.md). The full list with owners is in the [RAID log](raid-log.md).
 
-1. Append the engine licence settings to `docker/.env`. This needs a person with sudo on the server.
-2. Get the licensor's sign-off on the embedded-engine grant.
-3. Decide the engine image pin, 1.7.0 or 1.8.0.
-4. Build DD03L learning for ECC and S/4HANA.
-5. Match the remaining SuccessFactors mandatory columns.
-6. Prove load-tool validation against the customer's real import templates.
-7. Narrow the licence to the three licensed modules when the customer gives the go-ahead.
-8. Fix the Fix grid column alignment and the Monitors "Usual range" wrap.
-9. Refresh dependency pins by hand, because Dependabot is removed.
+1. Prove load-tool validation against the customer's real import templates.
+2. Fill the two Pay Component mandatory columns by hand before each load.
+3. Upload a picklist export for the Foundation workbook.
+4. Refresh dependency pins by hand, because Dependabot is removed.
+
+Closed by 9 November 2026: the engine licence settings, the licensor's grant sign-off, the engine pin (1.8.0), DD03L learning for ECC and S/4HANA, the SuccessFactors column names, the signed-in acceptance run, the licence narrowing and the table cosmetics.
 
 ## Lessons learned
 

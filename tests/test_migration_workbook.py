@@ -81,12 +81,12 @@ def test_reads_definitions_grids_and_picklists():
 def test_fills_workbook_columns_and_holds_back_only_rule_breakers():
     tabs, report = wb.fill(wb.parse_workbook(sample()), frames())
     tab = tabs["Personal Info"]
-    assert list(tab.columns) == ["personIdExternal", "first-name", "gender", "second-title"]
+    assert list(tab.columns) == ["person-id-external", "first-name", "gender", "second-title"]
     assert tab.iloc[0]["first-name"] == "First Name"  # label row, then data
-    assert tab["personIdExternal"].tolist()[1:] == ["P1"]
+    assert tab["person-id-external"].tolist()[1:] == ["P1"]
     row = next(s for s in report["sheets"] if s["name"] == "Personal Info")
     assert (row["rows"], row["ready"], row["held"]) == (4, 1, 3)
-    assert row["added_keys"] == ["personIdExternal"]
+    assert row["added_keys"] == ["person-id-external"]
     assert report["reasons"] == {"too_long": 1, "mandatory": 1, "not_in_picklist": 1}
     assert {"id": "second-title", "label": "Second Title", "mandatory": True} in row["unmapped"]
     assert {h["record"] for h in report["held"]} == {"PERSON_ID=P2", "PERSON_ID=P3", "PERSON_ID=P4"}

@@ -44,6 +44,8 @@ logger = logging.getLogger("meridian.connectivity_manager")
 
 RFC_SYSTEM_TYPES = ("ecc", "s4hana_onprem", "ewm")
 CLOUD_SYSTEM_TYPES = ("successfactors", "concur", "ariba", "s4hana_cloud", "btp")
+# SF source note marking an entity read for the relationship's related person (a dependent)
+RELATED = "@related"
 
 
 def _not_found(e: Exception) -> bool:
@@ -923,10 +925,12 @@ class ConnectivityManager:
                 # evaluated.
                 src = resolve_source("successfactors", system_id, table, f.name, f.source)
                 ent, _, prop = (src or "").partition(".")
-                prop = prop.split(" ")[0]
+                prop, _, note = prop.partition(" ")
                 if not ent[:1].isupper() or not prop or "<" in ent or f.name in unavailable:
                     continue
-                by_entity.setdefault(ent, {}).setdefault(prop, []).append(f.name)
+                # "(related person)": read the entity for the relationship's related person, not the employee
+                key = f"{ent}{RELATED}" if "related person" in note else ent
+                by_entity.setdefault(key, {}).setdefault(prop, []).append(f.name)
             if not by_entity:
                 coverage.append({"table": table, "status": "upload_required",
                                  "detail": "source is not an SF OData entity (e.g. payroll export)"})
@@ -936,7 +940,8 @@ class ConnectivityManager:
             merged = None
             absent: list[str] = []
             failed = False
-            for ent, props in by_entity.items():
+            for key, props in by_entity.items():
+                ent, related = key.removesuffix(RELATED), key.endswith(RELATED)
                 if ent not in models:
                     models[ent] = self._sf_entity_model(connector, ent)
                 model = models[ent]
@@ -1003,13 +1008,18 @@ class ConnectivityManager:
                     if prop in sel:
                         for n in names:
                             out[f"{table}.{n}"] = df.get(sel[prop])
-                for j in ("userId", "personIdExternal"):
+                for j in ("userId", "personIdExternal", "relatedPersonIdExternal"):
                     if j in df.columns:
                         out[f"__{j}"] = df[j]
+                if related:  # the related person's own id meets the relationship's relatedPersonIdExternal
+                    out = out.drop(columns=["__userId"], errors="ignore").rename(
+                        columns={"__personIdExternal": "__relatedPersonIdExternal"})
                 if merged is None:
                     merged = out
                 else:
-                    on = [c for c in ("__userId", "__personIdExternal") if c in merged.columns and c in out.columns]
+                    on = [c for c in ("__userId", "__personIdExternal", "__relatedPersonIdExternal")
+                          if c in merged.columns and c in out.columns]
+                    # ponytail: first row per key wins (PerNationalId, PerEmail); prefer isPrimary if tenants differ
                     merged = merged.merge(out.drop_duplicates(subset=on) if on else out,
                                           how="left", on=on) if on else merged
             if merged is None:
