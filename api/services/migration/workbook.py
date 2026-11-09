@@ -647,17 +647,21 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         # its main table lacks from another table, joined on that table's key. Only when the main table holds one
         # row per person, so a dependant's sheet never takes the employee's own name.
         joins: dict[str, list[tuple[str, Any]]] = {}
-        main_keys = frames.dictionary.keys(table) if table else []
-        if len(main_keys) == 1:
+        on: set[str] = set()
+        if table and len(frames.dictionary.keys(table)) == 1:
             for other in sorted(present, key=lambda t: -len(present[t])):
-                key = (frames.dictionary.keys(other) or [None])[0]
-                mine = frames.dictionary.field(table, key) if key and other != table else None
+                other_keys = frames.dictionary.keys(other)
+                if other == table or not other_keys:
+                    continue
+                key = other_keys[0]
+                mine = frames.dictionary.field(table, key)
                 if mine is None or mine.qualified not in frames.frames[table].columns:
                     continue
                 for h, f in present[other].items():
                     if h not in hits:
                         hits[h] = f
                         joins.setdefault(other, []).append((key, f))
+                        on.add(mine.qualified)
         columns = list(sheet.columns)
         added: list[str] = []
         # Most definition sheets leave out whose record a row is. A load without that id cannot work, so it is
@@ -688,7 +692,6 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         key_cols = [c for c in (f"{table}.{k}" for k in frames.dictionary.keys(table)) if c in stored.columns]
         country = _country_field(frames.dictionary, table, stored.columns)
         joined = {f.qualified for fs in joins.values() for _, f in fs}
-        on = {frames.dictionary.field(table, k).qualified for fs in joins.values() for k, _ in fs}
         reads = {*key_cols, *on, *(f.qualified for f in hits.values() if f.qualified not in joined),
                  *([country.qualified] if country else [])}
         df = stored[list(reads)].copy()
@@ -697,8 +700,10 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
             # ponytail: first row per key wins (a person's first email); prefer isPrimary if several get loaded
             side = frames.frames[other][[f"{other}.{key}", *(f.qualified for _, f in fs)]].drop_duplicates(f"{other}.{key}")
             side = side.set_index(f"{other}.{key}")
+            mine = frames.dictionary.field(table, key)
+            assert mine is not None  # checked when the join was planned
             for _, f in fs:
-                df[f.qualified] = df[frames.dictionary.field(table, key).qualified].map(side[f.qualified])
+                df[f.qualified] = df[mine.qualified].map(side[f.qualified])
         keys = record_keys(df, key_cols)
         bad = pd.Series(False, index=df.index)
         countries = _row_countries(df[country.qualified]) if country else None
