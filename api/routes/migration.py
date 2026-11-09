@@ -1331,6 +1331,30 @@ async def _read_workbook(file: UploadFile) -> bytes:
     return data
 
 
+def _learned_pending(meta: dict, dictionary) -> dict:
+    """Map each learned property to True when the last run asked for it and the tenant did not return it.
+
+    Such a property will never arrive, so it is reported as missing from the system rather than waiting for a run.
+    """
+    absent = {(c.get("table", "").split("\u2190")[0], n) for c in meta.get("coverage") or []
+              for n in c.get("unavailable_fields") or []}
+    return {f.source.split(".", 1)[1]: (tn, f.name) in absent for tn, t in dictionary.tables.items()
+            for f in t.fields.values() if f.provenance == "workbook" and "." in (f.source or "")}
+
+
+def _mark_learned(report: dict, pending: dict) -> tuple[int, int]:
+    """Flag unmapped columns that the next run fills, or that the system does not hold. Returns both counts."""
+    waiting = missing = 0
+    for sheet in report["sheets"]:
+        for col in sheet["unmapped"]:
+            gone = pending.get(col["id"])
+            col["learned"] = gone is False
+            col["not_in_system"] = gone is True
+            waiting += col["learned"]
+            missing += col["not_in_system"]
+    return waiting, missing
+
+
 def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") -> tuple:
     """Parse an uploaded workbook and fill it from one finished run. Nothing is stored."""
     from api.services.migration import workbook as wb
@@ -1360,8 +1384,7 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
             store_learned(s, system_id, learned)
             s.commit()
             dictionary = dictionary_for(s, system_id)
-        pending = {f.source.split(".", 1)[1] for t in dictionary.tables.values() for f in t.fields.values()
-                   if f.provenance == "workbook"}
+        pending = _learned_pending(meta, dictionary)
         needed = wb.tables_needed(book, dictionary)
         no_match = HTTPException(status_code=422, detail="Nothing in this run matches the sheets in this workbook.")
         if not needed:
@@ -1382,13 +1405,8 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
                 maps.setdefault(target, {}).update(vm)
         strict = {t for t, vm in maps.items() if vm.keys() - config.get(t, {}).keys()}
     tabs, report = wb.fill(book, frames, maps, strict)
-    # A learned column the run does not hold yet is filled by the next run of this system.
-    waiting = 0
-    for sheet in report["sheets"]:
-        for col in sheet["unmapped"]:
-            col["learned"] = col["id"] in pending
-            waiting += col["learned"]
-    report["learned"] = {"new": sum(len(f) for f in learned.values()), "waiting": waiting,
+    waiting, missing = _mark_learned(report, pending)
+    report["learned"] = {"new": sum(len(f) for f in learned.values()), "waiting": waiting, "missing": missing,
                          "system_id": system_id, "modules": meta.get("modules") or []}
     return book, tabs, report
 

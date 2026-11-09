@@ -28,3 +28,18 @@ def test_learned_field_makes_the_column_match_next_time():
     assert "annualizationFactorX" in wb._candidates(b.sheets[0], learned_d)["FOFREQUENCY"]
     assert D.field("FOFREQUENCY", "ANNUALIZATION_FACTOR_X") is None  # the shared dictionary is untouched
     assert wb.learn(b, learned_d) == {}
+
+
+def test_learned_field_the_tenant_did_not_return_is_reported_missing_not_waiting():
+    from api.routes.migration import _learned_pending, _mark_learned
+
+    learned_d = with_learned(D, {"FOFREQUENCY": {"ANNUALIZATION_FACTOR_X": "FOFrequency.annualizationFactorX",
+                                                 "SENIORITY_X": "FOFrequency.seniorityX"}})
+    meta = {"coverage": [{"table": "FOFREQUENCY←FOFrequency", "status": "partial",
+                          "unavailable_fields": ["SENIORITY_X"]}]}
+    pending = _learned_pending(meta, learned_d)
+    assert pending == {"annualizationFactorX": False, "seniorityX": True}
+    report = {"sheets": [{"unmapped": [{"id": "annualizationFactorX"}, {"id": "seniorityX"}, {"id": "cust-x"}]}]}
+    assert _mark_learned(report, pending) == (1, 1)
+    cols = report["sheets"][0]["unmapped"]
+    assert [(c["learned"], c["not_in_system"]) for c in cols] == [(True, False), (False, True), (False, False)]

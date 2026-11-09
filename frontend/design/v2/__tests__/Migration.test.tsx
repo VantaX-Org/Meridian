@@ -184,6 +184,8 @@ describe("Workbook from the new system", () => {
     const learned = await within(panel).findByTestId("mig-workbook-learned");
     expect(learned.textContent).toContain("1 columns in this workbook were not in the extraction");
     expect(learned.textContent).toContain("Pay Grade");
+    expect(learned.textContent).not.toContain("Seniority Band");
+    expect(screen.getByTestId("mig-workbook-not-in-system").textContent).toContain("did not return on the last run");
     fireEvent.click(within(learned).getByTestId("mig-workbook-update"));
     expect((await within(panel).findByTestId("mig-workbook-updating")).textContent).toContain("check the workbook again");
     expect(start).toHaveBeenCalledWith("sys-sf", ["employee_central"], true);

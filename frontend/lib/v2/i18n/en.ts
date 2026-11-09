@@ -8598,6 +8598,7 @@ export const en = {
   "Starting the run": "Starting the run",
   "Update the run": "Update the run",
   "Ask someone who can start extractions to update the run.": "Ask someone who can start extractions to update the run.",
+  "{n} columns ask for fields the source system did not return on the last run, so another run will not fill them. Ask the system owner whether the field exists, or fill these columns in the new system.": "{n} columns ask for fields the source system did not return on the last run, so another run will not fill them. Ask the system owner whether the field exists, or fill these columns in the new system.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

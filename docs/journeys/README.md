@@ -15,6 +15,8 @@ Two newer files cover the same product by role and by object, and a machine-read
   what done looks like.
 - [by-object.md](by-object.md): one section per scored object, with every action, the route and control, and a role
   by action table.
+- [go-live-acceptance-test.md](go-live-acceptance-test.md): the checklist a signed-in tester runs on the live site
+  after each release.
 - [steps.json](steps.json): each journey as a list of steps (route, control, visible text). Values in braces, such as
   `{system_id}` or `{batch_id}`, are filled from the tenant's data.
 

@@ -8599,4 +8599,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Starting the run": "実行を開始しています",
   "Update the run": "実行を更新",
   "Ask someone who can start extractions to update the run.": "抽出を開始できる担当者に実行の更新を依頼してください。",
+  "{n} columns ask for fields the source system did not return on the last run, so another run will not fill them. Ask the system owner whether the field exists, or fill these columns in the new system.": "{n} 列は、前回の実行でソースシステムが返さなかった項目を必要としています。再実行しても入力されません。項目が存在するかシステム担当者に確認するか、新しいシステムでこれらの列を入力してください。",
 };

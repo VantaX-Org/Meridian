@@ -8599,4 +8599,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Starting the run": "Lauf wird gestartet",
   "Update the run": "Lauf aktualisieren",
   "Ask someone who can start extractions to update the run.": "Bitten Sie eine Person, die Extraktionen starten darf, den Lauf zu aktualisieren.",
+  "{n} columns ask for fields the source system did not return on the last run, so another run will not fill them. Ask the system owner whether the field exists, or fill these columns in the new system.": "{n} Spalten verlangen Felder, die das Quellsystem beim letzten Lauf nicht geliefert hat. Ein weiterer Lauf füllt sie daher nicht. Fragen Sie die verantwortliche Person des Systems, ob das Feld existiert, oder füllen Sie diese Spalten im neuen System.",
 };

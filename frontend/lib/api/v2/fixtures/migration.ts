@@ -117,7 +117,7 @@ export const fixtureWorkbookReport = (): WorkbookReport => ({
   country_unchecked: [{ sheet: "Biographical Information", id: "national-id", label: "National ID" }],
   sheets: [
     { name: "Biographical Information", kind: "definition", table: "PERPERSON", columns: 8, added_keys: ["personIdExternal"], matched: 6, rows: 60, ready: 59, held: 1, known: true, unmapped: [{ id: "country-of-birth", label: "Country Of Birth", mandatory: false }] },
-    { name: "Job Information", kind: "definition", table: "EMPJOB", columns: 12, added_keys: ["userId"], matched: 5, rows: 60, ready: 59, held: 1, known: true, unmapped: [{ id: "event-reason", label: "Event Reason", mandatory: true }, { id: "pay-grade", label: "Pay Grade", mandatory: true, learned: true }] },
+    { name: "Job Information", kind: "definition", table: "EMPJOB", columns: 12, added_keys: ["userId"], matched: 5, rows: 60, ready: 59, held: 1, known: true, unmapped: [{ id: "event-reason", label: "Event Reason", mandatory: true }, { id: "pay-grade", label: "Pay Grade", mandatory: true, learned: true }, { id: "seniority-band", label: "Seniority Band", mandatory: false, not_in_system: true }] },
     { name: "Social Accounts", kind: "definition", table: null, columns: 4, added_keys: [], matched: 0, rows: 0, ready: 0, held: 0, known: false, unmapped: [] },
   ],
   reasons: { too_long: 1, bad_date: 1 },
@@ -126,7 +126,7 @@ export const fixtureWorkbookReport = (): WorkbookReport => ({
     { sheet: "Job Information", record: "EMP-0002", field: "Job Title", reason: "too_long" },
   ],
   held_total: 2,
-  learned: { new: 1, waiting: 1, system_id: "sys-sf", modules: ["employee_central"] },
+  learned: { new: 1, waiting: 1, missing: 1, system_id: "sys-sf", modules: ["employee_central"] },
 });
 let seq = 10;
 

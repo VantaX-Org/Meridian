@@ -436,6 +436,9 @@ function TargetWorkbookPanel() {
               )}
             </div>
           ) : null}
+          {(report.learned?.missing ?? 0) > 0 ? (
+            <p role="status" data-testid="mig-workbook-not-in-system">{t("{n} columns ask for fields the source system did not return on the last run, so another run will not fill them. Ask the system owner whether the field exists, or fill these columns in the new system.", { n: int(report.learned!.missing!) })}</p>
+          ) : null}
           <Table title={t("Sheets in the workbook")} head={[t("Sheet"), t("Filled from"), t("Columns filled"), t("Rows ready"), t("Held back"), t("Required columns with no data")]}>
             {report.sheets.map((s) => (
               <tr key={s.name}>
