@@ -1047,6 +1047,24 @@ rules:
     __other__: FOPAYCOMPONENT.TAX_TREATMENT '{invalid_value}' is not defined in the picklist TAXTREATMENT. Correct it there
       or add the missing entry.
   record_fix_template: FOPAYCOMPONENT.TAX_TREATMENT points at a picklist TAXTREATMENT entry that does not exist.
+- id: DXR3a0941b5
+  enabled: false
+  field: FOPAYCOMPONENT.FREQUENCY_CODE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Default frequency of the pay component must exist in the check table FOFrequency.externalCode
+  why_it_matters: FREQUENCY_CODE (Default frequency of the pay component) is defined in the SAP Data Dictionary with check
+    table FOFrequency.externalCode on domain n/a. A value outside that table is not a value SAP recognises, so the record
+    is inconsistent with the configuration it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read FREQUENCY_CODE resolve it through check table FOFrequency.externalCode; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOPAYCOMPONENT.FREQUENCY_CODE '{invalid_value}' is not defined in the check table FOFrequency.externalCode.
+      Correct it there or add the missing entry.
+  record_fix_template: FOPAYCOMPONENT.FREQUENCY_CODE points at a check table FOFrequency.externalCode entry that does not
+    exist.
 - id: DXRf0611778
   enabled: false
   field: FOPAYCOMPONENTGROUP.PAY_COMPONENT

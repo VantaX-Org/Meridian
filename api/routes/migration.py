@@ -1381,7 +1381,7 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
         # Columns the dictionary does not carry yet are learned for this system, so the next run extracts them.
         learned = wb.learn(book, dictionary) if system_id else {}
         if learned:
-            store_learned(s, system_id, learned)
+            store_learned(s, str(system_id), learned)
             s.commit()
             dictionary = dictionary_for(s, system_id)
         pending = _learned_pending(meta, dictionary)
