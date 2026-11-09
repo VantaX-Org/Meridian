@@ -126,7 +126,7 @@ def test_job_start_date_never_takes_the_employment_start_date():
 
 def test_pay_component_setup_grid_is_not_filled_from_employee_pay():
     book = wb.parse_workbook(sample())
-    assert wb._candidates(sheet(book, "Pay Component Values (US)"), get_dictionary("s4hana")) == {}
+    assert set(wb._candidates(sheet(book, "Pay Component Values (US)"), get_dictionary("s4hana"))) == {"FOPAYCOMPONENT"}
 
 
 @pytest.mark.parametrize("data", [b"not a workbook", b""])

@@ -171,7 +171,9 @@ export interface WorkbookSheet {
   ready: number;
   held: number;
   known: boolean;
-  unmapped: { id: string; label: string; mandatory: boolean }[];
+  /** `learned`: the column was added to the extraction from a workbook and arrives with the next run. */
+  /** `not_in_system`: the column was learned, but the source system did not return the field on the last run. */
+  unmapped: { id: string; label: string; mandatory: boolean; learned?: boolean; not_in_system?: boolean }[];
 }
 export type WorkbookFormat = LoadFileFormat | "source";
 export interface WorkbookHeldRow { sheet: string; record: string; field: string; reason: string }
@@ -186,6 +188,8 @@ export interface WorkbookReport {
   /** The first 200 held rows; `held_total` counts them all. */
   held: WorkbookHeldRow[];
   held_total: number;
+  /** Columns Meridian added to the extraction for this system; `waiting` are not in this run yet. */
+  learned?: { new: number; waiting: number; missing?: number; system_id: string | null; modules: string[] };
 }
 const workbookForm = (file: File) => { const form = new FormData(); form.append("file", file); return form; };
 /** Reads the new system's workbook against a finished run. Nothing is stored. */

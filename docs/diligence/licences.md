@@ -94,16 +94,18 @@ This is finding F-1 in [security.md](security.md) and defect D-01 in
 `.pyc` decompiles to readable Python with public tools, so the real protection is the EULA and the licence
 check, not the build.
 
-## 6. The Aletheia attribution strip
+## 6. Aletheia: the attribution strip and the embedded engine
 
 Every screen of the frontend ends with a small strip showing a mark and the word "Aletheia" (hover title
-"Vantax Aletheia"). A buyer will ask whose brand it is and whether it comes with the deal. This section
+"Vantax Aletheia"), and each deployment can run its own Aletheia engine as a sidecar container. A buyer will
+ask whose brand and whose engine it is, and whether either comes with the deal. This section
 answers from what the repositories contain; it is not legal advice.
 
 **What Aletheia is.** Vantax Aletheia is a separate product of the same group: a grounded question-answering
 engine (internal codename `cortex0`) in its own repository (`VantaX-Org/vantax-aletheia`). Its licensor, as
-named in its terms, is VANTA X, a South African company. Meridian contains none of Aletheia's code
-(`grep -rn cortex0` over the Meridian source finds nothing).
+named in its terms, is VANTA X, a South African company. Meridian contains none of Aletheia's code: the
+Meridian images hold no part of `cortex0`. Meridian runs the engine as a separate container image and talks
+to it over HTTP (see "The embedded engine" below).
 
 **What Meridian contains of it.**
 
@@ -128,24 +130,54 @@ not yet reviewed by an attorney. The Aletheia repository's own `LICENSE` file is
 licence (source-available, evaluation and non-commercial use only, pending counsel review), with copyright
 asserted by the founder and VantaX-Org.
 
-**What it covers in Meridian, and what we could not find.** In Meridian it covers the mark and the name
-only. Those terms are written for deployments of the Aletheia software. Neither repository contains an
-agreement that licenses Aletheia's mark, name or any design element to Meridian, or that applies section 6
-to Meridian; the only record is the code comment and the commit message. We did not find any Aletheia
-design asset in Meridian beyond the mark: Meridian's design system (`frontend/design/v2/`,
-`frontend/DESIGN.md`) is Meridian's own.
+**The embedded engine.** Since 9 November 2026 each Meridian deployment can run its own instance of the
+Aletheia engine, deployed alongside Meridian rather than shared with any other product.
+
+| Item | Where |
+|---|---|
+| The `aletheia` sidecar service, its own `aletheia_data` volume, image `ghcr.io/vantax-org/cortex0:1.7.0` (override with `MERIDIAN_ALETHEIA_IMAGE`), behind the compose profile `aletheia` | `docker/docker-compose.customer.yml` |
+| Pulling and starting it on update, best effort, so a missing image or key never stops an update | `scripts/update.sh` (`start_engine`) |
+| Meridian's HTTP client to it, which degrades to "off, and why" on any failure | `api/services/aletheia_engine.py` |
+| Its two read routes: engine status (`/api/v1/aletheia/engine`) and learned drivers (`/api/v1/insights/engine-drivers`) | `api/routes/aletheia_engine.py` |
+| The screens: Administration, Aletheia engine (status, licence verdict, expiry, version, usage), and Insights, "What moves the score" | `frontend/design/v2/admin/engine.tsx`, `frontend/design/v2/screens/Insights.tsx` |
+
+The engine is licensed per host, like every Aletheia deployment: `ALETHEIA_LICENSE_KEY` (a signed token from
+the Aletheia licensor) and `ALETHEIA_DEPLOYMENT_ID` (the deployment it is bound to) are set in the host's
+environment, never in the repository. Without a key the engine runs unlicensed and enforces nothing; Meridian
+says so on the Administration screen and keeps working. With an invalid or expired key Meridian stops sending
+it work. Meridian sends the engine only run-level aggregates: the composite score, failing-rule and finding
+counts and the dimension scores per run, keyed by metric name. No extracted SAP record, field value or free
+text reaches the engine, and none reaches its generative paths, which Meridian does not call.
+
+**The written grant.** On 9 November 2026 the copyright holder granted Meridian a licence to the Aletheia mark
+and name, recorded on the Aletheia repository's licensees page (`docs/LICENSEES.md`, section "Meridian",
+VantaX-Org/vantax-aletheia pull request 24). It covers the mark in the attribution strip and the name "Aletheia" on
+Meridian's own grounded-answer, finding and rule-proposal features, worldwide, for as long as Meridian is a VantaX
+product. It applies the attribution obligation of section 6 to every Meridian deployment. That grant, as merged, gives
+no engine code and no patent method. An extension for embedded deployment use (the Meridian row redrafted on the
+Aletheia repository's branch `docs/meridian-engine-grant`: Meridian's own engine sidecar per deployment, licensed per
+host by a deployment licence token, enterprise plan, aggregates only) is drafted but not yet signed off or merged by
+the licensor; until it is, the engine sidecar should run only under a licence token the licensor has issued for that
+deployment. The grant is non-transferable: a buyer of Meridian takes no
+right to the mark or name unless the Aletheia licensor grants it, or releases the attribution obligation, in writing.
+We did not find any Aletheia design asset in Meridian beyond the mark: Meridian's design system
+(`frontend/design/v2/`, `frontend/DESIGN.md`) is Meridian's own.
 
 **What a buyer acquires and what it must keep.**
 
 - The buyer does not acquire the Aletheia name, mark or any Aletheia IP by buying Meridian unless the deal
   says so: under section 4 of Aletheia's terms they stay with the Aletheia licensor.
-- If an agreement between Meridian's owner and the Aletheia licensor applies the attribution obligation to
-  Meridian, the buyer must keep the strip on every screen, unaltered, or obtain a release. Removing it
-  under such an agreement would expose the buyer to the remedies above.
-- Recommendation: because both products sit with the same group, settle it in the transaction documents.
-  Either a written licence from the Aletheia licensor to use the mark in Meridian (scope, term, territory,
-  whether the attribution obligation survives the sale), or a written release that lets the buyer remove
-  the strip. Removing it is a small change: the component, its two render sites, its CSS rule, its test
+- While Meridian is a VantaX product the grant applies the attribution obligation to it, so the strip stays on
+  every screen, unaltered. A buyer that keeps using the mark or name needs its own written grant from the
+  Aletheia licensor, and that grant would carry the same obligation; removing the strip under it would expose
+  the buyer to the remedies above.
+- The same holds for the engine: a buyer gets no right to run the Aletheia engine by buying Meridian. Each
+  deployment's licence token is bound to its deployment id and expires; a buyer needs its own engine licence,
+  or removes the sidecar (the service and its volume in the compose file, the update step, the client, the
+  two routes and the two screens). Meridian works without it.
+- Recommendation: settle it in the transaction documents. Either a written licence from the Aletheia licensor
+  to the buyer (scope, term, territory, whether the attribution obligation continues), or a written release
+  that lets the buyer remove the strip and rename the features. Removing it is a small change: the component, its two render sites, its CSS rule, its test
   and the SVG.
 - Counsel should confirm the legal entity that owns Meridian (the `LICENSE` says "VantaX"; the EULA
   template leaves `{{LICENSOR_LEGAL_NAME}}` open; Aletheia's terms name VANTA X) so the licence or release

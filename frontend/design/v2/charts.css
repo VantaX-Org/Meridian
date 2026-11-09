@@ -20,7 +20,7 @@
 
 /* Legend: a mark and a word per series, the count in ink */
 .m2-root .m2-viz-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--m2-s1) var(--m2-s4); font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); color: var(--m2-ink-2); }
-.m2-root .m2-viz-legend li { display: inline-flex; align-items: center; gap: var(--m2-s2); white-space: nowrap; }
+.m2-root .m2-viz-legend li { display: inline-flex; align-items: center; gap: var(--m2-s2); min-width: 0; max-width: 100%; }
 .m2-root .m2-viz-sw { width: 10px; height: 10px; border-radius: 2px; background: var(--m2-viz-c); flex: none; }
 .m2-root .m2-viz-lv { color: var(--m2-fg); font-weight: 500; font-variant-numeric: tabular-nums; }
 

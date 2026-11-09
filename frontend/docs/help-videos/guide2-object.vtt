@@ -1,65 +1,65 @@
 WEBVTT
 
 1
-00:00:00.012 --> 00:00:07.579
+00:00:00.006 --> 00:00:06.762
 An object is one area of SAP data scored as a whole on one system.
 
 2
-00:00:07.579 --> 00:00:14.934
+00:00:06.762 --> 00:00:14.446
 The tabs sit under the title. The object opens on Overview; the Rules tab carries the ruler and the receipt.
 
 3
-00:00:14.934 --> 00:00:22.273
+00:00:14.446 --> 00:00:22.107
 The facts line: run, records checked, rules measured, records to fix, value at risk marked est., features blocked, wave verdict.
 
 4
-00:00:22.273 --> 00:00:27.253
+00:00:22.107 --> 00:00:27.355
 Related objects, upstream and downstream. Fix upstream first.
 
 5
-00:00:27.253 --> 00:00:33.210
+00:00:27.355 --> 00:00:33.085
 The Rules tab carries the ruler and the receipt.
 
 6
-00:00:33.210 --> 00:00:40.634
+00:00:33.085 --> 00:00:40.752
 The ruler: the tick is the measured score, the number is the score shown. It reads 70.0 capped, 71.8 measured.
 
 7
-00:00:40.634 --> 00:00:45.546
+00:00:40.752 --> 00:00:45.669
 Capped at 70 by MM003 and MM035: two critical rules over tolerance.
 
 8
-00:00:45.546 --> 00:00:50.877
+00:00:45.669 --> 00:00:51.007
 The receipt: each dimension's weight, score and points, then measured, cap and score shown.
 
 9
-00:00:50.877 --> 00:00:56.447
+00:00:51.007 --> 00:00:56.913
 Every i explains its figure from the run itself.
 
 10
-00:00:56.447 --> 00:01:02.872
+00:00:56.913 --> 00:01:03.071
 Rules, ranked by value at risk, with tolerance and whether each is over it.
 
 11
-00:01:02.872 --> 00:01:08.507
+00:01:03.071 --> 00:01:08.998
 Pivot the rules by field, dimension, severity or S/4 feature.
 
 12
-00:01:08.507 --> 00:01:14.951
+00:01:08.998 --> 00:01:15.236
 Trend: the measured score over eight runs, and why it moved against the baseline.
 
 13
-00:01:14.951 --> 00:01:19.862
+00:01:15.236 --> 00:01:20.152
 The shown score moved only to 70.0, because the cap holds it.
 
 14
-00:01:19.862 --> 00:01:26.786
+00:01:20.152 --> 00:01:26.700
 Readiness: the waves this object is in, and what its failing rules block in S/4HANA.
 
 15
-00:01:26.786 --> 00:01:32.738
+00:01:26.700 --> 00:01:32.482
 Fixes lists the object's fix batches.
 
 16
-00:01:32.738 --> 00:01:37.784
+00:01:32.482 --> 00:01:37.844
 Watch the object to hear about runs, score drops and new critical breaches.

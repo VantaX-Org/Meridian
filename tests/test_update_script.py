@@ -28,6 +28,7 @@ case "$1" in
     if [[ "$args" == *"curl -sf http://localhost:8000/health"* ]]; then echo '{"status":"ok","version":"9.9.9"}'; fi
     if [[ "$args" == *"revalidate"* ]]; then echo "log line"; echo "MERIDIAN_LATEST=${HQ_LATEST-2.4.1}"; fi
     if [[ "$args" == *"alembic upgrade head"* && -n "${FAIL_MIGRATE:-}" ]]; then exit 1; fi
+    if [[ "$args" == *"aletheia"* && -n "${FAIL_ENGINE:-}" ]]; then exit 1; fi
     ;;
 esac
 exit 0
@@ -234,3 +235,31 @@ def test_rfc_overlay_builds_on_the_pinned_release_not_latest():
     overlay = (REPO / "scripts" / "build-rfc-overlay.sh").read_text()
     assert 'MERIDIAN_BASE_TAG="$TARGET_TAG" bash scripts/build-rfc-overlay.sh' in update
     assert 'meridian-${svc}:${MERIDIAN_BASE_TAG:-latest}' in overlay
+
+
+def test_update_keeps_only_the_newest_pre_update_backups(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    (host / "backups").mkdir()
+    for day in range(10, 17):
+        (host / "backups" / f"pre-update-202610{day}T000000Z.dump").write_text("old")
+    (host / "backups/pre-wipe-20261009T000000Z.dump").write_text("keep")
+    _run(host, env, args=())
+    names = sorted(p.name for p in (host / "backups").iterdir())
+    pre = [n for n in names if n.startswith("pre-update-")]
+    assert len(pre) == 5 and "pre-update-20261016T000000Z.dump" in pre and "pre-update-20261012T000000Z.dump" not in pre
+    assert "pre-wipe-20261009T000000Z.dump" in names
+
+
+def test_engine_sidecar_pulled_and_started_after_the_stack(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    calls = _run(host, env)
+    assert _index(calls, "pull --ignore-pull-failures aletheia") < _index(calls, "pg_dump")
+    assert _index(calls, "up -d --force-recreate api worker beat frontend nginx") < _index(calls, "up -d aletheia")
+    assert not any("--force-recreate" in c and "aletheia" in c for c in calls)
+
+
+def test_missing_engine_image_or_token_never_fails_the_update(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    env["FAIL_ENGINE"] = "1"
+    calls = _run(host, env)  # ok=True: the update still completes
+    assert any("alembic upgrade head" in c for c in calls)

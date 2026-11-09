@@ -1,37 +1,53 @@
 WEBVTT
 
 1
-00:00:00.005 --> 00:00:07.501
+00:00:00.004 --> 00:00:07.751
 Migration shows whether your records would load into the new system, and what to fix first.
 
 2
-00:00:07.501 --> 00:00:12.414
+00:00:07.751 --> 00:00:13.002
 The banner gives the current verdict from the latest analysis.
 
 3
-00:00:12.414 --> 00:00:18.404
+00:00:13.002 --> 00:00:19.996
 Workbook from the new system: fill the new system's own workbook or load file from a finished run.
 
 4
-00:00:18.404 --> 00:00:23.412
+00:00:19.996 --> 00:00:25.342
 Three steps: choose the run and workbook, check what fits, export the data.
 
 5
-00:00:23.412 --> 00:00:28.322
-Choose the workbook file (.xlsx) the new system gave you.
+00:00:25.342 --> 00:00:31.200
+Choose the workbook or load file the new system gave you.
 
 6
-00:00:28.322 --> 00:00:33.669
-Check the workbook only reads it. Nothing is stored and nothing is exported yet.
+00:00:31.200 --> 00:00:38.175
+Check the workbook reads it. The workbook itself is not kept and nothing is exported yet.
 
 7
-00:00:33.669 --> 00:00:50.273
-After a check: how many rows are ready, how many are held back, and how many sheets can be filled.
+00:00:38.175 --> 00:00:44.827
+How many rows are ready, how many are held back, and how many sheets can be filled.
 
 8
-00:00:50.273 --> 00:01:04.895
+00:00:44.827 --> 00:00:50.489
 Required columns with no data are named, because the new system refuses those rows.
 
 9
-00:01:04.895 --> 00:01:10.224
+00:00:50.489 --> 00:00:58.135
+Columns the workbook asks for that the extraction did not fetch are added to the extraction, so Meridian learns them.
+
+10
+00:00:58.135 --> 00:01:05.103
+Update the run starts a new extraction that fetches the added columns from the source system.
+
+11
+00:01:05.103 --> 00:01:10.441
+When the new run finishes, choose it above and check the workbook again.
+
+12
+00:01:10.441 --> 00:01:16.453
+Then export in the same format, as Excel, or as CSV files, ready to load.
+
+13
+00:01:16.453 --> 00:01:22.121
 Gaps by kind: why records would not load, grouped by the kind of problem.

@@ -236,6 +236,17 @@ backup_database() {
         error "Database backup failed — update aborted. Nothing was changed."
     fi
     info "Database backed up ($(du -h "$PRE_UPDATE_DUMP" | cut -f1))"
+    prune_backups
+}
+
+# Keep only the newest pre-update dumps (BACKUP_KEEP, default 5). Names sort by
+# UTC timestamp, so a name sort is a date sort. Other dumps are never touched.
+prune_backups() {
+    local keep="${BACKUP_KEEP:-5}" old
+    old=$(ls -1 backups/pre-update-*.dump 2>/dev/null | sort -r | tail -n "+$((keep + 1))")
+    [[ -z "$old" ]] && return 0
+    info "Removing $(wc -l <<<"$old" | tr -d ' ') old pre-update backups, keeping the newest ${keep}."
+    xargs rm -f <<<"$old"
 }
 
 # Copy this release's deployment files (baked into the api image under /deploy)
@@ -407,6 +418,14 @@ pull_dependencies() {
     # failure here never blocks the update: running containers keep their image.
     docker compose -f "$COMPOSE_FILE" pull --ignore-pull-failures db redis >/dev/null 2>&1 \
         || warn "Could not pull db/redis images — the running ones are kept."
+    # The Aletheia engine sidecar: best effort, Meridian runs without it (the screens say so).
+    docker compose -f "$COMPOSE_FILE" pull --ignore-pull-failures aletheia >/dev/null 2>&1 \
+        || warn "Could not pull the Aletheia engine image — Meridian keeps running without it."
+}
+
+start_engine() {
+    # Never part of the --force-recreate list: no licence token, or no image, must not fail an update.
+    dc up -d aletheia >/dev/null 2>&1 || warn "Aletheia engine sidecar not started — Meridian runs without it."
 }
 
 # `docker compose up -d` recreates a container whose configuration changed; it does NOT
@@ -634,6 +653,7 @@ migrate_object_storage
 info "Restarting services on the new images..."
 write_status "restarting" "Restarting services on the new images..."
 dc up -d --force-recreate api worker beat frontend nginx 2>/dev/null || true
+start_engine
 
 info "Running database migrations..."
 if ! wait_for_api_container; then

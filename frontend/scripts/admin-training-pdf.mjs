@@ -10,14 +10,14 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
-import { esc, fontFaces, markdownToHtml } from "./guide-pdf.mjs";
+import { brandCss, cover, esc, fontFaces, markdownToHtml, pageChrome } from "./guide-pdf.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DIR = path.join(root, "..", "docs", "admin-training");
 const SRC = path.join(DIR, "meridian-administrator-training.md");
 const OUT = path.join(DIR, "meridian-administrator-training.pdf");
 /** The edition this source describes; change it with the text. */
-const EDITION = "31 October 2026";
+const EDITION = "9 November 2026";
 
 /** A screenshot as an embedded figure with its caption. */
 function figure(src, alt) {
@@ -56,11 +56,10 @@ export function trainingHtml() {
   figure { margin: 8pt 0 12pt; break-inside: avoid; } figure img { width: 100%; border: 1px solid #D9DDE3; }
   figcaption { font-size: 9pt; color: #4A5568; margin-top: 3pt; }
   .chapter { break-before: page; }
-  .cover { height: 240mm; display: flex; flex-direction: column; justify-content: flex-end; }
-  .cover h1 { font-size: 30pt; } .cover p { color: #4A5568; }
+  ${brandCss()}
   .toc { break-before: page; } .toc ol { padding-left: 16pt; } .toc li { margin: 3pt 0; } .toc a { color: inherit; text-decoration: none; }
   </style></head><body>
-  <section class="cover"><h1>${esc(title)}</h1><p>For the customer's Meridian administrator and their SAP Basis colleague: install and first start, licence, users and access, connecting SAP, extraction, scoring and money, fixing data and write-back, notifications, operations and troubleshooting.</p><p>Edition of ${EDITION}.</p></section>
+  ${cover({ kicker: "Administrator training", title, lede: "For the customer's Meridian administrator and their SAP Basis colleague: install and first start, licence, users and access, connecting SAP, extraction, scoring and money, fixing data and write-back, notifications, operations and troubleshooting.", edition: EDITION })}
   <nav class="toc"><h1>Contents</h1><ol>${toc.join("")}</ol></nav>
   ${body.join("\n")}
   </body></html>`;
@@ -74,8 +73,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     format: "A4",
     printBackground: true,
     displayHeaderFooter: true,
-    headerTemplate: "<span></span>",
-    footerTemplate: '<div style="font: 8pt Arial, sans-serif; color: #4A5568; width: 100%; padding: 0 16mm; display: flex; justify-content: space-between;"><span>Meridian administrator training</span><span><span class="pageNumber"></span> of <span class="totalPages"></span></span></div>',
+    ...pageChrome("Meridian administrator training"),
     margin: { top: "18mm", bottom: "20mm", left: "16mm", right: "16mm" },
   });
   await browser.close();

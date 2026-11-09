@@ -120,7 +120,7 @@ The Processor implements and maintains the following measures, further described
 2. **Transport security** — TLS 1.2 / 1.3 on every external hop.
 3. **At-rest encryption** — for the Processor's data: SHA-256 hashed licence keys in D1, PBKDF2-hashed admin passwords. For Controller-side data: the Processor does not process Controller-side data.
 4. **Auditing** — every admin mutation recorded in `admin_audit` with actor, action, entity, timestamp, IP, user-agent.
-5. **Vulnerability management** — weekly dependency scanning (dependabot, pip-audit, npm audit), weekly container image scanning (Trivy), CVE remediation within the supported release series.
+5. **Vulnerability management** — weekly dependency scanning (pip-audit, npm audit), weekly container image scanning (Trivy), CVE remediation within the supported release series.
 6. **Monitoring** — Prometheus + Alertmanager stack with alerting for service availability, error rate, latency, audit backlog, LLM availability, licence validation health.
 7. **Backups** — the Processor's hosted services are backed up via Cloudflare D1 time-travel (up to 30 days) and regular snapshots.
 8. **Personnel** — access to production systems is restricted to named personnel with MFA.

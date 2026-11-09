@@ -1,41 +1,41 @@
 WEBVTT
 
 1
-00:00:00.005 --> 00:00:06.027
+00:00:00.003 --> 00:00:05.695
 Lineage draws why a failing value matters.
 
 2
-00:00:06.027 --> 00:00:12.017
+00:00:05.695 --> 00:00:11.687
 From the source table, to the field, to the rule, to the S/4 feature it blocks.
 
 3
-00:00:12.017 --> 00:00:16.992
+00:00:11.687 --> 00:00:16.956
 Hover or focus a node to read its facts.
 
 4
-00:00:16.992 --> 00:00:21.903
+00:00:16.956 --> 00:00:22.205
 Features come from the impact model of the current run.
 
 5
-00:00:21.903 --> 00:00:26.845
+00:00:22.205 --> 00:00:27.455
 Export as SVG for a slide or a document.
 
 6
-00:00:26.845 --> 00:00:31.761
+00:00:27.455 --> 00:00:32.370
 Related objects in the header: fix the upstream one first.
 
 7
-00:00:31.761 --> 00:00:38.076
+00:00:32.370 --> 00:00:38.697
 The lineage draws the failing rules with the highest value at risk, so the drawing stays readable.
 
 8
-00:00:38.076 --> 00:00:44.356
+00:00:38.697 --> 00:00:44.464
 The same features appear on the Readiness tab: blocked and degraded in S/4HANA.
 
 9
-00:00:44.356 --> 00:00:49.690
+00:00:44.464 --> 00:00:49.791
 Each feature names the rules behind it, so you know which fix releases it.
 
 10
-00:00:49.690 --> 00:00:56.524
+00:00:49.791 --> 00:00:55.879
 Open a feature to read what it does and which records hold it back.

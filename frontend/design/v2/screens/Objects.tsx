@@ -76,8 +76,8 @@ function SystemBlock({ L, system, pinned }: { L: Landscape; system: LandscapeSys
                   <td>
                     <ObjectTrend size="inline" runs={runs} module={c.module} system={system.name} object={label} selectedId={c.run_id} />
                   </td>
-                  <td>{o?.findings_open != null ? int(o.findings_open) : <Dash why={t("This run stored no findings for the object")} />}</td>
-                  <td>{o?.value_at_risk ? <Money amount={o.value_at_risk.amount} currency={o.value_at_risk.currency} /> : <Dash why={t("Nothing could be priced for this object")} />}</td>
+                  <td className="m2-num">{o?.findings_open != null ? int(o.findings_open) : <Dash why={t("This run stored no findings for the object")} />}</td>
+                  <td className="m2-num">{o?.value_at_risk ? <Money amount={o.value_at_risk.amount} currency={o.value_at_risk.currency} /> : <Dash why={t("Nothing could be priced for this object")} />}</td>
                   <td>
                     {run ? (
                       <span title={formatDate(run.run_at, "datetime")}>{runLabel(system.name, run.run_number)}</span>

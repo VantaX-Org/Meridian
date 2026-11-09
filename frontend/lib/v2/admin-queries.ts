@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { getEngineStatus } from "@/lib/api/v2/aletheia-engine";
 import { useFixture } from "@/lib/api/v2/fixture";
 import * as api from "@/lib/api/v2/admin";
 import { listSubjectRequests, listSuppressions } from "@/lib/api/v2/subject-requests";
@@ -78,6 +79,10 @@ export const useSuppressions = (enabled = true) => {
 export const useLicence = () => {
   const f = useFixture();
   return useRead(k(f, "licence"), api.getLicence);
+};
+export const useEngineStatus = () => {
+  const f = useFixture();
+  return useRead(k(f, "engine"), getEngineStatus);
 };
 export const useBilling = (period: string, enabled = true) => {
   const f = useFixture();

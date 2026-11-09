@@ -50,7 +50,8 @@ The **Runs** strip under the banner has one bar per stored run, oldest first, co
 - **Data owner**: the line under the sentence says how many batches wait for you and your SLA, for example "2 batches wait for your approval, SLA met on 92% of your open work"; the button is "Approve batch B-241".
 - **SAP Basis**: the Basis home above the matrix; the button extracts or analyses the system that needs it first; the task list shows every system's state.
 - **Process analyst**: "Open PTP step 3" opens the first blocked process step.
-- **Auditor and viewer**: read everything; actions are not offered.
+- **Auditor**: the next-step button is "Open the rules library".
+- **Viewer**: sees the programme lead's start screen. Buttons that need a right the role does not have, such as connecting a system, uploading or starting an analysis, are not shown.
 
 Selecting a tile in the heat map or a cell in the matrix opens the object page. Selecting a system heading opens the system in the inspector.
 

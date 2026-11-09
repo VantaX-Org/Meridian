@@ -44,7 +44,7 @@
 .m2-dash { color: var(--m2-ink-3); }
 /* The separator is a drawn 3px disc, never the U+00B7 character. */
 .m2-dot::before { content: ""; display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: var(--m2-meta); vertical-align: middle; margin: 0 var(--m2-s2); }
-.m2-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.m2-sr { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .m2-skip { position: absolute; left: var(--m2-s2); top: -48px; z-index: 200; background: var(--m2-sheet); color: var(--m2-fg); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); }
 .m2-skip:focus { top: var(--m2-s2); }
 /* A link inside a sentence is underlined as well as coloured, so it never relies on colour alone. */
@@ -282,11 +282,28 @@ nav.m2-more a { max-width: 100%; overflow-wrap: anywhere; hyphens: auto; }
 
 /* Tables and the coverage matrix */
 .m2-frame { overflow: auto; border: 1px solid var(--m2-line); border-radius: var(--m2-r2); background: var(--m2-sheet); }
-.m2-tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: var(--m2-fs-13); }
-.m2-tbl th { font-size: var(--m2-fs-12); font-weight: 400; color: var(--m2-meta); text-align: left; padding: 0 var(--m2-s3); height: 32px; white-space: nowrap; border-bottom: 1px solid var(--m2-line-2); background: var(--m2-sheet); }
-.m2-tbl td { padding: 0 var(--m2-s3); height: 32px; border-bottom: 1px solid var(--m2-rule); white-space: nowrap; background: var(--m2-sheet); }
+/* One table spec for every static table, held to the same density tokens as the virtual Grid: a 36 pixel comfortable
+   row (28 compact) with 12 pixel cell sides, 14 pixel row text, and a 32 pixel head at weight 500. Cells keep a small
+   vertical padding so a cell that wraps never touches its rules. Numeric columns (.m2-r) align right in tabular figures. */
+.m2-tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: var(--m2-row-fs); line-height: var(--m2-row-lh); }
+.m2-tbl th { font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); font-weight: 500; color: var(--m2-meta); text-align: left; vertical-align: middle; padding: var(--m2-s1) var(--m2-cell-px); height: 32px; white-space: nowrap; border-bottom: 1px solid var(--m2-line-2); background: var(--m2-sheet); }
+.m2-tbl td { padding: var(--m2-s1) var(--m2-cell-px); height: var(--m2-row-h); vertical-align: middle; border-bottom: 1px solid var(--m2-rule); white-space: nowrap; background: var(--m2-sheet); }
 .m2-tbl tbody tr:last-child td, .m2-tbl tbody tr:last-child th { border-bottom: 0; }
-.m2-tbl th.m2-r, .m2-tbl td.m2-r { text-align: right; }
+.m2-tbl th.m2-r, .m2-tbl td.m2-r, .m2-tbl th.m2-num, .m2-tbl td.m2-num { text-align: right; font-variant-numeric: tabular-nums; }
+/* A head follows its column: when the first body row marks a cell numeric, the head above it aligns right too, so a
+   table built from plain string labels (the shared Table, most hand-written tables) never leaves a numeric head on the left. */
+.m2-tbl:has(> tbody > tr:first-child > :nth-child(1):is(.m2-r, .m2-num)) > thead > tr:last-child > th:nth-child(1),
+.m2-tbl:has(> tbody > tr:first-child > :nth-child(2):is(.m2-r, .m2-num)) > thead > tr:last-child > th:nth-child(2),
+.m2-tbl:has(> tbody > tr:first-child > :nth-child(3):is(.m2-r, .m2-num)) > thead > tr:last-child > th:nth-child(3),
+.m2-tbl:has(> tbody > tr:first-child > :nth-child(4):is(.m2-r, .m2-num)) > thead > tr:last-child > th:nth-child(4),
+.m2-tbl:has(> tbody > tr:first-child > :nth-child(5):is(.m2-r, .m2-num)) > thead > tr:last-child > th:nth-child(5),
+.m2-tbl:has(> tbody > tr:first-child > :nth-child(6):is(.m2-r, .m2-num)) > thead > tr:last-child > th:nth-child(6),
+.m2-tbl:has(> tbody > tr:first-child > :nth-child(7):is(.m2-r, .m2-num)) > thead > tr:last-child > th:nth-child(7),
+.m2-tbl:has(> tbody > tr:first-child > :nth-child(8):is(.m2-r, .m2-num)) > thead > tr:last-child > th:nth-child(8),
+.m2-tbl:has(> tbody > tr:first-child > :nth-child(9):is(.m2-r, .m2-num)) > thead > tr:last-child > th:nth-child(9),
+.m2-tbl:has(> tbody > tr:first-child > :nth-child(10):is(.m2-r, .m2-num)) > thead > tr:last-child > th:nth-child(10),
+.m2-tbl:has(> tbody > tr:first-child > :nth-child(11):is(.m2-r, .m2-num)) > thead > tr:last-child > th:nth-child(11),
+.m2-tbl:has(> tbody > tr:first-child > :nth-child(12):is(.m2-r, .m2-num)) > thead > tr:last-child > th:nth-child(12) { text-align: right; }
 /* A delta bar carries its figure beside it, so the change reads as a number as well as a length. */
 .m2-tbl td .m2-dbar-fig { display: inline-flex; align-items: center; gap: var(--m2-s2); }
 /* A long text cell wraps instead of pushing the table past the frame. */
@@ -295,10 +312,10 @@ nav.m2-more a { max-width: 100%; overflow-wrap: anywhere; hyphens: auto; }
 /* A named code in a lead cell keeps the table inside its frame; the title carries the full text. */
 .m2-tbl th.m2-card-lead .m2-cd { max-width: 280px; }
 .m2-tbl td.m2-wrap { white-space: normal; min-width: 220px; line-height: var(--m2-lh-12); padding-top: var(--m2-s2); padding-bottom: var(--m2-s2); }
-.m2-tbl tbody th { font-size: var(--m2-fs-13); color: var(--m2-fg); font-weight: 400; border-bottom: 1px solid var(--m2-rule); background: var(--m2-sheet); }
+.m2-tbl tbody th { font-size: var(--m2-row-fs); line-height: var(--m2-row-lh); color: var(--m2-fg); font-weight: 400; height: var(--m2-row-h); border-bottom: 1px solid var(--m2-rule); background: var(--m2-sheet); }
 .m2-tbl tbody tr:hover td, .m2-tbl tbody tr:hover th { background: var(--m2-hover); }
 .m2-mx { table-layout: fixed; min-width: 760px; }
-.m2-mx td, .m2-mx th { padding: 0 var(--m2-s3); }
+.m2-mx td, .m2-mx th { padding: var(--m2-s1) var(--m2-cell-px); }
 .m2-mx td { height: 52px; vertical-align: middle; }
 .m2-mx thead th { vertical-align: top; height: auto; padding: var(--m2-s2) var(--m2-s3); white-space: normal; }
 .m2-mx .m2-hn { font-weight: 500; color: var(--m2-fg); font-size: var(--m2-fs-13); }
@@ -689,7 +706,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-ck-matrix th, .m2-ck-matrix td, .m2-ck-rules th, .m2-ck-rules td, .m2-ck-mini th, .m2-ck-mini td { padding: var(--m2-s1) var(--m2-s2); border-bottom: 1px solid var(--m2-line); text-align: left; vertical-align: middle; white-space: nowrap; }
 .m2-ck-matrix thead th, .m2-ck-rules thead th, .m2-ck-mini thead th { font-size: var(--m2-fs-12); font-weight: 500; color: var(--m2-ink-2); border-bottom-color: var(--m2-line-2); }
 .m2-ck-matrix tbody th, .m2-ck-rules tbody th, .m2-ck-mini tbody th { font-weight: 500; }
-.m2-ck-matrix .m2-num, .m2-ck-rules .m2-num, .m2-ck-mini .m2-num { text-align: right; }
+.m2-ck-matrix .m2-num, .m2-ck-rules .m2-num, .m2-ck-mini .m2-num { text-align: right; font-variant-numeric: tabular-nums; }
 .m2-ck-dimh { text-align: center !important; }
 .m2-ck-sys th { padding-top: var(--m2-s3) !important; font-size: var(--m2-fs-14); font-weight: 600 !important; border-bottom-color: var(--m2-line-2) !important; }
 .m2-ck-sys th span { margin-left: var(--m2-s2); font-size: var(--m2-fs-12); font-weight: 400; color: var(--m2-ink-3); }

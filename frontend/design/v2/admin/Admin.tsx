@@ -15,6 +15,7 @@ import { RunsSection } from "./runs";
 import { SettingsSection } from "./settings";
 import { SsoSection } from "./signin";
 import { SystemSection } from "./system";
+import { EngineSection } from "./engine";
 import { BillingSection, LicenceSection } from "./tenant";
 import { UsersSection } from "./users";
 import { MatchRulesSection } from "./matchrules";
@@ -252,6 +253,8 @@ function Section({ slug }: { slug: AdminSlug }) {
       return <RunsSection />;
     case "system":
       return <SystemSection />;
+    case "aletheia":
+      return <EngineSection />;
     case "stewardship":
       return <StewardshipSection />;
     case "configbundle":

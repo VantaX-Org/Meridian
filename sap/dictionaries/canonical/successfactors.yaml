@@ -1112,6 +1112,14 @@ tables:
       MAX_FRACTION_DIGITS:         {source: FOPayComponent.maxFractionDigits, type: INTEGER, verify: true, description: Max fraction digits}
       LEGAL_ENTITY:                {source: FOPayComponent.legalEntity, type: STRING, verify: true, description: Legal entity}
       IS_END_DATED_PAYMENT:        {source: FOPayComponent.isEndDatedPayment, type: STRING, verify: true, description: Is end dated payment}
+      STATUS:                      {source: FOPayComponent.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
+      PAY_COMPONENT_TYPE:          {source: FOPayComponent.payComponentType, type: STRING, length: 32, verify: true, description: Pay component type (AMOUNT / PERCENTAGE / NUMBER)}
+      IS_EARNING:                  {source: FOPayComponent.isEarning, type: BOOLEAN, verify: true, description: Pay component is an earning (not a deduction)}
+      CURRENCY:                    {source: FOPayComponent.currency, type: STRING, length: 20, verify: true, description: Default currency of the pay component}
+      PAY_COMPONENT_VALUE:         {source: FOPayComponent.payComponentValue, type: DECIMAL, verify: true, description: Default value of the pay component}
+      FREQUENCY_CODE:              {source: FOPayComponent.frequencyCode, type: STRING, length: 32, verify: true, check_table: FOFrequency, description: Default frequency of the pay component}
+      RECURRING:                   {source: FOPayComponent.recurring, type: BOOLEAN, verify: true, description: Pay component is a recurring component}
+      CAN_OVERRIDE:                {source: FOPayComponent.canOverride, type: BOOLEAN, verify: true, description: Default value of the pay component may be overridden}
 
   FOPAYCOMPONENTGROUP:
     description: Pay component groups (Foundation Object)

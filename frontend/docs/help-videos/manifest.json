@@ -2,189 +2,189 @@
   "about": "Meridian help recordings: length in seconds and size in bytes, written by scripts/help-videos.mjs.",
   "videos": {
     "guide2-administration": {
-      "seconds": 100.4,
-      "bytes": 1686075,
-      "poster": 64305,
+      "seconds": 96.3,
+      "bytes": 1603883,
+      "poster": 67070,
       "chapter": "administration"
     },
     "guide2-approvals": {
-      "seconds": 60.5,
-      "bytes": 1007652,
-      "poster": 57293,
+      "seconds": 60.9,
+      "bytes": 935610,
+      "poster": 58346,
       "chapter": "approvals"
     },
     "guide2-ask": {
-      "seconds": 60.6,
-      "bytes": 974920,
-      "poster": 72651,
+      "seconds": 62.1,
+      "bytes": 984665,
+      "poster": 74825,
       "chapter": "ask"
     },
     "guide2-glossary": {
-      "seconds": 57.9,
-      "bytes": 967601,
-      "poster": 59445,
+      "seconds": 57.6,
+      "bytes": 897815,
+      "poster": 61184,
       "chapter": "glossary"
     },
     "guide2-golden-records": {
-      "seconds": 55.4,
-      "bytes": 1029248,
-      "poster": 59459,
+      "seconds": 54.6,
+      "bytes": 866319,
+      "poster": 61207,
       "chapter": "golden-records"
     },
     "guide2-keyboard": {
-      "seconds": 67,
-      "bytes": 1076366,
-      "poster": 59231,
+      "seconds": 66.4,
+      "bytes": 966050,
+      "poster": 59953,
       "chapter": "keyboard"
     },
     "guide2-landscape": {
-      "seconds": 87.5,
-      "bytes": 1302441,
-      "poster": 72572,
+      "seconds": 86.8,
+      "bytes": 1384522,
+      "poster": 75152,
       "chapter": "landscape"
     },
     "guide2-lineage": {
-      "seconds": 57.5,
-      "bytes": 1042256,
-      "poster": 59316,
+      "seconds": 56.9,
+      "bytes": 1053192,
+      "poster": 61079,
       "chapter": "lineage"
     },
     "guide2-menu": {
-      "seconds": 58.1,
-      "bytes": 1189755,
-      "poster": 60649,
+      "seconds": 60.9,
+      "bytes": 836319,
+      "poster": 63211,
       "chapter": "menu"
     },
     "guide2-migration": {
-      "seconds": 71.2,
-      "bytes": 906010,
-      "poster": 61422,
+      "seconds": 83.2,
+      "bytes": 1091538,
+      "poster": 66884,
       "chapter": "migration"
     },
     "guide2-monitoring": {
-      "seconds": 53.6,
-      "bytes": 854596,
-      "poster": 61590,
+      "seconds": 54.7,
+      "bytes": 782534,
+      "poster": 62464,
       "chapter": "monitoring"
     },
     "guide2-object": {
-      "seconds": 98.8,
-      "bytes": 1426545,
-      "poster": 59209,
+      "seconds": 98.9,
+      "bytes": 1446250,
+      "poster": 61392,
       "chapter": "object"
     },
     "guide2-objects": {
-      "seconds": 42.7,
-      "bytes": 640606,
-      "poster": 74520,
+      "seconds": 44.3,
+      "bytes": 658912,
+      "poster": 75896,
       "chapter": "objects"
     },
     "guide2-overview": {
-      "seconds": 167.9,
-      "bytes": 2819662,
-      "poster": 72170,
+      "seconds": 167.5,
+      "bytes": 2749995,
+      "poster": 75269,
       "chapter": "overview"
     },
     "guide2-people": {
-      "seconds": 64.4,
-      "bytes": 1174069,
-      "poster": 61083,
+      "seconds": 63.5,
+      "bytes": 1082955,
+      "poster": 61993,
       "chapter": "people"
     },
     "guide2-persona-admin": {
-      "seconds": 55.8,
-      "bytes": 1058052,
-      "poster": 64363,
+      "seconds": 52.6,
+      "bytes": 993344,
+      "poster": 66919,
       "chapter": "persona-admin"
     },
     "guide2-persona-auditor": {
-      "seconds": 56.2,
-      "bytes": 1138123,
-      "poster": 72323,
+      "seconds": 53.1,
+      "bytes": 1103362,
+      "poster": 74803,
       "chapter": "persona-auditor"
     },
     "guide2-persona-basis": {
-      "seconds": 70.2,
-      "bytes": 1269092,
-      "poster": 72586,
+      "seconds": 68.9,
+      "bytes": 1204266,
+      "poster": 74765,
       "chapter": "persona-basis"
     },
     "guide2-persona-lead": {
-      "seconds": 54,
-      "bytes": 967182,
-      "poster": 72527,
+      "seconds": 52.7,
+      "bytes": 957397,
+      "poster": 75014,
       "chapter": "persona-lead"
     },
     "guide2-persona-owner": {
-      "seconds": 55.7,
-      "bytes": 1132567,
-      "poster": 72271,
+      "seconds": 53.7,
+      "bytes": 1097847,
+      "poster": 74476,
       "chapter": "persona-owner"
     },
     "guide2-persona-process": {
-      "seconds": 56.5,
-      "bytes": 1077536,
-      "poster": 72294,
+      "seconds": 54.2,
+      "bytes": 1036567,
+      "poster": 74634,
       "chapter": "persona-process"
     },
     "guide2-persona-steward": {
-      "seconds": 48.2,
-      "bytes": 1024060,
-      "poster": 72254,
+      "seconds": 48.1,
+      "bytes": 963188,
+      "poster": 74477,
       "chapter": "persona-steward"
     },
     "guide2-preferences": {
-      "seconds": 55.2,
-      "bytes": 974737,
-      "poster": 79716,
+      "seconds": 55,
+      "bytes": 943145,
+      "poster": 82586,
       "chapter": "preferences"
     },
     "guide2-processes": {
-      "seconds": 52.5,
-      "bytes": 940165,
-      "poster": 59373,
+      "seconds": 51.8,
+      "bytes": 933334,
+      "poster": 61113,
       "chapter": "processes"
     },
     "guide2-rules": {
-      "seconds": 73,
-      "bytes": 1133346,
-      "poster": 57067,
+      "seconds": 74.2,
+      "bytes": 1220043,
+      "poster": 57864,
       "chapter": "rules"
     },
     "guide2-run-compare": {
-      "seconds": 56.1,
-      "bytes": 950279,
-      "poster": 62522,
+      "seconds": 55.9,
+      "bytes": 910576,
+      "poster": 65307,
       "chapter": "run-compare"
     },
     "guide2-runs": {
       "seconds": 56.5,
-      "bytes": 831646,
-      "poster": 55821,
+      "bytes": 838836,
+      "poster": 56875,
       "chapter": "runs"
     },
     "guide2-schedules": {
-      "seconds": 58.6,
-      "bytes": 1026755,
-      "poster": 58327,
+      "seconds": 58,
+      "bytes": 947899,
+      "poster": 58617,
       "chapter": "schedules"
     },
     "guide2-systems": {
-      "seconds": 65.8,
-      "bytes": 1001500,
-      "poster": 43146,
+      "seconds": 63.9,
+      "bytes": 946167,
+      "poster": 43630,
       "chapter": "systems"
     },
     "guide2-waves": {
-      "seconds": 44,
-      "bytes": 788100,
-      "poster": 72412,
+      "seconds": 45.1,
+      "bytes": 725711,
+      "poster": 74843,
       "chapter": "waves"
     },
     "guide2-work": {
-      "seconds": 105.1,
-      "bytes": 1513414,
-      "poster": 59190,
+      "seconds": 106.6,
+      "bytes": 1529984,
+      "poster": 60007,
       "chapter": "work"
     }
   }
