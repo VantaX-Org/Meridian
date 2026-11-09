@@ -477,10 +477,18 @@ Live write-back has not yet been run against a live SAP system by the vendor; ru
 
 ### SuccessFactors target workbook
 
-For a SuccessFactors migration, the new system's workbook is the input. On the Migration analysis page, a user with
-the export permission picks a finished SuccessFactors run, uploads the workbook and runs **Check the workbook**, then
-exports Excel or CSV in the workbook's own columns. The workbook is read in memory and never stored. Each export is
-recorded in the audit log as `migration.target_workbook.export`.
+For a SuccessFactors migration, the new system's workbook is the input. On the Migration analysis page, the panel
+**Workbook from the new system** takes a user with the export permission through three steps: choose a finished run
+and upload the workbook, **Check the workbook**, then export Excel or CSV in the workbook's own columns. The workbook
+is read in memory and never stored. Each export is recorded in the audit log as `migration.target_workbook.export`.
+
+The check can change one thing: the extraction. Where a SuccessFactors workbook asks for a column that the extraction
+does not fetch yet, and the column names a plain property of the sheet's entity in the tenant's own metadata, Meridian
+adds it to the extraction of that system. The panel counts the added columns and lists them under **Columns added to
+the extraction**. **Update the run** starts a new extraction and analysis of that system so the columns are fetched
+now; it needs the permission to start extractions. When the new run finishes, choose it and check the workbook again.
+
+![Migration analysis: the workbook from the new system after the check, with the columns added to the extraction and Update the run.](img/migration-workbook.png)
 
 Before a real load, confirm three things with the target system's team:
 
@@ -540,6 +548,7 @@ Create a Teams workflow that receives a webhook, add it for the `digest.sent` ev
 
 - Back up and restore, with the `.env` encrypted.
 - Update, pin a version and roll back.
+- Know what watches the platform and the data after a clean.
 - Know log rotation, DNS, the diagnostics bundle, the status page and sandbox mode.
 
 ### Backups
@@ -561,10 +570,26 @@ touching the real one: run it monthly.
 
 ### Updates and rollback
 
-- **Administration, Platform and updates** shows the running and the latest version; **Update to** starts the
-  update through the updater sidecar. On the host: `sudo bash scripts/update.sh`.
-- `update.sh` tags the current images `:rollback`, pulls, migrates and probes `/health` before it declares success;
-  `sudo bash scripts/update.sh --rollback` returns to the previous images. Rollback restores images, not the schema.
+- **Administration, Platform and updates** shows the running and the latest version, and whether the updater is set
+  up on this deployment. When a newer version is available and the updater is set up, **Update to** that version,
+  confirmed with **Run the update**, starts it; progress shows on the same card. Running an update needs the manage
+  system permission. Without the updater the card says
+  so: run the update script on the host instead.
+- On the host:
+  - `sudo bash scripts/update.sh` updates to the latest release that Meridian HQ names. When HQ cannot be reached,
+    nothing is changed and the script asks for `--version`.
+  - `sudo bash scripts/update.sh --version 2.4.1` updates to, or reinstalls, one release.
+  - `sudo bash scripts/update.sh --rollback` returns to the release that ran before. A second `--rollback` returns
+    to the newer one again.
+- An update runs in this order: it snapshots the current images as `:rollback`, pulls the new release, keeps HTTPS
+  on in nginx, writes a dump of the whole database to `backups/pre-update-<time>.dump`, pins `MERIDIAN_VERSION` to
+  the new release in `.env` (the replaced one is kept as `MERIDIAN_PREVIOUS_VERSION`), runs the database migrations
+  and probes `/health` for up to 300 seconds. If the database dump fails, the update stops and nothing is changed.
+- If the migrations or the health probe fail, the script rolls back to the previous images by itself and prints the
+  `pg_restore` command for the pre-update dump. Rollback restores images, not the schema: when the migrations had
+  already run, restore the dump as printed.
+- `--no-verify` skips the health probe. `--include-updater` also upgrades the updater's own image as the very last
+  step; the in-product update never passes it.
 - `MERIDIAN_VERSION` in `.env` sets the Meridian image tag; a fixed tag holds the stack at that release.
 
 ### Logs, DNS and images
@@ -572,6 +597,18 @@ touching the real one: run it monthly.
 - Every container rotates its logs: at most 5 files of 50 MB each.
 - Redis is pinned to `redis:7.2-alpine` (7.4 and later are not open source) and Ollama to a fixed release.
 - DNS: the host's resolver by default; `MERIDIAN_DNS_1` and `MERIDIAN_DNS_2` override it (module 4).
+
+### Monitoring
+
+- **Administration, Platform and updates, Health checks** and the status page (below) watch the platform itself.
+- **Administration, Alerts** (module 8) sends what you choose under **When to alert** and the **Score floors per
+  object** to email, Teams or a webhook.
+- After a cleaning batch is loaded, **Monitoring** under Work shows whether the fixed records stay fixed and which
+  rules pull them back. It needs a run after the load; until then it says there is nothing to monitor yet.
+- **Learned monitors**, under Rules, compares the latest run of each object with that object's own earlier runs and
+  needs no setup. Between full runs it also compares the rows each sync extracted with the earlier syncs.
+
+![Learned monitors: breaks found against each object's own earlier runs.](img/monitors.png)
 
 ### Support and safety
 

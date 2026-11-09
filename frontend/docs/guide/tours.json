@@ -1,5 +1,5 @@
 {
-  "about": "The recording script of the Meridian help videos: one tour per guide chapter, read by e2e/guided-tours-v2.spec.ts (RECORD_HELP=1, the recording project). Every step shows its caption, then does its action (go, click, point, press, fill, focus), then holds long enough to read. The captions are the videos' subtitle track and are searched by the help panel.",
+  "about": "The recording script of the Meridian help videos: one tour per guide chapter, read by e2e/guided-tours-v2.spec.ts (RECORD_HELP=1, the recording project). Every step shows its caption, then does its action (go, click, point, press, fill, focus, upload), then holds long enough to read. The captions are the videos' subtitle track and are searched by the help panel.",
   "tours": [
     {
       "video": "guide2-overview", "chapter": "overview", "params": "persona=lead",
@@ -487,10 +487,14 @@
         {"caption": "The banner gives the current verdict from the latest analysis.", "point": {"testid": "mig-banner"}},
         {"caption": "Workbook from the new system: fill the new system's own workbook or load file from a finished run.", "point": {"testid": "mig-workbook"}},
         {"caption": "Three steps: choose the run and workbook, check what fits, export the data.", "point": {"testid": "mig-workbook-steps"}},
-        {"caption": "Choose the workbook or load file the new system gave you.", "point": {"testid": "mig-workbook-file"}},
-        {"caption": "Check the workbook only reads it. Nothing is stored and nothing is exported yet.", "point": {"role": "button", "name": "Check the workbook"}},
-        {"caption": "After a check: how many rows are ready, how many are held back, and how many sheets can be filled.", "point": {"testid": "mig-workbook-summary", "optional": true}},
-        {"caption": "Required columns with no data are named, because the new system refuses those rows.", "point": {"testid": "mig-workbook-required", "optional": true}},
+        {"caption": "Choose the workbook or load file the new system gave you.", "upload": {"testid": "mig-workbook-file", "name": "new-system-workbook.xlsx"}},
+        {"caption": "Check the workbook reads it. The workbook itself is not kept and nothing is exported yet.", "click": {"role": "button", "name": "Check the workbook"}},
+        {"caption": "How many rows are ready, how many are held back, and how many sheets can be filled.", "point": {"testid": "mig-workbook-summary"}},
+        {"caption": "Required columns with no data are named, because the new system refuses those rows.", "point": {"testid": "mig-workbook-required"}},
+        {"caption": "Columns the workbook asks for that the extraction did not fetch are added to the extraction, so Meridian learns them.", "point": {"testid": "mig-workbook-learned"}},
+        {"caption": "Update the run starts a new extraction that fetches the added columns from the source system.", "click": {"testid": "mig-workbook-update"}},
+        {"caption": "When the new run finishes, choose it above and check the workbook again.", "point": {"testid": "mig-workbook-updating"}},
+        {"caption": "Then export in the same format, as Excel, or as CSV files, ready to load.", "point": {"role": "button", "name": "Export as Excel"}},
         {"caption": "Gaps by kind: why records would not load, grouped by the kind of problem.", "point": {"testid": "mig-gaps"}}
       ]
     }
