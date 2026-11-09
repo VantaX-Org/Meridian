@@ -400,6 +400,11 @@ class ConnectivityManager:
                 for t, fs in controlled:
                     if t in plans:
                         plans[t].fields |= {f for f in fs if dictionary.field(t, f) is not None}
+                # fields a target workbook asked for and DD03L confirmed (workbook.learn_sap)
+                for t, plan in plans.items():
+                    if t in dictionary.tables:
+                        plan.fields |= {f.name for f in dictionary.tables[t].fields.values()
+                                        if f.provenance == "workbook"}
                 # ODP or the table reader, per table (sap/extraction_plan.py choose_read_paths)
                 odp_ok = path_setting == "auto" and hasattr(connector, "odp_reader") and \
                     connector.odp_reader().available()
@@ -801,6 +806,22 @@ class ConnectivityManager:
         finally:
             connector.close()
         return pd.concat(parts, ignore_index=True)[fields]
+
+    def dd03l_fields(self, system_id: str, tables: set[str], fields: set[str]) -> set[tuple[str, str]]:
+        """The (table, field) pairs this ABAP system's DD03L holds among tables x fields, cached per system.
+        Raises SAPConnectorError if the system cannot be read."""
+        from sap.ddic_reader import known_fields
+
+        def connect():
+            row = self._load_system(system_id)
+            params = self._build_connection_params(row)
+            try:
+                return self._get_connector(row.system_type, params)
+            finally:
+                for key in ("password", "client_secret", "api_key"):
+                    params.pop(key, None)
+
+        return known_fields(system_id, tables, fields, connect)
 
     @staticmethod
     def _payroll_totals(connector, rgdir: Optional[pd.DataFrame]) -> tuple[Optional[pd.DataFrame], dict]:

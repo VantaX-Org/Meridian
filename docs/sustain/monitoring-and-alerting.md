@@ -49,7 +49,7 @@ Status on the customer deployment:
 
 ## Alert rules and first response
 
-Rules are in `docker/monitoring/prometheus/alerts.yml`. Each alert has a `runbook` label, but the per-alert documents it points to (`docs/ops/runbooks/<runbook>.md`) do not exist. Until they do, use the table below. Writing them is To confirm (owner: vendor engineering).
+Rules are in `docker/monitoring/prometheus/alerts.yml`. Each alert has a `runbook` label and a `runbook_url` annotation that points to the table below. The table gives the first response and links the matching runbook in [runbooks.md](runbooks.md).
 
 Severity mapping to the support model is proposed, to agree (see [support-model.md](support-model.md)).
 
