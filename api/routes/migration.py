@@ -1334,7 +1334,7 @@ async def _read_workbook(file: UploadFile) -> bytes:
 def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") -> tuple:
     """Parse an uploaded workbook and fill it from one finished run. Nothing is stored."""
     from api.services.migration import workbook as wb
-    from api.services.source_design import dictionary_for
+    from api.services.source_design import dictionary_for, store_learned
     from checks.field_status_rules import conversions_for
     from workers.dataset import load_dataset
     from workers.db import get_sync_engine, tenant_session
@@ -1354,6 +1354,14 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
             raise HTTPException(status_code=409, detail="This run has not finished, so it holds no data to export.")
         system_id = meta.get("system_id")
         dictionary = dictionary_for(s, system_id)
+        # Columns the dictionary does not carry yet are learned for this system, so the next run extracts them.
+        learned = wb.learn(book, dictionary) if system_id else {}
+        if learned:
+            store_learned(s, system_id, learned)
+            s.commit()
+            dictionary = dictionary_for(s, system_id)
+        pending = {f.source.split(".", 1)[1] for t in dictionary.tables.values() for f in t.fields.values()
+                   if f.provenance == "workbook"}
         needed = wb.tables_needed(book, dictionary)
         no_match = HTTPException(status_code=422, detail="Nothing in this run matches the sheets in this workbook.")
         if not needed:
@@ -1373,7 +1381,16 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
             for target, vm in load_value_maps(s, module, system_id).items():
                 maps.setdefault(target, {}).update(vm)
         strict = {t for t, vm in maps.items() if vm.keys() - config.get(t, {}).keys()}
-    return (book, *wb.fill(book, frames, maps, strict))
+    tabs, report = wb.fill(book, frames, maps, strict)
+    # A learned column the run does not hold yet is filled by the next run of this system.
+    waiting = 0
+    for sheet in report["sheets"]:
+        for col in sheet["unmapped"]:
+            col["learned"] = col["id"] in pending
+            waiting += col["learned"]
+    report["learned"] = {"new": sum(len(f) for f in learned.values()), "waiting": waiting,
+                         "system_id": system_id, "modules": meta.get("modules") or []}
+    return book, tabs, report
 
 
 @router.post("/target-workbook/{version_id}/check")

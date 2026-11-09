@@ -380,6 +380,9 @@ def parse_workbook(data: bytes, filename: str = "") -> Workbook:
 
 def _entities(sheet: Sheet, dictionary: Dictionary) -> set[str]:
     """The entities a sheet loads, by its known name, or by naming an entity outright as an import template does."""
+    # The foundation pay component grid defines the components themselves, not what each employee is paid.
+    if sheet.kind == "grid" and sheet.base == "paycomponent":
+        return {"FOPayComponent"}
     known = SHEET_ENTITIES.get(sheet.base)
     if known:
         return known
@@ -417,9 +420,6 @@ def _candidates(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Fie
     because the person or user id is the same value on every entity. Nothing looser: a job's start date is not
     the employment's start date, although both are called start date."""
     entities = _entities(sheet, dictionary)
-    # The foundation pay component grid defines components; Meridian holds only what each employee is paid.
-    if sheet.kind == "grid" and sheet.base == "paycomponent":
-        return {}
     if not entities:
         return _by_field(sheet, dictionary)
     out: dict[str, dict[str, Field]] = {}
@@ -444,6 +444,37 @@ def _candidates(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Fie
                 hits[col.header] = hit
         if hits:
             out[table.name] = hits
+    return out
+
+
+_PROPERTY = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+
+
+def learn(workbook: Workbook, dictionary: Dictionary) -> dict[str, dict[str, str]]:
+    """Unmatched columns that name a plain property of their sheet's entity, as {TABLE: {FIELD: "Entity.property"}}.
+
+    The workbook asks for a property the dictionary does not carry yet. It is added to the table that already reads
+    most of that entity, so the next extraction asks for it. Extraction checks every property against the tenant's
+    own $metadata and drops one the entity does not have, so a column is learned, never invented."""
+    out: dict[str, dict[str, str]] = {}
+    for sheet in workbook.sheets:
+        entities = _entities(sheet, dictionary)
+        if len(entities) != 1:
+            continue
+        entity = next(iter(entities))
+        counts = {t.name: sum(1 for f in t.fields.values() if (f.source or "").split(".")[0] == entity)
+                  for t in dictionary.tables.values() if t.provenance.startswith("canonical:successfactors")}
+        home = max((t for t in counts if counts[t]), key=lambda t: (counts[t], t), default=None)
+        if not home:
+            continue
+        matched = {h for hits in _candidates(sheet, dictionary).values() for h in hits}
+        have = {(f.source or "").split(".", 1)[-1] for f in dictionary.tables[home].fields.values()}
+        for col in sheet.columns:
+            if col.header in matched or not _PROPERTY.fullmatch(col.id) or col.id in have:
+                continue
+            name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", col.id).upper()
+            if name not in dictionary.tables[home].fields:
+                out.setdefault(home, {})[name] = f"{entity}.{col.id}"
     return out
 
 

@@ -8592,4 +8592,11 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The value is approved. The next load uses it.": "値は承認されました。次回のロードで使用されます。",
   "The proposed value was rejected.": "提案された値は却下されました。",
   "Propose these values": "これらの値を提案",
+  "The run could not be started.": "実行を開始できませんでした。",
+  "{n} columns in this workbook were not in the extraction. Meridian has added them, so the next run fetches them from the source system.": "このワークブックの {n} 列は抽出に含まれていませんでした。Meridian が追加したため、次の実行でソースシステムから取得されます。",
+  "Columns added to the extraction": "抽出に追加された列",
+  "A new run has started. When it finishes, choose it above and check the workbook again.": "新しい実行が開始されました。完了したら上で選択し、ワークブックを再度確認してください。",
+  "Starting the run": "実行を開始しています",
+  "Update the run": "実行を更新",
+  "Ask someone who can start extractions to update the run.": "抽出を開始できる担当者に実行の更新を依頼してください。",
 };

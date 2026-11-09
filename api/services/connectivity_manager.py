@@ -873,6 +873,9 @@ class ConnectivityManager:
                     wanted |= set(tables_of(rule_columns(r) + extract_target_columns(r)))
             except FileNotFoundError:
                 continue
+        # A table carrying fields learned from a target workbook is read even when no rule needs it.
+        wanted |= {t.name for t in dictionary.tables.values()
+                   if any(f.provenance == "workbook" for f in t.fields.values())}
         snap = latest_snapshot_id(self.session, system_id)
         live = load_overlay(self.session, snap)[0] if snap else {}
         frames, coverage = {}, []

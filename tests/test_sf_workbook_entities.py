@@ -48,5 +48,6 @@ def test_friendly_headers_do_not_false_match():
     assert set(hits["FOPAYRANGE"]) == {"Pay Range Code"}  # the code alias only; Min, Max, Pay Grade stay unmatched
 
 
-def test_foundation_pay_component_grid_stays_unfilled():
-    assert cands("Pay Component Values (US)", ["externalCode"], "grid") == {}
+def test_foundation_pay_component_grid_fills_from_the_component_definitions():
+    hits = cands("Pay Component Values (US)", ["externalCode", "is-earning", "payComponentType", "LegalEntity.externalCode"], "grid")
+    assert set(hits["FOPAYCOMPONENT"]) == {"externalCode", "is-earning", "payComponentType", "LegalEntity.externalCode"}

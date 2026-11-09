@@ -9,11 +9,12 @@ Dictionary overlay so every decision uses the source system's own definitions
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from typing import Optional
 
 from sqlalchemy import text
 
-from sap.ddic import Dictionary, dictionary_for_system, get_dictionary
+from sap.ddic import Dictionary, Field, dictionary_for_system, get_dictionary
 
 
 def store_snapshot(session, tenant_id: str, system_id: str, snapshot_id: str, snap: dict) -> dict:
@@ -88,10 +89,52 @@ def dictionary_for(session, system_id: Optional[str], system_type: Optional[str]
         if row:
             base = dictionary_for_system(row[1] if row[1] in ("ecc6", "s4hana") else row[0])
     snap = latest_snapshot_id(session, system_id)
-    if not snap:
-        return base
-    tables, domains = load_overlay(session, snap)
-    return base.overlay(tables, domains) if tables else base
+    if snap:
+        tables, domains = load_overlay(session, snap)
+        if tables:
+            base = base.overlay(tables, domains)
+    return with_learned(base, learned_fields(session, system_id))
+
+
+LEARNED_KEY = "workbook_fields"  # tenant_settings: {system_id: {TABLE: {FIELD: "Entity.property"}}}
+
+
+def learned_fields(session, system_id: str) -> dict[str, dict[str, str]]:
+    """The fields target workbooks taught this system (api/services/migration/workbook.py learn)."""
+    row = session.execute(text(
+        "SELECT value -> :sid FROM tenant_settings WHERE key = :k "
+        "AND CAST(tenant_id AS text) = current_setting('app.tenant_id', true)"),
+        {"sid": str(system_id), "k": LEARNED_KEY}).fetchone()
+    return (row[0] if row else None) or {}
+
+
+def store_learned(session, system_id: str, learned: dict[str, dict[str, str]]) -> None:
+    """Merge newly learned fields into the system's set. The caller commits."""
+    if not learned:
+        return
+    merged = learned_fields(session, system_id)
+    for table, fields in learned.items():
+        merged[table] = {**merged.get(table, {}), **fields}
+    session.execute(text(
+        "INSERT INTO tenant_settings (tenant_id, key, value, updated_at) "
+        "VALUES (CAST(current_setting('app.tenant_id') AS uuid), :k, "
+        "jsonb_build_object(CAST(:sid AS text), CAST(:v AS jsonb)), now()) "
+        "ON CONFLICT (tenant_id, key) DO UPDATE SET value = tenant_settings.value || EXCLUDED.value, updated_at = now()"),
+        {"k": LEARNED_KEY, "sid": str(system_id), "v": json.dumps(merged)})
+
+
+def with_learned(dictionary: Dictionary, learned: dict[str, dict[str, str]]) -> Dictionary:
+    """A copy of the dictionary carrying the fields learned from workbooks (see learn)."""
+    tables = dict(dictionary.tables)
+    for name, fields in (learned or {}).items():
+        t = tables.get(name)
+        if t is None:
+            continue
+        extra = {f: Field(name, f, False, "STRING", 0, source=src, description=src.split(".", 1)[1],
+                          provenance="workbook") for f, src in fields.items() if f not in t.fields}
+        if extra:
+            tables[name] = replace(t, fields={**t.fields, **extra})
+    return replace(dictionary, tables=tables)
 
 
 async def live_config_for_version(db, version_id) -> tuple[str, dict[str, list]]:

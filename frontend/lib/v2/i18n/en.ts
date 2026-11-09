@@ -8591,6 +8591,13 @@ export const en = {
   "The value is approved. The next load uses it.": "The value is approved. The next load uses it.",
   "The proposed value was rejected.": "The proposed value was rejected.",
   "Propose these values": "Propose these values",
+  "The run could not be started.": "The run could not be started.",
+  "{n} columns in this workbook were not in the extraction. Meridian has added them, so the next run fetches them from the source system.": "{n} columns in this workbook were not in the extraction. Meridian has added them, so the next run fetches them from the source system.",
+  "Columns added to the extraction": "Columns added to the extraction",
+  "A new run has started. When it finishes, choose it above and check the workbook again.": "A new run has started. When it finishes, choose it above and check the workbook again.",
+  "Starting the run": "Starting the run",
+  "Update the run": "Update the run",
+  "Ask someone who can start extractions to update the run.": "Ask someone who can start extractions to update the run.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

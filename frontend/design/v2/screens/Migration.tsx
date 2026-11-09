@@ -13,7 +13,7 @@ import {
   saveValueMap, seedFieldMap, startMigration, startReconciliation, updateFieldMapping, type FieldDef, type MigrationMode, type WorkbookFormat, type MigrationRun,
   type ReconKind,
 } from "@/lib/api/v2/migration";
-import { getVersionsPage } from "@/lib/api/v2/runs";
+import { extractObjects, getVersionsPage } from "@/lib/api/v2/runs";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
@@ -371,6 +371,10 @@ function TargetWorkbookPanel() {
     onSuccess: (name) => toast.show(t("Workbook data saved as {name}", { name })),
     onError: (e) => toast.show(errorSentence(e, t("The workbook data could not be prepared.")), "error"),
   });
+  const update = useMutation({
+    mutationFn: (l: { system_id: string; modules: string[] }) => extractObjects(l.system_id, l.modules, true),
+    onError: (e) => toast.show(errorSentence(e, t("The run could not be started.")), "error"),
+  });
   if (!allowed) return null;
   const title = t("Workbook from the new system");
   const meta = t("Fill the new system's workbook or load file from a finished run");
@@ -379,7 +383,8 @@ function TargetWorkbookPanel() {
   if (versions.data.length === 0) return <Panel title={title} meta={meta} testId="mig-workbook"><EmptyFrame>{t("No run has finished yet. A finished run is needed before the workbook can be filled.")}</EmptyFrame></Panel>;
   const report = check.data;
   const missing = report?.sheets.flatMap((s) => s.unmapped.filter((u) => u.mandatory).map((u) => ({ sheet: s.name, ...u }))) ?? [];
-  const change = () => { check.reset(); exp.reset(); };
+  const learned = report?.sheets.flatMap((s) => s.unmapped.filter((u) => u.learned).map((u) => ({ sheet: s.name, ...u }))) ?? [];
+  const change = () => { check.reset(); exp.reset(); update.reset(); };
   return (
     <Panel title={title} meta={meta} testId="mig-workbook">
       <Steps label={t("Workbook steps")} testId="mig-workbook-steps" labels={[t("Choose the run and workbook"), t("Check what fits"), t("Export the data")]} current={report ? 2 : file ? 1 : 0} />
@@ -409,6 +414,28 @@ function TargetWorkbookPanel() {
           {report.summary.mandatory_sheets_empty > 0 ? <p role="status" data-testid="mig-workbook-empty">{t("{n} mandatory sheets have no ready rows. The load tool will refuse the file until they do.", { n: int(report.summary.mandatory_sheets_empty) })}</p> : null}
           {report.summary.mapped_values > 0 ? <p className="m2-meta" data-testid="mig-workbook-mapped">{t("{n} values were changed by confirmed value mappings.", { n: int(report.summary.mapped_values) })}</p> : null}
           {report.summary.mandatory_unmapped > 0 ? <p role="status" data-testid="mig-workbook-required">{t("{n} required columns have no data in this run. The new system will refuse those rows until the columns are filled.", { n: int(report.summary.mandatory_unmapped) })}</p> : null}
+          {learned.length > 0 && report?.learned?.system_id ? (
+            <div role="status" data-testid="mig-workbook-learned">
+              <p>{t("{n} columns in this workbook were not in the extraction. Meridian has added them, so the next run fetches them from the source system.", { n: int(learned.length) })}</p>
+              <Disclose title={t("Columns added to the extraction")} hint={t("{n} columns", { n: int(learned.length) })}>
+                <Table title={t("Columns added to the extraction")} head={[t("Sheet"), t("Column")]}>
+                  {learned.map((m) => (
+                    <tr key={`${m.sheet}-${m.id}`}>
+                      <th scope="row" className="m2-card-lead">{m.sheet}</th>
+                      <td data-label={t("Column")}><Coded code={m.id} text={m.label} /></td>
+                    </tr>
+                  ))}
+                </Table>
+              </Disclose>
+              {update.isSuccess ? (
+                <p data-testid="mig-workbook-updating">{t("A new run has started. When it finishes, choose it above and check the workbook again.")}</p>
+              ) : can("trigger_sync") ? (
+                <p><button type="button" className="m2-btn m2-next" data-testid="mig-workbook-update" disabled={update.isPending} onClick={() => update.mutate({ system_id: report.learned!.system_id!, modules: report.learned!.modules })}>{update.isPending ? t("Starting the run") : t("Update the run")}</button></p>
+              ) : (
+                <p className="m2-meta">{t("Ask someone who can start extractions to update the run.")}</p>
+              )}
+            </div>
+          ) : null}
           <Table title={t("Sheets in the workbook")} head={[t("Sheet"), t("Filled from"), t("Columns filled"), t("Rows ready"), t("Held back"), t("Required columns with no data")]}>
             {report.sheets.map((s) => (
               <tr key={s.name}>

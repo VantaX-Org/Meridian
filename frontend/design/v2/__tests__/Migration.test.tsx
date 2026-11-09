@@ -175,6 +175,20 @@ describe("Workbook from the new system", () => {
     await waitFor(() => expect(within(panel).queryByTestId("mig-workbook-summary")).toBeNull());
   });
 
+  it("lists the columns it learned and updates the run that fetches them", async () => {
+    const start = vi.spyOn(runsApi, "extractObjects").mockResolvedValue({ job_id: "dl-1", status: "queued" });
+    renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
+    const { panel, button } = await pick();
+    choose(panel);
+    fireEvent.click(button);
+    const learned = await within(panel).findByTestId("mig-workbook-learned");
+    expect(learned.textContent).toContain("1 columns in this workbook were not in the extraction");
+    expect(learned.textContent).toContain("Pay Grade");
+    fireEvent.click(within(learned).getByTestId("mig-workbook-update"));
+    expect((await within(panel).findByTestId("mig-workbook-updating")).textContent).toContain("check the workbook again");
+    expect(start).toHaveBeenCalledWith("sys-sf", ["employee_central"], true);
+  });
+
   it("states why the workbook was refused", async () => {
     vi.spyOn(migrationApi, "checkTargetWorkbook").mockRejectedValue({ isAxiosError: true, response: { data: { detail: "Nothing in this run matches the sheets in this workbook." } } });
     renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
