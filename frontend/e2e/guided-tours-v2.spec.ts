@@ -5,8 +5,8 @@
  * the caption cues and the poster time beside the capture (help-videos-raw/captions/<video>.json);
  * scripts/help-videos.mjs turns the capture into <video>.mp4, <video>.vtt and <video>.jpg in docs/help-videos/.
  *
- *   npx next build && PORT=3100 npm run start:standalone   (or any server; PLAYWRIGHT_BASE_URL points at it)
- *   RECORD_HELP=1 PLAYWRIGHT_BASE_URL=http://localhost:3100 PW_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
+ *   npm run build && PORT=3200 npm run start:standalone   (or any server; PLAYWRIGHT_BASE_URL points at it)
+ *   RECORD_HELP=1 PLAYWRIGHT_BASE_URL=http://localhost:3200 PW_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
  *     npx playwright test --project=recording e2e/guided-tours-v2.spec.ts --workers=2
  *   node scripts/help-videos.mjs
  *
@@ -27,6 +27,8 @@ interface Step {
   check?: Target;
   select?: { label: string; value: string };
   fill?: { label: string; text: string };
+  /** A file input, by test id, given a small made-up file; fixture mode answers the check without reading it. */
+  upload?: { testid: string; name: string };
   focus?: string;
   press?: string;
   scroll?: number;
@@ -140,6 +142,12 @@ for (const tour of (tours as { tours: Tour[] }).tours) {
           const l = page.getByPlaceholder(step.fill.label).or(page.getByRole("textbox", { name: step.fill.label })).filter({ visible: true }).first();
           await l.fill("");
           await l.pressSequentially(step.fill.text, { delay: DRY ? 0 : 110 });
+          await settle(page);
+        }
+        if (step.upload) {
+          const l = page.getByTestId(step.upload.testid).first();
+          await moveTo(page, l);
+          await l.setInputFiles({ name: step.upload.name, mimeType: "application/octet-stream", buffer: Buffer.from("demo") });
           await settle(page);
         }
         if (step.focus) await page.locator(step.focus).first().focus();
