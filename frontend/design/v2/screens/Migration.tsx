@@ -384,6 +384,7 @@ function TargetWorkbookPanel() {
   const report = check.data;
   const missing = report?.sheets.flatMap((s) => s.unmapped.filter((u) => u.mandatory).map((u) => ({ sheet: s.name, ...u }))) ?? [];
   const learned = report?.sheets.flatMap((s) => s.unmapped.filter((u) => u.learned).map((u) => ({ sheet: s.name, ...u }))) ?? [];
+  const ambiguous = report?.sheets.flatMap((s) => s.unmapped.filter((u) => u.candidates?.length).map((u) => ({ sheet: s.name, ...u }))) ?? [];
   const change = () => { check.reset(); exp.reset(); update.reset(); };
   return (
     <Panel title={title} meta={meta} testId="mig-workbook">
@@ -438,6 +439,20 @@ function TargetWorkbookPanel() {
           ) : null}
           {(report.learned?.missing ?? 0) > 0 ? (
             <p role="status" data-testid="mig-workbook-not-in-system">{t("{n} columns ask for fields the source system did not return on the last run, so another run will not fill them. Ask the system owner whether the field exists, or fill these columns in the new system.", { n: int(report.learned!.missing!) })}</p>
+          ) : null}
+          {ambiguous.length > 0 ? (
+            <div role="status" data-testid="mig-workbook-ambiguous">
+              <p>{t("{n} columns name a field that more than one of this object's tables holds, so Meridian did not choose one. Write the table in the column header, as TABLE-FIELD, and check the workbook again.", { n: int(ambiguous.length) })}</p>
+              <Table title={t("Columns on more than one table")} head={[t("Sheet"), t("Column"), t("Tables that hold it")]}>
+                {ambiguous.map((m) => (
+                  <tr key={`${m.sheet}-${m.id}`}>
+                    <th scope="row" className="m2-card-lead">{m.sheet}</th>
+                    <td data-label={t("Column")}><Coded code={m.id} text={m.label} /></td>
+                    <td data-label={t("Tables that hold it")}>{m.candidates!.map((tb) => <Coded key={tb} code={tb} text={labelText(tb)} first />)}</td>
+                  </tr>
+                ))}
+              </Table>
+            </div>
           ) : null}
           <Table title={t("Sheets in the workbook")} head={[t("Sheet"), t("Filled from"), t("Columns filled"), t("Rows ready"), t("Held back"), t("Required columns with no data")]}>
             {report.sheets.map((s) => (

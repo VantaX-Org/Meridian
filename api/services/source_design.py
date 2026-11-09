@@ -130,8 +130,10 @@ def with_learned(dictionary: Dictionary, learned: dict[str, dict[str, str]]) -> 
         t = tables.get(name)
         if t is None:
             continue
-        extra = {f: Field(name, f, False, "STRING", 0, source=src, description=src.split(".", 1)[1],
-                          provenance="workbook") for f, src in fields.items() if f not in t.fields}
+        # An SAP field is learned as "TABLE.FIELD" from DD03L; it has no entity, so it carries no source.
+        extra = {f: Field(name, f, False, "STRING", 0, source=None if src == f"{name}.{f}" else src,
+                          description=src.split(".", 1)[1], provenance="workbook")
+                 for f, src in fields.items() if f not in t.fields}
         if extra:
             tables[name] = replace(t, fields={**t.fields, **extra})
     return replace(dictionary, tables=tables)

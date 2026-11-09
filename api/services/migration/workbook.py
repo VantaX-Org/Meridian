@@ -478,6 +478,46 @@ def learn(workbook: Workbook, dictionary: Dictionary) -> dict[str, dict[str, str
     return out
 
 
+def learn_sap(workbook: Workbook, dictionary: Dictionary, scope: set[str],
+              lookup) -> tuple[dict[str, dict[str, str]], dict[str, list[str]]]:
+    """Unmatched SAP columns resolved against the system's DD03L, limited to the object's tables in `scope`.
+
+    `lookup(tables, fields)` returns the (table, field) pairs DD03L holds. A field on exactly one in-scope table is
+    learned as {TABLE: {FIELD: "TABLE.FIELD"}}, so the next extraction asks for it. The second result names, per
+    column id, the tables that hold it when that is not exactly one: several is ambiguous and is not guessed, none is
+    not in the system. Only names DD03L returns are learned."""
+    scope = {t for t in scope if t in dictionary.tables}
+    asks: dict[str, tuple[str, set[str]]] = {}
+    for sheet in workbook.sheets:
+        if _entities(sheet, dictionary):
+            continue
+        matched = {h for hits in _candidates(sheet, dictionary).values() for h in hits}
+        for col in sheet.columns:
+            if col.header in matched:
+                continue
+            table, name = re.sub(r"^S_", "", col.table.upper()), col.id.upper()
+            split = re.fullmatch(r"([A-Z][A-Z0-9_/]*)[-.]([A-Z0-9_/]+)", name)
+            if split and not table:
+                table, name = re.sub(r"^S_", "", split.group(1)), split.group(2)
+            if table:
+                if table in scope and name not in dictionary.tables[table].fields:
+                    asks[col.id] = (name, {table})
+            elif _TECHNICAL.fullmatch(col.id) and not any(name in t.fields for t in dictionary.tables.values()):
+                asks[col.id] = (name, scope)
+    if not asks or not scope:
+        return {}, {}
+    found = lookup({t for _, ts in asks.values() for t in ts}, {n for n, _ in asks.values()})
+    learned: dict[str, dict[str, str]] = {}
+    unresolved: dict[str, list[str]] = {}
+    for col_id, (name, tables) in asks.items():
+        hits = sorted(t for t in tables if (t, name) in found)
+        if len(hits) == 1:
+            learned.setdefault(hits[0], {})[name] = f"{hits[0]}.{name}"
+        else:
+            unresolved[col_id] = hits
+    return learned, unresolved
+
+
 def tables_needed(workbook: Workbook, dictionary: Dictionary) -> set[str]:
     """The source tables worth loading for this workbook."""
     return {t for s in workbook.sheets for t in _candidates(s, dictionary)}
