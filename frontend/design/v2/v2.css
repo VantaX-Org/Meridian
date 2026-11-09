@@ -44,7 +44,7 @@
 .m2-dash { color: var(--m2-ink-3); }
 /* The separator is a drawn 3px disc, never the U+00B7 character. */
 .m2-dot::before { content: ""; display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: var(--m2-meta); vertical-align: middle; margin: 0 var(--m2-s2); }
-.m2-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.m2-sr { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .m2-skip { position: absolute; left: var(--m2-s2); top: -48px; z-index: 200; background: var(--m2-sheet); color: var(--m2-fg); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); }
 .m2-skip:focus { top: var(--m2-s2); }
 /* A link inside a sentence is underlined as well as coloured, so it never relies on colour alone. */

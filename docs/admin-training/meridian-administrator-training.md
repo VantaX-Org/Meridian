@@ -550,6 +550,7 @@ Create a Teams workflow that receives a webhook, add it for the `digest.sent` ev
 - Update, pin a version and roll back.
 - Know what watches the platform and the data after a clean.
 - Know log rotation, DNS, the diagnostics bundle, the status page and sandbox mode.
+- Read the Aletheia engine page and set the engine up in `docker/.env`.
 
 ### Backups
 
@@ -619,6 +620,61 @@ touching the real one: run it monthly.
   webhooks, digests, report mailouts and write-backs are held back until you exit.
 
 ![Administration, Platform and updates: jobs, version, health checks and the diagnostics bundle.](img/platform-and-updates.png)
+
+### Aletheia engine
+
+**Administration, Aletheia engine** (under Operations, with the manage system permission) shows the deployment's own
+analysis engine. The engine runs as a separate container next to Meridian, with its own volume, and is never shared
+with another product on the same host. It receives only run-level scores and counts, never extracted records or
+field values. When the engine is missing or stopped, Meridian keeps working; only the engine panels stay empty.
+
+![Administration, Aletheia engine: status, licence and use of the deployment's own engine.](img/aletheia-engine.png)
+
+The page has three blocks.
+
+- **Status**
+  - **Engine**: *Running*, *Not answering*, or *Not configured* when no engine address is set.
+  - **Version**: the engine release that answered.
+  - **Engine tenant**: the tenant Meridian learns into inside the engine (`meridian` unless changed).
+  - **Access token**: *Set* or *Not set*. The token itself is never shown.
+- **Licence**
+  - **Verdict**: *Valid*, *Not valid*, *Unlicensed*, *Not read* (the engine answered but gave no licence) or *Not
+    known* (the engine does not answer).
+  - **Reason**: why the licence is not valid, or *None*.
+  - **Deployment**: the deployment id the licence was issued for.
+  - **Valid until**: the licence end date.
+  - **Engine tenants allowed**: how many engine tenants the licence permits.
+- **Usage**
+  - **Calls recorded**, **First call** and **Last call**: how often and when Meridian has used the engine.
+  - One further row per call type, with its count.
+
+When something is wrong, a note above the blocks names the first problem found, checked in this order:
+
+1. **Not configured**: no engine address is set, so Meridian runs without its engine.
+2. **Not answering**: the address is set but the engine does not respond. Check that the `aletheia` container runs.
+3. **No access token**: the engine runs, but Meridian cannot send it run trends to learn from.
+4. **Unlicensed**: no licence key is set on this host. The engine still learns, but nothing is enforced or attested.
+5. **Licence not valid**: the note gives the reason. Meridian stops sending the engine work until a valid key is set.
+
+The engine is set up in `docker/.env` with four settings. Keep the values in `.env` only (it is encrypted in every
+backup); never paste them into tickets, chat or screenshots.
+
+```
+ALETHEIA_DEPLOYMENT_ID=<the deployment id your licence was issued for>
+ALETHEIA_LICENSE_KEY=<the licence key you received>
+ALETHEIA_TOKEN=<a long random secret you choose>
+MERIDIAN_ALETHEIA_IMAGE=<engine image and tag, only to pin a release other than the default>
+```
+
+- `ALETHEIA_DEPLOYMENT_ID` must match the id on the licence, or the verdict is *Not valid*. It defaults to `meridian`.
+- `ALETHEIA_LICENSE_KEY` empty means *Unlicensed*.
+- `ALETHEIA_TOKEN` is given to both Meridian and the engine container; empty means *Access token: Not set*.
+  Generate one with `openssl rand -hex 32`.
+- `MERIDIAN_ALETHEIA_IMAGE` is normally left unset, so the engine release that ships with this Meridian release is
+  used.
+
+After changing any of them, run `sudo bash scripts/update.sh --version <the running version>` (it starts the engine
+by name) and reload the page.
 
 ### Checks
 

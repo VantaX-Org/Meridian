@@ -199,12 +199,12 @@ function Catalogue({ systemId, rows, runId, onOpen }: { systemId: string; rows: 
                     <Mono>{r.l1}</Mono> {r.name}
                     <span className="m2-under">{state}</span>
                   </th>
-                  <td data-label={t("Cases")}>{lr ? int(lr.cases) : <Dash why={t("Not mined")} />}</td>
-                  <td data-label={t("Variants")}>{lr ? int(lr.variants) : DASH}</td>
-                  <td data-label={t("Median throughput")}>{secs(lr?.median_seconds)}</td>
-                  <td data-label={t("Automated")}>{pct(lr?.automation_rate)}</td>
-                  <td data-label={t("Fitness")}>{fit(lr?.fitness)}</td>
-                  <td data-label={t("DQ defects")}>{r.dq_defects === null ? DASH : int(r.dq_defects)}</td>
+                  <td data-label={t("Cases")} className="m2-num">{lr ? int(lr.cases) : <Dash why={t("Not mined")} />}</td>
+                  <td data-label={t("Variants")} className="m2-num">{lr ? int(lr.variants) : DASH}</td>
+                  <td data-label={t("Median throughput")} className="m2-num">{secs(lr?.median_seconds)}</td>
+                  <td data-label={t("Automated")} className="m2-num">{pct(lr?.automation_rate)}</td>
+                  <td data-label={t("Fitness")} className="m2-num">{fit(lr?.fitness)}</td>
+                  <td data-label={t("DQ defects")} className="m2-num">{r.dq_defects === null ? DASH : int(r.dq_defects)}</td>
                   <td data-label={t("Actions")}>
                     {lr ? (
                       <button type="button" className="m2-btn m2-sm" onClick={() => onOpen(lr.id)} data-testid={`pd-open-${r.l1}`}>{t("Open flow")}</button>
@@ -370,7 +370,7 @@ function RunDetail({ entry, runId }: { entry: CatalogueEntry; runId: string }) {
                       <tr key={`${e.source}-${e.target}`}>
                         <th scope="row" className="m2-card-lead"><Mono>{e.source}</Mono> {names.get(e.source) ?? ""}</th>
                         <td data-label={t("To")}><Mono>{e.target}</Mono> {names.get(e.target) ?? ""}</td>
-                        <td data-label={t("Cases")}>{int(e.count)}</td>
+                        <td data-label={t("Cases")} className="m2-num">{int(e.count)}</td>
                         <td data-label={t("Median wait")}>{secs(e.median_seconds)}</td>
                       </tr>
                     ))}
@@ -408,9 +408,9 @@ function RunDetail({ entry, runId }: { entry: CatalogueEntry; runId: string }) {
                           {v.activities.join(" > ")}
                         </button>
                       </th>
-                      <td data-label={t("Cases")}>{int(v.case_count)} ({pct(v.share)})</td>
-                      <td data-label={t("Median throughput")}>{secs(v.median_seconds)}</td>
-                      <td data-label={t("Fitness")}>{fit(v.fitness)}</td>
+                      <td data-label={t("Cases")} className="m2-num">{int(v.case_count)} ({pct(v.share)})</td>
+                      <td data-label={t("Median throughput")} className="m2-num">{secs(v.median_seconds)}</td>
+                      <td data-label={t("Fitness")} className="m2-num">{fit(v.fitness)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -438,7 +438,7 @@ function RunDetail({ entry, runId }: { entry: CatalogueEntry; runId: string }) {
                   {conf.data.steps.map((s) => (
                     <tr key={s.activity}>
                       <th scope="row" className="m2-card-lead">{s.activity}</th>
-                      <td data-label={t("Fitness")}>{fit(s.step_fitness)}</td>
+                      <td data-label={t("Fitness")} className="m2-num">{fit(s.step_fitness)}</td>
                       <td data-label={t("Out of order")}>{int(s.out_of_order)}</td>
                       <td data-label={t("Cases missing it")}>{conf.data.missing[s.activity] === undefined ? DASH : int(conf.data.missing[s.activity])}</td>
                     </tr>
