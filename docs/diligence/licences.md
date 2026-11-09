@@ -128,24 +128,27 @@ not yet reviewed by an attorney. The Aletheia repository's own `LICENSE` file is
 licence (source-available, evaluation and non-commercial use only, pending counsel review), with copyright
 asserted by the founder and VantaX-Org.
 
-**What it covers in Meridian, and what we could not find.** In Meridian it covers the mark and the name
-only. Those terms are written for deployments of the Aletheia software. Neither repository contains an
-agreement that licenses Aletheia's mark, name or any design element to Meridian, or that applies section 6
-to Meridian; the only record is the code comment and the commit message. We did not find any Aletheia
-design asset in Meridian beyond the mark: Meridian's design system (`frontend/design/v2/`,
-`frontend/DESIGN.md`) is Meridian's own.
+**The written grant.** On 9 November 2026 the copyright holder granted Meridian a licence to the Aletheia mark
+and name, recorded on the Aletheia repository's licensees page (`docs/LICENSEES.md`, section "Meridian",
+VantaX-Org/vantax-aletheia pull request 24). It covers the mark in the attribution strip and the name "Aletheia" on
+Meridian's own grounded-answer, finding and rule-proposal features, worldwide, for as long as Meridian is a VantaX
+product. It applies the attribution obligation of section 6 to every Meridian deployment. It grants no engine code and
+no patent method, so Meridian holds no deployment licence token. It is non-transferable: a buyer of Meridian takes no
+right to the mark or name unless the Aletheia licensor grants it, or releases the attribution obligation, in writing.
+We did not find any Aletheia design asset in Meridian beyond the mark: Meridian's design system
+(`frontend/design/v2/`, `frontend/DESIGN.md`) is Meridian's own.
 
 **What a buyer acquires and what it must keep.**
 
 - The buyer does not acquire the Aletheia name, mark or any Aletheia IP by buying Meridian unless the deal
   says so: under section 4 of Aletheia's terms they stay with the Aletheia licensor.
-- If an agreement between Meridian's owner and the Aletheia licensor applies the attribution obligation to
-  Meridian, the buyer must keep the strip on every screen, unaltered, or obtain a release. Removing it
-  under such an agreement would expose the buyer to the remedies above.
-- Recommendation: because both products sit with the same group, settle it in the transaction documents.
-  Either a written licence from the Aletheia licensor to use the mark in Meridian (scope, term, territory,
-  whether the attribution obligation survives the sale), or a written release that lets the buyer remove
-  the strip. Removing it is a small change: the component, its two render sites, its CSS rule, its test
+- While Meridian is a VantaX product the grant applies the attribution obligation to it, so the strip stays on
+  every screen, unaltered. A buyer that keeps using the mark or name needs its own written grant from the
+  Aletheia licensor, and that grant would carry the same obligation; removing the strip under it would expose
+  the buyer to the remedies above.
+- Recommendation: settle it in the transaction documents. Either a written licence from the Aletheia licensor
+  to the buyer (scope, term, territory, whether the attribution obligation continues), or a written release
+  that lets the buyer remove the strip and rename the features. Removing it is a small change: the component, its two render sites, its CSS rule, its test
   and the SVG.
 - Counsel should confirm the legal entity that owns Meridian (the `LICENSE` says "VantaX"; the EULA
   template leaves `{{LICENSOR_LEGAL_NAME}}` open; Aletheia's terms name VANTA X) so the licence or release
