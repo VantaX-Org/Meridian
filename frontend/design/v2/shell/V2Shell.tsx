@@ -29,6 +29,7 @@ import { StatusStrip } from "./StatusStrip";
 import { ToastProvider, useToast } from "../Toast";
 import { TopBar } from "./TopBar";
 import { useDocumentLang } from "./Standalone";
+import { useKeyboardScrollers } from "./scrollers";
 
 export { usePhone };
 
@@ -170,6 +171,7 @@ function Chrome({ children, fixture }: { children: ReactNode; fixture: boolean }
   const { tag } = useInterfaceLang();
   const theme = useTenantTheme();
   useDocumentLang(tag);
+  useKeyboardScrollers();
   const grid = useGridOverlay();
   // Density: the person's choice in Preferences, else their role's (compact for stewards and Basis).
   const { prefs } = usePreferences();

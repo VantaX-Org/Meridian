@@ -47,4 +47,11 @@ describe("the one static table spec", () => {
     expect(phone).toMatch(/:is\(\.m2-tbl[^)]*\):not\(\.m2-cards\):not\(\.m2-frame \*\) \{ display: block; max-width: 100%; overflow-x: auto; \}/);
     expect(phone).toContain(".m2-cards td.m2-r, .m2-cards td.m2-num { text-align: left; }");
   });
+
+  it("pins the screen-reader text to its box so it never widens a scroller at phone width", () => {
+    const sr = rule(".m2-sr");
+    expect(sr).toContain("position: absolute");
+    expect(sr).toContain("top: 0");
+    expect(sr).toContain("left: 0");
+  });
 });
