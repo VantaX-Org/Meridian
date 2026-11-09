@@ -206,7 +206,7 @@ export function LearnedMonitors() {
                       <button type="button" className="m2-linkbtn" onClick={() => setPicked(b.id)}><Kind b={b} /></button>
                     </th>
                     <td data-label={t("Rule or field")}><Subject b={b} /></td>
-                    <td data-label={t("Usual range")} className="m2-num"><Usual b={b} /></td>
+                    <td data-label={t("Usual range")} className="m2-r"><Usual b={b} /></td>
                     <td data-label={t("Observed")} className="m2-num"><Seen b={b} /></td>
                     <td><Strip b={b} /></td>
                     <td data-label={t("Earlier runs used")} className="m2-num">{int(b.baseline_runs)}</td>
@@ -244,7 +244,7 @@ export function LearnedMonitors() {
                     <th scope="row" className="m2-card-lead">
                       <button type="button" className="m2-linkbtn" onClick={() => setPicked(b.id)}><Kind b={b} /></button>
                     </th>
-                    <td data-label={t("Usual range")} className="m2-num"><Usual b={b} /></td>
+                    <td data-label={t("Usual range")} className="m2-r"><Usual b={b} /></td>
                     <td data-label={t("Rows extracted")} className="m2-num"><Seen b={b} /></td>
                     <td><Strip b={b} /></td>
                     <td data-label={t("Earlier syncs used")} className="m2-num">{int(b.baseline_runs)}</td>
@@ -337,7 +337,7 @@ function BelowMinimum({ rows, thresholds, allowed, onChanged }: { rows: LearnedB
                     <td data-label={t("Object")}>{moduleText(b.module)}</td>
                     <th scope="row" className="m2-card-lead"><Kind b={b} /></th>
                     <td data-label={t("Rule or field")}><Subject b={b} /></td>
-                    <td data-label={t("Usual range")} className="m2-num"><Usual b={b} /></td>
+                    <td data-label={t("Usual range")} className="m2-r"><Usual b={b} /></td>
                     <td data-label={t("Observed")} className="m2-num"><Seen b={b} /></td>
                     <td data-label={t("Minimum now")} className="m2-num">{m ? eff(m.metric, m.min_effect) : <Dash />}</td>
                     <td>{allowed ? <button type="button" className="m2-btn m2-sm" disabled={confirm.isPending} onClick={() => confirm.mutate(b.id)}>{t("Confirm as real")}</button> : null}</td>

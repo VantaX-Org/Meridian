@@ -209,6 +209,9 @@ nav.m2-more a { max-width: 100%; overflow-wrap: anywhere; hyphens: auto; }
 .m2-vm.med { fill: none; stroke: var(--m2-ink-2); stroke-width: 1.5; }
 .m2-vm.low { fill: none; stroke: var(--m2-ink-3); stroke-width: 1.5; }
 .m2-v { display: inline-flex; align-items: center; gap: var(--m2-s2); white-space: nowrap; }
+/* A run in words: label, date, status and tag, spaced apart. */
+.m2-runchip > * + * { margin-left: var(--m2-s2); }
+.m2-runchip > b { white-space: nowrap; }
 
 /* Buttons */
 .m2-btn { height: 32px; padding: 0 var(--m2-s3); border: 1px solid var(--m2-line-2); background: var(--m2-sheet); border-radius: var(--m2-r-round); font-size: var(--m2-fs-13); font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: var(--m2-s2); white-space: nowrap; color: var(--m2-fg) !important; }
@@ -686,6 +689,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 /* Beside the docked Aletheia the page is narrow, so table text wraps inside its cell and only figures stay on one line. */
 .m2-cc-main .m2-tbl th, .m2-cc-main .m2-tbl td { white-space: normal; height: auto; padding-top: var(--m2-s2); padding-bottom: var(--m2-s2); line-height: var(--m2-lh-13); }
 .m2-cc-main .m2-tbl .m2-r { white-space: nowrap; }
+.m2-cc-main .m2-tbl .m2-meta > .m2-mono { white-space: nowrap; }
 .m2-cc-main .m2-tbl td.m2-wrap { min-width: 160px; }
 .m2-cc-main .m2-tbl .m2-cd { flex-wrap: wrap; }
 .m2-cc-main .m2-tbl .m2-cd > .m2-cdt { white-space: normal; overflow-wrap: anywhere; }
