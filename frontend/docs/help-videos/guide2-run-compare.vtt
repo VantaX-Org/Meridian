@@ -1,41 +1,41 @@
 WEBVTT
 
 1
-00:00:00.027 --> 00:00:06.260
+00:00:00.004 --> 00:00:05.982
 One run: what it scored, object by object, and the jobs that made it.
 
 2
-00:00:06.260 --> 00:00:11.244
+00:00:05.982 --> 00:00:11.256
 15 objects scored: 2 go, 2 at risk, 11 no-go.
 
 3
-00:00:11.244 --> 00:00:16.168
+00:00:11.256 --> 00:00:16.174
 Measured, then the score shown after the cap.
 
 4
-00:00:16.168 --> 00:00:21.128
+00:00:16.174 --> 00:00:21.425
 Pin as baseline, archive older runs, download the report, or compare.
 
 5
-00:00:21.128 --> 00:00:26.898
+00:00:21.425 --> 00:00:26.979
 Compare: two runs side by side.
 
 6
-00:00:26.898 --> 00:00:32.644
+00:00:26.979 --> 00:00:32.991
 The method is stated: the common set of rules, and what counts as a change.
 
 7
-00:00:32.644 --> 00:00:38.317
+00:00:32.991 --> 00:00:38.656
 By object: measured before and after, the change, and rules new, fixed, worse and better.
 
 8
-00:00:38.317 --> 00:00:43.248
+00:00:38.656 --> 00:00:43.573
 What changed: the rules newly failing, fixed, worse and better.
 
 9
-00:00:43.248 --> 00:00:49.310
+00:00:43.573 --> 00:00:49.248
 On an object, Why the score moved says what the cap did.
 
 10
-00:00:49.310 --> 00:00:54.984
+00:00:49.248 --> 00:00:54.907
 The shown score moved only 69.8 to 70.0, because the cap holds it at 70.0.

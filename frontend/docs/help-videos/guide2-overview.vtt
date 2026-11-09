@@ -1,109 +1,109 @@
 WEBVTT
 
 1
-00:00:00.011 --> 00:00:07.463
+00:00:00.011 --> 00:00:06.523
 Meridian checks your SAP data against fixed rules and scores every object on every system.
 
 2
-00:00:07.463 --> 00:00:13.506
+00:00:06.523 --> 00:00:12.896
 The Demo data bar says these figures are sample data. A customer installation never shows it.
 
 3
-00:00:13.506 --> 00:00:19.853
+00:00:12.896 --> 00:00:19.575
 Three parts: the rail on the left, the canvas in the middle, the inspector on the right.
 
 4
-00:00:19.853 --> 00:00:24.862
+00:00:19.575 --> 00:00:24.919
 Home is the start screen. One sentence says what holds the data back.
 
 5
-00:00:24.862 --> 00:00:32.218
+00:00:24.919 --> 00:00:32.582
 Every cell is a small ruler: the shown score, the word capped, the measured score beside it, and the verdict.
 
 6
-00:00:32.218 --> 00:00:38.554
+00:00:32.582 --> 00:00:39.241
 The next-step button is shaped for your role. For a programme lead it follows the nearest wave.
 
 7
-00:00:38.554 --> 00:00:44.193
+00:00:39.241 --> 00:00:45.183
 Open Material master on ECC production.
 
 8
-00:00:44.193 --> 00:00:50.211
+00:00:45.183 --> 00:00:51.064
 The Rules tab carries the ruler and the receipt.
 
 9
-00:00:50.211 --> 00:00:55.569
+00:00:51.064 --> 00:00:56.749
 The ruler: six segments sized by the dimension weights, each filled to its score.
 
 10
-00:00:55.569 --> 00:01:02.558
+00:00:56.749 --> 00:01:03.733
 Measured 71.8, the tick on the ruler. Capped at 70 by MM003 and MM035, two critical rules over tolerance.
 
 11
-00:01:02.558 --> 00:01:08.554
+00:01:03.733 --> 00:01:09.726
 The receipt adds the score up, dimension by dimension, then the cap and the score shown.
 
 12
-00:01:08.554 --> 00:01:15.204
+00:01:09.726 --> 00:01:16.384
 The tabs sit under the title: overview, rules, records, fixes, trend, readiness, processes, lineage, profile, glossary, golden records.
 
 13
-00:01:15.205 --> 00:01:22.592
+00:01:16.384 --> 00:01:23.493
 Rules are ranked by value at risk, each with what goes wrong in SAP while it fails.
 
 14
-00:01:22.592 --> 00:01:28.719
+00:01:23.493 --> 00:01:29.251
 Select a rule and it opens in the inspector, beside the canvas.
 
 15
-00:01:28.719 --> 00:01:33.547
+00:01:29.251 --> 00:01:34.061
 Esc closes the inspector and returns you to where you were.
 
 16
-00:01:33.547 --> 00:01:41.100
+00:01:34.061 --> 00:01:41.416
 Work is the ledger: every failing record and field on one row, with the fix on the row.
 
 17
-00:01:41.100 --> 00:01:48.533
+00:01:41.416 --> 00:01:49.076
 Current value, suggested value, new value and the decision sit beside the rule. Possible values are in the column chooser.
 
 18
-00:01:48.533 --> 00:01:53.655
+00:01:49.076 --> 00:01:54.417
 The chips filter by state: to fix, fix proposed, waiting for approval, exceptions.
 
 19
-00:01:53.655 --> 00:02:00.000
+00:01:54.417 --> 00:02:01.066
 Every fix waits in a batch for a second person. Four eyes has no bypass.
 
 20
-00:02:00.000 --> 00:02:05.704
+00:02:01.066 --> 00:02:06.602
 Runs: every measurement on one timeline, with the baseline marked.
 
 21
-00:02:05.704 --> 00:02:11.511
+00:02:06.602 --> 00:02:12.145
 Compare two runs and Meridian says why each score moved.
 
 22
-00:02:11.511 --> 00:02:17.389
+00:02:12.145 --> 00:02:17.780
 People: who holds the open work, what waits for approval, and the SLA.
 
 23
-00:02:17.389 --> 00:02:22.234
+00:02:17.780 --> 00:02:22.596
 Press Command K, or slash, to open the command line.
 
 24
-00:02:22.234 --> 00:02:28.458
+00:02:22.596 --> 00:02:28.733
 Type a rule id, a material number, an object, or a word such as approve.
 
 25
-00:02:28.458 --> 00:02:33.290
+00:02:28.733 --> 00:02:33.548
 Enter opens the result.
 
 26
-00:02:33.290 --> 00:02:40.363
+00:02:33.548 --> 00:02:40.397
 Help is the question mark in the top bar: the chapter for this screen comes first.
 
 27
-00:02:40.363 --> 00:02:47.745
+00:02:40.397 --> 00:02:47.392
 Every number has its receipt. Nothing is guessed: every figure is a rule result over stored data.

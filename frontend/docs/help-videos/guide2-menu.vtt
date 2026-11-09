@@ -1,37 +1,37 @@
 WEBVTT
 
 1
-00:00:00.005 --> 00:00:09.334
+00:00:00.004 --> 00:00:09.449
 The rail on the left is the menu. It has seven places: Home, Objects, Runs, Fix, Rules, Master data and Migration.
 
 2
-00:00:09.334 --> 00:00:20.065
+00:00:09.449 --> 00:00:20.404
 Point at Objects: the menu lists the systems and their objects, and a link to connect a system. Every place opens a menu like this, and Pin keeps it open.
 
 3
-00:00:20.065 --> 00:00:26.487
+00:00:20.404 --> 00:00:27.062
 Fix holds the Action centre, Work, verified fixes, Cleansing, Requests and People. The badge counts open items.
 
 4
-00:00:26.487 --> 00:00:32.185
+00:00:27.062 --> 00:00:33.067
 Rules holds the rules, the dry run, anomaly rules, learned monitors and the evidence ledger.
 
 5
-00:00:32.185 --> 00:00:38.581
+00:00:33.067 --> 00:00:39.729
 Master data holds MDM health, the entry gate, reference data, record links, Material 360 and data mining.
 
 6
-00:00:38.581 --> 00:00:43.519
+00:00:39.729 --> 00:00:44.984
 Migration holds S/4HANA readiness, go-live, the forecast, value delivered and configuration.
 
 7
-00:00:43.519 --> 00:00:48.442
+00:00:44.984 --> 00:00:50.234
 Reports, the Atlas and Administration sit under More, below the rail.
 
 8
-00:00:48.442 --> 00:00:53.251
+00:00:50.234 --> 00:00:55.040
 Press g then a letter to jump: g then o opens Objects.
 
 9
-00:00:53.251 --> 00:00:58.056
+00:00:55.040 --> 00:00:59.845
 The letter completes the jump.
