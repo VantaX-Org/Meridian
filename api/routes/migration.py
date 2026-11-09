@@ -1380,7 +1380,6 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
     from checks.field_status_rules import conversions_for
     from checks.frames import tables_of
     from checks.runner import get_required_columns
-    from sap.base import SAPConnectorError
     from sap.extraction_plan import ABAP_SYSTEM_TYPES
     from workers.dataset import load_dataset
     from workers.db import get_sync_engine, tenant_session
@@ -1411,7 +1410,7 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
                 sap_learned, unresolved = wb.learn_sap(
                     book, dictionary, scope, lambda ts, fs: ConnectivityManager(s, str(tenant_id)).dd03l_fields(
                         str(system_id), ts, fs))
-            except SAPConnectorError as e:  # the system cannot be reached: nothing is learned, the export goes on
+            except Exception as e:  # noqa: BLE001 - any RFC failure; the system cannot be reached: nothing is learned, the export goes on
                 logger.warning(f"DD03L lookup failed for system {system_id}: {e}")
                 sap_learned = {}
             for table, fields in sap_learned.items():
