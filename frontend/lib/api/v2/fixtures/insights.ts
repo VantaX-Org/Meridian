@@ -5,6 +5,28 @@
  */
 export const NONE_INSIGHTS = Symbol("not a cost and causes path");
 
+/** Meridian's own Aletheia engine (api/routes/aletheia_engine.py): live, running unlicensed, still learning. */
+const engineStatus = {
+  configured: true, live: true, token_set: true, tenant: "meridian", version: "1.8.0",
+  licence: { valid: false, licensed: false, reason: "no license key", deployment: "meridian", expires: null, max_tenants: null },
+  usage: { counters: { learn: 14, ingest: 0 }, events: 14, first_seen: "2026-10-26T08:00:00Z", last_seen: "2026-11-09T08:00:00Z" },
+};
+const engineDrivers = {
+  lineage: [],
+  labels: { composite: "Composite data quality score", failing_rules: "Failing rules", affected_records: "Records with a finding", critical: "Critical findings", high: "High-severity failing rules", blockers: "Migration blockers", auto_fixable_pct: "Records with a suggested fix (%)" },
+  available: true,
+  runs: 12,
+  ranges: [
+    { metric: "composite", mean: 84.1, low: 81.6, high: 86.6, n: 12, latest: 87.4, outside: true },
+    { metric: "failing_rules", mean: 31.5, low: 27.2, high: 35.8, n: 12, latest: 29, outside: false },
+    { metric: "dimension:completeness", mean: 88.2, low: 86.1, high: 90.3, n: 12, latest: 89.6, outside: false },
+  ],
+  links: [
+    { source: "failing_rules", target: "composite", lag: 1, correlation: -0.82 },
+    { source: "dimension:completeness", target: "composite", lag: 0, correlation: 0.71 },
+  ],
+};
+
 const impact = [
   { feature: "Automatic payment run", l1: "procure_to_pay", status: "blocked", record_count: 1_412, value_per_record: 850, value_at_risk: 1_200_200, causing_rules: ["MM035", { check_id: "MM142", severity: "critical" }] },
   { feature: "MRP planning run", l1: "plan_to_produce", status: "degraded", record_count: 2_904, value_per_record: 320, value_at_risk: 929_280, causing_rules: ["MM003"] },
@@ -127,5 +149,7 @@ export function insightsRead(path: string, params: Record<string, unknown> = {})
   };
   if (path === "/insights/root-causes") return { version_id: "v-12", clusters };
   if (path === "/insights/trends") return { lineage: [], runs, annotations: [] };
+  if (path === "/insights/engine-drivers") return structuredClone(engineDrivers);
+  if (path === "/aletheia/engine") return structuredClone(engineStatus);
   return NONE_INSIGHTS;
 }

@@ -3,10 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getCauseClusters, getImpact, getProvenCost, getTrends, type ProvenCostRow } from "@/lib/api/v2/insights";
+import { getEngineDrivers, type EngineDrivers, type EngineOffReason } from "@/lib/api/v2/aletheia-engine";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { money } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
-import { moneyCompactText } from "@/lib/v2/labels";
+import { labelText, moneyCompactText } from "@/lib/v2/labels";
 import { f1, int, pct1 } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, niceTicks, TrendChart } from "../charts";
 import { Sev } from "../inspector/rule";
@@ -142,6 +143,9 @@ export function Insights() {
       <Disclose title={t("Trend over time")} hint={t("How the cost and the causes moved run by run.")}>
         <TrendPanel />
       </Disclose>
+      <Disclose title={t("What moves the score")} hint={t("Normal ranges and lead and lag links the Aletheia engine learned from the run trend.")}>
+        <DriversPanel />
+      </Disclose>
     </CcPage>
   );
 }
@@ -251,5 +255,51 @@ function TrendPanel() {
     >
       <TrendChart points={pts} domain={[ticks[0], ticks[ticks.length - 1]] as const} ticks={ticks} height={180} label={title} yLabel={t("score")} format={f1} />
     </ChartFrame>
+  );
+}
+
+const ENGINE_OFF: Record<EngineOffReason, () => string> = {
+  too_few_runs: () => t("Three scored runs are needed before the engine can learn from the trend."),
+  not_configured: () => t("This deployment runs without its Aletheia engine. An administrator can set it up."),
+  unreachable: () => t("The Aletheia engine does not answer. The rest of this page is not affected."),
+  no_token: () => t("The Aletheia engine has no access token, so it cannot learn from the trend yet."),
+  licence_invalid: () => t("The Aletheia engine licence is not valid, so the engine is not used."),
+  engine_error: () => t("The Aletheia engine could not learn from the trend this time."),
+};
+
+/** The engine learns only from run-level scores and counts; it never sees a record. */
+function DriversPanel() {
+  const q = useInsight<EngineDrivers>("engine-drivers", getEngineDrivers, { labels: {}, available: false, reason: "too_few_runs" });
+  const title = t("What moves the score");
+  const name = (d: EngineDrivers, m: string) => <Coded code={m} text={m.startsWith("dimension:") ? t("{dimension} dimension", { dimension: labelText(m.slice(10)) }) : d.labels[m]} />;
+  return (
+    <Section q={q} title={title} meta={t("Learned by the Aletheia engine from the last {n} runs", { n: int(q.data?.runs ?? 0) })} testId="ins-drivers">
+      {(d) => !d.available ? <EmptyFrame>{ENGINE_OFF[d.reason ?? "engine_error"]?.() ?? ENGINE_OFF.engine_error()}</EmptyFrame> : (
+        <>
+          <Table title={t("Normal range per measure")} head={[t("Measure"), t("Normal range"), t("Latest run"), t("Verdict")]}>
+            {(d.ranges ?? []).map((r) => (
+              <tr key={r.metric}>
+                <th scope="row" className="m2-card-lead">{name(d, r.metric)}</th>
+                <td data-label={t("Normal range")} className="m2-num">{t("{low} to {high}", { low: f1(r.low), high: f1(r.high) })}</td>
+                <td data-label={t("Latest run")} className="m2-num">{f1(r.latest)}</td>
+                <td data-label={t("Verdict")}>{r.outside ? t("Outside the normal range") : t("Within the normal range")}</td>
+              </tr>
+            ))}
+          </Table>
+          {(d.links ?? []).length === 0 ? <EmptyFrame>{t("The engine found no measure that leads another.")}</EmptyFrame> : (
+            <Table title={t("Measures that move together")} head={[t("Measure"), t("Moves"), t("Runs later"), t("Correlation")]}>
+              {(d.links ?? []).map((e) => (
+                <tr key={`${e.source}-${e.target}-${e.lag}`}>
+                  <th scope="row" className="m2-card-lead">{name(d, e.source)}</th>
+                  <td data-label={t("Moves")}>{name(d, e.target)}</td>
+                  <td data-label={t("Runs later")} className="m2-num">{e.lag == null ? f1(null) : int(e.lag)}</td>
+                  <td data-label={t("Correlation")} className="m2-num">{e.correlation == null ? f1(null) : e.correlation.toFixed(2)}</td>
+                </tr>
+              ))}
+            </Table>
+          )}
+        </>
+      )}
+    </Section>
   );
 }

@@ -418,6 +418,14 @@ pull_dependencies() {
     # failure here never blocks the update: running containers keep their image.
     docker compose -f "$COMPOSE_FILE" pull --ignore-pull-failures db redis >/dev/null 2>&1 \
         || warn "Could not pull db/redis images — the running ones are kept."
+    # The Aletheia engine sidecar: best effort, Meridian runs without it (the screens say so).
+    docker compose -f "$COMPOSE_FILE" pull --ignore-pull-failures aletheia >/dev/null 2>&1 \
+        || warn "Could not pull the Aletheia engine image — Meridian keeps running without it."
+}
+
+start_engine() {
+    # Never part of the --force-recreate list: no licence token, or no image, must not fail an update.
+    dc up -d aletheia >/dev/null 2>&1 || warn "Aletheia engine sidecar not started — Meridian runs without it."
 }
 
 # `docker compose up -d` recreates a container whose configuration changed; it does NOT
@@ -645,6 +653,7 @@ migrate_object_storage
 info "Restarting services on the new images..."
 write_status "restarting" "Restarting services on the new images..."
 dc up -d --force-recreate api worker beat frontend nginx 2>/dev/null || true
+start_engine
 
 info "Running database migrations..."
 if ! wait_for_api_container; then

@@ -83,6 +83,7 @@ from api.routes.connectivity import router as connectivity_router
 from api.routes.spro_config import router as spro_config_router
 from api.routes.config_impact import router as config_impact_router
 from api.routes.insights import router as insights_router
+from api.routes.aletheia_engine import router as aletheia_engine_router
 from api.routes.assistant import router as assistant_router
 from api.routes.owner_digests import router as owner_digests_router
 from api.routes.lineage import router as lineage_router
@@ -490,6 +491,7 @@ app.include_router(connectivity_router)
 app.include_router(spro_config_router)
 app.include_router(config_impact_router)
 app.include_router(insights_router)
+app.include_router(aletheia_engine_router)
 app.include_router(assistant_router)
 app.include_router(owner_digests_router)
 app.include_router(lineage_router)

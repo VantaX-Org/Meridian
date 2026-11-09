@@ -55,6 +55,7 @@ services:
       - LOG_FORMAT=${LOG_FORMAT:-json}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - SERVICE_NAME=${SERVICE_NAME:-meridian-api}
+      - ALETHEIA_URL=${ALETHEIA_URL:-http://aletheia:8000}
     # No ports exposed — API is only reachable via internal Docker network (http://api:8000)
     depends_on:
       db:
@@ -190,10 +191,32 @@ services:
       retries: 5
       start_period: 20s
 
+  # Aletheia engine sidecar: Meridian's own instance, own volume, own deployment id. Never shared with
+  # another product's engine on the same host. It only ever receives aggregates (run trend series, rule
+  # counts), never extracted records. In the "aletheia" profile so a plain `up -d` never fails on it;
+  # update.sh starts it by name. Without ALETHEIA_LICENSE_KEY it runs unlicensed and Meridian says so.
+  aletheia:
+    logging: *default-logging
+    image: ${MERIDIAN_ALETHEIA_IMAGE:-ghcr.io/vantax-org/cortex0:1.7.0}
+    profiles: ["aletheia"]
+    environment:
+      - ALETHEIA_DEMO=0
+      - ALETHEIA_DATA_DIR=/data
+      - CORTEX0_TOKEN=${ALETHEIA_TOKEN:-}
+      - ALETHEIA_LICENSE_KEY=${ALETHEIA_LICENSE_KEY:-}
+      - ALETHEIA_DEPLOYMENT_ID=${ALETHEIA_DEPLOYMENT_ID:-meridian}  # set per host in .env: the id the licence token was issued for
+      - ALETHEIA_LICENSE_SERVER=${ALETHEIA_LICENSE_SERVER:-}
+    volumes:
+      - aletheia_data:/data
+    networks:
+      - meridian-net
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
   storage_data:
+  aletheia_data:
 
 networks:
   meridian-net:

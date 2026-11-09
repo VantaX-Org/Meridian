@@ -21,6 +21,7 @@ copyleft and unusual licences are in `docs/diligence/licences.md`.
 | Prometheus | v2.55.0 | Apache-2.0 | `docker/docker-compose.monitoring.yml` | optional monitoring overlay |
 | Alertmanager | v0.27.0 | Apache-2.0 | `docker/docker-compose.monitoring.yml` | optional monitoring overlay |
 | Grafana | 11.3.0 | AGPL-3.0-only | `docker/docker-compose.monitoring.yml` | optional monitoring overlay, upstream image |
+| Vantax Aletheia engine (cortex0) | 1.7.0 (ghcr.io/vantax-org/cortex0:1.7.0, set by MERIDIAN_ALETHEIA_IMAGE) | Vantax Aletheia Software Licence (proprietary, VANTA X) | `docker/docker-compose.customer.yml` | separate image of a separate product, optional `aletheia` sidecar with its own volume, one per deployment and never shared with another product; no Aletheia code is in the Meridian images. Embedded deployment use under the Meridian engine grant on the Aletheia licensees page, licensed per host by ALETHEIA_LICENSE_KEY and ALETHEIA_DEPLOYMENT_ID; runs unlicensed without a key. See `docs/diligence/licences.md` section 6 |
 | SAP NetWeaver RFC SDK | customer supplied | SAP proprietary | `vendor/nwrfcsdk/README.md` | never in the repository or the published images; the customer adds it and builds with INSTALL_PYRFC=true |
 
 ## Brand elements
@@ -29,7 +30,7 @@ Written from `BRAND_ELEMENTS` in `scripts/diligence_licences.py`.
 
 | Element | Owner | Terms | Where it ships |
 |---|---|---|---|
-| Aletheia mark and name (the attribution strip at the foot of every screen) | the licensor of Vantax Aletheia (VANTA X), a separate product of the same group | the Aletheia name, logo and get-up are reserved to their owner; the Vantax Aletheia Software Licence, section 6, requires the mark on every screen of an Aletheia deployment and forbids altering it. Used in Meridian unaltered. Licensed to Meridian by the written grant on the Aletheia licensees page (`docs/LICENSEES.md` in the Aletheia repository, granted 9 November 2026), summarised in `docs/diligence/licences.md` section 6 | `frontend/public/brand/aletheia-mark.svg`, rendered by `frontend/design/brand/Attribution.tsx` |
+| Aletheia mark and name (the attribution strip at the foot of every screen) | the licensor of Vantax Aletheia (VANTA X), a separate product of the same group | the Aletheia name, logo and get-up are reserved to their owner; the Vantax Aletheia Software Licence, section 6, requires the mark on every screen of an Aletheia deployment and forbids altering it. Used in Meridian unaltered. Licensed to Meridian by the written grant on the Aletheia licensees page (`docs/LICENSEES.md` in the Aletheia repository, granted 9 November 2026), which also covers the embedded engine (see Container components), summarised in `docs/diligence/licences.md` section 6 | `frontend/public/brand/aletheia-mark.svg`, rendered by `frontend/design/brand/Attribution.tsx` |
 
 ## Python packages (134, the API and worker images)
 
