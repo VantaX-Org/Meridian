@@ -186,6 +186,10 @@ describe("Workbook from the new system", () => {
     expect(learned.textContent).toContain("Pay Grade");
     expect(learned.textContent).not.toContain("Seniority Band");
     expect(screen.getByTestId("mig-workbook-not-in-system").textContent).toContain("did not return on the last run");
+    const ambiguous = screen.getByTestId("mig-workbook-ambiguous").textContent;
+    expect(ambiguous).toContain("1 columns name a field that more than one of this object's tables holds");
+    expect(ambiguous).toContain("PA0001");
+    expect(ambiguous).toContain("PA0008");
     fireEvent.click(within(learned).getByTestId("mig-workbook-update"));
     expect((await within(panel).findByTestId("mig-workbook-updating")).textContent).toContain("check the workbook again");
     expect(start).toHaveBeenCalledWith("sys-sf", ["employee_central"], true);

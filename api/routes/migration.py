@@ -1338,16 +1338,33 @@ def _learned_pending(meta: dict, dictionary) -> dict:
     """
     absent = {(c.get("table", "").split("\u2190")[0], n) for c in meta.get("coverage") or []
               for n in c.get("unavailable_fields") or []}
-    return {f.source.split(".", 1)[1]: (tn, f.name) in absent for tn, t in dictionary.tables.items()
-            for f in t.fields.values() if f.provenance == "workbook" and "." in (f.source or "")}
+    out = {}
+    for tn, t in dictionary.tables.items():
+        for f in t.fields.values():
+            if f.provenance != "workbook":
+                continue
+            gone = (tn, f.name) in absent
+            if "." in (f.source or ""):
+                out[f.source.split(".", 1)[1]] = gone
+            elif not f.source:  # an SAP field learned from DD03L, headed FIELD, TABLE-FIELD or TABLE.FIELD
+                out |= {f.name: gone, f"{tn}-{f.name}": gone, f"{tn}.{f.name}": gone}
+    return out
 
 
-def _mark_learned(report: dict, pending: dict) -> tuple[int, int]:
-    """Flag unmapped columns that the next run fills, or that the system does not hold. Returns both counts."""
+def _mark_learned(report: dict, pending: dict, unresolved: Optional[dict] = None) -> tuple[int, int]:
+    """Flag unmapped columns that the next run fills, or that the system does not hold. Returns both counts.
+
+    `unresolved` is the DD03L outcome per column id (workbook.learn_sap): no table is not in the system, several
+    tables are listed as candidates and left for a person to choose."""
     waiting = missing = 0
     for sheet in report["sheets"]:
         for col in sheet["unmapped"]:
             gone = pending.get(col["id"])
+            tables = (unresolved or {}).get(col["id"])
+            if tables is not None and gone is None:
+                gone = True if not tables else None
+                if len(tables) > 1:
+                    col["candidates"] = tables
             col["learned"] = gone is False
             col["not_in_system"] = gone is True
             waiting += col["learned"]
@@ -1358,8 +1375,13 @@ def _mark_learned(report: dict, pending: dict) -> tuple[int, int]:
 def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") -> tuple:
     """Parse an uploaded workbook and fill it from one finished run. Nothing is stored."""
     from api.services.migration import workbook as wb
+    from api.services.connectivity_manager import ConnectivityManager
     from api.services.source_design import dictionary_for, store_learned
     from checks.field_status_rules import conversions_for
+    from checks.frames import tables_of
+    from checks.runner import get_required_columns
+    from sap.base import SAPConnectorError
+    from sap.extraction_plan import ABAP_SYSTEM_TYPES
     from workers.dataset import load_dataset
     from workers.db import get_sync_engine, tenant_session
     from workers.tasks.run_migration import load_value_maps
@@ -1380,6 +1402,20 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
         dictionary = dictionary_for(s, system_id)
         # Columns the dictionary does not carry yet are learned for this system, so the next run extracts them.
         learned = wb.learn(book, dictionary) if system_id else {}
+        unresolved: dict = {}
+        stype = s.execute(text("SELECT system_type FROM sap_systems WHERE id = :sid"),
+                          {"sid": system_id}).scalar() if system_id else None
+        if stype in ABAP_SYSTEM_TYPES:  # ECC and S/4HANA: unknown SAP columns are checked against DD03L
+            scope = {t for m in meta.get("modules") or [] for t in tables_of(get_required_columns(m))}
+            try:
+                sap_learned, unresolved = wb.learn_sap(
+                    book, dictionary, scope, lambda ts, fs: ConnectivityManager(s, str(tenant_id)).dd03l_fields(
+                        str(system_id), ts, fs))
+            except SAPConnectorError as e:  # the system cannot be reached: nothing is learned, the export goes on
+                logger.warning(f"DD03L lookup failed for system {system_id}: {e}")
+                sap_learned = {}
+            for table, fields in sap_learned.items():
+                learned[table] = {**learned.get(table, {}), **fields}
         if learned:
             store_learned(s, str(system_id), learned)
             s.commit()
@@ -1405,7 +1441,7 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
                 maps.setdefault(target, {}).update(vm)
         strict = {t for t, vm in maps.items() if vm.keys() - config.get(t, {}).keys()}
     tabs, report = wb.fill(book, frames, maps, strict)
-    waiting, missing = _mark_learned(report, pending)
+    waiting, missing = _mark_learned(report, pending, unresolved)
     report["learned"] = {"new": sum(len(f) for f in learned.values()), "waiting": waiting, "missing": missing,
                          "system_id": system_id, "modules": meta.get("modules") or []}
     return book, tabs, report

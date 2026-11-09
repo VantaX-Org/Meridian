@@ -173,7 +173,8 @@ export interface WorkbookSheet {
   known: boolean;
   /** `learned`: the column was added to the extraction from a workbook and arrives with the next run. */
   /** `not_in_system`: the column was learned, but the source system did not return the field on the last run. */
-  unmapped: { id: string; label: string; mandatory: boolean; learned?: boolean; not_in_system?: boolean }[];
+  /** `candidates`: the column's field is on several of the object's tables in DD03L, so none was chosen. */
+  unmapped: { id: string; label: string; mandatory: boolean; learned?: boolean; not_in_system?: boolean; candidates?: string[] }[];
 }
 export type WorkbookFormat = LoadFileFormat | "source";
 export interface WorkbookHeldRow { sheet: string; record: string; field: string; reason: string }

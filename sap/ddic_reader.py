@@ -268,3 +268,34 @@ def parse_odata_metadata(xml_text: str, namespace_hint: Optional[str] = None) ->
                 }
         out[name] = {"keys": keys, "properties": props}
     return out
+
+
+# {system_id: {(TABLE, FIELD): True when DD03L has it}}
+# ponytail: in-process cache, never invalidated; a field added in SE11 shows after a restart. Clear _DD03L to force.
+_DD03L: dict[str, dict[tuple[str, str], bool]] = {}
+
+
+def known_fields(system_id: str, tables: Iterable[str], fields: Iterable[str], connect) -> set[tuple[str, str]]:
+    """The (table, field) pairs among tables x fields that DD03L holds on this system, cached per system.
+
+    Reads only TABNAME and FIELDNAME, filtered by TABNAME and FIELDNAME, so the row stays far below the
+    512-byte RFC_READ_TABLE limit and the read never scans DD03L. connect() opens a connector; it is only
+    called when something is not cached yet, and the connector is closed after the read."""
+    cache = _DD03L.setdefault(str(system_id), {})
+    tables, fields = sorted({t.upper() for t in tables}), sorted({f.upper() for f in fields})
+    todo = [(t, f) for t in tables for f in fields if (t, f) not in cache]
+    if todo:
+        ask_t, ask_f = sorted({t for t, _ in todo}), sorted({f for _, f in todo})
+        found: set[tuple[str, str]] = set()
+        conn = connect()
+        try:
+            for tb in _chunks(ask_t, 40):
+                for fb in _chunks(ask_f, 40):
+                    where = _in_clause("TABNAME", tb) + " AND " + _in_clause("FIELDNAME", fb) + " AND AS4LOCAL = 'A'"
+                    df = conn.read_table_full("DD03L", ["TABNAME", "FIELDNAME"], ["TABNAME"], where=where)
+                    found |= {(str(r["TABNAME"]).strip(), str(r["FIELDNAME"]).strip())
+                              for r in df.to_dict(orient="records")}
+        finally:
+            conn.close()
+        cache.update({(t, f): (t, f) in found for t in ask_t for f in ask_f})
+    return {(t, f) for t in tables for f in fields if cache.get((t, f))}
