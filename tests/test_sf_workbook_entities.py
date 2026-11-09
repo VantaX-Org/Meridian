@@ -37,7 +37,7 @@ def test_pay_scale_localised_name_matches_its_base_property():
 
 @pytest.mark.parametrize("sheet", [
     "CSF Personal Info (Global Info)",  # per-country generic slots, entity not established
-    "CSF Dependents", "Contingent Worker", "CSF Legal Entity", "CSF Job Classification",
+    "CSF Dependents", "CSF Legal Entity", "CSF Job Classification",
 ])
 def test_no_entity_means_no_match(sheet):
     assert cands(sheet, ["genericString1", "externalCode", "first-name"]) == {}

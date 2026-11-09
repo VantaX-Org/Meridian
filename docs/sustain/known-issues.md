@@ -8,13 +8,10 @@ The sources are the [RAID log](../project/raid-log.md), the release notes in [do
 
 | Item | What the support team will see | Owner role | Proposed handling |
 |---|---|---|---|
-| Some SuccessFactors mandatory columns are unmatched by design | The Migration screen reports workbook columns that the source system does not return, using the last run's coverage (RAID R-02). | Meridian administrator with the SAP team | Review the unmatched columns before each migration load. The column list: To confirm (owner: vendor engineering). |
+| Two SuccessFactors mandatory columns stay unmatched on the Pay Component sheet | That sheet mixes recurring and non-recurring pay rows, so two mandatory columns have no single source field. The Migration screen lists them, and also reports any column the source system does not return, using the last run's coverage (RAID R-02). | Meridian administrator with the SAP team | Fill the two columns by hand before the load. Review the reported columns before each migration load. |
+| Foundation workbook has an empty picklist sheet | The customer's Foundation workbook ships `Picklists_Original` with no rows, so picklist values are not checked for it (RAID I-06). | Meridian administrator with the SAP team | Upload a picklist export from the new system with the workbook. |
 | Binary, macro and OpenDocument workbooks come back as .xlsx | A user uploads a `.xls`, `.xlsb`, `.xlsm` or `.ods` workbook and receives a `.xlsx` file. This is by design: no writer for those formats is installed (`api/services/migration/workbook_formats.py`). Macros in an `.xlsm` upload are not in the returned file. | Meridian administrator | Accepted limit. L1 answers from this entry. |
-| Aletheia engine image pin is undecided | The compose default is `ghcr.io/vantax-org/cortex0:1.7.0`, set through `MERIDIAN_ALETHEIA_IMAGE`. Moving to 1.8.0 is not decided (RAID I-04). | Vendor engineering, with the product owner | Do not change the pin on the customer deployment until the decision is made. |
-| Aletheia engine runs unlicensed until its settings are added | Administration, Aletheia engine shows the engine unlicensed (RAID R-05). | Meridian administrator, with a person who has sudo on the host | Append the engine settings to `docker/.env` and rerun the update for the running version, as described in the release notes. |
-| Signed-in go-live acceptance run not done | No signed-in tester has run [docs/journeys/go-live-acceptance-test.md](../journeys/go-live-acceptance-test.md) on the customer deployment (RAID R-04). | Customer test lead | Run it before users are told the release is ready. A fail in sections 1 to 3 stops the release. |
 | Load-tool validation is not proven | A migration file can pass Meridian and fail in the target load tool. The workbook tests use repository fixtures (RAID R-01). | Customer test lead | Run section 4 of the acceptance test with a real import template. |
-| Licence narrowing waits for the customer's go-ahead | Modules beyond the licensed scope may still be visible (release notes, known issues). | Vendor delivery lead | Narrow when the customer confirms. |
 
 ## Debt register items that affect support
 

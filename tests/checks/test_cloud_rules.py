@@ -553,3 +553,26 @@ def test_sf_locale_navigation_reads_the_default_language_with_its_locale(monkeyp
     _sf(conn, ["recruiting_onboarding"], monkeypatch)
     sel = next(s for e, s in conn.calls if e == "JobRequisition")
     assert {"jobReqLocale/jobTitle", "jobReqLocale/locale", "defaultLanguage"} <= set(sel)
+
+
+def test_sf_dependant_fields_come_from_the_related_person(monkeypatch):
+    """DEPENDENT's name and birth date belong to the related person, joined on
+    relatedPersonIdExternal, never to the employee whose personIdExternal owns the relationship."""
+    import api.services.source_design as sd
+    monkeypatch.setattr(sd, "latest_snapshot_id", lambda *_: None)
+    conn = _Fake({
+        "PerPersonRelationship": [{"personIdExternal": "P1", "relatedPersonIdExternal": "D1",
+                                   "startDate": "2020-01-01", "relationshipType": "child"}],
+        "PerPerson": [{"personIdExternal": "P1", "dateOfBirth": "1980-01-01"},
+                      {"personIdExternal": "D1", "dateOfBirth": "2015-06-01"}],
+        "PerPersonal": [{"personIdExternal": "P1", "firstName": "Emp"},
+                        {"personIdExternal": "D1", "firstName": "Kid"}],
+    })
+    cm = object.__new__(ConnectivityManager)
+    cm.session = None
+    frames, _ = ConnectivityManager._extract_successfactors(
+        cm, conn, ["employee_central"], dictionary_for_system("successfactors"), None)
+    dep = frames["DEPENDENT"]
+    assert dep["DEPENDENT.RELATED_PERSON_ID"].tolist() == ["D1"]
+    assert dep["DEPENDENT.FIRST_NAME"].tolist() == ["Kid"]
+    assert dep["DEPENDENT.DEPENDENT_BIRTH"].tolist() == ["2015-06-01"]

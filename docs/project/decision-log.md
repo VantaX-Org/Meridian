@@ -18,11 +18,14 @@ Decisions found in the repository and git history. Each date is the commit date 
 | DL-12 | 2026-11-09 | Brand the training and guide PDFs from `public/brand/brand.json`. | Not stated in the commit. To confirm (Product owner). | Commit 5b0f40d7b |
 | DL-13 | 2026-11-09 | Re-record the 31 guided tour videos against the fixture build at 1440 by 900 and 15 frames a second, with posters and captions. | Recorded in fixture mode with the demo flag, so every screen shows demo data only (commit 1935b338c). | Commit 1935b338c, merge 4d8e7ea64 |
 
+| DL-14 | 2026-11-09 | Fill a SuccessFactors dependant's columns from the related person, and add a missing person key in the sheet's own spelling. | The dependant sheets hold the related person's own data, and import-style sheets use kebab-case headers such as `person-id-external`. | v0.0.635 |
+| DL-15 | 2026-11-09 | The customer licence keeps 12 modules: material master, customer master with business partner, and the ten SuccessFactors modules. | The customer licences material master, SuccessFactors and customer master only. Business partner stays because a customer is a business partner in S/4HANA. | Licence server change, 9 November 2026 |
+| DL-16 | 2026-11-09 | Move the engine image pin to cortex0 1.8.0. | Product owner decision. | Closes DO-01 |
+
 ## Decisions still open
 
 | ID | Decision needed | Owner role |
 |---|---|---|
-| DO-01 | Engine image pin: keep cortex0 1.7.0 or move to 1.8.0. | Product owner |
 | DO-02 | Hyper-care length and exit criteria. | Project sponsor |
 
 See the [RAID log](raid-log.md) for the items these decisions affect.

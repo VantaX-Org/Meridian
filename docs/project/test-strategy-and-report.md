@@ -65,7 +65,8 @@ Tests changed in this release: `tests/test_update_script.py`, `test_migration_wo
 - Commit 212edf03d fixed the axe `scrollable-region-focusable` failures in the Aurora E2E shards at 390 pixels wide.
 - Commit 6f3686569 fixed a mypy error in the Employee Central rule sidecar.
 - The CI result for PR #639: To confirm (Release manager). It could not be read when this report was written.
-- The signed-in go-live acceptance run in [docs/journeys/go-live-acceptance-test.md](../journeys/go-live-acceptance-test.md) is still to be done. It needs a tester, a signed-in session on the customer deployment, a real workbook from the new system and the load tool's own validation. A fail in sections 1 to 3 stops the release.
+- The signed-in go-live acceptance run in [docs/journeys/go-live-acceptance-test.md](../journeys/go-live-acceptance-test.md) was done by the customer team on the customer deployment on 9 November 2026, and reported complete. Load-tool validation against real import templates (section 4) stays open as RAID R-01.
+- The migration workbook fill was checked against the customer's real Employee and Foundation workbooks. Employee: 21 sheets, 19 filled, 372 of 547 columns matched, 2 mandatory columns unmatched (Pay Component). Foundation: 42 sheets, 40 filled, 729 of 800 columns matched, every mandatory column matched.
 
 ## Report sign-off
 

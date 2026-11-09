@@ -38,7 +38,7 @@ The project delivers Meridian, an SAP data-quality platform, to the customer dep
 | Customer master | `checks/rules/ecc/sd_customer_master*.yaml` |
 | SuccessFactors | `checks/rules/successfactors/*.yaml` |
 
-Narrowing the server and client licence to these three modules waits for the customer's go-ahead. See the [RAID log](raid-log.md).
+The licence was narrowed to these three modules on 9 November 2026. See the [RAID log](raid-log.md).
 
 ## Stakeholders by role
 

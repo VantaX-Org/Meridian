@@ -60,7 +60,7 @@ The runner is `checks/runner.py` with `checks/rule_files.py`. The CI job in `uni
 
 - Built in: `api/middleware/licence.py`, `api/routes/licence.py`, `cloudflare/licence-worker/`, `scripts/issue_offline_licence.py`, `workers/tasks/revalidate_licence.py`.
 - Tested by: `tests/test_licence_edges.py`, `test_licence_enforcement.py`, `test_licence_gating.py`, `test_licence_grace.py`, `test_licence_signing.py`, `test_licence_validate_route.py`, `test_issue_offline_licence.py`, and `cloudflare/licence-worker/src/index.test.ts`.
-- Gap: narrowing to the three licensed modules waits for the customer's go-ahead.
+- Closed: the licence was narrowed to the three licensed modules on 9 November 2026 (RAID D-03).
 
 ### 11. Help and training
 
