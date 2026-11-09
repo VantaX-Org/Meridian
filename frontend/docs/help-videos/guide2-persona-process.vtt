@@ -1,37 +1,37 @@
 WEBVTT
 
 1
-00:00:00.005 --> 00:00:05.803
+00:00:00.003 --> 00:00:05.643
 Process analyst: read the data through the business process.
 
 2
-00:00:05.803 --> 00:00:10.799
+00:00:05.643 --> 00:00:10.920
 Step 1, Landscape: press Open PTP step 3.
 
 3
-00:00:10.799 --> 00:00:16.719
+00:00:10.920 --> 00:00:16.666
 Step 2, Processes: which steps Material master blocks, and the fields behind them.
 
 4
-00:00:16.719 --> 00:00:22.726
+00:00:16.666 --> 00:00:22.666
 Step 3, What if: tick the rules to fix and see which steps would be ready.
 
 5
-00:00:22.726 --> 00:00:28.928
+00:00:22.666 --> 00:00:28.435
 Step 4, the step: hand its blocking rule to a steward.
 
 6
-00:00:28.928 --> 00:00:35.038
+00:00:28.435 --> 00:00:34.062
 Step 5, the designer: map the fields each activity reads, then publish.
 
 7
-00:00:35.038 --> 00:00:42.018
+00:00:34.062 --> 00:00:41.039
 A step is blocked when a field it writes fails a critical or high rule, or passes under 70%.
 
 8
-00:00:42.018 --> 00:00:48.767
+00:00:41.039 --> 00:00:47.480
 Comment on a rule from its inspector to tell the steward what the process needs.
 
 9
-00:00:48.767 --> 00:00:55.372
+00:00:47.480 --> 00:00:53.094
 Related objects in the header show which object to fix first.
