@@ -234,3 +234,16 @@ def test_rfc_overlay_builds_on_the_pinned_release_not_latest():
     overlay = (REPO / "scripts" / "build-rfc-overlay.sh").read_text()
     assert 'MERIDIAN_BASE_TAG="$TARGET_TAG" bash scripts/build-rfc-overlay.sh' in update
     assert 'meridian-${svc}:${MERIDIAN_BASE_TAG:-latest}' in overlay
+
+
+def test_update_keeps_only_the_newest_pre_update_backups(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    (host / "backups").mkdir()
+    for day in range(10, 17):
+        (host / "backups" / f"pre-update-202610{day}T000000Z.dump").write_text("old")
+    (host / "backups/pre-wipe-20261009T000000Z.dump").write_text("keep")
+    _run(host, env, args=())
+    names = sorted(p.name for p in (host / "backups").iterdir())
+    pre = [n for n in names if n.startswith("pre-update-")]
+    assert len(pre) == 5 and "pre-update-20261016T000000Z.dump" in pre and "pre-update-20261012T000000Z.dump" not in pre
+    assert "pre-wipe-20261009T000000Z.dump" in names

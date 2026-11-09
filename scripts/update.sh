@@ -236,6 +236,17 @@ backup_database() {
         error "Database backup failed — update aborted. Nothing was changed."
     fi
     info "Database backed up ($(du -h "$PRE_UPDATE_DUMP" | cut -f1))"
+    prune_backups
+}
+
+# Keep only the newest pre-update dumps (BACKUP_KEEP, default 5). Names sort by
+# UTC timestamp, so a name sort is a date sort. Other dumps are never touched.
+prune_backups() {
+    local keep="${BACKUP_KEEP:-5}" old
+    old=$(ls -1 backups/pre-update-*.dump 2>/dev/null | sort -r | tail -n "+$((keep + 1))")
+    [[ -z "$old" ]] && return 0
+    info "Removing $(wc -l <<<"$old" | tr -d ' ') old pre-update backups, keeping the newest ${keep}."
+    xargs rm -f <<<"$old"
 }
 
 # Copy this release's deployment files (baked into the api image under /deploy)
