@@ -2,19 +2,16 @@
 
 This list helps the support team recognise known defects, limits and debt so they are not logged as new incidents. Each item names the owner role and the proposed handling. Handling is proposed, to agree, until the item is accepted at hand-over (see exit criterion 7 in [README.md](README.md)).
 
-The sources are the [RAID log](../project/raid-log.md), the release notes in [docs/releases/v0.0.633.md](../releases/v0.0.633.md), the debt register in [docs/diligence/roadmap-and-debt.md](../diligence/roadmap-and-debt.md) and [docs/PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md). Those documents stay the record. When an item there changes, update this list.
+The sources are the [RAID log](../project/raid-log.md), the release notes in [docs/releases/](../releases/README.md), the debt register in [docs/diligence/roadmap-and-debt.md](../diligence/roadmap-and-debt.md) and [docs/PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md). Those documents stay the record. When an item there changes, update this list.
 
 ## Open items for the current release
 
 | Item | What the support team will see | Owner role | Proposed handling |
 |---|---|---|---|
-| DD03L target-workbook learning for ECC and S/4HANA is not built | SuccessFactors workbooks learn new columns from the target workbook. ECC and S/4HANA workbooks do not learn fields from the SAP data dictionary (RAID I-03). A column the extraction does not fetch stays unfilled. | Vendor engineering | Accepted limit. Whether it is planned: To confirm (owner: vendor engineering). |
 | Some SuccessFactors mandatory columns are unmatched by design | The Migration screen reports workbook columns that the source system does not return, using the last run's coverage (RAID R-02). | Meridian administrator with the SAP team | Review the unmatched columns before each migration load. The column list: To confirm (owner: vendor engineering). |
 | Binary, macro and OpenDocument workbooks come back as .xlsx | A user uploads a `.xls`, `.xlsb`, `.xlsm` or `.ods` workbook and receives a `.xlsx` file. This is by design: no writer for those formats is installed (`api/services/migration/workbook_formats.py`). Macros in an `.xlsm` upload are not in the returned file. | Meridian administrator | Accepted limit. L1 answers from this entry. |
 | Aletheia engine image pin is undecided | The compose default is `ghcr.io/vantax-org/cortex0:1.7.0`, set through `MERIDIAN_ALETHEIA_IMAGE`. Moving to 1.8.0 is not decided (RAID I-04). | Vendor engineering, with the product owner | Do not change the pin on the customer deployment until the decision is made. |
 | Aletheia engine runs unlicensed until its settings are added | Administration, Aletheia engine shows the engine unlicensed (RAID R-05). | Meridian administrator, with a person who has sudo on the host | Append the engine settings to `docker/.env` and rerun the update for the running version, as described in the release notes. |
-| Cosmetic: Fix grid "Object and run" column alignment | The column does not line up (RAID I-01). | Vendor engineering | Accepted as cosmetic. Log as S4 only if users report a new symptom. |
-| Cosmetic: Monitors "Usual range" text wraps | The text wraps on the Monitors screen (RAID I-02). | Vendor engineering | Accepted as cosmetic. |
 | Signed-in go-live acceptance run not done | No signed-in tester has run [docs/journeys/go-live-acceptance-test.md](../journeys/go-live-acceptance-test.md) on the customer deployment (RAID R-04). | Customer test lead | Run it before users are told the release is ready. A fail in sections 1 to 3 stops the release. |
 | Load-tool validation is not proven | A migration file can pass Meridian and fail in the target load tool. The workbook tests use repository fixtures (RAID R-01). | Customer test lead | Run section 4 of the acceptance test with a real import template. |
 | Licence narrowing waits for the customer's go-ahead | Modules beyond the licensed scope may still be visible (release notes, known issues). | Vendor delivery lead | Narrow when the customer confirms. |
@@ -47,19 +44,19 @@ Items the register marks fixed are not repeated here, including D-01 (Python sou
 | The eight go-live gates in PRODUCTION_READINESS.md were unchecked as of 24 April 2026 | PRODUCTION_READINESS.md | Vendor delivery lead | Current state: To confirm (owner: vendor delivery lead). Use the [cutover and go-live plan](../project/cutover-and-go-live-plan.md) for this deployment. |
 | `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` is on by default | `api/config.py`, debt row DR-3 | Vendor engineering | Stays on until the licence worker uses Ed25519 signing. A later release turns it off. No customer action. |
 
-## Documentation errors to work around
+## Fixed in v0.0.634
 
-These are faults in existing documents. They are listed so the support team does not follow them by mistake. Fixing the documents is To confirm (owner: vendor engineering).
+- ECC and S/4HANA target workbooks now learn columns from the SAP data dictionary (DD03L). A column held by one table is added to the next extraction. A column held by several tables is listed on the Migration screen with those tables, and the user names the table in the header as TABLE-FIELD. A column held by none is reported as not in the system (RAID I-03). Limit: lookups are cached in the API process, so a field added in SE11 is seen after the next restart or update.
+- The Fix grid "Object and run" column lines up, and the Monitors "Usual range" text no longer wraps (RAID I-01, I-02).
 
-| Document | Fault | Use instead |
-|---|---|---|
-| [docs/troubleshooting.md](../troubleshooting.md) | The language model container is called `llm` and `OLLAMA_BASE_URL` defaults to `http://llm:11434`. The ollama overlay names the service `ollama`. | `docker compose ... ps ollama` and `logs ollama`; see [runbooks.md](runbooks.md), runbook 12. |
-| docs/troubleshooting.md | `psql -U vantax -d vantax` uses an old database user and name. The customer compose file uses `meridian` for both. | `docker compose -f docker/docker-compose.customer.yml exec db psql -U meridian -d meridian` |
-| docs/troubleshooting.md | `curl http://localhost:8000/health` and `ss ... 8000` assume the api publishes port 8000 on the host. In the customer compose file the api is internal only. | `curl -s http://127.0.0.1/health` through nginx. |
-| docs/troubleshooting.md | Licence settings are called `LICENCE_KEY` and `LICENCE_FILE`. | The `MERIDIAN_LICENCE_*` names in [runbooks.md](runbooks.md), runbook 6. |
-| `scripts/healthcheck.sh` | The port it checks may not match the customer deployment, where the api has no host port. | Runbook 1 in [runbooks.md](runbooks.md). The correct port: To confirm (owner: vendor engineering). |
-| `docker/monitoring/prometheus/alerts.yml` | Each alert's `runbook` label points to `docs/ops/runbooks/<runbook>.md`, which does not exist. | The alert table in [monitoring-and-alerting.md](monitoring-and-alerting.md). |
-| `manage_users` command | The command uses the development tenant id, not the deployment's `MERIDIAN_TENANT_ID`. | Administration, Users. Whether the command is safe on the customer deployment: To confirm (owner: vendor engineering). |
+## Documentation errors (fixed in v0.0.634)
+
+Release v0.0.634 fixed the faults this section used to list:
+
+- [docs/troubleshooting.md](../troubleshooting.md) now uses the customer compose file, the `ollama` service from its overlay (`OLLAMA_BASE_URL=http://ollama:11434`), the `meridian` database user and name, the `MERIDIAN_LICENCE_*` settings, and the health check through nginx at `http://127.0.0.1/health`.
+- `scripts/healthcheck.sh` checks nginx at `http://127.0.0.1/health`. `MERIDIAN_HEALTH_URL` overrides the address.
+- Each alert in `docker/monitoring/prometheus/alerts.yml` has a `runbook_url` annotation that points to the alert table in [monitoring-and-alerting.md](monitoring-and-alerting.md).
+- `scripts/manage_users.py` uses the deployment's `MERIDIAN_TENANT_ID`, the same setting the API reads. Without it, the single-tenant default applies, as in the API.
 
 ## How to add an item
 

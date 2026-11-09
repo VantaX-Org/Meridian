@@ -27,9 +27,9 @@ Status values: Open, In progress, Waiting, Closed.
 
 | ID | Issue | Owner role | Status |
 |---|---|---|---|
-| I-01 | Cosmetic: column alignment in the Fix grid is not yet right. | Engineering lead | Open |
-| I-02 | Cosmetic: the "Usual range" text on Monitors wraps. | Engineering lead | Open |
-| I-03 | DD03L learning for ECC and S/4HANA is not built. SuccessFactors workbooks learn columns (commit 8bd66187d). ECC and S/4HANA do not yet learn fields from the data dictionary. | Engineering lead | Open |
+| I-01 | Cosmetic: column alignment in the Fix grid is not yet right. | Engineering lead | Closed, fixed in v0.0.634 |
+| I-02 | Cosmetic: the "Usual range" text on Monitors wraps. | Engineering lead | Closed, fixed in v0.0.634 |
+| I-03 | DD03L learning for ECC and S/4HANA is not built. SuccessFactors workbooks learn columns (commit 8bd66187d). ECC and S/4HANA do not yet learn fields from the data dictionary. | Engineering lead | Closed, built in v0.0.634 (DD03L lookup on workbook upload) |
 | I-04 | The engine image pin is undecided. The compose default is cortex0 1.7.0. Moving to 1.8.0 is not decided. | Product owner | Open |
 | I-05 | The CI result for PR #639 could not be read when this log was written. | Release manager | To confirm |
 
