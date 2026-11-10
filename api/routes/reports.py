@@ -510,6 +510,33 @@ async def workbook_xlsx(version_id: uuid.UUID, request: Request, module: Optiona
     return xlsx_response(*out)
 
 
+def _cleaning_sync(tenant_id: str, vid: str, module: str) -> Optional[tuple[bytes, str]]:
+    from api.services.cleaning_workbook import build
+    from workers.db import get_sync_engine, tenant_session
+
+    with tenant_session(get_sync_engine(), tenant_id) as session:
+        return build(session, tenant_id, vid, module)
+
+
+@router.get("/reports/{version_id}/cleaning/{module}.xlsx")
+async def cleaning_xlsx(version_id: uuid.UUID, module: str, request: Request, db: AsyncSession = Depends(get_db),
+                        tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Cleaning workbook for one object: every failing record with its value, suggestion and instructions."""
+    from api.services.branded_xlsx import xlsx_response
+
+    await _rls(db, tenant)
+    if module not in _modules():
+        raise HTTPException(status_code=422, detail=f"Unknown module: {module}")
+    try:
+        out = await asyncio.to_thread(_cleaning_sync, str(tenant.id), str(version_id), module)
+    except Exception:
+        raise server_failure("The cleaning workbook could not be generated.", log=logger, what="cleaning workbook") from None
+    if out is None:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    await _audit_export(request, tenant, "cleaning_workbook", version_id, module)
+    return xlsx_response(*out)
+
+
 # Reports that describe the product or the tenant, not one run: their url is built without a run.
 _RUNLESS = frozenset({"rules", "dictionary"})
 
@@ -550,6 +577,10 @@ _CATALOGUE = (
      ["Contents", "Rules by object"], 60, ["module"], "/api/v1/reports/rules.pdf?module={module}", False),
     ("dictionary", "Data dictionary", "PDF", "The SAP tables and fields Meridian reads, by table and object.",
      ["Contents", "Fields by table"], 40, [], "/api/v1/reports/dictionary.pdf", False),
+    ("cleaning_workbook", "Cleaning workbook", "XLSX",
+     "One object's failing records with the current value, a suggested value, why it failed and how to fix it.",
+     ["How to use", "Summary", "Instructions", "Records to clean"], 0, ["module"],
+     "/api/v1/reports/{v}/cleaning/{module}.xlsx", False),
     ("record", "Record fix sheet", "PDF", "One record's fixes.", ["Failing rules by view", "Fixes"], 1, ["record"],
      None, False),
 )

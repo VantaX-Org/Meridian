@@ -32,6 +32,7 @@ Status values: Open, In progress, Waiting, Closed.
 | I-03 | DD03L learning for ECC and S/4HANA is not built. SuccessFactors workbooks learn columns (commit 8bd66187d). ECC and S/4HANA do not yet learn fields from the data dictionary. | Engineering lead | Closed, built in v0.0.634 (DD03L lookup on workbook upload) |
 | I-04 | The engine image pin was undecided. | Product owner | Closed, the product owner chose cortex0 1.8.0 on 9 November 2026 |
 | I-06 | The Foundation workbook ships its picklist sheet (`Picklists_Original`) with no rows, so Meridian cannot check picklist values for that workbook. The Employee workbook carries 453 picklist values, and those are checked. | SAP team | Open, upload a picklist export from the new system |
+| I-07 | Filling the customer's workbooks from the latest SuccessFactors run matched 135 of 544 Employee columns and 31 of 798 Foundation columns, because the run has no data for many columns. 39 Foundation and 3 Employee mandatory columns stay empty. The fill wrote a new workbook instead of the customer's own layout for both files. | Engineering lead | Open, extend the extraction to the missing fields and find why the layout export was not used |
 | I-05 | The CI result for PR #639 could not be read when this log was written. | Release manager | To confirm |
 
 ## Dependencies
