@@ -35,7 +35,7 @@ Items the register marks fixed are not repeated here, including D-01 (Python sou
 
 | Item | Source | Owner role | Proposed handling |
 |---|---|---|---|
-| No web application firewall in front of nginx | [docs/PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md) | Customer infrastructure or hosting team | Decide whether the customer network provides one: To confirm (owner: customer security team). |
+| No full web application firewall (OWASP rule set) in front of nginx. nginx ships default edge rules; see [access-and-security-operations.md](access-and-security-operations.md#edge-protection) | [docs/PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md) | Customer infrastructure or hosting team | Decide whether the customer network provides one: To confirm (owner: customer security team). |
 | No SBOM attached to release tags | PRODUCTION_READINESS.md | Vendor engineering | Accepted until a release adds one. |
 | `npm audit` reported 3 high and 8 moderate findings | PRODUCTION_READINESS.md | Vendor engineering | Whether these are still current: To confirm (owner: vendor engineering). |
 | The eight go-live gates in PRODUCTION_READINESS.md were unchecked as of 24 April 2026 | PRODUCTION_READINESS.md | Vendor delivery lead | Current state: To confirm (owner: vendor delivery lead). Use the [cutover and go-live plan](../project/cutover-and-go-live-plan.md) for this deployment. |
