@@ -12858,3 +12858,61 @@ rules:
         Correct the delivering plant in XD02 > Sales area > Shipping, or extend the materials to that plant (MM01/MM02 >
         MRP or Plant data).
     record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: delivering plant {KNVV.VWERK} has no material with a plant view.'
+
+  - id: SDCM860
+    field: KNB1.REMIT
+    check_class: exists_check
+    grain: KNB1
+    fields:
+      - KNB1.REMIT
+    target_table: KNA1
+    target_fields:
+      - KUNNR
+    severity: medium
+    dimension: consistency
+    message: Next payee in the company code does not exist as a customer (KNA1)
+    why_it_matters: >-
+      The next payee (KNB1.REMIT) names the customer account that takes over payment for this customer in the company
+      code. If that customer does not exist, payment and dunning cannot be passed on to it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payments and dunning routed through the next payee fail or need manual handling.
+    fix_map:
+      __other__: Correct or clear the next payee in XD02 / FD02 > Company code data.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: next payee {KNB1.REMIT} does not exist.'
+
+  - id: SDCM861
+    field: KNB1.EKVBD
+    check_class: exists_check
+    grain: KNB1
+    fields:
+      - KNB1.EKVBD
+    target_table: KNA1
+    target_fields:
+      - KUNNR
+    severity: medium
+    dimension: consistency
+    message: Buying group in the company code does not exist as a customer (KNA1)
+    why_it_matters: >-
+      The buying group account (KNB1.EKVBD) links the customer to the group that negotiates terms and receives group
+      rebates. A buying group that does not exist cannot carry the group terms.
+    rule_authority: sap_hard_constraint
+    sap_impact: Group-level reporting and settlement leave the customer out.
+    fix_map:
+      __other__: Correct or clear the buying group in XD02 / FD02 > Company code data > Correspondence.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: buying group {KNB1.EKVBD} does not exist.'
+
+  - id: SDCM862
+    field: KNB1.WEBTR
+    check_class: cross_field_check
+    fail_when: '`KNB1.WEBTR` < 0'
+    severity: medium
+    dimension: validity
+    message: Bill of exchange limit is negative
+    why_it_matters: >-
+      The bill of exchange limit (KNB1.WEBTR) caps the amount of bills of exchange the customer may present. A negative
+      limit has no meaning and points to a load or sign conversion error.
+    rule_authority: sap_hard_constraint
+    sap_impact: Bill of exchange processing for the customer works from an impossible limit.
+    fix_map:
+      __other__: Set the bill of exchange limit to zero or a positive amount in XD02 / FD02 > Company code data > Payment transactions.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: bill of exchange limit {actual_value} is negative.'
