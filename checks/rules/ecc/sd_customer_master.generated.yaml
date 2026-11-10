@@ -3029,23 +3029,6 @@ rules:
     __other__: 'KNB1.ZINRT ''{invalid_value}'' is not in domain ZINRT. Set it to one of: 01, 02, 03, 04, 05, 06, 07, 08, 09,
       10, 11, 12.'
   record_fix_template: 'KNB1.ZINRT is {actual_value}; expected one of: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12.'
-- id: DXR6b7e9058
-  enabled: false
-  field: KNB1.REMIT
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Next payee must exist in the check table KNA1.KUNNR
-  why_it_matters: REMIT (Next payee) is defined in the SAP Data Dictionary with check table KNA1.KUNNR on domain KUNNR. A
-    value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read REMIT resolve it through check table KNA1.KUNNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: KNB1.REMIT '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
-      entry.
-  record_fix_template: KNB1.REMIT points at a check table KNA1.KUNNR entry that does not exist.
 - id: DXR7a49c8e6
   enabled: false
   field: KNB1.ZGRUP
@@ -3097,23 +3080,6 @@ rules:
     __other__: KNB1.MGRUP '{invalid_value}' is not defined in the check table T047R.MGRUP. Correct it there or add the missing
       entry.
   record_fix_template: KNB1.MGRUP points at a check table T047R.MGRUP entry that does not exist.
-- id: DXReed51883
-  enabled: false
-  field: KNB1.EKVBD
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Account Number of Buying Group must exist in the check table KNA1.KUNNR
-  why_it_matters: EKVBD (Account Number of Buying Group) is defined in the SAP Data Dictionary with check table KNA1.KUNNR
-    on domain KUNNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EKVBD resolve it through check table KNA1.KUNNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: KNB1.EKVBD '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
-      entry.
-  record_fix_template: KNB1.EKVBD points at a check table KNA1.KUNNR entry that does not exist.
 - id: DXR8149bb57
   enabled: false
   field: KNB1.SREGL
