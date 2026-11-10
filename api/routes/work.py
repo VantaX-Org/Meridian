@@ -89,6 +89,14 @@ class _Rows:
     def current(self) -> bool:
         return self.pairs is not None
 
+    @property
+    def runs(self) -> list[str]:
+        """The runs these rows are read from (one run: ``vid``, which _rows always names)."""
+        if self.pairs is not None:
+            return run_ids(self.pairs)
+        assert self.vid is not None
+        return [self.vid]
+
     def where(self, alias: str, p: dict) -> str:
         if self.pairs is not None:
             return pairs_clause(alias, self.pairs, p)
@@ -136,7 +144,7 @@ def _auto_runs(sel: _Rows) -> str:
 
 async def _unbuilt(db: AsyncSession, tenant: Tenant, rows: _Rows) -> list[str]:
     """The runs of ``rows`` whose work list is not built yet, newest first."""
-    ids = run_ids(rows.pairs) if rows.pairs is not None else [rows.vid]
+    ids = rows.runs
     return list((await db.execute(text(
         "SELECT id::text FROM analysis_versions WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) "
         "AND NOT (COALESCE(metadata, '{}'::jsonb) ? 'worklist_built_at') ORDER BY run_at DESC"),
@@ -343,7 +351,7 @@ async def _summary(request: Request, version_id, module, check_id, severity, sta
             o["overdue"] += r.overdue
     out = sorted(objects.values(), key=lambda o: (-o["critical"], -o["open"], o["module"]))
     unbuilt = await _unbuilt(db, tenant, sel)
-    ids = run_ids(sel.pairs) if sel.pairs is not None else [sel.vid]
+    ids = sel.runs
     totals = {k: sum(o[k] for o in out) for k in ("records", "open", "issues", "critical", "proposed", "overdue")}
     filters = (module, check_id, severity, status, assigned, proposed, due, part, system, q, since, wave, verdict)
     if any(f is not None for f in filters):
@@ -416,9 +424,9 @@ async def groups(
          ORDER BY sev_rank, records DESC, check_id LIMIT :limit"""), p)).mappings().all()
     total = (await db.execute(text(f"SELECT count(*) FROM work_groups WHERE {' AND '.join(where)}"), p)).scalar()
     if sel.current:  # as /work/summary: built once any run read has its work list
-        built = len(await _unbuilt(db, tenant, sel)) < len(run_ids(sel.pairs))
+        built = len(await _unbuilt(db, tenant, sel)) < len(sel.runs)
     else:
-        built = await _built(db, sel.vid)
+        built = await _built(db, sel.runs[0])
     return {"version_id": sel.vid, "built": built, "total": int(total or 0),
             "groups": [{**dict(r), "open": sum(int((r["statuses"] or {}).get(s, 0)) for s in OPEN)} for r in rows]}
 
@@ -443,6 +451,7 @@ async def _wave_filter(db: AsyncSession, tenant: Tenant, wave: Optional[uuid.UUI
     v = verdict.replace("_", "-") if verdict else None
     p: dict = {}
     if v is None:  # the wave's objects, whatever their verdict
+        assert w is not None and mods is not None  # no verdict, so a wave was given (else the early return)
         clauses = ["w.module = ANY(CAST(:wv_mods AS text[]))"]
         p["wv_mods"] = mods
         if w["source"]:

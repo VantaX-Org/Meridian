@@ -14,7 +14,7 @@ import re
 import time
 import uuid
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import httpx
 import pandas as pd
@@ -26,6 +26,7 @@ from api.middleware.cache import invalidate_tenant_cache
 from sap.base import (
     SAPConnectionParams,
     CloudConnectionParams,
+    CloudSAPConnector,
     SAPConnectorError,
 )
 from sap.rfc import PAYROLL_FUNCTION, PAYROLL_TABLE
@@ -82,8 +83,8 @@ def connect_sap_system(system_type: str, params: dict):
     """
     if system_type in RFC_SYSTEM_TYPES:
         from sap import get_connector
-        connector = get_connector()
-        connector.connect(SAPConnectionParams(
+        rfc = get_connector()
+        rfc.connect(SAPConnectionParams(
             host=params["host"],
             client=params["client"],
             sysnr=params["sysnr"],
@@ -92,11 +93,11 @@ def connect_sap_system(system_type: str, params: dict):
             read_function=params.get("read_function") or "",
             extraction_path=params.get("extraction_path") or "",
         ))
-        return connector
+        return rfc
 
     elif system_type == "successfactors":
         from sap.successfactors import SuccessFactorsConnector
-        connector = SuccessFactorsConnector()
+        connector: CloudSAPConnector = SuccessFactorsConnector()
         connector.connect(CloudConnectionParams(
             base_url=params["base_url"],
             company_id=params.get("company_id", ""),
@@ -236,6 +237,8 @@ class ConnectivityManager:
     def __init__(self, session: Session, tenant_id: str):
         self.session = session
         self.tenant_id = tenant_id
+        self._drift_run: Optional[str] = None  # set while a sync records drift rows
+        self._drift_rows = 0
         self.session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
 
     # -- Connection Building ---------------------------------------------------
@@ -399,13 +402,13 @@ class ConnectivityManager:
                 fs_config = load_config(self.session, system_id)
                 controlled = list(extra_fields(resolve_all(fs_config)).items()) + \
                     list(material_fields(resolve_material(fs_config, dictionary)).items())
-                for t, fs in controlled:
-                    if t in plans:
-                        plans[t].fields |= {f for f in fs if dictionary.field(t, f) is not None}
+                for tname, fs in controlled:
+                    if tname in plans:
+                        plans[tname].fields |= {f for f in fs if dictionary.field(tname, f) is not None}
                 # fields a target workbook asked for and DD03L confirmed (workbook.learn_sap)
-                for t, plan in plans.items():
-                    if t in dictionary.tables:
-                        plan.fields |= {f.name for f in dictionary.tables[t].fields.values()
+                for tname, plan in plans.items():
+                    if tname in dictionary.tables:
+                        plan.fields |= {f.name for f in dictionary.tables[tname].fields.values()
                                         if f.provenance == "workbook"}
                 # ODP or the table reader, per table (sap/extraction_plan.py choose_read_paths)
                 odp_ok = path_setting == "auto" and hasattr(connector, "odp_reader") and \
@@ -1088,7 +1091,8 @@ class ConnectivityManager:
         from sap.btp import ecc_value
         from sap.s4hana_cloud import S4HC_TABLE_MAP
 
-        frames, coverage, reads = {}, [], {}
+        frames, reads = {}, {}
+        coverage: list[dict[str, Any]] = []
         for table in sorted(self._rule_tables(modules)):
             if table not in S4HC_TABLE_MAP:
                 coverage.append({"table": table, "status": "upload_required",
@@ -1397,7 +1401,7 @@ class ConnectivityManager:
         for module in modules:
             targets = get_extraction_targets(system_type, module, include_config=True)
             config_targets = [t for t in targets if t.is_config]
-            module_result = {"tables_synced": 0, "tables_baseline": 0, "errors": []}
+            module_result: dict[str, Any] = {"tables_synced": 0, "tables_baseline": 0, "errors": []}
 
             try:
                 connector = self._get_connector(system_type, params)
@@ -1455,7 +1459,7 @@ class ConnectivityManager:
     def _store_config_snapshot(self, system_id: str, module: str,
                                table_name: str, df: pd.DataFrame, source: str):
         data = df.to_dict(orient="records")
-        if source == "live" and getattr(self, "_drift_run", None):
+        if source == "live" and (drift_run := getattr(self, "_drift_run", None)):
             prev = self.session.execute(text(
                 "SELECT config_data, source FROM config_snapshots WHERE tenant_id = :tid AND system_id = :sid "
                 "AND module = :mod AND config_table = :tbl"),
@@ -1463,7 +1467,7 @@ class ConnectivityManager:
             if prev is not None and prev[1] == "live":  # a first live read after the baseline is not drift
                 from api.services.drift_alerts import log_snapshot_drift
                 self._drift_rows += log_snapshot_drift(
-                    self.session, str(self.tenant_id), self._drift_run, module, table_name,
+                    self.session, str(self.tenant_id), drift_run, module, table_name,
                     list(prev[0] or []), json.loads(json.dumps(data, default=str)))
         self.session.execute(
             text("""

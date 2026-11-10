@@ -473,12 +473,13 @@ def build_duplicates(tables: dict[str, pd.DataFrame], matnr: str, limit: int = 2
         if k != mine_key and k in set(m["_m"]):
             cand.setdefault(k, {"row": m[m["_m"] == k].iloc[0].to_dict(), "evidence": {}})["evidence"]["ean"] = 100.0
     for r in block.to_dict("records"):
-        if my_bismt and _s(r.get("BISMT")) and norm_matnr(_s(r["BISMT"])) == mine_key or \
-                (_s(r.get("BISMT")) and my_bismt and norm_matnr(my_bismt) == r["_m"]):
+        bismt = _s(r.get("BISMT"))
+        if my_bismt and bismt and norm_matnr(bismt) == mine_key or \
+                (bismt and my_bismt and norm_matnr(my_bismt) == r["_m"]):
             cand.setdefault(r["_m"], {"row": r, "evidence": {}})["evidence"]["old_number"] = 90.0
         if my_mfr[0] and my_mfr[1] and (_s(r.get("MFRPN")), _s(r.get("MFRNR"))) == my_mfr:
             cand.setdefault(r["_m"], {"row": r, "evidence": {}})["evidence"]["mfr_part"] = 90.0
-    items = []
+    items: list[dict[str, Any]] = []
     for k, c in cand.items():
         r, ev = c["row"], c["evidence"]
         score = max(ev.values())
@@ -552,7 +553,8 @@ def build_findings(failing: list[dict], issues: dict[tuple[str, str], dict], pre
     for f in failing:
         if f["check_id"] in cat:
             by_rule.setdefault(f["check_id"], []).append(f)
-    views = {vid: {"view": vid, "label": label, "failing": [], "passing_count": 0, "not_evaluated": []}
+    views: dict[str, dict[str, Any]] = {vid: {"view": vid, "label": label, "failing": [], "passing_count": 0,
+                                              "not_evaluated": []}
              for vid, label in view_order()}
     for rid, meta in cat.items():
         v = views[meta["view"]]
