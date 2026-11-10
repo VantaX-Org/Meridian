@@ -21,6 +21,7 @@ Decisions found in the repository and git history. Each date is the commit date 
 | DL-14 | 2026-11-09 | Fill a SuccessFactors dependant's columns from the related person, and add a missing person key in the sheet's own spelling. | The dependant sheets hold the related person's own data, and import-style sheets use kebab-case headers such as `person-id-external`. | v0.0.635 |
 | DL-15 | 2026-11-09 | The customer licence keeps 12 modules: material master, customer master with business partner, and the ten SuccessFactors modules. | The customer licences material master, SuccessFactors and customer master only. Business partner stays because a customer is a business partner in S/4HANA. | Licence server change, 9 November 2026 |
 | DL-16 | 2026-11-09 | Move the engine image pin to cortex0 1.8.0. | Product owner decision. | Closes DO-01 |
+| DL-17 | 2026-11-10 | Give each object a cleaning workbook in Excel, with every failing record and field, the current and suggested value, the rule, why it failed and the fix steps. | The data owners clean in Excel and need the full list, not only a summary. Suggested values come only from the run, the rule's automatic fix or its value map. | Release v0.0.636 |
 
 ## Decisions still open
 

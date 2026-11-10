@@ -67,6 +67,7 @@ REPORT_TYPES: dict[str, ReportType] = {
     "trend": ReportType("Trend report", "pdf"),
     "owners": ReportType("Owner workload", "pdf"),
     "object": ReportType("Object report", "pdf", needs_module=True),
+    "cleaning_workbook": ReportType("Cleaning workbook", "xlsx", needs_module=True),
     "json": ReportType("Run data", "json"),
     "rules": ReportType("Rule catalogue", "pdf", needs_run=False, needs_module=True),
     "dictionary": ReportType("Data dictionary", "pdf", needs_run=False),
@@ -85,7 +86,7 @@ ENDPOINT_KINDS: dict[str, str] = {
     "executive_report_pdf": "executive", "comparison_report_pdf": "compare", "object_report_pdf": "object",
     "record_report_pdf": "record", "board_report_pdf": "board", "trend_report_pdf": "trend",
     "rules_report_pdf": "rules", "dictionary_report_pdf": "dictionary", "owners_report_pdf": "owners",
-    "workbook_xlsx": "workbook",
+    "workbook_xlsx": "workbook", "cleaning_xlsx": "cleaning_workbook",
 }
 
 
@@ -232,6 +233,11 @@ def generate_report(session: Session, tenant_id: str, kind: str, params: dict) -
         from api.services.workbook_report import build as build_workbook
 
         out = build_workbook(session, str(tenant_id), vid, None, module)
+        return Generated(out[0], out[1], CONTENT_TYPES["xlsx"], vid) if out else None
+    if kind == "cleaning_workbook":
+        from api.services.cleaning_workbook import build as build_cleaning
+
+        out = build_cleaning(session, str(tenant_id), vid, module) if module and vid else None
         return Generated(out[0], out[1], CONTENT_TYPES["xlsx"], vid) if out else None
     if kind == "json":
         payload = session.execute(text("SELECT report_json FROM reports WHERE tenant_id = :t AND version_id = :v"),
