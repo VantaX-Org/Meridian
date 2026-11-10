@@ -91,7 +91,7 @@ See [runbooks.md](runbooks.md), runbook 11. The retention periods the customer n
 
 ## Data-subject requests
 
-Administration, Data subject requests handles requests about a person's data. Debt row D-27 is partly fixed: some places where a personal value can sit are not covered. For each request, check the uncovered places listed in [roadmap-and-debt.md](../diligence/roadmap-and-debt.md) and handle them by hand. SAP stays the system of record, so a request may also need action in SAP by the customer.
+Administration, Data subject requests handles requests about a person's data. Debt row D-27 is partly fixed: some places where a personal value can sit are not covered. The [coverage map](data-subject-coverage.md) lists every store, what the request does with it, and the places to handle by hand. SAP stays the system of record, so a request may also need action in SAP by the customer.
 
 Who receives and approves data-subject requests: To confirm (owner: customer privacy officer).
 
