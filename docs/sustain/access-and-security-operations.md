@@ -78,7 +78,29 @@ These documents stay the record. Read them; do not copy them.
 - [docs/legal/DPA.md](../legal/DPA.md) and [docs/legal/PRIVACY.md](../legal/PRIVACY.md): data processing and privacy terms
 - [docs/PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md): readiness gates and known gaps
 
-Known gaps (see [known-issues.md](known-issues.md)): no web application firewall in front of nginx, no SBOM on release tags, `npm audit` findings, and `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` on by default.
+Known gaps (see [known-issues.md](known-issues.md)): no full web application firewall in front of nginx (the default edge rules below cover the basics), no SBOM on release tags, `npm audit` findings, and `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` on by default.
+
+## Edge protection
+
+The nginx site config `docker/nginx/meridian.conf` carries a default protection layer in plain nginx. It applies in both the HTTP-only setup and the HTTPS server block.
+
+| Control | Default | What it does |
+|---|---|---|
+| `limit_req_zone ... zone=meridian_api rate=50r/s` with `burst=200 nodelay` on `/api/` and `/scim/` | 50 requests a second per client address, bursts of 200 | Floods from one address get HTTP 429. Screen loads and job polling stay well under it. |
+| `limit_req_zone ... zone=meridian_auth rate=30r/m` with `burst=20 nodelay` | 30 a minute per address, bursts of 20 | Covers the unauthenticated password endpoints: `login`, `forgot-password`, `reset-password`, `accept-invite`, `invite/preview` under `/api/v1/auth/`. The API keeps its own tighter per-address limits behind it (10 sign-ins a minute). SSO sign-in is not in this bucket. |
+| `limit_conn meridian_conn 256` | 256 open connections per address | Stops one address from holding every worker connection. Live job streams (`/api/v1/jobs/events`, `/api/v1/events/{version_id}`) each hold one connection per open tab. |
+| `client_max_body_size 100m` on `/api/` | 100 MB | Matches the upload endpoint's own limit (`MAX_FILE_SIZE` in `api/routes/upload.py`). `/scim/` stays at 1 MB. |
+| `client_header_timeout 15s`, `client_body_timeout 60s`, `reset_timedout_connection on` | | Drops slow-client (slowloris) connections. The body timeout is the gap between two reads, not the whole upload, so a large workbook on a slow link still arrives. |
+| Method allow-list | `GET HEAD POST PUT PATCH DELETE OPTIONS` | TRACE, TRACK, CONNECT and WebDAV verbs get 405. SCIM needs PUT, PATCH and DELETE. |
+| Dotfile denial | `location ~ /\.(?!well-known/)` | `.env`, `.git` and other dotfile paths get 404. `/.well-known/` stays reachable. |
+| `Permissions-Policy` header | camera, microphone, geolocation and payment off | Added beside the existing `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` and HSTS (HTTPS only) headers. The Content-Security-Policy comes from the app, not nginx. |
+
+Tuning:
+
+- Limits are per client address. If many users reach Meridian through one NAT or proxy address and see HTTP 429, raise `rate` on `meridian_api` or the `limit_conn` value. If a load balancer or reverse proxy sits in front of nginx, every request has that proxy's address: set `set_real_ip_from <proxy address>;` and `real_ip_header X-Forwarded-For;` at the top of the file, or the limits apply to all users together.
+- A rejected request shows in the nginx error log as `limiting requests` or `limiting connections`: `docker compose logs nginx | grep limiting`.
+- Change the values in `nginx/meridian.conf` next to the compose file, then run `docker compose exec nginx nginx -t` and `docker compose exec nginx nginx -s reload`.
+- `update.sh` replaces `meridian.conf` with the release copy on every update. Re-apply local changes after an update, or ask the vendor to change the shipped defaults.
 
 ## Retention and purge
 
