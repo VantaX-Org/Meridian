@@ -4185,3 +4185,226 @@ rules:
   fix_map:
     __other__: Map the distribution type in the RAR design.
   record_fix_template: 'Sales document {VBKD.VBELN}, item {VBKD.POSNR}: revenue distribution type set.'
+- id: SDSO341
+  field: VBAP.PRCTR
+  check_class: exists_check
+  fields:
+  - VBAP.PRCTR
+  target_table: CEPC
+  target_fields:
+  - PRCTR
+  severity: high
+  dimension: accuracy
+  message: Order item profit centre has no master record
+  why_it_matters: The profit centre on the order item is the default for revenue and cost postings. It must exist in the profit
+    centre master.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue and cost of sales are posted to a profit centre that cannot be reported on.
+  fix_map:
+    __missing__: Correct the profit centre in the material master or create it in KE51, then re-determine it in the order.
+  record_fix_template: 'VBAP.PRCTR: ''{actual_value}'' has no matching record. Correct the profit centre in the material master
+    or create it in KE51, then re-determine it in the order.'
+- id: SDSO342
+  field: VBAK.KOSTL
+  check_class: exists_check
+  fields:
+  - VBAK.KOSTL
+  target_table: CSKS
+  target_fields:
+  - KOSTL
+  severity: medium
+  dimension: accuracy
+  message: Order cost centre has no master record
+  why_it_matters: A cost centre on an order, used for free-of-charge deliveries, must exist in the cost centre master.
+  rule_authority: sap_hard_constraint
+  sap_impact: Controlling cannot assign the free-of-charge cost to a cost centre.
+  fix_map:
+    __missing__: Correct the cost centre in VA02 or create it in KS01.
+  record_fix_template: 'VBAK.KOSTL: ''{actual_value}'' has no matching record. Correct the cost centre in VA02 or create it
+    in KS01.'
+- id: SDSO343
+  field: VBAK.CMNGV
+  check_class: cross_field_check
+  grain: VBAK
+  fail_when: (`VBAK.CMNGV` < @today) & `VBUK.CMGST`.isin(['B', 'C'])
+  severity: medium
+  dimension: lifecycle
+  message: Credit-blocked order has a next credit check date in the past (ECC only)
+  why_it_matters: A credit-blocked order is re-checked on its next check date. A past date on a still blocked order means
+    the periodic check did not release or reject it. This status table exists only in ECC; in S/4HANA the status moves onto
+    the document header and item, so the rule applies to the ECC source only.
+  rule_authority: sap_business_convention
+  sap_impact: The order stays blocked and the delivery date slips without anyone being notified.
+  fix_map:
+    __other__: Release or reject the order in VKM1, or run the credit check again.
+  record_fix_template: 'VBAK.CMNGV: ''{actual_value}'' fails the check. Release or reject the order in VKM1, or run the credit
+    check again.'
+- id: SDSO344
+  field: VBAP.GRPOS
+  check_class: exists_check
+  fields:
+  - VBAP.VBELN
+  - VBAP.GRPOS
+  applies_when:
+    VBAP.GRPOS:
+      not_in:
+      - '000000'
+  target_table: VBAP
+  target_fields:
+  - VBELN
+  - POSNR
+  severity: medium
+  dimension: consistency
+  message: Alternative item refers to an item that is not in the order
+  why_it_matters: The alternative-for item reference must point to another item of the same order. A missing target leaves
+    the alternative orphaned.
+  rule_authority: sap_hard_constraint
+  sap_impact: Alternative item logic and the main item in availability and pricing cannot be resolved.
+  fix_map:
+    __missing__: Correct the reference item in VA02 or delete the alternative item.
+  record_fix_template: 'VBAP.GRPOS: ''{actual_value}'' has no matching record. Correct the reference item in VA02 or delete
+    the alternative item.'
+- id: SDSO345
+  field: VBAP.STLNR
+  check_class: exists_check
+  fields:
+  - VBAP.STLNR
+  target_table: STKO
+  target_fields:
+  - STLNR
+  severity: medium
+  dimension: consistency
+  message: Order item bill of material does not exist
+  why_it_matters: The bill of material number on the item must exist in the BOM header table. A missing BOM breaks explosion
+    and component availability.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item cannot be exploded and components are not scheduled.
+  fix_map:
+    __missing__: Correct the BOM reference or restore the BOM in CS01.
+  record_fix_template: 'VBAP.STLNR: ''{actual_value}'' has no matching record. Correct the BOM reference or restore the BOM
+    in CS01.'
+- id: SDSO346
+  field: VBAP.NETPR
+  check_class: cross_field_check
+  fail_when: (`VBAP.NETWR` > 0) & (`VBAP.NETPR` == 0)
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Order item has a net value but a zero net price
+  why_it_matters: Net value is the net price times the quantity per pricing unit. A value above zero with a price of zero
+    is not reachable by pricing.
+  rule_authority: sap_business_convention
+  sap_impact: Margin and price analysis show a price of zero for a priced item.
+  fix_map:
+    __other__: Re-run pricing in VA02 (Update pricing).
+  record_fix_template: 'VBAP.NETPR: ''{actual_value}'' fails the check. Re-run pricing in VA02 (Update pricing).'
+- id: SDSO347
+  field: VBAP.KPEIN
+  check_class: cross_field_check
+  fail_when: (`VBAP.NETPR` > 0) & (`VBAP.KPEIN` <= 0)
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Order item has a net price but a zero pricing unit
+  why_it_matters: The net price is quoted per pricing unit. A unit of zero makes the value per piece undefined.
+  rule_authority: sap_hard_constraint
+  sap_impact: Price per unit and net value cannot be derived.
+  fix_map:
+    __other__: Re-run pricing in VA02 (Update pricing) and check the condition record.
+  record_fix_template: 'VBAP.KPEIN: ''{actual_value}'' fails the check. Re-run pricing in VA02 (Update pricing) and check
+    the condition record.'
+- id: SDSO348
+  field: VBEP.MBDAT
+  check_class: cross_field_check
+  grain: VBEP
+  fail_when: '`VBEP.MBDAT` > `VBEP.TDDAT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Schedule line material availability date is after the transportation planning date
+  why_it_matters: Scheduling runs from material availability to transportation planning to loading to goods issue to delivery.
+    The dates must not run backwards.
+  rule_authority: sap_business_convention
+  sap_impact: The schedule line cannot be met as planned.
+  fix_map:
+    __other__: Re-run scheduling by changing the delivery date in VA02.
+  record_fix_template: 'VBEP.MBDAT: ''{actual_value}'' fails the check. Re-run scheduling by changing the delivery date in
+    VA02.'
+- id: SDSO349
+  field: VBEP.TDDAT
+  check_class: cross_field_check
+  grain: VBEP
+  fail_when: '`VBEP.TDDAT` > `VBEP.LDDAT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Schedule line transportation planning date is after the loading date
+  why_it_matters: Transportation planning precedes loading in the scheduling sequence.
+  rule_authority: sap_business_convention
+  sap_impact: The transport plan for the schedule line is impossible.
+  fix_map:
+    __other__: Re-run scheduling by changing the delivery date in VA02.
+  record_fix_template: 'VBEP.TDDAT: ''{actual_value}'' fails the check. Re-run scheduling by changing the delivery date in
+    VA02.'
+- id: SDSO350
+  field: VBEP.LDDAT
+  check_class: cross_field_check
+  grain: VBEP
+  fail_when: '`VBEP.LDDAT` > `VBEP.WADAT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Schedule line loading date is after the goods issue date
+  why_it_matters: Loading happens before goods issue in the scheduling sequence.
+  rule_authority: sap_business_convention
+  sap_impact: Loading is planned after the goods are meant to leave.
+  fix_map:
+    __other__: Re-run scheduling by changing the delivery date in VA02.
+  record_fix_template: 'VBEP.LDDAT: ''{actual_value}'' fails the check. Re-run scheduling by changing the delivery date in
+    VA02.'
+- id: SDSO351
+  field: VBEP.BANFN
+  check_class: exists_check
+  fields:
+  - VBEP.BANFN
+  - VBEP.BNFPO
+  applies_when:
+    VBEP.BANFN:
+      populated: true
+  target_table: EBAN
+  target_fields:
+  - BANFN
+  - BNFPO
+  severity: medium
+  dimension: consistency
+  message: Schedule line purchase requisition does not exist
+  why_it_matters: A schedule line created from a requisition (third-party or purchase-to-order) must point to an existing
+    requisition item.
+  rule_authority: sap_hard_constraint
+  sap_impact: The supply chain link between the order and the purchase is lost.
+  fix_map:
+    __missing__: Correct the requisition reference or create the requisition again.
+  record_fix_template: 'VBEP.BANFN: ''{actual_value}'' has no matching record. Correct the requisition reference or create
+    the requisition again.'
+- id: SDSO352
+  field: VBPA.PARNR
+  check_class: exists_check
+  fields:
+  - VBPA.PARNR
+  applies_when:
+    VBPA.PARNR:
+      not_in:
+      - '0000000000'
+  target_table: KNVK
+  target_fields:
+  - PARNR
+  severity: medium
+  dimension: consistency
+  message: Partner contact person does not exist
+  why_it_matters: The contact person on a partner row must exist in the contact person master.
+  rule_authority: sap_hard_constraint
+  sap_impact: Documents and output addressed to the contact cannot be produced.
+  fix_map:
+    __missing__: Correct the contact person in the partner screen of VA02 or restore it in XD02.
+  record_fix_template: 'VBPA.PARNR: ''{actual_value}'' has no matching record. Correct the contact person in the partner screen
+    of VA02 or restore it in XD02.'

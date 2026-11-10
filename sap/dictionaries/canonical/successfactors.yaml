@@ -1180,3 +1180,36 @@ tables:
       MAXIMUM_PAY:                 {source: FOPayRange.maximumPay, type: DECIMAL, verify: true, description: Maximum pay}
       CURRENCY:                    {source: FOPayRange.currency, type: STRING, verify: true, description: Currency}
       FREQUENCY_CODE:              {source: FOPayRange.frequencyCode, type: STRING, verify: true, description: Frequency code}
+
+  # Country-specific objects: one entity set per country (PerGlobalInfoUSA, PerGlobalInfoZAF, ...). A source
+  # named Family* reads every set of that family the tenant has and stacks the rows; the country column tells
+  # them apart. Further columns are learned from the target workbook and resolved against each set's $metadata.
+  PER_GLOBAL_INFO:
+    description: Country-specific personal information (PerGlobalInfo per country), all records
+    source: PerGlobalInfo* (all records)
+    keys: [PERSON_ID, COUNTRY, START_DATE]
+    fields:
+      PERSON_ID:  {source: PerGlobalInfo*.personIdExternal, type: STRING, length: 100, description: Person ID}
+      COUNTRY:    {source: PerGlobalInfo*.country, type: STRING, length: 128, description: Country}
+      START_DATE: {source: PerGlobalInfo*.startDate, type: DATE, description: Effective start date}
+      END_DATE:   {source: PerGlobalInfo*.endDate, type: DATE, description: Effective end date}
+
+  FO_LEGAL_ENTITY_LOCAL:
+    description: Country-specific legal entity fields (FOLegalEntityLocal per country)
+    source: FOLegalEntityLocal*
+    keys: [EXTERNAL_CODE, COUNTRY]
+    fields:
+      EXTERNAL_CODE: {source: FOLegalEntityLocal*.externalCode, type: STRING, length: 128, description: Legal entity code}
+      COUNTRY:       {source: FOLegalEntityLocal*.country, type: STRING, length: 128, description: Country}
+      START_DATE:    {source: FOLegalEntityLocal*.startDate, type: DATE, description: Effective start date}
+      STATUS:        {source: FOLegalEntityLocal*.status, type: STRING, length: 2, description: A active / I inactive}
+
+  FO_JOB_CLASS_LOCAL:
+    description: Country-specific job classification fields (FOJobClassLocal per country)
+    source: FOJobClassLocal*
+    keys: [EXTERNAL_CODE, COUNTRY]
+    fields:
+      EXTERNAL_CODE: {source: FOJobClassLocal*.externalCode, type: STRING, length: 128, description: Job classification code}
+      COUNTRY:       {source: FOJobClassLocal*.country, type: STRING, length: 128, description: Country}
+      START_DATE:    {source: FOJobClassLocal*.startDate, type: DATE, description: Effective start date}
+      STATUS:        {source: FOJobClassLocal*.status, type: STRING, length: 2, description: A active / I inactive}

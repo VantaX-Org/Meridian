@@ -255,7 +255,9 @@ rules:
 
   - id: AR012
     field: KNA1.AUFSD
-    check_class: domain_value_check
+    check_class: referential_check
+    reference_table: TVAST
+    reference_field: AUFSP
     severity: medium
     dimension: validity
     message: Order block must be a valid block code or empty
@@ -265,21 +267,18 @@ rules:
     rule_authority: sap_hard_constraint
     sap_impact: Sales order creation (VA01) is blocked. If the value is invalid, the system may reject the customer record or
       produce unpredictable results during order processing.
-    valid_values_with_labels:
-      ? ''
-      : No order block
-      '01': General order block
-      '02': Credit block
-      '03': Delivery block
+    reference_values: ['01', '02', '03']
     fix_map:
-      __other__: 'Value ''{invalid_value}'' is not a valid order block code. Must be empty, 01, 02, or 03. In ECC: correct via
+      __other__: 'Value ''{invalid_value}'' is not an order block defined in TVAST. Use a defined block (OVAS) or clear it. In ECC: correct via
         T-code FD02 > Sales Data. In S/4HANA: use Fiori app F3893.'
     record_fix_template: 'Customer {KNA1.KUNNR}: AUFSD is ''{actual_value}''. Set to a valid block code or empty via FD02 /
       Fiori app F3893.'
 
   - id: AR013
     field: KNA1.LIFSD
-    check_class: domain_value_check
+    check_class: referential_check
+    reference_table: TVLS
+    reference_field: LIFSP
     severity: medium
     dimension: validity
     message: Delivery block must be a valid block code or empty
@@ -287,20 +286,18 @@ rules:
       in VL01N. Valid values represent different block reasons. Invalid values cause unpredictable delivery processing behaviour.
     rule_authority: sap_hard_constraint
     sap_impact: Delivery creation (VL01N) is blocked for this customer. Existing sales orders cannot be fulfilled.
-    valid_values_with_labels:
-      ? ''
-      : No delivery block
-      '01': General delivery block
-      '02': Credit delivery block
+    reference_values: ['01', '02']
     fix_map:
-      __other__: 'Value ''{invalid_value}'' is not a valid delivery block code. Must be empty, 01, or 02. In ECC: correct via
+      __other__: 'Value ''{invalid_value}'' is not a delivery block defined in TVLS. Use a defined block (OVLS) or clear it. In ECC: correct via
         T-code FD02 > Sales Data. In S/4HANA: use Fiori app F3893.'
     record_fix_template: 'Customer {KNA1.KUNNR}: LIFSD is ''{actual_value}''. Set to a valid block code or empty via FD02 /
       Fiori app F3893.'
 
   - id: AR014
     field: KNA1.FAKSD
-    check_class: domain_value_check
+    check_class: referential_check
+    reference_table: TVFS
+    reference_field: FAKSP
     severity: medium
     dimension: validity
     message: Billing block must be a valid block code or empty
@@ -308,13 +305,9 @@ rules:
       customer in VF01. Valid values represent different block reasons. Invalid values cause unpredictable billing behaviour.
     rule_authority: sap_hard_constraint
     sap_impact: Billing document creation (VF01) is blocked. Revenue recognition for this customer is delayed.
-    valid_values_with_labels:
-      ? ''
-      : No billing block
-      '01': General billing block
-      '02': Credit billing block
+    reference_values: ['01', '02']
     fix_map:
-      __other__: 'Value ''{invalid_value}'' is not a valid billing block code. Must be empty, 01, or 02. In ECC: correct via
+      __other__: 'Value ''{invalid_value}'' is not a billing block defined in TVFS. Use a defined block (OVV3) or clear it. In ECC: correct via
         T-code FD02 > Sales Data. In S/4HANA: use Fiori app F3893.'
     record_fix_template: 'Customer {KNA1.KUNNR}: FAKSD is ''{actual_value}''. Set to a valid block code or empty via FD02 /
       Fiori app F3893.'
@@ -493,7 +486,7 @@ rules:
     fix_map:
       __other__: 'Customer has a credit limit but no dunning procedure. In ECC: assign a dunning procedure via T-code FD02 >
         Company Code Data > Correspondence tab. In S/4HANA: use Fiori app F3893.'
-    record_fix_template: 'Customer {KNA1.KUNNR}: credit limit is set but MAHNS is missing. Assign a dunning procedure via FD02
+    record_fix_template: 'Customer {KNA1.KUNNR}: credit limit is set but no dunning procedure (KNB5.MAHNA) is assigned. Assign a dunning procedure via FD02
       / Fiori app F3893.'
     fail_when: (`KNKK.KLIMK` > 0) & `KNB5.MAHNA`.isna()
 
@@ -1367,7 +1360,7 @@ rules:
   - id: AR073
     field: KNKK.SKFOR
     check_class: cross_field_check
-    grain: KNA1
+    grain: KNKK
     fail_when: (`KNKK.KLIMK` > 0) & ((`KNKK.SKFOR`.fillna(0) + `KNKK.SSOBL`.fillna(0)) > `KNKK.KLIMK`)
     require_populated: false
     applies_when:
@@ -1383,7 +1376,7 @@ rules:
     sap_impact: Orders go onto credit block (VKM1); bad-debt provisioning understates the exposure.
     fix_map:
       __other__: Review exposure in FD32 / F.31 (S/4 FSCM UKM_BP / Manage Credit Accounts F4596); raise the limit with approval or stop shipments.
-    record_fix_template: 'Customer {KNA1.KUNNR} (credit area {KNKK.KKBER}): exposure exceeds limit {KNKK.KLIMK}.'
+    record_fix_template: 'Customer {KNKK.KUNNR} (credit area {KNKK.KKBER}): exposure exceeds limit {KNKK.KLIMK}.'
 
   - id: AR071
     field: BSID.BELNR
@@ -1829,7 +1822,6 @@ rules:
     target_when:
       XCPDS:
         populated: true
-    negate: true
     severity: high
     dimension: consistency
     message: One-time indicator is set but the account group is not a one-time account group
@@ -1857,6 +1849,7 @@ rules:
     target_when:
       XCPDS:
         populated: true
+    negate: true
     severity: high
     dimension: consistency
     message: Account group is a one-time account group but the one-time indicator is not set
@@ -2016,6 +2009,8 @@ rules:
   - id: AR228
     field: KNA1.LAND1
     check_class: cross_field_check
+    applies_when:
+      ADRC.NATION: {blank: true}
     fail_when: '`KNA1.LAND1` != `ADRC.COUNTRY`'
     require_populated: true
     severity: high
@@ -2033,6 +2028,8 @@ rules:
   - id: AR229
     field: KNA1.PSTLZ
     check_class: cross_field_check
+    applies_when:
+      ADRC.NATION: {blank: true}
     fail_when: '`KNA1.PSTLZ` != `ADRC.POST_CODE1`'
     require_populated: true
     severity: medium
@@ -2050,6 +2047,8 @@ rules:
   - id: AR230
     field: KNA1.ORT01
     check_class: cross_field_check
+    applies_when:
+      ADRC.NATION: {blank: true}
     fail_when: '`KNA1.ORT01` != `ADRC.CITY1`'
     require_populated: true
     severity: medium
@@ -2067,6 +2066,8 @@ rules:
   - id: AR231
     field: KNA1.REGIO
     check_class: cross_field_check
+    applies_when:
+      ADRC.NATION: {blank: true}
     fail_when: '`KNA1.REGIO` != `ADRC.REGION`'
     require_populated: true
     severity: medium

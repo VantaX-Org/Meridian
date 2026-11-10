@@ -181,3 +181,15 @@ def test_deleted_assets_are_out_of_scope():
     anka = frame("ANKA", ANLKL=["2000"], XLOEV=["X"], XSPEA=[""])
     a = anla(ANLKL=["2000", "2000"], XLOEV=["X", ""])
     assert fire("AA207", {"ANLA": a, "ANKA": anka})[0] == 1
+
+
+def test_accumulated_depreciation_sign_and_post_deactivation_years():
+    anlc = frame("ANLC", BUKRS=["1000"] * 3, ANLN1=["1", "2", "3"], ANLN2=["0"] * 3, AFABE=["01"] * 3,
+                 GJAHR=["2025"] * 3, KNAFA=[-500.0, 200.0, -900.0], NAFAG=[-100.0, 0.0, 0.0],
+                 SAFAG=[0.0] * 3, AAFAG=[0.0] * 3)
+    # SAP stores accumulated depreciation negative: only the positive balance is wrong
+    assert fire("AA257", {"ANLC": anlc}) == (1, 3)
+    anla = frame("ANLA", BUKRS=["1000"] * 3, ANLN1=["1", "2", "3"], ANLN2=["0"] * 3,
+                 DEAKT=pd.to_datetime(["2024-06-30"] * 3))
+    # asset 3 carries only brought-forward depreciation after deactivation, which is not a posting
+    assert fire("AA260", {"ANLC": anlc, "ANLA": anla})[0] == 1

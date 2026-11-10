@@ -24,8 +24,8 @@ rules:
   severity: critical
   dimension: validity
   message: 'Material number must be 1-40 printable ASCII characters, no lowercase, no leading or trailing space'
-  why_it_matters: In ECC, MATNR is limited to 18 characters. In S/4HANA, the field was extended to 40 characters to support
-    longer material numbering schemes. This rule uses the S/4HANA-compatible length. MM01 converts input to uppercase and
+  why_it_matters: This rule checks the character set and the 40-character field length. The 18-character limit that
+    applies when extended material numbers are not switched on is checked by S4M117. MM01 converts input to uppercase and
     accepts printable special characters (such as caret, at sign, hash, plus and inner spaces) in externally assigned numbers, so those
     are not flagged. Lowercase, non-ASCII characters (e.g. non-breaking spaces, typographic dashes) and leading or trailing
     spaces only arrive through direct loads and break lookups, interfaces and migration key mapping.

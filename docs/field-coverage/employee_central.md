@@ -272,7 +272,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| PERINFO | PERSON_ID | Person ID | y | 11 / 11 | EC152, EC234, EC358, EC442, EC446, EC449 +5 more |  |
+| PERINFO | PERSON_ID | Person ID | y | 12 / 12 | EC152, EC234, EC358, EC442, EC446, EC449 +6 more |  |
 | PERINFO | FIRSTNAME | First name | y | 8 / 8 | EC003, EC083, EC084, EC127, EC128, EC129 +2 more |  |
 | PERINFO | LASTNAME | Last name | y | 8 / 8 | EC004, EC083, EC084, EC130, EC131, EC132 +2 more |  |
 | PERINFO | MIDDLENAME | Middle name | y | 3 / 3 | EC608, EC609, EC612 |  |
@@ -570,10 +570,10 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| FOCOMPANY | EXTERNAL_CODE | Legal entity code | y | 8 / 8 | EC102, EC111, EC211, EC256, EC344, EC349 +2 more |  |
+| FOCOMPANY | EXTERNAL_CODE | Legal entity code | y | 10 / 10 | EC102, EC111, EC211, EC256, EC344, EC349 +4 more |  |
 | FOCOMPANY | COUNTRY | Country of the legal entity | y | 3 / 3 | EC106, EC188, EC351 |  |
 | FOCOMPANY | CURRENCY | Default currency of the legal entity | y | 2 / 2 | EC105, EC350 |  |
-| FOCOMPANY | STATUS | A active / I inactive | y | 7 / 7 | EC102, EC211, EC256, EC344, EC348, EC481 +1 more |  |
+| FOCOMPANY | STATUS | A active / I inactive | y | 8 / 8 | EC102, EC211, EC256, EC344, EC348, EC481 +2 more |  |
 | FOCOMPANY | EFFECTIVE_START_DATE | Effective start date | y | 1 / 1 | EC676 |  |
 | FOCOMPANY | NAME | Name | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | FOCOMPANY | DESCRIPTION | Description | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
@@ -637,8 +637,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| FOJOBCODE | EXTERNAL_CODE |  | y | 5 / 5 | EC175, EC212, EC255, EC338, EC340 |  |
-| FOJOBCODE | STATUS |  | y | 8 / 8 | EC175, EC212, EC255, EC339, EC421, EC422 +2 more |  |
+| FOJOBCODE | EXTERNAL_CODE |  | y | 7 / 7 | EC175, EC212, EC255, EC338, EC340, EC709 +1 more |  |
+| FOJOBCODE | STATUS |  | y | 9 / 9 | EC175, EC212, EC255, EC339, EC421, EC422 +3 more |  |
 | FOJOBCODE | IS_FULLTIME |  | y | 3 / 3 | EC421, EC437, EC494 |  |
 | FOJOBCODE | EMPLOYEE_CLASS |  | y | 3 / 3 | EC201, EC422, EC436 |  |
 | FOJOBCODE | REGULAR_TEMP |  | y | 2 / 2 | EC423, EC495 |  |
