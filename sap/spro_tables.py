@@ -155,6 +155,45 @@ SPRO_REGISTRY: dict[str, list[SPROEntry]] = {
             "read_method": "rfc_read_table",
         },
         {
+            "table": "TVAST",
+            "fields": ["AUFSP"],
+            "description": "Sales order block reasons",
+            "config_context": (
+                "Defines the customer order block reasons. A central block on the customer "
+                "master must be one of these codes, including customer-defined Z codes."
+            ),
+            "governs_fields": ["KNA1.AUFSD"],
+            "impacts_features": ["order blocking"],
+            "connector": "ecc",
+            "read_method": "rfc_read_table",
+        },
+        {
+            "table": "TVLS",
+            "fields": ["LIFSP"],
+            "description": "Delivery block reasons",
+            "config_context": (
+                "Defines the customer delivery block reasons. A central block on the customer "
+                "master must be one of these codes, including customer-defined Z codes."
+            ),
+            "governs_fields": ["KNA1.LIFSD"],
+            "impacts_features": ["delivery blocking"],
+            "connector": "ecc",
+            "read_method": "rfc_read_table",
+        },
+        {
+            "table": "TVFS",
+            "fields": ["FAKSP"],
+            "description": "Billing block reasons",
+            "config_context": (
+                "Defines the customer billing block reasons. A central block on the customer "
+                "master must be one of these codes, including customer-defined Z codes."
+            ),
+            "governs_fields": ["KNA1.FAKSD"],
+            "impacts_features": ["billing blocking"],
+            "connector": "ecc",
+            "read_method": "rfc_read_table",
+        },
+        {
             "table": "T052",
             "fields": ["ZTERM", "ZTAGG", "ZTAG1", "ZTAG2", "ZTAG3", "TXT30"],
             "description": "Payment terms (shared with AP)",

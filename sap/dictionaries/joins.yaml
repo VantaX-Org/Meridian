@@ -139,6 +139,9 @@ edges:
   - {parent: SKB1, child: KNB1, join: {BUKRS: BUKRS, AKONT: SAKNR}, cardinality: many}
   - {parent: VBAK, child: VBUK, join: {VBELN: VBELN}, cardinality: one}
   - {parent: VBAP, child: VBUP, join: {VBELN: VBELN, POSNR: POSNR}, cardinality: one}
+  # delivery and billing documents: header to item
+  - {parent: LIKP, child: LIPS, join: {VBELN: VBELN}, cardinality: many}
+  - {parent: VBRK, child: VBRP, join: {VBELN: VBELN}, cardinality: many}
 
   # ── Open items (vendor / customer sub-ledger) ───────────────────────────
   - {parent: LFB1, child: BSIK, join: {BUKRS: BUKRS, LIFNR: LIFNR}, cardinality: many}

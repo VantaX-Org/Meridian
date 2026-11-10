@@ -200,7 +200,7 @@ def test_business_partner_golden():
     # ...27 is flagged for archiving: out of the population, counted — on its address and
     # e-mail too, which are judged at the partner's grain
     for check_id in ("BP011", "BP005", "BP017", "BP018", "BP019", "BP020", "BP021", "BP022", "BP023", "BP030",
-                     "BP031", "BP032"):
+                     "BP243", "BP032"):
         r = next(r for r in results if r.check_id == check_id)
         assert r.details["population_excluded"] == {"deleted": 1}, check_id
         assert r.grain == "BUT000", check_id

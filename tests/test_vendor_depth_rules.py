@@ -61,7 +61,10 @@ def test_every_field_exists_in_ddic():
             assert name in _fields(table), (r["id"], f)
         if r["check_class"] == "exists_check":
             target = _fields(r["target_table"])
-            assert set(r["target_fields"]) | set(r.get("target_when", {})) <= set(target), r["id"]
+            own = {f for f in r["target_fields"] if "." not in f}
+            assert own | set(r.get("target_when", {})) <= set(target), r["id"]
+            for f in set(r["target_fields"]) - own:
+                assert f.split(".")[1] in _fields(f.split(".")[0]), (r["id"], f)
 
 
 def test_referential_rules_have_a_check_table():
@@ -114,6 +117,7 @@ def test_alternative_payee_needs_bank_and_must_be_active():
     lfbk = frame("LFBK", LIFNR=["P1"], BANKS=["DE"], BANKL=["1"], BANKN=["1"])
     assert fire("AP218", {"LFA1": lfa1, "LFBK": lfbk}) == (1, 2)
     assert fire("AP219", {"LFA1": lfa1}) == (1, 2)
+    assert fire("AP085", {"LFA1": lfa1})[0] == 0  # deleted payee counted once, by AP219
 
 
 def test_deletion_flag_without_blocks():
@@ -165,15 +169,18 @@ def test_partner_bank_type_ambiguity():
 
 
 def test_vendor_bank_equals_house_bank():
-    lfbk = frame("LFBK", LIFNR=["V1", "V2"], BANKS=["DE", "DE"], BANKL=["1", "1"], BANKN=["111", "222"])
+    # V3 has the house account number at a different bank: not the house account
+    lfbk = frame("LFBK", LIFNR=["V1", "V2", "V3"], BANKS=["DE"] * 3, BANKL=["1", "1", "9"], BANKN=["111", "222", "111"])
     t012k = frame("T012K", BUKRS=["1000"], HBKID=["DB"], HKTID=["EUR"], BANKN=["111"])
-    assert fire("AP238", {"LFBK": lfbk, "T012K": t012k}) == (1, 2)
+    t012 = frame("T012", BUKRS=["1000"], HBKID=["DB"], BANKS=["DE"], BANKL=["1"])
+    assert fire("AP238", {"LFBK": lfbk, "T012K": t012k, "T012": t012}) == (1, 3)
 
 
 def test_bank_flagged_for_deletion():
     lfbk = frame("LFBK", LIFNR=["V1", "V2"], BANKS=["DE", "DE"], BANKL=["1", "2"], BANKN=["1", "2"])
     bnka = frame("BNKA", BANKS=["DE", "DE"], BANKL=["1", "2"], LOEVM=["", "X"])
     assert fire("AP239", {"LFBK": lfbk, "BNKA": bnka}) == (1, 2)
+    assert fire("AP200", {"LFBK": lfbk, "BNKA": bnka}) == (0, 2)  # deleted bank counted once, by AP239
 
 
 # ---- company code data --------------------------------------------------------------------------------------------

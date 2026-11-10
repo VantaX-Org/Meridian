@@ -67,6 +67,7 @@ def test_quality_management_golden():
     assert found == {
         "QM005": {f"MATNR={_m(3)}|WERKS=ZA01"},          # QM control key active, no quality info record
         "QM006": {f"MATNR={_m(2)}|WERKS=ZA01"},          # inspection setup flag, no inspection type
+        "QM134": {f"MATNR={_m(2)}|WERKS=ZA01"},          # inspection setup flag, no active inspection type
         "QM010": {f"ART=01|MATNR={_m(4)}|WERKS=ZA01"},   # task-list inspection, no plan assigned
         "QM058": {"QMNUM=000300000002"},                 # vendor complaint open since 2020
         "QM067": {"QMNUM=000300000003"},                 # vendor complaint without vendor

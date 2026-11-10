@@ -10,7 +10,7 @@ from checks.frames import TableFrames
 from checks.runner import run_rule
 from sap.ddic import get_dictionary
 
-PACKS = {"mm_purchasing": ("PUR", 369, 50), "plant_maintenance": ("PM", 319, 51)}
+PACKS = {"mm_purchasing": ("PUR", 369, 59), "plant_maintenance": ("PM", 319, 57)}
 # Withdrawn rather than weakened, so the range they would occupy is a documented gap.
 #   PUR418  a null_check on EKKO.LIFNR fired on a purchasing document the pack's own
 #           presence rules treat as legitimate (see docs/rules/depth-and-reconciliation.md)

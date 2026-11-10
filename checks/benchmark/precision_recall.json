@@ -2,14 +2,14 @@
  "method": "per-rule synthetic injection, truth derived from the rule's own YAML",
  "modules": {
   "business_partner": {
-   "benchmarked": 72,
-   "perfect": 72,
-   "rules": 158
+   "benchmarked": 71,
+   "perfect": 71,
+   "rules": 157
   },
   "employee_central": {
-   "benchmarked": 355,
-   "perfect": 355,
-   "rules": 703
+   "benchmarked": 366,
+   "perfect": 366,
+   "rules": 722
   },
   "material_master": {
    "benchmarked": 235,
@@ -15215,11 +15215,18 @@
    "true_positives": 10
   },
   {
-   "benchmarkable": false,
+   "benchmarkable": true,
    "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
    "module": "employee_central",
-   "reason": "comparison across field types FOGEOZONE.START_DATE/FOGEOZONE.END_DATE",
-   "rule_id": "EC688"
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC688",
+   "true_positives": 10
   },
   {
    "benchmarkable": true,
@@ -15290,6 +15297,209 @@
    "records": 40,
    "rule_id": "EC693",
    "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC694",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC695",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC696",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC697",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC698"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "interval_check",
+   "module": "employee_central",
+   "reason": "interval_check needs reference data or a second dataset",
+   "rule_id": "EC699"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "uniqueness_check",
+   "module": "employee_central",
+   "reason": "the fields are the full table key, so a duplicate is a repeated row the extract collapses",
+   "rule_id": "EC700"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC701",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC702",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC703"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "domain_value_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC704",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "uniqueness_check",
+   "module": "employee_central",
+   "reason": "the fields are the full table key, so a duplicate is a repeated row the extract collapses",
+   "rule_id": "EC705"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC706"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC707",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC708",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC709"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "domain_value_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC710",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "uniqueness_check",
+   "module": "employee_central",
+   "reason": "the fields are the full table key, so a duplicate is a repeated row the extract collapses",
+   "rule_id": "EC711"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC712"
   },
   {
    "benchmarkable": true,
@@ -21456,20 +21666,6 @@
    "recall": 1.0,
    "records": 40,
    "rule_id": "BP030",
-   "true_positives": 10
-  },
-  {
-   "benchmarkable": true,
-   "check_class": "null_check",
-   "f1": 1.0,
-   "false_negatives": 0,
-   "false_positives": 0,
-   "injected": 10,
-   "module": "business_partner",
-   "precision": 1.0,
-   "recall": 1.0,
-   "records": 40,
-   "rule_id": "BP031",
    "true_positives": 10
   },
   {
