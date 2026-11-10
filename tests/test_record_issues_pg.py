@@ -750,6 +750,27 @@ def test_fully_passing_check_resolves(app_engine):
     assert iss[("CHK-Q", "LIFNR=1")].status == "open"
 
 
+def test_truncated_check_never_auto_resolves(app_engine):
+    """A check over the failing-record cap lists only some failing records. A record missing from that
+    list is not proof of a fix, so its open issue must stay open; a clean check in the same batch still
+    resolves."""
+    from sqlalchemy import text
+
+    owner, app = app_engine
+    tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'TT')"), {"a": tid})
+    _run(app, tid, sid, [_result("CHK-T", ["1", "2"]), _result("CHK-C", ["1"])], ["1", "2"])
+    _, st = _run(app, tid, sid, [_result("CHK-T", ["1"], truncated=True), _result("CHK-C", [])], ["1", "2"])
+    assert st["auto_resolved"] == 1
+    iss = _issues(app, tid)
+    assert iss[("CHK-T", "LIFNR=2")].status == "open"
+    assert iss[("CHK-C", "LIFNR=1")].status == "resolved"
+    _, st = _run(app, tid, sid, [_result("CHK-T", ["1"], truncated=True)], ["1", "2"])
+    assert st["auto_resolved"] == 0
+    assert _issues(app, tid)[("CHK-T", "LIFNR=2")].status == "open"
+
+
 def test_reconcile_marks_exported_items_fixed_during_track(app_engine):
     """track reconciles exported fix batches per lifecycle batch, while that batch's tmp_present (the
     records evaluated in this run) is still populated - its commit drops it. An item whose record no
