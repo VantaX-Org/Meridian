@@ -1029,6 +1029,18 @@ class ConnectivityManager:
                                      "detail": ("; ".join(absent) if len(absent) == len(by_entity)
                                                 else "no dictionary property in tenant $metadata")[:300]})
                 continue
+            # The entity carrying the table's business key may be absent or refused (Successor needs the
+            # succession permission). Rows from the secondary entities alone (every User) are not records
+            # of this table, so the table is not extracted rather than filled with keyless rows.
+            mapped = {n for props in by_entity.values() for names in props.values() for n in names}
+            key_cols = [f"{table}.{k}" for k in t.keys if k in mapped]
+            if key_cols and len(by_entity) > 1 and len(merged) and not any(
+                    c in merged.columns and merged[c].notna().any() for c in key_cols):
+                coverage.append({"table": table, "status": "failed" if failed else "not_in_system",
+                                 "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable),
+                                 "detail": ("no entity returned the key field(s) "
+                                            + ", ".join(k.split(".", 1)[1] for k in key_cols))})
+                continue
             merged = merged.drop(columns=[c for c in merged.columns if c.startswith("__")])
             # BOOLEAN fields arrive as Python bool from OData V2 JSON; astype("string") would give
             # "True"/"False", but rules match the lowercase 'true'/'false' form (same normalisation
