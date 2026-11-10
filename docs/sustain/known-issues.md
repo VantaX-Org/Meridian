@@ -37,7 +37,7 @@ Items the register marks fixed are not repeated here, including D-01 (Python sou
 |---|---|---|---|
 | No web application firewall in front of nginx | [docs/PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md) | Customer infrastructure or hosting team | Decide whether the customer network provides one: To confirm (owner: customer security team). |
 | No SBOM attached to release tags | PRODUCTION_READINESS.md | Vendor engineering | Accepted until a release adds one. |
-| `npm audit` reported 3 high and 8 moderate findings | PRODUCTION_READINESS.md | Vendor engineering | Whether these are still current: To confirm (owner: vendor engineering). |
+| `npm audit` findings | PRODUCTION_READINESS.md, debt rows D-17 and D-18 | Vendor engineering | Closed on 10 November 2026 for `frontend`, `cloudflare/portal`, `cloudflare/install-worker` and `cloudflare/llm-proxy`: `npm audit` reports 0 in each. `cloudflare/licence-worker` is handled in its own change (D-18). No customer action. |
 | The eight go-live gates in PRODUCTION_READINESS.md were unchecked as of 24 April 2026 | PRODUCTION_READINESS.md | Vendor delivery lead | Current state: To confirm (owner: vendor delivery lead). Use the [cutover and go-live plan](../project/cutover-and-go-live-plan.md) for this deployment. |
 | `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` is on by default | `api/config.py`, debt row DR-3 | Vendor engineering | Stays on until the licence worker uses Ed25519 signing. A later release turns it off. No customer action. |
 
