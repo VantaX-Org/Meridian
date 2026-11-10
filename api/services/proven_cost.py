@@ -221,7 +221,7 @@ def duplicate_payments(frames: TableFrames, clusters: dict[str, str]) -> MetricR
     p = p[p["lif"] != ""]
     p = p[p["amt"] > 0]
     # ponytail: reversed payments still count; exclude via BKPF.STBLG once extracted.
-    p = p.assign(cluster=p["lif"].map(clusters).fillna(p["lif"]), ref=p["ref"].where(p["ref"] != "", "BLDAT:" + _s(p, "BLDAT")),
+    p = p.assign(cluster=p["lif"].map(clusters).astype("string").fillna(p["lif"]), ref=p["ref"].where(p["ref"] != "", "BLDAT:" + _s(p, "BLDAT")),
                  doc=p["GJAHR"] + "/" + p["BELNR"])
     g = p.groupby(["cluster", "BUKRS", "currency", "amt", "ref"]).agg(
         docs=("doc", "nunique"), lifs=("lif", lambda s: ",".join(sorted(set(s)))), doc=("doc", lambda s: ",".join(sorted(set(s))))

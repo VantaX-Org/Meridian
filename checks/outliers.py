@@ -10,6 +10,8 @@ using the modified z-score (median / MAD; mean absolute deviation when MAD is
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
@@ -22,7 +24,7 @@ MIN_FACTOR = 3.0  # and at least 3x off the peer median: a 1 % difference in a u
 MAX_REPORTED = 200
 
 # value (numerator [/ denominator]) compared within `per`
-SPECS = (
+SPECS: tuple[dict[str, Any], ...] = (
     {"id": "OUT-MARA-NTGEW", "module": "material_master", "value": ["MARA.NTGEW"], "per": ["MARA.MATKL", "MARA.GEWEI"],
      "grain": "MARA", "label": "Net weight vs. materials of the same material group and weight unit"},
     {"id": "OUT-MARA-BRGEW", "module": "material_master", "value": ["MARA.BRGEW"], "per": ["MARA.MATKL", "MARA.GEWEI"],

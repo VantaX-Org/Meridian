@@ -104,6 +104,58 @@ def _seed_change(c, t, key, status, kind="change"):
     return r
 
 
+EVERY_STORE = ("change_request_comments", "change_request_attachments", "writeback_run_records", "comments",
+               "watches", "notifications", "undo_actions", "webhook_deliveries", "field_dependencies",
+               "learned_rule_proposals", "exception_comments", "exceptions")
+
+
+def _seed_every_store(c, t, key):
+    """One row about ``key`` in each store that holds a record key outside the record tables. Lists of sample keys
+    also hold OTHER, which must survive the erasure."""
+    v = c.execute(text("SELECT version_id FROM finding_records WHERE tenant_id = :t AND record_key = :k"),
+                  {"t": t, "k": key}).scalar()
+    cr = _seed_change(c, t, key, "created")
+    note = f"synthetic-person on {key}"
+    samples = list(dict.fromkeys([key, OTHER]))
+    p = {"t": t, "v": v, "k": key, "cr": cr, "n": note, "pay": json.dumps({"record_key": key}),
+         "s": json.dumps(samples), "ev": json.dumps({"sample_keys": samples})}
+    c.execute(text("INSERT INTO change_request_comments (tenant_id, request_id, author_label, body) "
+                   "VALUES (:t, :cr, 'steward', 'see attached')"), p)
+    c.execute(text("INSERT INTO change_request_attachments (tenant_id, request_id, filename) "
+                   "VALUES (:t, :cr, 'evidence.pdf')"), p)
+    batch = c.execute(text("INSERT INTO remediation_batches (tenant_id, name) VALUES (:t, 'b') RETURNING id"),
+                      p).scalar()
+    run = c.execute(text("INSERT INTO writeback_runs (tenant_id, batch_id, status, requested_by) "
+                         "VALUES (:t, :b, 'completed', 'steward') RETURNING id"), {**p, "b": batch}).scalar()
+    c.execute(text("INSERT INTO writeback_run_records (tenant_id, run_id, seq, system_id, module, record_key, changes, "
+                   "state) VALUES (:t, :r, 1, 'DEV', 'hcm', :k, CAST(:pay AS jsonb), 'committed')"), {**p, "r": run})
+    c.execute(text("INSERT INTO comments (tenant_id, target_kind, target_id, body, author_id, author_label) "
+                   "VALUES (:t, 'record', :k, 'check this', 'u1', 'steward')"), p)
+    c.execute(text("INSERT INTO comments (tenant_id, target_kind, target_id, body, author_id, author_label) "
+                   "VALUES (:t, 'rule', 'C1', :n, 'u1', 'steward')"), p)
+    c.execute(text("INSERT INTO watches (tenant_id, user_id, target_kind, target_id) VALUES (:t, 'u1', 'record', :k)"),
+              p)
+    c.execute(text("INSERT INTO notifications (tenant_id, type, title, body) VALUES (:t, 'mention', 'x', :n)"), p)
+    c.execute(text("INSERT INTO undo_actions (tenant_id, user_id, kind, payload, inverse) "
+                   "VALUES (:t, 'u1', 'fix', CAST(:pay AS jsonb), CAST(:pay AS jsonb))"), p)
+    hook = c.execute(text("INSERT INTO webhooks (tenant_id, url, secret) VALUES (:t, 'https://example.test/h', "
+                          "'synthetic') RETURNING id"), p).scalar()
+    c.execute(text("INSERT INTO webhook_deliveries (tenant_id, webhook_id, event, event_id, payload) "
+                   "VALUES (:t, :h, 'record.fixed', gen_random_uuid(), CAST(:pay AS jsonb))"), {**p, "h": hook})
+    c.execute(text("INSERT INTO field_dependencies (tenant_id, version_id, module, table_name, determinant, dependent, "
+                   "support, populated_rows, violations, sample_keys) VALUES (:t, :v, 'hcm', 'PA0001', 'BUKRS', "
+                   "'WERKS', 0.9, 10, 1, CAST(:s AS jsonb))"), p)
+    c.execute(text("INSERT INTO learned_rule_proposals (tenant_id, version_id, module, kind, table_name, field, "
+                   "fingerprint, body, confidence, support_rows, violations, sample_keys, evidence) VALUES "
+                   "(:t, :v, 'hcm', 'format', 'PA0001', 'WERKS', CAST(:v AS text), '{}'::jsonb, 0.9, 10, 1, CAST(:s AS jsonb), "
+                   "CAST(:ev AS jsonb))"), p)
+    exc = c.execute(text("INSERT INTO exceptions (tenant_id, type, category, severity, title, description, "
+                         "affected_records) VALUES (:t, 'dq', 'data', 'high', 'x', 'x', CAST(:ev AS jsonb)) "
+                         "RETURNING id"), p).scalar()
+    c.execute(text("INSERT INTO exception_comments (tenant_id, exception_id, user_name, text) "
+                   "VALUES (:t, :e, 'steward', :n)"), {**p, "e": exc})
+
+
 def _erase(sess, t, key=KEY):
     with sess(t) as s:
         dry = svc.erase(s, t, key, ACTOR, dry_run=True)["request_id"]
@@ -147,6 +199,8 @@ def world(monkeypatch):
     yield engine, a, b, store, lambda t: tenant_session(engine, t)
     with engine.begin() as c:
         c.execute(text("SET LOCAL app.subject_erasure = 'on'"))
+        for table in EVERY_STORE + ("webhooks", "writeback_runs", "remediation_batches"):
+            c.execute(text(f"DELETE FROM {table} WHERE tenant_id IN (:a, :b)"), {"a": a, "b": b})
         for table in ("migration_reconciliations", "migration_runs", "mdm_pair_constraints", "mdm_merge_events", "golden_writeback_requests",
                       "master_record_history", "master_records", "change_request_field_changes", "change_requests",
                       "subject_suppressions", "subject_requests", "audit_log", "cleaning_audit", "cleaning_queue", "record_hashes",
@@ -417,6 +471,44 @@ def test_export_holds_the_subjects_rows_only(world):
     body = " ".join(z.read(n).decode() for n in z.namelist())
     assert OTHER not in body and "00000002" not in z.read("extracts.json").decode()
     assert json.loads(z.read("manifest.json"))["request_id"] == rid
+
+
+@pg
+def test_one_subject_in_every_store_is_exported_then_erased(world):
+    """The subject seeded in every store: search and export name each one, and after the erasure no target
+    matches the key while the other subject's rows and sample keys stay."""
+    engine, a, b, store, sess = world
+    with engine.begin() as c:
+        _seed_golden(c, a, KEY)
+        _seed_every_store(c, a, KEY)
+        _seed_every_store(c, a, OTHER)
+        _seed_every_store(c, b, KEY)
+    seeded = set(TABLES_BY_KEY) | set(EVERY_STORE) | {"master_records", "master_record_history",
+                                                       "golden_writeback_requests", "mdm_merge_events",
+                                                       "mdm_pair_constraints", "change_requests",
+                                                       "change_request_field_changes"}
+    with sess(a) as s:
+        found = svc.search(s, a, KEY, ACTOR)["rows_by_table"]
+    assert seeded <= set(found), seeded - set(found)
+    with sess(a) as s:
+        data, _ = svc.export(s, a, KEY, ACTOR)
+    z = zipfile.ZipFile(io.BytesIO(data))
+    assert {f"{t}.json" for t in seeded} <= set(z.namelist())
+    assert OTHER not in " ".join(z.read(f"{t}.json").decode() for t in EVERY_STORE)
+
+    assert _erase(sess, a)["complete"]
+    with sess(a) as s:
+        assert svc.count_rows(s, a, [KEY], include_full_key_only=True) == {}
+    with sess(a) as s:
+        left = svc.count_rows(s, a, [OTHER], include_full_key_only=True)
+    assert set(EVERY_STORE) <= set(left)
+    with sess(b) as s:
+        assert set(EVERY_STORE) <= set(svc.count_rows(s, b, [KEY], include_full_key_only=True))
+    with engine.connect() as c:
+        samples = c.execute(text("SELECT sample_keys FROM field_dependencies WHERE tenant_id = :t"), {"t": a}).scalars()
+        assert all(KEY not in s and OTHER in s for s in samples)
+        ev = c.execute(text("SELECT evidence FROM learned_rule_proposals WHERE tenant_id = :t"), {"t": a}).scalars()
+        assert all(e["sample_keys"] == [OTHER] for e in ev)
 
 
 def _reconciliation(engine, tenant, status="done"):
