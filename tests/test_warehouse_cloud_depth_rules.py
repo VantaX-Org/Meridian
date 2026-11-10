@@ -1,4 +1,5 @@
 """Warehouse, Ariba and Concur depth rules: integrity, pass/fail fixtures and conditional-branch proofs."""
+import functools
 import glob
 import json
 import re
@@ -59,8 +60,9 @@ def _day(n):
     return (date.today() - timedelta(days=n)).strftime("%Y%m%d")
 
 
+@functools.lru_cache(maxsize=None)
 def _fields(table):
-    p = f"sap/dictionaries/ecc6/tables/{table}.json"
+    p = f"sap/dictionaries/ecc6/tables/{table.replace('/', '_')}.json"
     try:
         return {x["name"] for x in json.load(open(p))["fields"]}
     except FileNotFoundError:
@@ -148,7 +150,7 @@ def _tables(spec, rule=None):
 
 
 def run(module, rule_id, spec, absent_ok=False):
-    res = next((r for r in run_checks(module, TableFrames(_tables(spec, BY_ID[rule_id]), D, module=module), "t") if r.check_id == rule_id), None)
+    res = next((r for r in run_checks(module, TableFrames(_tables(spec, BY_ID.get(rule_id)), D, module=module), "t") if r.check_id == rule_id), None)
     if res is None and absent_ok:  # no row passed applies_when: the engine emits no result
         return 0, 0
     assert res is not None, f"{rule_id} did not run"
@@ -405,3 +407,39 @@ def test_concur_cost_centre_needed_only_for_active_users():
 
 def test_concur_inactive_user_archive_candidate_only_when_inactive():
     _cond("CNU013", "concur_users", "CONCUR_USER", {"LOGIN_ID": "1", "ACTIVE": "true"}, {"LOGIN_ID": "1", "ACTIVE": "false"})
+
+
+# ---------------------------------------------------------------- audit fixes (whole packs, not only the new rules)
+
+def _rule(pack, rule_id):
+    return next(r for r in _load(pack) if r["id"] == rule_id)
+
+
+def test_ewto120_flags_over_confirmed_destination_and_names_real_fields():
+    rule = _rule("warehouse/ewms_transfer_orders", "EWTO120")
+    for ref in _refs(rule):
+        table, name = ref.split(".", 1)
+        assert name in _fields(table), ref
+    item = dict(LGNUM="100", TAPOS="1")
+    assert run("ewms_transfer_orders", "EWTO120", {"LTAP": [{**item, "TANUM": "1", "VSOLM": "5", "NISTM": "5"},
+                                                            {**item, "TANUM": "2", "VSOLM": "5", "NISTM": "7"}]}) == (2, 1)
+
+
+@pytest.mark.parametrize("pack", list(PACKS))
+def test_every_rule_in_pack_names_dictionary_fields(pack):
+    missing = [(r["id"], ref) for r in _load(pack) for ref in sorted(_refs(r))
+               if ref.split(".", 1)[1] not in _fields(ref.split(".", 1)[0])]
+    assert not missing, missing
+
+
+def test_ewto003_does_not_assert_a_fixed_reference_type_list():
+    # BETYP has no DDIC fixed values; valid types live in T308 per warehouse number.
+    rule = _rule("warehouse/ewms_transfer_orders", "EWTO003")
+    assert rule["reference_table"] == "T308" and "valid_values_with_labels" not in rule
+    assert "T308" in rule["fix_map"]["__other__"]
+
+
+def test_ars026_does_not_claim_lifnr_ignores_punctuation():
+    rule = _rule("ariba/ariba_supplier", "ARS026")
+    assert rule["rule_authority"] == "best_practice"
+    assert "not case- or punctuation-sensitive" not in rule["why_it_matters"]

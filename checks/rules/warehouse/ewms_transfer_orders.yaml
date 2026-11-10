@@ -40,11 +40,6 @@ rules:
     severity: critical
     dimension: accuracy
     message: Reference type determines the business context of the transfer order
-    valid_values_with_labels:
-      L: Delivery — outbound or inbound delivery triggered the TO
-      B: Purchase order — goods receipt for purchase order
-      P: Production — production order goods movement
-      K: Transfer posting — stock transfer between storage locations
     why_it_matters: BETYP (reference type) determines the business context that triggered the transfer order. It controls which
       follow-on processes execute after confirmation (e.g. goods issue posting for deliveries, goods receipt for POs). An invalid
       value means the system cannot determine the correct follow-on action.
@@ -52,8 +47,9 @@ rules:
     sap_impact: Follow-on process after TO confirmation is undefined. Goods issue/receipt may not post. Delivery status not
       updated. IM-WM reconciliation breaks.
     fix_map:
-      __other__: 'Reference type ''{invalid_value}'' is not valid. Valid values: L (delivery), B (PO), P (production), K (transfer
-        posting). In ECC: check the originating document and correct via LT0A. In S/4HANA: verify via /SCWM/MON.'
+      __other__: 'Reference type ''{invalid_value}'' is not defined in T308 for this warehouse number. Reference types are
+        configured per warehouse, so check the originating document and the T308 entries before correcting via LT0A (ECC) or
+        /SCWM/MON (S/4HANA).'
     record_fix_template: 'TO {LTAK.TANUM}: BETYP is ''{actual_value}''. Set to a valid reference type via LT0A (ECC) or /SCWM/MON
       (S/4HANA).'
     reference_table: T308
@@ -978,12 +974,17 @@ rules:
     require_populated: true
     severity: medium
     dimension: accuracy
-    message: Target quantity below picked quantity on the transfer order item
-    why_it_matters: The target (putaway) quantity should not be less than the picked quantity; a mismatch means stock
-      is picked but not put away, leaving it in limbo.
+    message: Destination actual quantity exceeds the source target quantity on the transfer order item
+    why_it_matters: VSOLM is the quantity the item was meant to move from the source bin; NISTM is the quantity
+      confirmed into the destination bin. Confirming more into the destination than was requested from the
+      source means stock appears at the destination that was never taken from the source, so the bin quants
+      and the storage-type totals no longer reconcile.
     rule_authority: best_practice
-    sap_impact: Transfer order completion and stock-in-transit wrong.
+    sap_impact: Destination bin stock overstated against the source; transfer order differences and
+      stock-in-transit wrong.
     fix_map:
-      __blank__: Correct the target/picked quantities on the TO item.
-    record_fix_template: 'Transfer order {LTAP.TANUM} item {LTAP.TAPOS}: target quantity {LTAP.VSOLM} is below the picked quantity {LTAP.VSQUA}.'
+      __other__: Review the item confirmation in LT21/LT23 and clear the difference via the difference
+        posting (LI20) rather than editing quantities directly.
+    record_fix_template: 'Transfer order {LTAP.TANUM} item {LTAP.TAPOS}: destination actual quantity {LTAP.NISTM} exceeds
+      the source target quantity {LTAP.VSOLM}.'
     id: EWTO120
