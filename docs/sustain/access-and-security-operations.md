@@ -38,7 +38,7 @@ Secrets live in `docker/.env` on the host. This pack never records their values.
 Gaps in the repository:
 
 - The format of the master key and the host or container where `rotate-credential-key.py` runs: To confirm (owner: vendor engineering).
-- Rotation procedures for `DB_PASSWORD`, the object storage keys, `JWT_SECRET`, `OFFLINE_JWT_PRIVATE_KEY` and `UPDATER_SHARED_SECRET`: To confirm (owner: vendor engineering).
+- Rotation procedures for `DB_PASSWORD`, the object storage keys and `UPDATER_SHARED_SECRET`: To confirm (owner: vendor engineering). The HQ signing keys (`JWT_SECRET` and the licence signing key) rotate with an overlap window; see [runbooks.md](runbooks.md#hq-signing-keys).
 - The rotation interval for each secret: To confirm (owner: customer security team).
 
 ## SAP access

@@ -54,6 +54,9 @@ interface Env {
   ADMIN_PASSWORD_HASH: string;
   /** HMAC-SHA-256 signing secret for admin JWTs — set via wrangler secret put JWT_SECRET */
   JWT_SECRET: string;
+  /** Optional: the previous JWT_SECRET during a rotation window. Tokens signed with it still verify; new
+   * tokens are always signed with JWT_SECRET. Delete it once the longest token lifetime (8 hours) has passed. */
+  JWT_SECRET_PREVIOUS?: string;
   /** Shared secret for server-to-server admin calls from the HQ portal
    * (itself behind Cloudflare Access OTP), sent as the X-Admin-Secret
    * header. Set via wrangler secret put LICENCE_ADMIN_SECRET; must match
@@ -354,34 +357,40 @@ async function signJwt(payload: Record<string, unknown>, secret: string): Promis
   return `${signingInput}.${sigB64}`;
 }
 
+// The HMAC secrets a token may be signed with: JWT_SECRET, then JWT_SECRET_PREVIOUS inside a rotation window.
+function jwtSecrets(env: Env): string[] {
+  return [env.JWT_SECRET, env.JWT_SECRET_PREVIOUS].filter((s): s is string => !!s);
+}
+
 async function verifyJwt(
   token: string,
-  secret: string,
+  secrets: string | string[],
   opts: { db?: D1Database } = {}
 ): Promise<Record<string, unknown> | null> {
   const parts = token.split(".");
   if (parts.length !== 3) return null;
   const [headerB64, payloadB64, sigB64] = parts;
-  const signingInput = `${headerB64}.${payloadB64}`;
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["verify"]
-  );
+  const signingInput = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
   let sigBytes: Uint8Array;
   try {
     sigBytes = Uint8Array.from(b64urlDecode(sigB64), (c) => c.charCodeAt(0));
   } catch {
     return null;
   }
-  const valid = await crypto.subtle.verify(
-    "HMAC",
-    key,
-    sigBytes,
-    new TextEncoder().encode(signingInput)
-  );
+  let valid = false;
+  for (const secret of typeof secrets === "string" ? [secrets] : secrets) {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+    if (await crypto.subtle.verify("HMAC", key, sigBytes, signingInput)) {
+      valid = true;
+      break;
+    }
+  }
   if (!valid) return null;
   let payload: Record<string, unknown>;
   try {
@@ -489,7 +498,7 @@ async function requireAuth(
     return { ok: false, response: json({ error: "unauthorized", message: "Missing or invalid Authorization header" }, 401) };
   }
   const token = authHeader.slice(7);
-  const payload = await verifyJwt(token, env.JWT_SECRET, { db: env.DB });
+  const payload = await verifyJwt(token, jwtSecrets(env), { db: env.DB });
   if (!payload) {
     return { ok: false, response: json({ error: "unauthorized", message: "Invalid or expired token" }, 401) };
   }
@@ -2424,7 +2433,7 @@ export default {
           const authHeader = request.headers.get("Authorization");
           if (authHeader?.startsWith("Bearer ")) {
             const token = authHeader.slice(7);
-            authPayloadForAudit = await verifyJwt(token, env.JWT_SECRET, { db: env.DB });
+            authPayloadForAudit = await verifyJwt(token, jwtSecrets(env), { db: env.DB });
           }
         } catch {
           authPayloadForAudit = null;
