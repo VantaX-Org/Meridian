@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 from collections import Counter
+from typing import Any, Mapping
 
 BPMN = "http://www.omg.org/spec/BPMN/20100524/MODEL"
 BPMNDI = "http://www.omg.org/spec/BPMN/20100524/DI"
@@ -23,7 +24,7 @@ def _q(ns: str, tag: str) -> str:
     return f"{{{ns}}}{tag}"
 
 
-def validate_package(files: dict[str, bytes], manifest: dict) -> list[str]:
+def validate_package(files: dict[str, bytes], manifest: Mapping[str, Any]) -> list[str]:
     """``files`` maps file name to bytes. Returns a list of error strings (empty = valid)."""
     errors: list[str] = []
     process_ids = {f"L{lv['level']}_{lv['id']}" for lv in manifest.get("levels", [])}
@@ -46,8 +47,8 @@ def _validate_file(data: bytes, process_ids: set[str]) -> list[str]:
         return [f"root is {root.tag}, expected bpmn:definitions"]
 
     # only BPMN/BPMNDI elements carry xsd:ID ids; extension elements (meridian:rule id=...) may repeat them
-    ids = [e.get("id") for e in root.iter()
-           if e.get("id") is not None and e.tag.startswith(("{" + BPMN, "{" + BPMNDI))]
+    ids = [i for e in root.iter()
+           if (i := e.get("id")) is not None and e.tag.startswith(("{" + BPMN, "{" + BPMNDI))]
     for i, c in Counter(ids).items():
         if c > 1:
             errors.append(f"id {i} is used {c} times")
@@ -59,18 +60,18 @@ def _validate_file(data: bytes, process_ids: set[str]) -> list[str]:
     processes = root.findall(_q(BPMN, "process"))
     if not processes:
         errors.append("no bpmn:process")
-    nodes: dict[str, ET.Element] = {}
-    flows: dict[str, ET.Element] = {}
+    nodes: dict[str | None, ET.Element] = {}  # an element without an id keys on None
+    flows: dict[str | None, ET.Element] = {}
     for p in processes:
         tags = Counter(c.tag for c in p)
         for ev in ("startEvent", "endEvent"):
             if not tags[_q(BPMN, ev)]:
                 errors.append(f"process {p.get('id')} has no {ev}")
-        for c in p:
-            if c.tag == _q(BPMN, "sequenceFlow"):
-                flows[c.get("id")] = c
-            elif c.tag in {_q(BPMN, t) for t in NODE_TAGS}:
-                nodes[c.get("id")] = c
+        for child in p:
+            if child.tag == _q(BPMN, "sequenceFlow"):
+                flows[child.get("id")] = child
+            elif child.tag in {_q(BPMN, t) for t in NODE_TAGS}:
+                nodes[child.get("id")] = child
 
     for fid, f in flows.items():
         for ref in ("sourceRef", "targetRef"):
@@ -82,9 +83,9 @@ def _validate_file(data: bytes, process_ids: set[str]) -> list[str]:
             errors.append(f"callActivity {nid} calls {called}, which is not in the manifest")
         for kind, end in (("incoming", "targetRef"), ("outgoing", "sourceRef")):
             listed = [e.text for e in n.findall(_q(BPMN, kind))]
-            for ref in listed:
-                if ref not in flows or flows[ref].get(end) != nid:
-                    errors.append(f"{nid} lists {kind} {ref}, which does not match a flow")
+            for listed_ref in listed:
+                if listed_ref not in flows or flows[listed_ref].get(end) != nid:
+                    errors.append(f"{nid} lists {kind} {listed_ref}, which does not match a flow")
             expected = {fid for fid, f in flows.items() if f.get(end) == nid}
             if set(listed) != expected or len(listed) != len(set(listed)):
                 errors.append(f"{nid} {kind} does not match its sequenceFlows")
@@ -96,19 +97,19 @@ def _validate_file(data: bytes, process_ids: set[str]) -> list[str]:
         if pl.get("bpmnElement") not in {p.get("id") for p in processes}:
             errors.append(f"plane references {pl.get('bpmnElement')}, which is not a process")
     shapes = Counter(s.get("bpmnElement") for s in root.iter(_q(BPMNDI, "BPMNShape")))
-    for ref in shapes:
-        if ref not in nodes:
-            errors.append(f"BPMNShape references {ref}, which is not a flow node")
+    for shape_ref in shapes:
+        if shape_ref not in nodes:
+            errors.append(f"BPMNShape references {shape_ref}, which is not a flow node")
     for nid in nodes:
         if shapes[nid] != 1:
             errors.append(f"flow node {nid} has {shapes[nid]} BPMNShape, expected 1")
-    edges = Counter()
-    for e in root.iter(_q(BPMNDI, "BPMNEdge")):
-        edges[e.get("bpmnElement")] += 1
-        if e.get("bpmnElement") not in flows:
-            errors.append(f"BPMNEdge references {e.get('bpmnElement')}, which is not a sequenceFlow")
-        if len(e.findall(_q(DI, "waypoint"))) < 2:
-            errors.append(f"BPMNEdge {e.get('id')} has fewer than 2 waypoints")
+    edges: Counter[str | None] = Counter()
+    for edge in root.iter(_q(BPMNDI, "BPMNEdge")):
+        edges[edge.get("bpmnElement")] += 1
+        if edge.get("bpmnElement") not in flows:
+            errors.append(f"BPMNEdge references {edge.get('bpmnElement')}, which is not a sequenceFlow")
+        if len(edge.findall(_q(DI, "waypoint"))) < 2:
+            errors.append(f"BPMNEdge {edge.get('id')} has fewer than 2 waypoints")
     for fid in flows:
         if edges[fid] != 1:
             errors.append(f"sequenceFlow {fid} has {edges[fid]} BPMNEdge, expected 1")
