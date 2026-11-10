@@ -22,6 +22,7 @@ Decisions found in the repository and git history. Each date is the commit date 
 | DL-15 | 2026-11-09 | The customer licence keeps 12 modules: material master, customer master with business partner, and the ten SuccessFactors modules. | The customer licences material master, SuccessFactors and customer master only. Business partner stays because a customer is a business partner in S/4HANA. | Licence server change, 9 November 2026 |
 | DL-16 | 2026-11-09 | Move the engine image pin to cortex0 1.8.0. | Product owner decision. | Closes DO-01 |
 | DL-17 | 2026-11-10 | Give each object a cleaning workbook in Excel, with every failing record and field, the current and suggested value, the rule, why it failed and the fix steps. | The data owners clean in Excel and need the full list, not only a summary. Suggested values come only from the run, the rule's automatic fix or its value map. | Release v0.0.636 |
+| DL-18 | 2026-11-10 | Rule packs build date parts from `.dt.year`, `.dt.month` and `.dt.day`, never `.dt.strftime`, and a test fails any pack that uses it. Employee Central gains rules EC694 to EC708 for names, self-parents, date order, shift code, third nationality, negative amounts and expired work permits. | `.dt.strftime` raises on columns that hold only empty dates or mixed types, so 17 Employee Central rules could error instead of run. The new rules cover fields that had no check. | `tests/test_sf_ec_audit_rules.py` |
 
 ## Decisions still open
 

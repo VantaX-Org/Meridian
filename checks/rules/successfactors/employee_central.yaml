@@ -3302,7 +3302,7 @@ rules:
 - id: EC146
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: (`PERINFO.NATIONAL_ID`.str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  fail_when: (`PERINFO.NATIONAL_ID`.str.slice(0, 6) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2))) & `PERINFO.DATE_OF_BIRTH`.notna()
     & `PERINFO.NATIONAL_ID`.str.isdigit()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10364,9 +10364,9 @@ rules:
 - id: EC547
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.strftime('%y')
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2)
     + (`PERINFO.DATE_OF_BIRTH`.dt.month + 20 * (`PERINFO.DATE_OF_BIRTH`.dt.year >= 2000)).astype('Int64').astype('string[python]').fillna('').str.zfill(2)
-    + `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d'))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}')
+    + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}')
     & (`PERINFO.DATE_OF_BIRTH`.dt.year >= 1900) & (`PERINFO.DATE_OF_BIRTH`.dt.year < 2100)) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10423,7 +10423,7 @@ rules:
 - id: EC550
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(1, 7) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(1, 7) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{13}')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10479,7 +10479,7 @@ rules:
 - id: EC553
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(6, 14) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%Y%m%d')) & `PERINFO.NATIONAL_ID`.str.fullmatch('[0-9]{17}[0-9X]'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(6, 14) != (`PERINFO.DATE_OF_BIRTH`.dt.year.astype('Int64').astype('string[python]').fillna('').str.zfill(4) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2))) & `PERINFO.NATIONAL_ID`.str.fullmatch('[0-9]{17}[0-9X]'))
     & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10535,7 +10535,7 @@ rules:
 - id: EC556
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(-10).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(-10).str.slice(0, 6) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('([0-9]{2})?[0-9]{10}') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]',
     '', regex=True).str.slice(-10).str.slice(4, 5) <= '3')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
@@ -10593,7 +10593,7 @@ rules:
 - id: EC559
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-3][0-9][01][0-9]{8}')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10652,7 +10652,7 @@ rules:
 - id: EC562
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y')) & `PERINFO.NATIONAL_ID`.str.fullmatch('[0-9]{6}[-+A-FU-Y][0-9]{3}[0-9A-Y]'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2))) & `PERINFO.NATIONAL_ID`.str.fullmatch('[0-9]{6}[-+A-FU-Y][0-9]{3}[0-9A-Y]'))
     & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10708,7 +10708,7 @@ rules:
 - id: EC565
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]',
     '', regex=True).str.slice(2, 4) <= '12') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2,
     4) != '00') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 6) != '00')) & `PERINFO.DATE_OF_BIRTH`.notna()
@@ -10770,8 +10770,8 @@ rules:
 - id: EC568
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: (((`PERINFO.NATIONAL_ID`.str.slice(6, 8) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y')) | ((`PERINFO.NATIONAL_ID`.str.slice(9,
-    11) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d')) & (`PERINFO.NATIONAL_ID`.str.slice(9, 11) != (`PERINFO.DATE_OF_BIRTH`.dt.day
+  fail_when: (((`PERINFO.NATIONAL_ID`.str.slice(6, 8) != (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2)) | ((`PERINFO.NATIONAL_ID`.str.slice(9,
+    11) != `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2)) & (`PERINFO.NATIONAL_ID`.str.slice(9, 11) != (`PERINFO.DATE_OF_BIRTH`.dt.day
     + 40).astype('Int64').astype('string[python]').fillna('')))) & `PERINFO.NATIONAL_ID`.str.fullmatch('[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]'))
     & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
@@ -10834,7 +10834,7 @@ rules:
 - id: EC571
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(4, 10) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d')) & `PERINFO.NATIONAL_ID`.str.fullmatch('[A-Z]{4}[0-9]{6}[HMX][A-Z0-9]{7}'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(4, 10) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2))) & `PERINFO.NATIONAL_ID`.str.fullmatch('[A-Z]{4}[0-9]{6}[HMX][A-Z0-9]{7}'))
     & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10890,8 +10890,8 @@ rules:
 - id: EC574
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: (((`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(1, 3) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y'))
-    | ((`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(3, 5) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%m'))
+  fail_when: (((`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(1, 3) != (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2))
+    | ((`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(3, 5) != `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2))
     & (`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(3, 5) <= '12'))) & `PERINFO.NATIONAL_ID`.str.replace('[
     .-]', '', regex=True).str.fullmatch('[12][0-9]{4}[0-9AB]{2}[0-9]{6}([0-9]{2})?')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
@@ -10949,7 +10949,7 @@ rules:
 - id: EC577
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{13}')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -11010,7 +11010,7 @@ rules:
 - id: EC580
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -11066,9 +11066,9 @@ rules:
 - id: EC583
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: (((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 2) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y'))
-    | (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d'))
-    | ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2, 4) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%m'))
+  fail_when: (((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 2) != (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2))
+    | (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 6) != `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2))
+    | ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2, 4) != `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2))
     & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2, 4) != (`PERINFO.DATE_OF_BIRTH`.dt.month
     + 20).astype('Int64').astype('string[python]').fillna('')) & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '',
     regex=True).str.slice(2, 4) != (`PERINFO.DATE_OF_BIRTH`.dt.month + 50).astype('Int64').astype('string[python]').fillna(''))
@@ -11135,9 +11135,9 @@ rules:
 - id: EC586
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.strftime('%y')
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2)
     + (`PERINFO.DATE_OF_BIRTH`.dt.month + 40 * (`PERINFO.DATE_OF_BIRTH`.dt.year >= 2000)).astype('Int64').astype('string[python]').fillna('').str.zfill(2)
-    + `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d'))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}')
+    + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}')
     & (`PERINFO.DATE_OF_BIRTH`.dt.year >= 1900) & (`PERINFO.DATE_OF_BIRTH`.dt.year < 2100)) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -11193,7 +11193,7 @@ rules:
 - id: EC589
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -11211,7 +11211,7 @@ rules:
 - id: EC590
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 10) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 10) != (`PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string[python]').fillna('').str.zfill(2) + (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string[python]').fillna('').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]',
     '', regex=True).str.slice(6, 8) <= '12')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
@@ -12858,4 +12858,218 @@ rules:
     __other__: Correct MID_POINT and MAXIMUM_PAY so the first does not pass the second.
   record_fix_template: 'FOPayRange {FOPAYRANGE.EXTERNAL_CODE}: MID_POINT is above MAXIMUM_PAY.'
   fail_when: '`FOPAYRANGE.MID_POINT` > `FOPAYRANGE.MAXIMUM_PAY`'
+  require_populated: true
+- id: EC694
+  field: FODEPARTMENT.NAME
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Department name is missing
+  why_it_matters: The department name is what users see in org charts, pickers and reports. A department with only a code
+    cannot be recognised by the people who assign employees to it.
+  rule_authority: best_practice
+  sap_impact: The department shows as a bare code in Employee Central pickers, the org chart and downstream reporting.
+  fix_map:
+    __blank__: Maintain the department name in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'FODepartment {FODEPARTMENT.EXTERNAL_CODE}: NAME is missing.'
+- id: EC695
+  field: FOCOMPANY.NAME
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Legal entity name is missing
+  why_it_matters: The legal entity name appears on contracts, payslips and statutory reports. A legal entity with only a
+    code cannot be identified on those documents.
+  rule_authority: best_practice
+  sap_impact: Documents and reports that print the legal entity show a bare code instead of the registered name.
+  fix_map:
+    __blank__: Maintain the legal entity name in Manage Organization, Pay and Job Structures.
+  record_fix_template: 'FOCompany {FOCOMPANY.EXTERNAL_CODE}: NAME is missing.'
+- id: EC696
+  field: POSITION.PARENT_POSITION
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Position reports to itself
+  why_it_matters: A position whose parent position is its own code creates a loop in the position hierarchy. Reporting
+    lines and approval chains that walk up the hierarchy never reach the top.
+  rule_authority: best_practice
+  sap_impact: The position org chart, manager derivation and workflow routing break on the looped position.
+  fix_map:
+    __other__: Set the parent position to the position this one reports to, or clear it for the top position.
+  record_fix_template: 'Position {POSITION.CODE}: parent position is the position itself.'
+  fail_when: '`POSITION.PARENT_POSITION`.notna() & (`POSITION.PARENT_POSITION` == `POSITION.CODE`)'
+- id: EC697
+  field: FODEPARTMENT.PARENT_DEPARTMENT
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Department is its own parent department
+  why_it_matters: A department whose parent is its own code creates a loop in the department hierarchy. Roll-ups and
+    org charts that walk up the hierarchy never reach the top.
+  rule_authority: best_practice
+  sap_impact: Department roll-ups, org charts and permission groups based on the hierarchy give wrong results.
+  fix_map:
+    __other__: Set the parent department to the department above this one, or clear it for the top department.
+  record_fix_template: 'FODepartment {FODEPARTMENT.EXTERNAL_CODE}: parent department is the department itself.'
+  fail_when: '`FODEPARTMENT.PARENT_DEPARTMENT`.notna() & (`FODEPARTMENT.PARENT_DEPARTMENT` == `FODEPARTMENT.EXTERNAL_CODE`)'
+- id: EC698
+  field: EMPEMPLOYMENT.TERMINATION_DATE
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Termination date is before the hire date
+  why_it_matters: An employee cannot leave before joining. An inverted pair means one of the two dates was keyed wrongly.
+  rule_authority: best_practice
+  sap_impact: Service-length, final-pay and headcount calculations use an impossible period of employment.
+  fix_map:
+    __other__: Correct HIRE_DATE or TERMINATION_DATE so the termination date is on or after the hire date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: TERMINATION_DATE is before HIRE_DATE.'
+  fail_when: '`EMPEMPLOYMENT.TERMINATION_DATE` < `EMPEMPLOYMENT.HIRE_DATE`'
+  require_populated: true
+- id: EC699
+  field: EMPEMPLOYMENT.LEAVE_OF_ABSENCE_RETURN_DATE
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Leave of absence return date is before its start date
+  why_it_matters: A leave of absence cannot end before it starts. An inverted pair means one of the two dates was keyed
+    wrongly.
+  rule_authority: best_practice
+  sap_impact: Leave tracking, time accounts and payroll suspension use an impossible leave period.
+  fix_map:
+    __other__: Correct LEAVE_OF_ABSENCE_START_DATE or LEAVE_OF_ABSENCE_RETURN_DATE so the return is on or after the start.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: LEAVE_OF_ABSENCE_RETURN_DATE is before LEAVE_OF_ABSENCE_START_DATE.'
+  fail_when: '`EMPEMPLOYMENT.LEAVE_OF_ABSENCE_RETURN_DATE` < `EMPEMPLOYMENT.LEAVE_OF_ABSENCE_START_DATE`'
+  require_populated: true
+- id: EC700
+  field: EMPEMPLOYMENT.SHIFT_CODE
+  check_class: cross_field_check
+  severity: medium
+  dimension: completeness
+  message: Shift employee has no shift code
+  why_it_matters: The shift code tells time management and payroll which shift pattern and premium apply. A shift
+    employee without one cannot be paid the shift premium.
+  rule_authority: best_practice
+  sap_impact: Shift premiums and shift-based time evaluation are missed for the employee.
+  fix_map:
+    __other__: Maintain the shift code on the job record, or clear the shift employee flag.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: flagged as a shift employee but SHIFT_CODE is missing.'
+  fail_when: (`EMPEMPLOYMENT.IS_SHIFT_EMPLOYEE`.astype('string').str.lower() == 'true') & `EMPEMPLOYMENT.SHIFT_CODE`.isna()
+- id: EC701
+  field: PERINFO.CERTIFICATE_END_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Certificate end date is before its start date
+  why_it_matters: A certificate cannot expire before it becomes valid. An inverted pair means one of the two dates was
+    keyed wrongly.
+  rule_authority: best_practice
+  sap_impact: Validity checks on the personal certificate give wrong results.
+  fix_map:
+    __other__: Correct CERTIFICATE_START_DATE or CERTIFICATE_END_DATE so the end is on or after the start.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: CERTIFICATE_END_DATE is before CERTIFICATE_START_DATE.'
+  fail_when: '`PERINFO.CERTIFICATE_END_DATE` < `PERINFO.CERTIFICATE_START_DATE`'
+  require_populated: true
+- id: EC702
+  field: PERINFO.THIRD_NATIONALITY
+  check_class: cross_field_check
+  severity: low
+  dimension: consistency
+  message: Third nationality repeats the first or second nationality
+  why_it_matters: Each nationality slot should hold a different country. A repeated country hides a missing or wrong
+    nationality and double counts it in reporting.
+  rule_authority: best_practice
+  sap_impact: Work-permit, tax-residency and diversity reporting count the same country twice.
+  fix_map:
+    __other__: Correct or clear the third nationality.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: THIRD_NATIONALITY {PERINFO.THIRD_NATIONALITY} repeats another nationality.'
+  fail_when: '`PERINFO.THIRD_NATIONALITY`.notna() & ((`PERINFO.THIRD_NATIONALITY` == `PERINFO.NATIONALITY`) | (`PERINFO.THIRD_NATIONALITY`
+    == `PERINFO.SECOND_NATIONALITY`))'
+- id: EC703
+  field: COMPINFO.PENSIONABLE_SALARY
+  check_class: cross_field_check
+  severity: high
+  dimension: validity
+  message: Pensionable salary is negative
+  why_it_matters: Pension contributions are calculated from the pensionable salary. A negative value cannot be a salary.
+  rule_authority: best_practice
+  sap_impact: Pension contributions and pension provider files are calculated from an impossible base.
+  fix_map:
+    __other__: Correct the pensionable salary on the compensation record.
+  record_fix_template: 'Employee {COMPINFO.USERID}: PENSIONABLE_SALARY {COMPINFO.PENSIONABLE_SALARY} is negative.'
+  fail_when: '`COMPINFO.PENSIONABLE_SALARY` < 0'
+  require_populated: true
+- id: EC704
+  field: COMPINFO.BENEFITS_RATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Benefits rate is negative
+  why_it_matters: The benefits rate drives benefit cost and coverage calculations. A negative rate cannot be valid.
+  rule_authority: best_practice
+  sap_impact: Benefit costs and employer contributions are calculated from an impossible rate.
+  fix_map:
+    __other__: Correct the benefits rate on the compensation record.
+  record_fix_template: 'Employee {COMPINFO.USERID}: BENEFITS_RATE {COMPINFO.BENEFITS_RATE} is negative.'
+  fail_when: '`COMPINFO.BENEFITS_RATE` < 0'
+  require_populated: true
+- id: EC705
+  field: EMPEMPLOYMENT.WORK_PERMIT_EXPIRY
+  check_class: cross_field_check
+  severity: high
+  dimension: timeliness
+  message: Work permit has expired for an employee who is not terminated
+  why_it_matters: An employee whose work permit has expired may not be legally allowed to keep working. The record needs
+    a renewed permit date or a status change.
+  rule_authority: best_practice
+  sap_impact: Right-to-work compliance reports miss an employee who is working on an expired permit.
+  fix_map:
+    __other__: Record the renewed work permit expiry date, or update the employee status.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: WORK_PERMIT_EXPIRY {EMPEMPLOYMENT.WORK_PERMIT_EXPIRY} is in the past.'
+  fail_when: (`EMPEMPLOYMENT.WORK_PERMIT_EXPIRY` < @today) & ~`EMPEMPLOYMENT.STATUS`.isin(['T', 'R'])
+- id: EC706
+  field: EMPEMPLOYMENT.SALARY_END_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Salary end date is before the employment start date
+  why_it_matters: Salary cannot stop before the employment starts. An inverted pair means one of the two dates was keyed
+    wrongly.
+  rule_authority: best_practice
+  sap_impact: Salary continuation and final pay calculations use an impossible period.
+  fix_map:
+    __other__: Correct START_DATE or SALARY_END_DATE so the salary end is on or after the start.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: SALARY_END_DATE is before START_DATE.'
+  fail_when: '`EMPEMPLOYMENT.SALARY_END_DATE` < `EMPEMPLOYMENT.START_DATE`'
+  require_populated: true
+- id: EC707
+  field: EMPEMPLOYMENT.BENEFITS_END_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Benefits end date is before the employment start date
+  why_it_matters: Benefits cannot stop before the employment starts. An inverted pair means one of the two dates was keyed
+    wrongly.
+  rule_authority: best_practice
+  sap_impact: Benefit coverage and provider files use an impossible coverage period.
+  fix_map:
+    __other__: Correct START_DATE or BENEFITS_END_DATE so the benefits end is on or after the start.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: BENEFITS_END_DATE is before START_DATE.'
+  fail_when: '`EMPEMPLOYMENT.BENEFITS_END_DATE` < `EMPEMPLOYMENT.START_DATE`'
+  require_populated: true
+- id: EC708
+  field: EMPEMPLOYMENT.STOCK_END_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Stock end date is before the employment start date
+  why_it_matters: Stock eligibility cannot stop before the employment starts. An inverted pair means one of the two dates
+    was keyed wrongly.
+  rule_authority: best_practice
+  sap_impact: Equity vesting and stock plan feeds use an impossible eligibility period.
+  fix_map:
+    __other__: Correct START_DATE or STOCK_END_DATE so the stock end is on or after the start.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: STOCK_END_DATE is before START_DATE.'
+  fail_when: '`EMPEMPLOYMENT.STOCK_END_DATE` < `EMPEMPLOYMENT.START_DATE`'
   require_populated: true
