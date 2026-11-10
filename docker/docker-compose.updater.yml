@@ -31,7 +31,8 @@ services:
     # nginx. If you're building this locally for development, use
     # `docker build -f docker/Dockerfile.updater -t ghcr.io/vantax-org/meridian-updater:latest .`
     # from the repo root first.
-    image: ghcr.io/vantax-org/meridian-updater:latest
+    # Same release as the rest of the stack: update.sh writes MERIDIAN_VERSION=vX.Y.Z to .env.
+    image: ghcr.io/vantax-org/meridian-updater:${MERIDIAN_VERSION:-latest}
     container_name: meridian-updater
     environment:
       UPDATER_SHARED_SECRET: ${UPDATER_SHARED_SECRET}

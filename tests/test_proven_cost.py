@@ -238,3 +238,13 @@ def test_attribute_scales_with_records_not_items_times_records():
     out = pc.attribute(items, failing)
     assert time.monotonic() - t0 < 10
     assert out["D5"] == ["C0"]
+
+
+def test_duplicate_payment_alphanumeric_vendor_without_clusters() -> None:
+    # pandas 3: an empty cluster map on an Arrow string column inferred double and broke on "V700"
+    bsak = pd.DataFrame({"BUKRS": ["1"] * 2, "LIFNR": ["V700", "V700"],
+                         "BELNR": ["B1", "B2"], "XBLNR": ["INV-X", "INV-X"],
+                         "WRBTR": [1200.0, 1200.0], "WAERS": ["ZAR"] * 2,
+                         "SHKZG": ["S"] * 2, "BLDAT": ["20260101"] * 2, "GJAHR": ["2025", "2025"]})
+    r = pc.duplicate_payments(_tf(BSAK=bsak), {})
+    assert r.documents == 1 and r.items[0]["master_key"] == "LIFNR=V700"

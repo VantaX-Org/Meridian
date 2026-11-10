@@ -154,3 +154,14 @@ def test_rejects_a_workbook_with_no_fields():
     Book().save(out)
     with pytest.raises(wb.WorkbookError, match="No field"):
         wb.parse_workbook(out.getvalue())
+
+
+def test_an_empty_picklist_sheet_takes_the_system_picklist_values():
+    book = wb.parse_workbook(sample())
+    book.picklists.pop("gender")  # the workbook ships its picklist sheet with no rows
+    added = wb.add_system_picklists(book, [{"GENDER": "F"}, {"GENDER": "M"}, {"ecJobFunction": ""}])
+    assert added == 2 and book.picklists["gender"] == {"F", "M"} and "ecjobfunction" not in book.picklists
+    assert wb.fill(book, frames())[1]["reasons"]["not_in_picklist"] == 1
+    # where the sheet carries values, the sheet wins
+    wb.add_system_picklists(book, [{"gender": "X"}])
+    assert book.picklists["gender"] == {"F", "M"}

@@ -16,7 +16,7 @@ from api.routes.findings import composite_dqs
 from api.services import insights_aggregate as agg
 from api.services import s4_readiness
 from api.services.branded_xlsx import (
-    ROW_CAP, ColumnKind, ColumnSpec, ConditionalRule, SheetSpec, build_workbook, xlsx_filename)
+    ROW_CAP, ColumnKind, ColumnSpec, ConditionalRule, RuleKind, SheetSpec, build_workbook, xlsx_filename)
 from api.services.pdf_reports import (
     DIMENSIONS, _all, _rows_checked, _rule, dimension_scores, fmt_module, load_scoring)
 from api.services.scoring import scoring_config, tier
@@ -24,7 +24,9 @@ from api.services.scoring import scoring_config, tier
 SCHEMA_VERSION = "1"
 SAMPLE_PER_RULE = 9
 TREND_RUNS = 24
-_STATUS, _BAR, _SCALE = "status", "databar", "colorscale"
+_STATUS: RuleKind = "status"
+_BAR: RuleKind = "databar"
+_SCALE: RuleKind = "colorscale"
 
 
 # ── loaders ──────────────────────────────────────────────────────────────────
@@ -64,7 +66,7 @@ def load_readiness_cells(s: Session, tid: str, vid: str) -> list[dict]:
     for w in _all(s, "SELECT id, name, modules, min_readiness, min_dqs FROM migration_waves WHERE tenant_id = :t "
                      "ORDER BY target_date NULLS LAST, name", t=tid):
         run = (_all(s, "SELECT gap_summary FROM migration_runs WHERE tenant_id = :t AND wave_id = :w "
-                       "AND status = 'analysed' ORDER BY completed_at DESC LIMIT 1", t=tid, w=str(w["id"])) or [None])[0]
+                       "AND status = 'analysed' ORDER BY completed_at DESC LIMIT 1", t=tid, w=str(w["id"])) or [{}])[0]
         for c in build_wave_cells(w["name"], list(w["modules"] or []), (run or {}).get("gap_summary") or {},
                                   dqs, w["min_readiness"], w["min_dqs"]):
             out.append({"module": c.module, "wave": c.wave, "verdict": c.verdict, "blocker_count": c.blocker_count,

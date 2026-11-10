@@ -11,7 +11,7 @@ import json
 import re
 import xml.etree.ElementTree as ET
 import zipfile
-from typing import Callable, Optional, Sequence, TypedDict, Union
+from typing import Callable, Mapping, Optional, Sequence, TypedDict, Union
 
 from pydantic import BaseModel
 
@@ -145,7 +145,8 @@ def slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "model"
 
 
-def _sub(parent: ET.Element, ns: str, tag: str, attrs: Optional[dict[str, object]] = None, text: Optional[str] = None):
+def _sub(parent: ET.Element, ns: str, tag: str, attrs: Optional[Mapping[str, object]] = None,
+         text: Optional[str] = None) -> ET.Element:
     el = ET.SubElement(parent, _q(ns, tag), {k: str(v) for k, v in (attrs or {}).items() if v is not None})
     if text is not None:
         el.text = text
@@ -339,7 +340,8 @@ def _field_line(f: FieldRef) -> str:
 
 
 def _dq_line(dq: OverlayActivity) -> str:
-    word = _STATUS_WORD.get(dq["dq_status"], dq["dq_status"])
+    status = dq.get("dq_status") or ""  # callers only pass activities with a status
+    word = _STATUS_WORD.get(status, status)
     n = int(dq.get("affected_count") or 0)
     checks = ", ".join(dq.get("check_ids") or [])
     detail = ", ".join(x for x in (checks, f"{n:,} records" if n else "") if x)
@@ -355,7 +357,7 @@ def _task(proc: ET.Element, node: Node, act: L5, pos: int, overlay: Optional[Ove
         lines.append("SAP fields: " + ", ".join(_field_line(f) for f in act.fields))
     if act.check_ids:
         lines.append("Meridian rules: " + ", ".join(act.check_ids))
-    dq = (overlay or {}).get("activities", {}).get(act.id)
+    dq = _overlay_activities(overlay).get(act.id)
     if dq and dq.get("dq_status"):
         lines.append(_dq_line(dq))
     d = act.discovery
@@ -421,7 +423,7 @@ def _l4_file(l4: L4, meta: _BuildMeta, overlay: Optional[Overlay]) -> bytes:
     gateways: dict[str, str] = {}
     for n in l4.diagram.nodes:
         if n.type == "task":
-            pos, act = acts[n.activity_id]
+            pos, act = acts[n.activity_id or ""]  # a task node always names its activity
             el = _task(proc, n, act, pos, overlay)
         else:
             eid = _PREFIX[n.type] + n.id
@@ -431,7 +433,7 @@ def _l4_file(l4: L4, meta: _BuildMeta, overlay: Optional[Overlay]) -> bytes:
                 _sub(_sub(el, BPMN, "extensionElements"), MER, "node", extra)
             if n.type.endswith("Gateway"):
                 gateways[n.id] = n.type
-        elems.append((n.id, el.get("id"), el))
+        elems.append((n.id, el.attrib["id"], el))
         kinds.append((n.id, _KIND[n.type]))
     flow_el: dict[str, str] = {}
     eid_of = {k: e for k, e, _ in elems}
@@ -445,8 +447,8 @@ def _l4_file(l4: L4, meta: _BuildMeta, overlay: Optional[Overlay]) -> bytes:
             _sub(fe, BPMN, "conditionExpression", {_q(XSI, "type"): "bpmn:tFormalExpression"}, f.condition)
     flows = [(f.id, f.source, f.target) for f in l4.diagram.flows]
     _wire(proc, flows, eid_of)
-    pos = {n.id: (n.x, n.y) for n in l4.diagram.nodes if n.x is not None and n.y is not None}
-    lay = layout_diagram(kinds, flows, {f.id: f.label for f in l4.diagram.flows if f.label}, pos,
+    xy = {n.id: (n.x, n.y) for n in l4.diagram.nodes if n.x is not None and n.y is not None}
+    lay = layout_diagram(kinds, flows, {f.id: f.label for f in l4.diagram.flows if f.label}, xy,
                          starts=[n.id for n in l4.diagram.nodes if n.type == "startEvent"])
     labelled = {n.id for n in l4.diagram.nodes if n.type != "task"}
     _diagram(defs, pid, elems, lay, [f for f, _, _ in flows], flow_el, labelled, gateways)
@@ -466,18 +468,25 @@ def _xml(defs: ET.Element) -> bytes:
 _Plan = tuple[int, Union[L1, L2, L3, L4], Optional[str], int, Callable[[_BuildMeta], bytes]]
 
 
+def _landscape_fn(level: int, n: _Parent, kids: Sequence[_Child]) -> Callable[[_BuildMeta], bytes]:
+    return lambda m: _landscape(level, n, kids, m, landscape_edges(n, kids))
+
+
+def _l4_fn(n: L4, overlay: Optional[Overlay]) -> Callable[[_BuildMeta], bytes]:
+    return lambda m: _l4_file(n, m, overlay)
+
+
 def _file_plan(document: ProcessModelDocument, overlay: Optional[Overlay]) -> list[_Plan]:
     """Every L1-L4 file as (level, node, parent id, position, builder), in document order."""
     plan: list[_Plan] = []
     for i1, l1 in enumerate(document.l1):
-        plan.append((1, l1, None, i1, lambda m, n=l1: _landscape(1, n, n.l2, m, landscape_edges(n, n.l2))))
+        plan.append((1, l1, None, i1, _landscape_fn(1, l1, l1.l2)))
         for i2, l2 in enumerate(l1.l2):
-            plan.append((2, l2, l1.id, i2, lambda m, n=l2: _landscape(2, n, n.l3, m, landscape_edges(n, n.l3))))
+            plan.append((2, l2, l1.id, i2, _landscape_fn(2, l2, l2.l3)))
             for i3, l3 in enumerate(l2.l3):
-                plan.append((3, l3, l2.id, i3,
-                             lambda m, n=l3: _landscape(3, n, n.l4, m, landscape_edges(n, n.l4))))
+                plan.append((3, l3, l2.id, i3, _landscape_fn(3, l3, l3.l4)))
                 for i4, l4 in enumerate(l3.l4):
-                    plan.append((4, l4, l3.id, i4, lambda m, n=l4: _l4_file(n, m, overlay)))
+                    plan.append((4, l4, l3.id, i4, _l4_fn(l4, overlay)))
     return plan
 
 
@@ -502,7 +511,7 @@ def export_zip(document: ProcessModelDocument, overlay: Optional[Overlay], meta:
             for l3 in l2.l3:
                 for l4 in l3.l4:
                     for a in l4.activities:
-                        dq = (overlay or {}).get("activities", {}).get(a.id) or {}
+                        dq = _overlay_activities(overlay).get(a.id) or {}
                         activities.append({
                             "id": a.id, "l4_id": l4.id, "name": a.name, "tcode": a.tcode,
                             "fields": [{"field": f.field, "check_id": f.check_id, "mandatory": f.mandatory}
@@ -512,7 +521,7 @@ def export_zip(document: ProcessModelDocument, overlay: Optional[Overlay], meta:
         "schema_version": 1,
         "model": {"id": meta.get("model_id"), "name": meta["name"], "version_no": meta["version_no"],
                   "exported_at": meta["exported_at"]},
-        "overlay_version_id": (overlay or {}).get("version_id"),
+        "overlay_version_id": overlay.get("version_id") if overlay else None,
         "levels": levels, "activities": activities,
     }
     if meta.get("discovery"):
@@ -584,6 +593,16 @@ def _ext(proc: ET.Element, tag: str, ns: str = MER) -> Optional[ET.Element]:
     return proc.find(f"{_q(BPMN, 'extensionElements')}/{_q(ns, tag)}")
 
 
+def _req(el: Optional[ET.Element]) -> ET.Element:
+    if el is None:
+        raise ValueError("BPMN package is missing an element the export always writes")
+    return el
+
+
+def _overlay_activities(overlay: Optional[Overlay]) -> dict[str, OverlayActivity]:
+    return overlay.get("activities", {}) if overlay else {}
+
+
 def import_zip(data: bytes) -> ProcessModelDocument:
     """Rebuild the document from a zip made by ``export_zip``. Node x,y come from the exported layout."""
     with zipfile.ZipFile(io.BytesIO(data)) as z:
@@ -593,17 +612,17 @@ def import_zip(data: bytes) -> ProcessModelDocument:
     by_key = {(lv["level"], lv["id"]): lv for lv in manifest["levels"]}
 
     def proc_of(level: int, id_: str) -> ET.Element:
-        return trees[by_key[(level, id_)]["file"]].find(_q(BPMN, "process"))
+        return _req(trees[by_key[(level, id_)]["file"]].find(_q(BPMN, "process")))
 
     def ordered_children(level: int, proc: ET.Element) -> list[tuple[int, str]]:
-        kids = [c.get("calledElement").split("_", 1)[1] for c in proc.findall(_q(BPMN, "callActivity"))]
-        return sorted(((int(_ext(proc_of(level + 1, k), "level").get("pos")), k) for k in kids))
+        kids = [c.attrib["calledElement"].split("_", 1)[1] for c in proc.findall(_q(BPMN, "callActivity"))]
+        return sorted(((int(_req(_ext(proc_of(level + 1, k), "level")).attrib["pos"]), k) for k in kids))
 
     def head(level: int, id_: str, cls: type[BaseModel]) -> _Head:
         proc = proc_of(level, id_)
-        lv = _ext(proc, "level")
+        lv = _req(_ext(proc, "level"))
         return {"proc": proc, "lv": lv, "kw": {"id": id_, "name": proc.get("name") or "",
-                                               "description": lv.get("description", ""), "order": int(lv.get("order")),
+                                               "description": lv.get("description", ""), "order": int(lv.attrib["order"]),
                                                **_read_extras(cls, lv.attrib)}}
 
     def l4(id_: str) -> L4:
@@ -611,8 +630,8 @@ def import_zip(data: bytes) -> ProcessModelDocument:
         proc, lv = h["proc"], h["lv"]
         shapes = {}
         for s in trees[by_key[(4, id_)]["file"]].iter(_q(BPMNDI, "BPMNShape")):
-            b = s.find(_q(DC, "Bounds"))
-            shapes[s.get("bpmnElement")] = (round(float(b.get("x"))), round(float(b.get("y"))))
+            b = _req(s.find(_q(DC, "Bounds")))
+            shapes[s.get("bpmnElement")] = (round(float(b.attrib["x"])), round(float(b.attrib["y"])))
         acts: list[tuple[int, L5]] = []
         nodes: list[Node] = []
         node_of: dict[str, str] = {}
@@ -620,21 +639,21 @@ def import_zip(data: bytes) -> ProcessModelDocument:
             tag = el.tag.split("}")[1]
             if tag not in _NODE_TAG:
                 continue
-            eid = el.get("id")
+            eid = el.attrib["id"]
             xy = dict(zip(("x", "y"), shapes[eid]))
             if tag == "task":
-                ma = _ext(el, "activity")
+                ma = _req(_ext(el, "activity"))
                 fields = [FieldRef(field=f.get("name"), check_id=f.get("checkId"), description=f.get("description", ""),
                                    mandatory=f.get("mandatory") == "true", config_source=f.get("configSource"))
                           for f in ma.findall(_q(MER, "field"))]
                 a = L5(id=ma.get("id"), name=el.get("name") or "", description=ma.get("description", ""),
-                       order=int(ma.get("order")), tcode=ma.get("tcode"), fields=fields,
+                       order=int(ma.attrib["order"]), tcode=ma.get("tcode"), fields=fields,
                        check_ids=[r.get("id") for r in ma.findall(_q(MER, "rule"))],
                        sap_tables=[t for t in (ma.get("sapTables") or "").split(";") if t],
                        rule_modules=[m for m in (ma.get("ruleModules") or "").split(";") if m],
                        **_read_extras(L5, ma.attrib))
-                acts.append((int(ma.get("pos")), a))
-                nid = ma.get("nodeId")
+                acts.append((int(ma.attrib["pos"]), a))
+                nid = ma.attrib["nodeId"]
                 nodes.append(Node(id=nid, type="task", activity_id=a.id, **xy, **_read_extras(Node, ma.attrib, "node")))
             else:
                 nid = eid[2:]
@@ -645,7 +664,8 @@ def import_zip(data: bytes) -> ProcessModelDocument:
         flows = []
         for f in proc.findall(_q(BPMN, "sequenceFlow")):
             ce = f.find(_q(BPMN, "conditionExpression"))
-            flows.append(Flow(id=f.get("id")[2:], source=node_of[f.get("sourceRef")], target=node_of[f.get("targetRef")],
+            flows.append(Flow(id=f.attrib["id"][2:], source=node_of[f.attrib["sourceRef"]],
+                              target=node_of[f.attrib["targetRef"]],
                               label=f.get("name"), condition=ce.text if ce is not None else None))
         return L4(**h["kw"], tcode=lv.get("tcode"), config_dependency=lv.get("configDependency"),
                   activities=[a for _, a in sorted(acts, key=lambda p: p[0])],
@@ -667,6 +687,6 @@ def import_zip(data: bytes) -> ProcessModelDocument:
         return L1(**h["kw"], modules=[m.get("name") for m in h["lv"].findall(_q(MER, "module"))],
                   l2=[l2(k) for _, k in ordered_children(1, h["proc"])])
 
-    tops = sorted((int(_ext(proc_of(1, lv["id"]), "level").get("pos")), lv["id"])
+    tops = sorted((int(_req(_ext(proc_of(1, lv["id"]), "level")).attrib["pos"]), lv["id"])
                   for lv in manifest["levels"] if lv["level"] == 1)
     return ProcessModelDocument(l1=[l1(k) for _, k in tops])

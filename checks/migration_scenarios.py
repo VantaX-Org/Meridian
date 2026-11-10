@@ -100,7 +100,7 @@ def enabled_rules() -> Iterable[tuple[str, dict]]:
 
 def summary(rules: Optional[Iterable[tuple[str, dict]]] = None) -> dict[str, Any]:
     """Per scenario: description, counts by relevance, blocking count, per-module counts."""
-    acc = {sc: {"counts": Counter(), "blocking": 0, "modules": defaultdict(Counter)} for sc in SCENARIOS}
+    acc: dict[str, dict[str, Any]] = {sc: {"counts": Counter(), "blocking": 0, "modules": defaultdict(Counter)} for sc in SCENARIOS}
     for module, r in (enabled_rules() if rules is None else rules):
         blocking = _impact(r)[0] == "blocking"
         for sc, (rel, _) in classify(r).items():
