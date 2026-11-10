@@ -264,6 +264,7 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
         batch_keys = [(g, k) for g, k in batch_keys if (g or "", k) in mine]
         _copy(session, "tmp_present", ("grain", "record_key"), batch_keys)
         session.execute(text("CREATE INDEX ON tmp_present (grain, record_key)"))
+        session.execute(text("ANALYZE tmp_present"))
 
         reopened += session.execute(text("""
             WITH hit AS (
@@ -301,30 +302,34 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
         """), {**bp, "unstable": _UNSTABLE}).fetchall()
         created += sum(1 for (c,) in upsert if c)
 
-        resolved += session.execute(text("""
-            WITH ran AS (
-                SELECT check_id FROM findings
-                 WHERE version_id = :vid AND tenant_id = :tid
-                   AND details->>'error' IS NULL
-                   AND COALESCE((details->>'failing_keys_truncated')::boolean, false) = false
-                   AND check_id = ANY(:batch)
-            ), fixed AS (
-                UPDATE record_issues ri
-                   SET status = 'resolved', resolution = 'verified_fixed', resolved_version = :vid,
-                       steward_verdict = COALESCE(ri.steward_verdict, 'real'),
-                       resolved_at = now(), updated_at = now()
-                 WHERE ri.tenant_id = :tid AND ri.scope = :scope AND ri.status <> 'resolved'
-                   AND ri.check_id = ANY(:batch)
-                   AND NOT EXISTS (SELECT 1 FROM finding_records fr WHERE fr.version_id = :vid
-                                      AND fr.check_id = ri.check_id AND fr.record_key = ri.record_key)
-                   AND ri.check_id IN (SELECT check_id FROM ran)
-                   AND EXISTS (SELECT 1 FROM tmp_present tp
-                                WHERE tp.grain = COALESCE(ri.grain, '') AND tp.record_key = ri.record_key)
-                RETURNING ri.id
-            )
-            INSERT INTO record_issue_events (tenant_id, issue_id, action, to_value, version_id, user_label)
-            SELECT :tid, id, 'auto_resolved', 'resolved', :vid, 'system' FROM fixed
-        """), bp).rowcount
+        # Only checks that ran cleanly and listed every failing record may auto-resolve. Pick them first:
+        # with the filter inside the UPDATE, a batch of only truncated checks (over the failing-record cap)
+        # still made the planner probe finding_records and tmp_present for every open issue, which held a
+        # prod run for over an hour on two capped rules that could never resolve anything.
+        ran = [c for (c,) in session.execute(text("""
+            SELECT check_id FROM findings
+             WHERE version_id = :vid AND tenant_id = :tid AND check_id = ANY(:batch)
+               AND details->>'error' IS NULL
+               AND COALESCE((details->>'failing_keys_truncated')::boolean, false) = false
+        """), bp).all()]
+        if ran:
+            resolved += session.execute(text("""
+                WITH fixed AS (
+                    UPDATE record_issues ri
+                       SET status = 'resolved', resolution = 'verified_fixed', resolved_version = :vid,
+                           steward_verdict = COALESCE(ri.steward_verdict, 'real'),
+                           resolved_at = now(), updated_at = now()
+                     WHERE ri.tenant_id = :tid AND ri.scope = :scope AND ri.status <> 'resolved'
+                       AND ri.check_id = ANY(:ran)
+                       AND NOT EXISTS (SELECT 1 FROM finding_records fr WHERE fr.version_id = :vid
+                                          AND fr.check_id = ri.check_id AND fr.record_key = ri.record_key)
+                       AND EXISTS (SELECT 1 FROM tmp_present tp
+                                    WHERE tp.grain = COALESCE(ri.grain, '') AND tp.record_key = ri.record_key)
+                    RETURNING ri.id
+                )
+                INSERT INTO record_issue_events (tenant_id, issue_id, action, to_value, version_id, user_label)
+                SELECT :tid, id, 'auto_resolved', 'resolved', :vid, 'system' FROM fixed
+            """), {**bp, "ran": ran}).rowcount
         # Exported fix batches are reconciled here, per batch, while this batch's tmp_present is still
         # populated: the commit below drops it, so a reconcile after track could never prove an item fixed.
         try:
