@@ -17,6 +17,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { fixtureResponse, fixtureWrite, resetWorkFixture } from "./index";
 import { writebackPauseFixture } from "./work-fixture";
 import { LIBRARY } from "./library";
+import runsJson from "./runs.json";
 import type { Landscape, Receipt, RuleRow } from "../types";
 
 type Schema = {
@@ -89,27 +90,76 @@ const IDS: Record<string, string> = {
   system_id: L.systems[0].id,
   version_id: L.cells[0].run_id,
   run_id: L.cells[0].run_id,
-  a: "",
+  a: (runsJson as { versions: { id: string }[] }).versions[1].id,
   b: L.cells[0].run_id,
   check_id: "MM142",
   record_key: "MATNR=000000000000000232",
   key: "MATNR=000000000000000232",
   matnr: "000000000000000232",
+  batch_id: "B-236",
+  record_id: "gr-0",
+  score_id: "ms-0",
+  term_id: "gt-matkl",
+  list_id: "unit_of_measure",
+  z_id: "z-1",
+  instance_id: "WI-1001",
+  metric: "dqs",
+  // no fixture keeps these; asking still proves the fixtures refuse rather than answer off-schema
+  item_id: "st-1",
+  finding_id: "f-1",
+  schedule_id: "sch-1",
+  simulation_id: "sim-1",
+  case_id: "case-1",
 };
 
-/** Values for the required query parameters of a route. */
-const QUERY: Record<string, string> = { target_kind: "object", target_id: "material_master", module: "material_master", system_id: L.systems[0].id };
+/** Values for the required query parameters of a route; ROUTE_QUERY overrides one route's. */
+const QUERY: Record<string, string> = {
+  target_kind: "object", target_id: "material_master", module: "material_master", run: L.cells[0].run_id,
+  system_id: L.systems[0].id, domain: "material_master", fields: "MARA.MATNR", check_ids: "MM142", rule_id: "MM142",
+  node: "check:MM142", q: "material", route: "work",
+};
+const ROUTE_QUERY: Record<string, Record<string, string>> = { "/api/v1/lineage/guards": { node: "kpi:dpo" } };
+
+/** The fixtures' own id for a path parameter the demo ids do not name: the first item of the list one level up. */
+function listedId(prefix: string, param: string): string | undefined {
+  let body: unknown;
+  try {
+    body = fixtureResponse(prefix, {});
+  } catch {
+    return undefined;
+  }
+  const list = Array.isArray(body) ? body : Object.values((body ?? {}) as object).find(Array.isArray);
+  const first = (list as Record<string, unknown>[] | undefined)?.[0];
+  const id = first && (first[param] ?? first.id ?? first[param.replace(/_id$/, "")]);
+  return id == null ? undefined : String(id);
+}
+
+/** The v2 path a route is asked with, or undefined when no id is known for one of its parameters. */
+function askedPath(route: string): string | undefined {
+  let path = route.slice("/api/v1".length);
+  for (const [, p] of route.matchAll(/\{(\w+)\}/g)) {
+    const at = path.indexOf(`{${p}}`);
+    const id = IDS[p] || listedId(path.slice(0, at).replace(/\/$/, ""), p);
+    if (!id) return undefined;
+    path = path.replace(`{${p}}`, encodeURIComponent(id));
+  }
+  return path;
+}
 
 interface Case { route: string; path: string; query: Record<string, string>; schema: Schema }
+/** GET routes with a declared response that the test cannot ask the fixtures, because it knows no value for a parameter. */
+const UNASKED: string[] = [];
 const CASES: Case[] = Object.entries(api.paths).flatMap(([route, ops]) => {
   const schema = ops.get?.responses?.["200"]?.content?.["application/json"]?.schema;
   if (!schema || !Object.keys(schema).length || !route.startsWith("/api/v1/")) return [];
-  const params = [...route.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
-  if (params.some((p) => !(p in IDS) || !IDS[p])) return [];
   const required = (ops.get?.parameters ?? []).filter((p) => p.in === "query" && p.required).map((p) => p.name);
-  if (required.some((q) => !(q in QUERY))) return [];
-  const query = Object.fromEntries(required.map((q) => [q, QUERY[q]]));
-  const path = route.slice("/api/v1".length).replace(/\{(\w+)\}/g, (_, p: string) => encodeURIComponent(IDS[p]));
+  const values = { ...QUERY, ...ROUTE_QUERY[route] };
+  const path = askedPath(route);
+  if (!path || required.some((q) => !(q in values))) {
+    UNASKED.push(route);
+    return [];
+  }
+  const query = Object.fromEntries(required.map((q) => [q, values[q]]));
   return [{ route, path, query, schema }];
 });
 
@@ -151,6 +201,11 @@ describe("fixture answers match the API's response schemas", () => {
     expect(errs.some((e) => e.includes(".score"))).toBe(true);
     expect(errs.some((e) => e.includes(".module: missing"))).toBe(true);
     expect(errs.some((e) => e.includes(".measured: the API does not send this field"))).toBe(true);
+  });
+
+  it("every route with a declared response is asked of the fixtures", () => {
+    console.log(`contract: ${CASES.length} routes asked, ${answered.length} answered by the fixtures, unasked: ${UNASKED.join(", ") || "none"}`);
+    expect(UNASKED).toEqual([]);
   });
 
   it("every answer conforms to the schema the API declares", () => {

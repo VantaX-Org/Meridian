@@ -168,3 +168,14 @@ def test_record_report_clean_record_empty_state():
     assert ctx["failing_total"] == 0
     html = pr._env().get_template("record_report.html").render(**ctx)
     assert "All rules pass for this record." in html
+
+
+def test_run_report_without_a_run_is_none(monkeypatch):
+    """No run id is a not-found (None), not a query for id = 'None'."""
+    class _S:
+        def execute(self, *a, **k):
+            return type("R", (), {"scalar": lambda self: "T"})()
+    monkeypatch.setattr(pr, "load_scoring", lambda s, tid: None)
+    monkeypatch.setattr(pr, "load_version", lambda *a: pytest.fail("load_version called without a run"))
+    for kind in ("analysis", "extraction", "comparison", "executive", "object", "record"):
+        assert pr.build(_S(), "t", kind) is None

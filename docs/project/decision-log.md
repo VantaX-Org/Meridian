@@ -22,6 +22,7 @@ Decisions found in the repository and git history. Each date is the commit date 
 | DL-15 | 2026-11-09 | The customer licence keeps 12 modules: material master, customer master with business partner, and the ten SuccessFactors modules. | The customer licences material master, SuccessFactors and customer master only. Business partner stays because a customer is a business partner in S/4HANA. | Licence server change, 9 November 2026 |
 | DL-16 | 2026-11-09 | Move the engine image pin to cortex0 1.8.0. | Product owner decision. | Closes DO-01 |
 | DL-17 | 2026-11-10 | Give each object a cleaning workbook in Excel, with every failing record and field, the current and suggested value, the rule, why it failed and the fix steps. | The data owners clean in Excel and need the full list, not only a summary. Suggested values come only from the run, the rule's automatic fix or its value map. | Release v0.0.636 |
+| DL-18 | 2026-11-10 | Data-subject requests also cover change request comments and attachments, write-back run records, comments, watches, notifications, undo entries, webhook deliveries, exceptions and their comments, and the sample keys in field dependencies and rule proposals. Shared rows are scrubbed, not deleted, and erasure clears the tenant's response cache. | Debt row D-27: these stores can hold a subject's record key or values. Audit rows stay scrubbed for retention. | docs/sustain/data-subject-coverage.md |
 
 ## Decisions still open
 

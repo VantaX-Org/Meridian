@@ -9,3 +9,10 @@ def test_record_disagreeing_with_its_determinant_group_fails():
     ev = DependencyCheck({"determinant": "MARC.DISPO", "field": "MARC.EKGRP"}).evaluate(df)
     assert ev.population.tolist() == [True, True, True, True, False]
     assert ev.failing.tolist() == [False, False, True, False, False]
+
+
+def test_all_blank_determinants_evaluate_without_error():
+    # pandas 3: mapping through an empty expected series inferred double and fillna("") raised
+    df = pd.DataFrame({"MARC.DISPO": ["", ""], "MARC.EKGRP": ["A10", "B20"]})
+    ev = DependencyCheck({"determinant": "MARC.DISPO", "field": "MARC.EKGRP"}).evaluate(df)
+    assert ev.failing.tolist() == [False, False]

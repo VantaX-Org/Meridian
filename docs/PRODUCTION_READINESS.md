@@ -86,9 +86,9 @@ These are flagged but not blockers for a single pilot customer. They should be c
 
 - `OFFLINE_JWT_PRIVATE_KEY` single-key (no rotation mechanism)
 - `JWT_SECRET` rotation requires ops-procedure, not built-in overlap
-- No WAF rules in front of customer API (customer responsibility today, but we should ship default rules)
+- ~~No WAF rules in front of customer API~~ Closed: `docker/nginx/meridian.conf` ships default edge rules (rate limits on the API and the password endpoints, a per-address connection cap, a method allow-list, dotfile denial, slow-client timeouts, security headers). Tuning: [docs/sustain/access-and-security-operations.md](sustain/access-and-security-operations.md#edge-protection). A full WAF (OWASP rule set) in front of nginx is still the customer's choice.
 - VR baselines are currently the sign-in screen, not per-route (auth-in-CI to close)
-- No SBOM delivered with customer releases (we have the artifact, just need to attach to tags)
+- ~~No SBOM delivered with customer releases~~ Fixed: `build-and-deploy.yml` attaches CycloneDX SBOMs of the api and frontend images to every release tag
 - No GDPR DSAR endpoint (manual SQL today)
 - No built-in tenant-user admin UI in the customer API (HQ-side only)
 

@@ -155,7 +155,7 @@ All queries use parameterised SQLAlchemy `text()` bindings. No string concatenat
 2. `OFFLINE_JWT_PRIVATE_KEY` single-key; rotation invalidates all airgapped offline tokens simultaneously.
 3. No WAF rules in front of the customer API (customers typically put Cloudflare / equivalent in front themselves).
 4. Penetration test — this document is written in lieu of one, not as a replacement. External engagement is recommended before the first enterprise contract.
-5. SBOM for the customer-side containers is generated weekly but not published to customers. Should be delivered per-release.
+5. ~~SBOM for the customer-side containers is generated weekly but not published to customers.~~ Fixed: each release tag carries CycloneDX SBOMs of the api and frontend images (`build-and-deploy.yml`).
 
 ## 7. Data flow — where the data goes
 
