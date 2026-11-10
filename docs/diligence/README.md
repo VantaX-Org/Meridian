@@ -72,8 +72,8 @@ are now disclosed in the documents and logged in the register with a status:
   `MERIDIAN_LIVE_WRITEBACK_ENABLED` (off by default), not yet run against a live SAP system; vendor (`LFA1`)
   fixes are export only.
 - **The licence was not enforceable** (DR-3, security.md F-11): fixed with Ed25519 vendor signatures;
-  enforcement switches on after the licence worker is deployed with `LICENCE_SIGNING_KEY_ED25519`, until when
-  the transition window `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` is on by default.
+  enforcement switches on after the licence worker is deployed with `LICENCE_SIGNING_KEY_ED25519`, legacy
+  signatures are an opt-in, `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES`, off by default.
 - **The tenant was hard-coded** (DR-4): fixed; the tenant comes from the verified token claim
   (architecture.md section 3, security.md section 4).
 - **Most of the code was written with Claude Code under one principal engineer**, and the clone is shallow

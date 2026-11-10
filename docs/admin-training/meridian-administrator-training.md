@@ -105,16 +105,18 @@ There is no key to set in `.env`, and an unsigned or wrongly signed licence gran
 - **Offline** (`MERIDIAN_LICENCE_MODE=offline`): `MERIDIAN_LICENCE_TOKEN` holds a signed token issued by Meridian HQ,
   for air-gapped hosts. It never phones home.
 
-### The transition window
+### Legacy signatures (opt-in)
 
-`MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` is `true` by default in this release. While it is on, Meridian also
-accepts the older signatures (an HMAC-signed offline file, an RS256 offline token, an RSA-signed online response
-and, with no RSA key configured, an unsigned online response), and logs each acceptance. It exists because the
-licence worker at Meridian HQ is deployed separately: an installation that updated before the worker signs with
-the vendor key would otherwise refuse its own licence.
+`MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` is `false` by default. Meridian accepts only licences signed with the
+vendor's Ed25519 key. Setting it to `true` is an explicit opt-in for an installation that still holds an older
+licence: Meridian then also accepts an HMAC-signed offline file, an RS256 offline token, an RSA-signed online
+response and, with no RSA key configured, an unsigned online response. Each acceptance is logged as a warning.
 
-Turn it off (`MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES=false` in `.env`, then restart the API) once Meridian HQ
-confirms the licence worker signs with the vendor key. A later release makes `false` the default.
+When the API starts with the setting off and finds a legacy licence on the node, it logs an error that names the
+licence and gives the opt-in step. A licence refused for this reason shows the reason `legacy_signature_rejected`.
+To keep running until Meridian HQ issues an Ed25519-signed licence, set
+`MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES=true` in `.env` and restart the API. Set it back to `false` once the new
+licence is in place.
 
 ### The offline grace
 
@@ -696,7 +698,7 @@ as your restore time.
 | `/health` answers 503 `degraded` | Postgres or Redis does not answer | `docker compose ps`, then the logs of `db` or `redis` |
 | `/docs` answers 404 | API docs are hidden outside development | Set `MERIDIAN_OPENAPI_PUBLIC=1` only where nginx is not public |
 | "Licence needed": Meridian HQ could not be reached | The licence server was unreachable past the offline grace (`licence_server_cutoff`) | Restore outbound HTTPS to the licence server; check `X-Licence-Warning` and `offline_grace` days earlier |
-| A licence is refused after an update | Legacy signature with the transition window off | Set `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES=true` until HQ issues an Ed25519-signed licence |
+| A licence is refused after an update (`legacy_signature_rejected`) | Legacy signature, and legacy signatures are off by default | Set `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES=true` until HQ issues an Ed25519-signed licence |
 | Connection test: "Sign-in refused" or HTTP 401 | Wrong or expired user or secret | Connection settings: type the new values and test again |
 | "No authorisation to read this table" | The RFC user lacks `S_TABU_NAM` or `S_TABU_DIS` on that table | Add it from the role template; SU53 shows the check |
 | Extraction refused at the reader | The chosen reader is not authorised or does not exist | Set `MERIDIAN_RFC_READ_FUNCTION` to a reader your role grants, or `auto` |

@@ -68,14 +68,16 @@ class Settings(BaseSettings):
     licence_file: Optional[str] = None
     licence_file_path: Optional[str] = None
     licence_secret: Optional[str] = None
-    # Transition window, ON by default until Meridian HQ signs every response with the vendor Ed25519 key; then
-    # the default flips to off. While on, also accept the old HMAC-signed offline licence file (LICENCE_SECRET),
-    # the old RS256 offline token (MERIDIAN_OFFLINE_PUBLIC_KEY) and the old RSA-signed online response
-    # (LICENCE_SERVER_PUBLIC_KEY), and, when no such key is configured, an unsigned online response as before.
-    # Every acceptance is logged. Licences are otherwise verified only against the
-    # vendor's Ed25519 keys compiled into the image (api/middleware/licence_keys.py).
+    # Legacy signatures are opt-in (default off, DR-3). Set MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES=true only for
+    # an installation that still holds an old licence: it then also accepts the old HMAC-signed offline licence
+    # file (LICENCE_SECRET), the old RS256 offline token (MERIDIAN_OFFLINE_PUBLIC_KEY) and the old RSA-signed
+    # online response (LICENCE_SERVER_PUBLIC_KEY), and, when no such key is configured, an unsigned online
+    # response. Every such acceptance is logged as a warning, and the startup check
+    # (api/middleware/licence.py check_legacy_licence_at_startup) says how to opt in when a legacy licence is
+    # found with this off. Otherwise licences are verified only against the vendor's Ed25519 keys compiled into
+    # the image (api/middleware/licence_keys.py).
     licence_allow_legacy_signatures: bool = Field(
-        default=True, validation_alias=AliasChoices("MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES"))
+        default=False, validation_alias=AliasChoices("MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES"))
     # Offline grace: when HQ is unreachable, the last valid signed online response is honoured for this many
     # days after it was signed, with a warning and status "offline_grace" (api/middleware/licence.py).
     licence_offline_grace_days: int = Field(

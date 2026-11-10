@@ -39,7 +39,7 @@ Items the register marks fixed are not repeated here, including D-01 (Python sou
 | No SBOM attached to release tags | PRODUCTION_READINESS.md | Vendor engineering | Accepted until a release adds one. |
 | `npm audit` reported 3 high and 8 moderate findings | PRODUCTION_READINESS.md | Vendor engineering | Whether these are still current: To confirm (owner: vendor engineering). |
 | The eight go-live gates in PRODUCTION_READINESS.md were unchecked as of 24 April 2026 | PRODUCTION_READINESS.md | Vendor delivery lead | Current state: To confirm (owner: vendor delivery lead). Use the [cutover and go-live plan](../project/cutover-and-go-live-plan.md) for this deployment. |
-| `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` is on by default | `api/config.py`, debt row DR-3 | Vendor engineering | Stays on until the licence worker uses Ed25519 signing. A later release turns it off. No customer action. |
+| Legacy licence signatures are now off by default (`MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES=false`) | `api/config.py`, debt row DR-3 | Vendor engineering | An installation that still holds a legacy licence is refused with `legacy_signature_rejected`, and the API logs the opt-in step at startup. Set the variable to `true` until Meridian HQ issues an Ed25519-signed licence. |
 
 ## Fixed in v0.0.634
 

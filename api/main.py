@@ -158,6 +158,9 @@ async def lifespan(app: FastAPI):
     logger.info("Meridian API starting")
     logger.info(f"LLM_PROVIDER: {settings.llm_provider}")
     logger.info(f"LICENCE_KEY: {'set' if settings.licence_key else 'not set'}")
+    from api.middleware.licence import check_legacy_licence_at_startup
+
+    check_legacy_licence_at_startup()  # logs an error with the opt-in step when a legacy licence is found
 
     # Ensure MinIO buckets exist
     try:

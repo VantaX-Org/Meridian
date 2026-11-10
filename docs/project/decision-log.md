@@ -22,6 +22,7 @@ Decisions found in the repository and git history. Each date is the commit date 
 | DL-15 | 2026-11-09 | The customer licence keeps 12 modules: material master, customer master with business partner, and the ten SuccessFactors modules. | The customer licences material master, SuccessFactors and customer master only. Business partner stays because a customer is a business partner in S/4HANA. | Licence server change, 9 November 2026 |
 | DL-16 | 2026-11-09 | Move the engine image pin to cortex0 1.8.0. | Product owner decision. | Closes DO-01 |
 | DL-17 | 2026-11-10 | Give each object a cleaning workbook in Excel, with every failing record and field, the current and suggested value, the rule, why it failed and the fix steps. | The data owners clean in Excel and need the full list, not only a summary. Suggested values come only from the run, the rule's automatic fix or its value map. | Release v0.0.636 |
+| DL-18 | 2026-11-10 | Make legacy licence signatures opt-in. `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` is off by default; an installation on a legacy licence gets a startup error naming the opt-in. | DR-3: a legacy signature is one the customer can produce (HMAC over its own secret, or an RSA key in its own `.env`), so accepting it by default left the licence unenforceable. | `api/config.py`, `api/middleware/licence.py` |
 
 ## Decisions still open
 
