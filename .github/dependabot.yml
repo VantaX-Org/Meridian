@@ -1,0 +1,38 @@
+# Weekly dependency refreshes, one grouped pull request per ecosystem, each one through CI like any other change.
+# Majors are left out: a major version is a decision (CI matrix, data migration, licence), not a refresh.
+# Security updates are separate: they follow the repository's Dependabot alerts and are not limited by this file.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directories: ["/", "/updater"]
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      python:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: npm
+    directories: ["/frontend", "/cloudflare/install-worker", "/cloudflare/licence-worker", "/cloudflare/llm-proxy", "/cloudflare/portal"]
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      npm:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 1
+    groups:
+      actions:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
