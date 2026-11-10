@@ -1418,7 +1418,7 @@ DATA_DICTIONARY: dict[str, dict[str, dict]] = {
             "length": 1,
             "key": False,
             "mandatory": False,
-            "valid_values": ["", "D", "K", "A"],
+            "valid_values": ["", "D", "K", "A", "V"],
             "config_table": None,
             "sap_help": "Indicates whether this G/L account is a reconciliation account for a subledger. If set, direct postings are restricted — only subledger postings (vendor/customer/asset) update this account.",
             "standard_values": {
@@ -1426,6 +1426,7 @@ DATA_DICTIONARY: dict[str, dict[str, dict]] = {
                 "D": "Customer reconciliation account (AR)",
                 "K": "Vendor reconciliation account (AP)",
                 "A": "Asset reconciliation account",
+                "V": "Contract accounts receivable reconciliation account (FI-CA)",
             },
             "processes": ["general-ledger", "accounts-payable", "accounts-receivable", "asset-accounting"],
             "tcodes": ["FS00", "FSS0"],
