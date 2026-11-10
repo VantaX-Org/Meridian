@@ -34,6 +34,6 @@ class DependencyCheck(BaseCheck):
                                                "frozen": True})
         # ponytail: expected mapping follows the data's majority each run; learned rules freeze it in ``allowed``
         expected = b[populated].groupby(a[populated]).agg(lambda s: s.value_counts().index[0])
-        failing = populated & b.ne(a.map(expected).fillna(""))
+        failing = populated & b.ne(a.map(expected).astype("string").fillna(""))
         return Evaluation(populated, failing, {"determinant": self.rule["determinant"],
                                                "groups": int(expected.size)})
