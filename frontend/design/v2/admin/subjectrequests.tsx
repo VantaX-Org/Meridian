@@ -51,9 +51,22 @@ const TABLE: Record<string, string> = {
   get change_request_field_changes() { return t("Old and new values in change requests"); },
   get mdm_merge_events() { return t("Merge events and the records merged"); },
   get migration_export_files() { return t("Record keys listed in migration export files"); },
+  get migration_reconciliations() { return t("Reconciliation rows for this record in a migration run"); },
+  get change_request_comments() { return t("Comments on this record's change requests"); },
+  get change_request_attachments() { return t("Attachment links on this record's change requests"); },
+  get writeback_run_records() { return t("Values sent to SAP for this record in a write-back run"); },
+  get comments() { return t("Comments on this record or naming it"); },
+  get watches() { return t("People watching this record"); },
+  get notifications() { return t("Notifications that name this record"); },
+  get undo_actions() { return t("Undo entries that would write this record's values back"); },
+  get webhook_deliveries() { return t("Webhook messages that carried this record"); },
+  get field_dependencies() { return t("Field dependency profiles that use this record as a sample"); },
+  get learned_rule_proposals() { return t("Proposed rules that use this record as a sample"); },
+  get exceptions() { return t("Exceptions that list this record as affected"); },
+  get exception_comments() { return t("Comments on exceptions that name this record"); },
   get audit_log() { return t("Audit log entries that carry the exact key"); },
 };
-const SCRUBBED = new Set(["cleaning_queue", "cleaning_audit", "change_requests", "change_request_field_changes", "mdm_merge_events", "migration_export_files", "audit_log"]);
+const SCRUBBED = new Set(["cleaning_queue", "cleaning_audit", "change_requests", "change_request_field_changes", "mdm_merge_events", "migration_export_files", "migration_reconciliations", "writeback_run_records", "webhook_deliveries", "field_dependencies", "learned_rule_proposals", "exceptions", "audit_log"]);
 
 type Row = { table: string; rows: number };
 

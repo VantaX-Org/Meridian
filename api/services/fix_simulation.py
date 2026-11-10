@@ -79,7 +79,7 @@ def _key_parts(record_key: str) -> dict[str, str]:
 def _map_column(s: pd.Series, mapping: dict[str, str]) -> tuple[pd.Series, int]:
     cur = s.astype("string").str.strip()
     plain = {k: v for k, v in mapping.items() if k not in (BLANK, OTHER)}
-    new = cur.map(plain)
+    new = cur.map(plain).astype("string")  # pandas 3: no hits on an Arrow string infers double
     if BLANK in mapping:
         new = new.mask(is_blank(s) & new.isna(), mapping[BLANK])
     changed = new.notna() & (new != cur.fillna(""))

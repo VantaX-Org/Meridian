@@ -60,9 +60,17 @@ describe("Admin, Data subject requests", () => {
   it("finds a synthetic subject, with each table code beside its description", async () => {
     page();
     await search("SYNTH-0001");
-    expect((await screen.findAllByText(/13 rows across 5 tables and 2 extract files/)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/13 rows across 7 tables and 2 extract files/)).length).toBeGreaterThan(0);
     expect(screen.getByText("finding_records")).toBeInTheDocument();
     expect(screen.getByText("Records that failed a rule, per run")).toBeInTheDocument();
+  });
+
+  it("describes the comment, notification and exception stores, and says which rows are kept", async () => {
+    page();
+    await search("SYNTH-0001");
+    expect(await screen.findByText("Notifications that name this record")).toBeInTheDocument();
+    expect(screen.getByText("Exceptions that list this record as affected")).toBeInTheDocument();
+    expect(screen.getAllByText("Row kept, key and values cleared")).toHaveLength(2);
   });
 
   it("says so when nothing is held", async () => {
