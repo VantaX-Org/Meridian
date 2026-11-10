@@ -15,19 +15,19 @@ EXPECTED_COUNTS = {
     "accounts_payable": 195,
     "accounts_receivable": 154,
     "asset_accounting": 100,
-    "hcm": 117,
+    "hcm": 139,
     "controlling": 102,
-    "mm_purchasing": 264,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
+    "mm_purchasing": 273,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
     "sd_customer_master": 581,
-    "sd_sales_orders": 208,
-    "production_planning": 278,
-    "project_system": 165,
-    "plant_maintenance": 238,
-    "quality_management": 133,
+    "sd_sales_orders": 220,
+    "production_planning": 287,
+    "project_system": 171,
+    "plant_maintenance": 244,
+    "quality_management": 140,
     "s4_readiness": 149,
     "banking_tax": 91,
-    "interface_health": 53,
-    "s4hc_master_data": 43,
+    "interface_health": 52,
+    "s4hc_master_data": 41,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]

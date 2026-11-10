@@ -81,8 +81,7 @@ moved out of the broken column, they did not regress.
 | `sd_customer_master` | `SDCM099` accuracy, `SDCM100` timeliness |
 | `controlling` | `CO126` accuracy, `CO127` timeliness |
 | `banking_tax` | `BKT108` accuracy |
-| `interface_health` | `IDH051` uniqueness, `IDH052` accuracy, `IDH053` timeliness |
-| `s4hc_master_data` | `S4HC042` accuracy, `S4HC043` timeliness |
+| `interface_health` | `IDH051` uniqueness, `IDH052` accuracy |
 | `concur_users` | `CNU042` uniqueness |
 | `succession_planning` | `SUC085` uniqueness |
 | `ariba_supplier` | `ARS041` uniqueness, `ARS042` accuracy |

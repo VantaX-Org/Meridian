@@ -35,12 +35,18 @@ def test_pay_scale_localised_name_matches_its_base_property():
     assert "FOPAYSCALETYPE" in cands("Pay Scale Type Values (US)", ["externalName.en_US"], "grid")
 
 
-@pytest.mark.parametrize("sheet", [
-    "CSF Personal Info (Global Info)",  # per-country generic slots, entity not established
-    "CSF Dependents", "CSF Legal Entity", "CSF Job Classification",
+def test_no_entity_means_no_match():
+    # the dependants' country-specific info would fill with the employee's own, so it stays unmapped
+    assert cands("CSF Dependents", ["genericString1", "externalCode", "first-name"]) == {}
+
+
+@pytest.mark.parametrize("sheet,col,table", [
+    ("CSF Personal Info (Global Info)", "person-id-external", "PER_GLOBAL_INFO"),
+    ("CSF Legal Entity", "externalCode", "FO_LEGAL_ENTITY_LOCAL"),
+    ("CSF Job Classification", "externalCode", "FO_JOB_CLASS_LOCAL"),
 ])
-def test_no_entity_means_no_match(sheet):
-    assert cands(sheet, ["genericString1", "externalCode", "first-name"]) == {}
+def test_country_specific_sheet_reads_its_family(sheet, col, table):
+    assert col in cands(sheet, [col]).get(table, {})
 
 
 def test_friendly_headers_do_not_false_match():

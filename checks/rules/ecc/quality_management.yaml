@@ -2395,3 +2395,135 @@ rules:
     __other__: Deactivate the code in QS41 or reactivate the group.
   record_fix_template: 'Catalog {QPCD.KATALOGART} code group {QPCD.CODEGRUPPE} code {QPCD.CODE}: code is active in an inactive
     group.'
+- id: QM134
+  field: MARC.MATNR
+  check_class: exists_check
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  target_table: QMAT
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    AKTIV:
+    - X
+  applies_when:
+    MARC.QMATV:
+    - X
+    MARC.LVORM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Inspection setup exists but no inspection type is active
+  why_it_matters: The material is flagged for inspection setup, but every inspection type assigned to it is switched off. The
+    system then creates no inspection lot for any movement.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipts and orders post without inspection lots although the material master says it is inspected.
+  fix_map:
+    __other__: Activate the intended inspection type in MM02 > Quality management > Inspection setup, or clear the setup flag.
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: inspection setup flag is set but no inspection type is active.'
+- id: QM135
+  field: QPAC.WERKS
+  check_class: exists_check
+  fields:
+  - QPAC.WERKS
+  target_table: T001W
+  target_fields:
+  - WERKS
+  severity: medium
+  dimension: validity
+  message: Selected set code plant does not exist
+  why_it_matters: Selected set codes are kept per plant. A plant that is not in the plant master cannot own a selected set.
+  rule_authority: sap_hard_constraint
+  sap_impact: The code is never offered for any inspection lot; the usage decision list is missing entries.
+  fix_map:
+    __other__: Remove the entry or move it to a plant that exists, in QS81.
+  record_fix_template: 'Selected set {QPAC.AUSWAHLMGE} catalog {QPAC.KATALOGART} code group {QPAC.CODEGRUPPE} code {QPAC.CODE}:
+    plant {QPAC.WERKS} does not exist.'
+- id: QM136
+  field: QPAC.AUSWAHLMGE
+  check_class: exists_check
+  fields:
+  - QPAC.WERKS
+  - QPAC.KATALOGART
+  - QPAC.AUSWAHLMGE
+  target_table: QPAM
+  target_fields:
+  - WERKS
+  - KATALOGART
+  - AUSWAHLMGE
+  severity: high
+  dimension: consistency
+  message: Selected set code points at a selected set that does not exist
+  why_it_matters: Each code in a selected set belongs to a header record in the same plant and catalog. Without the header the
+    code cannot be reached.
+  rule_authority: sap_hard_constraint
+  sap_impact: The code is orphaned; usage decisions and defect recording cannot offer it.
+  fix_map:
+    __other__: Create the selected set header in QS81 or delete the orphaned code entry.
+  record_fix_template: 'Plant {QPAC.WERKS} catalog {QPAC.KATALOGART} selected set {QPAC.AUSWAHLMGE}: header record does not
+    exist.'
+- id: QM137
+  field: QPAC.CODEGRUPPE
+  check_class: exists_check
+  fields:
+  - QPAC.KATALOGART
+  - QPAC.CODEGRUPPE
+  target_table: QPGR
+  target_fields:
+  - KATALOGART
+  - CODEGRUPPE
+  severity: high
+  dimension: consistency
+  message: Selected set code points at a code group that does not exist
+  why_it_matters: A selected set code is a reference to a code in a code group of the catalog. If the group is gone, the
+    reference cannot be resolved.
+  rule_authority: sap_hard_constraint
+  sap_impact: The code is dropped from selection lists and the usage decision cannot use it.
+  fix_map:
+    __other__: Recreate the code group in QS41 or remove the code from the selected set in QS81.
+  record_fix_template: 'Selected set {QPAC.AUSWAHLMGE} catalog {QPAC.KATALOGART}: code group {QPAC.CODEGRUPPE} does not exist.'
+- id: QM138
+  field: QALS.CHARG
+  check_class: cross_field_check
+  fail_when: (`QALS.XCHPF` == 'X') & `QALS.MBLNR`.notna() & (`QALS.MBLNR` != '') & (`QALS.CHARG`.isna() | (`QALS.CHARG` == ''))
+  severity: medium
+  dimension: completeness
+  message: Inspection lot from a goods movement for a batch-managed material has no batch
+  why_it_matters: When batch management is required, every lot created from a goods movement must name the batch it inspects.
+    Without it the usage decision cannot be tied to stock of one batch.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock posting after the usage decision cannot be assigned to a batch; batch classification and shelf life are
+    not updated.
+  fix_map:
+    __other__: Enter the batch in QA02 or cancel the lot and repeat the goods movement with a batch.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: batch management is required but the lot has no batch.'
+- id: QM139
+  field: QALS.OFFENNLZMK
+  check_class: cross_field_check
+  fail_when: (`QALS.STAT35` == 'X') & ((`QALS.OFFENNLZMK`.fillna(0) > 0) | (`QALS.OFFEN_LZMK`.fillna(0) > 0))
+  severity: medium
+  dimension: consistency
+  message: Usage decision made while required characteristics are still open
+  why_it_matters: A lot should only be decided once every characteristic that requires control has a result. A usage decision
+    with open characteristics means the decision rests on incomplete results.
+  rule_authority: best_practice
+  sap_impact: Quality scores and vendor evaluation use a decision that was taken without the full inspection.
+  fix_map:
+    __other__: Review the lot in QA03 and complete or formally close the open characteristics.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: usage decision made with open characteristics that require control.'
+- id: QM140
+  field: QALS.GESSTICHPR
+  check_class: cross_field_check
+  fail_when: (`QALS.GESSTICHPR`.fillna(0) > `QALS.LOSMENGE`.fillna(0)) & (`QALS.LOSMENGE`.fillna(0) > 0)
+  severity: medium
+  dimension: consistency
+  message: Sample size is larger than the inspection lot quantity
+  why_it_matters: The sample is drawn from the lot, so it can not exceed it. A larger sample is a sign of a wrong sampling
+    procedure or a quantity changed after the lot was created.
+  rule_authority: sap_hard_constraint
+  sap_impact: Inspection effort is overstated and the sample result cannot be extrapolated to the lot.
+  fix_map:
+    __other__: Correct the sample size or the lot quantity in QA02.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: sample size is larger than the lot quantity.'

@@ -126,10 +126,11 @@ def test_fiscal_address_must_be_active_and_not_self():
 
 def test_one_time_flag_matches_account_group():
     t077d = frame("T077D", KTOKD=["CPD", "KUNA"], XCPDS=["X", ""])
-    kna1 = frame("KNA1", KUNNR=["C1", "C2", "C3", "C4"], KTOKD=["CPD", "KUNA", "CPD", "KUNA"],
-                 XCPDK=["X", "X", "", ""])
-    assert fire("AR217", {"KNA1": kna1, "T077D": t077d}) == (1, 2)
-    assert fire("AR218", {"KNA1": kna1, "T077D": t077d}) == (1, 2)
+    # asymmetric on purpose: a swapped negate flag changes both counts
+    kna1 = frame("KNA1", KUNNR=["C1", "C2", "C3", "C4"], KTOKD=["CPD", "KUNA", "KUNA", "CPD"],
+                 XCPDK=["X", "X", "X", ""])
+    assert fire("AR217", {"KNA1": kna1, "T077D": t077d}) == (2, 3)
+    assert fire("AR218", {"KNA1": kna1, "T077D": t077d}) == (1, 1)
 
 
 def test_one_time_account_without_bank_details():

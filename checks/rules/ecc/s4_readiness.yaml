@@ -853,6 +853,7 @@ rules:
   - MARC.MATNR
   - MARC.WERKS
   check_class: exists_check
+  require_key_overlap: true
   applies_when:
     MARC.LVORM:
       blank: true
@@ -3192,18 +3193,19 @@ rules:
 - id: S4M117
   field: MARA.MATNR
   check_class: regex_check
-  pattern: ^[0-9A-Za-z._-]{1,18}$
-  severity: critical
+  pattern: ^.{1,18}$
+  severity: high
   dimension: validity
-  message: 'S/4HANA readiness: material number exceeds the 18-character S/4 limit'
-  why_it_matters: MATNR is CHAR 18 in S/4HANA. Numbers beyond that cannot be represented and there is
-    no automatic renumbering in a conversion.
+  message: 'S/4HANA readiness: material number is longer than 18 characters'
+  why_it_matters: S/4HANA stores MATNR as CHAR 40, but a conversion keeps the 18-character length
+    unless extended material number support is switched on. Numbers longer than 18 characters need that
+    switch or a renumbering before the move. The character set is checked by MM002.
   rule_authority: s4hana_migration
   sap_impact: The material cannot be migrated without renumbering or an extension.
   fix_map:
     __other__: Shorten or renumber the material before conversion.
-  record_fix_template: 'MARA.MATNR: ''{actual_value}'' has an invalid format. Shorten or renumber the
-    material before conversion.'
+  record_fix_template: 'MARA.MATNR: ''{actual_value}'' is longer than 18 characters. Switch on extended
+    material numbers or renumber the material before conversion.'
   baseline: s4_target
   s4_area: material
   s4_impact: The material cannot be migrated without renumbering or an extension.

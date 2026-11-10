@@ -11,8 +11,9 @@ def book(name, ids, kind="grid"):
 
 
 def test_unmatched_plain_property_is_learned_on_the_entitys_home_table():
-    learned = wb.learn(book("Frequency Values", ["externalCode", "annualizationFactorX", "cust-thing", "a.b"]), D)
-    assert learned == {"FOFREQUENCY": {"ANNUALIZATION_FACTOR_X": "FOFrequency.annualizationFactorX"}}
+    learned = wb.learn(book("Frequency Values", ["externalCode", "annualizationFactorX", "cust-thing", "name.en_US", "a/b"]), D)
+    assert learned == {"FOFREQUENCY": {"ANNUALIZATION_FACTOR_X": "FOFrequency.annualizationFactorX",
+                                       "CUST_THING": "FOFrequency.custThing"}}
 
 
 def test_matched_columns_and_unknown_sheets_teach_nothing():

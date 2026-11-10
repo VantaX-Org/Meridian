@@ -63,3 +63,28 @@ def test_vendor_customer_shared_account():
     knbk = pd.DataFrame({"KNBK.KUNNR": ["C1"], "KNBK.BANKS": ["ZA"], "KNBK.BANKL": ["1"], "KNBK.BANKN": ["111"]})
     res = _by_id(run_checks("banking_tax", TableFrames({"LFA1": lfa1, "LFBK": lfbk, "KNBK": knbk}, d), "t"))
     assert res["BKT022"].affected_count == 1
+
+
+def test_linked_vendor_customer_pair_is_not_flagged():
+    d = get_dictionary("ecc6")
+    lfa1 = pd.DataFrame({"LFA1.LIFNR": ["V1", "V2"], "LFA1.KUNNR": ["", "C2"]})
+    lfbk = pd.DataFrame({"LFBK.LIFNR": ["V1", "V2"], "LFBK.BANKS": ["ZA", "ZA"], "LFBK.BANKL": ["1", "1"],
+                         "LFBK.BANKN": ["111", "222"]})
+    kna1 = pd.DataFrame({"KNA1.KUNNR": ["C1", "C2"], "KNA1.LIFNR": ["", "V2"]})
+    knbk = pd.DataFrame({"KNBK.KUNNR": ["C1", "C2"], "KNBK.BANKS": ["ZA", "ZA"], "KNBK.BANKL": ["1", "1"],
+                         "KNBK.BANKN": ["111", "222"]})
+    frames = TableFrames({"LFA1": lfa1, "LFBK": lfbk, "KNA1": kna1, "KNBK": knbk}, d)
+    res = _by_id(run_checks("banking_tax", frames, "t"))
+    assert (res["BKT022"].affected_count, res["BKT022"].total_count) == (1, 1)
+    assert (res["BKT023"].affected_count, res["BKT023"].total_count) == (1, 1)
+
+
+def test_ar073_exposure_checked_per_credit_area():
+    from checks.runner import run_rule
+    rules = {r["id"]: r for r in yaml.safe_load(open("checks/rules/ecc/accounts_receivable.yaml"))["rules"]}
+    knkk = pd.DataFrame({"KNKK.KUNNR": ["C1", "C1", "C2"], "KNKK.KKBER": ["1000", "2000", "1000"],
+                         "KNKK.KLIMK": ["100", "100", "100"], "KNKK.SKFOR": ["50", "150", "10"],
+                         "KNKK.SSOBL": ["0", "0", "0"]})
+    kna1 = pd.DataFrame({"KNA1.KUNNR": ["C1", "C2"]})
+    _, res = run_rule(dict(rules["AR073"]), TableFrames({"KNA1": kna1, "KNKK": knkk}, get_dictionary("ecc6")), None)
+    assert (res.affected_count, res.total_count) == (1, 3)

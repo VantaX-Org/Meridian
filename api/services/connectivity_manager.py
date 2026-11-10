@@ -900,6 +900,7 @@ class ConnectivityManager:
             except FileNotFoundError:
                 continue
         # A table carrying fields learned from a target workbook is read even when no rule needs it.
+        self._sf_edmx = None  # whole-service $metadata, read once per extraction when a family needs it
         wanted |= {t.name for t in dictionary.tables.values()
                    if any(f.provenance == "workbook" for f in t.fields.values())}
         snap = latest_snapshot_id(self.session, system_id)
@@ -917,9 +918,13 @@ class ConnectivityManager:
             t = dictionary.table(table)
             if t is None or not t.provenance.startswith("canonical:successfactors"):
                 continue
-            unavailable = {f["name"] for f in (live.get(table) or {}).get("fields", []) if f.get("available") is False}
+            # the snapshot's verdict counts only when this extraction cannot read $metadata itself:
+            # the resolver finds a property the snapshot looked up under another spelling
+            snap_unavailable = {f["name"] for f in (live.get(table) or {}).get("fields", []) if f.get("available") is False}
+            unavailable: set[str] = set()
             by_entity: dict[str, dict[str, list[str]]] = {}
             from api.services.source_overrides import resolve_source
+            from sap.successfactors import entity_model, resolve_property
             for f in t.fields.values():
                 # A tenant's API surface differs from the canonical map: entity sets can be
                 # suffixed per tenant and spellings vary. The override for this system wins,
@@ -929,7 +934,7 @@ class ConnectivityManager:
                 src = resolve_source("successfactors", system_id, table, f.name, f.source)
                 ent, _, prop = (src or "").partition(".")
                 prop, _, note = prop.partition(" ")
-                if not ent[:1].isupper() or not prop or "<" in ent or f.name in unavailable:
+                if not ent[:1].isupper() or not prop or "<" in ent:
                     continue
                 # "(related person)": read the entity for the relationship's related person, not the employee
                 key = f"{ent}{RELATED}" if "related person" in note else ent
@@ -942,31 +947,36 @@ class ConnectivityManager:
             history = {"from_date": "1900-01-01"} if "all records" in (t.note or "") else {}
             merged = None
             absent: list[str] = []
+            absent_keys: set[str] = set()
             failed = False
-            for key, props in by_entity.items():
-                ent, related = key.removesuffix(RELATED), key.endswith(RELATED)
+            def read_one(ent: str, props: dict[str, list[str]], related: bool):
+                """One entity set as table columns: (frame or None, names it cannot give, status)."""
                 if ent not in models:
-                    models[ent] = self._sf_entity_model(connector, ent)
+                    # a family member is described by the whole-service $metadata already read for the family
+                    models[ent] = ((entity_model(self._sf_edmx, ent) or f"{ent} not in tenant $metadata")
+                                   if self._sf_edmx else self._sf_entity_model(connector, ent))
                 model = models[ent]
+                every = {n for names in props.values() for n in names}
                 if isinstance(model, str):  # the tenant does not have this entity
-                    unavailable |= {n for names in props.values() for n in names}
-                    absent.append(model)
-                    coverage.append({"table": f"{table}←{ent}", "status": "not_in_system", "entity": ent,
-                                     "detail": model})
-                    continue
-                # $select only what the tenant's entity has; "nav.prop" is "nav/prop" + $expand=nav
+                    return None, every, ("not_in_system", model)
+                # $select only what the tenant's entity has, in its own spelling; "nav.prop" is
+                # "nav/prop" + $expand=nav. A name the schema does not hold is reported, never guessed.
                 sel: dict[str, str] = {}
+                missing: set[str] = set()
                 for prop, names in props.items():
-                    nav, _, sub = prop.partition(".")
-                    # ponytail: a nav whose target type is not in the entity's $metadata goes unchecked
-                    target = model[1].get(nav) if model is not None and sub else None
-                    if model is None or (prop in model[0] if not sub else
-                                         nav in model[1] and (target is None or sub in target)):
-                        sel[prop] = f"{nav}/{sub}" if sub else prop
+                    if model is None:
+                        if set(names) & snap_unavailable:
+                            missing |= set(names)
+                        else:
+                            sel[prop] = prop.replace(".", "/")
+                        continue
+                    hit = resolve_property(prop, model[0], model[1], ent)
+                    if hit:
+                        sel[prop] = hit.replace(".", "/")
                     else:
-                        unavailable |= set(names)
+                        missing |= set(names)
                 if not sel:
-                    continue
+                    return None, missing, None
                 # merge keys only when several entities feed the table (FO objects and Position carry neither)
                 join = [p for p in ("userId", "personIdExternal") if p not in props
                         and (model is None or p in model[0])] if len(by_entity) > 1 else []
@@ -994,18 +1004,12 @@ class ConnectivityManager:
                             if not drop or len(sel) == len(drop):
                                 raise
                             for p in drop:
-                                unavailable |= set(props[p])
+                                missing |= set(props[p])
                                 del sel[p]
                 except Exception as e:
                     if _not_found(e):
-                        unavailable |= {n for names in props.values() for n in names}
-                        absent.append(str(e)[:300])
-                        coverage.append({"table": f"{table}←{ent}", "status": "not_in_system", "entity": ent,
-                                         "detail": str(e)[:300]})
-                    else:
-                        failed = True
-                        coverage.append({"table": f"{table}←{ent}", "status": "failed", "detail": str(e)[:300]})
-                    continue
+                        return None, every, ("not_in_system", str(e)[:300])
+                    return None, every, ("failed", str(e)[:300])
                 out = pd.DataFrame(index=df.index)
                 for prop, names in props.items():
                     if prop in sel:
@@ -1017,6 +1021,37 @@ class ConnectivityManager:
                 if related:  # the related person's own id meets the relationship's relatedPersonIdExternal
                     out = out.drop(columns=["__userId"], errors="ignore").rename(
                         columns={"__personIdExternal": "__relatedPersonIdExternal"})
+                return out, missing, None
+
+            for key, props in by_entity.items():
+                ent, related = key.removesuffix(RELATED), key.endswith(RELATED)
+                # "Family*": every per-country entity set of one object (PerGlobalInfoBRA, …), rows stacked
+                members = self._sf_family(connector, ent.rstrip("*")) if ent.endswith("*") else [ent]
+                outs, gone = [], None
+                for member in members:
+                    out, missing, status = read_one(member, props, related)
+                    # a per-country set carries its country in its name (PerGlobalInfoBRA), not as a property
+                    if ent.endswith("*") and out is not None and "COUNTRY" in missing and "COUNTRY" in t.fields:
+                        out[f"{table}.COUNTRY"] = member[len(ent) - 1:]
+                        missing = missing - {"COUNTRY"}
+                    gone = missing if gone is None else gone & missing
+                    if status:
+                        if status[0] == "failed":
+                            failed = True
+                        else:
+                            absent.append(status[1])
+                            absent_keys.add(key)
+                        coverage.append({"table": f"{table}←{member}", "status": status[0], "entity": member,
+                                         "detail": status[1]})
+                    if out is not None:
+                        outs.append(out)
+                unavailable |= gone if gone is not None else {n for names in props.values() for n in names}
+                if not members:
+                    absent.append(f"no {ent} entity set in this tenant")
+                    absent_keys.add(key)
+                if not outs:
+                    continue
+                out = pd.concat(outs, ignore_index=True) if len(outs) > 1 else outs[0]
                 if merged is None:
                     merged = out
                 else:
@@ -1029,7 +1064,7 @@ class ConnectivityManager:
                 if not failed:  # every entity absent, or none has a property the dictionary maps
                     coverage.append({"table": table, "status": "not_in_system", "entities": sorted(by_entity),
                                      "unavailable_fields": sorted(unavailable),
-                                     "detail": ("; ".join(absent) if len(absent) == len(by_entity)
+                                     "detail": ("; ".join(absent) if len(absent_keys) == len(by_entity)
                                                 else "no dictionary property in tenant $metadata")[:300]})
                 continue
             # The entity carrying the table's business key may be absent or refused (Successor needs the
@@ -1062,6 +1097,19 @@ class ConnectivityManager:
             coverage.append({"table": table, "status": "live", "rows": len(merged),
                              "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable)})
         return frames, coverage
+
+    def _sf_family(self, connector, prefix: str) -> list[str]:
+        """The tenant's entity sets of a per-country family (PerGlobalInfo → PerGlobalInfoBRA, …), from one
+        whole-service $metadata read per extraction."""
+        from sap.successfactors import entity_sets
+
+        if getattr(self, "_sf_edmx", None) is None:
+            try:
+                self._sf_edmx = connector.metadata() if hasattr(connector, "metadata") else ""
+            except Exception as e:
+                logger.warning(f"SuccessFactors service $metadata unreadable, entity families skipped: {e}")
+                self._sf_edmx = ""
+        return entity_sets(self._sf_edmx, prefix)
 
     @staticmethod
     def _sf_entity_model(connector, entity: str) -> tuple[set[str], dict[str, set[str] | None]] | str | None:

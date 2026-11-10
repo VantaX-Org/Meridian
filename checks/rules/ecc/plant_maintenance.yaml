@@ -4229,3 +4229,98 @@ rules:
   fix_map:
     __other__: Correct the serial stock data by a goods movement with the customer.
   record_fix_template: 'Serial stock segment of equipment {EQBS.EQUNR}: special stock {EQBS.SOBKZ} without customer.'
+- id: PM370
+  field: AFIH.AUFNR
+  check_class: exists_check
+  grain: AFIH
+  target_table: AUFK
+  target_fields:
+  - AUFNR
+  severity: high
+  dimension: consistency
+  message: Maintenance order has no order master record
+  why_it_matters: The maintenance data of an order sits beside its order master. Without the master the order cannot be displayed, costed or settled.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order is not found in IW32 and its costs cannot be settled.
+  fix_map:
+    __other__: Reload the order master together with its maintenance data, or remove the orphan maintenance record.
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: no order master record.'
+- id: PM371
+  field: AFIH.ANLVD
+  check_class: cross_field_check
+  grain: AFIH
+  fail_when: '`AFIH.ANLVD` > `AFIH.ANLBD`'
+  severity: medium
+  dimension: consistency
+  message: Maintenance order system availability starts after it ends
+  why_it_matters: The availability window is used for downtime planning. A window that starts after it ends is unusable.
+  rule_authority: sap_hard_constraint
+  sap_impact: Downtime scheduling and availability reporting give wrong results.
+  fix_map:
+    __other__: Correct the availability dates on the order in IW32.
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: availability from {actual_value} is after availability until {AFIH.ANLBD}.'
+- id: PM372
+  field: AFIH.EQUNR
+  check_class: cross_field_check
+  grain: AFIH
+  fail_when: '`AFIH.EQUNR`.isna() & `AFIH.ILOAN`.isna() & `AFIH.BAUTL`.isna()'
+  applies_when:
+    AFIH.IPHAS:
+    - '0'
+    - '1'
+    - '2'
+  severity: medium
+  dimension: completeness
+  message: Open maintenance order has no reference object
+  why_it_matters: An order with no equipment, location or assembly cannot feed history, reliability or cost-per-asset analysis.
+  rule_authority: best_practice
+  sap_impact: Order history cannot be attributed to a technical object.
+  fix_map:
+    __other__: Assign the equipment or functional location in IW32.
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: no equipment, location or assembly.'
+- id: PM373
+  field: MPLA.TPLNR
+  check_class: exists_check
+  grain: MPLA
+  target_table: IFLOT
+  target_fields:
+  - TPLNR
+  severity: high
+  dimension: consistency
+  message: Maintenance plan functional location does not exist
+  why_it_matters: The plan generates orders for this location. A missing location makes every call fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling raises an error and no order is created.
+  fix_map:
+    __other__: Create the functional location, or change the plan in IP02.
+  record_fix_template: 'Maintenance plan {MPLA.WARPL}: functional location {MPLA.TPLNR} not found.'
+- id: PM374
+  field: MPOS.EQUNR
+  check_class: cross_field_check
+  grain: MPOS
+  fail_when: '`MPOS.EQUNR`.isna() & `MPOS.ILOAN`.isna() & `MPOS.BAUTL`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Maintenance item has no reference object
+  why_it_matters: An item with no equipment, location or assembly generates orders that cannot be attributed to a technical object.
+  rule_authority: best_practice
+  sap_impact: Orders created from the item carry no reference object.
+  fix_map:
+    __other__: Assign the equipment or functional location to the item in IP02.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS} of plan {MPOS.WARPL}: no equipment, location or assembly.'
+- id: PM375
+  field: EQUI.IMRC_POINT
+  check_class: exists_check
+  grain: EQUI
+  target_table: IMPTT
+  target_fields:
+  - POINT
+  severity: medium
+  dimension: consistency
+  message: Equipment measuring point does not exist
+  why_it_matters: The equipment points to a measuring point that is not in the system, so readings cannot be tied to it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Measurement documents for the equipment cannot be posted.
+  fix_map:
+    __other__: Create the measuring point in IK01 or clear the reference.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: measuring point {EQUI.IMRC_POINT} not found.'

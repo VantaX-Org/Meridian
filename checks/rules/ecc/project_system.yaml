@@ -2729,3 +2729,132 @@ rules:
   fix_map:
     __other__: Replace the expired receiver with its successor cost centre in the settlement rule.
   record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: receiver cost centre is no longer valid.'
+- id: PS166
+  field: PROJ.PSPNR
+  check_class: exists_check
+  fields:
+  - PROJ.PSPNR
+  target_table: PRPS
+  target_fields:
+  - PSPHI
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Active project definition has no WBS elements
+  why_it_matters: A project definition only holds header data. Costs, budget and dates live on the WBS elements below it, so a
+    project with none can not be planned or settled.
+  rule_authority: best_practice
+  sap_impact: The project carries no cost or schedule data and is migrated as an empty shell.
+  fix_map:
+    __other__: Create the WBS structure in CJ20N or set the deletion indicator on the project.
+  record_fix_template: 'Project {PROJ.PSPNR}: no WBS element belongs to it.'
+- id: PS167
+  field: COBRB.GABJA
+  check_class: cross_field_check
+  grain: COBRB
+  fail_when: (`COBRB.GBISJ`.fillna('0000') != '0000') & ((`COBRB.GBISJ` + `COBRB.GBISP`) < (`COBRB.GABJA` + `COBRB.GABPE`))
+  severity: medium
+  dimension: consistency
+  message: Settlement rule ends before it starts
+  why_it_matters: A distribution rule applies from its valid-from period to its valid-to period. When the end is earlier than
+    the start, the rule is never in force.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement ignores the rule; costs stay on the sender or go to the next rule by mistake.
+  fix_map:
+    __other__: Correct the valid-from and valid-to periods in the settlement rule.
+  record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: valid-to period is before valid-from.'
+- id: PS168
+  field: COBRB.PRCTR
+  check_class: exists_check
+  grain: COBRB
+  fields:
+  - COBRB.KOKRS
+  - COBRB.PRCTR
+  target_table: CEPC
+  target_fields:
+  - KOKRS
+  - PRCTR
+  applies_when:
+    COBRB.PRCTR:
+      populated: true
+  severity: medium
+  dimension: validity
+  message: Settlement receiver profit centre does not exist in the receiver controlling area
+  why_it_matters: The profit centre named on the rule must exist in the receiver's controlling area, or settlement can not
+    post to it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement ends with an error for this rule; costs remain on the sender.
+  fix_map:
+    __other__: Create the profit centre (KE51) or select a valid one in the settlement rule.
+  record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: receiver profit centre does not exist in
+    controlling area {COBRB.KOKRS}.'
+- id: PS169
+  field: COBRB.WERKS
+  check_class: exists_check
+  grain: COBRB
+  fields:
+  - COBRB.WERKS
+  target_table: T001W
+  target_fields:
+  - WERKS
+  applies_when:
+    COBRB.WERKS:
+      populated: true
+  severity: medium
+  dimension: validity
+  message: Settlement receiver plant does not exist
+  why_it_matters: A plant on a settlement rule must be in the plant master, or the receiver can not be derived at settlement.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement fails for this rule; costs remain on the sender.
+  fix_map:
+    __other__: Correct the plant in the settlement rule.
+  record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: receiver plant does not exist.'
+- id: PS170
+  field: AFVC.STEUS
+  check_class: exists_check
+  fields:
+  - AFVC.STEUS
+  target_table: T430
+  target_fields:
+  - STEUS
+  applies_when:
+    AFVC.STEUS:
+      populated: true
+  severity: high
+  dimension: validity
+  message: Operation control key is not defined
+  why_it_matters: The control key decides if an operation is scheduled, costed, confirmed and printed. An undefined key can not
+    be evaluated.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling, costing and confirmation of the operation behave unpredictably or fail.
+  fix_map:
+    __other__: Use a control key defined in customizing (OP00) in the operation.
+  record_fix_template: 'Operation {AFVC.AUFPL}/{AFVC.APLZL}: control key is not defined.'
+- id: PS171
+  field: AFVC.ARBID
+  check_class: exists_check
+  fields:
+  - AFVC.ARBID
+  target_table: CRHD
+  target_fields:
+  - OBJID
+  target_when:
+    OBJTY:
+    - A
+  applies_when:
+    AFVC.ARBID:
+      populated: true
+      not_in:
+      - '00000000'
+  severity: high
+  dimension: consistency
+  message: Operation work centre does not exist
+  why_it_matters: The operation takes capacity and activity rates from its work centre. A work centre that is gone leaves the
+    operation without either.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and activity cost of the operation can not be calculated.
+  fix_map:
+    __other__: Assign an existing work centre to the operation in CJ20N or the order.
+  record_fix_template: 'Operation {AFVC.AUFPL}/{AFVC.APLZL}: work centre does not exist.'
