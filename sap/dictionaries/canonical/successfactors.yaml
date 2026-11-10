@@ -513,7 +513,7 @@ tables:
   PMREVIEWRESULT:
     description: Performance review forms
     source: FormHeader, FormSummarySection
-    keys: [USERID, REVIEW_PERIOD]
+    keys: [USERID, REVIEW_PERIOD, FORM_DATA_ID]
     fields:
       USERID:         {source: FormHeader.formSubjectId, type: STRING, length: 100, verify: true}
       REVIEW_PERIOD:  {source: FormHeader.formReviewStartDate, type: DATE, verify: true}
@@ -596,7 +596,7 @@ tables:
   JOBAPPLICATION:
     description: Job applications (Recruiting)
     source: JobApplication
-    keys: [CANDIDATE_ID, JOB_REQ_ID]
+    keys: [CANDIDATE_ID, JOB_REQ_ID, APPLICATION_ID]
     fields:
       CANDIDATE_ID:     {source: JobApplication.candidateId, type: INTEGER}
       JOB_REQ_ID:       {source: JobApplication.jobReqId, type: INTEGER}
@@ -613,7 +613,7 @@ tables:
   ONBOARDINGCANDIDATEINFO:
     description: Onboarding processes (Onboarding 2.0)
     source: ONB2Process
-    keys: [USERID]
+    keys: [USERID, PROCESS_ID]
     fields:
       USERID:                  {source: ONB2Process.user, type: STRING, length: 100, verify: true}
       HIRE_DATE:               {source: ONB2Process.hireDate, type: DATE, verify: true}

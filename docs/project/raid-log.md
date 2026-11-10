@@ -33,6 +33,7 @@ Status values: Open, In progress, Waiting, Closed.
 | I-04 | The engine image pin was undecided. | Product owner | Closed, the product owner chose cortex0 1.8.0 on 9 November 2026 |
 | I-06 | The Foundation workbook ships its picklist sheet (`Picklists_Original`) with no rows, so Meridian cannot check picklist values for that workbook. The Employee workbook carries 453 picklist values, and those are checked. | SAP team | Open, upload a picklist export from the new system |
 | I-07 | Filling the customer's workbooks from the latest SuccessFactors run matched 135 of 544 Employee columns and 31 of 798 Foundation columns, because the run has no data for many columns. 39 Foundation and 3 Employee mandatory columns stay empty. The fill wrote a new workbook instead of the customer's own layout for both files. | Engineering lead | Open, extend the extraction to the missing fields and find why the layout export was not used |
+| I-08 | The first clean SuccessFactors run has no NOMINEE_ID or POSITION_ID for succession candidates, because the Successor and NominationTarget entities were not extracted, and no EXTERNAL_CODE for corporate address defaults. Rules on those tables store fewer records than they count (SUC049, SUC050, EC674). | Engineering lead | Open, add the entities and the field to the SuccessFactors extraction |
 | I-05 | The CI result for PR #639 could not be read when this log was written. | Release manager | To confirm |
 
 ## Dependencies

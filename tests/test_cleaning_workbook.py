@@ -88,3 +88,22 @@ def test_renders_xlsx_with_status_dropdown():
     wb = openpyxl.load_workbook(io.BytesIO(body))
     assert {"How to use", "Summary", "Instructions", "Records to clean"} <= set(wb.sheetnames)
     assert wb["Records to clean"].data_validations.dataValidation
+
+
+def test_listed_note_flags_partial_lists():
+    from api.services.cleaning_workbook import listed_note
+
+    assert listed_note(10, 10) == ""
+    assert listed_note(0, 0) == ""
+    note = listed_note(344_795, 99_871)
+    assert "244,924 of 344,795" in note and "rerun" in note
+
+
+def test_sf_keys_carry_unique_ids():
+    import yaml
+
+    d = yaml.safe_load(open("sap/dictionaries/canonical/successfactors.yaml"))
+    t = d.get("tables", d)
+    assert "APPLICATION_ID" in t["JOBAPPLICATION"]["keys"]
+    assert "FORM_DATA_ID" in t["PMREVIEWRESULT"]["keys"]
+    assert "PROCESS_ID" in t["ONBOARDINGCANDIDATEINFO"]["keys"]

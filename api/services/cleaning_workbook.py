@@ -47,6 +47,14 @@ SELECT check_id, grain, record_key, field_values
  ORDER BY check_id, record_key"""
 
 
+def listed_note(affected: int, listed: int) -> str:
+    """Say when the file holds fewer rows than the rule counted, so nobody signs off a partial list."""
+    if listed >= affected:
+        return ""
+    return (f"{affected - listed:,} of {affected:,} failing records are not listed. The run stores at most "
+            "100,000 records per rule and one row per record key. Fix the listed rows and rerun to see the rest.")
+
+
 def _json(v: Any) -> Any:
     return json.loads(v) if isinstance(v, str) else v
 
@@ -227,6 +235,8 @@ def cleaning_context(data: dict, rules: dict[str, dict]) -> tuple[list[SheetSpec
         "affected": f.get("affected_count") or 0, "total": f.get("total_count") or 0,
         "pass_rate": f.get("pass_rate"), "listed": per_rule.get(f["check_id"], 0),
     } for f in findings]
+    for x in summary:
+        x["coverage"] = listed_note(int(x["affected"] or 0), int(x["listed"] or 0))
     summary.sort(key=lambda x: (SEVERITY_ORDER.get(str(x["severity"]), 9), -int(x["affected"] or 0), x["rule"]))
 
     instr = []
@@ -254,7 +264,8 @@ def cleaning_context(data: dict, rules: dict[str, dict]) -> tuple[list[SheetSpec
                               ColumnSpec("message", "Rule text", width=60), ColumnSpec("dimension", "Dimension", width=14),
                               ColumnSpec("field", "Field", "mono", width=28),
                               ColumnSpec("affected", "Records failing", "int"), ColumnSpec("total", "Records checked", "int"),
-                              ColumnSpec("pass_rate", "Pass rate", "pct"), ColumnSpec("listed", "Rows in this file", "int")],
+                              ColumnSpec("pass_rate", "Pass rate", "pct"), ColumnSpec("listed", "Rows in this file", "int"),
+                              ColumnSpec("coverage", "Listing note", width=50)],
                   summary, note="One row per failing rule, most severe first.", totals=["affected", "listed"],
                   rules=[ConditionalRule("affected", "databar")]),
         SheetSpec("Instructions", [sev, ColumnSpec("rule", "Rule", "mono", width=12),
