@@ -1789,6 +1789,13 @@ rules:
         has no postings in the old currency).
     record_fix_template: 'P&L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: account currency {SKB1.WAERS}, company code
       currency {T001.WAERS}.'
+    auto_fix:  # medium: only allowed once the account has no postings in the old currency
+      when: T001.WAERS.notna()
+      steps:
+        - op: copy
+          from: T001.WAERS
+      confidence: medium
+
   - id: GL215
     field: SKB1.FSTAG
     fields:
