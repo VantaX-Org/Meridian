@@ -5185,3 +5185,183 @@ rules:
   fix_map:
     __other__: Correct it in customizing.
   record_fix_template: 'Plant {T460A.WERKS} key {T460A.SOBSL}: receiving plant ''{actual_value}'' is not in T001W.'
+- id: PP411
+  field: MKAL.BDATU
+  check_class: cross_field_check
+  fail_when: '`MKAL.ADATU` > `MKAL.BDATU`'
+  severity: high
+  dimension: consistency
+  message: Production version validity ends before it starts
+  why_it_matters: A version is selected by date. An inverted validity range never matches any order date.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planning and order creation never select this version.
+  fix_map:
+    __other__: Correct the valid-from and valid-to dates in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: valid from {MKAL.ADATU} to {actual_value}.'
+- id: PP412
+  field: MKAL.BSTMI
+  check_class: cross_field_check
+  fail_when: (`MKAL.BSTMA` > 0) & (`MKAL.BSTMI` > `MKAL.BSTMA`)
+  severity: high
+  dimension: consistency
+  message: Production version lot-size range is inverted (from above to)
+  why_it_matters: The version is chosen by lot size. A range whose lower value exceeds its upper value matches no lot size.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planned orders skip this version or fall back to another one.
+  fix_map:
+    __other__: Correct the lot-size interval in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: lot size from {actual_value} is above lot size to {MKAL.BSTMA}.'
+- id: PP413
+  field: MKAL.PLNNR
+  check_class: exists_check
+  fields:
+  - MKAL.PLNTY
+  - MKAL.PLNNR
+  - MKAL.ALNAL
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNAL
+  target_when:
+    LOEKZ: {blank: true}
+  applies_when:
+    MKAL.MKSP:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Production version points at a routing that does not exist or is flagged for deletion
+  why_it_matters: The version fixes the routing used for production. A dead routing leaves orders without operations.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders created with the version have no operations; scheduling and costing fail.
+  fix_map:
+    __other__: Point the version at an active routing in C223, or lock the version.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: routing {MKAL.PLNTY}/{MKAL.PLNNR}/{MKAL.ALNAL} is missing or deleted.'
+- id: PP414
+  field: MKAL.STLAL
+  check_class: exists_check
+  fields:
+  - MKAL.MATNR
+  - MKAL.WERKS
+  - MKAL.STLAN
+  - MKAL.STLAL
+  target_table: MAST
+  target_fields:
+  - MATNR
+  - WERKS
+  - STLAN
+  - STLAL
+  applies_when:
+    MKAL.MKSP:
+      blank: true
+    MKAL.MATKO:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Production version points at a BOM alternative that does not exist for the material and plant
+  why_it_matters: The version fixes the BOM used for production. A missing alternative leaves orders without components.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders created with the version have no components; material requirements are not planned.
+  fix_map:
+    __other__: Point the version at an existing BOM alternative in C223, or lock the version.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: BOM usage {MKAL.STLAN} alternative {MKAL.STLAL} does not exist.'
+- id: PP415
+  field: CRHD.XKOST
+  check_class: exists_check
+  fields:
+  - CRHD.OBJTY
+  - CRHD.OBJID
+  target_table: CRCO
+  target_fields:
+  - OBJTY
+  - OBJID
+  applies_when:
+    CRHD.OBJTY:
+    - A
+    CRHD.XKOST:
+    - X
+    CRHD.LVORM:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Work centre is flagged for costing but has no cost centre assignment
+  why_it_matters: Costing reads the cost centre and activity type from the work centre. With no assignment, operations carry no activity cost.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost estimates and order confirmations show no activity cost for this work centre.
+  fix_map:
+    __other__: Assign cost centre and activity types in CR02 > Costing.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: costing is active but there is no cost centre assignment.'
+- id: PP416
+  field: CRHD.ZWMIN
+  check_class: cross_field_check
+  fail_when: '`CRHD.ZWMIN` > `CRHD.ZWNOR`'
+  severity: low
+  dimension: consistency
+  message: Work centre minimum queue time is above the standard queue time
+  why_it_matters: The minimum is the lower bound that scheduling can reduce the queue to. It cannot exceed the standard.
+  rule_authority: best_practice
+  sap_impact: Reduction of queue time in scheduling uses an impossible lower bound.
+  fix_map:
+    __other__: Correct the queue times in CR02 > Scheduling.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: minimum queue time {actual_value} is above standard {CRHD.ZWNOR}.'
+- id: PP417
+  field: PLPO.ZWMIN
+  check_class: cross_field_check
+  fail_when: (`PLPO.ZWMIN` > `PLPO.ZWNOR`) | (`PLPO.ZTMIN` > `PLPO.ZTNOR`)
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: low
+  dimension: consistency
+  message: Operation minimum queue or move time is above its standard time
+  why_it_matters: Scheduling reduces queue and move times down to the minimum. The minimum cannot exceed the standard.
+  rule_authority: best_practice
+  sap_impact: Scheduling with reduction uses an impossible lower bound.
+  fix_map:
+    __other__: Correct the queue and move times on the operation in CA02.
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR}, operation node {PLPO.PLNKN}: a minimum queue or move time is above its standard.'
+- id: PP418
+  field: PLPO.LTXA1
+  check_class: null_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Operation has no short text
+  why_it_matters: Shop-floor papers and confirmations show the operation short text. Without it the step cannot be told apart.
+  rule_authority: best_practice
+  sap_impact: Production orders print operations with no description.
+  fix_map:
+    __blank__: Enter an operation short text in CA02.
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR}, operation {PLPO.VORNR}: no short text.'
+- id: PP419
+  field: PLPO.DAUMI
+  check_class: cross_field_check
+  fail_when: '`PLPO.DAUMI` > `PLPO.DAUNO`'
+  applies_when:
+    PLPO.PLNTY:
+    - A
+    - E
+    - T
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Maintenance operation minimum duration is above its normal duration
+  why_it_matters: The minimum duration is the shortest the activity can take. It cannot exceed the normal duration.
+  rule_authority: best_practice
+  sap_impact: Maintenance scheduling uses an impossible lower bound when it shortens an activity.
+  fix_map:
+    __other__: Correct the normal and minimum durations on the operation in IA06.
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR}, operation node {PLPO.PLNKN}: minimum duration {actual_value} is above normal {PLPO.DAUNO}.'

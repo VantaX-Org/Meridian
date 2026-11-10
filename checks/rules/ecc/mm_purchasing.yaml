@@ -5583,3 +5583,212 @@ rules:
       item in ME22N (ECC) or Fiori F2229 (S/4HANA).'
   record_fix_template: 'Purchasing document {EKPO.EBELN}: item number is {actual_value}. Re-add the
     item via ME22N or Fiori F2229.'
+- id: PUR420
+  field: EKET.WEMNG
+  check_class: cross_field_check
+  grain: EKET
+  fail_when: '`EKET.WEMNG` > `EKET.MENGE` * (1 + `EKPO.UEBTO` / 100) + 0.0005'
+  applies_when:
+    EKET.MENGE:
+      gt: 0
+    EKPO.UEBTK:
+      blank: true
+    EKPO.RETPO:
+      blank: true
+    EKPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Schedule line received quantity is above the ordered quantity plus the over-delivery tolerance
+  why_it_matters: The over-delivery tolerance on the item caps how much may be received against the ordered quantity. A received
+    quantity above the cap means goods were booked outside the tolerance, or the tolerance was lowered after receipt, so the
+    commitment, the GR/IR balance and the invoice check no longer agree.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIGO normally rejects receipts above the tolerance; rows above it point to a forced posting or a data load. GR/IR
+    clearing (MR11) and invoice verification show quantity differences.
+  fix_map:
+    __other__: Check the goods receipt history (ME23N) and the tolerance on the item. Raise the tolerance or reverse the excess
+      receipt (MIGO).
+  record_fix_template: 'PO {EKET.EBELN} item {EKET.EBELP} schedule line {EKET.ETENR}: received {EKET.WEMNG} against ordered
+    {EKET.MENGE}, tolerance {EKPO.UEBTO} percent.'
+- id: PUR421
+  field: EKET.WADAT
+  check_class: cross_field_check
+  grain: EKET
+  fail_when: '`EKET.WADAT` > `EKET.EINDT`'
+  applies_when:
+    EKET.WADAT:
+      populated: true
+    EKET.EINDT:
+      populated: true
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.ELIKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Goods issue date of the schedule line is later than the item delivery date
+  why_it_matters: The goods issue date is the date the supplying plant ships. Shipping after the delivery date means the
+    receiving plant is promised goods that cannot arrive in time, so MRP and the transport plan are built on a date that
+    cannot be met.
+  rule_authority: best_practice
+  sap_impact: MD04 shows receipts on a date the supplying plant cannot meet; ME2O and delivery scheduling flag the line as late
+    before it ships.
+  fix_map:
+    __other__: Reschedule the line in ME22N so the goods issue date is on or before the delivery date, or move the delivery date.
+  record_fix_template: 'PO {EKET.EBELN} item {EKET.EBELP} schedule line {EKET.ETENR}: goods issue {EKET.WADAT} is after delivery
+    {EKET.EINDT}.'
+- id: PUR422
+  field: EKET.LDDAT
+  check_class: cross_field_check
+  grain: EKET
+  fail_when: (`EKET.TDDAT` > `EKET.LDDAT`) | (`EKET.LDDAT` > `EKET.WADAT`)
+  applies_when:
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.ELIKZ:
+      blank: true
+  severity: low
+  dimension: consistency
+  message: Transportation planning, loading and goods issue dates of the schedule line are out of sequence
+  why_it_matters: Outbound scheduling runs in order from transportation planning through loading to goods issue. A date that
+    comes after the next one in the chain gives a transport plan that cannot be executed.
+  rule_authority: best_practice
+  sap_impact: Delivery scheduling for stock transport orders shows impossible lead times; the shipping point cannot plan the
+    load.
+  fix_map:
+    __other__: Reschedule the line in ME22N so transportation planning is on or before loading and loading is on or before goods
+      issue.
+  record_fix_template: 'PO {EKET.EBELN} item {EKET.EBELP} schedule line {EKET.ETENR}: transport planning {EKET.TDDAT}, loading
+    {EKET.LDDAT}, goods issue {EKET.WADAT}.'
+- id: PUR423
+  field: EKPO.NAVNW
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: '`EKPO.NAVNW` != 0'
+  applies_when:
+    EKPO.MWSKZ:
+      blank: true
+    EKPO.NAVNW:
+      populated: true
+    EKPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: PO item carries non-deductible input tax but has no tax code
+  why_it_matters: Non-deductible input tax is derived from the tax code on the item. A tax amount without a code means the
+    amount was written outside the pricing run, so the item value, the tax posting and the invoice tax check disagree.
+  rule_authority: sap_hard_constraint
+  sap_impact: Commitment values include a tax amount that invoice verification cannot reproduce; MIRO tax check raises a
+    difference.
+  fix_map:
+    __other__: Enter the tax code on the item (ME22N) so the tax is recalculated, or clear the amount if it was loaded in error.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: non-deductible input tax {EKPO.NAVNW} with no tax code.'
+- id: PUR424
+  field: EKPO.NTGEW
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: '`EKPO.NTGEW` > `EKPO.BRGEW`'
+  applies_when:
+    EKPO.BRGEW:
+      gt: 0
+    EKPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: PO item net weight is higher than its gross weight
+  why_it_matters: Gross weight includes packaging, so it cannot be lower than net weight. Freight cost, load planning and
+    customs declarations read both values.
+  rule_authority: sap_hard_constraint
+  sap_impact: Transport planning and import declarations use an impossible weight pair; freight cost per kilogram is wrong.
+  fix_map:
+    __other__: Correct the weights on the item (ME22N) or in the material master they were copied from.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: net weight {EKPO.NTGEW} is above gross weight {EKPO.BRGEW}.'
+- id: PUR425
+  field: EBAN.EBELN
+  check_class: cross_field_check
+  grain: EBAN
+  fail_when: '`EBAN.STATU` == ''N'''
+  applies_when:
+    EBAN.EBELN:
+      populated: true
+    EBAN.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Requisition item refers to a purchase order but its processing status is still not edited
+  why_it_matters: Assigning a requisition to a purchase order sets its processing status. A requisition with an order number
+    and the status not edited is offered to buyers again, which causes double ordering.
+  rule_authority: sap_hard_constraint
+  sap_impact: The requisition stays in the ME57 assignment list and MRP; the same need can be ordered twice.
+  fix_map:
+    __other__: Check the purchase order item in ME23N. If the order exists, correct the requisition status; if not, clear the
+      order number.
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: purchase order {EBAN.EBELN} is set but the status is not
+    edited.'
+- id: PUR426
+  field: EINE.AMODV
+  check_class: cross_field_check
+  grain: EINE
+  fail_when: '`EINE.AMODV` > `EINE.AMODB`'
+  applies_when:
+    EINE.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Amortization period of the info record starts after it ends
+  why_it_matters: The amortization period says when tooling cost is recovered through the price. A start after the end leaves
+    no period in which it applies, so the recovery is never charged.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing cannot apply the amortization; the tooling cost stays unrecovered on the info record.
+  fix_map:
+    __other__: Correct the amortization dates on the info record (ME12) so the start is not after the end.
+  record_fix_template: 'Info record {EINE.INFNR} purchasing organisation {EINE.EKORG}: amortization from {EINE.AMODV} to {EINE.AMODB}.'
+- id: PUR427
+  field: MARC.KORDB
+  check_class: exists_check
+  grain: MARC
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  target_table: EORD
+  target_fields:
+  - MATNR
+  - WERKS
+  applies_when:
+    MARC.KORDB:
+    - X
+    MARC.LVORM:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Material requires a source list but the plant has no source list record
+  why_it_matters: With the source list requirement set, purchase orders and requisition sourcing are only allowed for sources
+    on the list. With no record, no vendor can be used for the material in that plant.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME21N and automatic sourcing in MD04 and ME59N find no source; orders for the material in this plant are blocked.
+  fix_map:
+    __other__: Maintain source list records (ME01), or clear the source list requirement on the material plant data (MM02).
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: source list required but no record exists.'
+- id: PUR428
+  field: EKKO.KNUMV
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: '`EKPO.NETWR` > 0'
+  applies_when:
+    EKKO.KNUMV:
+      blank: true
+    EKKO.BSTYP:
+    - F
+    EKPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: PO item has a net value but the header has no pricing document number
+  why_it_matters: The pricing document holds the condition records behind the item price. A value without it cannot be traced
+    to price, discounts or taxes, and the price cannot be recalculated.
+  rule_authority: best_practice
+  sap_impact: ME23N shows no conditions for the item; price change, tax calculation and invoice price check cannot run.
+  fix_map:
+    __other__: Re-save the PO in ME22N so pricing recalculates, or correct the load that wrote the value without conditions.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: net value {EKPO.NETWR} but the header has no pricing document number.'

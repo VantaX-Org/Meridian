@@ -3302,7 +3302,7 @@ rules:
 - id: EC146
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: (`PERINFO.NATIONAL_ID`.str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d')) & `PERINFO.DATE_OF_BIRTH`.notna()
+  fail_when: (`PERINFO.NATIONAL_ID`.str.slice(0, 6) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2))) & `PERINFO.DATE_OF_BIRTH`.notna()
     & `PERINFO.NATIONAL_ID`.str.isdigit()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10364,9 +10364,9 @@ rules:
 - id: EC547
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.strftime('%y')
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2)
     + (`PERINFO.DATE_OF_BIRTH`.dt.month + 20 * (`PERINFO.DATE_OF_BIRTH`.dt.year >= 2000)).astype('Int64').astype('string[python]').fillna('').str.zfill(2)
-    + `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d'))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}')
+    + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}')
     & (`PERINFO.DATE_OF_BIRTH`.dt.year >= 1900) & (`PERINFO.DATE_OF_BIRTH`.dt.year < 2100)) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10423,7 +10423,7 @@ rules:
 - id: EC550
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(1, 7) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(1, 7) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{13}')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10479,7 +10479,7 @@ rules:
 - id: EC553
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(6, 14) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%Y%m%d')) & `PERINFO.NATIONAL_ID`.str.fullmatch('[0-9]{17}[0-9X]'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(6, 14) != (`PERINFO.DATE_OF_BIRTH`.dt.year.astype('Int64').astype('string').str.zfill(4) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2))) & `PERINFO.NATIONAL_ID`.str.fullmatch('[0-9]{17}[0-9X]'))
     & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10535,7 +10535,7 @@ rules:
 - id: EC556
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(-10).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(-10).str.slice(0, 6) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('([0-9]{2})?[0-9]{10}') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]',
     '', regex=True).str.slice(-10).str.slice(4, 5) <= '3')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
@@ -10593,7 +10593,7 @@ rules:
 - id: EC559
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2) + (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-3][0-9][01][0-9]{8}')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10652,7 +10652,7 @@ rules:
 - id: EC562
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y')) & `PERINFO.NATIONAL_ID`.str.fullmatch('[0-9]{6}[-+A-FU-Y][0-9]{3}[0-9A-Y]'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2) + (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2))) & `PERINFO.NATIONAL_ID`.str.fullmatch('[0-9]{6}[-+A-FU-Y][0-9]{3}[0-9A-Y]'))
     & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10708,7 +10708,7 @@ rules:
 - id: EC565
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]',
     '', regex=True).str.slice(2, 4) <= '12') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2,
     4) != '00') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 6) != '00')) & `PERINFO.DATE_OF_BIRTH`.notna()
@@ -10770,8 +10770,8 @@ rules:
 - id: EC568
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: (((`PERINFO.NATIONAL_ID`.str.slice(6, 8) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y')) | ((`PERINFO.NATIONAL_ID`.str.slice(9,
-    11) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d')) & (`PERINFO.NATIONAL_ID`.str.slice(9, 11) != (`PERINFO.DATE_OF_BIRTH`.dt.day
+  fail_when: (((`PERINFO.NATIONAL_ID`.str.slice(6, 8) != (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2)) | ((`PERINFO.NATIONAL_ID`.str.slice(9,
+    11) != `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2)) & (`PERINFO.NATIONAL_ID`.str.slice(9, 11) != (`PERINFO.DATE_OF_BIRTH`.dt.day
     + 40).astype('Int64').astype('string[python]').fillna('')))) & `PERINFO.NATIONAL_ID`.str.fullmatch('[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]'))
     & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
@@ -10834,7 +10834,7 @@ rules:
 - id: EC571
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(4, 10) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d')) & `PERINFO.NATIONAL_ID`.str.fullmatch('[A-Z]{4}[0-9]{6}[HMX][A-Z0-9]{7}'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.slice(4, 10) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2))) & `PERINFO.NATIONAL_ID`.str.fullmatch('[A-Z]{4}[0-9]{6}[HMX][A-Z0-9]{7}'))
     & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -10890,8 +10890,8 @@ rules:
 - id: EC574
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: (((`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(1, 3) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y'))
-    | ((`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(3, 5) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%m'))
+  fail_when: (((`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(1, 3) != (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2))
+    | ((`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(3, 5) != `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2))
     & (`PERINFO.NATIONAL_ID`.str.replace('[ .-]', '', regex=True).str.slice(3, 5) <= '12'))) & `PERINFO.NATIONAL_ID`.str.replace('[
     .-]', '', regex=True).str.fullmatch('[12][0-9]{4}[0-9AB]{2}[0-9]{6}([0-9]{2})?')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
@@ -10949,7 +10949,7 @@ rules:
 - id: EC577
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{13}')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -11010,7 +11010,7 @@ rules:
 - id: EC580
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2) + (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -11066,9 +11066,9 @@ rules:
 - id: EC583
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: (((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 2) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y'))
-    | (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d'))
-    | ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2, 4) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%m'))
+  fail_when: (((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 2) != (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2))
+    | (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 6) != `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2))
+    | ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2, 4) != `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2))
     & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(2, 4) != (`PERINFO.DATE_OF_BIRTH`.dt.month
     + 20).astype('Int64').astype('string[python]').fillna('')) & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '',
     regex=True).str.slice(2, 4) != (`PERINFO.DATE_OF_BIRTH`.dt.month + 50).astype('Int64').astype('string[python]').fillna(''))
@@ -11135,9 +11135,9 @@ rules:
 - id: EC586
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.strftime('%y')
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != ((`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2)
     + (`PERINFO.DATE_OF_BIRTH`.dt.month + 40 * (`PERINFO.DATE_OF_BIRTH`.dt.year >= 2000)).astype('Int64').astype('string[python]').fillna('').str.zfill(2)
-    + `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d'))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}')
+    + `PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2))) & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}')
     & (`PERINFO.DATE_OF_BIRTH`.dt.year >= 1900) & (`PERINFO.DATE_OF_BIRTH`.dt.year < 2100)) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -11193,7 +11193,7 @@ rules:
 - id: EC589
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(0, 6) != (`PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2) + (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{11}')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:
     PERINFO.NATIONAL_ID_COUNTRY:
@@ -11211,7 +11211,7 @@ rules:
 - id: EC590
   field: PERINFO.NATIONAL_ID
   check_class: cross_field_check
-  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 10) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%d%m%y'))
+  fail_when: ((`PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.slice(4, 10) != (`PERINFO.DATE_OF_BIRTH`.dt.day.astype('Int64').astype('string').str.zfill(2) + `PERINFO.DATE_OF_BIRTH`.dt.month.astype('Int64').astype('string').str.zfill(2) + (`PERINFO.DATE_OF_BIRTH`.dt.year % 100).astype('Int64').astype('string').str.zfill(2)))
     & `PERINFO.NATIONAL_ID`.str.replace('[^0-9]', '', regex=True).str.fullmatch('[0-9]{10}') & (`PERINFO.NATIONAL_ID`.str.replace('[^0-9]',
     '', regex=True).str.slice(6, 8) <= '12')) & `PERINFO.DATE_OF_BIRTH`.notna()
   applies_when:

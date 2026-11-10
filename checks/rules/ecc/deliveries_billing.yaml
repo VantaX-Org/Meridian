@@ -1238,3 +1238,272 @@ rules:
     __missing__: Create the sales organisation or correct the delivery.
   record_fix_template: 'LIKP.VKORG: ''{actual_value}'' has no TVKO master record. Create the sales organisation
     or correct the delivery.'
+- id: DL090
+  field: LIKP.TDDAT
+  check_class: cross_field_check
+  fail_when: '`LIKP.TDDAT` > `LIKP.LDDAT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Transportation planning date is after the loading date
+  why_it_matters: 'Scheduling runs backwards from the delivery date: transportation planning comes first, then loading, then
+    goods issue. A planning date after loading cannot be met.'
+  rule_authority: sap_business_convention
+  sap_impact: The transport plan for the delivery is impossible and shipment scheduling reports fail.
+  fix_map:
+    __other__: Reschedule the delivery (VL02N) so the transportation planning date is on or before the loading date.
+  record_fix_template: 'LIKP.TDDAT: ''{actual_value}'' fails the check. Reschedule the delivery (VL02N) so the transportation
+    planning date is on or before the loading date.'
+- id: DL091
+  field: LIKP.LDDAT
+  check_class: cross_field_check
+  fail_when: '`LIKP.LDDAT` > `LIKP.WADAT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Loading date is after the planned goods issue date
+  why_it_matters: Goods are loaded before they leave the plant, so the loading date cannot fall after the planned goods issue
+    date.
+  rule_authority: sap_business_convention
+  sap_impact: Loading capacity is planned for a date after the goods are meant to be issued.
+  fix_map:
+    __other__: Reschedule the delivery (VL02N) so loading falls on or before the planned goods issue date.
+  record_fix_template: 'LIKP.LDDAT: ''{actual_value}'' fails the check. Reschedule the delivery (VL02N) so loading falls on
+    or before the planned goods issue date.'
+- id: DL092
+  field: LIKP.KODAT
+  check_class: cross_field_check
+  fail_when: '`LIKP.KODAT` > `LIKP.WADAT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Picking date is after the planned goods issue date
+  why_it_matters: Picking has to finish before goods issue. A picking date after the planned goods issue date makes the pick
+    wave late by design.
+  rule_authority: sap_business_convention
+  sap_impact: Warehouse picking is scheduled too late for the planned goods issue.
+  fix_map:
+    __other__: Move the picking date earlier or the goods issue date later (VL02N).
+  record_fix_template: 'LIKP.KODAT: ''{actual_value}'' fails the check. Move the picking date earlier or the goods issue date
+    later (VL02N).'
+- id: DL093
+  field: LIKP.WADAT_IST
+  check_class: cross_field_check
+  fail_when: '`LIKP.WADAT_IST` > @today'
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Actual goods issue date is in the future
+  why_it_matters: The actual goods movement date records a posting that already happened. A future date is a keying error
+    and distorts inventory, revenue and billing timing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock and billing are posted into the wrong period; billing may be due later than the shipment shows.
+  fix_map:
+    __other__: Reverse the goods issue (VL09) and post it again with the correct date.
+  record_fix_template: 'LIKP.WADAT_IST: ''{actual_value}'' fails the check. Reverse the goods issue (VL09) and post it again
+    with the correct date.'
+- id: DL094
+  field: LIKP.PODAT
+  check_class: cross_field_check
+  fail_when: '`LIKP.PODAT` < `LIKP.WADAT_IST`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Proof of delivery date is before the actual goods issue date
+  why_it_matters: Goods cannot be received by the customer before they left the plant. The proof of delivery date must be
+    on or after the goods issue.
+  rule_authority: sap_business_convention
+  sap_impact: Proof-of-delivery based billing and delivery performance reports use an impossible sequence.
+  fix_map:
+    __other__: Correct the proof of delivery date in VLPOD.
+  record_fix_template: 'LIKP.PODAT: ''{actual_value}'' fails the check. Correct the proof of delivery date in VLPOD.'
+- id: DL095
+  field: LIPS.CHARG
+  check_class: cross_field_check
+  grain: LIPS
+  fail_when: (`LIPS.XCHPF` == 'X') & (`LIPS.CHARG`.isna() | (`LIPS.CHARG` == '')) & `LIKP.WADAT_IST`.notna()
+  severity: high
+  dimension: completeness
+  message: Delivery item with batch management has no batch although goods issue is posted
+  why_it_matters: A batch-managed item cannot be issued without a batch. If the item carries the batch requirement and goods
+    issue is posted, the batch is missing from the record.
+  rule_authority: sap_hard_constraint
+  sap_impact: Batch traceability, shelf life and recall reporting have a gap for the issued goods.
+  fix_map:
+    __other__: Check the goods movement for the item in VL03N and correct the batch with a stock correction.
+  record_fix_template: 'LIPS.CHARG: ''{actual_value}'' fails the check. Check the goods movement for the item in VL03N and
+    correct the batch with a stock correction.'
+- id: DL096
+  field: LIPS.ANZSN
+  check_class: cross_field_check
+  fail_when: '`LIPS.ANZSN` > `LIPS.LGMNG`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Delivery item has more serial numbers than delivered base quantity
+  why_it_matters: Each serial number identifies one unit. The count of serial numbers cannot exceed the delivered quantity
+    in the stockkeeping unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Equipment records and warranty data are created for units that were not delivered.
+  fix_map:
+    __other__: Correct the serial number list for the item (VL02N, Extras, Serial numbers).
+  record_fix_template: 'LIPS.ANZSN: ''{actual_value}'' fails the check. Correct the serial number list for the item (VL02N,
+    Extras, Serial numbers).'
+- id: DL097
+  field: LIPS.UMVKZ
+  check_class: cross_field_check
+  fail_when: (`LIPS.UMVKZ` <= 0) | (`LIPS.UMVKN` <= 0)
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Delivery item has a zero unit conversion factor
+  why_it_matters: Sales units are converted to stockkeeping units as numerator over denominator. Either factor at zero makes
+    the stockkeeping quantity wrong or undefined.
+  rule_authority: sap_business_convention
+  sap_impact: Goods movements post the wrong quantity in the base unit of measure.
+  fix_map:
+    __other__: Correct the unit of measure conversion on the material and re-create the delivery item.
+  record_fix_template: 'LIPS.UMVKZ: ''{actual_value}'' fails the check. Correct the unit of measure conversion on the material
+    and re-create the delivery item.'
+- id: DL098
+  field: LIPS.PRCTR
+  check_class: exists_check
+  fields:
+  - LIPS.PRCTR
+  target_table: CEPC
+  target_fields:
+  - PRCTR
+  severity: medium
+  dimension: accuracy
+  message: Delivery item profit centre has no master record
+  why_it_matters: The profit centre on the delivery item must exist in the profit centre master. An unknown centre breaks
+    profit and loss reporting by profit centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost of goods sold is posted to a profit centre that cannot be reported on.
+  fix_map:
+    __missing__: Correct the profit centre on the material master or create the profit centre in KE51.
+  record_fix_template: 'LIPS.PRCTR: ''{actual_value}'' has no matching record. Correct the profit centre on the material master
+    or create the profit centre in KE51.'
+- id: DL099
+  field: LIPS.KDAUF
+  check_class: exists_check
+  fields:
+  - LIPS.KDAUF
+  target_table: VBAK
+  target_fields:
+  - VBELN
+  severity: medium
+  dimension: consistency
+  message: Delivery item refers to a sales order that does not exist
+  why_it_matters: The sales order number on a delivery item is the origin of the account assignment and pricing. It must point
+    to an existing sales document.
+  rule_authority: sap_hard_constraint
+  sap_impact: Account assignment and order-based reporting cannot find the order.
+  fix_map:
+    __missing__: Correct the order reference or restore the missing order.
+  record_fix_template: 'LIPS.KDAUF: ''{actual_value}'' has no matching record. Correct the order reference or restore the
+    missing order.'
+- id: DL100
+  field: LIKP.LIFNR
+  check_class: exists_check
+  fields:
+  - LIKP.LIFNR
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  severity: medium
+  dimension: accuracy
+  message: Delivery vendor has no vendor master record
+  why_it_matters: Inbound deliveries and deliveries with a vendor reference must point to a vendor master record.
+  rule_authority: sap_hard_constraint
+  sap_impact: Inbound processing and goods receipt cannot resolve the vendor.
+  fix_map:
+    __missing__: Correct the vendor in the delivery or create the missing vendor.
+  record_fix_template: 'LIKP.LIFNR: ''{actual_value}'' has no matching record. Correct the vendor in the delivery or create
+    the missing vendor.'
+- id: DL101
+  field: VBRK.KNUMV
+  check_class: cross_field_check
+  fail_when: (`VBRK.NETWR` > 0) & (`VBRK.KNUMV`.isna() | (`VBRK.KNUMV` == ''))
+  severity: high
+  dimension: completeness
+  message: Billing document has a net value but no condition record number
+  why_it_matters: The net value of a billing document comes from pricing conditions. Without a condition number the value
+    cannot be traced to prices, discounts and taxes.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue accounts cannot be explained from conditions; price audit and tax reporting have a gap.
+  fix_map:
+    __other__: Check the pricing result in VF03 and re-run pricing or correct the document through a credit and re-bill.
+  record_fix_template: 'VBRK.KNUMV: ''{actual_value}'' fails the check. Check the pricing result in VF03 and re-run pricing
+    or correct the document through a credit and re-bill.'
+- id: DL102
+  field: VBRK.LANDTX
+  check_class: exists_check
+  fields:
+  - VBRK.LANDTX
+  target_table: T005
+  target_fields:
+  - LAND1
+  severity: medium
+  dimension: accuracy
+  message: Tax departure country is not a valid country key
+  why_it_matters: The tax departure country steers tax determination and must be a country in the country table.
+  rule_authority: sap_hard_constraint
+  sap_impact: Tax determination and VAT return reporting use a country that SAP does not know.
+  fix_map:
+    __missing__: Correct the tax departure country on the billing document type or the delivering plant.
+  record_fix_template: 'VBRK.LANDTX: ''{actual_value}'' has no matching record. Correct the tax departure country on the billing
+    document type or the delivering plant.'
+- id: DL103
+  field: VBRP.PRCTR
+  check_class: exists_check
+  fields:
+  - VBRP.PRCTR
+  target_table: CEPC
+  target_fields:
+  - PRCTR
+  severity: high
+  dimension: accuracy
+  message: Billing item profit centre has no master record
+  why_it_matters: Revenue is posted to the profit centre of the billing item. An unknown centre makes the revenue invisible
+    in profit centre reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue lands on a profit centre that does not exist in the master.
+  fix_map:
+    __missing__: Correct the profit centre on the material master or create the profit centre in KE51.
+  record_fix_template: 'VBRP.PRCTR: ''{actual_value}'' has no matching record. Correct the profit centre on the material master
+    or create the profit centre in KE51.'
+- id: DL104
+  field: VBRP.KOSTL
+  check_class: exists_check
+  fields:
+  - VBRP.KOSTL
+  target_table: CSKS
+  target_fields:
+  - KOSTL
+  severity: medium
+  dimension: accuracy
+  message: Billing item cost centre has no master record
+  why_it_matters: A cost centre on a billing item takes part in account assignment. It must exist in the cost centre master.
+  rule_authority: sap_hard_constraint
+  sap_impact: Controlling cannot assign the posting to a cost centre.
+  fix_map:
+    __missing__: Correct the cost centre on the item or create it in KS01.
+  record_fix_template: 'VBRP.KOSTL: ''{actual_value}'' has no matching record. Correct the cost centre on the item or create
+    it in KS01.'
+- id: DL105
+  field: VBRP.FKLMG
+  check_class: cross_field_check
+  fail_when: (`VBRP.UMVKN` > 0) & ((`VBRP.FKLMG` - `VBRP.FKIMG` * `VBRP.UMVKZ` / `VBRP.UMVKN`).abs() > 0.01 + 0.001 * `VBRP.FKLMG`.abs())
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Billing quantity in base unit does not match billing quantity and conversion factors
+  why_it_matters: The base-unit billing quantity must equal the billed quantity multiplied by the conversion numerator and
+    divided by the denominator.
+  rule_authority: sap_business_convention
+  sap_impact: Revenue per unit and margin analysis use inconsistent quantities.
+  fix_map:
+    __other__: Correct the conversion through a credit and re-bill after fixing the unit of measure conversion on the material.
+  record_fix_template: 'VBRP.FKLMG: ''{actual_value}'' fails the check. Correct the conversion through a credit and re-bill
+    after fixing the unit of measure conversion on the material.'
