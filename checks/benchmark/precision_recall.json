@@ -7,9 +7,9 @@
    "rules": 158
   },
   "employee_central": {
-   "benchmarked": 355,
-   "perfect": 355,
-   "rules": 703
+   "benchmarked": 367,
+   "perfect": 367,
+   "rules": 718
   },
   "material_master": {
    "benchmarked": 235,
@@ -9828,7 +9828,7 @@
    "benchmarkable": false,
    "check_class": "cross_field_check",
    "module": "employee_central",
-   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(0, 6) != `PERINFO.DATE_OF_BI",
+   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(0, 6) != ((`PERINFO.DATE_OF_",
    "rule_id": "EC146"
   },
   {
@@ -13804,7 +13804,7 @@
    "benchmarkable": false,
    "check_class": "cross_field_check",
    "module": "employee_central",
-   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(6, 14) != `PERINFO.DATE_OF_B",
+   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(6, 14) != (`PERINFO.DATE_OF_",
    "rule_id": "EC553"
   },
   {
@@ -13867,7 +13867,7 @@
    "benchmarkable": false,
    "check_class": "cross_field_check",
    "module": "employee_central",
-   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(0, 6) != `PERINFO.DATE_OF_BI",
+   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(0, 6) != (`PERINFO.DATE_OF_B",
    "rule_id": "EC562"
   },
   {
@@ -13930,7 +13930,7 @@
    "benchmarkable": false,
    "check_class": "cross_field_check",
    "module": "employee_central",
-   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(4, 10) != `PERINFO.DATE_OF_B",
+   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(4, 10) != ((`PERINFO.DATE_OF",
    "rule_id": "EC571"
   },
   {
@@ -15215,11 +15215,18 @@
    "true_positives": 10
   },
   {
-   "benchmarkable": false,
+   "benchmarkable": true,
    "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
    "module": "employee_central",
-   "reason": "comparison across field types FOGEOZONE.START_DATE/FOGEOZONE.END_DATE",
-   "rule_id": "EC688"
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC688",
+   "true_positives": 10
   },
   {
    "benchmarkable": true,
@@ -15289,6 +15296,188 @@
    "recall": 1.0,
    "records": 40,
    "rule_id": "EC693",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC694",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC695",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "character comparison POSITION.PARENT_POSITION/POSITION.CODE not modelled",
+   "rule_id": "EC696"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "character comparison FODEPARTMENT.PARENT_DEPARTMENT/FODEPARTMENT.EXTERNAL_CODE not modelled",
+   "rule_id": "EC697"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC698",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC699",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "condition not modelled: `EMPEMPLOYMENT.IS_SHIFT_EMPLOYEE`.astype('string').str.lower",
+   "rule_id": "EC700"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC701",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "EC702"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC703",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC704",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC705",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC706",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC707",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC708",
    "true_positives": 10
   },
   {
