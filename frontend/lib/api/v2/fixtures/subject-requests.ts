@@ -14,7 +14,7 @@ class Refused extends Error {
   }
 }
 
-const COUNTS: Record<string, number> = { finding_records: 4, record_issues: 3, work_records: 1, record_hashes: 2, cleaning_audit: 1 };
+const COUNTS: Record<string, number> = { finding_records: 2, record_issues: 3, work_records: 1, record_hashes: 2, cleaning_audit: 1, notifications: 1, exceptions: 1 };
 const EXTRACTS = { files: 2, rows: 2, scanned_bytes: 48_000, skipped: 0, errors: 0, complete: true };
 const NO_EXTRACTS = { files: 0, rows: 0, scanned_bytes: 0, skipped: 0, errors: 0, complete: true };
 const total = (c: Record<string, number>, e: { rows: number }): number => Object.values(c).reduce((a, b) => a + b, 0) + e.rows;
