@@ -1529,7 +1529,7 @@ rules:
     sap_impact: Course visibility/launch state indeterminate.
     fix_map:
       __blank__: Set the item-active flag to Y or N.
-    record_fix_template: 'Learning assignment {LEARNINGASSIGNMENT.ASSIGNMENT_ID}: item-active flag is {LEARNINGASSIGNMENT.ITEM_ACTIVE}, not Y or N.'
+    record_fix_template: 'Learning assignment {LEARNINGASSIGNMENT.COURSE_ID} for {LEARNINGASSIGNMENT.USERID}: item-active flag is {LEARNINGASSIGNMENT.ITEM_ACTIVE}, not Y or N.'
     id: LMS087
     allowed_values:
     - Y

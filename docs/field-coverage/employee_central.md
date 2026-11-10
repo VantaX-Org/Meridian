@@ -116,14 +116,14 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | EMPEMPLOYMENT | EMPLOYEE_FIRST_EMPLOYMENT | Employee first employment | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | EMPEMPLOYMENT | REGRET_TERMINATION | Regret termination | y | 0 / 0 |  | cross-field: profile true-rate, then a rule on what the flag implies (unverified) |
 | EMPEMPLOYMENT | ELIGIBLE_FOR_SAL_CONTINUATION | Eligible for sal continuation | y | 0 / 0 |  | cross-field: profile true-rate, then a rule on what the flag implies (unverified) |
-| EMPEMPLOYMENT | STOCK_END_DATE | Stock end date | y | 1 / 1 | EC708 |  |
-| EMPEMPLOYMENT | SALARY_END_DATE | Salary end date | y | 1 / 1 | EC706 |  |
-| EMPEMPLOYMENT | BENEFITS_END_DATE | Benefits end date | y | 1 / 1 | EC707 |  |
+| EMPEMPLOYMENT | STOCK_END_DATE | Stock end date | y | 1 / 1 | EC727 |  |
+| EMPEMPLOYMENT | SALARY_END_DATE | Salary end date | y | 1 / 1 | EC725 |  |
+| EMPEMPLOYMENT | BENEFITS_END_DATE | Benefits end date | y | 1 / 1 | EC726 |  |
 | EMPEMPLOYMENT | POSITION_ENTRY_DATE | Position entry date | y | 0 / 0 |  | format: valid date when populated; cross-field ordering against the record's validity dates |
 | EMPEMPLOYMENT | TIME_IN_POSITION | Time in position | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | EMPEMPLOYMENT | LOCAL_JOB_TITLE | Local job title (country-specific) | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
-| EMPEMPLOYMENT | IS_SHIFT_EMPLOYEE | Is shift employee | y | 1 / 1 | EC700 |  |
-| EMPEMPLOYMENT | SHIFT_CODE | Shift code | y | 1 / 1 | EC700 |  |
+| EMPEMPLOYMENT | IS_SHIFT_EMPLOYEE | Is shift employee | y | 1 / 1 | EC719 |  |
+| EMPEMPLOYMENT | SHIFT_CODE | Shift code | y | 1 / 1 | EC719 |  |
 | EMPEMPLOYMENT | SHIFT_RATE | Shift rate | y | 0 / 0 |  | domain: value >= 0 when populated (confirm sign convention before enabling) |
 | EMPEMPLOYMENT | SHIFT_FACTOR | Shift factor | y | 0 / 0 |  | domain: value >= 0 when populated (confirm sign convention before enabling) |
 | EMPEMPLOYMENT | IS_CROSS_BORDER_WORKER | Is cross border worker | y | 0 / 0 |  | cross-field: profile true-rate, then a rule on what the flag implies (unverified) |
@@ -140,10 +140,10 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | EMPEMPLOYMENT | TIME_IN_DEPARTMENT | Time in department | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | EMPEMPLOYMENT | PAY_SCALE_LEVEL_ENTRY_DATE | Pay scale level entry date | y | 0 / 0 |  | format: valid date when populated; cross-field ordering against the record's validity dates |
 | EMPEMPLOYMENT | TIME_IN_PAY_SCALE_LEVEL | Time in pay scale level | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
-| EMPEMPLOYMENT | HIRE_DATE | Hire date | y | 1 / 1 | EC698 |  |
-| EMPEMPLOYMENT | TERMINATION_DATE | Termination date | y | 1 / 1 | EC698 |  |
-| EMPEMPLOYMENT | LEAVE_OF_ABSENCE_START_DATE | Leave of absence start date | y | 1 / 1 | EC699 |  |
-| EMPEMPLOYMENT | LEAVE_OF_ABSENCE_RETURN_DATE | Leave of absence return date | y | 1 / 1 | EC699 |  |
+| EMPEMPLOYMENT | HIRE_DATE | Hire date | y | 1 / 1 | EC717 |  |
+| EMPEMPLOYMENT | TERMINATION_DATE | Termination date | y | 1 / 1 | EC717 |  |
+| EMPEMPLOYMENT | LEAVE_OF_ABSENCE_START_DATE | Leave of absence start date | y | 1 / 1 | EC718 |  |
+| EMPEMPLOYMENT | LEAVE_OF_ABSENCE_RETURN_DATE | Leave of absence return date | y | 1 / 1 | EC718 |  |
 | EMPEMPLOYMENT | EMPLOYEE_NOTICE_PERIOD | Employee notice period | y | 1 / 0 | DXR04717c3c | only disabled (DDIC-generated) rules; review for enabling |
 | EMPEMPLOYMENT | TIME_RECORDING_ADMISSIBILITY_CODE | Time recording admissibility code | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | EMPEMPLOYMENT | DEFAULT_OVERTIME_COMPENSATION_VARIANT | Default overtime compensation variant | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
@@ -203,7 +203,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | EMPEMPLOYMENT | GUARANTEED_PAYMENT | Guaranteed payment (country-specific) | y | 0 / 0 |  | domain: value >= 0 when populated (confirm sign convention before enabling) |
 | EMPEMPLOYMENT | PERIOD_INDICATOR | Period indicator (country-specific) | y | 1 / 0 | DXR08cc35a2 | only disabled (DDIC-generated) rules; review for enabling |
 | EMPEMPLOYMENT | CALCULATION_BASE | Calculation base (country-specific) | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
-| EMPEMPLOYMENT | WORK_PERMIT_EXPIRY | Work permit expiry (country-specific) | y | 1 / 1 | EC705 |  |
+| EMPEMPLOYMENT | WORK_PERMIT_EXPIRY | Work permit expiry (country-specific) | y | 1 / 1 | EC724 |  |
 | EMPEMPLOYMENT | CREDIT_FOR_PREVIOUS_SERVICE | Credit for previous service (country-specific) | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | EMPEMPLOYMENT | ASSESSMENT_STATUS | Assessment status (country-specific) | y | 1 / 0 | DXR2f15221e | only disabled (DDIC-generated) rules; review for enabling |
 | EMPEMPLOYMENT | CURRENT_WAGE_LEVEL | Current wage level (country-specific) | y | 0 / 0 |  | domain: value >= 0 when populated (confirm sign convention before enabling) |
@@ -272,7 +272,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| PERINFO | PERSON_ID | Person ID | y | 11 / 11 | EC152, EC234, EC358, EC442, EC446, EC449 +5 more |  |
+| PERINFO | PERSON_ID | Person ID | y | 12 / 12 | EC152, EC234, EC358, EC442, EC446, EC449 +6 more |  |
 | PERINFO | FIRSTNAME | First name | y | 8 / 8 | EC003, EC083, EC084, EC127, EC128, EC129 +2 more |  |
 | PERINFO | LASTNAME | Last name | y | 8 / 8 | EC004, EC083, EC084, EC130, EC131, EC132 +2 more |  |
 | PERINFO | MIDDLENAME | Middle name | y | 3 / 3 | EC608, EC609, EC612 |  |
@@ -280,14 +280,14 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | PERINFO | SALUTATION | Salutation | y | 2 / 2 | EC054, EC135 |  |
 | PERINFO | GENDER | Gender | y | 33 / 33 | EC021, EC119, EC135, EC147, EC148, EC548 +27 more |  |
 | PERINFO | MARITAL_STATUS | Marital status | y | 1 / 1 | EC055 |  |
-| PERINFO | NATIONALITY | Nationality | y | 4 / 4 | EC036, EC052, EC605, EC702 |  |
+| PERINFO | NATIONALITY | Nationality | y | 4 / 4 | EC036, EC052, EC605, EC721 |  |
 | PERINFO | DATE_OF_BIRTH | Date of birth | y | 29 / 29 | EC022, EC059, EC079, EC080, EC083, EC084 +23 more |  |
 | PERINFO | NATIONAL_ID | National ID (primary) | y | 101 / 101 | EC037, EC062, EC087, EC088, EC089, EC090 +95 more |  |
 | PERINFO | NATIONAL_ID_COUNTRY | Country that issued the national ID | y | 100 / 100 | EC087, EC088, EC089, EC090, EC091, EC092 +94 more |  |
 | PERINFO | NATIONAL_ID_CARD_TYPE | National ID card type | y | 1 / 1 | EC640 |  |
 | PERINFO | COUNTRY_OF_BIRTH | Country of birth | y | 3 / 2 | DXR8d590558, EC126, EC607 |  |
 | PERINFO | DATE_OF_DEATH | Date of death | y | 4 / 4 | EC123, EC124, EC125, EC600 |  |
-| PERINFO | SECOND_NATIONALITY | Second nationality | y | 3 / 2 | DXR2445425d, EC605, EC702 |  |
+| PERINFO | SECOND_NATIONALITY | Second nationality | y | 3 / 2 | DXR2445425d, EC605, EC721 |  |
 | PERINFO | PLACE_OF_BIRTH | Place of birth | y | 2 / 2 | EC606, EC607 |  |
 | PERINFO | PERSON_UUID | Person UUID (stable surrogate key) | y | 1 / 1 | EC614 |  |
 | PERINFO | REGION_OF_BIRTH | Region of birth | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
@@ -312,11 +312,11 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | PERINFO | FORMAL_NAME_ALT1 | Formal name alt1 | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | PERINFO | FORMAL_NAME_ALT2 | Formal name alt2 | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | PERINFO | SINCE | Since | y | 0 / 0 |  | format: valid date when populated; cross-field ordering against the record's validity dates |
-| PERINFO | THIRD_NATIONALITY | Third nationality | y | 1 / 1 | EC702 |  |
+| PERINFO | THIRD_NATIONALITY | Third nationality | y | 1 / 1 | EC721 |  |
 | PERINFO | NATIVE_PREFERRED_LANG | Native preferred lang | y | 1 / 0 | DXR4b088d63 | only disabled (DDIC-generated) rules; review for enabling |
 | PERINFO | CHALLENGE_STATUS | Challenge status | y | 0 / 0 |  | cross-field: profile true-rate, then a rule on what the flag implies (unverified) |
-| PERINFO | CERTIFICATE_START_DATE | Certificate start date | y | 1 / 1 | EC701 |  |
-| PERINFO | CERTIFICATE_END_DATE | Certificate end date | y | 1 / 1 | EC701 |  |
+| PERINFO | CERTIFICATE_START_DATE | Certificate start date | y | 1 / 1 | EC720 |  |
+| PERINFO | CERTIFICATE_END_DATE | Certificate end date | y | 1 / 1 | EC720 |  |
 | PERINFO | PARTNER_NAME | Partner name | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | PERINFO | PARTNER_NAME_PREFIX | Partner name prefix | y | 1 / 0 | DXR99ed5252 | only disabled (DDIC-generated) rules; review for enabling |
 | PERINFO | NAME_FORMAT_CODE | Name format code | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
@@ -509,10 +509,10 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | COMPINFO | SEQ_NUMBER | Seq number | y | 0 / 0 |  | domain: value >= 0 when populated (confirm sign convention before enabling) |
 | COMPINFO | IS_ELIGIBLE_FOR_BENEFITS | Is eligible for benefits | y | 0 / 0 |  | cross-field: profile true-rate, then a rule on what the flag implies (unverified) |
 | COMPINFO | IS_ELIGIBLE_FOR_CAR | Is eligible for car | y | 0 / 0 |  | cross-field: profile true-rate, then a rule on what the flag implies (unverified) |
-| COMPINFO | BENEFITS_RATE | Benefits rate | y | 1 / 1 | EC704 |  |
+| COMPINFO | BENEFITS_RATE | Benefits rate | y | 1 / 1 | EC723 |  |
 | COMPINFO | IS_HIGHLY_COMPENSATED_EMPLOYEE | Is highly compensated employee | y | 0 / 0 |  | cross-field: profile true-rate, then a rule on what the flag implies (unverified) |
 | COMPINFO | IS_INSIDER | Is insider | y | 0 / 0 |  | cross-field: profile true-rate, then a rule on what the flag implies (unverified) |
-| COMPINFO | PENSIONABLE_SALARY | Pensionable salary | y | 1 / 1 | EC703 |  |
+| COMPINFO | PENSIONABLE_SALARY | Pensionable salary | y | 1 / 1 | EC722 |  |
 
 ### USERACCOUNT
 
@@ -562,7 +562,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | POSITION | JOB_TITLE | Job title | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | POSITION | CREATED_BY | Created by | y | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | POSITION | LAST_MODIFIED_BY | Last modified by | y | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
-| POSITION | PARENT_POSITION | Parent position | y | 1 / 1 | EC696 |  |
+| POSITION | PARENT_POSITION | Parent position | y | 1 / 1 | EC715 |  |
 | POSITION | POSITION_MATRIX_RELATIONSHIP | Position matrix relationship | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | POSITION | RIGHT_TO_RETURN | Right to return | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 
@@ -570,12 +570,12 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| FOCOMPANY | EXTERNAL_CODE | Legal entity code | y | 8 / 8 | EC102, EC111, EC211, EC256, EC344, EC349 +2 more |  |
+| FOCOMPANY | EXTERNAL_CODE | Legal entity code | y | 10 / 10 | EC102, EC111, EC211, EC256, EC344, EC349 +4 more |  |
 | FOCOMPANY | COUNTRY | Country of the legal entity | y | 3 / 3 | EC106, EC188, EC351 |  |
 | FOCOMPANY | CURRENCY | Default currency of the legal entity | y | 2 / 2 | EC105, EC350 |  |
-| FOCOMPANY | STATUS | A active / I inactive | y | 7 / 7 | EC102, EC211, EC256, EC344, EC348, EC481 +1 more |  |
+| FOCOMPANY | STATUS | A active / I inactive | y | 8 / 8 | EC102, EC211, EC256, EC344, EC348, EC481 +2 more |  |
 | FOCOMPANY | EFFECTIVE_START_DATE | Effective start date | y | 1 / 1 | EC676 |  |
-| FOCOMPANY | NAME | Name | y | 1 / 1 | EC695 |  |
+| FOCOMPANY | NAME | Name | y | 1 / 1 | EC714 |  |
 | FOCOMPANY | DESCRIPTION | Description | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 
 ### FODIVISION
@@ -608,10 +608,10 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | FODEPARTMENT | COST_CENTER | Default cost centre of the department | y | 4 / 4 | EC104, EC113, EC333, EC489 |  |
 | FODEPARTMENT | STATUS | A active / I inactive | y | 8 / 8 | EC103, EC252, EC288, EC310, EC331, EC333 +2 more |  |
 | FODEPARTMENT | EFFECTIVE_START_DATE | Effective start date | y | 1 / 1 | EC677 |  |
-| FODEPARTMENT | NAME | Name | y | 1 / 1 | EC694 |  |
+| FODEPARTMENT | NAME | Name | y | 1 / 1 | EC713 |  |
 | FODEPARTMENT | DESCRIPTION | Description | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | FODEPARTMENT | HEAD_OF_UNIT | Head of unit | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
-| FODEPARTMENT | PARENT_DEPARTMENT | Parent department | y | 2 / 1 | DXR072aeebe, EC697 |  |
+| FODEPARTMENT | PARENT_DEPARTMENT | Parent department | y | 2 / 1 | DXR072aeebe, EC716 |  |
 
 ### FOLOCATION
 
@@ -637,8 +637,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| FOJOBCODE | EXTERNAL_CODE |  | y | 5 / 5 | EC175, EC212, EC255, EC338, EC340 |  |
-| FOJOBCODE | STATUS |  | y | 8 / 8 | EC175, EC212, EC255, EC339, EC421, EC422 +2 more |  |
+| FOJOBCODE | EXTERNAL_CODE |  | y | 7 / 7 | EC175, EC212, EC255, EC338, EC340, EC709 +1 more |  |
+| FOJOBCODE | STATUS |  | y | 9 / 9 | EC175, EC212, EC255, EC339, EC421, EC422 +3 more |  |
 | FOJOBCODE | IS_FULLTIME |  | y | 3 / 3 | EC421, EC437, EC494 |  |
 | FOJOBCODE | EMPLOYEE_CLASS |  | y | 3 / 3 | EC201, EC422, EC436 |  |
 | FOJOBCODE | REGULAR_TEMP |  | y | 2 / 2 | EC423, EC495 |  |

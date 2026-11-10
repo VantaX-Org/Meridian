@@ -1,4 +1,4 @@
-"""EC694-EC708 (field-coverage audit) and the no-strftime guard on every rule pack."""
+"""EC713-EC727 (field-coverage audit) and the no-strftime guard on every rule pack."""
 import glob
 import re
 
@@ -39,45 +39,45 @@ def test_pack_shape():
 
 
 def test_names_missing():
-    assert fire("EC694", "FODEPARTMENT", {"FODEPARTMENT.EXTERNAL_CODE": ["D1", "D2"], "FODEPARTMENT.NAME": [None, "Sales"]}) == 1
-    assert fire("EC695", "FOCOMPANY", {"FOCOMPANY.EXTERNAL_CODE": ["C1", "C2"], "FOCOMPANY.NAME": ["", "Acme"]}) == 1
+    assert fire("EC713", "FODEPARTMENT", {"FODEPARTMENT.EXTERNAL_CODE": ["D1", "D2"], "FODEPARTMENT.NAME": [None, "Sales"]}) == 1
+    assert fire("EC714", "FOCOMPANY", {"FOCOMPANY.EXTERNAL_CODE": ["C1", "C2"], "FOCOMPANY.NAME": ["", "Acme"]}) == 1
 
 
 def test_self_parent():
-    assert fire("EC696", "POSITION", {"POSITION.CODE": ["P1", "P2", "P3"], "POSITION.PARENT_POSITION": ["P1", "P1", None]}) == 1
-    assert fire("EC697", "FODEPARTMENT", {"FODEPARTMENT.EXTERNAL_CODE": ["D1", "D2"], "FODEPARTMENT.PARENT_DEPARTMENT": ["D1", "D1"]}) == 1
+    assert fire("EC715", "POSITION", {"POSITION.CODE": ["P1", "P2", "P3"], "POSITION.PARENT_POSITION": ["P1", "P1", None]}) == 1
+    assert fire("EC716", "FODEPARTMENT", {"FODEPARTMENT.EXTERNAL_CODE": ["D1", "D2"], "FODEPARTMENT.PARENT_DEPARTMENT": ["D1", "D1"]}) == 1
 
 
 def test_date_order():
     lo, hi = T("2024-01-01"), T("2024-06-01")
-    pairs = {"EC698": ("HIRE_DATE", "TERMINATION_DATE"),
-             "EC699": ("LEAVE_OF_ABSENCE_START_DATE", "LEAVE_OF_ABSENCE_RETURN_DATE"),
-             "EC706": ("START_DATE", "SALARY_END_DATE"),
-             "EC707": ("START_DATE", "BENEFITS_END_DATE"),
-             "EC708": ("START_DATE", "STOCK_END_DATE")}
+    pairs = {"EC717": ("HIRE_DATE", "TERMINATION_DATE"),
+             "EC718": ("LEAVE_OF_ABSENCE_START_DATE", "LEAVE_OF_ABSENCE_RETURN_DATE"),
+             "EC725": ("START_DATE", "SALARY_END_DATE"),
+             "EC726": ("START_DATE", "BENEFITS_END_DATE"),
+             "EC727": ("START_DATE", "STOCK_END_DATE")}
     for rid, (start, end) in pairs.items():
         cols = {"EMPEMPLOYMENT.USERID": ["ok", "bad", "open"],
                 f"EMPEMPLOYMENT.{start}": [lo, hi, lo], f"EMPEMPLOYMENT.{end}": [hi, lo, None]}
         assert fire(rid, "EMPEMPLOYMENT", cols) == 1, rid
-    assert fire("EC701", "PERINFO", {"PERINFO.PERSON_ID": ["a", "b"],
+    assert fire("EC720", "PERINFO", {"PERINFO.PERSON_ID": ["a", "b"],
                                      "PERINFO.CERTIFICATE_START_DATE": [lo, hi],
                                      "PERINFO.CERTIFICATE_END_DATE": [hi, lo]}) == 1
 
 
 def test_shift_code_and_work_permit():
-    assert fire("EC700", "EMPEMPLOYMENT", {"EMPEMPLOYMENT.USERID": ["a", "b", "c"],
+    assert fire("EC719", "EMPEMPLOYMENT", {"EMPEMPLOYMENT.USERID": ["a", "b", "c"],
                                            "EMPEMPLOYMENT.IS_SHIFT_EMPLOYEE": ["true", "true", "false"],
                                            "EMPEMPLOYMENT.SHIFT_CODE": [None, "S1", None]}) == 1
     past, future = T.now() - pd.Timedelta(days=30), T.now() + pd.Timedelta(days=30)
-    assert fire("EC705", "EMPEMPLOYMENT", {"EMPEMPLOYMENT.USERID": ["a", "b", "c"],
+    assert fire("EC724", "EMPEMPLOYMENT", {"EMPEMPLOYMENT.USERID": ["a", "b", "c"],
                                            "EMPEMPLOYMENT.WORK_PERMIT_EXPIRY": [past, past, future],
                                            "EMPEMPLOYMENT.STATUS": ["A", "T", "A"]}) == 1
 
 
 def test_third_nationality_and_negative_amounts():
-    assert fire("EC702", "PERINFO", {"PERINFO.PERSON_ID": ["a", "b", "c"],
+    assert fire("EC721", "PERINFO", {"PERINFO.PERSON_ID": ["a", "b", "c"],
                                      "PERINFO.NATIONALITY": ["DEU", "DEU", "DEU"],
                                      "PERINFO.SECOND_NATIONALITY": ["FRA", "FRA", None],
                                      "PERINFO.THIRD_NATIONALITY": ["FRA", "ITA", None]}) == 1
-    for rid, f in (("EC703", "PENSIONABLE_SALARY"), ("EC704", "BENEFITS_RATE")):
+    for rid, f in (("EC722", "PENSIONABLE_SALARY"), ("EC723", "BENEFITS_RATE")):
         assert fire(rid, "COMPINFO", {"COMPINFO.USERID": ["a", "b"], f"COMPINFO.{f}": [-1.0, 100.0]}) == 1, rid

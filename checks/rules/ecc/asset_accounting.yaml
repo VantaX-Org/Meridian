@@ -1893,15 +1893,15 @@ rules:
   field: ANLC.KNAFA
   check_class: cross_field_check
   grain: ANLC
-  fail_when: '`ANLC.KNAFA`.fillna(0) < -0.01'
+  fail_when: '`ANLC.KNAFA`.fillna(0) > 0.01'
   severity: medium
   dimension: accuracy
-  message: Ordinary depreciation posted for the year is negative
+  message: Accumulated ordinary depreciation brought forward has the wrong sign
   why_it_matters: >-
-    The posted ordinary depreciation for the fiscal year (ANLC.KNAFA) is a cumulative posting and
-    should not go below zero within the year; a negative balance means a reversal posted more than
-    the original depreciation, usually from a duplicated write-up or a manual correction entered with
-    the wrong sign.
+    SAP stores accumulated ordinary depreciation brought forward (ANLC.KNAFA) as a negative amount.
+    A positive balance means more depreciation was reversed or written up than was ever posted,
+    usually from a duplicated write-up, a legacy transfer (AS91) entered with the wrong sign, or a
+    manual correction posted the wrong way.
   rule_authority: best_practice
   sap_impact: The depreciation expense account for the period shows a credit instead of a charge; the
     asset history sheet's depreciation column does not reconcile with the P&L.
@@ -1909,7 +1909,7 @@ rules:
     __other__: Review the depreciation postings in AW01N; correct the manual depreciation (ABMA) or
       write-up (ABZU) that caused the negative balance.
   record_fix_template: 'Asset {ANLC.ANLN1}-{ANLC.ANLN2} (company code {ANLC.BUKRS}, area {ANLC.AFABE},
-    year {ANLC.GJAHR}): posted depreciation is negative.'
+    year {ANLC.GJAHR}): accumulated depreciation brought forward is positive.'
 
 - id: AA258
   field: ANKB.NDJAR
@@ -1969,7 +1969,7 @@ rules:
       populated: true
   fail_when: >-
     (`ANLC.GJAHR`.str.extract(r'(\d+)', expand=False).fillna('0').astype('int64') > `ANLA.DEAKT`.dt.year) &
-    ((`ANLC.KNAFA`.fillna(0) + `ANLC.NAFAG`.fillna(0) + `ANLC.SAFAG`.fillna(0) + `ANLC.AAFAG`.fillna(0)).abs() > 0.01)
+    ((`ANLC.NAFAG`.fillna(0) + `ANLC.SAFAG`.fillna(0) + `ANLC.AAFAG`.fillna(0)).abs() > 0.01)
   severity: high
   dimension: accuracy
   message: Depreciation was posted for a fiscal year after the asset was deactivated

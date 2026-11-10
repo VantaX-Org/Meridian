@@ -53,6 +53,11 @@ class ExistsCheck(BaseCheck):
             target = pa.array([], pa.large_string())
         found = pc.is_in(_arrow_keys(df, cols), value_set=target).to_numpy(zero_copy_only=False)
         missing = pd.Series(~found, index=df.index)
+        if self.rule.get("require_key_overlap") and len(target) and not (populated & ~missing).any():
+            # no source key matches any target key at all: the keys mean different things in
+            # this system (MBEW.BWKEY is the company code under company-code valuation, not the
+            # plant), so the rule does not apply instead of failing every record
+            populated = pd.Series(False, index=df.index)
         if self.rule.get("negate"):
             missing = ~missing
         return Evaluation(populated, populated & missing,

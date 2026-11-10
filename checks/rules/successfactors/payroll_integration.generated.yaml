@@ -148,23 +148,6 @@ rules:
     __other__: PA0008.EIN01 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN01 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXR4e30433a
-  enabled: false
-  field: PA0008.LGA02
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Wage Type must exist in the check table T512Z.LGART
-  why_it_matters: LGA02 (Wage Type) is defined in the SAP Data Dictionary with check table T512Z.LGART on domain LGART. A
-    value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA02 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: PA0008.LGA02 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
-      entry.
-  record_fix_template: PA0008.LGA02 points at a check table T512Z.LGART entry that does not exist.
 - id: DXR2b6206b2
   enabled: false
   field: PA0008.EIN02
@@ -182,23 +165,6 @@ rules:
     __other__: PA0008.EIN02 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
       entry.
   record_fix_template: PA0008.EIN02 points at a check table T538A.ZEINH entry that does not exist.
-- id: DXRd76cfa02
-  enabled: false
-  field: PA0008.LGA03
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Wage Type must exist in the check table T512Z.LGART
-  why_it_matters: LGA03 (Wage Type) is defined in the SAP Data Dictionary with check table T512Z.LGART on domain LGART. A
-    value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA03 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: PA0008.LGA03 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
-      entry.
-  record_fix_template: PA0008.LGA03 points at a check table T512Z.LGART entry that does not exist.
 - id: DXRe2808f48
   enabled: false
   field: PA0008.EIN03

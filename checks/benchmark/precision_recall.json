@@ -2,14 +2,14 @@
  "method": "per-rule synthetic injection, truth derived from the rule's own YAML",
  "modules": {
   "business_partner": {
-   "benchmarked": 72,
-   "perfect": 72,
-   "rules": 158
+   "benchmarked": 71,
+   "perfect": 71,
+   "rules": 157
   },
   "employee_central": {
-   "benchmarked": 367,
-   "perfect": 367,
-   "rules": 718
+   "benchmarked": 377,
+   "perfect": 377,
+   "rules": 737
   },
   "material_master": {
    "benchmarked": 235,
@@ -15327,22 +15327,8 @@
    "true_positives": 10
   },
   {
-   "benchmarkable": false,
-   "check_class": "cross_field_check",
-   "module": "employee_central",
-   "reason": "character comparison POSITION.PARENT_POSITION/POSITION.CODE not modelled",
-   "rule_id": "EC696"
-  },
-  {
-   "benchmarkable": false,
-   "check_class": "cross_field_check",
-   "module": "employee_central",
-   "reason": "character comparison FODEPARTMENT.PARENT_DEPARTMENT/FODEPARTMENT.EXTERNAL_CODE not modelled",
-   "rule_id": "EC697"
-  },
-  {
    "benchmarkable": true,
-   "check_class": "cross_field_check",
+   "check_class": "null_check",
    "f1": 1.0,
    "false_negatives": 0,
    "false_positives": 0,
@@ -15351,7 +15337,7 @@
    "precision": 1.0,
    "recall": 1.0,
    "records": 40,
-   "rule_id": "EC698",
+   "rule_id": "EC696",
    "true_positives": 10
   },
   {
@@ -15365,19 +15351,33 @@
    "precision": 1.0,
    "recall": 1.0,
    "records": 40,
-   "rule_id": "EC699",
+   "rule_id": "EC697",
    "true_positives": 10
   },
   {
    "benchmarkable": false,
-   "check_class": "cross_field_check",
+   "check_class": "exists_check",
    "module": "employee_central",
-   "reason": "condition not modelled: `EMPEMPLOYMENT.IS_SHIFT_EMPLOYEE`.astype('string').str.lower",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC698"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "interval_check",
+   "module": "employee_central",
+   "reason": "interval_check needs reference data or a second dataset",
+   "rule_id": "EC699"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "uniqueness_check",
+   "module": "employee_central",
+   "reason": "the fields are the full table key, so a duplicate is a repeated row the extract collapses",
    "rule_id": "EC700"
   },
   {
    "benchmarkable": true,
-   "check_class": "cross_field_check",
+   "check_class": "null_check",
    "f1": 1.0,
    "false_negatives": 0,
    "false_positives": 0,
@@ -15390,15 +15390,8 @@
    "true_positives": 10
   },
   {
-   "benchmarkable": false,
-   "check_class": "cross_field_check",
-   "module": "employee_central",
-   "reason": "fail_when is not a conjunction of simple conditions",
-   "rule_id": "EC702"
-  },
-  {
    "benchmarkable": true,
-   "check_class": "cross_field_check",
+   "check_class": "null_check",
    "f1": 1.0,
    "false_negatives": 0,
    "false_positives": 0,
@@ -15407,12 +15400,19 @@
    "precision": 1.0,
    "recall": 1.0,
    "records": 40,
-   "rule_id": "EC703",
+   "rule_id": "EC702",
    "true_positives": 10
   },
   {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC703"
+  },
+  {
    "benchmarkable": true,
-   "check_class": "cross_field_check",
+   "check_class": "domain_value_check",
    "f1": 1.0,
    "false_negatives": 0,
    "false_positives": 0,
@@ -15425,36 +15425,22 @@
    "true_positives": 10
   },
   {
-   "benchmarkable": true,
-   "check_class": "cross_field_check",
-   "f1": 1.0,
-   "false_negatives": 0,
-   "false_positives": 0,
-   "injected": 10,
+   "benchmarkable": false,
+   "check_class": "uniqueness_check",
    "module": "employee_central",
-   "precision": 1.0,
-   "recall": 1.0,
-   "records": 40,
-   "rule_id": "EC705",
-   "true_positives": 10
+   "reason": "the fields are the full table key, so a duplicate is a repeated row the extract collapses",
+   "rule_id": "EC705"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC706"
   },
   {
    "benchmarkable": true,
-   "check_class": "cross_field_check",
-   "f1": 1.0,
-   "false_negatives": 0,
-   "false_positives": 0,
-   "injected": 10,
-   "module": "employee_central",
-   "precision": 1.0,
-   "recall": 1.0,
-   "records": 40,
-   "rule_id": "EC706",
-   "true_positives": 10
-  },
-  {
-   "benchmarkable": true,
-   "check_class": "cross_field_check",
+   "check_class": "null_check",
    "f1": 1.0,
    "false_negatives": 0,
    "false_positives": 0,
@@ -15468,7 +15454,7 @@
   },
   {
    "benchmarkable": true,
-   "check_class": "cross_field_check",
+   "check_class": "null_check",
    "f1": 1.0,
    "false_negatives": 0,
    "false_positives": 0,
@@ -15478,6 +15464,223 @@
    "recall": 1.0,
    "records": 40,
    "rule_id": "EC708",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC709"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "domain_value_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC710",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "uniqueness_check",
+   "module": "employee_central",
+   "reason": "the fields are the full table key, so a duplicate is a repeated row the extract collapses",
+   "rule_id": "EC711"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "employee_central",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "EC712"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC713",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC714",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "character comparison POSITION.PARENT_POSITION/POSITION.CODE not modelled",
+   "rule_id": "EC715"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "character comparison FODEPARTMENT.PARENT_DEPARTMENT/FODEPARTMENT.EXTERNAL_CODE not modelled",
+   "rule_id": "EC716"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC717",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC718",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "condition not modelled: `EMPEMPLOYMENT.IS_SHIFT_EMPLOYEE`.astype('string').str.lower",
+   "rule_id": "EC719"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC720",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "EC721"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC722",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC723",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC724",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC725",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC726",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC727",
    "true_positives": 10
   },
   {
@@ -21645,20 +21848,6 @@
    "recall": 1.0,
    "records": 40,
    "rule_id": "BP030",
-   "true_positives": 10
-  },
-  {
-   "benchmarkable": true,
-   "check_class": "null_check",
-   "f1": 1.0,
-   "false_negatives": 0,
-   "false_positives": 0,
-   "injected": 10,
-   "module": "business_partner",
-   "precision": 1.0,
-   "recall": 1.0,
-   "records": 40,
-   "rule_id": "BP031",
    "true_positives": 10
   },
   {
