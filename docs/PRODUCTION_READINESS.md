@@ -88,7 +88,7 @@ These are flagged but not blockers for a single pilot customer. They should be c
 - `JWT_SECRET` rotation requires ops-procedure, not built-in overlap
 - No WAF rules in front of customer API (customer responsibility today, but we should ship default rules)
 - VR baselines are currently the sign-in screen, not per-route (auth-in-CI to close)
-- No SBOM delivered with customer releases (we have the artifact, just need to attach to tags)
+- ~~No SBOM delivered with customer releases~~ Fixed: `build-and-deploy.yml` attaches CycloneDX SBOMs of the api and frontend images to every release tag
 - No GDPR DSAR endpoint (manual SQL today)
 - No built-in tenant-user admin UI in the customer API (HQ-side only)
 

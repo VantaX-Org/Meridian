@@ -3,9 +3,11 @@ replicaCount:
   worker: 3
   frontend: 1
 
+# Meridian images are pinned to a release tag (vX.Y.Z, pushed by build-and-deploy.yml), never :latest.
+# Upgrade with --set image.api=...:vX.Y.Z (and frontend, storage.image) to the same release.
 image:
-  api: ghcr.io/vantax-org/meridian-api:latest
-  frontend: ghcr.io/vantax-org/meridian-frontend:latest
+  api: ghcr.io/vantax-org/meridian-api:v0.0.638
+  frontend: ghcr.io/vantax-org/meridian-frontend:v0.0.638
   pullPolicy: IfNotPresent
 
 llm:
@@ -35,7 +37,7 @@ redis:
 
 storage:  # Garage object storage (docker/Dockerfile.garage)
   enabled: true
-  image: ghcr.io/vantax-org/meridian-garage:latest
+  image: ghcr.io/vantax-org/meridian-garage:v0.0.638
   storageSize: 100Gi
   capacity: 100G  # Garage node capacity (Garage size units)
 
