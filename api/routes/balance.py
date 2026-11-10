@@ -43,6 +43,35 @@ class ApplyIn(PlanIn):
     moves: list[MoveIn] = Field(min_length=1, max_length=500)
 
 
+class PlannedMove(BaseModel):
+    from_: str | None = Field(None, alias="from")  # None: unassigned work
+    to: str
+    module: str
+    count: int
+    issue_ids: list[str]
+
+
+class Person(BaseModel):
+    id: str
+    name: str
+
+
+class PlanOut(BaseModel):
+    """before and after are open issues per user id."""
+    by: str
+    before: dict[str, int]
+    after: dict[str, int]
+    moves: list[PlannedMove]
+    moved: int
+    people: list[Person]
+
+
+class ApplyOut(BaseModel):
+    moved: int
+    skipped: int
+    action_id: str | None = None  # None when nothing moved, so there is nothing to undo
+
+
 async def _inputs(db: AsyncSession, tenant: Tenant, body: PlanIn) -> tuple[list[dict], list[str], dict[str, str]]:
     t = str(tenant.id)
     await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": t})
@@ -72,7 +101,7 @@ async def _template_slices(db: AsyncSession, tenant: Tenant) -> tuple[dict, dict
     return {(r[0], r[1]): r[2] for r in rows}, kinds
 
 
-@router.post("/plan")
+@router.post("/plan", response_model=PlanOut)
 async def make_plan(body: PlanIn, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     items, people, names = await _inputs(db, tenant, body)
     if len(people) < 2:
@@ -84,7 +113,7 @@ async def make_plan(body: PlanIn, db: AsyncSession = Depends(get_db), tenant: Te
     return {**out, "people": [{"id": p, "name": names.get(p, p)} for p in people]}
 
 
-@router.post("/apply")
+@router.post("/apply", response_model=ApplyOut)
 async def apply_plan(body: ApplyIn, request: Request, db: AsyncSession = Depends(get_db),
                      tenant: Tenant = Depends(get_tenant)):
     from api.routes.work import _event

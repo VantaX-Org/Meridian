@@ -20,6 +20,7 @@ import re
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field, field_validator
@@ -81,6 +82,41 @@ class ShareIn(BaseModel):
 # own address and its check constraint (``route LIKE '/%'``) takes the route as the API was given it.
 
 
+class ShareLinkOut(BaseModel):
+    id: str
+    route: str
+    state: dict[str, Any]
+    role: str
+    label: str | None = None
+    created_by: str
+    created_by_label: str | None = None
+    created_at: datetime
+    expires_at: datetime
+    revoked_at: datetime | None = None
+    last_opened_at: datetime | None = None
+    open_count: int
+    state_word: str  # active | expired | revoked
+
+
+class ShareLinkCreated(ShareLinkOut):
+    token: str
+    url: str
+
+
+class ShareLinkList(BaseModel):
+    links: list[ShareLinkOut]
+
+
+class ShareLinkResolved(BaseModel):
+    id: str
+    route: str
+    state: dict[str, Any]
+    role: str
+    label: str | None = None
+    expires_at: datetime
+    shared_by: str | None = None
+
+
 def _out(r, now: datetime) -> dict:
     d = dict(r)
     return {**d, "state_word": link_state(d, now)}
@@ -91,7 +127,7 @@ async def _rls(db: AsyncSession, tenant: Tenant) -> str:
     return str(tenant.id)
 
 
-@router.post("", status_code=201, dependencies=[Depends(require_permission("export"))])
+@router.post("", status_code=201, response_model=ShareLinkCreated, dependencies=[Depends(require_permission("export"))])
 async def create_link(body: ShareIn, request: Request, db: AsyncSession = Depends(get_db),
                       tenant: Tenant = Depends(get_tenant)):
     me = current_user_id(request) or "local"
@@ -111,7 +147,7 @@ async def create_link(body: ShareIn, request: Request, db: AsyncSession = Depend
     return {**_out(row, datetime.now(timezone.utc)), "token": token, "url": f"/share/{token}"}
 
 
-@router.get("", dependencies=[Depends(require_permission("view"))])
+@router.get("", response_model=ShareLinkList, dependencies=[Depends(require_permission("view"))])
 async def list_links(request: Request, all: bool = Query(False), db: AsyncSession = Depends(get_db),
                      tenant: Tenant = Depends(get_tenant)):
     if all and not has_permission(await _get_user_role(tenant, db, request), "manage_users"):
@@ -145,7 +181,7 @@ async def revoke_link(link_id: uuid.UUID, request: Request, db: AsyncSession = D
     return Response(status_code=204)
 
 
-@router.get("/resolve/{token}", dependencies=[Depends(require_permission("view"))])
+@router.get("/resolve/{token}", response_model=ShareLinkResolved, dependencies=[Depends(require_permission("view"))])
 async def resolve_link(token: str, request: Request, db: AsyncSession = Depends(get_db),
                        tenant: Tenant = Depends(get_tenant)):
     if len(token) > 100:

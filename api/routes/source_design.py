@@ -8,9 +8,11 @@ standard dictionary so customer extensions and deviations are explicit.
 from __future__ import annotations
 
 import uuid
-from typing import Optional
+from datetime import datetime
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +21,101 @@ from api.services.rbac import require_permission
 from sap.ddic import dictionary_for_system
 
 router = APIRouter(prefix="/api/v1/systems", tags=["source-design"])
+
+
+class DiscoverOut(BaseModel):
+    task_id: str
+    status: str
+
+
+class SnapshotSummary(BaseModel):
+    id: str
+    status: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    tables: int | None = None
+    customer_tables: int | None = None
+    customer_fields: int | None = None
+    error: str | None = None
+
+
+class DesignSnapshot(SnapshotSummary):
+    source: str | None = None
+    system_info: Any = None
+    coverage_summary: dict[str, int] = {}
+
+
+class ConfigTable(BaseModel):
+    table: str
+    scope: str | None = None
+    rows: int | None = None
+    source: str | None = None
+    synced_at: datetime | None = None
+
+
+class DesignSummaryOut(BaseModel):
+    system_type: str | None = None
+    discovery_status: str | None = None
+    discovered_at: datetime | None = None
+    sap_release: str | None = None
+    sap_product: str | None = None
+    config_sync_status: str | None = None
+    config_synced_at: datetime | None = None
+    snapshot: DesignSnapshot | None = None
+    configuration: list[ConfigTable]
+
+
+class DesignTableItem(BaseModel):
+    table: str
+    description: str | None = None
+    category: str | None = None
+    delivery_class: str | None = None
+    customer_table: bool | None = None
+    field_count: int | None = None
+    customer_fields: int
+
+
+class DesignTablesOut(BaseModel):
+    total: int
+    items: list[DesignTableItem]
+
+
+class DesignTableOut(BaseModel):
+    table: str
+    description: str | None = None
+    category: str | None = None
+    delivery_class: str | None = None
+    customer_table: bool | None = None
+    in_sap_standard: bool
+    fields: list[dict[str, Any]]  # the stored DDIC field definition plus standard and deviation
+    standard_fields_missing: list[str]
+    foreign_keys: list[Any] = []
+
+
+class ConfigDeviation(BaseModel):
+    reference: str
+    live_count: int
+    standard_count: int
+    custom: list[str]
+    missing: list[str]
+
+
+class ConfigDeviationOut(BaseModel):
+    tables: list[ConfigDeviation]
+
+
+class DesignChange(BaseModel):
+    table: str
+    change: str
+    field: str | None = None
+    diff: dict[str, list[Any]] | None = None
+
+
+class DesignDiffOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    from_: str = Field(alias="from")
+    to: str
+    changes: list[DesignChange]
 
 
 async def _rls(db: AsyncSession, tenant: Tenant) -> None:
@@ -35,7 +132,7 @@ async def _snapshot(db: AsyncSession, system_id: uuid.UUID, snapshot_id: Optiona
     return row
 
 
-@router.post("/{system_id}/discover", dependencies=[Depends(require_permission("trigger_sync"))])
+@router.post("/{system_id}/discover", response_model=DiscoverOut, dependencies=[Depends(require_permission("trigger_sync"))])
 async def discover(system_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """(Re)discover the system's design: DDIC, customer objects, configuration."""
     await _rls(db, tenant)
@@ -47,7 +144,7 @@ async def discover(system_id: uuid.UUID, db: AsyncSession = Depends(get_db), ten
     return {"task_id": job.id, "status": "queued"}
 
 
-@router.get("/{system_id}/design", dependencies=[Depends(require_permission("view"))])
+@router.get("/{system_id}/design", response_model=DesignSummaryOut, dependencies=[Depends(require_permission("view"))])
 async def design_summary(system_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     snap = await _snapshot(db, system_id)
@@ -89,7 +186,7 @@ async def design_coverage(system_id: uuid.UUID, db: AsyncSession = Depends(get_d
     return {"snapshot_id": str(snap.id) if snap else None, "coverage": snap.coverage if snap else {}}
 
 
-@router.get("/{system_id}/design/tables", dependencies=[Depends(require_permission("view"))])
+@router.get("/{system_id}/design/tables", response_model=DesignTablesOut, dependencies=[Depends(require_permission("view"))])
 async def design_tables(
     system_id: uuid.UUID,
     search: Optional[str] = None,
@@ -122,7 +219,7 @@ async def design_tables(
     } for r in rows]}
 
 
-@router.get("/{system_id}/design/tables/{table}", dependencies=[Depends(require_permission("view"))])
+@router.get("/{system_id}/design/tables/{table}", response_model=DesignTableOut, dependencies=[Depends(require_permission("view"))])
 async def design_table(system_id: uuid.UUID, table: str, db: AsyncSession = Depends(get_db),
                        tenant: Tenant = Depends(get_tenant)):
     """Live definition of one table, field by field, compared with the SAP standard."""
@@ -170,7 +267,7 @@ async def design_config(system_id: uuid.UUID, table: str, limit: int = Query(500
             "source": r[3], "synced_at": r[4]}
 
 
-@router.get("/{system_id}/design/config-deviation", dependencies=[Depends(require_permission("view"))])
+@router.get("/{system_id}/design/config-deviation", response_model=ConfigDeviationOut, dependencies=[Depends(require_permission("view"))])
 async def design_config_deviation(system_id: uuid.UUID, db: AsyncSession = Depends(get_db),
                                   tenant: Tenant = Depends(get_tenant)):
     """Live check-table values against the SAP-standard lists the rules fall back to:
@@ -182,7 +279,7 @@ async def design_config_deviation(system_id: uuid.UUID, db: AsyncSession = Depen
     return {"tables": deviation([(r[0], r[1]) for r in rows])}
 
 
-@router.get("/{system_id}/design/snapshots", dependencies=[Depends(require_permission("view"))])
+@router.get("/{system_id}/design/snapshots", response_model=list[SnapshotSummary], dependencies=[Depends(require_permission("view"))])
 async def design_snapshots(system_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     rows = (await db.execute(text("SELECT id, status, started_at, completed_at, table_count, customer_table_count, "
@@ -192,7 +289,7 @@ async def design_snapshots(system_id: uuid.UUID, db: AsyncSession = Depends(get_
              "customer_tables": r[5], "customer_fields": r[6], "error": r[7]} for r in rows]
 
 
-@router.get("/{system_id}/design/diff", dependencies=[Depends(require_permission("view"))])
+@router.get("/{system_id}/design/diff", response_model=DesignDiffOut, dependencies=[Depends(require_permission("view"))])
 async def design_diff(system_id: uuid.UUID, from_snapshot: uuid.UUID, to_snapshot: uuid.UUID,
                       db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Design drift between two discovery snapshots: tables/fields added, removed, changed."""

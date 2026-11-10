@@ -41,6 +41,7 @@ Items the register marks fixed are not repeated here, including D-01 (Python sou
 | `npm audit` reported 3 high and 8 moderate findings | PRODUCTION_READINESS.md | Vendor engineering | Whether these are still current: To confirm (owner: vendor engineering). |
 | The eight go-live gates in PRODUCTION_READINESS.md were unchecked as of 24 April 2026 | PRODUCTION_READINESS.md | Vendor delivery lead | Current state: To confirm (owner: vendor delivery lead). Use the [cutover and go-live plan](../project/cutover-and-go-live-plan.md) for this deployment. |
 | `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` is on by default | `api/config.py`, debt row DR-3 | Vendor engineering | Stays on until the licence worker uses Ed25519 signing. A later release turns it off. No customer action. |
+| 202 frontend-called API routes and 63 others still have no response model, and file or stream exports are not counted | `scripts/route_schema_audit.py`, `tests/test_route_schema_ratchet.py` | Vendor engineering | Type more routes and lower `FRONTEND_UNTYPED_MAX` each time. Models for the contracts, governance and field mapping routes were checked against the handler code only, because their tests need Postgres. |
 
 ## Fixed in v0.0.634
 

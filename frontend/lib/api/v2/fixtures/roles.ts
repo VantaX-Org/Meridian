@@ -82,8 +82,8 @@ function build(): State {
     delegations: [{ id: "dl-1", from_user_id: "u-tm", to_user_id: ME, from_name: "T. Mokoena", to_name: "Demo user", starts_on: "2026-10-19", ends_on: "2026-10-30", reason: "Annual leave", state: "active" }],
     chain: [{ level: 1, after_minutes: 240, target: "team_lead", user_id: null, user_name: null }],
     contracts: [
-      { id: "ct-1", name: "Material master to S/4HANA", description: "What the migration load needs from Material master.", producer: "material_master", consumer: "S/4HANA migration", status: "active", version: 2, quality_contract: { module: "material_master", min_score: 85 }, freshness_contract: { max_age_days: 7 }, created_by: "u-rg", latest_compliant: false, last_checked: "2026-10-16T05:20:00Z" },
-      { id: "ct-2", name: "Vendor bank data for payments", description: null, producer: "accounts_payable", consumer: "Accounts payable", status: "draft", version: 1, quality_contract: { module: "accounts_payable", min_score: 90 }, freshness_contract: null, created_by: ME, latest_compliant: null, last_checked: null },
+      { id: "ct-1", tenant_id: "00000000-0000-4000-8000-0000000000a1", created_at: "2026-08-20T08:00:00Z", name: "Material master to S/4HANA", description: "What the migration load needs from Material master.", producer: "material_master", consumer: "S/4HANA migration", status: "active", version: 2, quality_contract: { module: "material_master", min_score: 85 }, freshness_contract: { max_age_days: 7 }, created_by: "u-rg", latest_compliant: false, last_checked: "2026-10-16T05:20:00Z" },
+      { id: "ct-2", tenant_id: "00000000-0000-4000-8000-0000000000a1", created_at: "2026-10-02T08:00:00Z", name: "Vendor bank data for payments", description: null, producer: "accounts_payable", consumer: "Accounts payable", status: "draft", version: 1, quality_contract: { module: "accounts_payable", min_score: 90 }, freshness_contract: null, created_by: ME, latest_compliant: null, last_checked: null },
     ],
     versions: { "ct-1": [{ version: 1, snapshot: { name: "Material master to S/4HANA", status: "active", quality_contract: { min_score: 80 } }, note: "Raised the bar for mock load 2", created_by: "R. Govender", created_at: "2026-09-01T08:00:00Z" }] },
     gates: {
@@ -349,7 +349,7 @@ export function rolesFixtureWrite(method: string, path: string, body: unknown, p
   }
   if (method === "POST" && path === "/contracts") {
     if (!str(b.name).trim()) throw new Refused(422, "Name the contract.");
-    const c: Contract = { id: nextId("ct"), name: str(b.name), description: (b.description as string) ?? null, producer: str(b.producer), consumer: str(b.consumer), status: "draft", version: 1, quality_contract: (b.quality_contract as Record<string, unknown>) ?? null, freshness_contract: null, created_by: ME, latest_compliant: null, last_checked: null };
+    const c: Contract = { id: nextId("ct"), tenant_id: "00000000-0000-4000-8000-0000000000a1", created_at: NOW, name: str(b.name), description: (b.description as string) ?? null, producer: str(b.producer), consumer: str(b.consumer), status: "draft", version: 1, quality_contract: (b.quality_contract as Record<string, unknown>) ?? null, freshness_contract: null, created_by: ME, latest_compliant: null, last_checked: null };
     s.contracts.push(c);
     return { id: c.id, status: "draft" };
   }

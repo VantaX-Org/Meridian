@@ -17,7 +17,7 @@ Read-only, permission view, RLS; every query carries the tenant id. Registered b
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -250,7 +250,35 @@ async def object_as_of(module: str, run: uuid.UUID = Query(..., description="the
 
 # ── Back after clean ──────────────────────────────────────────────────────────
 
-@router.get("/work/back-after-clean", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
+class BackWeekOut(BaseModel):
+    week: date = Field(description="Monday of the ISO week.")
+    back: int = Field(description="Records that failed again.")
+    fixed: int = Field(description="Records fixed.")
+
+
+class BackRuleOut(BaseModel):
+    check_id: str = Field(description="Rule id.")
+    back: int
+    fixed: int
+    back_recent: int = Field(description="Records back in the last 28 days.")
+    back_before: int = Field(description="Records back in the 28 days before that.")
+    message: Optional[str] = Field(None, description="Plain message of the rule.")
+
+
+class BackBatchOut(BaseModel):
+    id: str = Field(description="Fix batch id.")
+    created_at: datetime
+    fixed: int
+    back: int
+
+
+class BackAfterCleanOut(BaseModel):
+    weeks: list[BackWeekOut]
+    rules: list[BackRuleOut]
+    batches: list[BackBatchOut]
+
+
+@router.get("/work/back-after-clean", response_model=BackAfterCleanOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def back_after_clean(weeks: int = Query(12, ge=2, le=52), db: AsyncSession = Depends(get_db),
                            tenant: Tenant = Depends(get_tenant)):
     """Post-clean monitoring from the issue lifecycle: per ISO week the records that failed again (``reopened``) and
