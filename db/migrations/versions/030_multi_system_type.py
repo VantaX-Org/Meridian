@@ -48,6 +48,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # 029 needs host, client and sysnr on every system; a cloud system has none, so it cannot be kept.
+    cloud = op.get_bind().execute(sa.text(
+        "SELECT count(*) FROM sap_systems WHERE host IS NULL OR client IS NULL OR sysnr IS NULL")).scalar()
+    if cloud:
+        raise NotImplementedError(
+            f"Cannot downgrade below 030: {cloud} system(s) have no host, client or sysnr (cloud connections). "
+            "029 cannot hold them. Delete them or restore the pre-update dump instead.")
     op.drop_column("sap_systems", "config_sync_status")
     op.drop_column("sap_systems", "config_last_synced_at")
     op.drop_column("sap_systems", "consecutive_failures")

@@ -19,7 +19,7 @@ Only open or partly fixed items that a support team can meet are listed. Read th
 
 | ID | Status in the register | Effect on support | Owner role | Proposed handling |
 |---|---|---|---|---|
-| D-22 | Partly fixed | A rollback restores images, not the database schema. There are no down-migrations. If the newer release migrated the database, the rolled-back release may need the pre-update dump. | Vendor engineering | Always keep the pre-update dump that `update.sh` names. See [change-and-release-management.md](change-and-release-management.md). |
+| D-22 | Partly fixed | A rollback restores images, not the database schema. Down-migrations exist and are tested from head to base and back, on an empty database only. Some downgrades delete rows the newer release added, and the downgrade below revision 030 refuses while cloud connections exist (see [runbook 3](runbooks.md#3-update-with-updatesh-and-roll-back)). | Vendor engineering | Always keep the pre-update dump that `update.sh` names. See [change-and-release-management.md](change-and-release-management.md). |
 | D-24 | Open | Analysis throughput is measured on a synthetic run only. A large real analysis may take longer than expected. | Vendor engineering | Record the duration of the first real large analysis and send it to vendor engineering. |
 | D-27 | Partly fixed | Data-subject requests (Administration, Data subject requests) do not cover every place a personal value can sit. | Vendor engineering, with the customer privacy officer | For a subject request, check the register's list of uncovered places and handle those by hand. |
 | D-28 | Half closed | A frontend test can fail under CPU load. This affects CI only. | Vendor engineering | No support action. |

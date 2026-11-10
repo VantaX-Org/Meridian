@@ -80,4 +80,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    pass
+    """Data only, kept on downgrade: which persona grants pre-existed cannot be told apart, and persona keys stay valid users.role values for 087."""
