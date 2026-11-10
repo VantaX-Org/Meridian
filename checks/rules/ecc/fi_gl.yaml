@@ -344,9 +344,10 @@ rules:
     - A
     - D
     - K
+    - V
     severity: critical
     dimension: validity
-    message: Reconciliation account indicator must be blank (not a recon account), D (customer), K (vendor), or A (asset)
+    message: Reconciliation account indicator must be blank (not a recon account), D (customer), K (vendor), A (asset) or V (contract accounts receivable)
     why_it_matters: MITKZ identifies this account as a reconciliation account for a specific sub-ledger. Incorrect values prevent
       the sub-ledger from posting to the GL and break the AP/AR/AA reconciliation process. This is one of the most critical
       fields in the GL master as it links sub-ledger postings to the general ledger.
@@ -355,12 +356,13 @@ rules:
       does not match. Period-end reconciliation between sub-ledger and GL is broken.
     valid_values_with_labels:
       D: Customer reconciliation account (AR sub-ledger)
+      V: Contract accounts receivable reconciliation account (FI-CA)
       K: Vendor reconciliation account (AP sub-ledger)
       A: Asset reconciliation account (AA sub-ledger)
       ? ''
       : Not a reconciliation account
     fix_map:
-      __other__: 'Value ''{invalid_value}'' is not valid. Must be D (customer), K (vendor), A (asset), or empty. In ECC: correct
+      __other__: 'Value ''{invalid_value}'' is not valid. Must be D (customer), K (vendor), A (asset), V (contract accounts receivable) or empty. In ECC: correct
         via T-code FS00 > Control Data. In S/4HANA: use Fiori app F2735.'
     record_fix_template: 'GL Account {SKA1.SAKNR}: MITKZ is ''{actual_value}''. Set to D, K, A, or empty via FS00 / Fiori app
       F2735.'
@@ -1787,13 +1789,6 @@ rules:
         has no postings in the old currency).
     record_fix_template: 'P&L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: account currency {SKB1.WAERS}, company code
       currency {T001.WAERS}.'
-    auto_fix:  # medium: only allowed once the account has no postings in the old currency
-      when: T001.WAERS.notna()
-      steps:
-        - op: copy
-          from: T001.WAERS
-      confidence: medium
-
   - id: GL215
     field: SKB1.FSTAG
     fields:

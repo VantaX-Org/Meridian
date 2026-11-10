@@ -225,19 +225,6 @@ rules:
   fix_map:
     __blank__: Assign the shipping conditions in VL02N.
   record_fix_template: 'LIKP.VSBED: ''{actual_value}'' is blank. Assign the shipping conditions in VL02N.'
-- id: DL018
-  field: LIKP.FAKSK
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Billing block is blank
-  why_it_matters: FAKSK is expected to be explicitly set (blank meaning no block). An unset field in a
-    migrated record hides whether billing was blocked.
-  rule_authority: sap_hard_constraint
-  sap_impact: Billing blocks cannot be distinguished from unset values.
-  fix_map:
-    __blank__: Explicitly set or clear the billing block.
-  record_fix_template: 'LIKP.FAKSK: ''{actual_value}'' is blank. Explicitly set or clear the billing block.'
 - id: DL019
   field: LIKP.BTGEW
   check_class: cross_field_check
@@ -317,9 +304,10 @@ rules:
   allowed_values:
   - '7'
   - J
+  - T
   severity: medium
   dimension: validity
-  message: Delivery category must be an outbound delivery or delivery
+  message: Delivery category must be an outbound delivery, delivery or returns delivery
   why_it_matters: VBTYP identifies the document category. Only outbound delivery categories belong in
     a delivery load.
   rule_authority: sap_hard_constraint
@@ -780,7 +768,7 @@ rules:
   require_populated: true
   severity: high
   dimension: validity
-  message: Currency conversion rate is negative or zero
+  message: Currency conversion rate is negative
   why_it_matters: An exchange rate must be positive; zero or negative destroys every translated amount.
   rule_authority: sap_hard_constraint
   sap_impact: Local-currency revenue and receivables are wrong.
@@ -794,7 +782,7 @@ rules:
   require_populated: true
   severity: medium
   dimension: validity
-  message: Net value is negative on a standard invoice
+  message: Billing document net value is negative
   why_it_matters: NETWR is the net value of the billing document. On an invoice it is positive; a negative
     value means a credit was posted as an invoice.
   rule_authority: sap_hard_constraint
@@ -969,7 +957,7 @@ rules:
   require_populated: true
   severity: high
   dimension: validity
-  message: Billed quantity is negative on a standard invoice
+  message: Billed quantity is negative
   why_it_matters: FKIMG is the quantity billed; on an invoice it is positive, a negative value credits
     revenue.
   rule_authority: sap_hard_constraint
@@ -1083,7 +1071,7 @@ rules:
   require_populated: true
   severity: high
   dimension: validity
-  message: Exchange rate is negative or zero on a billing item
+  message: Exchange rate is negative on a billing item
   why_it_matters: KURSK translates the item values into local currency.
   rule_authority: sap_hard_constraint
   sap_impact: Local-currency item values are wrong.
@@ -1128,14 +1116,14 @@ rules:
   - X
   severity: low
   dimension: validity
-  message: Debit/credit indicator must be blank, S or H
-  why_it_matters: SHKZG marks the item as debit (S) or credit (H).
+  message: Returns indicator must be blank, X, A or B
+  why_it_matters: On a billing item SHKZG is the returns indicator. Blank is a normal item; X, A and B mark returns, so any other value leaves the item's sign undefined.
   rule_authority: sap_hard_constraint
   sap_impact: The item's sign in reporting is ambiguous.
   fix_map:
-    __other__: Set the indicator to S or H.
-  record_fix_template: 'VBRP.SHKZG: ''{actual_value}'' is not a permitted value. Set the indicator to
-    S or H.'
+    __other__: Correct the returns indicator on the billing item.
+  record_fix_template: 'VBRP.SHKZG: ''{actual_value}'' is not a permitted value. Correct the returns
+    indicator.'
 - id: DL084
   field: LIPS.MATNR
   check_class: exists_check

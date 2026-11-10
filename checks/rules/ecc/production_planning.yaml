@@ -1376,7 +1376,8 @@ rules:
     STLTY:
     - M
     LKENZ:
-      blank: true
+    - X
+  negate: true
   severity: high
   dimension: lifecycle
   message: Material is assigned to a BOM alternative that is flagged for deletion

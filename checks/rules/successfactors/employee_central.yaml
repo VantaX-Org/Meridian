@@ -12859,3 +12859,331 @@ rules:
   record_fix_template: 'FOPayRange {FOPAYRANGE.EXTERNAL_CODE}: MID_POINT is above MAXIMUM_PAY.'
   fail_when: '`FOPAYRANGE.MID_POINT` > `FOPAYRANGE.MAXIMUM_PAY`'
   require_populated: true
+- id: EC694
+  field: PER_GLOBAL_INFO.PERSON_ID
+  check_class: null_check
+  grain: PER_GLOBAL_INFO
+  severity: critical
+  dimension: completeness
+  message: Country-specific personal information has no person
+  why_it_matters: Global information belongs to one person; a record without a Person ID cannot be loaded or attached.
+  rule_authority: sap_hard_constraint
+  sap_impact: The import rejects the row; the country fields of the person stay empty.
+  fix_map:
+    __blank__: Add the Person ID of the person the record belongs to, or delete the orphan record.
+  record_fix_template: 'Global information record ({PER_GLOBAL_INFO.COUNTRY}, {PER_GLOBAL_INFO.START_DATE}): Person
+    ID is blank.'
+- id: EC695
+  field: PER_GLOBAL_INFO.COUNTRY
+  check_class: null_check
+  grain: PER_GLOBAL_INFO
+  severity: high
+  dimension: completeness
+  message: Country-specific personal information has no country
+  why_it_matters: The country selects which country-specific fields the record carries; without it the fields cannot
+    be validated or loaded.
+  rule_authority: sap_hard_constraint
+  sap_impact: The Global Information import cannot route the row to a country entity.
+  fix_map:
+    __blank__: Set the country the record belongs to.
+  record_fix_template: 'Person {PER_GLOBAL_INFO.PERSON_ID}: global information record has no country.'
+- id: EC696
+  field: PER_GLOBAL_INFO.START_DATE
+  check_class: null_check
+  grain: PER_GLOBAL_INFO
+  severity: high
+  dimension: completeness
+  message: Country-specific personal information has no effective start date
+  why_it_matters: Global information is effective dated; a record without a start date has no place in the person's
+    history.
+  rule_authority: sap_hard_constraint
+  sap_impact: The import rejects the row.
+  fix_map:
+    __blank__: Set the effective start date, normally the hire date or the date the country data changed.
+  record_fix_template: 'Person {PER_GLOBAL_INFO.PERSON_ID} ({PER_GLOBAL_INFO.COUNTRY}): global information has no
+    start date.'
+- id: EC697
+  field: PER_GLOBAL_INFO.END_DATE
+  check_class: cross_field_check
+  fail_when: '`PER_GLOBAL_INFO.START_DATE` > `PER_GLOBAL_INFO.END_DATE`'
+  severity: high
+  dimension: consistency
+  message: Global information ends before it starts
+  why_it_matters: An effective-dated record whose end date is before its start date is never in effect.
+  rule_authority: sap_hard_constraint
+  sap_impact: The import rejects the record or the person's country data has a gap.
+  fix_map:
+    __other__: Correct the start or end date so the record covers the period it was meant to.
+  record_fix_template: 'Person {PER_GLOBAL_INFO.PERSON_ID} ({PER_GLOBAL_INFO.COUNTRY}): starts {PER_GLOBAL_INFO.START_DATE}
+    but ends {PER_GLOBAL_INFO.END_DATE}.'
+- id: EC698
+  field: PER_GLOBAL_INFO.PERSON_ID
+  check_class: exists_check
+  target_table: PERINFO
+  target_fields:
+  - PERSON_ID
+  severity: high
+  dimension: consistency
+  message: Global information belongs to a person who has no personal information
+  why_it_matters: Country-specific data extends the person's personal information; without the parent record it
+    is orphaned.
+  rule_authority: sap_hard_constraint
+  sap_impact: The Global Information import fails for the row because the person does not exist.
+  fix_map:
+    __other__: Load the person's personal information first, or correct the Person ID.
+  record_fix_template: 'Person {PER_GLOBAL_INFO.PERSON_ID}: global information ({PER_GLOBAL_INFO.COUNTRY}) has no
+    personal information record.'
+- id: EC699
+  field: PER_GLOBAL_INFO.START_DATE
+  check_class: interval_check
+  group_by:
+  - PER_GLOBAL_INFO.PERSON_ID
+  - PER_GLOBAL_INFO.COUNTRY
+  start: PER_GLOBAL_INFO.START_DATE
+  end: PER_GLOBAL_INFO.END_DATE
+  severity: medium
+  dimension: consistency
+  message: Two global information records of the same person and country overlap
+  why_it_matters: Only one version of a person's country data can be in effect on a day. Records without an end
+    date are not compared.
+  rule_authority: sap_hard_constraint
+  sap_impact: The import rejects the later record or the wrong version is shown.
+  fix_map:
+    __other__: End the earlier record the day before the later one starts.
+  record_fix_template: 'Person {PER_GLOBAL_INFO.PERSON_ID} ({PER_GLOBAL_INFO.COUNTRY}): record from {PER_GLOBAL_INFO.START_DATE}
+    overlaps another.'
+- id: EC700
+  field: PER_GLOBAL_INFO.PERSON_ID
+  check_class: uniqueness_check
+  grain: PER_GLOBAL_INFO
+  fields:
+  - PER_GLOBAL_INFO.PERSON_ID
+  - PER_GLOBAL_INFO.COUNTRY
+  - PER_GLOBAL_INFO.START_DATE
+  severity: high
+  dimension: uniqueness
+  message: Global information record is duplicated for the same person, country and start date
+  why_it_matters: The key of global information is person, country and start date; two rows with one key cannot
+    both be loaded.
+  rule_authority: sap_hard_constraint
+  sap_impact: The import loads one row and rejects or overwrites the other.
+  fix_map:
+    __other__: Keep one record per person, country and start date; merge the field values.
+  record_fix_template: 'Person {PER_GLOBAL_INFO.PERSON_ID} ({PER_GLOBAL_INFO.COUNTRY}, {PER_GLOBAL_INFO.START_DATE}):
+    duplicate global information record.'
+- id: EC701
+  field: FO_LEGAL_ENTITY_LOCAL.COUNTRY
+  check_class: null_check
+  grain: FO_LEGAL_ENTITY_LOCAL
+  severity: high
+  dimension: completeness
+  message: Country-specific legal entity record has no country
+  why_it_matters: The country selects the local legal entity entity the fields belong to.
+  rule_authority: sap_hard_constraint
+  sap_impact: The local record cannot be loaded into a country entity.
+  fix_map:
+    __blank__: Set the country of the local legal entity record.
+  record_fix_template: 'Legal entity {FO_LEGAL_ENTITY_LOCAL.EXTERNAL_CODE}: local record has no country.'
+- id: EC702
+  field: FO_LEGAL_ENTITY_LOCAL.START_DATE
+  check_class: null_check
+  grain: FO_LEGAL_ENTITY_LOCAL
+  severity: medium
+  dimension: completeness
+  message: Country-specific legal entity record has no effective start date
+  why_it_matters: Local foundation data is effective dated; without a start date the record has no validity.
+  rule_authority: sap_hard_constraint
+  sap_impact: The foundation object import rejects the row.
+  fix_map:
+    __blank__: Set the start date, normally the start date of the legal entity.
+  record_fix_template: 'Legal entity {FO_LEGAL_ENTITY_LOCAL.EXTERNAL_CODE} ({FO_LEGAL_ENTITY_LOCAL.COUNTRY}): local
+    record has no start date.'
+- id: EC703
+  field: FO_LEGAL_ENTITY_LOCAL.EXTERNAL_CODE
+  check_class: exists_check
+  target_table: FOCOMPANY
+  target_fields:
+  - EXTERNAL_CODE
+  severity: high
+  dimension: consistency
+  message: Local legal entity record has no parent legal entity
+  why_it_matters: Country-specific fields extend a legal entity; without the parent object they are orphaned.
+  rule_authority: sap_hard_constraint
+  sap_impact: The local import fails because the legal entity does not exist.
+  fix_map:
+    __other__: Load the legal entity first, or correct the code on the local record.
+  record_fix_template: 'Legal entity {FO_LEGAL_ENTITY_LOCAL.EXTERNAL_CODE} ({FO_LEGAL_ENTITY_LOCAL.COUNTRY}): no
+    legal entity with this code.'
+- id: EC704
+  field: FO_LEGAL_ENTITY_LOCAL.STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - A
+  - I
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  severity: medium
+  dimension: accuracy
+  message: Local legal entity status is not A (active) or I (inactive)
+  why_it_matters: Foundation objects only accept the status codes A and I.
+  rule_authority: sap_hard_constraint
+  sap_impact: The import rejects the row.
+  fix_map:
+    __blank__: Set the status to A or I.
+    __other__: Status '{invalid_value}' is not valid; use A or I.
+  record_fix_template: 'Legal entity {FO_LEGAL_ENTITY_LOCAL.EXTERNAL_CODE} ({FO_LEGAL_ENTITY_LOCAL.COUNTRY}): status
+    ''{actual_value}'' is invalid.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: EC705
+  field: FO_LEGAL_ENTITY_LOCAL.EXTERNAL_CODE
+  check_class: uniqueness_check
+  grain: FO_LEGAL_ENTITY_LOCAL
+  fields:
+  - FO_LEGAL_ENTITY_LOCAL.EXTERNAL_CODE
+  - FO_LEGAL_ENTITY_LOCAL.COUNTRY
+  - FO_LEGAL_ENTITY_LOCAL.START_DATE
+  severity: high
+  dimension: uniqueness
+  message: Local legal entity record is duplicated for the same code, country and start date
+  why_it_matters: Code, country and start date identify one local record; duplicates cannot both be loaded.
+  rule_authority: sap_hard_constraint
+  sap_impact: The import loads one row and rejects or overwrites the other.
+  fix_map:
+    __other__: Keep one local record per code, country and start date.
+  record_fix_template: 'Legal entity {FO_LEGAL_ENTITY_LOCAL.EXTERNAL_CODE} ({FO_LEGAL_ENTITY_LOCAL.COUNTRY}, {FO_LEGAL_ENTITY_LOCAL.START_DATE}):
+    duplicate local record.'
+- id: EC706
+  field: FO_LEGAL_ENTITY_LOCAL.EXTERNAL_CODE
+  check_class: exists_check
+  target_table: FOCOMPANY
+  target_fields:
+  - EXTERNAL_CODE
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    FO_LEGAL_ENTITY_LOCAL.STATUS:
+    - A
+  severity: medium
+  dimension: consistency
+  message: Active local legal entity record belongs to an inactive legal entity
+  why_it_matters: Local fields of a retired legal entity stay active and are offered on new records.
+  rule_authority: best_practice
+  sap_impact: Users can still select country data of a retired legal entity.
+  fix_map:
+    __other__: Inactivate the local record, or reactivate the legal entity if it was retired by mistake.
+  record_fix_template: 'Legal entity {FO_LEGAL_ENTITY_LOCAL.EXTERNAL_CODE} ({FO_LEGAL_ENTITY_LOCAL.COUNTRY}): local
+    record active, parent not active.'
+- id: EC707
+  field: FO_JOB_CLASS_LOCAL.COUNTRY
+  check_class: null_check
+  grain: FO_JOB_CLASS_LOCAL
+  severity: high
+  dimension: completeness
+  message: Country-specific job classification record has no country
+  why_it_matters: The country selects the local job classification entity the fields belong to.
+  rule_authority: sap_hard_constraint
+  sap_impact: The local record cannot be loaded into a country entity.
+  fix_map:
+    __blank__: Set the country of the local job classification record.
+  record_fix_template: 'Job classification {FO_JOB_CLASS_LOCAL.EXTERNAL_CODE}: local record has no country.'
+- id: EC708
+  field: FO_JOB_CLASS_LOCAL.START_DATE
+  check_class: null_check
+  grain: FO_JOB_CLASS_LOCAL
+  severity: medium
+  dimension: completeness
+  message: Country-specific job classification record has no effective start date
+  why_it_matters: Local foundation data is effective dated; without a start date the record has no validity.
+  rule_authority: sap_hard_constraint
+  sap_impact: The foundation object import rejects the row.
+  fix_map:
+    __blank__: Set the start date, normally the start date of the job classification.
+  record_fix_template: 'Job classification {FO_JOB_CLASS_LOCAL.EXTERNAL_CODE} ({FO_JOB_CLASS_LOCAL.COUNTRY}): local
+    record has no start date.'
+- id: EC709
+  field: FO_JOB_CLASS_LOCAL.EXTERNAL_CODE
+  check_class: exists_check
+  target_table: FOJOBCODE
+  target_fields:
+  - EXTERNAL_CODE
+  severity: high
+  dimension: consistency
+  message: Local job classification record has no parent job classification
+  why_it_matters: Country-specific fields extend a job classification; without the parent object they are orphaned.
+  rule_authority: sap_hard_constraint
+  sap_impact: The local import fails because the job classification does not exist.
+  fix_map:
+    __other__: Load the job classification first, or correct the code on the local record.
+  record_fix_template: 'Job classification {FO_JOB_CLASS_LOCAL.EXTERNAL_CODE} ({FO_JOB_CLASS_LOCAL.COUNTRY}): no
+    job classification with this code.'
+- id: EC710
+  field: FO_JOB_CLASS_LOCAL.STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - A
+  - I
+  valid_values_with_labels:
+    A: Active
+    I: Inactive
+  severity: medium
+  dimension: accuracy
+  message: Local job classification status is not A (active) or I (inactive)
+  why_it_matters: Foundation objects only accept the status codes A and I.
+  rule_authority: sap_hard_constraint
+  sap_impact: The import rejects the row.
+  fix_map:
+    __blank__: Set the status to A or I.
+    __other__: Status '{invalid_value}' is not valid; use A or I.
+  record_fix_template: 'Job classification {FO_JOB_CLASS_LOCAL.EXTERNAL_CODE} ({FO_JOB_CLASS_LOCAL.COUNTRY}): status
+    ''{actual_value}'' is invalid.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: EC711
+  field: FO_JOB_CLASS_LOCAL.EXTERNAL_CODE
+  check_class: uniqueness_check
+  grain: FO_JOB_CLASS_LOCAL
+  fields:
+  - FO_JOB_CLASS_LOCAL.EXTERNAL_CODE
+  - FO_JOB_CLASS_LOCAL.COUNTRY
+  - FO_JOB_CLASS_LOCAL.START_DATE
+  severity: high
+  dimension: uniqueness
+  message: Local job classification record is duplicated for the same code, country and start date
+  why_it_matters: Code, country and start date identify one local record; duplicates cannot both be loaded.
+  rule_authority: sap_hard_constraint
+  sap_impact: The import loads one row and rejects or overwrites the other.
+  fix_map:
+    __other__: Keep one local record per code, country and start date.
+  record_fix_template: 'Job classification {FO_JOB_CLASS_LOCAL.EXTERNAL_CODE} ({FO_JOB_CLASS_LOCAL.COUNTRY}, {FO_JOB_CLASS_LOCAL.START_DATE}):
+    duplicate local record.'
+- id: EC712
+  field: FO_JOB_CLASS_LOCAL.EXTERNAL_CODE
+  check_class: exists_check
+  target_table: FOJOBCODE
+  target_fields:
+  - EXTERNAL_CODE
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    FO_JOB_CLASS_LOCAL.STATUS:
+    - A
+  severity: medium
+  dimension: consistency
+  message: Active local job classification record belongs to an inactive job classification
+  why_it_matters: Local fields of a retired job classification stay active and are offered on new records.
+  rule_authority: best_practice
+  sap_impact: Users can still select country data of a retired job classification.
+  fix_map:
+    __other__: Inactivate the local record, or reactivate the job classification if it was retired by mistake.
+  record_fix_template: 'Job classification {FO_JOB_CLASS_LOCAL.EXTERNAL_CODE} ({FO_JOB_CLASS_LOCAL.COUNTRY}): local
+    record active, parent not active.'

@@ -22,6 +22,7 @@ Decisions found in the repository and git history. Each date is the commit date 
 | DL-15 | 2026-11-09 | The customer licence keeps 12 modules: material master, customer master with business partner, and the ten SuccessFactors modules. | The customer licences material master, SuccessFactors and customer master only. Business partner stays because a customer is a business partner in S/4HANA. | Licence server change, 9 November 2026 |
 | DL-16 | 2026-11-09 | Move the engine image pin to cortex0 1.8.0. | Product owner decision. | Closes DO-01 |
 | DL-17 | 2026-11-10 | Give each object a cleaning workbook in Excel, with every failing record and field, the current and suggested value, the rule, why it failed and the fix steps. | The data owners clean in Excel and need the full list, not only a summary. Suggested values come only from the run, the rule's automatic fix or its value map. | Release v0.0.636 |
+| DL-18 | 2026-11-10 | Let the migration workbook's columns drive the extraction for every module. Each column is resolved against the live schema ($metadata or DDIC), added to the extract and dictionary, and columns the system lacks are reported as not in the system. | The SuccessFactors workbook export filled only external codes because column spellings, country-specific sheets and kebab-case ids did not match the extract. Product owner decision. | v0.0.639 |
 
 ## Decisions still open
 

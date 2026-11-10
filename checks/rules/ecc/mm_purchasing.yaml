@@ -412,9 +412,9 @@ rules:
   - S
   severity: medium
   dimension: validity
-  message: PO header deletion indicator must be blank or X
-  why_it_matters: LOEKZ (deletion indicator) at the header level marks the entire PO for deletion. It must be either blank
-    (active) or X (marked for deletion). Any other value is invalid and indicates data corruption.
+  message: PO header deletion indicator must be blank, X, L or S
+  why_it_matters: LOEKZ (deletion indicator) at the header level marks the entire PO for deletion. It must be blank
+    (active), X (marked for deletion), L (deleted) or S (blocked). Any other value is invalid and indicates data corruption.
   rule_authority: sap_hard_constraint
   sap_impact: Invalid deletion flag causes unpredictable behaviour in ME2M reports and PO processing. The PO may be neither
     active nor properly deleted.

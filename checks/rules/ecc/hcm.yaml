@@ -720,11 +720,11 @@ rules:
   field: PA0105.USRID
   check_class: cross_field_check
   grain: PA0001
-  fail_when: (`PA0000.STAT2` == '0') & `PA0105.USRID`.notna()
+  fail_when: (`PA0000.STAT2` == '0') & `PA0105.USRID`.notna() & ~((`USR02.UFLAG` == 0) & (`USR02.GLTGB`.isna() | (`USR02.GLTGB` >= @today)))
   applies_when: *id003
   severity: high
   dimension: consistency
-  message: Withdrawn employee still carries a system user assignment (infotype 0105 subtype 0001)
+  message: Withdrawn employee still assigned a locked or expired SAP user (infotype 0105 subtype 0001)
   why_it_matters: The subtype 0001 record links the personnel number to its SAP user. Left in place after exit it keeps the user resolvable
     by workflow, ESS and structural authorisations.
   rule_authority: best_practice
