@@ -374,11 +374,12 @@ rules:
   severity: critical
   dimension: uniqueness
   message: Supplier ID collides with another once case and punctuation are ignored
-  why_it_matters: The ERP vendor number comparison is not case- or punctuation-sensitive; two IDs that differ only in
-    case or formatting (e.g. 'S-100' and 's100') resolve to the same ERP vendor.
-  rule_authority: sap_hard_constraint
-  sap_impact: Two Ariba suppliers replicate to a single ERP vendor; spend and payments for one are attributed to the
-    other.
+  why_it_matters: The ERP vendor number (LIFNR) is stored in upper case, so IDs that differ only in case collapse to
+    one vendor on replication. IDs that differ only in punctuation (e.g. 'S-100' and 'S100') stay distinct in the ERP
+    but are almost always the same supplier keyed twice.
+  rule_authority: best_practice
+  sap_impact: Case variants replicate to a single ERP vendor; punctuation variants create a duplicate vendor. Either
+    way, spend and payments for one supplier are split or attributed to the other.
   fix_map:
     __other__: Re-extract; if the collision persists, correct one of the supplier IDs in Supplier Management.
   record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: ID collides with another once normalised.'

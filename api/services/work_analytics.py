@@ -160,7 +160,7 @@ async def burndown(db: AsyncSession, tenant_id: Any, version_id: str | None, mod
     rows = (await db.execute(text(_FLOWS_SQL), _p(tenant_id, module, before=start - timedelta(days=1)))).fetchall()
     flows = {r.day: (int(r.opened or 0), int(r.closed or 0)) for r in rows}
     open_ = sum(o - c for d, (o, c) in flows.items() if d < start)
-    days = []
+    days: list[dict[str, Any]] = []
     for i in range(BURNDOWN_DAYS):
         d = start + timedelta(days=i)
         o, c = flows.get(d, (0, 0))
@@ -211,7 +211,7 @@ _TTF_SQL = f"""
 async def time_to_fix(db: AsyncSession, tenant_id: Any, module: str | None, days: int) -> dict:
     rows = (await db.execute(text(_TTF_SQL), _p(tenant_id, module, days=days))).fetchall()
     stat = lambda r: {"fixed": int(r.fixed), "median_days": _r1(r.median), "p90_days": _r1(r.p90)}
-    overall = {"fixed": 0, "median_days": None, "p90_days": None}
+    overall: dict[str, Any] = {"fixed": 0, "median_days": None, "p90_days": None}
     objects, checks, sev = [], [], []
     for r in rows:
         if r.g_mod and r.g_chk and r.g_sev:
@@ -438,7 +438,7 @@ async def proposal_quality(db: AsyncSession, tenant_id: Any, module: str | None)
     out = []
     for s in (*SOURCES, *sorted(k for k in found if k not in SOURCES)):
         r = found.get(s)
-        row = {k: int(getattr(r, k) or 0) if r else 0 for k in ("proposed", "approved", "exported", "fixed", "still_failing")}
+        row: dict[str, Any] = {k: int(getattr(r, k) or 0) if r else 0 for k in ("proposed", "approved", "exported", "fixed", "still_failing")}
         checked = row["fixed"] + row["still_failing"]
         row |= {"source": s,
                 "approval_rate_pct": round(100.0 * row["approved"] / row["proposed"], 1) if row["proposed"] else None,
@@ -502,7 +502,7 @@ async def run_change(db: AsyncSession, tenant_id: Any, version_id: str | None, m
                      baseline_id: str | None = None) -> dict:
     """New, fixed and still failing records per object, and the rules that flipped, between a run and
     ``baseline_id`` (a pinned baseline) or, when none is given, the run before it in its lineage."""
-    empty = {"version_id": version_id, "previous": None, "objects": [],
+    empty: dict[str, Any] = {"version_id": version_id, "previous": None, "objects": [],
              "totals": {"new": 0, "fixed": 0, "still_failing": 0}, "not_comparable_checks": 0}
     if not version_id:
         return empty

@@ -349,7 +349,7 @@ def _sorted_fails(findings: list[dict]) -> list[dict]:
     """Failing checks, worst first: severity, then affected count, then id.
     Shared by analysis/executive (current run) and comparison (later run)."""
     return sorted((_check_row(f) for f in findings if failing(f)),
-                  key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))
+                  key=lambda f: (_SEV_RANK.get(f.get("severity") or "", 9), -f["affected"], f["check_id"]))
 
 
 def _quality_chart(dims: dict[str, Optional[float]]) -> Optional[Markup]:
@@ -623,6 +623,11 @@ def module_deltas(summary1: dict, summary2: dict) -> dict:
     return delta
 
 
+def _diff(before: Optional[float], after: Optional[float]) -> Optional[float]:
+    """Change between two scores, rounded to one decimal; ``None`` when either is missing."""
+    return None if before is None or after is None else round(after - before, 1)
+
+
 def check_changes(findings1: list[dict], findings2: list[dict]) -> dict:
     """Classify each check by its state in both runs. Only checks that ran
     cleanly in both runs are compared; the rest are listed as not comparable."""
@@ -631,7 +636,7 @@ def check_changes(findings1: list[dict], findings2: list[dict]) -> dict:
     out: dict[str, list[dict]] = {"new": [], "resolved": [], "persisting": [], "not_comparable": []}
     for cid in sorted(set(a) | set(b)):
         f1, f2 = a.get(cid), b.get(cid)
-        ref = f2 or f1
+        ref = f2 or a[cid]
         row = {"check_id": cid, "module": ref["module"], "severity": ref.get("severity"),
                "message": _rule(cid).get("message") or "",
                "v1": int(f1["affected_count"] or 0) if f1 else None,
@@ -659,8 +664,8 @@ def comparison_context(v1: dict, v2: dict, findings1: list[dict], findings2: lis
     s1, s2 = v1.get("dqs_summary") or {}, v2.get("dqs_summary") or {}
     o1, o2 = composite_dqs([s1], scoring=scoring), composite_dqs([s2], scoring=scoring)
     d1, d2 = dimension_scores(s1), dimension_scores(s2)
-    dims = [{"name": d, "v1": d1[d], "v2": d2[d],
-             "change": None if d1[d] is None or d2[d] is None else round(d2[d] - d1[d], 1)} for d in DIMENSIONS]
+    dims: list[dict[str, Any]] = [{"name": d, "v1": d1[d], "v2": d2[d], "change": _diff(d1[d], d2[d])}
+                                  for d in DIMENSIONS]
     deltas = module_deltas(s1, s2)
     modules = [{"name": m, "v1": (s1.get(m) or {}).get("composite_score"),
                 "v2": (s2.get(m) or {}).get("composite_score"),
@@ -780,8 +785,7 @@ def board_context(data: dict, *, tenant_name: str, scoring: dict, ai_summary: Op
     top_impact = max([c["impact"] for c in data["clusters"][:5]] + [1])
 
     dim_rows = [{"name": d, "score": dims[d], "previous": prev_dims.get(d),
-                 "delta": None if not prev or dims[d] is None or prev_dims.get(d) is None
-                 else round(dims[d] - prev_dims[d], 1)} for d in DIMENSIONS]
+                 "delta": _diff(prev_dims.get(d), dims[d]) if prev else None} for d in DIMENSIONS]
     hbars_delta = None
     if prev and deltas:
         moved = sorted(((fmt_module(m), d["dqs_change"]) for m, d in deltas.items()),
@@ -899,7 +903,7 @@ def object_context(module: str, module_dqs: dict, findings: list[dict], samples:
     ran = [f for f in findings if not errored(f)]
     errs = [_check_row(f) for f in findings if errored(f)]
     rules = sorted((_check_row(f) for f in ran),
-                   key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))
+                   key=lambda f: (_SEV_RANK.get(f.get("severity") or "", 9), -f["affected"], f["check_id"]))
     fails = [r for r in rules if r["affected"] > 0]
     score = (module_dqs or {}).get("composite_score")
     readiness = compute_readiness_status(score, critical_over_tolerance(module_dqs or {}), overall.get("thresholds")) \
@@ -1136,7 +1140,7 @@ def load_object(s: Session, tid: str, vid: str, module: str) -> Optional[dict]:
                     v=str(vid), t=tid, m=module)
     top3 = [r["check_id"] for r in
             sorted((_check_row(f) for f in findings if failing(f)),
-                   key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))[:3]]
+                   key=lambda f: (_SEV_RANK.get(f.get("severity") or "", 9), -f["affected"], f["check_id"]))[:3]]
     # Per-rule cap (not a single global LIMIT) so a rule with many failures can't crowd the
     # other top-3 rules out of the sample: each of the top 3 check_ids gets its own 9 rows.
     samples = _all(s, "SELECT check_id, record_key, field_values FROM ("
@@ -1201,9 +1205,19 @@ def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Opti
     tenant_name = s.execute(text("SELECT name FROM tenants WHERE id = :t"), {"t": tid}).scalar() or ""
     kw: dict[str, Any] = {"tenant_name": tenant_name}
     scoring = load_scoring(s, tid)
+    if kind == "rules":
+        return render("rule_catalogue.html", rules_context(load_rules(s, tid, module), module=module, **kw))
+    if kind == "dictionary":
+        return render("data_dictionary.html", dictionary_context(module=module, **kw))
+    if kind == "cleaning":
+        d = load_cleaning(s, tid, vid)
+        return render("cleaning_report.html", cleaning_context(d["data"], version=d["version"], scoring=scoring,
+                                                               **kw)) if d else None
+    if not vid:
+        return None  # every other report is of one run; load_version(None) would query id = 'None'
     if kind == "analysis":
         d = load_analysis(s, tid, vid)
-        return d and render("analysis_report.html", analysis_context(
+        return None if not d else render("analysis_report.html", analysis_context(
             d["version"], d["findings"], system=d["system"], scoring=scoring,
             previous_dqs=load_previous_dqs(s, tid, d["version"], scoring), **kw))
     if kind == "extraction":
@@ -1212,44 +1226,37 @@ def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Opti
             return None
         ctx = extraction_context(d["version"], system=d["system"], sync_run=d["sync_run"], scoring=scoring, **kw)
         return render("extraction_report.html", ctx) if ctx["is_extraction"] else None
-    if kind == "cleaning":
-        d = load_cleaning(s, tid, vid)
-        return d and render("cleaning_report.html", cleaning_context(d["data"], version=d["version"], scoring=scoring, **kw))
     if kind == "comparison":
-        d = load_comparison(s, tid, vid1, vid)
-        return d and render("comparison_report.html", comparison_context(
+        d = load_comparison(s, tid, vid1, vid) if vid1 else None
+        return None if not d else render("comparison_report.html", comparison_context(
             d["v1"], d["v2"], d["findings1"], d["findings2"], record_diff=d["record_diff"],
             system=d["system"], scoring=scoring, **kw))
     if kind == "executive":
         d = gather_executive_data(s, tid, vid)
-        return d and render("executive_report.html", executive_context(
+        return None if not d else render("executive_report.html", executive_context(
             d["report_json"], d["supplementary"], d["version"], d["findings"], system=d["system"],
             scoring=scoring, previous_dqs=load_previous_dqs(s, tid, d["version"], scoring),
             currency=tenant_currency(_cost_model(s, tid)), **kw))
     if kind == "board":
         d = load_board(s, tid, vid, vid1)
-        return d and render("board_report.html", board_context(
+        return None if not d else render("board_report.html", board_context(
             d, tenant_name=tenant_name, scoring=scoring, ai_summary=d["ai_summary"], app_version=_app_version()))
     if kind == "object":
-        d = load_object(s, tid, vid, module)
-        return d and render("object_report.html", object_context(
+        d = load_object(s, tid, vid, module) if module else None
+        return None if not d or not module else render("object_report.html", object_context(
             module, d["module_dqs"], d["findings"], d["samples"], system=d["system"], scoring=scoring, **kw))
     if kind == "record":
-        d = load_record(s, tid, vid, matnr)
-        return d and render("record_report.html", record_context(
+        d = load_record(s, tid, vid, matnr) if matnr else None
+        return None if not d else render("record_report.html", record_context(
             d["matnr"], d["by_view"], version=d["version"], system=d["system"], **kw))
     if kind == "trend":
         d = load_trend(s, tid, vid, runs)
-        return d and render("trend_report.html", trend_context(
+        return None if not d else render("trend_report.html", trend_context(
             d["version"], d["trend"], d["findings_first"], d["findings_last"], system=d["system"],
             scoring=scoring, **kw))
-    if kind == "rules":
-        return render("rule_catalogue.html", rules_context(load_rules(s, tid, module), module=module, **kw))
-    if kind == "dictionary":
-        return render("data_dictionary.html", dictionary_context(module=module, **kw))
     if kind == "owners":
         d = load_owners(s, tid, vid)
-        return d and render("owner_report.html", owners_context(
+        return None if not d else render("owner_report.html", owners_context(
             d["version"], d["owners"], d["objects"], system=d["system"], scoring=scoring, **kw))
     raise ValueError(kind)
 
@@ -1502,7 +1509,7 @@ def dictionary_context(*, tenant_name: str, module: Optional[str] = None,
 
     now = _now(generated_at)
     mods_of = table_modules()
-    tables = []
+    tables: list[dict[str, Any]] = []
     for name in get_all_table_names():
         mods = mods_of.get(name.upper(), [])
         if module and module not in mods:
@@ -1576,7 +1583,7 @@ def owners_context(version: dict, owners: list[dict], objects: list[dict], *, te
         delta = o.get("delta")
         rows.append({**o, "open": open_n, "objects": mine, "object_count": len(mine),
                      "blocked": sum(1 for x in mine if x.get("blocking")),
-                     "trend": None if delta in (None, 0) else ("improved" if delta > 0 else "slipped")})
+                     "trend": None if not delta else ("improved" if delta > 0 else "slipped")})
     rows.sort(key=lambda r: (r["score"] is None, r["score"] if r["score"] is not None else 0, r["owner"].lower()))
     for r in rows:
         r["commentary"] = rc.owner(r)

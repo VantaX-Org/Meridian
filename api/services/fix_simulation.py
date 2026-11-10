@@ -16,7 +16,7 @@ Pure functions only — the Celery task (workers/tasks/run_simulation.py) does t
 from __future__ import annotations
 
 import copy
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 import pandas as pd
 
@@ -79,7 +79,7 @@ def _key_parts(record_key: str) -> dict[str, str]:
 def _map_column(s: pd.Series, mapping: dict[str, str]) -> tuple[pd.Series, int]:
     cur = s.astype("string").str.strip()
     plain = {k: v for k, v in mapping.items() if k not in (BLANK, OTHER)}
-    new = cur.map(plain)
+    new = cur.map(plain).astype("string")  # pandas 3: no hits on an Arrow string infers double
     if BLANK in mapping:
         new = new.mask(is_blank(s) & new.isna(), mapping[BLANK])
     changed = new.notna() & (new != cur.fillna(""))
@@ -197,11 +197,11 @@ def diff_results(before: list[CheckResult], after: list[CheckResult],
     targeted = targeted or set()
     b = {(r.module, r.check_id): r for r in before if not r.error}
     a = {(r.module, r.check_id): r for r in after if not r.error}
-    rules = []
+    rules: list[dict[str, Any]] = []
     for key in sorted(b.keys() | a.keys()):
         rb, ra = b.get(key), a.get(key)
         kb, ka = set((rb and rb.failing_record_keys) or []), set((ra and ra.failing_record_keys) or [])
-        ref = ra or rb
+        ref = ra or b[key]
         rules.append({
             "module": key[0], "check_id": key[1], "field": ref.field, "severity": ref.severity,
             "dimension": ref.dimension, "targeted": key[1] in targeted,
@@ -326,7 +326,7 @@ def rank_fixes(before: list[CheckResult], candidates: list[dict], weights: dict 
             rate = gain / c["records_changed"]
             if gain > 0 and rate > best_rate:
                 best, best_rate, best_state = c, rate, state
-        if best is None:
+        if best is None or best_state is None:  # best_state is set together with best
             break
         new = dqs_summary(best_state, weights).get("composite") or 0.0
         picked.append({"id": best["id"], "label": best["label"], "records_changed": best["records_changed"],
