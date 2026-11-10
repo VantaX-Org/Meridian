@@ -256,6 +256,19 @@ def _read_picklist(rows: list[tuple], picklists: dict[str, set[str]]) -> None:
         return
 
 
+def add_system_picklists(book: "Workbook", rows: list[dict]) -> int:
+    """Picklist values read from the connected system (PickListValueV2, stored as rows of {picklist id: code}) for the
+    picklists the workbook's own picklist sheet leaves empty. The sheet wins where it carries values."""
+    sheet = {pid for pid, values in book.picklists.items() if values}
+    added = 0
+    for row in rows or []:
+        for pid, code in row.items():
+            if pid.casefold() not in sheet and _text(code):
+                book.picklists.setdefault(pid.casefold(), set()).add(_text(code))
+                added += 1
+    return added
+
+
 def _cockpit(raw: list[tuple[str, list[tuple]]]) -> list[Sheet]:
     """The sheets of an S/4HANA Migration Cockpit template, whose Field List sheet defines all the others."""
     listing = next((rows for name, rows in raw if _norm(name) == "fieldlist"), None)

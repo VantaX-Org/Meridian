@@ -1421,6 +1421,10 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
             store_learned(s, str(system_id), learned)
             s.commit()
             dictionary = dictionary_for(s, system_id)
+        if system_id:  # a picklist sheet with no rows is checked against the system's own picklist values
+            picks = s.execute(text("SELECT config_data FROM config_snapshots WHERE system_id = :s AND tenant_id = :t "
+                                   "AND config_table = 'PICKLIST'"), {"s": str(system_id), "t": str(tenant_id)}).scalar()
+            wb.add_system_picklists(book, picks or [])
         pending = _learned_pending(meta, dictionary)
         needed = wb.tables_needed(book, dictionary)
         no_match = HTTPException(status_code=422, detail="Nothing in this run matches the sheets in this workbook.")

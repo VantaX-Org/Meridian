@@ -168,12 +168,12 @@ async def get_impact(
     await _rls(db, tenant)
     if scope == "current":
         ids = await _current_run_ids(db, tenant, version_id)
-        rows: dict[str, dict] = {}
+        latest: dict[str, dict] = {}
         for rid in ids:  # newest first: a feature is taken from the newest run that computed it
             for r in (await get_impact(uuid.UUID(rid), db, tenant))["rows"]:
-                rows.setdefault(r["feature"], r)
+                latest.setdefault(r["feature"], r)
         return {"version_id": None, "scope": "current", "version_ids": ids,
-                "rows": sorted(rows.values(), key=lambda r: r["feature"])}
+                "rows": sorted(latest.values(), key=lambda r: r["feature"])}
 
     # No explicit version — use this tenant's most recent analysis version that
     # actually has config_impact_results rows (same "latest" idea as readiness).
@@ -237,18 +237,18 @@ async def get_proven_cost(
     if scope == "current":
         ids = await _current_run_ids(db, tenant, version_id)
         per_run = [await get_proven_cost(uuid.UUID(rid), db, tenant) for rid in ids]
-        rows: dict[str, dict] = {}
+        latest: dict[str, dict] = {}
         for out in per_run:  # newest first
             for r in out["rows"]:
-                rows.setdefault(r["metric"], r)
+                latest.setdefault(r["metric"], r)
         currency = per_run[0]["currency"] if per_run else tenant_currency(
             (await db.execute(text("SELECT cost_model FROM tenants WHERE id = :t"), {"t": str(tenant.id)})).scalar() or {})
         cost_by_l1: dict[str, float] = {}
-        for r in rows.values():
+        for r in latest.values():
             cost_by_l1[r["l1"]] = round(cost_by_l1.get(r["l1"], 0.0) + float((r["by_currency"] or {}).get(currency, 0.0)), 2)
         impact = await get_impact(None, db, tenant, "current")
         return {"version_id": None, "scope": "current", "version_ids": ids, "currency": currency,
-                "rows": [rows[m] for m in _METRIC_LABEL if m in rows],
+                "rows": [latest[m] for m in _METRIC_LABEL if m in latest],
                 "cost_by_l1": [{"l1": k, "amount": v} for k, v in sorted(cost_by_l1.items())],
                 "value_at_risk_by_l1": [{"l1": k, "value_at_risk": v} for k, v in sorted(by_l1(impact["rows"]).items())]}
 
@@ -290,7 +290,7 @@ async def get_proven_cost(
     # _result) carries currency=None with a by_currency breakdown instead; take each
     # row's by_currency share of the tenant's chosen currency, never converting the
     # rest. Costs are grouped per L1 only: there is deliberately no total across L1s.
-    cost_by_l1: dict[str, float] = {}
+    cost_by_l1 = {}
     for r in rows:
         r["l1"] = _METRIC_L1[r["metric"]]
         cost_by_l1[r["l1"]] = round(
@@ -467,7 +467,8 @@ async def get_exec(
             newest = (current.get("version_ids") or [None])[0]
             version_id = uuid.UUID(newest) if newest else None
     if version_id is None:
-        version_id = await latest_run(db, tenant.id)
+        latest = await latest_run(db, tenant.id)
+        version_id = uuid.UUID(str(latest)) if latest else None
         if version_id is None:
             # No analysis run at all for this tenant — not an error, just a day-one
             # tenant. 200 with empty fields so the page renders its empty state.

@@ -9,7 +9,7 @@ import logging
 import re
 import uuid
 from datetime import date
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -401,7 +401,7 @@ async def update_system(
                                                     "systems only.")
 
     # Build dynamic SET clause
-    updates = {}
+    updates: dict[str, Any] = {}
     set_parts = []
     if body.extraction_path is not None:
         set_parts.append("extraction_path = :extraction_path")
