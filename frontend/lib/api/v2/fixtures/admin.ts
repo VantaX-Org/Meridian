@@ -529,7 +529,11 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
     return { users: list };
   }
   const grants = /^\/users\/([^/]+)\/grants$/.exec(path);
-  if (grants) return clone(s.grants[decodeURIComponent(grants[1])] ?? []);
+  if (grants) {
+    // the API's GrantOut: the user page's grants carry names the list route does not send
+    const uid = decodeURIComponent(grants[1]);
+    return (s.grants[uid] ?? []).map((g) => ({ id: g.id, role_key: g.role_key, system_id: g.system_id, module: g.module, user_id: uid, granted_by: null, created_at: null, expires_at: g.expires_at ?? null }));
+  }
   const eff = /^\/users\/([^/]+)\/effective$/.exec(path);
   if (eff) {
     const id = decodeURIComponent(eff[1]);
