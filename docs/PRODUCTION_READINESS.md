@@ -42,7 +42,6 @@ This document is the point-in-time snapshot of what's been done to get Meridian 
 - `perf-400k` (weekly pandas/polars comparison)
 - `security-scan` (pip-audit + npm audit on PR + weekly cron)
 - `image-scan` (Trivy on 4 prod images + weekly SBOM)
-- `dependabot` (pip, 5x npm, Actions; weekly, grouped, majors excluded)
 - `vr-baseline-refresh` (manual workflow + runbook)
 
 ### Tests

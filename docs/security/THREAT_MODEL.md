@@ -140,7 +140,6 @@ All queries use parameterised SQLAlchemy `text()` bindings. No string concatenat
 - NLP query filter layer (`api/services/nlp_service.py`) sanitises user input before sending to the model.
 
 ### Dependency supply chain
-- `dependabot.yml` — weekly grouped refreshes for pip, the five npm workspaces and GitHub Actions (majors excluded).
 - `security-scan.yml` — `pip-audit` + `npm audit --audit-level=high` on every PR + weekly cron.
 - `image-scan.yml` — Trivy on the four prod Docker images (`HIGH`, `CRITICAL`, unfixed ignored). Weekly SBOM artifact (CycloneDX, 90-day retention).
 
