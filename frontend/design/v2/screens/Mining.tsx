@@ -325,7 +325,7 @@ function MineAction() {
     },
     onError: (e) => toast.show(errorSentence(e, t("Mining could not be started.")), "error"),
   });
-  if (!can("mdm.write")) return null;
+  if (!can("mdm.write")) return <span className="m2-meta" data-testid="mining-locked">{t("Mining the latest runs needs the master data write permission.")}</span>;
   return (
     <button type="button" className="m2-btn m2-next" disabled={runs.size === 0 || mine.isPending} onClick={() => mine.mutate()} data-testid="mining-run">
       {t("Mine the latest runs")}

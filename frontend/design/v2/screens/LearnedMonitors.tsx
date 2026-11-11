@@ -11,6 +11,7 @@ import { moduleText } from "@/lib/v2/labels";
 import { relTime } from "@/lib/v2/format";
 import { f1, int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
+import { NeedsPermission } from "../admin/kit";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { Lede, PrimaryAction } from "../RunParts";
@@ -406,7 +407,7 @@ function Detail({ b, allowed, onChanged }: { b: LearnedBreak; allowed: boolean; 
           <button type="button" className="m2-btn m2-sm" disabled={busy} onClick={() => snz.mutate()}>{t("Snooze")}</button>
         </div>
         </>
-      ) : null}
+      ) : <NeedsPermission what={t("Deciding a break")} permission="mdm.write" />}
     </Panel>
   );
 }

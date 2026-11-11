@@ -79,6 +79,15 @@ describe("Requests", () => {
     await waitFor(() => expect(panel.textContent).toContain("MARA-MEINS"));
   });
 
+  it("shows the locked reason over the entry defaults for a role that cannot manage workflows", async () => {
+    h.allowed = [];
+    setUrl("/requests?fixture=1&view=all");
+    renderWithQuery(<RequestsCanvas />);
+    await screen.findByTestId("requests-table");
+    fireEvent.click(screen.getByRole("button", { name: "Entry defaults" }));
+    expect(await screen.findByTestId("needs-permission")).toHaveTextContent("manage workflows permission");
+  });
+
   it("lists the field history of a request with each code beside its description", async () => {
     setUrl("/requests?fixture=1");
     renderWithQuery(<RequestInspector id="CR-1001" onClose={() => undefined} />);

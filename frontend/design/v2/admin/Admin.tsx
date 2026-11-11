@@ -27,7 +27,8 @@ import { SubjectRequestsSection } from "./subjectrequests";
 import { DigestsSection, PolicyPacksSection } from "./step10";
 import { t } from "@/lib/v2/i18n";
 import { useAccessRequests, useLicence, useRoles, useUsers } from "@/lib/v2/admin-queries";
-import { inviteAttention } from "@/lib/users";
+import { inviteAttention, USER_STATUSES, userStatus } from "@/lib/users";
+import { userStatusText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import type { Verdict } from "@/lib/api/v2/types";
 import { CcBanner, CcHBars, CcPage, type CcFig } from "../screens/cc-parts";
@@ -126,6 +127,20 @@ function AdminHealth({ people, licensed }: { people: boolean; licensed: boolean 
       text: t("{n} {users, plural, one {person} other {people}}", { n: int(r.users ?? 0), users: r.users ?? 0 }),
     }));
 
+  const STATE_TONE = { active: "pass", invited: "data", invite_expired: "warn", locked: "crit", suspended: "warn" } as const;
+  const states = USER_STATUSES.map((s) => ({ s, n: (users ?? []).filter((u) => userStatus(u) === s).length }))
+    .filter((x) => x.n > 0)
+    .map((x) => ({ key: x.s, label: userStatusText(x.s), value: x.n, tone: STATE_TONE[x.s], text: t("{n} {users, plural, one {person} other {people}}", { n: int(x.n), users: x.n }) }));
+
+  const asked = new Map<string, number>();
+  for (const r of requests ?? []) {
+    const k = t("{action} on {resource}", { action: r.action, resource: r.resource });
+    asked.set(k, (asked.get(k) ?? 0) + 1);
+  }
+  const askedBars = [...asked]
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => ({ key: k, label: k, value: n, tone: "warn" as const, text: t("{n} {count, plural, one {request} other {requests}}", { n: int(n), count: n }) }));
+
   return (
     <>
       <CcBanner
@@ -142,13 +157,29 @@ function AdminHealth({ people, licensed }: { people: boolean; licensed: boolean 
           </V2Link>
         }
       />
-      {bars.length > 0 ? (
-        <section className="m2-cc-card" aria-label={t("People by role")} data-testid="admin-roles-chart">
-          <h3>{t("People by role")}</h3>
-          <p className="m2-cc-lede">{t("Each role with what it is for, and how many people hold it. A person with several roles counts in each.")}</p>
-          <CcHBars rows={bars} label={t("People by role")} />
-        </section>
-      ) : null}
+      <div className="m2-cc-row">
+        {bars.length > 0 ? (
+          <section className="m2-cc-card" aria-label={t("People by role")} data-testid="admin-roles-chart">
+            <h3>{t("People by role")}</h3>
+            <p className="m2-cc-lede">{t("Each role with what it is for, and how many people hold it. A person with several roles counts in each.")}</p>
+            <CcHBars rows={bars} label={t("People by role")} />
+          </section>
+        ) : null}
+        {states.length > 0 ? (
+          <section className="m2-cc-card" aria-label={t("People by sign-in state")} data-testid="admin-people-chart">
+            <h3>{t("People by sign-in state")}</h3>
+            <p className="m2-cc-lede">{t("Who can sign in now, who still holds an invitation, and who is locked out or suspended.")}</p>
+            <CcHBars rows={states} label={t("People by sign-in state")} />
+          </section>
+        ) : null}
+        {askedBars.length > 0 ? (
+          <section className="m2-cc-card" aria-label={t("Open access requests")} data-testid="admin-requests-chart">
+            <h3>{t("Open access requests")}</h3>
+            <p className="m2-cc-lede">{t("What people asked for from the place they were refused, counted by action and resource.")}</p>
+            <CcHBars rows={askedBars} label={t("Open access requests")} />
+          </section>
+        ) : null}
+      </div>
     </>
   );
 }

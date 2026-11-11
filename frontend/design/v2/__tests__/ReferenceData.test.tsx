@@ -69,4 +69,13 @@ describe("reference data", () => {
     fireEvent.click(within(form).getByRole("button", { name: "Ask Aletheia" }));
     expect(await screen.findByTestId("ref-suggestion")).toHaveTextContent("PC");
   });
+
+  it("shows the locked reason in place of the proposal form for a role that cannot analyse", async () => {
+    const u = "/reference-data?fixture=1&persona=steward&role=viewer&list=unit_of_measure";
+    window.history.pushState({}, "", u);
+    setUrl(u);
+    renderWithQuery(<ReferenceData />);
+    expect(await screen.findByTestId("needs-permission")).toHaveTextContent("analyse permission");
+    expect(screen.queryByTestId("ref-propose")).toBeNull();
+  });
 });

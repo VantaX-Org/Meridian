@@ -53,6 +53,15 @@ export function contrastOf(a: string, b: string): number {
   const [x, y] = [luminanceOf(a), luminanceOf(b)].sort((p, q) => q - p);
   return (x + 0.05) / (y + 0.05);
 }
+/** A translucent "#RRGGBBAA" laid over an opaque "#RRGGBB", as the eye sees it: the opaque "#RRGGBB" result. */
+export function composite(fg: string, bg: string): string {
+  const f = fg.replace("#", "");
+  if (f.length === 6) return fg;
+  const a = parseInt(f.slice(6, 8), 16) / 255;
+  const b = bg.replace("#", "");
+  const ch = (i: number) => Math.round(parseInt(f.slice(i, i + 2), 16) * a + parseInt(b.slice(i, i + 2), 16) * (1 - a));
+  return "#" + [0, 2, 4].map((i) => ch(i).toString(16).padStart(2, "0")).join("");
+}
 /** WCAG contrast of two tokens in a theme. */
 export const tokenContrast = (theme: Theme, fg: string, bg: string): number => contrastOf(resolve(theme, fg), resolve(theme, bg));
 

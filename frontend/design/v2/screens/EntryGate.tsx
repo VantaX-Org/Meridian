@@ -6,10 +6,11 @@ import { errorSentence } from "@/lib/api/v2/client";
 import { getFirewallSummary, validateRecords, type FirewallFailure, type FirewallModuleRow, type FirewallSuggestion, type FirewallSummary, type HoldMode, type HoldState, type RecordHold, type StewardRequest } from "@/lib/api/v2/dq-firewall";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
-import { useOpenItem } from "@/lib/v2/hooks";
+import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
+import { NeedsPermission } from "../admin/kit";
 import { ChartFrame, ChartTable, TrendChart, niceTicks, type TrendPoint } from "../charts";
 import { ageWord, objectWord, statusWord } from "../inspector/request";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
@@ -381,7 +382,9 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
 
 export function EntryGate() {
   const fixture = useFixture();
-  const q = useQuery({ queryKey: ["entry-gate", fixture], queryFn: getFirewallSummary, staleTime: 15_000 });
+  const allowed = useV2Session().can("mdm.write");
+  const q = useQuery({ queryKey: ["entry-gate", fixture], queryFn: getFirewallSummary, staleTime: 15_000, enabled: allowed });
+  if (!allowed) return <CcPage title={t("Entry gate")}><NeedsPermission what={t("Entry gate")} permission="mdm.write" /></CcPage>;
   if (q.isPending) return <CcPage title={t("Entry gate")}><Skeleton width="100%" height={320} /></CcPage>;
   if (q.isError) return <CcPage title={t("Entry gate")}><ErrorFrame onRetry={() => void q.refetch()}>{t("The firewall traffic could not be read.")}</ErrorFrame></CcPage>;
   const s = q.data;

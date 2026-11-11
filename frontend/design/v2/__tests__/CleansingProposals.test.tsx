@@ -88,5 +88,6 @@ describe("cleansing proposals", () => {
     await screen.findByTestId("cleansing-proposals");
     expect(screen.queryByTestId("cleansing-approve-group-MEINS")).toBeNull();
     expect(screen.queryAllByTestId(/^cleansing-apply-/)).toHaveLength(0);
+    expect(screen.getAllByTestId("needs-permission")[0]).toHaveTextContent("approve permission");
   });
 });

@@ -768,7 +768,7 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
 }
 
 /* Liquid Glass v2: floating chrome only (bar, rail flyout, menus, command line, toasts, popovers). Content never blurs. Budget: 3 layers at once. */
-.m2-root .m2-top, .m2-root .m2-menu, .m2-root .m2-pal, .m2-root .m2-pop, .m2-root .m2-tlpop, .m2-root .m2-toast, .m2-root .m2-bulk,
+.m2-root .m2-top, .m2-root .m2-menu, .m2-root .m2-pal, .m2-root .m2-pop, .m2-root .m2-tlpop, .m2-root .m2-toast, .m2-root .m2-bulk, .m2-root .m2-bulkconfirm,
 .m2-root .m2-railwrap:not([data-pinned]) .m2-fly {
   -webkit-backdrop-filter: var(--m2-glass-filter);
   backdrop-filter: var(--m2-glass-filter);

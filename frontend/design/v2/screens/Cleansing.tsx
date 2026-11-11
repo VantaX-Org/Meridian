@@ -19,7 +19,7 @@ import { useToast } from "../Toast";
 import { Consequence, FixHead, FlowSteps, MoreDetail, ObjectRunChip } from "../FixParts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
-import { Fld } from "../admin/kit";
+import { Fld, NeedsPermission } from "../admin/kit";
 
 /**
  * Cleansing: what the cleaning engine proposed, what was applied to SAP and what was undone. The weekly task stores a
@@ -355,6 +355,7 @@ function Proposals() {
         testId="cleansing-proposals"
       >
         <Consequence>{t("Approving only marks a proposal as accepted. SAP is not changed until you write it in the next step.")}</Consequence>
+        {can("approve") ? null : <NeedsPermission what={t("Deciding on a proposal")} permission="approve" />}
         {groups.isPending ? <Skeleton width="100%" height={120} /> : status(groups.error) === 403 ? (
           <Dash why={t("Your role cannot see the cleansing proposals.")} />
         ) : groups.isError ? <Dash why={t("The proposals could not be read.")} /> : list.length === 0 ? (
@@ -652,7 +653,7 @@ function Export() {
     onSuccess: (name) => toast.show(t("Saved {name}.", { name })),
     onError: (e) => toast.show(errorSentence(e, t("The file could not be built.")), "error"),
   });
-  if (!allowed) return null;
+  if (!allowed) return <NeedsPermission what={t("Exporting the corrected records")} permission="export" />;
   const statuses = opts.data?.statuses ?? [];
   const st = picked ?? (statuses.find((x) => x.value === "approved") ?? statuses[0])?.value ?? "";
   const label = (v: string) => ACTION[v]?.() ?? labelText(v);

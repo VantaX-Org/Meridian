@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { ROW_H, personaDensity, resolveDensity } from "@/lib/v2/density";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DARK_ATTR, DARK_MEDIA, LIGHT, TOKENS_CSS as tokens, block, decls, contrastOf, deltaE, lightnessChroma, resolve, tokenContrast, type Theme } from "./tokens-css";
+import { DARK_ATTR, DARK_MEDIA, LIGHT, TOKENS_CSS as tokens, block, composite, decls, contrastOf, deltaE, lightnessChroma, resolve, tokenContrast, type Theme } from "./tokens-css";
 
 const styles = readFileSync(join(__dirname, "..", "v2.css"), "utf8");
 const THEMES: readonly Theme[] = ["light", "dark"];
@@ -167,6 +167,31 @@ describe("v2 chart palette", () => {
       expect(contrastOf(seq[0], resolve(theme, "--m2-sheet"))).toBeGreaterThanOrEqual(2);
     });
   }
+});
+
+describe("v2 glass surfaces", () => {
+  // What a glass sheet can float over: the page, a content sheet, and the strongest data and verdict colours of a chart.
+  const GROUNDS = ["--m2-bg", "--m2-sheet", "--m2-data", "--m2-crit", "--m2-pass"];
+  const SURFACES: Record<string, string[]> = {
+    "--m2-glass-sheet": ["--m2-fg", "--m2-ink-2"],
+    "--m2-glass-inverse": ["--m2-on-inverse"],
+    "--m2-glass-bar": ["--m2-bar-fg", "--m2-bar-fg-2"],
+  };
+  for (const theme of THEMES) {
+    for (const [surface, texts] of Object.entries(SURFACES)) {
+      it(`${theme}: text on ${surface} keeps AA over every ground it can float on`, () => {
+        for (const ground of GROUNDS) {
+          const seen = composite(resolve(theme, surface), resolve(theme, ground));
+          for (const text of texts) expect(contrastOf(resolve(theme, text), seen), `${text} on ${surface} over ${ground}`).toBeGreaterThanOrEqual(4.5);
+        }
+      });
+    }
+  }
+
+  it("blurs the bulk confirm bar with the rest of the floating chrome", () => {
+    expect(block(tokens, ".m2-root .m2-top, .m2-root .m2-menu")).toContain("backdrop-filter");
+    expect(tokens).toMatch(/\.m2-root \.m2-bulk, \.m2-root \.m2-bulkconfirm,/);
+  });
 });
 
 describe("v2 density", () => {

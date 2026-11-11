@@ -14,6 +14,7 @@ import { useCriticalFields, useDerivations, useEntryDefaults, useMassPreview, us
 import { describeField } from "@/lib/v2/sap-fields";
 import { t } from "@/lib/v2/i18n";
 import { ageWord, kindWord, objectWord, PrecheckView, statusWord } from "../inspector/request";
+import { NeedsPermission } from "../admin/kit";
 import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { Consequence, FixHead, FlowSteps, MoreDetail } from "../FixParts";
 import { CcBanner, CcHBars, CcPage, type CcBarRow } from "./cc-parts";
@@ -742,6 +743,7 @@ export function RequestsCanvas() {
           {t("Derivations and critical fields")}
         </button>
       </div>
+      {(showDefaults || showRules) && !session.can("manage_workflows") ? <NeedsPermission what={t("Editing entry defaults, derivations and critical fields")} permission="manage_workflows" /> : null}
       {showDefaults ? <EntryDefaults canEdit={session.can("manage_workflows") && !session.shared} /> : null}
       {showRules ? (
         <>

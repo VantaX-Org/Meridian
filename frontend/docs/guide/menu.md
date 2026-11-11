@@ -7,7 +7,7 @@ The rail on the left is the menu. It has seven places: **Home**, **Objects**, **
 - **Home** (`/`) is the landscape: every system and object with its score.
 - **Objects** (`/objects`) lists the systems and their objects as a tree, with a link to connect a system. See the Objects chapter.
 - **Runs** (`/runs`) is the timeline of every measurement.
-- **Fix** holds the Action centre, Work, verified fixes from Aletheia, Cleansing, Requests and People. A count on Fix, and on Work in its menu, shows the records still to fix.
+- **Fix** holds the Action centre, Work, Triage and SLA, verified fixes from Aletheia, Cleansing, Requests and People. A count on Fix, and on Work in its menu, shows the records still to fix.
 - **Rules** holds Rules, rule promotion from Aletheia, the rule dry run, anomaly rules, learned monitors, verified survivorship from Aletheia and the evidence ledger.
 - **Master data** holds MDM health, the entry gate, reference data, record links, Material 360, issues, data mining and process discovery.
 - **Migration** holds Migration, S/4HANA readiness, go-live, the forecast and plan, value delivered, the score lens, cost and causes, and configuration. See the Migration chapter.
@@ -17,7 +17,7 @@ Each menu has a **Pin the menu open** button and a **Close menu** button. On a n
 
 ## What you can do, by role
 
-Everyone sees the same seven places on the rail. Inside the menus, a few links show only for roles that can use them: verified fixes from Aletheia, rule promotion from Aletheia, the rule dry run and anomaly rules show only for people who can manage rules, and the entry gate only for people who can write master data. Under More, Admin shows only for people who can administer. The screens themselves still check the role. What each person can do on the screens depends on the role, as the chapter for each screen says.
+Everyone sees the same seven places on the rail. Inside the menus, a few links show only for roles that can use them: verified fixes from Aletheia, rule promotion from Aletheia, the rule dry run and anomaly rules show only for people who can manage rules, and the entry gate only for people who can write master data. The Entry gate page itself is locked for everyone else, so a direct link shows the permission it needs instead of the form. Under More, Admin shows only for people who can administer. The screens themselves still check the role. What each person can do on the screens depends on the role, as the chapter for each screen says.
 
 ## The numbers and where they come from
 

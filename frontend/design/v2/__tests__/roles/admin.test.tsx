@@ -27,6 +27,13 @@ describe("the admin's jobs", () => {
     }
   });
 
+  it("charts the people by role and sign-in state and the open access requests on the Admin home", async () => {
+    mount(<AdminHome />);
+    expect(await screen.findByTestId("admin-roles-chart")).toBeInTheDocument();
+    expect(await screen.findByTestId("admin-people-chart")).toHaveTextContent("Invited");
+    expect(await screen.findByTestId("admin-requests-chart")).toHaveTextContent("approve on fixes");
+  });
+
   it("views as a role: the bar says so, the Admin area closes, and Stop gives the admin back", async () => {
     mount(<AdminCanvas section="viewas" />);
     fireEvent.change(await screen.findByRole("combobox", { name: "Role" }), { target: { value: "data_steward" } });

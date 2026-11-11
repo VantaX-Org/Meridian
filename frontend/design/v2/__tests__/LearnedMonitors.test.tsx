@@ -47,6 +47,7 @@ describe("learned monitors", () => {
     expect(await screen.findByTestId("monitors-explanation")).toHaveTextContent("Base unit not valid (MM014)");
     expect(screen.getByTestId("monitors-cites")).toHaveTextContent("Run 12 (this run)");
     expect(screen.queryByTestId("monitors-actions")).toBeNull();
+    expect(screen.getByTestId("needs-permission")).toHaveTextContent("mdm.write");
   });
 
   it("shows a volume break found between full runs, and its detail says it came before the analysis finished", async () => {

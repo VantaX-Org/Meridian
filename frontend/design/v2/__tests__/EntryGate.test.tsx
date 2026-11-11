@@ -10,12 +10,19 @@ import { setUrl } from "./nav-store";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 
+const perm = vi.hoisted(() => ({ write: true }));
+vi.mock("@/lib/v2/hooks", async (orig) => {
+  const m = await orig<typeof import("@/lib/v2/hooks")>();
+  return { ...m, useV2Session: () => ({ ...m.useV2Session(), can: (a: string) => (a === "mdm.write" ? perm.write : true) }) };
+});
+
 let undo: () => void = () => undefined;
 beforeEach(() => {
   resetDqFirewallFixture();
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   undo = stubLayout();
   setUrl("/entry-gate");
+  perm.write = true;
 });
 afterEach(() => {
   undo();
@@ -128,6 +135,13 @@ describe("entry gate", () => {
     fireEvent.click(screen.getByTestId("entry-gate-run"));
     table = await screen.findByText("Rejected by an approver. The SAP save stops. Changed content opens a new request.");
     expect(table).toBeInTheDocument();
+  });
+
+  it("locks the page without the write permission, so a direct URL shows the reason and no run button", async () => {
+    perm.write = false;
+    renderWithQuery(<EntryGate />);
+    expect(await screen.findByTestId("needs-permission")).toHaveTextContent("Entry gate needs the mdm.write permission");
+    expect(screen.queryByTestId("entry-gate-run")).toBeNull();
   });
 
   it("names a released request that has not been exported in words", () => {

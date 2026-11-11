@@ -15,6 +15,7 @@ import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, StackedBar, TrendChart, type StackPart } from "../charts";
+import { NeedsPermission } from "../admin/kit";
 import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
@@ -103,7 +104,7 @@ function Propose({ list, systemId }: { list: RefList; systemId: string }) {
     mutationFn: () => suggestMapping(systemId, list.id, source),
     onSuccess: (r) => { setHint(r.suggestion); if (r.suggestion) setTarget(r.suggestion.target_code); },
   });
-  if (!can("analyse")) return null;
+  if (!can("analyse")) return <NeedsPermission what={t("Proposing a mapping")} permission="analyse" />;
   return (
     <fieldset className="m2-fld" data-testid="ref-propose">
       <legend>{t("Propose a mapping")}</legend>
