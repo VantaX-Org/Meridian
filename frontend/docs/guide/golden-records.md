@@ -28,6 +28,10 @@ Open a golden record for **Golden fields and how each value was chosen** (the va
 
 Each rule has a weight from 0 to 100 and can be switched off. A rule the miner suggested is marked "suggested by the miner" and takes effect only when a person saves it. **Save rules** stores them; they apply at the next match run.
 
+### Preview before you save
+
+**Preview** runs the rules on the screen over the stored match clusters, with the same survivorship logic a merge uses, and compares the result with the golden values stored now. Nothing is saved. It shows how many golden records and values would change, each changed attribute with its dictionary text and check table, and sample changes with the value before, the value after and the winning record. Each new value is checked against the SAP data dictionary: length, fixed values of the domain, and the check table (your configuration snapshot first, the SAP standard baseline second). When the value set of a check table is not known, the check is shown as not run, never guessed. The preview reads at most 500 clusters and says so when there are more. Anyone with read access to master data can run it.
+
 ## The numbers and where they come from
 
 - **Match score** and **Confidence** come from the deterministic match engine, from 0 to 1 and as a percentage.

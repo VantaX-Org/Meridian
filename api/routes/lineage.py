@@ -15,11 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services import field_lineage as fl
 from api.services import lineage as svc
+from api.services.rbac import require_permission, scope_from_path
 from api.routes.glossary import owner_rows
+from api.routes.record_issues import _rls
 from api.services.tenant_seed import raw_rules
 from checks.frames import _graph, tables_of
 from checks.runner import rule_columns, target_columns
+from sap.ddic import dictionary_for_system
 
 router = APIRouter(prefix="/api/v1/lineage", tags=["lineage"])
 logger = logging.getLogger("meridian.lineage")
@@ -330,3 +334,66 @@ async def get_rule_lineage(
                               {"cid": check_id, "module": module})
     return {"check_id": check_id, "module": module, "fields": fields, "targets": targets, "tables": tables,
             "joins": joins, "glossary_terms": [dict(t) for t in terms], "owners": owners}
+
+
+class FieldLineageRow(BaseModel):
+    field: str
+    in_dictionary: bool
+    text: str
+    data_element: str | None
+    domain: str | None
+    type: str | None
+    length: int | None
+    key: bool
+    check_table: str | None
+    check_field: str | None
+    check_table_text: str | None
+    check_delivery_class: str | None
+    owner: str | None
+    fixed_values: int
+    glossary_terms: list[str]
+    rule_count: int
+    rule_ids: list[str]
+
+
+class FieldLineageTable(BaseModel):
+    table: str
+    text: str
+    in_dictionary: bool
+    fields: list[FieldLineageRow]
+
+
+class FieldLineageTotals(BaseModel):
+    tables: int
+    fields: int
+    foreign_keys: int
+    fields_with_rules: int
+    not_in_dictionary: int
+    cross_object: int
+
+
+class FieldLineageResponse(BaseModel):
+    module: str
+    system_type: str
+    release: str
+    tables: list[FieldLineageTable]
+    totals: FieldLineageTotals
+
+
+@router.get("/fields", response_model=FieldLineageResponse)
+async def get_field_lineage(
+    module: str = Query(..., min_length=1, max_length=64),
+    system_type: str = Query("ecc", max_length=32),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
+) -> dict:
+    """Every extracted field of one object with its DDIC text, data element, domain and
+    check table, the object that owns the check table (or configuration) and the rules
+    that read it. Glossary terms of the tenant are shown beside the DDIC text."""
+    await _rls(db, tenant)
+    terms = (await db.execute(text(
+        "SELECT sap_table, sap_field, business_name FROM glossary_terms "
+        "WHERE tenant_id = :tid ORDER BY business_name"), {"tid": str(tenant.id)})).mappings().all()
+    dictionary = dictionary_for_system(system_type)
+    return await run_in_threadpool(fl.field_lineage, module, system_type, dictionary, None, [dict(t) for t in terms])

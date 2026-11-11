@@ -54,6 +54,8 @@ import { referenceDataRead, referenceDataWrite, NONE_REFERENCE_DATA } from "./re
 import { loadPlanRead, NONE_LOAD_PLAN } from "./load-plan";
 import { loadSimulationRead, NONE_LOAD_SIMULATION } from "./load-simulation";
 import { processAnalyticsRead, NONE_PROCESS_ANALYTICS } from "./process-analytics";
+import { fieldLineageRead, NONE_FIELD_LINEAGE } from "./field-lineage";
+import { survivorshipPreviewWrite, NONE_SURVIVORSHIP_PREVIEW } from "./survivorship-preview";
 import { fixDraftsRead, fixDraftsWrite, NONE_FIX_DRAFTS } from "./fixDrafts";
 import { learnedMonitorsRead, learnedMonitorsWrite, NONE_LEARNED_MONITORS } from "./learnedMonitors";
 import { anomalyRulesRead, anomalyRulesWrite, NONE_ANOMALY_RULES } from "./anomalyRules";
@@ -178,6 +180,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (fdw !== NONE_FIX_DRAFTS) return fdw as T;
   const svw = survivorshipWrite(method, path, body);
   if (svw !== NONE_SURVIVORSHIP) return svw as T;
+  const svp = survivorshipPreviewWrite(method, path, body);
+  if (svp !== NONE_SURVIVORSHIP_PREVIEW) return svp as T;
   const rdw = referenceDataWrite(method, path, body);
   if (rdw !== NONE_REFERENCE_DATA) return rdw as T;
   const ar = anomalyRulesWrite(method, path, body);
@@ -406,6 +410,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (lpr !== NONE_LOAD_PLAN) return lpr as T;
   const par = processAnalyticsRead(path, params);
   if (par !== NONE_PROCESS_ANALYTICS) return par as T;
+  const flr = fieldLineageRead(path, params);
+  if (flr !== NONE_FIELD_LINEAGE) return flr as T;
   const ars = anomalyRulesRead(path);
   if (ars !== NONE_ANOMALY_RULES) return ars as T;
   const lmr = learnedMonitorsRead(path);
