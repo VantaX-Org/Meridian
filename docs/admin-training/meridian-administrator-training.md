@@ -696,6 +696,7 @@ as your restore time.
 | Sign-in goes straight to a password change | The account must change its password (first start or admin reset) | Set a password of 12 or more characters that is not the email name or a common one |
 | "10 failed sign-ins lock the account for 15 minutes" | Lockout after failed sign-ins (`auth.lockout` in the audit log) | Wait 15 minutes, or reset the password under Users |
 | `/health` answers 503 `degraded` | Postgres or Redis does not answer | `docker compose ps`, then the logs of `db` or `redis` |
+| Many users get HTTP 429 at once | nginx edge rate limit: they share one client address (NAT or a proxy in front of nginx) | `docker compose logs nginx \| grep limiting`; tune the limits as in `docs/sustain/access-and-security-operations.md` (Edge protection) |
 | `/docs` answers 404 | API docs are hidden outside development | Set `MERIDIAN_OPENAPI_PUBLIC=1` only where nginx is not public |
 | "Licence needed": Meridian HQ could not be reached | The licence server was unreachable past the offline grace (`licence_server_cutoff`) | Restore outbound HTTPS to the licence server; check `X-Licence-Warning` and `offline_grace` days earlier |
 | A licence is refused after an update (`legacy_signature_rejected`) | Legacy signature, and legacy signatures are off by default | Set `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES=true` until HQ issues an Ed25519-signed licence |

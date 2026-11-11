@@ -24,8 +24,8 @@ rules:
   severity: critical
   dimension: validity
   message: 'Material number must be 1-40 printable ASCII characters, no lowercase, no leading or trailing space'
-  why_it_matters: In ECC, MATNR is limited to 18 characters. In S/4HANA, the field was extended to 40 characters to support
-    longer material numbering schemes. This rule uses the S/4HANA-compatible length. MM01 converts input to uppercase and
+  why_it_matters: This rule checks the character set and the 40-character field length. The 18-character limit that
+    applies when extended material numbers are not switched on is checked by S4M117. MM01 converts input to uppercase and
     accepts printable special characters (such as caret, at sign, hash, plus and inner spaces) in externally assigned numbers, so those
     are not flagged. Lowercase, non-ASCII characters (e.g. non-breaking spaces, typographic dashes) and leading or trailing
     spaces only arrive through direct loads and break lookups, interfaces and migration key mapping.
@@ -17438,3 +17438,106 @@ rules:
       (MM02 > Sales org. 1).
   record_fix_template: 'Material {MVKE.MATNR}: sales organisation {MVKE.VKORG}, distribution channel {MVKE.VTWEG} has no
     customer with sales data.'
+- id: MM1109
+  field: MARC.UCMAT
+  check_class: exists_check
+  grain: MARC
+  fields:
+  - MARC.UCMAT
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: medium
+  dimension: consistency
+  message: Reference material for original batches does not exist in the material master (MARA)
+  why_it_matters: The reference material for original batches (MARC.UCMAT) points batch where-used and original batch
+    handling at another material. If that material does not exist, the reference cannot be resolved.
+  rule_authority: sap_hard_constraint
+  sap_impact: Original batch handling and batch where-used for the material read from a material that is missing.
+  fix_map:
+    __other__: Correct or clear the reference material for original batches in MM02 (plant data), or create the referenced
+      material.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: reference material for original batches {MARC.UCMAT}
+    does not exist.'
+- id: MM1110
+  field: MARA.GENNR
+  check_class: exists_check
+  grain: MARA
+  fields:
+  - MARA.GENNR
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: medium
+  dimension: consistency
+  message: Generic material of a prepack material does not exist in the material master (MARA)
+  why_it_matters: A prepack material (MARA.GENNR filled) is built from the generic material it names. If the generic material
+    is missing, the prepack is orphaned and cannot be maintained or reported with its generic material.
+  rule_authority: sap_hard_constraint
+  sap_impact: Prepack maintenance and reporting by generic material fail for the material.
+  fix_map:
+    __other__: Correct the generic material reference or create the generic material (MM41/MM42).
+  record_fix_template: 'Material {MARA.MATNR}: generic material {MARA.GENNR} does not exist.'
+- id: MM1111
+  field: MARA.STFAK
+  check_class: cross_field_check
+  fail_when: '`MARA.STFAK` < 0'
+  severity: medium
+  dimension: validity
+  message: Stacking factor is negative
+  why_it_matters: The stacking factor (MARA.STFAK) says how many units can be stacked on each other in warehouse and shipping
+    planning. A negative number has no physical meaning and points to a load or conversion error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Load and storage planning that reads the stacking factor works from an impossible value.
+  fix_map:
+    __other__: Set the stacking factor to zero or a positive value in MM02 > Basic data / Plant data storage.
+  record_fix_template: 'Material {MARA.MATNR}: stacking factor {actual_value} is negative.'
+- id: MM1112
+  field: MARA.SAISJ
+  check_class: regex_check
+  pattern: ^[0-9]{4}$
+  severity: low
+  dimension: validity
+  message: Season year must be a four-digit year
+  why_it_matters: The season year (MARA.SAISJ) groups seasonal materials with the season category and indicator. A value that
+    is not a four-digit year cannot be matched to any season and breaks seasonal listing and markdown planning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Seasonal selections and season-based reports skip or mis-group the material.
+  fix_map:
+    __other__: Enter the season year as four digits in MM02 > Basic data (season fields), or clear it if the material is not
+      seasonal.
+  record_fix_template: 'Material {MARA.MATNR}: season year {actual_value} is not a four-digit year.'
+- id: MM1113
+  field: MARD.KLABS
+  check_class: cross_field_check
+  fail_when: (`MARD.KLABS` < 0) & (`MARC.XMCNG`.isna() | (`MARC.XMCNG` != 'X'))
+  severity: high
+  dimension: consistency
+  message: Unrestricted consignment stock is negative in a plant where negative stock is not allowed for the material
+  why_it_matters: Like own unrestricted stock (MM156), consignment stock at storage-location level can only go below zero
+    when negative stocks are allowed for the material in the plant (MARC.XMCNG). Without that flag a negative quantity points
+    to a direct table load or a stock inconsistency.
+  rule_authority: sap_hard_constraint
+  sap_impact: Consignment withdrawals, settlement with the vendor and availability work from a quantity that cannot exist.
+  fix_map:
+    __other__: Reconcile the consignment stock with its material documents (MB5B / MMBE) and correct it by inventory posting;
+      only allow negative stock if the business genuinely posts issues before receipts.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: unrestricted consignment
+    stock {actual_value}.'
+- id: MM1114
+  field: MBEW.SALKV
+  check_class: cross_field_check
+  fail_when: (`MBEW.LBKUM` > 0) & (`MBEW.SALKV` < 0)
+  severity: medium
+  dimension: consistency
+  message: Value at moving average price is negative although stock is positive
+  why_it_matters: For standard-priced materials SAP also keeps the stock value at moving average price (MBEW.SALKV). With
+    positive stock that value cannot be negative; a negative value points to a broken revaluation or a direct table load,
+    in the same way as a negative total value (SALK3).
+  rule_authority: sap_hard_constraint
+  sap_impact: The moving-average value used for price analysis and the actual-cost comparison is wrong for the material.
+  fix_map:
+    __other__: Reconcile the valuation with the material documents (MB5B) and correct the stock value before the next price
+      change.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: stock {MBEW.LBKUM} but value at moving average
+    price {actual_value}.'

@@ -46,6 +46,77 @@ class ThresholdsIn(BaseModel):
     drift_delta: float = Field(ge=0, le=1)
 
 
+class PromotionModuleOut(BaseModel):
+    module: str
+    generated: int
+    promoted: int
+    summary: Optional[dict[str, int]] = None  # bucket -> count of the last evaluation
+    evaluated_at: Optional[str] = None
+
+
+class PromotionModulesOut(BaseModel):
+    modules: list[PromotionModuleOut]
+
+
+class PromotionThresholdsOut(BaseModel):
+    min_populated_pct: float
+    max_failure_rate: float
+    min_records: int
+    drift_delta: float
+
+
+class PromotionRuleOut(BaseModel):
+    id: str
+    field: str
+    field_text: Optional[str] = None
+    check_class: str
+    severity: str
+    message: str
+    reference_key: Optional[str] = None
+    bucket: str  # promote | review | skip_unused | needs_value_set
+    reason: str
+    failing: int
+    total: int
+    rate: Optional[float] = None
+    populated_pct: Optional[float] = None
+    sample_keys: list[str]
+    promoted: bool
+
+
+class PromotionDriftOut(BaseModel):
+    id: str
+    baseline_rate: float
+    current_rate: float
+    delta: float
+    failing: int
+    total: int
+    sample_keys: list[str]
+
+
+class PromotionPreviewOut(BaseModel):
+    module: str
+    version_id: Optional[str] = None
+    thresholds: PromotionThresholdsOut
+    counts: dict[str, int]
+    promoted: int
+    drift: list[PromotionDriftOut]
+    rules: list[PromotionRuleOut]
+    narrative: str
+
+
+class PromotionApplyOut(BaseModel):
+    enabled: list[str]
+    counts: dict[str, int]
+
+
+class PromotionEnabledOut(BaseModel):
+    enabled: list[str]
+
+
+class PromotionRevertOut(BaseModel):
+    reverted: list[str]
+
+
 def _module(m: str) -> str:
     if not rp.valid_module(m):
         raise HTTPException(status_code=404, detail="No generated rules for this module.")
@@ -81,7 +152,7 @@ async def _evaluate(db: AsyncSession, tenant: Tenant, module: str, system_id: Op
     return await run_in_threadpool(work), (str(latest[0]) if latest else None), th
 
 
-@router.get("/modules", dependencies=[Depends(require_permission("view"))])
+@router.get("/modules", response_model=PromotionModulesOut, dependencies=[Depends(require_permission("view"))])
 async def modules(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Modules with generated rules: pack size, promoted count and the last evaluation's bucket counts."""
     await _rls(db, tenant)
@@ -93,7 +164,7 @@ async def modules(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(g
     return {"modules": out}
 
 
-@router.get("/preview", dependencies=[Depends(require_permission("view"))])
+@router.get("/preview", response_model=PromotionPreviewOut, dependencies=[Depends(require_permission("view"))])
 async def preview(module: str, system_id: Optional[str] = None, db: AsyncSession = Depends(get_db),
                   tenant: Tenant = Depends(get_tenant), request: Request = None):
     """Classify every generated rule of the module (no writes except the cached bucket counts),
@@ -117,7 +188,7 @@ async def _save_summary(db, tenant, request, module, st, rows):
     await rp.save_state(db, tenant.id, current_user_id(request), module, st)
 
 
-@router.post("/apply")
+@router.post("/apply", response_model=PromotionApplyOut)
 async def apply(body: ApplyIn, request: Request, db: AsyncSession = Depends(get_db),
                 tenant: Tenant = Depends(get_tenant), _perm: str = Depends(require_permission("manage_rules"))):
     """Enable the promote bucket (or the named subset of it). Evidence is recomputed here, never trusted from the client."""
@@ -134,7 +205,7 @@ async def apply(body: ApplyIn, request: Request, db: AsyncSession = Depends(get_
     return {"enabled": [r["id"] for r in pick], "counts": st["summary"]}
 
 
-@router.post("/promote-anyway")
+@router.post("/promote-anyway", response_model=PromotionEnabledOut)
 async def promote_anyway(body: AnywayIn, request: Request, db: AsyncSession = Depends(get_db),
                          tenant: Tenant = Depends(get_tenant), _perm: str = Depends(require_permission("manage_rules"))):
     """Manually enable review-bucket rules. Needs a reason, which is stored with the evidence in the audit log.
@@ -155,7 +226,7 @@ async def promote_anyway(body: AnywayIn, request: Request, db: AsyncSession = De
     return {"enabled": list(ok)}
 
 
-@router.post("/revert")
+@router.post("/revert", response_model=PromotionRevertOut)
 async def revert(body: RevertIn, request: Request, db: AsyncSession = Depends(get_db),
                  tenant: Tenant = Depends(get_tenant), _perm: str = Depends(require_permission("manage_rules"))):
     """Revert this promotion: the rules go back to their shipped (disabled) state."""

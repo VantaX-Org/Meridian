@@ -1,7 +1,7 @@
 import json
 import logging
 import uuid
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 
@@ -52,6 +52,65 @@ class PatchVersionRequest(BaseModel):
     label: str
 
 
+class VersionListOut(BaseModel):
+    versions: list[VersionResponse]
+    total: int
+
+
+class ArchivedOut(BaseModel):
+    archived: int
+
+
+class RestoredOut(BaseModel):
+    restored: int
+
+
+class CompareRecordKeysOut(BaseModel):
+    v1: str
+    v2: str
+    change: str
+    record_keys: list[str]
+
+
+class FindingRecordsOut(BaseModel):
+    version_id: str
+    check_id: str
+    total: int
+    records: list[dict[str, Any]]
+
+
+class FindingRootCauseOut(BaseModel):
+    version_id: str
+    check_id: str
+    status: str
+    field: Optional[str] = None
+    analysed: int
+    total: int
+    origins: Any = None
+    summary: str
+    detail: str
+
+
+class AnalyseOut(BaseModel):
+    version_id: str
+    task_id: Optional[str] = None
+    job_id: str
+    status: str
+
+
+class BaselineOut(BaseModel):
+    version_id: str
+    baseline: bool
+    scope: str
+
+
+class VersionStatusOut(BaseModel):
+    version_id: str
+    status: str
+    run_at: str
+    metadata: Optional[dict[str, Any]] = None
+
+
 def _version_to_response(v: AnalysisVersion) -> VersionResponse:
     return VersionResponse(
         id=str(v.id),
@@ -65,7 +124,7 @@ def _version_to_response(v: AnalysisVersion) -> VersionResponse:
     )
 
 
-@router.get("/versions")
+@router.get("/versions", response_model=VersionListOut)
 async def list_versions(
     limit: int = Query(20, ge=1, le=1000,
                        description="Runs per page (default 20, up to 1000); `total` counts the whole filtered set"),
@@ -133,7 +192,7 @@ RESTORE_SQL = ("UPDATE analysis_versions SET metadata = metadata - 'archived' "
 _DONE = ENDED  # finished or failed: both may be archived
 
 
-@router.post("/versions/archive", dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
+@router.post("/versions/archive", response_model=ArchivedOut, dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
 async def archive_versions(
     keep_latest: int = Query(1, ge=0, le=100),
     db: AsyncSession = Depends(get_db),
@@ -148,7 +207,7 @@ async def archive_versions(
     return {"archived": res.rowcount}
 
 
-@router.post("/versions/restore", dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
+@router.post("/versions/restore", response_model=RestoredOut, dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
 async def restore_versions(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     res = await db.execute(text(RESTORE_SQL), {"tid": str(tenant.id)})
@@ -338,7 +397,7 @@ async def compare_records(
     }
 
 
-@router.get("/versions/compare/records/{check_id}")
+@router.get("/versions/compare/records/{check_id}", response_model=CompareRecordKeysOut)
 async def compare_records_list(
     check_id: str,
     v2: str = Query(...),
@@ -360,7 +419,7 @@ async def compare_records_list(
     return {"v1": str(vid1), "v2": str(vid2), "change": change, "record_keys": [r[0] for r in rows]}
 
 
-@router.get("/versions/{version_id}/findings/{check_id}/records")
+@router.get("/versions/{version_id}/findings/{check_id}/records", response_model=FindingRecordsOut)
 async def finding_records(
     version_id: uuid.UUID,
     check_id: str,
@@ -390,7 +449,7 @@ async def finding_records(
             "records": [dict(r._mapping) for r in rows.fetchall()]}
 
 
-@router.get("/versions/{version_id}/findings/{check_id}/root-cause")
+@router.get("/versions/{version_id}/findings/{check_id}/root-cause", response_model=FindingRootCauseOut)
 async def finding_root_cause(
     version_id: uuid.UUID,
     check_id: str,
@@ -523,7 +582,7 @@ def _licensed_options(request: Request, options: Optional[dict], held: list[str]
     return {**(options or {}), "modules": keep}
 
 
-@router.post("/versions/{version_id}/analyse", status_code=202, dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
+@router.post("/versions/{version_id}/analyse", status_code=202, response_model=AnalyseOut, dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
 async def analyse_version(version_id: str, request: Request, db: AsyncSession = Depends(get_db),
                           tenant: Tenant = Depends(get_tenant), body: Optional[AnalyseOptions] = Body(None)):
     """Run (or re-run, e.g. after a rule change) the analysis on a stored version's data.
@@ -573,7 +632,7 @@ class BaselineBody(BaseModel):
     reason: Optional[str] = Field(None, max_length=2000)
 
 
-@router.post("/versions/{version_id}/baseline", dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
+@router.post("/versions/{version_id}/baseline", response_model=BaselineOut, dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
 async def pin_baseline(
     version_id: str,
     request: Request,
@@ -617,7 +676,7 @@ async def pin_baseline(
     return {"version_id": version_id, "baseline": pinned, "scope": scope}
 
 
-@router.get("/versions/{version_id}")
+@router.get("/versions/{version_id}", response_model=VersionResponse)
 async def get_version(
     version_id: str,
     db: AsyncSession = Depends(get_db),
@@ -637,7 +696,7 @@ async def get_version(
     return _version_to_response(version)
 
 
-@router.patch("/versions/{version_id}", dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
+@router.patch("/versions/{version_id}", response_model=VersionResponse, dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
 async def patch_version(
     version_id: str,
     body: PatchVersionRequest,
@@ -661,7 +720,7 @@ async def patch_version(
     return _version_to_response(version)
 
 
-@router.get("/versions/{version_id}/status")
+@router.get("/versions/{version_id}/status", response_model=VersionStatusOut)
 async def get_version_status(
     version_id: str,
     db: AsyncSession = Depends(get_db),

@@ -11,7 +11,7 @@
 import json
 import uuid
 from functools import lru_cache
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -229,7 +229,93 @@ def _catalogue_for(system_id: str, system_type: str, tenant_id: str, snapshot: O
     return built
 
 
-@router.get("/{system_id}/objects", dependencies=[Depends(require_permission("view"))])
+class ObjectsOut(BaseModel):
+    system_type: str
+    objects: list[dict[str, Any]]
+
+
+class VersionCoverage(BaseModel):
+    read: int
+    issues: list[dict[str, Any]]
+
+
+class SystemVersion(BaseModel):
+    id: str
+    run_at: str
+    label: Optional[str] = None
+    status: Optional[str] = None
+    objects: Any = None
+    scope: Any = None
+    records: Any = None
+    analysed_at: Any = None
+    rule_set: Any = None
+    baseline: bool
+    extraction_complete: Any = None
+    coverage: VersionCoverage
+    outliers: dict[str, dict[str, Any]]
+    analysable: bool
+    dqs: dict[str, Any]
+    field_status: list[dict[str, Any]]
+
+
+class SystemVersionsOut(BaseModel):
+    versions: list[SystemVersion]
+    download: Optional[dict[str, Any]] = None
+
+
+class TrendPoint(BaseModel):
+    version_id: str
+    run_at: str
+    label: Optional[str] = None
+    baseline: bool
+    dqs: Optional[float] = None
+    dimensions: dict[str, Any]
+    records: Any = None
+    failing_records: int
+    failing_checks: int
+    issues_opened: int
+    issues_resolved: int
+    scope: Any = None
+    rule_set: Any = None
+    incomplete: bool
+    dqs_delta: Optional[float] = None
+    failing_records_delta: Optional[int] = None
+    comparable: bool
+    flags: list[str]
+
+
+class TrendBaseline(BaseModel):
+    version_id: str
+    pinned: bool
+    dqs_delta: float
+    failing_records_delta: int
+
+
+class TrendSummary(BaseModel):
+    object: str
+    points: int
+    dqs: Optional[float] = None
+    dqs_delta: Optional[float] = None
+    failing_records: int
+    failing_records_delta: Optional[int] = None
+    comparable: bool
+    flags: list[str]
+    vs_baseline: Optional[TrendBaseline] = None
+
+
+class TrendsOut(BaseModel):
+    summary: list[TrendSummary]
+    series: dict[str, list[TrendPoint]]
+
+
+class ReferenceDeleteOut(BaseModel):
+    kind: str
+    system_id: str
+    status: str
+    records: int
+
+
+@router.get("/{system_id}/objects", response_model=ObjectsOut, dependencies=[Depends(require_permission("view"))])
 async def list_objects(system_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     st = await _system_type(db, system_id)
@@ -317,7 +403,7 @@ async def _dry_run(db: AsyncSession, tenant: Tenant, system_id: uuid.UUID, st: s
             "delta": await _delta_state(db, tenant, system_id, objects, scope)}
 
 
-@router.get("/{system_id}/versions", dependencies=[Depends(require_permission("view"))])
+@router.get("/{system_id}/versions", response_model=SystemVersionsOut, dependencies=[Depends(require_permission("view"))])
 async def system_versions(system_id: uuid.UUID, limit: int = Query(50, le=200),
                           db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
@@ -357,7 +443,7 @@ async def system_versions(system_id: uuid.UUID, limit: int = Query(50, le=200),
     return {"versions": out, "download": get_task_progress(progress_key(system_id))}
 
 
-@router.get("/{system_id}/trends", dependencies=[Depends(require_permission("view"))])
+@router.get("/{system_id}/trends", response_model=TrendsOut, response_model_exclude_unset=True, dependencies=[Depends(require_permission("view"))])
 async def trends(system_id: uuid.UUID, object: Optional[str] = None, all_series: bool = False,
                  db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Each analysed version is a point. A point is `comparable` with the one
@@ -564,7 +650,7 @@ async def reference_lists(system_id: uuid.UUID, db: AsyncSession = Depends(get_d
 _REFERENCE_TABLES = {"postal-codes": "REF_POSTAL", "bic": "REF_BIC", "REF_POSTAL": "REF_POSTAL", "REF_BIC": "REF_BIC"}
 
 
-@router.delete("/{system_id}/reference/{name}", dependencies=[Depends(require_permission("manage_systems"))])
+@router.delete("/{system_id}/reference/{name}", response_model=ReferenceDeleteOut, dependencies=[Depends(require_permission("manage_systems"))])
 async def delete_reference_list(system_id: uuid.UUID, name: str, request: Request, db: AsyncSession = Depends(get_db),
                                 tenant: Tenant = Depends(get_tenant)):
     """Remove an uploaded reference list (``postal-codes`` or ``bic``, as GET lists them). 404 when the system has no such

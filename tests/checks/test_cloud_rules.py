@@ -13,7 +13,7 @@ from sap.ddic import get_dictionary, dictionary_for_system
 from sap.extraction_plan import MODULES_BY_SYSTEM
 
 D = get_dictionary("s4hana")
-MODULES = {"s4hc_master_data": 43, "concur_expense": 40, "concur_users": 42, "concur_travel": 13,
+MODULES = {"s4hc_master_data": 41, "concur_expense": 40, "concur_users": 42, "concur_travel": 13,
            "ariba_supplier": 41, "ariba_contracts": 42, "ariba_procurement": 41, "ariba_spend": 11}
 ENRICHMENT = ("fix_map", "rule_authority", "why_it_matters", "sap_impact", "record_fix_template")
 
@@ -576,3 +576,26 @@ def test_sf_dependant_fields_come_from_the_related_person(monkeypatch):
     assert dep["DEPENDENT.RELATED_PERSON_ID"].tolist() == ["D1"]
     assert dep["DEPENDENT.FIRST_NAME"].tolist() == ["Kid"]
     assert dep["DEPENDENT.DEPENDENT_BIRTH"].tolist() == ["2015-06-01"]
+
+
+def test_sf_succession_candidates_are_not_built_from_users_when_successor_is_refused(monkeypatch):
+    """RAID I-08: Successor refused (no succession permission) left SUCCESSIONCANDIDATE holding one keyless row per
+    User, so every user counted as a candidate. Without the key-carrying entity the table is not extracted."""
+    class _Refused(_Fake):
+        def read_entity_set(self, entity, **kw):
+            if entity == "Successor":
+                raise SAPConnectorError("[COE0020] no permission")
+            return super().read_entity_set(entity, **kw)
+
+    conn = _Refused({"User": [{"userId": "U1", "riskOfLoss": "HIGH"}, {"userId": "U2", "riskOfLoss": "LOW"}],
+                     "NominationTarget": [{"nominationId": "1", "nominationType": "POSITION"}]})
+    frames, cov = _sf(conn, ["succession_planning"], monkeypatch)
+    assert "SUCCESSIONCANDIDATE" not in frames
+    assert cov["SUCCESSIONCANDIDATE"]["status"] == "failed"
+    assert cov["SUCCESSIONCANDIDATE←Successor"]["status"] == "failed"
+
+    conn = _Fake({"Successor": [{"userId": "U1", "nomineeUserId": "U1", "readiness": "READY_NOW"}],
+                  "User": [{"userId": "U1", "riskOfLoss": "HIGH"}, {"userId": "U2", "riskOfLoss": "LOW"}]})
+    frames, cov = _sf(conn, ["succession_planning"], monkeypatch)
+    assert frames["SUCCESSIONCANDIDATE"]["SUCCESSIONCANDIDATE.NOMINEE_ID"].tolist() == ["U1"]
+    assert cov["SUCCESSIONCANDIDATE"]["status"] == "live"

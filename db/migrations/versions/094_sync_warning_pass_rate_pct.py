@@ -30,4 +30,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    pass
+    """Data only, kept on downgrade: the 0..1 value was the defect, so it is not restored."""

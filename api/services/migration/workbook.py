@@ -48,6 +48,10 @@ SHEET_ENTITIES = {
     "emailinfo": {"PerEmail"},
     "socialaccounts": {"PerSocialAccount"},
     "csfaddresses": {"PerAddressDEFLT"},
+    # country-specific sheets load one entity set per country: PerGlobalInfoUSA, PerGlobalInfoZAF, ...
+    "csfpersonalinfoglobalinfo": {"PerGlobalInfo*"},
+    "csflegalentity": {"FOLegalEntityLocal*"},
+    "csfjobclassification": {"FOJobClassLocal*"},
     "paymentinfo": {"PaymentInformationDetailV3"},
     "emergencycontact": {"PerEmergencyContacts"},
     "dependents": {"PerPersonRelationship", "PerPersonal", "PerNationalId"},
@@ -250,6 +254,19 @@ def _read_picklist(rows: list[tuple], picklists: dict[str, set[str]]) -> None:
                 if current and v < len(r) and _text(r[v]):
                     picklists.setdefault(current.casefold(), set()).add(_text(r[v]))
         return
+
+
+def add_system_picklists(book: "Workbook", rows: list[dict]) -> int:
+    """Picklist values read from the connected system (PickListValueV2, stored as rows of {picklist id: code}) for the
+    picklists the workbook's own picklist sheet leaves empty. The sheet wins where it carries values."""
+    sheet = {pid for pid, values in book.picklists.items() if values}
+    added = 0
+    for row in rows or []:
+        for pid, code in row.items():
+            if pid.casefold() not in sheet and _text(code):
+                book.picklists.setdefault(pid.casefold(), set()).add(_text(code))
+                added += 1
+    return added
 
 
 def _cockpit(raw: list[tuple[str, list[tuple]]]) -> list[Sheet]:
@@ -457,6 +474,12 @@ def _candidates(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Fie
 _PROPERTY = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 
 
+def _camel(column_id: str) -> str:
+    """A column id as an OData property spelling: job-code and job code become jobCode, name.en_US name_en_US."""
+    head, *rest = re.split(r"[-\s]+", column_id.strip().replace(".", "_"))
+    return head + "".join(w[:1].upper() + w[1:] for w in rest)
+
+
 def learn(workbook: Workbook, dictionary: Dictionary) -> dict[str, dict[str, str]]:
     """Unmatched columns that name a plain property of their sheet's entity, as {TABLE: {FIELD: "Entity.property"}}.
 
@@ -477,17 +500,22 @@ def learn(workbook: Workbook, dictionary: Dictionary) -> dict[str, dict[str, str
         matched = {h for hits in _candidates(sheet, dictionary).values() for h in hits}
         have = {(f.source or "").split(".", 1)[-1] for f in dictionary.tables[home].fields.values()}
         for col in sheet.columns:
-            if col.header in matched or not _PROPERTY.fullmatch(col.id) or col.id in have:
+            prop = _camel(col.id)
+            if col.header in matched or not _PROPERTY.fullmatch(prop) or prop in have:
                 continue
-            name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", col.id).upper()
+            name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", prop).upper()
             if name not in dictionary.tables[home].fields:
-                out.setdefault(home, {})[name] = f"{entity}.{col.id}"
+                out.setdefault(home, {})[name] = f"{entity}.{prop}"
     return out
 
 
 def learn_sap(workbook: Workbook, dictionary: Dictionary, scope: set[str],
               lookup) -> tuple[dict[str, dict[str, str]], dict[str, list[str]]]:
-    """Unmatched SAP columns resolved against the system's DD03L, limited to the object's tables in `scope`.
+    """Unmatched SAP columns resolved against the system's DD03L.
+
+    A column naming its table is looked up on that table, in the object's `scope` or not. A bare field name is
+    looked up across the object's tables in `scope`. A hit on a table the dictionary does not know is real but
+    cannot be extracted yet, so it is reported, not learned.
 
     `lookup(tables, fields)` returns the (table, field) pairs DD03L holds. A field on exactly one in-scope table is
     learned as {TABLE: {FIELD: "TABLE.FIELD"}}, so the next extraction asks for it. The second result names, per
@@ -507,18 +535,19 @@ def learn_sap(workbook: Workbook, dictionary: Dictionary, scope: set[str],
             if split and not table:
                 table, name = re.sub(r"^S_", "", split.group(1)), split.group(2)
             if table:
-                if table in scope and name not in dictionary.tables[table].fields:
+                # a named table is asked about even outside the object's scope: the workbook says where it lives
+                if table not in dictionary.tables or name not in dictionary.tables[table].fields:
                     asks[col.id] = (name, {table})
             elif _TECHNICAL.fullmatch(col.id) and not any(name in t.fields for t in dictionary.tables.values()):
                 asks[col.id] = (name, scope)
-    if not asks or not scope:
+    if not asks:
         return {}, {}
     found = lookup({t for _, ts in asks.values() for t in ts}, {n for n, _ in asks.values()})
     learned: dict[str, dict[str, str]] = {}
     unresolved: dict[str, list[str]] = {}
     for col_id, (name, tables) in asks.items():
         hits = sorted(t for t in tables if (t, name) in found)
-        if len(hits) == 1:
+        if len(hits) == 1 and hits[0] in dictionary.tables:
             learned.setdefault(hits[0], {})[name] = f"{hits[0]}.{name}"
         else:
             unresolved[col_id] = hits

@@ -72,3 +72,25 @@ def test_batch_stock_without_master():
     r = _run(MCHB={"MCHB.MATNR": ["A", "B"], "MCHB.WERKS": ["P", "P"], "MCHB.CHARG": ["1", "2"]},
              MCHA={"MCHA.MATNR": ["A"], "MCHA.WERKS": ["P"], "MCHA.CHARG": ["1"]})["S4R-BATCH-MCHB-NOMCHA"]
     assert r.affected_count == 1
+
+
+def test_valuation_record_check_skips_company_code_valuation():
+    marc = {"MARC.MATNR": ["A", "B"], "MARC.WERKS": ["P1", "P1"], "MARC.LVORM": ["", ""]}
+    # valuation at plant level: B has no valuation record in its plant
+    plant = _run(MARC=marc, MBEW={"MBEW.MATNR": ["A"], "MBEW.BWKEY": ["P1"]})["S4R-MM-MARC-NOMBEW"]
+    assert plant.affected_count == 1
+    # valuation at company-code level: BWKEY is the company code, no key matches a plant
+    cc = _run(MARC=marc, MBEW={"MBEW.MATNR": ["A", "B"], "MBEW.BWKEY": ["1000", "1000"]})["S4R-MM-MARC-NOMBEW"]
+    assert cc.affected_count == 0
+
+
+def test_material_number_length_rules_agree():
+    import re
+    mm = {r["id"]: r for r in yaml.safe_load(open("checks/rules/ecc/material_master.yaml"))["rules"]}
+    s4 = {r["id"]: r for r in DOC["rules"]}
+    charset, short = re.compile(mm["MM002"]["pattern"]), re.compile(s4["S4M117"]["pattern"])
+    for value, ok_charset, ok_short in (("MAT-001", True, True), ("A" * 18, True, True),
+                                        ("A" * 19, True, False), ("A" * 40, True, False),
+                                        ("A" * 41, False, False), (" LEAD", False, True)):
+        assert bool(charset.fullmatch(value)) is ok_charset, value
+        assert bool(short.fullmatch(value)) is ok_short, value

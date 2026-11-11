@@ -2,7 +2,8 @@
 
 import json
 import uuid
-from typing import Literal, Optional
+from datetime import datetime
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
@@ -58,6 +59,50 @@ class UpdateContractBody(BaseModel):
     status: Optional[Literal["draft", "pending_approval"]] = None
 
 
+class ContractOut(BaseModel):
+    """A contracts row (migrations 008, 104, 110)."""
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    name: str
+    description: Optional[str] = None
+    producer: str
+    consumer: str
+    schema_contract: Optional[dict[str, Any]] = None
+    quality_contract: Optional[dict[str, Any]] = None
+    freshness_contract: Optional[dict[str, Any]] = None
+    volume_contract: Optional[dict[str, Any]] = None
+    status: str
+    created_by: Optional[uuid.UUID] = None
+    approved_by: Optional[uuid.UUID] = None
+    created_at: datetime
+    activated_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+    version: int = 1
+    enforce: bool = False
+    thresholds: Optional[dict[str, Any]] = None
+
+
+class ContractWithCompliance(ContractOut):
+    latest_compliant: Optional[bool] = None
+    last_checked: Optional[datetime] = None
+
+
+class ContractList(BaseModel):
+    contracts: list[ContractWithCompliance]
+    total: int
+
+
+class ContractStatusOut(BaseModel):
+    id: str
+    status: str
+
+
+class EnforcementOut(BaseModel):
+    id: str
+    enforce: bool
+    thresholds: Optional[dict[str, Any]] = None
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
@@ -72,7 +117,7 @@ def _row_to_dict(row) -> dict:
 # ── 1. GET /api/v1/contracts — list all contracts with latest compliance ─────
 
 
-@router.get("/contracts")
+@router.get("/contracts", response_model=ContractList)
 async def list_contracts(
     status: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
@@ -115,7 +160,8 @@ async def list_contracts(
 # ── 2. POST /api/v1/contracts — create draft contract ────────────────────────
 
 
-@router.post("/contracts", status_code=201, dependencies=[Depends(require_permission("manage_rules"))])
+@router.post("/contracts", status_code=201, response_model=ContractStatusOut,
+             dependencies=[Depends(require_permission("manage_rules"))])
 async def create_contract(
     body: CreateContractBody,
     request: Request,
@@ -158,7 +204,7 @@ async def create_contract(
 # ── 3. PUT /api/v1/contracts/{id} — update draft contract ────────────────────
 
 
-@router.put("/contracts/{contract_id}", dependencies=[Depends(require_permission("manage_rules"))])
+@router.put("/contracts/{contract_id}", response_model=ContractOut, dependencies=[Depends(require_permission("manage_rules"))])
 async def update_contract(
     contract_id: str,
     body: UpdateContractBody,
@@ -218,7 +264,7 @@ async def update_contract(
 # ── 4. PUT /api/v1/contracts/{id}/activate — activate contract ───────────────
 
 
-@router.put("/contracts/{contract_id}/activate", dependencies=[Depends(require_permission("approve"))])
+@router.put("/contracts/{contract_id}/activate", response_model=ContractStatusOut, dependencies=[Depends(require_permission("approve"))])
 async def activate_contract(
     contract_id: str,
     request: Request,
@@ -293,7 +339,7 @@ async def get_contract_compliance(
 # ── 6. PUT /api/v1/contracts/{id}/enforcement — enforce and thresholds ──────
 
 
-@router.put("/contracts/{contract_id}/enforcement", dependencies=[Depends(require_permission("manage_rules"))])
+@router.put("/contracts/{contract_id}/enforcement", response_model=EnforcementOut, dependencies=[Depends(require_permission("manage_rules"))])
 async def set_enforcement(
     contract_id: uuid.UUID,
     body: EnforcementBody,

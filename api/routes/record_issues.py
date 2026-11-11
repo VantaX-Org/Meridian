@@ -35,6 +35,76 @@ class CommentBody(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
 
 
+class IssueRow(BaseModel):
+    """One row of _SELECT, with uuids and timestamps as strings (see _row)."""
+    id: Optional[str] = None  # NOT NULL in the table; defaulted so a partial row (tests) still serialises
+    scope: str
+    module: Optional[str] = None
+    check_id: str
+    record_key: str
+    grain: Optional[str] = None
+    severity: Optional[str] = None
+    status: Optional[str] = None
+    resolution: Optional[str] = None
+    assigned_to: Optional[str] = None
+    assignee_email: Optional[str] = None
+    first_seen_version: Optional[str] = None
+    last_seen_version: Optional[str] = None
+    resolved_version: Optional[str] = None
+    first_seen_at: Optional[str] = None
+    last_seen_at: Optional[str] = None
+    resolved_at: Optional[str] = None
+    reopened_count: Optional[int] = None
+    priority: Optional[int] = None
+    assigned_team_id: Optional[str] = None
+    acknowledged_at: Optional[str] = None
+    due_at: Optional[str] = None
+    ack_due_at: Optional[str] = None
+    risk_at: Optional[str] = None
+    sla_state: Optional[str] = None
+    sla_paused_at: Optional[str] = None
+    snoozed_until: Optional[str] = None
+    snooze_reason: Optional[str] = None
+    message: Optional[str] = None
+    field: Optional[str] = None
+
+
+class IssueList(BaseModel):
+    total: int
+    counts: dict[str, int]
+    items: list[IssueRow]
+
+
+class IssueEventOut(BaseModel):
+    action: str
+    from_value: Optional[str] = None
+    to_value: Optional[str] = None
+    note: Optional[str] = None
+    user_label: Optional[str] = None
+    version_id: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class IssueRunOut(BaseModel):
+    version_id: str
+    run_at: Optional[str] = None
+    failing: bool
+
+
+class IssueDetail(BaseModel):
+    issue: IssueRow
+    events: list[IssueEventOut]
+    runs: list[IssueRunOut]
+
+
+class BulkUpdateOut(BaseModel):
+    updated: int
+
+
+class OkOut(BaseModel):
+    ok: bool
+
+
 def _where(status, module, check_id, severity, assigned_to, scope, search, request,
            version_id: Optional[uuid.UUID] = None) -> tuple[str, dict]:
     where, p = ["1=1"], {}
@@ -91,7 +161,7 @@ async def _rls(db: AsyncSession, tenant: Tenant) -> None:
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
 
 
-@router.get("")
+@router.get("", response_model=IssueList)
 async def list_issues(
     request: Request,
     status: Optional[str] = None,
@@ -165,7 +235,7 @@ async def export_issues(
     return xlsx_response(data, xlsx_filename("issues", None))
 
 
-@router.get("/{issue_id}")
+@router.get("/{issue_id}", response_model=IssueDetail)
 async def get_issue(
     issue_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -207,7 +277,7 @@ def required_actions(body: BulkUpdate) -> set[str]:
     return need
 
 
-@router.post("/bulk")
+@router.post("/bulk", response_model=BulkUpdateOut)
 async def bulk_update(
     body: BulkUpdate,
     request: Request,
@@ -282,7 +352,7 @@ async def bulk_update(
     return {"updated": changed}
 
 
-@router.post("/{issue_id}/comments")
+@router.post("/{issue_id}/comments", response_model=OkOut)
 async def add_comment(
     issue_id: uuid.UUID,
     body: CommentBody,

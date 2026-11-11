@@ -21,7 +21,7 @@ export interface DbConnection {
   ssl_mode: SslMode;
   created_at: string;
   last_tested_at: string | null;
-  last_test_ok: boolean | null;
+  last_test_ok: number | null; // integer column: 1 passed, 0 failed
   last_loaded_at: string | null;
 }
 

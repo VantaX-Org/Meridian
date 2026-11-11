@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { User, UserStatus } from "@/types/api";
 import * as api from "@/lib/api/v2/admin";
@@ -10,7 +10,7 @@ import { refreshAdmin, useLicence, useRoles, useUsers } from "@/lib/v2/admin-que
 import { inviteAttention, seatsFull, seatsNearlyFull, userStatus, USER_STATUSES } from "@/lib/users";
 import { type GridColumn } from "../Grid";
 import { ToolGrid } from "../GridTools";
-import { EmptyFrame, ErrorFrame, Mono } from "../parts";
+import { Coded, EmptyFrame, ErrorFrame, Mono } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Confirm, Dialog, Fld, NeedsPermission, Note, StatusWord, useCan, Since } from "./kit";
 import { ScimCard } from "./enterprise";
@@ -24,10 +24,35 @@ export function UserStatusWord({ user }: { user: User }) {
   return <StatusWord tone={STATUS_TONE[s]}>{userStatusText(s)}</StatusWord>;
 }
 
-/** The roles a person holds, once each, in grant order; before any grant, the role on the account. */
+/** The roles a person holds, once each by name, in grant order; before any grant, the role on the account. */
+function userRoles(u: User): { key: string; name: string }[] {
+  const byName = new Map<string, string>();
+  for (const g of u.grants ?? []) {
+    const name = (g.role_name || roleText(g.role_key)).replace(/\s*\(legacy\)\s*$/i, "");
+    if (!byName.has(name)) byName.set(name, g.role_key);
+  }
+  return byName.size ? Array.from(byName, ([name, key]) => ({ key, name })) : [{ key: u.role, name: roleText(u.role) }];
+}
+
 export function roleNames(u: User): string {
-  const names = Array.from(new Set((u.grants ?? []).map((g) => (g.role_name || roleText(g.role_key)).replace(/\s*\(legacy\)\s*$/i, ""))));
-  return names.length ? names.join(", ") : roleText(u.role);
+  return userRoles(u).map((r) => r.name).join(", ");
+}
+
+/** Each role's name with its description beside it, read from the roles list. */
+function RolesCell({ user }: { user: User }) {
+  const roles = useRoles();
+  const held = userRoles(user).map((r) => ({ ...r, description: roles.data?.find((x) => x.key === r.key)?.description ?? null }));
+  return (
+    <span title={held.map((r) => (r.description ? `${r.name}: ${r.description}` : r.name)).join("\n")}>
+      {held.map((r, i) => (
+        <Fragment key={r.key}>
+          {i ? "; " : ""}
+          {r.name}
+          {r.description ? <span className="m2-meta"> {r.description}</span> : null}
+        </Fragment>
+      ))}
+    </span>
+  );
 }
 
 const COLUMNS: GridColumn<User>[] = [
@@ -43,7 +68,7 @@ const COLUMNS: GridColumn<User>[] = [
       </span>
     ),
   },
-  { id: "roles", get header() { return tr("Roles"); }, width: 240, cell: (u) => roleNames(u) },
+  { id: "roles", get header() { return tr("Roles"); }, width: 360, cell: (u) => <RolesCell user={u} /> },
   { id: "status", get header() { return tr("Status"); }, width: 150, cell: (u) => <UserStatusWord user={u} /> },
   { id: "login", get header() { return tr("Last sign-in"); }, width: 140, cell: (u) => <Since at={u.last_login} /> },
   { id: "since", get header() { return tr("Member since"); }, width: 140, defaultHidden: true, cell: (u) => <Since at={u.created_at} /> },
@@ -55,6 +80,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [csv, setCsv] = useState("email,name,role\n");
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof api.previewUserImport>> | null>(null);
+  const roles = useRoles();
   const { outcome, pending, run } = useOutcome();
   const check = () =>
     void run("check", async () => {
@@ -96,7 +122,9 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
                 <tr key={r.line}>
                   <td>{r.line}</td>
                   <td>{r.email}</td>
-                  <td>{r.role}</td>
+                  <td>
+                    <Coded code={r.role} text={roles.data?.find((x) => x.key === r.role)?.name} />
+                  </td>
                   <td>{r.ok ? <StatusWord tone="go">{tr("Ready")}</StatusWord> : <StatusWord tone="no-go">{r.error ?? tr("Rejected")}</StatusWord>}</td>
                 </tr>
               ))}

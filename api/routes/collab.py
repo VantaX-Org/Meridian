@@ -180,7 +180,11 @@ async def delete_comment(comment_id: uuid.UUID, request: Request, db: AsyncSessi
     return Response(status_code=204)
 
 
-@router.get("/comments/mentions/unread")
+class MentionCountOut(BaseModel):
+    count: int
+
+
+@router.get("/comments/mentions/unread", response_model=MentionCountOut)
 async def unread_mentions(request: Request, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     me = current_user_id(request)
     if not me:
@@ -222,7 +226,18 @@ async def get_watch(request: Request, target_kind: str = Query(...), target_id: 
     return {"target_kind": target_kind, "target_id": target_id, "watching": ev is not None, "events": list(ev or [])}
 
 
-@router.get("/watches/mine")
+class MyWatch(BaseModel):
+    target_kind: str
+    target_id: str
+    events: list[str]
+    created_at: datetime | None = None
+
+
+class MyWatchesOut(BaseModel):
+    watches: list[MyWatch]
+
+
+@router.get("/watches/mine", response_model=MyWatchesOut)
 async def my_watches(request: Request, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     me = _me(request)
     t = await _rls(db, tenant)
@@ -278,7 +293,11 @@ class SubscriptionOut(BaseModel):
     default: bool
 
 
-@router.get("/me/subscriptions")
+class SubscriptionsOut(BaseModel):
+    events: list[SubscriptionOut]
+
+
+@router.get("/me/subscriptions", response_model=SubscriptionsOut)
 async def my_subscriptions(request: Request, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     me = _me(request)
     t = await _rls(db, tenant)
@@ -289,7 +308,7 @@ async def my_subscriptions(request: Request, db: AsyncSession = Depends(get_db),
                        for e, (label, d) in collab.EVENTS.items()]}
 
 
-@router.put("/me/subscriptions")
+@router.put("/me/subscriptions", response_model=SubscriptionsOut)
 async def put_subscriptions(body: dict[str, bool], request: Request, db: AsyncSession = Depends(get_db),
                             tenant: Tenant = Depends(get_tenant)):
     bad = sorted(set(body) - set(collab.EVENTS))
@@ -311,7 +330,23 @@ async def put_subscriptions(body: dict[str, bool], request: Request, db: AsyncSe
 # ── a person's activity ───────────────────────────────────────────────────────
 
 
-@router.get("/people/{user_id}/activity")
+class ActivityEntry(BaseModel):
+    id: str
+    action: str
+    entity_type: str | None = None
+    entity_id: str | None = None
+    method: str | None = None
+    path: str | None = None
+    status_code: int | None = None
+    created_at: datetime | None = None
+
+
+class ActivityOut(BaseModel):
+    user_id: str
+    entries: list[ActivityEntry]
+
+
+@router.get("/people/{user_id}/activity", response_model=ActivityOut)
 async def person_activity(user_id: uuid.UUID, request: Request, limit: int = Query(30, ge=1, le=200),
                           db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """What one person changed, newest first, from audit_log. Your own trail is always yours to read; anyone else's

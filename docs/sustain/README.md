@@ -36,6 +36,7 @@ Read the documents in this order:
 | 7 | [access-and-security-operations.md](access-and-security-operations.md) | Manage users, credentials, licences and vulnerability alerts |
 | 8 | [backup-and-dr.md](backup-and-dr.md) | Back up, restore and recover from loss of the host |
 | 9 | [knowledge-transfer-plan.md](knowledge-transfer-plan.md) | Plan training, shadowing and the hand-over sign-off |
+| 10 | [data-subject-coverage.md](data-subject-coverage.md) | See which stores a data-subject request covers and what to handle by hand |
 
 During an incident, go straight to [runbooks.md](runbooks.md) and [support-model.md](support-model.md).
 

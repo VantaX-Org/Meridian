@@ -266,7 +266,53 @@ async def put_retention(
     return RetentionResponse(policy=body, enforcement=await _status(db, tenant.id))
 
 
-@router.get("/settings/retention/preview", dependencies=[Depends(require_permission("manage_settings"))])
+class PreviewItem(BaseModel):
+    version_id: str
+    label: Optional[str] = None
+    run_at: Optional[datetime] = None
+    system_id: str
+    blocked_reason: Optional[str] = None
+    rows_by_table: dict[str, Any]
+    bytes_freed: int
+
+
+class PreviewOut(BaseModel):
+    items: list[PreviewItem]
+    generated_at: datetime
+
+
+class PurgeLogItem(BaseModel):
+    id: str
+    kind: str
+    target_id: Optional[str] = None
+    dry_run: bool
+    rows_by_table: dict[str, Any]
+    bytes_freed: int
+    blocked_reason: Optional[str] = None
+    actor_email: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+class PurgeLogOut(BaseModel):
+    items: list[PurgeLogItem]
+
+
+class VersionPurgedOut(BaseModel):
+    version_id: str
+    rows_by_table: dict[str, Any]
+    bytes_freed: int
+    blocked_reason: Optional[str] = None
+    storage_errors: list[str]
+    purge_log_id: Optional[str] = None
+
+
+class PurgeTokenOut(BaseModel):
+    """Step one of the tenant purge. Step two returns the certificate PDF instead."""
+    token: str
+    executes_after: datetime
+
+
+@router.get("/settings/retention/preview", response_model=PreviewOut, dependencies=[Depends(require_permission("manage_settings"))])
 async def preview_retention(tenant: Tenant = Depends(get_tenant)):
     """Dry run of the policy as it stands: each version it would purge now, with the
     rows per table, the storage it would free, and why it would be refused."""
@@ -274,7 +320,7 @@ async def preview_retention(tenant: Tenant = Depends(get_tenant)):
     return {"items": items, "generated_at": _now()}
 
 
-@router.post("/settings/retention/preview", dependencies=[Depends(require_permission("manage_settings"))])
+@router.post("/settings/retention/preview", response_model=PreviewOut, dependencies=[Depends(require_permission("manage_settings"))])
 async def preview_draft_retention(body: RetentionPolicy, tenant: Tenant = Depends(get_tenant)):
     """Dry run of a draft policy (the body), before it is saved: what saving it would let
     the nightly task purge now. Nothing is stored; the saved policy is unchanged."""
@@ -282,7 +328,7 @@ async def preview_draft_retention(body: RetentionPolicy, tenant: Tenant = Depend
     return {"items": items, "generated_at": _now()}
 
 
-@router.get("/settings/purge-log", dependencies=[Depends(require_permission("manage_settings"))])
+@router.get("/settings/purge-log", response_model=PurgeLogOut, dependencies=[Depends(require_permission("manage_settings"))])
 async def purge_log(
     limit: int = Query(50, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
@@ -302,7 +348,7 @@ async def purge_log(
 
 # ── one version ──────────────────────────────────────────────────────────────
 
-@router.delete("/versions/{version_id}", dependencies=[Depends(require_permission("manage_settings"))])
+@router.delete("/versions/{version_id}", response_model=VersionPurgedOut, dependencies=[Depends(require_permission("manage_settings"))])
 async def delete_version(
     version_id: uuid.UUID,
     body: ConfirmBody,
@@ -336,7 +382,7 @@ def _token_key(tenant_id: str, token: str) -> str:
     return f"meridian:purge-tenant:{tenant_id}:{token}"
 
 
-@router.post("/admin/purge-tenant",
+@router.post("/admin/purge-tenant", response_model=PurgeTokenOut,
              dependencies=[Depends(require_permission("manage_settings")),
                            Depends(rate_limit("purge_tenant", limit=5, window_s=3600))])
 async def purge_tenant(

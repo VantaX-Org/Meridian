@@ -11,7 +11,7 @@ import json
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -126,7 +126,42 @@ async def list_audit_actors(
     return AuditActorsOut(actors=[AuditActor(id=r.id, name=r.name or f"User {r.id[:8]}") for r in rows])
 
 
-@router.get("/audit")
+class AuditEntry(BaseModel):
+    id: str
+    actor_user_id: Optional[str] = None
+    actor_email: Optional[str] = None
+    action: str
+    entity_type: Optional[str] = None
+    entity_id: Optional[str] = None
+    method: Optional[str] = None
+    path: Optional[str] = None
+    status_code: Optional[int] = None
+    ip: Optional[str] = None
+    user_agent: Optional[str] = None
+    before_json: Any = None
+    after_json: Any = None
+    created_at: Optional[str] = None  # ISO-8601, see _entry
+
+
+class AuditPage(BaseModel):
+    entries: list[AuditEntry]
+    total: int
+    limit: int
+    offset: int
+
+
+class AuditSummaryRow(BaseModel):
+    action: str
+    entity_type: Optional[str] = None
+    count: int
+
+
+class AuditSummaryOut(BaseModel):
+    summary: list[AuditSummaryRow]
+    total: int
+
+
+@router.get("/audit", response_model=AuditPage)
 async def list_audit_entries(
     actor_user_id: Optional[str] = Query(None),
     entity_type: Optional[str] = Query(None),
@@ -272,7 +307,7 @@ async def export_audit_entries(
     return xlsx_response(data, xlsx_filename("audit-log", None))
 
 
-@router.get("/audit/summary")
+@router.get("/audit/summary", response_model=AuditSummaryOut)
 async def audit_summary(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),

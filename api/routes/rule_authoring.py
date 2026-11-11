@@ -6,7 +6,7 @@ for the rule lifecycle to promote; nothing here changes the shipped rule files.
 
 import json
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
@@ -38,6 +38,52 @@ class RuleIn(BaseModel):
     rationale: Optional[str] = Field(None, max_length=2000)
 
 
+class GeneratedRuleOut(BaseModel):
+    rule_yaml: str
+    rule: Optional[dict[str, Any]] = None
+    valid: bool
+    errors: list[str]
+
+
+class DryRunOut(BaseModel):
+    """Evaluated: hits, population, pass_rate, sample. Not evaluated: reason."""
+    version_id: str
+    evaluated: bool
+    reason: Optional[str] = None
+    hits: Optional[int] = None
+    population: Optional[int] = None
+    pass_rate: Optional[float] = None
+    sample: Optional[list[dict[str, Any]]] = None
+
+
+class SavedDraftOut(BaseModel):
+    id: str
+    status: str
+    rule: dict[str, Any]
+
+
+class DraftRowOut(BaseModel):
+    id: str
+    domain: str
+    proposed_rule: Any = None
+    rationale: Optional[str] = None
+    status: str
+    created_at: Optional[str] = None
+
+
+class DraftListOut(BaseModel):
+    items: list[DraftRowOut]
+
+
+class PublishedDraftOut(BaseModel):
+    id: str
+    name: str
+    module: str
+    severity: str
+    enabled: bool
+    draft_id: str
+
+
 async def _latest(db: AsyncSession, tenant: Tenant, module: str, system_id) -> Optional[tuple]:
     await _rls(db, tenant)
     return (await db.execute(text(f"""
@@ -63,7 +109,7 @@ async def _validated(db, tenant, body: RuleIn):
     return rule, latest, d
 
 
-@router.post("/generate")
+@router.post("/generate", response_model=GeneratedRuleOut)
 async def generate(
     body: Describe,
     db: AsyncSession = Depends(get_db),
@@ -91,7 +137,7 @@ async def generate(
     return {"rule_yaml": out, "rule": rule, "valid": not errors, "errors": errors}
 
 
-@router.post("/dry-run")
+@router.post("/dry-run", response_model=DryRunOut, response_model_exclude_unset=True)
 async def dry_run(
     body: RuleIn,
     db: AsyncSession = Depends(get_db),
@@ -113,7 +159,7 @@ async def dry_run(
     return {"version_id": str(latest[0]), **(await run_in_threadpool(ra.dry_run, rule, frames))}
 
 
-@router.post("/drafts")
+@router.post("/drafts", response_model=SavedDraftOut)
 async def save_draft(
     body: RuleIn,
     db: AsyncSession = Depends(get_db),
@@ -130,7 +176,7 @@ async def save_draft(
     return {"id": str(row[0]), "status": "draft", "rule": rule}
 
 
-@router.get("/drafts")
+@router.get("/drafts", response_model=DraftListOut)
 async def list_drafts(
     module: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
@@ -156,7 +202,7 @@ async def _draft_row(db: AsyncSession, tenant: Tenant, draft_id: uuid.UUID):
     return row
 
 
-@router.put("/drafts/{draft_id}")
+@router.put("/drafts/{draft_id}", response_model=SavedDraftOut)
 async def update_draft(
     draft_id: uuid.UUID,
     body: RuleIn,
@@ -189,7 +235,7 @@ async def delete_draft(
     await db.commit()
 
 
-@router.post("/drafts/{draft_id}/publish")
+@router.post("/drafts/{draft_id}/publish", response_model=PublishedDraftOut)
 async def publish_draft(
     draft_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),

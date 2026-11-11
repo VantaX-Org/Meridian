@@ -9,7 +9,7 @@ import asyncio
 import io
 import logging
 import uuid
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -67,6 +67,57 @@ class LoadIn(SourceIn):
     system_id: Optional[str] = None
 
 
+class ConnectionOut(BaseModel):
+    id: str
+    name: str
+    engine: str
+    host: str
+    port: int
+    database: str
+    username: str
+    ssl_mode: str
+    created_by: Optional[str] = None
+    created_at: str
+    last_tested_at: Optional[str] = None
+    last_test_ok: Optional[int] = None
+    last_loaded_at: Optional[str] = None
+
+
+class ConnectionList(BaseModel):
+    connections: list[ConnectionOut]
+    engines: list[str]
+    max_rows: int
+    timeout_s: int
+
+
+class ConnectionTestOut(BaseModel):
+    ok: bool
+    error: Any = None
+
+
+class TableOut(BaseModel):
+    schema_: str = Field(alias="schema", serialization_alias="schema")
+    name: str
+    kind: str
+
+
+class TableList(BaseModel):
+    tables: list[TableOut]
+
+
+class PreviewOut(BaseModel):
+    columns: list[str]
+    rows: list[list[Optional[str]]]
+
+
+class LoadOut(BaseModel):
+    version_id: str
+    job_id: str
+    status: str
+    rows: int
+    truncated: bool
+
+
 def _http(e: xdb.ExternalDbError) -> HTTPException:
     return HTTPException(status_code=422, detail={"error": e.code, "detail": e.detail})
 
@@ -100,7 +151,7 @@ async def _in_thread(fn, *args, **kw):
         raise _http(e)
 
 
-@router.get("/connections", dependencies=[Depends(require_permission("manage_systems"))])
+@router.get("/connections", response_model=ConnectionList, dependencies=[Depends(require_permission("manage_systems"))])
 async def list_connections(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     rows = (await db.execute(text(f"SELECT {_COLS} FROM external_db_connections WHERE tenant_id = :t ORDER BY name"),
                              {"t": tenant.id})).mappings().all()
@@ -108,7 +159,7 @@ async def list_connections(db: AsyncSession = Depends(get_db), tenant: Tenant = 
             "timeout_s": xdb.STATEMENT_TIMEOUT_MS // 1000}
 
 
-@router.post("/connections", status_code=201, dependencies=[Depends(require_permission("manage_systems"))])
+@router.post("/connections", status_code=201, response_model=ConnectionOut, dependencies=[Depends(require_permission("manage_systems"))])
 async def create_connection(body: ConnectionIn, db: AsyncSession = Depends(get_db),
                             tenant: Tenant = Depends(get_tenant)):
     try:
@@ -139,7 +190,7 @@ async def delete_connection(conn_id: str, db: AsyncSession = Depends(get_db), te
     await db.commit()
 
 
-@router.post("/connections/{conn_id}/test", dependencies=[Depends(require_permission("manage_systems"))])
+@router.post("/connections/{conn_id}/test", response_model=ConnectionTestOut, dependencies=[Depends(require_permission("manage_systems"))])
 async def test_connection(conn_id: str, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     r = await _row(db, tenant, conn_id, secret=True)
     ok, err = 1, None
@@ -153,13 +204,13 @@ async def test_connection(conn_id: str, db: AsyncSession = Depends(get_db), tena
     return {"ok": bool(ok), "error": err}
 
 
-@router.get("/connections/{conn_id}/tables", dependencies=[Depends(require_permission("manage_systems"))])
+@router.get("/connections/{conn_id}/tables", response_model=TableList, dependencies=[Depends(require_permission("manage_systems"))])
 async def tables(conn_id: str, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     r = await _row(db, tenant, conn_id, secret=True)
     return {"tables": await _in_thread(xdb.list_tables, r, _password(tenant, r))}
 
 
-@router.post("/connections/{conn_id}/preview", dependencies=[Depends(require_permission("manage_systems"))])
+@router.post("/connections/{conn_id}/preview", response_model=PreviewOut, dependencies=[Depends(require_permission("manage_systems"))])
 async def preview(conn_id: str, body: SourceIn, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Column names and the first rows of the chosen table or query (at most 20), to map columns against."""
     r = await _row(db, tenant, conn_id, secret=True)
@@ -168,7 +219,7 @@ async def preview(conn_id: str, body: SourceIn, db: AsyncSession = Depends(get_d
     return {"columns": list(df.columns), "rows": [[None if pd.isna(v) else str(v) for v in row] for row in df.itertuples(index=False)]}
 
 
-@router.post("/connections/{conn_id}/load", dependencies=[Depends(_load_rate_limit), Depends(require_permission("manage_systems"))])
+@router.post("/connections/{conn_id}/load", response_model=LoadOut, dependencies=[Depends(_load_rate_limit), Depends(require_permission("manage_systems"))])
 async def load(request: Request, conn_id: str, body: LoadIn, db: AsyncSession = Depends(get_db),
                tenant: Tenant = Depends(get_tenant)):
     """Same path as a file upload: column mapping, parquet to storage, a version, then run_checks."""

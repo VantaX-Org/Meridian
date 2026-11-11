@@ -172,3 +172,29 @@ def test_window_still_rejects_a_bad_ed25519_signature(monkeypatch):
     r = signed_response(FP)
     r["signature_ed25519"] = r["signature_ed25519"][:-4] + "AAAA"
     assert lic._verify_response_signature(r) is False
+
+
+def _raw_b64(key: Ed25519PrivateKey) -> str:
+    return base64.b64encode(key.public_key().public_bytes(serialization.Encoding.Raw,
+                                                          serialization.PublicFormat.Raw)).decode()
+
+
+def test_offline_token_signing_key_rotation_overlap(monkeypatch):
+    """Rotation: a token signed with the old vendor key verifies while the old public key is still listed in
+    VENDOR_LICENCE_PUBLIC_KEYS, and stops verifying once it is dropped. New tokens use the new key."""
+    import jwt as pyjwt
+    from api.middleware import licence_keys
+
+    old, new = Ed25519PrivateKey.generate(), Ed25519PrivateKey.generate()
+    claims = {"iss": "meridian-hq", "tenant_id": "t-1", "exp": int(time.time()) + 600}
+    old_token = pyjwt.encode(claims, old, algorithm="EdDSA")
+    new_token = pyjwt.encode(claims, new, algorithm="EdDSA")
+
+    monkeypatch.setattr(licence_keys, "VENDOR_LICENCE_PUBLIC_KEYS", (_raw_b64(new), _raw_b64(old)))
+    assert lic._decode_offline_token(old_token)["tenant_id"] == "t-1"
+    assert lic._decode_offline_token(new_token)["tenant_id"] == "t-1"
+
+    monkeypatch.setattr(licence_keys, "VENDOR_LICENCE_PUBLIC_KEYS", (_raw_b64(new),))
+    with pytest.raises(pyjwt.InvalidSignatureError):
+        lic._decode_offline_token(old_token)
+    assert lic._decode_offline_token(new_token)["tenant_id"] == "t-1"

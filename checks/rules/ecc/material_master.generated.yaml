@@ -935,23 +935,6 @@ rules:
   fix_map:
     __other__: 'MARA.BFLME ''{invalid_value}'' is not in domain BFLME. Set it to one of: 1, 2, 3.'
   record_fix_template: 'MARA.BFLME is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXRc6037121
-  enabled: false
-  field: MARA.GENNR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Material Number of the Generic Material in Prepack Materials must exist in the check table MARA.MATNR
-  why_it_matters: GENNR (Material Number of the Generic Material in Prepack Materials) is defined in the SAP Data Dictionary
-    with check table MARA.MATNR on domain MATNR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read GENNR resolve it through check table MARA.MATNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARA.GENNR '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
-      entry.
-  record_fix_template: MARA.GENNR points at a check table MARA.MATNR entry that does not exist.
 - id: DXRf547979f
   enabled: false
   field: MARA.LOGUNIT
@@ -1567,23 +1550,6 @@ rules:
   fix_map:
     __other__: 'MARC.ROTATION_DATE ''{invalid_value}'' is not in domain ROTATION_DATE. Set it to one of: 1, 2, G, O, P.'
   record_fix_template: 'MARC.ROTATION_DATE is {actual_value}; expected one of: 1, 2, G, O, P.'
-- id: DXRdc152b1a
-  enabled: false
-  field: MARC.UCMAT
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Reference Material for Original Batches must exist in the check table MARA.MATNR
-  why_it_matters: UCMAT (Reference Material for Original Batches) is defined in the SAP Data Dictionary with check table MARA.MATNR
-    on domain MATNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read UCMAT resolve it through check table MARA.MATNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: MARC.UCMAT '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
-      entry.
-  record_fix_template: MARC.UCMAT points at a check table MARA.MATNR entry that does not exist.
 - id: DXR3b73b508
   enabled: false
   field: MARC./VSO/R_PKGRP

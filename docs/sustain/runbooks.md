@@ -119,7 +119,17 @@ Roll back by hand:
 ```bash
 sudo bash scripts/update.sh --rollback
 ```
-This returns images and `MERIDIAN_VERSION` to `MERIDIAN_PREVIOUS_VERSION`. It does not undo database migrations; there are no down-migrations. If the newer release had migrated the database, restore the pre-update dump:
+This returns images and `MERIDIAN_VERSION` to `MERIDIAN_PREVIOUS_VERSION`. It does not undo database migrations. The older release usually runs on the newer schema (the "Rollback schema check" workflow tests this), so most rollbacks need nothing more.
+
+If the older release cannot read the newer schema, take the schema back with the down-migrations before `--rollback`, while the newer images still run:
+1. Find the head revision of the older release: run `docker compose -f docker/docker-compose.customer.yml run --rm api alembic heads` on the `:rollback` image, or read it from that release's notes.
+2. Downgrade from the newer image: `docker compose -f docker/docker-compose.customer.yml run --rm api alembic downgrade <revision>`.
+3. Check with `docker compose -f docker/docker-compose.customer.yml run --rm api alembic current`.
+4. Then run `sudo bash scripts/update.sh --rollback`.
+
+Down-migrations take the schema back. They do not bring back data. Some of them delete rows the newer release added (seeded rules, packs, settings or rows of a new type): revisions 059, 067, 072, 075, 109, 117, 121, 125, 126, 128, 131, 141, 142 and 145. Revisions 088 and 094 only fix data, and keep it on downgrade. Revision 030 refuses to go lower while any connected system has no host, client or system number (cloud connections), because the older schema cannot hold them; it stops with a `NotImplementedError` that says so. Revisions 061, 084, 103, 135 and 139 commit their own steps, so a downgrade that fails can stop part way. Run `alembic current` to see where it stopped, and `alembic upgrade head` to return.
+
+When a downgrade is refused or would lose data you need, restore the pre-update dump instead:
 ```bash
 docker compose -f docker/docker-compose.customer.yml exec -T db pg_restore -U meridian -d meridian --clean --if-exists < backups/pre-update-<UTC>.dump
 ```
@@ -181,13 +191,21 @@ Plan rotations outside working hours and outside running jobs. Record what was r
 |---|---|---|
 | Database password | `DB_PASSWORD` | To confirm (owner: vendor engineering). The database user must be changed in PostgreSQL and in `.env` together. |
 | Object storage keys | `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_PASSWORD` | To confirm (owner: vendor engineering) |
-| Session signing secret | `JWT_SECRET` | No tool in the repository. Changing it signs out every user. Procedure to confirm (owner: vendor engineering). |
-| Offline token signing key | `OFFLINE_JWT_PRIVATE_KEY` | Single key, no overlap period. Procedure to confirm (owner: vendor engineering). |
+| HQ session signing secret | `JWT_SECRET` (licence worker) | Vendor only. Built-in overlap with `JWT_SECRET_PREVIOUS`, see [HQ signing keys](#hq-signing-keys) below. |
+| Licence signing key | `LICENCE_SIGNING_KEY_ED25519` (licence worker) | Vendor only. Overlap through the public key list in the image, see [HQ signing keys](#hq-signing-keys) below. `OFFLINE_JWT_PRIVATE_KEY` is the legacy RSA key and is not rotated; it is removed when the legacy window closes. |
 | Updater secret | `UPDATER_SHARED_SECRET` | Change in `.env`, then recreate api and updater. Exact steps to confirm (owner: vendor engineering). |
 | Aletheia access token | `ALETHEIA_TOKEN` | Generate with `openssl rand -hex 32`, set in `.env`, then run `sudo bash scripts/update.sh --version <the running version>` |
 | SCIM token | n/a | Administration, Users: rotate or revoke |
 | API keys | n/a | Administration, Users: API keys |
 | SAP RFC user password | n/a | Basis team changes it in SAP; the Meridian administrator updates the system connection ([runbook 9](#9-reconnect-sap)) |
+
+### HQ signing keys
+
+These two keys live only in the Meridian HQ licence worker in Cloudflare, never on a customer server. Vendor engineering rotates them; a customer site does nothing for the first and takes a normal update for the second.
+
+**HQ session signing secret (`JWT_SECRET`).** The worker signs HQ portal admin and tenant-user sessions with this secret and accepts a second, optional secret, `JWT_SECRET_PREVIOUS`, during a rotation. New sessions are always signed with `JWT_SECRET`, and a session signed with either secret is accepted, so nobody is signed out. To rotate, copy the current value into `JWT_SECRET_PREVIOUS` with `npx wrangler secret put JWT_SECRET_PREVIOUS`, then set a new value with `npx wrangler secret put JWT_SECRET` (for example from `openssl rand -hex 32`). Sessions last 8 hours, so after 8 hours remove the old one with `npx wrangler secret delete JWT_SECRET_PREVIOUS`. To roll back inside the window, put the old value back into `JWT_SECRET`. Revocation through `admin_sessions` keeps working throughout. Never paste either value into a ticket, log or chat.
+
+**Licence signing key (`LICENCE_SIGNING_KEY_ED25519`).** The worker signs licence responses, offline licence tokens and offline licence files with one Ed25519 private key. The API verifies against every public key listed in `VENDOR_LICENCE_PUBLIC_KEYS` in `api/middleware/licence_keys.py`, so the overlap comes from that list. To rotate, generate the new key pair as in `cloudflare/licence-worker/DEPLOY_RUNBOOK.md` Step 1, add the new public key first in the list while keeping the old one, and ship and roll out that release to every site. Then set the new private key with `npx wrangler secret put LICENCE_SIGNING_KEY_ED25519`. Offline tokens already issued with the old key keep verifying while the old public key is listed. Re-issue those tokens before the next release, which drops the old public key. A site that has not taken the release with the new public key rejects licences signed with the new private key, so check every site's version before switching the secret.
 
 See [access-and-security-operations.md](access-and-security-operations.md).
 

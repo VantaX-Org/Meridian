@@ -25,8 +25,10 @@ What erasure cannot do: it does not delete from SAP. A completed erasure writes 
 list (api/services/suppression.py), so extraction and analysis drop them until an admin lifts the suppression, but
 SAP still holds the record and a path that bypasses the shared read and write points would show it again; it cannot reach backups; it does not rewrite raw
 uploads, archives or report files; llm_audit_log is append-only by trigger and holds no record keys. A golden record
-under another key may still carry values merged from the subject. Comments, attachments and workflow events on change
-requests are not scrubbed, and a ``create`` request with no object key cannot be matched at all.
+under another key may still carry values merged from the subject. Workflow events and approval comments on change
+requests are kept (they hold status changes, not record values), and a ``create`` request with no object key cannot be
+matched at all. Free text (comments, notifications, webhook and undo payloads) is matched on the full record key only:
+a text that names the record another way is not found. Every store and how it is handled: docs/sustain/data-subject-coverage.md.
 
 An open change request on the subject refuses execution, as does any run or job that could write the rows back. The
 append-only triggers on master_record_history and mdm_merge_events step aside only inside the erasure transaction
@@ -51,6 +53,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from api.config import settings
+from api.middleware.cache import invalidate_tenant_cache
 from api.services import jobs, storage
 from api.services.purge import Actor, write_audit_row
 
@@ -106,6 +109,27 @@ _MASS = "kind = 'mass_change'"
 # twice: key on the target side, source_record on the source side. source_record can be NULL, hence IS TRUE below.
 _RECON_ROWS = "FROM jsonb_array_elements(e.value) r"
 _RECON_HIT = ("(r->>'key' = ANY(CAST(:keys AS text[])) OR r->>'source_record' = ANY(CAST(:keys AS text[]))) IS TRUE")
+# The single-record change requests on the subject (a mass change keeps its thread; it is about many records).
+_CR = ("(SELECT id FROM change_requests WHERE tenant_id = :t AND kind <> 'mass_change' "
+       "AND object_key = ANY(CAST(:keys AS text[])))")
+
+
+def _mentions(*exprs: str) -> str:
+    """True when any of the expressions, as text, contains a subject key (notification bodies, payloads)."""
+    hay = " || ' ' || ".join(f"COALESCE(CAST({e} AS text), '')" for e in exprs)
+    return f"EXISTS (SELECT 1 FROM unnest(CAST(:keys AS text[])) k WHERE strpos({hay}, k) > 0)"
+
+
+def _has_sample(expr: str) -> str:
+    return f"jsonb_exists_any({expr}, CAST(:keys AS text[]))"
+
+
+def _drop_samples(col: str, path: str = "") -> str:
+    """Remove the subject's keys from a jsonb list of sample record keys (at ``path`` inside ``col`` if given)."""
+    if not path:
+        return f"{col} = {col} - CAST(:keys AS text[])"
+    return (f"{col} = CASE WHEN jsonb_typeof({col}->'{path}') = 'array' THEN jsonb_set({col}, '{{{path}}}', "
+            f"({col}->'{path}') - CAST(:keys AS text[])) ELSE {col} END")
 
 TARGETS: tuple[Target, ...] = (
     Target("finding_records", ("record_key",)),
@@ -135,6 +159,10 @@ TARGETS: tuple[Target, ...] = (
                "merge_preview = NULL, golden_field_value = NULL"),
     Target("cleaning_audit", ("record_key",), action="scrub",
            set="record_key = :erased, data_before = NULL, data_after = NULL"),
+    # The thread on the subject's change requests. Before change_requests, which loses the object_key _CR reads.
+    # The attachment row points at a file the uploader stored elsewhere; Meridian does not hold that file.
+    Target("change_request_comments", also=f"request_id IN {_CR} OR {_mentions('body')}"),
+    Target("change_request_attachments", also=f"request_id IN {_CR}"),
     # Must run before change_requests, which loses the object_key this matches on. record_key is set on mass
     # changes only; a single-record change is tied to the subject through its request.
     Target("change_request_field_changes", ("record_key",), action="scrub",
@@ -161,6 +189,26 @@ TARGETS: tuple[Target, ...] = (
            export=f"id, run_id, status, created_at, completed_at, (SELECT jsonb_object_agg(e.key, (SELECT "
                   f"COALESCE(jsonb_agg(r), CAST('[]' AS jsonb)) {_RECON_ROWS} WHERE {_RECON_HIT})) "
                   "FROM jsonb_each(records) e) AS records"),
+    # A write-back run keeps the row and its state for the run's totals; the key and the values sent go.
+    Target("writeback_run_records", ("record_key",), action="scrub",
+           set="record_key = :erased, changes = CAST('{}' AS jsonb), result = NULL, error = NULL"),
+    Target("comments",
+           also=f"(target_kind = 'record' AND target_id = ANY(CAST(:keys AS text[]))) OR {_mentions('body')}"),
+    Target("watches", also="target_kind = 'record' AND target_id = ANY(CAST(:keys AS text[]))"),
+    Target("notifications", also=_mentions("title", "body", "link")),
+    Target("undo_actions", also=_mentions("payload", "inverse")),  # an undo would write the values back
+    Target("webhook_deliveries", also=_mentions("payload"), action="scrub", set="payload = CAST('{}' AS jsonb)",
+           export="id, webhook_id, event, event_id, status, created_at, delivered_at"),
+    # Profiles, proposals and exceptions keep up to 20 sample keys over many subjects: only the subject's leave.
+    Target("field_dependencies", also=_has_sample("sample_keys"), action="scrub", set=_drop_samples("sample_keys"),
+           export="id, version_id, module, table_name, determinant, dependent, created_at"),
+    Target("learned_rule_proposals", also=_has_sample("sample_keys") + " OR " + _has_sample("evidence->'sample_keys'"),
+           action="scrub", set=f"{_drop_samples('sample_keys')}, {_drop_samples('evidence', 'sample_keys')}",
+           export="id, version_id, module, kind, table_name, field, status, created_at"),
+    Target("exceptions", also=_has_sample("affected_records->'sample_keys'"), action="scrub",
+           set=_drop_samples("affected_records", "sample_keys"),
+           export="id, type, category, severity, status, title, created_at"),
+    Target("exception_comments", also=_mentions("text")),
     Target("audit_log", action="scrub", full_key_only=True, set="before_json = NULL, after_json = NULL"),
 )
 
@@ -567,8 +615,9 @@ def export(session: Any, tenant_id: str, subject: str, actor: Actor) -> tuple[by
             "record_keys": keys, "rows_by_table": rows, "extract_rows": scan["rows"],
             "truncated_tables": truncated, "extract_scan_complete": scan["complete"],
             "truncated_files": [n for n, hits in scan["files"].items() if hits > EXPORT_ROWS_PER_FILE],
-            "note": "Meridian holds copies of extracted SAP data. SAP itself, backups and raw uploaded files are "
-                    "not part of this package.",
+            "note": "Meridian holds copies of extracted SAP data. SAP itself, backups, raw uploaded files, archives "
+                    "and generated report files are not part of this package. Rows that also hold other records "
+                    "(profiles, proposals, exceptions, webhook deliveries) are listed without their contents.",
         }, indent=2))
     _ledger(session, tenant_id, kind="access", dry_run=False, subject_hmac=shmac, key_set_hmac=kmac,
             keys=len(keys), rows=rows, storage_doc=_storage_doc(scan), actor=actor, request_id=rid)
@@ -666,6 +715,7 @@ def erase(session: Any, tenant_id: str, subject: str, actor: Actor, *, dry_run: 
     _audit(session, tenant_id, actor, "subject_erase", rid, shmac, done,
            {"dry_run_id": dry_run_id, "suppressed_keys": suppressed})
     session.commit()  # database half is final; extracts follow and may fail without undoing it
+    invalidate_tenant_cache(str(tenant_id))  # cached API responses may still show the subject
 
     # a run may have started during the database half; a rewrite now could lose its writes or race its reads
     try:

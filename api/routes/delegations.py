@@ -13,7 +13,7 @@ never hands approvals to someone who cannot give them. Two delegations of one pe
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -47,6 +47,30 @@ class DelegationIn(BaseModel):
     from_user_id: uuid.UUID | None = None
 
 
+class DelegationOut(BaseModel):
+    id: str
+    from_user_id: str
+    to_user_id: str
+    starts_on: str
+    ends_on: str
+    reason: str | None = None
+    created_by: str | None = None
+    created_at: datetime | None = None
+    revoked_at: datetime | None = None
+    from_name: str | None = None
+    to_name: str | None = None
+    state: str  # scheduled | active | ended | revoked
+
+
+class MyDelegationsOut(BaseModel):
+    away: list[DelegationOut]
+    covering: list[DelegationOut]
+
+
+class DelegationListOut(BaseModel):
+    delegations: list[DelegationOut]
+
+
 def _out(r, today: date) -> dict:
     d = dict(r)
     return {**d, "starts_on": d["starts_on"].isoformat(), "ends_on": d["ends_on"].isoformat(),
@@ -58,7 +82,7 @@ async def _rls(db: AsyncSession, tenant: Tenant) -> str:
     return str(tenant.id)
 
 
-@router.get("/mine")
+@router.get("/mine", response_model=MyDelegationsOut)
 async def mine(request: Request, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     me = current_user_id(request)
     if not me:
@@ -73,7 +97,7 @@ async def mine(request: Request, db: AsyncSession = Depends(get_db), tenant: Ten
     return {"away": [d for d in out if d["from_user_id"] == me], "covering": [d for d in out if d["to_user_id"] == me]}
 
 
-@router.get("", dependencies=[Depends(require_permission("manage_users"))])
+@router.get("", response_model=DelegationListOut, dependencies=[Depends(require_permission("manage_users"))])
 async def all_delegations(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     t = await _rls(db, tenant)
     today = delegation.utc_today()
@@ -82,7 +106,7 @@ async def all_delegations(db: AsyncSession = Depends(get_db), tenant: Tenant = D
     return {"delegations": [_out(r, today) for r in rows]}
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=DelegationOut)
 async def create(body: DelegationIn, request: Request, db: AsyncSession = Depends(get_db),
                  tenant: Tenant = Depends(get_tenant)):
     me = current_user_id(request)

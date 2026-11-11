@@ -159,6 +159,26 @@ class SendOut(BaseModel):
     failed: int = Field(description="Recipients it did not reach.")
 
 
+class DigestListOut(BaseModel):
+    digests: list[DigestOut]
+
+
+class DeliveryOut(BaseModel):
+    id: str
+    due_at: Optional[datetime] = None
+    manual: bool
+    status: str  # sending | sent | failed | skipped
+    reason: Optional[str] = None
+    delivered: int
+    failed: int
+    created_at: datetime
+    finished_at: Optional[datetime] = None
+
+
+class DeliveryListOut(BaseModel):
+    deliveries: list[DeliveryOut]
+
+
 async def _one(db: AsyncSession, tenant: Tenant, digest_id: uuid.UUID) -> dict:
     row = (await db.execute(text(f"SELECT {_OUT_COLS} FROM digest_schedules WHERE id = :d AND tenant_id = :t"),
                             {"d": str(digest_id), "t": str(tenant.id)})).mappings().first()
@@ -196,7 +216,7 @@ async def _check(db: AsyncSession, tenant: Tenant, v: dict) -> None:
             raise HTTPException(status_code=422, detail="Every recipient user must be a user of this tenant")
 
 
-@router.get("", dependencies=[Depends(require_any_permission(*_MANAGE))])
+@router.get("", response_model=DigestListOut, dependencies=[Depends(require_any_permission(*_MANAGE))])
 async def list_digests(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
     rows = (await db.execute(text(f"SELECT {_OUT_COLS} FROM digest_schedules WHERE tenant_id = :t "
@@ -308,7 +328,7 @@ async def send_now(digest_id: uuid.UUID, db: AsyncSession = Depends(get_db), ten
     return out
 
 
-@router.get("/{digest_id}/deliveries", dependencies=[Depends(require_any_permission(*_MANAGE))])
+@router.get("/{digest_id}/deliveries", response_model=DeliveryListOut, dependencies=[Depends(require_any_permission(*_MANAGE))])
 async def list_deliveries(digest_id: uuid.UUID, db: AsyncSession = Depends(get_db),
                           tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)

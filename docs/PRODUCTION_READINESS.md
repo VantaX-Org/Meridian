@@ -1,13 +1,15 @@
 # Production readiness attestation
 
-_As of 2026-04-24. Signed off by: engineering._
+_First signed off 2026-04-24 by engineering. Platform figures refreshed 2026-11-11 for v0.0.640; the latest release notes are in [releases/](releases/)._
 
 This document is the point-in-time snapshot of what's been done to get Meridian to "pilot-customer ready" and what's genuinely still required for GA.
 
 ## What's shipped (engineering)
 
 ### Core platform
-- 29 SAP modules, 254+ deterministic checks, DAMA DMBOK scoring
+- 45 SAP modules, 9,468 deterministic rules (6,706 hand-authored, 2,762 derived), each proved against fixtures, DAMA DMBOK scoring
+- Every database migration has a working downgrade, proved by a round-trip test
+- `npm audit` clean in the frontend, portal, install worker and LLM proxy
 - Auto-selecting check engine (pandas ↔ polars at 50k rows)
 - 4 Aurora workspaces (Command Centre, Workbench, Process, Admin) with full mining-graph backend
 - Multi-system SAP connector layer (ECC / S/4HC / SF / Concur / Ariba / eWMS)
@@ -84,11 +86,11 @@ All eight must be green before declaring GA. None of them are pure-engineering.
 
 These are flagged but not blockers for a single pilot customer. They should be closed before the second customer:
 
-- `OFFLINE_JWT_PRIVATE_KEY` single-key (no rotation mechanism)
-- `JWT_SECRET` rotation requires ops-procedure, not built-in overlap
-- No WAF rules in front of customer API (customer responsibility today, but we should ship default rules)
+- ~~`OFFLINE_JWT_PRIVATE_KEY` single-key (no rotation mechanism)~~ Closed. Offline tokens are now signed with the Ed25519 vendor key and verified against a list of public keys compiled into the image, so a new key is added before the old one is dropped. `OFFLINE_JWT_PRIVATE_KEY` remains only as the legacy RSA response signature. Procedure in `docs/sustain/runbooks.md` (HQ signing keys).
+- ~~`JWT_SECRET` rotation requires ops-procedure, not built-in overlap~~ Closed. The licence worker accepts `JWT_SECRET_PREVIOUS` during a rotation window and signs new tokens with `JWT_SECRET`. Procedure in `docs/sustain/runbooks.md` (HQ signing keys).
+- ~~No WAF rules in front of customer API~~ Closed: `docker/nginx/meridian.conf` ships default edge rules (rate limits on the API and the password endpoints, a per-address connection cap, a method allow-list, dotfile denial, slow-client timeouts, security headers). Tuning: [docs/sustain/access-and-security-operations.md](sustain/access-and-security-operations.md#edge-protection). A full WAF (OWASP rule set) in front of nginx is still the customer's choice.
 - VR baselines are currently the sign-in screen, not per-route (auth-in-CI to close)
-- No SBOM delivered with customer releases (we have the artifact, just need to attach to tags)
+- ~~No SBOM delivered with customer releases~~ Fixed: `build-and-deploy.yml` attaches CycloneDX SBOMs of the api and frontend images to every release tag
 - No GDPR DSAR endpoint (manual SQL today)
 - No built-in tenant-user admin UI in the customer API (HQ-side only)
 

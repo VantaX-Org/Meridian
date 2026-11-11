@@ -25,6 +25,7 @@ logger = logging.getLogger("meridian.licence")
 
 # Current vendor key first. Public keys only: the matching private key is a Cloudflare worker secret.
 VENDOR_LICENCE_PUBLIC_KEYS: tuple[str, ...] = (
+    "AnSlz2N4FEc0cquem1Bl5VMjJFEcufzqfwZfex+G+DY=",
     "7kKztYc7qOsgG5WrqDE4M9o5aqDFvCqavPC8c/kt98U=",
     "nzfR8bnWoo+3rWSi16DtMc1fDLCqskiO8Fyl7VS1Ga4=",
 )
