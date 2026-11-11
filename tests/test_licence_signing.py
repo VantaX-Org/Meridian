@@ -102,11 +102,55 @@ if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))
 
 
-def test_transition_window_is_open_by_default():
-    """An installation that updates before HQ signs with the vendor key must not be locked out."""
+def test_legacy_signatures_are_opt_in_off_by_default(monkeypatch):
+    """DR-3: legacy signatures are accepted only when an admin sets MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES."""
     from api.config import Settings
 
+    monkeypatch.delenv("MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES", raising=False)
+    assert Settings().licence_allow_legacy_signatures is False
+    monkeypatch.setenv("MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES", "true")
     assert Settings().licence_allow_legacy_signatures is True
+
+
+def test_legacy_acceptance_under_the_opt_in_is_logged(monkeypatch, caplog):
+    monkeypatch.setattr(lic.settings, "licence_allow_legacy_signatures", True)
+    r = _legacy_rsa(monkeypatch)
+    with caplog.at_level("WARNING", logger=lic.logger.name):
+        assert lic._verify_response_signature(r) is True
+    assert "LEGACY RSA" in caplog.text and "MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES" in caplog.text
+
+
+def test_startup_check_names_a_kept_legacy_response_and_the_opt_in(monkeypatch, caplog):
+    monkeypatch.delenv("LICENCE_SERVER_PUBLIC_KEY", raising=False)
+    monkeypatch.delenv("MERIDIAN_LICENCE_TOKEN", raising=False)
+    monkeypatch.setattr(lic.settings, "licence_file", None)
+    monkeypatch.setattr(lic.settings, "licence_mode", "online")
+    assert lic.check_legacy_licence_at_startup() is None  # nothing kept: nothing to say
+
+    lic._remember_signed({"valid": True, "tenant_id": "t", "signature": "old-rsa"})
+    with caplog.at_level("ERROR", logger=lic.logger.name):
+        assert lic.check_legacy_licence_at_startup() == "The licence server response kept on this node"
+    assert "MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES=true" in caplog.text
+
+    lic._remember_signed(signed_response(FP))  # an Ed25519 response is not legacy
+    assert lic.check_legacy_licence_at_startup() is None
+
+    monkeypatch.setattr(lic.settings, "licence_allow_legacy_signatures", True)  # opted in: silent
+    lic._remember_signed({"valid": True, "tenant_id": "t"})
+    assert lic.check_legacy_licence_at_startup() is None
+
+
+def test_startup_check_names_a_legacy_offline_file(monkeypatch, tmp_path):
+    import json
+
+    monkeypatch.delenv("MERIDIAN_LICENCE_TOKEN", raising=False)
+    f = tmp_path / "licence.json"
+    f.write_text(json.dumps({"payload": {"active": True}, "signature": "abc"}))  # no signature_alg: HMAC
+    monkeypatch.setattr(lic.settings, "licence_file", str(f))
+    monkeypatch.setattr(lic.settings, "licence_mode", "offline")
+    assert lic.check_legacy_licence_at_startup() == "The offline licence file (HMAC-SHA256)"
+    f.write_text(json.dumps({"payload": {"active": True}, "signature": "abc", "signature_alg": "Ed25519"}))
+    assert lic.check_legacy_licence_at_startup() is None
 
 
 def test_unsigned_response_accepted_in_the_transition_window_with_no_key(monkeypatch):

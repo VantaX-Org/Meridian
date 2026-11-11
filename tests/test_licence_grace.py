@@ -139,4 +139,4 @@ async def test_unsigned_online_response_is_rejected(monkeypatch):
     del unsigned["signature_ed25519"]
     _hq(monkeypatch, unsigned)
     r = await _call()
-    assert r.status_code == 402 and json.loads(r.body)["reason"] == "signature_invalid"
+    assert r.status_code == 402 and json.loads(r.body)["reason"] == "legacy_signature_rejected"

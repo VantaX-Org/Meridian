@@ -113,6 +113,16 @@ def get_cached_licence() -> dict:
     return result
 
 
+LEGACY_OPT_IN_HINT = ("Ask Meridian HQ for an Ed25519-signed licence. To keep running on the old licence until then, "
+                      "set MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES=true in .env and restart the API.")
+
+
+def _legacy_rejected(what: str) -> str:
+    """Log why a legacy-signed licence was refused and how to opt in; the reason code for the result."""
+    logger.error(f"{what} uses a legacy signature, which is refused by default. {LEGACY_OPT_IN_HINT}")
+    return "legacy_signature_rejected"
+
+
 def _offline_payload_bytes(payload: dict) -> bytes:
     """The bytes an offline licence file's signature covers: its payload as sorted-key JSON."""
     return json.dumps(payload, sort_keys=True).encode()
@@ -137,16 +147,14 @@ def _offline_signature_ok(data: dict) -> tuple[bool, str]:
             return False, "invalid_signature"
         return (True, "") if licence_keys.verify(raw, _offline_payload_bytes(payload)) else (False, "invalid_signature")
     if not settings.licence_allow_legacy_signatures:
-        logger.error("Offline licence is signed with %s, which is no longer accepted; ask Meridian HQ for an "
-                     "Ed25519-signed licence", alg)
-        return False, "legacy_signature_rejected"
+        return False, _legacy_rejected(f"The offline licence file ({alg})")
     secret = os.getenv("LICENCE_SECRET", "")
     if not secret:
         return False, "unsigned_licence"
     expected = hmac_mod.new(secret.encode(), _offline_payload_bytes(payload), hashlib.sha256).hexdigest()
     if not hmac_mod.compare_digest(str(sig), expected):
         return False, "invalid_signature"
-    logger.warning("Offline licence accepted on a LEGACY HMAC signature (transition window: "
+    logger.warning("Offline licence accepted on a LEGACY HMAC signature (legacy opt-in: "
                    "MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES is on). Replace it with an Ed25519-signed licence.")
     return True, ""
 
@@ -218,6 +226,10 @@ def _read_offline_licence() -> dict | None:
         return None
 
 
+class _LegacyToken(Exception):
+    """An RS256 offline token while legacy signatures are off."""
+
+
 def _decode_offline_token(token: str) -> dict:
     """The claims of an offline licence JWT. EdDSA (Ed25519) against the compiled vendor keys; the old RS256
     against MERIDIAN_OFFLINE_PUBLIC_KEY only inside the legacy window. Raises pyjwt.PyJWTError otherwise."""
@@ -235,14 +247,16 @@ def _decode_offline_token(token: str) -> dict:
             except pyjwt.InvalidSignatureError as e:
                 last = e
         raise last
-    if alg == "RS256" and settings.licence_allow_legacy_signatures:
+    if alg == "RS256" and not settings.licence_allow_legacy_signatures:
+        raise _LegacyToken()
+    if alg == "RS256":
         # A PEM in .env is usually one line with \n escapes; restore the line breaks.
         pem = os.getenv("MERIDIAN_OFFLINE_PUBLIC_KEY", "").strip().strip('"').replace("\\n", "\n")
         if not pem:
             raise pyjwt.InvalidKeyError("no legacy public key")
         claims = pyjwt.decode(token, pem, algorithms=["RS256"], issuer="meridian-hq", options=opts)
         logger.warning("Offline licence token accepted on a LEGACY RS256 signature with a key from .env "
-                       "(transition window: MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES is on).")
+                       "(legacy opt-in: MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES is on).")
         return claims
     raise pyjwt.InvalidAlgorithmError(f"offline licence token algorithm {alg!r} is not accepted")
 
@@ -260,6 +274,8 @@ def _read_offline_token() -> dict | None:
 
     try:
         claims = _decode_offline_token(token)
+    except _LegacyToken:
+        return {"valid": False, "reason": _legacy_rejected("The offline licence token (RS256)")}
     except pyjwt.ExpiredSignatureError:
         return {"valid": False, "reason": "expired"}
     except pyjwt.PyJWTError as e:
@@ -450,7 +466,7 @@ def _do_sync_manifest(rules: list, field_mappings: list) -> None:
 # an HMAC wouldn't stop them (they'd hold the secret), so we verify against the vendor PUBLIC key compiled into
 # the image (api/middleware/licence_keys.py). Enforcement is always on: a valid response without a valid
 # signature is rejected (fail closed). The old RSA signature with a key from .env is accepted only inside the
-# legacy window (settings.licence_allow_legacy_signatures, on by default during the transition), and every such acceptance is logged.
+# legacy window (settings.licence_allow_legacy_signatures, opt-in, off by default), and every such acceptance is logged.
 
 # 7 days — matches the worker's expiry grace window. Bounds replay of a captured
 # response to this window; after it, the stale signature is rejected.
@@ -512,8 +528,8 @@ def _verify_legacy_rsa(result: dict, signed_at) -> bool:
                    hashes.SHA256())
     except (InvalidSignature, ValueError, TypeError):
         return False
-    logger.warning("Licence response accepted on a LEGACY RSA signature with a key from .env (transition "
-                   "window: MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES is on).")
+    logger.warning("Licence response accepted on a LEGACY RSA signature with a key from .env (legacy "
+                   "opt-in: MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES is on).")
     return True
 
 
@@ -527,7 +543,7 @@ def _verify_response_signature(result: dict, max_age: Optional[int] = None) -> b
             and _licence_public_key() is None):
         # Transition window: an installation upgraded before Meridian HQ signs with the vendor key keeps the old
         # behaviour (no key configured, the response is not verified) so an update never locks it out.
-        logger.warning("Licence response accepted WITHOUT a signature (transition window: "
+        logger.warning("Licence response accepted WITHOUT a signature (legacy opt-in: "
                        "MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES is on). Set it to false once HQ signs with Ed25519.")
         return True
     signed_at = result.get("signed_at")
@@ -684,6 +700,8 @@ async def _validate_licence() -> dict | None:
             # rejected here before it can entitle anything.
             if result.get("valid"):
                 if not _verify_response_signature(result):
+                    if not result.get("signature_ed25519") and not settings.licence_allow_legacy_signatures:
+                        return {"valid": False, "reason": _legacy_rejected("The licence server response")}
                     return {"valid": False, "reason": "signature_invalid"}
                 _remember_signed(result)
             return result
@@ -924,6 +942,44 @@ async def revalidate() -> tuple[dict | None, str]:
 
 # A licence lock blocks every gated route, so its body says so in ``detail`` (the field every UI surface shows);
 # without it the frontend read a lock as "Could not reach the server." or "You do not have access to this."
+def check_legacy_licence_at_startup() -> Optional[str]:
+    """At API startup, name a legacy-signed licence this deployment still holds while legacy signatures are off,
+    and log it as an error with how to opt in, so an upgrade never locks an installation out silently.
+
+    Looks only at what is on this node (no network): the offline token's algorithm, the offline licence file's
+    signature_alg, the last signed online response kept for the offline grace, and an old RSA key in .env.
+    Returns what was found, or None."""
+    if settings.licence_allow_legacy_signatures:
+        return None
+    found = None
+    token = os.getenv("MERIDIAN_LICENCE_TOKEN", "").strip()
+    path = settings.licence_file or (os.getenv("LICENCE_FILE_PATH", "/etc/meridian/licence.json")
+                                     if os.getenv("LICENCE_MODE", "online") == "offline" else None)
+    if token:
+        import jwt as pyjwt
+
+        try:
+            if pyjwt.get_unverified_header(token).get("alg") == "RS256":
+                found = "The offline licence token (RS256)"
+        except pyjwt.PyJWTError:
+            pass
+    if not found and path:
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict) and data.get("signature") and data.get("signature_alg") != "Ed25519":
+                found = f"The offline licence file ({data.get('signature_alg') or 'HMAC-SHA256'})"
+        except (OSError, ValueError):
+            pass
+    if not found and settings.licence_mode not in ("offline", "airgap"):
+        last = _load_signed()
+        if (last and last.get("valid") and not last.get("signature_ed25519")) or os.getenv("LICENCE_SERVER_PUBLIC_KEY"):
+            found = "The licence server response kept on this node"
+    if found:
+        _legacy_rejected(found)
+    return found
+
+
 LICENCE_LOCK_DETAIL: dict[str, str] = {
     "licence_invalid": "This deployment's licence is not valid ({reason}). Ask your administrator to renew it in Meridian HQ.",
     "licence_unverified": "Meridian could not reach Meridian HQ to validate its licence, so features stay locked "

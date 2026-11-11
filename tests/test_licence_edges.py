@@ -623,7 +623,7 @@ async def test_rs256_token_with_a_key_from_env_needs_the_legacy_window(monkeypat
     monkeypatch.setattr(lic.settings, "licence_mode", "offline")
     monkeypatch.setenv("MERIDIAN_OFFLINE_PUBLIC_KEY", pub)
     monkeypatch.setenv("MERIDIAN_LICENCE_TOKEN", pyjwt.encode(claims, key, algorithm="RS256"))
-    assert (await lic._validate_licence()) == {"valid": False, "reason": "invalid_token"}
+    assert (await lic._validate_licence()) == {"valid": False, "reason": "legacy_signature_rejected"}
 
     monkeypatch.setattr(lic.settings, "licence_allow_legacy_signatures", True)
     assert (await lic._validate_licence())["valid"] is True

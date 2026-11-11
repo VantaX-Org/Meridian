@@ -78,7 +78,7 @@ These documents stay the record. Read them; do not copy them.
 - [docs/legal/DPA.md](../legal/DPA.md) and [docs/legal/PRIVACY.md](../legal/PRIVACY.md): data processing and privacy terms
 - [docs/PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md): readiness gates and known gaps
 
-Known gaps (see [known-issues.md](known-issues.md)): no full web application firewall in front of nginx (the default edge rules below cover the basics), no SBOM on release tags, `npm audit` findings, and `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` on by default.
+Known gaps (see [known-issues.md](known-issues.md)): no full web application firewall in front of nginx (the default edge rules below cover the basics), no SBOM on release tags, `npm audit` findings, and legacy licence signatures available as an opt-in (`MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES`, off by default).
 
 ## Edge protection
 
