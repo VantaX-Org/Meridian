@@ -8757,6 +8757,25 @@ export const en = {
   "Objects, scrollable": "Objects, scrollable",
   "Change requests per object": "Change requests per object",
   "p90 cycle": "p90 cycle",
+  // journey/lead-b
+  "SAP accepts it": "SAP accepts it",
+  "SAP would reject it": "SAP would reject it",
+  "no check table": "no check table",
+  "check table {table}, read from the system": "check table {table}, read from the system",
+  "check table {table}, SAP-standard values": "check table {table}, SAP-standard values",
+  "check table {table}, not read": "check table {table}, not read",
+  "The SAP dictionary does not know this field.": "The SAP dictionary does not know this field.",
+  "data element {de}": "data element {de}",
+  "domain {d}": "domain {d}",
+  "Did you mean": "Did you mean",
+  "SAP dictionary": "SAP dictionary",
+  "Would SAP accept the new values": "Would SAP accept the new values",
+  "Each new value checked against the SAP dictionary of the target system: type, length, fixed values and check table.": "Each new value checked against the SAP dictionary of the target system: type, length, fixed values and check table.",
+  "The safety check could not be read.": "The safety check could not be read.",
+  "No waiting proposal has a new value to check.": "No waiting proposal has a new value to check.",
+  "{safe} of {checked} new values are safe to apply, {reject} would be rejected by SAP, {unknown} not checked.": "{safe} of {checked} new values are safe to apply, {reject} would be rejected by SAP, {unknown} not checked.",
+  "Only the first proposals were checked.": "Only the first proposals were checked.",
+  "Safety table, scrollable": "Safety table, scrollable",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
