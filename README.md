@@ -99,7 +99,7 @@ Access: Dashboard at `http://localhost:3000`, API at `http://localhost:8000`
 | Category | Modules | Rules |
 |---|---|---|
 | **ECC / S/4HANA** (19) | Business Partner, Material Master, GL Accounts, AP, AR, Asset Accounting, MM Purchasing, Plant Maintenance, Production Planning, SD Customer, SD Sales Orders, Controlling, HCM, Project System, Quality Management, Banking & Tax, Interface Health, S/4HANA Readiness, S/4HANA Master Data | 6,752 |
-| **SuccessFactors** (9) | Employee Central, Compensation, Benefits, Payroll, Performance Goals, Succession Planning, Recruiting & Onboarding, Learning Management, Time & Attendance | 1,883 |
+| **SuccessFactors** (9) | Employee Central, Compensation, Benefits, Payroll, Performance Goals, Succession Planning, Recruiting & Onboarding, Learning Management, Time & Attendance | 1,898 |
 | **Warehouse** (9) | eWMS Stock, eWMS Transfer Orders, Batch Management, MDG, GRC Compliance, Fleet Management, Transport Management, WM Interface, Cross-System Integration | 579 |
 | **Ariba** (4) | Supplier, Procurement, Contracts, Spend | 141 |
 | **Concur** (3) | Users, Expense, Travel | 97 |
