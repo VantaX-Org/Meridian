@@ -14,6 +14,7 @@ from sqlalchemy import text
 
 from api.services import aletheia_engine as engine
 from api.services import aletheia_foresight as foresight
+from api.services import aletheia_reason as reasoning
 from api.services import insights_aggregate as agg
 from api.services.rbac import require_permission
 from api.services.scoring import scoring_config
@@ -181,3 +182,59 @@ async def get_foresight(version_id: Optional[uuid.UUID] = None, system_id: Optio
     trend = await _agg(db, tenant, agg.trends, version_id and str(version_id), system_id, limit)
     out = await run_in_threadpool(foresight.foresight, trend["runs"], target)
     return {"lineage": trend["lineage"], "labels": engine.METRICS, "target_source": source, **out}
+
+
+class Anomaly(BaseModel):
+    metric: str
+    version_id: str | None = None
+    label: str | None = None
+    run_at: str | None = None
+    expected: Any = None
+    observed: Any = None
+    z: Any = None
+    severity: str
+
+
+class CausalRisk(BaseModel):
+    kind: str  # rule | dimension
+    driver: str
+    name: str
+    change: Any = None
+    effect: Any = None  # composite points the driver explains
+    confidence: int
+
+
+class ReasonLayer(BaseModel):
+    available: bool
+    reason: str | None = None
+    anomalies: list[Any]
+    risks: list[Any]
+    evidence: Evidence
+
+
+class ReasonDeterministic(BaseModel):
+    available: bool
+    reason: str | None = None
+    anomalies: list[Anomaly]
+    risks: list[CausalRisk]
+    anomaly_evidence: Evidence
+    risk_evidence: Evidence
+
+
+class Reason(BaseModel):
+    lineage: str
+    labels: dict[str, str]
+    runs: list[ForesightRun]
+    deterministic: ReasonDeterministic
+    engine: ReasonLayer
+
+
+@router.get("/api/v1/aletheia/reason", response_model=Reason, dependencies=[Depends(require_permission("view"))])
+async def get_reason(version_id: Optional[uuid.UUID] = None, system_id: Optional[str] = None,
+                     limit: int = Query(12, ge=3, le=50), db: AsyncSession = Depends(get_db),
+                     tenant: Tenant = Depends(get_tenant)):
+    """Anomalies and causal risks over the run history: a z-score and driver ranking that answer without the engine,
+    plus the engine's own reasoning layer. Only scores and per-rule counts leave Meridian, never record values."""
+    data = await _agg(db, tenant, reasoning.load, version_id and str(version_id), system_id, limit)
+    out = await run_in_threadpool(reasoning.reason, data["runs"], data["rules"], data["rule_names"])
+    return {"lineage": data["lineage"], "labels": engine.METRICS, **out}

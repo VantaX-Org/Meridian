@@ -142,6 +142,8 @@ Aletheia engine, deployed alongside Meridian rather than shared with any other p
 | The screens: Administration, Aletheia engine (status, licence verdict, expiry, version, usage), and Insights, "What moves the score" | `frontend/design/v2/admin/engine.tsx`, `frontend/design/v2/screens/Insights.tsx` |
 | The foresight route (`/api/v1/aletheia/foresight`): a deterministic go-live projection, plus the engine's learned normal range and the runs its world model did not expect (engine route `/api/{tenant}/model-insights`, run-level aggregates only) | `api/routes/aletheia_engine.py`, `api/services/aletheia_foresight.py`, `api/services/aletheia_engine.py` (`surprises`) |
 | The Foresight screen, with the Aletheia mark on its engine section | `frontend/design/v2/screens/AletheiaForesight.tsx`, `frontend/app/(v2)/aletheia/foresight/page.tsx` |
+| The reason route (`/api/v1/aletheia/reason`): deterministic anomalies and ranked score drivers; the engine layer is gated and not yet called | `api/routes/aletheia_engine.py`, `api/services/aletheia_reason.py`, `api/services/aletheia_engine.py` (`reason`) |
+| The Reason screen, with the Aletheia mark on its engine section | `frontend/design/v2/screens/AletheiaReason.tsx`, `frontend/app/(v2)/aletheia/reason/page.tsx` |
 
 The engine is licensed per host, like every Aletheia deployment: `ALETHEIA_LICENSE_KEY` (a signed token from
 the Aletheia licensor) and `ALETHEIA_DEPLOYMENT_ID` (the deployment it is bound to) are set in the host's

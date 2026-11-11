@@ -60,6 +60,7 @@ export function destinations(): Destination[] {
         { href: "/aletheia-survivorship", label: t("Aletheia verified survivorship") },
         { href: "/aletheia/evidence", label: t("Evidence ledger") },
         { href: "/aletheia/foresight", label: t("Foresight") },
+        { href: "/aletheia/reason", label: t("Reason") },
         { href: "/admin/settings#quality-thresholds", label: t("Quality thresholds"), need: "manage_settings" },
       ],
       also: ["/r", "/aletheia"],

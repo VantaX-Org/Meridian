@@ -237,6 +237,16 @@ Foresight, under Aletheia, shows where the composite score is heading, the date 
 
 Every panel has an **Evidence** section with what went in, the method and how sure it is. Only run-level scores and counts go to the engine, never a record value.
 
+## Aletheia reason
+
+Reason, under Aletheia, shows which runs fell out of line with their history and which rules and dimensions are pulling the composite score down. It needs four scored runs; with fewer, each panel says so. The banner gives how many runs fell out of line, the biggest driver and the number of drivers found. Under it:
+
+- **Runs that fell out of line.** Each run is compared with the runs before it. A run that moves at least 2.5 standard deviations from them is listed with what moved, when, the value expected, the value seen and the severity. A move is high only when it is in the bad direction and at least 3.5 standard deviations. The method is fixed, so the same runs always give the same list.
+- **What is pulling the score down.** Rules and dimensions ranked by their effect on the composite, each with its change in the latest run and a confidence from 0 to 100 that grows with the number of runs.
+- **What the engine reasons.** The Aletheia engine's own anomalies and causal risks. This panel stays off until the engine's reasoning route is published to Meridian and says "not set up" in the meantime. The two panels above work without the engine.
+
+Every panel has an **Evidence** section with what went in, the method and how sure it is. Only run-level scores and the number of failures per rule go to the engine, never a record value.
+
 ## Reference data
 
 Reference data, under Master data on the rail, manages the code lists of an ECC to S/4HANA migration: country, unit of measure, material group, payment terms and, for SuccessFactors, the picklist values. Lists come only from the check tables Meridian has already extracted. A list with no extracted check table is not shown, and a code with no extracted text shows the code alone.
