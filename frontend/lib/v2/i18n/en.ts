@@ -8654,6 +8654,16 @@ export const en = {
   "Runs later": "Runs later",
   "Correlation": "Correlation",
   "This deployment's own analysis engine: whether it runs, its licence, version and use.": "This deployment's own analysis engine: whether it runs, its licence, version and use.",
+  "Not reachable": "Not reachable",
+  "Not checked": "Not checked",
+  "Host or address": "Host or address",
+  "Instance": "Instance",
+  "SAP systems": "SAP systems",
+  "No system connected yet.": "No system connected yet.",
+  "Managing SAP systems": "Managing SAP systems",
+  "Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here.": "Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here.",
+  "Changing the host, client or instance number asks for the password again. Stored passwords are never shown.": "Changing the host, client or instance number asks for the password again. Stored passwords are never shown.",
+  "The systems could not be read. {detail}": "The systems could not be read. {detail}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
