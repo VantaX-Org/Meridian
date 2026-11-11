@@ -14,7 +14,7 @@ Open it with `⌘K` (Ctrl+K on Windows and Linux) or `/`. "Search, ask, or type 
 
 Start with `?` to ask in a sentence, such as `?critical vendors assigned to me due this week`. The answer is the ledger filter that will run, shown as chips with the slot each phrase fills (Object, Severity, Owner, Due, Policy, System), the explanation, and the words it did not understand; **Open in Work** (or `Enter`) opens exactly that filter. The words are matched against fixed tables; nothing is guessed.
 
-With nothing typed it offers **Go to**: Landscape, Objects, Work, Runs, People, Rules and Connect a system. Typing a page name such as Reports, Requests or Configuration goes to that page. `↑` and `↓` move through the results, `Enter` opens one, `Esc` closes.
+With nothing typed it offers **Go to**: the seven places of the rail (Home, Objects, Runs, Fix, Rules, Master data, Migration) and Connect a system. Typing a page name such as Reports, Requests or Configuration goes to that page. `↑` and `↓` move through the results, `Enter` opens one, `Esc` closes.
 
 ## Everywhere
 
@@ -29,11 +29,10 @@ With nothing typed it offers **Go to**: Landscape, Objects, Work, Runs, People, 
 - `g` then `o`: Objects.
 - `g` then `r`: Runs.
 - `g` then `f`: Fix.
-- `g` then `w`: Work.
 - `g` then `u`: Rules.
 - `g` then `m`: Master data.
 - `g` then `i`: Migration.
-- `g` then `p`: People.
+- `g` then `a`: Admin, for people who can administer.
 
 ## Tables and lists
 

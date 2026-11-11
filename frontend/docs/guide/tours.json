@@ -322,7 +322,7 @@
         {"caption": "Type a rule id to open the rule.", "fill": {"label": "Search, ask, or type a command", "text": "MM142"}},
         {"caption": "Or a word such as approve.", "fill": {"label": "Search, ask, or type a command", "text": "approve"}},
         {"caption": "Enter opens it.", "press": "Enter"},
-        {"caption": "G then W goes to Work; g then h, o, r, f, u, m or i goes to Home, Objects, Runs, Fix, Rules, Master data or Migration, and g then p to People.", "go": "/work"},
+        {"caption": "G then h, o, r, f, u, m or i goes to Home, Objects, Runs, Fix, Rules, Master data or Migration, and g then a to Admin.", "go": "/work"},
         {"caption": "In the ledger, j and k move, x selects, Enter opens the row.", "focus": "#m2-canvas", "press": "j"},
         {"caption": "a accepts the suggested value, n marks not an issue, r accepts the risk, e exports the fix sheet.", "press": "j"},
         {"caption": "In the inspector, the square brackets step to the previous and next row.", "press": "Enter"}
