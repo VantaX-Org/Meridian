@@ -176,6 +176,8 @@ export interface WorkRecordDetail {
   duplicates?: { open: number; href: string } | null;
   /** The currency rule.cost_at_risk is priced in; null when no issue carries a cost. */
   currency?: string | null;
+  /** TABLE.FIELD to its catalogue description, for every field in values. */
+  field_descriptions?: Record<string, string> | null;
   can: { fix: boolean; sign_off: boolean; assign: boolean; comment: boolean };
 }
 

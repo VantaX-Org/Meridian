@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { formatNumber } from "./format";
 
 /**
  * A tiny schema helper for forms: a rule maps a string value to an error message, or undefined when it passes.
@@ -39,7 +40,7 @@ export function url(message = "Enter a URL starting with https:// or http://"): 
 
 /** A whole number from `min` to `max` inclusive. */
 export function int(min: number, max: number, message?: string): Rule {
-  const text = message ?? `Enter a whole number from ${min.toLocaleString()} to ${max.toLocaleString()}`;
+  const text = message ?? `Enter a whole number from ${formatNumber(min)} to ${formatNumber(max)}`;
   return (v) => {
     if (v.trim() === "") return undefined;
     if (!/^-?\d+$/.test(v.trim())) return text;
@@ -50,7 +51,7 @@ export function int(min: number, max: number, message?: string): Rule {
 
 /** Between `min` and `max` characters. */
 export function length(min: number, max: number, message?: string): Rule {
-  const text = message ?? `Use ${min.toLocaleString()} to ${max.toLocaleString()} characters`;
+  const text = message ?? `Use ${formatNumber(min)} to ${formatNumber(max)} characters`;
   return (v) => (v === "" || (v.length >= min && v.length <= max) ? undefined : text);
 }
 

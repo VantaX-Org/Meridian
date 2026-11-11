@@ -83,7 +83,7 @@ describe("the Glossary tab", () => {
     const list = await within(sec).findByRole("list", { name: "Fields without a term" });
     expect(within(sec).getByText("2")).toBeInTheDocument();
     const items = within(list).getAllByRole("listitem");
-    expect(items.map((i) => norm(i))).toEqual(["MBEW-BKLASMM035", "MARC-BESKZMM028"]);
+    expect(items.map((i) => norm(i))).toEqual(["Valuation class MBEW-BKLASMM035", "Procurement type MARC-BESKZMM028"]);
     expect(within(items[0]).getByRole("link", { name: "MM035" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM035"));
   });
 

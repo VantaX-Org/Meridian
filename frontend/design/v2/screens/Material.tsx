@@ -11,7 +11,7 @@ import { splitKey } from "@/lib/v2/work";
 import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
-import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link, SapCode } from "../parts";
 import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
@@ -88,7 +88,7 @@ export function Material() {
     <CcPage title={t("Material 360")}>
       <Guide
         shows={t("Gathers one material across its views, plants, rule findings and follow-up chain.")}
-        next={{ href: "/issues", label: t("Open the issues") }}
+        next={{ href: "/issues?module=material-master", label: t("Open the issues") }}
         why={t("This screen only reads. Nothing in SAP is changed.")}
         means={[
           [t("Rules failing"), t("Rules this material fails, out of all rules that apply to it.")],
@@ -310,7 +310,7 @@ function Findings({ f }: { f: MaterialFindings }) {
               </th>
               <td data-label={t("View")}>{viewText(v.view, v.label)}</td>
               <td data-label={t("Level")}>{levelText(r.level)}</td>
-              <td data-label={t("Field")}>{r.field ? <Mono>{r.field}</Mono> : <Dash />}</td>
+              <td data-label={t("Field")}>{r.field ? <SapCode field={r.field} /> : <Dash />}</td>
               <td data-label={t("Value")}>{r.actual_value ? <Mono>{r.actual_value}</Mono> : <Dash why={t("Blank")} />}</td>
               <td data-label={t("Severity")}><Sev severity={r.severity} /></td>
               <td data-label={t("Issue")}>{r.issue_id ? <V2Link href={`/issues?search=${encodeURIComponent(r.record_key)}`}>{t("Open issue")}</V2Link> : <Dash />}</td>

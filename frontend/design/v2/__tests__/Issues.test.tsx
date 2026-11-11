@@ -75,4 +75,20 @@ describe("Record issues", () => {
     fireEvent.click(within(detail).getByRole("button", { name: "Add comment" }));
     expect(await within(detail).findByText("Checked with finance.")).toBeInTheDocument();
   });
+
+  it("narrows to one object and one rule from the address and links the rule and the record", async () => {
+    setUrl("/issues?module=material-master&rule=MM142");
+    const spy = vi.spyOn(api, "getIssues");
+    renderWithQuery(<Issues />);
+    const table = await screen.findByTestId("issues-table");
+    expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ module: "material_master", check_id: "MM142" }));
+    const rows = within(table).getAllByRole("row").slice(1);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) expect(r).toHaveTextContent("MM142");
+    expect(screen.getByTestId("issues-scope")).toHaveTextContent("MM142");
+    expect(within(table).getAllByTestId("issues-rule")[0].getAttribute("href")).toContain("open=rule");
+    fireEvent.click(within(rows[0]).getAllByRole("button")[0]);
+    const link = await screen.findByTestId("issues-open-record");
+    expect(link.getAttribute("href")).toContain("open=record");
+  });
 });

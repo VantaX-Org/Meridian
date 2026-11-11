@@ -12,7 +12,7 @@ import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, TrendChart, niceTicks, type TrendPoint } from "../charts";
 import { ageWord, objectWord, statusWord } from "../inspector/request";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link, SapCode } from "../parts";
 import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { DuplicateResults } from "./EntryDuplicates";
@@ -361,7 +361,7 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
                       <td data-label={t("Record")} className="m2-num">{f.record + 1}</td>
                       <th scope="row" className="m2-card-lead"><Mono>{f.rule_id}</Mono></th>
                       <td data-label={t("What the rule requires")}>{f.description}</td>
-                      <td data-label={t("Field")}><Mono>{f.field}</Mono></td>
+                      <td data-label={t("Field")}><SapCode field={f.field} /></td>
                       <td data-label={t("Severity")}>{SEV[f.severity]()}</td>
                       <td data-label={t("Suggested fix")}><Suggested s={f.suggestion} /></td>
                     </tr>

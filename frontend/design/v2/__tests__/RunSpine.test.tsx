@@ -130,6 +130,17 @@ describe("Home headlines, Objects board and Overview tab (fixture)", () => {
     expect(within(rows[0]).getAllByRole("link")[0].getAttribute("href")).toMatch(/\/o\//);
   });
 
+  it("the Objects board narrows to one module from ?module= and links back to all objects", async () => {
+    setUrl("/objects?fixture=1&module=material-master");
+    renderWithQuery(<ObjectsCanvas />);
+    const banner = await screen.findByTestId("objects-module-filter");
+    expect(within(banner).getByRole("link", { name: "Show all objects" }).getAttribute("href")).toMatch(/^\/objects/);
+    const rows = screen.getAllByTestId("objects-row");
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(within(row).getAllByRole("link")[0].getAttribute("href")).toMatch(/\/material-master/);
+    expect(screen.queryAllByTestId("objects-row-missing").every((r) => r.textContent?.includes("material_master"))).toBe(true);
+  });
+
   it("the Objects board prints each score once, from the ruler", async () => {
     setUrl("/objects?fixture=1");
     renderWithQuery(<ObjectsCanvas />);
