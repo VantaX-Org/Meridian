@@ -34,6 +34,16 @@ Each dependency names the field, its check table and the dictionary text, so you
 
 Each object shows the state of its latest analysed migration run. It is a no-go while that run still has critical or high gaps. Every object that needs a no-go object through a required field is blocked until that object is fixed. Prerequisites are check tables no object in the plan owns: configuration to transport, or master data from outside the plan, which must be in the target before step 1.
 
+## Load simulation
+
+Each analysed run shows a load simulation: how many records of each load object would load into the target and how many would fail, the way the SAP Migration Cockpit reports a simulated load. A record fails when it has a critical or high gap, or a value its check table does not hold. SAP rejects a value its check table lacks whatever its severity, so every check-table miss counts.
+
+The failures are grouped by load object, field and kind of error into one message each, built from the data dictionary. For example: Value 'ZROH' not allowed for field MARA-MTART (check table T134), or Field MAKT-MAKTX too long: CHAR 40. Each message names the field with its dictionary text, the records it affects and up to five sample record keys. Messages with no record count are structural: a field or key the target does not have.
+
+Configuration to transport lists every check table with values the records use but the target lacks, with the count of records for each value. Transport these entries before the load, or map the values to ones the target holds.
+
+When no target system is connected, Meridian checks values against the SAP standard baseline. A record that fails only on such values is marked provisional, because the target may already hold them. Connect the target and analyse again to confirm. The load simulation reads the run's stored findings; it does not touch the target system. The load plan gives the order in which the objects load.
+
 ## What you can do, by role
 
 The buttons depend on the role, and a button the role cannot use is not shown:

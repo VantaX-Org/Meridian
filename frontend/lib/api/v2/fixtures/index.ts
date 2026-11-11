@@ -52,6 +52,7 @@ import { migrationScenariosRead, NONE_MIGRATION_SCENARIOS } from "./migrationSce
 import { survivorshipRead, survivorshipWrite, NONE_SURVIVORSHIP } from "./survivorship";
 import { referenceDataRead, referenceDataWrite, NONE_REFERENCE_DATA } from "./reference-data";
 import { loadPlanRead, NONE_LOAD_PLAN } from "./load-plan";
+import { loadSimulationRead, NONE_LOAD_SIMULATION } from "./load-simulation";
 import { processAnalyticsRead, NONE_PROCESS_ANALYTICS } from "./process-analytics";
 import { fixDraftsRead, fixDraftsWrite, NONE_FIX_DRAFTS } from "./fixDrafts";
 import { learnedMonitorsRead, learnedMonitorsWrite, NONE_LEARNED_MONITORS } from "./learnedMonitors";
@@ -399,6 +400,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (sv !== NONE_SURVIVORSHIP) return sv as T;
   const rdr = referenceDataRead(path, params);
   if (rdr !== NONE_REFERENCE_DATA) return rdr as T;
+  const lsr = loadSimulationRead(path);
+  if (lsr !== NONE_LOAD_SIMULATION) return lsr as T;
   const lpr = loadPlanRead(path, params);
   if (lpr !== NONE_LOAD_PLAN) return lpr as T;
   const par = processAnalyticsRead(path, params);

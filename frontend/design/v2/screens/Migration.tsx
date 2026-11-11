@@ -1,5 +1,6 @@
 "use client";
 import { Disclose, Guide, Steps } from "./Guide";
+import { LoadSimulationPanel } from "./LoadSimulation";
 import { PairedQuality } from "./PairedQuality";
 import "../runs.css";
 
@@ -313,6 +314,7 @@ function RunDetail({ run }: { run: MigrationRun }) {
           </>
         )}
       </Panel>
+      {analysed(run) ? <LoadSimulationPanel runId={run.id} /> : null}
       <LoadFilesPanel run={run} />
       {analysed(run) ? <PostLoadPanel run={run} /> : null}
       <FindingsPanel run={run} gapTypes={[...new Set((q.data?.gap_breakdown ?? []).map((g) => g.gap_type))]} />
