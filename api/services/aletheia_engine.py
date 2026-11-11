@@ -40,7 +40,7 @@ def _tenant() -> str:
     return os.environ.get("ALETHEIA_TENANT") or "meridian"
 
 
-def _call(path: str, body: Optional[dict] = None) -> Optional[dict]:
+def _call(path: str, body: Optional[dict] = None, timeout: float = _TIMEOUT) -> Optional[dict]:
     """GET (or POST when body is given) a JSON path on the sidecar. None on any failure, never raises."""
     if not _url():
         return None
@@ -54,7 +54,7 @@ def _call(path: str, body: Optional[dict] = None) -> Optional[dict]:
         headers["Content-Type"] = "application/json"
     try:
         req = urllib.request.Request(_url() + path, data=data, headers=headers, method="POST" if data else "GET")
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read() or b"{}")
     except Exception:
         return None
@@ -119,10 +119,9 @@ def trend_series(runs: list[dict]) -> dict[str, list[float]]:
     return out
 
 
-def learn_trend(runs: list[dict]) -> dict:
-    """Learn normal ranges and lead/lag links from the run trend. Always a dict: available False plus a reason
-    when the engine cannot be used."""
-    if len(runs) < 3:
+def _gate(n: int, minimum: int) -> Optional[dict]:
+    """The reason the engine cannot be used for a trend of n runs, or None when it can."""
+    if n < minimum:
         return {"available": False, "reason": "too_few_runs"}
     st = status()
     if not st["configured"]:
@@ -133,6 +132,15 @@ def learn_trend(runs: list[dict]) -> dict:
         return {"available": False, "reason": "no_token"}
     if st["licence"] and st["licence"]["licensed"] and not st["licence"]["valid"]:
         return {"available": False, "reason": "licence_invalid"}
+    return None
+
+
+def learn_trend(runs: list[dict]) -> dict:
+    """Learn normal ranges and lead/lag links from the run trend. Always a dict: available False plus a reason
+    when the engine cannot be used."""
+    off = _gate(len(runs), 3)
+    if off:
+        return off
     series = trend_series(runs)
     res = _call(f"/api/{_tenant()}/learn", series)
     if res is None:
@@ -146,3 +154,45 @@ def learn_trend(runs: list[dict]) -> dict:
               "correlation": e.get("correlation")} for e in (res.get("causal_edges") or [])]
     links = sorted(links, key=lambda e: -abs(e["correlation"] or 0))[:8]  # the strongest, not all of them
     return {"available": True, "runs": len(runs), "ranges": ranges, "links": links}
+
+
+SURPRISE_MIN_RUNS = 6
+_SURPRISE_TIMEOUT = 30
+_SURPRISE_TTL = 600
+
+
+def surprises(runs: list[dict]) -> dict:
+    """Runs the engine's world model was surprised by. The engine trains a spiking encoder and a JEPA world model on
+    the run-trend series (POST /api/{tenant}/model-insights) and flags each run whose reconstruction surprise is more
+    than 2.5 robust deviations above the median. Each surprise names the metric that diverged most, what the model
+    expected and what was observed. The engine's money figure is dropped: it is costed for business KPIs, not data
+    quality. Cached ten minutes per series, training takes seconds."""
+    off = _gate(len(runs), SURPRISE_MIN_RUNS)
+    if off:
+        return off
+    series = trend_series(runs)
+    key = "surprise:" + json.dumps(series, sort_keys=True)
+    hit = _cache.get(key)
+    if hit and time.monotonic() - hit[0] < _SURPRISE_TTL:
+        return hit[1]  # type: ignore[return-value]
+    res = _call(f"/api/{_tenant()}/model-insights", {"series": series, "epochs": 30, "context": {}},
+                timeout=_SURPRISE_TIMEOUT)
+    if res is None:
+        return {"available": False, "reason": "engine_error"}
+    found = []
+    for f in res.get("findings") or []:
+        for d in f.get("drilldown") or []:
+            t = d.get("timestep")
+            if not isinstance(t, int) or not 0 <= t < len(runs):
+                continue
+            run = runs[t]
+            found.append({"metric": d.get("kpi"), "version_id": run.get("version_id"), "label": run.get("label"),
+                          "run_at": run.get("run_at"), "expected": d.get("predicted"), "observed": d.get("actual"),
+                          "z": d.get("z"), "severity": "high" if f.get("severity") == "neg" else "medium"})
+    found.sort(key=lambda s: -(s["z"] or 0))
+    learned = res.get("learned") or {}
+    out = {"available": True, "runs": len(runs), "metrics": sorted(series), "surprises": found,
+           "methodology": [m for m in res.get("methodology") or [] if isinstance(m, str)],
+           "recon_loss": learned.get("recon_loss"), "jepa_loss": learned.get("jepa_loss")}
+    _cache[key] = (time.monotonic(), out)
+    return out
