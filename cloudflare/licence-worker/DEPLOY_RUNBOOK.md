@@ -130,6 +130,13 @@ gh secret set RELEASE_PUBLISH_TOKEN --repo VantaX-Org/Meridian --body "$TOKEN"  
 Until both are set, the job only logs a warning and nothing is published. To
 rotate, repeat both commands with a new value.
 
+## Rotating JWT_SECRET
+
+The worker accepts tokens signed with `JWT_SECRET` or, when it is set, `JWT_SECRET_PREVIOUS`, and signs new
+ones with `JWT_SECRET` only. Move the current value to `JWT_SECRET_PREVIOUS`, set a new `JWT_SECRET`, and
+delete `JWT_SECRET_PREVIOUS` after 8 hours (the longest session). Full procedure in
+`docs/sustain/runbooks.md`, HQ signing keys.
+
 ## Soft node-lock (observe-only)
 
 The client fingerprint is `sha256(hostname + MAC)`, which changes on every Docker

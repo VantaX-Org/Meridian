@@ -913,3 +913,50 @@ describe("MFA", () => {
     expect(row?.mfa_recovery_hash).toBeNull();
   });
 });
+
+// ─── JWT_SECRET rotation overlap ──────────────────────────────────────────────
+
+describe("JWT_SECRET rotation (JWT_SECRET_PREVIOUS)", () => {
+  async function hs256(payload: Record<string, unknown>, secret: string): Promise<string> {
+    const enc = (o: unknown) => btoa(JSON.stringify(o)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+    const input = `${enc({ alg: "HS256", typ: "JWT" })}.${enc(payload)}`;
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(input)));
+    return `${input}.${btoa(String.fromCharCode(...sig)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")}`;
+  }
+
+  async function callWith(overrides: Record<string, unknown>, path: string, init: RequestInit = {}): Promise<Response> {
+    const ctx = createExecutionContext();
+    const resp = await worker.fetch(new Request(`http://localhost${path}`, init), { ...(env as object), ...overrides } as never, ctx);
+    await waitOnExecutionContext(ctx);
+    return resp;
+  }
+
+  const bearer = (t: string) => ({ headers: { Authorization: `Bearer ${t}` } });
+  const now = () => Math.floor(Date.now() / 1000);
+
+  it("accepts a token signed with the previous secret while JWT_SECRET_PREVIOUS is set", async () => {
+    const old = await hs256({ sub: "a@example.com", role: "admin", iat: now(), exp: now() + 600 }, "old-secret");
+    const resp = await callWith({ JWT_SECRET: "new-secret", JWT_SECRET_PREVIOUS: "old-secret" }, "/api/admin/tenants", bearer(old));
+    expect(resp.status).toBe(200);
+  });
+
+  it("rejects the same token once JWT_SECRET_PREVIOUS is removed", async () => {
+    const old = await hs256({ sub: "a@example.com", role: "admin", iat: now(), exp: now() + 600 }, "old-secret");
+    const resp = await callWith({ JWT_SECRET: "new-secret", JWT_SECRET_PREVIOUS: undefined }, "/api/admin/tenants", bearer(old));
+    expect(resp.status).toBe(401);
+  });
+
+  it("signs new tokens with the current secret, not the previous one", async () => {
+    const rotating = { JWT_SECRET: "new-secret", JWT_SECRET_PREVIOUS: "old-secret" };
+    const login = await callWith(rotating, "/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: TEST_ADMIN_EMAIL, password: TEST_ADMIN_PASSWORD }),
+    });
+    expect(login.status).toBe(200);
+    const { token } = (await login.json()) as { token: string };
+    expect((await callWith({ JWT_SECRET: "new-secret", JWT_SECRET_PREVIOUS: undefined }, "/api/admin/tenants", bearer(token))).status).toBe(200);
+    expect((await callWith({ JWT_SECRET: "old-secret", JWT_SECRET_PREVIOUS: undefined }, "/api/admin/tenants", bearer(token))).status).toBe(401);
+  });
+});

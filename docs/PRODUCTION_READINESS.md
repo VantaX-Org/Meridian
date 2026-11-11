@@ -86,8 +86,8 @@ All eight must be green before declaring GA. None of them are pure-engineering.
 
 These are flagged but not blockers for a single pilot customer. They should be closed before the second customer:
 
-- `OFFLINE_JWT_PRIVATE_KEY` single-key (no rotation mechanism)
-- `JWT_SECRET` rotation requires ops-procedure, not built-in overlap
+- ~~`OFFLINE_JWT_PRIVATE_KEY` single-key (no rotation mechanism)~~ Closed. Offline tokens are now signed with the Ed25519 vendor key and verified against a list of public keys compiled into the image, so a new key is added before the old one is dropped. `OFFLINE_JWT_PRIVATE_KEY` remains only as the legacy RSA response signature. Procedure in `docs/sustain/runbooks.md` (HQ signing keys).
+- ~~`JWT_SECRET` rotation requires ops-procedure, not built-in overlap~~ Closed. The licence worker accepts `JWT_SECRET_PREVIOUS` during a rotation window and signs new tokens with `JWT_SECRET`. Procedure in `docs/sustain/runbooks.md` (HQ signing keys).
 - ~~No WAF rules in front of customer API~~ Closed: `docker/nginx/meridian.conf` ships default edge rules (rate limits on the API and the password endpoints, a per-address connection cap, a method allow-list, dotfile denial, slow-client timeouts, security headers). Tuning: [docs/sustain/access-and-security-operations.md](sustain/access-and-security-operations.md#edge-protection). A full WAF (OWASP rule set) in front of nginx is still the customer's choice.
 - VR baselines are currently the sign-in screen, not per-route (auth-in-CI to close)
 - ~~No SBOM delivered with customer releases~~ Fixed: `build-and-deploy.yml` attaches CycloneDX SBOMs of the api and frontend images to every release tag
