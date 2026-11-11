@@ -1356,12 +1356,12 @@ def _mark_learned(report: dict, pending: dict, unresolved: Optional[dict] = None
 
     `unresolved` is the DD03L outcome per column id (workbook.learn_sap): no table is not in the system, several
     tables are listed as candidates and left for a person to choose."""
-    from api.services.migration.workbook import _camel
+    from api.services.migration.workbook import learned_property
 
     waiting = missing = 0
     for sheet in report["sheets"]:
         for col in sheet["unmapped"]:
-            gone = pending.get(col["id"], pending.get(_camel(col["id"])))  # job-code was learned as jobCode
+            gone = pending.get(col["id"], pending.get(learned_property(col["id"])))  # job-code was learned as jobCode
             tables = (unresolved or {}).get(col["id"])
             if tables is not None and gone is None:
                 gone = True if not tables else None

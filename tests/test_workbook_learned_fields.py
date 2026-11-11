@@ -46,6 +46,17 @@ def test_learned_field_the_tenant_did_not_return_is_reported_missing_not_waiting
     assert [(c["learned"], c["not_in_system"]) for c in cols] == [(True, False), (False, True), (False, False)]
 
 
-def test_navigation_and_control_ids_are_never_learned():
-    learned = wb.learn(book("Frequency Values", ["externalCode", "homeAddress.city", "operation", "annualizationFactorX"]), D)
-    assert learned == {"FOFREQUENCY": {"ANNUALIZATION_FACTOR_X": "FOFrequency.annualizationFactorX"}}
+def test_navigation_is_learned_as_nav_prop_and_control_ids_never():
+    b = book("Frequency Values", ["externalCode", "homeAddress.zip-code", "operation", "annualizationFactorX"])
+    learned = wb.learn(b, D)
+    assert learned == {"FOFREQUENCY": {"ANNUALIZATION_FACTOR_X": "FOFrequency.annualizationFactorX",
+                                       "HOME_ADDRESS_ZIP_CODE": "FOFrequency.homeAddress.zipCode"}}
+    # the learned navigation fills its column next time
+    assert "homeAddress.zip-code" in wb._candidates(b.sheets[0], with_learned(D, learned))["FOFREQUENCY"]
+
+
+def test_resolver_reads_a_learned_navigation_through_expand():
+    from sap.successfactors import resolve_property
+    navs = {"homeAddress": {"city", "zipCode"}}
+    assert resolve_property("homeAddress.zipCode", {"userId"}, navs) == "homeAddress.zipCode"
+    assert resolve_property("homeAddress.nope", {"userId"}, navs) is None

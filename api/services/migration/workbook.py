@@ -493,6 +493,13 @@ def _camel(column_id: str) -> str:
     return head + "".join(w[:1].upper() + w[1:] for w in rest)
 
 
+def learned_property(column_id: str) -> str:
+    """The property a column id is learned as: homeAddress.zip-code is homeAddress.zipCode, reached through the
+    homeAddress navigation, while job-code is jobCode and a localised name.en_US stays name_en_US."""
+    nav, dot, sub = column_id.partition(".")
+    return f"{nav}.{_camel(sub)}" if dot and not _LOCALE.search(column_id) else _camel(column_id)
+
+
 def learn(workbook: Workbook, dictionary: Dictionary) -> dict[str, dict[str, str]]:
     """Unmatched columns that name a plain property of their sheet's entity, as {TABLE: {FIELD: "Entity.property"}}.
 
@@ -513,13 +520,13 @@ def learn(workbook: Workbook, dictionary: Dictionary) -> dict[str, dict[str, str
         matched = {h for hits in _candidates(sheet, dictionary).values() for h in hits}
         have = {(f.source or "").split(".", 1)[-1] for f in dictionary.tables[home].fields.values()}
         for col in sheet.columns:
-            prop = _camel(col.id)
-            # a navigation path such as homeAddress.city is not a property of this entity, so it is never learned
-            navigation = "." in col.id and not _LOCALE.search(col.id)
-            if (col.header in matched or navigation or _norm(col.id) in IMPORT_CONTROL
-                    or not _PROPERTY.fullmatch(prop) or prop in have):
+            # homeAddress.city is the city reached through the homeAddress navigation: it is learned as nav.prop,
+            # which extraction reads with $expand after checking both names against the tenant's $metadata
+            prop = learned_property(col.id)
+            if (col.header in matched or _norm(col.id) in IMPORT_CONTROL or prop in have
+                    or not all(_PROPERTY.fullmatch(p) for p in prop.split("."))):
                 continue
-            name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", prop).upper()
+            name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", prop.replace(".", "_")).upper()
             if name not in dictionary.tables[home].fields:
                 out.setdefault(home, {})[name] = f"{entity}.{prop}"
     return out
