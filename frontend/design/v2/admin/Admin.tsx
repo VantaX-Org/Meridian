@@ -22,6 +22,7 @@ import { MatchRulesSection } from "./matchrules";
 import { WebhooksSection } from "./webhooks";
 import { DqFirewallSection } from "./dqfirewall";
 import { ExternalDbSection } from "./externaldb";
+import { SystemsSection } from "./systems";
 import { SubjectRequestsSection } from "./subjectrequests";
 import { DigestsSection, PolicyPacksSection } from "./step10";
 import { t } from "@/lib/v2/i18n";
@@ -251,6 +252,8 @@ function Section({ slug }: { slug: AdminSlug }) {
       return <DigestsSection />;
     case "runs":
       return <RunsSection />;
+    case "systems":
+      return <SystemsSection />;
     case "system":
       return <SystemSection />;
     case "aletheia":

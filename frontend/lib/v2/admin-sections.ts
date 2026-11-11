@@ -1,6 +1,6 @@
 import { t } from "@/lib/v2/i18n";
 /** The sections of the Admin canvas, in the order the left index lists them, with the permission each one needs. */
-export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "matchrules" | "audit" | "alerts" | "notifications" | "webhooks" | "dqfirewall" | "externaldb" | "subjectrequests" | "runs" | "system" | "aletheia" | "workflows" | Step10Slug | CapabilitySlug;
+export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "matchrules" | "audit" | "alerts" | "notifications" | "webhooks" | "dqfirewall" | "externaldb" | "subjectrequests" | "runs" | "systems" | "system" | "aletheia" | "workflows" | Step10Slug | CapabilitySlug;
 /** Step 10: policy packs and scheduled digests. */
 export type Step10Slug = "policypacks" | "digests";
 /** Step 6c, the role capability audit (design/v2/admin/capabilities.tsx). */
@@ -45,6 +45,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { slug: "notifications", get label() { return t("Default digest"); }, get group() { return t("Notifications"); }, get lead() { return t("The tenant's default digest."); }, needs: ["manage_settings", "view"] },
   { slug: "webhooks", get label() { return t("Webhooks"); }, get group() { return t("Notifications"); }, get lead() { return t("Signed events to Slack, Teams or any https endpoint, the delivery log, and what runs by itself."); }, needs: ["manage_settings"] },
   { slug: "digests", get label() { return t("Digests"); }, get group() { return t("Notifications"); }, get lead() { return t("Scheduled summaries by role or by wave: the landscape, score moves, gates, approvals and value at risk."); }, needs: ["manage_settings", "manage_digests"] },
+  { slug: "systems", get label() { return t("SAP systems"); }, get group() { return t("Operations"); }, get lead() { return t("Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here."); }, needs: ["manage_systems"] },
   { slug: "runs", get label() { return t("Start and schedule"); }, get group() { return t("Operations"); }, get lead() { return t("Start an extraction, an analysis, a configuration load or an upload, and schedule them. The runs themselves are on Runs."); }, needs: ["trigger_sync", "analyse", "manage_systems", "upload"] },
   { slug: "system", get label() { return t("Platform and updates"); }, get group() { return t("Operations"); }, get lead() { return t("Background jobs, the platform version and health checks."); }, needs: ["manage_system", "view"] },
   { slug: "aletheia", get label() { return t("Aletheia engine"); }, get group() { return t("Operations"); }, get lead() { return t("This deployment's own analysis engine: whether it runs, its licence, version and use."); }, needs: ["manage_system", "view"] },
