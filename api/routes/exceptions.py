@@ -59,6 +59,23 @@ class CommentBody(BaseModel):
     user_name: str = "system"
 
 
+class ExceptionAssignedOut(BaseModel):
+    id: str
+    assigned_to: str
+
+
+class ExceptionEscalatedOut(BaseModel):
+    id: str
+    escalation_tier: int
+    sla_deadline: str
+
+
+class ExceptionResolvedOut(BaseModel):
+    id: str
+    status: str
+    billing_tier: int
+
+
 class CreateRuleBody(BaseModel):
     name: str
     description: str
@@ -364,7 +381,7 @@ async def create_exception(
 # ── 4. PUT /api/v1/exceptions/{id}/assign ────────────────────────────────────
 
 
-@router.put("/exceptions/{exception_id}/assign", dependencies=[Depends(require_action_or_sap_source("assign"))])
+@router.put("/exceptions/{exception_id}/assign", response_model=ExceptionAssignedOut, dependencies=[Depends(require_action_or_sap_source("assign"))])
 async def assign_exception(
     exception_id: str,
     body: AssignBody,
@@ -410,7 +427,7 @@ async def assign_exception(
 # ── 5. PUT /api/v1/exceptions/{id}/escalate ──────────────────────────────────
 
 
-@router.put("/exceptions/{exception_id}/escalate", dependencies=[Depends(require_permission("approve"))])
+@router.put("/exceptions/{exception_id}/escalate", response_model=ExceptionEscalatedOut, dependencies=[Depends(require_permission("approve"))])
 async def escalate_exception(
     exception_id: str,
     body: EscalateBody,
@@ -459,7 +476,7 @@ async def escalate_exception(
 # ── 6. PUT /api/v1/exceptions/{id}/resolve ───────────────────────────────────
 
 
-@router.put("/exceptions/{exception_id}/resolve")
+@router.put("/exceptions/{exception_id}/resolve", response_model=ExceptionResolvedOut)
 async def resolve_exception(
     exception_id: str,
     body: ResolveBody,

@@ -21,7 +21,8 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Literal
+from datetime import datetime
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -29,6 +30,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.routes.contracts import ContractWithCompliance
 from api.services import escalation, wave_gate
 from api.services.rbac import (
     current_user_label,
@@ -59,6 +61,18 @@ class ChainIn(BaseModel):
     steps: list[StepIn] = Field(default_factory=list, max_length=escalation.MAX_LEVELS)
 
 
+class StepOut(BaseModel):
+    level: int
+    after_minutes: int
+    target: str
+    user_id: str | None = None
+    user_name: str | None = None
+
+
+class ChainOut(BaseModel):
+    steps: list[StepOut]
+
+
 async def _chain(db: AsyncSession, t: str) -> list[dict]:
     rows = (await db.execute(text(
         "SELECT s.level, s.after_minutes, s.target, s.user_id::text AS user_id, COALESCE(u.name, u.email) AS user_name "
@@ -67,12 +81,12 @@ async def _chain(db: AsyncSession, t: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-@router.get("/triage/escalation-chain", dependencies=[Depends(require_permission("view"))])
+@router.get("/triage/escalation-chain", response_model=ChainOut, dependencies=[Depends(require_permission("view"))])
 async def get_chain(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     return {"steps": await _chain(db, await _rls(db, tenant))}
 
 
-@router.put("/triage/escalation-chain",
+@router.put("/triage/escalation-chain", response_model=ChainOut,
             dependencies=[Depends(require_any_permission("manage_triage", "manage_settings", "manage_rules"))])
 async def put_chain(body: ChainIn, request: Request, db: AsyncSession = Depends(get_db),
                     tenant: Tenant = Depends(get_tenant)):
@@ -107,11 +121,38 @@ _SNAP = ("name", "description", "producer", "consumer", "schema_contract", "qual
          "volume_contract", "status")
 
 
+class ContractVersionOut(BaseModel):
+    version: int
+    snapshot: dict[str, Any]
+    note: str | None = None
+    created_by: str
+    created_at: datetime
+
+
+class ContractBreachOut(BaseModel):
+    version_id: str | None = None
+    violations: Any = None
+    recorded_at: datetime
+
+
+class ContractDetailOut(BaseModel):
+    contract: ContractWithCompliance
+    versions: list[ContractVersionOut]
+    breaches: list[ContractBreachOut]
+    checks: int
+
+
+class ReviseOut(BaseModel):
+    id: str
+    version: int
+    status: str
+
+
 def _jsonable(d: dict) -> dict:
     return json.loads(json.dumps(d, default=str))
 
 
-@router.get("/contracts/{contract_id}/detail", dependencies=[Depends(require_permission("view"))])
+@router.get("/contracts/{contract_id}/detail", response_model=ContractDetailOut, dependencies=[Depends(require_permission("view"))])
 async def contract_detail(contract_id: uuid.UUID, db: AsyncSession = Depends(get_db),
                           tenant: Tenant = Depends(get_tenant)):
     """The contract, its earlier versions (newest first) and the checks it failed (breaches, newest first)."""
@@ -143,7 +184,7 @@ class ReviseIn(BaseModel):
     note: str | None = Field(None, max_length=1000)
 
 
-@router.post("/contracts/{contract_id}/revise", dependencies=[Depends(require_permission("manage_rules"))])
+@router.post("/contracts/{contract_id}/revise", response_model=ReviseOut, dependencies=[Depends(require_permission("manage_rules"))])
 async def revise_contract(contract_id: uuid.UUID, body: ReviseIn, request: Request,
                           db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Keep the live version as history and reopen the contract as a draft of the next version. The draft is edited
@@ -188,6 +229,41 @@ def _gate_out(r: dict | None) -> dict:
             "updated_at": r["updated_at"].isoformat() if r["updated_at"] else None}
 
 
+class GateOut(BaseModel):
+    min_score: float | None = None
+    zero_criticals: bool
+    contracts_met: bool
+    configured: bool
+    updated_by: str | None = None
+    updated_at: str | None = None
+
+
+class GateCheck(BaseModel):
+    key: str
+    label: str
+    passed: bool
+    detail: str
+
+
+class GateStatus(BaseModel):
+    passed: bool
+    checks: list[GateCheck]
+
+
+class WaveGateOut(BaseModel):
+    wave_id: str
+    name: str
+    modules: list[str]
+    gate: GateOut
+    status: GateStatus
+    signed_off: bool
+    certificate_href: str
+
+
+class WaveGateList(BaseModel):
+    gates: list[WaveGateOut]
+
+
 async def _contracts(db: AsyncSession, t: str) -> list[dict]:
     rows = (await db.execute(text("""
         SELECT c.name, c.status, c.producer, c.consumer, c.quality_contract, h.overall_compliant AS latest_compliant
@@ -222,12 +298,12 @@ async def _gates(db: AsyncSession, tenant: Tenant, wave_id: uuid.UUID | None = N
     return out
 
 
-@router.get("/migration/waves/gates", dependencies=[Depends(require_permission("view"))])
+@router.get("/migration/waves/gates", response_model=WaveGateList, dependencies=[Depends(require_permission("view"))])
 async def list_gates(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     return {"gates": await _gates(db, tenant)}
 
 
-@router.put("/migration/waves/{wave_id}/gate", dependencies=[Depends(require_permission("analyse"))])
+@router.put("/migration/waves/{wave_id}/gate", response_model=WaveGateOut, dependencies=[Depends(require_permission("analyse"))])
 async def put_gate(wave_id: uuid.UUID, body: GateIn, request: Request, db: AsyncSession = Depends(get_db),
                    tenant: Tenant = Depends(get_tenant)):
     t = await _rls(db, tenant)

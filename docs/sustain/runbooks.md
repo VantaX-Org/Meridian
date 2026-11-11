@@ -119,7 +119,17 @@ Roll back by hand:
 ```bash
 sudo bash scripts/update.sh --rollback
 ```
-This returns images and `MERIDIAN_VERSION` to `MERIDIAN_PREVIOUS_VERSION`. It does not undo database migrations; there are no down-migrations. If the newer release had migrated the database, restore the pre-update dump:
+This returns images and `MERIDIAN_VERSION` to `MERIDIAN_PREVIOUS_VERSION`. It does not undo database migrations. The older release usually runs on the newer schema (the "Rollback schema check" workflow tests this), so most rollbacks need nothing more.
+
+If the older release cannot read the newer schema, take the schema back with the down-migrations before `--rollback`, while the newer images still run:
+1. Find the head revision of the older release: run `docker compose -f docker/docker-compose.customer.yml run --rm api alembic heads` on the `:rollback` image, or read it from that release's notes.
+2. Downgrade from the newer image: `docker compose -f docker/docker-compose.customer.yml run --rm api alembic downgrade <revision>`.
+3. Check with `docker compose -f docker/docker-compose.customer.yml run --rm api alembic current`.
+4. Then run `sudo bash scripts/update.sh --rollback`.
+
+Down-migrations take the schema back. They do not bring back data. Some of them delete rows the newer release added (seeded rules, packs, settings or rows of a new type): revisions 059, 067, 072, 075, 109, 117, 121, 125, 126, 128, 131, 141, 142 and 145. Revisions 088 and 094 only fix data, and keep it on downgrade. Revision 030 refuses to go lower while any connected system has no host, client or system number (cloud connections), because the older schema cannot hold them; it stops with a `NotImplementedError` that says so. Revisions 061, 084, 103, 135 and 139 commit their own steps, so a downgrade that fails can stop part way. Run `alembic current` to see where it stopped, and `alembic upgrade head` to return.
+
+When a downgrade is refused or would lose data you need, restore the pre-update dump instead:
 ```bash
 docker compose -f docker/docker-compose.customer.yml exec -T db pg_restore -U meridian -d meridian --clean --if-exists < backups/pre-update-<UTC>.dump
 ```

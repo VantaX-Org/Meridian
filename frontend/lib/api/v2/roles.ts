@@ -109,6 +109,8 @@ export const putEscalationChain = (steps: EscalationStep[]) => v2Send<{ steps: E
 
 export interface Contract {
   id: string;
+  tenant_id: string;
+  created_at: string;
   name: string;
   description: string | null;
   producer: string;

@@ -12,7 +12,7 @@ const engineStatus = {
   usage: { counters: { learn: 14, ingest: 0 }, events: 14, first_seen: "2026-10-26T08:00:00Z", last_seen: "2026-11-09T08:00:00Z" },
 };
 const engineDrivers = {
-  lineage: [],
+  lineage: "a1b2c3d4-0001-4000-8000-000000000001",
   labels: { composite: "Composite data quality score", failing_rules: "Failing rules", affected_records: "Records with a finding", critical: "Critical findings", high: "High-severity failing rules", blockers: "Migration blockers", auto_fixable_pct: "Records with a suggested fix (%)" },
   available: true,
   runs: 12,

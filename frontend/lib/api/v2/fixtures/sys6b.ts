@@ -446,7 +446,8 @@ export function sys6bRead(path: string, params: Params): unknown {
     const e = Z_ENTRIES.find((x) => x.id === decodeURIComponent(zp[1]));
     if (!e) throw detail(404, "No profile recorded for this object");
     const p: ZProfile = { object_name: e.object_name, data_type: "CHAR", cardinality: 14 + e.transaction_count_total % 40, null_rate: e.id === "z-2" ? 0.31 : 0.04, transaction_count: e.transaction_count_total, user_count: 6, first_seen: e.created_date, last_seen: e.last_active_date, trend_direction: e.id === "z-2" ? "falling" : "stable", related_standard_field: e.standard_equivalent };
-    return p;
+    // the API also sends these two; the screen does not read them yet
+    return { ...p, value_distribution: { A1: 412, B2: 96, "": 38 }, length_stats: { min: 0, max: 2, avg: 1.8, stddev: 0.4 } };
   }
   if (path === "/z-objects/anomalies") return { run_id: "d3229ded-0708-4967-9dfb-1b7f4fada953", total: Z_ANOMALIES.length, anomalies: zAnomalies() };
   if (path === "/z-objects/ghost") return Z_GHOST;

@@ -9,6 +9,7 @@ import re
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +25,55 @@ _MAX_MISSED = 500
 _FORMULA = ("=", "+", "@", "\t", "\r")
 
 
+class KnownIssuesUploadOut(BaseModel):
+    records: int
+    rejected: int
+
+
+class PilotPrecision(BaseModel):
+    reviewed: int
+    false_positives: int
+    precision: float | None = None
+    min_reviewed_per_rule: int
+    target: float
+
+
+class PilotRule(BaseModel):
+    check_id: str
+    module: str | None = None
+    severity: str | None = None
+    message: str | None = None
+    flagged: int
+    open: int
+    false_positive: int
+    real: int
+    reviewed: int
+    precision: float | None = None
+    rated: bool
+    needs_tuning: bool
+
+
+class KnownIssue(BaseModel):
+    module: str | None = None
+    record_ref: str
+    note: str | None = None
+
+
+class PilotRecall(BaseModel):
+    known: int
+    caught: int
+    recall: float | None = None
+    missed: list[KnownIssue]
+    missed_total: int
+    objects_not_analysed: list[str]
+
+
+class PilotScorecard(BaseModel):
+    precision: PilotPrecision
+    rules: list[PilotRule]
+    recall: PilotRecall
+
+
 async def _system(db: AsyncSession, tenant: Tenant, system_id: uuid.UUID) -> str:
     await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
     if not (await db.execute(text("SELECT 1 FROM sap_systems WHERE id = :sid"), {"sid": str(system_id)})).scalar():
@@ -31,7 +81,8 @@ async def _system(db: AsyncSession, tenant: Tenant, system_id: uuid.UUID) -> str
     return str(system_id)
 
 
-@router.post("/{system_id}/pilot/known-issues", dependencies=[Depends(require_permission("manage_systems"))])
+@router.post("/{system_id}/pilot/known-issues", response_model=KnownIssuesUploadOut,
+             dependencies=[Depends(require_permission("manage_systems"))])
 async def upload_known_issues(system_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
                               tenant: Tenant = Depends(get_tenant)):
     """Records the stewards know are wrong, as CSV: object,record[,note]. object is the Meridian
@@ -73,7 +124,8 @@ async def upload_known_issues(system_id: uuid.UUID, request: Request, db: AsyncS
     return {"records": len(rows), "rejected": bad}
 
 
-@router.get("/{system_id}/pilot/scorecard", dependencies=[Depends(require_permission("view"))])
+@router.get("/{system_id}/pilot/scorecard", response_model=PilotScorecard,
+            dependencies=[Depends(require_permission("view"))])
 async def scorecard(system_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     scope = await _system(db, tenant, system_id)
     agg = (await db.execute(text("""

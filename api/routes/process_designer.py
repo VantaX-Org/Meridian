@@ -51,6 +51,63 @@ class AdoptVariant(BaseModel):
     l4_id: str
 
 
+class ProcessModelOut(BaseModel):
+    id: str
+    name: str
+    status: str
+    current_version: int
+    created_by: Optional[str] = None  # not selected by the list route
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class ModelVersionRef(BaseModel):
+    model: ProcessModelOut
+    version_no: int
+
+
+class ModelWithDocument(ModelVersionRef):
+    document: ProcessModelDocument
+
+
+class ModelSaved(ModelVersionRef):
+    warnings: list[dict[str, Any]]
+
+
+class ModelVersionOut(BaseModel):
+    version_no: int
+    note: Optional[str] = None
+    created_by: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class VariantOut(BaseModel):
+    id: str
+    version_id: str
+    process_id: str
+    l4_id: Optional[str] = None
+    sap_table: str
+    sap_field: str
+    value: str
+    doc_count: int
+    first_seen: Optional[str] = None
+    last_seen: Optional[str] = None
+    classification: str
+    config_table: Optional[str] = None
+    evidence: str
+
+
+class L4Overlay(BaseModel):
+    step_status: str
+    variants: int
+
+
+class OverlayOut(BaseModel):
+    activities: dict[str, Any]
+    l4: dict[str, L4Overlay]
+    variants: list[VariantOut]
+
+
 async def _rls(db: AsyncSession, tenant: Tenant) -> None:
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
 
@@ -132,7 +189,7 @@ async def get_reference(version_id: Optional[str] = None, db: AsyncSession = Dep
     return await _reference(db, tenant, version_id)
 
 
-@router.get("/models", dependencies=[Depends(require_permission("view"))])
+@router.get("/models", response_model=list[ProcessModelOut], dependencies=[Depends(require_permission("view"))])
 async def list_models(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     rows = await db.execute(
@@ -141,7 +198,7 @@ async def list_models(db: AsyncSession = Depends(get_db), tenant: Tenant = Depen
     return [_model_row(r) for r in rows.fetchall()]
 
 
-@router.post("/models", status_code=201, dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
+@router.post("/models", status_code=201, response_model=ModelVersionRef, dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
 async def create_model(body: ModelCreate, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     name = body.name.strip()
     if not name:
@@ -169,7 +226,7 @@ async def create_model(body: ModelCreate, db: AsyncSession = Depends(get_db), te
     return {"model": await _model(db, tenant, mid), "version_no": 1}
 
 
-@router.get("/models/{model_id}", dependencies=[Depends(require_permission("view"))])
+@router.get("/models/{model_id}", response_model=ModelWithDocument, dependencies=[Depends(require_permission("view"))])
 async def get_model(model_id: uuid.UUID, version: Optional[int] = Query(None, ge=1),
                     db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     model = await _model(db, tenant, model_id)
@@ -177,7 +234,7 @@ async def get_model(model_id: uuid.UUID, version: Optional[int] = Query(None, ge
     return {"model": model, "version_no": vno, "document": await _document(db, tenant, model_id, vno)}
 
 
-@router.put("/models/{model_id}", dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
+@router.put("/models/{model_id}", response_model=ModelSaved, dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
 async def save_model(model_id: uuid.UUID, body: ModelSave, db: AsyncSession = Depends(get_db),
                      tenant: Tenant = Depends(get_tenant)):
     """New version. 409 when ``base_version`` is stale, 422 with ``errors[{path,message}]`` when invalid."""
@@ -195,7 +252,7 @@ async def save_model(model_id: uuid.UUID, body: ModelSave, db: AsyncSession = De
             "warnings": [w.model_dump() for w in result.warnings]}
 
 
-@router.patch("/models/{model_id}", dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
+@router.patch("/models/{model_id}", response_model=ProcessModelOut, dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
 async def patch_model(model_id: uuid.UUID, body: ModelPatch, db: AsyncSession = Depends(get_db),
                       tenant: Tenant = Depends(get_tenant)):
     await _model(db, tenant, model_id)
@@ -223,7 +280,7 @@ async def delete_model(model_id: uuid.UUID, db: AsyncSession = Depends(get_db), 
     return Response(status_code=204)
 
 
-@router.get("/models/{model_id}/versions", dependencies=[Depends(require_permission("view"))])
+@router.get("/models/{model_id}/versions", response_model=list[ModelVersionOut], dependencies=[Depends(require_permission("view"))])
 async def list_versions(model_id: uuid.UUID, db: AsyncSession = Depends(get_db),
                         tenant: Tenant = Depends(get_tenant)):
     await _model(db, tenant, model_id)
@@ -252,7 +309,7 @@ def _uuid(value: str) -> uuid.UUID:
         raise HTTPException(status_code=422, detail="Invalid version id")
 
 
-@router.get("/variants/{version_id}", dependencies=[Depends(require_permission("view"))])
+@router.get("/variants/{version_id}", response_model=list[VariantOut], dependencies=[Depends(require_permission("view"))])
 async def list_variants(version_id: str, process_id: Optional[str] = None, db: AsyncSession = Depends(get_db),
                         tenant: Tenant = Depends(get_tenant)):
     _uuid(version_id)
@@ -260,7 +317,7 @@ async def list_variants(version_id: str, process_id: Optional[str] = None, db: A
     return await _variants(db, tenant, version_id, process_id)
 
 
-@router.get("/models/{model_id}/overlay/{version_id}", dependencies=[Depends(require_permission("view"))])
+@router.get("/models/{model_id}/overlay/{version_id}", response_model=OverlayOut, dependencies=[Depends(require_permission("view"))])
 async def overlay(model_id: uuid.UUID, version_id: str, db: AsyncSession = Depends(get_db),
                   tenant: Tenant = Depends(get_tenant)):
     """DQ colouring per L5 and per L4 for an analysed dataset version, plus its discovered variants."""
@@ -289,7 +346,7 @@ async def overlay(model_id: uuid.UUID, version_id: str, db: AsyncSession = Depen
     return {"activities": activities, "l4": l4, "variants": variants}
 
 
-@router.post("/models/{model_id}/adopt-variant", dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
+@router.post("/models/{model_id}/adopt-variant", response_model=ModelVersionRef, dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
 async def adopt_variant(model_id: uuid.UUID, body: AdoptVariant, db: AsyncSession = Depends(get_db),
                         tenant: Tenant = Depends(get_tenant)):
     """Attach a discovered variant to an L4 as a new model version and record the mapping on the variant."""

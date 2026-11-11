@@ -17,6 +17,7 @@ import uuid
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,6 +32,219 @@ router = APIRouter(prefix="/api/v1/work/analytics", tags=["work-analytics"])
 
 _MODULE = Query(None, max_length=100, pattern=r"^[a-z0-9_]+$")
 Scope = Literal["run", "current"]
+
+
+# Response shapes, as api/services/work_analytics.py builds them. The scope=current answers add scope and
+# version_ids (or compared); a single-run answer leaves them null.
+
+class BurndownDay(BaseModel):
+    day: str
+    open: int
+    opened: int
+    closed: int
+
+
+class BurndownRun(BaseModel):
+    version_id: str
+    label: str | None = None
+    run_at: str | None = None
+    issues: int
+    open_records: int | None = None
+
+
+class BurndownOut(BaseModel):
+    version_id: str | None = None
+    scope: str | None = None
+    version_ids: list[str] | None = None
+    today: str
+    days: list[BurndownDay]
+    open_now: int
+    open_records: int | None = None
+    fixed_7d: int
+    pace_per_day: float
+    pace_window_days: int
+    projected_finish: str | None = None
+    runs: list[BurndownRun]
+
+
+class FixStat(BaseModel):
+    fixed: int
+    median_days: float | None = None
+    p90_days: float | None = None
+
+
+class FixByObject(FixStat):
+    module: str | None = None
+
+
+class FixByCheck(FixStat):
+    check_id: str | None = None
+    module: str | None = None
+
+
+class FixBySeverity(FixStat):
+    severity: str | None = None
+
+
+class TimeToFixOut(BaseModel):
+    window_days: int
+    overall: FixStat
+    by_object: list[FixByObject]
+    by_check: list[FixByCheck]
+    by_severity: list[FixBySeverity]
+
+
+class ThroughputDay(BaseModel):
+    day: str
+    total: int
+    by_person: dict[str, int]
+
+
+class ThroughputPerson(BaseModel):
+    person: str
+    user_id: str | None = None
+    total: int
+    accept: int
+    edit: int
+    not_an_issue: int
+    accept_risk: int
+    approve: int
+
+
+class Workload(BaseModel):
+    assignee_id: str | None = None
+    name: str | None = None
+    email: str | None = None
+    open: int
+    critical: int
+    overdue: int
+
+
+class ThroughputOut(BaseModel):
+    window_days: int
+    days: list[ThroughputDay]
+    totals: dict[str, int]  # accept, edit, not_an_issue, accept_risk, approve, total
+    people: list[ThroughputPerson]
+    workload: list[Workload]
+
+
+class RecurrenceTotals(BaseModel):
+    issues: int
+    reopened: int
+    reopens: int
+    rate_pct: float
+
+
+class RecurrenceCheck(RecurrenceTotals):
+    check_id: str | None = None
+    module: str | None = None
+
+
+class RecurrenceSystem(RecurrenceTotals):
+    scope: str | None = None
+    name: str | None = None
+    version_id: str | None = None
+
+
+class RecurrenceOut(BaseModel):
+    totals: RecurrenceTotals
+    by_check: list[RecurrenceCheck]
+    by_system: list[RecurrenceSystem]
+
+
+class RootValue(BaseModel):
+    value: str
+    records: int
+    issues: int
+    open: int
+    critical: int
+    share_pct: float
+
+
+class RootDimension(BaseModel):
+    field: str
+    label: str
+    records: int
+    values: int
+    top: list[RootValue]
+
+
+class RootCausesOut(BaseModel):
+    version_id: str | None = None
+    scope: str | None = None
+    version_ids: list[str] | None = None
+    source: str | None = None
+    total_records: int
+    dimensions: list[RootDimension]
+
+
+class ProposalSource(BaseModel):
+    source: str | None = None
+    proposed: int
+    approved: int
+    exported: int
+    fixed: int
+    still_failing: int
+    approval_rate_pct: float | None = None
+    fix_rate_pct: float | None = None
+
+
+class ProposalQualityOut(BaseModel):
+    sources: list[ProposalSource]
+    totals: dict[str, int]  # proposed, approved, exported, fixed, still_failing
+
+
+class FlippedRule(BaseModel):
+    check_id: str
+    severity: str | None = None
+    new: int
+
+
+class RecoveredRule(BaseModel):
+    check_id: str
+
+
+class RuleFlips(BaseModel):
+    newly_failing: list[FlippedRule]
+    recovered: list[RecoveredRule]
+    newly_failing_total: int
+    recovered_total: int
+
+
+class ChangeObject(BaseModel):
+    module: str
+    new: int
+    fixed: int
+    still_failing: int
+    not_comparable_checks: int
+    rules: RuleFlips
+
+
+class PreviousRun(BaseModel):
+    version_id: str
+    label: str | None = None
+    run_at: str | None = None
+
+
+class ComparedRun(BaseModel):
+    version_id: str
+    previous: PreviousRun
+
+
+class ChangeTotals(BaseModel):
+    new: int
+    fixed: int
+    still_failing: int
+
+
+class RunChangeOut(BaseModel):
+    version_id: str | None = None
+    scope: str | None = None
+    previous: PreviousRun | None = None
+    compared: list[ComparedRun] | None = None
+    objects: list[ChangeObject]
+    totals: ChangeTotals
+    not_comparable_checks: int
 _SCOPE = Query("run", description="current: every object at the latest complete run of its lineage; "
                                   "exclusive with version_id")
 
@@ -51,7 +265,7 @@ async def _run(db: AsyncSession, tenant: Tenant, version_id: uuid.UUID | None, m
     return str(version_id)
 
 
-@router.get("/burndown")
+@router.get("/burndown", response_model=BurndownOut)
 async def burndown(
     version_id: uuid.UUID | None = None,
     module: str | None = _MODULE,
@@ -66,7 +280,7 @@ async def burndown(
     return await wa.burndown(db, tenant.id, await _run(db, tenant, version_id, module), module)
 
 
-@router.get("/time-to-fix")
+@router.get("/time-to-fix", response_model=TimeToFixOut)
 async def time_to_fix(
     module: str | None = _MODULE,
     days: int = Query(180, ge=7, le=730, description="issues fixed in the last N days"),
@@ -78,7 +292,7 @@ async def time_to_fix(
     return await wa.time_to_fix(db, tenant.id, module, days)
 
 
-@router.get("/throughput")
+@router.get("/throughput", response_model=ThroughputOut)
 async def throughput(
     module: str | None = _MODULE,
     db: AsyncSession = Depends(get_db),
@@ -89,7 +303,7 @@ async def throughput(
     return await wa.throughput(db, tenant.id, module)
 
 
-@router.get("/recurrence")
+@router.get("/recurrence", response_model=RecurrenceOut)
 async def recurrence(
     module: str | None = _MODULE,
     db: AsyncSession = Depends(get_db),
@@ -100,7 +314,7 @@ async def recurrence(
     return await wa.recurrence(db, tenant.id, module)
 
 
-@router.get("/root-causes")
+@router.get("/root-causes", response_model=RootCausesOut)
 async def root_causes(
     version_id: uuid.UUID | None = None,
     module: str | None = _MODULE,
@@ -115,7 +329,7 @@ async def root_causes(
     return await wa.root_causes(db, tenant.id, await _run(db, tenant, version_id, module), module)
 
 
-@router.get("/proposal-quality")
+@router.get("/proposal-quality", response_model=ProposalQualityOut)
 async def proposal_quality(
     module: str | None = _MODULE,
     db: AsyncSession = Depends(get_db),
@@ -126,7 +340,7 @@ async def proposal_quality(
     return await wa.proposal_quality(db, tenant.id, module)
 
 
-@router.get("/run-change")
+@router.get("/run-change", response_model=RunChangeOut)
 async def run_change(
     version_id: uuid.UUID | None = None,
     module: str | None = _MODULE,

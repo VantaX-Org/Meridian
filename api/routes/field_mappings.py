@@ -58,6 +58,40 @@ class BulkUpdateBody(BaseModel):
     updates: list[dict]  # [{id: str, customer_field: str, ...}]
 
 
+class FieldMappingOut(BaseModel):
+    id: str
+    module: str
+    standard_field: str
+    standard_label: Optional[str] = None
+    customer_field: Optional[str] = None
+    customer_label: Optional[str] = None
+    data_type: Optional[str] = None
+    is_mapped: bool
+    notes: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class FieldMappingList(BaseModel):
+    mappings: list[FieldMappingOut]
+    total: int
+    self_service_enabled: bool
+
+
+class ModuleMappings(BaseModel):
+    module: str
+    mappings: list[FieldMappingOut]
+
+
+class FieldMappingDeleted(BaseModel):
+    id: str
+    status: str
+
+
+class FieldMappingReset(BaseModel):
+    reset_count: int
+    module: str
+
+
 def _row_to_dict(row) -> dict:
     return dict(row._mapping) if row else {}
 
@@ -88,7 +122,7 @@ def _is_self_service_enabled(request=None) -> bool:
 # ── GET /api/v1/field-mappings ────────────────────────────────────────────────
 
 
-@router.get("/field-mappings")
+@router.get("/field-mappings", response_model=FieldMappingList)
 async def list_field_mappings(
     request: Request,
     module: Optional[str] = Query(None, description="Filter by SAP module"),
@@ -159,7 +193,7 @@ async def list_field_mappings(
 # ── GET /api/v1/field-mappings/{module} ───────────────────────────────────────
 
 
-@router.get("/field-mappings/module/{module_name}")
+@router.get("/field-mappings/module/{module_name}", response_model=ModuleMappings)
 async def list_module_mappings(
     module_name: str,
     db: AsyncSession = Depends(get_db),
@@ -192,7 +226,7 @@ async def list_module_mappings(
 # ── PUT /api/v1/field-mappings/{id} ──────────────────────────────────────────
 
 
-@router.put("/field-mappings/{mapping_id}")
+@router.put("/field-mappings/{mapping_id}", response_model=FieldMappingOut)
 async def update_field_mapping(
     mapping_id: str,
     body: UpdateMappingBody,
@@ -280,7 +314,7 @@ def _public(row) -> dict:
 # ── POST /api/v1/field-mappings ───────────────────────────────────────────────
 
 
-@router.post("/field-mappings", status_code=201)
+@router.post("/field-mappings", status_code=201, response_model=FieldMappingOut)
 async def create_field_mapping(
     body: CreateMappingBody,
     request: Request,
@@ -321,7 +355,7 @@ async def create_field_mapping(
 # ── DELETE /api/v1/field-mappings/{id} ────────────────────────────────────────
 
 
-@router.delete("/field-mappings/{mapping_id}")
+@router.delete("/field-mappings/{mapping_id}", response_model=FieldMappingDeleted)
 async def delete_field_mapping(
     mapping_id: str,
     request: Request,
@@ -352,7 +386,7 @@ async def delete_field_mapping(
 # ── POST /api/v1/field-mappings/reset ────────────────────────────────────────
 
 
-@router.post("/field-mappings/reset")
+@router.post("/field-mappings/reset", response_model=FieldMappingReset)
 async def reset_field_mappings(
     request: Request,
     module: Optional[str] = Query(None, description="Reset only this module"),

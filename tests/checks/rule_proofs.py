@@ -788,8 +788,13 @@ def _prove_exists(rule, dictionary, cand, live) -> tuple[str, str]:
     frames = TableFrames.from_flat(df, dictionary, module=rule.get("module"))
     t = rule["target_table"]
     target = {f"{t}.{k}": ["TK1"] for k in dictionary.keys(t)}
+    j = rule.get("target_join")  # a second target table joined on keys; TABLE.FIELD targets live there
+    joined = {f"{j['table']}.{k}": ["TK1"] for k in dictionary.keys(j["table"])} if j else {}
+    for k in (j or {}).get("keys", []):
+        target[f"{t}.{k}"] = joined[f"{j['table']}.{k}"] = ["JK1"]
     for i, f in enumerate(rule["target_fields"]):
-        target[f"{t}.{f}"] = [df.loc[0, refs[i]]]  # as placed: a join field carries a row suffix
+        # as placed: a join field carries a row suffix
+        (joined if "." in f else target)[f if "." in f else f"{t}.{f}"] = [df.loc[0, refs[i]]]
     for f, cond in (rule.get("target_when") or {}).items():
         if isinstance(cond, dict) and "older_than_days" in cond:
             target[f"{t}.{f}"] = ["20000101"]  # a date older than any threshold
@@ -802,6 +807,8 @@ def _prove_exists(rule, dictionary, cand, live) -> tuple[str, str]:
     extra = pd.DataFrame(target)
     have = frames.frames.get(t)
     frames.frames[t] = extra if have is None else pd.concat([have, extra], ignore_index=True)
+    if j:
+        frames.frames[j["table"]] = pd.DataFrame(joined)
     _, r = run_rule(rule, frames, live or {})
     if r is None:
         return "not_applicable", "no result on the proof records"
