@@ -13,7 +13,7 @@ Two rules bound every use. Only run-level aggregates (scores and counts keyed by
 | Tenant registry | `GET` and `POST /api/tenants` | Used: Meridian registers its own engine tenant once (`_ensure_tenant`) | Keep |
 | Self-learning: normal ranges and lead and lag links | `POST /api/{tenant}/learn` | Used: Insights, "What moves the score" (`/api/v1/insights/engine-drivers`); new on this branch, the composite's learned normal range on Foresight | Keep |
 | World-model surprise (spiking encoder plus JEPA latent dynamics) | `POST /api/{tenant}/model-insights` | Used from this branch: Foresight, "What the engine did not expect" (`/api/v1/aletheia/foresight`, `design/v2/screens/AletheiaForesight.tsx`). Unused before | Done. Next: raise a monitor alert when the latest run is a surprise |
-| Dynamic reasoning: KPI anomalies and causal risks over one snapshot | `POST /api/{tenant}/reason` | Unused | Second surface: send the latest run's aggregates and the learned links, show the measures the engine flags as at risk beside the deterministic movers on Insights |
+| Dynamic reasoning: KPI anomalies and causal risks over one snapshot | `POST /api/{tenant}/reason` | Screen built (Reason, `/aletheia/reason`); engine call held | The request and response shape of this route is not documented in the repo, so Meridian does not guess it. The deterministic layer (z-score anomalies, ranked rule and dimension drivers) ships now; the engine panel answers not set up until the contract is published. Next: implement `aletheia_engine.reason` against the published contract |
 | Business findings costed in money | `POST /api/{tenant}/insights` | Unused | Not proposed. Its money figure is costed for business KPIs (cost of capital), not data quality; Meridian's money figure stays the tenant-set config impact model. The model-insights client already drops it |
 | Grounded question answering and conversation | `POST /api/{tenant}/ask`, `/converse`, `GET .../search`, `.../node` | Unused | Not proposed. They answer over a text corpus held by the engine; feeding it would send record text, which the aggregates-only rule forbids |
 | Voice | `/api/voice/speak`, `/api/{tenant}/voice/...` | Unused | Not proposed: no buyer need in a data-quality product |
@@ -29,8 +29,15 @@ The engine repository also holds forecasting, causal discovery, golden records, 
 | | Before | After |
 |---|---|---|
 | Engine routes called | 4 (`/health`, `/license`, `/api/tenants`, `/learn`) | 5 (adds `/model-insights`) |
-| Product-relevant engine capabilities used | 1 of 3 (learn; reason and model-insights unused) | 2 of 3 (reason left, proposed above) |
+| Product-relevant engine capabilities used | 1 of 3 (learn; reason and model-insights unused) | 3 of 3 (reason has a screen; its engine call waits for the contract) |
 | Meridian screens backed by the engine | 2 (Administration, Aletheia engine; Insights, What moves the score) | 3 (adds Foresight at `/aletheia/foresight`) |
+
+## Reason, the second surface
+
+- Route: `GET /api/v1/aletheia/reason`, permission `view` (`api/routes/aletheia_engine.py`).
+- Deterministic layer (`api/services/aletheia_reason.py`): an expanding-window z-score of the composite, dimension and module series flags anomalies; rule drivers are ranked by the fitted effect of a rule's failure count on the composite times its latest change, and dimension drivers by correlation with the composite. Answers with the engine off.
+- Engine layer: gated like the others (too few runs, not configured, unreachable, no token, licence invalid, engine error), but the call itself is not made because the route's contract is not in the repo. Aggregates built for it hold numbers only.
+- Screen: `design/v2/screens/AletheiaReason.tsx`, with evidence under each result and an empty state for a tenant with no runs. Needs a menu entry for `/aletheia/reason`.
 
 ## Foresight, the surface added here
 

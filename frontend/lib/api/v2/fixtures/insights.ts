@@ -58,6 +58,25 @@ const foresight = {
   },
 };
 
+/** Reason (GET /aletheia/reason): two runs that fell out of line, and the rule and dimension that moved with the score. */
+const reason = {
+  lineage: engineDrivers.lineage, labels: engineDrivers.labels, runs: foresightRuns,
+  deterministic: {
+    available: true, reason: null,
+    anomalies: [
+      { metric: "failing_rules", version_id: "v-6", label: "Run 6", run_at: foresightRuns[5].run_at, expected: 34.0, observed: 22.0, z: -4.8, severity: "medium" },
+      { metric: "dimension:completeness", version_id: "v-9", label: "Run 9", run_at: foresightRuns[8].run_at, expected: 87.1, observed: 80.4, z: -3.9, severity: "high" },
+    ],
+    risks: [
+      { kind: "rule", driver: "MM-PLANT-001", name: "Plant is missing on the material", change: 41, effect: -1.9, confidence: 76 },
+      { kind: "dimension", driver: "completeness", name: "completeness", change: -2.4, effect: -1.6, confidence: 64 },
+    ],
+    anomaly_evidence: { inputs: ["9 run-level measures and failure counts of 14 rules over 12 runs (scores and counts only, no record values)"], method: "Each run-level measure is compared with the runs before it: z = (observed - mean of earlier runs) / standard deviation of earlier runs, flagged at |z| of 2.5 or more.", confidence: null, runs: 12, first_run: foresightRuns[0].run_at, last_run: foresightRuns[11].run_at },
+    risk_evidence: { inputs: ["9 run-level measures and failure counts of 14 rules over 12 runs (scores and counts only, no record values)"], method: "Least-squares slope of the composite on each rule's affected-record count, times its latest change; dimensions against the mean of earlier runs.", confidence: 76, runs: 12, first_run: foresightRuns[0].run_at, last_run: foresightRuns[11].run_at },
+  },
+  engine: { available: false, reason: "not_configured", anomalies: [], risks: [], evidence: { inputs: ["9 run-level measures and failure counts of 14 rules over 12 runs (scores and counts only, no record values)"], method: "Aletheia dynamic reasoning over one snapshot of run-level aggregates.", confidence: null } },
+};
+
 const impact = [
   { feature: "Automatic payment run", l1: "procure_to_pay", status: "blocked", record_count: 1_412, value_per_record: 850, value_at_risk: 1_200_200, causing_rules: ["MM035", { check_id: "MM142", severity: "critical" }] },
   { feature: "MRP planning run", l1: "plan_to_produce", status: "degraded", record_count: 2_904, value_per_record: 320, value_at_risk: 929_280, causing_rules: ["MM003"] },
@@ -183,5 +202,6 @@ export function insightsRead(path: string, params: Record<string, unknown> = {})
   if (path === "/insights/engine-drivers") return structuredClone(engineDrivers);
   if (path === "/aletheia/engine") return structuredClone(engineStatus);
   if (path === "/aletheia/foresight") return structuredClone(foresight);
+  if (path === "/aletheia/reason") return structuredClone(reason);
   return NONE_INSIGHTS;
 }

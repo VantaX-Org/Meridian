@@ -50,7 +50,7 @@ export function EvidencePanel({ ev, testId }: { ev: Evidence; testId: string }) 
   );
 }
 
-function Mark() {
+export function Mark() {
   return (
     <span className="m2-meta">
       {/* eslint-disable-next-line @next/next/no-img-element -- the Aletheia mark is served unaltered, docs/diligence/licences.md section 6 */}

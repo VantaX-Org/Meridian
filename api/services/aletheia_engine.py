@@ -157,6 +157,7 @@ def learn_trend(runs: list[dict]) -> dict:
 
 
 SURPRISE_MIN_RUNS = 6
+REASON_MIN_RUNS = 4
 _SURPRISE_TIMEOUT = 30
 _SURPRISE_TTL = 600
 
@@ -196,3 +197,11 @@ def surprises(runs: list[dict]) -> dict:
            "recon_loss": learned.get("recon_loss"), "jepa_loss": learned.get("jepa_loss")}
     _cache[key] = (time.monotonic(), out)
     return out
+
+
+def reason(runs: list[dict], aggregates: dict) -> dict:
+    """Anomalies and causal risks from the engine (POST /api/{tenant}/reason). Same gate as surprises(): too_few_runs,
+    not_configured, unreachable, no_token, licence_invalid. Meridian holds no request or response contract for the
+    route, so past the gate it is not called and answers not_configured. Once the contract is known: post
+    `aggregates` with a 30s timeout, cache 600s by body, engine_error when _call returns None, drop money figures."""
+    return _gate(len(runs), REASON_MIN_RUNS) or {"available": False, "reason": "not_configured"}
