@@ -59,6 +59,7 @@ export function destinations(): Destination[] {
         { href: "/monitors", label: t("Learned monitors") },
         { href: "/aletheia-survivorship", label: t("Aletheia verified survivorship") },
         { href: "/aletheia/evidence", label: t("Evidence ledger") },
+        { href: "/aletheia/foresight", label: t("Foresight") },
         { href: "/admin/settings#quality-thresholds", label: t("Quality thresholds"), need: "manage_settings" },
       ],
       also: ["/r", "/aletheia"],

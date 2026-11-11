@@ -140,6 +140,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/fix-drafts": "v2:rules",
   "/aletheia-survivorship": "v2:monitoring",
   "/aletheia/evidence": "v2:monitoring",
+  "/aletheia/foresight": "v2:monitoring",
   "/reference-data": "v2:monitoring",
   "/mdm": "v2:monitoring",
   "/links": "v2:monitoring",

@@ -228,6 +228,15 @@ Each decision stores who decided, when, the earlier source and the new source, a
 
 To require approval before any AI pick is applied, use the Steward approval of AI picks panel on the verified survivorship screen. It shows the current value and the tenant setting behind it, `survivorship_ai_approval`: `required` (the default) holds each proved pick in the approval queue until a different steward approves or rejects it, `not_required` is the opt-in auto-approve and applies it at once. Changing it needs the manage settings permission; without it the panel shows the value and says why the control is off. Each change writes an audit entry.
 
+## Aletheia foresight
+
+Foresight, under Aletheia, shows where the composite score is heading, the date it reaches your go-live target and the runs the Aletheia engine did not expect. The target is the one set in the scoring settings. The banner gives the go-live date with its earliest and latest dates, the next run's projected score with its range, the change per 30 days and the number of unexpected runs. Under it:
+
+- **Composite toward the go-live target.** The composite score of each run with the target drawn across it, and the projected score at eight dates with the lowest and highest likely score. The line is a least-squares fit through the scores against calendar days with a 95% prediction band, so it is the same every time for the same runs. It needs three scored runs on at least two different days; until then the panel says which is missing.
+- **What the engine did not expect.** The learned normal range of the composite and whether the latest run falls inside it, then the runs the engine's world model was surprised by: the run, the measure that moved most, what the engine expected, what it saw, how far off it was and how severe. The engine needs six scored runs. When it is not set up, not reachable or not licensed, the panel says so and the projection above still shows.
+
+Every panel has an **Evidence** section with what went in, the method and how sure it is. Only run-level scores and counts go to the engine, never a record value.
+
 ## Reference data
 
 Reference data, under Master data on the rail, manages the code lists of an ECC to S/4HANA migration: country, unit of measure, material group, payment terms and, for SuccessFactors, the picklist values. Lists come only from the check tables Meridian has already extracted. A list with no extracted check table is not shown, and a code with no extracted text shows the code alone.

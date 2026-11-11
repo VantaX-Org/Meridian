@@ -120,6 +120,16 @@ Claims we have removed from earlier drafts because we cannot support them:
 - "Write-back to SAP" as a proven differentiator. For on-premise SAP it is in the code behind a switch and
   has not been run against a live SAP system (DR-2).
 
+## Aletheia advantage
+
+Meridian runs its own instance of the Aletheia engine beside each deployment, and the competitors named above do not have it. What it adds, and its bounds:
+
+- **A world model of the run trend.** The engine learns how the composite score, failing-rule and finding counts and the dimension scores move together from run to run, and flags each run that does not fit what it learned, naming the measure that diverged, what it expected and what it saw (`/aletheia/foresight`, `api/services/aletheia_engine.py`). It also learns each measure's normal range and the lead and lag links between measures (Insights, "What moves the score").
+- **A go-live date with its uncertainty.** Foresight projects the composite toward the tenant's go-live target with a 95% band and gives a date, an earliest and a latest date. This part is deterministic and works without the engine.
+- **Bounded by design.** Only run-level aggregates reach the engine, never a record, a field value or personal data. Every engine result carries an evidence panel (inputs, method, confidence) and sits beside a deterministic result, and the screen says why when the engine is off.
+
+What we do not claim: that the engine's surprises are more accurate than a vendor's anomaly detection. No side-by-side has been run and no production figure exists. The capability map, with what is used and what is not, is in `docs/project/aletheia-capability-map.md`.
+
 ## 5. What the competitors do better
 
 Written for the buyer's benefit; every item here is a reason a customer could choose someone else.
