@@ -129,8 +129,18 @@ function FindingRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }
   return f.action.kind === "across" ? <AcrossRow f={f} /> : <ActionRow f={f} queryKey={queryKey} />;
 }
 
+/** The permission the backend checks for the tune (POST /rule-tuning/{id}/draft) and cleanse (POST /remediation/batches) actions. */
+const ACTION_NEEDS: Partial<Record<AletheiaFinding["action"]["kind"], string>> = { tune: "manage_rules", cleanse: "apply" };
+const ACTION_LOCKED = {
+  tune: () => t("Drafting a tuned version needs the manage rules permission, which your role does not hold."),
+  cleanse: () => t("Drafting a cleansing batch needs the apply permission, which your role does not hold."),
+};
+
 function ActionRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }) {
   const qc = useQueryClient();
+  const session = useV2Session();
+  const need = ACTION_NEEDS[f.action.kind];
+  const locked = need != null && (!session.can(need) || session.shared || Boolean(session.viewAs));
   const [done, setDone] = useState(false);
   const act = useMutation({
     mutationFn: async () => {
@@ -186,6 +196,8 @@ function ActionRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] })
           <V2Link href={`/r/${encodeURIComponent(f.check_id)}`} className="m2-btn m2-sm">{ACTION_LABEL.open()}</V2Link>
         ) : done ? (
           <span className="m2-meta" role="status">{ACTION_TEXT[f.action.kind]()}</span>
+        ) : locked && (f.action.kind === "tune" || f.action.kind === "cleanse") ? (
+          <span className="m2-meta" data-testid="aletheia-action-locked">{ACTION_LOCKED[f.action.kind]()}</span>
         ) : (
           <button type="button" className="m2-btn m2-sm" disabled={act.isPending} onClick={() => act.mutate()}>
             {ACTION_LABEL[f.action.kind]()}

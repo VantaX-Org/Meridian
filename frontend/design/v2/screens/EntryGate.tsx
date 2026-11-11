@@ -6,10 +6,11 @@ import { errorSentence } from "@/lib/api/v2/client";
 import { getFirewallSummary, validateRecords, type FirewallFailure, type FirewallModuleRow, type FirewallSuggestion, type FirewallSummary, type HoldMode, type HoldState, type RecordHold, type StewardRequest } from "@/lib/api/v2/dq-firewall";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
-import { useOpenItem } from "@/lib/v2/hooks";
+import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
+import { NeedsPermission } from "../admin/kit";
 import { ChartFrame, ChartTable, TrendChart, niceTicks, type TrendPoint } from "../charts";
 import { ageWord, objectWord, statusWord } from "../inspector/request";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
@@ -285,6 +286,9 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
   const [route, setRoute] = useState(false);
   const [hold, setHold] = useState<HoldMode>("off");
   const [bad, setBad] = useState<string | null>(null);
+  // POST /dq-firewall/validate needs mdm.write; a shared or view-as session is read-only.
+  const session = useV2Session();
+  const allowed = session.can("mdm.write") && !session.shared && !session.viewAs;
   const run = useMutation({
     mutationFn: async () => {
       const parsed: unknown = JSON.parse(text);
@@ -329,7 +333,11 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
           </select>
         </label>
       </div>
-      <button type="button" className="m2-btn m2-strong" disabled={run.isPending} onClick={() => run.mutate()} data-testid="entry-gate-run">{t("Check records")}</button>
+      {allowed ? (
+        <button type="button" className="m2-btn m2-strong" disabled={run.isPending} onClick={() => run.mutate()} data-testid="entry-gate-run">{t("Check records")}</button>
+      ) : (
+        <NeedsPermission what={t("Checking records at the gate")} permission="mdm.write" />
+      )}
       {bad || apiErr ? <p role="alert">{bad ?? apiErr}</p> : null}
       {res ? (
         <>

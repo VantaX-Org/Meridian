@@ -8716,4 +8716,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "What to do": "Was zu tun ist",
   "Save as workbook": "Als Arbeitsmappe speichern",
   "No record of this kind.": "Kein Datensatz dieser Art.",
+  "Drafting a tuned version needs the manage rules permission, which your role does not hold.": "Für das Entwerfen einer abgestimmten Version ist die Berechtigung manage rules erforderlich, die Ihre Rolle nicht hat.",
+  "Drafting a cleansing batch needs the apply permission, which your role does not hold.": "Für das Entwerfen eines Bereinigungsstapels ist die Berechtigung apply erforderlich, die Ihre Rolle nicht hat.",
+  "Proposing an anomaly rule": "Das Vorschlagen einer Anomalieregel",
+  "Checking records at the gate": "Das Prüfen von Datensätzen am Eingang",
 };

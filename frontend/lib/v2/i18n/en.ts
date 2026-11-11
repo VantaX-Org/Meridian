@@ -8715,6 +8715,10 @@ export const en = {
   "What to do": "What to do",
   "Save as workbook": "Save as workbook",
   "No record of this kind.": "No record of this kind.",
+  "Drafting a tuned version needs the manage rules permission, which your role does not hold.": "Drafting a tuned version needs the manage rules permission, which your role does not hold.",
+  "Drafting a cleansing batch needs the apply permission, which your role does not hold.": "Drafting a cleansing batch needs the apply permission, which your role does not hold.",
+  "Proposing an anomaly rule": "Proposing an anomaly rule",
+  "Checking records at the gate": "Checking records at the gate",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

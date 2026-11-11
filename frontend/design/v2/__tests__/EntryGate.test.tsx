@@ -135,3 +135,20 @@ describe("entry gate", () => {
     expect(statusWord("approved", null)).not.toBe("Released to the SAP save");
   });
 });
+
+function asViewer(path: string) {
+  const url = `${path}?fixture=1&role=viewer`;
+  window.history.pushState({}, "", url);
+  setUrl(url);
+}
+
+describe("entry gate: roles", () => {
+  it("tells a viewer the check needs mdm.write instead of offering a button the API refuses", async () => {
+    asViewer("/entry-gate");
+    renderWithQuery(<EntryGate />);
+    const lock = await screen.findByTestId("needs-permission");
+    expect(lock).toHaveTextContent("Checking records at the gate needs the mdm.write permission");
+    expect(within(lock).getByTestId("request-access")).toBeInTheDocument();
+    expect(screen.queryByTestId("entry-gate-run")).toBeNull();
+  });
+});

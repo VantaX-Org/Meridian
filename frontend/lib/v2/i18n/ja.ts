@@ -8716,4 +8716,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "What to do": "対処",
   "Save as workbook": "ワークブックとして保存",
   "No record of this kind.": "この種類のレコードはありません。",
+  "Drafting a tuned version needs the manage rules permission, which your role does not hold.": "調整版の下書きには manage rules 権限が必要ですが、あなたのロールにはありません。",
+  "Drafting a cleansing batch needs the apply permission, which your role does not hold.": "クレンジングバッチの下書きには apply 権限が必要ですが、あなたのロールにはありません。",
+  "Proposing an anomaly rule": "異常値ルールの提案",
+  "Checking records at the gate": "入口でのレコードチェック",
 };
