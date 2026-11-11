@@ -13401,3 +13401,71 @@ rules:
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: STOCK_END_DATE is before START_DATE.'
   fail_when: '`EMPEMPLOYMENT.STOCK_END_DATE` < `EMPEMPLOYMENT.START_DATE`'
   require_populated: true
+- id: EC900
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: contact_check
+  kind: email
+  severity: high
+  dimension: validity
+  message: Email address breaks the RFC 5321/5322 syntax or length limits
+  why_it_matters: Mail servers reject an address that breaks the RFC syntax or length limits, so invoices, dunning letters
+    and notifications sent to it bounce. The finding names the exact reason for each address.
+  rule_authority: best_practice
+  sap_impact: Output by email (invoices, dunning, payment advice, notifications) bounces; S/4HANA migration carries the broken
+    address across.
+  fix_map:
+    __other__: Correct the value in SuccessFactors Employee Central > Personal Information.
+  record_fix_template: 'PEREMAIL.EMAIL_ADDRESS is ''{actual_value}'': email address breaks the rfc 5321/5322 syntax or length
+    limits.'
+- id: EC901
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: contact_check
+  kind: disposable
+  severity: medium
+  dimension: validity
+  message: Email address uses a disposable mailbox service
+  why_it_matters: Disposable mailbox domains expire within hours or days. A master record that points at one loses its only
+    email channel, and the pattern often marks a test or fraudulent record.
+  rule_authority: best_practice
+  sap_impact: Correspondence and notifications go to a mailbox that no longer exists; the record may not belong to a real
+    party.
+  fix_map:
+    __other__: Correct the value in SuccessFactors Employee Central > Personal Information.
+  record_fix_template: 'PEREMAIL.EMAIL_ADDRESS is ''{actual_value}'': email address uses a disposable mailbox service.'
+- id: EC902
+  field: PERPHONE.PHONE_NUMBER
+  check_class: contact_check
+  kind: phone
+  dial_field: PERPHONE.COUNTRY_CODE
+  severity: medium
+  dimension: validity
+  message: Telephone number is not a plausible number for its country
+  why_it_matters: A number with the wrong length or calling code for its country cannot be dialled. The check normalises to
+    E.164 and names the reason, so a steward knows whether the digits or the country is wrong.
+  rule_authority: best_practice
+  sap_impact: Call-centre, delivery and SMS processes cannot reach the party; downstream CRM and telephony integrations reject
+    the number.
+  fix_map:
+    __other__: Correct the value in SuccessFactors Employee Central > Personal Information.
+  record_fix_template: 'PERPHONE.PHONE_NUMBER is ''{actual_value}'': telephone number is not a plausible number for its country.'
+- id: EC903
+  field: PERADDRESS.ZIPCODE
+  check_class: contact_check
+  kind: postcode
+  country_field: PERADDRESS.COUNTRY
+  severity: high
+  dimension: validity
+  message: Postal code does not match the format of its country
+  why_it_matters: Each country has a fixed postal code layout. A code that breaks it fails address validation, carrier label
+    printing and tax jurisdiction look-up.
+  rule_authority: best_practice
+  sap_impact: Carrier integration and tax jurisdiction determination fail; S/4HANA address checks (TSAD) reject the address
+    on change.
+  fix_map:
+    __other__: Correct the value in SuccessFactors Employee Central > Personal Information.
+  record_fix_template: 'PERADDRESS.ZIPCODE is ''{actual_value}'': postal code does not match the format of its country.'
+  auto_fix:
+    steps:
+    - op: postcode
+      country_field: PERADDRESS.COUNTRY
+    confidence: medium

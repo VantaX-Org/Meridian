@@ -729,6 +729,13 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         # no generated rules, profiling, cleaning, mining or golden records of their own
         data_modules = [m for m in modules if not is_overlay(m)]
         vp_rules = []
+        # optional MX lookup of email domains (tenant setting contact_verify.mx, Settings > Contact verification)
+        from checks.types.contact_check import mx_rules
+        with Session(engine) as session:
+            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            cv_setting = session.execute(text("SELECT value FROM tenant_settings WHERE tenant_id = :t "
+                                              "AND key = 'contact_verify'"), {"t": str(tenant_id)}).scalar()
+        cv_setting = json.loads(cv_setting) if isinstance(cv_setting, str) else (cv_setting or {})
         for m in data_modules:
             try:
                 static = yaml.safe_load(_find_module_yaml(m).read_text()).get("rules", [])
@@ -737,6 +744,8 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             vp_rules += value_placement.generate(m, static, dictionary)
             vp_rules += country_rules.generate(m, static, fs_config, dictionary)  # T005 / BNKA
             vp_rules += config_rules.generate(m, fs_config, dictionary)  # T685A / T582A
+            if cv_setting.get("mx"):
+                vp_rules += mx_rules(static)
         fs_rules = fs_rules + vp_rules + authored + mined_rules
         # A referential rule whose check table is itself an extracted data table (MARA.MATNR,
         # LFA1.LIFNR, MLAN.MATNR) must judge against the extract's full frame. The config load

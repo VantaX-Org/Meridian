@@ -8774,6 +8774,23 @@ export const en = {
   "Chat alerts": "Chat alerts",
   "Counts and a link into Meridian go to a Slack or Teams channel, never record values.": "Counts and a link into Meridian go to a Slack or Teams channel, never record values.",
   "The chat alert settings": "The chat alert settings",
+  "Check that each email domain has a mail server": "Check that each email domain has a mail server",
+  "Asks this site's own DNS resolver, once per domain, at the next run. Only the domain is asked, never the address. When the resolver does not answer, no address fails.": "Asks this site's own DNS resolver, once per domain, at the next run. Only the domain is asked, never the address. When the resolver does not answer, no address fails.",
+  "Mail server check on from the next run": "Mail server check on from the next run",
+  "Mail server check off": "Mail server check off",
+  "All {n} values pass": "All {n} values pass",
+  "{a} of {n} values fail": "{a} of {n} values fail",
+  "Checked {when}": "Checked {when}",
+  "Records and why each fails": "Records and why each fails",
+  "Why it fails": "Why it fails",
+  "{n, plural, one {# proposed fix waits} other {# proposed fixes wait}} in the cleansing queue.": "{n, plural, one {# proposed fix waits} other {# proposed fixes wait}} in the cleansing queue.",
+  "Contact verification": "Contact verification",
+  "Email syntax and disposable domains, phone numbers by country, and postal codes, cities and regions against the uploaded postal list. Everything runs on this site; no address leaves it.": "Email syntax and disposable domains, phone numbers by country, and postal codes, cities and regions against the uploaded postal list. Everything runs on this site; no address leaves it.",
+  "The contact verification results": "The contact verification results",
+  "Mail server check": "Mail server check",
+  "No contact results yet. They appear after the next run of business partner, customer or Employee Central.": "No contact results yet. They appear after the next run of business partner, customer or Employee Central.",
+  "Postal codes: a CSV with the columns country, postcode (the SAP country key), and optionally city and region, so address rules also check each record's city and region against its postal code. Bank codes: the licensed SWIFT BIC directory as CSV, BIC in the first column. An upload replaces the system's current list.": "Postal codes: a CSV with the columns country, postcode (the SAP country key), and optionally city and region, so address rules also check each record's city and region against its postal code. Bank codes: the licensed SWIFT BIC directory as CSV, BIC in the first column. An upload replaces the system's current list.",
+  "Email, phone and address checks per rule, each failing record with its reason, and the mail server check.": "Email, phone and address checks per rule, each failing record with its reason, and the mail server check.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

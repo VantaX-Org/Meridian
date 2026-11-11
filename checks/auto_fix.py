@@ -35,6 +35,8 @@ OPS: dict[str, dict[str, tuple[type | tuple, bool]]] = {
     "lookup": {"table": (str, True), "match": (dict, True), "value": (str, True)},
     "date_format": {"to": (str, True)},
     "gtin_check_digit": {},
+    # the country's standard postcode layout (api/services/contact_verify)
+    "postcode": {"country_field": (str, True)},
 }
 
 # ponytail: per-rule cap on proposals computed in one run; raise with findings.record_fixes storage
@@ -83,6 +85,8 @@ def columns(rule: dict) -> list[str]:
             cols.append(s.get("from"))
         if isinstance(s, dict) and s.get("op") == "lookup":
             cols += list((s.get("match") or {}).values())
+        if isinstance(s, dict) and s.get("op") == "postcode":
+            cols.append(s.get("country_field"))
     return [c for c in dict.fromkeys(cols) if isinstance(c, str) and _COLUMN.match(c)]
 
 
@@ -252,6 +256,10 @@ def _apply(step: dict, v: str, record: dict, refs: dict) -> Optional[str]:
         return _date(v, step["to"])
     if op == "gtin_check_digit":
         return gtin_check_digit(v)
+    if op == "postcode":
+        from api.services import contact_verify as cv
+
+        return cv.postcode(v, _text(record.get(step["country_field"])))[1]
     raise ValueError(f"unknown auto_fix op '{op}'")
 
 

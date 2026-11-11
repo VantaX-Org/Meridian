@@ -15,6 +15,7 @@ export const s9Keys = {
   deliveries: (f: boolean, id: string, status: string | null) => ["v2", "s9", "deliveries", f, id, status] as const,
   automation: (f: boolean) => ["v2", "s9", "automation", f] as const,
   chat: (f: boolean) => ["v2", "s9", "automation", "chat", f] as const,
+  contact: (f: boolean) => ["v2", "s9", "automation", "contact", f] as const,
   drift: (f: boolean, limit: number) => ["v2", "s9", "drift", f, limit] as const,
   objectContracts: (f: boolean, module: string, run: string | null) => ["v2", "s9", "object-contracts", f, module, run] as const,
   changes: (f: boolean, version: string) => ["v2", "s9", "changes", f, version] as const,
@@ -58,6 +59,11 @@ export function useAutomation(enabled = true) {
 export function useChatAlerts(enabled = true) {
   const f = useFixture();
   return useQuery({ queryKey: s9Keys.chat(f), queryFn: s9.getChatAlerts, staleTime: 60_000, enabled });
+}
+
+export function useContactVerification(enabled = true) {
+  const f = useFixture();
+  return useQuery({ queryKey: s9Keys.contact(f), queryFn: s9.getContactVerification, staleTime: 30_000, enabled });
 }
 
 export function useDriftAlerts(limit = 50, enabled = true) {

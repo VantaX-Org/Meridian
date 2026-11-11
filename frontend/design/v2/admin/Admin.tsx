@@ -20,6 +20,7 @@ import { BillingSection, LicenceSection } from "./tenant";
 import { UsersSection } from "./users";
 import { MatchRulesSection } from "./matchrules";
 import { WebhooksSection } from "./webhooks";
+import { ContactVerifySection } from "./contactverify";
 import { DqFirewallSection } from "./dqfirewall";
 import { ExternalDbSection } from "./externaldb";
 import { SystemsSection } from "./systems";
@@ -230,6 +231,8 @@ function Section({ slug }: { slug: AdminSlug }) {
       return <MappingsSection />;
     case "reference":
       return <ReferenceSection />;
+    case "contactverify":
+      return <ContactVerifySection />;
     case "matchrules":
       return <MatchRulesSection />;
     case "audit":

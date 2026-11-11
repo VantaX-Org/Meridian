@@ -299,6 +299,26 @@ export const getChatAlerts = (): Promise<ChatAlerts> => v2Get("/settings/chat-al
 export const putChatAlerts = (events: ChatEvent[]): Promise<ChatAlerts> => v2Send("PUT", "/settings/chat-alerts", { events });
 export const testChatAlerts = (): Promise<ChatTest> => v2Send("POST", "/settings/chat-alerts/test");
 
+/** Email, phone and address verification: the latest result of each contact rule, with every sampled record's own reason. */
+export interface ContactReason { count: number; text: string }
+export interface ContactSample { record_key: string; value: string | null; reason: string | null; reason_text: string | null }
+export interface ContactRule {
+  check_id: string;
+  module: string;
+  message: string;
+  field: string | null;
+  affected: number;
+  total: number;
+  pass_rate: number;
+  reasons: Record<string, ContactReason>;
+  fixes: number;
+  samples: ContactSample[];
+  checked_at: string | null;
+}
+export interface ContactVerification { rules: ContactRule[]; settings: { mx: boolean } }
+export const getContactVerification = (): Promise<ContactVerification> => v2Get("/contact-verification");
+export const putContactVerification = (mx: boolean): Promise<{ mx: boolean }> => v2Send("PUT", "/contact-verification/settings", { mx });
+
 // ── config drift alerts ──────────────────────────────────────────────────────
 
 export interface DriftArea {
