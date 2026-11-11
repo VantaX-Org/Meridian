@@ -1,13 +1,15 @@
 # Production readiness attestation
 
-_As of 2026-04-24. Signed off by: engineering._
+_First signed off 2026-04-24 by engineering. Platform figures refreshed 2026-11-11 for v0.0.640; the latest release notes are in [releases/](releases/)._
 
 This document is the point-in-time snapshot of what's been done to get Meridian to "pilot-customer ready" and what's genuinely still required for GA.
 
 ## What's shipped (engineering)
 
 ### Core platform
-- 29 SAP modules, 254+ deterministic checks, DAMA DMBOK scoring
+- 45 SAP modules, 9,468 deterministic rules (6,706 hand-authored, 2,762 derived), each proved against fixtures, DAMA DMBOK scoring
+- Every database migration has a working downgrade, proved by a round-trip test
+- `npm audit` clean in the frontend, portal, install worker and LLM proxy
 - Auto-selecting check engine (pandas ↔ polars at 50k rows)
 - 4 Aurora workspaces (Command Centre, Workbench, Process, Admin) with full mining-graph backend
 - Multi-system SAP connector layer (ECC / S/4HC / SF / Concur / Ariba / eWMS)
