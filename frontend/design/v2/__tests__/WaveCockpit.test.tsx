@@ -58,3 +58,41 @@ describe("Wave cockpit: source and destination quality score", () => {
     expect(screen.queryByRole("table", { name: "Rules and gaps that move the quality score in the target" })).toBeNull();
   });
 });
+
+describe("Wave cockpit: gate evidence and readiness forecast", () => {
+  it("shows each gate criterion as actual against threshold", async () => {
+    page("w-2");
+    const min = await screen.findByTestId("gate-evidence-min_score");
+    expect(min.textContent).toMatch(/against 80\.0/);
+    expect(within(min).getAllByRole("meter").length).toBeGreaterThan(1); // the lowest score, then one bar per object
+    expect(screen.queryByTestId("gate-evidence-contracts_met")).toBeNull(); // this gate does not ask for contracts
+  });
+
+  it("counts contracts met against those the gate requires", async () => {
+    page("w-1");
+    const contracts = await screen.findByTestId("gate-evidence-contracts_met");
+    expect(within(contracts).getAllByRole("meter").length).toBe(1);
+    expect(contracts.textContent).toMatch(/\d+ against \d+/);
+  });
+
+  it("names the top failing critical rules with their field and dictionary text", async () => {
+    page("w-2");
+    const crit = await screen.findByTestId("gate-evidence-zero_criticals");
+    const list = within(crit).getByRole("list", { name: "Top failing critical rules" });
+    expect(within(list).getAllByRole("listitem").length).toBeGreaterThan(0);
+    expect(within(list).getAllByText(/Material type|Business partner category|Name 1|Valuation Class/).length).toBeGreaterThan(0);
+  });
+
+  it("projects the pass date from the trend of blocking findings", async () => {
+    page("w-2");
+    const f = await screen.findByTestId("gate-forecast");
+    expect(f.dataset.status).toBe("projected");
+    expect(f.textContent).toMatch(/reach zero by \d{4}-\d{2}-\d{2}, a straight line fitted to 3 runs \(22 in the latest\)/);
+  });
+
+  it("says plainly when a wave has no trend to project from", async () => {
+    page("w-3");
+    expect(await screen.findByText(/This wave has not been analysed yet/)).toBeInTheDocument();
+    expect(screen.queryByTestId("gate-forecast")).toBeNull();
+  });
+});

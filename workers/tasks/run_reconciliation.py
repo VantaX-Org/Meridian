@@ -102,7 +102,13 @@ def run_reconciliation(self, tenant_id, reconciliation_id):
             target.incomplete = {c["table"] for c in cov if c.get("complete") is False or c.get("truncated")}
             target.partial = {c["table"] for c in cov if c.get("partial")}
 
-            result = reconcile(expected, held, target, target_dict)
+            from workers.tasks.run_migration import load_value_maps
+
+            value_maps: dict[str, dict[str, str]] = {}
+            for m in run.modules:  # the confirmed maps the load used: a difference they explain is expected
+                for tf, vm in load_value_maps(session, m, run.source_system_id, run.dest_system_id).items():
+                    value_maps.setdefault(tf, {}).update(vm)
+            result = reconcile(expected, held, target, target_dict, value_maps=value_maps)
             records = {t["table"]: t.pop("records") for t in result["tables"]}
             synced = session.execute(text("SELECT run_at FROM analysis_versions WHERE id = :v"),
                                      {"v": version_id}).scalar()

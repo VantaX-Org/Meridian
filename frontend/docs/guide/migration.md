@@ -26,6 +26,19 @@ The panel **Workbook from the new system** fills the new system's own workbook o
 
 Without a finished run, the panel says so; a finished run is needed before the workbook can be filled.
 
+## Post-load reconciliation: expected and real differences
+
+Not every difference between the load file and the target is a defect. Meridian gives each differing field a cause, read from the SAP data dictionary of the target field:
+
+- **Leading zeros (ALPHA conversion)**: the field has the ALPHA conversion exit and the values are equal once the zeros are added or removed.
+- **Upper case**: the field does not allow lower case, so the target stored the value in capitals.
+- **Confirmed value mapping**: the found value is the approved target value of a value mapping.
+- **Cut to the target field length**: the expected value is longer than the field and the target kept its first characters.
+- **Same number, other format** and **Same date, other format**: the field is a number or date field and the values are equal once read.
+- **Real difference**: anything else.
+
+Each row of **Different in target** shows the cause with the field's type, length, case rule and conversion exit beside it. **Real differences only** hides the expected ones. The summary and the tables show how many differences are real and how many have an expected cause, and only real differences count against the load.
+
 ## Load plan
 
 The load plan at /migration/load-plan shows the order in which the migration objects load into the target, and why. Meridian reads the data dictionary: when a field an object's rules read has a check table that another object owns, the other object loads first. A customer's company code data points at a G/L account through KNB1.AKONT, so G/L accounts load before customers.

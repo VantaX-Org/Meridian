@@ -1285,6 +1285,18 @@ export interface WaveTrendPoint {
   run_id: string;
   completed_at: string;
   score: number;
+  /** Blocking (critical and high) findings of the wave's objects in this run. */
+  blocking?: number;
+}
+
+/** When the wave's blocking findings reach zero: a least-squares line over the per-run trend. */
+export interface WaveForecast {
+  status: "passing" | "projected" | "not_converging" | "no_trend";
+  runs_used: number;
+  slope_per_day: number | null;
+  projected_date: string | null;
+  latest: number | null;
+  latest_at: string | null;
 }
 
 export interface WaveCockpit {
@@ -1298,6 +1310,7 @@ export interface WaveCockpit {
   records_blocked: number;
   objects: WaveObject[];
   trend: WaveTrendPoint[];
+  forecast?: WaveForecast;
   blockers: WaveBlocker[];
 }
 

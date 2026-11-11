@@ -74,6 +74,24 @@ describe("Migration analysis", () => {
     expect(change).toContain("83,782 found (+241)");
   });
 
+  it("splits differences into expected and real, names the cause of each and filters to real ones", async () => {
+    renderWithQuery(<Migration />);
+    const panel = await screen.findByTestId("mig-post-load");
+    expect((await within(panel).findByTestId("mig-post-load-split")).textContent).toMatch(/are real and .* have an expected cause/);
+    fireEvent.click(within(panel).getByRole("button", { name: "Different in target" }));
+    const list = await within(panel).findByRole("region", { name: "Different in target" }, { timeout: 4000 });
+    expect(within(list).getAllByRole("columnheader").map((h) => h.textContent)).toContain("Cause");
+    expect(within(list).getByText(/^Confirmed value mapping/)).toBeInTheDocument();
+    expect(within(list).getByText(/^Cut to the target field length/)).toBeInTheDocument();
+    expect(within(list).getByText(/^Real difference/).textContent).toContain("CHAR 4, upper case only"); // the dictionary evidence beside the cause
+    fireEvent.click(within(panel).getByTestId("mig-post-load-real-only"));
+    expect(within(panel).getByTestId("mig-post-load-real-only")).toHaveAttribute("aria-pressed", "true");
+    const real = await within(panel).findByRole("region", { name: "Different in target" }, { timeout: 4000 });
+    expect(within(real).getByText(/^Real difference/)).toBeInTheDocument();
+    expect(within(real).queryByText(/^Confirmed value mapping/)).toBeNull();
+    expect(within(real).queryByText(/^Cut to the target field length/)).toBeNull();
+  });
+
   it("offers the target extraction when the reconciliation found nothing to compare with", async () => {
     renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
     fireEvent.click(await screen.findByRole("button", { name: /Open the analysis of 20 Oct/ }));
