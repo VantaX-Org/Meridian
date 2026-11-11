@@ -6,7 +6,7 @@ import { JobLine } from "../shell/JobLine";
 import { duration } from "../shell/StatusStrip";
 import { getUrl, push, setUrl } from "./nav-store";
 import { KEYS } from "@/lib/v2/keys";
-import { destinations } from "../shell/menu";
+import { destinations, kidsFor } from "../shell/menu";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
@@ -80,6 +80,13 @@ describe("top bar", () => {
 });
 
 describe("rail and flyout", () => {
+  it("leaves the write-only pages out of the menu for a viewer without the permission, and keeps every read page", () => {
+    const none = () => false;
+    const hidden = destinations().flatMap((d) => d.kids.filter((k) => !kidsFor(d, none).includes(k)).map((k) => k.href));
+    expect(hidden).toEqual(["/fix-drafts", "/rule-promotion", "/rule-dry-run", "/anomaly-rules", "/entry-gate"]);
+    expect(destinations().flatMap((d) => kidsFor(d, () => true))).toHaveLength(destinations().flatMap((d) => d.kids).length);
+  });
+
   it("lists the seven destinations, Home first and current, with Reports and Atlas below", () => {
     mount();
     const rail = screen.getByTestId("rail");
