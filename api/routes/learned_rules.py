@@ -16,8 +16,13 @@ from sqlalchemy.orm import Session
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _row, _rls
-from api.services.rbac import current_user_label, require_any_permission, require_permission
+from api.services import learned_rule_review as lrr
+from api.services.connectivity_manager import baseline_key
+from api.services.rbac import current_user_label, require_any_permission, require_permission, scope_from_path
+from api.services.source_design import dictionary_for
 from checks import lifecycle
+from sap.baseline_config import BASELINE_CONFIG
+from sap.ddic import get_dictionary
 
 router = APIRouter(prefix="/api/v1", tags=["learned-rules"])
 MINER = "house-rule-miner"
@@ -111,6 +116,120 @@ async def list_learned(status: Literal["pending", "approved", "rejected"] = Quer
          ORDER BY support_rows DESC, confidence DESC, field LIMIT 1000
     """), {"t": str(tenant.id), "s": status, "m": module, "k": kind, "src": source})).fetchall()
     return {"items": [_row(r) for r in rows]}
+
+
+class AnchorOut(BaseModel):
+    column: str
+    known: bool
+    table_text: str
+    description: str
+    data_element: Optional[str] = None
+    domain: Optional[str] = None
+    check_table: Optional[str] = None
+    check_field: Optional[str] = None
+    fixed_values: int = 0
+
+
+class LiftOut(BaseModel):
+    lift: Optional[float] = None
+    expected: Optional[float] = None   # share of filled dependent rows holding an allowed value anyway
+    reason: Optional[str] = None       # why lift is not derivable, when it is None
+    sampled: bool = False
+
+
+class OutOfDictionaryOut(BaseModel):
+    values: list[str]
+    source: str                        # domain | live | baseline | no_reference | unverified
+    checked: int
+
+
+class ProposalReviewOut(BaseModel):
+    id: str
+    module: str
+    kind: str
+    source: str
+    status: str
+    table_name: str
+    determinant: Optional[str] = None
+    field: str
+    confidence: Optional[float] = None
+    support_rows: Optional[int] = None
+    violations: Optional[int] = None
+    lift: LiftOut
+    determinant_anchor: Optional[AnchorOut] = None
+    field_anchor: AnchorOut
+    out_of_dictionary: Optional[OutOfDictionaryOut] = None
+    determinant_out_of_dictionary: Optional[OutOfDictionaryOut] = None
+    redundant: bool
+    redundant_reason: str
+    sample_keys: list[dict]
+
+
+class ReviewOut(BaseModel):
+    items: list[ProposalReviewOut]
+
+
+def _json(v):
+    return json.loads(v) if isinstance(v, str) else v
+
+
+@router.get("/learned-rules/review", response_model=ReviewOut)
+async def review_learned(status: Literal["pending", "approved", "rejected"] = Query("pending"),
+                         module: Optional[str] = None,
+                         tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
+                         _role: str = Depends(require_permission("view", scope=scope_from_path))) -> ReviewOut:
+    """Each proposal with its lift, the DDIC anchor of both fields, the mined values the dictionary does not
+    know (live configuration first, SAP-standard baseline second) and whether the DDIC already enforces it."""
+    await _rls(db, tenant)
+    tid = str(tenant.id)
+    props = [dict(r) for r in (await db.execute(text("""
+        SELECT id, version_id, module, kind, source, status, table_name, determinant, field, body, confidence,
+               support_rows, violations, sample_keys
+          FROM learned_rule_proposals
+         WHERE tenant_id = :t AND status = :s AND (CAST(:m AS text) IS NULL OR module = :m)
+         ORDER BY support_rows DESC, confidence DESC, field LIMIT 500
+    """), {"t": tid, "s": status, "m": module})).mappings().all()]
+    vids = sorted({str(p["version_id"]) for p in props if p.get("version_id")})
+    system_of: dict[str, str] = {}
+    profiles: dict[str, dict] = {}
+    if vids:
+        for r in (await db.execute(text(
+                "SELECT CAST(id AS text) AS id, metadata->>'system_id' AS system_id FROM analysis_versions "
+                "WHERE tenant_id = :t AND CAST(id AS text) = ANY(:v)"), {"t": tid, "v": vids})).mappings().all():
+            if r["system_id"]:
+                system_of[r["id"]] = r["system_id"]
+        for r in (await db.execute(text(
+                "SELECT CAST(version_id AS text) AS version_id, table_name, field, stats FROM field_profiles "
+                "WHERE tenant_id = :t AND CAST(version_id AS text) = ANY(:v)"), {"t": tid, "v": vids})).mappings().all():
+            profiles.setdefault(r["version_id"], {})[(r["table_name"], r["field"])] = _json(r["stats"]) or {}
+    sids = sorted(set(system_of.values()))
+    types: dict[str, str] = {}
+    live: dict[str, dict[str, list[dict]]] = {}
+    if sids:
+        for r in (await db.execute(text(
+                "SELECT CAST(id AS text) AS id, system_type FROM sap_systems "
+                "WHERE tenant_id = :t AND CAST(id AS text) = ANY(:s)"), {"t": tid, "s": sids})).mappings().all():
+            types[r["id"]] = r["system_type"] or ""
+        for r in (await db.execute(text(
+                "SELECT CAST(system_id AS text) AS system_id, config_table, config_data FROM config_snapshots "
+                "WHERE tenant_id = :t AND source = 'live' AND CAST(system_id AS text) = ANY(:s)"),
+                {"t": tid, "s": sids})).mappings().all():
+            live.setdefault(r["system_id"], {}).setdefault(r["config_table"], []).extend(_json(r["config_data"]) or [])
+    dictionaries: dict[str, object] = {}
+    items = []
+    for p in props:
+        p["body"], p["sample_keys"] = _json(p.get("body")) or {}, _json(p.get("sample_keys")) or []
+        vid = str(p.get("version_id") or "")
+        sid = system_of.get(vid, "")
+        if sid not in dictionaries:
+            dictionaries[sid] = (await db.run_sync(lambda s: dictionary_for(s, sid))
+                                 if sid else get_dictionary("s4hana"))
+        baseline: dict[str, list[dict]] = {}
+        for tables in BASELINE_CONFIG.get(baseline_key(types.get(sid) or "ecc"), {}).values():
+            baseline.update(tables)
+        items.append(ProposalReviewOut(**lrr.review(p, dictionaries[sid], profiles.get(vid, {}),
+                                                    live.get(sid, {}), baseline)))
+    return ReviewOut(items=items)
 
 
 @router.post("/learned-rules/mine", status_code=202, dependencies=[Depends(require_permission("manage_rules"))])

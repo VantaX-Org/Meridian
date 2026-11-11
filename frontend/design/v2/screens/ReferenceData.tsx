@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  decideMapping, getRefList, getRefLists, proposeMapping, suggestMapping,
-  type MappingStatus, type RefCoverage, type RefList, type RefListSummary, type RefMapping, type RefSuggestion,
+  decideMapping, getRefList, getRefLists, getRefUsage, proposeMapping, suggestMapping,
+  type MappingStatus, type RefUsage, type RefCoverage, type RefList, type RefListSummary, type RefMapping, type RefSuggestion,
 } from "@/lib/api/v2/reference-data";
 import { getSystemsExtended } from "@/lib/api/v2/runs";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -13,7 +13,7 @@ import { failureText } from "@/lib/v2/errors";
 import { useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
-import { int } from "@/lib/v2/score";
+import { int, pct1 } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, StackedBar, TrendChart, type StackPart } from "../charts";
 import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { Guide } from "./Guide";
@@ -151,6 +151,76 @@ function Propose({ list, systemId }: { list: RefList; systemId: string }) {
   );
 }
 
+function usageParts(u: RefUsage): StackPart[] {
+  const orphanRows = u.fields.reduce((n, f) => n + f.orphan_rows, 0);
+  const unlisted = Math.max(0, u.filled - u.covered - orphanRows);
+  return [
+    { key: "covered", label: t("Valid code"), value: u.covered, colour: "--m2-chart-3", title: t("{n} records hold a code of the list", { n: int(u.covered) }) },
+    { key: "orphan", label: t("Not in the check table"), value: orphanRows, colour: "--m2-sev-crit", title: t("{n} records hold a value missing from the check table", { n: int(orphanRows) }) },
+    { key: "unlisted", label: t("Not listed in the profile"), value: unlisted, colour: "--m2-chart-1", title: t("{n} records hold values past the profiled top values", { n: int(unlisted) }) },
+  ];
+}
+
+function Usage({ systemId, listId }: { systemId: string; listId: string }) {
+  const fixture = useFixture();
+  const q = useQuery({ queryKey: ["ref-usage", fixture, systemId, listId], queryFn: () => getRefUsage(systemId, listId), staleTime: 15_000 });
+  const meta = t("Which codes the records hold, read from the field profiles of the latest analysis run.");
+  if (q.isPending) return <Panel title={t("Usage")} meta={meta} testId="ref-usage"><Skeleton width="100%" height={160} /></Panel>;
+  if (q.isError) return <Panel title={t("Usage")} meta={meta} testId="ref-usage"><ErrorFrame onRetry={() => void q.refetch()}>{t("The usage of this list could not be read.")}</ErrorFrame></Panel>;
+  const u = q.data;
+  if (!u.version_id) return <Panel title={t("Usage")} meta={meta} testId="ref-usage"><EmptyFrame>{t("No analysis run has profiled the fields this list checks yet.")}</EmptyFrame></Panel>;
+  const share = u.covered_share == null ? t("Not known") : u.covered_at_least ? t("at least {p}", { p: pct1(u.covered_share) }) : pct1(u.covered_share);
+  return (
+    <Panel title={t("Usage")} meta={meta} testId="ref-usage">
+      <p data-testid="ref-usage-share">
+        {t("Records with a valid code: {share}", { share })}{" "}
+        <span className="m2-meta">{t("{used} of {codes} codes in use", { used: int(u.used), codes: int(u.codes) })}{u.run_at ? `, ${formatDate(u.run_at, "date")}` : ""}</span>
+      </p>
+      <StackedBar parts={usageParts(u)} label={t("Records by code validity")} format={int} />
+      {u.covered_at_least ? <p className="m2-meta" data-testid="ref-usage-truncated">{t("A field holds more distinct values than its profile lists, so these counts are lower bounds and an unused code may still be used.")}</p> : null}
+      <ScrollFrame label={t("Fields, scrollable")}>
+        <table className="m2-tbl">
+          <caption className="m2-sr">{t("Usage per field")}</caption>
+          <thead><tr><th scope="col">{t("Field")}</th><th scope="col">{t("Filled records")}</th><th scope="col">{t("Valid code")}</th><th scope="col">{t("Not in the check table")}</th><th scope="col">{t("Profile")}</th></tr></thead>
+          <tbody>
+            {u.fields.map((f) => (
+              <tr key={f.field} data-testid={`ref-usage-field-${f.field}`}>
+                <td>{f.field}</td>
+                <td>{f.profiled ? int(f.filled) : "—"}</td>
+                <td>{f.profiled && !f.masked ? (f.truncated ? t("at least {n}", { n: int(f.covered) }) : int(f.covered)) : "—"}</td>
+                <td>{f.profiled && !f.masked ? (f.truncated ? t("at least {n}", { n: int(f.orphan_rows) }) : int(f.orphan_rows)) : "—"}</td>
+                <td><span className="m2-meta">{!f.profiled ? t("Not profiled") : f.masked ? t("Values masked") : f.truncated ? t("Top values only") : t("All values")}{f.sampled ? `, ${t("sampled")}` : ""}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </ScrollFrame>
+      <h3 className="m2-meta">{u.orphans_complete ? t("Values not in the check table") : t("Values not in the check table (at least these)")}</h3>
+      {u.orphans.length === 0 ? <EmptyFrame>{u.orphans_complete ? t("Every value in the records is a code of the list.") : t("No listed value is missing from the check table.")}</EmptyFrame> : (
+        <ScrollFrame label={t("Orphan values, scrollable")}>
+          <table className="m2-tbl">
+            <caption className="m2-sr">{t("Values used in records but missing from the check table")}</caption>
+            <thead><tr><th scope="col">{t("Value")}</th><th scope="col">{t("Records")}</th><th scope="col">{t("Fields")}</th></tr></thead>
+            <tbody>
+              {u.orphans.map((o) => (
+                <tr key={o.value} data-testid={`ref-orphan-${o.value}`}>
+                  <td><Coded code={o.value} text={t("Not in {table}", { table: u.table })} /></td>
+                  <td>{int(o.count)}</td>
+                  <td><span className="m2-meta">{o.fields.join(", ")}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ScrollFrame>
+      )}
+      <h3 className="m2-meta">{u.unused_certain ? t("Codes never used") : t("Codes not seen in the profiled values")}</h3>
+      {u.unused.length === 0 ? <p className="m2-meta">{t("Every code of the list is used.")}</p> : (
+        <p data-testid="ref-unused">{t("{n, plural, one {# code} other {# codes}}", { n: u.unused.length })}: {u.unused.join(", ")}</p>
+      )}
+    </Panel>
+  );
+}
+
 function ListDetail({ systemId, listId, versionId, onVersion }: { systemId: string; listId: string; versionId: string; onVersion: (id: string) => void }) {
   const fixture = useFixture();
   const q = useQuery({ queryKey: ["ref-list", fixture, systemId, listId, versionId], queryFn: () => getRefList(systemId, listId, versionId || undefined), staleTime: 15_000 });
@@ -235,6 +305,7 @@ function ListDetail({ systemId, listId, versionId, onVersion }: { systemId: stri
         )}
         <Propose list={l} systemId={systemId} />
       </Panel>
+      <Usage systemId={systemId} listId={listId} />
     </>
   );
 }
