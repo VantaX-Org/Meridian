@@ -386,9 +386,14 @@ function TargetWorkbookPanel() {
     checked.current = waiting;
     check.mutate({ run: waiting, file }, { onSettled: () => { setPicked(waiting); setWaiting(""); update.reset(); } });
   }, [done, file, waiting, update, check]);
-  if (!allowed) return null;
   const title = t("Workbook from the new system");
   const meta = t("Fill the new system's workbook or load file from a finished run");
+  if (!allowed) {
+    const why = systems.length === 0 && can("export") && !shared && !viewAs
+      ? t("No source system is connected yet. Connect one and finish a run before a workbook can be filled.")
+      : t("Your role cannot export migration data, so the workbook cannot be filled here.");
+    return <Panel title={title} meta={meta} testId="mig-workbook-locked"><EmptyFrame>{why}</EmptyFrame></Panel>;
+  }
   if (versions.isPending) return <Panel title={title} meta={meta} testId="mig-workbook"><Skeleton width="100%" height={120} /></Panel>;
   if (versions.isError) return <Panel title={title} meta={meta} testId="mig-workbook"><ErrorFrame onRetry={() => void versions.refetch()}>{t("The runs could not be read.")}</ErrorFrame></Panel>;
   if (versions.data.length === 0) return <Panel title={title} meta={meta} testId="mig-workbook"><EmptyFrame>{t("No run has finished yet. A finished run is needed before the workbook can be filled.")}</EmptyFrame></Panel>;
@@ -440,13 +445,17 @@ function TargetWorkbookPanel() {
                 </Table>
               </Disclose>
               {update.isSuccess ? (
-                <p data-testid="mig-workbook-updating">{t("A new run has started. When it finishes, Meridian checks the workbook again on it, so the added columns are filled.")}</p>
+                <p data-testid="mig-workbook-updating">{t("A new run has started. When it finishes, Meridian checks the workbook again on it, so the added columns are filled.")}{" "}
+                  <button type="button" className="m2-btn m2-sm" data-testid="mig-workbook-stop" onClick={() => { setWaiting(""); update.reset(); }}>{t("Stop waiting")}</button></p>
               ) : can("trigger_sync") ? (
                 <p><button type="button" className="m2-btn m2-next" data-testid="mig-workbook-update" disabled={update.isPending} onClick={() => update.mutate({ system_id: report.learned!.system_id!, modules: report.learned!.modules })}>{update.isPending ? t("Starting the run") : t("Update the run")}</button></p>
               ) : (
                 <p className="m2-meta">{t("Ask someone who can start extractions to update the run.")}</p>
               )}
             </div>
+          ) : null}
+          {learned.length > 0 && !report.learned?.system_id ? (
+            <p role="status" data-testid="mig-workbook-learned-nosystem">{t("{n} columns in this workbook are not in the extraction, but this run is not tied to a source system, so they cannot be added. Start the run from a connected system.", { n: int(learned.length) })}</p>
           ) : null}
           {(report.learned?.missing ?? 0) > 0 ? (
             <p role="status" data-testid="mig-workbook-not-in-system">{t("{n} columns ask for fields the source system did not return on the last run, so another run will not fill them. Ask the system owner whether the field exists, or fill these columns in the new system.", { n: int(report.learned!.missing!) })}</p>
