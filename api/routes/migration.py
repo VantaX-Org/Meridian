@@ -1374,8 +1374,12 @@ def _mark_learned(report: dict, pending: dict, unresolved: Optional[dict] = None
     return waiting, missing
 
 
-def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") -> tuple:
-    """Parse an uploaded workbook and fill it from one finished run. Nothing is stored."""
+def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "",
+                   column_map: Optional[dict] = None, cleansed: bool = False) -> tuple:
+    """Parse an uploaded workbook and fill it from one finished run. Nothing is stored.
+
+    `column_map` holds a person's corrections to unresolved columns ("sheet::header" to TABLE.FIELD). With
+    `cleansed`, the approved proposals of the run's modules' remediation batches replace the extracted values first."""
     from api.services.migration import workbook as wb
     from api.services.connectivity_manager import ConnectivityManager
     from api.services.source_design import dictionary_for, store_learned
@@ -1391,6 +1395,7 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
         book = wb.parse_workbook(data, filename)
     except wb.WorkbookError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    wb.apply_column_map(book, column_map or {})
     with tenant_session(get_sync_engine(), tenant_id) as s:
         row = s.execute(text("SELECT status, metadata FROM analysis_versions WHERE CAST(id AS text) = :v AND tenant_id = :t"),
                         {"v": version_id.lower(), "t": str(tenant_id)}).fetchone()
@@ -1441,6 +1446,10 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
             if not str(e).startswith("No table parquet files"):  # a storage fault must not read as "no match"
                 raise
             raise no_match
+        fixes = _approved_fixes(s, meta.get("modules") or []) if cleansed else []
+        if fixes:
+            from api.services.fix_simulation import apply_fixes
+            frames, stats = apply_fixes(frames, None, fixes)
         # A module's own map is a complete list, so a value it leaves out has no target. A configuration map only
         # renames the values it knows.
         config = load_value_maps(s, "config", system_id)
@@ -1450,10 +1459,51 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
                 maps.setdefault(target, {}).update(vm)
         strict = {t for t, vm in maps.items() if vm.keys() - config.get(t, {}).keys()}
     tabs, report = wb.fill(book, frames, maps, strict)
+    if cleansed:
+        report["cleansed"] = {"approved": len(fixes), **({k: stats[k] for k in ("cells_changed", "by_field")}
+                                                         if fixes else {"cells_changed": 0, "by_field": {}})}
     waiting, missing = _mark_learned(report, pending, unresolved)
     report["learned"] = {"new": sum(len(f) for f in learned.values()), "waiting": waiting, "missing": missing,
                          "system_id": system_id, "modules": meta.get("modules") or []}
     return book, tabs, report
+
+
+def _approved_fixes(s, modules: list[str]) -> list[dict]:
+    """Every approved remediation proposal of these modules, oldest approval first, so a later one wins."""
+    if not modules or not s.execute(text("SELECT to_regclass('remediation_items')")).scalar():
+        return []
+    rows = s.execute(text(
+        "SELECT i.field, i.record_key, i.proposed_value FROM remediation_items i "
+        "JOIN remediation_batches b ON b.id = i.batch_id AND b.tenant_id = i.tenant_id "
+        "WHERE b.status IN ('approved', 'awaiting_load', 'exported') AND i.field IS NOT NULL "
+        "AND i.record_key IS NOT NULL AND i.proposed_value IS NOT NULL AND i.module = ANY(:mods) "
+        "ORDER BY b.approved_at NULLS FIRST, i.id"), {"mods": list(modules)}).fetchall()
+    return [{"field": f, "record_key": k, "new_value": v} for f, k, v in rows]
+
+
+def _export_workbook(tenant_id, version_id: str, data: bytes, filename: str, export_format: str,
+                     column_map: Optional[dict] = None, cleansed: bool = False) -> tuple[bytes, str, dict]:
+    """The filled workbook as bytes, its extension and the fill summary, with held rows on their own tab or file."""
+    import pandas as pd
+    from api.services.branded_xlsx import guard_frame
+    from api.services.migration import workbook as wb
+    from api.services.migration.export import to_csv_zip, to_xlsx
+
+    book, tabs, report = _fill_workbook(tenant_id, version_id, data, filename, column_map, cleansed)
+    if not tabs:
+        raise HTTPException(status_code=422, detail="Nothing in this run matches the sheets in this workbook.")
+    # Record keys are source values, so held rows take the formula guard; load tabs stay exact.
+    held = guard_frame(pd.DataFrame(report["held"])) if report["held"] else None
+    summary = {**report["summary"], **({"cleansed": report["cleansed"]["cells_changed"]} if cleansed else {})}
+    if export_format == "source":
+        if not report["format"]["same"]:
+            raise HTTPException(status_code=422, detail="This workbook defines fields but has no load layout to "
+                                                        "fill. Export it as Excel or CSV files instead.")
+        held_csv = None if held is None else held.to_csv(index=False).encode("utf-8-sig")
+        return *wb.same_format(book, tabs, held_csv), summary
+    if held is not None:
+        tabs[wb.HELD_BACK_TAB] = held
+    return (to_xlsx(tabs), "xlsx", summary) if export_format == "xlsx" else (to_csv_zip(tabs), "zip", summary)
 
 
 @router.post("/target-workbook/{version_id}/check")
@@ -1480,39 +1530,246 @@ async def export_target_workbook(
     """The run's data in the workbook's own columns, with every row held back named beside it and why.
 
     `source` writes the upload's own layout, ready for its load tool. Held rows then travel in a separate file."""
-    import pandas as pd
     from starlette.concurrency import run_in_threadpool
-    from api.services.branded_xlsx import guard_frame
-    from api.services.migration import workbook as wb
-    from api.services.migration.export import to_csv_zip, to_xlsx
     from api.services.migration.workbook_formats import media_type
 
     data = await _read_workbook(file)
-
-    def _build() -> tuple[bytes, str, dict]:
-        book, tabs, report = _fill_workbook(tenant.id, version_id, data, file.filename or "")
-        if not tabs:
-            raise HTTPException(status_code=422, detail="Nothing in this run matches the sheets in this workbook.")
-        # Record keys are source values, so held rows take the formula guard; load tabs stay exact.
-        held = guard_frame(pd.DataFrame(report["held"])) if report["held"] else None
-        if export_format == "source":
-            if not report["format"]["same"]:
-                raise HTTPException(status_code=422, detail="This workbook defines fields but has no load layout to "
-                                                            "fill. Export it as Excel or CSV files instead.")
-            held_csv = None if held is None else held.to_csv(index=False).encode("utf-8-sig")
-            return *wb.same_format(book, tabs, held_csv), report["summary"]
-        if held is not None:
-            tabs[wb.HELD_BACK_TAB] = held
-        return ((to_xlsx(tabs), "xlsx", report["summary"]) if export_format == "xlsx"
-                else (to_csv_zip(tabs), "zip", report["summary"]))
-
-    content, ext, summary = await run_in_threadpool(_build)
+    content, ext, summary = await run_in_threadpool(_export_workbook, tenant.id, version_id, data,
+                                                    file.filename or "", export_format)
     await _set_rls(db, tenant.id)
     await write_audit(db, tenant.id, request, "migration.target_workbook.export", "analysis_version", version_id,
                       None, {"format": export_format, **summary})
     await db.commit()
     # Not _stream: a StreamingResponse after an uploaded body trips BaseHTTPMiddleware ("Unexpected message received").
     name = f"target_workbook_{version_id}.{ext}"
+    return Response(content, media_type=media_type(ext),
+                    headers={"Content-Disposition": f"attachment; filename={name}"})
+
+
+# ── Template library (target templates kept per module, filled from any run) ──
+_MODULE_NAME = re.compile(r"[a-z][a-z0-9_]*")
+
+
+def _module_rules(module: str) -> list[dict]:
+    from checks.runner import module_rules
+
+    if not _MODULE_NAME.fullmatch(module):
+        raise HTTPException(status_code=404, detail="Unknown module.")
+    try:
+        return module_rules(module)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Unknown module.")
+
+
+def _template_coverage(data: bytes, filename: str, column_map: dict) -> dict:
+    """Mapping coverage against the standard dictionary, before any run: what the template's columns resolve to."""
+    from api.services.migration import workbook as wb
+    from sap.ddic import get_dictionary
+
+    try:
+        book = wb.parse_workbook(data, filename)
+    except wb.WorkbookError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    wb.apply_column_map(book, column_map)
+    return wb.coverage(book, get_dictionary("s4hana"))
+
+
+async def _template(db: AsyncSession, tenant: Tenant, module: str, template_id: str, content: bool = False) -> dict:
+    await _set_rls(db, tenant.id)
+    row = (await db.execute(text(
+        f"SELECT id, name, version, filename, column_map{', content' if content else ''} FROM target_templates "
+        "WHERE CAST(id AS text) = :i AND module = :m AND tenant_id = :t"),
+        {"i": template_id.lower(), "m": module, "t": str(tenant.id)})).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Template not found.")
+    return _row(row)
+
+
+async def _latest_run(db: AsyncSession, tenant: Tenant, module: str, version_id: Optional[str]) -> str:
+    if version_id:
+        return version_id
+    import json
+
+    found = (await db.execute(text(
+        "SELECT CAST(id AS text) FROM analysis_versions WHERE tenant_id = :t AND status LIKE '%complete%' "
+        "AND metadata->'modules' @> CAST(:mj AS jsonb) ORDER BY created_at DESC LIMIT 1"),
+        {"t": str(tenant.id), "mj": json.dumps([module])})).scalar()
+    if not found:
+        raise HTTPException(status_code=409, detail="No finished run covers this module yet.")
+    return found
+
+
+@router.get("/templates/{module}")
+async def list_templates(module: str, tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
+                         _=Depends(require_permission("view", scope=scope_from_path))):
+    """Every uploaded template of a module, newest version first, with its coverage and last fill."""
+    _module_rules(module)
+    await _set_rls(db, tenant.id)
+    rows = (await db.execute(text(
+        "SELECT CAST(id AS text) AS id, name, version, filename, size_bytes, coverage, column_map, last_fill_at, "
+        "last_fill_version_id, created_by, created_at FROM target_templates WHERE module = :m AND tenant_id = :t "
+        "ORDER BY name, version DESC"), {"m": module, "t": str(tenant.id)})).fetchall()
+    return {"module": module, "templates": [_row(r) for r in rows]}
+
+
+@router.post("/templates/{module}")
+async def upload_template(module: str, request: Request, file: UploadFile = File(...), name: str = Query("", max_length=120),
+                          tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
+                          _=Depends(require_permission("analyse", scope=scope_from_path))):
+    """Keep an uploaded target template. The same name again is a new version, carrying the earlier column map."""
+    import hashlib
+    import json
+    from starlette.concurrency import run_in_threadpool
+    from api.services.rbac import current_user_label
+
+    _module_rules(module)
+    data = await _read_workbook(file)
+    label = (name or file.filename or "template").strip()[:120]
+    await _set_rls(db, tenant.id)
+    prev = (await db.execute(text(
+        "SELECT version, column_map FROM target_templates WHERE module = :m AND name = :n AND tenant_id = :t "
+        "ORDER BY version DESC LIMIT 1"), {"m": module, "n": label, "t": str(tenant.id)})).fetchone()
+    column_map = dict(prev[1] or {}) if prev else {}
+    cov = await run_in_threadpool(_template_coverage, data, file.filename or "", column_map)
+    version = (prev[0] + 1) if prev else 1
+    new_id = (await db.execute(text(
+        "INSERT INTO target_templates (tenant_id, module, name, version, filename, sha256, size_bytes, content, "
+        "column_map, coverage, created_by) VALUES (:t, :m, :n, :v, :f, :h, :z, :c, CAST(:cm AS jsonb), "
+        "CAST(:cov AS jsonb), :u) RETURNING CAST(id AS text)"),
+        {"t": str(tenant.id), "m": module, "n": label, "v": version, "f": file.filename or label,
+         "h": hashlib.sha256(data).hexdigest(), "z": len(data), "c": data, "cm": json.dumps(column_map),
+         "cov": json.dumps(cov), "u": current_user_label()})).scalar()
+    await write_audit(db, tenant.id, request, "migration.template.upload", "target_template", new_id, None,
+                      {"module": module, "name": label, "version": version, "columns": cov["columns"],
+                       "matched": cov["matched"]})
+    await db.commit()
+    return {"id": new_id, "name": label, "version": version, "coverage": cov}
+
+
+@router.get("/templates/{module}/fields")
+async def template_fields(module: str, tenant: Tenant = Depends(get_tenant),
+                          _=Depends(require_permission("view", scope=scope_from_path))):
+    """The dictionary fields of the module's tables, which an unresolved column may be mapped to."""
+    from checks.frames import tables_of
+    from checks.runner import get_required_columns
+    from sap.ddic import get_dictionary
+
+    _module_rules(module)
+    d = get_dictionary("s4hana")
+    return {"fields": [{"field": f.qualified, "description": f.description, "key": f.key,
+                        "table_description": d.tables[t].description}
+                       for t in sorted(tables_of(get_required_columns(module))) if t in d.tables
+                       for f in d.tables[t].fields.values()]}
+
+
+@router.get("/templates/{module}/blank")
+async def blank_template(module: str, request: Request, system_id: Optional[str] = Query(None),
+                         tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
+                         _=Depends(require_permission("export", scope=scope_from_path))):
+    """A blank template for the module: every field its rules read, with description, required flag and values.
+
+    Value lists come from the rules, the domain and the target's check tables (`system_id`, else the S/4 baseline)."""
+    from starlette.concurrency import run_in_threadpool
+
+    rules = _module_rules(module)
+
+    def _build() -> bytes:
+        from api.services.migration import workbook as wb
+        from api.services.migration.export import to_xlsx
+        from api.services.source_design import dictionary_for
+        from workers.db import get_sync_engine, tenant_session
+        from workers.tasks.run_migration import load_target_config
+
+        with tenant_session(get_sync_engine(), tenant.id) as s:
+            values, _basis = load_target_config(s, system_id)
+            dictionary = dictionary_for(s, system_id)
+        return to_xlsx(wb.blank_template(dictionary, rules, values), sanitize_formulas=True)
+
+    content = await run_in_threadpool(_build)
+    await _set_rls(db, tenant.id)
+    await write_audit(db, tenant.id, request, "migration.template.blank", "module", module, None,
+                      {"system_id": system_id})
+    await db.commit()
+    return Response(content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f"attachment; filename={module}_template.xlsx"})
+
+
+@router.get("/templates/{module}/{template_id}/file")
+async def template_file(module: str, template_id: str, tenant: Tenant = Depends(get_tenant),
+                        db: AsyncSession = Depends(get_db),
+                        _=Depends(require_permission("export", scope=scope_from_path))):
+    """The template exactly as it was uploaded."""
+    t = await _template(db, tenant, module, template_id, content=True)
+    return Response(bytes(t["content"]), media_type="application/octet-stream",
+                    headers={"Content-Disposition": f"attachment; filename={re.sub(r'[^A-Za-z0-9._-]', '_', t['filename'])}"})
+
+
+class TemplateMapping(BaseModel):
+    columns: dict[str, str]  # "sheet::header" to TABLE.FIELD; an empty value clears the column
+
+
+@router.put("/templates/{module}/{template_id}/mapping")
+async def map_template(module: str, template_id: str, body: TemplateMapping, request: Request,
+                       tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
+                       _=Depends(require_permission("analyse", scope=scope_from_path))):
+    """Save a person's corrections to unresolved columns. Every field must exist in the dictionary."""
+    import json
+    from starlette.concurrency import run_in_threadpool
+    from sap.ddic import get_dictionary
+
+    t = await _template(db, tenant, module, template_id, content=True)
+    d = get_dictionary("s4hana")
+    unknown = [ref for ref in body.columns.values() if ref and d.resolve(ref.upper()) is None]
+    if unknown:
+        raise HTTPException(status_code=422, detail=f"Not a dictionary field: {', '.join(sorted(set(unknown)))}")
+    column_map = {**(t["column_map"] or {}), **{k: v.upper() for k, v in body.columns.items() if "::" in k}}
+    column_map = {k: v for k, v in column_map.items() if v}
+    cov = await run_in_threadpool(_template_coverage, bytes(t["content"]), t["filename"], column_map)
+    await db.execute(text("UPDATE target_templates SET column_map = CAST(:cm AS jsonb), coverage = CAST(:cov AS jsonb) "
+                          "WHERE id = CAST(:i AS uuid) AND tenant_id = :t"),
+                     {"cm": json.dumps(column_map), "cov": json.dumps(cov), "i": str(t["id"]), "t": str(tenant.id)})
+    await write_audit(db, tenant.id, request, "migration.template.mapping", "target_template", str(t["id"]),
+                      {"columns": t["column_map"] or {}}, {"columns": column_map})
+    await db.commit()
+    return {"column_map": column_map, "coverage": cov}
+
+
+@router.post("/templates/{module}/{template_id}/check")
+async def check_template(module: str, template_id: str, version_id: Optional[str] = Query(None),
+                         tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
+                         _=Depends(require_permission("export", scope=scope_from_path))):
+    """What a run (the module's latest finished one by default) fills in the template, with approved cleansing applied."""
+    from starlette.concurrency import run_in_threadpool
+    from api.services.migration.workbook import HELD_SAMPLE
+
+    t = await _template(db, tenant, module, template_id, content=True)
+    vid = await _latest_run(db, tenant, module, version_id)
+    _, _, report = await run_in_threadpool(_fill_workbook, tenant.id, vid, bytes(t["content"]), t["filename"],
+                                           t["column_map"] or {}, True)
+    return {**report, "version_id": vid, "held": report["held"][:HELD_SAMPLE], "held_total": len(report["held"])}
+
+
+@router.post("/templates/{module}/{template_id}/export")
+async def export_template(module: str, template_id: str, request: Request, version_id: Optional[str] = Query(None),
+                          export_format: Literal["xlsx", "csv", "source"] = Query("xlsx", alias="format"),
+                          tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
+                          _=Depends(require_permission("export", scope=scope_from_path))):
+    """The template filled from a run, cleansed values applied where approved, failing rows on the Held back tab."""
+    from starlette.concurrency import run_in_threadpool
+    from api.services.migration.workbook_formats import media_type
+
+    t = await _template(db, tenant, module, template_id, content=True)
+    vid = await _latest_run(db, tenant, module, version_id)
+    content, ext, summary = await run_in_threadpool(_export_workbook, tenant.id, vid, bytes(t["content"]),
+                                                    t["filename"], export_format, t["column_map"] or {}, True)
+    await _set_rls(db, tenant.id)
+    await db.execute(text("UPDATE target_templates SET last_fill_at = now(), last_fill_version_id = :v "
+                          "WHERE id = CAST(:i AS uuid) AND tenant_id = :t"),
+                     {"v": vid, "i": str(t["id"]), "t": str(tenant.id)})
+    await write_audit(db, tenant.id, request, "migration.template.export", "target_template", str(t["id"]), None,
+                      {"format": export_format, "version_id": vid, **summary})
+    await db.commit()
+    name = f"{re.sub(r'[^A-Za-z0-9_-]', '_', t['name'])}_v{t['version']}_{vid[:8]}.{ext}"
     return Response(content, media_type=media_type(ext),
                     headers={"Content-Disposition": f"attachment; filename={name}"})
 

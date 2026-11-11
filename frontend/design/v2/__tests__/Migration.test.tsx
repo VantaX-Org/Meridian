@@ -266,3 +266,26 @@ describe("Workbook from the new system", () => {
     window.history.pushState({}, "", "/");
   });
 });
+
+describe("Template library", () => {
+  it("lists the kept template and resolves an open column by hand", async () => {
+    renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
+    const lib = await screen.findByTestId("mig-templates");
+    expect(await within(lib).findByText(/Material cockpit, version 2/)).toBeInTheDocument();
+    const before = within(lib).getByText(/\d+ of \d+/).textContent;
+    fireEvent.click(within(lib).getByTestId("mig-template-map-tpl-0001"));
+    const form = await within(lib).findByTestId("mig-template-mapping");
+    fireEvent.change(await within(form).findByRole("combobox", { name: /Legacy group/ }), { target: { value: "MARA.MATKL" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save the column map" }));
+    await waitFor(() => expect(within(lib).getByText(/\d+ of \d+/).textContent).not.toBe(before));
+    expect(within(lib).queryByTestId("mig-template-mapping")).toBeNull();
+  });
+
+  it("checks a template and states the approved cleansing it applies", async () => {
+    renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
+    const lib = await screen.findByTestId("mig-templates");
+    fireEvent.click(await within(lib).findByTestId("mig-template-check-tpl-0001"));
+    const report = await within(lib).findByTestId("mig-template-report");
+    expect(report.textContent).toMatch(/approved cleansing values were applied/);
+  });
+});

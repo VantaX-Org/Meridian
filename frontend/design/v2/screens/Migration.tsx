@@ -8,7 +8,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
-  checkTargetWorkbook, deleteFieldMapping, deleteMigrationRun, deleteValueEntry, decideValueEntry, exportLoadFiles, exportTargetWorkbook, extractMigrationTarget, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
+  checkTargetWorkbook, checkTemplate, deleteFieldMapping, downloadBlankTemplate, downloadTemplateFile, exportTemplate, getTemplateFields, getTemplates, saveTemplateMapping, uploadTemplate, type TargetTemplate, deleteMigrationRun, deleteValueEntry, decideValueEntry, exportLoadFiles, exportTargetWorkbook, extractMigrationTarget, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
   getMigrationRecords, getMigrationRun, getMigrationRuns, getReconciliation, getReconciliationRecords, getValueCandidates, getValueMap,
   saveValueMap, seedFieldMap, startMigration, startReconciliation, updateFieldMapping, type FieldDef, type MigrationMode, type WorkbookFormat, type MigrationRun,
   type ReconKind,
@@ -199,6 +199,7 @@ export function Migration() {
         />
       ) : null}
       <TargetWorkbookPanel />
+      <TemplateLibraryPanel />
       <Disclose title={t("Quality in the source and in the target")} hint={t("Source quality, projected and actual target quality, and why they differ.")}><PairedQuality /></Disclose>
       <Disclose title={t("All analyses")} hint={t("{n} analyses, newest first", { n: int(list.length) })} open={!latest}>
       <Panel title={t("Analyses")} meta={t("{n} analyses, newest first", { n: int(list.length) })} testId="mig-runs">
@@ -535,6 +536,124 @@ function TargetWorkbookPanel() {
         </>
       ) : null}
     </Panel>
+  );
+}
+
+/** Kept target templates per object: upload, correct unresolved columns, download blank, original or filled. */
+function TemplateLibraryPanel() {
+  const { can, shared, viewAs } = useV2Session();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const objects = useLandscape(null).data?.objects ?? [];
+  const [module, setModule] = useUrlParam<string>("tpl_module", "material_master");
+  const [file, setFile] = useState<File | null>(null);
+  const [name, setName] = useState("");
+  const [mapping, setMapping] = useState<string | null>(null);
+  const list = useMig(["templates", module], () => getTemplates(module));
+  const write = can("analyse") && !shared && !viewAs;
+  const take = can("export") && !shared && !viewAs;
+  const fail = (msg: string) => (e: unknown) => toast.show(errorSentence(e, msg), "error");
+  const saved = (n: string) => toast.show(t("Saved as {name}", { name: n }));
+  const upload = useMutation({
+    mutationFn: () => uploadTemplate(module, file as File, name),
+    onSuccess: (r) => { toast.show(t("{name} is kept as version {v}.", { name: r.name, v: int(r.version) })); setFile(null); setName(""); void qc.invalidateQueries({ queryKey: ["migration", "templates"] }); },
+    onError: fail(t("The template could not be kept.")),
+  });
+  const blank = useMutation({ mutationFn: () => downloadBlankTemplate(module), onSuccess: saved, onError: fail(t("The blank template could not be prepared.")) });
+  const original = useMutation({ mutationFn: (tp: TargetTemplate) => downloadTemplateFile(module, tp), onSuccess: saved, onError: fail(t("The template could not be read.")) });
+  const fill = useMutation({
+    mutationFn: (tp: TargetTemplate) => exportTemplate(module, tp, "xlsx"),
+    onSuccess: (n) => { saved(n); void qc.invalidateQueries({ queryKey: ["migration", "templates"] }); },
+    onError: fail(t("The template could not be filled.")),
+  });
+  const check = useMutation({ mutationFn: (tp: TargetTemplate) => checkTemplate(module, tp.id), onError: fail(t("The template could not be checked.")) });
+  const rows = list.data?.templates ?? [];
+  const report = check.data;
+  const editing = rows.find((r) => r.id === mapping) ?? null;
+  return (
+    <Panel title={t("Template library")} meta={t("Target templates kept per object, filled from the latest finished run")} testId="mig-templates">
+      <form className="m2-rfilters" onSubmit={(e) => { e.preventDefault(); if (file) upload.mutate(); }}>
+        <label>{t("Object")}
+          <select className="m2-sel" value={module} onChange={(e) => { setModule(e.target.value); setMapping(null); check.reset(); }}>
+            {[...new Set([module, ...objects.map((o) => o.module)])].map((m) => <option key={m} value={m}>{moduleText(m)}</option>)}
+          </select>
+        </label>
+        {write ? (
+          <>
+            <label>{t("Template name")}<input className="m2-sel" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} /></label>
+            <label>{t("Template file")}<input type="file" accept={WORKBOOK_TYPES} data-testid="mig-template-file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+            <button type="submit" className="m2-btn m2-next" disabled={!file || upload.isPending}>{upload.isPending ? t("Keeping the template") : t("Keep the template")}</button>
+          </>
+        ) : null}
+        {take ? <button type="button" className="m2-btn" data-testid="mig-template-blank" disabled={blank.isPending} onClick={() => blank.mutate()}>{t("Download a blank template")}</button> : null}
+      </form>
+      <p className="m2-meta">{t("A blank template lists every field the object's rules read, with its description, whether it is required and its allowed values. The same name again is kept as a new version, with the column corrections carried over.")}</p>
+      {list.isPending ? <Skeleton width="100%" height={120} /> : list.isError ? (
+        status(list.error) === 403 ? <EmptyFrame>{t("Your role cannot read the template library.")}</EmptyFrame> : <ErrorFrame onRetry={() => void list.refetch()}>{t("The template library could not be read.")}</ErrorFrame>
+      ) : rows.length === 0 ? <EmptyFrame>{t("No template is kept for this object yet.")}</EmptyFrame> : (
+        <Table title={t("Template library")} head={[t("Template"), t("Columns resolved"), t("Last filled"), t("Actions")]}>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <th scope="row" className="m2-card-lead">{t("{name}, version {v}", { name: r.name, v: int(r.version) })}<div className="m2-meta">{r.filename}</div></th>
+              <td data-label={t("Columns resolved")}>{r.coverage ? t("{a} of {b}", { a: int(r.coverage.matched), b: int(r.coverage.columns) }) : "-"}</td>
+              <td data-label={t("Last filled")}>{r.last_fill_at ? formatDate(r.last_fill_at, "datetime") : t("Never")}</td>
+              <td data-label={t("Actions")}>
+                {take ? <>
+                  <button type="button" className="m2-btn m2-sm" onClick={() => original.mutate(r)}>{t("Original")}</button>{" "}
+                  <button type="button" className="m2-btn m2-sm" data-testid={`mig-template-check-${r.id}`} disabled={check.isPending} onClick={() => check.mutate(r)}>{t("Check")}</button>{" "}
+                  <button type="button" className="m2-btn m2-sm m2-next" disabled={fill.isPending} onClick={() => fill.mutate(r)}>{t("Fill from the latest run")}</button>{" "}
+                </> : null}
+                {write && (r.coverage?.matched ?? 0) < (r.coverage?.columns ?? 0) ? (
+                  <button type="button" className="m2-btn m2-sm" aria-expanded={mapping === r.id} data-testid={`mig-template-map-${r.id}`} onClick={() => setMapping((m) => (m === r.id ? null : r.id))}>{t("Map columns")}</button>
+                ) : null}
+              </td>
+            </tr>
+          ))}
+        </Table>
+      )}
+      {report ? (
+        <div role="status" data-testid="mig-template-report">
+          <p>{t("{ready} rows are ready and {held} are held back. {filled} of {sheets} sheets can be filled, with {matched} of {columns} columns.", { ready: int(report.summary.ready), held: int(report.summary.held), filled: int(report.summary.filled_sheets), sheets: int(report.summary.sheets), matched: int(report.summary.matched_columns), columns: int(report.summary.columns) })}</p>
+          {report.cleansed ? <p className="m2-meta">{t("{n} approved cleansing values were applied, changing {c} cells.", { n: int(report.cleansed.approved), c: int(report.cleansed.cells_changed) })}</p> : null}
+        </div>
+      ) : null}
+      {editing ? <TemplateMappingForm module={module} template={editing} onDone={() => setMapping(null)} /> : null}
+    </Panel>
+  );
+}
+
+function TemplateMappingForm({ module, template, onDone }: { module: string; template: TargetTemplate; onDone: () => void }) {
+  const toast = useToast();
+  const qc = useQueryClient();
+  const fields = useMig(["template-fields", module], () => getTemplateFields(module));
+  const open = template.coverage?.sheets.flatMap((s) => s.unmapped.map((u) => ({ key: `${s.name}::${u.header}`, sheet: s.name, ...u }))) ?? [];
+  const [picks, setPicks] = useState<Record<string, string>>({});
+  const save = useMutation({
+    mutationFn: () => saveTemplateMapping(module, template.id, picks),
+    onSuccess: (r) => { toast.show(t("The column map is saved. {a} of {b} columns resolve.", { a: int(r.coverage.matched), b: int(r.coverage.columns) })); void qc.invalidateQueries({ queryKey: ["migration", "templates"] }); onDone(); },
+    onError: (e) => toast.show(errorSentence(e, t("The column map could not be saved.")), "error"),
+  });
+  return (
+    <form data-testid="mig-template-mapping" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+      <p className="m2-meta">{t("Choose the field each unresolved column holds. Only fields of this object's tables are offered. A column left open is reported as absent.")}</p>
+      {fields.isPending ? <Skeleton width="100%" height={80} /> : fields.isError ? <ErrorFrame onRetry={() => void fields.refetch()}>{t("The fields could not be read.")}</ErrorFrame> : (
+        <Table title={t("Unresolved columns")} head={[t("Sheet"), t("Column"), t("Field")]}>
+          {open.map((u) => (
+            <tr key={u.key}>
+              <th scope="row" className="m2-card-lead">{u.sheet}</th>
+              <td data-label={t("Column")}><Coded code={u.id} text={u.label} /></td>
+              <td data-label={t("Field")}>
+                <select className="m2-sel" aria-label={t("Field for {column}", { column: u.header })} value={picks[u.key] ?? ""} onChange={(e) => setPicks((p) => ({ ...p, [u.key]: e.target.value }))}>
+                  <option value="">{t("Leave open")}</option>
+                  {fields.data.fields.map((f) => <option key={f.field} value={f.field}>{`${f.field} ${f.description}`}</option>)}
+                </select>
+              </td>
+            </tr>
+          ))}
+        </Table>
+      )}
+      <p><button type="submit" className="m2-btn m2-next" disabled={save.isPending || Object.values(picks).every((v) => !v)}>{t("Save the column map")}</button></p>
+    </form>
   );
 }
 
