@@ -8665,4 +8665,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here.": "接続済みの各システムとその接続設定 (ホスト、クライアント、インスタンス、サインイン)。新しいシステムはここで接続します。",
   "Changing the host, client or instance number asks for the password again. Stored passwords are never shown.": "ホスト、クライアント、インスタンス番号を変更すると、パスワードの再入力が必要です。保存済みのパスワードは表示されません。",
   "The systems could not be read. {detail}": "システムを読み込めませんでした。{detail}",
+  "Drafting a tuned version needs the manage rules permission, which your role does not hold.": "調整版の下書きには manage rules 権限が必要ですが、あなたのロールにはありません。",
+  "Drafting a cleansing batch needs the apply permission, which your role does not hold.": "クレンジングバッチの下書きには apply 権限が必要ですが、あなたのロールにはありません。",
+  "Proposing an anomaly rule": "異常値ルールの提案",
+  "Checking records at the gate": "入口でのレコードチェック",
 };

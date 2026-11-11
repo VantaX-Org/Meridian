@@ -100,3 +100,18 @@ describe("stage 5: anomaly rules second pass", () => {
     expect(screen.getAllByTestId("consequence")[0]).toHaveTextContent(/Nothing is saved and nothing is flagged until you save the draft/);
   });
 });
+
+function asViewer(path: string) {
+  const url = `${path}?fixture=1&role=viewer`;
+  window.history.pushState({}, "", url);
+  setUrl(url);
+}
+
+describe("anomaly rules: roles", () => {
+  it("tells a viewer proposing needs manage rules, and shows no propose button", async () => {
+    asViewer("/anomaly-rules");
+    renderWithQuery(<AnomalyRules />);
+    expect(await screen.findByTestId("needs-permission")).toHaveTextContent("Proposing an anomaly rule needs the manage rules permission");
+    expect(screen.queryByTestId("propose-anom-1")).toBeNull();
+  });
+});

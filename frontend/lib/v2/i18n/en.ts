@@ -8664,6 +8664,10 @@ export const en = {
   "Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here.": "Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here.",
   "Changing the host, client or instance number asks for the password again. Stored passwords are never shown.": "Changing the host, client or instance number asks for the password again. Stored passwords are never shown.",
   "The systems could not be read. {detail}": "The systems could not be read. {detail}",
+  "Drafting a tuned version needs the manage rules permission, which your role does not hold.": "Drafting a tuned version needs the manage rules permission, which your role does not hold.",
+  "Drafting a cleansing batch needs the apply permission, which your role does not hold.": "Drafting a cleansing batch needs the apply permission, which your role does not hold.",
+  "Proposing an anomaly rule": "Proposing an anomaly rule",
+  "Checking records at the gate": "Checking records at the gate",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

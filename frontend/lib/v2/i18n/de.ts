@@ -8665,4 +8665,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here.": "Jedes verbundene System mit seinen Verbindungseinstellungen: Host, Mandant, Instanz und Anmeldung. Hier verbinden Sie ein neues.",
   "Changing the host, client or instance number asks for the password again. Stored passwords are never shown.": "Wenn Sie Host, Mandant oder Instanznummer ändern, wird das Kennwort erneut abgefragt. Gespeicherte Kennwörter werden nie angezeigt.",
   "The systems could not be read. {detail}": "Die Systeme konnten nicht gelesen werden. {detail}",
+  "Drafting a tuned version needs the manage rules permission, which your role does not hold.": "Für das Entwerfen einer abgestimmten Version ist die Berechtigung manage rules erforderlich, die Ihre Rolle nicht hat.",
+  "Drafting a cleansing batch needs the apply permission, which your role does not hold.": "Für das Entwerfen eines Bereinigungsstapels ist die Berechtigung apply erforderlich, die Ihre Rolle nicht hat.",
+  "Proposing an anomaly rule": "Das Vorschlagen einer Anomalieregel",
+  "Checking records at the gate": "Das Prüfen von Datensätzen am Eingang",
 };

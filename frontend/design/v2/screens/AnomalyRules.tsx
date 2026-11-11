@@ -10,6 +10,7 @@ import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { labelText, moduleText } from "@/lib/v2/labels";
 import { f1, int } from "@/lib/v2/score";
+import { NeedsPermission } from "../admin/kit";
 import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
@@ -94,7 +95,9 @@ export function AnomalyRules() {
         steps={[t("Pick a field"), t("Check what the rule would flag"), t("Save it as a draft"), t("Publish it in the rule workbench")]}
         current={!picked ? 0 : saved ? 3 : propose.data?.rule_yaml ? 2 : 1}
       />
-      {allowed ? <Consequence>{t("Proposing a rule only drafts it and runs it once on the same data. Nothing is saved and nothing is flagged until you save the draft.")}</Consequence> : null}
+      {allowed ? <Consequence>{t("Proposing a rule only drafts it and runs it once on the same data. Nothing is saved and nothing is flagged until you save the draft.")}</Consequence> : (
+        <NeedsPermission what={t("Proposing an anomaly rule")} permission="manage_rules" />
+      )}
 
       <Panel title={t("Fields with outliers")} meta={t("Most outliers first.")} testId="anomaly-rules-fields">
         {groups.length === 0 ? <EmptyFrame>{t("No outlier was found.")}</EmptyFrame> : (
