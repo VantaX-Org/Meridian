@@ -235,7 +235,7 @@ describe("Learned and Drafts", () => {
   it("lists the learned rules waiting, and lets an approver approve with a severity and reject", async () => {
     const approve = vi.spyOn(objectApi, "approveLearned").mockResolvedValue({ id: "lp-001", status: "approved", rule_id: "LR-000007" });
     render();
-    const chip = await screen.findByRole("button", { name: "Learned 4" });
+    const chip = await screen.findByRole("button", { name: "Learned 5" });
     fireEvent.click(chip);
     const t = await screen.findByRole("table", { name: "Learned rules waiting for a decision" });
     expect(norm(within(t).getAllByRole("row")[1])).toContain("Decided by another field");
@@ -252,26 +252,40 @@ describe("Learned and Drafts", () => {
   it("shows a viewer the learned rules but no decision", async () => {
     granted = ["view"];
     render();
-    fireEvent.click(await screen.findByRole("button", { name: "Learned 4" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Learned 5" }));
     const t = await screen.findByRole("table", { name: "Learned rules waiting for a decision" });
     expect(within(t).queryByRole("button", { name: "Approve" })).toBeNull();
     expect(within(t).queryByRole("button", { name: "Reject" })).toBeNull();
-    expect(within(t).getAllByText("Waiting for an approver")).toHaveLength(4);
+    expect(within(t).getAllByText("Waiting for an approver")).toHaveLength(5);
   });
 
   it("lets a rule manager reject but not approve", async () => {
     granted = ["view", "manage_rules"];
     render();
-    fireEvent.click(await screen.findByRole("button", { name: "Learned 4" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Learned 5" }));
     const t = await screen.findByRole("table", { name: "Learned rules waiting for a decision" });
     expect(within(t).queryByRole("button", { name: "Approve" })).toBeNull();
-    expect(within(t).getAllByRole("button", { name: "Reject" })).toHaveLength(4);
+    expect(within(t).getAllByRole("button", { name: "Reject" })).toHaveLength(5);
+  });
+
+  it("reviews each learned rule against the dictionary: lift, anchor, values not in the dictionary, redundancy", async () => {
+    render();
+    fireEvent.click(await screen.findByRole("button", { name: "Learned 5" }));
+    const panel = await screen.findByTestId("learned-review");
+    await within(panel).findByTestId("learned-review-lp-001");
+    expect(norm(within(panel).getByTestId("learned-lift-lp-001"))).toContain("2.37 times");
+    expect(norm(within(panel).getByTestId("learned-review-lp-001"))).toContain("check table T438A");
+    expect(norm(within(panel).getByTestId("learned-ood-lp-002"))).toContain("99");
+    expect(norm(within(panel).getByTestId("learned-redundant-lp-005"))).toContain("Already enforced by SAP");
+    expect(norm(within(panel).getByTestId("learned-redundant-lp-005"))).toContain("T024D");
+    expect(norm(within(panel).getByTestId("learned-lift-lp-003"))).toContain("Not derivable");
+    expect(within(panel).getByTestId("learned-review-redundant")).toHaveTextContent("1 proposal is already enforced");
   });
 
   it("hides Drafts from a role without manage_rules", async () => {
     granted = ["view", "approve"];
     render();
-    await screen.findByRole("button", { name: "Learned 4" });
+    await screen.findByRole("button", { name: "Learned 5" });
     expect(screen.queryByRole("button", { name: /^Drafts/ })).toBeNull();
   });
 

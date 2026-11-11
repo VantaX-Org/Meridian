@@ -3,7 +3,7 @@
  * countries, payment terms, material groups, a SuccessFactors picklist); no master record value appears. Four eyes is
  * enforced as the route does: the fixture user ("u-me") cannot approve a mapping they proposed, a colleague's can be.
  */
-import type { MappingStatus, ProposeBody, RefCode, RefCoverage, RefList, RefLists, RefListSummary, RefMapping, RefSuggestion } from "../reference-data";
+import type { MappingStatus, ProposeBody, RefCode, RefCoverage, RefList, RefLists, RefListSummary, RefMapping, RefSuggestion, RefUsage, RefUsageField } from "../reference-data";
 import { systemsExtended } from "./runs";
 
 export const NONE_REFERENCE_DATA = Symbol("not a reference data path");
@@ -98,8 +98,58 @@ const strip = (m: RefMapping & { list?: string }): RefMapping => {
   return rest;
 };
 
+/** Synthetic field profiles per target field: filled values with counts, distinct values held, blank rows. */
+interface Prof { values: Record<string, number>; distinct: number; blank: number }
+const PROFILES: Record<string, Prof> = {
+  "KNA1.LAND1": { values: { DE: 410, ZA: 380, US: 120, XX: 6 }, distinct: 4, blank: 2 },
+  "KNB1.ZTERM": { values: { Z030: 520, Z045: 90, Z999: 14 }, distinct: 3, blank: 40 },
+  "MARA.MEINS": { values: { EA: 8200, KG: 1900, Z01: 340, PCS: 25 }, distinct: 4, blank: 0 },
+  "MARA.GEWEI": { values: { KG: 6100, LB: 300, G: 44 }, distinct: 3, blank: 4100 },
+  "MARA.MATKL": { values: { "001": 4100, "002": 3600, ZSP1: 210, ZSP2: 95, ZSP3: 60, ZSP4: 31, ZSP5: 20, ZSP6: 12, ZSP7: 9, ZSP8: 4 }, distinct: 14, blank: 18 },
+  "PickListValueV2.externalCode": { values: { FT: 3, PT: 3, CONT: 3 }, distinct: 3, blank: 0 },
+};
+
+/** The same arithmetic as api/services/reference_data.usage. */
+function usage(d: Def): RefUsage {
+  const known = new Set(d.source.map((x) => x.code.split("/").pop() ?? x.code));
+  const used = new Set<string>();
+  const orphans = new Map<string, { value: string; count: number; fields: string[] }>();
+  let complete = true;
+  const fields: RefUsageField[] = d.target_fields.map((field) => {
+    const p = PROFILES[field];
+    const entries = Object.entries(p.values);
+    const filled = entries.reduce((n, [, c]) => n + c, 0);
+    const truncated = p.distinct > entries.length;
+    complete = complete && !truncated;
+    let covered = 0;
+    let orphanRows = 0;
+    for (const [v, n] of entries) {
+      if (known.has(v)) { used.add(v); covered += n; continue; }
+      orphanRows += n;
+      const o = orphans.get(v) ?? { value: v, count: 0, fields: [] };
+      o.count += n;
+      o.fields.push(field);
+      orphans.set(v, o);
+    }
+    return { field, profiled: true, rows: filled + p.blank, filled, covered, orphan_rows: orphanRows, masked: false, mask_reason: null, truncated, sampled: false };
+  });
+  const filled = fields.reduce((n, f) => n + f.filled, 0);
+  const covered = fields.reduce((n, f) => n + f.covered, 0);
+  return {
+    id: d.id, table: d.table, version_id: `ver-${d.id}`, run_at: "2026-11-08T05:00:00+00:00", fields,
+    orphans: [...orphans.values()].sort((a, b) => b.count - a.count || a.value.localeCompare(b.value)), orphans_complete: complete,
+    unused: [...known].filter((c) => !used.has(c)).sort(), unused_certain: complete, codes: known.size, used: used.size,
+    filled, covered, covered_share: filled ? Math.round((covered / filled) * 10000) / 10000 : null, covered_at_least: !complete,
+  };
+}
+
 export function referenceDataRead(path: string, params: Record<string, unknown>): unknown {
   const sys = String(params.system_id ?? "");
+  const u = /^\/reference-data\/lists\/([^/]+)\/usage$/.exec(path);
+  if (u) {
+    const d = defsFor(sys).find((x) => x.id === u[1]);
+    return d ? (usage(d) satisfies RefUsage) : refuse(404, "Code list not found");
+  }
   if (path === "/reference-data/lists") {
     const lists: RefListSummary[] = defsFor(sys).map((d) => ({
       id: d.id, table: d.table, module: d.module, target_fields: d.target_fields, source_codes: d.source.length, target_codes: d.target.length,
