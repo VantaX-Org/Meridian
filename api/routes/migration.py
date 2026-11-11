@@ -323,6 +323,142 @@ async def run_records(
     return {"total": int(total or 0), "rows": [_row(x) for x in rows.fetchall()]}
 
 
+# ── Load simulation (Migration-Cockpit-style "would fail" report) ─────────────
+
+
+class SimValue(BaseModel):
+    value: Optional[str] = None
+    records: int
+
+
+class SimObject(BaseModel):
+    module: str
+    label: str
+    records: int
+    would_load: int
+    would_fail: int
+    provisional: int            # failing records whose only failures are baseline check-table misses
+    tables: list[str]
+    structural: int
+    messages: int
+
+
+class SimGroup(BaseModel):
+    module: str
+    dest_table: str
+    field: str
+    gap_type: str
+    rule: Optional[str] = None
+    severity: str
+    records: int
+    findings: int
+    structural: bool
+    provisional: bool
+    message: str
+    field_text: Optional[str] = None
+    check_table: Optional[str] = None
+    values: list[SimValue]
+    samples: list[str]
+
+
+class SimTransport(BaseModel):
+    module: str
+    check_table: str
+    check_table_text: Optional[str] = None
+    field: str
+    field_text: Optional[str] = None
+    provisional: bool
+    records: int
+    values: list[SimValue]
+
+
+class SimTotals(BaseModel):
+    records: int
+    would_load: int
+    would_fail: int
+    provisional: int
+
+
+class LoadSimulationOut(BaseModel):
+    run_id: uuid.UUID
+    release: str
+    target_connected: bool
+    objects: list[SimObject]
+    groups: list[SimGroup]
+    transports: list[SimTransport]
+    totals: SimTotals
+
+
+_SIM_WHERE = """run_id = :rid AND tenant_id = :t
+      AND (severity IN ('critical','high') OR gap_type = 'check_table_value')"""
+_SIM_KEYS = "module, COALESCE(dest_table, object_type, '') AS dest_table, gap_type, COALESCE(field, source_field, '') AS field"
+
+_SIM_GROUPS_SQL = f"""
+    SELECT {_SIM_KEYS},
+           CASE WHEN gap_type = 's4_load' THEN split_part(detail, ' ', 1) ELSE '' END AS rule,
+           COUNT(DISTINCT record_key) AS records, COUNT(*) AS findings,
+           MIN(CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END) AS sev_rank,
+           bool_and(provenance = 'target_baseline_config') AS all_baseline,
+           MIN(detail) AS detail,
+           (array_agg(DISTINCT record_key ORDER BY record_key) FILTER (WHERE record_key IS NOT NULL))[1:5] AS samples
+    FROM migration_gap_findings WHERE {_SIM_WHERE}
+    GROUP BY 1, 2, 3, 4, 5
+"""
+_SIM_VALUES_SQL = f"""
+    SELECT {_SIM_KEYS}, COALESCE(target_value, source_value) AS value, COUNT(DISTINCT record_key) AS records
+    FROM migration_gap_findings
+    WHERE {_SIM_WHERE} AND gap_type IN ('check_table_value', 'domain_value', 'value_unmapped')
+    GROUP BY 1, 2, 3, 4, 5 ORDER BY records DESC, value LIMIT 2000
+"""
+_SIM_FAILING_SQL = f"""
+    SELECT module, COUNT(*) AS failing, COUNT(*) FILTER (WHERE NOT firm) AS provisional FROM (
+        SELECT module, object_type, record_key,
+               bool_or(severity IN ('critical','high') OR provenance IS DISTINCT FROM 'target_baseline_config') AS firm
+        FROM migration_gap_findings WHERE {_SIM_WHERE} AND record_key IS NOT NULL
+        GROUP BY module, object_type, record_key
+    ) r GROUP BY module
+"""
+
+
+@router.get("/runs/{run_id}/load-simulation", response_model=LoadSimulationOut)
+async def load_simulation(
+    run_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
+):
+    """Simulated load of the run: per object, the records that would load and fail, the grouped
+    Migration-Cockpit-style messages, and the check-table configuration to transport first."""
+    from api.services.migration import object_label
+    from api.services.migration.load_simulation import build
+    from api.services.source_design import dictionary_for
+    from sap.ddic import get_dictionary
+
+    await _set_rls(db, tenant.id)
+    run = (await db.execute(
+        text("SELECT id, modules, gap_summary, dest_system_id, target_release FROM migration_runs "
+             "WHERE id = :rid AND tenant_id = :t"), {"rid": run_id, "t": tenant.id})).fetchone()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    params = {"rid": run_id, "t": str(tenant.id)}
+    groups = [_row(x) for x in (await db.execute(text(_SIM_GROUPS_SQL), params)).fetchall()]
+    values = [_row(x) for x in (await db.execute(text(_SIM_VALUES_SQL), params)).fetchall()]
+    failing = [_row(x) for x in (await db.execute(text(_SIM_FAILING_SQL), params)).fetchall()]
+    summary = run.gap_summary or {}
+    modules = list(run.modules or summary.keys())
+    for g in groups:
+        if g["module"] not in modules:
+            modules.append(g["module"])
+    if run.dest_system_id:
+        sid = str(run.dest_system_id)
+        dictionary = await db.run_sync(lambda s: dictionary_for(s, sid))
+    else:
+        dictionary = get_dictionary(run.target_release if run.target_release in ("ecc6", "s4hana") else "s4hana")
+    records = {m: int((d or {}).get("records") or 0) for m, d in summary.items()}
+    report = build(groups, values, failing, records, modules, dictionary, {m: object_label(m) for m in modules})
+    return {"run_id": run_id, "target_connected": bool(run.dest_system_id), **report}
+
+
 # ── Post-load reconciliation ──────────────────────────────────────────────────
 
 

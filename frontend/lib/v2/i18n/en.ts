@@ -8757,6 +8757,25 @@ export const en = {
   "Objects, scrollable": "Objects, scrollable",
   "Change requests per object": "Change requests per object",
   "p90 cycle": "p90 cycle",
+  // journey/lead-f
+  "{value} ({n} records)": "{value} ({n} records)",
+  "Load simulation": "Load simulation",
+  "The load simulation could not be read.": "The load simulation could not be read.",
+  "{ok} of {n} records would load": "{ok} of {n} records would load",
+  "No record would fail the load.": "No record would fail the load.",
+  "Would load and would fail per load object": "Would load and would fail per load object",
+  "{object}, would load": "{object}, would load",
+  "{object}, would fail": "{object}, would fail",
+  "{n} ({p} provisional)": "{n} ({p} provisional)",
+  "{n, plural, one {# record fails} other {# records fail}} only on values missing from the SAP standard baseline. The target may already hold them; connect the target to confirm.": "{n, plural, one {# record fails} other {# records fail}} only on values missing from the SAP standard baseline. The target may already hold them; connect the target to confirm.",
+  "Messages": "Messages",
+  "Provisional": "Provisional",
+  "Structure": "Structure",
+  "Configuration to transport": "Configuration to transport",
+  "Missing values": "Missing values",
+  "Checked against the target's own configuration and the {release} dictionary.": "Checked against the target's own configuration and the {release} dictionary.",
+  "No target is connected: checked against the SAP standard baseline and the {release} dictionary.": "No target is connected: checked against the SAP standard baseline and the {release} dictionary.",
+  "See the load order": "See the load order",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
