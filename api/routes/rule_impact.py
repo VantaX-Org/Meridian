@@ -36,6 +36,57 @@ class ImpactBody(BaseModel):
     row_cap: int = Field(ri.DEFAULT_ROW_CAP, ge=1000, le=ri.MAX_ROW_CAP, description="Rows evaluated per table.")
 
 
+class ImpactRowCap(BaseModel):
+    cap: int
+    sampled: bool
+    tables_cut: dict[str, int]  # table -> its full row count, for each table cut to the cap
+    note: str
+
+
+class ImpactSample(BaseModel):
+    records_evaluated: int
+    records_failing: int
+
+
+class ImpactShape(BaseModel):
+    shape: str
+    count: int
+
+
+class ImpactDqs(BaseModel):
+    before: Optional[float] = None
+    after: Optional[float] = None
+    delta: Optional[float] = None
+    breaches_before: list[str]
+    breaches_after: list[str]
+
+
+class ImpactDelta(BaseModel):
+    current_failing: int
+    newly_failing: int
+    newly_passing: int
+    unchanged_failing: int
+    basis: str
+
+
+class ImpactOut(BaseModel):
+    module: str
+    run_id: str
+    rule_id: str | int
+    mode: str  # new | edit
+    rule: dict[str, Any]  # field, message, check_class, severity, dimension (as the draft gave them) and field_text
+    evaluated: bool
+    reason: Optional[str] = None
+    row_cap: ImpactRowCap
+    sample: Optional[ImpactSample] = None
+    records_evaluated: Optional[int] = None
+    records_failing: Optional[int] = None
+    failure_rate: Optional[float] = None
+    failing_shapes: Optional[list[ImpactShape]] = None
+    dqs: Optional[ImpactDqs] = None
+    delta: Optional[ImpactDelta] = None
+
+
 def _load_frames(meta: dict, dictionary, rule: dict):
     from checks.runner import rule_columns
     from workers.dataset import load_dataset
@@ -43,7 +94,7 @@ def _load_frames(meta: dict, dictionary, rule: dict):
                         set(rule_columns(rule)))[0]
 
 
-@router.post("/impact-dry-run", dependencies=[Depends(require_permission("manage_rules"))])
+@router.post("/impact-dry-run", response_model=ImpactOut, response_model_exclude_unset=True, dependencies=[Depends(require_permission("manage_rules"))])
 async def impact_dry_run(body: ImpactBody, request: Request, db: AsyncSession = Depends(get_db),
                          tenant: Tenant = Depends(get_tenant)):
     """Read-only impact of a rule on the object's latest extraction. Writes nothing."""

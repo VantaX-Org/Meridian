@@ -82,6 +82,23 @@ class AssignBody(BaseModel):
     user_id: Optional[str] = Field(..., description="steward user id, or null to release")
 
 
+class AssignOut(BaseModel):
+    id: str
+    status: str
+    assigned_to: Optional[str] = None
+
+
+class ResolveOut(BaseModel):
+    id: str
+    status: str
+    action: str
+
+
+class EscalateOut(BaseModel):
+    id: str
+    status: str
+
+
 class ResolveBody(BaseModel):
     action: str = Field(..., description="approve | reject")
     notes: Optional[str] = None
@@ -608,7 +625,7 @@ async def handoff_rule(
 # ── PUT /stewardship/{id}/assign ─────────────────────────────────────────────
 
 
-@router.put("/stewardship/{item_id}/assign")
+@router.put("/stewardship/{item_id}/assign", response_model=AssignOut)
 async def assign_queue_item(
     item_id: Annotated[str, Path(pattern=_UUID_RE)],
     body: AssignBody,
@@ -674,7 +691,7 @@ async def _release_queue_item(db: AsyncSession, tid: str, item_id: str) -> dict:
 #: A task the inbox still lists (and the shell badge counts); anything else is closed.
 _OPEN_STATUSES = ("open", "in_progress", "escalated")
 
-@router.put("/stewardship/{item_id}/resolve")
+@router.put("/stewardship/{item_id}/resolve", response_model=ResolveOut)
 async def resolve_queue_item(
     item_id: Annotated[str, Path(pattern=_UUID_RE)],
     body: ResolveBody,
@@ -885,7 +902,7 @@ async def _execute_merge(
 # ── PUT /stewardship/{id}/escalate ───────────────────────────────────────────
 
 
-@router.put("/stewardship/{item_id}/escalate")
+@router.put("/stewardship/{item_id}/escalate", response_model=EscalateOut)
 async def escalate_queue_item(
     item_id: Annotated[str, Path(pattern=_UUID_RE)],
     request: Request,

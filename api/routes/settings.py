@@ -2,7 +2,7 @@
 
 import json
 import math
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -82,6 +82,32 @@ class TenantSettingsResponse(BaseModel):
     live_writeback: bool = False
 
 
+class StatusOut(BaseModel):
+    status: str
+
+
+class ScoringOut(BaseModel):
+    """GET /settings/scoring: the effective config (api/services/scoring.py scoring_config) plus its defaults."""
+    dimension_weights: dict[str, Any]
+    module_weights: dict[str, Any]
+    thresholds: dict[str, Any]
+    severity_weights: dict[str, Any]
+    severity_multipliers: dict[str, Any]
+    critical_tolerance: dict[str, Any]
+    defaults: dict[str, Any]
+
+
+class CostModelOut(BaseModel):
+    defaults: dict[str, Any]
+    tenant: dict[str, Any]
+    effective: dict[str, Any]
+
+
+class CostModelSaved(BaseModel):
+    status: str
+    effective: dict[str, Any]
+
+
 # ─── GET /settings ──────────────────────────────────────────────────
 
 DEFAULT_CAP_RULE = {"one_critical": 85.0, "two_plus": 70.0}
@@ -151,7 +177,7 @@ async def get_settings(
 
 # ─── PATCH /settings/dqs-weights ────────────────────────────────────
 
-@router.patch("/dqs-weights", dependencies=[Depends(require_permission("manage_settings"))])
+@router.patch("/dqs-weights", response_model=StatusOut, dependencies=[Depends(require_permission("manage_settings"))])
 async def update_dqs_weights(
     weights: DimensionWeights,
     db: AsyncSession = Depends(get_db),
@@ -183,7 +209,7 @@ async def update_dqs_weights(
 
 # ─── PATCH /settings/alert-thresholds ───────────────────────────────
 
-@router.patch("/alert-thresholds", dependencies=[Depends(require_permission("manage_settings"))])
+@router.patch("/alert-thresholds", response_model=StatusOut, dependencies=[Depends(require_permission("manage_settings"))])
 async def update_alert_thresholds(
     thresholds: AlertThresholds,
     db: AsyncSession = Depends(get_db),
@@ -201,7 +227,7 @@ async def update_alert_thresholds(
 
 # ─── POST /settings/notifications ───────────────────────────────────
 
-@router.post("/notifications", dependencies=[Depends(require_permission("manage_settings"))])
+@router.post("/notifications", response_model=StatusOut, dependencies=[Depends(require_permission("manage_settings"))])
 async def save_notifications(
     config: NotificationConfig,
     db: AsyncSession = Depends(get_db),
@@ -222,7 +248,7 @@ async def save_notifications(
 
 # ─── POST /settings/planner ─────────────────────────────────────────
 
-@router.post("/planner", dependencies=[Depends(require_permission("manage_settings"))])
+@router.post("/planner", response_model=StatusOut, dependencies=[Depends(require_permission("manage_settings"))])
 async def save_planner_config(
     config: PlannerConfig,
     db: AsyncSession = Depends(get_db),
@@ -266,7 +292,7 @@ class ScoringConfig(BaseModel):
     critical_tolerance: dict[str, Annotated[float, Field(ge=0)]] = {}
 
 
-@router.get("/scoring", dependencies=[Depends(require_permission("view"))])
+@router.get("/scoring", response_model=ScoringOut, dependencies=[Depends(require_permission("view"))])
 async def get_scoring(db: AsyncSession = Depends(get_db), tenant: TenantDep = Depends(get_tenant)):
     """The effective scoring config: dimension weights normalised to 1, module weights
     (unlisted modules weigh 1) and thresholds, with the defaults filled in."""
@@ -275,7 +301,7 @@ async def get_scoring(db: AsyncSession = Depends(get_db), tenant: TenantDep = De
     return {**scoring_config(raw), "defaults": scoring_config({})}
 
 
-@router.put("/scoring", dependencies=[Depends(require_permission("manage_settings"))])
+@router.put("/scoring", response_model=StatusOut, dependencies=[Depends(require_permission("manage_settings"))])
 async def put_scoring(body: ScoringConfig, db: AsyncSession = Depends(get_db),
                       tenant: TenantDep = Depends(get_tenant)):
     """Replace the scoring config. Applies to scores computed from now on; earlier runs
@@ -377,7 +403,7 @@ def _validate_cost_model(body: "CostModel") -> None:
         raise HTTPException(status_code=422, detail=errors)
 
 
-@router.get("/cost-model", dependencies=[Depends(require_permission("view"))])
+@router.get("/cost-model", response_model=CostModelOut, dependencies=[Depends(require_permission("view"))])
 async def get_cost_model(db: AsyncSession = Depends(get_db), tenant: TenantDep = Depends(get_tenant)):
     from checks import cost
     own = (await db.execute(text("SELECT cost_model FROM tenants WHERE id = :tid"),
@@ -393,7 +419,7 @@ async def get_cost_model_features() -> dict:
     return {"features": impact_features()}
 
 
-@router.put("/cost-model", dependencies=[Depends(require_permission("manage_settings"))])
+@router.put("/cost-model", response_model=CostModelSaved, dependencies=[Depends(require_permission("manage_settings"))])
 async def put_cost_model(body: CostModel, db: AsyncSession = Depends(get_db),
                          tenant: TenantDep = Depends(get_tenant)):
     """Replace the tenant's cost model. Each spec is {per_record: n} or

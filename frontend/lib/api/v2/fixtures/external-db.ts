@@ -32,7 +32,7 @@ let seq = 0;
 let conns: DbConnection[] | null = null;
 const list = (): DbConnection[] =>
   (conns ??= [
-    { id: "xdb-1", name: "Inventory replica", engine: "postgres", host: "inventory-db.example.test", port: 5432, database: "inventory", username: "meridian_ro", ssl_mode: "require", created_at: "2026-10-18T09:00:00Z", last_tested_at: "2026-10-19T09:00:00Z", last_test_ok: true, last_loaded_at: null },
+    { id: "xdb-1", name: "Inventory replica", engine: "postgres", host: "inventory-db.example.test", port: 5432, database: "inventory", username: "meridian_ro", ssl_mode: "require", created_at: "2026-10-18T09:00:00Z", last_tested_at: "2026-10-19T09:00:00Z", last_test_ok: 1, last_loaded_at: null },
   ]);
 const one = (id: string): DbConnection => list().find((c) => c.id === id) ?? (() => { throw new Refused(404, "Connection not found"); })();
 
@@ -63,7 +63,7 @@ export function externalDbWrite(method: string, path: string, body: unknown): un
   if (method !== "POST") return NONE_EXTERNAL_DB;
   if (m[2] === "/test") {
     c.last_tested_at = "2026-10-20T08:00:00Z";
-    c.last_test_ok = true;
+    c.last_test_ok = 1;
     return { ok: true, error: null };
   }
   if (m[2] === "/preview") {

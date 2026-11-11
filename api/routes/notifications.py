@@ -3,6 +3,7 @@
 import asyncio
 import re
 import uuid
+from datetime import datetime
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -33,10 +34,40 @@ def _own(request: Request, params: dict) -> str:
     return "(user_id IS NULL OR user_id = :uid)"
 
 
+class NotificationOut(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    user_id: uuid.UUID | None = None
+    type: str
+    title: str
+    body: str | None = None
+    link: str | None = None
+    is_read: bool
+    created_at: datetime
+
+
+class NotificationList(BaseModel):
+    items: list[NotificationOut]
+    total: int
+
+
+class NotificationReadOut(BaseModel):
+    id: str
+    is_read: bool
+
+
+class StatusOut(BaseModel):
+    status: str
+
+
+class UnreadCountOut(BaseModel):
+    count: int
+
+
 # ── GET /api/v1/notifications ────────────────────────────────────────────────
 
 
-@router.get("/notifications")
+@router.get("/notifications", response_model=NotificationList)
 async def list_notifications(
     request: Request,
     is_read: Optional[bool] = None,
@@ -86,7 +117,7 @@ async def list_notifications(
 # ── PUT /api/v1/notifications/{id}/read ─────────────────────────────────────
 
 
-@router.put("/notifications/{notification_id}/read")
+@router.put("/notifications/{notification_id}/read", response_model=NotificationReadOut)
 async def mark_notification_read(
     notification_id: str,
     request: Request,
@@ -115,7 +146,7 @@ async def mark_notification_read(
 # ── PUT /api/v1/notifications/read-all ──────────────────────────────────────
 
 
-@router.put("/notifications/read-all")
+@router.put("/notifications/read-all", response_model=StatusOut)
 async def mark_all_read(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -140,7 +171,7 @@ async def mark_all_read(
 # ── GET /api/v1/notifications/unread-count ──────────────────────────────────
 
 
-@router.get("/notifications/unread-count")
+@router.get("/notifications/unread-count", response_model=UnreadCountOut)
 async def unread_count(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -186,6 +217,27 @@ class AlertChannelUpdate(BaseModel):
     report_pack: Optional[Literal["off", "weekly", "monthly"]] = None
 
 
+class AlertChannelOut(BaseModel):
+    """A channel as the API returns it: the target is redacted to its host, the secret never leaves."""
+    id: uuid.UUID | str
+    kind: str
+    digest: str
+    report_pack: str
+    immediate_critical: bool
+    enabled: bool
+    created_at: datetime | None = None
+    has_secret: bool
+    target: str
+
+
+class AlertChannelList(BaseModel):
+    channels: list[AlertChannelOut]
+
+
+class AlertTestOut(BaseModel):
+    delivered: bool
+
+
 _REPORT_PACK_EMAIL_ONLY = "the board pack can only be sent to an email channel"
 _NEVER_FIRES = "channel would never fire: set a digest, immediate_critical or report_pack"
 
@@ -195,7 +247,7 @@ def _redact(kind: str, target: str) -> str:
     return target if kind == "email" else target.split("/")[2] if target.count("/") >= 2 else "?"
 
 
-@router.get("/alert-channels", dependencies=[Depends(require_permission("view"))])
+@router.get("/alert-channels", response_model=AlertChannelList, dependencies=[Depends(require_permission("view"))])
 async def list_alert_channels(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _set_rls(db, tenant.id)
     rows = (await db.execute(text(f"SELECT {_CHANNEL_COLS}, target FROM alert_channels ORDER BY created_at")
@@ -204,7 +256,8 @@ async def list_alert_channels(db: AsyncSession = Depends(get_db), tenant: Tenant
                           "target": _redact(r["kind"], r["target"])} for r in rows]}
 
 
-@router.post("/alert-channels", status_code=201, dependencies=[Depends(require_permission("manage_settings"))])
+@router.post("/alert-channels", status_code=201, response_model=AlertChannelOut,
+             dependencies=[Depends(require_permission("manage_settings"))])
 async def create_alert_channel(body: AlertChannelCreate, db: AsyncSession = Depends(get_db),
                                tenant: Tenant = Depends(get_tenant)):
     target = body.target.strip()
@@ -227,7 +280,7 @@ async def create_alert_channel(body: AlertChannelCreate, db: AsyncSession = Depe
     return {**row, "target": _redact(body.kind, target)}
 
 
-@router.put("/alert-channels/{channel_id}", dependencies=[Depends(require_permission("manage_settings"))])
+@router.put("/alert-channels/{channel_id}", response_model=AlertChannelOut, dependencies=[Depends(require_permission("manage_settings"))])
 async def update_alert_channel(channel_id: uuid.UUID, body: AlertChannelUpdate, db: AsyncSession = Depends(get_db),
                                tenant: Tenant = Depends(get_tenant)):
     """Change a channel's digest, critical-alert, on/off or board pack setting. The target and
@@ -262,7 +315,8 @@ async def delete_alert_channel(channel_id: uuid.UUID, db: AsyncSession = Depends
     await db.commit()
 
 
-@router.post("/alert-channels/{channel_id}/test", dependencies=[Depends(require_permission("manage_settings"))])
+@router.post("/alert-channels/{channel_id}/test", response_model=AlertTestOut,
+             dependencies=[Depends(require_permission("manage_settings"))])
 async def send_test_alert(channel_id: uuid.UUID, db: AsyncSession = Depends(get_db),
                           tenant: Tenant = Depends(get_tenant)):
     """Send a sample alert through the channel so an admin can confirm the target and secret.

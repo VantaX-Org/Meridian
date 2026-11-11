@@ -104,6 +104,8 @@ const IDS: Record<string, string> = {
   z_id: "z-1",
   instance_id: "WI-1001",
   metric: "dqs",
+  module_name: "material_master",
+  token: "fx-share",
   // no fixture keeps these; asking still proves the fixtures refuse rather than answer off-schema
   item_id: "st-1",
   finding_id: "f-1",
@@ -117,6 +119,7 @@ const QUERY: Record<string, string> = {
   target_kind: "object", target_id: "material_master", module: "material_master", run: L.cells[0].run_id,
   system_id: L.systems[0].id, domain: "material_master", fields: "MARA.MATNR", check_ids: "MM142", rule_id: "MM142",
   node: "check:MM142", q: "material", route: "work",
+  v2: L.cells[0].run_id, from_snapshot: "ds-1", to_snapshot: "ds-2",
 };
 const ROUTE_QUERY: Record<string, Record<string, string>> = { "/api/v1/lineage/guards": { node: "kpi:dpo" } };
 

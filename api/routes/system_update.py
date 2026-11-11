@@ -15,8 +15,10 @@ polling loop needed.
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
@@ -35,11 +37,31 @@ router = APIRouter(prefix="/api/v1/system", tags=["system"])
 _TERMINAL_STATES = {"done", "failed", "rolled_back"}
 
 
+class UpdateStatusOut(BaseModel):
+    current_version: str
+    latest_version: Any  # from the HQ licence manifest, normally a version string
+    update_available: bool
+    release_notes: Any  # from the HQ licence manifest: text, or "" when there are none
+    updater_configured: bool
+
+
+class UpdateTriggerOut(BaseModel):
+    status: str
+
+
+class UpdateProgressOut(BaseModel):
+    """status is the sidecar state (idle, running, done, failed, rolled_back) or reconnecting mid-restart."""
+    status: str
+    message: str | None = None
+    started_at: str | None = None
+    updated_at: str | None = None
+
+
 async def _set_rls(db: AsyncSession, tenant_id: uuid.UUID) -> None:
     await db.execute(text(f"SET app.tenant_id = '{str(tenant_id)}'"))
 
 
-@router.get("/update-status")
+@router.get("/update-status", response_model=UpdateStatusOut)
 async def get_update_status_route(
     _role: str = Depends(require_permission("manage_system")),
 ):
@@ -54,7 +76,7 @@ async def get_update_status_route(
     }
 
 
-@router.post("/update/trigger", status_code=202)
+@router.post("/update/trigger", status_code=202, response_model=UpdateTriggerOut)
 async def trigger_update_route(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -106,7 +128,7 @@ async def trigger_update_route(
     return {"status": "started"}
 
 
-@router.get("/update/progress")
+@router.get("/update/progress", response_model=UpdateProgressOut)
 async def get_update_progress_route(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),

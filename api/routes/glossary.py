@@ -114,6 +114,36 @@ class AIDraftResponse(BaseModel):
     committed: bool = False
 
 
+class PopulateOut(BaseModel):
+    created: int
+    linked: int
+    objects: int
+
+
+class TermUpdatedOut(BaseModel):
+    status: str
+    changes: int
+
+
+class TermReviewedOut(BaseModel):
+    status: str
+    term_id: str
+
+
+class DataOwnerOut(BaseModel):
+    kind: str
+    ref: str
+    owner_user_id: Optional[str] = None
+    owner_name: Optional[str] = None
+    steward_user_id: Optional[str] = None
+    steward_name: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class OwnersOut(BaseModel):
+    owners: list[DataOwnerOut]
+
+
 class BatchLookupRequest(BaseModel):
     fields: list[str]
 
@@ -381,7 +411,7 @@ async def ai_draft(
     )
 
 
-@router.post("/glossary/populate")
+@router.post("/glossary/populate", response_model=PopulateOut)
 async def populate_glossary(
     role: str = Depends(require_permission("approve")),
     db: AsyncSession = Depends(get_db),
@@ -404,7 +434,7 @@ async def populate_glossary(
     return {**out, "objects": len(modules)}
 
 
-@router.put("/glossary/{term_id}")
+@router.put("/glossary/{term_id}", response_model=TermUpdatedOut)
 async def update_glossary_term(
     term_id: str,
     body: GlossaryTermUpdate,
@@ -542,7 +572,7 @@ async def update_glossary_term(
     return {"status": "updated", "changes": len(changes)}
 
 
-@router.post("/glossary/{term_id}/review")
+@router.post("/glossary/{term_id}/review", response_model=TermReviewedOut)
 async def review_glossary_term(
     term_id: str,
     request: Request,
@@ -662,7 +692,7 @@ class OwnerUpdate(BaseModel):
     steward_user_id: Optional[uuid.UUID] = None
 
 
-@router.get("/owners")
+@router.get("/owners", response_model=OwnersOut)
 async def list_owners(
     kind: Optional[OwnerKind] = Query(None),
     role: str = Depends(require_permission("view")),
@@ -676,7 +706,7 @@ async def list_owners(
     return {"owners": await owner_rows(db, tid, "true", {})}
 
 
-@router.put("/owners")
+@router.put("/owners", response_model=DataOwnerOut)
 async def put_owner(
     body: OwnerUpdate,
     role: str = Depends(require_permission("assign")),

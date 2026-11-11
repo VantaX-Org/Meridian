@@ -200,8 +200,8 @@ function build(): State {
   }).sort((a, b) => b.created_at.localeCompare(a.created_at));
   const channels: AlertChannel[] = [
     { id: "ch-1", kind: "email", target: "dq-team@demo-corp.example", digest: "daily", report_pack: "weekly", immediate_critical: true, enabled: true, created_at: ago(90), has_secret: false },
-    { id: "ch-2", kind: "teams", target: "outlook.office.com", digest: "weekly", immediate_critical: false, enabled: true, created_at: ago(60), has_secret: false },
-    { id: "ch-3", kind: "webhook", target: "hooks.demo-corp.example", digest: "off", immediate_critical: true, enabled: false, created_at: ago(30), has_secret: true },
+    { id: "ch-2", kind: "teams", target: "outlook.office.com", digest: "weekly", report_pack: "off", immediate_critical: false, enabled: true, created_at: ago(60), has_secret: false },
+    { id: "ch-3", kind: "webhook", target: "hooks.demo-corp.example", digest: "off", report_pack: "off", immediate_critical: true, enabled: false, created_at: ago(30), has_secret: true },
   ];
   const history: ReportFile[] = [
     ["board", "Board pack", "pdf", 1_840_000, "schedule", "Pieter van der Merwe"],
@@ -581,7 +581,7 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
   if (path === "/settings/cost-model") return { defaults: s.cost, tenant: s.cost, effective: clone(s.cost) };
   if (path === "/settings/cost-model/features") return { features: [{ feature: "MIGO", l1: "Procure to pay" }, { feature: "ME21N", l1: "Procure to pay" }, { feature: "VF01", l1: "Order to cash" }, { feature: "FB01", l1: "Record to report" }] };
   if (path === "/settings/retention") return clone(s.retention);
-  if (path === "/settings/retention/preview") return { items: [{ version_id: "b0000000-0000-4000-8000-000000000000", label: null, run_at: "2026-08-28T05:11:00Z", system_id: SYS_ECC, blocked_reason: null, rows_by_table: { findings: 18420, record_issues: 9210 }, bytes_freed: 48_000_000 }] };
+  if (path === "/settings/retention/preview") return { items: [{ version_id: "b0000000-0000-4000-8000-000000000000", label: null, run_at: "2026-08-28T05:11:00Z", system_id: SYS_ECC, blocked_reason: null, rows_by_table: { findings: 18420, record_issues: 9210 }, bytes_freed: 48_000_000 }], generated_at: "2026-10-20T08:00:00Z" };
   if (path === "/settings/purge-log") return { items: [{ id: "pl-1", kind: "version", target_id: "b0000000", dry_run: true, rows_by_table: { findings: 18420 }, bytes_freed: 48_000_000, blocked_reason: null, actor_email: null, created_at: ago(1, 2) }] };
   if (path === "/field-mappings") {
     const list = s.mappings.filter((m) => (!params.module || m.module === params.module) && (params.is_mapped === undefined || String(m.is_mapped) === String(params.is_mapped)) && (!params.search || `${m.standard_field} ${m.standard_label ?? ""} ${m.customer_field ?? ""}`.toLowerCase().includes(text(params.search).toLowerCase())));
@@ -865,7 +865,7 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     s.retention.enforcement = { ...s.retention.enforcement, dry_run_until: "2026-10-27T00:00:00Z", enforced: false };
     return clone(s.retention);
   }
-  if (method === "POST" && path === "/settings/retention/preview") return { items: [] };
+  if (method === "POST" && path === "/settings/retention/preview") return { items: [], generated_at: "2026-10-20T08:00:00Z" };
   const purgeV = /^\/versions\/([^/]+)$/.exec(path);
   if (purgeV && method === "DELETE") {
     const id = decodeURIComponent(purgeV[1]);

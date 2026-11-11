@@ -38,6 +38,84 @@ from api.services.rbac import (
 router = APIRouter(prefix="/api/v1", tags=["stewardship-template"])
 
 
+class RelatedRow(BaseModel):
+    module: str
+    relation: str  # upstream | shared-reference | downstream
+    tier: int | None = None
+    label: str
+    open_criticals: int
+
+
+class FixHint(BaseModel):
+    module: str
+    failures: int
+    sentence: str
+
+
+class RelatedOut(BaseModel):
+    module: str
+    tier: int | None = None
+    related: list[RelatedRow]
+    fix_hint: FixHint | None = None
+
+
+class TemplateOut(BaseModel):
+    template: dict[str, Any]
+    saved: bool
+    updated_by: str | None = None
+    updated_at: str | None = None
+    active_slices: dict[str, list[str]]
+    labels: dict[str, str]
+
+
+class OwnerPlanRow(BaseModel):
+    module: str
+    change: str  # add | change | same
+    before: Any = None
+    after: Any = None
+
+
+class StewardPlanRow(OwnerPlanRow):
+    slice_kind: str
+    slice_value: str
+
+
+class ApplyOut(BaseModel):
+    dry_run: bool
+    owners: list[OwnerPlanRow]
+    stewards: list[StewardPlanRow]
+    totals: dict[str, int]
+
+
+class GapRow(BaseModel):
+    module: str
+    gap: str  # no_owner | no_steward
+    slice_kind: str | None = None
+    slice_value: str | None = None
+    sentence: str
+    label: str
+
+
+class GapsOut(BaseModel):
+    objects: int
+    gaps: list[GapRow]
+    based_on: str
+
+
+class AssignmentRow(BaseModel):
+    module: str
+    slice_kind: str
+    slice_value: str
+    steward_user_id: str | None = None
+    steward_name: str | None = None
+    source: str | None = None
+    slice_text: str | None = None
+
+
+class AssignmentsOut(BaseModel):
+    assignments: list[AssignmentRow]
+
+
 async def _rls(db: AsyncSession, tenant: Tenant) -> str:
     await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
     return str(tenant.id)
@@ -66,7 +144,7 @@ async def _open_criticals(db: AsyncSession, tenant: Tenant, modules: list[str]) 
     return {r[0]: int(r[1]) for r in rows}
 
 
-@router.get("/objects/{module}/related", dependencies=[Depends(require_permission("view"))])
+@router.get("/objects/{module}/related", response_model=RelatedOut, dependencies=[Depends(require_permission("view"))])
 async def related_objects(module: str, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     from api.services.not_found import require_object
@@ -116,7 +194,7 @@ async def _current(db: AsyncSession, t: str) -> tuple[dict, dict]:
     return owners, stewards
 
 
-@router.get("/admin/assignment-template", dependencies=[Depends(require_permission("view"))])
+@router.get("/admin/assignment-template", response_model=TemplateOut, dependencies=[Depends(require_permission("view"))])
 async def get_template(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     t = await _rls(db, tenant)
     tmpl, saved, by, at = await _template(db, t)
@@ -128,7 +206,7 @@ class TemplateIn(BaseModel):
     template: dict[str, Any]
 
 
-@router.put("/admin/assignment-template", dependencies=[Depends(require_permission("manage_settings"))])
+@router.put("/admin/assignment-template", response_model=TemplateOut, dependencies=[Depends(require_permission("manage_settings"))])
 async def put_template(body: TemplateIn, request: Request, db: AsyncSession = Depends(get_db),
                        tenant: Tenant = Depends(get_tenant)):
     errors = stewardship.validate_template(body.template)
@@ -153,7 +231,7 @@ class ApplyIn(BaseModel):
     dry_run: bool = True
 
 
-@router.post("/admin/assignment-template/apply", dependencies=[Depends(require_permission("view"))])
+@router.post("/admin/assignment-template/apply", response_model=ApplyOut, dependencies=[Depends(require_permission("view"))])
 async def apply_template(body: ApplyIn, request: Request, db: AsyncSession = Depends(get_db),
                          tenant: Tenant = Depends(get_tenant)):
     role = await _get_user_role(tenant, db, request)
@@ -196,7 +274,7 @@ async def apply_template(body: ApplyIn, request: Request, db: AsyncSession = Dep
     return {"dry_run": False, **plan}
 
 
-@router.get("/admin/assignment-template/gaps", dependencies=[Depends(require_permission("view"))])
+@router.get("/admin/assignment-template/gaps", response_model=GapsOut, dependencies=[Depends(require_permission("view"))])
 async def template_gaps(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     from api.services.current_state import current_pairs
 
@@ -210,7 +288,7 @@ async def template_gaps(db: AsyncSession = Depends(get_db), tenant: Tenant = Dep
             "based_on": "measured objects" if measured else "template objects"}
 
 
-@router.get("/admin/steward-assignments", dependencies=[Depends(require_permission("view"))])
+@router.get("/admin/steward-assignments", response_model=AssignmentsOut, dependencies=[Depends(require_permission("view"))])
 async def list_assignments(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     t = await _rls(db, tenant)
     rows = (await db.execute(text(
