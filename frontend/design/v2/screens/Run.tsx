@@ -1,5 +1,6 @@
 "use client";
 
+import { BandMark } from "../BandMark";
 import { Fragment, useMemo, useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -185,6 +186,9 @@ function ObjectTable({ cells, labelOf, systemName, run }: { cells: LandscapeCell
               {tr("Shown")}
             </th>
             <th scope="col">{tr("Verdict")}</th>
+            <th scope="col" title={tr("The shown score against the quality thresholds set in Admin, Settings")}>
+              {tr("Band")}
+            </th>
             <th scope="col" className="m2-r">
               {tr("Records checked")}
             </th>
@@ -212,6 +216,9 @@ function ObjectTable({ cells, labelOf, systemName, run }: { cells: LandscapeCell
                   <VerdictMark verdict={c.verdict} />
                   {VERDICT_LABEL[c.verdict]}
                 </span>
+              </td>
+              <td>
+                <BandMark score={c.score} module={c.module} dimension="overall" />
               </td>
               <td className="m2-r">{int(c.records_checked)}</td>
               <td className="m2-r">{int(c.rules_measured)}</td>

@@ -47,6 +47,12 @@ The banner on top says "Change requests". Its headline counts what waits ("3 req
 - **The request inspector** shows the proposed values, the checks, the approval steps with who decided each and when, the history, comments and attachments. The requester can cancel a request that is not finished; a request that failed in SAP can be retried once you have checked in SAP that the record does not exist; a request with a load file can be exported.
 - **Your decision**: when a step waits for you, the inspector of the request shows **Approve**, and **Reject** with a reason the requester reads. The step, its due time and whether you decide on behalf of someone are stated.
 
+### Data collection form
+
+**Use the form**, beside **New request** on the Requests banner, opens the data collection form (`/requests/new`). Choose the object (material, customer, vendor or business partner) and whether you create a new record or change one; a change needs the SAP key of the record, and the label names its key field. The fields come from the SAP data dictionary and the object's rules, never from a free list: each shows its `TABLE.FIELD`, its description, and whether it is required to create. A field checked against an SAP check table offers its allowed values as a list, with the table it was checked against; the live values of the connected system appear when the address carries `?system=`, otherwise the values the rules and the data dictionary know.
+
+**Check against the rules** saves a draft and runs the object's rules: a failing rule shows under the field it concerns, and a list says which required fields are still empty. **Submit for approval** sends the request into the same approval workflow as any other request and opens it. Nothing is written to SAP until the request is approved. The form needs the master data write permission; without it the screen says so.
+
 ### Ageing and due time
 
 An open request shows how long it has waited. The list has **Age** and **Due** columns: the age in days or hours, and the due time of the approval step that waits. The banner adds an **Overdue** figure, and when a request is past the due time of its waiting step the banner turns to no-go and says "2 requests are past the due time of the waiting approval step." The inspector states **Waiting for** (the step), **Due** and **Age**. The due time comes from the hours set on the step in the approval workflow.

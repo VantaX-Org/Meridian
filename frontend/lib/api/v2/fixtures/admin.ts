@@ -79,6 +79,8 @@ interface State {
   keys: ApiKey[];
   licence: Record<string, unknown>;
   scoring: Record<string, unknown>;
+  /** quality_thresholds rows: module "*" is the tenant default. */
+  quality: { module: string; dimension: string; target: number; warning: number; critical: number }[];
   planner: Record<string, unknown>;
   cost: Record<string, unknown>;
   retention: { policy: Record<string, unknown>; enforcement: Record<string, unknown> };
@@ -262,6 +264,11 @@ function build(): State {
       critical_tolerance: { pct: 0.1, rows: 25 },
       defaults: { dimension_weights: { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 }, module_weights: {}, thresholds: { target: 90, warning: 75, critical: 60 }, severity_weights: { critical: 4, high: 3, medium: 2, low: 1 }, severity_multipliers: { critical: 5, high: 2, medium: 1, low: 1 }, critical_tolerance: { pct: 0.1, rows: 25 } },
     },
+    quality: [
+      { module: "*", dimension: "completeness", target: 95, warning: 85, critical: 70 },
+      { module: "material_master", dimension: "overall", target: 92, warning: 80, critical: 65 },
+      { module: "material_master", dimension: "validity", target: 97, warning: 90, critical: 75 },
+    ],
     planner: { minutes_per_record: 2, investigation_hours: 1, cleaning_item_hours: 0.5, exception_hours: 2, sprint_hours: 60, cost_per_record: 38, currency: "ZAR" },
     cost: { currency: "ZAR", severity: { critical: { per_record: 120 }, high: { per_record: 60 }, medium: { per_record: 25 }, low: { per_record: 5 } }, modules: {}, rules: {}, features: { MIGO: 38, ME21N: 55, VF01: 72 }, impact: { duplicate_payment: { unit_cost: 4200, factor: 1, mitigation: 0.6 } }, config_alignment: { ghost_config: 150 }, subscription_monthly: 48000 },
     retention: { policy: { versions_days: 365, reports_days: 180, audit_days: null, keep_baseline: true, keep_latest_per_system: 3 }, enforcement: { flag_enabled: true, dry_run_until: "2026-10-24T00:00:00Z", enforced: false } },
@@ -358,6 +365,16 @@ export function resetAdminFixture(): void {
 
 const text = (v: unknown): string => (v === undefined || v === null ? "" : String(v));
 const nextId = (p: string): string => `${p}-${++st().seq}`;
+
+const QUALITY_DIMENSIONS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity", "overall"];
+function qualityView(s: State) {
+  const fallback = clone((s.scoring as { thresholds: { target: number; warning: number; critical: number } }).thresholds);
+  const pick = (r: State["quality"][number]) => ({ target: r.target, warning: r.warning, critical: r.critical });
+  const tenant = Object.fromEntries(QUALITY_DIMENSIONS.map((d) => { const r = s.quality.find((x) => x.module === "*" && x.dimension === d); return [d, r ? pick(r) : clone(fallback)]; }));
+  const modules: Record<string, Record<string, ReturnType<typeof pick>>> = {};
+  for (const r of s.quality) if (r.module !== "*") (modules[r.module] ??= {})[r.dimension] = pick(r);
+  return { dimensions: QUALITY_DIMENSIONS, fallback, tenant, modules };
+}
 
 function userView(u: User): User {
   return { ...u, grants: clone(st().grants[u.id] ?? []) as User["grants"] };
@@ -592,6 +609,7 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
   if (path === "/health") return { status: "ok", version: s.update.current_version, llm_provider: "ollama", llm_connected: true, licence: "valid", email_backend: null, timestamp: NOW };
   if (path === "/settings") return { name: "Demo Corp", licensed_modules: (s.licence.enabled_modules as string[]), planner_config: s.planner, dqs_weights: null, alert_thresholds: s.thresholds, notification_config: s.digest, stripe_customer_id: null, live_writeback: false };
   if (path === "/settings/scoring") return clone(s.scoring);
+  if (path === "/settings/quality-thresholds") return qualityView(s);
   if (path === "/settings/cost-model") return { defaults: s.cost, tenant: s.cost, effective: clone(s.cost) };
   if (path === "/settings/cost-model/features") return { features: [{ feature: "MIGO", l1: "Procure to pay" }, { feature: "ME21N", l1: "Procure to pay" }, { feature: "VF01", l1: "Order to cash" }, { feature: "FB01", l1: "Record to report" }] };
   if (path === "/settings/retention") return clone(s.retention);
@@ -854,6 +872,17 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     s.update.current_version = s.update.latest_version;
     s.update.update_available = false;
     return { status: "started" };
+  }
+  if (path === "/settings/quality-thresholds" && (method === "PUT" || method === "DELETE")) {
+    const module = String((method === "PUT" ? b.module : params.module) ?? "*");
+    const dimension = String((method === "PUT" ? b.dimension : params.dimension) ?? "");
+    s.quality = s.quality.filter((r) => !(r.module === module && r.dimension === dimension));
+    if (method === "PUT") {
+      const [target, warning, critical] = [b.target, b.warning, b.critical].map(Number);
+      if (!(critical <= warning && warning <= target)) throw new AdminRefused(422, "Critical must not exceed warning, and warning must not exceed target.");
+      s.quality.push({ module, dimension, target, warning, critical });
+    }
+    return { status: "ok" };
   }
   if (method === "PUT" && path === "/settings/scoring") {
     Object.assign(s.scoring, clone(b));

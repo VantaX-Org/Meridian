@@ -94,6 +94,16 @@ const cr = (id: string) => `/change-requests/${enc(id)}`;
 
 export const listRequests = (f: RequestFilter) => v2Get<{ items: ChangeRequest[] }>("/change-requests", { ...f });
 export const getRequest = (id: string) => v2Get<RequestDetail>(cr(id));
+export interface FormValue { value: string; label: string }
+export interface FormField {
+  field: string; table: string; name: string; label: string; table_label: string; type: string; length: number; decimals: number;
+  key: boolean; required: boolean; check_table: string | null; check_table_label: string | null; values: FormValue[];
+  values_source: "domain" | "check_table" | "rule" | null; rules: number;
+}
+export interface RequestForm { object: RequestObject; key_field: string; fields: FormField[] }
+/** The data collection form for one object: DDIC fields with their allowed values. */
+export const getRequestForm = (object: RequestObject, systemId?: string) =>
+  v2Get<RequestForm>(`/change-requests/form/${object}`, systemId ? { system_id: systemId } : undefined);
 export const createRequest = (body: RequestDraft) => v2Send<ChangeRequest>("POST", "/change-requests", body);
 export const validateRequest = (id: string) => v2Send<Precheck>("POST", `${cr(id)}/validate`);
 export const submitRequest = (id: string) => v2Send<RequestDetail>("POST", `${cr(id)}/submit`);

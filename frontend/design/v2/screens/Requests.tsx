@@ -633,9 +633,16 @@ export function RequestsCanvas() {
           { label: t("Drafts"), value: drafts, note: t("not yet submitted") },
         ]}
         action={
+          <>
           <button type="button" className="m2-btn m2-strong" aria-expanded={composing} disabled={!canWrite} title={canWrite ? undefined : t("A new request needs the master data write permission")} onClick={() => setComposing((c) => !c)}>
             {t("New request")}
           </button>
+          {canWrite ? (
+            <V2Link href="/requests/new" className="m2-btn">
+              {t("Use the form")}
+            </V2Link>
+          ) : null}
+          </>
         }
       />
       <FixHead
