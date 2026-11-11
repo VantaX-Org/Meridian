@@ -8671,4 +8671,10 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here.": "接続済みの各システムとその接続設定 (ホスト、クライアント、インスタンス、サインイン)。新しいシステムはここで接続します。",
   "Changing the host, client or instance number asks for the password again. Stored passwords are never shown.": "ホスト、クライアント、インスタンス番号を変更すると、パスワードの再入力が必要です。保存済みのパスワードは表示されません。",
   "The systems could not be read. {detail}": "システムを読み込めませんでした。{detail}",
+  "Test the connection of {name}": "{name} の接続をテスト",
+  "{name} is connected. {message}": "{name} に接続できました。{message}",
+  "{name} could not be reached. {message}": "{name} に接続できませんでした。{message}",
+  "The test of {name} failed. {detail}": "{name} のテストに失敗しました。{detail}",
+  "{name} could not be removed. {detail}": "{name} を削除できませんでした。{detail}",
+  "Remove {name}?": "{name} を削除しますか?",
 };

@@ -8670,6 +8670,12 @@ export const en = {
   "Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here.": "Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here.",
   "Changing the host, client or instance number asks for the password again. Stored passwords are never shown.": "Changing the host, client or instance number asks for the password again. Stored passwords are never shown.",
   "The systems could not be read. {detail}": "The systems could not be read. {detail}",
+  "Test the connection of {name}": "Test the connection of {name}",
+  "{name} is connected. {message}": "{name} is connected. {message}",
+  "{name} could not be reached. {message}": "{name} could not be reached. {message}",
+  "The test of {name} failed. {detail}": "The test of {name} failed. {detail}",
+  "{name} could not be removed. {detail}": "{name} could not be removed. {detail}",
+  "Remove {name}?": "Remove {name}?",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
