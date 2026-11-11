@@ -191,8 +191,23 @@ describe("Workbook from the new system", () => {
     expect(ambiguous).toContain("PA0001");
     expect(ambiguous).toContain("PA0008");
     fireEvent.click(within(learned).getByTestId("mig-workbook-update"));
-    expect((await within(panel).findByTestId("mig-workbook-updating")).textContent).toContain("check the workbook again");
+    expect((await within(panel).findByTestId("mig-workbook-updating")).textContent).toContain("Meridian checks the workbook again");
     expect(start).toHaveBeenCalledWith("sys-sf", ["employee_central"], true);
+  });
+
+  it("checks the workbook again on the new run once it finishes", async () => {
+    const check = vi.spyOn(migrationApi, "checkTargetWorkbook");
+    renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
+    const { panel, button } = await pick();
+    choose(panel);
+    fireEvent.click(button);
+    await within(panel).findByTestId("mig-workbook-learned");
+    const run = check.mock.calls[0][0];
+    vi.spyOn(runsApi, "extractObjects").mockResolvedValue({ job_id: `dl-${run}`, status: "queued" });
+    fireEvent.click(within(panel).getByTestId("mig-workbook-update"));
+    await waitFor(() => expect(check).toHaveBeenCalledTimes(2));
+    expect(check.mock.calls[1][0]).toBe(run);
+    await waitFor(() => expect(within(panel).queryByTestId("mig-workbook-updating")).toBeNull());
   });
 
   it("states why the workbook was refused", async () => {

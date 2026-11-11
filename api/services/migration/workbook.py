@@ -104,9 +104,19 @@ SHEET_ENTITIES = {
     "nationalidcard": {"PerNationalId"},
     "workpermitinfo": {"EmpWorkPermit"},
     "personrelationship": {"PerPersonRelationship"},
+    "personrelationshipinfo": {"PerPersonRelationship"},
+    "personinfo": {"PerPerson"},
+    "basicuserinfo": {"User"},
     # contingent workers are loaded as a person, an email and an employment with job data
     "contingentworker": {"PerPerson", "PerPersonal", "PerEmail", "EmpEmployment", "EmpJob"},
 }
+
+
+# Columns the import itself reads, such as DELIMIT, which no source system holds. They stay blank and are reported
+# apart from the fields that have no source.
+IMPORT_CONTROL = {"operation"}
+# A dotted id whose tail is a locale is a localised property (name.en_US); any other dot steps into a navigation.
+_LOCALE = re.compile(r"\.[a-z]{2}_[A-Z]{2}$")
 
 
 @dataclass
@@ -449,9 +459,10 @@ def _candidates(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Fie
                   and ("related person" not in f.source or "PerPersonRelationship" in entities)]
         if not fields:
             continue
-        index = {_norm(k): table.fields[k] for k in table.keys}
-        index |= {_norm(f.source.split(".", 1)[1]): table.fields[k]
-                  for k in table.keys for f in [table.fields[k]] if f.source and "." in f.source}
+        keys = {_norm(k): table.fields[k] for k in table.keys}
+        keys |= {_norm(f.source.split(".", 1)[1]): table.fields[k]
+                 for k in table.keys for f in [table.fields[k]] if f.source and "." in f.source}
+        index = dict(keys)
         index |= {_norm((f.source or "").split(".", 1)[1].split(" ")[0]): f for f in fields}
         if "status" in index:  # foundation load files call the status field effectiveStatus
             index["effectivestatus"] = index["status"]
@@ -463,7 +474,9 @@ def _candidates(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Fie
         for col in sheet.columns:
             # name.en_US is the localised form of name.
             name = _norm(col.id).replace("centre", "center")
-            hit = index.get(name) or index.get(_norm(col.id.split(".")[0]))
+            # personInfo.person-id-external is the person's id reached through a navigation. Only a key matches by
+            # its tail: cust_LegalEntity.externalCode is the legal entity's code, not this object's own.
+            hit = index.get(name) or index.get(_norm(col.id.split(".")[0])) or keys.get(_norm(col.id.rsplit(".", 1)[-1]))
             if hit:
                 hits[col.header] = hit
         if hits:
@@ -478,6 +491,13 @@ def _camel(column_id: str) -> str:
     """A column id as an OData property spelling: job-code and job code become jobCode, name.en_US name_en_US."""
     head, *rest = re.split(r"[-\s]+", column_id.strip().replace(".", "_"))
     return head + "".join(w[:1].upper() + w[1:] for w in rest)
+
+
+def learned_property(column_id: str) -> str:
+    """The property a column id is learned as: homeAddress.zip-code is homeAddress.zipCode, reached through the
+    homeAddress navigation, while job-code is jobCode and a localised name.en_US stays name_en_US."""
+    nav, dot, sub = column_id.partition(".")
+    return f"{nav}.{_camel(sub)}" if dot and not _LOCALE.search(column_id) else _camel(column_id)
 
 
 def learn(workbook: Workbook, dictionary: Dictionary) -> dict[str, dict[str, str]]:
@@ -495,16 +515,22 @@ def learn(workbook: Workbook, dictionary: Dictionary) -> dict[str, dict[str, str
         counts = {t.name: sum(1 for f in t.fields.values() if (f.source or "").split(".")[0] == entity)
                   for t in dictionary.tables.values() if t.provenance.startswith("canonical:successfactors")}
         home = max((t for t in counts if counts[t]), key=lambda t: (counts[t], t), default=None)
-        if not home:
-            continue
+        if not home:  # no table reads this entity yet: the workbook adds one (source_design.with_learned)
+            home = re.sub(r"[^A-Z0-9_]", "", entity.upper())
+            if home in dictionary.tables:
+                home = f"SF_{home}"
         matched = {h for hits in _candidates(sheet, dictionary).values() for h in hits}
-        have = {(f.source or "").split(".", 1)[-1] for f in dictionary.tables[home].fields.values()}
+        known = dictionary.tables.get(home)
+        have = {(f.source or "").split(".", 1)[-1] for f in known.fields.values()} if known else set()
         for col in sheet.columns:
-            prop = _camel(col.id)
-            if col.header in matched or not _PROPERTY.fullmatch(prop) or prop in have:
+            # homeAddress.city is the city reached through the homeAddress navigation: it is learned as nav.prop,
+            # which extraction reads with $expand after checking both names against the tenant's $metadata
+            prop = learned_property(col.id)
+            if (col.header in matched or _norm(col.id) in IMPORT_CONTROL or prop in have
+                    or not all(_PROPERTY.fullmatch(p) for p in prop.split("."))):
                 continue
-            name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", prop).upper()
-            if name not in dictionary.tables[home].fields:
+            name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", prop.replace(".", "_")).upper()
+            if not known or name not in known.fields:
                 out.setdefault(home, {})[name] = f"{entity}.{prop}"
     return out
 
@@ -514,8 +540,8 @@ def learn_sap(workbook: Workbook, dictionary: Dictionary, scope: set[str],
     """Unmatched SAP columns resolved against the system's DD03L.
 
     A column naming its table is looked up on that table, in the object's `scope` or not. A bare field name is
-    looked up across the object's tables in `scope`. A hit on a table the dictionary does not know is real but
-    cannot be extracted yet, so it is reported, not learned.
+    looked up across the object's tables in `scope`. A hit on a table the dictionary does not know is learned too:
+    the caller reads that table's definition from the system's DDIC, so the next extraction reads the table.
 
     `lookup(tables, fields)` returns the (table, field) pairs DD03L holds. A field on exactly one in-scope table is
     learned as {TABLE: {FIELD: "TABLE.FIELD"}}, so the next extraction asks for it. The second result names, per
@@ -547,7 +573,7 @@ def learn_sap(workbook: Workbook, dictionary: Dictionary, scope: set[str],
     unresolved: dict[str, list[str]] = {}
     for col_id, (name, tables) in asks.items():
         hits = sorted(t for t in tables if (t, name) in found)
-        if len(hits) == 1 and hits[0] in dictionary.tables:
+        if len(hits) == 1:
             learned.setdefault(hits[0], {})[name] = f"{hits[0]}.{name}"
         else:
             unresolved[col_id] = hits
@@ -706,8 +732,11 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                     columns.insert(len(added), Column(header, header, f.description or key, mandatory=True))
                     hits[header] = f
                     added.append(header)
-        unmapped = sorted((c for c in columns if c.header not in hits), key=lambda c: not c.mandatory)
+        control = [c.id for c in columns if c.header not in hits and _norm(c.id) in IMPORT_CONTROL]
+        unmapped = sorted((c for c in columns if c.header not in hits and _norm(c.id) not in IMPORT_CONTROL),
+                          key=lambda c: not c.mandatory)
         row = {"name": sheet.name, "kind": sheet.kind, "table": table, "columns": len(columns), "added_keys": added,
+               "control": control,
                "matched": len(hits), "rows": 0, "ready": 0, "held": 0,
                "known": bool(options) or sheet.base in SHEET_ENTITIES, "required": sheet.required,
                "unmapped": [{"id": c.id, "label": c.label, "mandatory": c.mandatory and not c.country}

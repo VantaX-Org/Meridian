@@ -1,0 +1,33 @@
+{
+ "table": "T370FLT",
+ "description": "Vehicle types",
+ "category": "",
+ "delivery_class": "",
+ "source": "SAP ECC 6.0 standard DDIC (key fields only; the key is the check table target of FLEET.FLEET_CAT)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "FLEET_CAT",
+   "key": true,
+   "data_element": "FLEET_CAT",
+   "domain": "EQART",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Vehicle Type",
+   "check_table": null
+  }
+ ]
+}

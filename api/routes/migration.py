@@ -1356,12 +1356,12 @@ def _mark_learned(report: dict, pending: dict, unresolved: Optional[dict] = None
 
     `unresolved` is the DD03L outcome per column id (workbook.learn_sap): no table is not in the system, several
     tables are listed as candidates and left for a person to choose."""
-    from api.services.migration.workbook import _camel
+    from api.services.migration.workbook import learned_property
 
     waiting = missing = 0
     for sheet in report["sheets"]:
         for col in sheet["unmapped"]:
-            gone = pending.get(col["id"], pending.get(_camel(col["id"])))  # job-code was learned as jobCode
+            gone = pending.get(col["id"], pending.get(learned_property(col["id"])))  # job-code was learned as jobCode
             tables = (unresolved or {}).get(col["id"])
             if tables is not None and gone is None:
                 gone = True if not tables else None
@@ -1409,9 +1409,13 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
         if stype in ABAP_SYSTEM_TYPES:  # ECC and S/4HANA: unknown SAP columns are checked against DD03L
             scope = {t for m in meta.get("modules") or [] for t in tables_of(get_required_columns(m))}
             try:
+                cm = ConnectivityManager(s, str(tenant_id))
                 sap_learned, unresolved = wb.learn_sap(
-                    book, dictionary, scope, lambda ts, fs: ConnectivityManager(s, str(tenant_id)).dd03l_fields(
-                        str(system_id), ts, fs))
+                    book, dictionary, scope, lambda ts, fs: cm.dd03l_fields(str(system_id), ts, fs))
+                # a column on a table Meridian does not ship: read that table's definition from the system
+                absent = {t for t in sap_learned if t not in dictionary.tables}
+                if absent:
+                    logger.info(f"Workbook adds tables {sorted(absent)}: {cm.add_ddic_tables(str(system_id), absent)}")
             except Exception as e:  # noqa: BLE001 - any RFC failure; the system cannot be reached: nothing is learned, the export goes on
                 logger.warning(f"DD03L lookup failed for system {system_id}: {e}")
                 sap_learned = {}

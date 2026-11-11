@@ -23,28 +23,23 @@ rules:
       - X
   - id: FLEET002
     field: FLEET.FLEET_CAT
-    check_class: domain_value_check
+    check_class: referential_check
+    reference_table: T370FLT
+    reference_field: FLEET_CAT
     severity: high
-    dimension: accuracy
-    message: Vehicle type must be a valid fleet category
-    valid_values_with_labels:
-      CAR: Passenger car — standard light vehicle
-      TRUCK: Truck — heavy goods vehicle
-      VAN: Van — light commercial vehicle
-      BUS: Bus — passenger transport
-      MOTORCYCLE: Motorcycle — two-wheeled vehicle
-      TRAILER: Trailer — non-powered hauled unit
+    dimension: validity
+    message: Vehicle type FLEET.FLEET_CAT must exist in the system's vehicle types (T370FLT)
     why_it_matters: Vehicle type drives maintenance scheduling intervals, insurance categorisation, driver licence requirements,
-      and cost centre allocation rules. An invalid type means maintenance plans use wrong intervals, insurance premiums are
-      miscalculated, and fleet reports are unreliable.
-    rule_authority: customer_configured
+      and cost centre allocation rules. A vehicle type that is not defined in the system means maintenance plans use wrong
+      intervals and fleet reports by vehicle type are unreliable.
+    rule_authority: sap_hard_constraint
     sap_impact: Incorrect maintenance intervals. Insurance categorisation wrong. Fleet reports by vehicle type are inaccurate.
       Driver assignment may violate licence requirements.
     fix_map:
-      __other__: 'Vehicle type ''{invalid_value}'' is not a valid category. Valid types are: CAR, TRUCK, VAN, BUS, MOTORCYCLE,
-        TRAILER. In ECC: correct via IE02 > Classification tab. In S/4HANA: use Fiori app F2723 or IE02.'
-    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: VEHICLE_TYPE is ''{actual_value}''. Set to a valid type via IE02 (ECC)
-      or Fiori app F2723 (S/4HANA).'
+      __other__: Vehicle type '{invalid_value}' is not defined in T370FLT. Define it in customizing or correct the vehicle
+        type via IE02 > Fleet tab (ECC) or Fiori app F2723 (S/4HANA).
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: vehicle type ''{actual_value}'' is not defined in T370FLT. Correct
+      it via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
     applies_when:
       EQUI.S_FLEET:
       - X

@@ -4,7 +4,7 @@ import { PairedQuality } from "./PairedQuality";
 import "../runs.css";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
@@ -79,9 +79,9 @@ export const gapText = (g: string) => GAP[g]?.() ?? (g.startsWith("field_status_
 const tone = (sev: string) => (sev === "critical" ? "crit" : sev === "high" || sev === "medium" ? "warn" : "data");
 const SEVERITIES = ["critical", "high", "medium", "low"];
 
-function useMig<T>(key: unknown[], fn: () => Promise<T>, enabled = true) {
+function useMig<T>(key: unknown[], fn: () => Promise<T>, enabled = true, poll: number | false = false) {
   const fixture = useFixture();
-  return useQuery({ queryKey: ["migration", ...key, fixture], queryFn: fn, staleTime: 60_000, retry, enabled });
+  return useQuery({ queryKey: ["migration", ...key, fixture], queryFn: fn, staleTime: 60_000, retry, enabled, refetchInterval: poll });
 }
 
 function Table({ title, head, children }: { title: string; head: string[]; children: ReactNode }) {
@@ -356,12 +356,14 @@ function TargetWorkbookPanel() {
   const toast = useToast();
   const systems = useLandscape(null).data?.systems ?? [];
   const allowed = can("export") && !shared && !viewAs && systems.length > 0;
+  // the run started by "Update the run": when it finishes, the workbook is checked again on it
+  const [waiting, setWaiting] = useState("");
   const versions = useMig(["target-workbook-runs", systems.map((s) => s.id)], async () => {
     const pages = await Promise.all(systems.map(async (s) => ({ s, page: await getVersionsPage({ system_id: s.id, limit: 50 }) })));
     return pages
       .flatMap(({ s, page }) => page.versions.filter((v) => v.status.includes("complete")).map((v) => ({ v, system: s.name })))
       .sort((a, b) => b.v.run_at.localeCompare(a.v.run_at));
-  }, allowed);
+  }, allowed, waiting ? 15_000 : false);
   const [picked, setPicked] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const run = picked || versions.data?.[0]?.v.id || "";
@@ -373,8 +375,17 @@ function TargetWorkbookPanel() {
   });
   const update = useMutation({
     mutationFn: (l: { system_id: string; modules: string[] }) => extractObjects(l.system_id, l.modules, true),
+    onSuccess: (r) => setWaiting(r.job_id.replace(/^dl-/, "")),
     onError: (e) => toast.show(errorSentence(e, t("The run could not be started.")), "error"),
   });
+  // once the run started by "Update the run" shows as complete, check the workbook on it once
+  const done = Boolean(waiting && versions.data?.some(({ v }) => v.id === waiting));
+  const checked = useRef("");
+  useEffect(() => {
+    if (!done || !file || checked.current === waiting) return;
+    checked.current = waiting;
+    check.mutate({ run: waiting, file }, { onSettled: () => { setPicked(waiting); setWaiting(""); update.reset(); } });
+  }, [done, file, waiting, update, check]);
   if (!allowed) return null;
   const title = t("Workbook from the new system");
   const meta = t("Fill the new system's workbook or load file from a finished run");
@@ -429,7 +440,7 @@ function TargetWorkbookPanel() {
                 </Table>
               </Disclose>
               {update.isSuccess ? (
-                <p data-testid="mig-workbook-updating">{t("A new run has started. When it finishes, choose it above and check the workbook again.")}</p>
+                <p data-testid="mig-workbook-updating">{t("A new run has started. When it finishes, Meridian checks the workbook again on it, so the added columns are filled.")}</p>
               ) : can("trigger_sync") ? (
                 <p><button type="button" className="m2-btn m2-next" data-testid="mig-workbook-update" disabled={update.isPending} onClick={() => update.mutate({ system_id: report.learned!.system_id!, modules: report.learned!.modules })}>{update.isPending ? t("Starting the run") : t("Update the run")}</button></p>
               ) : (

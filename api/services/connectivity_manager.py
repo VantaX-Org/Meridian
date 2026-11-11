@@ -828,6 +828,38 @@ class ConnectivityManager:
 
         return known_fields(system_id, tables, fields, connect)
 
+    def add_ddic_tables(self, system_id: str, tables: set[str]) -> list[str]:
+        """Read these tables' definitions from the system's DDIC into its latest snapshot, so the dictionary and the
+        next extraction know them. A workbook column on a table Meridian does not ship adds the table this way.
+        Returns the tables added. Raises SAPConnectorError if the system cannot be read."""
+        from api.services.source_design import latest_snapshot_id, store_snapshot
+        from sap.ddic_reader import read_tables
+
+        if not tables:
+            return []
+        row = self._load_system(system_id)
+        params = self._build_connection_params(row)
+        try:
+            conn = self._get_connector(row.system_type, params)
+        finally:
+            for key in ("password", "client_secret", "api_key"):
+                params.pop(key, None)
+        try:
+            out, _ = read_tables(conn, sorted(tables))
+        finally:
+            conn.close()
+        if not out:
+            return []
+        snap = latest_snapshot_id(self.session, system_id)
+        if snap is None:
+            snap = str(uuid.uuid4())
+            self.session.execute(text(
+                "INSERT INTO ddic_snapshots (id, tenant_id, system_id, status, source, completed_at) "
+                "VALUES (:id, :tid, :sid, 'partial', 'workbook', now())"),
+                {"id": snap, "tid": str(self.tenant_id), "sid": system_id})
+        store_snapshot(self.session, str(self.tenant_id), system_id, snap, {"tables": out})
+        return sorted(out)
+
     @staticmethod
     def _payroll_totals(connector, rgdir: Optional[pd.DataFrame]) -> tuple[Optional[pd.DataFrame], dict]:
         """ZMERIDIAN_PAYRT for the extracted payroll results, or why it is not available."""

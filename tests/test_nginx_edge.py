@@ -45,3 +45,13 @@ def test_api_rate_limits_and_body_size_match_the_upload_endpoint() -> None:
         auth = re.search(r"location ~ \^/api/v1/auth/\(([^)]+)\)\$ \{(.*?)\}", api, re.S)
         assert auth and "login" in auth.group(1).split("|")
         assert "limit_req zone=meridian_auth" in auth.group(2) and "proxy_pass http://api_upstream;" in auth.group(2)
+
+
+def test_local_tuning_hooks_survive_updates() -> None:
+    head = CONF[: CONF.index("server {")]
+    assert "include /etc/nginx/local/http-*.conf;" in head
+    for block in (HTTP, HTTPS):
+        assert "include /etc/nginx/local/server-*.conf;" in block
+    compose = (ROOT / "docker" / "docker-compose.customer.yml").read_text()
+    assert "./nginx/local:/etc/nginx/local:ro" in compose
+    assert 'mkdir -p "$compose_dir/nginx/local"' in (ROOT / "scripts" / "update.sh").read_text()
