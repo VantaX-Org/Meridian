@@ -8750,6 +8750,21 @@ export const en = {
   "Unresolved columns": "Unresolved columns",
   "Leave open": "Leave open",
   "Save the column map": "Save the column map",
+  "SAP default": "SAP default",
+  "1: authentication only": "1: authentication only",
+  "2: integrity": "2: integrity",
+  "3: privacy (encryption)": "3: privacy (encryption)",
+  "8: the system's default": "8: the system's default",
+  "9: maximum available": "9: maximum available",
+  "SAProuter string (optional)": "SAProuter string (optional)",
+  "Only when SAP is reached through a SAProuter, for example /H/router.example.com/S/3299/H/. Leave empty for a direct connection.": "Only when SAP is reached through a SAProuter, for example /H/router.example.com/S/3299/H/. Leave empty for a direct connection.",
+  "Secure Network Communications (SNC)": "Secure Network Communications (SNC)",
+  "SNC partner name": "SNC partner name",
+  "The SAP system's SNC name, for example p:CN=ECC, O=Company, C=ZA. Your Basis team has it.": "The SAP system's SNC name, for example p:CN=ECC, O=Company, C=ZA. Your Basis team has it.",
+  "Protection level": "Protection level",
+  "Own SNC name (optional)": "Own SNC name (optional)",
+  "Leave empty to use the name of the server's SNC credential.": "Leave empty to use the name of the server's SNC credential.",
+  "The SNC library path is set on the server (SNC_LIB). It is not entered here.": "The SNC library path is set on the server (SNC_LIB). It is not entered here.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

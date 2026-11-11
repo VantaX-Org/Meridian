@@ -16,7 +16,8 @@ from api.services.exception_engine import ExceptionBillingCalculator
 from api.services.notifications import create_notification
 from api.services.rbac import has_permission, require_any_permission, require_permission
 
-router = APIRouter(prefix="/api/v1", tags=["exceptions"])
+# Every exceptions route reads tenant data, so all of them need at least `view`; the writes add stricter gates.
+router = APIRouter(prefix="/api/v1", tags=["exceptions"], dependencies=[Depends(require_permission("view"))])
 
 
 # ── Pydantic models ──────────────────────────────────────────────────────────

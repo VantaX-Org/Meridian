@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -29,6 +29,42 @@ class SAPConnectionParams:
     password: str
     read_function: str = ""
     extraction_path: str = ""   # table_reader | odp | odata | auto (sap/extraction_plan.py); empty: table_reader
+    # SAProuter string (/H/host/S/3299/H/...) and Secure Network Communication; none of these are secrets.
+    saprouter: str = ""
+    snc_mode: bool = False
+    snc_partnername: str = ""   # the application server's SNC name, e.g. p:CN=P01, O=Example, C=ZA
+    snc_qop: str = ""           # 1 authentication, 2 integrity, 3 privacy, 8 the server default, 9 maximum
+    snc_myname: str = ""        # empty: the SNC library's default own name
+
+
+
+
+def rfc_route_params(row: Any) -> dict:
+    """The router string and SNC settings of a sap_systems row, dict or object with those attributes (missing: off)."""
+    get = row.get if isinstance(row, dict) else (lambda k: getattr(row, k, None))
+    return {"saprouter": get("saprouter") or "", "snc_mode": bool(get("snc_mode")),
+            "snc_partnername": get("snc_partnername") or "", "snc_qop": get("snc_qop") or "",
+            "snc_myname": get("snc_myname") or ""}
+
+
+def rfc_logon_kwargs(params: "SAPConnectionParams") -> dict:
+    """The pyrfc.Connection keyword arguments for ``params``: only the router and SNC values that are set.
+
+    The SNC library path is the deployment's SNC_LIB; pyrfc otherwise reads it from the environment itself."""
+    import os
+
+    kw = {"ashost": params.host, "client": params.client, "user": params.user, "passwd": params.password,
+          "sysnr": params.sysnr}
+    if (getattr(params, "saprouter", "") or "").strip():
+        kw["saprouter"] = params.saprouter.strip()
+    if getattr(params, "snc_mode", False):
+        kw["snc_mode"] = "1"
+        for key in ("snc_partnername", "snc_qop", "snc_myname"):
+            if (getattr(params, key, "") or "").strip():
+                kw[key] = getattr(params, key).strip()
+        if os.getenv("SNC_LIB"):
+            kw["snc_lib"] = os.environ["SNC_LIB"]
+    return kw
 
 
 @dataclass

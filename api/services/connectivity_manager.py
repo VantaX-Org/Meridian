@@ -25,6 +25,7 @@ from api.middleware.cache import invalidate_tenant_cache
 
 from sap.base import (
     SAPConnectionParams,
+    rfc_route_params,
     CloudConnectionParams,
     CloudSAPConnector,
     SAPConnectorError,
@@ -92,6 +93,11 @@ def connect_sap_system(system_type: str, params: dict):
             password=params["password"],
             read_function=params.get("read_function") or "",
             extraction_path=params.get("extraction_path") or "",
+            saprouter=params.get("saprouter") or "",
+            snc_mode=bool(params.get("snc_mode")),
+            snc_partnername=params.get("snc_partnername") or "",
+            snc_qop=params.get("snc_qop") or "",
+            snc_myname=params.get("snc_myname") or "",
         ))
         return rfc
 
@@ -262,6 +268,7 @@ class ConnectivityManager:
             })
             params["extraction_path"] = getattr(system_row, "extraction_path", None) or ""
             params["read_function"] = getattr(system_row, "read_function", None) or ""
+            params.update(rfc_route_params(system_row))
             if system_type == "s4hana_onprem":  # the Gateway, for the OData extraction path
                 auth = getattr(system_row, "auth_type", None)
                 params.update({"base_url": getattr(system_row, "base_url", None) or "",

@@ -36,15 +36,17 @@ class _Retry(Exception):
 
 def _params(session, tid: str, system_id: Optional[str]):
     row = session.execute(text(
-        "SELECT s.host, s.client, s.sysnr, c.encrypted_password FROM sap_systems s JOIN system_credentials c "
+        "SELECT s.host, s.client, s.sysnr, c.encrypted_password, s.saprouter, s.snc_mode, s.snc_partnername, "
+        "s.snc_qop, s.snc_myname FROM sap_systems s JOIN system_credentials c "
         "ON c.system_id = s.id WHERE s.tenant_id = CAST(:t AS uuid) AND s.id = CAST(:s AS uuid) "
         "AND s.system_type IN ('ecc', 's4hana_onprem', 'ewm') LIMIT 1"), {"t": tid, "s": system_id}).fetchone()
     if row is None:
         return None
     from api.services.credential_store import decrypt_password
-    from sap.base import SAPConnectionParams
+    from sap.base import SAPConnectionParams, rfc_route_params
     return SAPConnectionParams(host=row[0], client=row[1] or "", sysnr=row[2] or "",
-                               user=os.getenv("SAP_RFC_USER", "RFC_USER"), password=decrypt_password(tid, row[3]))
+                               user=os.getenv("SAP_RFC_USER", "RFC_USER"), password=decrypt_password(tid, row[3]),
+                               **rfc_route_params(row))
 
 
 def process(engine, tid: str, cr_id: str, attempt: int = 0, max_retries: int = MAX_RETRIES) -> dict:
