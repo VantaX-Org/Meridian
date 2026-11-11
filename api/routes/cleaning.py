@@ -518,6 +518,50 @@ async def bulk_approve(
     return {"approved_count": len(approved_ids), "skipped_count": 0}
 
 
+class BulkRejectBody(BaseModel):
+    reason: str
+    version_id: Optional[uuid.UUID] = None
+    kind: Optional[str] = None
+    ids: Optional[list[uuid.UUID]] = Field(None, max_length=500)
+
+
+@router.post("/cleaning/bulk-reject")
+async def bulk_reject(
+    body: BulkRejectBody,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
+):
+    """Reject every waiting proposal in a group (or the named ids) with one reason, one audit row each."""
+    if not body.reason.strip():
+        raise HTTPException(status_code=422, detail="A reason is required")
+    if body.ids is None and body.version_id is None and not body.kind:
+        raise HTTPException(status_code=422, detail="Name a group or the ids to reject")
+    await _set_rls(db, tenant.id)
+    where = "status IN ('detected', 'recommended') AND tenant_id = :tid"
+    params: dict = {"tid": str(tenant.id)}
+    if body.ids is not None:
+        where += " AND id = ANY(:ids)"
+        params["ids"] = [str(i) for i in body.ids]
+    else:
+        if body.version_id is not None:
+            where += " AND version_id = :vid"
+            params["vid"] = str(body.version_id)
+        if body.kind:
+            where += " AND " + kind_filter(body.kind, params)
+    result = await db.execute(
+        text(f"UPDATE cleaning_queue SET status = 'rejected' WHERE {where} RETURNING id, record_key, object_type"),
+        params,
+    )
+    rejected = result.fetchall()
+    actor = current_user_label()
+    for r in rejected:
+        await _create_audit(db, tenant.id, str(r[0]), "rejected", r[1], r[2], actor_name=actor, metadata={"reason": body.reason.strip(), "bulk": True})
+    mark_work_changed(db, tenant.id)
+    await db.commit()
+    return {"rejected_count": len(rejected)}
+
+
 # ── POST /api/v1/cleaning/apply/{id} ─────────────────────────────────────────
 
 

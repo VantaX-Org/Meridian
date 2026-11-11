@@ -216,6 +216,12 @@ export function cleaningWrite(method: string, path: string, body: Record<string,
     for (const p of hit) { decided.set(p[0], "approved"); approvedBy.set(p[0], "u-me"); audit("approved", p); }
     return { approved_count: hit.length, skipped_count: 0 };
   }
+  if (path === "/cleaning/bulk-reject") {
+    if (!String(body.reason ?? "").trim()) return refuse("A reason is required");
+    const hit = PROPOSALS.filter((p) => ["detected", "recommended"].includes(statusOf(p)) && (!body.kind || p[2] === body.kind));
+    for (const p of hit) { decided.set(p[0], "rejected"); audit("rejected", p); }
+    return { rejected_count: hit.length };
+  }
   const d = /^\/cleaning\/(approve|reject|apply)\/([^/]+)$/.exec(path);
   if (d) {
     const p = PROPOSALS.find((r) => r[0] === decodeURIComponent(d[2]));
