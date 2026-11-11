@@ -543,3 +543,51 @@ def entity_model(edmx: str, entity: str) -> tuple[set[str], dict[str, set[str] |
             target = types.get(ends.get(name(c.get("Relationship", "")), {}).get(c.get("ToRole"), ""))
             navs[c.get("Name", "")] = props(target) if target is not None else None
     return props(t), navs
+
+
+_SYNONYMS = {"effectivestartdate": "startdate", "effectiveenddate": "enddate", "effectivestatus": "status"}
+
+
+def _key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+def resolve_property(wanted: str, props: set[str], navs: dict[str, set[str] | None],
+                     entity: str = "") -> str | None:
+    """The tenant's own spelling of ``wanted`` on an entity, from its $metadata, or None.
+
+    Workbooks and dictionaries spell properties loosely: kebab case, a localised ``name.en_US``,
+    ``effectiveStartDate`` for ``startDate``, the object's name before ``name``, a ``cust_`` prefix
+    the tenant added, or a navigation where the code is wanted. Only a name the schema holds is
+    returned, as ``prop`` or ``nav.prop``, so a column is resolved and never invented."""
+    if wanted in props:
+        return wanted
+    by_key = {_key(p): p for p in props}
+    nav, _, sub = wanted.partition(".")
+    if sub and nav in navs:
+        target = navs[nav]
+        if target is None:
+            return wanted
+        hit = next((t for t in target if _key(t) == _key(sub)), None)
+        return f"{nav}.{hit}" if hit else None
+    label = _key(re.sub(r"^(FO|Emp|Per)", "", entity)).replace("centre", "center")
+    k = _key(wanted.replace(".", "_")).replace("centre", "center")
+    tries = [k, _key(wanted.split(".")[0]), _SYNONYMS.get(k, ""), "cust" + k,
+             k + "localized", k + "defaultvalue"]
+    if label and k.startswith(label) and len(k) > len(label):
+        tries.append(k[len(label):])
+    for t in tries:
+        if t and t in by_key:
+            return by_key[t]
+    # a navigation named where its code is wanted (company for the company object)
+    for n, target in navs.items():
+        if _key(n) == k and target:
+            code = next((c for c in ("externalCode", "code") if c in target), None)
+            if code:
+                return f"{n}.{code}"
+    return None
+
+
+def entity_sets(edmx: str, prefix: str) -> list[str]:
+    """Entity set names in a $metadata document that start with ``prefix`` (a per-country family)."""
+    return sorted(n for n in re.findall(r'<EntitySet\b[^>]*\bName="([^"]+)"', edmx) if n.startswith(prefix))

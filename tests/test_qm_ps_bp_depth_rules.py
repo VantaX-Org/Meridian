@@ -10,7 +10,7 @@ from checks.frames import TableFrames
 from checks.runner import run_rule
 from sap.ddic import get_dictionary
 
-PACKS = {"quality_management": ("QM", 79, 55), "project_system": ("PS", 81, 85), "business_partner": ("BP", 227, 73)}
+PACKS = {"quality_management": ("QM", 79, 62), "project_system": ("PS", 81, 91), "business_partner": ("BP", 227, 73)}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 DDIC = get_dictionary("ecc6")
@@ -144,8 +144,11 @@ def test_contact_role_only_checked_for_contact_relationships():
 
 
 def test_region_required_only_in_listed_countries():
+    # judged at the partner's grain, reached through the partner's address link
+    but000 = frame("BUT000", PARTNER=["B1", "B2", "B3"])
+    but020 = frame("BUT020", PARTNER=["B1", "B2", "B3"], ADDRNUMBER=["1", "2", "3"])
     adrc = frame("ADRC", ADDRNUMBER=["1", "2", "3"], COUNTRY=["US", "US", "DE"], REGION=["", "TX", ""])
-    assert fire("BP243", {"ADRC": adrc}) == (1, 2)
+    assert fire("BP243", {"BUT000": but000, "BUT020": but020, "ADRC": adrc}) == (1, 2)
 
 
 def test_iban_required_only_for_sepa_banks_with_an_account():

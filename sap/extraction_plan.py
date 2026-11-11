@@ -582,6 +582,12 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
                     add(spec["table"], {spec["column"], *spec.get("where", {})}, m,
                         purpose="config" if _is_config_table(dictionary, spec["table"]) else "data")
 
+    # fields a target workbook asked for and DD03L confirmed (workbook.learn_sap), on any table, planned or not
+    for t, tt in dictionary.tables.items():
+        if wb := {f.name for f in tt.fields.values() if f.provenance == "workbook"}:
+            for m in modules:
+                add(t, wb, m)
+
     # keys, join fields, filters
     for t, p in plans.items():
         p.keys = list(dictionary.keys(t))
