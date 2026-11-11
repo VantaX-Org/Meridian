@@ -8944,7 +8944,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Table, field, business term, check table, owner and the rules that read each field": "テーブル、フィールド、業務用語、チェックテーブル、オーナー、各フィールドを読むルール",
   "not in the dictionary": "辞書にありません",
   "{n} {n, plural, one {field is} other {fields are}} read by rules. A check table owned by configuration is customizing; one owned by an object is master data that must load first.": "ルールが読むフィールドは {n} {n, plural, other {件}}です。構成が所有するチェックテーブルはカスタマイジング、オブジェクトが所有するものは先にロードが必要なマスターデータです。",
-  "Fixed values": "固定値",
   "Value set not known, not checked": "値セットが不明なため未チェック",
   "Passes": "合格",
   "Survivorship preview": "サバイバーシップのプレビュー",

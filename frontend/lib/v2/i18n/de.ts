@@ -8944,7 +8944,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Table, field, business term, check table, owner and the rules that read each field": "Tabelle, Feld, Fachbegriff, Prüftabelle, Eigentümer und die Regeln, die jedes Feld lesen",
   "not in the dictionary": "nicht im Dictionary",
   "{n} {n, plural, one {field is} other {fields are}} read by rules. A check table owned by configuration is customizing; one owned by an object is master data that must load first.": "{n} {n, plural, one {Feld wird} other {Felder werden}} von Regeln gelesen. Eine Prüftabelle der Konfiguration ist Customizing; eine Prüftabelle eines Objekts sind Stammdaten, die zuerst geladen werden müssen.",
-  "Fixed values": "Festwerte",
   "Value set not known, not checked": "Wertemenge unbekannt, nicht geprüft",
   "Passes": "Bestanden",
   "Survivorship preview": "Vorschau der Survivorship-Regeln",

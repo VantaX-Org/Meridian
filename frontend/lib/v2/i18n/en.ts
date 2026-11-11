@@ -8943,7 +8943,6 @@ export const en = {
   "Table, field, business term, check table, owner and the rules that read each field": "Table, field, business term, check table, owner and the rules that read each field",
   "not in the dictionary": "not in the dictionary",
   "{n} {n, plural, one {field is} other {fields are}} read by rules. A check table owned by configuration is customizing; one owned by an object is master data that must load first.": "{n} {n, plural, one {field is} other {fields are}} read by rules. A check table owned by configuration is customizing; one owned by an object is master data that must load first.",
-  "Fixed values": "Fixed values",
   "Value set not known, not checked": "Value set not known, not checked",
   "Passes": "Passes",
   "Survivorship preview": "Survivorship preview",
