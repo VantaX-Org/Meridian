@@ -70,6 +70,14 @@ The button **Derivations and critical fields**, beside Entry defaults, opens two
 - **Derivation rules.** A rule says: when a field of the request holds one of the listed values ("Is one of", separated by commas), set another field. The new value is either a **constant value** or a **copy from field**: the request's proposed value of a source field, skipped when that source is empty. For example, when `MARA.MTART` is `ROH`, set `MARC.BESKZ` to `F`. Rules run in the order they were made when a request is created or updated, before the check, so a later rule sees what an earlier one set. A derived value is authoritative and shows as **Derived** in the field history.
 - **Critical fields.** A list of fields per object. A request that touches one is flagged critical in the list and the inspector and gets an extra **Critical field** approval step after the usual steps, decided by a second person who is not the requester or an earlier approver. Administrators can also use the critical fields of a request in the conditions of their own workflow steps.
 
+## Process analytics
+
+Process analytics at /requests/analytics shows how change requests move through approval. Pick a window of 30, 90, 180 or 365 days and, if you like, one object.
+
+Cycle time runs from submission until the record is created in SAP. Approval time runs from submission until the last decision. A step's dwell runs from the moment the step became active until its decision. A task breaches its SLA when it was decided after its due time, or is still pending past it. The bottleneck is the step with the longest median dwell; a tie goes to the step with the most breaches. Percentiles are nearest-rank, so each figure is a real request or task.
+
+The open backlog is split by the time since submission, and the weekly flow compares requests submitted with records created. The objects table shows the outcome of the requests for each object and its cycle time.
+
 ## Out of office and escalation
 
 - When an approver is away, their approvals go to the deputy they named under Preferences, Out of office. The batch inspector says so, for example "You cover for T. Mokoena until 30 Oct 2026: their approvals and assigned work come to you as well." Four eyes still holds: nobody approves their own batch.
