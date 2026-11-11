@@ -1413,9 +1413,9 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
                 sap_learned, unresolved = wb.learn_sap(
                     book, dictionary, scope, lambda ts, fs: cm.dd03l_fields(str(system_id), ts, fs))
                 # a column on a table Meridian does not ship: read that table's definition from the system
-                missing = {t for t in sap_learned if t not in dictionary.tables}
-                if missing:
-                    logger.info(f"Workbook adds tables {sorted(missing)}: {cm.add_ddic_tables(str(system_id), missing)}")
+                absent = {t for t in sap_learned if t not in dictionary.tables}
+                if absent:
+                    logger.info(f"Workbook adds tables {sorted(absent)}: {cm.add_ddic_tables(str(system_id), absent)}")
             except Exception as e:  # noqa: BLE001 - any RFC failure; the system cannot be reached: nothing is learned, the export goes on
                 logger.warning(f"DD03L lookup failed for system {system_id}: {e}")
                 sap_learned = {}

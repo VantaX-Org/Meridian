@@ -145,3 +145,22 @@ def with_learned(dictionary: Dictionary, learned: dict[str, dict[str, str]]) -> 
                for f, src in fields.items()}
         tables[name] = replace(t, fields={**t.fields, **new})
     return replace(dictionary, tables=tables)
+
+
+async def live_config_for_version(db, version_id) -> tuple[str, dict[str, list]]:
+    """(system_type, {config_table: rows}) of the system a version was extracted from.
+
+    Uploads have no source system → ("ecc", {}) and callers fall back to the
+    SAP-standard baseline, labelled as such.
+    """
+    row = (await db.execute(
+        text("SELECT s.id, s.system_type FROM analysis_versions v "
+             "JOIN sap_systems s ON s.id::text = v.metadata->>'system_id' WHERE v.id = :vid"),
+        {"vid": str(version_id)},
+    )).fetchone()
+    if not row:
+        return "ecc", {}
+    rows = (await db.execute(
+        text("SELECT config_table, config_data FROM config_snapshots WHERE system_id = :sid AND source = 'live'"),
+        {"sid": row[0]},
+    )).fetchall()
