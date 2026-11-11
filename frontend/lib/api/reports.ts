@@ -110,7 +110,7 @@ export async function pollVersionStatus(
 
 /* ── Report history: every report file Meridian generated (downloads and scheduled runs) ── */
 
-export type ReportFileFormat = "pdf" | "xlsx" | "json";
+export type ReportFileFormat = "pdf" | "xlsx" | "json" | "csv";
 
 export interface ReportFile {
   id: string;
@@ -161,6 +161,13 @@ export interface ReportScheduleParams {
   /** "latest" (any finished run), "upload" (file uploads) or a system id. */
   scope: string;
   module?: string | null;
+  /** Export centre kinds (export_<dataset>) only: the columns, severities, run and sheet split of the file. */
+  columns?: string[];
+  severity?: ("critical" | "high" | "medium" | "low")[];
+  run?: "latest" | "all";
+  split?: "none" | "module" | "severity" | "run";
+  /** Also write the file to the server export folder (REPORT_EXPORT_DIR). */
+  folder?: boolean;
 }
 
 export interface ReportScheduleInput {

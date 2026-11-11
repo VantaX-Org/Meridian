@@ -200,12 +200,18 @@ async def delete_history(file_id: str, request: Request, db: AsyncSession = Depe
 class ScheduleParams(BaseModel):
     scope: str = Field("latest", max_length=64, description="'latest', 'upload' or a system id")
     module: Optional[str] = Field(None, max_length=64)
+    # Export centre kinds (export_<dataset>) only.
+    columns: list[str] = Field(default_factory=list, max_length=80)
+    severity: list[Literal["critical", "high", "medium", "low"]] = Field(default_factory=list, max_length=4)
+    run: Literal["latest", "all"] = "latest"
+    split: Literal["none", "module", "severity", "run"] = "none"
+    folder: bool = Field(False, description="Also write the file to the server export folder")
 
 
 class ScheduleIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     kind: str = Field(..., max_length=40)
-    format: Optional[Literal["pdf", "xlsx", "json"]] = None
+    format: Optional[Literal["pdf", "xlsx", "json", "csv"]] = None
     params: ScheduleParams = ScheduleParams()
     cadence: Literal["daily", "weekly", "monthly"]
     time_of_day: time = time(7, 0)
@@ -280,7 +286,8 @@ async def _validated(body: ScheduleIn, db: AsyncSession, tid: str) -> dict:
     t = rh.REPORT_TYPES.get(body.kind)
     if t is None or not t.schedulable:
         raise HTTPException(status_code=422, detail=f"This report cannot be scheduled: {body.kind}")
-    if body.format and body.format != t.format:
+    export = body.kind.startswith("export_")
+    if body.format and body.format != t.format and not export:
         raise HTTPException(status_code=422, detail=f"{t.name} is produced as {t.format.upper()} only.")
     module = body.params.module or None
     if t.needs_module and not module:
@@ -325,8 +332,21 @@ async def _validated(body: ScheduleIn, db: AsyncSession, tid: str) -> dict:
     params: dict[str, Any] = {"scope": scope}
     if module:
         params["module"] = module
+    fmt = t.format
+    if export:
+        from api.services import export_centre
+
+        raw = {**body.params.model_dump(), "format": body.format or "xlsx",
+               "system": scope if scope != "latest" else None, "module": module}
+        try:
+            params = {**export_centre.clean_params(body.kind[len("export_"):], raw), "scope": scope}
+        except export_centre.ExportError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        if body.params.folder:
+            params["folder"] = True
+        fmt = params["format"]
     nxt = rh.next_run_at(body.cadence, body.time_of_day, tz, rh.utcnow(), weekday=weekday, day_of_month=dom)
-    return {"name": body.name.strip(), "kind": body.kind, "format": t.format, "params": params,
+    return {"name": body.name.strip(), "kind": body.kind, "format": fmt, "params": params,
             "cadence": body.cadence, "time_of_day": body.time_of_day, "weekday": weekday, "day_of_month": dom,
             "timezone": tz, "users": users, "channels": channels, "enabled": body.enabled, "next": nxt}
 
@@ -494,3 +514,67 @@ async def run_schedule_now(schedule_id: str, request: Request, db: AsyncSession 
         logger.error("run now not queued (%s)", type(e).__name__)
         raise HTTPException(status_code=503, detail="The report worker is not reachable. Try again shortly.")
     return RunQueued(queued=True, due_at=due)
+
+
+# ── export centre ────────────────────────────────────────────────────────────
+
+class ExportIn(BaseModel):
+    dataset: str = Field(..., max_length=40)
+    format: Literal["xlsx", "csv", "json", "pdf"] = "xlsx"
+    columns: list[str] = Field(default_factory=list, max_length=80)
+    system: Optional[str] = Field(None, max_length=64, description="A system id or 'upload'")
+    module: Optional[str] = Field(None, max_length=64)
+    run: str = Field("latest", max_length=64, description="'latest', 'all' or a run id")
+    severity: list[Literal["critical", "high", "medium", "low"]] = Field(default_factory=list, max_length=4)
+    split: Literal["none", "module", "severity", "run"] = "none"
+
+
+class ExportQueued(BaseModel):
+    job_id: str
+
+
+@router.get("/exports/options")
+async def export_options() -> dict:
+    """The datasets the export centre can write, with their columns and which filters apply."""
+    from api.services import export_centre
+
+    return {"datasets": export_centre.options(), "formats": list(export_centre.FORMATS),
+            "splits": list(export_centre.SPLITS), "severities": list(export_centre.SEVERITIES)}
+
+
+def _enqueue_export(tid: str, job_id: str, dataset: str, params: dict, uid: Optional[str],
+                    email: Optional[str]) -> None:
+    from workers.tasks.export_centre import run_export
+
+    run_export.delay(tid, job_id, dataset, params, uid, email)
+
+
+@router.post("/exports", response_model=ExportQueued, status_code=202)
+async def start_export(body: ExportIn, request: Request, db: AsyncSession = Depends(get_db),
+                       tenant: Tenant = Depends(get_tenant)) -> ExportQueued:
+    """Queue one export on the worker. Progress arrives on the jobs stream (kind ``export``); the
+    finished file lands in the report history, where it can be downloaded again."""
+    from api.routes.reports import _audit_export
+    from api.services import export_centre
+    from api.services.jobs import start_job
+
+    tid = await _rls(db, tenant)
+    if body.run not in ("latest", "all"):
+        body.run = _parse_id(body.run, "Run")
+    if body.system and body.system != "upload":
+        body.system = _parse_id(body.system, "System")
+    try:
+        params = export_centre.clean_params(body.dataset, body.model_dump(exclude={"dataset"}))
+    except export_centre.ExportError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    job_id = str(uuid.uuid4())
+    name = export_centre.DATASETS[body.dataset].name
+    await asyncio.to_thread(start_job, tid, job_id, "export", f"{name} export", status="queued", dataset=body.dataset)
+    try:
+        _enqueue_export(tid, job_id, body.dataset, params, await _actor(request, db, tid),
+                        getattr(request.state, "local_user_email", None))
+    except Exception as e:
+        logger.error("export not queued (%s)", type(e).__name__)
+        raise HTTPException(status_code=503, detail="The report worker is not reachable. Try again shortly.")
+    await _audit_export(request, tenant, f"export_{body.dataset}", None, body.module)
+    return ExportQueued(job_id=job_id)

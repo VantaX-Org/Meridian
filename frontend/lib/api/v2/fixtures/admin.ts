@@ -459,6 +459,20 @@ function scheduleOptions() {
   };
 }
 
+/** GET /reports/exports/options, two of the export centre's datasets (api/services/export_centre.py). */
+function exportOptions() {
+  const col = (key: string, header: string) => ({ key, header });
+  return {
+    datasets: [
+      { id: "findings", name: "Findings by rule", filters: ["system", "module", "run", "severity"], pdf: false, columns: [col("module", "Object"), col("module_text", "Object description"), col("rule_id", "Rule"), col("rule_text", "Rule description"), col("severity", "Severity"), col("failed", "Records failing")] },
+      { id: "rule_catalogue", name: "Rule catalogue", filters: ["module", "severity"], pdf: false, columns: [col("module", "Object"), col("rule_id", "Rule"), col("rule_text", "Rule description"), col("severity", "Severity")] },
+    ],
+    formats: ["xlsx", "csv", "json", "pdf"],
+    splits: ["none", "module", "severity", "run"],
+    severities: ["critical", "high", "medium", "low"],
+  };
+}
+
 let pilotKnown = 0;
 /** The self-tuning proposals (GET /rule-tuning): MM228 false positives concentrate on plant 1000 and, from the stored context, material type DIEN. A draft marks it pending. */
 let tunedDraft: number | null = null;
@@ -639,6 +653,7 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
   }
   if (path === "/reports/schedules") return clone(s.schedules);
   if (path === "/reports/schedules/options") return scheduleOptions();
+  if (path === "/reports/exports/options") return exportOptions();
   if (path === "/migration/waves") return { waves: clone(s.waves) };
   const wc = /^\/migration\/waves\/([^/]+)\/cockpit$/.exec(path);
   if (wc) {
@@ -966,6 +981,7 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     s.history = s.history.filter((h) => h.id !== decodeURIComponent(hist[1]));
     return undefined;
   }
+  if (method === "POST" && path === "/reports/exports") return { job_id: nextId("job") };
   if (method === "POST" && path === "/reports/schedules") {
     const i = b as unknown as ReportScheduleInput;
     const sch = mkSchedule(nextId("sch"), i, { last: null, lastAt: null, next: "2026-10-27T05:00:00Z" });

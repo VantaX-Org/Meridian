@@ -14,6 +14,7 @@ import { useToast } from "../Toast";
 import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Configuration: the SAP configuration Meridian reads back out of the transactions of the latest run. The process
@@ -161,7 +162,7 @@ export function Config() {
         {kind && KIND_HINT[kind] && shown !== findings ? <p className="m2-meta">{KIND_HINT[kind]()}</p> : null}
         {findings.length === 0 ? <EmptyFrame>{t("The configuration matches how the system is used.")}</EmptyFrame> : (
           <ScrollFrame label={t("Findings table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Severity")}</th>
@@ -188,7 +189,7 @@ export function Config() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -241,7 +242,7 @@ export function Config() {
           <EmptyFrame>{t("No setting changed since the last run.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Changes table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Change")}</th>
@@ -262,7 +263,7 @@ export function Config() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>

@@ -18,6 +18,7 @@ import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { WorkTabs } from "./WorkTabs";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Work analytics: how fast the steward work list is being worked down (api/routes/work_analytics.py). Every figure is
@@ -162,13 +163,13 @@ export function Section<T>({ q, title, meta, testId, children }: { q: { isPendin
 export function Table({ title, head, children }: { title: string; head: string[]; children: ReactNode }) {
   return (
     <ScrollFrame label={title}>
-      <table className="m2-tbl m2-cards">
+      <TableExport><table className="m2-tbl m2-cards">
         <caption className="m2-sr">{title}</caption>
         <thead>
           <tr>{head.map((h) => <th key={h} scope="col">{h}</th>)}</tr>
         </thead>
         <tbody>{children}</tbody>
-      </table>
+      </table></TableExport>
     </ScrollFrame>
   );
 }

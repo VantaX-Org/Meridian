@@ -12,6 +12,7 @@ const DOING: Record<JobKind, string> = {
   get upload() { return t("Checking the upload of"); },
   get simulation() { return t("Simulating fixes for"); },
   get process_discovery() { return t("Discovering processes in"); },
+  get export() { return t("Exporting"); },
 };
 
 /** Noun, for tables and the inspector title. */
@@ -23,6 +24,7 @@ export const JOB_KIND_LABEL: Record<JobKind, string> = {
   get upload() { return t("Upload"); },
   get simulation() { return t("Simulation"); },
   get process_discovery() { return t("Process discovery"); },
+  get export() { return t("Export"); },
 };
 
 export const JOB_STATUS_LABEL: Record<Job["status"], string> = { get queued() { return t("Queued"); }, get running() { return t("Running"); }, get completed() { return t("Done"); }, get failed() { return t("Failed"); }, get cancelled() { return t("Cancelled"); } };

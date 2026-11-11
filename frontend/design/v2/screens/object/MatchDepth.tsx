@@ -11,6 +11,7 @@ import { int } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { Mono, Skeleton } from "../../parts";
 import { ResultFrame, useOutcome } from "../../inspector/shared";
+import { TableExport } from "@/design/v2/TableExport";
 
 /** What each match comparator does to the two values before it scores them (api/services/merge_explain.py). */
 export const COMPARATOR_LABEL: Record<string, string> = {
@@ -112,7 +113,7 @@ export function MatchProfile({ module }: { module: string }) {
           </li>
         ))}
       </ul>
-      <table className="m2-tbl m2-ftbl" aria-label={t("Rule weights learned from steward decisions")}>
+      <TableExport><table className="m2-tbl m2-ftbl" aria-label={t("Rule weights learned from steward decisions")}>
         <thead>
           <tr>
             <th scope="col">{t("Field")}</th>
@@ -138,7 +139,7 @@ export function MatchProfile({ module }: { module: string }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
       <p className="m2-prov">
         {t("The bars show how often a field agrees on pairs stewards accepted (dark) and rejected (light). A field that agrees on both separates nothing and earns little weight. Evidence weight is log2 of the two shares.")}
       </p>
@@ -206,7 +207,7 @@ export function ConsolidationPackSection({ module }: { module: string }) {
       {p.rows.length === 0 ? (
         <p className="m2-rp m2-meta">{t("No record has been merged away yet. When a steward merges a pair, the record that does not survive is listed here with what to set in SAP.")}</p>
       ) : (
-        <table className="m2-tbl m2-ftbl" aria-label={t("Merged-away records and their survivors")}>
+        <TableExport><table className="m2-tbl m2-ftbl" aria-label={t("Merged-away records and their survivors")}>
           <thead>
             <tr>
               <th scope="col">{t("Merged-away record")}</th>
@@ -227,7 +228,7 @@ export function ConsolidationPackSection({ module }: { module: string }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       )}
       <div className="m2-adm-acts" aria-label={t("Download the consolidation pack")}>
         <button type="button" className="m2-btn m2-sm" disabled={pending !== null || p.rows.length === 0} onClick={() => download("xlsx")}>{t("Download Excel")}</button>

@@ -20,6 +20,7 @@ import { Consequence, FixHead, FlowSteps, MoreDetail, ObjectRunChip } from "../F
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { Fld } from "../admin/kit";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Cleansing: what the cleaning engine proposed, what was applied to SAP and what was undone. The weekly task stores a
@@ -177,7 +178,7 @@ export function Cleansing() {
           <EmptyFrame>{t("No decision has been recorded yet.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Audit trail table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("When")}</th>
@@ -198,7 +199,7 @@ export function Cleansing() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -254,7 +255,7 @@ function Rollbacks({ query }: { query: ReturnType<typeof useCleaning<{ items: Cl
         <EmptyFrame>{t("No applied change is waiting out its rollback window.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Applied changes table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Record")}</th>
@@ -291,7 +292,7 @@ function Rollbacks({ query }: { query: ReturnType<typeof useCleaning<{ items: Cl
                 );
               })}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>
@@ -361,7 +362,7 @@ function Proposals() {
           <EmptyFrame>{t("No proposal is waiting for a decision. New proposals appear after the next cleansing task has run.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Proposals table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("What it does")}</th>
@@ -403,7 +404,7 @@ function Proposals() {
                   ];
                 })}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -418,7 +419,7 @@ function Proposals() {
           <EmptyFrame>{t("No approved proposal is waiting to be loaded.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Approved proposals table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Record")}</th>
@@ -447,7 +448,7 @@ function Proposals() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -509,7 +510,7 @@ function Duplicates() {
         <EmptyFrame>{t("No duplicate pair is waiting to be merged.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Duplicate records table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Records")}</th>
@@ -541,7 +542,7 @@ function Duplicates() {
                 ) : null,
               ])}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>
@@ -572,7 +573,7 @@ function Merge({ pair, onDone }: { pair: DedupCandidate; onDone: () => void }) {
     <div data-testid={`cleansing-dedup-merge-${pair.id}`}>
       <Consequence>{t("Merging keeps the record you pick as the survivor and folds the other into it.")}</Consequence>
       {rows.length ? (
-        <table className="m2-tbl">
+        <TableExport><table className="m2-tbl">
           <thead>
             <tr>
               <th scope="col">{t("Field")}</th>
@@ -591,7 +592,7 @@ function Merge({ pair, onDone }: { pair: DedupCandidate; onDone: () => void }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       ) : <Dash why={t("The cleaning queue holds no data for these records.")} />}
       {can("approve") ? (
         <form

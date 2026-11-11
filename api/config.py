@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     licence_file: Optional[str] = None
     licence_file_path: Optional[str] = None
     licence_secret: Optional[str] = None
+    # Scheduled exports with "save to the server folder" are written to <dir>/<tenant id>/<file name>
+    # (REPORT_EXPORT_DIR). Unset: such schedules note that no folder is configured and still deliver.
+    report_export_dir: Optional[str] = None
     # Legacy signatures are opt-in (default off, DR-3). Set MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES=true only for
     # an installation that still holds an old licence: it then also accepts the old HMAC-signed offline licence
     # file (LICENCE_SECRET), the old RS256 offline token (MERIDIAN_OFFLINE_PUBLIC_KEY) and the old RSA-signed

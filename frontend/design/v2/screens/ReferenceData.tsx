@@ -20,6 +20,7 @@ import { Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Reference data: the check tables Meridian already extracts (country, unit of measure, material group, payment terms,
@@ -193,7 +194,7 @@ function ListDetail({ systemId, listId, versionId, onVersion }: { systemId: stri
       <Panel title={t("Source codes")} meta={t("Every code of the source list with the target it goes to.")} testId="ref-codes">
         {l.source.length === 0 ? <EmptyFrame>{t("No codes have been extracted for this list yet.")}</EmptyFrame> : (
           <ScrollFrame label={t("Source codes, scrollable")}>
-            <table className="m2-tbl">
+            <TableExport><table className="m2-tbl">
               <caption className="m2-sr">{t("Source codes and their targets")}</caption>
               <thead><tr><th scope="col">{t("Source code")}</th><th scope="col">{t("Target code")}</th><th scope="col">{t("Result")}</th></tr></thead>
               <tbody>
@@ -209,14 +210,14 @@ function ListDetail({ systemId, listId, versionId, onVersion }: { systemId: stri
                   );
                 })}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
       <Panel title={t("Mappings")} meta={t("A mapping takes effect when a person other than the proposer approves it.")} testId="ref-mappings">
         {l.mappings.length === 0 ? <EmptyFrame>{t("No mapping has been proposed for this list.")}</EmptyFrame> : (
           <ScrollFrame label={t("Mappings, scrollable")}>
-            <table className="m2-tbl">
+            <TableExport><table className="m2-tbl">
               <caption className="m2-sr">{t("Mappings and their approval")}</caption>
               <thead><tr><th scope="col">{t("Source code")}</th><th scope="col">{t("Target code")}</th><th scope="col">{t("Field")}</th><th scope="col">{t("Result")}</th><th scope="col">{t("Decision")}</th></tr></thead>
               <tbody>
@@ -230,7 +231,7 @@ function ListDetail({ systemId, listId, versionId, onVersion }: { systemId: stri
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
         <Propose list={l} systemId={systemId} />

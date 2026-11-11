@@ -18,6 +18,7 @@ import { ToolGrid } from "../GridTools";
 import { DiagnosticsBlock } from "./enterprise";
 import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
+import { TableExport } from "@/design/v2/TableExport";
 
 const JOB_TONE: Record<Job["status"], "go" | "at-risk" | "no-go" | "neutral"> = { queued: "neutral", running: "at-risk", completed: "go", failed: "no-go", cancelled: "neutral" };
 const DOCTOR_TONE = { ok: "go", warn: "at-risk", fail: "no-go" } as const;
@@ -124,7 +125,7 @@ function Doctor() {
             <>
               <p className="m2-prov" role="status" style={{ marginTop: 0 }}>{t("{count} passing{value}{value2}. Last checked {last_checked}.", { count: items.length - warn - fail, value: warn ? t(", {warn} warning", { warn }) : "", value2: fail ? t(", {fail} failing", { fail }) : "", last_checked: formatDate(d.last_checked, "datetime") })}</p>
               <div className="m2-frame" tabIndex={0}>
-                <table className="m2-tbl" aria-label={t("Health checks")}>
+                <TableExport><table className="m2-tbl" aria-label={t("Health checks")}>
                   <thead>
                     <tr>
                       <th scope="col">{t("Check")}</th>
@@ -141,7 +142,7 @@ function Doctor() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></TableExport>
               </div>
               <div className="m2-adm-acts">
                 <button type="button" className="m2-btn" onClick={() => void q.refetch()}>

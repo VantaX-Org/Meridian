@@ -30,6 +30,7 @@ import { CcBanner, CcPage } from "./cc-parts";
 import { WhatIf } from "./WhatIf";
 import { RunSteps } from "./RunSteps";
 import "../basis.css";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * The shape of a run in two figures: how its objects spread over the measured score, against the verdict bands, and
@@ -173,7 +174,7 @@ export function CompareControl({ id, runs: all, system }: { id: string; runs: re
 function ObjectTable({ cells, labelOf, systemName, run }: { cells: LandscapeCell[]; labelOf: (m: string) => string; systemName: string; run: string }) {
   return (
     <div className="m2-frame">
-      <table className="m2-tbl" data-testid="run-objects">
+      <TableExport><table className="m2-tbl" data-testid="run-objects">
         <thead>
           <tr>
             <th scope="col">{tr("Object")}</th>
@@ -218,7 +219,7 @@ function ObjectTable({ cells, labelOf, systemName, run }: { cells: LandscapeCell
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
     </div>
   );
 }
@@ -240,7 +241,7 @@ export function RunJobs({ runId }: { runId: string }) {
         <EmptyFrame>{tr("No job record is kept for this run. The registry holds jobs for 7 days, and the 200 most recent.")}</EmptyFrame>
       ) : (
         <div className="m2-frame">
-          <table className="m2-tbl" data-testid="run-jobs">
+          <TableExport><table className="m2-tbl" data-testid="run-jobs">
             <thead>
               <tr>
                 <th scope="col">{tr("Job")}</th>
@@ -271,7 +272,7 @@ export function RunJobs({ runId }: { runId: string }) {
                 );
               })}
             </tbody>
-          </table>
+          </table></TableExport>
         </div>
       )}
     </section>

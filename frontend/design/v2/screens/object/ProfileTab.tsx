@@ -14,6 +14,7 @@ import { ResultFrame, useOutcome } from "../../inspector/shared";
 import { useToast } from "../../Toast";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../../parts";
 import { ScrollFrame } from "./ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 const SEVERITIES: Severity[] = ["critical", "high", "medium", "low"];
 const SEVERITY_WORD: Record<Severity, () => string> = { critical: () => t("Critical"), high: () => t("High"), medium: () => t("Medium"), low: () => t("Low") };
@@ -52,7 +53,7 @@ function TableBlock({ tp }: { tp: TableProfile }) {
         </span>
       </div>
       <ScrollFrame label={t("Fields of {table}, scrollable", { table: tp.table })}>
-        <table className="m2-tbl m2-ftbl" aria-label={t("Field profile of {table}", { table: tp.table })}>
+        <TableExport><table className="m2-tbl m2-ftbl" aria-label={t("Field profile of {table}", { table: tp.table })}>
           <thead>
             <tr>
               <th scope="col">{t("Field")}</th>
@@ -80,7 +81,7 @@ function TableBlock({ tp }: { tp: TableProfile }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </ScrollFrame>
     </section>
   );
@@ -113,7 +114,7 @@ function Dependencies({ deps, module, texts, versionId }: { deps: Dependency[]; 
         <EmptyFrame>{t("No dependency between the fields of this object held in enough records to propose a rule.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Mined dependencies, scrollable")}>
-          <table className="m2-tbl" aria-label={t("Mined dependencies")}>
+          <TableExport><table className="m2-tbl" aria-label={t("Mined dependencies")}>
             <thead>
               <tr>
                 <th scope="col">{t("When this field is set")}</th>
@@ -164,7 +165,7 @@ function Dependencies({ deps, module, texts, versionId }: { deps: Dependency[]; 
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
       {outcome ? <ResultFrame outcome={outcome} /> : null}

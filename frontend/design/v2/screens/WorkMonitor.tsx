@@ -16,6 +16,7 @@ import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
 import "../approvals.css";
+import { TableExport } from "@/design/v2/TableExport";
 
 /** Post-clean monitoring: per system, the records that failed a rule they passed at the last run, and what has been fixed since. */
 export function WorkMonitor() {
@@ -74,7 +75,7 @@ export function WorkMonitor() {
             />
             {back > 0 ? <Consequence>{t("Opening the work list changes nothing. It shows the records to fix.")}</Consequence> : null}
             <ScrollFrame label={t("Monitor")}>
-            <table className="m2-tbl" data-testid="monitor-table">
+            <TableExport><table className="m2-tbl" data-testid="monitor-table">
               <thead>
                 <tr>
                   <th>{t("System")}</th>
@@ -91,7 +92,7 @@ export function WorkMonitor() {
                   <Row key={i.lineage ?? i.scope} i={i} />
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
             </ScrollFrame>
             <MoreDetail title={t("Weekly trend, drift by rule and still clean by batch")}>
               <Trend />
@@ -172,7 +173,7 @@ function Trend() {
       {rules.length ? (
         <Panel title={t("Drift by rule")} meta={t("Records failing again, before and after the last clean")} testId="drift-panel">
         <ScrollFrame label={t("Drift by rule")}>
-        <table className="m2-tbl" data-testid="drift-table">
+        <TableExport><table className="m2-tbl" data-testid="drift-table">
           <caption className="m2-sr">{t("Drift by rule")}</caption>
           <thead>
             <tr>
@@ -201,14 +202,14 @@ function Trend() {
               );
             })}
           </tbody>
-        </table>
+        </table></TableExport>
         </ScrollFrame>
         </Panel>
       ) : null}
       {d?.batches.length ? (
         <Panel title={t("Still clean, by batch")} meta={t("Of the records each batch fixed, the share that has not failed again")} testId="cohort-panel">
         <ScrollFrame label={t("Still clean, by batch")}>
-        <table className="m2-tbl" data-testid="cohort-table">
+        <TableExport><table className="m2-tbl" data-testid="cohort-table">
           <caption className="m2-sr">{t("Still clean, by batch")}</caption>
           <thead>
             <tr>
@@ -228,7 +229,7 @@ function Trend() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
         </ScrollFrame>
         </Panel>
       ) : null}

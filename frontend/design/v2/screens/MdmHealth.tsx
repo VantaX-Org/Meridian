@@ -12,6 +12,7 @@ import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * MDM health: the daily snapshot of how well master data is governed. The score is the weighted sum of four shares
@@ -92,7 +93,7 @@ export function MdmHealth() {
       />
       <Panel title={t("What makes the score")} meta={t("Four shares, weighted")} testId="mdm-parts">
         <ScrollFrame label={t("What makes the score")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <caption className="m2-sr">{t("What makes the score")}</caption>
             <thead>
               <tr>
@@ -119,7 +120,7 @@ export function MdmHealth() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       </Panel>
       <Disclose title={t("Trends over time")}>

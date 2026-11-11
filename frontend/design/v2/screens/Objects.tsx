@@ -15,6 +15,7 @@ import { CodeWithText, InactiveChip, Lede, PrimaryAction } from "../RunParts";
 import { Ruler } from "../Ruler";
 import { CanvasSkeleton, Dash, EmptyFrame, ErrorFrame, PageTitle, V2Link } from "../parts";
 import { dimsOf } from "../shell/ObjectsTree";
+import { TableExport } from "@/design/v2/TableExport";
 
 /** The lowest measured score on the board, with its system, so the primary action has a target. */
 function worst(L: Landscape): { cell: LandscapeCell; system: LandscapeSystem; label: string } | null {
@@ -44,7 +45,7 @@ function SystemBlock({ L, system, pinned }: { L: Landscape; system: LandscapeSys
           {system.state === "extracted" ? t("{system} is extracted but no run has scored it yet. Start an analysis from the systems page.", { system: system.name }) : t("{system} has no finished run. Extract it, then run an analysis.", { system: system.name })}
         </EmptyFrame>
       ) : (
-        <table className="m2-tbl m2-ob-table">
+        <TableExport><table className="m2-tbl m2-ob-table">
           <caption className="m2-sr">{t("Objects of {system}, lowest measured score first", { system: system.name })}</caption>
           <thead>
             <tr>
@@ -95,7 +96,7 @@ function SystemBlock({ L, system, pinned }: { L: Landscape; system: LandscapeSys
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       )}
     </section>
   );

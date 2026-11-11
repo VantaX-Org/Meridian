@@ -7,7 +7,7 @@ import { v2Get, v2Send } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { createShareLink, exportGrid } from "@/lib/api/v2/roles";
 import { failureText } from "@/lib/v2/errors";
-import { columnsFromHidden, downloadGridCsv, exportRows, hiddenColumns, hiddenFromColumns, visibleColumns, writeHidden, type ToolColumn } from "@/lib/v2/grid-export";
+import { columnsFromHidden, downloadGridCsv, exportColumns, exportRows, hiddenColumns, hiddenFromColumns, visibleColumns, writeHidden, type ToolColumn } from "@/lib/v2/grid-export";
 import { useV2Session } from "@/lib/v2/hooks";
 import { Dialog, copyText } from "./admin/kit";
 import { Grid, type GridProps } from "./Grid";
@@ -106,8 +106,8 @@ export function GridTools<T>({ gridId, route, title, columns, rows, filters, onA
   const views = (viewsQ.data?.views ?? []).filter((v) => !v.builtin || onApplyFilters);
   const doExport = async () => {
     try {
-      const shown = visibleColumns(gridId, columns);
       const every = allRows ? await allRows() : rows;
+      const shown = exportColumns(every, visibleColumns(gridId, columns));
       const name = await exportGrid({ title, route: key, columns: shown.map((c) => ({ key: c.id, header: c.header, kind: c.numeric ? "int" : "text" })), rows: exportRows(every, shown), filters, total: every.length });
       toast.show(t("Exported {rowsCount} rows to {name}", { rowsCount: int(every.length), name }));
     } catch (e) {
@@ -150,9 +150,13 @@ export function GridTools<T>({ gridId, route, title, columns, rows, filters, onA
       : [{ kind: "item", id: "none", label: t("No saved views yet"), disabled: true } as MenuEntry]),
     { kind: "separator" },
     { kind: "item", id: "save", label: t("Save these columns as a view…"), disabled: readOnly, onSelect: () => setSaving(true) },
-    { kind: "item", id: "share", label: t("Share this page as a link…"), disabled: readOnly || !session.can("export"), onSelect: () => void share() },
-    { kind: "item", id: "export", label: t("Export to Excel"), sub: allRows ? t("The columns on screen, every row of the filter") : t("The columns on screen"), disabled: !session.can("export"), onSelect: () => void doExport() },
-    { kind: "item", id: "export-csv", label: t("Export to CSV"), sub: allRows ? t("The columns on screen, every row of the filter") : t("The columns and rows on screen"), disabled: !session.can("export"), onSelect: () => void doCsv() },
+    ...(session.can("export")
+      ? ([
+          { kind: "item", id: "share", label: t("Share this page as a link…"), disabled: readOnly, onSelect: () => void share() },
+          { kind: "item", id: "export", label: t("Export to Excel"), sub: allRows ? t("The columns on screen, every row of the filter") : t("The columns on screen"), onSelect: () => void doExport() },
+          { kind: "item", id: "export-csv", label: t("Export to CSV"), sub: allRows ? t("The columns on screen, every row of the filter") : t("The columns and rows on screen"), onSelect: () => void doCsv() },
+        ] as MenuEntry[])
+      : []),
   ];
   return (
     <span className="m2-gtools" data-testid={`grid-tools-${gridId}`}>

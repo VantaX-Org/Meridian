@@ -6,6 +6,7 @@ import { t } from "@/lib/v2/i18n";
 import { useVersionChanges } from "@/lib/v2/step9-queries";
 import { int } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../../parts";
+import { TableExport } from "@/design/v2/TableExport";
 
 const modeWord = (mode: string): string => (mode === "change_date" ? t("Changes by date") : mode === "full" ? t("Read in full") : mode);
 
@@ -45,7 +46,7 @@ export function ChangeLog({ versionId, when }: { versionId: string; when: string
                 : t("Full download: {read} rows read, {changed} changed since the one before.", { read: int(q.data.totals.rows_read), changed: int(q.data.totals.changed) })}
           </p>
           <div className="m2-frame" tabIndex={0} role="region" aria-label={t("Change log, scrollable")}>
-            <table className="m2-tbl" aria-label={t("Change log by table")}>
+            <TableExport><table className="m2-tbl" aria-label={t("Change log by table")}>
               <thead>
                 <tr>
                   <th scope="col">{t("Table")}</th>
@@ -84,7 +85,7 @@ export function ChangeLog({ versionId, when }: { versionId: string; when: string
                   <td className="m2-r">{cell(q.data.totals.unchanged)}</td>
                 </tr>
               </tbody>
-            </table>
+            </table></TableExport>
           </div>
           <p className="m2-prov">{t("Counts only, never values. A table with SAP change dates is re-read from the last download's date and merged; any other table is read in full. Each is compared with the previous download row by row.")}</p>
         </>

@@ -20,6 +20,7 @@ import { labelText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import type { Verdict } from "@/lib/api/v2/types";
 import { CcBanner, CcHBars, CcPage, type CcBarRow } from "./cc-parts";
+import { ExportCentre } from "./ExportCentre";
 
 const SOURCE: Record<ReportFile["source"], string> = { get download() { return t("Downloaded"); }, get schedule() { return t("Scheduled"); }, get run_now() { return t("On request"); } };
 
@@ -206,6 +207,11 @@ export function ReportsCanvas() {
           compact
         />
       </section>
+      {exportAllowed ? (
+        <Disclose title={t("Export centre")} hint={t("Findings, failing records, proposals, changes, scores, rules and the audit log in any format.")}>
+          <ExportCentre />
+        </Disclose>
+      ) : null}
       <Disclose title={t("Schedules")} hint={t("Each builds a report from the latest run and sends it.")}>
       <section className="m2-sec" aria-label={t("Schedules")}>
         <div className="m2-sechead">

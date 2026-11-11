@@ -18,6 +18,7 @@ import { PeopleActions } from "./PeopleActions";
 import { t } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { TableExport } from "@/design/v2/TableExport";
 
 const n = (x: number): string => whole(x);
 const slaNote = (): string => t("Share of their open work that is not yet past its due date.");
@@ -235,7 +236,7 @@ export function PeopleCanvas() {
         </ul>
       ) : (
         <div className="m2-people m2-frame" style={{ overflowX: "auto" }}>
-          <table className="m2-tbl" aria-label={t("People")} data-testid="people-table">
+          <TableExport><table className="m2-tbl" aria-label={t("People")} data-testid="people-table">
             <thead>
               <tr>
                 <Head label={PEOPLE_SORT_LABEL.name} k="name" sort={sort} reverse={reverse} set={choose} />
@@ -307,7 +308,7 @@ export function PeopleCanvas() {
                 </tr>
               </tfoot>
             ) : null}
-          </table>
+          </table></TableExport>
         </div>
       )}
       <Consequence>{t("Remind sends the person a note about their overdue work. It does not reassign anything.")}</Consequence>

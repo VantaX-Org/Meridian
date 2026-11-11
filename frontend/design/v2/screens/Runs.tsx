@@ -24,6 +24,7 @@ import { ResultFrame, useOutcome } from "../inspector/shared";
 import { duration } from "../shell/StatusStrip";
 import { t } from "@/lib/v2/i18n";
 import { RunForecast } from "./step10/Prediction";
+import { TableExport } from "@/design/v2/TableExport";
 
 const RUN_STATUS: Record<string, { word: string; mark: "go" | "no-go" | null }> = {
   complete: { get word() { return t("Complete"); }, mark: "go" },
@@ -147,7 +148,7 @@ function LedgerGroup({ name, inactive, rows, meta }: { name: string; inactive: b
           {failed ? t("{rowsCount} {rowsCount, plural, one {run} other {runs}}, {failed} failed", { rowsCount: rows.length, failed }) : t("{rowsCount} {rowsCount, plural, one {run} other {runs}}", { rowsCount: rows.length })}
         </span>
       </h3>
-      <table className="m2-tbl" data-testid="runs-table">
+      <TableExport><table className="m2-tbl" data-testid="runs-table">
         <thead>
           <tr>
             <th scope="col">{t("Run")}</th>
@@ -208,7 +209,7 @@ function LedgerGroup({ name, inactive, rows, meta }: { name: string; inactive: b
             );
           })}
         </tbody>
-      </table>
+      </table></TableExport>
       {chartRuns.length > 1 ? (
         <div className="m2-ledger-chart" data-testid="runs-group-chart">
           <p className="m2-prov">{t("Where each {name} run falls in time. The table above lists the same runs. Choose a square to open that run.", { name })}</p>
@@ -268,7 +269,7 @@ function JobsTable({ kind, status }: { kind: string; status: string }) {
   const sys = (j: Job) => land.data?.systems.find((s) => s.id === j.system_id)?.name;
   return (
     <div className="m2-frame">
-      <table className="m2-tbl" data-testid="jobs-table">
+      <TableExport><table className="m2-tbl" data-testid="jobs-table">
         <thead>
           <tr>
             <th scope="col">{t("Job")}</th>
@@ -309,7 +310,7 @@ function JobsTable({ kind, status }: { kind: string; status: string }) {
             );
           })}
         </tbody>
-      </table>
+      </table></TableExport>
     </div>
   );
 }

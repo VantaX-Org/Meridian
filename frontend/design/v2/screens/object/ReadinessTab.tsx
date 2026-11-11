@@ -16,6 +16,7 @@ import { objectHref } from "@/lib/v2/people";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
 import { ObjectMoney } from "../step9/Money";
 import { t, tn } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 const VERDICT: Record<CellVerdict, Verdict> = { go: "go", at_risk: "at-risk", no_go: "no-go" };
 
@@ -87,7 +88,7 @@ function ByObject({ module, waves }: { module: string; waves: Set<string> }) {
   return (
     <section aria-label={t("Readiness by object")} className="m2-sec" data-testid="readiness-by-object">
       <h2 className="m2-h2">{t("Readiness by object")}</h2>
-      <table className="m2-tbl">
+      <TableExport><table className="m2-tbl">
         <thead>
           <tr>
             <th scope="col">{t("Object")}</th>
@@ -116,7 +117,7 @@ function ByObject({ module, waves }: { module: string; waves: Set<string> }) {
             );
           })}
         </tbody>
-      </table>
+      </table></TableExport>
     </section>
   );
 }
@@ -138,7 +139,7 @@ function Blockers({ results, module, names }: { results: ImpactResult[]; module:
   return (
     <div data-testid="readiness-blockers">
       <h3 className="m2-h3"><span>{t("Blockers")}</span><span className="m2-meta">{rows.length}</span></h3>
-      <table className="m2-tbl">
+      <TableExport><table className="m2-tbl">
         <thead>
           <tr>
             <th scope="col">{t("Rule")}</th>
@@ -159,7 +160,7 @@ function Blockers({ results, module, names }: { results: ImpactResult[]; module:
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
     </div>
   );
 }
@@ -213,7 +214,7 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
           </EmptyFrame>
         ) : (
           <ScrollFrame label={t("Waves, scrollable")}>
-            <table className="m2-tbl" aria-label={t("Waves that include {label}", { label })}>
+            <TableExport><table className="m2-tbl" aria-label={t("Waves that include {label}", { label })}>
               <thead>
                 <tr>
                   <th scope="col">{t("Wave")}</th>
@@ -241,7 +242,7 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
 </ScrollFrame>
         )}
         {cells.length > 0 && !scored ? (

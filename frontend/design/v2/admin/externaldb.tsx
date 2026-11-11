@@ -16,6 +16,7 @@ import { ToolGrid } from "../GridTools";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { Coded, EmptyFrame, ErrorFrame, Mono } from "../parts";
 import { AdminPage, Block, Confirm, Fld, Kv, NeedsPermission, Note, StatusWord, useCan } from "./kit";
+import { TableExport } from "@/design/v2/TableExport";
 
 const ENGINES = (): Record<string, string> => ({ postgres: t("PostgreSQL") });
 const SSL = (): Record<SslMode, string> => ({
@@ -187,7 +188,7 @@ function Source({ c, max, onGone }: { c: DbConnection; max: number; onGone: () =
       {preview ? (
         <Block title={t("Map the columns")} hint={t("Name the standard field each column becomes. Leave a box empty to keep the column name.")}>
           <div className="m2-frame" tabIndex={0}>
-            <table className="m2-tbl" aria-label={t("Columns of the source")}>
+            <TableExport><table className="m2-tbl" aria-label={t("Columns of the source")}>
               <thead>
                 <tr>
                   <th scope="col">{t("Column in the database")}</th>
@@ -206,7 +207,7 @@ function Source({ c, max, onGone }: { c: DbConnection; max: number; onGone: () =
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </div>
           <div className="m2-fgrid">
             <Fld label={t("Check against")}>

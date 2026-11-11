@@ -26,6 +26,7 @@ import { int } from "@/lib/v2/score";
 import { RunForecast } from "../screens/step10/Prediction";
 import { getTriggerModules, triggerModules, type ModuleStatus } from "@/lib/api/v2/syncTrigger";
 import { moduleText } from "@/lib/v2/labels";
+import { TableExport } from "@/design/v2/TableExport";
 
 const list = (s: string): string[] | undefined => {
   const v = s.split(/[\s,;]+/).filter(Boolean);
@@ -624,7 +625,7 @@ function Recheck() {
         <EmptyFrame>{t("No object has a stored extraction to re-check yet.")}</EmptyFrame>
       ) : (
         <div className="m2-frame" tabIndex={0}>
-          <table className="m2-tbl" aria-label={t("Objects to re-check")}>
+          <TableExport><table className="m2-tbl" aria-label={t("Objects to re-check")}>
             <thead>
               <tr>
                 <th scope="col" />
@@ -647,7 +648,7 @@ function Recheck() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </div>
       )}</Loaded>
       {never > 0 ? <p className="m2-prov">{t("{n, plural, one {# more object has} other {# more objects have}} no stored extraction. Start an extraction first.", { n: never })}</p> : null}
