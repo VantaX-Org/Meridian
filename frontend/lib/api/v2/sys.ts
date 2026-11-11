@@ -6,7 +6,7 @@
  * answers come from lib/api/v2/fixtures/sys6b.ts.
  */
 import { v2Get, v2Send } from "./client";
-import type { ExtractionPath, ReadFunction, SAPSystem, SyncProfile, SystemType, TestConnectionResponse } from "@/types/api";
+import type { ExtractionPath, ReadFunction, SAPSystem, SncQop, SyncProfile, SystemType, TestConnectionResponse } from "@/types/api";
 import type { ConfigCompare, ProposeResult } from "@/lib/api/config-pairing";
 import type { ConfigDriftEntry } from "@/lib/api/config-intelligence";
 import type { DownloadScope } from "@/lib/api/system-objects";
@@ -31,6 +31,12 @@ export interface ConnectionBody {
   token_url?: string;
   extraction_path?: ExtractionPath;
   read_function?: ReadFunction;
+  /** RFC only: the SAProuter string and SNC settings; "" clears a text field. No secret travels here. */
+  saprouter?: string;
+  snc_mode?: boolean;
+  snc_partnername?: string;
+  snc_qop?: SncQop;
+  snc_myname?: string;
   /** RFC: { password }. Cloud: { client_id, client_secret, api_key, password }. Only the secrets that were typed. */
   credentials: Record<string, string>;
 }
@@ -57,6 +63,12 @@ export interface SystemPatch {
   extraction_path?: ExtractionPath;
   /** "" clears it (the deployment's default reader). */
   read_function?: ReadFunction | "";
+  /** RFC only: the SAProuter string and SNC settings; "" clears a text field. No secret travels here. */
+  saprouter?: string;
+  snc_mode?: boolean;
+  snc_partnername?: string;
+  snc_qop?: SncQop;
+  snc_myname?: string;
 }
 
 /** POST /systems */

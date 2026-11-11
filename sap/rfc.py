@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Protocol
 
 import pandas as pd
 
-from .base import BAPICall, SAPConnectionParams, SAPConnector, SAPConnectorError
+from .base import BAPICall, SAPConnectionParams, SAPConnector, SAPConnectorError, rfc_logon_kwargs
 
 if TYPE_CHECKING:
     from .odp import ODPReader
@@ -270,13 +270,7 @@ class RFCConnector(SAPConnector):
         self._password = params.password
         self._read_setting = getattr(params, "read_function", "") or ""
         try:
-            self._conn = pyrfc.Connection(
-                ashost=params.host,
-                client=params.client,
-                user=params.user,
-                passwd=params.password,
-                sysnr=params.sysnr,
-            )
+            self._conn = pyrfc.Connection(**rfc_logon_kwargs(params))
         except Exception as e:
             safe = self._mask_password(str(e), params.password)
             self._password = ""
@@ -287,8 +281,7 @@ class RFCConnector(SAPConnector):
         # refuses for the remainder of the window it set itself.
         clear_logon_block(params)
         logger.info("RFC logon ok: %s (client %s, user %s)", params.host, params.client, params.user)
-        self._open_extra = lambda: pyrfc.Connection(ashost=params.host, client=params.client, user=params.user,
-                                                    passwd=params.password, sysnr=params.sysnr)
+        self._open_extra = lambda: pyrfc.Connection(**rfc_logon_kwargs(params))
         self._resolve_read_function()
 
     def close(self) -> None:

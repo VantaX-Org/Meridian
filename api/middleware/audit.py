@@ -125,14 +125,30 @@ def _should_audit(request: Request) -> bool:
     return True
 
 
+# Keys whose value is a secret: masked before the body reaches audit_log. "credentials" holds the SAP password and
+# the OAuth client id/secret of a system (POST/PUT /systems, the test-connection routes), so all its values go.
+_SECRET_KEY_RE = re.compile(r"(password|passwd|secret|api_?key|private_?key|(^|_)token$|^credentials$|^client_id$)",
+                            re.IGNORECASE)
+
+
+def _redact(value: Any) -> Any:
+    """``value`` with every secret-named key's value replaced by "****", at any depth."""
+    if isinstance(value, dict):
+        return {k: ("****" if value[k] not in (None, "") else value[k]) if _SECRET_KEY_RE.search(str(k))
+                else _redact(value[k]) for k in value}
+    if isinstance(value, list):
+        return [_redact(v) for v in value]
+    return value
+
+
 def _truncate_json(body: bytes | None, limit: int = 16_000) -> Any:
-    """Best-effort parse + truncate for audit storage. Never raises."""
+    """Best-effort parse + truncate + secret redaction for audit storage. Never raises."""
     if not body:
         return None
     if len(body) > limit:
         return {"_truncated": True, "bytes": len(body)}
     try:
-        return json.loads(body.decode("utf-8"))
+        return _redact(json.loads(body.decode("utf-8")))
     except Exception:
         return None
 

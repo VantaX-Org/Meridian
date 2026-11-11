@@ -58,6 +58,8 @@ The banner on top says "Health of the setup" and names the first thing that need
 
 - The first sign-in of an account that must change its password (the seeded administrator, or an account an administrator reset) goes to the password change before anything else.
 - The audit log records sign-in, failed sign-in, lockout, sign-out and password change (`auth.login`, `auth.login_failed`, `auth.lockout`, `auth.logout`, `auth.password_change`), and single sign-on (`auth.sso_login`, `auth.sso_refused`, `auth.sso_user_created`). A failed sign-in keeps the email as typed and the reason, never the password.
+- Every change the audit log records keeps the request as sent, with each secret (password, client secret, API key, token) replaced by `****`.
+- Every admin and workspace endpoint checks a permission before it runs. Exceptions need at least view to read and stricter permissions to change; balancing needs assign; scheduled reports need export; cancelling a job needs manage settings, and retrying one needs the permission of the step that started it (sync, analyse or process discovery) on that system. Comments, watches, subscriptions and your own out-of-office are open to every signed-in user; acting for someone else or listing everyone's delegations needs manage users. SCIM provisioning signs in with its own SCIM token, not a user role.
 - A signed-in request runs in the tenant its verified token names; the deployment's own tenant is set by `MERIDIAN_TENANT_ID`.
 
 ## The numbers and where they come from

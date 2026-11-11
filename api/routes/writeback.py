@@ -430,11 +430,12 @@ async def approve_writeback(
         # never fabricate a user/password (the old "WRITEBACK"/"****" literals
         # could never connect). Decrypted only here, at execution time.
         from sap import get_connector
-        from sap.base import SAPConnectionParams, SAPConnectorError
+        from sap.base import SAPConnectionParams, SAPConnectorError, rfc_route_params
 
         sys_result = await db.execute(
             text("""
-                SELECT s.client, s.sysnr, c.encrypted_password
+                SELECT s.client, s.sysnr, c.encrypted_password, s.saprouter, s.snc_mode, s.snc_partnername,
+                       s.snc_qop, s.snc_myname
                 FROM sap_systems s
                 JOIN system_credentials c ON c.system_id = s.id
                 WHERE s.tenant_id = :tid AND s.host = :host
@@ -458,6 +459,7 @@ async def approve_writeback(
                 sysnr=sys_row[1] or "",
                 user=os.getenv("SAP_RFC_USER", "RFC_USER"),
                 password=decrypt_password(tenant_id, sys_row[2]),
+                **rfc_route_params(sys_row),
             )
 
             def _apply() -> tuple[list[dict], list[str]]:
@@ -638,7 +640,8 @@ def _batch_support(items: list[dict]) -> list[dict]:
 async def _system_params(db: AsyncSession, tenant_id: str, system_id: str):
     """Connection parameters of a registered ABAP system with stored credentials, or None."""
     row = (await db.execute(text("""
-        SELECT s.host, s.client, s.sysnr, c.encrypted_password
+        SELECT s.host, s.client, s.sysnr, c.encrypted_password, s.saprouter, s.snc_mode, s.snc_partnername,
+               s.snc_qop, s.snc_myname
           FROM sap_systems s JOIN system_credentials c ON c.system_id = s.id
          WHERE s.tenant_id = :tid AND CAST(s.id AS text) = :sid
            AND s.system_type IN ('ecc', 's4hana_onprem', 'ewm')
@@ -646,10 +649,11 @@ async def _system_params(db: AsyncSession, tenant_id: str, system_id: str):
     if not row:
         return None
     from api.services.credential_store import decrypt_password
-    from sap.base import SAPConnectionParams
+    from sap.base import SAPConnectionParams, rfc_route_params
 
     return SAPConnectionParams(host=row[0], client=row[1] or "", sysnr=row[2] or "",
-                               user=os.getenv("SAP_RFC_USER", "RFC_USER"), password=decrypt_password(tenant_id, row[3]))
+                               user=os.getenv("SAP_RFC_USER", "RFC_USER"), password=decrypt_password(tenant_id, row[3]),
+                               **rfc_route_params(row))
 
 
 async def _check_vendors(db: AsyncSession, tenant_id: str, items: list[dict], support: list[dict]) -> list[str]:
