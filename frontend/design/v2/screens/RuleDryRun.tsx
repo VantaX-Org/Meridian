@@ -16,6 +16,7 @@ import { Lede, PrimaryAction } from "../RunParts";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { Consequence, Steps } from "./rules-parts";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Rule impact dry run: what enabling, editing or adding one rule would do to an object, before anyone does it. The rule
@@ -152,7 +153,7 @@ function Result({ r }: { r: ImpactResult }) {
       </Panel>
       {r.dqs ? (
         <Panel title={t("Projected object score")} meta={t("The same scoring as a run, with this rule's result swapped in.")} testId="dry-run-dqs">
-          <table className="m2-tbl">
+          <TableExport><table className="m2-tbl">
             <thead>
               <tr>
                 <th scope="col">{t("Before")}</th>
@@ -169,7 +170,7 @@ function Result({ r }: { r: ImpactResult }) {
                 <td><DeltaBar d={r.dqs.delta} /></td>
               </tr>
             </tbody>
-          </table>
+          </table></TableExport>
         </Panel>
       ) : null}
       {d ? (

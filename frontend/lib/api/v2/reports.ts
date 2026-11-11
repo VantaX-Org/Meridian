@@ -33,6 +33,43 @@ export const updateSchedule = (id: string, body: ReportScheduleInput): Promise<R
 export const deleteSchedule = (id: string): Promise<void> => v2Send("DELETE", `/reports/schedules/${enc(id)}`);
 export const runScheduleNow = (id: string): Promise<{ queued: boolean; due_at: string }> => v2Send("POST", `/reports/schedules/${enc(id)}/run`);
 
+/* ── Export centre (api/services/export_centre.py) ── */
+
+export type ExportFormat = "xlsx" | "csv" | "json" | "pdf";
+export type ExportSplit = "none" | "module" | "severity" | "run";
+export type ExportSeverity = "critical" | "high" | "medium" | "low";
+export type ExportRun = "latest" | "all";
+export interface ExportDataset {
+  id: string;
+  name: string;
+  /** Which of system, module, run and severity narrow this dataset. */
+  filters: string[];
+  /** A PDF exists (it delegates to the matching report). */
+  pdf: boolean;
+  columns: { key: string; header: string }[];
+}
+export interface ExportOptions {
+  datasets: ExportDataset[];
+  formats: ExportFormat[];
+  splits: ExportSplit[];
+  severities: ExportSeverity[];
+}
+export interface ExportRequest {
+  dataset: string;
+  format: ExportFormat;
+  columns: string[];
+  system: string | null;
+  module: string | null;
+  run: ExportRun;
+  severity: ExportSeverity[];
+  split: ExportSplit;
+}
+
+/** GET /reports/exports/options: the datasets the export centre writes, their columns and filters. */
+export const getExportOptions = (): Promise<ExportOptions> => v2Get("/reports/exports/options");
+/** POST /reports/exports: queues one export (needs export). Progress arrives on the jobs stream as kind export. */
+export const startExport = (body: ExportRequest): Promise<{ job_id: string }> => v2Send("POST", "/reports/exports", body);
+
 /* ── Migration waves ── */
 
 export interface WavePatch {

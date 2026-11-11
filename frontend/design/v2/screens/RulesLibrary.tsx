@@ -32,6 +32,7 @@ import { Lede, PrimaryAction } from "../RunParts";
 import { Consequence, RuleRibbon } from "./rules-parts";
 import { RuleBoard } from "./Cockpit";
 import { t, tx } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 type View = "rules" | "drafts" | "suppressions";
 
@@ -235,7 +236,7 @@ function Drafts({ modules, editing, setEditing }: { modules: string[]; editing: 
         <EmptyFrame>{t("No drafts. Write a rule, or describe it in plain English; a dry run shows what it would find before it is published.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Table 1, scrollable")}  style={{ marginTop: "var(--m2-s3)" }}>
-          <table className="m2-tbl" data-testid="drafts-table">
+          <TableExport><table className="m2-tbl" data-testid="drafts-table">
             <thead>
               <tr>
                 <th scope="col">{t("Draft")}</th>
@@ -258,7 +259,7 @@ function Drafts({ modules, editing, setEditing }: { modules: string[]; editing: 
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </>
@@ -278,7 +279,7 @@ function Suppressions({ canEnd }: { canEnd: boolean }) {
         <EmptyFrame>{t("No rule is suppressed. A suppression keeps a rule out of the score until a date; start one from the rule.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Table 2, scrollable")}>
-          <table className="m2-tbl" data-testid="suppressions-table">
+          <TableExport><table className="m2-tbl" data-testid="suppressions-table">
             <thead>
               <tr><th scope="col">{t("Rule")}</th><th scope="col">{t("Reason")}</th><th scope="col">{t("Until")}</th><th scope="col"><span className="m2-sr">{t("Actions")}</span></th></tr>
             </thead>
@@ -310,7 +311,7 @@ function Suppressions({ canEnd }: { canEnd: boolean }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
       {!canEnd ? <Gate>{t("Ending a suppression needs the approve permission.")}</Gate> : null}

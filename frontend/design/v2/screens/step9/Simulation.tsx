@@ -19,6 +19,7 @@ import { Dialog } from "../../admin/kit";
 import { SeverityMark, VerdictMark, type SeverityKey } from "../../marks";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
 import { Ruler } from "../../Ruler";
+import { TableExport } from "@/design/v2/TableExport";
 
 /** The words that say this is a simulation, on every surface that shows one. */
 export const simulationNote = (): string => t("Simulation: nothing is changed in SAP or in Meridian.");
@@ -253,7 +254,7 @@ export function TopFixesView({ module, label, systemId, run }: { module: string;
       ) : (
         <>
           <div className="m2-frame" tabIndex={0} role="region" aria-label={t("Top fixes, scrollable")}>
-            <table className="m2-tbl" aria-label={t("Top fixes for {label}, ranked by score gained", { label })}>
+            <TableExport><table className="m2-tbl" aria-label={t("Top fixes for {label}, ranked by score gained", { label })}>
               <thead>
                 <tr>
                   <th scope="col">
@@ -309,7 +310,7 @@ export function TopFixesView({ module, label, systemId, run }: { module: string;
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </div>
           <div className="m2-acts" style={{ marginTop: "var(--m2-s2)" }}>
             <button type="button" className="m2-btn m2-strong" disabled={chosen.size === 0} onClick={() => setOpen([...chosen])}>

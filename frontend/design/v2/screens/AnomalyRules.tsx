@@ -19,6 +19,7 @@ import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Consequence, Steps } from "./rules-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Aletheia anomaly to rule: a statistically found outlier becomes a proposed rule. The rule is a template on the
@@ -108,7 +109,7 @@ export function AnomalyRules() {
             rows={groups.slice(0, 8).map(({ first: a, count }) => ({ key: a.id, label: a.field_description ?? a.field_name, value: count, text: int(count), tone: "warn" as const }))}
           />
           <ScrollFrame label={t("Fields with outliers table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Object")}</th>
@@ -137,7 +138,7 @@ export function AnomalyRules() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
           </>
         )}
@@ -168,7 +169,7 @@ function FieldShifts({ allowed }: { allowed: boolean }) {
         <ErrorFrame onRetry={() => void q.refetch()}>{t("The field shifts could not be read.")}</ErrorFrame>
       ) : q.data.length === 0 ? <EmptyFrame>{t("No null spike or unexpected code was found.")}</EmptyFrame> : (
         <ScrollFrame label={t("Null spikes and unexpected codes table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Object")}</th>
@@ -205,7 +206,7 @@ function FieldShifts({ allowed }: { allowed: boolean }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>

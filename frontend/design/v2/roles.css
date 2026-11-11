@@ -55,3 +55,4 @@
 .m2-root .m2-demobar strong { font-weight: 600; }
 /* The confirmation of a bulk change over 25 rows (Work): stays in view at the foot of the canvas. */
 .m2-root .m2-bulkconfirm { position: sticky; bottom: 0; z-index: 6; background: var(--m2-sheet); }
+.m2-root .m2-tx-bar { display: flex; justify-content: flex-end; margin-bottom: var(--m2-s2); }

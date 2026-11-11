@@ -16,6 +16,7 @@ import { f1, findSystem, int, moduleFromSlug } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
 import { ScoreChart, type ChartPoint } from "./ScoreChart";
 import { t } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 const shortDate = (iso: string | null): string => (iso ? formatDate(iso, "date").replace(/\s\d{4}$/, "") : "");
 const longDate = (iso: string | null): string => (iso ? formatDate(iso, "date") : t("an earlier run"));
@@ -220,7 +221,7 @@ export function TrendTab({ system: systemSegment, module: moduleSegment }: { sys
         <ScoreChart points={points} capLevel={cap} label={aria} compact={narrow} />
         <p className="m2-prov">{t("{object}, measured score per finished run (before any cap). Hover a point for its run and date.", { object: label })}</p>
         <ScrollFrame label={t("Runs, scrollable")} style={{ marginTop: "var(--m2-s4)" }}>
-          <table className="m2-tbl" aria-label={t("Runs shown in the chart")}>
+          <TableExport><table className="m2-tbl" aria-label={t("Runs shown in the chart")}>
             <thead>
               <tr>
                 <th scope="col">{t("Run")}</th>
@@ -242,7 +243,7 @@ export function TrendTab({ system: systemSegment, module: moduleSegment }: { sys
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
 </ScrollFrame>
         <p className="m2-prov">{t("Scores are as stored with each run; the measured score is before the cap, the shown score after it.")}</p>
         <ComparePicker runs={series} from={(baseline ?? series[0]).id} to={current.id} system={system.name} />

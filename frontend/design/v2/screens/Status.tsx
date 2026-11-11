@@ -12,6 +12,7 @@ import { Mark, VerdictMark } from "../marks";
 import { ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import "../status.css";
 import { t } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 const VERDICT: Record<ComponentStatus, "go" | "at-risk" | "no-go" | null> = { up: "go", degraded: "at-risk", down: "no-go", not_configured: null };
 
@@ -64,7 +65,7 @@ function Components({ page }: { page: StatusPage }) {
   const uptime = new Map(page.uptime.components.map((c) => [c.id, c.uptime_pct]));
   return (
     <div className="m2-frame" tabIndex={0} role="region" aria-label={t("Components and their state")}>
-      <table className="m2-tbl m2-stat-tbl">
+      <TableExport><table className="m2-tbl m2-stat-tbl">
         <caption className="m2-sr">{t("Components and their state")}</caption>
         <thead>
           <tr>
@@ -94,7 +95,7 @@ function Components({ page }: { page: StatusPage }) {
             );
           })}
         </tbody>
-      </table>
+      </table></TableExport>
     </div>
   );
 }

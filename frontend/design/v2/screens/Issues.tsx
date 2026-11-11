@@ -18,6 +18,7 @@ import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Record issues: the steward work list. One row per record and rule that failed, carried from run to run with its
@@ -188,7 +189,7 @@ export function Issues() {
           testId="issues-table"
         >
           <ScrollFrame label={t("Issues")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <caption className="m2-sr">{t("Issues")}</caption>
               <thead>
                 <tr>
@@ -221,7 +222,7 @@ export function Issues() {
                   />
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
           {total > ISSUE_PAGE ? (
             <div className="m2-rfilters">

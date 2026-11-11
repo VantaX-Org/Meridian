@@ -18,6 +18,7 @@ import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Consequence } from "./rules-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Learned monitors: for every licensed object Meridian learns what a run normally looks like from its own earlier
@@ -83,7 +84,7 @@ function Thresholds({ rows }: { rows: MonitorThreshold[] }) {
     <Panel title={t("Learned minimum effect")} meta={t("How big a break must be before it is raised. Stewards' decisions move it between the fixed floor and the ceiling.")} testId="monitors-thresholds">
       {rows.length === 0 ? <EmptyFrame>{t("No decision has moved a minimum yet. Every monitor uses its fixed floor.")}</EmptyFrame> : (
         <ScrollFrame label={t("Learned minimum effects table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Object")}</th>
@@ -117,7 +118,7 @@ function Thresholds({ rows }: { rows: MonitorThreshold[] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>
@@ -184,7 +185,7 @@ export function LearnedMonitors() {
       <Panel title={t("Breaks in the latest run")} meta={t("Most severe first.")} testId="monitors-breaks">
         {breaks.length === 0 ? <EmptyFrame>{t("No break. Every watched figure is inside its usual range.")}</EmptyFrame> : (
           <ScrollFrame label={t("Breaks table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Object")}</th>
@@ -215,7 +216,7 @@ export function LearnedMonitors() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -223,7 +224,7 @@ export function LearnedMonitors() {
       <Panel title={t("Between full runs")} meta={t("Volume only. An extraction that landed after the latest finished run, whose analysis has not finished, compared with the rows of earlier syncs. Score, fail rate and empty share exist only after the checks run.")} testId="monitors-interim">
         {interim.length === 0 ? <EmptyFrame>{t("No break between full runs. No pending extraction is outside its usual size.")}</EmptyFrame> : (
           <ScrollFrame label={t("Breaks between full runs table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Object")}</th>
@@ -254,7 +255,7 @@ export function LearnedMonitors() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -270,7 +271,7 @@ export function LearnedMonitors() {
             rows={coverage.filter((c) => c.state === "active").map((c) => ({ key: c.module, label: moduleText(c.module), value: c.breaks, text: int(c.breaks), tone: c.breaks > 0 ? "warn" as const : "pass" as const }))}
           />
           <ScrollFrame label={t("Learned objects table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Object")}</th>
@@ -291,7 +292,7 @@ export function LearnedMonitors() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
           </>
         )}
@@ -317,7 +318,7 @@ function BelowMinimum({ rows, thresholds, allowed, onChanged }: { rows: LearnedB
     <Panel title={t("Below the learned minimum")} meta={t("Outside the usual range but smaller than the minimum a steward raised. Nothing is alerted. Confirm one that is real and the minimum drops.")} testId="monitors-below-minimum">
       {rows.length === 0 ? <EmptyFrame>{t("No break sits below a raised minimum.")}</EmptyFrame> : (
         <ScrollFrame label={t("Breaks below the learned minimum table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Object")}</th>
@@ -345,7 +346,7 @@ function BelowMinimum({ rows, thresholds, allowed, onChanged }: { rows: LearnedB
                 );
               })}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>

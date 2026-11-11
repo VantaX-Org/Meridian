@@ -30,6 +30,7 @@ import { TopFailing } from "./object/TopFailing";
 import { ObjectMonitorStrip } from "./ObjectMonitors";
 import { AletheiaFound } from "./AletheiaFound";
 import { t as tr, tn } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 type TabKey = "overview" | "rules" | "trend" | "records" | "fixes" | "readiness" | "processes" | "lineage" | "profile" | "glossary" | "golden";
 const TABS: { key: TabKey; label: string; segment: string }[] = [
@@ -86,7 +87,7 @@ export function ReceiptTable({ receipt }: { receipt: Receipt }) {
   const n = receipt.breaches.length;
   return (
     <>
-      <table className="m2-rcpt" data-testid="receipt">
+      <TableExport><table className="m2-rcpt" data-testid="receipt">
         <thead>
           <tr>
             <th scope="col">{tr("Dimension")}</th>
@@ -161,7 +162,7 @@ export function ReceiptTable({ receipt }: { receipt: Receipt }) {
             <td />
           </tr>
         </tbody>
-      </table>
+      </table></TableExport>
       {receipt.low_confidence ? (
         <p className="m2-formula">
           <b>{tr("Low confidence.")}</b> {tr("Coverage {pct1} is low: part of the records could not be evaluated by at least one rule, so this score may move when extraction improves.", { pct1: pct1(receipt.coverage) })}

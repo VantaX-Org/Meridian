@@ -28,6 +28,7 @@ import { useToast } from "../Toast";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Migration analysis: how ready the source data is to load into the target system (api/routes/migration.py). Every
@@ -87,11 +88,11 @@ function useMig<T>(key: unknown[], fn: () => Promise<T>, enabled = true, poll: n
 function Table({ title, head, children }: { title: string; head: string[]; children: ReactNode }) {
   return (
     <ScrollFrame label={title}>
-      <table className="m2-tbl m2-cards">
+      <TableExport><table className="m2-tbl m2-cards">
         <caption className="m2-sr">{title}</caption>
         <thead><tr>{head.map((h, i) => <th key={i} scope="col">{h}</th>)}</tr></thead>
         <tbody>{children}</tbody>
-      </table>
+      </table></TableExport>
     </ScrollFrame>
   );
 }

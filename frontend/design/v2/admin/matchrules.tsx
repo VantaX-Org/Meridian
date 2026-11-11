@@ -12,6 +12,7 @@ import { ResultFrame, useOutcome } from "../inspector/shared";
 import { EmptyFrame, Mono } from "../parts";
 import { CcHBars } from "../screens/cc-parts";
 import { AdminPage, Block, Confirm, Dialog, Fld, Loaded, NeedsPermission, StatusWord, Sw, useCan, useDone } from "./kit";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Admin › Match rules: per object, the fields compared to decide whether two records are the same, how each is
@@ -150,7 +151,7 @@ function DomainBlock({ domain, rules, onEdit, onDelete }: { domain: string; rule
   return (
     <Block title={moduleText(domain)} hint={t("{n} active {n, plural, one {rule} other {rules}}, weights adding to {w}.", { n: live.length, w: int(total) })}>
       <div className="m2-frame" tabIndex={0}>
-        <table className="m2-tbl" aria-label={t("Match rules for {object}", { object: moduleText(domain) })}>
+        <TableExport><table className="m2-tbl" aria-label={t("Match rules for {object}", { object: moduleText(domain) })}>
           <thead>
             <tr>
               <th scope="col">{t("Field")}</th>
@@ -178,7 +179,7 @@ function DomainBlock({ domain, rules, onEdit, onDelete }: { domain: string; rule
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
       <Simulate domain={domain} />
     </Block>
@@ -239,7 +240,7 @@ function ProposedBlock() {
             <EmptyFrame>{t("No proposal waiting. Aletheia proposes a rule once stewards correct ten or more pairs of an object in a week.")}</EmptyFrame>
           ) : (
             <div className="m2-frame" tabIndex={0}>
-              <table className="m2-tbl" aria-label={t("Proposed match rules")}>
+              <TableExport><table className="m2-tbl" aria-label={t("Proposed match rules")}>
                 <thead>
                   <tr>
                     <th scope="col">{t("Object")}</th>
@@ -294,7 +295,7 @@ function ProposedBlock() {
                     );
                   })}
                 </tbody>
-              </table>
+              </table></TableExport>
             </div>
           )
         }

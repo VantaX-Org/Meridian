@@ -13,6 +13,7 @@ import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../..
 import { ScrollFrame } from "./ScrollFrame";
 import { WhatIfPanel } from "./WhatIf";
 import { t } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 /** The process designer of an object: a canvas of its own under the object. */
 export const designerHref = (system: string, module: string): string => `/o/${system}/${module}/processes/design`;
@@ -42,7 +43,7 @@ function StepBlock({ step, module, openId }: { step: StepView; module: string; o
               <p className="m2-rp m2-meta">{t("No field is mapped to this activity.")}</p>
             ) : (
               <ScrollFrame label={t("Fields of {l5_name}, scrollable", { l5_name: a.l5_name })}>
-                <table className="m2-tbl m2-ftbl" aria-label={t("Fields of {l5_name}", { l5_name: a.l5_name })}>
+                <TableExport><table className="m2-tbl m2-ftbl" aria-label={t("Fields of {l5_name}", { l5_name: a.l5_name })}>
                   <thead>
                     <tr>
                       <th scope="col">{t("Field")}</th>
@@ -66,7 +67,7 @@ function StepBlock({ step, module, openId }: { step: StepView; module: string; o
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></TableExport>
               </ScrollFrame>
             )}
           </div>

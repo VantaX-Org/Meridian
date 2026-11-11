@@ -32,6 +32,7 @@ import { contractMark } from "@/lib/v2/step9";
 import { policyMark } from "@/lib/v2/step10";
 import { WavesByValue } from "./step9/Money";
 import { t } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 const SEL_KEY = "mn_v2_sel";
 
@@ -367,7 +368,7 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
         <ViewToggle view={view} />
       </div>
       <div className="m2-frame m2-only-wide">
-        <table className="m2-tbl m2-mx" data-testid="coverage-matrix">
+        <TableExport><table className="m2-tbl m2-mx" data-testid="coverage-matrix">
           <colgroup>
             <col style={{ width: 170 }} />
             {systems.map((s) => (
@@ -426,7 +427,7 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
               </tr>
                 ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
       <div className="m2-mlist">
         {groups
@@ -458,7 +459,7 @@ function BasisTasks({ landscape }: { landscape: Landscape }) {
         <h2 className="m2-h2">{t("Your next work")}</h2>
       </div>
       <div className="m2-frame">
-        <table className="m2-tbl">
+        <TableExport><table className="m2-tbl">
           <thead>
             <tr>
               <th scope="col">{t("Task")}</th>
@@ -477,7 +478,7 @@ function BasisTasks({ landscape }: { landscape: Landscape }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
       <p className="m2-prov">{t("Tasks come from each system's state in the last run.")}</p>
     </section>

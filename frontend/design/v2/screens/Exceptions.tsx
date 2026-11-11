@@ -23,6 +23,7 @@ import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { WorkTabs } from "./WorkTabs";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Exceptions: what went wrong in a business process or an SAP transaction (api/routes/exceptions.py). Each one runs
@@ -183,7 +184,7 @@ export function Exceptions() {
           testId="exceptions-table"
         >
           <ScrollFrame label={t("Exceptions")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <caption className="m2-sr">{t("Exceptions")}</caption>
               <thead>
                 <tr>
@@ -201,7 +202,7 @@ export function Exceptions() {
                   <Row key={x.id} x={x} people={people.data} open={picked === x.id} onOpen={() => setPicked(picked === x.id ? null : x.id)} />
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
           {total > EXCEPTION_PAGE ? (
             <div className="m2-rfilters">
@@ -411,7 +412,7 @@ function Rules() {
         <EmptyFrame>{t("No exception rules are defined yet.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Rules that raise exceptions")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <caption className="m2-sr">{t("Rules that raise exceptions")}</caption>
             <thead>
               <tr>
@@ -442,7 +443,7 @@ function Rules() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>

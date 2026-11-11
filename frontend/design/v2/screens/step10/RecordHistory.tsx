@@ -8,6 +8,7 @@ import { useRecordHistory } from "@/lib/v2/step10-queries";
 import { STATUS_LABEL } from "@/lib/v2/work";
 import { VerdictMark } from "../../marks";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * The History tab of the record inspector (GET /work/records/{module}/{key}/history): every run that measured the
@@ -28,7 +29,7 @@ export function RecordHistoryPanel({ module, recordKey }: { module: string; reco
       <h3>{t("Every run")}</h3>
       <p className="m2-prov">{t("{n} {n, plural, one {run} other {runs}} measured this record, {failing} with it failing. Values are as each run stored them; the work status is today's.", { n: h.runs.length, failing })}</p>
       <div className="m2-frame" tabIndex={0} role="region" aria-label={t("Runs of this record, scrollable")}>
-        <table className="m2-tbl m2-hist-tbl" aria-label={t("Values of the failing fields by run")} data-testid="history-runs">
+        <TableExport><table className="m2-tbl m2-hist-tbl" aria-label={t("Values of the failing fields by run")} data-testid="history-runs">
           <thead>
             <tr>
               <th scope="col">{t("Run")}</th>
@@ -63,7 +64,7 @@ export function RecordHistoryPanel({ module, recordKey }: { module: string; reco
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
       <h3>{t("Decisions")}</h3>
       {h.events.length === 0 ? (

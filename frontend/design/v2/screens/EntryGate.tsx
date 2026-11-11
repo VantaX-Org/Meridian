@@ -19,6 +19,7 @@ import { CcBanner, CcPage } from "./cc-parts";
 import { DuplicateResults } from "./EntryDuplicates";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Entry gate: the data quality firewall as a page. SAP posts a candidate record before it is saved and the firewall
@@ -125,7 +126,7 @@ function HoldResults({ records }: { records: { index: number; hold?: RecordHold 
   if (rows.length === 0) return null;
   return (
     <ScrollFrame label={t("Hold state of each record table, scrollable")}>
-      <table className="m2-tbl m2-cards" data-testid="entry-gate-hold-results">
+      <TableExport><table className="m2-tbl m2-cards" data-testid="entry-gate-hold-results">
         <thead>
           <tr>
             <th scope="col">{t("Record")}</th>
@@ -146,7 +147,7 @@ function HoldResults({ records }: { records: { index: number; hold?: RecordHold 
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
     </ScrollFrame>
   );
 }
@@ -181,7 +182,7 @@ function HoldsPanel({ holds }: { holds: FirewallSummary["holds"] }) {
       </dl>
       {h.latest.length === 0 ? <EmptyFrame>{t("No record is held.")}</EmptyFrame> : (
         <ScrollFrame label={t("Held requests table, scrollable")}>
-          <table className="m2-tbl m2-cards" data-testid="entry-gate-held-list">
+          <TableExport><table className="m2-tbl m2-cards" data-testid="entry-gate-held-list">
             <thead>
               <tr>
                 <th scope="col">{t("Request")}</th>
@@ -202,7 +203,7 @@ function HoldsPanel({ holds }: { holds: FirewallSummary["holds"] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>
@@ -216,7 +217,7 @@ function StewardResults({ records }: { records: { index: number; steward_request
   if (rows.length === 0) return null;
   return (
     <ScrollFrame label={t("Requests opened for flagged records table, scrollable")}>
-      <table className="m2-tbl m2-cards" data-testid="entry-gate-steward">
+      <TableExport><table className="m2-tbl m2-cards" data-testid="entry-gate-steward">
         <thead>
           <tr>
             <th scope="col">{t("Record")}</th>
@@ -237,7 +238,7 @@ function StewardResults({ records }: { records: { index: number; steward_request
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
     </ScrollFrame>
   );
 }
@@ -249,7 +250,7 @@ function GateRequests({ rows }: { rows: FirewallSummary["requests"] }) {
     <Panel title={t("Requests opened from the gate")} meta={t("A flagged record can be sent to a steward as a create request. The latest ten are listed.")} testId="entry-gate-requests">
       {rows.length === 0 ? <EmptyFrame>{t("The gate has not opened a request yet.")}</EmptyFrame> : (
         <ScrollFrame label={t("Requests opened from the gate table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Request")}</th>
@@ -270,7 +271,7 @@ function GateRequests({ rows }: { rows: FirewallSummary["requests"] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>
@@ -352,7 +353,7 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
           ) : null}
           {rows.length === 0 ? <EmptyFrame>{t("Every record passed every enabled rule.")}</EmptyFrame> : (
             <ScrollFrame label={t("Failing rules table, scrollable")}>
-              <table className="m2-tbl m2-cards">
+              <TableExport><table className="m2-tbl m2-cards">
                 <thead>
                   <tr>
                     <th scope="col">{t("Record")}</th>
@@ -375,7 +376,7 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </ScrollFrame>
           )}
           <DuplicateResults res={res} />
@@ -433,7 +434,7 @@ export function EntryGate() {
       <Panel title={t("Each day")} meta={t("Warned and passed were not kept before this release, so earlier days show a dash.")} testId="entry-gate-days">
         {days.length === 0 ? <EmptyFrame>{t("The firewall has not been called in the last 7 days.")}</EmptyFrame> : (
           <ScrollFrame label={t("Firewall traffic by day table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Day")}</th>
@@ -454,7 +455,7 @@ export function EntryGate() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -464,7 +465,7 @@ export function EntryGate() {
         <Panel title={t("Rules that block most")} meta={t("Critical rules, most blocked records first.")} testId="entry-gate-rules">
           {rules.length === 0 ? <EmptyFrame>{t("No rule has blocked a record yet.")}</EmptyFrame> : (
             <ScrollFrame label={t("Top blocking rules table, scrollable")}>
-              <table className="m2-tbl m2-cards">
+              <TableExport><table className="m2-tbl m2-cards">
                 <thead>
                   <tr>
                     <th scope="col">{t("Rule")}</th>
@@ -481,14 +482,14 @@ export function EntryGate() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </ScrollFrame>
           )}
         </Panel>
 
         <Panel title={t("By object")} meta={t("The objects the licence covers.")} testId="entry-gate-modules">
           <ScrollFrame label={t("Firewall traffic by object table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Object")}</th>
@@ -509,7 +510,7 @@ export function EntryGate() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         </Panel>
       </div>

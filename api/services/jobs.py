@@ -55,6 +55,7 @@ STAGES: dict[str, list[tuple[str, str]]] = {
                    ("after", "Checks after fixes"), ("score", "Scoring")],
     "process_discovery": [("extraction", "Extracting"), ("building", "Building event log"), ("mining", "Mining"),
                           ("generating", "Generating model")],
+    "export": [("read", "Reading data"), ("write", "Building file"), ("store", "Storing file")],
 }
 
 # Entity-prefix list each job kind changes (spec section 9.1). The job tray
@@ -74,6 +75,8 @@ TOUCHES: dict[str, list[str]] = {
     "config_sync": ["systems", "run"],
     "config_load": ["systems", "run"],
     "process_discovery": ["process", "run"],
+    # The Reports screen refetches its own history when an export finishes (its keys sit under "v2").
+    "export": [],
 }
 
 # analysis progress (task_progress step numbers) → analysis job stage

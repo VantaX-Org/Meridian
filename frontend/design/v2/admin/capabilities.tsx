@@ -21,6 +21,7 @@ import { AdminPage, Block, Loaded, NeedsPermission, Note, StatusWord, useCan } f
 import "../roles.css";
 import { t as tr, lc } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * The Admin sections the role capability audit added (step 6c): Stewardship (the assignment template, apply with a
@@ -91,7 +92,7 @@ export function StewardshipSection() {
             <>
               <Block title={tr("Template")} hint={tr("{value}. Active slices: {map}.", { value: t.saved ? tr("Saved for this tenant") : tr("The default template"), map: (["plant", "company_code", "sales_org", "purchasing_org"] as SliceKind[]).map((k) => `${lc(SLICE_WORD[k])} ${(t.active_slices[k] ?? []).join(", ") || tr("none")}`).join("; ") })}>
                 <div className="m2-scroll">
-                  <table className="m2-tmpl" data-testid="template-table">
+                  <TableExport><table className="m2-tmpl" data-testid="template-table">
                     <thead>
                       <tr>
                         <th scope="col">{tr("Object")}</th>
@@ -122,7 +123,7 @@ export function StewardshipSection() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></TableExport>
                 </div>
                 <div className="m2-adm-acts">
                   <button type="button" className="m2-btn" disabled={!draft} onClick={() => void run(async () => {
@@ -156,7 +157,7 @@ export function StewardshipSection() {
                       <p className="m2-prov">{tr("No steward is assigned yet. Apply the template to assign them.")}</p>
                     ) : (
                       <div className="m2-scroll">
-                        <table className="m2-tmpl" data-testid="steward-assignments">
+                        <TableExport><table className="m2-tmpl" data-testid="steward-assignments">
                           <thead>
                             <tr>
                               <th scope="col">{tr("Object")}</th>
@@ -177,7 +178,7 @@ export function StewardshipSection() {
                               </tr>
                             ))}
                           </tbody>
-                        </table>
+                        </table></TableExport>
                       </div>
                     )
                   }

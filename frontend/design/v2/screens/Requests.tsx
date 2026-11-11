@@ -17,6 +17,7 @@ import { ageWord, kindWord, objectWord, PrecheckView, statusWord } from "../insp
 import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { Consequence, FixHead, FlowSteps, MoreDetail } from "../FixParts";
 import { CcBanner, CcHBars, CcPage, type CcBarRow } from "./cc-parts";
+import { TableExport } from "@/design/v2/TableExport";
 
 const VIEWS: readonly RequestView[] = ["mine", "to_approve", "all"];
 const OBJECTS: readonly RequestObject[] = ["material", "customer", "vendor", "business_partner"];
@@ -54,7 +55,7 @@ function MassPreviewGrid({ id }: { id: string }) {
       <p className="m2-prov">
         {t("{records} {n, plural, one {record} other {records}}: {found} found, {missing} not found, {changing} would change, {unchanged} already hold the value.", { records: counts.records, n: counts.records, found: counts.found, missing: counts.missing, changing: counts.changing, unchanged: counts.unchanged })}
       </p>
-      <table className="m2-tbl" aria-label={t("Preview of the mass change")}>
+      <TableExport><table className="m2-tbl" aria-label={t("Preview of the mass change")}>
         <thead>
           <tr>
             <th scope="col">{t("Record")}</th>
@@ -79,7 +80,7 @@ function MassPreviewGrid({ id }: { id: string }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
       {q.data.truncated ? <p className="m2-prov">{t("Only the first rows are shown.")}</p> : null}
     </div>
   );
@@ -237,7 +238,7 @@ function EntryDefaults({ canEdit }: { canEdit: boolean }) {
       ) : items.length === 0 ? (
         <EmptyFrame>{t("No entry default is set.")}</EmptyFrame>
       ) : (
-        <table className="m2-tbl" aria-label={t("Entry defaults")}>
+        <TableExport><table className="m2-tbl" aria-label={t("Entry defaults")}>
           <thead>
             <tr>
               <th scope="col">{t("Object")}</th>
@@ -266,7 +267,7 @@ function EntryDefaults({ canEdit }: { canEdit: boolean }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       )}
       {canEdit ? (
         <div className="m2-rfilters">
@@ -365,7 +366,7 @@ function DerivationRules({ canEdit }: { canEdit: boolean }) {
       ) : items.length === 0 ? (
         <EmptyFrame>{t("No derivation rule is set.")}</EmptyFrame>
       ) : (
-        <table className="m2-tbl" aria-label={t("Derivation rules")}>
+        <TableExport><table className="m2-tbl" aria-label={t("Derivation rules")}>
           <thead>
             <tr>
               <th scope="col">{t("Object")}</th>
@@ -408,7 +409,7 @@ function DerivationRules({ canEdit }: { canEdit: boolean }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       )}
       {canEdit ? (
         <div className="m2-rfilters">
@@ -483,7 +484,7 @@ function CriticalFields({ canEdit }: { canEdit: boolean }) {
       ) : items.length === 0 ? (
         <EmptyFrame>{t("No critical field is set.")}</EmptyFrame>
       ) : (
-        <table className="m2-tbl" aria-label={t("Critical fields")}>
+        <TableExport><table className="m2-tbl" aria-label={t("Critical fields")}>
           <thead>
             <tr>
               <th scope="col">{t("Object")}</th>
@@ -508,7 +509,7 @@ function CriticalFields({ canEdit }: { canEdit: boolean }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       )}
       {canEdit ? (
         <div className="m2-rfilters">
@@ -542,7 +543,7 @@ function Table({ rows }: { rows: ChangeRequest[] }) {
   const openId = open?.kind === "request" ? open.id : null;
   return (
     <div className="m2-frame">
-      <table className="m2-tbl" aria-label={t("Change requests")} data-testid="requests-table">
+      <TableExport><table className="m2-tbl" aria-label={t("Change requests")} data-testid="requests-table">
         <thead>
           <tr>
             <th scope="col">{t("Request")}</th>
@@ -576,7 +577,7 @@ function Table({ rows }: { rows: ChangeRequest[] }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import { useToast } from "../Toast";
 import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Data mining: the likely duplicate records, the values far outside their field's usual range and the fields whose
@@ -137,7 +138,7 @@ export function Mining() {
         <List query={dupes} empty={t("No likely duplicate was found.")} what={t("The duplicates could not be read.")}>
           {(rows) => (
             <ScrollFrame label={t("Likely duplicates table, scrollable")}>
-              <table className="m2-tbl m2-cards">
+              <TableExport><table className="m2-tbl m2-cards">
                 <thead>
                   <tr>
                     <th scope="col">{t("Object")}</th>
@@ -160,7 +161,7 @@ export function Mining() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </ScrollFrame>
           )}
         </List>
@@ -170,7 +171,7 @@ export function Mining() {
         <List query={outliers} empty={t("No outlier was found.")} what={t("The outliers could not be read.")}>
           {(rows) => (
             <ScrollFrame label={t("Outliers table, scrollable")}>
-              <table className="m2-tbl m2-cards">
+              <TableExport><table className="m2-tbl m2-cards">
                 <thead>
                   <tr>
                     <th scope="col">{t("Object")}</th>
@@ -195,7 +196,7 @@ export function Mining() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </ScrollFrame>
           )}
         </List>
@@ -206,7 +207,7 @@ export function Mining() {
         <List query={links} empty={t("No relationship between fields was found.")} what={t("The relationships could not be read.")}>
           {(rows) => (
             <ScrollFrame label={t("Field relationships table, scrollable")}>
-              <table className="m2-tbl m2-cards">
+              <TableExport><table className="m2-tbl m2-cards">
                 <thead>
                   <tr>
                     <th scope="col">{t("Object")}</th>
@@ -227,7 +228,7 @@ export function Mining() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </ScrollFrame>
           )}
         </List>
@@ -263,7 +264,7 @@ function Patterns({ query }: { query: ReturnType<typeof useMining<{ patterns: Mi
       <List query={query} pick={(d) => d.patterns} empty={t("No pattern was found.")} what={t("The patterns could not be read.")}>
         {(rows) => (
           <ScrollFrame label={t("Patterns table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Pattern")}</th>
@@ -288,7 +289,7 @@ function Patterns({ query }: { query: ReturnType<typeof useMining<{ patterns: Mi
                   );
                 })}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </List>

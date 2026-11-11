@@ -13,6 +13,7 @@ import { ScrollFrame } from "../object/ScrollFrame";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
 import { t as tr } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
+import { TableExport } from "@/design/v2/TableExport";
 
 const PARTS = [
   { key: "registry", get label() { return tr("Registry"); } },
@@ -53,7 +54,7 @@ function Registry() {
         <EmptyFrame>{tr("No custom objects are registered. Custom Z objects appear once an analysis finds them.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={tr("Table 1, scrollable")}>
-          <table className="m2-tbl" data-testid="z-registry">
+          <TableExport><table className="m2-tbl" data-testid="z-registry">
             <thead>
               <tr>
                 <th scope="col">{tr("Object")}</th>
@@ -80,7 +81,7 @@ function Registry() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Feed>
@@ -106,7 +107,7 @@ function Anomalies() {
         <EmptyFrame>{tr("No anomalies were detected on the custom objects in the latest analysis.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={tr("Table 2, scrollable")}>
-          <table className="m2-tbl" data-testid="z-anomalies">
+          <TableExport><table className="m2-tbl" data-testid="z-anomalies">
             <thead>
               <tr>
                 <th scope="col">{tr("Object")}</th>
@@ -138,7 +139,7 @@ function Anomalies() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
       {!can("ai_feedback") ? <Gate>{tr("Marking an anomaly as expected or to investigate needs the AI feedback permission.")}</Gate> : null}
@@ -156,7 +157,7 @@ function Ghost() {
         <EmptyFrame>{tr("No ghost objects: every custom object in the latest analysis is used.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={tr("Table 3, scrollable")}>
-          <table className="m2-tbl" data-testid="z-ghost">
+          <TableExport><table className="m2-tbl" data-testid="z-ghost">
             <thead>
               <tr><th scope="col">{tr("Object")}</th><th scope="col">{tr("Category")}</th><th scope="col">{tr("Module")}</th><th scope="col">{tr("Source field")}</th><th scope="col">{tr("Last active")}</th></tr>
             </thead>
@@ -171,7 +172,7 @@ function Ghost() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Feed>
@@ -187,7 +188,7 @@ function Dormant() {
         <EmptyFrame>{tr("No dormant objects or fields in the latest analysis.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={tr("Table 4, scrollable")}>
-          <table className="m2-tbl" data-testid="z-dormant">
+          <TableExport><table className="m2-tbl" data-testid="z-dormant">
             <thead>
               <tr><th scope="col">{tr("Object")}</th><th scope="col">{tr("Category")}</th><th scope="col">{tr("Module")}</th><th scope="col">{tr("Last active")}</th><th scope="col" className="m2-r">{tr("Months inactive")}</th></tr>
             </thead>
@@ -202,7 +203,7 @@ function Dormant() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Feed>
@@ -218,7 +219,7 @@ function DriftList() {
         <EmptyFrame>{tr("The custom objects are unchanged since the previous run.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={tr("Table 5, scrollable")}>
-          <table className="m2-tbl" data-testid="z-drift">
+          <TableExport><table className="m2-tbl" data-testid="z-drift">
             <thead>
               <tr><th scope="col">{tr("Object")}</th><th scope="col">{tr("Module")}</th><th scope="col">{tr("Source field")}</th><th scope="col">{tr("Change")}</th><th scope="col">{tr("First detected")}</th></tr>
             </thead>
@@ -233,7 +234,7 @@ function DriftList() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Feed>
@@ -317,7 +318,7 @@ function Rules() {
         <EmptyFrame>{tr("No custom Z rules yet. The templates below cover the common checks.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={tr("Table 6, scrollable")}>
-          <table className="m2-tbl" data-testid="z-rules">
+          <TableExport><table className="m2-tbl" data-testid="z-rules">
             <thead><tr><th scope="col">{tr("Rule")}</th><th scope="col">{tr("Condition")}</th><th scope="col">{tr("Applies to")}</th><th scope="col">{tr("Severity")}</th><th scope="col">{tr("State")}</th></tr></thead>
             <tbody>
               {(q.data?.custom_rules ?? []).map((r) => (
@@ -330,21 +331,21 @@ function Rules() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
       <h3 style={{ marginTop: "var(--m2-s4)" }}>{tr("New Z rule")}</h3>
       <NewZRule />
       <h3 style={{ marginTop: "var(--m2-s4)" }}>{tr("Rule templates")}</h3>
       <ScrollFrame label={tr("Table 7, scrollable")}>
-        <table className="m2-tbl">
+        <TableExport><table className="m2-tbl">
           <thead><tr><th scope="col">{tr("Template")}</th><th scope="col">{tr("What it checks")}</th><th scope="col">{tr("Default severity")}</th></tr></thead>
           <tbody>
             {(q.data?.templates ?? []).map((t) => (
               <tr key={t.template_id}><th scope="row">{t.name}</th><td>{t.description}</td><td>{labelOf(t.default_severity)}</td></tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </ScrollFrame>
     </Feed>
   );
@@ -359,7 +360,7 @@ function Mapping() {
         <EmptyFrame>{tr("No mappings yet. They appear once custom objects are detected.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={tr("Table 8, scrollable")}>
-          <table className="m2-tbl" data-testid="z-mapping">
+          <TableExport><table className="m2-tbl" data-testid="z-mapping">
             <thead><tr><th scope="col">{tr("Custom field")}</th><th scope="col">{tr("Module")}</th><th scope="col">{tr("Standard field")}</th><th scope="col" className="m2-r">{tr("Confidence")}</th><th scope="col">{tr("Source")}</th></tr></thead>
             <tbody>
               {rows.map((m) => (
@@ -372,7 +373,7 @@ function Mapping() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Feed>

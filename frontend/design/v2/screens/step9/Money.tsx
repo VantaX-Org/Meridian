@@ -8,6 +8,7 @@ import { t } from "@/lib/v2/i18n";
 import { useMoney } from "@/lib/v2/step9-queries";
 import { int } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
+import { TableExport } from "@/design/v2/TableExport";
 
 /** An amount in the response's currency; a dash when the tenant has no cost model or the feature has no price. */
 export function Amount({ value, currency }: { value: number | null | undefined; currency: string | null }) {
@@ -51,7 +52,7 @@ export function ObjectMoney({ module, label }: { module: string; label: string }
         <>
           <MoneyLine m={q.data} />
           <div className="m2-frame" tabIndex={0} role="region" aria-label={t("Features and their cost, scrollable")}>
-            <table className="m2-tbl" aria-label={t("What {label} costs in S/4 features", { label })}>
+            <TableExport><table className="m2-tbl" aria-label={t("What {label} costs in S/4 features", { label })}>
               <thead>
                 <tr>
                   <th scope="col">{t("Feature")}</th>
@@ -93,7 +94,7 @@ export function ObjectMoney({ module, label }: { module: string; label: string }
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </div>
           <p className="m2-prov">{t("Records blocked times the tenant's value per record and month, from the impact model of each run since the feature was first blocked. A degraded feature has no cost since it still runs.")}</p>
         </>

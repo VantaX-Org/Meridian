@@ -20,13 +20,30 @@ Choose the report, the run it is built from ("Built from the run you choose") an
 
 Open a schedule for its facts (next run, last run and its result), then: name, report (Board pack (PDF), Analyst workbook (XLSX), Analysis report (PDF), Trend report (PDF), Rule catalogue (PDF)), **Which run** ("The latest finished run", "The latest file upload" or the latest run of one system), an optional object, the cadence (every day, week or month, the day and the time in the tenant's time zone), the recipients (people of the tenant and the alert channels that take reports) and **Schedule is on**. Actions: **Save the schedule**, **Pause**, **Run it now** ("It is built on the worker and delivered to the recipients; the next scheduled run is unchanged.") and **Delete** ("No more reports are built or sent from this schedule. Files it already made stay in the list.").
 
+## Export centre
+
+The export centre sits in Reports, under **Export centre**, for people with the export permission. It writes any of these datasets to a file: findings by rule, object and run; failing records with the reason each one fails; cleansing proposals; approved changes with the value before and after; score history; the rule catalogue; and the audit log.
+
+- **Format**: XLSX, CSV or JSON for every dataset, and PDF where a report already exists for it (the PDF is the existing report, so the column, severity and run choices do not apply to it).
+- **Filters**: the system (every system, file uploads or one system), the object, the run (the latest or every run) and the severity, where the dataset has one.
+- **Columns**: tick the columns you want, in the order shown; at least one stays ticked. Every code column carries its description beside it.
+- **Sheets**: an XLSX file can put everything on one sheet or one sheet per object, severity or run. CSV and JSON are always one file.
+- **Run export**: the file is built on the worker and the progress shows as it reads, writes and stores. When it is ready, **Download** saves it, and it joins the Reports list, where it can be downloaded again later. If the worker retries an export, it reuses the file it already stored rather than writing a second one.
+- **Schedule this export**: give it a name, a cadence (daily, weekly on Monday or monthly on the 1st) and a time in the tenant time zone, then choose people to email, the server folder, or both. Email goes out through the notification settings the administrator already configured. The server folder is the `REPORT_EXPORT_DIR` setting of the deployment; when it is not set, folder delivery is not available.
+
+Cells that begin with `=`, `+`, `-` or `@` are written so that a spreadsheet does not run them as formulas.
+
+## Export what is on screen
+
+Every table and grid has an export button above it. It writes exactly what you see: the rows that pass the current filters, in the current sort, with the visible columns, as XLSX or CSV. A code column gets its description in the column beside it.
+
 ## The numbers and where they come from
 
 Every figure in a report is read from the run it names, so the board pack of 16 Oct says what the landscape said for that run. Money is in the tenant currency from the run's cost model. Alerts and channel messages carry counts, rule ids and links, never record values.
 
 ## What you can do, by role
 
-- **Programme lead, analyst, admin** (export): create, schedule, run now, pause, delete.
+- **Programme lead, analyst, admin** (export): create, schedule, run now, pause, delete, and use the export centre. The server refuses an export without the export permission.
 - **Everyone with view**: download reports. "Creating and scheduling reports needs the export permission."
 - **Administrator**: add the channels that can receive reports under Administration, Alerts.
 

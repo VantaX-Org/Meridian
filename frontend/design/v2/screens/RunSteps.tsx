@@ -10,6 +10,7 @@ import { ResultFrame, useOutcome } from "../inspector/shared";
 import { duration } from "../shell/StatusStrip";
 import { t as tr } from "@/lib/v2/i18n";
 import { CcHBars } from "./cc-parts";
+import { TableExport } from "@/design/v2/TableExport";
 
 const STATUS_WORD = { get completed() { return tr("Done"); }, get failed() { return tr("Failed"); }, get running() { return tr("Running"); }, get pending() { return tr("Waiting"); } } as Record<string, string>;
 
@@ -67,7 +68,7 @@ export function RunSteps({ runId }: { runId: string }) {
             }))}
           />
           <div className="m2-frame">
-            <table className="m2-tbl" data-testid="run-steps-table">
+            <TableExport><table className="m2-tbl" data-testid="run-steps-table">
               <thead>
                 <tr>
                   <th scope="col">{tr("Step")}</th>
@@ -94,7 +95,7 @@ export function RunSteps({ runId }: { runId: string }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </div>
         </>
       )}

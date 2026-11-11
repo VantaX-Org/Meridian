@@ -19,6 +19,7 @@ import { Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { CcDelta } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 const signed = (n: number | null | undefined, fmt: (v: number) => string = int) => (n == null ? DASH : `${n > 0 ? "+" : ""}${fmt(n)}`);
 
@@ -53,7 +54,7 @@ export function AletheiaFound({ module }: { module?: string }) {
     <Panel title={t("Aletheia found")} meta={t("Ranked by score impact, from the latest run of each object")} testId="aletheia-found">
       {findings.length ? (
         <ScrollFrame label={t("Aletheia found")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <caption className="m2-sr">{t("Aletheia found")}</caption>
             <thead>
               <tr>
@@ -68,7 +69,7 @@ export function AletheiaFound({ module }: { module?: string }) {
             <tbody>
               {findings.map((f) => <FindingRow key={f.id} f={f} queryKey={key} />)}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       ) : null}
       <div className="m2-cc-split">
