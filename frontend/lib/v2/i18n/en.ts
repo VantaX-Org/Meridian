@@ -1796,6 +1796,8 @@ export const en = {
   "Extracted": "Extracted",
   "Queued or running": "Queued or running",
   "Start a run": "Start a run",
+  "Choose a system to extract": "Choose a system to extract",
+  "Extract fresh data first": "Extract fresh data first",
   "No system has been extracted yet, so there is nothing to analyse. Extract a system first.": "No system has been extracted yet, so there is nothing to analyse. Extract a system first.",
   "An analysis scores the newest stored extraction of a system with every rule. To read fresh data first, extract the system from its page.": "An analysis scores the newest stored extraction of a system with every rule. To read fresh data first, extract the system from its page.",
   "The {run_at} extraction of {name} is being scored.": "The {run_at} extraction of {name} is being scored.",

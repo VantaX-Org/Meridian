@@ -1797,6 +1797,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Extracted": "抽出済み",
   "Queued or running": "待機中または実行中",
   "Start a run": "実行を開始",
+  "Choose a system to extract": "抽出するシステムを選ぶ",
+  "Extract fresh data first": "先に最新データを抽出する",
   "No system has been extracted yet, so there is nothing to analyse. Extract a system first.": "抽出されたシステムがまだないため、分析するものはありません。まずシステムを抽出してください。",
   "An analysis scores the newest stored extraction of a system with every rule. To read fresh data first, extract the system from its page.": "分析は、システムの最新の保存済み抽出をすべてのルールで採点します。最新のデータを読み込むには、先にシステムのページから抽出してください。",
   "The {run_at} extraction of {name} is being scored.": "{name} の {run_at} の抽出を採点しています。",
