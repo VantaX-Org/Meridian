@@ -91,4 +91,11 @@ describe("Record issues", () => {
     const link = await screen.findByTestId("issues-open-record");
     expect(link.getAttribute("href")).toContain("open=record");
   });
+
+  it("opens already searched for the record a link names", async () => {
+    setUrl("/issues?search=000000000000001234");
+    const spy = vi.spyOn(api, "getIssues");
+    renderWithQuery(<Issues />);
+    await waitFor(() => expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ search: "000000000000001234" })));
+  });
 });

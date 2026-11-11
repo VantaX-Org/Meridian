@@ -156,6 +156,7 @@ describe("actions by role", () => {
     const a = section(d, "Actions");
     expect(within(a).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("/r/MM142"));
     expect(within(a).getByRole("link", { name: "Open failing records" })).toHaveAttribute("href", expect.stringContaining("/r/MM142?tab=failing"));
+    expect(within(a).getByRole("link", { name: "Open its issues" })).toHaveAttribute("href", expect.stringContaining("/issues?rule=MM142"));
     expect(within(a).getByRole("button", { name: "Suppress" })).toBeInTheDocument();
     expect(within(a).getByRole("link", { name: "Edit in authoring" })).toHaveAttribute("href", expect.stringContaining("/rules?view=drafts&module=material_master"));
     expect(within(a).getByRole("button", { name: "Hand to a steward" })).toBeInTheDocument();

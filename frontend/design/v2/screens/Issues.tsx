@@ -60,7 +60,9 @@ export function Issues() {
   const toast = useToast();
   const [view, setView] = useUrlParam<IssueStatus | "all">("status", "open", [...ISSUE_STATUSES, "all"]);
   const tab: IssueStatus | "" = view === "all" ? "" : view;
-  const [draft, setDraft] = useState({ severity: "", assigned_to: "", search: "" });
+  // A link can open the list already searched for one record (Material's "Open issue"); the box stays editable.
+  const [urlSearch] = useUrlParam<string>("search", "");
+  const [draft, setDraft] = useState({ severity: "", assigned_to: "", search: urlSearch });
   const [filter, setFilter] = useState(draft);
   const [offset, setOffset] = useState(0);
   const [picked, setPicked] = useState<Set<string>>(new Set());

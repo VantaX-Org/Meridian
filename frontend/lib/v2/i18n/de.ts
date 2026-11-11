@@ -8692,4 +8692,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Vendor master: purchasing organisation data": "Lieferantenstamm: Einkaufsorganisationsdaten",
   "Business partner: general data": "Geschäftspartner: allgemeine Daten",
   "Addresses": "Adressen",
+  "Open its issues": "Probleme öffnen",
+  "No maintenance window is scheduled.": "Kein Wartungsfenster ist geplant.",
 };

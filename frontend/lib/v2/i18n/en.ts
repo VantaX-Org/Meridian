@@ -8691,6 +8691,8 @@ export const en = {
   "Vendor master: purchasing organisation data": "Vendor master: purchasing organisation data",
   "Business partner: general data": "Business partner: general data",
   "Addresses": "Addresses",
+  "Open its issues": "Open its issues",
+  "No maintenance window is scheduled.": "No maintenance window is scheduled.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

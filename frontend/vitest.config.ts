@@ -2,6 +2,9 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 
+// Times in the tests are written for UTC, as on CI; pin the zone so a run on a machine in another zone reads the same.
+process.env.TZ = "UTC";
+
 export default defineConfig({
   plugins: [react()],
   resolve: {

@@ -7,7 +7,7 @@ import { useObjectRun } from "@/lib/v2/scope";
 import { findSystem, moduleFromSlug } from "@/lib/v2/score";
 import { formatModuleName } from "@/lib/format";
 import { ObjectTrend } from "../../ObjectTrend";
-import { Skeleton, V2Link } from "../../parts";
+import { ErrorFrame, Skeleton, V2Link } from "../../parts";
 import { t } from "@/lib/v2/i18n";
 
 /**
@@ -28,6 +28,8 @@ export function OverviewTab({ system: systemSegment, module: moduleSegment }: { 
       <h2 className="m2-h2">{t("Score over runs")}</h2>
       {timeline.isLoading ? (
         <Skeleton width="100%" height={220} />
+      ) : timeline.isError ? (
+        <ErrorFrame onRetry={() => void timeline.refetch()}>{t("The run history could not be read.")}</ErrorFrame>
       ) : (
         <ObjectTrend size="card" runs={timeline.data?.runs ?? []} module={mod} system={system.name} object={label} selectedId={sel.runId} />
       )}

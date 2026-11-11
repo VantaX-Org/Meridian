@@ -20,7 +20,8 @@ import { findSystem, int, moduleFromSlug, pct1 } from "@/lib/v2/score";
 import { SimulateDialog, TopFixesView } from "../step9/Simulation";
 import { Explain } from "../../Explain";
 import { IconChevron, SeverityMark } from "../../marks";
-import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, SapCode, Skeleton, V2Link } from "../../parts";
+import { describeField } from "@/lib/v2/sap-fields";
 import { t, lc, tn } from "@/lib/v2/i18n";
 
 type View = "all" | "top" | "learned" | "drafts";
@@ -231,7 +232,7 @@ function RulesTable(p: TableProps) {
               </td>
               <td role="gridcell">
                 <div className="m2-rn">
-                  <span>{l.rule.field_description ?? <Dash />}</span>
+                  <span>{l.rule.field_description ?? (l.rule.field ? describeField(l.rule.field) : null) ?? <Dash />}</span>
                   {l.rule.field ? <span className="m2-rs m2-mono">{l.rule.field}</span> : null}
                 </div>
               </td>
@@ -566,7 +567,7 @@ function DraftsTable({ module, items, onChanged }: { module: string; items: Rule
                       {d.rationale ? <span className="m2-rs m2-meta">{d.rationale}</span> : null}
                     </div>
                   </th>
-                  <td>{r.field ? <Mono>{String(r.field)}</Mono> : <Dash />}</td>
+                  <td>{r.field ? <SapCode field={String(r.field)} /> : <Dash />}</td>
                   <td>{dimLabel(r.dimension) || <Dash />}</td>
                   <td>{r.severity ? <Sev severity={r.severity as RuleRow["severity"]} /> : <Dash />}</td>
                   <td>

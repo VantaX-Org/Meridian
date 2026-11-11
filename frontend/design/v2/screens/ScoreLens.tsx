@@ -5,9 +5,9 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import { getConfigAwareScore, getHeatmap, getScoreHistory, type ConfigAwareScore, type Heatmap, type HeatTier, type ScoreHistory } from "@/lib/api/v2/score";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
-import { f1, int } from "@/lib/v2/score";
+import { f1, int, moduleSlug } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, DeltaBar, niceTicks, scoreDomain, Sparkline, TrendChart } from "../charts";
-import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { retry, Section, status, Table } from "./WorkAnalytics";
@@ -165,7 +165,7 @@ function ModulesPanel({ modules }: { modules: ScoreHistory["modules"] }) {
             const sinceFirst = series.length > 1 ? diff(latest?.composite, first?.composite) : null;
             return (
               <tr key={m}>
-                <th scope="row" className="m2-card-lead">{name} <span className="m2-mono m2-meta">{m}</span></th>
+                <th scope="row" className="m2-card-lead"><V2Link href={`/objects?module=${moduleSlug(m)}`} data-testid="sl-module-link">{name}</V2Link> <span className="m2-mono m2-meta">{m}</span></th>
                 <td data-label={t("Trend")}>{series.length > 1 ? <Sparkline values={[...series].reverse().map((s) => s.composite)} label={t("{name} over {n} runs", { name, n: int(series.length) })} width={120} height={24} /> : f1(null)}</td>
                 <td data-label={t("Latest")} className="m2-num">{f1(latest?.composite ?? null)}</td>
                 <td data-label={t("As scored then")} className="m2-num">{f1(latest?.at_the_time ?? null)}</td>
@@ -221,7 +221,7 @@ function HeatPanel({ q }: { q: HeatQ }) {
                   return (
                     <tr key={r.module}>
                       <th scope="row" className="m2-card-lead">
-                        {name} <span className="m2-mono m2-meta">{r.module}</span>
+                        <V2Link href={`/objects?module=${moduleSlug(r.module)}`} data-testid="sl-heat-link">{name}</V2Link> <span className="m2-mono m2-meta">{r.module}</span>
                         <span className="m2-meta"> {GROUP[r.group]?.() ?? r.group}</span>
                       </th>
                       {dims.map((d) => cell(r.scores[d], r.tier[d], d, name))}

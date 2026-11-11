@@ -8692,4 +8692,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Vendor master: purchasing organisation data": "仕入先マスタ: 購買組織データ",
   "Business partner: general data": "ビジネスパートナ: 一般データ",
   "Addresses": "住所",
+  "Open its issues": "課題を開く",
+  "No maintenance window is scheduled.": "予定されたメンテナンス時間帯はありません。",
 };

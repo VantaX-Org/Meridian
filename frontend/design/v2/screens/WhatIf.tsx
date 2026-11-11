@@ -10,7 +10,7 @@ import { moduleText } from "@/lib/v2/labels";
 import { f1, int } from "@/lib/v2/score";
 import { signed1 } from "@/lib/v2/step9";
 import { SeverityMark, type SeverityKey } from "../marks";
-import { ErrorFrame, Skeleton, V2Link } from "../parts";
+import { ErrorFrame, SapCode, Skeleton, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { simulationNote } from "./step9/Simulation";
 import { Fld, Sw } from "../admin/kit";
@@ -65,7 +65,7 @@ function RuleTable({ rows, label }: { rows: SimRule[]; label: string }) {
               <th scope="row">
                 <SeverityMark severity={r.severity as SeverityKey} /> <V2Link href={hrefFor({ kind: "rule", id: r.check_id })} className="m2-mono">{r.check_id}</V2Link>
               </th>
-              <td className="m2-mono">{r.field}</td>
+              <td>{r.field ? <SapCode field={r.field} /> : null}</td>
               <td>{moduleText(r.module)}</td>
               <td>{STATUS[r.status]?.() ?? r.status}</td>
               <td className="m2-r">{failing(r.before)}</td>

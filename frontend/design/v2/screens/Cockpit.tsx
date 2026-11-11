@@ -14,7 +14,7 @@ import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { Sparkline } from "../charts";
 import { SeverityMark, VerdictMark, type SeverityKey } from "../marks";
-import { V2Link } from "../parts";
+import { SapCode, V2Link } from "../parts";
 
 const DAY = 86_400_000;
 const SEV_WORD: Record<string, string> = { get critical() { return t("Critical"); }, get high() { return t("High"); }, get medium() { return t("Medium"); }, get low() { return t("Low"); }, get info() { return t("Info"); } };
@@ -331,7 +331,7 @@ function RuleRow({ g, object, owner, top }: { g: WorkGroup; object: string; owne
         <V2Link href={`/work?rule=${encodeURIComponent(g.check_id)}`} className="m2-ck-rule">
           <span className="m2-mono">{g.check_id}</span>
           <span>{g.message ?? "—"}</span>
-          {g.field ? <small className="m2-mono">{g.field}</small> : null}
+          {g.field ? <small><SapCode field={g.field} /></small> : null}
         </V2Link>
       </th>
       <td>{object}</td>

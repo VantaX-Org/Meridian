@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import type { Timeline, TimelineRun } from "@/lib/api/v2/runs";
+import * as runsApi from "@/lib/api/v2/runs";
 import { fixtureResponse } from "@/lib/api/v2/fixtures";
 import type { Landscape } from "@/lib/api/v2/types";
 import { ObjectTrend } from "../ObjectTrend";
@@ -158,5 +159,14 @@ describe("Home headlines, Objects board and Overview tab (fixture)", () => {
     const sec = await screen.findByTestId("overview-trend");
     expect(within(sec).getByText(/Each point is one finished run of this object/)).toBeInTheDocument();
     expect(within(sec).getByRole("link", { name: "Open the Trend tab" })).toHaveAttribute("href", expect.stringContaining("/trend"));
+  });
+
+  it("the Overview tab says so with Retry when the run history cannot be read", async () => {
+    setUrl("/o/ecc-production/material-master?fixture=1");
+    vi.spyOn(runsApi, "getTimeline").mockRejectedValue(new Error("down"));
+    renderWithQuery(<OverviewTab system="ecc-production" module="material-master" />);
+    const err = await screen.findByTestId("error-frame");
+    expect(err).toHaveTextContent("The run history could not be read.");
+    expect(within(err).getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 });
