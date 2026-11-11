@@ -282,6 +282,32 @@ describe("the connection form", () => {
     expect(bodyOf("POST", "/systems")).toMatchObject({ name: "ECC test", system_type: "ecc", host: "ecc-test.internal", client: "300", sysnr: "01", auth_type: "rfc", credentials: { password: "s3cret" } });
   });
 
+  it("takes a SAProuter string and SNC in the setup wizard, refusing a router string with a password", async () => {
+    setUrl("/s/new?fixture=1");
+    renderWithQuery(<ConnectCanvas />);
+    const form = await screen.findByRole("form", { name: "Connect a system" });
+    fill("Name", "ECC test");
+    fill("Host", "ecc-test.internal");
+    fill("Client", "300");
+    fill("Instance number", "01");
+    fill("Password", "s3cret");
+    for (const bad of ["/H/router.example.test/W/secret/H/", "/H/router.example.test/P/secret/H/"]) {
+      fireEvent.change(within(form).getByTestId("saprouter"), { target: { value: bad } });
+      fireEvent.click(within(form).getByRole("button", { name: "Connect system" }));
+      expect(await within(form).findByText("Leave the password out of the router string")).toBeInTheDocument();
+    }
+    expect(bodyOf("POST", "/systems")).toBeUndefined();
+    fireEvent.change(within(form).getByTestId("saprouter"), { target: { value: "/H/router.example.test/S/3299/H/" } });
+    fireEvent.click(within(form).getByTestId("snc-mode"));
+    fireEvent.click(within(form).getByRole("button", { name: "Connect system" }));
+    expect(await within(form).findByText("Enter the SNC partner name, for example p:CN=ECC, O=Company")).toBeInTheDocument();
+    fireEvent.change(within(form).getByTestId("snc-partnername"), { target: { value: "p:CN=TST, O=Example" } });
+    fireEvent.change(within(form).getByTestId("snc-qop"), { target: { value: "3" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Connect system" }));
+    expect(await screen.findByRole("heading", { name: "Connect SuccessFactors" })).toBeInTheDocument();
+    expect(bodyOf("POST", "/systems")).toMatchObject({ saprouter: "/H/router.example.test/S/3299/H/", snc_mode: true, snc_partnername: "p:CN=TST, O=Example", snc_qop: "3" });
+  });
+
   it("tests a draft before it is saved", async () => {
     setUrl("/s/new?fixture=1");
     renderWithQuery(<ConnectCanvas />);
