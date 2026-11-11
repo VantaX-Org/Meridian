@@ -94,7 +94,7 @@ describe("rail and flyout", () => {
     fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Fix" }));
     const fly = await screen.findByTestId("flyout");
     const links = within(within(fly).getByRole("navigation", { name: "Fix" })).getAllByRole("link");
-    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Action centre", "Work", "Aletheia verified fixes", "Cleansing", "Requests", "People"]);
+    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Action centre", "Work", "Aletheia verified fixes", "Cleansing", "Requests", "Process analytics", "People"]);
     await waitFor(() => expect(links[1]).toHaveTextContent("25,712"));
     expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/work/));
     keyOnBody("Escape");

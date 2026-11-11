@@ -31,7 +31,7 @@ describe("Material 360", () => {
     setUrl("/materials");
     renderWithQuery(<Material />);
     const worst = await screen.findByTestId("material-worst");
-    const picks = await within(worst).findAllByRole("button");
+    const picks = within(await within(worst).findByRole("table")).getAllByRole("button");
     expect(picks.length).toBeGreaterThan(0);
     expect(within(worst).getAllByText(/^(Critical|High|Medium|Low)$/).length).toBeGreaterThan(0);
     fireEvent.click(picks[0]);

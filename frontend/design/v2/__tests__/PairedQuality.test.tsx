@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PairedQuality } from "../screens/PairedQuality";
 
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 vi.mock("@/lib/api/v2/migration", () => ({
   getMigrationRuns: async () => ({ runs: [{ id: "r1", status: "analysed" }] }),
   getReconciliation: async () => ({

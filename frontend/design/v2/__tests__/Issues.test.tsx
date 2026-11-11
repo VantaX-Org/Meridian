@@ -68,7 +68,7 @@ describe("Record issues", () => {
   it("opens one issue with its runs and history and takes a comment", async () => {
     renderWithQuery(<Issues />);
     const table = await screen.findByTestId("issues-table");
-    fireEvent.click(within(table).getAllByRole("button")[0]);
+    fireEvent.click(within(within(table).getByRole("table")).getAllByRole("button")[0]);
     const detail = await screen.findByTestId("issues-detail");
     expect(await within(detail).findByTestId("issues-runs")).toHaveTextContent("Failing");
     fireEvent.change(within(detail).getByRole("textbox"), { target: { value: "Checked with finance." } });

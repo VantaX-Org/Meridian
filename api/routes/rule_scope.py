@@ -127,6 +127,11 @@ class ScopeContractOut(BaseModel):
     threshold: Optional[float] = None       # the contract's minimum for the rule's dimension, when it sets one
 
 
+class TenantRuleOut(BaseModel):
+    id: str
+    enabled: bool
+
+
 class RuleScopeOut(BaseModel):
     check_id: str
     name: Optional[str] = None
@@ -141,6 +146,7 @@ class RuleScopeOut(BaseModel):
     versions: list[ScopeVersionOut]
     shipped: Optional[ShippedOut] = None
     contracts: list[ScopeContractOut]
+    tenant_rule: Optional[TenantRuleOut] = None  # this organisation's own copy of the rule, which the inspector enables or disables
 
 
 def _shipped(check_id: str, module: Optional[str]) -> tuple[Optional[str], dict]:

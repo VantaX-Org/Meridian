@@ -39,6 +39,7 @@ export function destinations(): Destination[] {
         { href: "/fix-drafts", label: t("Aletheia verified fixes") },
         { href: "/cleansing", label: t("Cleansing") },
         { href: "/requests", label: t("Requests") },
+        { href: "/requests/analytics", label: t("Process analytics") },
         { href: "/people", label: t("People") },
       ],
       also: [],
@@ -86,6 +87,8 @@ export function destinations(): Destination[] {
       key: "i",
       kids: [
         { href: "/migration", label: t("Migration") },
+        { href: "/system-compare", label: t("System comparison") },
+        { href: "/migration/load-plan", label: t("Load plan") },
         { href: "/s4", label: t("S/4HANA readiness") },
         { href: "/go-live", label: t("Go-live") },
         { href: "/forecast", label: t("Forecast and plan") },

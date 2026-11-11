@@ -7,6 +7,7 @@ import { resetKeptOutcomes } from "../inspector/shared";
 import { setUrl } from "./nav-store";
 import { stubLayout } from "./layout-stub";
 
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 
 let undo: () => void = () => undefined;
