@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { visibleSections } from "@/lib/v2/admin-sections";
 import { AdminCanvas } from "../admin/Admin";
@@ -45,6 +45,21 @@ describe("Admin, SAP systems", () => {
     expect(edits[0].getAttribute("href")).toMatch(/^\/s\/[^/?]+\?open=connection:/);
     expect(screen.getAllByRole("link", { name: "Connect a system" })[0].getAttribute("href")).toMatch(/^\/s\/new(\?|$)/);
     expect(screen.getByText(/asks for the password again/)).toBeInTheDocument();
+  });
+
+  it("tests a connection from the row and removes a system only after its name is typed", async () => {
+    page();
+    const test = (await screen.findAllByRole("button", { name: /^Test the connection of / }))[0];
+    fireEvent.click(test);
+    await waitFor(() => expect(test).not.toBeDisabled());
+    const name = (test.getAttribute("aria-label") ?? "").replace("Test the connection of ", "");
+    fireEvent.click(screen.getAllByRole("button", { name: `Remove ${name}` })[0]);
+    const confirm = await screen.findByRole("button", { name: "Remove system" });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(screen.getByLabelText(/Type .* to continue/), { target: { value: name } });
+    expect(confirm).not.toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByTestId("admin-dialog")).toBeNull();
   });
 
   it("asks for the permission when the viewer lacks it", async () => {

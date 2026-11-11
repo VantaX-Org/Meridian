@@ -8665,4 +8665,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here.": "Jedes verbundene System mit seinen Verbindungseinstellungen: Host, Mandant, Instanz und Anmeldung. Hier verbinden Sie ein neues.",
   "Changing the host, client or instance number asks for the password again. Stored passwords are never shown.": "Wenn Sie Host, Mandant oder Instanznummer ändern, wird das Kennwort erneut abgefragt. Gespeicherte Kennwörter werden nie angezeigt.",
   "The systems could not be read. {detail}": "Die Systeme konnten nicht gelesen werden. {detail}",
+  "Test the connection of {name}": "Verbindung von {name} testen",
+  "{name} is connected. {message}": "{name} ist verbunden. {message}",
+  "{name} could not be reached. {message}": "{name} ist nicht erreichbar. {message}",
+  "The test of {name} failed. {detail}": "Der Test von {name} ist fehlgeschlagen. {detail}",
+  "{name} could not be removed. {detail}": "{name} konnte nicht entfernt werden. {detail}",
+  "Remove {name}?": "{name} entfernen?",
 };
