@@ -210,6 +210,28 @@ describe("Workbook from the new system", () => {
     await waitFor(() => expect(within(panel).queryByTestId("mig-workbook-updating")).toBeNull());
   });
 
+  it("lets the user stop waiting for the updated run", async () => {
+    vi.spyOn(runsApi, "extractObjects").mockResolvedValue({ job_id: "dl-never", status: "queued" });
+    renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
+    const { panel, button } = await pick();
+    choose(panel);
+    fireEvent.click(button);
+    fireEvent.click(await within(panel).findByTestId("mig-workbook-update"));
+    fireEvent.click(await within(panel).findByTestId("mig-workbook-stop"));
+    await waitFor(() => expect(within(panel).queryByTestId("mig-workbook-updating")).toBeNull());
+    expect(within(panel).getByTestId("mig-workbook-update")).toBeTruthy();
+  });
+
+  it("says when learned columns cannot be added for want of a source system", async () => {
+    const base = fixtureWorkbookReport();
+    vi.spyOn(migrationApi, "checkTargetWorkbook").mockResolvedValue({ ...base, learned: { ...base.learned!, system_id: null } });
+    renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
+    const { panel, button } = await pick();
+    choose(panel);
+    fireEvent.click(button);
+    expect((await within(panel).findByTestId("mig-workbook-learned-nosystem")).textContent).toContain("not tied to a source system");
+  });
+
   it("states why the workbook was refused", async () => {
     vi.spyOn(migrationApi, "checkTargetWorkbook").mockRejectedValue({ isAxiosError: true, response: { data: { detail: "Nothing in this run matches the sheets in this workbook." } } });
     renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
@@ -240,6 +262,7 @@ describe("Workbook from the new system", () => {
     renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
     await screen.findByTestId("mig-banner");
     expect(screen.queryByTestId("mig-workbook")).toBeNull();
+    expect((await screen.findByTestId("mig-workbook-locked")).textContent).toContain("Your role cannot export migration data");
     window.history.pushState({}, "", "/");
   });
 });
