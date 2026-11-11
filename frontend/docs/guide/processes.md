@@ -67,6 +67,7 @@ Open a step for its transaction, its activities and fields, the rules failing on
 - **Health by area**: 100 less 3 per critical, 2 per high, 1 per medium and half per low finding, per area such as Finance `FI` or Materials management `MM`.
 - **Settings in use**: the share of each area's configured values that carry at least one transaction. Low shares are settings that were configured and never used.
 - **Findings**: worst first, each with its severity, what was found, the fix, the area, the settings it touches and the amount at stake.
+- **Data errors or configuration choices**: the failing records of the analysed version, each judged a data error, a configuration choice or one Meridian cannot tell. Filter by kind, read what the configuration shows and what to do, and use **Save as workbook** to take the list away (needs the export permission).
 - **Changes since the last run**: settings added, removed or changed between the last two config runs.
 - **Read the configuration again** (analysts and above) queues a new config run on the latest analysed version; the figures change when it ends.
 

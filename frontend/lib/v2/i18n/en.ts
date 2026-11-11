@@ -8664,6 +8664,20 @@ export const en = {
   "Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here.": "Each connected system and its connection settings: host, client, instance and sign-in. Connect a new one here.",
   "Changing the host, client or instance number asks for the password again. Stored passwords are never shown.": "Changing the host, client or instance number asks for the password again. Stored passwords are never shown.",
   "The systems could not be read. {detail}": "The systems could not be read. {detail}",
+  "Data errors or configuration choices": "Data errors or configuration choices",
+  "Failing records, split into mistakes in the data and values the configuration allows.": "Failing records, split into mistakes in the data and values the configuration allows.",
+  "Data error": "Data error",
+  "Configuration choice": "Configuration choice",
+  "Cannot tell": "Cannot tell",
+  "The workbook could not be saved.": "The workbook could not be saved.",
+  "No failing record has been matched against the configuration yet.": "No failing record has been matched against the configuration yet.",
+  "The records could not be read.": "The records could not be read.",
+  "Kind of record": "Kind of record",
+  "Records table, scrollable": "Records table, scrollable",
+  "What the configuration shows": "What the configuration shows",
+  "What to do": "What to do",
+  "Save as workbook": "Save as workbook",
+  "No record of this kind.": "No record of this kind.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
