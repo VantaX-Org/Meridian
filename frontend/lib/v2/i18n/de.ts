@@ -1797,6 +1797,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Extracted": "Extrahiert",
   "Queued or running": "In der Warteschlange oder laufend",
   "Start a run": "Lauf starten",
+  "Choose a system to extract": "Ein System zum Extrahieren wählen",
+  "Extract fresh data first": "Zuerst frische Daten extrahieren",
   "No system has been extracted yet, so there is nothing to analyse. Extract a system first.": "Es wurde noch kein System extrahiert, daher gibt es nichts zu analysieren. Extrahieren Sie zuerst ein System.",
   "An analysis scores the newest stored extraction of a system with every rule. To read fresh data first, extract the system from its page.": "Eine Analyse bewertet die neueste gespeicherte Extraktion eines Systems mit jeder Regel. Um zuerst frische Daten zu lesen, extrahieren Sie das System über seine Seite.",
   "The {run_at} extraction of {name} is being scored.": "Die Extraktion vom {run_at} von {name} wird bewertet.",

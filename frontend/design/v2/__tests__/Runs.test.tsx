@@ -119,6 +119,14 @@ describe("Runs canvas", () => {
     expect(within(result).getByRole("link", { name: "Open the job" })).toHaveAttribute("href", expect.stringContaining("open=job%3As4-extract"));
   });
 
+  it("Start a run links to extracting fresh data from the chosen system", async () => {
+    renderWithQuery(<RunsCanvas />);
+    fireEvent.click(await screen.findByRole("button", { name: "Start a run" }));
+    const panel = await screen.findByTestId("start-run");
+    const link = await within(panel).findByTestId("start-run-extract");
+    await waitFor(() => expect(link).toHaveAttribute("href", expect.stringContaining(`/s/${S4.id}?open=system%3A${S4.id}`)));
+  });
+
   it("a run with nothing to show says so", async () => {
     setUrl("/runs?fixture=1&system=successfactors");
     renderWithQuery(<RunsCanvas />);

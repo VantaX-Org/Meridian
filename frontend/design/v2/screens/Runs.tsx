@@ -86,7 +86,12 @@ function StartRun({ onClose }: { onClose: () => void }) {
   return (
     <div className="m2-handoff" data-testid="start-run" role="group" aria-label={t("Start a run")}>
       {systems.length === 0 ? (
-        <p>{t("No system has been extracted yet, so there is nothing to analyse. Extract a system first.")}</p>
+        <>
+          <p>{t("No system has been extracted yet, so there is nothing to analyse. Extract a system first.")}</p>
+          <V2Link href="/s" className="m2-btn m2-strong" data-testid="start-run-pick-system">
+            {t("Choose a system to extract")}
+          </V2Link>
+        </>
       ) : (
         <>
           <p>{t("An analysis scores the newest stored extraction of a system with every rule. To read fresh data first, extract the system from its page.")}</p>
@@ -117,6 +122,11 @@ function StartRun({ onClose }: { onClose: () => void }) {
             >
               {pending === "analyse" ? t("Starting…") : t("Analyse {name}", { name: system?.name ?? "" }).trim()}
             </button>
+            {chosen ? (
+              <V2Link href={`/s/${encodeURIComponent(chosen)}?open=${encodeURIComponent(`system:${chosen}`)}`} className="m2-btn" data-testid="start-run-extract">
+                {t("Extract fresh data first")}
+              </V2Link>
+            ) : null}
             <button type="button" className="m2-btn m2-ghost" onClick={onClose}>
               {t("Close")}
             </button>
