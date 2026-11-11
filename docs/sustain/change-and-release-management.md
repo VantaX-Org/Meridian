@@ -69,7 +69,7 @@ After the update, follow the verification steps in the release notes. At minimum
 
 - Automatic: if migrations or the health check fail, `update.sh` rolls back to the `:rollback` images by itself and prints the `pg_restore` command for the pre-update dump.
 - Manual: `sudo bash scripts/update.sh --rollback`. A second `--rollback` returns to the newer release.
-- A rollback restores images, not the database schema. There are no down-migrations (debt row D-22). When the newer release had migrated, restore the pre-update dump as printed. That loses any work done after the update.
+- A rollback restores images, not the database schema. The older release usually runs on the newer schema. When it cannot, run the down-migrations to the older release's head revision before `--rollback`; the steps and the downgrades that delete rows or refuse are in [runbook 3](runbooks.md#3-update-with-updatesh-and-roll-back). When a downgrade is refused or would lose data you need, restore the pre-update dump as printed. That loses any work done after the update.
 
 Decide before each update with migrations who can approve a dump restore: To confirm (owner: customer service owner).
 

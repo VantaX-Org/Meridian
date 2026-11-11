@@ -62,6 +62,22 @@ describe("Admin: users", () => {
     expect(screen.getByText(/1 invite older than 7 days/)).toBeInTheDocument();
   });
 
+  it("shows each role's description beside its name", async () => {
+    page(<UsersSection />);
+    await screen.findByText("Nomsa Dlamini");
+    await waitFor(() => expect(norm(dataRows("Users")[0])).toContain("Platform admin Everything, including users, licence and audit."));
+  });
+
+  it("the import preview shows each role code with its name", async () => {
+    page(<UsersSection />);
+    fireEvent.click(await screen.findByRole("button", { name: "Import users" }));
+    const dialog = await screen.findByRole("dialog", { name: "Import users" });
+    fireEvent.change(within(dialog).getByLabelText("CSV"), { target: { value: "email,name,role\nnew.one@demo-corp.example,New One,data_steward" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Check the file" }));
+    const cell = await within(dialog).findByTitle("Data steward (data_steward)");
+    expect(norm(cell)).toContain("Data steward");
+  });
+
   it("filters by status through the API", async () => {
     const spy = vi.spyOn(adminApi, "listUsers");
     page(<UsersSection />);
