@@ -51,6 +51,18 @@ The buttons depend on the role, and a button the role cannot use is not shown:
 
 A role that cannot read migration analyses at all sees "Your role cannot read the migration analyses."
 
+## System comparison
+
+System comparison pairs a source and a target system for one object, for example ECC production and S/4HANA for the material master. Open it at /system-compare. Each pair shows three scores: the source score, the score the migration analysis projects for the target, and the score measured on the target itself. When a score is missing, the screen says why, for example that the target has no completed analysis yet.
+
+Compare now runs a comparison in the background. It reconciles the records of every table both systems extracted: how many records are in the source and in the target, how many match, how many are missing in the target and how many exist only in the target. Records are matched on the dictionary key of the table. When the target numbers records anew, set the key fields of the pair, for example the source MATNR against the target BISMT that holds the old number. Only fields from the system's dictionary are accepted.
+
+For every matched record each field is compared. A value that differs only by leading zeros, case or spacing, a value mapping, a date format or a number format counts as equal after that change and is shown as such. Every other difference is listed in the difference grid, which you can filter by table, kind, field and text, and export to Excel or CSV with the descriptions beside the codes. Select a record to see the source and target values side by side. Up to 100 records per table and kind are kept for review; the counts always cover all records.
+
+The comparison also checks configuration: organisational units, value lists and check tables read from the source are looked for in the target by key, by normalised key and by description. Why the scores differ lists the rules whose pass rate moved most between source and target, each linked to the rule. Scores over time draws the three scores across comparisons.
+
+A table that cannot be compared says why: it was not extracted from one side, the extraction did not finish or holds only part of the table, or a key field is missing.
+
 ## The numbers and where they come from
 
 Gaps by kind come from the latest analysis of your records against the target system. The workbook figures come from the finished run and the workbook you choose, and nothing is guessed.
