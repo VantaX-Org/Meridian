@@ -1,4 +1,4 @@
-"""An SAP workbook column the dictionary lacks is resolved against the system's DD03L, within the object's tables."""
+"""An SAP workbook column the dictionary lacks is resolved against the system's DD03L."""
 from unittest.mock import MagicMock
 
 import pandas as pd
@@ -63,11 +63,21 @@ def test_ambiguous_and_missing_fields_are_reported_not_guessed():
     assert none["not_in_system"] and named["not_in_system"] and "candidates" not in none
 
 
-def test_out_of_scope_table_is_never_asked():
+def test_named_table_outside_scope_is_asked_and_learned():
     ddic_reader._DD03L.clear()
-    opened = []
-    assert wb.learn_sap(book("LFA1-ZZFOO"), D, SCOPE, lookup("sys-c", connector(), opened)) == ({}, {})
-    assert opened == []
+    conn, opened = MagicMock(), []
+    conn.read_table_full.return_value = pd.DataFrame({"TABNAME": ["LFA1"], "FIELDNAME": ["ZZFOO"]})
+    learned, unresolved = wb.learn_sap(book("LFA1-ZZFOO"), D, SCOPE, lookup("sys-c", conn, opened))
+    assert learned == {"LFA1": {"ZZFOO": "LFA1.ZZFOO"}} and unresolved == {}
+    assert opened == [1]
+
+
+def test_hit_on_table_the_dictionary_lacks_is_reported_not_learned():
+    ddic_reader._DD03L.clear()
+    conn = MagicMock()
+    conn.read_table_full.return_value = pd.DataFrame({"TABNAME": ["ZZTAB"], "FIELDNAME": ["ZZFOO"]})
+    learned, unresolved = wb.learn_sap(book("ZZTAB-ZZFOO", "ZZTAB-ZZNONE"), D, SCOPE, lookup("sys-f", conn, []))
+    assert learned == {} and unresolved == {"ZZTAB-ZZFOO": ["ZZTAB"], "ZZTAB-ZZNONE": []}
 
 
 def test_lookups_are_cached_per_system():
@@ -86,3 +96,12 @@ def test_learned_sap_field_waits_for_the_next_run():
 
     d = with_learned(D, {"MARA": {"ZZFOO": "MARA.ZZFOO"}})
     assert _learned_pending({}, d) == {"ZZFOO": False, "MARA-ZZFOO": False, "MARA.ZZFOO": False}
+
+
+def test_learned_field_on_unplanned_table_is_planned_for_extraction():
+    from sap.extraction_plan import plan_modules
+
+    assert "ZZFOO" not in plan_modules(["material_master"], D).get("LFA1", type("P", (), {"fields": set()})).fields
+    plans = plan_modules(["material_master"], with_learned(D, {"LFA1": {"ZZFOO": "LFA1.ZZFOO"}}))
+    assert "ZZFOO" in plans["LFA1"].fields and plans["LFA1"].keys == list(D.keys("LFA1"))
+    assert "material_master" in plans["LFA1"].modules

@@ -510,32 +510,6 @@ rules:
   record_fix_template: 'Record is missing ADRC.HOUSE_NUM1. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893
     (Manage Business Partner).'
   grain: BUT000
-- id: BP031
-  field: ADRC.REGION
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Region/state is missing
-  why_it_matters: Region/state (ADRC.REGION) is not maintained. This field supports downstream processes and reporting accuracy.
-    Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Region/state may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Record is missing ADRC.REGION. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage
-    Business Partner).'
-  applies_when:
-    ADRC.COUNTRY:
-    - US
-    - CA
-    - AU
-    - BR
-    - MX
-    - IN
-    - CN
-    - IT
-    - ES
-  grain: BUT000
 - id: BP032
   field: ADRC.TEL_NUMBER
   check_class: null_check
@@ -1896,6 +1870,9 @@ rules:
     - CN
     - JP
     - AR
+    - IT
+    - ES
+  grain: BUT000
   severity: medium
   dimension: completeness
   message: Region is missing for a country that requires it

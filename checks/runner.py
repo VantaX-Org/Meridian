@@ -306,7 +306,13 @@ def target_columns(rule: dict) -> list[str]:
     if rule.get("check_class") != "exists_check":
         return []
     t = rule["target_table"]
-    return [f"{t}.{f}" for f in list(rule["target_fields"]) + list(_when_fields(rule.get("target_when")))]
+    own = [f for f in rule["target_fields"] if "." not in f]
+    cols = [f"{t}.{f}" for f in own + list(_when_fields(rule.get("target_when")))]
+    if j := rule.get("target_join"):
+        # target_join adds a second table keyed on `keys`; target_fields written TABLE.FIELD come from it
+        cols += [f"{t}.{f}" for f in j["keys"]] + [f"{j['table']}.{f}" for f in j["keys"]]
+        cols += [f for f in rule["target_fields"] if "." in f]
+    return list(dict.fromkeys(cols))
 
 
 def _when_fields(when: dict | None) -> list[str]:
@@ -335,11 +341,23 @@ def _with_targets(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | 
     t = rule["target_table"]
     if t in getattr(frames, "incomplete", set()) | getattr(frames, "partial", set()):
         return f"not evaluated: {t} was not read in full (incomplete, windowed or scoped download)"
+    j = rule.get("target_join")
+    if j and j["table"] in getattr(frames, "incomplete", set()) | getattr(frames, "partial", set()):
+        return f"not evaluated: {j['table']} was not read in full (incomplete, windowed or scoped download)"
     target = frames.frames.get(t)
-    if target is None or any(c not in target.columns for c in target_columns(rule)):
+    own = [c for c in target_columns(rule) if c.startswith(f"{t}.")]
+    if target is None or any(c not in target.columns for c in own):
         return None
-    target = _target_context(target[list(dict.fromkeys(target_columns(rule)))], t, rule.get("target_when"), as_of)
-    return {**rule, "_target_values": target_keys(target, [f"{t}.{f}" for f in rule["target_fields"]])}
+    target = _target_context(target[own], t, rule.get("target_when"), as_of)
+    if j:
+        other = frames.frames.get(j["table"])
+        theirs = [c for c in target_columns(rule) if c.startswith(f"{j['table']}.")]
+        if other is None or any(c not in other.columns for c in theirs):
+            return None
+        target = target.merge(other[theirs].drop_duplicates(), how="inner",
+                              left_on=[f"{t}.{f}" for f in j["keys"]], right_on=[f"{j['table']}.{f}" for f in j["keys"]])
+    keys = [f if "." in f else f"{t}.{f}" for f in rule["target_fields"]]
+    return {**rule, "_target_values": target_keys(target, keys)}
 
 
 def _with_target_sums(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | str | None:
