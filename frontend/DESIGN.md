@@ -17,13 +17,15 @@ Every SAP system, object, rule, record, run and person is a place on the map; ev
 in the ledger; anything you select opens in the same inspector. The rail names the few places; objects and runs are
 the two things everything else hangs from.
 
-1. **The rail** (left, `--m2-rail-w` 64px): Home, Objects, Runs, Work, People, Migration and, for administrators, Admin
-   (`shell/Rail.tsx`, items in `shell/menu.ts`). Hover or focus on an item opens a flyout (`--m2-flyout-w` 280px) with
+1. **The rail** (left, `--m2-rail-w` 64px): seven destinations, Home, Objects, Runs, Fix, Rules, Master data and
+   Migration, with Reports, Atlas and, for administrators, Admin at its foot (`shell/Rail.tsx`, items in `shell/menu.ts`).
+   The foot is the one entry to Administration; the account menu and the admin canvas carry no second copy, and the
+   command line's places are drawn from the same `destinations()` so no list drifts. Hover or focus on an item opens a flyout (`--m2-flyout-w` 280px) with
    that place's pages; Esc, a click outside or leaving closes it, and the pin keeps it open (`m2.rail.pin` in local
    storage). Only Work carries a count badge. Below 1100px the same items are the bottom tabs (`.m2-ptabs`); CSS
    switches between the two, both are always rendered (the rail nav is "Main", the bottom bar "Main, bottom bar"). The Objects board (`/objects`, `screens/Objects.tsx`) is a table per system with a score, a small trend and a link per object; an inactive system with finished runs stays listed with an Inactive chip. The rail's Objects flyout holds the tree of systems and objects
-   (`shell/ObjectsTree.tsx`), each row with its score and a ruler. Administration keeps its own index column
-   (`design/v2/admin/Admin.tsx`).
+   (`shell/ObjectsTree.tsx`), each row with its score and a ruler. Administration keeps its own section index in the map column
+   (`design/v2/admin/Admin.tsx`); the rail stays the way back.
 2. **The canvas** (middle): the place chosen on the map. Landscape (`/`), an object (`/o/{system}/{object}` and its
    tabs), a rule (`/r/{id}`), the Work ledger (`/work`), the runs (`/runs`), one run (`/run/{id}`) and two runs
    (`/run/{a}/vs/{b}`), a system (`/s/{id}`, `/s/new`), People, Reports, the rules library (`/rules`) and
@@ -33,8 +35,8 @@ the two things everything else hangs from.
    it. The bare panels (`?open=inbox`, `help`, `preferences`, `waves`, `triage`, `contracts`, `balance`, `away`) use the
    same frame.
 4. **The top bar** (`--m2-bar-h` 48px): the breadcrumb (Objects, system, object), the command line (`⌘K`
-   or `/`), the inbox count, help (`?`) and the account menu with Preferences, Reports and, for administrators,
-   Administration. Jobs show as one thin line under the bar, never as a tray.
+   or `/`), the inbox count, help (`?`) and the account menu, which holds personal items only: who you are, Theme,
+   Preferences, Keyboard shortcuts, About and Sign out. Nothing a team shares lives under the avatar. Jobs show as one thin line under the bar, never as a tray.
 5. **The score is a ruler**, never a gauge: six segments whose widths are the dimension weights, each filled to its
    score, a tick at the measured score, the shown (capped) score as the number and the cap said in words
    (`design/v2/Ruler.tsx`). The same ruler at 48px in every map row and matrix cell.
@@ -62,7 +64,9 @@ gradient. Light is spent only on the moments below, and glow and gradient are al
 
 Four things make the interface recognisable at a glance.
 
-1. **The deep bar.** The top bar is one flat deep meridian blue in both themes (`--m2-bar-bg`), with its
+1. **The deep bar.** The top bar is a slab of Liquid Glass in the deep meridian blue in both themes
+   (`--m2-glass-bar`, the translucent form of `--m2-bar-bg`, with the `--m2-glass-tint` wash and a `--m2-glass-specular`
+   edge), with its
    own inks (`--m2-bar-fg`, `--m2-bar-fg-2`) and a glass search field (`--m2-bar-field`, `--m2-bar-line`). It is the one
    dark surface of the light theme, so the product is recognisable before a word is read. The job line under it is the
    flat data hue. The same deep ground is the hero: the go-live banner on the landscape and the whole
@@ -147,8 +151,15 @@ Colour is quiet by default and spent on meaning. Three layers, all in `tokens.cs
      `--m2-crit-glow-ink`. Glows belong to the moments only. The old `--m2-shadow` remains for what floated before.
    - **Gradients**: `--m2-grad-hero` (the go-live banner, the landscape hero and the signed-out ground),
      `--m2-grad-hero-light` (its corner wash), `--m2-grad-ai` and `--m2-grad-ai-wash` (the Aletheia avatar,
-     confidence bars and proof wash). Nothing else is a gradient: the bar is the
-     flat `--m2-bar-bg`, selection is `--m2-data-bg`, and the primary button is `--m2-data`.
+     confidence bars and proof wash), `--m2-glass-tint` and `--m2-glass-specular` (the Liquid Glass wash and edge on
+     floating chrome). Nothing else is a gradient: selection is `--m2-data-bg`, and the primary button is `--m2-data`.
+   - **Liquid Glass v2** (floating chrome only: the bar, the rail flyout, menus, the command line, toasts, popovers):
+     `--m2-glass-bar`, `--m2-glass-sheet`, `--m2-glass-inverse`, the `--m2-glass-tint` wash mixed from the data hue so it
+     follows the tenant accent, the `--m2-glass-specular` edge, `--m2-glass-edge` lift and `--m2-glass-filter` blur. Content
+     sits on solid sheets and never blurs. Without `backdrop-filter`, under `prefers-reduced-transparency`,
+     `prefers-contrast: more`, forced colours and in print the same tokens turn solid (`tokens.css`, the last block), so
+     the bar inks keep AA contrast whatever is behind the glass. No motion is added for the glass; what moves obeys
+     `prefers-reduced-motion` as before.
    - **Bar inks**: `--m2-bar-fg`, `--m2-bar-fg-2`, `--m2-bar-hover`, `--m2-bar-line`, `--m2-bar-field`, the same in both
      themes because the bar is deep in both.
    - **Hero ground and inks**: `--m2-hero-bg`, `--m2-hero-bg-2` (the two ends of `--m2-grad-hero`), `--m2-hero-fg`,

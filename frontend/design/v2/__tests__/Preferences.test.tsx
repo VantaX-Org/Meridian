@@ -160,14 +160,19 @@ describe("the preferences panel", () => {
     expect(within(dialog).queryByLabelText(/current interface/)).toBeNull();
   });
 
-  it("opens from the account menu, and the menu has Preferences and Reports", async () => {
+  it("opens from the account menu, which holds personal items only", async () => {
     setUrl("/?fixture=1");
     mount();
     fireEvent.click(screen.getByRole("button", { name: /^Account/ }));
     const menu = await screen.findByRole("menu", { name: "Account" });
     const prefs = within(menu).getByRole("menuitem", { name: "Preferences" });
     expect(prefs.getAttribute("href")).toContain("open=preferences");
-    expect(within(menu).getByRole("menuitem", { name: "Reports" })).toHaveAttribute("href", "/reports?fixture=1");
-    expect(within(menu).getByRole("menuitem", { name: "Administration" })).toHaveAttribute("href", "/admin?fixture=1");
+    expect(within(menu).getByRole("menuitem", { name: /^Keyboard shortcuts/ })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "About Meridian" })).toBeInTheDocument();
+    for (const shared of ["Reports", "Administration", "Triage and SLA"]) expect(within(menu).queryByRole("menuitem", { name: shared })).toBeNull();
+    // Administration has exactly one entry: the foot of the rail.
+    const admin = screen.getAllByRole("link", { name: "Admin" });
+    expect(admin).toHaveLength(1);
+    expect(within(screen.getByTestId("rail")).getByRole("link", { name: "Admin" })).toHaveAttribute("href", "/admin?fixture=1");
   });
 });

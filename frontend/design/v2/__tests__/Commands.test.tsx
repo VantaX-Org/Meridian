@@ -112,7 +112,8 @@ describe("the command line finds every canvas by name", () => {
   it("matches by the start of a word first, then anywhere in the name", () => {
     const places = placeIndex(() => true);
     expect(matchPlaces(places, "rep").map((p) => p.href)).toContain("/reports");
-    expect(matchPlaces(places, "land")[0].href).toBe("/");
+    expect(matchPlaces(places, "home")[0].href).toBe("/");
+    expect(matchPlaces(places, "triage")[0].href).toBe("/work/triage");
     expect(matchPlaces(places, "x")).toEqual([]);
     expect(placeIndex(() => false).some((p) => p.href.startsWith("/admin"))).toBe(false);
     // The notifications section is found by the name on its page, Default digest.

@@ -39,11 +39,13 @@ const panel = async () => {
 };
 
 describe("triage and SLA settings", () => {
-  it("is an entry in the account menu that opens the panel", async () => {
+  it("is a page under Fix in the rail, and the page opens the panel", async () => {
     setUrl("/?fixture=1");
     renderWithQuery(<V2Shell><h1>Page</h1></V2Shell>);
-    fireEvent.click(await screen.findByRole("button", { name: /^Account/ }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Triage and SLA" }));
+    fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Fix" }));
+    const fly = await screen.findByTestId("flyout");
+    expect(within(fly).getByRole("link", { name: "Triage and SLA" })).toHaveAttribute("href", "/work/triage?fixture=1");
+    setUrl("/work/triage?fixture=1&open=triage");
     expect(await screen.findByRole("heading", { level: 2, name: "Triage and SLA" })).toBeInTheDocument();
     expect(getUrl()).toContain("open=triage");
   });

@@ -99,7 +99,11 @@
   --m2-glass-line: #1111121F;
   --m2-glass-hi: #FFFFFF8C;
   --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
-  --m2-glass-filter: blur(16px) saturate(140%);
+  --m2-glass-filter: blur(20px) saturate(160%);
+  /* Liquid Glass v2: the bar as a translucent slab of the deep blue, a tint that follows the data hue, a specular edge. Gradients live in token files only. */
+  --m2-glass-bar: #0B0718E6;
+  --m2-glass-tint: linear-gradient(135deg, color-mix(in srgb, var(--m2-data) 10%, transparent), transparent 60%);
+  --m2-glass-specular: linear-gradient(90deg, #FFFFFF00, #FFFFFF66 50%, #FFFFFF00);
   /* The Aletheia lift: a hairline contact shadow and one soft drop, on cards and floating chrome alike. */
   --m2-shadow-card: 0 1px 2px #1111120A, 0 14px 36px -18px #1111122E;
   --m2-inverse: var(--m2-n-925);
@@ -341,7 +345,10 @@
     --m2-glass-line: #FFFFFF1F;
     --m2-glass-hi: #FFFFFF14;
     --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
-    --m2-glass-filter: blur(16px) saturate(120%);
+    --m2-glass-filter: blur(20px) saturate(140%);
+    --m2-glass-bar: #0B0718E6;
+    --m2-glass-tint: linear-gradient(135deg, color-mix(in srgb, var(--m2-data) 12%, transparent), transparent 60%);
+    --m2-glass-specular: linear-gradient(90deg, #FFFFFF00, #FFFFFF40 50%, #FFFFFF00);
   --m2-shadow-card: 0 1px 2px #00000052, 0 14px 36px -18px #00000080;
     --m2-inverse: var(--m2-n-100);
     --m2-on-inverse: var(--m2-n-950);
@@ -471,7 +478,10 @@ html[data-theme="dark"] .m2-root {
   --m2-glass-line: #FFFFFF1F;
   --m2-glass-hi: #FFFFFF14;
   --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
-  --m2-glass-filter: blur(16px) saturate(120%);
+  --m2-glass-filter: blur(20px) saturate(140%);
+  --m2-glass-bar: #0B0718E6;
+  --m2-glass-tint: linear-gradient(135deg, color-mix(in srgb, var(--m2-data) 12%, transparent), transparent 60%);
+  --m2-glass-specular: linear-gradient(90deg, #FFFFFF00, #FFFFFF40 50%, #FFFFFF00);
   --m2-shadow-card: 0 1px 2px #00000052, 0 14px 36px -18px #00000080;
   --m2-inverse: var(--m2-n-100);
   --m2-on-inverse: var(--m2-n-950);
@@ -753,11 +763,12 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
     --m2-bg: #FFFFFF; --m2-sheet: #FFFFFF; --m2-fg: #000000; --m2-ink-2: #2B2F36; --m2-meta: #4A505A;
     --m2-line: #C9CDD3; --m2-line-2: #9AA0A9; --m2-rule: #DADDE1;
     --m2-ambient: none; --m2-glass-sheet: #FFFFFF; --m2-glass-inverse: #FFFFFF; --m2-glass-filter: none;
+    --m2-glass-bar: var(--m2-bar-bg); --m2-glass-tint: none; --m2-glass-specular: none;
   }
 }
 
-/* Glass: floating chrome only. Content never blurs. Budget: 3 layers at once. */
-.m2-root .m2-menu, .m2-root .m2-pal, .m2-root .m2-pop, .m2-root .m2-tlpop, .m2-root .m2-toast, .m2-root .m2-bulk,
+/* Liquid Glass v2: floating chrome only (bar, rail flyout, menus, command line, toasts, popovers). Content never blurs. Budget: 3 layers at once. */
+.m2-root .m2-top, .m2-root .m2-menu, .m2-root .m2-pal, .m2-root .m2-pop, .m2-root .m2-tlpop, .m2-root .m2-toast, .m2-root .m2-bulk,
 .m2-root .m2-railwrap:not([data-pinned]) .m2-fly {
   -webkit-backdrop-filter: var(--m2-glass-filter);
   backdrop-filter: var(--m2-glass-filter);
@@ -766,11 +777,12 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
   .m2-root .m2-insp { -webkit-backdrop-filter: var(--m2-glass-filter); backdrop-filter: var(--m2-glass-filter); }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .m2-root { --m2-glass-sheet: var(--m2-sheet); --m2-glass-inverse: var(--m2-inverse); --m2-glass-hi: var(--m2-line); }
+  .m2-root { --m2-glass-sheet: var(--m2-sheet); --m2-glass-inverse: var(--m2-inverse); --m2-glass-hi: var(--m2-line); --m2-glass-bar: var(--m2-bar-bg); --m2-glass-tint: none; }
 }
+/* Solid fallbacks: no translucency, tint or specular when the person asks for less transparency or more contrast. */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .m2-root { --m2-glass-sheet: var(--m2-sheet); --m2-glass-inverse: var(--m2-inverse); --m2-glass-hi: var(--m2-line); --m2-glass-filter: none; }
+  .m2-root { --m2-glass-sheet: var(--m2-sheet); --m2-glass-inverse: var(--m2-inverse); --m2-glass-hi: var(--m2-line); --m2-glass-filter: none; --m2-glass-bar: var(--m2-bar-bg); --m2-glass-tint: none; --m2-glass-specular: none; }
 }
 @media (forced-colors: active) {
-  .m2-root { --m2-glass-filter: none; }
+  .m2-root { --m2-glass-filter: none; --m2-glass-tint: none; --m2-glass-specular: none; }
 }

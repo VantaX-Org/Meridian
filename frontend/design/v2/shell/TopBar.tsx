@@ -6,7 +6,6 @@ import { useAuth } from "@/context/auth-context";
 import { useAuroraPrefs } from "@/hooks/use-theme";
 import type { Theme } from "@/lib/preferences";
 import { PERSONA_LABEL, useOpenItem, useRunParam, useV2Session } from "@/lib/v2/hooks";
-import { canAdminister } from "@/lib/v2/admin-sections";
 import { useUnread } from "@/lib/v2/approvals-queries";
 import { useLandscape } from "@/lib/v2/queries";
 import { int, moduleSlug, systemSlug } from "@/lib/v2/score";
@@ -75,10 +74,13 @@ function AboutDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Persona label and the account menu: who you are, theme, preferences, reports, shortcuts, administration, and the way back. */
+/**
+ * Persona label and the account menu. Personal items only: who you are, theme, preferences, shortcuts, about and sign out.
+ * Administration has one entry, the gear at the foot of the rail; Reports and Triage live under the rail's destinations.
+ */
 export function AccountMenu({ theme, setTheme, onShortcuts, onSignOut }: AccountMenuProps) {
   const session = useV2Session();
-  const { openItem, hrefFor } = useOpenItem();
+  const { hrefFor } = useOpenItem();
   const [about, setAbout] = useState(false);
   const entries: MenuEntry[] = [
     { kind: "heading", label: session.name ? (session.email ? `${session.name}, ${session.email}` : session.name) : PERSONA_LABEL[session.persona] },
@@ -86,10 +88,7 @@ export function AccountMenu({ theme, setTheme, onShortcuts, onSignOut }: Account
     ...THEMES.map<MenuEntry>((t) => ({ kind: "item", id: `theme-${t.value}`, label: t.label, checked: theme === t.value, onSelect: () => setTheme(t.value) })),
     { kind: "separator" },
     { kind: "item", id: "prefs", label: tr("Preferences"), href: hrefFor({ kind: "preferences", id: "" }) },
-    { kind: "item", id: "reports", label: tr("Reports"), href: "/reports" },
     { kind: "item", id: "keys", label: tr("Keyboard shortcuts"), kbd: "?", onSelect: onShortcuts },
-    { kind: "item", id: "triage", label: tr("Triage and SLA"), onSelect: () => openItem({ kind: "triage", id: "" }) },
-    ...(canAdminister(session.can) ? [{ kind: "item", id: "admin", label: tr("Administration"), href: "/admin" } as MenuEntry] : []),
     { kind: "separator" },
     { kind: "item", id: "about", label: tr("About Meridian"), onSelect: () => setAbout(true) },
     ...(onSignOut ? [{ kind: "item", id: "out", label: tr("Sign out"), onSelect: onSignOut } as MenuEntry] : []),

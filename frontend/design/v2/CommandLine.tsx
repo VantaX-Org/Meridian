@@ -8,6 +8,7 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import { useV2Href, useV2Session } from "@/lib/v2/hooks";
 import { canAdminister, visibleSections } from "@/lib/v2/admin-sections";
 import { commandHints, ledgerRegistry } from "@/lib/v2/keys";
+import { destinations, kidsFor } from "./shell/menu";
 import type { CommandGroup } from "@/lib/api/v2/types";
 import { t as tr, tx } from "@/lib/v2/i18n";
 import { chipValue, nlQuestion, nlTarget, slotWord } from "@/lib/v2/step10";
@@ -16,58 +17,49 @@ import type { NlAnswer } from "@/lib/api/v2/step10";
 import { Mono } from "./parts";
 import "./step10.css";
 
+/** The empty command line offers the rail's seven destinations and the one action that starts everything. */
 const PLACES: CommandGroup = {
   kind: "action",
   get label() { return tr("Go to"); },
-  items: [
-    { id: "landscape", get title() { return tr("Landscape"); }, href: "/" },
-    { id: "objects", get title() { return tr("Objects"); }, href: "/objects" },
-    { id: "work", get title() { return tr("Work"); }, href: "/work" },
-    { id: "runs", get title() { return tr("Runs"); }, href: "/runs" },
-    { id: "people", get title() { return tr("People"); }, href: "/people" },
-    { id: "rules", get title() { return tr("Rules"); }, href: "/rules" },
-    { id: "connect", get title() { return tr("Connect a system"); }, href: "/s/new" },
-  ],
+  get items() {
+    return [
+      ...destinations().map((d) => ({ id: d.id, title: d.label, href: d.href })),
+      { id: "connect", title: tr("Connect a system"), href: "/s/new" },
+    ];
+  },
 };
 
 /**
  * Every canvas and panel by name, in the reader's language, for the places this viewer may open: typing "reports",
- * "webhooks" or "Einstellungen" goes there without asking the server. They follow what the server found.
+ * "webhooks" or "Einstellungen" goes there without asking the server. The rail's destinations and their children come
+ * from the one menu, so the command line never names a place the rail does not.
  */
 export function placeIndex(can: (action: string) => boolean): { id: string; title: string; href: string }[] {
-  const places = [
-    ...PLACES.items,
+  const seen = new Set<string>();
+  const places: { id: string; title: string; href: string }[] = [];
+  const add = (p: { id: string; title: string; href: string }) => {
+    if (seen.has(p.href)) return;
+    seen.add(p.href);
+    places.push(p);
+  };
+  for (const d of destinations()) {
+    add({ id: d.id, title: d.label, href: d.href });
+    for (const k of kidsFor(d, can)) add({ id: k.href.slice(1).replace(/\//g, "-"), title: k.label, href: k.href });
+  }
+  [
+    { id: "connect", title: tr("Connect a system"), href: "/s/new" },
     { id: "reports", title: tr("Reports"), href: "/reports" },
-    { id: "requests", title: tr("Requests"), href: "/requests" },
-    { id: "atlas", title: tr("Landscape atlas"), href: "/atlas" },
-    { id: "config", title: tr("Configuration"), href: "/config" },
-    { id: "cleansing", title: tr("Cleansing"), href: "/cleansing" },
-    { id: "processes", title: tr("Process discovery"), href: "/processes" },
-    { id: "mining", title: tr("Data mining"), href: "/mining" },
-    { id: "rule-promotion", title: tr("Aletheia rule promotion"), href: "/rule-promotion" },
-    { id: "rule-dry-run", title: tr("Rule dry run"), href: "/rule-dry-run" },
-    { id: "fix-drafts", title: tr("Aletheia verified fixes"), href: "/fix-drafts" },
-    { id: "aletheia-survivorship", title: tr("Aletheia verified survivorship"), href: "/aletheia-survivorship" },
-    { id: "reference-data", title: tr("Reference data"), href: "/reference-data" },
-    { id: "monitors", title: tr("Learned monitors"), href: "/monitors" },
-    { id: "entry-gate", title: tr("Entry gate"), href: "/entry-gate" },
-    { id: "anomaly-rules", title: tr("Anomaly rules"), href: "/anomaly-rules" },
+    { id: "atlas", title: tr("Atlas"), href: "/atlas" },
     { id: "work-analytics", title: tr("Work analytics"), href: "/work/analytics" },
-    { id: "migration", title: tr("Migration analysis"), href: "/migration" },
-    { id: "s4", title: tr("S/4HANA readiness"), href: "/s4" },
-    { id: "insights", title: tr("Cost and causes"), href: "/insights" },
-    { id: "forecast", title: tr("Forecast and plan"), href: "/forecast" },
-    { id: "value", title: tr("Value delivered"), href: "/value" },
-    { id: "score", title: tr("Score lens"), href: "/score" },
     { id: "ask", title: tr("Ask Meridian"), href: "/?open=ask" },
     { id: "waves", title: tr("Waves"), href: "/?view=waves" },
     { id: "status", title: tr("Status"), href: "/status" },
     { id: "inbox", title: tr("Inbox"), href: "/?open=inbox" },
     { id: "help", title: tr("Help"), href: "/?open=help" },
     { id: "preferences", title: tr("Preferences"), href: "/?open=preferences" },
-  ];
-  if (canAdminister(can)) places.push({ id: "admin", title: tr("Administration"), href: "/admin" });
-  for (const s of visibleSections(can)) places.push({ id: `admin-${s.slug}`, title: tr("Administration: {section}", { section: s.label }), href: `/admin/${s.slug}` });
+  ].forEach(add);
+  if (canAdminister(can)) add({ id: "admin", title: tr("Administration"), href: "/admin" });
+  for (const s of visibleSections(can)) add({ id: `admin-${s.slug}`, title: tr("Administration: {section}", { section: s.label }), href: `/admin/${s.slug}` });
   return places;
 }
 

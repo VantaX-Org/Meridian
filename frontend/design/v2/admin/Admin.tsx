@@ -32,16 +32,7 @@ import { int } from "@/lib/v2/score";
 import type { Verdict } from "@/lib/api/v2/types";
 import { CcBanner, CcHBars, CcPage, type CcFig } from "../screens/cc-parts";
 
-/** The main places, first in the index so leaving administration is one tap. */
-const PLACES: readonly (readonly [string, () => string, string])[] = [
-  ["/", () => t("Home"), "g h"],
-  ["/objects", () => t("Objects"), "g o"],
-  ["/runs", () => t("Runs"), "g r"],
-  ["/work", () => t("Work"), "g w"],
-  ["/people", () => t("People"), "g p"],
-];
-
-/** The left index of the Admin canvas: the same column as the landscape map, sections in place of objects. */
+/** The left index of the Admin canvas: the same column as the landscape map, sections in place of objects. The rail stays the way back. */
 export function AdminMap() {
   const pathname = usePathname();
   const can = useCan();
@@ -51,12 +42,6 @@ export function AdminMap() {
   return (
     <aside id="m2-map" className="m2-map" aria-label={t("Administration")} data-testid="admin-index">
       <nav className="m2-mnav" aria-label={t("Administration sections")}>
-        {PLACES.map(([href, label, key]) => (
-          <V2Link key={href} href={href} className="m2-mi">
-            <span>{label()}</span>
-            <kbd className="m2-kb">{key}</kbd>
-          </V2Link>
-        ))}
         <V2Link href="/admin" className="m2-mi" aria-current={pathname === "/admin" ? "page" : undefined}>
           <span>{t("All of administration")}</span>
         </V2Link>
@@ -194,7 +179,7 @@ export function AdminHome() {
               .filter((s) => s.group === g)
               .map((s) => (
                 <li key={s.slug}>
-                  <V2Link href={`/admin/${s.slug}`} className="m2-hitem" style={{ display: "grid" }}>
+                  <V2Link href={`/admin/${s.slug}`} className="m2-hitem">
                     <span className="m2-ht">{s.label}</span>
                     <span className="m2-hs2">{s.lead}</span>
                   </V2Link>

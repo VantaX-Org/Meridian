@@ -94,7 +94,7 @@ describe("rail and flyout", () => {
     fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Fix" }));
     const fly = await screen.findByTestId("flyout");
     const links = within(within(fly).getByRole("navigation", { name: "Fix" })).getAllByRole("link");
-    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Action centre", "Work", "Aletheia verified fixes", "Cleansing", "Requests", "People"]);
+    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Action centre", "Work", "Triage and SLA", "Aletheia verified fixes", "Cleansing", "Requests", "People"]);
     await waitFor(() => expect(links[1]).toHaveTextContent("25,712"));
     expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/work/));
     keyOnBody("Escape");
@@ -180,7 +180,7 @@ describe("command line", () => {
     const dialog = await screen.findByRole("dialog", { name: "Search, ask, or type a command" });
     const input = within(dialog).getByRole("combobox");
     await waitFor(() => expect(input).toHaveFocus());
-    expect(within(dialog).getByText("Landscape")).toBeInTheDocument(); // empty query lists the places
+    expect(within(dialog).getByText("Master data")).toBeInTheDocument(); // empty query lists the rail's destinations
     fireEvent.change(input, { target: { value: "MM0" } });
     await within(dialog).findByText("MM003: Material type is mandatory - determines procurement and storage behaviour");
     const options = within(dialog).getAllByRole("option");

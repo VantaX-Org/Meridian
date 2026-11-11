@@ -36,6 +36,7 @@ export function destinations(): Destination[] {
       kids: [
         { href: "/attention", label: t("Action centre") },
         { href: "/work", label: t("Work") },
+        { href: "/work/triage", label: t("Triage and SLA") },
         { href: "/fix-drafts", label: t("Aletheia verified fixes") },
         { href: "/cleansing", label: t("Cleansing") },
         { href: "/requests", label: t("Requests") },
