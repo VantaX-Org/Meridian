@@ -57,3 +57,24 @@ def test_friendly_headers_do_not_false_match():
 def test_foundation_pay_component_grid_fills_from_the_component_definitions():
     hits = cands("Pay Component Values (US)", ["externalCode", "is-earning", "payComponentType", "LegalEntity.externalCode"], "grid")
     assert set(hits["FOPAYCOMPONENT"]) == {"externalCode", "is-earning", "payComponentType", "LegalEntity.externalCode"}
+
+
+@pytest.mark.parametrize("sheet,col", [
+    ("PersonInfo", "person-id-external"),
+    ("PersonRelationshipInfo", "related-person-id-external"),
+    ("BasicUserInfo", "USERID"),
+])
+def test_employee_template_sheets_resolve_to_their_entity(sheet, col):
+    hits = cands(sheet, [col])
+    assert any(col in h for h in hits.values()), hits
+
+
+def test_a_navigation_id_matches_only_a_key_by_its_tail():
+    hits = cands("PersonInfo", ["personInfo.person-id-external", "homeAddress.city"])
+    assert any("personInfo.person-id-external" in h for h in hits.values())
+    assert not any("homeAddress.city" in h for h in hits.values())
+
+
+def test_operation_is_an_import_control_column_not_a_gap():
+    assert "operation" in wb.IMPORT_CONTROL
+    assert wb._norm("OPERATION") in wb.IMPORT_CONTROL

@@ -44,3 +44,8 @@ def test_learned_field_the_tenant_did_not_return_is_reported_missing_not_waiting
     assert _mark_learned(report, pending) == (1, 1)
     cols = report["sheets"][0]["unmapped"]
     assert [(c["learned"], c["not_in_system"]) for c in cols] == [(True, False), (False, True), (False, False)]
+
+
+def test_navigation_and_control_ids_are_never_learned():
+    learned = wb.learn(book("Frequency Values", ["externalCode", "homeAddress.city", "operation", "annualizationFactorX"]), D)
+    assert learned == {"FOFREQUENCY": {"ANNUALIZATION_FACTOR_X": "FOFrequency.annualizationFactorX"}}

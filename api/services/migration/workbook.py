@@ -104,9 +104,19 @@ SHEET_ENTITIES = {
     "nationalidcard": {"PerNationalId"},
     "workpermitinfo": {"EmpWorkPermit"},
     "personrelationship": {"PerPersonRelationship"},
+    "personrelationshipinfo": {"PerPersonRelationship"},
+    "personinfo": {"PerPerson"},
+    "basicuserinfo": {"User"},
     # contingent workers are loaded as a person, an email and an employment with job data
     "contingentworker": {"PerPerson", "PerPersonal", "PerEmail", "EmpEmployment", "EmpJob"},
 }
+
+
+# Columns the import itself reads, such as DELIMIT, which no source system holds. They stay blank and are reported
+# apart from the fields that have no source.
+IMPORT_CONTROL = {"operation"}
+# A dotted id whose tail is a locale is a localised property (name.en_US); any other dot steps into a navigation.
+_LOCALE = re.compile(r"\.[a-z]{2}_[A-Z]{2}$")
 
 
 @dataclass
@@ -449,9 +459,10 @@ def _candidates(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Fie
                   and ("related person" not in f.source or "PerPersonRelationship" in entities)]
         if not fields:
             continue
-        index = {_norm(k): table.fields[k] for k in table.keys}
-        index |= {_norm(f.source.split(".", 1)[1]): table.fields[k]
-                  for k in table.keys for f in [table.fields[k]] if f.source and "." in f.source}
+        keys = {_norm(k): table.fields[k] for k in table.keys}
+        keys |= {_norm(f.source.split(".", 1)[1]): table.fields[k]
+                 for k in table.keys for f in [table.fields[k]] if f.source and "." in f.source}
+        index = dict(keys)
         index |= {_norm((f.source or "").split(".", 1)[1].split(" ")[0]): f for f in fields}
         if "status" in index:  # foundation load files call the status field effectiveStatus
             index["effectivestatus"] = index["status"]
@@ -463,7 +474,9 @@ def _candidates(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Fie
         for col in sheet.columns:
             # name.en_US is the localised form of name.
             name = _norm(col.id).replace("centre", "center")
-            hit = index.get(name) or index.get(_norm(col.id.split(".")[0]))
+            # personInfo.person-id-external is the person's id reached through a navigation. Only a key matches by
+            # its tail: cust_LegalEntity.externalCode is the legal entity's code, not this object's own.
+            hit = index.get(name) or index.get(_norm(col.id.split(".")[0])) or keys.get(_norm(col.id.rsplit(".", 1)[-1]))
             if hit:
                 hits[col.header] = hit
         if hits:
@@ -501,7 +514,10 @@ def learn(workbook: Workbook, dictionary: Dictionary) -> dict[str, dict[str, str
         have = {(f.source or "").split(".", 1)[-1] for f in dictionary.tables[home].fields.values()}
         for col in sheet.columns:
             prop = _camel(col.id)
-            if col.header in matched or not _PROPERTY.fullmatch(prop) or prop in have:
+            # a navigation path such as homeAddress.city is not a property of this entity, so it is never learned
+            navigation = "." in col.id and not _LOCALE.search(col.id)
+            if (col.header in matched or navigation or _norm(col.id) in IMPORT_CONTROL
+                    or not _PROPERTY.fullmatch(prop) or prop in have):
                 continue
             name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", prop).upper()
             if name not in dictionary.tables[home].fields:
@@ -706,8 +722,11 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                     columns.insert(len(added), Column(header, header, f.description or key, mandatory=True))
                     hits[header] = f
                     added.append(header)
-        unmapped = sorted((c for c in columns if c.header not in hits), key=lambda c: not c.mandatory)
+        control = [c.id for c in columns if c.header not in hits and _norm(c.id) in IMPORT_CONTROL]
+        unmapped = sorted((c for c in columns if c.header not in hits and _norm(c.id) not in IMPORT_CONTROL),
+                          key=lambda c: not c.mandatory)
         row = {"name": sheet.name, "kind": sheet.kind, "table": table, "columns": len(columns), "added_keys": added,
+               "control": control,
                "matched": len(hits), "rows": 0, "ready": 0, "held": 0,
                "known": bool(options) or sheet.base in SHEET_ENTITIES, "required": sheet.required,
                "unmapped": [{"id": c.id, "label": c.label, "mandatory": c.mandatory and not c.country}
