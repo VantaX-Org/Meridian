@@ -125,6 +125,7 @@ from api.routes.people import router as people_router
 from api.routes.record_links import router as record_links_router
 from api.routes.rule_scope import router as rule_scope_router
 from api.routes.reconcile import router as reconcile_router
+from api.routes.system_compare import router as system_compare_router
 from api.routes.run_timeline import router as run_timeline_router
 from api.routes.views import router as views_router
 from api.routes.scim import router as scim_router
@@ -535,6 +536,7 @@ app.include_router(people_router)
 app.include_router(record_links_router)
 app.include_router(rule_scope_router)
 app.include_router(reconcile_router)
+app.include_router(system_compare_router)
 app.include_router(run_timeline_router)
 app.include_router(views_router)
 app.include_router(scim_router)

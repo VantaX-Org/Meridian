@@ -29,6 +29,7 @@ import { matchRead, matchWrite, NONE_MATCH } from "./match-rules";
 import { mdmHealthRead, NONE_MDM_HEALTH } from "./mdm-health";
 import { NONE_WORK_ANALYTICS, workAnalyticsRead } from "./work-analytics";
 import { migrationRead, migrationWrite, NONE_MIGRATION } from "./migration";
+import { compareRead, compareWrite, NONE_COMPARE } from "./compare";
 import { insightsRead, insightsWrite, NONE_INSIGHTS, NONE_INSIGHTS_WRITE } from "./insights";
 import { analyticsRead, NONE_ANALYTICS } from "./analytics";
 import { NONE_S4, s4Read } from "./s4";
@@ -183,6 +184,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (lmw !== NONE_LEARNED_MONITORS) return lmw as T;
   const mn = miningWrite(method, path, body);
   if (mn !== NONE_MINING) return mn as T;
+  const cw = compareWrite(method, path, body);
+  if (cw !== NONE_COMPARE) return cw as T;
   const mg = migrationWrite(method, path, body);
   if (mg !== NONE_MIGRATION) return mg as T;
   const mr = matchWrite(method, path, body);
@@ -407,6 +410,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (mh !== NONE_MDM_HEALTH) return mh as T;
   const wa = workAnalyticsRead(path, params);
   if (wa !== NONE_WORK_ANALYTICS) return wa as T;
+  const cr = compareRead(path, params);
+  if (cr !== NONE_COMPARE) return cr as T;
   const mg = migrationRead(path, params);
   if (mg !== NONE_MIGRATION) return mg as T;
   const ins = insightsRead(path, params);
