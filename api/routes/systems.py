@@ -604,7 +604,15 @@ def _connection_test_once(system_type: str, params: dict, secrets_to_mask: list[
         connected = connector.ping()
         if connected:
             return TestConnectionResponse(connected=True, message="Connection successful")
-        return TestConnectionResponse(connected=False, message="Ping failed")
+        reason = getattr(connector, "ping_error", "")
+        if system_type in RFC_SYSTEM_TYPES and reason:
+            # The RFC logon itself succeeded (connect raised nothing); only the RFC_PING call
+            # was refused, typically a missing S_RFC authorisation. The connection works.
+            return TestConnectionResponse(
+                connected=True,
+                message=f"Logged on. RFC_PING was refused: {mask(reason)}",
+            )
+        return TestConnectionResponse(connected=False, message=f"Ping failed: {mask(reason)}" if reason else "Ping failed")
     except SAPConnectorError as e:
         if "pyrfc_not_installed" in str(e):
             return TestConnectionResponse(connected=False, message="PyRFC is not installed")
