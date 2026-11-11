@@ -38,6 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.routes import change_requests as cr_routes
 from api.services import change_requests as crs
+from api.services import ddic_value_check as dvc
 from api.services import dq_firewall as fw
 from api.services import entry_duplicates as ed
 from api.services.rbac import current_user_id, current_user_label, require_permission, write_audit
@@ -80,14 +81,45 @@ class Suggestion(BaseModel):
     truncated: Optional[bool] = None
 
 
+class DdicCheck(BaseModel):
+    check: str  # type, length, conversion_exit, lowercase, fixed_values, check_table
+    verdict: Literal["pass", "fail", "skip"]
+    reason: Optional[str] = None
+
+
+class DdicEvidence(BaseModel):
+    """What the ABAP Dictionary says about one value (api/services/ddic_value_check.py)."""
+    field: str
+    value: str
+    stored: str  # the value as SAP stores it, after an ALPHA or MATN1 conversion exit
+    field_text: Optional[str] = None
+    data_element: Optional[str] = None
+    domain: Optional[str] = None
+    type: Optional[str] = None
+    length: Optional[int] = None
+    decimals: Optional[int] = None
+    check_table: Optional[str] = None
+    check_field: Optional[str] = None
+    conversion_exit: Optional[str] = None
+    lowercase: Optional[bool] = None
+    fixed_values: list[AllowedValue] = []
+    source: Optional[Literal["live", "baseline"]] = None  # where the check-table values came from
+    checks: list[DdicCheck] = []
+    verdict: Literal["safe", "reject", "unknown"]
+    reasons: list[str] = []
+    nearest: list[AllowedValue] = []  # the closest valid codes, nearest first
+
+
 class Failure(BaseModel):
     rule_id: str
     description: str
     field: str
+    field_description: Optional[str] = None
     severity: str
     dimension: str
     reason: str
     suggestion: Optional[Suggestion] = None
+    ddic: Optional[DdicEvidence] = None
 
 
 class DuplicateField(BaseModel):
@@ -434,9 +466,10 @@ async def validate(body: ValidateBody, request: Request, db: AsyncSession = Depe
     await _rls(db, tenant)
     overrides, authored = await db.run_sync(lambda s: crs.governance(s))
     allow = await ed.match_fields(db, str(tenant.id), body.module) if body.duplicates else frozenset()
+    _sid, system_type, live = await dvc.load_live(db, str(tenant.id))
     try:
         res = await asyncio.to_thread(fw.validate, str(tenant.id), body.module, body.records, overrides, authored,
-                                      body.suggest, allow)
+                                      body.suggest, allow, live, system_type)
     except fw.FirewallError as e:
         raise HTTPException(status_code=422, detail=str(e)) from None
     except Exception as e:  # noqa: BLE001 - no trace to the caller; the type is logged
