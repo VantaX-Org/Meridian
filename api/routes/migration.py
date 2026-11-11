@@ -375,6 +375,8 @@ class ReconciliationRecord(BaseModel):
     expected: Optional[str] = None
     found: Optional[str] = None
     withheld: bool = False                 # a personal field: it differs, its values are not kept
+    cause: Optional[str] = None            # differing only: an expected cause (post_load.EXPECTED_CAUSES) or "real"
+    ddic: Optional[dict] = None            # differing only: the target field's text, type, length, conversion exit
 
 
 class ReconciliationRecordsPage(BaseModel):
@@ -591,7 +593,8 @@ async def get_reconciliation(
         text("SELECT created_at, summary FROM migration_reconciliations WHERE run_id = :rid AND tenant_id = :t "
              "AND status = 'done' AND created_at < :c ORDER BY created_at DESC LIMIT 1"),
         {"rid": run_id, "t": str(tenant.id), "c": r["created_at"]})).fetchone()
-    counts = ("tables", "comparable", "expected", "found", "missing", "unexpected", "differing_fields")
+    counts = ("tables", "comparable", "expected", "found", "missing", "unexpected", "differing_fields",
+              "expected_differences", "real_differences")
     return ReconciliationOut(
         automatic=bool(r["auto_started"]),
         needs_target_extraction=bool(r["status"] == "failed" and r["error_detail"] == NO_TARGET_ANALYSIS),
@@ -610,6 +613,7 @@ async def get_reconciliation_records(
     run_id: uuid.UUID,
     table: Optional[str] = None,
     kind: Optional[Literal["missing", "differing", "unexpected"]] = None,
+    real_only: bool = False,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -617,11 +621,12 @@ async def get_reconciliation_records(
     _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """Missing, differing and unexpected records of the latest reconciliation. Each table keeps at most record_cap
-    rows per kind; the totals in the table summary are not capped."""
+    rows per kind; the totals in the table summary are not capped. ``real_only`` drops the differing values an
+    expected cause explains (padding, case, a confirmed mapping, truncation, format)."""
     await _set_rls(db, tenant.id)
     r = await _latest_reconciliation(db, tenant.id, run_id, "records, tables, record_cap")
     rows = [x for t, rs in (r.records or {}).items() if table in (None, t) for x in rs
-            if kind in (None, x["kind"])]
+            if kind in (None, x["kind"]) and not (real_only and x.get("cause") not in (None, "real"))]
     capped = any(tt.get("capped") for tt in (r.tables or []) if table in (None, tt["table"]))
     return ReconciliationRecordsPage(table=table, kind=kind, total=len(rows), capped=capped,
                                      record_cap=r.record_cap, rows=rows[offset:offset + limit])
@@ -640,7 +645,7 @@ async def export_reconciliation(
     if r.status != "done":
         raise HTTPException(status_code=409, detail="The reconciliation has not completed.")
     tables = r.tables or []
-    count_cols = ("expected", "found", "missing", "unexpected")
+    count_cols = ("expected", "found", "missing", "unexpected", "expected_differences", "real_differences")
     fields = [{"table": t["table"], **f} for t in tables for f in t["fields"]]
     recs = [{"table": t, **x, **({"expected": "Withheld", "found": "Withheld"} if x.get("withheld") else {})}
             for t, rs in (r.records or {}).items() for x in rs]
@@ -651,7 +656,7 @@ async def export_reconciliation(
                       columns=[ColumnSpec(key="table", header="Table", kind="mono"),
                                ColumnSpec(key="description", header="Description"),
                                ColumnSpec(key="reason", header="Not comparable because"),
-                               *[ColumnSpec(key=k, header=k.title(), kind="int") for k in count_cols]],
+                               *[ColumnSpec(key=k, header=k.replace("_", " ").title(), kind="int") for k in count_cols]],
                       rows=tables),
             SheetSpec(title="Fields",
                       columns=[ColumnSpec(key="table", header="Table", kind="mono"),
@@ -663,7 +668,7 @@ async def export_reconciliation(
             SheetSpec(title="Records",
                       columns=[ColumnSpec(key=k, header=k.replace("_", " ").title(),
                                           kind="mono" if k in ("table", "key", "source_record", "field") else "text")
-                               for k in ("table", "kind", "key", "source_record", "field", "expected", "found")],
+                               for k in ("table", "kind", "key", "source_record", "field", "expected", "found", "cause")],
                       rows=recs),
         ])
     return _stream(data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

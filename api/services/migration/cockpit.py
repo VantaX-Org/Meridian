@@ -95,6 +95,17 @@ async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
              WHERE tenant_id = :t AND wave_id = :w AND status = 'analysed' AND readiness_score IS NOT NULL
              ORDER BY completed_at DESC LIMIT :n) t
          ORDER BY completed_at"""), {"t": tenant_id, "w": str(wave.id), "n": TREND_POINTS})).fetchall()
+    # blocking findings of the wave's objects per trend run: the series the go-live forecast is fitted on
+    per_run: dict[str, int] = {}
+    if trend:
+        per_run = {str(r.run_id): int(r.n) for r in (await db.execute(text("""
+            SELECT run_id, COUNT(*) AS n FROM migration_gap_findings
+             WHERE tenant_id = :t AND run_id = ANY(:runs) AND severity = ANY(:sev) AND module = ANY(:m)
+             GROUP BY run_id"""), {"t": tenant_id, "runs": [str(t.run_id) for t in trend],
+                                   "sev": list(BLOCKING_SEVERITIES), "m": list(wave.modules or [])})).fetchall()}
+    from api.services.wave_gate import forecast_gate
+    trend_out = [{"run_id": str(t.run_id), "completed_at": t.completed_at, "score": t.score,
+                  "blocking": per_run.get(str(t.run_id), 0)} for t in trend]
 
     blockers = []
     if run:
@@ -119,7 +130,8 @@ async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
         "records_total": run.records_total if run else 0,
         "records_blocked": run.records_blocked if run else 0,
         "objects": objects,
-        "trend": [{"run_id": str(t.run_id), "completed_at": t.completed_at, "score": t.score} for t in trend],
+        "trend": trend_out,
+        "forecast": forecast_gate({"at": t["completed_at"], "blocking": t["blocking"]} for t in trend_out),
         "blockers": [{**dict(b._mapping), "label": object_label(b.module)} for b in blockers],
     }
 
