@@ -72,12 +72,12 @@ const asOutcome = (r: TestConnectionResponse): Outcome => ({ connected: r.connec
  * credentials, Test connection, rotate credentials and remove. Secrets are never shown; an empty secret keeps the
  * stored one. Needs manage_systems; without it the form says so and nothing is sent.
  */
-export function ConnectionForm({ system, onSaved, onRemoved, saveLabel }: { system?: SAPSystemExtended; onSaved?: (s: { id: string; name: string }) => void | Promise<void>; onRemoved?: () => void; saveLabel?: string }) {
+export function ConnectionForm({ system, onSaved, onRemoved, saveLabel, initialType }: { system?: SAPSystemExtended; initialType?: SystemType; onSaved?: (s: { id: string; name: string }) => void | Promise<void>; onRemoved?: () => void; saveLabel?: string }) {
   const { can } = useV2Session();
   const refresh = useRefreshV2();
   const others = useSystemsExtended().data ?? [];
   const allowed = can("manage_systems");
-  const [v, setV] = useState<ConnectionValues>(() => (system ? editValues(system) : EMPTY));
+  const [v, setV] = useState<ConnectionValues>(() => (system ? editValues(system) : initialType ? { ...EMPTY, system_type: initialType, auth_type: defaultAuth(initialType) } : EMPTY));
   const [description, setDescription] = useState(system?.description ?? "");
   const [active, setActive] = useState(system?.is_active ?? true);
   const [role, setRole] = useState<"source" | "target">(system?.role ?? "source");
