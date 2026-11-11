@@ -72,12 +72,13 @@ def test_named_table_outside_scope_is_asked_and_learned():
     assert opened == [1]
 
 
-def test_hit_on_table_the_dictionary_lacks_is_reported_not_learned():
+def test_hit_on_table_the_dictionary_lacks_is_learned():
     ddic_reader._DD03L.clear()
     conn = MagicMock()
     conn.read_table_full.return_value = pd.DataFrame({"TABNAME": ["ZZTAB"], "FIELDNAME": ["ZZFOO"]})
     learned, unresolved = wb.learn_sap(book("ZZTAB-ZZFOO", "ZZTAB-ZZNONE"), D, SCOPE, lookup("sys-f", conn, []))
-    assert learned == {} and unresolved == {"ZZTAB-ZZFOO": ["ZZTAB"], "ZZTAB-ZZNONE": []}
+    # the caller reads ZZTAB's definition from the DDIC, so the next extraction reads the table
+    assert learned == {"ZZTAB": {"ZZFOO": "ZZTAB.ZZFOO"}} and unresolved == {"ZZTAB-ZZNONE": []}
 
 
 def test_lookups_are_cached_per_system():

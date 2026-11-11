@@ -1409,9 +1409,13 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "") 
         if stype in ABAP_SYSTEM_TYPES:  # ECC and S/4HANA: unknown SAP columns are checked against DD03L
             scope = {t for m in meta.get("modules") or [] for t in tables_of(get_required_columns(m))}
             try:
+                cm = ConnectivityManager(s, str(tenant_id))
                 sap_learned, unresolved = wb.learn_sap(
-                    book, dictionary, scope, lambda ts, fs: ConnectivityManager(s, str(tenant_id)).dd03l_fields(
-                        str(system_id), ts, fs))
+                    book, dictionary, scope, lambda ts, fs: cm.dd03l_fields(str(system_id), ts, fs))
+                # a column on a table Meridian does not ship: read that table's definition from the system
+                missing = {t for t in sap_learned if t not in dictionary.tables}
+                if missing:
+                    logger.info(f"Workbook adds tables {sorted(missing)}: {cm.add_ddic_tables(str(system_id), missing)}")
             except Exception as e:  # noqa: BLE001 - any RFC failure; the system cannot be reached: nothing is learned, the export goes on
                 logger.warning(f"DD03L lookup failed for system {system_id}: {e}")
                 sap_learned = {}

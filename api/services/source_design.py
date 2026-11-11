@@ -14,7 +14,7 @@ from typing import Optional
 
 from sqlalchemy import text
 
-from sap.ddic import Dictionary, Field, dictionary_for_system, get_dictionary
+from sap.ddic import Dictionary, Field, Table, dictionary_for_system, get_dictionary
 
 
 def store_snapshot(session, tenant_id: str, system_id: str, snapshot_id: str, snap: dict) -> dict:
@@ -124,36 +124,24 @@ def store_learned(session, system_id: str, learned: dict[str, dict[str, str]]) -
 
 
 def with_learned(dictionary: Dictionary, learned: dict[str, dict[str, str]]) -> Dictionary:
-    """A copy of the dictionary carrying the fields learned from workbooks (see learn)."""
+    """A copy of the dictionary carrying the fields learned from workbooks (see learn).
+
+    A learned field already in the table (read from the live DDIC) is marked as learned, so extraction asks for it.
+    A SuccessFactors entity no table reads yet becomes a table of its own. An SAP table the dictionary does not
+    know stays out until its definition is read from the system (ConnectivityManager.add_ddic_tables)."""
     tables = dict(dictionary.tables)
     for name, fields in (learned or {}).items():
         t = tables.get(name)
         if t is None:
-            continue
+            entities = {src.split(".", 1)[0] for src in fields.values()}
+            if len(entities) != 1 or next(iter(entities)) == name:  # TABLE.FIELD: an SAP table with no DDIC yet
+                continue
+            keys = tuple(k for k in ("USER_ID", "PERSON_ID_EXTERNAL", "EXTERNAL_CODE", "CODE", "ID") if k in fields)
+            t = Table(name, next(iter(entities)), {}, keys[:1], provenance="canonical:successfactors-workbook")
         # An SAP field is learned as "TABLE.FIELD" from DD03L; it has no entity, so it carries no source.
-        extra = {f: Field(name, f, False, "STRING", 0, source=None if src == f"{name}.{f}" else src,
-                          description=src.split(".", 1)[1], provenance="workbook")
-                 for f, src in fields.items() if f not in t.fields}
-        if extra:
-            tables[name] = replace(t, fields={**t.fields, **extra})
+        new = {f: (replace(t.fields[f], provenance="workbook") if f in t.fields else
+                   Field(name, f, f in t.keys, "STRING", 0, source=None if src == f"{name}.{f}" else src,
+                         description=src.split(".", 1)[1], provenance="workbook"))
+               for f, src in fields.items()}
+        tables[name] = replace(t, fields={**t.fields, **new})
     return replace(dictionary, tables=tables)
-
-
-async def live_config_for_version(db, version_id) -> tuple[str, dict[str, list]]:
-    """(system_type, {config_table: rows}) of the system a version was extracted from.
-
-    Uploads have no source system → ("ecc", {}) and callers fall back to the
-    SAP-standard baseline, labelled as such.
-    """
-    row = (await db.execute(
-        text("SELECT s.id, s.system_type FROM analysis_versions v "
-             "JOIN sap_systems s ON s.id::text = v.metadata->>'system_id' WHERE v.id = :vid"),
-        {"vid": str(version_id)},
-    )).fetchone()
-    if not row:
-        return "ecc", {}
-    rows = (await db.execute(
-        text("SELECT config_table, config_data FROM config_snapshots WHERE system_id = :sid AND source = 'live'"),
-        {"sid": row[0]},
-    )).fetchall()
-    return row[1], {t: d or [] for t, d in rows}

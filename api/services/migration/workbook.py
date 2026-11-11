@@ -515,10 +515,13 @@ def learn(workbook: Workbook, dictionary: Dictionary) -> dict[str, dict[str, str
         counts = {t.name: sum(1 for f in t.fields.values() if (f.source or "").split(".")[0] == entity)
                   for t in dictionary.tables.values() if t.provenance.startswith("canonical:successfactors")}
         home = max((t for t in counts if counts[t]), key=lambda t: (counts[t], t), default=None)
-        if not home:
-            continue
+        if not home:  # no table reads this entity yet: the workbook adds one (source_design.with_learned)
+            home = re.sub(r"[^A-Z0-9_]", "", entity.upper())
+            if home in dictionary.tables:
+                home = f"SF_{home}"
         matched = {h for hits in _candidates(sheet, dictionary).values() for h in hits}
-        have = {(f.source or "").split(".", 1)[-1] for f in dictionary.tables[home].fields.values()}
+        known = dictionary.tables.get(home)
+        have = {(f.source or "").split(".", 1)[-1] for f in known.fields.values()} if known else set()
         for col in sheet.columns:
             # homeAddress.city is the city reached through the homeAddress navigation: it is learned as nav.prop,
             # which extraction reads with $expand after checking both names against the tenant's $metadata
@@ -527,7 +530,7 @@ def learn(workbook: Workbook, dictionary: Dictionary) -> dict[str, dict[str, str
                     or not all(_PROPERTY.fullmatch(p) for p in prop.split("."))):
                 continue
             name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", prop.replace(".", "_")).upper()
-            if name not in dictionary.tables[home].fields:
+            if not known or name not in known.fields:
                 out.setdefault(home, {})[name] = f"{entity}.{prop}"
     return out
 
@@ -537,8 +540,8 @@ def learn_sap(workbook: Workbook, dictionary: Dictionary, scope: set[str],
     """Unmatched SAP columns resolved against the system's DD03L.
 
     A column naming its table is looked up on that table, in the object's `scope` or not. A bare field name is
-    looked up across the object's tables in `scope`. A hit on a table the dictionary does not know is real but
-    cannot be extracted yet, so it is reported, not learned.
+    looked up across the object's tables in `scope`. A hit on a table the dictionary does not know is learned too:
+    the caller reads that table's definition from the system's DDIC, so the next extraction reads the table.
 
     `lookup(tables, fields)` returns the (table, field) pairs DD03L holds. A field on exactly one in-scope table is
     learned as {TABLE: {FIELD: "TABLE.FIELD"}}, so the next extraction asks for it. The second result names, per
@@ -570,7 +573,7 @@ def learn_sap(workbook: Workbook, dictionary: Dictionary, scope: set[str],
     unresolved: dict[str, list[str]] = {}
     for col_id, (name, tables) in asks.items():
         hits = sorted(t for t in tables if (t, name) in found)
-        if len(hits) == 1 and hits[0] in dictionary.tables:
+        if len(hits) == 1:
             learned.setdefault(hits[0], {})[name] = f"{hits[0]}.{name}"
         else:
             unresolved[col_id] = hits
