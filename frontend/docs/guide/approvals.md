@@ -78,6 +78,10 @@ Cycle time runs from submission until the record is created in SAP. Approval tim
 
 The open backlog is split by the time since submission, and the weekly flow compares requests submitted with records created. The objects table shows the outcome of the requests for each object and its cycle time.
 
+### Forecast
+
+The Forecast panel on process analytics, and the Forecast column of the change request list, say when the step each open request waits on is likely decided and how likely it is to miss its SLA. Both come from the dwell of the same step on requests decided in the last year: first the same object, kind and step when at least three such tasks exist, otherwise the same step on any object. Only tasks that waited longer than this one has already count, so a request that has waited two days is compared with tasks that also took more than two days. The likely decision is the median of those dwells, the late case is the 90th percentile, and the breach risk is the share of them that took longer than the step's SLA. A request already past its due time shows SLA missed. The steps still to come add their own median dwell, which gives the time the whole request is likely done. Open the Based on cell to see each decided task the forecast rests on, with its dwell and decision date. A step with no decided history shows No history rather than a guess.
+
 ## Out of office and escalation
 
 - When an approver is away, their approvals go to the deputy they named under Preferences, Out of office. The batch inspector says so, for example "You cover for T. Mokoena until 30 Oct 2026: their approvals and assigned work come to you as well." Four eyes still holds: nobody approves their own batch.

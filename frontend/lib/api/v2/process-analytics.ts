@@ -61,3 +61,44 @@ export interface ProcessAnalytics {
 
 export const getProcessAnalytics = (days = 90, object?: RequestObject): Promise<ProcessAnalytics> =>
   v2Get<ProcessAnalytics>("/governance/process-analytics", { days, ...(object ? { object } : {}) });
+
+/** One decided task of the same step (and object and kind when enough exist) the forecast was read from. */
+export interface ForecastEvidence { request_id: string; title?: string | null; dwell_hours: number; decided_at: string }
+
+/** A step still ahead of the waiting one, with the median dwell of its history. */
+export interface ForecastStep { step: string; index: number; basis: string; n: number; p50_hours?: number | null; sla_hours?: number | null }
+
+export type ForecastBasis = "object_kind_step" | "step" | "none";
+
+/** An open request's waiting step: when it is likely decided, and how likely it is to miss its SLA. */
+export interface ForecastRow {
+  request_id: string;
+  title?: string | null;
+  object: string;
+  kind: string;
+  status: string;
+  object_key?: string | null;
+  step: string;
+  step_index: number;
+  activated_at?: string | null;
+  due_at?: string | null;
+  sla_hours?: number | null;
+  elapsed_hours: number;
+  basis: string;
+  conditioned: boolean;
+  n: number;
+  p50_hours?: number | null;
+  p90_hours?: number | null;
+  eta?: string | null;
+  p90_eta?: string | null;
+  breach_probability?: number | null;
+  breached: boolean;
+  remaining: ForecastStep[];
+  request_eta?: string | null;
+  evidence: ForecastEvidence[];
+}
+
+export interface ApprovalForecast { open: number; without_pending: number; at_risk: number; breached: number; requests: ForecastRow[] }
+
+export const getApprovalForecast = (days = 365): Promise<ApprovalForecast> =>
+  v2Get<ApprovalForecast>("/governance/approval-forecast", { days });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getProcessAnalytics, type Aging, type RequestObject } from "@/lib/api/v2/process-analytics";
+import { getApprovalForecast, getProcessAnalytics, type Aging, type ForecastRow, type RequestObject } from "@/lib/api/v2/process-analytics";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
 import { useUrlParam } from "@/lib/v2/hooks";
@@ -106,6 +106,7 @@ export function ProcessAnalytics() {
         ]}
         action={filters}
       />
+      <Forecast />
       {a.total === 0 ? <EmptyFrame>{t("No change request was created in this window. Pick a longer window or another object.")}</EmptyFrame> : (
         <>
           <Panel title={t("Steps")} meta={t("Every approval step, in workflow order. The bottleneck is marked.")} testId="pa-steps">
@@ -173,5 +174,68 @@ export function ProcessAnalytics() {
         </>
       )}
     </CcPage>
+  );
+}
+
+const BASIS: Record<string, () => string> = {
+  object_kind_step: () => t("Same object, kind and step"),
+  step: () => t("Same step, any object"),
+  none: () => t("No history"),
+};
+
+/**
+ * Forecast: for each open request, when its waiting step is likely decided and how likely it is to miss its SLA.
+ * Both come from the dwell of the same step on decided requests over the last year, kept to those that waited longer
+ * than this one has already. Each row lists the decided tasks it rests on.
+ */
+function Forecast() {
+  const fixture = useFixture();
+  const q = useQuery({ queryKey: ["approval-forecast", fixture], queryFn: () => getApprovalForecast(), staleTime: 60_000 });
+  return (
+    <Panel title={t("Forecast")} meta={t("When each waiting step is likely decided, and the chance it misses its SLA, from how long the same step took on decided requests.")} testId="pa-forecast">
+      {q.isPending ? <Skeleton width="100%" height={160} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The forecast could not be read.")}</ErrorFrame> : q.data.requests.length === 0 ? <EmptyFrame>{t("No request is waiting for a decision.")}</EmptyFrame> : (
+        <>
+          <p className="m2-meta" data-testid="pa-forecast-summary">
+            {t("{n, plural, one {# open request} other {# open requests}}: {r} likely to miss the SLA, {b} already past it.", { n: q.data.open, r: int(q.data.at_risk), b: int(q.data.breached) })}
+          </p>
+          <ScrollFrame label={t("Forecast, scrollable")}>
+            <table className="m2-tbl">
+              <caption className="m2-sr">{t("Open requests with the forecast decision of the waiting step")}</caption>
+              <thead><tr><th scope="col">{t("Request")}</th><th scope="col">{t("Waiting step")}</th><th scope="col">{t("Waited")}</th><th scope="col">{t("Likely decided")}</th><th scope="col">{t("Late case (p90)")}</th><th scope="col">{t("Breach risk")}</th><th scope="col">{t("Request done")}</th><th scope="col">{t("Based on")}</th></tr></thead>
+              <tbody>{q.data.requests.map((r) => <ForecastLine key={r.request_id} r={r} />)}</tbody>
+            </table>
+          </ScrollFrame>
+        </>
+      )}
+    </Panel>
+  );
+}
+
+function ForecastLine({ r }: { r: ForecastRow }) {
+  const p = r.breach_probability;
+  return (
+    <tr data-testid={`pa-forecast-${r.request_id}`}>
+      <td>{r.title || r.request_id}<span className="m2-meta"> {objectText(r.object)}</span></td>
+      <td>{r.step}</td>
+      <td>{duration(r.elapsed_hours)}</td>
+      <td>{r.eta ? formatDate(r.eta, "date") : DASH}</td>
+      <td>{r.p90_eta ? formatDate(r.p90_eta, "date") : DASH}</td>
+      <td>{r.breached ? <strong>{t("SLA missed")}</strong> : p == null ? DASH : p >= 0.5 ? <strong>{pct1(p)}</strong> : pct1(p)}</td>
+      <td>
+        {r.request_eta ? formatDate(r.request_eta, "date") : DASH}
+        {r.remaining.length ? <span className="m2-meta"> {t("then {steps}", { steps: r.remaining.map((x) => x.step).join(", ") })}</span> : null}
+      </td>
+      <td>
+        <details data-testid={`pa-evidence-${r.request_id}`}>
+          <summary>{BASIS[r.basis]?.() ?? r.basis} <span className="m2-meta">{t("{n, plural, one {# decided task} other {# decided tasks}}", { n: r.n })}</span></summary>
+          {r.conditioned ? <p className="m2-meta">{t("Only tasks that waited longer than this one has already.")}</p> : null}
+          {r.evidence.length === 0 ? null : (
+            <ul className="m2-cl-changes">
+              {r.evidence.map((e) => <li key={`${e.request_id}-${e.decided_at}`}>{e.title || e.request_id}: {duration(e.dwell_hours)} <span className="m2-meta">{formatDate(e.decided_at, "date")}</span></li>)}
+            </ul>
+          )}
+        </details>
+      </td>
+    </tr>
   );
 }

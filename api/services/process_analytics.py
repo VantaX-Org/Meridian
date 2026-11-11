@@ -137,3 +137,99 @@ def analyse(requests: list[dict], tasks: list[dict], now: datetime) -> dict[str,
         "aging": aging,
         "weekly": [{"week": w, **v} for w, v in sorted(weeks.items())],
     }
+
+
+MIN_HISTORY = 3  # fewer matching decided tasks than this and the forecast falls back to the step alone
+EVIDENCE_CAP = 50
+
+
+def forecast(requests: list[dict], tasks: list[dict], history: list[dict], now: datetime) -> dict[str, Any]:
+    """Approval ETA and SLA-breach forecast for every open change request, from the tenant's own decided tasks.
+
+    ``requests``: id, title, object, kind, status, object_key, instance_id (open requests only).
+    ``tasks``: the workflow tasks of their instances (instance_id, step_index, step_name, status, sla_hours, due_at,
+    activated_at, decided_at). ``history``: decided tasks (request_id, title, object, kind, step_name, activated_at,
+    decided_at).
+
+    The pending task of a request is compared with decided tasks of the same object, kind and step name; with fewer
+    than ``MIN_HISTORY`` of those, with every decided task of that step name (``basis`` says which). Of that history only
+    the tasks that were still undecided at the pending task's current age are kept, so the forecast is conditional on
+    the time already waited (``conditioned``); when none waited that long the whole history is used. ETA is the
+    activation time plus the nearest-rank P50 dwell, the P90 ETA likewise. Breach probability is the share of that
+    history whose dwell exceeded the task's SLA hours, or 1 when the due time has already passed. Each waiting step after
+    this one carries its own historical P50, and the request's ETA is the step ETA plus their sum (None when a later step
+    has no history). Every row names the historical tasks the figure came from.
+    """
+    def key(t: dict) -> tuple:
+        return (t["object"], t["kind"], t["step_name"])
+
+    by_full: dict[tuple, list[dict]] = {}
+    by_step: dict[str, list[dict]] = {}
+    for h in history:
+        d = _hours(h.get("activated_at"), h.get("decided_at"))
+        if d is None:
+            continue
+        h = {**h, "dwell": d}
+        by_full.setdefault(key(h), []).append(h)
+        by_step.setdefault(h["step_name"], []).append(h)
+
+    def pool(obj: str, kind: str, step: str) -> tuple[str, list[dict]]:
+        full = by_full.get((obj, kind, step), [])
+        if len(full) >= MIN_HISTORY:
+            return "object_kind_step", full
+        if by_step.get(step):
+            return "step", by_step[step]
+        return "none", []
+
+    per_instance: dict[str, list[dict]] = {}
+    for t in tasks:
+        per_instance.setdefault(t["instance_id"], []).append(t)
+
+    rows: list[dict] = []
+    without_pending = 0
+    for r in requests:
+        ts = sorted(per_instance.get(r.get("instance_id") or "", []), key=lambda t: t.get("step_index") or 0)
+        cur = next((t for t in ts if t["status"] == "pending"), None)
+        if cur is None:
+            without_pending += 1
+            continue
+        basis, hist = pool(r["object"], r["kind"], cur["step_name"])
+        started = cur.get("activated_at") or now
+        elapsed = _hours(started, now) or 0.0
+        survivors = [h for h in hist if h["dwell"] > elapsed]
+        used = survivors or hist
+        dw = [h["dwell"] for h in used]
+        p50, p90 = percentile(dw, 50), percentile(dw, 90)
+        due, sla = cur.get("due_at"), cur.get("sla_hours")
+        if due is not None and now > due:
+            prob, breached = 1.0, True
+        else:
+            breached = False
+            prob = _rate(sum(1 for d in dw if d > sla), len(dw)) if sla is not None else None
+        eta = started + timedelta(hours=p50) if p50 is not None else None
+        remaining = []
+        for t in ts:
+            if t["status"] != "waiting" or (t.get("step_index") or 0) <= (cur.get("step_index") or 0):
+                continue
+            b, h2 = pool(r["object"], r["kind"], t["step_name"])
+            remaining.append({"step": t["step_name"], "index": t.get("step_index") or 0, "basis": b, "n": len(h2),
+                              "p50_hours": percentile([h["dwell"] for h in h2], 50), "sla_hours": t.get("sla_hours")})
+        rest = [s["p50_hours"] for s in remaining]
+        full_eta = eta + timedelta(hours=sum(rest)) if eta is not None and None not in rest else None
+        rows.append({
+            "request_id": r["id"], "title": r.get("title"), "object": r["object"], "kind": r["kind"],
+            "status": r["status"], "object_key": r.get("object_key"),
+            "step": cur["step_name"], "step_index": cur.get("step_index") or 0,
+            "activated_at": cur.get("activated_at"), "due_at": due, "sla_hours": sla,
+            "elapsed_hours": round(elapsed, 2), "basis": basis, "conditioned": bool(survivors), "n": len(used),
+            "p50_hours": p50, "p90_hours": p90, "eta": eta,
+            "p90_eta": started + timedelta(hours=p90) if p90 is not None else None,
+            "breach_probability": prob, "breached": breached, "remaining": remaining, "request_eta": full_eta,
+            "evidence": [{"request_id": h["request_id"], "title": h.get("title"), "dwell_hours": round(h["dwell"], 2),
+                          "decided_at": h["decided_at"]}
+                         for h in sorted(used, key=lambda h: h["decided_at"], reverse=True)[:EVIDENCE_CAP]],
+        })
+    rows.sort(key=lambda x: (-(x["breach_probability"] or 0), x["eta"] or now))
+    return {"requests": rows, "open": len(requests), "without_pending": without_pending,
+            "at_risk": sum(1 for x in rows if (x["breach_probability"] or 0) >= 0.5),
+            "breached": sum(x["breached"] for x in rows)}

@@ -10,7 +10,9 @@ import { formatDate } from "@/lib/format";
 import { errorSentence } from "@/lib/api/v2/client";
 import { createRequest, deleteCriticalField, deleteDefault, deleteDerivation, putCriticalField, putDefault, putDerivation, submitRequest, validateRequest, type ChangeRequest, type Precheck, type RequestKind, type RequestObject, type RequestStatus, type RequestView } from "@/lib/api/v2/requests";
 import { useOpenItem, useUrlParam, useV2Session } from "@/lib/v2/hooks";
-import { useCriticalFields, useDerivations, useEntryDefaults, useMassPreview, useRequests } from "@/lib/v2/requests-queries";
+import { useApprovalForecast, useCriticalFields, useDerivations, useEntryDefaults, useMassPreview, useRequests } from "@/lib/v2/requests-queries";
+import type { ForecastRow } from "@/lib/api/v2/process-analytics";
+import { pct1 } from "@/lib/v2/score";
 import { describeField } from "@/lib/v2/sap-fields";
 import { t } from "@/lib/v2/i18n";
 import { ageWord, kindWord, objectWord, PrecheckView, statusWord } from "../inspector/request";
@@ -537,9 +539,26 @@ function CriticalFields({ canEdit }: { canEdit: boolean }) {
   );
 }
 
+/** ETA of the waiting step and the chance it misses its SLA, from how long the same step took on decided requests. */
+function ForecastCell({ f }: { f: ForecastRow | undefined }) {
+  if (!f) return null;
+  if (f.eta == null) return <span className="m2-meta">{t("No history")}</span>;
+  const p = f.breach_probability;
+  const risk = f.breached || (p != null && p >= 0.5);
+  return (
+    <span data-testid={`forecast-${f.request_id}`} title={t("{step}: from {n, plural, one {# decided task} other {# decided tasks}}", { step: f.step, n: f.n })}>
+      {formatDate(f.eta, "date")}{" "}
+      {f.breached ? <strong>{t("SLA missed")}</strong> : p == null ? null : risk ? <strong>{t("{p} breach risk", { p: pct1(p) })}</strong> : <span className="m2-meta">{t("{p} breach risk", { p: pct1(p) })}</span>}
+    </span>
+  );
+}
+
 function Table({ rows }: { rows: ChangeRequest[] }) {
   const { open, hrefFor } = useOpenItem();
   const openId = open?.kind === "request" ? open.id : null;
+  const waiting = rows.some((r) => r.status === "submitted" || r.status === "in_approval");
+  const fc = useApprovalForecast(waiting);
+  const byId = new Map((fc.data?.requests ?? []).map((f) => [f.request_id, f]));
   return (
     <div className="m2-frame">
       <table className="m2-tbl" aria-label={t("Change requests")} data-testid="requests-table">
@@ -553,6 +572,7 @@ function Table({ rows }: { rows: ChangeRequest[] }) {
             <th scope="col">{t("Updated")}</th>
             <th scope="col">{t("Age")}</th>
             <th scope="col">{t("Due")}</th>
+            <th scope="col">{t("Forecast")}</th>
           </tr>
         </thead>
         <tbody>
@@ -573,6 +593,7 @@ function Table({ rows }: { rows: ChangeRequest[] }) {
                 {r.due_at ? formatDate(r.due_at, "date") : ""}
                 {r.overdue ? <strong>{` ${t("Overdue")}`}</strong> : null}
               </td>
+              <td><ForecastCell f={byId.get(r.id)} /></td>
             </tr>
           ))}
         </tbody>

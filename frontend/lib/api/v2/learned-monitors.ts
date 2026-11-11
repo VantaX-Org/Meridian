@@ -8,6 +8,8 @@
  *   POST /aletheia/monitors/{id}/expected    { effect: "exclude" | "accept", note? }  mark expected; feeds the baseline
  *   POST /aletheia/monitors/{id}/snooze      { days, note? }
  *   POST /aletheia/monitors/{id}/explain     Aletheia's wording of the figures; aggregates only, never a record
+ *   GET  /aletheia/monitors/{id}/evidence    why this is a break: robust z over the baseline runs, the field's DDIC entry,
+ *                                            and for a cardinality or shape shift the codes that came and went
  * Decisions need mdm.write. An object with fewer earlier runs than min_runs is "learning" and raises nothing.
  */
 import { v2Get, v2Send } from "./client";
@@ -109,3 +111,54 @@ export const acknowledgeBreak = (id: string, note?: string) => act(id, "acknowle
 export const expectBreak = (id: string, effect: "exclude" | "accept", note?: string) => act(id, "expected", { effect, note });
 export const snoozeBreak = (id: string, days: number, note?: string) => act(id, "snooze", { days, note });
 export const explainBreak = (id: string) => act(id, "explain");
+
+export interface EvidenceRun { run_id: string; run_number?: number | null; run_at?: string | null; value: number }
+
+export interface FixedValue { low: string; high?: string | null; text: string }
+
+/** The DDIC entry of a TABLE.FIELD subject, for the release of the run's system. */
+export interface FieldContext {
+  table: string;
+  field: string;
+  table_text?: string | null;
+  description?: string | null;
+  data_element?: string | null;
+  domain?: string | null;
+  type?: string | null;
+  length?: number | null;
+  check_table?: string | null;
+  check_field?: string | null;
+  fixed_values: FixedValue[];
+  fixed_values_total: number;
+}
+
+/** A code that entered or left the field's top values. `in_check_table` is null without a live check-table snapshot. */
+export interface ShiftCode { value: string; text?: string | null; in_check_table?: boolean | null; count?: number | null; runs?: number | null }
+
+export interface ValueShift { baseline_runs: number; check_table_snapshot: boolean; appeared: ShiftCode[]; vanished: ShiftCode[] }
+
+/**
+ * Why a break is a break. basis "runs": median and MAD of the baseline runs' own values; "band": those runs could not be
+ * read, so the spread is taken from the stored band and z is a lower bound. `floored`: the minimum spread widened the
+ * band past what the runs alone give.
+ */
+export interface BreakEvidence {
+  break_id: string;
+  metric: BreakMetric;
+  subject_code: string;
+  observed: number;
+  expected_low?: number | null;
+  expected_high?: number | null;
+  basis: "runs" | "band";
+  median?: number | null;
+  mad: number;
+  scaled_mad: number;
+  z?: number | null;
+  z_threshold: number;
+  floored: boolean;
+  runs: EvidenceRun[];
+  field?: FieldContext | null;
+  values?: ValueShift | null;
+}
+
+export const getBreakEvidence = (id: string): Promise<BreakEvidence> => v2Get(`/aletheia/monitors/${id}/evidence`);
