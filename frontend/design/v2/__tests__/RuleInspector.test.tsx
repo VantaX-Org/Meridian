@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as objectApi from "@/lib/api/v2/object";
+import * as rulelib from "@/lib/api/v2/rulelib";
 import { resetObjectFixture } from "@/lib/api/v2/fixtures/object";
 import { Inspector } from "../Inspector";
 import { setUrl } from "./nav-store";
@@ -178,6 +179,14 @@ describe("actions by role", () => {
     const a = section(d, "Actions");
     expect(within(a).getByRole("link", { name: "Edit in authoring" })).toBeInTheDocument();
     expect(within(a).queryByRole("button", { name: "Suppress" })).toBeNull();
+  });
+
+  it("lets a rule manager disable the rule through the rule endpoint", async () => {
+    const spy = vi.spyOn(rulelib, "setRuleEnabled").mockResolvedValue({} as never);
+    const d = await open();
+    fireEvent.click(within(section(d, "Actions")).getByRole("button", { name: "Disable rule" }));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith("rule-MM142", false));
+    expect(await within(d).findByText(/MM142 is disabled/)).toBeInTheDocument();
   });
 
   it("suppresses with a reason and a period, through the suppression endpoint", async () => {

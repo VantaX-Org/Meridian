@@ -7,7 +7,7 @@ import { formatDate, formatModuleName } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, DeltaBar, niceTicks, scoreDomain, Sparkline, TrendChart } from "../charts";
-import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { retry, Section, status, Table } from "./WorkAnalytics";
@@ -157,6 +157,7 @@ function ModulesPanel({ modules }: { modules: ScoreHistory["modules"] }) {
   return (
     <Section q={q} title={title} meta={t("Under today's weights")} testId="sl-modules">
       {(d) => d.length === 0 ? <EmptyFrame>{t("No module has a score yet.")}</EmptyFrame> : (
+        <>
         <Table title={title} head={[t("Module"), t("Trend"), t("Latest"), t("As scored then"), t("Since the first run")]}>
           {d.map(([m, series]) => {
             const latest = series[0];
@@ -174,6 +175,8 @@ function ModulesPanel({ modules }: { modules: ScoreHistory["modules"] }) {
             );
           })}
         </Table>
+        <p className="m2-meta"><V2Link href="/objects">{t("Open the objects")}</V2Link></p>
+        </>
       )}
     </Section>
   );

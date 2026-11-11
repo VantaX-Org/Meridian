@@ -138,6 +138,7 @@ function scope(id: string): RuleScope {
       expression: x.expr,
       params: id === "MM142" ? { check_table: "T006", check_field: "MSEHI" } : {},
     },
+    tenant_rule: { id: `rule-${id}`, enabled: true },
     authority: { rule_authority: x.authority, why_it_matters: r.why ?? null, sap_impact: x.impact },
     objects,
     systems: [{ id: ECC.id, name: ECC.name, failing, objects: objects.length }],
