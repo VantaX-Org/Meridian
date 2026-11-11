@@ -41,8 +41,7 @@ const DESTINATION: Record<GoDestination, string> = {
   rules: "/rules",
   master: "/mdm",
   migration: "/migration",
-  work: "/work",
-  people: "/people",
+  admin: "/admin",
 };
 
 function ChromeBody({ children }: { children: ReactNode }) {

@@ -109,14 +109,14 @@ describe("dispatcher", () => {
     expect(d.handle(press("h"), 1_500)).toBe(true);
     expect(ctx.go).toHaveBeenLastCalledWith("home");
     d.handle(press("g"), 2_000);
-    d.handle(press("w"), 2_100);
-    expect(ctx.go).toHaveBeenLastCalledWith("work");
+    d.handle(press("f"), 2_100);
+    expect(ctx.go).toHaveBeenLastCalledWith("fix");
     d.handle(press("g"), 3_000);
     d.handle(press("r"), 3_100);
     expect(ctx.go).toHaveBeenLastCalledWith("runs");
     d.handle(press("g"), 4_000);
-    d.handle(press("p"), 4_100);
-    expect(ctx.go).toHaveBeenLastCalledWith("people");
+    d.handle(press("a"), 4_100);
+    expect(ctx.go).toHaveBeenLastCalledWith("admin");
     const calls = (ctx.go as ReturnType<typeof vi.fn>).mock.calls.length;
     d.handle(press("g"), 5_000);
     expect(d.handle(press("h"), 7_000)).toBe(false);

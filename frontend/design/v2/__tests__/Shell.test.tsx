@@ -5,6 +5,8 @@ import { V2Shell } from "../shell/V2Shell";
 import { JobLine } from "../shell/JobLine";
 import { duration } from "../shell/StatusStrip";
 import { getUrl, push, setUrl } from "./nav-store";
+import { KEYS } from "@/lib/v2/keys";
+import { destinations } from "../shell/menu";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
@@ -261,16 +263,18 @@ describe("keyboard", () => {
     const sheet = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
     expect(within(sheet).getByRole("heading", { name: "Tables and lists" })).toBeInTheDocument();
     expect(within(sheet).getByText("Select or clear the row")).toBeInTheDocument();
-    expect(within(sheet).getByText("g then w")).toBeInTheDocument();
+    expect(within(sheet).getByText("g then a")).toBeInTheDocument();
+    expect(within(sheet).queryByText("g then w")).toBeNull();
     fireEvent.keyDown(sheet, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).toBeNull();
   });
 
-  it("g then w goes to Work, g then h to Home, g then o to Objects", () => {
+  it("g then a goes to Administration, g then h to Home, g then o to Objects, and the go keys are the rail's own", () => {
+    expect(KEYS.filter((k) => k.scope === "go").map((k) => k.keys[0])).toEqual([...destinations().map((d) => `g ${d.key}`), "g a"]);
     mount();
     keyOnBody("g");
-    keyOnBody("w");
-    expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/work/));
+    keyOnBody("a");
+    expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/admin/));
     keyOnBody("g");
     keyOnBody("h");
     expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/(\?|$)/));
@@ -300,7 +304,10 @@ describe("phone", () => {
     expect(screen.queryByTestId("flyout")).toBeNull();
     fireEvent.click(fix);
     expect(fix).toHaveAttribute("aria-expanded", "true");
-    expect(await screen.findByTestId("flyout")).toBeInTheDocument();
+    const fly = await screen.findByTestId("flyout");
+    // The sheet carries the rail's foot too, so Reports, Atlas and Admin are one tap away on a phone.
+    const more = within(fly).getAllByRole("link").map((l) => norm(l));
+    expect(more).toEqual(expect.arrayContaining(["Reports", "Atlas", "Admin"]));
     keyOnBody("Escape");
     await waitFor(() => expect(screen.queryByTestId("flyout")).toBeNull());
   });

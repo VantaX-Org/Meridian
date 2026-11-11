@@ -7997,6 +7997,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "g then u": "g の次に u",
   "g then m": "g の次に m",
   "g then i": "g の次に i",
+  "g then a": "g の次に a",
   "{n} objects across {s} systems, as scored by the one run you pinned. Scores are out of 100.": "固定した 1 つの実行で採点された、{s} システムの {n} オブジェクトです。スコアは 100 点満点です。",
   "{n} objects across {s} systems, each at its own newest finished run. Scores are out of 100.": "{s} システムの {n} オブジェクトを、それぞれの最新の完了した実行で表示しています。スコアは 100 点満点です。",
   "{n} records fail at least one rule, so fixing them is what moves this score.": "{n} 件のレコードが少なくとも 1 つのルールに違反しています。修正するとこのスコアが動きます。",

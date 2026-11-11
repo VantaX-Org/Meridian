@@ -7997,6 +7997,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "g then u": "g, dann u",
   "g then m": "g, dann m",
   "g then i": "g, dann i",
+  "g then a": "g, dann a",
   "{n} objects across {s} systems, as scored by the one run you pinned. Scores are out of 100.": "{n} Objekte in {s} Systemen, bewertet nach dem einen Lauf, den Sie angeheftet haben. Die Werte gelten von 0 bis 100.",
   "{n} objects across {s} systems, each at its own newest finished run. Scores are out of 100.": "{n} Objekte in {s} Systemen, jedes bei seinem eigenen neuesten abgeschlossenen Lauf. Die Werte gelten von 0 bis 100.",
   "{n} records fail at least one rule, so fixing them is what moves this score.": "{n} Datensätze verletzen mindestens eine Regel; ihre Korrektur verbessert diesen Wert am stärksten.",

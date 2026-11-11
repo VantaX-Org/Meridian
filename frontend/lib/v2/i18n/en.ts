@@ -7996,6 +7996,7 @@ export const en = {
   "g then u": "g then u",
   "g then m": "g then m",
   "g then i": "g then i",
+  "g then a": "g then a",
   "{n} objects across {s} systems, as scored by the one run you pinned. Scores are out of 100.": "{n} objects across {s} systems, as scored by the one run you pinned. Scores are out of 100.",
   "{n} objects across {s} systems, each at its own newest finished run. Scores are out of 100.": "{n} objects across {s} systems, each at its own newest finished run. Scores are out of 100.",
   "{n} records fail at least one rule, so fixing them is what moves this score.": "{n} records fail at least one rule, so fixing them is what moves this score.",
