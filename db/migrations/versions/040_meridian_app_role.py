@@ -121,7 +121,13 @@ def downgrade() -> None:
                 EXECUTE 'REVOKE USAGE ON SCHEMA public FROM meridian_app';
                 EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM meridian_app';
                 EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM meridian_app';
-                EXECUTE 'DROP ROLE meridian_app';
+                -- The role is cluster-wide: another database on the same server may still hold
+                -- grants to it. Keep the role then; this database no longer references it.
+                BEGIN
+                    EXECUTE 'DROP ROLE meridian_app';
+                EXCEPTION WHEN dependent_objects_still_exist THEN
+                    RAISE NOTICE 'meridian_app kept: another database still grants to it';
+                END;
             END IF;
         END $$;
         """

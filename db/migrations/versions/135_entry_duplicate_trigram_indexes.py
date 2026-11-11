@@ -86,3 +86,10 @@ def downgrade() -> None:
         for f in FIELDS:
             op.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {_name(f)}")
     op.execute("DROP VIEW IF EXISTS entry_duplicate_population")
+    # RESTRICT (the default) refuses when anything outside this migration still uses the extension, so a
+    # pg_trgm another schema relies on stays; otherwise the downgrade leaves the database as it found it.
+    op.execute("""
+        DO $$ BEGIN
+            DROP EXTENSION IF EXISTS pg_trgm;
+        EXCEPTION WHEN dependent_objects_still_exist OR insufficient_privilege THEN NULL;
+        END $$""")
