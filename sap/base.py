@@ -47,6 +47,15 @@ def rfc_route_params(row: Any) -> dict:
             "snc_myname": get("snc_myname") or ""}
 
 
+def rfc_user(row: Any) -> str:
+    """The RFC user of a sap_systems row: the system's own stored username; SAP_RFC_USER (then RFC_USER) only when
+    the system has none stored."""
+    import os
+
+    get = row.get if isinstance(row, dict) else (lambda k: getattr(row, k, None))
+    return (get("username") or "").strip() or os.getenv("SAP_RFC_USER", "RFC_USER")
+
+
 def rfc_logon_kwargs(params: "SAPConnectionParams") -> dict:
     """The pyrfc.Connection keyword arguments for ``params``: only the router and SNC values that are set.
 
