@@ -84,6 +84,7 @@ export function WorkMonitor() {
                   <th scope="col" className="m2-r">{t("Fixed since")}</th>
                   <th>{t("Rules failing again")}</th>
                   <th>{t("Batch")}</th>
+                  <th>{t("Schedules and alerts")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -132,6 +133,9 @@ function Row({ i }: { i: MonitorItem }) {
             ))
           : "—"}
         {m && m.regressed_check_count > 4 ? <div className="m2-meta">{t("and {n} more", { n: int(m.regressed_check_count - 4) })}</div> : null}
+      </td>
+      <td>
+        <V2Link href={`/s/${encodeURIComponent(i.scope)}?tab=schedules`}>{t("Schedules and alerts")}</V2Link>
       </td>
       <td>{m?.batch_id ? <V2Link href={`/work?batch=${encodeURIComponent(m.batch_id)}`}>{batchLabel(m.batch_id)}</V2Link> : "—"}</td>
     </tr>

@@ -5,8 +5,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
 import {
   applyProposal, approveGroup, EXPORT_FORMATS, exportCleaning, getExportOptions, type ExportFormat, approveProposal, CONFIDENT, getAppliedCleaning, getDedupCandidates, mergeDedup, previewDedup, getCleaningAudit, getCleaningGroups, getCleaningMetrics, getProposals, rejectProposal,
-  rollbackCleaning, sendAiFeedback, WAITING, type CleaningGroup, type CleaningItem, type CleaningMetric, type DedupCandidate, type Proposal, type RecordData,
+  rejectGroup, rollbackCleaning, sendAiFeedback, WAITING, type CleaningGroup, type CleaningItem, type CleaningMetric, type DedupCandidate, type Proposal, type RecordData,
 } from "@/lib/api/v2/cleaning";
+import { getBackAfterClean } from "@/lib/api/remediation";
+import { queryKeys } from "@/lib/query-keys";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
 import { useV2Session } from "@/lib/v2/hooks";
@@ -204,10 +206,31 @@ export function Cleansing() {
       </Panel>
       </MoreDetail>
 
-      <p className="m2-meta">
-        {t("Whether the cleansed records stayed clean is tracked week by week on")} <V2Link href="/work/monitor">{t("Work, Monitor")}</V2Link>.
-      </p>
+      <StayClean />
     </CcPage>
+  );
+}
+
+/** The monitoring that follows a cleanse: what failed again and what stayed clean, with the way on to the monitor. */
+function StayClean() {
+  const q = useQuery({ queryKey: queryKeys.backAfterClean(), queryFn: () => getBackAfterClean(12), staleTime: 30_000 });
+  const sum = (k: "back" | "fixed") => (q.data?.weeks ?? []).reduce((a, w) => a + w[k], 0);
+  return (
+    <Panel title={t("Do the cleansed records stay clean?")} meta={t("Checked after every run, for the last 12 weeks.")} testId="cleansing-stay-clean">
+      {q.isPending ? <Skeleton width="100%" height={60} /> : q.isError ? (
+        <ErrorFrame onRetry={() => void q.refetch()}>{t("The monitor could not be read.")}</ErrorFrame>
+      ) : sum("fixed") + sum("back") === 0 ? (
+        <EmptyFrame>{t("Nothing has been fixed yet, so there is nothing to monitor.")}</EmptyFrame>
+      ) : (
+        <p data-testid="cleansing-stay-clean-figs">
+          <strong>{int(sum("fixed"))}</strong> {t("Fixed and still clean")}, <strong>{int(sum("back"))}</strong> {t("Failing again")}
+        </p>
+      )}
+      <div className="m2-row-actions">
+        <V2Link href="/work/monitor" className="m2-btn m2-next">{t("Open the monitor")}</V2Link>
+        <V2Link href="/work" className="m2-btn">{t("Open the work list")}</V2Link>
+      </div>
+    </Panel>
   );
 }
 
@@ -323,6 +346,11 @@ function useDecide() {
       onSuccess: (r) => done(t("{n} proposals approved. Export them as a load file and load it in SAP.", { n: int(r.approved_count) }))(),
       onError: fail(t("The proposals could not be approved.")),
     }),
+    rejectAll: useMutation({
+      mutationFn: ({ g, reason }: { g: CleaningGroup; reason: string }) => rejectGroup(g, reason),
+      onSuccess: (r) => done(t("{n} proposals rejected. The reason is kept in the audit trail.", { n: int(r.rejected_count) }))(),
+      onError: fail(t("The proposals could not be rejected.")),
+    }),
     approve: useMutation({ mutationFn: approveProposal, onSuccess: done(t("The proposal was approved.")), onError: fail(t("The proposal could not be approved.")) }),
     reject: useMutation({
       mutationFn: async ({ item, reason }: { item: Proposal; reason: string }) => {
@@ -344,6 +372,8 @@ function Proposals() {
   const approved = useCleaning("approved", () => getProposals({ status: "approved" }));
   const decide = useDecide();
   const [open, setOpen] = useState<string | null>(null);
+  const [rejecting, setRejecting] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
   const key = (g: CleaningGroup) => `${g.version_id ?? ""}|${g.object_type}|${g.kind}`;
   const list = groups.data?.groups ?? [];
   return (
@@ -390,11 +420,34 @@ function Proposals() {
                             {t("Approve the {n} confident", { n: int(g.confident) })}
                           </button>
                         ) : null}
+                        {can("approve") ? (
+                          <button type="button" className="m2-btn" onClick={() => { setRejecting(rejecting === k ? null : k); setReason(""); }} data-testid={`cleansing-reject-group-${g.kind}`}>
+                            {t("Reject the group")}
+                          </button>
+                        ) : null}
                         <button type="button" className="m2-btn" aria-expanded={open === k} onClick={() => setOpen(open === k ? null : k)} data-testid={`cleansing-open-${g.kind}`}>
                           {open === k ? t("Close") : t("Open")}
                         </button>
                       </td>
                     </tr>,
+                    rejecting === k ? (
+                      <tr key={`${k}-reject`}>
+                        <td colSpan={7}>
+                          <form
+                            className="m2-row-actions"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              if (!reason.trim()) return;
+                              decide.rejectAll.mutate({ g, reason: reason.trim() }, { onSuccess: () => { setRejecting(null); setReason(""); } });
+                            }}
+                          >
+                            <input className="m2-inp" aria-label={t("Why are these proposals wrong?")} placeholder={t("Why are these proposals wrong?")} value={reason} onChange={(e) => setReason(e.target.value)} data-testid={`cleansing-group-reason-${g.kind}`} autoFocus />
+                            <button type="submit" className="m2-btn m2-next" disabled={!reason.trim() || decide.rejectAll.isPending} data-testid={`cleansing-confirm-reject-group-${g.kind}`}>{t("Reject")}</button>
+                            <button type="button" className="m2-btn" onClick={() => { setRejecting(null); setReason(""); }}>{t("Cancel")}</button>
+                          </form>
+                        </td>
+                      </tr>
+                    ) : null,
                     open === k ? (
                       <tr key={`${k}-items`}>
                         <td colSpan={7}><GroupItems group={g} decide={decide} /></td>

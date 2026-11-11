@@ -118,6 +118,8 @@ export const rejectProposal = (id: string, reason: string) => one("reject", id, 
 export const applyProposal = (id: string) => one("apply", id);
 export const approveGroup = (g: Pick<CleaningGroup, "version_id" | "kind">, min_confidence: number) =>
   v2Send<{ approved_count: number }>("POST", "/cleaning/bulk-approve", { version_id: g.version_id ?? undefined, kind: g.kind, min_confidence });
+export const rejectGroup = (g: Pick<CleaningGroup, "version_id" | "kind">, reason: string) =>
+  v2Send<{ rejected_count: number }>("POST", "/cleaning/bulk-reject", { version_id: g.version_id ?? undefined, kind: g.kind, reason });
 export const sendAiFeedback = (queue_item_id: string, domain: string, correction_reason: string) =>
   v2Send<{ id: string; status: string }>("POST", "/ai/feedback", { queue_item_id, steward_decision: "reject", correction_reason, domain });
 

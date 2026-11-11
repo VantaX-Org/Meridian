@@ -51,6 +51,13 @@ describe("WorkMonitor", () => {
     expect(screen.getByRole("link", { name: "Open cleansing" }).getAttribute("href")).toContain("/cleansing");
   });
 
+  it("links each system to its schedules and alerts", async () => {
+    vi.spyOn(rem, "getMonitor").mockResolvedValue({ items: [item(4)] });
+    renderWithQuery(<WorkMonitor />);
+    const link = await screen.findByRole("link", { name: "Schedules and alerts" });
+    expect(link.getAttribute("href")).toContain("/s/s1?tab=schedules");
+  });
+
   it("keeps the weekly trend one click away, after the table", async () => {
     vi.spyOn(rem, "getMonitor").mockResolvedValue({ items: [item(4)] });
     renderWithQuery(<WorkMonitor />);
