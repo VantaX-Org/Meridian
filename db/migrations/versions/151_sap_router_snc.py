@@ -1,7 +1,7 @@
 """sap_systems: SAP router string and SNC settings
 
-Revision ID: 150
-Revises: 149
+Revision ID: 151
+Revises: 150
 Create Date: 2026-11-11
 
 An ABAP system behind a SAProuter, or one that only accepts Secure Network Communication, could not be
@@ -13,8 +13,8 @@ from typing import Sequence, Union
 
 from alembic import op
 
-revision: str = "150"
-down_revision: Union[str, None] = "149"
+revision: str = "151"
+down_revision: Union[str, None] = "150"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

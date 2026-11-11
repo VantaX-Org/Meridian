@@ -144,6 +144,7 @@ class Sheet:
     plain: bool = False  # a delimited file, whose name need not name a SuccessFactors object
     file: str = ""  # the uploaded file it came from
     raw: str = ""  # its name in that file
+    mapped: dict[str, str] = field(default_factory=dict)  # header to TABLE.FIELD, as a person corrected it
 
     @property
     def base(self) -> str:
@@ -444,6 +445,43 @@ def _by_field(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field
 
 
 def _candidates(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field]]:
+    """The matched tables of a sheet, with the columns a person mapped by hand added to their table.
+
+    A hand mapping names a field the dictionary holds, or it is ignored: a field name is never invented."""
+    out = _matched(sheet, dictionary)
+    for header, ref in sheet.mapped.items():
+        table, _, name = ref.partition(".")
+        found = dictionary.tables.get(table)
+        if found and name in found.fields:
+            for hits in out.values():
+                hits.pop(header, None)
+            out.setdefault(table, {})[header] = found.fields[name]
+    return out
+
+
+def apply_column_map(workbook: Workbook, column_map: dict[str, str]) -> None:
+    """Put a saved column map, keyed "sheet::header", on the workbook's sheets."""
+    for sheet in workbook.sheets:
+        headers = {c.header for c in sheet.columns}
+        sheet.mapped = {h: ref for key, ref in (column_map or {}).items()
+                        for name, _, h in [key.partition("::")] if name == sheet.name and h in headers and ref}
+
+
+def coverage(workbook: Workbook, dictionary: Dictionary) -> dict:
+    """How many columns resolve to a dictionary field, without a run: per sheet, the best table's matches."""
+    sheets = []
+    for sheet in workbook.sheets:
+        options = _candidates(sheet, dictionary)
+        table = max(options, key=lambda t: len(options[t]), default=None)
+        hits = options.get(table, {})
+        sheets.append({"name": sheet.name, "table": table, "columns": len(sheet.columns), "matched": len(hits),
+                       "unmapped": [{"header": c.header, "id": c.id, "label": c.label, "mandatory": c.mandatory}
+                                    for c in sheet.columns if c.header not in hits]})
+    return {"columns": sum(s["columns"] for s in sheets), "matched": sum(s["matched"] for s in sheets),
+            "sheets": sheets}
+
+
+def _matched(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field]]:
     """Each table that could fill a sheet, with its matched column headers.
 
     A column matches a field of the sheet's own entity by property name. Keys also match by name across entities,
@@ -851,3 +889,52 @@ def same_format(workbook: Workbook, tabs: dict[str, pd.DataFrame], held_csv: Opt
                     row[col.pos] = "" if pd.isna(value) else str(value)
         loads.setdefault(sheet.file, {})[sheet.raw] = (sheet.top, rows)
     return write_source(workbook.source, loads, held_csv)
+
+
+_NUMERIC = {"DEC", "CURR", "QUAN", "INT1", "INT2", "INT4", "INT8", "FLTP", "D16D", "D34D"}
+VALUES_SHOWN = 50  # a longer value list is named by its check table, not written out
+
+
+def blank_template(dictionary: Dictionary, rules: list[dict], target_values: dict[str, set[str]]) -> dict[str, pd.DataFrame]:
+    """A blank load template for a module, in the Migration Cockpit layout this module parses back.
+
+    The Field List names every field the module's rules read, plus each table's keys, with its description, whether
+    it is required (a key or a field a completeness rule checks), its type and length, and the values it may take: the
+    rule's own list first, then the domain's fixed values, then the target's check table values. One data sheet per
+    table carries the field ids in row 1 and their descriptions in row 2. Only dictionary fields are listed."""
+    wanted: dict[str, set[str]] = {}
+    required: set[str] = set()
+    ruled: dict[str, list[str]] = {}
+    for rule in rules:
+        ref = rule.get("field")
+        if not isinstance(ref, str) or "." not in ref:
+            continue
+        table, name = ref.split(".", 1)
+        if dictionary.tables.get(table) is None or name not in dictionary.tables[table].fields:
+            continue
+        wanted.setdefault(table, set()).add(name)
+        if rule.get("check_class") == "null_check":
+            required.add(ref)
+        values = rule.get("valid_values") or list((rule.get("valid_values_with_labels") or {}).keys())
+        if values and ref not in ruled:
+            ruled[ref] = [str(v) for v in values]
+    listing, sheets = [], {}
+    for table in sorted(wanted):
+        t = dictionary.tables[table]
+        names = [k for k in t.keys if k in t.fields] + sorted(wanted[table] - set(t.keys))
+        sheet = table[:31].replace("/", "_")
+        for name in names:
+            f = t.fields[name]
+            values = ruled.get(f.qualified) or sorted(f.allowed_values() or target_values.get(f.check_ref or "", set()))
+            kind = "Date" if f.type == "DATS" else "Number" if (f.type or "") in _NUMERIC else "Text"
+            listing.append({
+                "Sheet Name": sheet, "SAP Structure": table, "SAP Field": name, "Field Description": f.description,
+                "Importance": "Mandatory" if name in t.keys or f.qualified in required else "Optional",
+                "Type": kind, "Length": f.length or "",
+                "Allowed values": ", ".join(values) if 0 < len(values) <= VALUES_SHOWN else "",
+                "Check table": f.check_ref or "",
+            })
+        sheets[sheet] = pd.DataFrame([[t.fields[n].description for n in names]], columns=names)
+    return {"Field List": pd.DataFrame(listing, columns=[
+        "Sheet Name", "SAP Structure", "SAP Field", "Field Description", "Importance", "Type", "Length",
+        "Allowed values", "Check table"])} | sheets

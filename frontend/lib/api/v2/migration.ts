@@ -19,6 +19,13 @@
  *   GET/PUT/DELETE /migration/value-map         (source value to target value, per target field)
  *   POST   /migration/target-workbook/{version_id}/check   (what a finished run can fill in the new system's workbook)
  *   POST   /migration/target-workbook/{version_id}/export  (that data in the workbook's own columns, as Excel or a zip of CSV)
+ *   GET/POST /migration/templates/{module}       (the template library: kept target templates, one row per version)
+ *   GET    /migration/templates/{module}/fields  (dictionary fields an unresolved column may be mapped to)
+ *   GET    /migration/templates/{module}/blank   (a blank template built from the dictionary and the rules)
+ *   GET    /migration/templates/{module}/{id}/file     (the template as uploaded)
+ *   PUT    /migration/templates/{module}/{id}/mapping  (corrections to unresolved columns, kept per tenant)
+ *   POST   /migration/templates/{module}/{id}/check    (what the latest finished run fills, approved cleansing applied)
+ *   POST   /migration/templates/{module}/{id}/export   (the filled template, with held rows on a Held back tab)
  */
 import { uploadApiClient } from "@/lib/api/client";
 import { v2Get, v2Send } from "./client";
@@ -202,6 +209,42 @@ export async function checkTargetWorkbook(versionId: string, file: File): Promis
 /** The run's data in the workbook's own columns; csv arrives as a zip. */
 export const exportTargetWorkbook = (versionId: string, file: File, fmt: WorkbookFormat, writtenAs = "zip") =>
   v2Download(`${P}/target-workbook/${encodeURIComponent(versionId)}/export`, { format: fmt }, `target_workbook_${versionId}.${fmt === "source" ? writtenAs : fmt === "xlsx" ? "xlsx" : "zip"}`, "post", workbookForm(file));
+
+export interface TemplateCoverage {
+  columns: number;
+  matched: number;
+  sheets: { name: string; table: string | null; columns: number; matched: number; unmapped: { header: string; id: string; label: string; mandatory: boolean }[] }[];
+}
+export interface TargetTemplate {
+  id: string;
+  name: string;
+  version: number;
+  filename: string;
+  size_bytes: number;
+  coverage: TemplateCoverage | null;
+  /** "sheet::header" to TABLE.FIELD, set by a person for columns the template did not resolve. */
+  column_map: Record<string, string>;
+  last_fill_at: string | null;
+  last_fill_version_id: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+export interface TemplateField { field: string; description: string; key: boolean; table_description: string }
+const tpl = (module: string, id?: string) => `${P}/templates/${encodeURIComponent(module)}${id ? `/${encodeURIComponent(id)}` : ""}`;
+export const getTemplates = (module: string) => v2Get<{ module: string; templates: TargetTemplate[] }>(tpl(module));
+export const getTemplateFields = (module: string) => v2Get<{ fields: TemplateField[] }>(`${tpl(module)}/fields`);
+export async function uploadTemplate(module: string, file: File, name: string): Promise<{ id: string; name: string; version: number; coverage: TemplateCoverage }> {
+  if (fixtureActive()) return { id: "tpl-new", name: name || file.name, version: 1, coverage: { columns: 0, matched: 0, sheets: [] } };
+  const { data } = await uploadApiClient.post(`/api/v1${tpl(module)}`, workbookForm(file), { params: { name }, headers: { "Content-Type": "multipart/form-data" } });
+  return data;
+}
+export const saveTemplateMapping = (module: string, id: string, columns: Record<string, string>) =>
+  v2Send<{ column_map: Record<string, string>; coverage: TemplateCoverage }>("PUT", `${tpl(module, id)}/mapping`, { columns });
+export const checkTemplate = (module: string, id: string) => v2Send<WorkbookReport & { version_id: string; cleansed?: { approved: number; cells_changed: number } }>("POST", `${tpl(module, id)}/check`, {});
+export const downloadBlankTemplate = (module: string) => v2Download(`${tpl(module)}/blank`, undefined, `${module}_template.xlsx`);
+export const downloadTemplateFile = (module: string, t: TargetTemplate) => v2Download(`${tpl(module, t.id)}/file`, undefined, t.filename);
+export const exportTemplate = (module: string, t: TargetTemplate, fmt: WorkbookFormat) =>
+  v2Download(`${tpl(module, t.id)}/export`, { format: fmt }, `${t.name}_v${t.version}.${fmt === "csv" ? "zip" : "xlsx"}`, "post");
 
 export const startMigration = (body: AnalyzeBody) => v2Send<{ run_id: string; status: string }>("POST", `${P}/analyze`, body);
 
