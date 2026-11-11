@@ -7,9 +7,9 @@
    "rules": 157
   },
   "employee_central": {
-   "benchmarked": 366,
-   "perfect": 366,
-   "rules": 722
+   "benchmarked": 377,
+   "perfect": 377,
+   "rules": 737
   },
   "material_master": {
    "benchmarked": 235,
@@ -9828,7 +9828,7 @@
    "benchmarkable": false,
    "check_class": "cross_field_check",
    "module": "employee_central",
-   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(0, 6) != `PERINFO.DATE_OF_BI",
+   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(0, 6) != ((`PERINFO.DATE_OF_",
    "rule_id": "EC146"
   },
   {
@@ -13804,7 +13804,7 @@
    "benchmarkable": false,
    "check_class": "cross_field_check",
    "module": "employee_central",
-   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(6, 14) != `PERINFO.DATE_OF_B",
+   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(6, 14) != (`PERINFO.DATE_OF_",
    "rule_id": "EC553"
   },
   {
@@ -13867,7 +13867,7 @@
    "benchmarkable": false,
    "check_class": "cross_field_check",
    "module": "employee_central",
-   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(0, 6) != `PERINFO.DATE_OF_BI",
+   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(0, 6) != (`PERINFO.DATE_OF_B",
    "rule_id": "EC562"
   },
   {
@@ -13930,7 +13930,7 @@
    "benchmarkable": false,
    "check_class": "cross_field_check",
    "module": "employee_central",
-   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(4, 10) != `PERINFO.DATE_OF_B",
+   "reason": "condition not modelled: `PERINFO.NATIONAL_ID`.str.slice(4, 10) != ((`PERINFO.DATE_OF",
    "rule_id": "EC571"
   },
   {
@@ -15500,6 +15500,188 @@
    "module": "employee_central",
    "reason": "exists_check needs reference data or a second dataset",
    "rule_id": "EC712"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC713",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC714",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "character comparison POSITION.PARENT_POSITION/POSITION.CODE not modelled",
+   "rule_id": "EC715"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "character comparison FODEPARTMENT.PARENT_DEPARTMENT/FODEPARTMENT.EXTERNAL_CODE not modelled",
+   "rule_id": "EC716"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC717",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC718",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "condition not modelled: `EMPEMPLOYMENT.IS_SHIFT_EMPLOYEE`.astype('string').str.lower",
+   "rule_id": "EC719"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC720",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "EC721"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC722",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC723",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC724",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC725",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC726",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC727",
+   "true_positives": 10
   },
   {
    "benchmarkable": true,
