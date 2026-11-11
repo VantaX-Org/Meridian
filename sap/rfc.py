@@ -662,7 +662,10 @@ class RFCConnector(SAPConnector):
         try:
             self._conn.call("RFC_PING")
             return True
-        except Exception:
+        except Exception as e:
+            # Kept for the connection test: a logged-on user without S_RFC for RFC_PING
+            # otherwise reads as a bare "Ping failed" while the SAP GUI logon works.
+            self.ping_error = self._mask_password(str(e), self._password or "")[:300]
             return False
 
 
