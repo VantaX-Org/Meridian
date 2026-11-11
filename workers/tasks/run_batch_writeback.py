@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 from typing import Any, Callable, Optional
 
@@ -50,7 +49,7 @@ def audit(session: Any, tenant_id: str, run_id: str, user: str, label: Optional[
 def _system_params(session: Any, tenant_id: str, system_id: str):
     row = session.execute(text("""
         SELECT s.host, s.client, s.sysnr, c.encrypted_password, s.saprouter, s.snc_mode, s.snc_partnername,
-               s.snc_qop, s.snc_myname
+               s.snc_qop, s.snc_myname, s.username
           FROM sap_systems s JOIN system_credentials c ON c.system_id = s.id
          WHERE s.tenant_id = :tid AND CAST(s.id AS text) = :sid
            AND s.system_type IN ('ecc', 's4hana_onprem', 'ewm')
@@ -58,10 +57,10 @@ def _system_params(session: Any, tenant_id: str, system_id: str):
     if not row:
         return None
     from api.services.credential_store import decrypt_password
-    from sap.base import SAPConnectionParams, rfc_route_params
+    from sap.base import SAPConnectionParams, rfc_route_params, rfc_user
 
     return SAPConnectionParams(host=row[0], client=row[1] or "", sysnr=row[2] or "",
-                               user=os.getenv("SAP_RFC_USER", "RFC_USER"), password=decrypt_password(tenant_id, row[3]),
+                               user=rfc_user(row), password=decrypt_password(tenant_id, row[3]),
                                **rfc_route_params(row))
 
 

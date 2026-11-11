@@ -13,7 +13,6 @@ Rules (non-negotiable):
 import asyncio
 import json
 import logging
-import os
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -430,12 +429,12 @@ async def approve_writeback(
         # never fabricate a user/password (the old "WRITEBACK"/"****" literals
         # could never connect). Decrypted only here, at execution time.
         from sap import get_connector
-        from sap.base import SAPConnectionParams, SAPConnectorError, rfc_route_params
+        from sap.base import SAPConnectionParams, SAPConnectorError, rfc_route_params, rfc_user
 
         sys_result = await db.execute(
             text("""
                 SELECT s.client, s.sysnr, c.encrypted_password, s.saprouter, s.snc_mode, s.snc_partnername,
-                       s.snc_qop, s.snc_myname
+                       s.snc_qop, s.snc_myname, s.username
                 FROM sap_systems s
                 JOIN system_credentials c ON c.system_id = s.id
                 WHERE s.tenant_id = :tid AND s.host = :host
@@ -457,7 +456,7 @@ async def approve_writeback(
                 host=record[4],   # sap_host from write_back_log
                 client=sys_row[0] or "",
                 sysnr=sys_row[1] or "",
-                user=os.getenv("SAP_RFC_USER", "RFC_USER"),
+                user=rfc_user(sys_row),
                 password=decrypt_password(tenant_id, sys_row[2]),
                 **rfc_route_params(sys_row),
             )
@@ -641,7 +640,7 @@ async def _system_params(db: AsyncSession, tenant_id: str, system_id: str):
     """Connection parameters of a registered ABAP system with stored credentials, or None."""
     row = (await db.execute(text("""
         SELECT s.host, s.client, s.sysnr, c.encrypted_password, s.saprouter, s.snc_mode, s.snc_partnername,
-               s.snc_qop, s.snc_myname
+               s.snc_qop, s.snc_myname, s.username
           FROM sap_systems s JOIN system_credentials c ON c.system_id = s.id
          WHERE s.tenant_id = :tid AND CAST(s.id AS text) = :sid
            AND s.system_type IN ('ecc', 's4hana_onprem', 'ewm')
@@ -649,10 +648,10 @@ async def _system_params(db: AsyncSession, tenant_id: str, system_id: str):
     if not row:
         return None
     from api.services.credential_store import decrypt_password
-    from sap.base import SAPConnectionParams, rfc_route_params
+    from sap.base import SAPConnectionParams, rfc_route_params, rfc_user
 
     return SAPConnectionParams(host=row[0], client=row[1] or "", sysnr=row[2] or "",
-                               user=os.getenv("SAP_RFC_USER", "RFC_USER"), password=decrypt_password(tenant_id, row[3]),
+                               user=rfc_user(row), password=decrypt_password(tenant_id, row[3]),
                                **rfc_route_params(row))
 
 
