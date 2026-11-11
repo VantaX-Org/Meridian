@@ -289,6 +289,26 @@ function licence() {
   });
 }
 
+const MATCHES = [
+  { module: "material_master", check_id: "MM-BASE-UOM", record_key: "100-0001", field: "MEINS", actual_value: "KGM", std_rule_expectation: "Base unit is a unit of measure in use", config_evidence: "KGM is not maintained as a unit of measure in this system", recommended_action: "Maintain the unit of measure, or correct the material", sap_tcode: "CUNI", classification: "config_deviation", fix_priority: 1 },
+  { module: "material_master", check_id: "MM-TYPE-DEF", record_key: "100-0002", field: "MTART", actual_value: "ZSPR", std_rule_expectation: "Material type is one in use", config_evidence: "ZSPR carries no transactions in the period read", recommended_action: "Review whether the type is still wanted", sap_tcode: "OMS2", classification: "ambiguous", fix_priority: 2 },
+  { module: "customer_master", check_id: "CM-PAY-TERMS", record_key: "200-0007", field: "ZTERM", actual_value: "", std_rule_expectation: "Payment terms are filled", config_evidence: "The account group requires payment terms", recommended_action: "Fill the payment terms on the record", sap_tcode: "XD02", classification: "data_error", fix_priority: 1 },
+  { module: "customer_master", check_id: "CM-CO-CODE", record_key: "200-0011", field: "BUKRS", actual_value: "3000", std_rule_expectation: "Company code is active", config_evidence: "Company code 3000 carries no transactions", recommended_action: "Move the record to an active company code", sap_tcode: "XD02", classification: "data_error", fix_priority: 2 },
+] as const;
+
+export function configMatchRead(path: string, params: Record<string, unknown> = {}): unknown {
+  const m = /^\/versions\/([^/]+)\/config-matches(\/summary)?$/.exec(path);
+  if (!m) return NONE_CONFIG;
+  if (m[2]) return { data_errors: 2, config_deviations: 1, ambiguous: 1, modules_with_deviations: ["material_master"] };
+  const items = MATCHES.filter((x) => !params.classification || x.classification === params.classification);
+  return { items, total: items.length, limit: 500, offset: 0 };
+}
+
+export function configDownload(path: string): { name: string; text: string } | null {
+  const m = /^\/versions\/([^/]+)\/config-matches\/export$/.exec(path);
+  return m ? { name: `config-${m[1].slice(0, 8)}.xlsx`, text: "Fixture stand-in for the configuration matches workbook." } : null;
+}
+
 export function configRead(path: string): unknown {
   if (!path.startsWith("/config/") || path === "/config/drift") return NONE_CONFIG;
   switch (path) {

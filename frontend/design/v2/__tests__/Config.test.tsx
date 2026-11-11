@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as config from "@/lib/api/v2/config";
 import { Config } from "../screens/Config";
@@ -50,5 +50,18 @@ describe("configuration", () => {
     vi.spyOn(config, "getConfigInventory").mockRejectedValue(e);
     renderWithQuery(<Config />);
     expect(await screen.findByText("Run an analysis on an SAP system to read its configuration.")).toBeInTheDocument();
+  });
+
+  it("lists the config matches, narrows them by kind, and saves the workbook", async () => {
+    const save = vi.spyOn(config, "downloadConfigMatches").mockResolvedValue(undefined as never);
+    renderWithQuery(<Config />);
+    const panel = await screen.findByTestId("config-matches");
+    expect(await within(panel).findByText("100-0001")).toBeInTheDocument();
+    expect(within(panel).getAllByRole("row")).toHaveLength(5);
+    fireEvent.click(within(panel).getByRole("button", { name: /^Data error/ }));
+    await within(panel).findByText("200-0007");
+    expect(within(panel).queryByText("100-0001")).not.toBeInTheDocument();
+    fireEvent.click(within(panel).getByTestId("config-matches-export"));
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.stringMatching(/^d3229ded/)));
   });
 });

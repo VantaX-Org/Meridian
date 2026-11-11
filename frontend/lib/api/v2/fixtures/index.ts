@@ -23,7 +23,7 @@ import { enterpriseFixtureDownload, enterpriseFixtureResponse, enterpriseFixture
 import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, step9Read, step9Write, withContractMarks } from "./step9";
 import { NONE_REQ, requestsDownload, requestsRead, requestsWrite, resetRequestsFixture } from "./requests";
 import { externalDbRead, externalDbWrite, NONE_EXTERNAL_DB } from "./external-db";
-import { configRead, configWrite, NONE_CONFIG } from "./config";
+import { configDownload, configMatchRead, configRead, configWrite, NONE_CONFIG } from "./config";
 import { cleaningRead, cleaningWrite, NONE_CLEANING, resetCleaningFixture } from "./cleaning";
 import { matchRead, matchWrite, NONE_MATCH } from "./match-rules";
 import { mdmHealthRead, NONE_MDM_HEALTH } from "./mdm-health";
@@ -255,7 +255,7 @@ export { resetEnterpriseFixture } from "./enterprise";
 
 /** A file in fixture mode: the step 9 certificate PDF, the enterprise stand-ins, then the admin area's. */
 export function fixtureDownload(path: string, params: Record<string, unknown>, fallback: string): { name: string; text: string } {
-  return requestsDownload(path) ?? discoveryDownload(path) ?? step9Download(path) ?? enterpriseFixtureDownload(path) ?? adminFixtureDownload(path, params, fallback);
+  return requestsDownload(path) ?? configDownload(path) ?? discoveryDownload(path) ?? step9Download(path) ?? enterpriseFixtureDownload(path) ?? adminFixtureDownload(path, params, fallback);
 }
 export const fixtureExport = wf.exportFixture;
 export const fixtureImport = wf.importFixture;
@@ -385,6 +385,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (fc !== undefined) return fc as T;
   const cfg = configRead(path);
   if (cfg !== NONE_CONFIG) return cfg as T;
+  const cfm = configMatchRead(path, params);
+  if (cfm !== NONE_CONFIG) return cfm as T;
   const cl = cleaningRead(path, params);
   if (cl !== NONE_CLEANING) return cl as T;
   const pd = discoveryRead(path, params);
