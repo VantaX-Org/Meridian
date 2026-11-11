@@ -65,6 +65,17 @@ Users who may manage rules also see three buttons. **Apply** promotes every rule
 
 Promoting is not the end. A promoted rule is checked again each time you press Preview. When its failure rate has risen five points or more over the rate it was promoted at, the page shows it in a warning above the table, with the old rate, the new rate and the sample records.
 
+## Learned rule review
+
+On an object's Rules tab, **Learned** lists the rules Meridian mined from your data and that wait for a decision. Under the list, **Dictionary review** checks each proposal against the SAP data dictionary before you approve or reject it. Approve and Reject work as before.
+
+- **Rows supporting and Confidence.** How many records the rule was mined from and the share of them that hold it.
+- **Lift.** Confidence divided by the share of records that would hold an allowed value anyway, read from the field profiles of the same run. A lift near 1 means the determining field adds nothing and the rule only restates how common the values are. When the field profiles cannot support the figure, for example because a value sits past the ten listed top values or the field is masked, the cell says **Not derivable** with the reason. Meridian never estimates it. A lift from a sampled profile says so.
+- **Dictionary anchor.** For the field and the determining field: the field text, the data element, the check table and its field, and how many domain fixed values exist. A field the dictionary does not know is named as such.
+- **Values not in the dictionary.** Mined values that are not domain fixed values or not codes in the check table. Meridian checks the live configuration of your system first and the SAP standard baseline second, and names the source and how many codes it checked.
+- **Redundant.** A proposal is redundant when SAP already enforces it: the check table of the field is keyed by the determining field too (for example the MRP controller table T024D is keyed by plant, so SAP accepts only MRP controllers set up for the plant), or a format rule sits on a field that already has a check table or fixed values. Approving a redundant rule adds no protection. The reason is shown either way.
+- **Violating records.** Up to ten keys of records that break the proposal, never a field value.
+
 ## Rule dry run
 
 Before you switch a rule on, edit it or add one, the Rule dry run page shows what it would do. Open it from Rules, Rule dry run, from the Dry run button on a rule, or at `/rule-dry-run`. It needs the manage rules permission.

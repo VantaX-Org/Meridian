@@ -52,6 +52,17 @@ describe("entry gate", () => {
     expect(s.textContent).toContain("rule MM003");
   });
 
+  it("shows what the SAP dictionary says about a value its check table rejects, with the nearest valid codes", async () => {
+    renderWithQuery(<EntryGate />);
+    fireEvent.change(await screen.findByTestId("entry-gate-json"), { target: { value: JSON.stringify([{ "MARA.MATNR": "ENTRY-TEST-2", "MARA.MTART": "FERX", "MARA.MEINS": "KG" }]) } });
+    fireEvent.click(screen.getByTestId("entry-gate-run"));
+    const card = await screen.findByTestId("ddic-card");
+    expect(card.textContent).toContain("Material Type");
+    expect(card.textContent).toContain("check table T134, read from the system");
+    expect(within(card).getByTestId("ddic-reasons").textContent).toContain("not in check table T134");
+    expect(within(card).getByTestId("ddic-nearest").textContent).toContain("FERT");
+  });
+
   it("lists the requests the gate opened, each with its status and object in words and a link to the request", async () => {
     renderWithQuery(<EntryGate />);
     const panel = await screen.findByTestId("entry-gate-requests");

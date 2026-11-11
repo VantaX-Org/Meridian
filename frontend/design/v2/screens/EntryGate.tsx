@@ -16,6 +16,7 @@ import { ageWord, objectWord, statusWord } from "../inspector/request";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link, SapCode } from "../parts";
 import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
+import { DdicCard } from "./DdicEvidence";
 import { DuplicateResults } from "./EntryDuplicates";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -362,6 +363,7 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
                     <th scope="col">{t("Field")}</th>
                     <th scope="col">{t("Severity")}</th>
                     <th scope="col">{t("Suggested fix")}</th>
+                    <th scope="col">{t("SAP dictionary")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -373,6 +375,7 @@ function TryPanel({ modules }: { modules: readonly string[] }) {
                       <td data-label={t("Field")}><SapCode field={f.field} /></td>
                       <td data-label={t("Severity")}>{SEV[f.severity]()}</td>
                       <td data-label={t("Suggested fix")}><Suggested s={f.suggestion} /></td>
+                      <td data-label={t("SAP dictionary")}><DdicCard e={f.ddic} /></td>
                     </tr>
                   ))}
                 </tbody>

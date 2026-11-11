@@ -1,5 +1,6 @@
 "use client";
 import { Disclose, Guide, Steps } from "./Guide";
+import { LoadSimulationPanel } from "./LoadSimulation";
 import { PairedQuality } from "./PairedQuality";
 import "../runs.css";
 
@@ -12,6 +13,7 @@ import {
   getMigrationRecords, getMigrationRun, getMigrationRuns, getReconciliation, getReconciliationRecords, getValueCandidates, getValueMap,
   saveValueMap, seedFieldMap, startMigration, startReconciliation, updateFieldMapping, type FieldDef, type MigrationMode, type WorkbookFormat, type MigrationRun,
   type ReconKind,
+  type ReconRecord,
 } from "@/lib/api/v2/migration";
 import { extractObjects, getVersionsPage } from "@/lib/api/v2/runs";
 import { formatDate, formatModuleName } from "@/lib/format";
@@ -315,6 +317,7 @@ function RunDetail({ run }: { run: MigrationRun }) {
           </>
         )}
       </Panel>
+      {analysed(run) ? <LoadSimulationPanel runId={run.id} /> : null}
       <LoadFilesPanel run={run} />
       {analysed(run) ? <PostLoadPanel run={run} /> : null}
       <FindingsPanel run={run} gapTypes={[...new Set((q.data?.gap_breakdown ?? []).map((g) => g.gap_type))]} />
@@ -698,6 +701,27 @@ const RECON_KIND: Record<ReconKind, () => string> = {
   differing: () => t("Different in target"),
   unexpected: () => t("Held back but present"),
 };
+
+/** Why a loaded value differs from the target: each expected cause is read from the target field's DDIC entry or a confirmed value mapping. */
+const RECON_CAUSE: Record<string, () => string> = {
+  alpha_padding: () => t("Leading zeros (ALPHA conversion)"),
+  case: () => t("Upper case (field not lower case in the dictionary)"),
+  value_mapping: () => t("Confirmed value mapping"),
+  truncation: () => t("Cut to the target field length"),
+  number_format: () => t("Same number, other format"),
+  date_format: () => t("Same date, other format"),
+  real: () => t("Real difference"),
+};
+
+function causeEvidence(r: ReconRecord): string | undefined {
+  const d = r.ddic;
+  if (!d || !d.type) return undefined;
+  return t("{type} {length}, {lower}{exit}", {
+    type: d.type, length: d.length ?? 0,
+    lower: d.lowercase ? t("lower case allowed") : t("upper case only"),
+    exit: d.conversion_exit ? `, ${t("conversion exit {exit}", { exit: d.conversion_exit })}` : "",
+  });
+}
 const RECON_STATUS: Record<string, () => string> = { ...STATUS_TEXT, done: () => t("Done") };
 const signed = (n: number) => `${n > 0 ? "+" : ""}${f1(n)}`;
 const signedInt = (n: number) => `${n > 0 ? "+" : ""}${int(n)}`;
@@ -711,13 +735,15 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
   const [kind, setKind] = useState<ReconKind>("missing");
   const [table, setTable] = useState("");
   const [offset, setOffset] = useState(0);
+  const [realOnly, setRealOnly] = useState(false);
   const q = useQuery({
     queryKey: ["migration", "recon", run.id, fixture], queryFn: () => getReconciliation(run.id), staleTime: 30_000,
     retry, refetchInterval: (c) => (c.state.data?.status === "queued" || c.state.data?.status === "running" ? 5_000 : false),
   });
   const done = q.data?.status === "done";
   const rec = useQuery({
-    queryKey: ["migration", "recon-records", run.id, table, kind, offset, fixture], queryFn: () => getReconciliationRecords(run.id, { table: table || undefined, kind, offset, limit: PAGE }),
+    queryKey: ["migration", "recon-records", run.id, table, kind, offset, realOnly, fixture],
+    queryFn: () => getReconciliationRecords(run.id, { table: table || undefined, kind, offset, limit: PAGE, real_only: kind === "differing" && realOnly }),
     staleTime: 60_000, retry, enabled: done,
   });
   const start = useMutation({
@@ -771,6 +797,13 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                   n: int(sum.comparable ?? 0), m: int(sum.tables ?? 0), e: int(sum.expected ?? 0), f: int(sum.found ?? 0), x: int(sum.missing ?? 0), u: int(sum.unexpected ?? 0), w: int(sum.differing_fields ?? 0),
                 })}
               </p>
+              {sum.real_differences !== undefined ? (
+                <p className="m2-meta" data-testid="mig-post-load-split">
+                  {t("Of the differences, {r, plural, one {# is real} other {# are real}} and {x, plural, one {# has an expected cause} other {# have an expected cause}} (padding, case, value mapping, truncation or format). Only real differences count against the load.", {
+                    r: sum.real_differences, x: sum.expected_differences ?? 0,
+                  })}
+                </p>
+              ) : null}
               {d!.automatic ? <p className="m2-meta" data-testid="mig-post-load-auto">{t("Started automatically when the target system was analysed again.")}</p> : null}
               {d!.previous ? (
                 <p className="m2-meta" data-testid="mig-post-load-change">
@@ -812,7 +845,7 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                   ))}
                 </Table>
               ) : null}
-              <Table title={t("Records per target table")} head={[t("Table"), t("Expected"), t("Found"), t("Missing"), t("Held back but present"), t("Fields that differ")]}>
+              <Table title={t("Records per target table")} head={[t("Table"), t("Expected"), t("Found"), t("Missing"), t("Held back but present"), t("Fields that differ"), t("Real differences")]}>
                 {d!.tables.map((x) => (
                   <tr key={x.table}>
                     <th scope="row" className="m2-card-lead"><Coded code={x.table} text={x.description} first /></th>
@@ -823,14 +856,15 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                         <td data-label={t("Missing")}>{int(x.missing)}</td>
                         <td data-label={t("Held back but present")}>{int(x.unexpected)}</td>
                         <td data-label={t("Fields that differ")}>{int(x.fields.reduce((a, f) => a + f.differing, 0))}</td>
+                        <td data-label={t("Real differences")}>{x.real_differences === undefined ? f1(null) : int(x.real_differences)}</td>
                       </>
                     ) : (
-                      <td colSpan={5} data-label={t("Not compared")}>{t("Not compared")}: <Coded code={x.reason ?? ""} text={x.reason ? RECON_REASON[x.reason]?.() : undefined} /></td>
+                      <td colSpan={6} data-label={t("Not compared")}>{t("Not compared")}: <Coded code={x.reason ?? ""} text={x.reason ? RECON_REASON[x.reason]?.() : undefined} /></td>
                     )}
                   </tr>
                 ))}
               </Table>
-              <Table title={t("Fields compared")} head={[t("Table"), t("Field"), t("Compared"), t("Matched"), t("Different")]}>
+              <Table title={t("Fields compared")} head={[t("Table"), t("Field"), t("Compared"), t("Matched"), t("Different"), t("Real differences")]}>
                 {tablesWithRecords.flatMap((x) => x.fields.map((f) => (
                   <tr key={`${x.table}-${f.field}`}>
                     <th scope="row" className="m2-card-lead"><Coded code={x.table} text={x.description} first /></th>
@@ -838,6 +872,7 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                     <td data-label={t("Compared")}>{f.in_target_extract ? int(f.compared) : t("Not in the target extraction")}</td>
                     <td data-label={t("Matched")}>{f.in_target_extract ? int(f.matched) : f1(null)}</td>
                     <td data-label={t("Different")}>{f.in_target_extract ? int(f.differing) : f1(null)}</td>
+                    <td data-label={t("Real differences")}>{f.in_target_extract && f.real_differences !== undefined ? int(f.real_differences) : f1(null)}</td>
                   </tr>
                 )))}
               </Table>
@@ -845,6 +880,9 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                 {(Object.keys(RECON_KIND) as ReconKind[]).map((k) => (
                   <button key={k} type="button" className="m2-btn" aria-pressed={kind === k} onClick={() => { setKind(k); setOffset(0); }}>{RECON_KIND[k]()}</button>
                 ))}{" "}
+                {kind === "differing" ? (
+                  <button type="button" className="m2-btn" aria-pressed={realOnly} data-testid="mig-post-load-real-only" onClick={() => { setRealOnly(!realOnly); setOffset(0); }}>{t("Real differences only")}</button>
+                ) : null}{" "}
                 <select aria-label={t("Table")} value={table} onChange={(e) => { setTable(e.target.value); setOffset(0); }}>
                   <option value="">{t("All tables")}</option>
                   {tablesWithRecords.map((x) => <option key={x.table} value={x.table}>{x.table} {x.description}</option>)}
@@ -854,7 +892,7 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                 <EmptyFrame>{t("No records in this list.")}</EmptyFrame>
               ) : (
                 <>
-                  <Table title={RECON_KIND[kind]()} head={[t("Record"), t("Load file record"), t("Field"), t("Expected"), t("Found")]}>
+                  <Table title={RECON_KIND[kind]()} head={kind === "differing" ? [t("Record"), t("Load file record"), t("Field"), t("Expected"), t("Found"), t("Cause")] : [t("Record"), t("Load file record"), t("Field"), t("Expected"), t("Found")]}>
                     {rec.data.rows.map((r) => (
                       <tr key={`${r.source_record}-${r.key}-${r.field}`}>
                         <th scope="row" className="m2-card-lead"><Coded code={r.key} text={undefined} first /></th>
@@ -862,6 +900,9 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                         <td data-label={t("Field")}>{r.field ? <Coded code={r.field} text={fieldText.get(r.field)} first /> : f1(null)}</td>
                         <td data-label={t("Expected")}>{r.withheld ? t("Withheld") : r.expected ?? f1(null)}</td>
                         <td data-label={t("Found")}>{r.withheld ? t("Withheld") : r.found ?? f1(null)}</td>
+                        {kind === "differing" ? (
+                          <td data-label={t("Cause")}>{r.cause ? <>{RECON_CAUSE[r.cause]?.() ?? r.cause}{causeEvidence(r) ? <span className="m2-meta"> {causeEvidence(r)}</span> : null}</> : f1(null)}</td>
+                        ) : null}
                       </tr>
                     ))}
                   </Table>

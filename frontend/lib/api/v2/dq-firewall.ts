@@ -98,6 +98,40 @@ export interface FirewallFailure {
   dimension: string;
   reason: string;
   suggestion?: FirewallSuggestion | null;
+  /** What the ABAP Dictionary says about the field and the value; null when the dictionary does not know the field. */
+  ddic?: DdicEvidence | null;
+}
+
+/** One dictionary check run on a value (api/services/ddic_value_check.py). */
+export interface DdicCheck {
+  check: string;
+  verdict: "pass" | "fail" | "skip";
+  reason: string | null;
+}
+
+/** The DDIC evidence for one TABLE.FIELD value: the field's definition, each check, and the nearest valid codes. */
+export interface DdicEvidence {
+  field: string;
+  value: string;
+  /** The value as SAP stores it after its conversion exit (ALPHA pads digits with zeros). */
+  stored: string;
+  field_text: string | null;
+  data_element: string | null;
+  domain: string | null;
+  type: string | null;
+  length: number | null;
+  decimals: number | null;
+  check_table: string | null;
+  check_field: string | null;
+  conversion_exit: string | null;
+  lowercase: boolean | null;
+  fixed_values: { code: string; text: string | null }[];
+  /** Where the check-table values came from: the system's live configuration or the SAP-standard baseline. */
+  source: "live" | "baseline" | null;
+  checks: DdicCheck[];
+  verdict: "safe" | "reject" | "unknown";
+  reasons: string[];
+  nearest: { code: string; text: string | null }[];
 }
 
 /** One compared field of a likely duplicate. The other record's values are never returned. */

@@ -40,6 +40,19 @@ The panel **Template library** keeps the new system's load templates for each ob
 
 Uploading and mapping need the right to analyse. The downloads and the check need the right to export.
 
+## Post-load reconciliation: expected and real differences
+
+Not every difference between the load file and the target is a defect. Meridian gives each differing field a cause, read from the SAP data dictionary of the target field:
+
+- **Leading zeros (ALPHA conversion)**: the field has the ALPHA conversion exit and the values are equal once the zeros are added or removed.
+- **Upper case**: the field does not allow lower case, so the target stored the value in capitals.
+- **Confirmed value mapping**: the found value is the approved target value of a value mapping.
+- **Cut to the target field length**: the expected value is longer than the field and the target kept its first characters.
+- **Same number, other format** and **Same date, other format**: the field is a number or date field and the values are equal once read.
+- **Real difference**: anything else.
+
+Each row of **Different in target** shows the cause with the field's type, length, case rule and conversion exit beside it. **Real differences only** hides the expected ones. The summary and the tables show how many differences are real and how many have an expected cause, and only real differences count against the load.
+
 ## Load plan
 
 The load plan at /migration/load-plan shows the order in which the migration objects load into the target, and why. Meridian reads the data dictionary: when a field an object's rules read has a check table that another object owns, the other object loads first. A customer's company code data points at a G/L account through KNB1.AKONT, so G/L accounts load before customers.
@@ -47,6 +60,16 @@ The load plan at /migration/load-plan shows the order in which the migration obj
 Each dependency names the field, its check table and the dictionary text, so you can check it in SE11. A dependency is required when the target refuses the record without the field; the reason comes from the mandatory field list. Every other dependency is a reference: the record loads, but the reference stays empty or is rejected until the other object is in. When objects point at each other, the reference fields inside the cycle are deferred and loaded as a delta after both objects. A cycle of required fields alone is one step that loads together.
 
 Each object shows the state of its latest analysed migration run. It is a no-go while that run still has critical or high gaps. Every object that needs a no-go object through a required field is blocked until that object is fixed. Prerequisites are check tables no object in the plan owns: configuration to transport, or master data from outside the plan, which must be in the target before step 1.
+
+## Load simulation
+
+Each analysed run shows a load simulation: how many records of each load object would load into the target and how many would fail, the way the SAP Migration Cockpit reports a simulated load. A record fails when it has a critical or high gap, or a value its check table does not hold. SAP rejects a value its check table lacks whatever its severity, so every check-table miss counts.
+
+The failures are grouped by load object, field and kind of error into one message each, built from the data dictionary. For example: Value 'ZROH' not allowed for field MARA-MTART (check table T134), or Field MAKT-MAKTX too long: CHAR 40. Each message names the field with its dictionary text, the records it affects and up to five sample record keys. Messages with no record count are structural: a field or key the target does not have.
+
+Configuration to transport lists every check table with values the records use but the target lacks, with the count of records for each value. Transport these entries before the load, or map the values to ones the target holds.
+
+When no target system is connected, Meridian checks values against the SAP standard baseline. A record that fails only on such values is marked provisional, because the target may already hold them. Connect the target and analyse again to confirm. The load simulation reads the run's stored findings; it does not touch the target system. The load plan gives the order in which the objects load.
 
 ## What you can do, by role
 

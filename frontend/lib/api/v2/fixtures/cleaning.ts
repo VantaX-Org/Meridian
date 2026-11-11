@@ -4,7 +4,7 @@
  * of the applied list and writes an audit row, as the route does. The deadlines are relative to now so one proposal
  * is always past its window and the others are not.
  */
-import type { CleaningAudit, CleaningGroup, CleaningItem, CleaningMetric, DedupCandidate, MergePreview, Proposal } from "../cleaning";
+import type { CleaningAudit, CleaningGroup, CleaningItem, CleaningMetric, DedupCandidate, MergePreview, Proposal, SafetyReport } from "../cleaning";
 
 export const NONE_CLEANING = Symbol("not a cleaning path");
 
@@ -68,7 +68,7 @@ const PROPOSALS: [string, string, string, string, string, number, Record<string,
   ["cq-2002", "material_master", "MEINS", "Base unit in upper case", "MATNR 000000000010006121", 0.95, { MEINS: "pc" }, { MEINS: "PC" }, "recommended"],
   ["cq-2003", "material_master", "MEINS", "Base unit in upper case", "MATNR 000000000010006188", 0.71, { MEINS: "e" }, { MEINS: "EA" }, "detected"],
   ["cq-2004", "material_master", "GEWEI", "Weight unit set where a gross weight is given", "MATNR 000000000010006202", 0.91, { GEWEI: "", BRGEW: "3.1" }, { GEWEI: "KG", BRGEW: "3.1" }, "recommended"],
-  ["cq-2005", "material_master", "GEWEI", "Weight unit set where a gross weight is given", "MATNR 000000000010006230", 0.62, { GEWEI: "", BRGEW: "410" }, { GEWEI: "G", BRGEW: "410" }, "detected"],
+  ["cq-2005", "material_master", "GEWEI", "Weight unit set where a gross weight is given", "MATNR 000000000010006230", 0.62, { GEWEI: "", BRGEW: "410" }, { GEWEI: "GR", BRGEW: "410" }, "detected"],
   ["cq-2006", "business_partner", "TEL_NUMBER", "Telephone number in international format", "PARTNER 0001000520", 0.93, { TEL_NUMBER: "011 555 0144" }, { TEL_NUMBER: "+27 11 555 0144" }, "recommended"],
   ["cq-2007", "business_partner", "TEL_NUMBER", "Telephone number in international format", "PARTNER 0001000533", 0.58, { TEL_NUMBER: "555 0101" }, { TEL_NUMBER: "+27 555 0101" }, "detected"],
   ["cq-2008", "sd_customer_master", "REGIO", "Region code in upper case", "KUNNR 0000200402", 0.96, { REGIO: "kzn" }, { REGIO: "KZN" }, "approved"],
@@ -163,8 +163,27 @@ function applied(): CleaningItem[] {
   }))];
 }
 
+// The waiting proposals' new values as api/services/ddic_value_check.py checks them against the ECC 6 dictionary and
+// the SAP-standard baseline (no live configuration here). cq-2005's GR is not a unit in T006; TEL_NUMBER has no one field.
+const SAFETY = {
+  items: [
+    {"id": "cq-2001", "record_key": "MATNR 000000000010006120", "object_type": "material_master", "value": "EA", "field": "MARA.MEINS", "verdict": "safe", "reasons": [], "evidence": {"field": "MARA.MEINS", "value": "EA", "stored": "EA", "field_text": "Base Unit of Measure", "data_element": "MEINS", "domain": "MEINS", "type": "UNIT", "length": 3, "decimals": 0, "check_table": "T006", "check_field": "MSEHI", "conversion_exit": "CUNIT", "lowercase": true, "fixed_values": [], "source": "baseline", "checks": [{"check": "type", "verdict": "pass", "reason": null}, {"check": "conversion_exit", "verdict": "skip", "reason": "CUNIT converts the value on input; not run here"}, {"check": "check_table", "verdict": "pass", "reason": "EA is in T006 (baseline)"}], "verdict": "safe", "nearest": [], "reasons": []}},
+    {"id": "cq-2002", "record_key": "MATNR 000000000010006121", "object_type": "material_master", "value": "PC", "field": "MARA.MEINS", "verdict": "safe", "reasons": [], "evidence": {"field": "MARA.MEINS", "value": "PC", "stored": "PC", "field_text": "Base Unit of Measure", "data_element": "MEINS", "domain": "MEINS", "type": "UNIT", "length": 3, "decimals": 0, "check_table": "T006", "check_field": "MSEHI", "conversion_exit": "CUNIT", "lowercase": true, "fixed_values": [], "source": "baseline", "checks": [{"check": "type", "verdict": "pass", "reason": null}, {"check": "conversion_exit", "verdict": "skip", "reason": "CUNIT converts the value on input; not run here"}, {"check": "check_table", "verdict": "pass", "reason": "PC is in T006 (baseline)"}], "verdict": "safe", "nearest": [], "reasons": []}},
+    {"id": "cq-2003", "record_key": "MATNR 000000000010006188", "object_type": "material_master", "value": "EA", "field": "MARA.MEINS", "verdict": "safe", "reasons": [], "evidence": {"field": "MARA.MEINS", "value": "EA", "stored": "EA", "field_text": "Base Unit of Measure", "data_element": "MEINS", "domain": "MEINS", "type": "UNIT", "length": 3, "decimals": 0, "check_table": "T006", "check_field": "MSEHI", "conversion_exit": "CUNIT", "lowercase": true, "fixed_values": [], "source": "baseline", "checks": [{"check": "type", "verdict": "pass", "reason": null}, {"check": "conversion_exit", "verdict": "skip", "reason": "CUNIT converts the value on input; not run here"}, {"check": "check_table", "verdict": "pass", "reason": "EA is in T006 (baseline)"}], "verdict": "safe", "nearest": [], "reasons": []}},
+    {"id": "cq-2004", "record_key": "MATNR 000000000010006202", "object_type": "material_master", "value": "KG", "field": "MARA.GEWEI", "verdict": "safe", "reasons": [], "evidence": {"field": "MARA.GEWEI", "value": "KG", "stored": "KG", "field_text": "Weight Unit", "data_element": "GEWEI", "domain": "MEINS", "type": "UNIT", "length": 3, "decimals": 0, "check_table": "T006", "check_field": "MSEHI", "conversion_exit": "CUNIT", "lowercase": true, "fixed_values": [], "source": "baseline", "checks": [{"check": "type", "verdict": "pass", "reason": null}, {"check": "conversion_exit", "verdict": "skip", "reason": "CUNIT converts the value on input; not run here"}, {"check": "check_table", "verdict": "pass", "reason": "KG is in T006 (baseline)"}], "verdict": "safe", "nearest": [], "reasons": []}},
+    {"id": "cq-2004", "record_key": "MATNR 000000000010006202", "object_type": "material_master", "value": "3.1", "field": "MARA.BRGEW", "verdict": "safe", "reasons": [], "evidence": {"field": "MARA.BRGEW", "value": "3.1", "stored": "3.1", "field_text": "Gross weight", "data_element": "BRGEW", "domain": "MENG13", "type": "QUAN", "length": 13, "decimals": 3, "check_table": null, "check_field": null, "conversion_exit": null, "lowercase": false, "fixed_values": [], "source": null, "checks": [{"check": "type", "verdict": "pass", "reason": null}], "verdict": "safe", "nearest": [], "reasons": []}},
+    {"id": "cq-2005", "record_key": "MATNR 000000000010006230", "object_type": "material_master", "value": "GR", "field": "MARA.GEWEI", "verdict": "reject", "reasons": ["not in check table T006 (baseline)"], "evidence": {"field": "MARA.GEWEI", "value": "GR", "stored": "GR", "field_text": "Weight Unit", "data_element": "GEWEI", "domain": "MEINS", "type": "UNIT", "length": 3, "decimals": 0, "check_table": "T006", "check_field": "MSEHI", "conversion_exit": "CUNIT", "lowercase": true, "fixed_values": [], "source": "baseline", "checks": [{"check": "type", "verdict": "pass", "reason": null}, {"check": "conversion_exit", "verdict": "skip", "reason": "CUNIT converts the value on input; not run here"}, {"check": "check_table", "verdict": "fail", "reason": "not in check table T006 (baseline)"}], "verdict": "reject", "nearest": [{"code": "G", "text": "Gram"}, {"code": "KG", "text": "Kilogram"}, {"code": "HR", "text": "Hour"}], "reasons": ["not in check table T006 (baseline)"]}},
+    {"id": "cq-2005", "record_key": "MATNR 000000000010006230", "object_type": "material_master", "value": "410", "field": "MARA.BRGEW", "verdict": "safe", "reasons": [], "evidence": {"field": "MARA.BRGEW", "value": "410", "stored": "410", "field_text": "Gross weight", "data_element": "BRGEW", "domain": "MENG13", "type": "QUAN", "length": 13, "decimals": 3, "check_table": null, "check_field": null, "conversion_exit": null, "lowercase": false, "fixed_values": [], "source": null, "checks": [{"check": "type", "verdict": "pass", "reason": null}], "verdict": "safe", "nearest": [], "reasons": []}},
+    {"id": "cq-2006", "record_key": "PARTNER 0001000520", "object_type": "business_partner", "value": "+27 11 555 0144", "field": null, "verdict": "unknown", "reasons": ["TEL_NUMBER could not be matched to one SAP field, so it was not checked"]},
+    {"id": "cq-2007", "record_key": "PARTNER 0001000533", "object_type": "business_partner", "value": "+27 555 0101", "field": null, "verdict": "unknown", "reasons": ["TEL_NUMBER could not be matched to one SAP field, so it was not checked"]},
+  ],
+  totals: {"checked": 9, "safe": 6, "reject": 1, "unknown": 2},
+  truncated: false,
+} satisfies SafetyReport;
+
 export function cleaningRead(path: string, params: Record<string, unknown> = {}): unknown {
   if (path === "/cleaning/metrics") return { metrics: METRICS };
+  if (path === "/cleaning/queue/safety") return SAFETY;
   if (path === "/cleaning/queue/groups") return groups();
   if (path === "/cleaning/queue" && params.status && params.status !== "applied") {
     const want = String(params.status).split(",");

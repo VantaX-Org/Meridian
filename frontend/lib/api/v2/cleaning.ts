@@ -11,12 +11,15 @@
  *   POST /cleaning/rollback/{id}               (needs the apply permission)
  *   GET  /cleaning/export-options              (the objects and statuses in the queue with counts; needs export)
  *   GET  /cleaning/export/{format}?status=     (the load file: csv, xlsx, lsmw, bapi, idoc or sf_csv; needs export)
+ *   GET  /cleaning/queue/safety                (each waiting proposal's new value checked against the SAP dictionary:
+ *        safe or rejected by SAP with the reason, and totals)
  *   GET  /dedup/candidates                     (pairs the cleaning engine found to be the same record, still pending)
  *   POST /dedup/preview                        (the fields of both records side by side)
  *   POST /dedup/merge                          (keeps the survivor and merges the other into it; needs approve and a reason)
  */
 import { v2Get, v2Send } from "./client";
 import { v2Download } from "./download";
+import type { DdicEvidence } from "./dq-firewall";
 
 export interface ExportOptions {
   object_types: { value: string; count: number }[];
@@ -108,6 +111,29 @@ export interface Proposal extends CleaningItem {
 export const WAITING = "detected,recommended";
 /** The confidence the groups count as confident, as the route does (0.85). */
 export const CONFIDENT = 0.85;
+
+/** One after-value of a waiting proposal, checked against the target system's ABAP Dictionary. */
+export interface SafetyItem {
+  id: string;
+  record_key: string | null;
+  object_type: string | null;
+  /** The TABLE.FIELD checked; null when the key matched no single SAP field. */
+  field: string | null;
+  value: string | null;
+  /** reject: SAP would refuse the value. unknown: not checked. */
+  verdict: "safe" | "reject" | "unknown";
+  reasons: string[];
+  evidence?: DdicEvidence | null;
+}
+
+export interface SafetyReport {
+  items: SafetyItem[];
+  totals: { checked: number; safe: number; reject: number; unknown: number };
+  /** More waiting proposals than the limit; only the first were checked. */
+  truncated: boolean;
+}
+
+export const getCleaningSafety = () => v2Get<SafetyReport>("/cleaning/queue/safety");
 
 export const getCleaningGroups = () => v2Get<{ groups: CleaningGroup[]; records: number; confident: number; runs: number }>("/cleaning/queue/groups");
 export const getProposals = (p: { status: string; version_id?: string | null; kind?: string }) =>

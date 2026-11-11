@@ -47,4 +47,16 @@ describe("process analytics", () => {
       expect(screen.queryByTestId("pa-object-vendor")).toBeNull();
     });
   });
+
+  it("forecasts each waiting step with its breach risk and lists the decided tasks it rests on", async () => {
+    renderWithQuery(<ProcessAnalytics />);
+    expect(await screen.findByTestId("pa-forecast-summary")).toHaveTextContent("4 open requests: 2 likely to miss the SLA, 1 already past it.");
+    expect(screen.getByTestId("pa-forecast-CR-0997")).toHaveTextContent("SLA missed");
+    const row = screen.getByTestId("pa-forecast-CR-0999");
+    expect(row).toHaveTextContent("50.0%");
+    expect(row).toHaveTextContent("then Finance approval");
+    const ev = screen.getByTestId("pa-evidence-CR-1001");
+    expect(ev).toHaveTextContent("Same object, kind and step 6 decided tasks");
+    expect(ev.querySelectorAll("li")).toHaveLength(6);
+  });
 });

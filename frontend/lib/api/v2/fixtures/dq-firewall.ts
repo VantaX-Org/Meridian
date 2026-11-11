@@ -3,7 +3,7 @@
  * The fixture judges only Material master and only three rules, the real ones of checks/rules/ecc/material_master.yaml
  * (MM001, MM003, MM008, each critical and completeness: a blank material number, type or base unit).
  */
-import type { DuplicateMatch, FirewallDay, FirewallFailure, FirewallSummary, FirewallVerdict, GateRequest } from "../dq-firewall";
+import type { DdicEvidence, DuplicateMatch, FirewallDay, FirewallFailure, FirewallSummary, FirewallVerdict, GateRequest } from "../dq-firewall";
 import { describeField } from "@/lib/v2/sap-fields";
 
 export const NONE_DQ_FIREWALL = Symbol("no-dq-firewall-fixture");
@@ -21,6 +21,22 @@ const RULES: { id: string; field: string; message: string }[] = [
   { id: "MM003", field: "MARA.MTART", message: "Material type is mandatory - determines procurement and storage behaviour" },
   { id: "MM008", field: "MARA.MEINS", message: "Base unit of measure is mandatory for all materials" },
 ];
+
+// The material types the fixture's live T134 snapshot holds, with their texts (synthetic customizing).
+const T134: Record<string, string> = { ERSA: "Spare parts", FERT: "Finished product", HALB: "Semifinished product", ROH: "Raw materials", ZFRT: "Own finished product" };
+
+// As api/services/ddic_value_check.py reports a material type missing from T134. Nearest: same letters first.
+function mtartEvidence(value: string): DdicEvidence {
+  const v = value.toUpperCase();
+  const score = (c: string) => [...c].filter((ch, i) => v[i] === ch).length;
+  const nearest = Object.keys(T134).filter((c) => score(c) >= 2).sort((a, b) => score(b) - score(a) || a.localeCompare(b)).slice(0, 3);
+  return {
+    field: "MARA.MTART", value, stored: value, field_text: "Material Type", data_element: "MTART", domain: "MTART", type: "CHAR", length: 4, decimals: 0,
+    check_table: "T134", check_field: "MTART", conversion_exit: null, lowercase: false, fixed_values: [], source: "live",
+    checks: [{ check: "type", verdict: "pass", reason: null }, { check: "check_table", verdict: "fail", reason: "not in check table T134 (live)" }],
+    verdict: "reject", reasons: ["not in check table T134 (live)"], nearest: nearest.map((code) => ({ code, text: T134[code] })),
+  };
+}
 
 // Seven days to 2026-10-20. The earliest days predate the warned count, so warned and passed are null there.
 const DAYS: FirewallDay[] = [
@@ -191,6 +207,13 @@ export function dqFirewallWrite(method: string, path: string, body: unknown): un
           ? { suggestion: { kind: "allowed_values" as const, field: x.field, rule_id: x.id, source: "rule MM003 allowed values", verified: true, allowed_values: [{ code: "ROH", text: "Raw materials" }, { code: "FERT", text: "Finished product" }, { code: "HALB", text: "Semifinished product" }], truncated: false } }
           : {}),
       }));
+      const mtart = String(r["MARA.MTART"] ?? "").trim();
+      if (mtart && !(mtart in T134)) {
+        failures.push({
+          rule_id: "MM140", description: "Material type MTART must reference a valid entry in T134", field: "MARA.MTART", field_description: describeField("MARA.MTART"),
+          severity: "critical", dimension: "consistency", reason: `${mtart} is not a material type in T134.`, ddic: mtartEvidence(mtart),
+        });
+      }
       return { index, verdict: failures.length ? "block" : "pass", failures };
     }),
   };

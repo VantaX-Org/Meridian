@@ -4,8 +4,8 @@ import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
 import {
-  applyProposal, approveGroup, EXPORT_FORMATS, exportCleaning, getExportOptions, type ExportFormat, approveProposal, CONFIDENT, getAppliedCleaning, getDedupCandidates, mergeDedup, previewDedup, getCleaningAudit, getCleaningGroups, getCleaningMetrics, getProposals, rejectProposal,
-  rejectGroup, rollbackCleaning, sendAiFeedback, WAITING, type CleaningGroup, type CleaningItem, type CleaningMetric, type DedupCandidate, type Proposal, type RecordData,
+  applyProposal, approveGroup, EXPORT_FORMATS, exportCleaning, getExportOptions, type ExportFormat, approveProposal, CONFIDENT, getAppliedCleaning, getDedupCandidates, mergeDedup, previewDedup, getCleaningAudit, getCleaningGroups, getCleaningMetrics, getCleaningSafety, getProposals, rejectProposal,
+  rejectGroup, rollbackCleaning, sendAiFeedback, WAITING, type CleaningGroup, type CleaningItem, type CleaningMetric, type DedupCandidate, type Proposal, type RecordData, type SafetyItem,
 } from "@/lib/api/v2/cleaning";
 import { getBackAfterClean } from "@/lib/api/remediation";
 import { queryKeys } from "@/lib/query-keys";
@@ -20,6 +20,7 @@ import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { Consequence, FixHead, FlowSteps, MoreDetail, ObjectRunChip } from "../FixParts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { DdicCard, SafetyBadge } from "./DdicEvidence";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { Fld } from "../admin/kit";
 import { TableExport } from "@/design/v2/TableExport";
@@ -130,6 +131,7 @@ export function Cleansing() {
       />
 
       <Proposals />
+      <Safety />
       <Rollbacks query={queue} />
       <Duplicates />
 
@@ -512,6 +514,7 @@ function Proposals() {
 function GroupItems({ group, decide }: { group: CleaningGroup; decide: ReturnType<typeof useDecide> }) {
   const { can } = useV2Session();
   const items = useCleaning(`items-${group.version_id}-${group.kind}`, () => getProposals({ status: WAITING, version_id: group.version_id, kind: group.kind }));
+  const safety = useCleaning("safety", getCleaningSafety);
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   if (items.isPending) return <Skeleton width="100%" height={80} />;
@@ -522,7 +525,7 @@ function GroupItems({ group, decide }: { group: CleaningGroup; decide: ReturnTyp
     <ul className="m2-cl-items" data-testid={`cleansing-items-${group.kind}`}>
       {rows.map((i) => (
         <li key={i.id} data-testid={`cleansing-item-${i.id}`}>
-          <div><Mono>{i.record_key}</Mono> <span className="m2-meta">{t("{p} confidence", { p: pct(i.confidence) })}</span></div>
+          <div><Mono>{i.record_key}</Mono> <span className="m2-meta">{t("{p} confidence", { p: pct(i.confidence) })}</span>{" "}{worst(safety.data?.items, i.id)}</div>
           <Changes item={i} />
           {can("approve") ? (
             rejecting === i.id ? (
@@ -548,6 +551,64 @@ function GroupItems({ group, decide }: { group: CleaningGroup; decide: ReturnTyp
         </li>
       ))}
     </ul>
+  );
+}
+
+/** The worst SAP verdict over one proposal's new values: one rejected value makes the proposal unsafe to apply. */
+export function worstVerdict(items: readonly SafetyItem[] | undefined, id: string): SafetyItem["verdict"] | null {
+  const mine = (items ?? []).filter((x) => x.id === id);
+  if (!mine.length) return null;
+  return mine.some((x) => x.verdict === "reject") ? "reject" : mine.some((x) => x.verdict === "unknown") ? "unknown" : "safe";
+}
+
+function worst(items: readonly SafetyItem[] | undefined, id: string) {
+  const v = worstVerdict(items, id);
+  return v ? <SafetyBadge verdict={v} /> : null;
+}
+
+/** Each waiting proposal's new values checked against the target system's ABAP Dictionary before anyone approves. */
+function Safety() {
+  const q = useCleaning("safety", getCleaningSafety);
+  const tot = q.data?.totals;
+  return (
+    <Panel title={t("Would SAP accept the new values")} meta={t("Each new value checked against the SAP dictionary of the target system: type, length, fixed values and check table.")} testId="cleansing-safety">
+      {q.isPending ? <Skeleton width="100%" height={80} /> : status(q.error) === 403 ? (
+        <Dash why={t("Your role cannot see the cleansing proposals.")} />
+      ) : q.isError || !tot ? <Dash why={t("The safety check could not be read.")} /> : tot.checked === 0 ? (
+        <EmptyFrame>{t("No waiting proposal has a new value to check.")}</EmptyFrame>
+      ) : (
+        <>
+          <p role="status" data-testid="cleansing-safety-banner">
+            {t("{safe} of {checked} new values are safe to apply, {reject} would be rejected by SAP, {unknown} not checked.", { safe: int(tot.safe), checked: int(tot.checked), reject: int(tot.reject), unknown: int(tot.unknown) })}
+            {q.data.truncated ? ` ${t("Only the first proposals were checked.")}` : null}
+          </p>
+          <ScrollFrame label={t("Safety table, scrollable")}>
+            <table className="m2-tbl m2-cards">
+              <thead>
+                <tr>
+                  <th scope="col">{t("Record")}</th>
+                  <th scope="col">{t("Object")}</th>
+                  <th scope="col">{t("New value")}</th>
+                  <th scope="col">{t("Verdict")}</th>
+                  <th scope="col">{t("SAP dictionary")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {q.data.items.map((x) => (
+                  <tr key={`${x.id}:${x.field ?? ""}:${x.value ?? ""}`} data-testid={`cleansing-safety-${x.id}`}>
+                    <th scope="row" className="m2-card-lead"><Mono>{x.record_key ?? x.id}</Mono></th>
+                    <td data-label={t("Object")}>{x.object_type ? moduleText(x.object_type) : DASH}</td>
+                    <td data-label={t("New value")}><Mono>{x.field ?? ""}</Mono> <Mono>{x.value ?? ""}</Mono></td>
+                    <td data-label={t("Verdict")}><SafetyBadge verdict={x.verdict} /></td>
+                    <td data-label={t("SAP dictionary")}>{x.evidence ? <DdicCard e={x.evidence} /> : x.reasons.join(" ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollFrame>
+        </>
+      )}
+    </Panel>
   );
 }
 

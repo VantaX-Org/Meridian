@@ -2,6 +2,7 @@
 
 import { Money } from "../../Money";
 import { ScrollFrame } from "./ScrollFrame";
+import { LearnedReview } from "./LearnedReview";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { moneyCompactText } from "@/lib/v2/labels";
@@ -723,6 +724,7 @@ export function RulesTab({ module: moduleSegment, system: systemSegment }: { sys
         {filters}
         {canDrafts ? <MineFixes onDone={refresh("learned")} /> : null}
         {learnedQ.isPending ? <Skeleton width="60%" height={14} /> : learnedQ.isError ? <ErrorFrame onRetry={() => void learnedQ.refetch()}>{t("The learned rules could not be read.")}</ErrorFrame> : <LearnedTable module={apiModule} items={learnedQ.data} canApprove={canApprove} canReject={canReject} onChanged={refresh("learned")} />}
+        <LearnedReview module={apiModule} />
       </>
     );
   }

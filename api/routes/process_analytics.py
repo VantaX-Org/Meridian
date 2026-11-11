@@ -124,3 +124,87 @@ async def process_analytics(
     if ids:
         tasks = [dict(t) for t in (await db.execute(_TASKS, {"tid": str(tenant.id), "ids": ids})).mappings()]
     return ProcessAnalyticsOut(days=days, **pa.analyse(requests, tasks, datetime.now(timezone.utc)))
+
+
+class ForecastEvidence(BaseModel):
+    request_id: str
+    title: Optional[str] = None
+    dwell_hours: float
+    decided_at: datetime
+
+
+class ForecastStep(BaseModel):
+    step: str
+    index: int
+    basis: str
+    n: int
+    p50_hours: Optional[float] = None
+    sla_hours: Optional[float] = None
+
+
+class ForecastRow(BaseModel):
+    request_id: str
+    title: Optional[str] = None
+    object: str
+    kind: str
+    status: str
+    object_key: Optional[str] = None
+    step: str
+    step_index: int
+    activated_at: Optional[datetime] = None
+    due_at: Optional[datetime] = None
+    sla_hours: Optional[float] = None
+    elapsed_hours: float
+    basis: str  # object_kind_step | step | none
+    conditioned: bool
+    n: int
+    p50_hours: Optional[float] = None
+    p90_hours: Optional[float] = None
+    eta: Optional[datetime] = None
+    p90_eta: Optional[datetime] = None
+    breach_probability: Optional[float] = None
+    breached: bool
+    remaining: list[ForecastStep]
+    request_eta: Optional[datetime] = None
+    evidence: list[ForecastEvidence]
+
+
+class ApprovalForecastOut(BaseModel):
+    open: int
+    without_pending: int
+    at_risk: int
+    breached: int
+    requests: list[ForecastRow]
+
+
+_OPEN_REQUESTS = text("""
+    SELECT id::text AS id, title, object, kind, status, object_key, workflow_instance_id::text AS instance_id
+      FROM change_requests
+     WHERE tenant_id = :tid AND status = ANY(:open)
+""")
+
+_HISTORY = text("""
+    SELECT cr.id::text AS request_id, cr.title, cr.object, cr.kind, t.step_name, t.activated_at, t.decided_at
+      FROM workflow_tasks t
+      JOIN change_requests cr ON cr.workflow_instance_id = t.instance_id AND cr.tenant_id = :tid
+     WHERE t.tenant_id = :tid AND t.status IN ('approved', 'rejected')
+       AND t.activated_at IS NOT NULL AND t.decided_at IS NOT NULL
+       AND t.decided_at >= now() - make_interval(days => :days)
+""")
+
+
+@router.get("/approval-forecast", response_model=ApprovalForecastOut)
+async def approval_forecast(
+    days: int = Query(365, ge=30, le=730),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
+) -> ApprovalForecastOut:
+    """ETA and SLA-breach risk of every open change request's pending step, from decided tasks of the last ``days``."""
+    await _rls(db, tenant)
+    tid = str(tenant.id)
+    requests = [dict(r) for r in (await db.execute(_OPEN_REQUESTS, {"tid": tid, "open": list(pa.OPEN)})).mappings()]
+    ids = sorted({r["instance_id"] for r in requests if r.get("instance_id")})
+    tasks = [dict(t) for t in (await db.execute(_TASKS, {"tid": tid, "ids": ids})).mappings()] if ids else []
+    history = [dict(h) for h in (await db.execute(_HISTORY, {"tid": tid, "days": days})).mappings()]
+    return ApprovalForecastOut(**pa.forecast(requests, tasks, history, datetime.now(timezone.utc)))

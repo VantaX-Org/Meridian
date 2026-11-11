@@ -69,4 +69,22 @@ describe("reference data", () => {
     fireEvent.click(within(form).getByRole("button", { name: "Ask Aletheia" }));
     expect(await screen.findByTestId("ref-suggestion")).toHaveTextContent("PC");
   });
+
+  it("reports orphan values, unused codes and the covered share", async () => {
+    go("country");
+    renderWithQuery(<ReferenceData />);
+    const panel = await screen.findByTestId("ref-usage");
+    expect(await within(panel).findByTestId("ref-orphan-XX")).toBeInTheDocument();
+    expect(within(panel).getByTestId("ref-usage-share")).toHaveTextContent(/Records with a valid code: \d/);
+    expect(within(panel).queryByTestId("ref-usage-truncated")).toBeNull();
+  });
+
+  it("says at least when a profile lists only its top values", async () => {
+    go("material_group");
+    renderWithQuery(<ReferenceData />);
+    const panel = await screen.findByTestId("ref-usage");
+    expect(await within(panel).findByTestId("ref-usage-truncated")).toBeInTheDocument();
+    expect(within(panel).getByTestId("ref-usage-share")).toHaveTextContent(/at least/);
+    expect(within(panel).getByText("Values not in the check table (at least these)")).toBeInTheDocument();
+  });
 });

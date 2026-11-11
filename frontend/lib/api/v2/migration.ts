@@ -275,6 +275,9 @@ export interface ReconField {
   compared: number;
   matched: number;
   differing: number;
+  /** Differences explained by an expected cause (padding, case, mapping, truncation, format). Absent on older results. */
+  expected_differences?: number;
+  real_differences?: number;
 }
 
 export interface ReconTable {
@@ -294,6 +297,10 @@ export interface ReconTable {
   records_total: Record<ReconKind, number>;
   capped: boolean;
   unmapped_keys?: string[];
+  expected_differences?: number;
+  real_differences?: number;
+  /** Differences per cause: alpha_padding, case, value_mapping, truncation, number_format, date_format, real. */
+  causes?: Record<string, number>;
 }
 
 export interface ReconReason {
@@ -330,7 +337,7 @@ export interface Reconciliation {
   stale: boolean;
   latest_target_synced_at: string | null;
   record_cap: number | null;
-  summary: { tables?: number; comparable?: number; expected?: number; found?: number; missing?: number; unexpected?: number; differing_fields?: number;
+  summary: { tables?: number; comparable?: number; expected?: number; found?: number; missing?: number; unexpected?: number; differing_fields?: number; expected_differences?: number; real_differences?: number;
     /** What the expected side was built from: the files exported (snapshot) or the mappings as they stand (rebuilt). Absent on older results. */
     basis?: "snapshot" | "rebuilt"; snapshot_export_id?: string; snapshot_exported_at?: string; snapshot_skipped?: string;
     /** The newest export kept no copy: over the size limit, a storage failure, or removed. */
@@ -353,6 +360,20 @@ export interface ReconRecord {
   expected: string | null;
   found: string | null;
   withheld?: boolean;
+  /** Why a differing value differs: an expected cause, or real. Absent on older results and on missing/unexpected rows. */
+  cause?: ReconCause | null;
+  /** The target field's dictionary entry the cause was judged against. */
+  ddic?: ReconDdic | null;
+}
+
+export type ReconCause = "alpha_padding" | "case" | "value_mapping" | "truncation" | "number_format" | "date_format" | "real";
+
+export interface ReconDdic {
+  description: string;
+  type: string | null;
+  length: number | null;
+  conversion_exit: string | null;
+  lowercase: boolean | null;
 }
 
 export interface ReconRecordsPage {
@@ -366,8 +387,8 @@ export interface ReconRecordsPage {
 
 export const getReconciliation = (id: string) => v2Get<Reconciliation>(`${run(id)}/reconciliation`);
 export const startReconciliation = (id: string) => v2Send<{ reconciliation_id: string; task_id: string | null; status: string }>("POST", `${run(id)}/reconcile`);
-export const getReconciliationRecords = (id: string, q: { table?: string; kind?: ReconKind; offset?: number; limit?: number }) =>
-  v2Get<ReconRecordsPage>(`${run(id)}/reconciliation/records`, { ...q });
+export const getReconciliationRecords = (id: string, q: { table?: string; kind?: ReconKind; offset?: number; limit?: number; real_only?: boolean }) =>
+  v2Get<ReconRecordsPage>(`${run(id)}/reconciliation/records`, { ...q, real_only: q.real_only ? "true" : undefined });
 export const exportReconciliation = (id: string) =>
   v2Download(`${run(id)}/reconciliation/export`, undefined, `post_load_reconciliation_${id}.xlsx`);
 export const extractMigrationTarget = (id: string) => v2Send<{ job_id: string; version_id: string; status: string; modules: string[] }>("POST", `${run(id)}/extract-target`);

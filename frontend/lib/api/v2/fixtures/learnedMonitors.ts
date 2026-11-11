@@ -3,7 +3,7 @@
  * object still learning. Decisions change the in-memory break so the screen shows them; the explanation is the
  * deterministic wording, as the route answers with no model.
  */
-import type { LearnedBreak, LearnedMonitors, MonitorThreshold } from "../learned-monitors";
+import type { BreakEvidence, FieldContext, LearnedBreak, LearnedMonitors, MonitorThreshold } from "../learned-monitors";
 
 export const NONE_LEARNED_MONITORS = Symbol("not a learned monitor path");
 
@@ -105,7 +105,41 @@ const THRESHOLDS: MonitorThreshold[] = [
 const mem = new Map<string, LearnedBreak>([...BREAKS, ...QUIET, ...INTERIM].map((b) => [b.id, { ...b }]));
 export const resetLearnedMonitors = () => [...BREAKS, ...QUIET, ...INTERIM].forEach((b) => mem.set(b.id, { ...b }));
 
+/** DDIC entries from the repo dictionary (ecc6) for the fixture's field subjects. */
+const FIELDS: Record<string, FieldContext> = {
+  "MARA.MTART": { table: "MARA", field: "MTART", table_text: "General Material Data", description: "Material type", data_element: "MTART", domain: "MTART", type: "CHAR", length: 4, check_table: "T134", check_field: "MTART", fixed_values: [], fixed_values_total: 0 },
+  "MARA.BRGEW": { table: "MARA", field: "BRGEW", table_text: "General Material Data", description: "Gross weight", data_element: "BRGEW", domain: "MENG13", type: "QUAN", length: 13, check_table: null, check_field: null, fixed_values: [], fixed_values_total: 0 },
+};
+
+const median = (v: number[]) => { const s = [...v].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const OFFSETS = [-0.9, -0.4, -0.1, 0.1, 0.5, 0.8];
+
+/** Six synthetic baseline values spread around the stored median, then the same robust z the route computes. */
+function evidence(b: LearnedBreak): BreakEvidence {
+  const lo = b.expected_low ?? 0, hi = b.expected_high ?? 0, med0 = b.median ?? (lo + hi) / 2;
+  const step = (hi - lo) / 7;
+  const runs = b.citations.filter((c) => c.role === "baseline").map((c, i) => ({ run_id: c.run_id, run_number: c.run_number, run_at: c.run_at, value: Math.max(0, +(med0 + OFFSETS[i % 6] * step).toFixed(2)) }));
+  const vals = runs.map((r) => r.value), med = median(vals), mad = median(vals.map((v) => Math.abs(v - med)));
+  const scaled = +(1.4826 * mad).toFixed(4);
+  return {
+    break_id: b.id, metric: b.metric, subject_code: b.subject_code, observed: b.observed, expected_low: b.expected_low, expected_high: b.expected_high,
+    basis: "runs", median: med, mad: +mad.toFixed(4), scaled_mad: scaled, z: scaled > 0 ? +((b.observed - med) / scaled).toFixed(2) : null,
+    z_threshold: 3.5, floored: scaled * 3.5 < (hi - lo) / 2 - 1e-9, runs, field: FIELDS[b.subject_code] ?? null,
+    values: b.id === "lm-6" ? {
+      baseline_runs: 6, check_table_snapshot: true,
+      appeared: [{ value: "ZRW1", text: null, in_check_table: false, count: 14_920 }, { value: "UNBW", text: "Non-valuated material", in_check_table: true, count: 310 }],
+      vanished: [{ value: "HAWA", text: "Trading good", in_check_table: true, runs: 6 }],
+    } : null,
+  };
+}
+
 export function learnedMonitorsRead(path: string): unknown {
+  const ev = /^\/aletheia\/monitors\/([^/]+)\/evidence$/.exec(path);
+  if (ev) {
+    const b = mem.get(ev[1]);
+    if (!b) throw Object.assign(new Error("Break not found"), { status: 404, response: { status: 404, data: { detail: "Break not found" } } });
+    return evidence(b) satisfies BreakEvidence;
+  }
   if (path !== "/aletheia/monitors") return NONE_LEARNED_MONITORS;
   const all = [...mem.values()];
   return { min_runs: 5, history: 30, coverage: COVERAGE, breaks: all.filter((b) => b.source === "run" && b.status !== "below_minimum"), below_minimum: all.filter((b) => b.status === "below_minimum"), thresholds: THRESHOLDS, interim: all.filter((b) => b.source === "interim") } satisfies LearnedMonitors;

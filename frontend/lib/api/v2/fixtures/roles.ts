@@ -174,6 +174,15 @@ export function relatedFixture(module: string): RelatedOut {
   return { module, tier: tiers[api] ?? null, related, fix_hint: up ? { module: up.module, failures: up.open_criticals, sentence: `Fix ${up.label} first: ${up.open_criticals.toLocaleString("en-US")} upstream failures` } : null };
 }
 
+// synthetic: the rule text and DDIC field text the API resolves for a failing critical rule
+const RULE_EVIDENCE: Record<string, { message: string; field: string; field_description: string }> = {
+  MM003: { message: "Material type is mandatory - determines procurement and storage behaviour", field: "MARA.MTART", field_description: "Material type" },
+  MM035: { message: "Valuation class is mandatory for FI account determination", field: "MBEW.BKLAS", field_description: "Valuation Class" },
+  BP003: { message: "BP category is mandatory - determines partner data model", field: "BUT000.TYPE", field_description: "Business partner category" },
+  BP004: { message: "BP category must be 1 (person), 2 (organisation), or 3 (group)", field: "BUT000.TYPE", field_description: "Business partner category" },
+  AR003: { message: "Customer name is mandatory, displayed on all sales and billing documents", field: "KNA1.NAME1", field_description: "Name 1" },
+};
+
 function gateOf(waveId: string, name: string, modules: string[], s: State): WaveGate {
   const gate = s.gates[waveId] ?? { min_score: null, zero_criticals: true, contracts_met: false, configured: false, updated_by: null, updated_at: null };
   const cells = (landscapeJson as { cells: { system_id: string; module: string; score: number | null; breaches: string[] }[] }).cells.filter((c) => c.system_id === ECC && modules.includes(c.module));
@@ -182,16 +191,21 @@ function gateOf(waveId: string, name: string, modules: string[], s: State): Wave
     const below = cells.filter((c) => c.score !== null && c.score < (gate.min_score ?? 0)).map((c) => label(c.module));
     const missing = modules.filter((m) => !cells.some((c) => c.module === m)).map(label);
     const ok = !below.length && !missing.length;
-    checks.push({ key: "min_score", label: `Gate: min score ${gate.min_score.toFixed(1)}`, passed: ok, detail: ok ? `Every object is at or above ${gate.min_score.toFixed(1)}.` : [below.length ? `below ${gate.min_score.toFixed(1)}: ${below.join(", ")}` : "", missing.length ? `not measured: ${missing.join(", ")}` : ""].filter(Boolean).join("; ") });
+    checks.push({ key: "min_score", label: `Gate: min score ${gate.min_score.toFixed(1)}`, passed: ok, detail: ok ? `Every object is at or above ${gate.min_score.toFixed(1)}.` : [below.length ? `below ${gate.min_score.toFixed(1)}: ${below.join(", ")}` : "", missing.length ? `not measured: ${missing.join(", ")}` : ""].filter(Boolean).join("; "),
+      actual: missing.length ? null : Math.min(...cells.map((c) => c.score ?? 0)), threshold: gate.min_score,
+      items: modules.map((m) => { const v = cells.find((c) => c.module === m)?.score ?? null; return { module: m, actual: v, threshold: gate.min_score ?? 0, passed: v !== null && v >= (gate.min_score ?? 0) }; }) });
   }
   if (gate.zero_criticals) {
     const crit = cells.filter((c) => c.breaches.length).map((c) => label(c.module));
-    checks.push({ key: "zero_criticals", label: "No critical rule over tolerance", passed: !crit.length, detail: crit.length ? `Capped by a critical rule: ${crit.join(", ")}` : "No object is capped by a critical rule." });
+    checks.push({ key: "zero_criticals", label: "No critical rule over tolerance", passed: !crit.length, detail: crit.length ? `Capped by a critical rule: ${crit.join(", ")}` : "No object is capped by a critical rule.",
+      actual: cells.reduce((n, c) => n + new Set(c.breaches).size, 0), threshold: 0,
+      items: cells.flatMap((c) => [...new Set(c.breaches)].map((id) => ({ module: c.module, check_id: id, cells: 1, ...(RULE_EVIDENCE[id] ?? { message: null, field: null, field_description: null }) }))).slice(0, 5) });
   }
   if (gate.contracts_met) {
     const rel = s.contracts.filter((c) => c.status === "active" && modules.includes(c.producer));
     const broken = rel.filter((c) => c.latest_compliant !== true).map((c) => c.name);
-    checks.push({ key: "contracts_met", label: "Data contracts met", passed: !broken.length, detail: !rel.length ? "No active contract names these objects." : broken.length ? `Not met or never checked: ${broken.join(", ")}` : `All ${rel.length} contracts met.` });
+    checks.push({ key: "contracts_met", label: "Data contracts met", passed: !broken.length, detail: !rel.length ? "No active contract names these objects." : broken.length ? `Not met or never checked: ${broken.join(", ")}` : `All ${rel.length} contracts met.`,
+      actual: rel.length - broken.length, threshold: rel.length, items: rel.map((c) => ({ name: c.name, passed: c.latest_compliant === true })) });
   }
   return { wave_id: waveId, name, modules, gate, status: { passed: checks.every((c) => c.passed), checks }, signed_off: false, certificate_href: `/api/v1/migration/waves/${waveId}/certificate` };
 }

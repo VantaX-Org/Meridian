@@ -7,7 +7,9 @@ import type {
   Explain,
   ExplainRow,
   ImpactResult,
+  DdicAnchor,
   LearnedProposal,
+  ProposalReview,
   Readiness,
   ReadinessCell,
   Reconcile,
@@ -260,7 +262,57 @@ const LEARNED: LearnedProposal[] = [
   { id: "lp-002", module: MM, kind: "value_set", table_name: "MARA", determinant: null, field: "MARA.SPART", confidence: 0.99, support_rows: 60410, violations: 188, sample_keys: ["MATNR=000000000000000342"], status: "pending" },
   { id: "lp-003", module: MM, kind: "null", source: "fixes", table_name: "MARA", determinant: null, field: "MARA.MEINS", confidence: 1, support_rows: 30, violations: 0, sample_keys: ["MATNR=000000000000000100", "MATNR=000000000000000117", "MATNR=000000000000000125", "MATNR=000000000000000131", "MATNR=000000000000000148"], status: "pending", evidence: { count: 30, sample_keys: ["MATNR=000000000000000100", "MATNR=000000000000000117", "MATNR=000000000000000125", "MATNR=000000000000000131", "MATNR=000000000000000148"], first_at: "2026-10-12T09:14:00Z", last_at: "2026-10-16T15:02:00Z", who: ["a.naidoo@example.com"], fix_value: "EA", pattern: "blank", invalid_value: null } },
   { id: "lp-004", module: MM, kind: "invalid_value", source: "fixes", table_name: "MARA", determinant: null, field: "MARA.GEWEI", confidence: 1, support_rows: 26, violations: 0, sample_keys: ["MATNR=000000000000000203", "MATNR=000000000000000211", "MATNR=000000000000000232", "MATNR=000000000000000240", "MATNR=000000000000000257"], status: "pending", evidence: { count: 26, sample_keys: ["MATNR=000000000000000203", "MATNR=000000000000000211", "MATNR=000000000000000232", "MATNR=000000000000000240", "MATNR=000000000000000257"], first_at: "2026-10-09T08:40:00Z", last_at: "2026-10-15T11:20:00Z", who: ["a.naidoo@example.com", "demo.user@example.com"], fix_value: "KG", pattern: "same invalid value", invalid_value: "K.G" } },
+  { id: "lp-005", module: MM, kind: "dependency", table_name: "MARC", determinant: "MARC.WERKS", field: "MARC.DISPO", confidence: 0.98, support_rows: 52004, violations: 812, sample_keys: ["MATNR=000000000000004410;WERKS=1000"], status: "pending" },
 ];
+
+const anchor = (column: string, table_text: string, description: string, element: string, check_table: string | null, check_field: string | null): DdicAnchor =>
+  ({ column, known: true, table_text, description, data_element: element, domain: element, check_table, check_field, fixed_values: 0 });
+const MTART = anchor("MARA.MTART", "General Material Data", "Material type", "MTART", "T134", "MTART");
+const NONE_LIFT = { lift: null, expected: null, reason: "lift applies to dependency and value-set proposals only", sampled: false };
+const NOT_ENFORCED = "the dictionary does not enforce value ranges or blanks";
+
+/** The DDIC review of each proposal above, as api/services/learned_rule_review.py builds it (synthetic counts). */
+const REVIEW: Record<string, Omit<ProposalReview, keyof LearnedProposal | "sample_keys">> = {
+  "lp-001": {
+    lift: { lift: 2.37, expected: 0.4093, reason: null, sampled: false },
+    determinant_anchor: MTART,
+    field_anchor: anchor("MARC.DISMM", "Plant Data for Material", "MRP Type", "DISMM", "T438A", "DISMM"),
+    out_of_dictionary: { values: [], source: "baseline", checked: 14 },
+    determinant_out_of_dictionary: { values: ["ZXT9"], source: "live", checked: 31 },
+    redundant: false, redundant_reason: "T438A is keyed by DISMM, not by MTART, so SAP does not tie DISMM to MTART",
+  },
+  "lp-002": {
+    lift: { lift: 1.01, expected: 0.9802, reason: null, sampled: true },
+    determinant_anchor: null,
+    field_anchor: anchor("MARA.SPART", "General Material Data", "Division", "SPART", "TSPA", "SPART"),
+    out_of_dictionary: { values: ["99"], source: "live", checked: 8 },
+    determinant_out_of_dictionary: null,
+    redundant: false, redundant_reason: "TSPA admits every code set up there; the mined value set is narrower, so SAP does not enforce it",
+  },
+  "lp-003": {
+    lift: NONE_LIFT, determinant_anchor: null,
+    field_anchor: anchor("MARA.MEINS", "General Material Data", "Base Unit of Measure", "MEINS", "T006", "MSEHI"),
+    out_of_dictionary: null, determinant_out_of_dictionary: null, redundant: false, redundant_reason: NOT_ENFORCED,
+  },
+  "lp-004": {
+    lift: NONE_LIFT, determinant_anchor: null,
+    field_anchor: { ...anchor("MARA.GEWEI", "General Material Data", "Weight Unit", "GEWEI", "T006", "MSEHI"), domain: "MEINS" },
+    out_of_dictionary: null, determinant_out_of_dictionary: null, redundant: false, redundant_reason: NOT_ENFORCED,
+  },
+  "lp-005": {
+    lift: { lift: null, expected: null, reason: "an allowed value is not among the dependent field's listed top values", sampled: false },
+    determinant_anchor: { ...anchor("MARC.WERKS", "Plant Data for Material", "Plant", "WERKS_D", "T001W", "WERKS"), domain: "WERKS" },
+    field_anchor: anchor("MARC.DISPO", "Plant Data for Material", "MRP controller", "DISPO", "T024D", "DISPO"),
+    out_of_dictionary: { values: [], source: "baseline", checked: 6 },
+    determinant_out_of_dictionary: null,
+    redundant: true, redundant_reason: "T024D is keyed by WERKS, DISPO, so SAP already accepts only DISPO values set up for the WERKS",
+  },
+};
+
+function review(l: LearnedProposal): ProposalReview {
+  const keys = l.sample_keys.map((k) => Object.fromEntries(k.split(";").map((p) => p.split("=") as [string, string])));
+  return { ...l, source: l.source ?? "data", ...REVIEW[l.id], sample_keys: keys };
+}
 
 export const DRAFTS: RuleDraft[] = [
   {
@@ -361,6 +413,7 @@ export function objectFixture(path: string, params: Params): unknown {
   if (path === "/insights/readiness") return readiness();
   if (/^\/config-impact\/[^/]+$/.test(path)) return { results: impact() };
   if (path === "/work/groups") return params.module === MM || params.module === undefined ? groups() : { version_id: CURRENT_RUN, built: true, total: 0, groups: [] };
+  if (path === "/learned-rules/review") return { items: params.module === MM ? LEARNED.filter((l) => !state.learnedDone.has(l.id)).map(review) : [] };
   if (path === "/learned-rules") return { items: params.module === MM ? LEARNED.filter((l) => !state.learnedDone.has(l.id)) : [] };
   if (path === "/rule-authoring/drafts") return { items: params.module === MM ? DRAFTS.filter((d) => !state.draftsPublished.has(d.id)) : [] };
   if (path === "/stewardship/handoff/stewards") return STEWARDS;

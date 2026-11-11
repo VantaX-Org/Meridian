@@ -350,7 +350,12 @@ function waveCockpit(w: MigrationWave) {
   const blocked = objects.reduce((n, o) => n + o.records_blocked, 0);
   return {
     wave: clone(w), run_id: w.last_run_id, source_version_id: null, dest_system_type: "s4hana", verdict: w.last_verdict ?? "no_go", threshold: w.min_readiness, score: w.last_score,
-    records_total: objects.reduce((n, o) => n + o.records, 0), records_blocked: blocked, objects, trend: [], blockers,
+    records_total: objects.reduce((n, o) => n + o.records, 0), records_blocked: blocked, objects, blockers,
+    // three analysed runs a week apart, blocking findings falling 40, 30, 22: a straight line reaches zero about 17 days after the latest
+    trend: w.last_run_id ? [{ run_id: "r-1", completed_at: ago(18), score: 70, blocking: 40 }, { run_id: "r-2", completed_at: ago(11), score: 76, blocking: 30 }, { run_id: w.last_run_id, completed_at: ago(4), score: w.last_score ?? 80, blocking: 22 }] : [],
+    forecast: w.last_run_id
+      ? { status: "projected" as const, runs_used: 3, slope_per_day: -1.2857, projected_date: ago(-13).slice(0, 10), latest: 22, latest_at: ago(4) }
+      : { status: "no_trend" as const, runs_used: 0, slope_per_day: null, projected_date: null, latest: null, latest_at: null },
   };
 }
 

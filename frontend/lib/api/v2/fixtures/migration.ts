@@ -73,19 +73,20 @@ let valueMap: ValueEntry[] = [
   { id: "vm-2", target_field: "MARA.MTART", source_value: "ZROH", target_value: "ROH", note: "Raw materials", updated_at: "2026-11-02T09:00:00Z", status: "proposed", proposed_by: "u-steward", decided_by: null },
 ];
 
-const field = (f: string, description: string, compared: number, differing: number) => ({ field: f, description, in_target_extract: true, compared, matched: compared - differing, differing });
+const field = (f: string, description: string, compared: number, differing: number, real = differing) => ({ field: f, description, in_target_extract: true, compared, matched: compared - differing, differing, expected_differences: differing - real, real_differences: real });
 const reconTables = [
-  { table: "MARA", description: "General material data", comparable: true, reason: null, key_fields: ["MATNR"], expected: 41_990, found: 41_902, missing: 88, unexpected: 3, duplicate_expected: 0, duplicate_found: 0, capped: true, records_total: { missing: 88, differing: 143, unexpected: 3 },
-    fields: [field("MTART", "Material type", 41_990, 61), field("MATKL", "Material group", 41_990, 12), field("MEINS", "Base unit of measure", 41_990, 0)] },
-  { table: "MAKT", description: "Material descriptions", comparable: true, reason: null, key_fields: ["MATNR", "SPRAS"], expected: 41_990, found: 41_880, missing: 110, unexpected: 0, duplicate_expected: 0, duplicate_found: 0, capped: true, records_total: { missing: 110, differing: 70, unexpected: 0 },
-    fields: [field("MAKTX", "Material description", 41_990, 70)] },
+  { table: "MARA", description: "General material data", comparable: true, reason: null, key_fields: ["MATNR"], expected: 41_990, found: 41_902, missing: 88, unexpected: 3, duplicate_expected: 0, duplicate_found: 0, capped: true, records_total: { missing: 88, differing: 143, unexpected: 3 }, expected_differences: 52, real_differences: 21, causes: { value_mapping: 52, real: 21 },
+    fields: [field("MTART", "Material type", 41_990, 61, 9), field("MATKL", "Material group", 41_990, 12, 12), field("MEINS", "Base unit of measure", 41_990, 0)] },
+  { table: "MAKT", description: "Material descriptions", comparable: true, reason: null, key_fields: ["MATNR", "SPRAS"], expected: 41_990, found: 41_880, missing: 110, unexpected: 0, duplicate_expected: 0, duplicate_found: 0, capped: true, records_total: { missing: 110, differing: 70, unexpected: 0 }, expected_differences: 70, real_differences: 0, causes: { truncation: 70 },
+    fields: [field("MAKTX", "Material description", 41_990, 70, 0)] },
   { table: "MARC", description: "Plant data for material", comparable: false, reason: "target_extract_partial", key_fields: ["MATNR", "WERKS"], expected: 0, found: 0, missing: 0, unexpected: 0, duplicate_expected: 0, duplicate_found: 0, capped: false, records_total: { missing: 0, differing: 0, unexpected: 0 }, fields: [] },
 ];
 const reconRecords = [
   { kind: "missing", key: "MATNR=000000000010004801", source_record: "MARA:000000000010004801", field: null, expected: null, found: null },
   { kind: "missing", key: "MATNR=000000000010004802", source_record: "MARA:000000000010004802", field: null, expected: null, found: null },
-  { kind: "differing", key: "MATNR=000000000010004711", source_record: "MARA:000000000010004711", field: "MTART", expected: "ROH", found: "HALB" },
-  { kind: "differing", key: "MATNR=000000000010009001|SPRAS=E", source_record: "MAKT:000000000010009001", field: "MAKTX", expected: "Hydraulic hose assembly 3/4in 2-wire", found: "Hydraulic hose assembly 3/4in 2-wi" },
+  { kind: "differing", key: "MATNR=000000000010004711", source_record: "MARA:000000000010004711", field: "MTART", expected: "ROH", found: "HALB", cause: "real", ddic: { description: "Material type", type: "CHAR", length: 4, conversion_exit: null, lowercase: false } },
+  { kind: "differing", key: "MATNR=000000000010009001|SPRAS=E", source_record: "MAKT:000000000010009001", field: "MAKTX", expected: "Hydraulic hose assembly 3/4in 2-wire braid, 1200 mm", found: "Hydraulic hose assembly 3/4in 2-wire bra", cause: "truncation", ddic: { description: "Material description", type: "CHAR", length: 40, conversion_exit: null, lowercase: true } },
+  { kind: "differing", key: "MATNR=000000000010004712", source_record: "MARA:000000000010004712", field: "MTART", expected: "ZFRT", found: "FERT", cause: "value_mapping", ddic: { description: "Material type", type: "CHAR", length: 4, conversion_exit: null, lowercase: false } },
   { kind: "differing", key: "LIFNR=0000100234", source_record: "LFA1:0000100234", field: "NAME1", expected: null, found: null, withheld: true },
   { kind: "unexpected", key: "MATNR=000000000010004711", source_record: "MARA:000000000010004711", field: null, expected: null, found: null },
 ] as const;
@@ -93,7 +94,7 @@ const recon = {
   reconciliation_id: "rec-0001", run_id: "mig-0002", status: "done", error_detail: null, target_system_id: S4, target_version_id: "v-s4-3",
   target_synced_at: "2026-11-02T04:10:00Z", created_at: "2026-11-02T06:00:00Z", completed_at: "2026-11-02T06:04:00Z", stale: false,
   latest_target_synced_at: "2026-11-02T04:10:00Z", record_cap: 100,
-  summary: { tables: 3, comparable: 2, expected: 83_980, found: 83_782, missing: 198, unexpected: 3, differing_fields: 143, basis: "snapshot", snapshot_export_id: "exp-0001", snapshot_exported_at: "2026-11-01T09:30:00Z" },
+  summary: { tables: 3, comparable: 2, expected: 83_980, found: 83_782, missing: 198, unexpected: 3, differing_fields: 143, expected_differences: 122, real_differences: 21, basis: "snapshot", snapshot_export_id: "exp-0001", snapshot_exported_at: "2026-11-01T09:30:00Z" },
   automatic: true,
   previous: { created_at: "2026-10-28T06:00:00Z", summary: { tables: 3, comparable: 2, expected: 83_980, found: 83_541, missing: 439, unexpected: 3, differing_fields: 201 } },
   tables: reconTables,
@@ -160,7 +161,7 @@ export function migrationRead(path: string, params: Record<string, unknown> = {}
     }
     if (rest === "/reconciliation") return r.id === "mig-0002" ? recon : r.id === "mig-0003" ? reconNoTarget : NONE_MIGRATION;
     if (rest === "/reconciliation/records" && r.id === "mig-0002") {
-      const rows = reconRecords.filter((x) => (!params.kind || x.kind === params.kind) && (!params.table || x.source_record.startsWith(`${params.table}:`)));
+      const rows = reconRecords.filter((x) => (!params.kind || x.kind === params.kind) && (!params.table || x.source_record.startsWith(`${params.table}:`)) && (!params.real_only || !("cause" in x) || x.cause === "real"));
       return { table: params.table ?? null, kind: params.kind ?? null, total: rows.length, capped: true, record_cap: 100, rows };
     }
     if (rest === "/value-candidates") return { target_field: params.target_field, values: [{ source_value: "ZROH", records: 2_904 }, { source_value: "ZFRT", records: 611 }, { source_value: "HALB", records: 4_020 }] };

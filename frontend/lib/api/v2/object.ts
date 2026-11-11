@@ -472,6 +472,66 @@ export async function getLearnedFor(module: string): Promise<LearnedProposal[]> 
   return res.items;
 }
 
+/** GET /learned-rules/review: one proposal checked against the SAP dictionary (api/services/learned_rule_review.py). */
+export interface DdicAnchor {
+  /** TABLE.FIELD */
+  column: string;
+  /** false when the dictionary has no such field */
+  known: boolean;
+  table_text: string;
+  description: string;
+  data_element?: string | null;
+  domain?: string | null;
+  check_table?: string | null;
+  check_field?: string | null;
+  /** how many domain fixed values the field has */
+  fixed_values: number;
+}
+
+export interface ProposalLift {
+  /** confidence over the base rate; null when the stored profiles cannot support it */
+  lift?: number | null;
+  /** share of filled dependent rows holding an allowed value anyway */
+  expected?: number | null;
+  /** why lift is null */
+  reason?: string | null;
+  sampled: boolean;
+}
+
+export interface OutOfDictionary {
+  values: string[];
+  /** where the codes came from, or why none were checked */
+  source: "domain" | "live" | "baseline" | "no_reference" | "unverified";
+  checked: number;
+}
+
+export interface ProposalReview {
+  id: string;
+  module: string;
+  kind: LearnedProposal["kind"];
+  source: string;
+  status: string;
+  table_name: string;
+  determinant?: string | null;
+  field: string;
+  confidence?: number | null;
+  support_rows?: number | null;
+  violations?: number | null;
+  lift: ProposalLift;
+  determinant_anchor?: DdicAnchor | null;
+  field_anchor: DdicAnchor;
+  out_of_dictionary?: OutOfDictionary | null;
+  determinant_out_of_dictionary?: OutOfDictionary | null;
+  redundant: boolean;
+  redundant_reason: string;
+  sample_keys: Record<string, unknown>[];
+}
+
+export async function getLearnedReview(module: string): Promise<ProposalReview[]> {
+  const res = await v2Get<{ items: ProposalReview[] }>("/learned-rules/review", { status: "pending", module });
+  return res.items;
+}
+
 export function approveLearned(id: string, severity: "critical" | "high" | "medium" | "low"): Promise<{ id: string; status: string; rule_id: string }> {
   return v2Post(`/learned-rules/${encodeURIComponent(id)}/approve`, { severity });
 }

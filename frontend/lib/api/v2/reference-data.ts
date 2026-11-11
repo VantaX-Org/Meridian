@@ -5,6 +5,7 @@
  *   GET  /reference-data/lists/{id}              one list: source codes, target codes, mappings and their status
  *   POST /reference-data/mappings                a steward proposes a source to target code mapping
  *   POST /reference-data/mappings/{id}/decision  a different user approves or rejects it (four eyes)
+ *   GET  /reference-data/lists/{id}/usage        which codes the records hold: orphans, unused codes, covered share
  *   POST /reference-data/suggest                 Aletheia suggests a target code; shown only when the server proved it
  *
  * A list is a check table Meridian already extracts. A mapping takes effect only when it is approved.
@@ -83,3 +84,41 @@ export const decideMapping = (id: string, decision: "approve" | "reject", note?:
 
 export const suggestMapping = (systemId: string, listId: string, sourceCode: string): Promise<{ suggestion: RefSuggestion | null }> =>
   v2Send("POST", "/reference-data/suggest", { system_id: systemId, list_id: listId, source_code: sourceCode });
+
+export interface RefUsageField {
+  field: string;
+  profiled: boolean;
+  rows: number;
+  filled: number;
+  covered: number;
+  orphan_rows: number;
+  masked: boolean;
+  mask_reason?: string | null;
+  truncated: boolean;
+  sampled: boolean;
+}
+
+export interface RefOrphan { value: string; count: number; fields: string[] }
+
+/** Usage of a code list in the records, from the stored field profiles of its target fields. When a profile lists
+ * fewer values than the field holds, the counts are lower bounds (covered_at_least) and unused codes are not certain. */
+export interface RefUsage {
+  id: string;
+  table: string;
+  version_id?: string | null;
+  run_at?: string | null;
+  fields: RefUsageField[];
+  orphans: RefOrphan[];
+  orphans_complete: boolean;
+  unused: string[];
+  unused_certain: boolean;
+  codes: number;
+  used: number;
+  filled: number;
+  covered: number;
+  covered_share?: number | null;
+  covered_at_least: boolean;
+}
+
+export const getRefUsage = (systemId: string, listId: string): Promise<RefUsage> =>
+  v2Get<RefUsage>(`/reference-data/lists/${listId}/usage`, { system_id: systemId });

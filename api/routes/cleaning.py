@@ -4,7 +4,7 @@ import io
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.middleware.cache import cached_json, mark_work_changed
+from api.routes.dq_firewall import DdicEvidence
 from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
 logger = logging.getLogger("meridian.cleaning")
@@ -328,6 +329,129 @@ async def _cleaning_groups(db: AsyncSession, tid: str) -> dict:
         "confident": sum(g["confident"] for g in groups),
         "runs": len({g["version_id"] for g in groups if g["version_id"]}),
     }
+
+
+# ── GET /api/v1/cleaning/queue/safety ────────────────────────────────────────
+
+SAFETY_MAX = 500
+
+
+class SafetyItem(BaseModel):
+    id: str
+    record_key: Optional[str] = None
+    object_type: Optional[str] = None
+    field: Optional[str] = None  # TABLE.FIELD the after-value was checked against; null when it could not be resolved
+    value: Optional[str] = None
+    verdict: Literal["safe", "reject", "unknown"]  # reject: SAP would refuse the value; unknown: not checked
+    reasons: list[str] = []
+    evidence: Optional[DdicEvidence] = None
+
+
+class SafetyTotals(BaseModel):
+    checked: int
+    safe: int
+    reject: int
+    unknown: int
+
+
+class SafetyOut(BaseModel):
+    items: list[SafetyItem]
+    totals: SafetyTotals
+    truncated: bool
+
+
+def resolve_field(key: str, item_field: Optional[str], check_id: Optional[str], module: Optional[str]) -> Optional[str]:
+    """The TABLE.FIELD an after-value key names. Engine proposals key by bare column (MEINS), flat uploads by
+    TABLE.FIELD. In order: the key itself when qualified; the queue row's field or its rule's field when that ends in
+    the key; the one field (or one data element) of the module's rules that ends in the key, else None."""
+    from api.services import dq_firewall as fw
+    from sap.ddic import dictionary_for_system
+    from checks.runner import module_rules
+    k = key.strip().upper()
+    if "." in k:
+        return k
+    known = fw.module_fields(module) if module in fw.modules() else frozenset()
+    hints = [item_field or ""] + [r.get("field") or "" for r in (module_rules(module) if module in fw.modules() else [])
+                                  if check_id and r.get("id") == check_id]
+    for h in hints:
+        if h.upper().endswith("." + k):
+            return h.upper()
+    hits = sorted(f for f in known if f.endswith("." + k))
+    # MARA.GEWEI and MARM.GEWEI are one data element, so one check: take the first when every candidate shares it
+    elements = {getattr(dictionary_for_system("ecc").resolve(h), "data_element", h) for h in hits}
+    return hits[0] if hits and len(elements) == 1 else None
+
+
+def safety_of(row: dict, dictionary, live, baseline) -> list[dict]:
+    """One result per after-value of one pending proposal (ddic_value_check.check_value per field)."""
+    from api.services import ddic_value_check as dvc
+    out = []
+    for key, value in (row.get("record_data_after") or {}).items():
+        if isinstance(value, (dict, list)):
+            continue
+        q = resolve_field(str(key), row.get("field"), row.get("check_id"), row.get("object_type"))
+        base = {"id": str(row["id"]), "record_key": row.get("record_key"), "object_type": row.get("object_type"),
+                "field": q, "value": None if value is None else str(value)}
+        if q is None or dictionary.resolve(q) is None:
+            if q is None and "." not in str(key) and not any(f.endswith("." + str(key).upper()) for f in _all_fields()):
+                continue  # not a field at all (suggested_action, notes): nothing SAP would store
+            out.append({**base, "verdict": "unknown",
+                        "reasons": [f"{key} could not be matched to one SAP field, so it was not checked"]})
+            continue
+        ev = dvc.check_value(dictionary, q, value, live, baseline)
+        out.append({**base, "verdict": ev["verdict"], "reasons": ev["reasons"], "evidence": ev})
+    return out
+
+
+def _all_fields() -> frozenset[str]:
+    from api.services import dq_firewall as fw
+    return frozenset().union(*(fw.module_fields(m) for m in fw.modules()))
+
+
+@router.get("/cleaning/queue/safety", response_model=SafetyOut)
+async def cleaning_queue_safety(
+    version_id: Optional[uuid.UUID] = None,
+    kind: Optional[str] = None,
+    limit: int = Query(default=200, ge=1, le=SAFETY_MAX),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view")),
+) -> SafetyOut:
+    """Would SAP accept each waiting proposal's new value? Every after-value is checked against the target system's
+    ABAP Dictionary (type, length, decimals, conversion exit, case, domain fixed values, check table with the live
+    configuration first and the SAP-standard baseline second) by api/services/ddic_value_check.py. Read only."""
+    from api.services import ddic_value_check as dvc
+    from sap.ddic import dictionary_for_system
+    await _set_rls(db, tenant.id)
+    tid = str(tenant.id)
+    where, params = ["tenant_id = :tid", "status IN ('detected', 'recommended')",
+                     "record_data_after IS NOT NULL", "record_data_after <> '{}'::jsonb"], {"tid": tid}
+    if version_id:
+        where.append("version_id = :vid")
+        params["vid"] = str(version_id)
+    if kind:
+        where.append(kind_filter(kind, params))
+    params["lim"] = limit + 1
+    rows = (await db.execute(text(f"""
+        SELECT id, record_key, object_type, field, check_id, record_data_after, version_id::text AS version_id
+          FROM cleaning_queue
+         WHERE {' AND '.join(where)}
+         ORDER BY priority DESC, detected_at DESC
+         LIMIT :lim"""), params)).mappings().all()
+    vids = sorted({r["version_id"] for r in rows if r["version_id"]})
+    system_of = dict((await db.execute(text(
+        "SELECT id::text, metadata->>'system_id' FROM analysis_versions WHERE tenant_id = :tid AND id::text = ANY(:v)"),
+        {"tid": tid, "v": vids})).all()) if vids else {}
+    ctx: dict = {}
+    items: list[dict] = []
+    for r in rows[:limit]:
+        sid = system_of.get(r["version_id"])
+        if sid not in ctx:
+            _s, st, live = await dvc.load_live(db, tid, sid)
+            ctx[sid] = (dictionary_for_system(st), live, dvc.baseline_values(st))
+        items.extend(safety_of(dict(r), *ctx[sid]))
+    count = {v: sum(i["verdict"] == v for i in items) for v in ("safe", "reject", "unknown")}
+    return SafetyOut(items=items, totals=SafetyTotals(checked=len(items), **count), truncated=len(rows) > limit)
 
 
 # ── GET /api/v1/cleaning/queue/{id} ──────────────────────────────────────────
