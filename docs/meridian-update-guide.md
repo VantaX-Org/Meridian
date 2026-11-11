@@ -44,6 +44,13 @@ What it does, in order:
    exception is the first update onto Garage, which copies MinIO's files over and verifies each one; see
    `docs/ops/pilot-upgrade-runbook.md`).
 
+Local nginx tuning goes in `nginx/local/` beside the compose file, never in `nginx/meridian.conf`. The update
+replaces `meridian.conf` with the release copy (keeping a `.bak` of a changed one) but never writes to
+`nginx/local/`. Files named `http-*.conf` load at http level; files named `server-*.conf` load inside both the
+port 80 and the HTTPS server block. A directive set inside a `location` in `meridian.conf` still wins over a
+server-level override. Run `docker compose exec nginx nginx -t` after adding a file, then
+`docker compose exec nginx nginx -s reload`.
+
 If the migration or the health check fails, the script rolls back on its own: the `:rollback` images are the
 running release again, `.env` names that release, and the services are recreated on it. A database that had
 already migrated is restored from the dump the script names in its output.

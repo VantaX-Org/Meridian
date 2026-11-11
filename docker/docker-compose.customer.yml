@@ -26,6 +26,8 @@ services:
       # Bind-mount certs dir — populated by meridian-deploy.sh for SSL
       - ./nginx/certs:/etc/nginx/certs:ro
       - ./nginx/meridian.conf:/etc/nginx/conf.d/meridian.conf:ro
+      # Local tuning kept across updates (see docker/nginx/meridian.conf)
+      - ./nginx/local:/etc/nginx/local:ro
     depends_on:
       frontend:
         condition: service_healthy

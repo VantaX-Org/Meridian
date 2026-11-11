@@ -308,6 +308,7 @@ sync_deployment_files() {
     place "$stage/docker/Dockerfile.rfc" "$compose_dir/Dockerfile.rfc" 0644
     place "$stage/docker/nginx/meridian.conf" "$compose_dir/nginx/meridian.conf" 0644
     place "$stage/docker/nginx/nginx.conf" "$compose_dir/nginx/nginx.conf" 0644
+    mkdir -p "$compose_dir/nginx/local"  # local tuning, never overwritten
     sync_ollama_overlay "$stage" "$compose_dir"
     for f in "$stage"/scripts/*.sh; do
         name=$(basename "$f")
