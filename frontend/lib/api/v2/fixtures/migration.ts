@@ -3,7 +3,7 @@
  * business partner data against S/4HANA, their gaps, the records that will not load, and an editable field map and
  * value map. Writes change the in-memory map until the page reloads.
  */
-import type { FieldMapping, ValueEntry, WorkbookReport } from "../migration";
+import type { FieldMapping, TargetTemplate, ValueEntry, WorkbookReport } from "../migration";
 
 const refuse = (detail: string, code = 409): never => {
   throw Object.assign(new Error(detail), { status: code, response: { status: code, data: { detail } } });
@@ -128,6 +128,16 @@ export const fixtureWorkbookReport = (): WorkbookReport => ({
   held_total: 2,
   learned: { new: 1, waiting: 1, missing: 1, system_id: "sys-sf", modules: ["employee_central"] },
 });
+/** One kept template: a synthetic cockpit file with one column the dictionary did not resolve. */
+let templates: TargetTemplate[] = [{
+  id: "tpl-0001", name: "Material cockpit", version: 2, filename: "material_cockpit.xlsx", size_bytes: 48_211,
+  coverage: { columns: 5, matched: 4, sheets: [{ name: "Basic Data", table: "MARA", columns: 5, matched: 4, unmapped: [{ header: "Legacy group", id: "Legacy group", label: "Legacy group", mandatory: false }] }] },
+  column_map: {}, last_fill_at: "2026-11-02T10:00:00Z", last_fill_version_id: "v-0001", created_by: "u-me", created_at: "2026-11-01T09:00:00Z",
+}];
+const templateFields = [
+  { field: "MARA.MATKL", description: "Material Group", key: false, table_description: "General Material Data" },
+  { field: "MARA.MATNR", description: "Material Number", key: true, table_description: "General Material Data" },
+];
 let seq = 10;
 
 export function migrationRead(path: string, params: Record<string, unknown> = {}): unknown {
@@ -156,6 +166,8 @@ export function migrationRead(path: string, params: Record<string, unknown> = {}
     if (rest === "/value-candidates") return { target_field: params.target_field, values: [{ source_value: "ZROH", records: 2_904 }, { source_value: "ZFRT", records: 611 }, { source_value: "HALB", records: 4_020 }] };
     return NONE_MIGRATION;
   }
+  const tp = /^\/migration\/templates\/([^/]+)(\/fields)?$/.exec(path);
+  if (tp) return tp[2] ? { fields: templateFields } : { module: tp[1], templates: tp[1] === "material_master" ? templates : [] };
   if (path === "/migration/field-map") return { mappings: fieldMap.filter((f) => (!params.module || f.module === params.module) && (!params.dest_system_type || f.dest_system_type === params.dest_system_type)) };
   if (path === "/migration/value-map") return { entries: valueMap.filter((v) => !params.target_field || v.target_field === params.target_field) };
   return NONE_MIGRATION;
@@ -169,6 +181,18 @@ export function migrationWrite(method: string, path: string, body: unknown): unk
   if (method === "POST" && ex) return { job_id: "dl-fixture", version_id: "v-fixture", status: "queued", modules: runs.find((x) => x.id === ex[1])?.modules ?? [] };
   const rd = /^\/migration\/runs\/([^/]+)$/.exec(path);
   if (method === "DELETE" && rd) { runs = runs.filter((x) => x.id !== rd[1]); return {}; }
+  const tm = /^\/migration\/templates\/[^/]+\/([^/]+)\/(mapping|check)$/.exec(path);
+  if (tm && method === "PUT") {
+    const cols = (b.columns ?? {}) as Record<string, string>;
+    templates = templates.map((x) => {
+      if (x.id !== tm[1] || !x.coverage) return x;
+      const sheets = x.coverage.sheets.map((sh) => { const left = sh.unmapped.filter((u) => !cols[`${sh.name}::${u.header}`]); return { ...sh, matched: sh.columns - left.length, unmapped: left }; });
+      return { ...x, column_map: { ...x.column_map, ...cols }, coverage: { ...x.coverage, matched: sheets.reduce((n, sh) => n + sh.matched, 0), sheets } };
+    });
+    const t = templates.find((x) => x.id === tm[1]);
+    return { column_map: t?.column_map ?? {}, coverage: t?.coverage };
+  }
+  if (tm && method === "POST") return { ...fixtureWorkbookReport(), version_id: "v-0001", cleansed: { approved: 3, cells_changed: 3, by_field: { "MARA.MTART": 3 } } };
   if (method === "POST" && path === "/migration/field-map/seed") return { seeded: 0, module: b.module, dest_system_type: b.dest_system_type };
   if (method === "POST" && path === "/migration/field-map") {
     const row = { id: `fm-${++seq}`, module: String(b.module), source_field: String(b.source_field), dest_system_type: String(b.dest_system_type), dest_table: (b.dest_table as string) ?? null, dest_field: (b.dest_field as string) ?? null, value_map: false, origin: "steward", transform_note: (b.transform_note as string) ?? null, is_confirmed: false, source_def: null, target_def: null };

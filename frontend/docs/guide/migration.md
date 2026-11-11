@@ -26,6 +26,20 @@ The panel **Workbook from the new system** fills the new system's own workbook o
 
 Without a finished run, the panel says so; a finished run is needed before the workbook can be filled.
 
+## The template library
+
+The panel **Template library** keeps the new system's load templates for each object, so the same template is filled from every run without uploading it again. It works for every object, not only SuccessFactors.
+
+1. Choose the object. The list shows each kept template with its version, how many of its columns resolve to a field, and when it was last filled.
+2. To keep a template, give it a name, choose the file (a Migration Cockpit workbook, a SuccessFactors import file, or any .xlsx or .csv) and select **Keep the template**. Uploading the same name again keeps a new version, and the column corrections of the previous version are carried over.
+3. Where a column does not resolve, select **Map columns** and choose the field that column holds. Only fields of the object's own tables are offered, and a column left open is reported as absent. The column map is saved for your organisation.
+4. **Check** fills the template from the latest finished run without exporting, and says how many rows are ready, how many are held back and how many approved cleansing values it applied.
+5. **Fill from the latest run** downloads the template filled with the latest run's data. Approved cleansing (batches that are approved, awaiting load or exported) is applied first. Rows that fail a check go to a Held back sheet with the reason.
+6. **Download a blank template** gives a workbook with one sheet per table and a Field List sheet. The Field List names every field the object's rules read, with its description, whether it is required, its check table and its allowed values. Fields come from the data dictionary, so no field is invented.
+7. **Original** downloads the file as it was uploaded.
+
+Uploading and mapping need the right to analyse. The downloads and the check need the right to export.
+
 ## What you can do, by role
 
 The buttons depend on the role, and a button the role cannot use is not shown:
