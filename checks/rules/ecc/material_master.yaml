@@ -17541,3 +17541,582 @@ rules:
       change.
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: stock {MBEW.LBKUM} but value at moving average
     price {actual_value}.'
+- id: MM1115
+  field: MARC.PRENG
+  check_class: cross_field_check
+  fail_when: '`MARC.PRENG`.notna() & (`MARC.PRENG` < @today) & `MARC.LVORM`.isna()'
+  severity: medium
+  dimension: timeliness
+  message: Vendor declaration for the plant has expired
+  why_it_matters: The validity date of the vendor declaration (MARC.PRENG) states how long the supplier's long-term declaration
+    of preferential origin holds. Once it has passed, the material can no longer be treated as originating goods in preference
+    calculations, so the preference result for the plant is out of date.
+  rule_authority: best_practice
+  sap_impact: Preference determination and export documents keep claiming preferential origin on a declaration that no longer
+    applies, which exposes the company to customs penalties.
+  fix_map:
+    __other__: Request a renewed long-term vendor declaration and enter its new validity date in MM02 > Foreign trade export,
+      or remove the preference data if the supplier no longer declares origin.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: vendor declaration expired on {actual_value}.'
+- id: MM1116
+  field: MARC.PREND
+  check_class: cross_field_check
+  fail_when: '`MARC.PREND`.notna() & (`MARC.PREND` > @today)'
+  severity: low
+  dimension: accuracy
+  message: Issue date of the exemption certificate lies in the future
+  why_it_matters: The issue date of the legal-control exemption certificate (MARC.PREND) records when the authority issued
+    the certificate. A certificate cannot be issued after today, so a future date is a keying or load error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Export control checks read the certificate as not yet valid, or audit trails show an impossible date.
+  fix_map:
+    __other__: Enter the real issue date from the certificate in MM02 > Foreign trade export (legal control).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: exemption certificate issue date {actual_value} is in the
+    future.'
+- id: MM1117
+  field: MARC.PREND
+  check_class: cross_field_check
+  fail_when: '`MARC.PRENO`.notna() & `MARC.PREND`.isna()'
+  severity: low
+  dimension: completeness
+  message: Exemption certificate number has no issue date
+  why_it_matters: An exemption certificate for legal control (MARC.PRENO) is only usable with its issue date (MARC.PREND).
+    Auditors and the export control check both need the date to confirm the certificate was valid when goods shipped.
+  rule_authority: best_practice
+  sap_impact: The exemption cannot be evidenced at audit and the legal-control check cannot judge whether it applies.
+  fix_map:
+    __blank__: Enter the issue date printed on the exemption certificate in MM02 > Foreign trade export.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: exemption certificate {MARC.PRENO} has no issue date.'
+- id: MM1118
+  field: MARC.HERBL
+  check_class: cross_field_check
+  fail_when: '`MARC.HERBL`.notna() & `MARC.HERKL`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Region of origin is set but country of origin is blank
+  why_it_matters: The state or region of manufacture (MARC.HERBL) is a subdivision of the country of origin (MARC.HERKL);
+    SAP checks it against the regions of that country (T005S). A region without a country cannot be interpreted and points
+    to a partial load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Intrastat and customs declarations that report region of origin take an incomplete or wrong origin.
+  fix_map:
+    __other__: Enter the country of origin in MM02 > Foreign trade export, or clear the region if origin is unknown.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: region of origin {actual_value} without a country of origin.'
+- id: MM1119
+  field: MARC.ITARK
+  check_class: cross_field_check
+  fail_when: (`MARC.ITARK` == 'X') & `MARC.STAWN`.isna()
+  severity: high
+  dimension: completeness
+  message: Military goods have no commodity code
+  why_it_matters: Materials flagged as military goods (MARC.ITARK) are subject to export licensing. Customs and export control
+    classification starts from the commodity code (MARC.STAWN); a military item without one cannot be classified for licence
+    determination or declarations.
+  rule_authority: best_practice
+  sap_impact: Export declarations for the item stop or go out without the classification the licence check needs.
+  fix_map:
+    __blank__: Enter the commodity code in MM02 > Foreign trade export and confirm the export control classification with
+      the trade compliance team.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: flagged as military goods but has no commodity code.'
+- id: MM1120
+  field: MARC.UID_IEA
+  check_class: cross_field_check
+  fail_when: (`MARC.UID_IEA` == 'X') & (`MARC.IUID_RELEVANT`.isna() | (`MARC.IUID_RELEVANT` != 'X'))
+  severity: low
+  dimension: consistency
+  message: External allocation of unique item identifiers is set but the material is not IUID-relevant
+  why_it_matters: External allocation of the UII (MARC.UID_IEA) only has a meaning when the material is IUID-relevant in
+    the plant (MARC.IUID_RELEVANT). On its own the flag is a leftover that suggests unique item identification was intended
+    but never switched on.
+  rule_authority: best_practice
+  sap_impact: Serialised items expected to carry a unique item identifier are received and shipped without one.
+  fix_map:
+    __other__: Set the material IUID-relevant in MM02 > Plant data / storage 2, or clear the external allocation flag.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: external UII allocation set but not IUID-relevant.'
+- id: MM1121
+  field: MARC.MIN_TROC
+  check_class: cross_field_check
+  fail_when: "(`MARC.MIN_TROC`.fillna('0').astype('float') > 0) & (`MARC.MAX_TROC`.fillna('0').astype('float') > 0) & (`MARC.MIN_TROC`.fillna('0').astype('float') > `MARC.MAX_TROC`.fillna('0').astype('float'))"
+  severity: medium
+  dimension: consistency
+  message: Minimum target range of coverage exceeds the maximum
+  why_it_matters: Range-of-coverage replenishment plans between a minimum (MARC.MIN_TROC) and a maximum (MARC.MAX_TROC)
+    number of days. A minimum above the maximum leaves no valid target band, so the replenishment logic cannot satisfy both.
+  rule_authority: sap_hard_constraint
+  sap_impact: Proposed quantities oscillate or are capped at the maximum while still breaching the minimum, raising shortages
+    or excess stock.
+  fix_map:
+    __other__: Correct the minimum and maximum target range of coverage in MM02 > MRP 2 so that the minimum is not above the
+      maximum.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: minimum range of coverage {actual_value} days exceeds the
+    maximum {MARC.MAX_TROC}.'
+- id: MM1122
+  field: MARC.TARGET_STOCK
+  check_class: cross_field_check
+  fail_when: '`MARC.TARGET_STOCK` < 0'
+  severity: medium
+  dimension: validity
+  message: Target stock is negative
+  why_it_matters: The target stock (MARC.TARGET_STOCK) is the quantity replenishment fills up to. A negative target cannot
+    be stocked and makes every replenishment proposal wrong.
+  rule_authority: sap_hard_constraint
+  sap_impact: Replenishment never proposes a quantity, or proposes reductions that cannot be executed.
+  fix_map:
+    __other__: Enter a target stock of zero or more in MM02 > MRP, or clear it.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: target stock {actual_value} is negative.'
+- id: MM1123
+  field: MARC.LGRAD
+  check_class: cross_field_check
+  fail_when: (`MARC.LGRAD` < 0) | (`MARC.LGRAD` >= 100)
+  severity: medium
+  dimension: validity
+  message: Service level is outside 0 to 99.9 percent
+  why_it_matters: The service level (MARC.LGRAD) feeds the safety stock calculation as a percentage below 100. At 100 percent
+    or above the statistical safety stock is unbounded, and a negative value has no meaning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Forecast-based safety stock is calculated wrongly or the calculation fails, distorting stock levels.
+  fix_map:
+    __other__: Enter a service level below 100 percent in MM02 > MRP 3 (for example 95 or 98).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: service level {actual_value} percent.'
+- id: MM1124
+  field: MARC.LOSFX
+  check_class: cross_field_check
+  fail_when: '`MARC.LOSFX` < 0'
+  severity: medium
+  dimension: validity
+  message: Ordering costs are negative
+  why_it_matters: Ordering costs (MARC.LOSFX) are the fixed cost per order that optimum lot-sizing procedures weigh against
+    storage cost. A negative cost turns the optimisation upside down.
+  rule_authority: sap_hard_constraint
+  sap_impact: Optimum lot-sizing procedures (part period, least unit cost, Groff) propose distorted lot sizes.
+  fix_map:
+    __other__: Enter the ordering cost per order as zero or more in MM02 > MRP 1.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: ordering costs {actual_value} are negative.'
+- id: MM1125
+  field: MARC.VZUSL
+  check_class: cross_field_check
+  fail_when: '`MARC.VZUSL` < 0'
+  severity: low
+  dimension: validity
+  message: Cost surcharge factor is negative
+  why_it_matters: The surcharge factor for cost (MARC.VZUSL) adds a percentage to the product cost in forecast-based and long-term
+    planning valuations. A negative surcharge understates cost.
+  rule_authority: sap_hard_constraint
+  sap_impact: Long-term planning and purchasing info valuations understate the cost of the material.
+  fix_map:
+    __other__: Enter a surcharge of zero or more, or clear the field.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: cost surcharge factor {actual_value} is negative.'
+- id: MM1126
+  field: MARC.RUEZT
+  check_class: cross_field_check
+  fail_when: (`MARC.RUEZT` < 0) | (`MARC.TRANZ` < 0) | (`MARC.TAKZT` < 0)
+  severity: medium
+  dimension: validity
+  message: Setup, interoperation or takt time is negative
+  why_it_matters: Setup and teardown time (MARC.RUEZT), interoperation time (MARC.TRANZ) and takt time (MARC.TAKZT) drive
+    lead-time scheduling for in-house production when no routing is used. A negative time cannot exist and shortens the
+    production lead time below what is possible.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planned orders are scheduled too late and production starts after the date needed.
+  fix_map:
+    __other__: Enter the times as zero or more in MM02 > Work scheduling.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: setup time {actual_value}, interoperation time {MARC.TRANZ},
+    takt time {MARC.TAKZT}.'
+- id: MM1127
+  field: MARC.GI_PR_TIME
+  check_class: cross_field_check
+  fail_when: (`MARC.GI_PR_TIME` < 0) | (`MARC.DPLHO` < 0)
+  severity: low
+  dimension: validity
+  message: Goods issue processing time or deployment horizon is negative
+  why_it_matters: The goods issue processing time (MARC.GI_PR_TIME) and deployment horizon (MARC.DPLHO) are counts of days.
+    A negative number of days has no meaning in scheduling.
+  rule_authority: sap_hard_constraint
+  sap_impact: Availability and deployment dates are calculated from an impossible offset.
+  fix_map:
+    __other__: Enter the number of days as zero or more, or clear the field.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: goods issue processing time {actual_value} days, deployment
+    horizon {MARC.DPLHO} days.'
+- id: MM1128
+  field: MARC.FIXLS
+  check_class: cross_field_check
+  fail_when: (`MARC.FIXLS` < 0) | (`MARC.LTINC` < 0)
+  severity: low
+  dimension: validity
+  message: Supply-demand-match lot size or increment is negative
+  why_it_matters: The fixed lot size (MARC.FIXLS) and lot size increment (MARC.LTINC) for supply demand matching are quantities
+    that a supply plan is built from. Negative values cannot be produced or bought.
+  rule_authority: sap_hard_constraint
+  sap_impact: Supply demand matching produces negative or rejected supply proposals.
+  fix_map:
+    __other__: Enter the lot size and increment as zero or more.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: fixed lot size {actual_value}, increment {MARC.LTINC}.'
+- id: MM1129
+  field: MARC.FVIDK
+  check_class: exists_check
+  applies_when:
+    MARC.FVIDK:
+      populated: true
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  - MARC.FVIDK
+  target_table: MKAL
+  target_fields:
+  - MATNR
+  - WERKS
+  - VERID
+  severity: high
+  dimension: consistency
+  message: Production version to be costed does not exist
+  why_it_matters: The production version to be costed (MARC.FVIDK) tells the standard cost estimate which BOM and routing
+    combination to use. If that version is not in MKAL for the material and plant, costing falls back to automatic selection
+    or fails.
+  rule_authority: sap_hard_constraint
+  sap_impact: The standard cost estimate uses a different BOM or routing than intended, or ends with an error in CK11N and
+    CK40N.
+  fix_map:
+    __other__: Create the production version in C223 or enter an existing version in MM02 > Costing 1.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: production version to be costed {actual_value} does not
+    exist.'
+- id: MM1130
+  field: MARC.CCFIX
+  check_class: cross_field_check
+  fail_when: (`MARC.CCFIX` == 'X') & `MARC.ABCIN`.isna()
+  severity: low
+  dimension: consistency
+  message: Cycle counting indicator is fixed but no cycle counting indicator is set
+  why_it_matters: The fixed flag (MARC.CCFIX) protects the cycle counting indicator (MARC.ABCIN) from being overwritten by
+    the ABC analysis. Fixing an empty indicator protects nothing and means the material drops out of cycle counting.
+  rule_authority: best_practice
+  sap_impact: The material is never selected for cycle counting and is only counted in the annual inventory.
+  fix_map:
+    __other__: Enter the cycle counting indicator in MM02 > Plant data / storage 1, or clear the fixed flag.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: cycle counting indicator fixed but blank.'
+- id: MM1131
+  field: MARC.VRBFK
+  check_class: cross_field_check
+  fail_when: (`MARC.VRBFK` < 0) | ((`MARC.VRBFK` > 0) & `MARC.VRBMT`.isna())
+  severity: low
+  dimension: consistency
+  message: Reference consumption multiplier is negative or has no reference material
+  why_it_matters: The multiplier (MARC.VRBFK) scales the consumption copied from a reference material (MARC.VRBMT). Without
+    a reference material it is never used, and a negative multiplier turns copied consumption into negative history.
+  rule_authority: sap_hard_constraint
+  sap_impact: The forecast of a new or successor material starts from no history or from negative consumption.
+  fix_map:
+    __other__: Enter the reference material and a positive multiplier in MM02 > Forecasting, or clear the multiplier.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: reference consumption multiplier {actual_value}, reference
+    material {MARC.VRBMT}.'
+- id: MM1132
+  field: MARD.VMLAB
+  check_class: cross_field_check
+  fail_when: (`MARD.VMLAB` < 0) & (`MARC.XMCNG`.isna() | (`MARC.XMCNG` != 'X'))
+  severity: medium
+  dimension: consistency
+  message: Previous-period unrestricted stock is negative although negative stock is not allowed
+  why_it_matters: The previous-period unrestricted stock (MARD.VMLAB) is the closing balance SAP carried into the current
+    period. If negative stock is not allowed for the material in the plant (MARC.XMCNG), that balance cannot have been negative;
+    it points to a direct table load or a broken period close.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings back into the previous period and the stock history (MARDH) work from a quantity that cannot exist.
+  fix_map:
+    __other__: Reconcile the stock against material documents (MB5B) and correct it; allow negative stock only if the business
+      posts issues before receipts.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: previous-period unrestricted
+    stock {actual_value}.'
+- id: MM1133
+  field: MBEW.VMSAL
+  check_class: cross_field_check
+  fail_when: ((`MBEW.VMKUM` > 0) & (`MBEW.VMSAL` < 0)) | ((`MBEW.VJKUM` > 0) & (`MBEW.VJSAL` < 0))
+  severity: medium
+  dimension: consistency
+  message: Previous-period or previous-year stock value is negative while stock was positive
+  why_it_matters: The previous period (MBEW.VMSAL) and previous year (MBEW.VJSAL) values are the closing valuation SAP carried
+    forward. With positive stock (VMKUM, VJKUM) those values cannot be negative; a negative value is a broken revaluation
+    or a direct load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings into the previous period and year-end balance sheet valuation start from an impossible value.
+  fix_map:
+    __other__: Reconcile the valuation history (MBEWH) with material documents and correct the values before the next period
+      close.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: previous-period value {actual_value} with stock
+    {MBEW.VMKUM}, previous-year value {MBEW.VJSAL} with stock {MBEW.VJKUM}.'
+- id: MM1134
+  field: MBEW.BWPH1
+  check_class: cross_field_check
+  fail_when: (`MBEW.BWPH1` < 0) | (`MBEW.BWPS1` < 0) | (`MBEW.VJBWH` < 0) | (`MBEW.VJBWS` < 0)
+  severity: medium
+  dimension: validity
+  message: Commercial or tax valuation price at level 2 or 3 is negative
+  why_it_matters: The level 2 and level 3 valuation prices based on commercial (BWPH1, VJBWH) and tax law (BWPS1, VJBWS)
+    hold the lowest-value prices of previous years. A price cannot be negative.
+  rule_authority: sap_hard_constraint
+  sap_impact: Balance sheet valuation (lowest value principle, LIFO, FIFO) devalues or revalues the material from an impossible
+    price.
+  fix_map:
+    __other__: Correct the price in MM02 > Accounting 2 or rerun the balance sheet valuation that set it.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: commercial level 2 price {actual_value}, tax level
+    2 {MBEW.BWPS1}, commercial level 3 {MBEW.VJBWH}, tax level 3 {MBEW.VJBWS}.'
+- id: MM1135
+  field: MBEW.BWPEI
+  check_class: cross_field_check
+  fail_when: ((`MBEW.BWPRH` > 0) | (`MBEW.BWPRS` > 0)) & ~(`MBEW.BWPEI`.fillna(0) > 0)
+  severity: medium
+  dimension: completeness
+  message: Commercial or tax valuation price has no price unit
+  why_it_matters: Prices based on commercial (MBEW.BWPRH) and tax law (MBEW.BWPRS) are stated per price unit (MBEW.BWPEI).
+    Without a price unit the price cannot be converted to a value per base unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Balance sheet valuation reads the price per an undefined quantity and calculates the stock value wrongly.
+  fix_map:
+    __other__: Enter the price unit for the tax and commercial prices in MM02 > Accounting 2 (normally the same as the valuation
+      price unit).
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: commercial price {MBEW.BWPRH}, tax price {MBEW.BWPRS},
+    price unit {actual_value}.'
+- id: MM1136
+  field: MBEW.LPLPX
+  check_class: cross_field_check
+  fail_when: ((`MBEW.LPLPX` > 0) & (`MBEW.LPLPX` > `MBEW.LPLPR`.fillna(0))) | ((`MBEW.VPLPX` > 0) & (`MBEW.VPLPX` > `MBEW.VPLPR`.fillna(0)))
+    | ((`MBEW.FPLPX` > 0) & (`MBEW.FPLPX` > `MBEW.ZPLPR`.fillna(0)))
+  severity: medium
+  dimension: consistency
+  message: Fixed portion of a planned price exceeds the planned price itself
+  why_it_matters: The fixed portion of the current, previous and future planned prices (LPLPX, VPLPX, FPLPX) is part of the
+    planned price (LPLPR, VPLPR, ZPLPR). A fixed portion above the whole price means the variable portion is negative.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost estimates that use planned prices split fixed and variable cost wrongly, distorting the marginal cost view.
+  fix_map:
+    __other__: Correct the planned price or its fixed portion in MM02 > Costing 2 so the fixed portion is not above the planned
+      price.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: current planned price fixed portion {actual_value}
+    against planned price {MBEW.LPLPR}.'
+- id: MM1137
+  field: MBEW.WLINL
+  check_class: cross_field_check
+  fail_when: '`MBEW.WLINL`.notna() & (`MBEW.WLINL` > @today)'
+  severity: low
+  dimension: accuracy
+  message: Last physical inventory date of a value-only material lies in the future
+  why_it_matters: The last physical inventory date for unrestricted stock (MBEW.WLINL) records when the value-only material
+    was last counted. A count cannot have taken place after today.
+  rule_authority: sap_hard_constraint
+  sap_impact: The material is excluded from the next inventory selection and the count cannot be evidenced at audit.
+  fix_map:
+    __other__: Correct the date from the physical inventory document, or clear it if the material was never counted.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: last physical inventory date {actual_value} is
+    in the future.'
+- id: MM1138
+  field: MARA.VPREH
+  check_class: cross_field_check
+  fail_when: (`MARA.VPREH` > 0) & (`MARA.INHME`.isna() | ~(`MARA.INHAL`.fillna(0) > 0))
+  severity: low
+  dimension: completeness
+  message: Comparison price unit is set without content and content unit
+  why_it_matters: The comparison price unit (MARA.VPREH) states the quantity a unit price is shown for, such as price per
+    100 grams. The calculation needs the net content (MARA.INHAL) and content unit (MARA.INHME); without them no comparison
+    price can be printed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Shelf labels and price displays that legally must show a unit price cannot calculate it.
+  fix_map:
+    __other__: Enter the net content and content unit in MM02 > Basic data 2, or clear the comparison price unit.
+  record_fix_template: 'Material {MARA.MATNR}: comparison price unit {actual_value} but content {MARA.INHAL} {MARA.INHME}.'
+- id: MM1139
+  field: MARA.MAXC_TOL
+  check_class: cross_field_check
+  fail_when: (`MARA.MAXC_TOL` < 0) | ((`MARA.MAXC_TOL` > 0) & ~(`MARA.MAXC`.fillna(0) > 0)) | (`MARA.MAXC` < 0)
+  severity: low
+  dimension: consistency
+  message: Packaging capacity or its overcapacity tolerance is invalid
+  why_it_matters: The maximum allowed capacity of a packaging material (MARA.MAXC) is what packing checks a handling unit
+    against, and the tolerance (MARA.MAXC_TOL) is how far it may be exceeded. A tolerance without a capacity has nothing to
+    apply to, and negative values have no meaning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Handling unit packing never warns about overfilled packaging, or rejects every packing proposal.
+  fix_map:
+    __other__: Enter the maximum capacity in MM02 > Basic data (packaging material data) or clear the tolerance; keep both
+      at zero or more.
+  record_fix_template: 'Material {MARA.MATNR}: overcapacity tolerance {actual_value} with maximum capacity {MARA.MAXC}.'
+- id: MM1140
+  field: MARA.FIBER_PART1
+  check_class: cross_field_check
+  fail_when: "(`MARA.FIBER_PART1`.fillna('0').astype('float') + `MARA.FIBER_PART2`.fillna('0').astype('float') + `MARA.FIBER_PART3`.fillna('0').astype('float') + `MARA.FIBER_PART4`.fillna('0').astype('float') + `MARA.FIBER_PART5`.fillna('0').astype('float')) > 100"
+  severity: medium
+  dimension: accuracy
+  message: Fibre composition percentages add up to more than 100
+  why_it_matters: The percentage shares of fibre components (MARA.FIBER_PART1 to FIBER_PART5) describe a textile's composition
+    for care and composition labels. Shares that add up to more than 100 percent cannot be true and break textile labelling
+    rules.
+  rule_authority: sap_hard_constraint
+  sap_impact: Composition labels printed from the material master state an impossible fibre mix, which customs and consumer
+    law reject.
+  fix_map:
+    __other__: Correct the fibre shares in MM02 > Basic data (textile composition) so that they add up to 100 percent.
+  record_fix_template: 'Material {MARA.MATNR}: fibre shares {actual_value}, {MARA.FIBER_PART2}, {MARA.FIBER_PART3}, {MARA.FIBER_PART4},
+    {MARA.FIBER_PART5} exceed 100 percent.'
+- id: MM1141
+  field: MARA.ZEIAR
+  check_class: cross_field_check
+  fail_when: '`MARA.ZEINR`.notna() & `MARA.ZEIAR`.isna()'
+  severity: low
+  dimension: completeness
+  message: Drawing document number has no document type
+  why_it_matters: The document number without document management (MARA.ZEINR) identifies the drawing; the document type
+    (MARA.ZEIAR) says what kind of document it is. Without the type, users and interfaces cannot tell a drawing from a specification
+    or a data sheet.
+  rule_authority: best_practice
+  sap_impact: Engineering and purchasing documents print a document reference that cannot be interpreted.
+  fix_map:
+    __blank__: Enter the document type in MM02 > Basic data 2 (design documents).
+  record_fix_template: 'Material {MARA.MATNR}: document {MARA.ZEINR} has no document type.'
+- id: MM1142
+  field: MARM.NEST_FTR
+  check_class: cross_field_check
+  fail_when: (`MARM.NEST_FTR` < 0) | (`MARM.NEST_FTR` > 100) | (`MARM.MAX_STACK` < 0) | (`MARM.CAPAUSE` < 0)
+  severity: low
+  dimension: validity
+  message: Nesting factor, stacking factor or capacity usage of a unit of measure is out of range
+  why_it_matters: The remaining volume after nesting (MARM.NEST_FTR) is a percentage from 0 to 100, and the maximum stacking
+    factor (MARM.MAX_STACK) and capacity usage (MARM.CAPAUSE) cannot be negative. Values outside these ranges cannot be used
+    in warehouse capacity checks.
+  rule_authority: sap_hard_constraint
+  sap_impact: Extended warehouse management and transport planning calculate impossible volumes or stacking for the unit.
+  fix_map:
+    __other__: Correct the values in MM02 > Additional data > Units of measure.
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: nesting factor {actual_value}, maximum stacking {MARM.MAX_STACK},
+    capacity usage {MARM.CAPAUSE}.'
+- id: MM1143
+  field: MLAN.TAXM2
+  check_class: cross_field_check
+  fail_when: (`MLAN.TAXM2`.notna() | `MLAN.TAXM3`.notna() | `MLAN.TAXM4`.notna()) & `MLAN.TAXM1`.isna()
+  severity: medium
+  dimension: consistency
+  message: A secondary tax classification is set while the first tax classification is blank
+  why_it_matters: Tax classifications are kept per country in the order of the tax categories defined for that country (TSTL).
+    The first classification (MLAN.TAXM1) is the main output tax; filling a later one while the first is empty usually means
+    the values were loaded into the wrong position.
+  rule_authority: best_practice
+  sap_impact: Pricing determines the main output tax from a blank classification, so sales documents carry the wrong tax
+    or none.
+  fix_map:
+    __other__: Check the tax categories for the country and enter the classifications in the right positions in MM02 > Sales
+      org 1 (tax data).
+  record_fix_template: 'Material {MLAN.MATNR}, country {MLAN.ALAND}: tax classification 2 is {actual_value} but tax classification
+    1 is blank.'
+- id: MM1144
+  field: MLGN.MKAPV
+  check_class: cross_field_check
+  fail_when: '`MLGN.MKAPV` < 0'
+  severity: low
+  dimension: validity
+  message: Warehouse capacity usage is negative
+  why_it_matters: Capacity usage (MLGN.MKAPV) is what the warehouse capacity check adds up per storage bin. A negative usage
+    frees capacity that does not exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Putaway places more stock in a bin than it can hold.
+  fix_map:
+    __other__: Enter the capacity usage as zero or more in MM02 > Warehouse management 1.
+  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: capacity usage {actual_value} is negative.'
+- id: MM1145
+  field: QMAT.DYNREGEL
+  check_class: cross_field_check
+  fail_when: (`QMAT.DYN` == 'X') & `QMAT.DYNREGEL`.isna()
+  severity: low
+  dimension: completeness
+  message: Skips are allowed for the inspection type but no dynamic modification rule is set
+  why_it_matters: Skip lots (QMAT.DYN) are decided by a dynamic modification rule. At material level the rule (QMAT.DYNREGEL)
+    is only optional when the inspection plan carries one; without either, skips never happen and the setting is ineffective.
+  rule_authority: best_practice
+  sap_impact: Every lot is inspected in full despite the intention to skip, adding inspection cost.
+  fix_map:
+    __blank__: Enter the dynamic modification rule in the inspection setup (MM02 > Quality management > Inspection setup),
+      or confirm that the inspection plan carries it.
+  record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: skips allowed without a dynamic
+    modification rule.'
+- id: MM1146
+  field: QMAT.INSMK
+  check_class: cross_field_check
+  fail_when: (`QMAT.INSMK` == 'X') & (`QMAT.AKTIV`.isna() | (`QMAT.AKTIV` != 'X'))
+  severity: low
+  dimension: consistency
+  message: Inactive inspection type is set to post to inspection stock
+  why_it_matters: Post to inspection stock (QMAT.INSMK) only takes effect for an active inspection type (QMAT.AKTIV). On an
+    inactive type it signals that quality inspection on receipt was configured but never switched on.
+  rule_authority: best_practice
+  sap_impact: Goods receipts go straight to unrestricted stock without the inspection the setup intended.
+  fix_map:
+    __other__: Activate the inspection type in MM02 > Quality management > Inspection setup, or clear the inspection stock
+      flag.
+  record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: posts to inspection stock but
+    is inactive.'
+- id: MM1147
+  field: MKAL.PRDAT
+  check_class: cross_field_check
+  fail_when: '`MKAL.PRDAT`.notna() & (`MKAL.PRDAT` > @today)'
+  severity: low
+  dimension: accuracy
+  message: Last check date of the production version lies in the future
+  why_it_matters: The date of the last check (MKAL.PRDAT) records when the production version was last checked for a consistent
+    BOM and routing. A check cannot have run after today.
+  rule_authority: sap_hard_constraint
+  sap_impact: Version checks look current when they are not, so inconsistent versions go unnoticed.
+  fix_map:
+    __other__: Run the production version check in C223 to reset the date.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: last check date {actual_value} is
+    in the future.'
+- id: MM1148
+  field: MKAL.LOSGR
+  check_class: cross_field_check
+  fail_when: '`MKAL.LOSGR` < 0'
+  severity: low
+  dimension: validity
+  message: Costing lot size of the production version is negative
+  why_it_matters: The costing lot size (MKAL.LOSGR) is the quantity a cost estimate for the production version is calculated
+    for. A negative lot size cannot be costed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost estimates for the version fail or produce negative unit costs.
+  fix_map:
+    __other__: Enter a positive costing lot size in C223, or clear it to use the material's costing lot size.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: costing lot size {actual_value}.'
+- id: MM1149
+  field: MDMA.LGRAD
+  check_class: cross_field_check
+  fail_when: (`MDMA.LGRAD` < 0) | (`MDMA.LGRAD` >= 100) | (`MDMA.LOSFX` < 0)
+  severity: medium
+  dimension: validity
+  message: MRP area service level or ordering costs are out of range
+  why_it_matters: The MRP area segment repeats the plant's service level (MDMA.LGRAD, below 100 percent) and ordering costs
+    (MDMA.LOSFX, not negative). Values outside these ranges break the safety stock and lot size calculation for that area.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP for the area calculates wrong safety stock or distorted optimum lot sizes.
+  fix_map:
+    __other__: Correct the values in MM02 > MRP 1 > MRP areas.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: service level {actual_value}, ordering costs {MDMA.LOSFX}.'
+- id: MM1150
+  field: MDMA.VRBFK
+  check_class: cross_field_check
+  fail_when: (`MDMA.VRBFK` < 0) | ((`MDMA.VRBFK` > 0) & `MDMA.VRBMT`.isna())
+  severity: low
+  dimension: consistency
+  message: MRP area reference consumption multiplier is negative or has no reference material
+  why_it_matters: As at plant level, the multiplier (MDMA.VRBFK) only scales consumption copied from a reference material
+    (MDMA.VRBMT). Without a reference material it is never used; a negative value creates negative history.
+  rule_authority: sap_hard_constraint
+  sap_impact: The forecast in the MRP area starts from no history or from negative consumption.
+  fix_map:
+    __other__: Enter the reference material and a positive multiplier for the MRP area, or clear the multiplier.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: multiplier {actual_value}, reference material {MDMA.VRBMT}.'
+- id: MM1151
+  field: CKMLHD.ABRECHDAT
+  check_class: cross_field_check
+  fail_when: '`CKMLHD.ABRECHDAT`.notna() & (`CKMLHD.ABRECHDAT` > @today)'
+  severity: low
+  dimension: accuracy
+  message: Last material ledger price determination date lies in the future
+  why_it_matters: The date of the last successful price determination (CKMLHD.ABRECHDAT) records when actual costing last
+    settled the cost estimate number. A settlement cannot have run after today.
+  rule_authority: sap_hard_constraint
+  sap_impact: Actual costing monitoring trusts a settlement that has not happened.
+  fix_map:
+    __other__: Rerun the actual costing settlement (CKMLCP) for the period to reset the date.
+  record_fix_template: 'Cost estimate number {CKMLHD.KALNR}: last price determination date {actual_value} is in the future.'
