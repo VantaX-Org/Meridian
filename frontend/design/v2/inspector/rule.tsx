@@ -23,7 +23,7 @@ import { Coded, Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { CollabSections } from "./collab";
 import { t as tr, lc, tx } from "@/lib/v2/i18n";
 import { labelText, moneyCompactText } from "@/lib/v2/labels";
-import { createRuleVersion, getRuleVersionDiff, transitionRuleVersion, type RuleVersionState } from "@/lib/api/v2/rulelib";
+import { setRuleEnabled, createRuleVersion, getRuleVersionDiff, transitionRuleVersion, type RuleVersionState } from "@/lib/api/v2/rulelib";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useToast } from "../Toast";
 
@@ -874,6 +874,13 @@ export function RuleActions({ view, canvas }: { view: RuleView; canvas?: boolean
     setPanel(null);
     void qc.invalidateQueries({ queryKey: ["v2", "rule-scope"] });
   };
+  const own = view.scope.tenant_rule;
+  const toast = useToast();
+  const flip = useMutation({
+    mutationFn: (on: boolean) => setRuleEnabled(own!.id, on),
+    onSuccess: (_r, on) => finish(on ? tr("{id} is enabled; the next run checks it.", { id: view.id }) : tr("{id} is disabled; the next run skips it.", { id: view.id })),
+    onError: (e) => toast.show(errorSentence(e, tr("The rule could not be changed.")), "error"),
+  });
   return (
     <Sec title={tr("Actions")}>
       <div className="m2-acts">
@@ -888,6 +895,11 @@ export function RuleActions({ view, canvas }: { view: RuleView; canvas?: boolean
         {canSuppress ? (
           <button type="button" className="m2-btn" aria-expanded={panel === "suppress"} onClick={() => setPanel(panel === "suppress" ? null : "suppress")}>
             {tr("Suppress")}
+          </button>
+        ) : null}
+        {canEdit && own ? (
+          <button type="button" className="m2-btn" disabled={flip.isPending} aria-pressed={own.enabled} onClick={() => flip.mutate(!own.enabled)}>
+            {own.enabled ? tr("Disable rule") : tr("Enable rule")}
           </button>
         ) : null}
         {canEdit ? (

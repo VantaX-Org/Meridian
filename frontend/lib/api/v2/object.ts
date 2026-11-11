@@ -122,6 +122,8 @@ export interface RuleScope {
   name: string | null;
   module: string | null;
   definition: RuleDefinition;
+  /** The tenant's own row for the rule (its id is what PATCH /rules/{id} takes); null until the rule is in the tenant's library. */
+  tenant_rule?: { id: string; enabled: boolean } | null;
   authority: RuleAuthority;
   objects: ScopeObject[];
   systems: ScopeSystem[];
