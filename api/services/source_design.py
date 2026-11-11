@@ -164,3 +164,4 @@ async def live_config_for_version(db, version_id) -> tuple[str, dict[str, list]]
         text("SELECT config_table, config_data FROM config_snapshots WHERE system_id = :sid AND source = 'live'"),
         {"sid": row[0]},
     )).fetchall()
+    return row[1], {t: d or [] for t, d in rows}

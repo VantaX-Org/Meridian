@@ -4,7 +4,7 @@ import { PairedQuality } from "./PairedQuality";
 import "../runs.css";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
@@ -378,13 +378,13 @@ function TargetWorkbookPanel() {
     onSuccess: (r) => setWaiting(r.job_id.replace(/^dl-/, "")),
     onError: (e) => toast.show(errorSentence(e, t("The run could not be started.")), "error"),
   });
+  // once the run started by "Update the run" shows as complete, check the workbook on it once
   const done = Boolean(waiting && versions.data?.some(({ v }) => v.id === waiting));
+  const checked = useRef("");
   useEffect(() => {
-    if (!done || !file) return;
-    setPicked(waiting);
-    setWaiting("");
-    update.reset();
-    check.mutate({ run: waiting, file });
+    if (!done || !file || checked.current === waiting) return;
+    checked.current = waiting;
+    check.mutate({ run: waiting, file }, { onSettled: () => { setPicked(waiting); setWaiting(""); update.reset(); } });
   }, [done, file, waiting, update, check]);
   if (!allowed) return null;
   const title = t("Workbook from the new system");
