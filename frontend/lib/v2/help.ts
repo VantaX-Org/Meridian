@@ -160,6 +160,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/work/exceptions": "v2:work", "/work/triage": "v2:work",
   "/migration": "v2:migration",
   "/system-compare": "v2:migration",
+  "/migration/load-plan": "v2:migration",
   "/s4": "v2:waves",
   "/insights": "v2:monitoring",
   "/forecast": "v2:monitoring",
@@ -167,6 +168,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/score": "v2:monitoring",
   "/people": "v2:people",
   "/requests": "v2:approvals",
+  "/requests/analytics": "v2:approvals",
   "/requests/[id]": "v2:approvals",
   "/runs": "v2:runs",
   "/run/[id]": "v2:run-compare",
@@ -222,7 +224,8 @@ export function routeOf(pathname: string): string | null {
   if (a === "s" && b) return b === "new" ? "/s/new" : "/s/[id]";
   if (a === "aletheia" && b) return `/aletheia/${b}`;
   if (a === "share" && b) return "/share/[token]";
-  if (a === "requests" && b) return "/requests/[id]";
+  if (a === "requests" && b) return b === "analytics" ? "/requests/analytics" : "/requests/[id]";
+  if (a === "migration" && b === "load-plan") return "/migration/load-plan";
   if (a === "admin") return b ? "/admin/[section]" : "/admin";
   if (a === "work" && b === "monitor") return "/work/monitor";
   if (a === "work" && b === "analytics") return "/work/analytics";

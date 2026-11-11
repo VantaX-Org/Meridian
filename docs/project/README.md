@@ -16,6 +16,7 @@ Release notes are in [docs/releases/](../releases/README.md). The hand-over to t
 | [raid-log.md](raid-log.md) | Risks, assumptions, issues and dependencies |
 | [decision-log.md](decision-log.md) | Decisions found in the repository and git history |
 | [project-closure-report.md](project-closure-report.md) | Delivery against objectives, open items, lessons learned and sign-off |
+| [competitive-gap.md](competitive-gap.md) | Feature matrix against the compared products, gaps closed and the ranked build list |
 
 ## Document status
 

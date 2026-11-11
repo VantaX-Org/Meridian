@@ -40,6 +40,14 @@ The panel **Template library** keeps the new system's load templates for each ob
 
 Uploading and mapping need the right to analyse. The downloads and the check need the right to export.
 
+## Load plan
+
+The load plan at /migration/load-plan shows the order in which the migration objects load into the target, and why. Meridian reads the data dictionary: when a field an object's rules read has a check table that another object owns, the other object loads first. A customer's company code data points at a G/L account through KNB1.AKONT, so G/L accounts load before customers.
+
+Each dependency names the field, its check table and the dictionary text, so you can check it in SE11. A dependency is required when the target refuses the record without the field; the reason comes from the mandatory field list. Every other dependency is a reference: the record loads, but the reference stays empty or is rejected until the other object is in. When objects point at each other, the reference fields inside the cycle are deferred and loaded as a delta after both objects. A cycle of required fields alone is one step that loads together.
+
+Each object shows the state of its latest analysed migration run. It is a no-go while that run still has critical or high gaps. Every object that needs a no-go object through a required field is blocked until that object is fixed. Prerequisites are check tables no object in the plan owns: configuration to transport, or master data from outside the plan, which must be in the target before step 1.
+
 ## What you can do, by role
 
 The buttons depend on the role, and a button the role cannot use is not shown:
