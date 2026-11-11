@@ -116,6 +116,12 @@ export async function getHealth(): Promise<HealthResponse> {
 export const getTenantSettings = (): Promise<TenantSettings> => v2Get("/settings");
 export const getScoring = (): Promise<ScoringResponse> => v2Get("/settings/scoring");
 export const putScoring = (config: ScoringConfig): Promise<{ status: string }> => v2Send("PUT", "/settings/scoring", config);
+export interface QualityBands { target: number; warning: number; critical: number }
+/** GET /settings/quality-thresholds: tenant default per dimension (resolved) and each module's own overrides. */
+export interface QualityThresholds { dimensions: string[]; fallback: QualityBands; tenant: Record<string, QualityBands>; modules: Record<string, Record<string, QualityBands>> }
+export const getQualityThresholds = (): Promise<QualityThresholds> => v2Get("/settings/quality-thresholds");
+export const putQualityThreshold = (b: QualityBands & { module: string; dimension: string }): Promise<{ status: string }> => v2Send("PUT", "/settings/quality-thresholds", b);
+export const deleteQualityThreshold = (module: string, dimension: string): Promise<{ status: string }> => v2Send("DELETE", "/settings/quality-thresholds", undefined, { module, dimension });
 export const savePlanner = (config: PlannerConfig): Promise<{ status: string }> => v2Send("POST", "/settings/planner", config);
 export const getCostModel = async (): Promise<CostModel> => (await v2Get<{ effective: CostModel }>("/settings/cost-model")).effective;
 export const putCostModel = (model: CostModel): Promise<{ status: string }> => v2Send("PUT", "/settings/cost-model", model);

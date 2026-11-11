@@ -3,6 +3,7 @@
 import { SandboxBlock } from "./sandbox";
 import { MaintenanceBlock } from "./maintenance";
 import { LlmBlock } from "./llm";
+import { QualityThresholdsBlock } from "./thresholds";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { CostModel, DimensionScores, PlannerConfig } from "@/types/api";
@@ -672,6 +673,7 @@ export function SettingsSection() {
           </Block>
         ))}
       </Loaded>
+      <QualityThresholdsBlock write={write} modules={tenant.data?.licensed_modules ?? []} />
       <div id="cost-model">
         <Loaded q={cost} what={tr("The cost model")} rows={3}>
           {(m) => (write ? <CostBlock key={JSON.stringify(m)} model={m} /> : <Block title={tr("Cost model")}><Kv rows={[[tr("Currency"), m.currency]]} /></Block>)}

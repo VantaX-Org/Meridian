@@ -108,6 +108,10 @@ export const useScoring = (enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "settings", "scoring"), api.getScoring, enabled);
 };
+export const useQualityThresholds = (enabled = true) => {
+  const f = useFixture();
+  return useRead(k(f, "settings", "quality-thresholds"), api.getQualityThresholds, enabled);
+};
 export const useCostModel = (enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "settings", "cost"), api.getCostModel, enabled);
