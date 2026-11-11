@@ -8757,6 +8757,23 @@ export const en = {
   "Objects, scrollable": "Objects, scrollable",
   "Change requests per object": "Change requests per object",
   "p90 cycle": "p90 cycle",
+  "An object's score falls past the automation thresholds below.": "An object's score falls past the automation thresholds below.",
+  "New threshold breaches": "New threshold breaches",
+  "A run breaks a contract or rule threshold it did not break before.": "A run breaks a contract or rule threshold it did not break before.",
+  "Failed runs": "Failed runs",
+  "A run ends in error.": "A run ends in error.",
+  "The SLA sweep finds work past its acknowledge or resolve time.": "The SLA sweep finds work past its acknowledge or resolve time.",
+  "Firewall rejections": "Firewall rejections",
+  "The data quality firewall blocks records at entry. At most one message per object every 15 minutes.": "The data quality firewall blocks records at entry. At most one message per object every 15 minutes.",
+  "Configured": "Configured",
+  "Set MERIDIAN_SLACK_WEBHOOK_URL or MERIDIAN_TEAMS_WEBHOOK_URL in the server environment and restart Meridian. The address is a secret and is never shown here.": "Set MERIDIAN_SLACK_WEBHOOK_URL or MERIDIAN_TEAMS_WEBHOOK_URL in the server environment and restart Meridian. The address is a secret and is never shown here.",
+  "Chat alerts saved": "Chat alerts saved",
+  "Save chat alerts": "Save chat alerts",
+  "The test did not reach every channel": "The test did not reach every channel",
+  "Test sent to {n, plural, one {# channel} other {# channels}}": "Test sent to {n, plural, one {# channel} other {# channels}}",
+  "Chat alerts": "Chat alerts",
+  "Counts and a link into Meridian go to a Slack or Teams channel, never record values.": "Counts and a link into Meridian go to a Slack or Teams channel, never record values.",
+  "The chat alert settings": "The chat alert settings",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

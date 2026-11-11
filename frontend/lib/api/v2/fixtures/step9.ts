@@ -27,6 +27,8 @@ import type { DimensionKey, Landscape, LandscapeCell, Receipt, RuleRow, RunList,
 import { DIMENSIONS } from "../types";
 import type {
   AutomationSettings,
+  ChatAlerts,
+  ChatEvent,
   CertSigner,
   CertVersion,
   ContractBreach,
@@ -93,6 +95,7 @@ interface State {
   webhooks: Webhook[];
   deliveries: Record<string, WebhookDelivery[]>;
   automation: AutomationSettings;
+  chat: ChatAlerts;
   enforcement: Record<string, { enforce: boolean; thresholds: ContractThresholds | null }>;
 }
 
@@ -132,6 +135,7 @@ function build(): State {
       "wh-2": [],
     },
     automation: { drift_alerts: { enabled: true }, rule_mining: { min_records: 25 }, score_drop: { below: null, points: 5 } },
+    chat: { channels: { slack: true, teams: false }, events: ["dqs_drop", "threshold_breach", "run_failed", "sla_breach"], available: ["dqs_drop", "threshold_breach", "run_failed", "sla_breach", "firewall_rejections"] },
     // `?contracts=enforced` starts the fixture with the contract enforced, so a page load can show the baseline gate.
     enforcement: { "ct-1": { enforce: fixtureParam("contracts") === "enforced", thresholds: { min_score: 85, max_critical_breaches: 0, dimensions: { completeness: 80 } } } },
   };
@@ -644,6 +648,7 @@ export function step9Read(path: string, params: Params): unknown {
     return { deliveries: clone((st().deliveries[id] ?? []).filter((d) => !status || d.status === status)) };
   }
   if (path === "/settings/automation") return clone(st().automation);
+  if (path === "/settings/chat-alerts") return clone(st().chat);
   if (path === "/config/drift/alerts") return { alerts: clone(ALERTS.slice(0, Number(params.limit ?? 50))) };
   const oc = /^\/objects\/([^/]+)\/contracts$/.exec(path);
   if (oc) return objectContractsFixture(decodeURIComponent(oc[1]));
@@ -681,6 +686,15 @@ export function step9Write(method: string, path: string, body: unknown): unknown
   }
   const test = /^\/webhooks\/([^/]+)\/test$/.exec(path);
   if (method === "POST" && test) return testWebhookFixture(decodeURIComponent(test[1]));
+  if (method === "PUT" && path === "/settings/chat-alerts") {
+    const chosen = Array.isArray(b.events) ? (b.events as ChatEvent[]) : [];
+    st().chat.events = st().chat.available.filter((e) => chosen.includes(e));
+    return clone(st().chat);
+  }
+  if (method === "POST" && path === "/settings/chat-alerts/test") {
+    const c = st().chat.channels;
+    return { channels: { slack: { configured: c.slack, delivered: c.slack, error: null }, teams: { configured: c.teams, delivered: false, error: null } } };
+  }
   if (method === "PUT" && path === "/settings/automation") {
     const a = st().automation;
     const next = b as Partial<AutomationSettings>;

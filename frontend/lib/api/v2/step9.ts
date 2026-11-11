@@ -284,6 +284,21 @@ export const listDeliveries = (id: string, status?: WebhookDelivery["status"]): 
 export const getAutomation = (): Promise<AutomationSettings> => v2Get("/settings/automation");
 export const putAutomation = (body: Partial<AutomationSettings>): Promise<AutomationSettings> => v2Send("PUT", "/settings/automation", body);
 
+export type ChatEvent = "dqs_drop" | "threshold_breach" | "run_failed" | "sla_breach" | "firewall_rejections";
+export type ChatKind = "slack" | "teams";
+/** Chat alerts: the webhook URLs are server environment secrets; the API only says whether each is set. */
+export interface ChatAlerts {
+  channels: Record<ChatKind, boolean>;
+  events: ChatEvent[];
+  available: ChatEvent[];
+}
+export interface ChatTest {
+  channels: Record<ChatKind, { configured: boolean; delivered: boolean; error: string | null }>;
+}
+export const getChatAlerts = (): Promise<ChatAlerts> => v2Get("/settings/chat-alerts");
+export const putChatAlerts = (events: ChatEvent[]): Promise<ChatAlerts> => v2Send("PUT", "/settings/chat-alerts", { events });
+export const testChatAlerts = (): Promise<ChatTest> => v2Send("POST", "/settings/chat-alerts/test");
+
 // ── config drift alerts ──────────────────────────────────────────────────────
 
 export interface DriftArea {

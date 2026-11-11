@@ -3,13 +3,13 @@
 import "../step9.css";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { putAutomation, type AutomationSettings, type Webhook } from "@/lib/api/v2/step9";
+import { putAutomation, putChatAlerts, testChatAlerts, type AutomationSettings, type ChatAlerts, type ChatEvent, type Webhook } from "@/lib/api/v2/step9";
 import { apiErrorMessage } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { eventsWords } from "@/lib/v2/step9";
-import { refreshStep9, useAutomation, useWebhooks } from "@/lib/v2/step9-queries";
+import { refreshStep9, useAutomation, useChatAlerts, useWebhooks } from "@/lib/v2/step9-queries";
 import { type GridColumn } from "../Grid";
 import { ToolGrid } from "../GridTools";
 import { ResultFrame, useOutcome } from "../inspector/shared";
@@ -76,6 +76,79 @@ function Automation({ a, can }: { a: AutomationSettings; can: boolean }) {
   );
 }
 
+const chatEventWords = (): Record<ChatEvent, [string, string]> => ({
+  dqs_drop: [t("Score drops"), t("An object's score falls past the automation thresholds below.")],
+  threshold_breach: [t("New threshold breaches"), t("A run breaks a contract or rule threshold it did not break before.")],
+  run_failed: [t("Failed runs"), t("A run ends in error.")],
+  sla_breach: [t("SLA breaches"), t("The SLA sweep finds work past its acknowledge or resolve time.")],
+  firewall_rejections: [t("Firewall rejections"), t("The data quality firewall blocks records at entry. At most one message per object every 15 minutes.")],
+});
+
+/** Chat alerts: the Slack and Teams URLs live in the server environment only, so this block shows whether each is set, which events go to chat, and sends a test. */
+function ChatAlertsBlock({ c, can }: { c: ChatAlerts; can: boolean }) {
+  const qc = useQueryClient();
+  const [events, setEvents] = useState<ChatEvent[]>(c.events);
+  const { outcome, pending, run } = useOutcome("chat-alerts");
+  const words = chatEventWords();
+  const any = c.channels.slack || c.channels.teams;
+  const dirty = events.join() !== c.events.join();
+  const toggle = (e: ChatEvent, on: boolean) => setEvents(c.available.filter((x) => (x === e ? on : events.includes(x))));
+  return (
+    <>
+      <div className="m2-fgrid">
+        <Fld label={t("Slack")}>
+          <StatusWord tone={c.channels.slack ? "go" : "neutral"}>{c.channels.slack ? t("Configured") : t("Not configured")}</StatusWord>
+        </Fld>
+        <Fld label={t("Microsoft Teams")}>
+          <StatusWord tone={c.channels.teams ? "go" : "neutral"}>{c.channels.teams ? t("Configured") : t("Not configured")}</StatusWord>
+        </Fld>
+      </div>
+      {any ? null : <p className="m2-prov">{t("Set MERIDIAN_SLACK_WEBHOOK_URL or MERIDIAN_TEAMS_WEBHOOK_URL in the server environment and restart Meridian. The address is a secret and is never shown here.")}</p>}
+      <div className="m2-fgrid">
+        {c.available.map((e) => (
+          <Sw key={e} checked={events.includes(e)} disabled={!can} onChange={(on) => toggle(e, on)} label={words[e][0]} hint={words[e][1]} />
+        ))}
+      </div>
+      {outcome ? <ResultFrame outcome={outcome} /> : null}
+      {can ? (
+        <div className="m2-adm-acts">
+          <button
+            type="button"
+            className="m2-btn m2-strong"
+            disabled={!dirty || pending !== null}
+            onClick={() =>
+              void run("save", async () => {
+                await putChatAlerts(events);
+                await refreshStep9(qc, "automation");
+                return { tone: "ok", title: t("Chat alerts saved") };
+              })
+            }
+          >
+            {pending === "save" ? t("Saving…") : t("Save chat alerts")}
+          </button>
+          <button
+            type="button"
+            className="m2-btn"
+            disabled={!any || pending !== null}
+            onClick={() =>
+              void run("test", async () => {
+                const r = await testChatAlerts();
+                const sent = (["slack", "teams"] as const).filter((k) => r.channels[k].delivered);
+                const failed = (["slack", "teams"] as const).filter((k) => r.channels[k].configured && !r.channels[k].delivered);
+                return failed.length
+                  ? { tone: "fail", title: t("The test did not reach every channel"), detail: failed.map((k) => `${k}: ${r.channels[k].error ?? "—"}`).join("; ") }
+                  : { tone: "ok", title: t("Test sent to {n, plural, one {# channel} other {# channels}}", { n: sent.length }) };
+              })
+            }
+          >
+            {pending === "test" ? t("Sending…") : t("Send a test message")}
+          </button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 /** Admin › Webhooks: where Meridian posts its events, the delivery log behind each, and the tenant's automation. */
 export function WebhooksSection() {
   const can = useCan();
@@ -83,6 +156,7 @@ export function WebhooksSection() {
   const { openItem, open } = useOpenItem();
   const q = useWebhooks(allowed);
   const auto = useAutomation();
+  const chat = useChatAlerts();
   if (!allowed) {
     return (
       <AdminPage title={t("Webhooks")}>
@@ -126,6 +200,11 @@ export function WebhooksSection() {
           onOpen={(w) => openItem({ kind: "webhook", id: w.id })}
           openRowId={open?.kind === "webhook" ? open.id : null}
         />
+      </Block>
+      <Block title={t("Chat alerts")} hint={t("Counts and a link into Meridian go to a Slack or Teams channel, never record values.")}>
+        <Loaded q={chat} what={t("The chat alert settings")}>
+          {(c) => <ChatAlertsBlock key={JSON.stringify(c)} c={c} can={allowed} />}
+        </Loaded>
       </Block>
       <Block title={t("Automation")} hint={t("What Meridian does by itself after a configuration change, from stewards' fixes and when a score drops.")}>
         <Loaded q={auto} what={t("The automation settings")}>

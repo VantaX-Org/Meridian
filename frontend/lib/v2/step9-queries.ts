@@ -14,6 +14,7 @@ export const s9Keys = {
   events: (f: boolean) => ["v2", "s9", "webhook-events", f] as const,
   deliveries: (f: boolean, id: string, status: string | null) => ["v2", "s9", "deliveries", f, id, status] as const,
   automation: (f: boolean) => ["v2", "s9", "automation", f] as const,
+  chat: (f: boolean) => ["v2", "s9", "automation", "chat", f] as const,
   drift: (f: boolean, limit: number) => ["v2", "s9", "drift", f, limit] as const,
   objectContracts: (f: boolean, module: string, run: string | null) => ["v2", "s9", "object-contracts", f, module, run] as const,
   changes: (f: boolean, version: string) => ["v2", "s9", "changes", f, version] as const,
@@ -52,6 +53,11 @@ export function useDeliveries(id: string, status: s9.WebhookDelivery["status"] |
 export function useAutomation(enabled = true) {
   const f = useFixture();
   return useQuery({ queryKey: s9Keys.automation(f), queryFn: s9.getAutomation, staleTime: 60_000, enabled });
+}
+
+export function useChatAlerts(enabled = true) {
+  const f = useFixture();
+  return useQuery({ queryKey: s9Keys.chat(f), queryFn: s9.getChatAlerts, staleTime: 60_000, enabled });
 }
 
 export function useDriftAlerts(limit = 50, enabled = true) {
