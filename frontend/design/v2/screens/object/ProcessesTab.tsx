@@ -10,6 +10,7 @@ import { f1, int, moduleFromSlug } from "@/lib/v2/score";
 import { DqWord } from "../../inspector/step";
 import "../../mdm.css";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { describeField } from "@/lib/v2/sap-fields";
 import { ScrollFrame } from "./ScrollFrame";
 import { WhatIfPanel } from "./WhatIf";
 import { t } from "@/lib/v2/i18n";
@@ -57,7 +58,7 @@ function StepBlock({ step, module, openId }: { step: StepView; module: string; o
                       <tr key={f.field} data-status={f.dq_status}>
                         <th scope="row" className="m2-fcell">
                           <Mono>{f.field}</Mono>
-                          <span className="m2-meta">{f.description}</span>
+                          <span className="m2-meta">{f.description || describeField(f.field)}</span>
                         </th>
                         <td>
                           <DqWord status={f.dq_status} />

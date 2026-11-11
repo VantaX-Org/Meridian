@@ -204,4 +204,11 @@ describe("object canvas states", () => {
     frame(id, "material-master");
     expect(await screen.findByTestId("object-status")).toBeInTheDocument();
   });
+
+  it("on the overview, links to the issues raised on this object beside the main action", async () => {
+    setUrl("/o/ecc-production/material-master");
+    frame();
+    const link = await screen.findByTestId("object-issues");
+    expect(link.getAttribute("href")).toMatch(/\/issues\?module=material-master/);
+  });
 });

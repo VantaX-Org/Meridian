@@ -7,12 +7,14 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import { bulkIssues, commentIssue, exportIssues, getIssue, getIssues, ISSUE_PAGE, ISSUE_STATUSES, RESOLUTIONS, type Issue, type IssueEvent, type IssueResolution, type IssueStatus } from "@/lib/api/v2/issues";
 import { getAssignable } from "@/lib/api/v2/triage";
 import { formatDate } from "@/lib/format";
-import { useUrlParam, useV2Session } from "@/lib/v2/hooks";
+import { useOpenItem, useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
-import { int } from "@/lib/v2/score";
+import { describeField, sapField } from "@/lib/v2/sap-fields";
+import { int, moduleFromSlug } from "@/lib/v2/score";
+import { recordItemId } from "@/lib/v2/work";
 import { Sev } from "../inspector/rule";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
@@ -59,12 +61,18 @@ export function Issues() {
   const toast = useToast();
   const [view, setView] = useUrlParam<IssueStatus | "all">("status", "open", [...ISSUE_STATUSES, "all"]);
   const tab: IssueStatus | "" = view === "all" ? "" : view;
-  const [draft, setDraft] = useState({ severity: "", assigned_to: "", search: "" });
+  // A link can open the list already searched for one record (Material's "Open issue"); the box stays editable.
+  const [urlSearch] = useUrlParam<string>("search", "");
+  const [draft, setDraft] = useState({ severity: "", assigned_to: "", search: urlSearch });
   const [filter, setFilter] = useState(draft);
   const [offset, setOffset] = useState(0);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState<string | null>(null);
-  const q = { status: tab, ...filter, search: filter.search.trim(), limit: ISSUE_PAGE, offset };
+  // Other screens narrow the list to one object or one rule through the address (?module=, ?rule=).
+  const [modSlug, setModSlug] = useUrlParam<string>("module", "");
+  const [rule, setRule] = useUrlParam<string>("rule", "");
+  const scope = { module: modSlug ? moduleFromSlug(modSlug) : "", check_id: rule };
+  const q = { status: tab, ...filter, ...scope, search: filter.search.trim(), limit: ISSUE_PAGE, offset };
   const list = useQuery({
     queryKey: ["record-issues", fixture, q],
     queryFn: () => getIssues(q),
@@ -75,7 +83,7 @@ export function Issues() {
   });
 
   const exp = useMutation({
-    mutationFn: () => exportIssues({ status: tab, ...filter }),
+    mutationFn: () => exportIssues({ status: tab, ...filter, ...scope, search: filter.search.trim() }),
     onError: (e) => toast.show(errorSentence(e, t("The issues could not be exported.")), "error"),
   });
 
@@ -149,6 +157,12 @@ export function Issues() {
           </button>
         ))}
       </div>
+      {scope.module || rule ? (
+        <p className="m2-rfilters" data-testid="issues-scope">
+          {scope.module ? <span>{t("Only {object}", { object: moduleText(scope.module) })} <button type="button" className="m2-linkbtn" onClick={() => { setModSlug(""); setOffset(0); }}>{t("Show every object")}</button></span> : null}
+          {rule ? <span>{t("Only rule {rule}", { rule })} <button type="button" className="m2-linkbtn" onClick={() => { setRule(""); setOffset(0); }}>{t("Show every rule")}</button></span> : null}
+        </p>
+      ) : null}
       <form className="m2-rfilters" onSubmit={submit} aria-label={t("Filter the issues")} data-testid="issues-filter">
         <label>
           {t("Severity")}
@@ -238,6 +252,8 @@ export function Issues() {
 }
 
 function IssueRow({ i, picked, onPick, open, onOpen }: { i: Issue; picked: boolean; onPick: () => void; open: boolean; onOpen: () => void }) {
+  const { hrefFor } = useOpenItem();
+  const fieldText = i.field ? describeField(i.field) : null;
   return (
     <tr aria-selected={picked}>
       <td data-label={t("Select")}>
@@ -249,8 +265,9 @@ function IssueRow({ i, picked, onPick, open, onOpen }: { i: Issue; picked: boole
         </button>
       </th>
       <td data-label={t("Rule")}>
-        <Mono>{i.check_id}</Mono> {i.message ?? <Dash why={t("The run stored no message for this rule.")} />}
-        {i.field ? <span className="m2-meta"> <Mono>{i.field}</Mono></span> : null}
+        <V2Link href={hrefFor({ kind: "rule", id: i.check_id })} className="m2-mono" data-testid="issues-rule">{i.check_id}</V2Link>{" "}
+        {i.message ?? <Dash why={t("The run stored no message for this rule.")} />}
+        {i.field ? <span className="m2-meta"> {fieldText ? `${fieldText} ` : null}<Mono>{sapField(i.field)}</Mono></span> : null}
       </td>
       <td data-label={t("Severity")}><Sev severity={i.severity} /></td>
       <td data-label={t("Status")}>
@@ -346,7 +363,11 @@ function IssueDetail({ id, onClose }: { id: string; onClose: () => void }) {
   const { can } = useV2Session();
   const toast = useToast();
   const qc = useQueryClient();
+  const { hrefFor } = useOpenItem();
   const [body, setBody] = useState("");
+  // The history stores the assignee's id; show the name when the person is still assignable.
+  const people = useQuery({ queryKey: ["assignable", fixture], queryFn: getAssignable, staleTime: 300_000, enabled: can("assign"), retry });
+  const names = new Map((people.data ?? []).map((u) => [u.id, u.name]));
   const one = useQuery({ queryKey: ["record-issue", fixture, id], queryFn: () => getIssue(id), staleTime: 30_000, retry });
   const add = useMutation({
     mutationFn: () => commentIssue(id, body.trim()),
@@ -365,6 +386,10 @@ function IssueDetail({ id, onClose }: { id: string; onClose: () => void }) {
         status(one.error) === 404 ? <EmptyFrame>{t("This issue no longer exists.")}</EmptyFrame> : <ErrorFrame onRetry={() => void one.refetch()}>{t("The issue could not be read.")}</ErrorFrame>
       ) : (
         <>
+          <p className="m2-rfilters">
+            <V2Link href={hrefFor({ kind: "record", id: recordItemId(one.data.issue) })} data-testid="issues-open-record">{t("Open the record")}</V2Link>
+            <V2Link href={hrefFor({ kind: "rule", id: one.data.issue.check_id })}>{t("Open the rule")}</V2Link>
+          </p>
           <p className="m2-meta">
             {t("First failed {first}, last failed {last}", {
               first: one.data.issue.first_seen_at ? formatDate(one.data.issue.first_seen_at, "date") : "—",
@@ -389,7 +414,7 @@ function IssueDetail({ id, onClose }: { id: string; onClose: () => void }) {
             <Dash why={t("Nothing has been done on this issue yet.")} />
           ) : (
             <ol aria-label={t("History, newest first")} data-testid="issues-events">
-              {one.data.events.map((ev, k) => <li key={k}>{eventText(ev)} <span className="m2-meta">{ev.user_label ?? "—"}, {formatDate(ev.created_at, "date")}</span></li>)}
+              {one.data.events.map((ev, k) => <li key={k}>{eventText(ev, names)} <span className="m2-meta">{ev.user_label ?? "—"}, {formatDate(ev.created_at, "date")}</span></li>)}
             </ol>
           )}
           {can("analyse") ? (
@@ -408,8 +433,8 @@ function IssueDetail({ id, onClose }: { id: string; onClose: () => void }) {
   );
 }
 
-function eventText(ev: IssueEvent): string {
-  if (ev.action === "assign") return ev.to_value ? t("Assigned to {who}", { who: ev.to_value }) : t("Unassigned");
+function eventText(ev: IssueEvent, names: Map<string, string>): string {
+  if (ev.action === "assign") return ev.to_value ? t("Assigned to {who}", { who: names.get(ev.to_value) ?? ev.to_value }) : t("Unassigned");
   if (ev.action === "status") {
     const text = t("Moved from {from} to {to}", { from: statusText(ev.from_value ?? ""), to: statusText(ev.to_value ?? "") });
     return ev.note ? `${text}: ${ev.note}` : text;

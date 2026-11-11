@@ -179,8 +179,8 @@ describe("the job inspector", () => {
     expect(screen.getByText("Reading MARC")).toBeInTheDocument();
     const rows = within(screen.getByTestId("job-tables")).getAllByRole("row");
     expect(spaced(rows[0])).toBe("Table State Read through Rows");
-    expect(spaced(rows[1])).toBe("MARA Read ODP, 0MATERIAL_ATTR 61,816 of 61,816");
-    expect(spaced(rows[2])).toBe("MARC Reading Table reader 106,584 of 148,230");
+    expect(spaced(rows[1])).toBe("General material data MARA Read ODP, 0MATERIAL_ATTR 61,816 of 61,816");
+    expect(spaced(rows[2])).toBe("Plant data for material MARC Reading Table reader 106,584 of 148,230");
     expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
   });
 

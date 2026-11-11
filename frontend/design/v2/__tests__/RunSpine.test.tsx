@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import type { Timeline, TimelineRun } from "@/lib/api/v2/runs";
+import * as runsApi from "@/lib/api/v2/runs";
 import { fixtureResponse } from "@/lib/api/v2/fixtures";
 import type { Landscape } from "@/lib/api/v2/types";
 import { ObjectTrend } from "../ObjectTrend";
@@ -130,6 +131,17 @@ describe("Home headlines, Objects board and Overview tab (fixture)", () => {
     expect(within(rows[0]).getAllByRole("link")[0].getAttribute("href")).toMatch(/\/o\//);
   });
 
+  it("the Objects board narrows to one module from ?module= and links back to all objects", async () => {
+    setUrl("/objects?fixture=1&module=material-master");
+    renderWithQuery(<ObjectsCanvas />);
+    const banner = await screen.findByTestId("objects-module-filter");
+    expect(within(banner).getByRole("link", { name: "Show all objects" }).getAttribute("href")).toMatch(/^\/objects/);
+    const rows = screen.getAllByTestId("objects-row");
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(within(row).getAllByRole("link")[0].getAttribute("href")).toMatch(/\/material-master/);
+    expect(screen.queryAllByTestId("objects-row-missing").every((r) => r.textContent?.includes("material_master"))).toBe(true);
+  });
+
   it("the Objects board prints each score once, from the ruler", async () => {
     setUrl("/objects?fixture=1");
     renderWithQuery(<ObjectsCanvas />);
@@ -147,5 +159,14 @@ describe("Home headlines, Objects board and Overview tab (fixture)", () => {
     const sec = await screen.findByTestId("overview-trend");
     expect(within(sec).getByText(/Each point is one finished run of this object/)).toBeInTheDocument();
     expect(within(sec).getByRole("link", { name: "Open the Trend tab" })).toHaveAttribute("href", expect.stringContaining("/trend"));
+  });
+
+  it("the Overview tab says so with Retry when the run history cannot be read", async () => {
+    setUrl("/o/ecc-production/material-master?fixture=1");
+    vi.spyOn(runsApi, "getTimeline").mockRejectedValue(new Error("down"));
+    renderWithQuery(<OverviewTab system="ecc-production" module="material-master" />);
+    const err = await screen.findByTestId("error-frame");
+    expect(err).toHaveTextContent("The run history could not be read.");
+    expect(within(err).getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 });

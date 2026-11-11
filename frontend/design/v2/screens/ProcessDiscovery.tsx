@@ -27,7 +27,7 @@ import { useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { useLandscape } from "@/lib/v2/queries";
 import { DASH, int } from "@/lib/v2/score";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, SapCode, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { RunChip } from "../RunChip";
 import { Guide } from "./Guide";
@@ -513,7 +513,7 @@ function Cases({ runId, variant }: { runId: string; variant: string | null }) {
                                 {formatDate(ev.ts, "datetime")} {ev.activity}
                                 {ev.resource ? <> <Mono>{ev.resource}</Mono></> : null}
                                 {ev.automated === null ? null : ev.automated ? ` ${t("Automated")}` : ` ${t("Manual")}`}
-                                {ev.source_table ? <> <Mono>{ev.source_table}</Mono></> : null}
+                                {ev.source_table ? <> <SapCode table={ev.source_table} /></> : null}
                               </li>
                             ))}
                           </ol>

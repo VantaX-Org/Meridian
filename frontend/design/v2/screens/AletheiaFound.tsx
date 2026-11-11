@@ -15,7 +15,7 @@ import { objectHref } from "@/lib/v2/people";
 import { useLandscape } from "@/lib/v2/queries";
 import { DASH, f1, int, pct1 } from "@/lib/v2/score";
 import { Sparkline } from "../charts/Sparkline";
-import { Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Dash, ErrorFrame, Mono, Skeleton, V2Link, SapCode } from "../parts";
 import { CcDelta } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -163,7 +163,7 @@ function ActionRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] })
         <span className="m2-meta">
           {" "}
           {moduleText(f.module)}
-          {f.field ? <>, <Mono>{f.field}</Mono></> : null}. {reason ?? null}
+          {f.field ? <>, <SapCode field={f.field} /></> : null}. {reason ?? null}
         </span>
       </th>
       <td data-label={t("Failing records")} className="m2-num">

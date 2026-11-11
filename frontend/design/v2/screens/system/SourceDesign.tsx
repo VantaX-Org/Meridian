@@ -13,7 +13,7 @@ import { Fact, Facts } from "../../Inspector";
 import { Field, Gate } from "../../forms";
 import { ResultFrame, useOutcome } from "../../inspector/shared";
 import { ScrollFrame } from "../object/ScrollFrame";
-import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link, SapCode } from "../../parts";
 import { TableExport } from "@/design/v2/TableExport";
 
 /**
@@ -256,8 +256,8 @@ function Drift({ id }: { id: string }) {
                     <tbody>
                       {(diff.data?.changes ?? []).map((c) => (
                         <tr key={`${c.table}:${c.field ?? ""}:${c.change}`}>
-                          <th scope="row"><Mono>{c.table}</Mono></th>
-                          <td data-label={tr("Field")}>{c.field ? <Mono>{c.field}</Mono> : <Dash />}</td>
+                          <th scope="row"><SapCode table={c.table} /></th>
+                          <td data-label={tr("Field")}>{c.field ? <SapCode field={c.field.includes(".") || c.field.includes("-") ? c.field : `${c.table}-${c.field}`} /> : <Dash />}</td>
                           <td data-label={tr("Change")}>{CHANGE[c.change]?.() ?? c.change}</td>
                           <td data-label={tr("What changed")}>
                             {c.diff ? Object.entries(c.diff).map(([k, [a, b]]) => <span key={k} className="m2-meta">{tr("{what} from {a} to {b}", { what: k, a: String(a ?? ""), b: String(b ?? "") })} </span>) : <Dash />}

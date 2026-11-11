@@ -79,5 +79,29 @@ export const sapField = (field: string): string => field.replace(".", "-");
 
 export function describeField(field: string, fromApi?: Record<string, string> | null): string | null {
   const key = sapField(field);
-  return fromApi?.[field] ?? fromApi?.[key] ?? DESCRIPTIONS[key] ?? null;
+  // The API falls back to the field name itself when the catalogue has no text; that is not a description.
+  const api = [fromApi?.[field], fromApi?.[key]].find((d) => d && d !== field && d !== key && d !== field.split(".").pop());
+  return api ?? DESCRIPTIONS[key] ?? null;
 }
+
+/** SAP's standard short texts of the tables a record's fields come from (SE11 descriptions). */
+const TABLES: Record<string, string> = {
+  get MARA() { return t("General material data"); },
+  get MAKT() { return t("Material descriptions"); },
+  get MARC() { return t("Plant data for material"); },
+  get MARD() { return t("Storage location data for material"); },
+  get MBEW() { return t("Material valuation"); },
+  get MVKE() { return t("Sales data for material"); },
+  get MLAN() { return t("Tax classification for material"); },
+  get MARM() { return t("Units of measure for material"); },
+  get KNA1() { return t("Customer master: general data"); },
+  get KNB1() { return t("Customer master: company code data"); },
+  get KNVV() { return t("Customer master: sales data"); },
+  get LFA1() { return t("Vendor master: general data"); },
+  get LFB1() { return t("Vendor master: company code data"); },
+  get LFM1() { return t("Vendor master: purchasing organisation data"); },
+  get BUT000() { return t("Business partner: general data"); },
+  get ADRC() { return t("Addresses"); },
+};
+
+export const describeTable = (table: string): string | null => TABLES[table.toUpperCase()] ?? null;

@@ -12,7 +12,7 @@ import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { useObjectRun } from "@/lib/v2/scope";
 import { runLabel } from "@/lib/v2/run-label";
-import { ANY_SYSTEM, f1, findSystem, int, moduleFromSlug, pct1, systemForModule, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
+import { ANY_SYSTEM, f1, findSystem, int, moduleFromSlug, moduleSlug, pct1, systemForModule, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { Explain } from "../Explain";
 import { VerdictMark } from "../marks";
 import { ObjectBanner, DimensionBars } from "./object/Banner";
@@ -366,9 +366,14 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               {onOverview && !oldRun ? (
                 <PrimaryAction
                   action={
-                    <V2Link className="m2-btn m2-strong" href={`${base}${cell.open_work ? "/records" : "/rules"}${query}`}>
-                      {cell.open_work ? tr("Open the failing records") : tr("Open the rules")}
-                    </V2Link>
+                    <>
+                      <V2Link className="m2-btn m2-strong" href={`${base}${cell.open_work ? "/records" : "/rules"}${query}`}>
+                        {cell.open_work ? tr("Open the failing records") : tr("Open the rules")}
+                      </V2Link>
+                      <V2Link className="m2-btn" href={`/issues?module=${moduleSlug(apiModule)}`} data-testid="object-issues">
+                        {tr("Open the issues")}
+                      </V2Link>
+                    </>
                   }
                   why={cell.open_work ? tr("{n} records fail at least one rule, so fixing them is what moves this score.", { n: int(cell.open_work) }) : tr("No record is waiting for a fix. The rules show what was measured and how.")}
                 />

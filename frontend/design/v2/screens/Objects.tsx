@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import type { Landscape, LandscapeCell, LandscapeSystem } from "@/lib/api/v2/types";
 import { useRunParam } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { runLabel } from "@/lib/v2/run-label";
-import { f1, int, moduleSlug, systemSlug } from "@/lib/v2/score";
+import { f1, int, moduleFromSlug, moduleSlug, systemSlug } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { Money } from "../Money";
 import { ObjectTrend } from "../ObjectTrend";
@@ -109,7 +110,10 @@ function SystemBlock({ L, system, pinned }: { L: Landscape; system: LandscapeSys
 export function ObjectsCanvas() {
   const run = useRunParam();
   const q = useLandscape(run);
-  const L = q.data;
+  const raw = useSearchParams().get("module");
+  const only = raw ? moduleFromSlug(raw) : null;
+  // `?module=` narrows the board to one object on every system; the landscape API has no module filter.
+  const L = useMemo(() => (q.data && only ? { ...q.data, cells: q.data.cells.filter((c) => c.module === only), objects: q.data.objects.filter((o) => o.module === only) } : q.data), [q.data, only]);
   const w = useMemo(() => (L ? worst(L) : null), [L]);
   if (q.isError) {
     return (
@@ -122,7 +126,8 @@ export function ObjectsCanvas() {
     );
   }
   if (!L) return <CanvasSkeleton blocks={3} />;
-  const systems = L.systems.filter((s) => s.state !== "not_extracted" || L.cells.some((c) => c.system_id === s.id));
+  const systems = L.systems.filter((s) => (only ? L.cells.some((c) => c.system_id === s.id) : s.state !== "not_extracted" || L.cells.some((c) => c.system_id === s.id)));
+  const onlyLabel = only ? (L.objects[0]?.label ?? only) : null;
   const n = L.cells.length;
   return (
     <>
@@ -134,6 +139,11 @@ export function ObjectsCanvas() {
             ? t("{n} objects across {s} systems, as scored by the one run you pinned. Scores are out of 100.", { n, s: systems.length })
             : t("{n} objects across {s} systems, each at its own newest finished run. Scores are out of 100.", { n, s: systems.length })}
       </Lede>
+      {only ? (
+        <div className="m2-banner" role="status" data-testid="objects-module-filter">
+          {L.objects.length ? t("Showing {object} only, on every system that scored it.", { object: onlyLabel }) : t("No system has scored {object} yet.", { object: only })} <V2Link href={run ? `/objects?run=${run}` : "/objects"}>{t("Show all objects")}</V2Link>
+        </div>
+      ) : null}
       {run ? (
         <div className="m2-banner" role="status">
           {t("Pinned to one run. Pinned scores come from that run only.")} <V2Link href="/objects">{t("Show each object at its newest run")}</V2Link>

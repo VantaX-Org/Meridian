@@ -12,7 +12,7 @@ import { f1, int, moduleFromSlug } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { ResultFrame, useOutcome } from "../../inspector/shared";
 import { useToast } from "../../Toast";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, SapCode } from "../../parts";
 import { ScrollFrame } from "./ScrollFrame";
 import { TableExport } from "@/design/v2/TableExport";
 
@@ -44,7 +44,7 @@ function TableBlock({ tp }: { tp: TableProfile }) {
     <section className="m2-sec" aria-label={t("Fields of {table}", { table: tp.table })}>
       <div className="m2-sechead">
         <h2 className="m2-h2">
-          <Mono>{tp.table}</Mono>
+          <SapCode table={tp.table} />
         </h2>
         <span className="m2-sub">
           {tp.sampled

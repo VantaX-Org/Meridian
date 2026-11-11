@@ -119,7 +119,9 @@ export function MaintenanceBlock() {
                   </li>
                 ))}
               </ul>
-            ) : null}
+            ) : (
+              <p className="m2-meta" data-testid="maint-none">{t("No maintenance window is scheduled.")}</p>
+            )}
             <Editor key={JSON.stringify(m.windows)} initial={m.windows} />
           </>
         )}
