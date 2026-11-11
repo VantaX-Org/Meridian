@@ -258,7 +258,7 @@ function TrendPanel() {
   );
 }
 
-const ENGINE_OFF: Record<EngineOffReason, () => string> = {
+export const ENGINE_OFF: Record<EngineOffReason, () => string> = {
   too_few_runs: () => t("Three scored runs are needed before the engine can learn from the trend."),
   not_configured: () => t("This deployment runs without its Aletheia engine. An administrator can set it up."),
   unreachable: () => t("The Aletheia engine does not answer. The rest of this page is not affected."),
