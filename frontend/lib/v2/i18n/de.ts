@@ -8608,7 +8608,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The run could not be started.": "Der Lauf konnte nicht gestartet werden.",
   "{n} columns in this workbook were not in the extraction. Meridian has added them, so the next run fetches them from the source system.": "{n} Spalten dieser Arbeitsmappe waren nicht in der Extraktion. Meridian hat sie hinzugefügt, damit der nächste Lauf sie aus dem Quellsystem abruft.",
   "Columns added to the extraction": "Zur Extraktion hinzugefügte Spalten",
-  "A new run has started. When it finishes, choose it above and check the workbook again.": "Ein neuer Lauf wurde gestartet. Wählen Sie ihn nach Abschluss oben aus und prüfen Sie die Arbeitsmappe erneut.",
+  "A new run has started. When it finishes, Meridian checks the workbook again on it, so the added columns are filled.": "Ein neuer Lauf wurde gestartet. Nach Abschluss prüft Meridian die Arbeitsmappe erneut mit diesem Lauf, damit die hinzugefügten Spalten gefüllt werden.",
   "Starting the run": "Lauf wird gestartet",
   "Update the run": "Lauf aktualisieren",
   "Ask someone who can start extractions to update the run.": "Bitten Sie eine Person, die Extraktionen starten darf, den Lauf zu aktualisieren.",

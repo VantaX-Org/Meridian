@@ -8607,7 +8607,7 @@ export const en = {
   "The run could not be started.": "The run could not be started.",
   "{n} columns in this workbook were not in the extraction. Meridian has added them, so the next run fetches them from the source system.": "{n} columns in this workbook were not in the extraction. Meridian has added them, so the next run fetches them from the source system.",
   "Columns added to the extraction": "Columns added to the extraction",
-  "A new run has started. When it finishes, choose it above and check the workbook again.": "A new run has started. When it finishes, choose it above and check the workbook again.",
+  "A new run has started. When it finishes, Meridian checks the workbook again on it, so the added columns are filled.": "A new run has started. When it finishes, Meridian checks the workbook again on it, so the added columns are filled.",
   "Starting the run": "Starting the run",
   "Update the run": "Update the run",
   "Ask someone who can start extractions to update the run.": "Ask someone who can start extractions to update the run.",
