@@ -28,6 +28,24 @@ def test_blank_template_parses_back_fully_matched(module):
     assert cov["columns"] == len(listing) and cov["matched"] == cov["columns"]
 
 
+def test_employee_central_blank_template_uses_the_sf_layout_and_covers_every_field():
+    rules = module_rules("employee_central")
+    tabs = wb.blank_template(D, rules, {})
+    assert "Field List" not in tabs and "EmpJob" in tabs and "EmpJob Values (EMPJOBHIST)" in tabs
+    assert all(len(name) <= 31 and "*" not in name for name in tabs)  # Excel tab names
+    book = wb.parse_workbook(to_xlsx(tabs, sanitize_formulas=True), "blank.xlsx")
+    cov = wb.coverage(book, D)
+    assert cov["columns"] and cov["matched"] == cov["columns"]
+    wanted = {r["field"] for r in rules if isinstance(r.get("field"), str) and D.resolve(r["field"]) is not None}
+    wanted |= {f"{t}.{k}" for t in {w.split(".")[0] for w in wanted} for k in D.tables[t].keys}
+    resolved = set()
+    for sheet in book.sheets:  # each grid loads the table it names, so every rule field and key lands somewhere
+        options = wb._candidates(sheet, D)
+        table = max(options, key=lambda t: (len(options[t]), t == wb._named_table(sheet)), default=None)
+        resolved |= {f.qualified for f in options.get(table, {}).values()}
+    assert wanted and wanted <= resolved
+
+
 def test_blank_template_carries_rule_values_and_required_keys():
     tabs = wb.blank_template(D, module_rules("material_master"), {})
     mara = tabs["Field List"].set_index(["SAP Structure", "SAP Field"])

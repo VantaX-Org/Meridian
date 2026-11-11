@@ -444,6 +444,12 @@ def _by_field(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field
     return named | {t: h for t, h in bare.items() if len(h) >= 2 and t not in named}
 
 
+def _named_table(sheet: Sheet) -> str:
+    """The table a grid names in brackets, as "EmpJob Values (EMPJOBHIST)" does: it breaks a tie between tables."""
+    found = re.search(r"\(([A-Z][A-Z0-9_/]*)\)\s*$", sheet.raw or sheet.name)
+    return found.group(1) if found else ""
+
+
 def _candidates(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field]]:
     """The matched tables of a sheet, with the columns a person mapped by hand added to their table.
 
@@ -472,7 +478,7 @@ def coverage(workbook: Workbook, dictionary: Dictionary) -> dict:
     sheets = []
     for sheet in workbook.sheets:
         options = _candidates(sheet, dictionary)
-        table = max(options, key=lambda t: len(options[t]), default=None)
+        table = max(options, key=lambda t: (len(options[t]), t == _named_table(sheet)), default=None)
         hits = options.get(table, {})
         sheets.append({"name": sheet.name, "table": table, "columns": len(sheet.columns), "matched": len(hits),
                        "unmapped": [{"header": c.header, "id": c.id, "label": c.label, "mandatory": c.mandatory}
@@ -734,7 +740,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                 live = {h: f for h, f in found.items() if f.qualified in held_table.columns}
                 if live:
                     present[name] = live
-        table = max(present, key=lambda t: len(present[t]), default=None)
+        table = max(present, key=lambda t: (len(present[t]), t == _named_table(sheet)), default=None)
         hits = dict(present[table]) if table else {}
         # A sheet that spans several entities (a contingent worker's name, email and assignment) takes the columns
         # its main table lacks from another table, joined on that table's key. Only when the main table holds one
@@ -901,7 +907,9 @@ def blank_template(dictionary: Dictionary, rules: list[dict], target_values: dic
     The Field List names every field the module's rules read, plus each table's keys, with its description, whether
     it is required (a key or a field a completeness rule checks), its type and length, and the values it may take: the
     rule's own list first, then the domain's fixed values, then the target's check table values. One data sheet per
-    table carries the field ids in row 1 and their descriptions in row 2. Only dictionary fields are listed."""
+    table carries the field ids in row 1 and their descriptions in row 2. Only dictionary fields are listed.
+
+    A SuccessFactors module gets the SuccessFactors import layout instead (see _sf_template)."""
     wanted: dict[str, set[str]] = {}
     required: set[str] = set()
     ruled: dict[str, list[str]] = {}
@@ -918,23 +926,96 @@ def blank_template(dictionary: Dictionary, rules: list[dict], target_values: dic
         values = rule.get("valid_values") or list((rule.get("valid_values_with_labels") or {}).keys())
         if values and ref not in ruled:
             ruled[ref] = [str(v) for v in values]
+
+    def values_of(f: Field) -> str:
+        values = ruled.get(f.qualified) or sorted(f.allowed_values() or target_values.get(f.check_ref or "", set()))
+        return ", ".join(values) if 0 < len(values) <= VALUES_SHOWN else ""
+
+    def columns_of(table: str) -> list[Field]:
+        t = dictionary.tables[table]
+        return [t.fields[n] for n in [k for k in t.keys if k in t.fields] + sorted(wanted[table] - set(t.keys))]
+
+    if any("." in (f.source or "") for table in wanted for f in columns_of(table)):
+        return _sf_template(dictionary, {t: columns_of(t) for t in sorted(wanted)}, required, values_of)
     listing, sheets = [], {}
     for table in sorted(wanted):
         t = dictionary.tables[table]
-        names = [k for k in t.keys if k in t.fields] + sorted(wanted[table] - set(t.keys))
         sheet = table[:31].replace("/", "_")
-        for name in names:
-            f = t.fields[name]
-            values = ruled.get(f.qualified) or sorted(f.allowed_values() or target_values.get(f.check_ref or "", set()))
+        fields = columns_of(table)
+        for f in fields:
             kind = "Date" if f.type == "DATS" else "Number" if (f.type or "") in _NUMERIC else "Text"
             listing.append({
-                "Sheet Name": sheet, "SAP Structure": table, "SAP Field": name, "Field Description": f.description,
-                "Importance": "Mandatory" if name in t.keys or f.qualified in required else "Optional",
-                "Type": kind, "Length": f.length or "",
-                "Allowed values": ", ".join(values) if 0 < len(values) <= VALUES_SHOWN else "",
-                "Check table": f.check_ref or "",
+                "Sheet Name": sheet, "SAP Structure": table, "SAP Field": f.name, "Field Description": f.description,
+                "Importance": "Mandatory" if f.name in t.keys or f.qualified in required else "Optional",
+                "Type": kind, "Length": f.length or "", "Allowed values": values_of(f), "Check table": f.check_ref or "",
             })
-        sheets[sheet] = pd.DataFrame([[t.fields[n].description for n in names]], columns=names)
+        sheets[sheet] = pd.DataFrame([[f.description for f in fields]], columns=[f.name for f in fields])
     return {"Field List": pd.DataFrame(listing, columns=[
         "Sheet Name", "SAP Structure", "SAP Field", "Field Description", "Importance", "Type", "Length",
         "Allowed values", "Check table"])} | sheets
+
+
+_SF_TYPES = {"DATE": "date", "DATETIME": "date", "INTEGER": "long", "DECIMAL": "decimal", "BOOLEAN": "boolean"}
+# A country-specific entity set loads through the sheet the import templates name it by, never by its own name.
+_SF_SHEETS = {"FOJobClassLocal*": "CSF Job Classification", "FOLegalEntityLocal*": "CSF Legal Entity",
+              "PerGlobalInfo*": "CSF Personal Info Global Info"}
+
+
+def _sf_grid_name(sheet: str, table: str, split: bool) -> Optional[str]:
+    """A grid's tab name, within the 31 characters Excel allows. A split grid names its table in brackets."""
+    names = [f"{sheet} Values ({table})", f"{sheet} Data ({table})"] if split else [f"{sheet} Values", f"{sheet} Data"]
+    return next((name for name in names if len(name) <= 31 and len(sheet) <= 31), None)
+
+
+def _sf_template(dictionary: Dictionary, tables: dict[str, list[Field]], required: set[str], values_of) -> dict:
+    """The SuccessFactors import layout: per entity, a definition sheet and a grid of its property ids.
+
+    An entity spread over several tables gets one grid per table, named "<Entity> Values (<TABLE>)", so each grid
+    loads one table. A field with no SuccessFactors property (an ECC infotype), or whose entity cannot name a tab
+    (its name, with the table, is longer than Excel allows), goes on a technical grid of TABLE-FIELD ids. Only
+    dictionary fields are written, so no field name is guessed."""
+    def entity(f: Field) -> str:
+        return f.source.split(".", 1)[0] if "." in (f.source or "") else ""
+
+    spread: dict[str, set[str]] = {}
+    for table, fields in tables.items():
+        for f in fields:
+            if entity(f):
+                spread.setdefault(entity(f), set()).add(table)
+    definitions: dict[str, dict[str, dict]] = {}
+    grids: dict[str, dict[str, Field]] = {}
+    for table, fields in tables.items():
+        t = dictionary.tables[table]
+        keys = [f for f in fields if f.name in t.keys]
+        technical = [f for f in fields if not entity(f)]
+        for name in sorted({entity(f) for f in fields if entity(f)}):
+            sheet = _SF_SHEETS.get(name, name)
+            own = [f for f in fields if entity(f) == name]
+            grid = "*" not in sheet and _sf_grid_name(sheet, table, len(spread[name]) > 1)
+            if not grid:
+                technical += own
+                continue
+            columns = grids.setdefault(grid, {})
+            for f in keys + own:  # a key is written once, by its own property name
+                columns.setdefault(f.source.split(".", 1)[1].split(" ")[0] if entity(f) else f.name, f)
+            rows = definitions.setdefault(sheet, {})
+            for prop, f in columns.items():
+                row = rows.setdefault(prop, {
+                    "System Field ID": prop, "SF Label": f.description,
+                    "Type": "picklist" if f.picklist else _SF_TYPES.get((f.type or "").upper(), "string"),
+                    "Max Length": f.length or "", "Mandatory": "", "Picklist": f.picklist or "",
+                    "Allowed values": values_of(f), "SAP Structure": [], "SAP Field": []})
+                if f.name in t.keys or f.qualified in required:
+                    row["Mandatory"] = "Yes"
+                if f.qualified not in {f"{a}.{b}" for a, b in zip(row["SAP Structure"], row["SAP Field"])}:
+                    row["SAP Structure"].append(table)
+                    row["SAP Field"].append(f.name)
+        if technical:
+            columns = grids.setdefault(f"SAP {table} Data"[:31], {})
+            for f in keys + [f for f in technical if f not in keys]:
+                columns.setdefault(f"{table}-{f.name}", f)
+    out = {sheet: pd.DataFrame([r | {"SAP Structure": ", ".join(r["SAP Structure"]),
+                                     "SAP Field": ", ".join(r["SAP Field"])} for r in rows.values()])
+           for sheet, rows in definitions.items()}
+    return out | {grid: pd.DataFrame([[f.description for f in columns.values()]], columns=list(columns))
+                  for grid, columns in grids.items()}
