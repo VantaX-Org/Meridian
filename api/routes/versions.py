@@ -33,6 +33,12 @@ logger = logging.getLogger("meridian.versions")
 # Raw statuses the run ledger reads as "failed" (frontend/design/primitives/Status.tsx LIFECYCLE_ALIAS), so the
 # server-side filter and the Status pill agree on which runs are failed.
 FAILED_STATUSES: tuple[str, ...] = ("failed", "agents_failed", "error", "errored")
+# the Runs screen's status filter groups, the same grouping as its status words
+STATUS_GROUPS: dict[str, tuple[str, ...]] = {
+    "failed": FAILED_STATUSES,
+    "complete": ("complete", "agents_complete", "ai_enriched"),
+    "active": ("pending", "running"),
+}
 
 
 class VersionResponse(BaseModel):
@@ -140,8 +146,9 @@ async def list_versions(
     module: Optional[str] = Query(None),
     system_id: Optional[str] = Query(None, description="Only versions downloaded from this system"),
     include_archived: bool = Query(False),
-    status: Optional[Literal["failed"]] = Query(
-        None, description="`failed`: only runs that failed (status failed, agents_failed, error or errored)"),
+    status: Optional[Literal["failed", "complete", "active"]] = Query(
+        None, description="`failed`: only runs that failed (status failed, agents_failed, error or errored); "
+                          "`complete`: complete, agents_complete or ai_enriched; `active`: pending or running"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -161,8 +168,8 @@ async def list_versions(
         )
     if system_id:
         stmt = stmt.where(AnalysisVersion.metadata_.op("->>")("system_id") == system_id)
-    if status == "failed":
-        stmt = stmt.where(AnalysisVersion.status.in_(FAILED_STATUSES))
+    if status:
+        stmt = stmt.where(AnalysisVersion.status.in_(STATUS_GROUPS[status]))
     # total of the filtered set, so a capped list can say "N of total" instead of silently stopping
     total = (await db.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))).scalar() or 0
     col = getattr(AnalysisVersion, order_by(sort, {k: k for k in ("run_at", "run_number", "label", "status")}, "-run_at").split()[0])

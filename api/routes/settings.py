@@ -38,9 +38,8 @@ class AlertThresholds(BaseModel):
     # module -> minimum DQS; an analysis scoring a module below its floor raises an alert
     module_floors: dict[str, Annotated[float, Field(ge=0, le=100)]] = Field(default_factory=dict)
     # readiness grid (api/services/insights_readiness.py): DQS floor for a module/wave cell
-    # to read "ready", and the tenant's wave -> [module] grouping for that grid.
+    # to read "ready". The waves themselves live in the migration_waves table (migration 068).
     readiness_dqs_threshold: int = Field(int(DEFAULT_THRESHOLDS["warning"]), ge=0, le=100)
-    readiness_waves: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class PlannerConfig(BaseModel):

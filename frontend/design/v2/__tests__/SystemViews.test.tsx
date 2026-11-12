@@ -143,6 +143,16 @@ describe("Configuration", () => {
     fireEvent.click(within(table).getByRole("button", { name: /T001 Company codes/ }));
     const rows = await within(dialog).findByTestId("config-items");
     expect(within(rows).getByText("Meridian Holdings")).toBeInTheDocument();
+    expect(within(dialog).queryByTestId("config-items-cap")).toBeNull();   // all 4 rows are listed
+  });
+
+  it("an object holding more rows than the read returned says how many are shown", async () => {
+    open(`config:${ECC.id}:enterprise_structure`);
+    const dialog = await screen.findByRole("dialog", { name: "Enterprise structure" });
+    const table = await within(dialog).findByTestId("area-objects");
+    fireEvent.click(within(table).getByRole("button", { name: /T001W Plants/ }));
+    await within(dialog).findByTestId("config-items");
+    expect(within(dialog).getByTestId("config-items-cap")).toHaveTextContent("The first 3 of 11");
   });
 
   it("a failed object says why and falls back to the baseline", async () => {
