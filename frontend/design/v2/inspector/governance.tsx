@@ -251,9 +251,10 @@ export function DryRunBlock({ systemId, objects }: { systemId: string; objects: 
     <section className="m2-rsec" aria-label={tr("Dry run")} data-testid="dry-run">
       <h3>{tr("Dry run")}</h3>
       <p className="m2-meta">{tr("What an extraction of {what} would read, without reading it.", { what: objects.length ? tr("{objectsCount} {objectsCount, plural, one {object} other {objects}}", { objectsCount: objects.length }) : tr("the chosen objects") })}</p>
-      <button type="button" className="m2-btn m2-sm" disabled={!allowed || !objects.length || busy !== null} onClick={() => void run()} title={!allowed ? tr("Needs the trigger sync permission") : undefined}>
+      <button type="button" className="m2-btn m2-sm" disabled={!allowed || !objects.length || busy !== null} onClick={() => void run()} aria-describedby={!allowed ? "dry-run-why" : undefined}>
         {busy === "dry" ? tr("Counting…") : tr("Dry run")}
       </button>
+      {!allowed ? <p id="dry-run-why" className="m2-prov">{tr("Needs the trigger sync permission")}</p> : null}
       {error ? (
         <p className="m2-err" role="alert">
           {error}
@@ -286,8 +287,8 @@ export function DryRunBlock({ systemId, objects }: { systemId: string; objects: 
             </table>
           </div>
           <h3>{tr("Changes only")}</h3>
-          <p className="m2-meta">{plan.delta.reason}</p>
-          <button type="button" className="m2-btn m2-sm" disabled={!plan.delta.available || busy !== null} onClick={() => void delta()} title={plan.delta.available ? undefined : plan.delta.reason}>
+          <p className="m2-meta" id="dry-run-delta-why">{plan.delta.reason}</p>
+          <button type="button" className="m2-btn m2-sm" disabled={!plan.delta.available || busy !== null} onClick={() => void delta()} aria-describedby={plan.delta.available ? undefined : "dry-run-delta-why"}>
             {busy === "delta" ? tr("Starting…") : tr("Extract changes only")}
           </button>
           {started ? <p role="status">{started}</p> : null}

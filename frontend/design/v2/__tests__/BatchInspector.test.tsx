@@ -145,7 +145,7 @@ describe("the batch inspector", () => {
     mount("B-244");
     const insp = await body("Batch B-244");
     expect(within(insp).getByRole("button", { name: "Approve batch B-244" })).toBeDisabled();
-    expect(within(insp).getByText("You built this batch, so a second person approves it.")).toBeInTheDocument();
+    expect(within(insp).getByRole("button", { name: "Approve batch B-244" })).toHaveAccessibleDescription("You built this batch; a second person approves it.");
   });
 
   it("an approved batch offers Send to SAP: the file it handed over is shown in the frame, with the checksum", async () => {
@@ -350,6 +350,11 @@ describe("live write-back of an approved batch", () => {
     await waitFor(() => expect(within(live).queryByTestId("writeback-pause")).toBeNull());
     const cancel = vi.spyOn(batchApi, "cancelBatchRun");
     fireEvent.click(within(live).getByRole("button", { name: "Cancel run" }));
+    // Cancelling asks first, naming what stops and what stays committed.
+    const ask = await within(live).findByTestId("confirm-bar");
+    expect(text(ask)).toContain("The write-back of batch");
+    expect(cancel).not.toHaveBeenCalled();
+    fireEvent.click(within(ask).getByRole("button", { name: "Cancel run" }));
     await waitFor(() => expect(cancel).toHaveBeenCalledWith("B-236"));
     await waitFor(() => expect(fact(live, "Run status")).toContain("Cancelled"), { timeout: 8000 });
   }, 20000);
