@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
-  checkTargetWorkbook, checkTemplate, deleteFieldMapping, downloadBlankTemplate, downloadTemplateFile, exportTemplate, getTemplateFields, getTemplates, saveTemplateMapping, uploadTemplate, type TargetTemplate, deleteMigrationRun, deleteValueEntry, decideValueEntry, exportLoadFiles, exportTargetWorkbook, extractMigrationTarget, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
+  checkTargetWorkbook, checkTemplate, deleteFieldMapping, downloadBlankTemplate, downloadTemplateFile, exportTemplate, getTemplateFields, getTemplates, saveTemplateMapping, uploadTemplate, type TargetTemplate, deleteMigrationRun, deleteValueEntry, decideValueEntry, exportDryRunReport, exportLoadFiles, exportTargetWorkbook, extractMigrationTarget, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
   getMigrationRecords, getMigrationRun, getMigrationRuns, getReconciliation, getReconciliationRecords, getValueCandidates, getValueMap,
   saveValueMap, seedFieldMap, startMigration, startReconciliation, updateFieldMapping, type FieldDef, type MigrationMode, type WorkbookFormat, type MigrationRun,
   type ReconKind,
@@ -673,14 +673,29 @@ function LoadFilesPanel({ run }: { run: MigrationRun }) {
     },
     onError: (e) => toast.show(errorSentence(e, t("The load files could not be prepared.")), "error"),
   });
+  const report = useMutation({
+    mutationFn: (fmt: "xlsx" | "pdf") => exportDryRunReport(run.id, fmt),
+    onSuccess: (name) => toast.show(t("Report saved as {name}", { name })),
+    onError: (e) => toast.show(errorSentence(e, t("The dry-run report could not be prepared.")), "error"),
+  });
   if (!can("export") || shared || viewAs) return null;
   return (
+    <>
+    {run.mode === "s4_dry_run" && run.status === "analysed" ? (
+      <Panel title={t("Dry-run report")} meta={t("Summary, rules hit and the records that fail to load")} testId="mig-dry-run-report">
+        <p>
+          <button type="button" className="m2-btn" disabled={report.isPending} onClick={() => report.mutate("xlsx")}>{t("Download as Excel")}</button>{" "}
+          <button type="button" className="m2-btn" disabled={report.isPending} onClick={() => report.mutate("pdf")}>{t("Download as PDF")}</button>
+        </p>
+      </Panel>
+    ) : null}
     <Panel title={t("Load files")} meta={t("Records without blocking gaps, shaped for the target system")} testId="mig-load-files">
       <p>
         <button type="button" className="m2-btn" disabled={exp.isPending} onClick={() => exp.mutate("csv")}>{t("Download as CSV files")}</button>{" "}
         <button type="button" className="m2-btn" disabled={exp.isPending} onClick={() => exp.mutate("xlsx")}>{t("Download as Excel")}</button>
       </p>
     </Panel>
+    </>
   );
 }
 

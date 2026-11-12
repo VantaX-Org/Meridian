@@ -201,6 +201,22 @@ describe("the batch inspector", () => {
     expect(await screen.findByText(/Reassigned \d+ records of batch B-241 to A\. Naidoo/)).toBeInTheDocument();
   });
 
+  it("reassigns the whole batch through the dedicated route and says how many records moved", async () => {
+    const re = vi.spyOn(batchApi, "reassignBatch");
+    mount("B-241");
+    const insp = await body("Batch B-241");
+    fireEvent.click(within(insp).getByRole("button", { name: "Reassign batch B-241" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /A\. Naidoo/ }));
+    await waitFor(() => expect(re).toHaveBeenCalledWith("B-241", "u-an"));
+    expect(await screen.findByText(/Batch B-241: 3 records reassigned to A\. Naidoo/)).toBeInTheDocument();
+  });
+
+  it("offers no whole-batch reassign to a role without assign", async () => {
+    mount("B-241", "&role=viewer");
+    const viewer = await body("Batch B-241");
+    expect(within(viewer).queryByRole("button", { name: "Reassign batch B-241" })).toBeNull();
+  });
+
   it("a role that cannot approve sees no Approve, and is told why", async () => {
     mount("B-241", "&role=viewer");
     const insp = await body("Batch B-241");

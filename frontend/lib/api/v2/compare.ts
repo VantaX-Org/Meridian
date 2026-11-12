@@ -94,6 +94,8 @@ export const deletePair = (id: string) => v2Send<{ deleted: string }>("DELETE", 
 export const runPair = (id: string) => v2Send<{ comparison_id: string; task_id: string; status: CompareStatus }>("POST", `${P}/pairs/${id}/run`);
 export const getLatest = (id: string) => v2Get<{ pair: ComparePair; comparison: Comparison | null }>(`${P}/pairs/${id}/latest`);
 export const getTrend = (id: string) => v2Get<{ points: TrendPointRow[] }>(`${P}/pairs/${id}/trend`);
+/** GET /compare/comparisons/{cid}: one saved comparison with its summary, tables, config and scores. */
+export const getComparison = (cid: string) => v2Get<Comparison>(`${P}/comparisons/${encodeURIComponent(cid)}`);
 export const getDifferences = (cid: string, q: DiffQuery) => v2Get<DiffPage>(`${P}/comparisons/${cid}/differences`, { ...q });
 export const getRecordPair = (cid: string, table: string, key: string) => v2Get<RecordPair>(`${P}/comparisons/${cid}/pair`, { table, key });
 export const exportComparison = (cid: string, format: "xlsx" | "csv", q: DiffQuery) =>

@@ -417,6 +417,24 @@ export async function createObjectContract(body: { name: string; module: string;
   return { id: made.id };
 }
 
+/** GET /contracts/{id}/breaches (view): where the contract's thresholds are breached now, and the runs that breached them before. */
+export interface ContractBreachList {
+  contract_id: string; name: string; status: string; enforce: boolean; thresholds: ContractThresholds;
+  current: (ContractBreach & { run_id?: string | null; system_id?: string | null; module?: string | null })[];
+  history: { run_id: string | null; run_at: string | null; module: string | null; metric: string; threshold: number; actual: number | null; enforced: boolean; created_at: string | null }[];
+}
+export const getContractBreaches = (id: string): Promise<ContractBreachList> => v2Get(`/contracts/${encodeURIComponent(id)}/breaches`);
+
+/** One row of contract_compliance_history (GET /contracts/{id}/compliance): the six dimension scores of one check. */
+export interface ContractComplianceRow {
+  id: string; contract_id: string; version_id: string | null;
+  completeness_actual: number | null; accuracy_actual: number | null; consistency_actual: number | null;
+  timeliness_actual: number | null; uniqueness_actual: number | null; validity_actual: number | null;
+  overall_compliant: boolean; violations: unknown; recorded_at: string;
+}
+export const getContractCompliance = (id: string, days = 90): Promise<{ contract_id: string; compliance_history: ContractComplianceRow[] }> =>
+  v2Get(`/contracts/${encodeURIComponent(id)}/compliance`, { days });
+
 /** The 409 of a refused baseline pin: the sentence and the breaches of the enforced contracts. */
 export interface BaselineRefusal {
   detail: string;

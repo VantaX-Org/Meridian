@@ -23,6 +23,7 @@ import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { WorkTabs } from "./WorkTabs";
+import { NewExceptionRule, RaiseException } from "./ExceptionForms";
 import { TableExport } from "@/design/v2/TableExport";
 
 /**
@@ -150,6 +151,7 @@ export function Exceptions() {
           { label: t("Resolve"), count: int(m.resolved_count), hint: t("Record how it was fixed and the root cause. The count shows resolved ones.") },
         ]}
       />
+      <RaiseException />
       <div className="m2-rfilters" role="group" aria-label={t("Show exceptions by status")} data-testid="exceptions-tabs">
         {(["", ...EXCEPTION_STATUSES] as const).map((s) => (
           <button key={s || "all"} type="button" className="m2-btn" aria-pressed={tab === s} onClick={() => { setView(s || "all"); setPage(1); }}>
@@ -408,6 +410,7 @@ function Rules() {
   const list = rules.data.rules;
   return (
     <Panel title={t("Rules that raise exceptions")} meta={t("{n} on, {m} off", { n: int(list.filter((r) => r.is_active).length), m: int(list.filter((r) => !r.is_active).length) })} testId="exceptions-rules">
+      <NewExceptionRule />
       {list.length === 0 ? (
         <EmptyFrame>{t("No exception rules are defined yet.")}</EmptyFrame>
       ) : (

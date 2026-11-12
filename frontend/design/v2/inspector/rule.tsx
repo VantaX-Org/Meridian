@@ -7,6 +7,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type FormEvent
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { checkClassLabel, formatDate } from "@/lib/format";
 import { useFixture } from "@/lib/api/v2/fixture";
+import { getRuleReads } from "@/lib/api/v2/lineage";
 import { getObjectRules, getReceipt } from "@/lib/api/v2/landscape";
 import { downloadReconciliationWorkbook, handOffRule, noteProved, suppressRule, type Reconcile, type ReconcileCondition, type RuleRun, type RuleScope, type SelectionLine } from "@/lib/api/v2/object";
 import type { Landscape, Receipt, RuleRow } from "@/lib/api/v2/types";
@@ -333,10 +334,35 @@ export function Lineage({ view }: { view: RuleView }) {
   );
 }
 
+/** GET /lineage/rule/{id}: the columns the rule reads, the tables behind them, the joins between those tables and the glossary terms it backs. */
+function RuleReads({ id }: { id: string }) {
+  const fx = useFixture();
+  const q = useQuery({ queryKey: ["v2", "rule-reads", fx, id], queryFn: () => getRuleReads(id), retry: false });
+  if (!q.data) return null;
+  const r = q.data;
+  return (
+    <div data-testid="rule-reads">
+      <p className="m2-meta">{tr("Reads")}: {r.fields.map((f) => <Mono key={f}>{f} </Mono>)}</p>
+      {r.targets.length > 0 ? <p className="m2-meta">{tr("Looks up")}: {r.targets.map((f) => <Mono key={f}>{f} </Mono>)}</p> : null}
+      {r.joins.length > 0 ? (
+        <ul className="m2-rows">
+          {r.joins.map((j) => (
+            <li key={`${j.parent}>${j.child}`}>
+              <Mono>{j.parent}</Mono> {tr("to")} <Mono>{j.child}</Mono> <span className="m2-meta">{j.cardinality}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {r.glossary_terms.length > 0 ? <p className="m2-meta">{tr("Glossary terms")}: {r.glossary_terms.map((g) => g.business_name).join(", ")}</p> : null}
+    </div>
+  );
+}
+
 export function RuleLineage({ view }: { view: RuleView }) {
   return (
     <Sec title={tr("Lineage")}>
       <Lineage view={view} />
+      <RuleReads id={view.id} />
     </Sec>
   );
 }

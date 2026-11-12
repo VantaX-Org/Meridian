@@ -92,6 +92,21 @@ export function exceptionsRead(path: string, params: Record<string, unknown>): u
 
 export function exceptionsWrite(method: string, path: string, body: unknown): unknown {
   const b = (body ?? {}) as Record<string, unknown>;
+  if (method === "POST" && path === "/exceptions") {
+    const id = `exc-${state().length + 1}`;
+    state().push({
+      id, type: String(b.type), category: String(b.category), severity: String(b.severity), status: "open", title: String(b.title), description: String(b.description),
+      source_system: null, source_reference: null, affected_records: null, estimated_impact_zar: null, assigned_to: null, escalation_tier: 1,
+      sla_deadline: ahead(SLA_HOURS[String(b.severity)] ?? 72), root_cause_category: null, resolution_type: null, resolution_notes: null,
+      linked_finding_id: null, created_at: new Date().toISOString(), resolved_at: null, comments: [], linked_finding: null,
+    });
+    return { id, status: "open" };
+  }
+  if (method === "POST" && path === "/exceptions/rules") {
+    const id = `xr-${ruleState().length + 1}`;
+    ruleState().push({ id, name: String(b.name), description: String(b.description), rule_type: String(b.rule_type), object_type: String(b.object_type), condition: String(b.condition), severity: String(b.severity), auto_assign_to: (b.auto_assign_to as string) ?? null, is_active: false });
+    return { id, is_active: false };
+  }
   const rule = /^\/exceptions\/rules\/([^/]+)$/.exec(path);
   if (method === "PUT" && rule) {
     const r = ruleState().find((x) => x.id === rule[1]) ?? refuse("Rule not found", 404);

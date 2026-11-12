@@ -91,4 +91,43 @@ describe("Exceptions", () => {
     expect(await screen.findByText("The exceptions could not be read.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
+
+  it("raises an exception by hand and shows it in the table", async () => {
+    renderWithQuery(<Exceptions />);
+    await screen.findByTestId("exceptions-table");
+    fireEvent.click(screen.getByTestId("raise-exception-open"));
+    const form = await screen.findByRole("form", { name: "Raise an exception" });
+    const submit = within(form).getByRole("button", { name: "Raise exception" });
+    expect(submit).toBeDisabled();
+    const boxes = within(form).getAllByRole("textbox");
+    fireEvent.change(boxes[0], { target: { value: "Price list gap for new plant" } });
+    fireEvent.change(boxes[1], { target: { value: "pricing" } });
+    fireEvent.change(boxes[2], { target: { value: "No price for plant 4100" } });
+    fireEvent.click(submit);
+    await waitFor(() => expect(screen.getByTestId("exceptions-table").textContent).toContain("Price list gap for new plant"));
+  });
+
+  it("creates an exception rule that starts off", async () => {
+    renderWithQuery(<Exceptions />);
+    fireEvent.click(await screen.findByTestId("new-rule-open"));
+    const form = await screen.findByTestId("new-rule");
+    const submit = within(form).getByRole("button", { name: "Create rule" });
+    expect(submit).toBeDisabled();
+    const boxes = within(form).getAllByRole("textbox");
+    fireEvent.change(boxes[0], { target: { value: "Blocked material receipt" } });
+    fireEvent.change(boxes[1], { target: { value: "Receipt on a blocked material" } });
+    fireEvent.change(boxes[2], { target: { value: "material" } });
+    fireEvent.change(boxes[3], { target: { value: "status = blocked" } });
+    fireEvent.click(submit);
+    await waitFor(() => expect(screen.queryByTestId("new-rule")).toBeNull());
+    expect(screen.getByTestId("new-rule-open")).toBeInTheDocument();
+  });
+
+  it("hides raise and new rule from a role without the permission", async () => {
+    h.allowed = ["assign"];
+    renderWithQuery(<Exceptions />);
+    await screen.findByTestId("exceptions-table");
+    expect(screen.queryByTestId("raise-exception-open")).toBeNull();
+    expect(screen.queryByTestId("new-rule-open")).toBeNull();
+  });
 });

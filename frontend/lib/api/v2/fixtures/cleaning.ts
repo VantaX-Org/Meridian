@@ -194,6 +194,11 @@ export function cleaningRead(path: string, params: Record<string, unknown> = {})
     const items = applied();
     return { items, total: items.length, page: 1, per_page: 100 };
   }
+  const dt = /^\/dedup\/candidates\/([^/]+)$/.exec(path);
+  if (dt) {
+    const items = DEDUP.map(([c]) => c).filter((c) => !merged.has(c.id) && c.object_type === decodeURIComponent(dt[1]));
+    return { items, total: items.length };
+  }
   if (path === "/dedup/candidates") {
     const items = DEDUP.map(([c]) => c).filter((c) => !merged.has(c.id));
     return { items, total: items.length, page: 1, per_page: 50 };

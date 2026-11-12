@@ -20,6 +20,7 @@ import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from
 import { Consequence, FixHead, FlowSteps, MoreDetail } from "../FixParts";
 import { CcBanner, CcHBars, CcPage, type CcBarRow } from "./cc-parts";
 import { TableExport } from "@/design/v2/TableExport";
+import { WritebackApprovals } from "./WritebackApprovals";
 
 const VIEWS: readonly RequestView[] = ["mine", "to_approve", "all"];
 const OBJECTS: readonly RequestObject[] = ["material", "customer", "vendor", "business_partner"];
@@ -748,6 +749,7 @@ export function RequestsCanvas() {
         <Table rows={rows} />
       )}
       <Consequence>{t("Submitting sends the request for approval. Nothing reaches SAP until every approval step is done.")}</Consequence>
+      <WritebackApprovals />
       <MoreDetail title={t("Charts, entry defaults and derivation rules")}>
       {rows.length > 0 ? (
         <div className="m2-cc-row">

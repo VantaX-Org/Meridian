@@ -4,9 +4,10 @@
  *
  *   /change-requests (GET, POST), /change-requests/form/{object} (GET), /change-requests/{id} (GET), /validate, /submit, /decide, /cancel, /retry,
  *   /comments, /attachments, POST /change-requests/{id}/export, GET /change-requests/{id}/field-history, GET /change-requests/{id}/preview,
+ *   PATCH /change-requests/{id} (draft only)
  *   GET and PUT /change-requests/defaults, DELETE /change-requests/defaults/{id}
  *   GET and PUT /change-requests/derivations and /change-requests/critical-fields, DELETE on {id} of each
- *   GET /workflows/definitions, /workflows/facts, /workflows/tasks; POST /workflows/definitions, /workflows/definitions/validate,
+ *   GET /workflows/definitions, /workflows/definitions/{id}, /workflows/facts, /workflows/tasks; POST /workflows/definitions, /workflows/definitions/validate,
  *   /workflows/definitions/{id}/versions, /activate, /workflows/tasks/{id}/decide
  *
  * The demo user (u-me) requested CR-1002 to CR-1004; R. Govender's CR-1001 waits for the demo user's approval, and so
@@ -268,6 +269,12 @@ export function requestsRead(path: string, params: Record<string, unknown>): unk
     return clone({ ...d.workflow, object_kind: "change_request", object_id: d.request.id, history: d.history });
   }
   if (path === "/workflows/definitions") return { items: clone(state.defs) };
+  const wd = /^\/workflows\/definitions\/([^/]+)$/.exec(path);
+  if (wd) {
+    const d = state.defs.find((x) => x.id === decodeURIComponent(wd[1]));
+    if (!d) fail(404, "Workflow definition not found.");
+    return clone(d);
+  }
   if (path === "/workflows/facts") return facts();
   if (path === "/workflows/tasks") return { items: clone(state.tasks.filter((t) => !params.object_kind || t.object_kind === params.object_kind)) };
   return NONE_REQ;
@@ -339,6 +346,16 @@ export function requestsWrite(method: string, path: string, body: unknown): unkn
     if (!state.defaults.some((d) => d.id === id)) fail(404, "Default not found.");
     state.defaults = state.defaults.filter((d) => d.id !== id);
     return { deleted: id };
+  }
+  const patch = /^\/change-requests\/([^/]+)$/.exec(path);
+  if (method === "PATCH" && patch) {
+    const d = find(decodeURIComponent(patch[1]));
+    const r = d.request;
+    if (r.requester_id !== ME) fail(403, "Only the requester edits it.");
+    if (r.status !== "draft") fail(409, `The request is ${r.status}. Only a draft is edited.`);
+    const b = (body ?? {}) as { title?: string; payload?: Record<string, string> };
+    d.request = { ...r, title: b.title ?? r.title, payload: b.payload ?? r.payload, precheck: null, validated_at: null, updated_at: NOW };
+    return clone(d.request);
   }
   if (method !== "POST") return NONE_REQ;
   if (path === "/change-requests") {
