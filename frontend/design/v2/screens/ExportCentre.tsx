@@ -55,9 +55,9 @@ export function ExportCentre() {
   const [format, setFormat] = useState<ExportFormat>("xlsx");
   const [columns, setColumns] = useState<string[] | null>(null);
   const [system, setSystem] = useState("");
-  const [module, setModule] = useState("");
+  const [moduleKey, setModule] = useState("");
   const [run, setRun] = useState<ExportRun>("latest");
-  const [severity, setSeverity] = useState<ExportSeverity[]>([]);
+  const [severities, setSeverity] = useState<ExportSeverity[]>([]);
   const [split, setSplit] = useState<ExportSplit>("none");
   const [jobId, setJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -92,9 +92,9 @@ export function ExportCentre() {
     format: fmt,
     columns: chosen.length === all.length ? [] : all.filter((k) => chosen.includes(k)),
     system: has("system") ? system : "",
-    module: has("module") ? module : "",
+    module: has("module") ? moduleKey : "",
     run: has("run") ? run : "latest",
-    severity: has("severity") ? severity : [],
+    severity: has("severity") ? severities : [],
     split,
   };
   const running = job ? job.status === "queued" || job.status === "running" : jobId !== null && !error;
@@ -179,7 +179,7 @@ export function ExportCentre() {
         {has("module") ? (
           <label>
             {t("Object")}
-            <select value={module} onChange={(e) => setModule(e.target.value)}>
+            <select value={moduleKey} onChange={(e) => setModule(e.target.value)}>
               <option value="">{t("All objects")}</option>
               {(sched.data?.modules ?? []).map((m) => (
                 <option key={m} value={m}>
@@ -216,7 +216,7 @@ export function ExportCentre() {
           {(options.data?.severities ?? []).map((s) => (
             <li key={s}>
               <label>
-                <input type="checkbox" checked={severity.includes(s)} onChange={() => setSeverity(toggle(severity, s))} />
+                <input type="checkbox" checked={severities.includes(s)} onChange={() => setSeverity(toggle(severities, s))} />
                 <span>{SEVERITY_WORD[s]}</span>
               </label>
             </li>

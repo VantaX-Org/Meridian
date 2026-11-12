@@ -149,7 +149,7 @@ export function RequestFormCanvas() {
                       {f.check_table ? <span className="m2-prov">{t("Checked against {table} {label}", { table: f.check_table, label: f.check_table_label ?? "" })}</span> : null}
                       {fails.map((x) => (
                         <span key={x.check_id} className="m2-prov" role="alert" data-testid="field-failure">
-                          {x.check_id}: {x.message}
+                          <Mono>{x.check_id}</Mono>: {x.message}
                         </span>
                       ))}
                     </div>

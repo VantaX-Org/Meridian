@@ -879,13 +879,13 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     return { status: "started" };
   }
   if (path === "/settings/quality-thresholds" && (method === "PUT" || method === "DELETE")) {
-    const module = String((method === "PUT" ? b.module : params.module) ?? "*");
+    const moduleKey = String((method === "PUT" ? b.module : params.module) ?? "*");
     const dimension = String((method === "PUT" ? b.dimension : params.dimension) ?? "");
-    s.quality = s.quality.filter((r) => !(r.module === module && r.dimension === dimension));
+    s.quality = s.quality.filter((r) => !(r.module === moduleKey && r.dimension === dimension));
     if (method === "PUT") {
       const [target, warning, critical] = [b.target, b.warning, b.critical].map(Number);
       if (!(critical <= warning && warning <= target)) throw new AdminRefused(422, "Critical must not exceed warning, and warning must not exceed target.");
-      s.quality.push({ module, dimension, target, warning, critical });
+      s.quality.push({ module: moduleKey, dimension, target, warning, critical });
     }
     return { status: "ok" };
   }

@@ -9,7 +9,7 @@ import {
 } from "@/lib/api/v2/compare";
 import type { ReconScores } from "@/lib/api/v2/migration";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { formatDate, formatModuleName } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { keyParts, shortfall, SIDES, trendSeries, type ScoreSide } from "@/lib/v2/compare";
 import { t } from "@/lib/v2/i18n";
 import { pairQuality } from "@/lib/v2/paired-quality";
@@ -150,7 +150,7 @@ function Reasons({ scores }: { scores: Comparison["scores"] }) {
           {row.reasons.map((r) => (
             <tr key={r.check_id}>
               <th scope="row" className="m2-card-lead"><V2Link href={`/r/${r.check_id}`}><Coded code={r.check_id} text={r.description} /></V2Link></th>
-              <td data-label={t("Severity")}>{r.severity}</td>
+              <td data-label={t("Severity")}>{labelOf(r.severity)}</td>
               <td data-label={t("Source pass rate")} className="m2-num">{f1(r.source_pass_rate ?? null)}</td>
               <td data-label={t("Target pass rate")} className="m2-num">{f1(r.target_pass_rate ?? null)}</td>
               <td data-label={t("Change")} className="m2-num">{signed(r.change)}</td>

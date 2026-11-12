@@ -986,10 +986,10 @@ const MATERIAL = {
 
 export function fieldLineageRead(path: string, params: Record<string, unknown>): unknown {
   if (path !== "/lineage/fields") return NONE_FIELD_LINEAGE;
-  const module = String(params.module ?? "");
-  if (module === "material_master") return MATERIAL;
+  const moduleKey = String(params.module ?? "");
+  if (moduleKey === "material_master") return MATERIAL;
   return {
-    module,
+    module: moduleKey,
     system_type: String(params.system_type ?? "ecc"),
     release: MATERIAL.release,
     tables: [],

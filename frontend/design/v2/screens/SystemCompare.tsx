@@ -112,16 +112,16 @@ function Overview() {
 }
 
 function PairForm({ data, onDone }: { data: { systems: { id: string; name: string }[]; modules: string[]; suggestions: { source: { id: string; name: string }; target: { id: string; name: string } }[] }; onDone: () => void }) {
-  const [module, setModule] = useState(data.modules[0] ?? "");
+  const [moduleKey, setModule] = useState(data.modules[0] ?? "");
   const [src, setSrc] = useState("");
   const [tgt, setTgt] = useState("");
   const toast = useToast();
   const create = useMutation({
-    mutationFn: () => createPair({ module, source_system_id: src, target_system_id: tgt }),
+    mutationFn: () => createPair({ module: moduleKey, source_system_id: src, target_system_id: tgt }),
     onSuccess: () => { toast.show(t("Pair added")); setSrc(""); setTgt(""); onDone(); },
     onError: (e) => toast.show(errorSentence(e, t("The pair could not be added.")), "error"),
   });
-  const ok = module && src && tgt && src !== tgt;
+  const ok = moduleKey && src && tgt && src !== tgt;
   return (
     <Panel title={t("Pair two systems")} testId="cmp-new">
       {data.suggestions.length ? (
@@ -136,7 +136,7 @@ function PairForm({ data, onDone }: { data: { systems: { id: string; name: strin
       ) : null}
       <form className="m2-rfilters" onSubmit={(e) => { e.preventDefault(); if (ok) create.mutate(); }}>
         <label>{t("Object")}
-          <select className="m2-sel" value={module} onChange={(e) => setModule(e.target.value)}>
+          <select className="m2-sel" value={moduleKey} onChange={(e) => setModule(e.target.value)}>
             {data.modules.map((m) => <option key={m} value={m}>{formatModuleName(m)}</option>)}
           </select>
         </label>
