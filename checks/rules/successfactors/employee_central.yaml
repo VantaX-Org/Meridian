@@ -5275,6 +5275,8 @@ rules:
 - field: EMPJOBHIST.BUSINESS_UNIT
   check_class: exists_check
   target_table: FOBUSINESSUNIT
+  as_of_field: EMPJOBHIST.START_DATE
+  target_since: EFFECTIVE_START_DATE
   target_fields:
   - EXTERNAL_CODE
   target_when:
@@ -5298,6 +5300,8 @@ rules:
 - field: EMPJOBHIST.DIVISION
   check_class: exists_check
   target_table: FODIVISION
+  as_of_field: EMPJOBHIST.START_DATE
+  target_since: EFFECTIVE_START_DATE
   target_fields:
   - EXTERNAL_CODE
   target_when:
@@ -5320,6 +5324,8 @@ rules:
 - field: EMPJOBHIST.DEPARTMENT
   check_class: exists_check
   target_table: FODEPARTMENT
+  as_of_field: EMPJOBHIST.START_DATE
+  target_since: EFFECTIVE_START_DATE
   target_fields:
   - EXTERNAL_CODE
   target_when:
@@ -5387,6 +5393,8 @@ rules:
 - field: EMPJOBHIST.JOB_CODE
   check_class: exists_check
   target_table: FOJOBCODE
+  as_of_field: EMPJOBHIST.START_DATE
+  target_since: EFFECTIVE_START_DATE
   target_fields:
   - EXTERNAL_CODE
   target_when:
@@ -5409,6 +5417,8 @@ rules:
 - field: EMPJOBHIST.COMPANY
   check_class: exists_check
   target_table: FOCOMPANY
+  as_of_field: EMPJOBHIST.START_DATE
+  target_since: EFFECTIVE_START_DATE
   target_fields:
   - EXTERNAL_CODE
   target_when:

@@ -1024,12 +1024,25 @@ async def _profile_response(db: AsyncSession, tenant: Tenant, profile_id: str) -
 async def create_sync_profile(
     system_id: str,
     body: CreateSyncProfileRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
 ):
     """Create a sync profile for an SAP system. The same service as POST /api/v1/schedules; the first run is left to
-    the beat task's next pass (next_run_at stays empty)."""
+    the beat task's next pass (next_run_at stays empty). Idempotent on (system, domain): a retry, such as setup
+    sending again after a partial failure, gets the existing profile back instead of a second one. An unlicensed
+    domain is refused (402) here, before anything is scheduled."""
+    from api.middleware.licence import enforce_licensed_modules
+    enforce_licensed_modules(request, [body.domain])
+    if _as_uuid(system_id):
+        # ponytail: check-then-insert, two concurrent first calls can still both insert; a partial unique index on
+        # (tenant_id, system_id, domain) would close it, but /schedules deliberately allows several per domain.
+        existing = (await db.execute(text(
+            "SELECT id FROM sync_profiles WHERE tenant_id = :tid AND system_id = :sid AND domain = :d LIMIT 1"),
+            {"tid": str(tenant.id), "sid": system_id, "d": body.domain})).scalar()
+        if existing:
+            return await _profile_response(db, tenant, str(existing))
     row = await run_schedules.create_schedule(
         db, tenant.id, system_id=system_id, domain=body.domain, tables=body.tables, cron=body.schedule_cron,
         active=body.active, extraction_mode=body.extraction_mode, run_at_next_tick=True)
@@ -1074,6 +1087,7 @@ async def update_sync_profile(
     system_id: str,
     profile_id: str,
     body: UpdateSyncProfileRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
@@ -1091,6 +1105,12 @@ async def update_sync_profile(
         raise HTTPException(status_code=422, detail="Nothing to update")
     if not _as_uuid(system_id) or not _as_uuid(profile_id):
         raise HTTPException(status_code=404, detail="Sync profile not found")
+    if body.active is not False:  # pausing an unlicensed profile is always allowed
+        from api.middleware.licence import enforce_licensed_modules
+        domain = (await db.execute(text("SELECT domain FROM sync_profiles WHERE id = :p AND tenant_id = :tid"),
+                                   {"p": profile_id, "tid": str(tenant.id)})).scalar()
+        if domain:
+            enforce_licensed_modules(request, [domain])
     try:
         row = await run_schedules.update_schedule(db, tenant.id, profile_id, changes, system_id=system_id)
     except HTTPException as e:

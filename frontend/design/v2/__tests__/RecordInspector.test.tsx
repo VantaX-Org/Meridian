@@ -217,7 +217,7 @@ describe("actions by permission", () => {
     mount(`${none?.module}:${none?.record_key}`);
     await body();
     expect(screen.getByRole("button", { name: /Accept suggested/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Accept suggested/ })).toHaveAttribute("title", "No suggested value for this record");
+    expect(screen.getByRole("button", { name: /Accept suggested/ })).toHaveAccessibleDescription("No suggested value for this record");
   });
 
   it("an owner: approve and send back, on a record whose value waits in a draft batch", async () => {

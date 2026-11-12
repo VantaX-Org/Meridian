@@ -34,9 +34,12 @@ const PLACES: CommandGroup = {
  * Every canvas and panel by name, in the reader's language, for the places this viewer may open: typing "reports",
  * "webhooks" or "Einstellungen" goes there without asking the server. They follow what the server found.
  */
+/** "Connect a system" only for those who may connect one. */
+const goTo = (can: (action: string) => boolean) => PLACES.items.filter((i) => i.id !== "connect" || can("manage_systems"));
+
 export function placeIndex(can: (action: string) => boolean): { id: string; title: string; href: string }[] {
   const places = [
-    ...PLACES.items,
+    ...goTo(can),
     { id: "reports", title: tr("Reports"), href: "/reports" },
     { id: "requests", title: tr("Requests"), href: "/requests" },
     { id: "atlas", title: tr("Landscape atlas"), href: "/atlas" },
@@ -68,8 +71,10 @@ export function placeIndex(can: (action: string) => boolean): { id: string; titl
     { id: "help", title: tr("Help"), href: "/?open=help" },
     { id: "preferences", title: tr("Preferences"), href: "/?open=preferences" },
   ];
-  if (canAdminister(can)) places.push({ id: "admin", title: tr("Administration"), href: "/admin" });
-  for (const s of visibleSections(can)) places.push({ id: `admin-${s.slug}`, title: tr("Administration: {section}", { section: s.label }), href: `/admin/${s.slug}` });
+  if (canAdminister(can)) {
+    places.push({ id: "admin", title: tr("Administration"), href: "/admin" });
+    for (const s of visibleSections(can)) places.push({ id: `admin-${s.slug}`, title: tr("Administration: {section}", { section: s.label }), href: `/admin/${s.slug}` });
+  }
   return places;
 }
 
@@ -143,7 +148,7 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
   });
 
   const rows = useMemo<Row[]>(() => {
-    if (debounced.length === 0 || q.trim().length === 0) return PLACES.items.map((i) => ({ id: i.id, kind: PLACES.kind, group: PLACES.label, title: i.title, href: i.href }));
+    if (debounced.length === 0 || q.trim().length === 0) return goTo(session.can).map((i) => ({ id: i.id, kind: PLACES.kind, group: PLACES.label, title: i.title, href: i.href }));
     const here = matchPlaces(placeIndex(session.can), debounced).map((p) => ({ id: `place-${p.id}`, kind: "action", group: tr("Go to"), title: p.title, href: p.href }));
     const served = (result.data?.groups ?? []).flatMap((g) => g.items.map((i) => ({ id: i.id, kind: g.kind, group: tx(g.label), title: i.title, href: i.href })));
     // What the server found comes first (a record, a rule, an action such as approve or export); the places follow.

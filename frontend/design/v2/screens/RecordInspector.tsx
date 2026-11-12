@@ -391,10 +391,11 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
       ) : (
         <div className="m2-acts">
           {can.apply ? (
-            <button type="button" className="m2-btn m2-strong" disabled={suggested.length === 0 || busy} title={suggested.length === 0 ? tr("No suggested value for this record") : undefined} onClick={() => void actions.decide(suggested.map(rowFor), "accept")}>
+            <button type="button" className="m2-btn m2-strong" disabled={suggested.length === 0 || busy} aria-describedby={suggested.length === 0 ? "accept-suggested-why" : undefined} onClick={() => void actions.decide(suggested.map(rowFor), "accept")}>
               {tr("Accept suggested")}{" "}<kbd className="m2-kb">a</kbd>
             </button>
           ) : null}
+          {can.apply && suggested.length === 0 ? <span id="accept-suggested-why" className="m2-prov">{tr("No suggested value for this record")}</span> : null}
           {can.apply ? (
             <button type="button" className="m2-btn" disabled={fixable.length === 0} onClick={() => firstInput.current?.querySelector<HTMLInputElement>("input")?.focus()}>
               {tr("Propose value")}
