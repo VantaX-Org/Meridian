@@ -40,6 +40,21 @@ The panel **Template library** keeps the new system's load templates for each ob
 
 Uploading and mapping need the right to analyse. The downloads and the check need the right to export.
 
+## Clean SuccessFactors data in Excel and load it back
+
+Use this when the people who know the data would rather fix it in a spreadsheet than record by record. The file goes out, comes back cleaned, and Meridian shows you whether the score improved.
+
+1. Open the SuccessFactors system and the object you want to clean (for example Employee Central), and choose the finished run to start from.
+2. Select **Download** to save the file. It holds the data as the system holds it today, in the layout of the SuccessFactors import file, with the failing cells marked.
+3. Open the file in Excel and fix the marked cells. Do not rename sheets, and do not change or delete the key columns, because they tie each row back to its record.
+4. Save the file, return to the same system and object, and select **Upload cleaned file**. It must go back to the same system it came from; a file from another system is refused with the reason.
+5. Meridian checks the file and tells you how many rows it read and how many it could not match. Fix anything it lists, then upload again.
+6. Select **Re-analyse**. This scores the cleaned data against the same rules and makes a new run. Until you do, scores do not change.
+7. When the new run finishes, open **Compare old and new**. It shows the old score and the new score of the object, the points gained or lost for each dimension, and the rules that now pass or still fail.
+8. If a rule still fails, download again from the new run and repeat from step 2.
+
+The upload changes only what Meridian scores. It does not write to SuccessFactors. To change the live system, load the cleaned data through your normal SuccessFactors import and run a new extraction afterwards. Downloading and uploading need the export permission.
+
 ## Post-load reconciliation: expected and real differences
 
 Not every difference between the load file and the target is a defect. Meridian gives each differing field a cause, read from the SAP data dictionary of the target field:

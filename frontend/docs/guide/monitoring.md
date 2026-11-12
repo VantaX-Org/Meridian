@@ -284,9 +284,16 @@ Score lens, under Migration on the rail, scores every run two ways. The first is
 
 - **Score under today's weights, run by run.** A trend line over the runs, oldest on the left. The table under the chart gives both scores for each run.
 - **Each run, then and now.** Each run with its score then, its score under today's weights, the change the weights make, and whether the weights were recorded with the run. Runs scored before weights were recorded are re-weighted from the default weights, and the table says so.
-- **Each module on the six dimensions.** A heat map of the latest run: one row per module, one column per dimension (completeness, accuracy, consistency, timeliness, uniqueness, validity) and the score. Each cell is coloured by your score targets: on target, below target, or below the warning line. A dimension no rule measures shows a dash. The last column counts the critical rules failing, and a note under the map says which module scores are capped by a critical failure.
+- **Each module on the six dimensions.** A heat map of the latest run: one row per module, one column per dimension (completeness, accuracy, consistency, timeliness, uniqueness, validity) and the score. Each cell is coloured by the target for that module and dimension (see Quality thresholds in Administration), and says its status in words with the target beside it, so colour is never the only signal: on target, at risk or failing. A dimension no rule measures shows a dash. The last column counts the critical rules failing, and a note under the map says which module scores are capped by a critical failure.
 - **Each module across the runs.** One row per module with a sparkline of its score, the latest score, the score as recorded then and the change since the first run.
 - **Config-aware score.** The latest run counted only over the rules that your loaded SAP configuration says apply. A rule for batch management does not count when batch management is not active in any plant. The panel shows when the configuration was loaded, the score per process and per module, and the reasons rules do not apply with how many rules each covers. When no configuration is loaded every rule counts by default and the panel says so.
+
+## Impact, sprints and insights for owners
+
+1. **Impact**: open Impact to see what the failing records cost, as an estimate, by object and rule. Start with the largest figure; the page says how each estimate is made.
+2. **Sprints**: open Sprints to see the cleaning work grouped into short time boxes. Create a sprint, add the rules or objects it covers, set the end date and watch the failing count fall as the sprint runs.
+3. **Executive insights**: open Insights as an executive for the score, the trend, the money at risk and the objects that most need a decision, in a form you can read in a minute.
+4. **Owner insights**: open Insights as an owner for your own objects: what failed, who is working on it and what is overdue.
 
 ## What is on it
 

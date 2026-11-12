@@ -30,6 +30,13 @@ The record statuses, in order: **To fix**, **Fix proposed**, **Waiting for appro
 
 The sentence reads "48 records are signed off as not an issue or an accepted risk." The columns change to **Resolution**, **Reason**, **Signed off by** and **When**, for example "Accept risk: Replaced by the new plant in wave 2; the risk is accepted until then". **Reopen** "Puts the record back to rows to fix. Needs the apply permission."
 
+## Act on exceptions, write-backs, change requests and contract breaches
+
+1. **An exception**: open the exception, read the reason it was raised, then choose **Approve exception** with a reason, or **Reject**. An approved exception keeps the record out of the failing count until the date you set; the decision is in the audit log.
+2. **A write-back**: open the batch that is waiting to be sent to SAP and check the proposed values. Select **Send to SAP** to write them. If SAP refuses a row, the row stays in the batch with SAP's message; fix it and send again, or remove it.
+3. **A change request**: open it from Requests, read the checks, then **Approve** or **Reject** with a reason. If a step has passed its due time, say so in a comment so the next approver is told.
+4. **A contract breach**: open the contract on People. A breached promise shows which score or dimension fell short. Choose **Notify the producer** to tell the owner, or open the failing records to start the fix. The contract is compliant again after a run that meets it.
+
 ## The numbers and where they come from
 
 - **The chip counts** are distinct records in each state in the latest run of each object in scope: "612 records wait for approval" counts records, not batches.
@@ -50,6 +57,8 @@ The banner on top says "Change requests". Its headline counts what waits ("3 req
 ### Data collection form
 
 **Use the form**, beside **New request** on the Requests banner, opens the data collection form (`/requests/new`). Choose the object (material, customer, vendor or business partner) and whether you create a new record or change one; a change needs the SAP key of the record, and the label names its key field. The fields come from the SAP data dictionary and the object's rules, never from a free list: each shows its `TABLE.FIELD`, its description, and whether it is required to create. A field checked against an SAP check table offers its allowed values as a list, with the table it was checked against; the live values of the connected system appear when the address carries `?system=`, otherwise the values the rules and the data dictionary know.
+
+To collect data with the form: 1. Open **Use the form**. 2. Choose the object and new or change. 3. Fill in the fields, starting with the ones marked required. 4. Select **Check against the rules** and fix what shows under each field. 5. Select **Submit for approval**.
 
 **Check against the rules** saves a draft and runs the object's rules: a failing rule shows under the field it concerns, and a list says which required fields are still empty. **Submit for approval** sends the request into the same approval workflow as any other request and opens it. Nothing is written to SAP until the request is approved. The form needs the master data write permission; without it the screen says so.
 
