@@ -983,7 +983,11 @@ class ConnectivityManager:
                                  "detail": "source is not an SF OData entity (e.g. payroll export)"})
                 continue
             # effective-dated entities return only today's record unless fromDate is given
-            history = {"from_date": "1900-01-01"} if "all records" in (t.note or "") else {}
+            # A table keyed on a start or effective date is a history table: the entity feeding that date
+            # is read with every record. Other entities in the table stay current and join first row per key.
+            # ponytail: first-row join, an as-of merge on startDate if secondary columns must follow history
+            all_records = "all records" in (t.note or "")
+            date_keys = set(t.keys) & {"START_DATE", "EFFECTIVE_DATE"}
             merged = None
             absent: list[str] = []
             absent_keys: set[str] = set()
@@ -1016,6 +1020,8 @@ class ConnectivityManager:
                         missing |= set(names)
                 if not sel:
                     return None, missing, None
+                history = ({"from_date": "1900-01-01"} if all_records or any(
+                    set(props[p]) & date_keys for p in sel) else {})
                 # merge keys only when several entities feed the table (FO objects and Position carry neither)
                 join = [p for p in ("userId", "personIdExternal") if p not in props
                         and (model is None or p in model[0])] if len(by_entity) > 1 else []
@@ -1062,7 +1068,9 @@ class ConnectivityManager:
                         columns={"__personIdExternal": "__relatedPersonIdExternal"})
                 return out, missing, None
 
-            for key, props in by_entity.items():
+            # the entity holding the date key is the base frame, so its history rows survive the left joins
+            for key, props in sorted(by_entity.items(),
+                                     key=lambda kv: not any(set(n) & date_keys for n in kv[1].values())):
                 ent, related = key.removesuffix(RELATED), key.endswith(RELATED)
                 # "Family*": every per-country entity set of one object (PerGlobalInfoBRA, …), rows stacked
                 members = self._sf_family(connector, ent.rstrip("*")) if ent.endswith("*") else [ent]

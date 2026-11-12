@@ -54,3 +54,11 @@ def test_extract_target_does_not_pass_from_date_for_odata_v4_systems():
     for system_type in ("s4hana_cloud", "btp"):
         df = mgr._extract_target(FakeODataV4Connector(), system_type, target, max_rows=0)
         assert df is not None
+
+
+def test_date_keyed_table_reads_full_history_only_for_its_date_entity():
+    """COMPINFO is keyed on EFFECTIVE_DATE: EmpCompensation is read with fromDate, its side entities stay current."""
+    import inspect
+    src = inspect.getsource(ConnectivityManager._extract_successfactors)
+    assert 'date_keys = set(t.keys) & {"START_DATE", "EFFECTIVE_DATE"}' in src
+    assert "set(props[p]) & date_keys for p in sel" in src

@@ -58,3 +58,15 @@ def test_added_key_follows_the_sheet_spelling():
     sheet = wb.Sheet("Personal Information", "definition", [wb.Column(header=i, id=i) for i in ("first-name", "last-name")])
     _, report = wb.fill(wb.Workbook(sheets=[sheet], picklists={}), frames())
     assert report["sheets"][0]["added_keys"] == ["person-id-external"]
+
+
+def test_job_info_sheet_takes_every_history_record():
+    """A sheet with the job history keys fills from EMPJOBHIST, one row per effective-dated record."""
+    f = frames()
+    f.frames["EMPJOBHIST"] = pd.DataFrame({
+        "EMPJOBHIST.USERID": ["U1", "U1", "U2"], "EMPJOBHIST.START_DATE": ["2020-01-01", "2024-01-01", "2024-02-01"],
+        "EMPJOBHIST.SEQ_NUMBER": ["1", "1", "1"],
+    })
+    tabs, report = wb.fill(book("Job Info", ["user-id", "start-date", "seq-number"]), f)
+    assert next(s for s in report["sheets"])["table"] == "EMPJOBHIST"
+    assert len(tabs["Job Info"]) == 3

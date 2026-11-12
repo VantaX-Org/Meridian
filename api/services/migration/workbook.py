@@ -478,7 +478,7 @@ def coverage(workbook: Workbook, dictionary: Dictionary) -> dict:
     sheets = []
     for sheet in workbook.sheets:
         options = _candidates(sheet, dictionary)
-        table = max(options, key=lambda t: (len(options[t]), t == _named_table(sheet)), default=None)
+        table = _pick(options, sheet, dictionary)
         hits = options.get(table, {}) if table else {}
         sheets.append({"name": sheet.name, "table": table, "columns": len(sheet.columns), "matched": len(hits),
                        "unmapped": [{"header": c.header, "id": c.id, "label": c.label, "mandatory": c.mandatory}
@@ -714,6 +714,15 @@ def _value_map(col: Column, f: Field, maps: dict[str, dict[str, str]]) -> tuple[
     return target, maps.get(target, {})
 
 
+def _pick(options: dict, sheet, dictionary) -> Optional[str]:
+    """The sheet's main table. A sheet that carries every key of a table keyed on a start or effective date takes
+    that history table (EmpJob history for Job Info) over a current-record table with more matched columns."""
+    def dated(t: str) -> bool:
+        keys = set(dictionary.keys(t))
+        return bool(keys & {"START_DATE", "EFFECTIVE_DATE"}) and keys <= {f.name for f in options[t].values()}
+    return max(options, key=lambda t: (dated(t), len(options[t]), t == _named_table(sheet)), default=None)
+
+
 def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str, dict[str, str]]] = None,
          strict: frozenset[str] | set[str] = frozenset()) -> tuple[dict[str, pd.DataFrame], dict]:
     """The output tabs, and the report of what could and could not be filled.
@@ -740,7 +749,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                 live = {h: f for h, f in found.items() if f.qualified in held_table.columns}
                 if live:
                     present[name] = live
-        table = max(present, key=lambda t: (len(present[t]), t == _named_table(sheet)), default=None)
+        table = _pick(present, sheet, frames.dictionary)
         hits = dict(present[table]) if table else {}
         # A sheet that spans several entities (a contingent worker's name, email and assignment) takes the columns
         # its main table lacks from another table, joined on that table's key. Only when the main table holds one
