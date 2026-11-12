@@ -186,10 +186,10 @@ def profile(df: pd.DataFrame) -> dict:
             "completeness": round(sum(c["filled"] for c in cols) / len(cols), 4) if cols else None}
 
 
-def dqs_of(dqs_summary: dict | None) -> float | None:
-    raw = [m.get("composite_score") for m in (dqs_summary or {}).values() if isinstance(m, dict)]
-    scores = [float(s) for s in raw if isinstance(s, (int, float))]
-    return round(sum(scores) / len(scores), 1) if scores else None
+def dqs_of(dqs_summary: dict | None, scoring: dict | None = None) -> float | None:
+    """The run's DQS as every other screen shows it: the tenant-weighted composite, not a plain mean."""
+    from api.routes.findings import composite_dqs
+    return composite_dqs([dqs_summary or {}], scoring=scoring)["composite"]
 
 
 def freshness(run_at: dt.datetime | None, now: dt.datetime | None = None) -> float | None:

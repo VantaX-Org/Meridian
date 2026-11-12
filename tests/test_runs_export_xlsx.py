@@ -79,3 +79,26 @@ def test_export_routes_registered() -> None:
     paths = {r.path for r in router.routes}
     assert "/api/v1/runs/export" in paths
     assert "/api/v1/runs/{version_id}/steps/export" in paths
+
+
+def test_export_runs_passes_status_and_notes_the_filtered_total() -> None:
+    """The export follows the screen's status filter and says "N of total" when the cap is hit."""
+    seen: dict = {}
+    version = SimpleNamespace(id="22222222-2222-2222-2222-222222222222", run_at="2026-01-02T03:04:00",
+                              label=None, status="failed", metadata={})
+
+    async def fake_list_versions(**kwargs):
+        seen.update(kwargs)
+        return {"versions": [version], "total": 5}
+
+    db = AsyncMock()
+    db.execute.return_value = MagicMock(fetchall=lambda: [])
+    tenant = SimpleNamespace(id=uuid.uuid4(), name="t")
+    original = runs_module.list_versions
+    runs_module.list_versions = fake_list_versions
+    try:
+        response = asyncio.run(export_runs(limit=1, status="failed", format="csv", db=db, tenant=tenant))
+    finally:
+        runs_module.list_versions = original
+    assert seen["status"] == "failed" and seen["limit"] == 1
+    assert response.status_code == 200

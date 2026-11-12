@@ -127,14 +127,16 @@ function timelineRun(k: number): TimelineRun {
     objects[m] = { score: s.score, raw_score: measuredAt(m, k), capped: s.capped, findings_open: open, findings_new: null, findings_closed: null, value_at_risk: { amount: open * 3.5, currency: "ZAR" } };
     records += recordsAt(m, k);
   }
-  return { id: run.id, run_number: run.run_number, status: "complete", run_at: run.run_at, label: null, system_id: ECC.id, baseline: state.baseline === run.id, kind: KINDS[k - 1], objects, records_checked: records, duration_s: DURATIONS[k - 1] };
+  const pk = visibleRuns().filter((j) => j < k).pop();
+  const prev = pk ? RUNS[RUNS.length - pk] : null;
+  return { id: run.id, run_number: run.run_number, status: "complete", run_at: run.run_at, label: null, system_id: ECC.id, baseline: state.baseline === run.id, kind: KINDS[k - 1], objects, records_checked: records, duration_s: DURATIONS[k - 1], prev_id: prev?.id ?? null, prev_run_at: prev?.run_at ?? null, prev_run_number: prev?.run_number ?? null };
 }
 
 const visibleRuns = (): number[] => [1, 2, 3, 4, 5, 6, 7, 8].filter((k) => !state.archived.has(RUNS[RUNS.length - k].id));
 
-export function fixtureTimeline(systemId: string | undefined, limit: number, module?: string): { system_id: string | null; limit: number; runs: TimelineRun[] } {
+export function fixtureTimeline(systemId: string | undefined, limit: number, module?: string, versionId?: string): { system_id: string | null; limit: number; runs: TimelineRun[] } {
   if (systemId && systemId !== ECC.id) return { system_id: systemId, limit, runs: [] };
-  const ks = visibleRuns().slice(-limit);
+  const ks = visibleRuns().filter((k) => !versionId || RUNS[RUNS.length - k].id === versionId).slice(-limit);
   const runs = ks.map(timelineRun).filter((r) => !module || module in r.objects);
   return { system_id: systemId ?? null, limit, runs };
 }
@@ -209,8 +211,12 @@ function versionsPage(params: Params) {
   else if (params.system_id && params.system_id !== ECC.id && params.system_id !== S4.id) rows = [];
   else if (params.system_id === ECC.id) rows = rows.filter((r) => r.metadata?.system_id === ECC.id);
   else if (params.system_id === S4.id) rows = rows.filter((r) => r.metadata?.system_id === S4.id);
+  const group: Record<string, string[]> = { complete: ["complete", "agents_complete", "ai_enriched"], active: ["pending", "running"] };
+  const keep = group[String(params.status)];
+  if (keep) rows = rows.filter((r) => keep.includes(r.status));
   const limit = Number(params.limit ?? 20);
-  return { versions: rows.slice(0, limit), total: rows.length };
+  const offset = Number(params.offset ?? 0);
+  return { versions: rows.slice(offset, offset + limit), total: rows.length };
 }
 
 // ── Compare ──────────────────────────────────────────────────────────────────────────────────
@@ -640,7 +646,7 @@ function configLoadOf(systemId: string): ConfigLoad | { status: "never_loaded" }
 /** The answer to one step 3 read, or NONE when the path is not one of this step's. */
 export function runsFixtureResponse(path: string, params: Params): unknown {
   if (path === "/runs/rule-trend") return fixtureRuleTrend(String(params.system_id), Number(params.limit ?? 8));
-  if (path === "/runs/timeline") return fixtureTimeline(params.system_id ? String(params.system_id) : undefined, Number(params.limit ?? 8), params.module ? String(params.module) : undefined);
+  if (path === "/runs/timeline") return fixtureTimeline(params.system_id ? String(params.system_id) : undefined, Number(params.limit ?? 8), params.module ? String(params.module) : undefined, params.version_id ? String(params.version_id) : undefined);
   const vs = /^\/runs\/([^/]+)\/vs\/([^/]+)\/summary$/.exec(path);
   if (vs) return fixtureCompare(decodeURIComponent(vs[1]), decodeURIComponent(vs[2]));
   const sd = /^\/runs\/([^/]+)\/vs\/([^/]+)\/score-delta$/.exec(path);

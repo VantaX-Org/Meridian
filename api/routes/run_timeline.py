@@ -73,6 +73,9 @@ class TimelineRunOut(BaseModel):
     objects: dict[str, TimelineObjectOut]
     records_checked: Optional[int] = None  # driving-object records over the run's objects; null if it stored none
     duration_s: Optional[int] = None       # first analysis step started to last one finished; null without steps
+    prev_id: Optional[str] = None          # the system's previous finished run, whatever the window; null: first run
+    prev_run_at: Optional[datetime] = None
+    prev_run_number: Optional[int] = None
 
 
 class TimelineOut(BaseModel):
@@ -82,24 +85,26 @@ class TimelineOut(BaseModel):
 
 
 _RUNS_SQL = f"""
-    SELECT id::text AS id, run_at, label, run_number, status, metadata->>'system_id' AS system_id,
-           COALESCE((metadata->>'baseline') = 'true', false) AS baseline,
-           COALESCE(metadata->>'trigger', CASE WHEN metadata->>'system_id' IS NULL OR metadata->>'upload_path' IS NOT NULL THEN 'upload' END) AS kind,
-           dqs_summary,
-           (SELECT p.id::text FROM analysis_versions p
+    SELECT av.id::text AS id, av.run_at, av.label, av.run_number, av.status, av.metadata->>'system_id' AS system_id,
+           COALESCE((av.metadata->>'baseline') = 'true', false) AS baseline,
+           COALESCE(av.metadata->>'trigger', CASE WHEN av.metadata->>'system_id' IS NULL OR av.metadata->>'upload_path' IS NOT NULL THEN 'upload' END) AS kind,
+           av.dqs_summary, prev.id AS prev_id, prev.run_at AS prev_run_at, prev.run_number AS prev_run_number
+      FROM analysis_versions av
+      LEFT JOIN LATERAL (
+           SELECT p.id::text AS id, p.run_at, p.run_number FROM analysis_versions p
              WHERE p.tenant_id = av.tenant_id AND {finished_sql('p.status')}
                AND p.metadata->>'purpose' IS DISTINCT FROM 'process_discovery'
                AND p.metadata->>'archived' IS DISTINCT FROM 'true'
                AND p.metadata->>'system_id' = av.metadata->>'system_id'
                AND (p.run_at, p.id) < (av.run_at, av.id)
-             ORDER BY p.run_at DESC, p.id DESC LIMIT 1) AS prev_id
-      FROM analysis_versions av
-     WHERE tenant_id = CAST(:t AS uuid) AND {finished_sql()}
-       AND metadata->>'purpose' IS DISTINCT FROM 'process_discovery'
-       AND metadata->>'archived' IS DISTINCT FROM 'true'
-       AND (CAST(:sid AS text) IS NULL OR metadata->>'system_id' = CAST(:sid AS text))
-       AND (CAST(:mod AS text) IS NULL OR (dqs_summary -> CAST(:mod AS text)) IS NOT NULL)
-     ORDER BY run_at DESC, id DESC LIMIT :n"""
+             ORDER BY p.run_at DESC, p.id DESC LIMIT 1) prev ON true
+     WHERE av.tenant_id = CAST(:t AS uuid) AND {finished_sql('av.status')}
+       AND av.metadata->>'purpose' IS DISTINCT FROM 'process_discovery'
+       AND av.metadata->>'archived' IS DISTINCT FROM 'true'
+       AND (CAST(:sid AS text) IS NULL OR av.metadata->>'system_id' = CAST(:sid AS text))
+       AND (CAST(:vid AS text) IS NULL OR av.id = CAST(:vid AS uuid))
+       AND (CAST(:mod AS text) IS NULL OR (av.dqs_summary -> CAST(:mod AS text)) IS NOT NULL)
+     ORDER BY av.run_at DESC, av.id DESC LIMIT :n"""
 
 # failing records and priced cost per (run, object, rule), for the listed runs and the runs before them
 _FINDINGS_SQL = """
@@ -140,14 +145,17 @@ def _object(m: dict, run, mod: str, fails: dict, cost: dict, currency: str) -> d
 
 
 @router.get("/timeline", response_model=TimelineOut)
-async def timeline(system_id: Optional[uuid.UUID] = Query(None), module: Optional[str] = Query(None, max_length=64),
+async def timeline(system_id: Optional[uuid.UUID] = Query(None), version_id: Optional[uuid.UUID] = Query(None),
+                   module: Optional[str] = Query(None, max_length=64),
                    limit: int = Query(8, ge=1, le=50),
                    db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """The last ``limit`` finished runs of one system (or of every system), oldest first. With ``module`` the limit
-    counts only runs that scored that object, so an object last run long ago still has its runs."""
+    counts only runs that scored that object, so an object last run long ago still has its runs. With ``version_id``
+    only that run comes back, with its true previous run, so a run page never depends on a window."""
     await _rls(db, tenant)
     t = str(tenant.id)
-    rows = (await db.execute(text(_RUNS_SQL), {"t": t, "sid": str(system_id) if system_id else None, "mod": module, "n": limit})).mappings().all()
+    rows = (await db.execute(text(_RUNS_SQL), {"t": t, "sid": str(system_id) if system_id else None,
+                                                    "vid": str(version_id) if version_id else None, "mod": module, "n": limit})).mappings().all()
     ids = [r["id"] for r in rows]
     widest = await _widest(db, t, ids)
     currency = str(effective_cost_model((await db.execute(text("SELECT cost_model FROM tenants WHERE id = CAST(:t AS uuid)"),
@@ -176,6 +184,7 @@ async def timeline(system_id: Optional[uuid.UUID] = Query(None), module: Optiona
             "objects": {mod: _object(m, r, mod, fails, cost, currency)
                         for mod, m in sorted(summary.items()) if isinstance(m, dict)},
             "records_checked": _records(summary, r["id"], widest), "duration_s": took.get(r["id"]),
+            "prev_id": r["prev_id"], "prev_run_at": r["prev_run_at"], "prev_run_number": r["prev_run_number"],
         })
     return {"system_id": str(system_id) if system_id else None, "limit": limit, "runs": runs}
 

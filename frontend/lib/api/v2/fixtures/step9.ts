@@ -735,7 +735,8 @@ export function step9Read(path: string, params: Params): unknown {
     const id = decodeURIComponent(dl[1]);
     webhookOf(id);
     const status = params.status ? String(params.status) : null;
-    return { deliveries: clone((st().deliveries[id] ?? []).filter((d) => !status || d.status === status)) };
+    const all = (st().deliveries[id] ?? []).filter((d) => !status || d.status === status);
+    return { deliveries: clone(all.slice(0, Number(params.limit ?? 50))), total: all.length };
   }
   if (path === "/settings/automation") return clone(st().automation);
   if (path === "/settings/chat-alerts") return clone(st().chat);

@@ -7,7 +7,7 @@ RLS plus an explicit tenant_id filter.
 """
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -37,22 +37,23 @@ _RUNS_EXPORT_COLUMNS = [
 
 @router.get("/export", dependencies=[Depends(require_permission("export"))])
 async def export_runs(
-    limit: int = Query(100, ge=1, le=100),
+    limit: int = Query(1000, ge=1, le=1000),
     module: Optional[str] = None,
     system_id: Optional[str] = None,
     include_archived: bool = False,
+    status: Optional[Literal["failed", "complete", "active"]] = None,
     format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Every run matching the same filters as GET /versions, as CSV or XLSX.
 
-    ponytail: capped at 100 rows, the same page-size ceiling list_versions
-    already enforces; add real pagination here if a tenant has >100 runs
-    and needs them all in one file. A cover note flags the cap when hit.
+    ponytail: capped at 1,000 rows, the page-size ceiling list_versions
+    enforces; add real pagination here if a tenant needs more in one file.
+    A cover note flags the cap, with the filtered total, when hit.
     """
     body = await list_versions(limit=limit, offset=0, module=module, system_id=system_id,
-                               include_archived=include_archived, db=db, tenant=tenant)
+                               include_archived=include_archived, status=status, db=db, tenant=tenant)
     versions = body["versions"]
     version_ids = [v.id for v in versions]
     agg: dict[str, dict] = {}
@@ -77,7 +78,8 @@ async def export_runs(
             "duration_ms": a.get("duration_ms"),
             "baseline": bool(meta.get("baseline")),
         })
-    note = f"Truncated to {limit:,} runs; narrow the filter to export the rest." if len(rows) >= limit else None
+    total = body.get("total", len(rows))
+    note = f"{len(rows):,} of {total:,} runs; narrow the filter to export the rest." if total > len(rows) else None
     if format == "csv":
         from api.services.branded_xlsx import csv_response
         return csv_response(rows, _RUNS_EXPORT_COLUMNS, "runs", None)

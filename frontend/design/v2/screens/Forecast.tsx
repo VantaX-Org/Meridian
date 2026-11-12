@@ -181,7 +181,9 @@ function ActionsPanel({ q }: { q: Q<Plan> }) {
   const rule = useRuleName();
   const title = t("Next best work");
   return (
-    <Section q={q} title={title} meta={t("Ranked by severity-weighted records fixed an hour")} testId="fc-actions">
+    <Section q={q} title={title} meta={q.data && q.data.total_actions > q.data.actions.length
+      ? t("The first {n} of {total}", { n: int(q.data.actions.length), total: int(q.data.total_actions) })
+      : t("Ranked by severity-weighted records fixed an hour")} testId="fc-actions">
       {(d) => !d || d.actions.length === 0 ? <EmptyFrame>{t("No open work to plan.")}</EmptyFrame> : (
         <Table title={title} head={[t("Work"), t("Kind"), t("Object"), t("Severity"), t("Records"), t("Effort"), t("Value an hour"), t("Cost")]}>
           {d.actions.map((a) => (

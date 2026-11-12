@@ -245,23 +245,40 @@ export function groupRuns(rows: readonly VersionHead[], systems: readonly { id: 
   return out.sort((a, b) => Number(a.inactive) - Number(b.inactive) || a.name.localeCompare(b.name));
 }
 
+/** The status filter as the server's status group, or undefined for every status. */
+export function statusParam(status: string): "failed" | "complete" | "active" | undefined {
+  return status === "failed" || status === "complete" || status === "active" ? status : undefined;
+}
+
+const LEDGER_PAGE = 50;
+
+/** The runs table: system and status filter on the server, so "N of total" counts the whole filtered set. */
 function RunsLedger({ systemFilter, statusFilter, showArchived }: { systemFilter: string; statusFilter: string; showArchived: boolean }) {
   const land = useLandscape(null);
-  const page = useVersionsPage({ limit: 50, include_archived: showArchived });
+  const [limit, setLimit] = useState(LEDGER_PAGE);
+  const filtered = systemFilter !== "all" || statusFilter !== "all";
+  const page = useVersionsPage({ limit, include_archived: showArchived, system_id: systemFilter === "all" ? undefined : systemFilter, status: statusParam(statusFilter) });
   const timeline = useTimeline(null, 50);
   const meta = useMemo(() => new Map((timeline.data?.runs ?? []).map((r) => [r.id, r])), [timeline.data]);
-  const rows = (page.data?.versions ?? []).filter((v) => (systemFilter === "all" || v.metadata?.system_id === systemFilter) && (statusFilter === "all" || statusGroup(v.status) === statusFilter));
+  const rows = page.data?.versions ?? [];
+  const total = page.data?.total ?? rows.length;
   const groups = groupRuns(rows, land.data?.systems ?? []);
   if (page.isLoading) return <Skeleton width="100%" height={200} />;
   if (page.isError) return <ErrorFrame onRetry={() => void page.refetch()}>{t("The runs could not be read.")}</ErrorFrame>;
   if (rows.length === 0) {
-    return <EmptyFrame>{(page.data?.versions.length ?? 0) === 0 ? t("No run has been made yet. Extract a system and run an analysis to see it here.") : t("No run matches these filters. Choose Any status and All systems to see every run.")}</EmptyFrame>;
+    return <EmptyFrame>{filtered ? t("No run matches these filters. Choose Any status and All systems to see every run.") : t("No run has been made yet. Extract a system and run an analysis to see it here.")}</EmptyFrame>;
   }
   return (
     <div data-testid="runs-ledger">
+      <p className="m2-meta" data-testid="runs-shown">{t("{shown} of {total} runs shown", { shown: rows.length, total })}</p>
       {groups.map((g) => (
         <LedgerGroup key={g.id} name={g.name} inactive={g.inactive} rows={g.rows} meta={meta} />
       ))}
+      {total > rows.length ? (
+        <button type="button" className="m2-btn" data-testid="runs-more" disabled={page.isFetching} onClick={() => setLimit((n) => n + LEDGER_PAGE)}>
+          {t("Show more")}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -325,17 +342,17 @@ function JobsTable({ kind, status }: { kind: string; status: string }) {
   );
 }
 
-/** Export of the runs list (up to 100 runs) as Excel or CSV, following the system filter and the archived switch. */
-export function RunsExport({ system, archived }: { system: string; archived: boolean }) {
+/** Export of the runs list (up to 1,000 runs) as Excel or CSV, following the system and status filters and the archived switch. */
+export function RunsExport({ system, status = "all", archived }: { system: string; status?: string; archived: boolean }) {
   const session = useV2Session();
   const { outcome, pending, run } = useOutcome();
   const allowed = session.can("export");
   const go = (format: ExportFormat) =>
     void run(format, async () => {
-      await exportRuns(format, { system_id: system === "all" ? undefined : system, include_archived: archived || undefined });
+      await exportRuns(format, { system_id: system === "all" ? undefined : system, include_archived: archived || undefined, status: statusParam(status) });
       return session.fixture
         ? { tone: "info", title: t("Fixture mode: no file is produced") }
-        : { tone: "ok", title: t("Runs downloading"), detail: t("The browser saves the file when it is ready. It follows the system filter and the archived switch, up to 100 runs.") };
+        : { tone: "ok", title: t("Runs downloading"), detail: t("The browser saves the file when it is ready. It follows the system, status and archived filters, up to 1,000 runs.") };
     });
   return (
     <span className="m2-cta" data-testid="runs-export">
@@ -491,9 +508,9 @@ export function RunsCanvas() {
               <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} />
               {t("Show archived runs")}
             </label>
-            <RunsExport system={system} archived={archived} />
+            <RunsExport system={system} status={status} archived={archived} />
           </div>
-          <RunsLedger systemFilter={system} statusFilter={status} showArchived={archived} />
+          <RunsLedger key={`${system}|${status}|${archived}`} systemFilter={system} statusFilter={status} showArchived={archived} />
         </section>
       ) : (
         <section className="m2-sec" aria-label={t("Jobs")} style={{ marginTop: "var(--m2-s4)" }}>
