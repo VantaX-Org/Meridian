@@ -74,6 +74,11 @@ describe("the admin's jobs", () => {
     mount(<AdminCanvas section="sharelinks" />);
     const list = await screen.findByTestId("share-links");
     fireEvent.click(within(list).getAllByRole("button", { name: "Revoke" })[0]);
+    // Revoking asks first and says the link stops working at once.
+    const ask = await screen.findByTestId("admin-dialog");
+    expect(norm(ask)).toContain("The link stops working at once.");
+    expect(rolesAudit().map((a) => a.action)).not.toContain("share_link.revoke");
+    fireEvent.click(within(ask).getByRole("button", { name: "Revoke" }));
     await waitFor(() => expect(rolesAudit().map((a) => a.action)).toContain("share_link.revoke"));
   });
 

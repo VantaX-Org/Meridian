@@ -21,7 +21,10 @@ def run(engine, version_id: str, tenant_id: str) -> dict:
 
     with tenant_session(engine, tenant_id) as s:
         stored, jobs = batch_verification.verify(s, tenant_id, version_id)
+        verified, failing = batch_verification.verify_cleaning(s, tenant_id, version_id)
         s.commit()
+    if verified or failing:
+        logger.info("cleaning verification of %s: %d verified, %d still failing", version_id, verified, failing)
     handoff_notices.dispatch(jobs)
     return {"batches": len(stored), "fixed": sum(v["fixed"] for v in stored),
             "still_failing": sum(v["still_failing"] for v in stored)}

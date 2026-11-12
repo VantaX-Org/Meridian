@@ -170,9 +170,12 @@ function JobBody({ job }: { job: Job }) {
               </button>
             </div>
           ) : (
-            <button type="button" className="m2-btn" disabled={!canCancel} title={canCancel ? undefined : tr("Cancelling a job needs the manage settings permission")} onClick={() => setConfirming(true)} data-testid="job-cancel">
+            <>
+            <button type="button" className="m2-btn" disabled={!canCancel} aria-describedby={canCancel ? undefined : "job-cancel-why"} onClick={() => setConfirming(true)} data-testid="job-cancel">
               {tr("Cancel job")}
             </button>
+            {canCancel ? null : <span id="job-cancel-why" className="m2-prov">{tr("Cancelling a job needs the manage settings permission")}</span>}
+            </>
           )}
         </Actions>
       ) : null}

@@ -18,6 +18,7 @@ import { t } from "@/lib/v2/i18n";
 import { ageWord, kindWord, objectWord, PrecheckView, statusWord } from "../inspector/request";
 import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { Consequence, FixHead, FlowSteps, MoreDetail } from "../FixParts";
+import { ConfirmBar } from "../forms";
 import { CcBanner, CcHBars, CcPage, type CcBarRow } from "./cc-parts";
 import { TableExport } from "@/design/v2/TableExport";
 import { WritebackApprovals } from "./WritebackApprovals";
@@ -220,6 +221,7 @@ function EntryDefaults({ canEdit }: { canEdit: boolean }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [asking, setAsking] = useState<{ id: string; object: RequestObject; field: string; value: string } | null>(null);
   const act = async (fn: () => Promise<unknown>, fallback: string) => {
     setBusy(true);
     setError(null);
@@ -262,7 +264,7 @@ function EntryDefaults({ canEdit }: { canEdit: boolean }) {
                 </td>
                 {canEdit ? (
                   <td>
-                    <button type="button" className="m2-btn m2-sm" disabled={busy} onClick={() => void act(() => deleteDefault(d.id), t("The default could not be removed."))}>
+                    <button type="button" className="m2-btn m2-sm" disabled={busy} onClick={() => setAsking({ id: d.id, object: d.object, field: d.field, value: d.value })}>
                       {t("Remove")}
                     </button>
                   </td>
@@ -272,6 +274,19 @@ function EntryDefaults({ canEdit }: { canEdit: boolean }) {
           </tbody>
         </table></TableExport>
       )}
+      {asking ? (
+        <ConfirmBar
+          message={t("The default {value} for {field} of {object} is removed. New create requests keep that field empty when the requester leaves it empty.", { value: asking.value, field: describeField(asking.field) ?? asking.field, object: objectWord(asking.object) })}
+          confirmLabel={t("Remove")}
+          pending={busy}
+          onConfirm={() => {
+            const id = asking.id;
+            setAsking(null);
+            void act(() => deleteDefault(id), t("The default could not be removed."));
+          }}
+          onCancel={() => setAsking(null)}
+        />
+      ) : null}
       {canEdit ? (
         <div className="m2-rfilters">
           <label>
@@ -352,6 +367,7 @@ function ObjectSelect({ value, onChange }: { value: RequestObject; onChange: (o:
 function DerivationRules({ canEdit }: { canEdit: boolean }) {
   const q = useDerivations();
   const { act, busy, error } = useRuleAct("request-derivations");
+  const [asking, setAsking] = useState<{ id: string; object: RequestObject; field: string } | null>(null);
   const [object, setObject] = useState<RequestObject>("material");
   const [whenField, setWhenField] = useState("");
   const [whenValues, setWhenValues] = useState("");
@@ -404,7 +420,7 @@ function DerivationRules({ canEdit }: { canEdit: boolean }) {
                 </td>
                 {canEdit ? (
                   <td>
-                    <button type="button" className="m2-btn m2-sm" disabled={busy} onClick={() => void act(() => deleteDerivation(d.id), t("The rule could not be removed."))}>
+                    <button type="button" className="m2-btn m2-sm" disabled={busy} onClick={() => setAsking({ id: d.id, object: d.object, field: d.target_field })}>
                       {t("Remove")}
                     </button>
                   </td>
@@ -414,6 +430,19 @@ function DerivationRules({ canEdit }: { canEdit: boolean }) {
           </tbody>
         </table></TableExport>
       )}
+      {asking ? (
+        <ConfirmBar
+          message={t("The rule that sets {field} of {object} is removed. Requests saved from now on no longer get that value from it.", { field: describeField(asking.field) ?? asking.field, object: objectWord(asking.object) })}
+          confirmLabel={t("Remove")}
+          pending={busy}
+          onConfirm={() => {
+            const id = asking.id;
+            setAsking(null);
+            void act(() => deleteDerivation(id), t("The rule could not be removed."));
+          }}
+          onCancel={() => setAsking(null)}
+        />
+      ) : null}
       {canEdit ? (
         <div className="m2-rfilters">
           <ObjectSelect value={object} onChange={setObject} />
@@ -656,14 +685,14 @@ export function RequestsCanvas() {
         ]}
         action={
           <>
-          <button type="button" className="m2-btn m2-strong" aria-expanded={composing} disabled={!canWrite} title={canWrite ? undefined : t("A new request needs the master data write permission")} onClick={() => setComposing((c) => !c)}>
+          <button type="button" className="m2-btn m2-strong" aria-expanded={composing} disabled={!canWrite} aria-describedby={canWrite ? undefined : "new-request-why"} onClick={() => setComposing((c) => !c)}>
             {t("New request")}
           </button>
           {canWrite ? (
             <V2Link href="/requests/new" className="m2-btn">
               {t("Use the form")}
             </V2Link>
-          ) : null}
+          ) : <span id="new-request-why" className="m2-prov">{t("A new request needs the master data write permission")}</span>}
           </>
         }
       />
