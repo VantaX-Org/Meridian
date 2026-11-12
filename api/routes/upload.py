@@ -2,6 +2,7 @@ import io
 import logging
 import re
 import uuid
+from typing import Optional
 
 import pandas as pd
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -313,6 +314,151 @@ async def upload_file(
         job_id=job_id,
         status="pending",
     )
+
+
+class RoundTripResponse(UploadResponse):
+    parent_version_id: str
+    kind: str
+    applied: int
+    unchanged: int
+    unmatched: int
+    unmapped: dict[str, list[str]]
+    skipped: dict[str, str]
+    no_table: list[str]
+    no_field: list[str]
+
+
+def _roundtrip_edits(tenant_id, parent_id: str, system_id: Optional[str], parent_modules: list[str], parsed: dict,
+                     filename: str, data: bytes) -> tuple[str, list[dict], dict]:
+    """Which kind of file this is, its edits, and what could not be mapped (blocking; run in a thread)."""
+    from api.services import sf_roundtrip as rt
+    from api.services.source_design import dictionary_for
+    from workers.db import get_sync_engine, tenant_session
+
+    sheets, marker = parsed["sheets"], parsed["marker"]
+    kind = marker.get("kind") or ("cleaning" if any(n.startswith("Records to clean") for n, _ in sheets) else "template")
+    if kind not in rt.KINDS:
+        raise rt.RoundTripError("The marker in this file is damaged. Choose the run it came from.")
+    if kind == "cleaning":
+        edits, blank = rt.cleaning_edits(sheets)
+        return kind, edits, {"unmapped": {}, "skipped": {}, "blank": blank}
+    maps = marker.get("map")
+    if not maps:  # no marker, or a CSV export: map the columns the way the export did
+        from api.routes.migration import _fill_workbook
+        maps = {r["name"]: r for r in _fill_workbook(tenant_id, parent_id, data, filename)[2]["sheets"]}
+    with tenant_session(get_sync_engine(), tenant_id) as s:
+        dictionary = dictionary_for(s, system_id)
+    edits, report = rt.template_edits(sheets, maps, lambda t: list(dictionary.keys(t)))
+    return kind, edits, report
+
+
+@router.post(
+    "/upload/roundtrip",
+    response_model=RoundTripResponse,
+    dependencies=[Depends(_upload_rate_limit), Depends(require_permission("upload"))],
+)
+async def upload_roundtrip(
+    request: Request,
+    file: UploadFile = File(...),
+    parent_version_id: str = Form(None),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """An edited SuccessFactors export (filled template or cleaning workbook) comes back as the next run of the
+    same lineage and is analysed at once. The hidden marker names the parent run; without one the caller sends it."""
+    import json
+
+    from starlette.concurrency import run_in_threadpool
+
+    from api.middleware.licence import enforce_licensed_modules
+    from api.services import sf_roundtrip as rt
+    from api.services.rbac import write_audit
+    from db.queries import versions
+
+    data = await file.read(rt.MAX_UPLOAD_BYTES + 1)
+    try:
+        parsed = await run_in_threadpool(rt.read_upload, data, file.filename or "")
+    except rt.RoundTripError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    marker = parsed["marker"]
+    parent = parent_version_id or marker.get("version_id")
+    if not parent:
+        raise HTTPException(status_code=422, detail={"error": "parent_required",
+                            "detail": "This file does not say which run it came from. Choose the run."})
+    try:
+        parent = str(uuid.UUID(parent))
+    except ValueError:
+        raise HTTPException(status_code=422, detail="The parent run id is not valid.")
+    await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
+    row = (await db.execute(text("SELECT status, label, metadata FROM analysis_versions WHERE id = CAST(:v AS uuid) "
+                                 "AND tenant_id = :t"), {"v": parent, "t": tenant.id})).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    status, label, meta = row[0] or "", row[1], dict(row[2] or {})
+    modules = list(meta.get("modules") or [])
+    if "complete" not in status:
+        raise HTTPException(status_code=409, detail="That run has not finished.")
+    if not str(meta.get("dataset_path") or "").endswith("/"):
+        raise HTTPException(status_code=422, detail="Only a run extracted from a system can take an edited file.")
+    if marker.get("module") and marker["module"] not in modules:
+        raise HTTPException(status_code=422, detail={"error": "module_mismatch", "detail":
+                            f"This file was exported from {marker['module']}, which is not an object of the chosen run."})
+    enforce_licensed_modules(request, modules)
+    system_id = meta.get("system_id")
+    if system_id:
+        await _require_attach_right(request, db, tenant, system_id)
+    try:
+        kind, edits, report = await run_in_threadpool(_roundtrip_edits, tenant.id, parent, system_id, modules, parsed,
+                                                      file.filename or "", data)
+    except rt.RoundTripError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    if not edits:
+        raise HTTPException(status_code=422, detail="The file holds no edits to apply.")
+
+    new_meta = {k: v for k, v in meta.items() if k not in ("error", "scoring")}
+    new_meta.update({"source": "roundtrip", "trigger": "roundtrip", "file_name": file.filename,
+                     "roundtrip": {"parent_version_id": parent, "kind": kind, "edits": len(edits)}})
+    version = await versions.create_version(db, tenant.id, new_meta,
+                                            label=f"{label or 'Run'} (cleaned)"[:120])
+    prefix = f"staging/{tenant.id}/{version.id}/"
+    try:
+        result = await run_in_threadpool(rt.apply_edits, meta["dataset_path"], prefix, edits,
+                                         await run_in_threadpool(_dictionary, tenant.id, system_id))
+    except Exception as e:  # noqa: BLE001 - the version row must not linger pending
+        await versions.mark_version_failed(db, tenant.id, version.id, f"Could not apply the edits: {type(e).__name__}")
+        if isinstance(e, rt.RoundTripError):
+            raise HTTPException(status_code=422, detail=str(e))
+        raise
+    if not result["applied"]:
+        await versions.mark_version_failed(db, tenant.id, version.id, "No edit matched a record of the run.")
+        raise HTTPException(status_code=422, detail={"error": "nothing_applied", "detail":
+                            "No edit matched a record of the run.", "unmatched": result["unmatched_total"]})
+    await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
+    await db.execute(text(
+        "UPDATE analysis_versions SET parent_version_id = CAST(:p AS uuid), "
+        "metadata = metadata || jsonb_build_object('dataset_path', CAST(:d AS text)), "
+        "run_number = COALESCE((SELECT max(run_number) FROM analysis_versions WHERE tenant_id = :t "
+        "AND COALESCE(metadata->>'system_id', 'upload') = COALESCE(:sys, 'upload')), 0) + 1 "
+        "WHERE id = :v AND tenant_id = :t"),
+        {"p": parent, "d": prefix, "t": tenant.id, "v": version.id, "sys": system_id})
+    await write_audit(db, tenant.id, request, "upload.roundtrip", "analysis_version", str(version.id), None,
+                      {"parent_version_id": parent, "kind": kind, "applied": result["applied"]})
+    await db.commit()
+    jobs.start_job(str(tenant.id), str(version.id), "upload", file.filename or "Upload", status="queued",
+                   progress_key=str(version.id), version_id=str(version.id))
+    job_id = await _enqueue_checks(db, tenant.id, version.id, prefix)
+    return RoundTripResponse(
+        version_id=str(version.id), job_id=job_id, status="pending", parent_version_id=parent, kind=kind,
+        applied=result["applied"], unchanged=result["unchanged"], unmatched=result["unmatched_total"],
+        unmapped=report["unmapped"], skipped=report["skipped"], no_table=result["no_table"], no_field=result["no_field"])
+
+
+def _dictionary(tenant_id, system_id):
+    from api.services.source_design import dictionary_for
+    from workers.db import get_sync_engine, tenant_session
+
+    with tenant_session(get_sync_engine(), tenant_id) as s:
+        return dictionary_for(s, system_id)
 
 
 async def _tenant_system(db: AsyncSession, tenant_id: uuid.UUID, system_id: str) -> str:
