@@ -137,8 +137,9 @@ def analysed_dry_run():
             c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, :t)"), {"t": t})
         c.execute(text("INSERT INTO sap_systems (id, tenant_id, name, system_type) VALUES "
                        "(:s, :t, 'PRD', 'ecc6')"), {"s": sid, "t": t1})
-        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status) VALUES (:v, :t, 'complete')"),
-                  {"v": vid, "t": t1})
+        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, metadata) "
+                       "VALUES (:v, :t, 'complete', CAST(:m AS jsonb))"),
+                  {"v": vid, "t": t1, "m": json.dumps({"dataset_path": "src/", "system_id": sid})})
         c.execute(text("""
             INSERT INTO migration_runs (id, tenant_id, mode, source_system_id, modules, status,
                                         gap_summary, readiness_verdict, readiness_score, completed_at)

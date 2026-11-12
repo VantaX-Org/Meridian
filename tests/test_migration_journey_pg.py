@@ -69,7 +69,7 @@ async def test_start_passes_the_picked_source_run_and_refuses_a_foreign_or_unfin
     sent: list = []
     monkeypatch.setattr("workers.tasks.run_migration.run_migration.delay",
                         lambda *a: sent.append(a) or SimpleNamespace(id="task-1"))
-    body = {"mode": "source_only", "source_system_id": seeded.src, "modules": ["material_master"]}
+    body = {"mode": "source_to_source", "source_system_id": seeded.src, "modules": ["material_master"]}
     async with await _client(monkeypatch, seeded.tid) as client:
         r = await client.post("/api/v1/migration/analyze", headers=H, json={**body, "source_version_id": seeded.sv})
         assert r.status_code == 200, r.text
