@@ -703,7 +703,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Update {state}{value}.": "Aktualisierung {state}{value}.",
   "Updating…": "Wird aktualisiert …",
   "Update to {latest_version}": "Auf {latest_version} aktualisieren",
-  "The services restart one after another and the database migrates. Screens may be unavailable for a few minutes. If a step fails, the previous version is restored.": "Die Dienste starten nacheinander neu und die Datenbank wird migriert. Ansichten können einige Minuten nicht verfügbar sein. Schlägt ein Schritt fehl, wird die vorherige Version wiederhergestellt.",
+  "The services restart one after another and the database migrates. Screens may be unavailable for a few minutes. If a step fails, the previous images are put back. The database is not restored automatically: a backup taken before the update is kept, and an administrator can restore it.": "Die Dienste starten nacheinander neu und die Datenbank wird migriert. Ansichten können einige Minuten nicht verfügbar sein. Schlägt ein Schritt fehl, werden die vorherigen Images wieder eingesetzt. Die Datenbank wird nicht automatisch wiederhergestellt: Eine vor dem Update erstellte Sicherung bleibt erhalten, und ein Administrator kann sie wiederherstellen.",
   "Run the update": "Aktualisierung ausführen",
   "Update started": "Aktualisierung gestartet",
   "Progress shows here; the job line follows it too.": "Der Fortschritt erscheint hier; die Jobzeile verfolgt ihn ebenfalls.",
@@ -9703,4 +9703,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The batch could not be reassigned.": "Der Stapel konnte nicht neu zugewiesen werden.",
   "Reassign batch {label}": "Stapel {label} neu zuweisen",
   "Reassign whole batch": "Ganzen Stapel neu zuweisen",
+  "{failed} of {total} schedules could not be saved. Save again to retry only those.": "{failed} von {total} Zeitplänen konnten nicht gespeichert werden. Speichern Sie erneut, um nur diese zu wiederholen.",
+  "Connecting a system": "Ein System verbinden",
+  "Not in your licence": "Nicht in Ihrer Lizenz",
+  "Not saved yet": "Noch nicht gespeichert",
+  "Inviting people needs the manage users permission. An administrator can invite them later.": "Zum Einladen von Personen ist die Berechtigung zum Verwalten von Benutzern nötig. Ein Administrator kann sie später einladen.",
 };

@@ -1,7 +1,7 @@
 # Meridian: updating a deployed platform
 
 An installed Meridian is updated in place by `scripts/update.sh` in the install directory (`/opt/meridian` by
-default), either from Administration (**Update now**, which runs it through the updater sidecar) or by hand over
+default), either from Administration (**Update to X.Y.Z**, which runs it through the updater sidecar) or by hand over
 SSH. The script installs one named release and pins the stack to it; it never follows a moving `:latest` tag.
 
 ## How a release reaches an install
@@ -14,7 +14,7 @@ SSH. The script installs one named release and pins the stack to it; it never fo
 
 ## Run an update
 
-From Administration, **Update now** asks the updater sidecar to install exactly the release HQ offered.
+From Administration, **Update to X.Y.Z** asks the updater sidecar to install exactly the release HQ offered.
 
 By hand:
 
@@ -52,8 +52,10 @@ server-level override. Run `docker compose exec nginx nginx -t` after adding a f
 `docker compose exec nginx nginx -s reload`.
 
 If the migration or the health check fails, the script rolls back on its own: the `:rollback` images are the
-running release again, `.env` names that release, and the services are recreated on it. A database that had
-already migrated is restored from the dump the script names in its output.
+running release again, `.env` names that release, and the services are recreated on it. The database is not
+restored automatically. If it had already migrated, restore it yourself from the dump the script names in its output
+(the `pg_restore` line it prints), or take the schema back with the down-migrations in
+[runbooks section 3](sustain/runbooks.md#3-update-with-updatesh-and-roll-back).
 
 ## Roll back
 
@@ -82,8 +84,10 @@ is untouched; check the release exists, `docker login ghcr.io`, and free disk sp
 **"Meridian HQ did not give a latest version".** The install is offline or the api is not running. Name the
 release: `sudo bash scripts/update.sh --version X.Y.Z`.
 
-**A migration fails.** The script has already rolled back to the running release. Read the cause with
-`docker compose -f docker/docker-compose.customer.yml logs api --tail 100`.
+**A migration fails.** The script has already rolled back to the running release, but not the database. Read the
+cause with `docker compose -f docker/docker-compose.customer.yml logs api --tail 100`. If the schema had partly
+migrated, restore the pre-update dump the script named:
+`docker compose -f docker/docker-compose.customer.yml exec -T db pg_restore -U meridian -d meridian --clean --if-exists < <dump>`.
 
 **Services are unhealthy after the update.** Some services take longer to start. Wait 30 seconds and check
 `docker compose -f docker/docker-compose.customer.yml ps`; if it stays unhealthy, roll back.

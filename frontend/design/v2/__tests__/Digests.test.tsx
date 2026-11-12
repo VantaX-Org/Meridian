@@ -66,7 +66,7 @@ describe("Admin, Digests", () => {
   it("says which permission it needs to anyone without manage_settings", async () => {
     h.allowed = ["view"];
     page();
-    expect(await screen.findByTestId("needs-permission")).toHaveTextContent("Managing digests needs the manage settings permission");
+    expect(await screen.findByTestId("needs-permission")).toHaveTextContent("Digests needs the manage settings permission");
   });
 
   it("adds a wave digest by email: the cron is checked as it is typed, the recipients are needed, then it saves", async () => {
