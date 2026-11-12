@@ -17,6 +17,7 @@ import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
 import { VerdictMark } from "../marks";
 import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "./shared";
+import { ConnectivitySection } from "./connectivity";
 import { DryRunBlock } from "./governance";
 import { t } from "@/lib/v2/i18n";
 import { labelText, systemTypeText } from "@/lib/v2/labels";
@@ -230,6 +231,7 @@ function SystemBody({ system, ext }: { system: LandscapeSystem; ext: SAPSystemEx
           <ExtractPicker system={system} allowAnalyse={analyse} onDone={() => undefined} />
         </div>
       ) : null}
+      <ConnectivitySection systemId={system.id} canSync={sync} />
     </>
   );
 }
