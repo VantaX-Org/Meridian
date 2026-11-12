@@ -87,6 +87,7 @@ from api.routes.aletheia_engine import router as aletheia_engine_router
 from api.routes.assistant import router as assistant_router
 from api.routes.owner_digests import router as owner_digests_router
 from api.routes.lineage import router as lineage_router
+from api.routes.catalogue import router as catalogue_router
 from api.routes.business_process import router as business_process_router
 from api.routes.events import router as events_router
 from api.routes.jobs import router as jobs_router
@@ -498,6 +499,7 @@ app.include_router(aletheia_engine_router)
 app.include_router(assistant_router)
 app.include_router(owner_digests_router)
 app.include_router(lineage_router)
+app.include_router(catalogue_router)
 app.include_router(business_process_router)
 app.include_router(events_router)
 app.include_router(jobs_router)

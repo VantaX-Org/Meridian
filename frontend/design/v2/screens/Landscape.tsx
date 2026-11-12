@@ -685,6 +685,11 @@ export function LandscapeCanvas() {
           : t("This page shows every connected system at its newest run: {systems} systems and {objects} objects. {held_under_85} cannot reach 85 yet. Start with the fix queue, or open any object to see its run.", { systems: L.systems.length, objects: L.sentence.objects, held_under_85: L.sentence.held_under_85 })}
       </Lede>
       <Welcome />
+      {/* The role's next step comes first, under the lede: it is the one strong control of the canvas. */}
+      {session.persona === "owner" ? <OwnerLine /> : null}
+      <div className="m2-cta" data-testid="home-next">
+        <NextStep landscape={L} persona={session.persona} waves={waves} />
+      </div>
       <HomeHeadlines L={L} />
       <GoLiveBanner landscape={L} waves={waves} />
       {L.cells.length ? <ReadinessMatrix landscape={L} run={run} /> : null}
@@ -714,10 +719,6 @@ export function LandscapeCanvas() {
         <AletheiaDock />
       </div>
       {L.cells.length === 0 ? <FirstSteps connected analysed={false} systemId={L.systems[0]?.id} /> : null}
-      {session.persona === "owner" ? <OwnerLine /> : null}
-      <div className="m2-cta">
-        <NextStep landscape={L} persona={session.persona} waves={waves} />
-      </div>
       {session.persona === "basis" ? <BasisTasks landscape={L} /> : null}
       {session.persona === "basis" ? <BasisHome landscape={L} /> : null}
       <Coverage landscape={L} run={run} view={view} waves={waves} />

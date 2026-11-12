@@ -10,13 +10,14 @@ import { AletheiaDock } from "./CommandCentre";
 /**
  * The Command centre page frame: the content beside the docked Aletheia, stacked below it on narrow screens. The banner
  * carries the state, so `title` is a hidden h1 for screen readers and the tab; pages that draw a PageTitle leave it out.
+ * `dock={false}` leaves Aletheia out where its questions are about no run (Administration, People): the page takes the width.
  */
-export function CcPage({ title, children }: { title?: string; children: ReactNode }) {
+export function CcPage({ title, children, dock = true }: { title?: string; children: ReactNode; dock?: boolean }) {
   return (
-    <div className="m2-cc">
+    <div className="m2-cc" data-dock={dock ? undefined : "none"}>
       {title ? <div className="m2-sr"><PageTitle>{title}</PageTitle></div> : null}
       <div className="m2-cc-main">{children}</div>
-      <AletheiaDock />
+      {dock ? <AletheiaDock /> : null}
     </div>
   );
 }
@@ -27,6 +28,8 @@ export interface CcFig {
   note?: string;
   /** What the figure means, on hover. */
   hint?: string;
+  /** A status ink for a figure that is itself bad news (overdue, blocking, money at risk); a figure without one stays neutral. */
+  tone?: "crit" | "warn";
 }
 
 /** The headline of a page: one sentence of state, up to three figures, and the one thing to do next. */
@@ -43,7 +46,7 @@ export function CcBanner({ eyebrow, headline, verdict, why, figs = [], action, t
       {figs.length ? (
         <dl className="m2-cc-figs">
           {figs.map((f) => (
-            <div key={f.label} title={f.hint}>
+            <div key={f.label} title={f.hint} data-tone={f.tone}>
               <dt>{f.label}</dt>
               <dd>{f.value}</dd>
               {f.note ? <dd className="m2-cc-note">{f.note}</dd> : null}

@@ -321,6 +321,7 @@ words above it. Object names come from `formatModuleName` (`lib/format.ts`), nev
 | `/runs`, `/run/{id}`, `/run/{a}/vs/{b}` (`?view=records`) | Runs ledger and jobs, one run, two runs of one system |
 | `/s/{id}`, `/s/new` | A system (`?tab=`), connect a system |
 | `/people`, `/reports` | People, Reports |
+| `/catalogue` | The data catalogue: tables (`?q=`, `?system=`), one table (`?table=`), field search (`?view=fields`); a field opens as `?open=field:TABLE.FIELD` |
 | `/admin`, `/admin/{section}` | Administration |
 | `/share/{token}` | A read-only shared view |
 | `/status` | The status page (signed out and signed in) |

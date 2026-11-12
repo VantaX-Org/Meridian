@@ -348,11 +348,12 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               <ErrorFrame onRetry={() => void receiptQ.refetch()}>{tr("The score's working could not be read for this run.")}</ErrorFrame>
             </div>
           ) : null}
-          <ObjectBanner cell={cell} receipt={receipt} label={label} system={systemSegment} module={moduleSegment} cap={<CapSentence capped={cell.capped} cap={cell.cap_level} ids={cell.breaches} />} />
-          <ObjectMonitorStrip module={apiModule} />
+          {/* The headline belongs to Overview and to Rules (the score's working); the monitor to Overview. Every other view puts its own content straight under the tabs. */}
+          {onOverview || onRules ? <ObjectBanner cell={cell} receipt={receipt} label={label} system={systemSegment} systemName={system.name} module={moduleSegment} cap={<CapSentence capped={cell.capped} cap={cell.cap_level} ids={cell.breaches} />} /> : null}
+          {onOverview ? <ObjectMonitorStrip module={apiModule} /> : null}
           <div className="m2-cc m2-co">
             <div className="m2-cc-main">
-              <AletheiaFound module={apiModule} />
+              {onOverview || onRules ? <AletheiaFound module={apiModule} /> : null}
               {receipt ? (
                 <p className="m2-statusline" data-testid="object-status">
                   {statusItems(receipt, cell).map((it, i) => (
