@@ -716,11 +716,12 @@ def _value_map(col: Column, f: Field, maps: dict[str, dict[str, str]]) -> tuple[
 
 def _pick(options: dict, sheet, dictionary) -> Optional[str]:
     """The sheet's main table. A sheet that carries every key of a table keyed on a start or effective date takes
-    that history table (EmpJob history for Job Info) over a current-record table with more matched columns."""
+    that history table (EmpJob history for Job Info) over a current-record table with more matched columns,
+    unless the sheet names its table."""
     def dated(t: str) -> bool:
         keys = set(dictionary.keys(t))
         return bool(keys & {"START_DATE", "EFFECTIVE_DATE"}) and keys <= {f.name for f in options[t].values()}
-    return max(options, key=lambda t: (dated(t), len(options[t]), t == _named_table(sheet)), default=None)
+    return max(options, key=lambda t: (t == _named_table(sheet), dated(t), len(options[t])), default=None)
 
 
 def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str, dict[str, str]]] = None,
