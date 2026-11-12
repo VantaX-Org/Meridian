@@ -3,7 +3,8 @@
  * and the objects monitor. Reads go through v2Get, writes through v2Send, files through v2Download (path relative to
  * /api/v1). Endpoints: GET /runs/export, GET /runs/{id}/steps, GET /runs/{id}/steps/export, POST /jobs/{id}/cancel,
  * GET /versions/compare/records, GET /versions/compare/records/{check_id}, GET /objects/monitor,
- * GET /objects/{module}/monitor.
+ * GET /objects/{module}/monitor, PATCH /versions/{id}, POST /versions/{id}/run-agents,
+ * GET /versions/{id}/findings/{check_id}/records, GET /events/{id} (server-sent events).
  */
 import { v2Get, v2Send } from "./client";
 import { fixtureActive } from "./fixture";
@@ -134,3 +135,101 @@ export const getObjectsMonitor = (): Promise<{ objects: ObjectMonitor[] }> => v2
 
 /** GET /objects/{module}/monitor: the same for one object. 404 when it has not been measured yet. */
 export const getObjectMonitor = (module: string): Promise<ObjectMonitor> => v2Get<ObjectMonitor>(`/objects/${encodeURIComponent(module)}/monitor`);
+
+// ── Rename, re-run agents, finding records, run events ───────────────────────────────────────
+
+/** PATCH /versions/{id}: sets the run's label (the route takes a label and nothing else). Needs the analyse permission. */
+export const renameRun = (id: string, label: string): Promise<{ id: string; label: string | null }> =>
+  fixtureActive() ? Promise.resolve().then(() => fixtureAction("rename", { id, label }) as { id: string; label: string }) : v2Send("PATCH", `/versions/${encodeURIComponent(id)}`, { label });
+
+export interface AgentsEnqueued {
+  version_id: string;
+  job_id: string;
+  status: string;
+}
+
+/** POST /versions/{id}/run-agents: runs the agents again on a finished run. 409 until the run is complete. Needs the analyse permission. */
+export const rerunAgents = (id: string): Promise<AgentsEnqueued> =>
+  fixtureActive() ? Promise.resolve().then(() => fixtureAction("rerun_agents", { id }) as AgentsEnqueued) : v2Send<AgentsEnqueued>("POST", `/versions/${encodeURIComponent(id)}/run-agents`);
+
+export interface FindingRecord {
+  record_key: string;
+  grain: string;
+  module: string;
+  /** Masked for sensitive fields; null on runs made before values were kept. */
+  field_values: Record<string, unknown> | null;
+}
+
+export interface FindingRecords {
+  version_id: string;
+  check_id: string;
+  total: number;
+  records: FindingRecord[];
+}
+
+/** GET /versions/{id}/findings/{check_id}/records: one page of the records that fail a check at a run. limit 1 to 1000. */
+export const getFindingRecords = (versionId: string, checkId: string, page: { limit: number; offset: number; grain?: string }): Promise<FindingRecords> =>
+  fixtureActive()
+    ? Promise.resolve().then(() => fixtureAction("finding_records", { versionId, checkId, ...page }) as FindingRecords)
+    : v2Get<FindingRecords>(`/versions/${encodeURIComponent(versionId)}/findings/${encodeURIComponent(checkId)}/records`, page);
+
+export interface RunEvent {
+  /** The frame's `event:` name. */
+  type: string;
+  /** The frame's `data:` payload, parsed when it is JSON. */
+  data: unknown;
+}
+
+/** One SSE frame to an event, or null for a heartbeat or connection comment (lines that start with a colon). */
+export function parseEventFrame(frame: string): RunEvent | null {
+  let type = "message";
+  const data: string[] = [];
+  for (const line of frame.split("\n")) {
+    if (line.startsWith("event:")) type = line.slice(6).trim();
+    else if (line.startsWith("data:")) data.push(line.slice(5).trimStart());
+  }
+  if (!data.length) return null;
+  const raw = data.join("\n");
+  try {
+    return { type, data: JSON.parse(raw) };
+  } catch {
+    return { type, data: raw };
+  }
+}
+
+/**
+ * GET /events/{id}: live progress events of one run. The stream has no history, it carries only what happens while it
+ * is open, and it closes itself when the run completes, fails or is cancelled. Returns the function that stops it.
+ * No network in fixture mode.
+ */
+export function streamRunEvents(id: string, onEvent: (e: RunEvent) => void, onEnd: (error?: unknown) => void): () => void {
+  if (fixtureActive()) {
+    const timer = setTimeout(() => onEnd(), 0);
+    return () => clearTimeout(timer);
+  }
+  const controller = new AbortController();
+  (async () => {
+    try {
+      const res = await fetch(`/api/v1/events/${encodeURIComponent(id)}`, { headers: { Accept: "text/event-stream" }, signal: controller.signal });
+      if (!res.ok || !res.body) throw new Error(`events stream: HTTP ${res.status}`);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf("\n\n")) >= 0) {
+          const e = parseEventFrame(buffer.slice(0, idx));
+          buffer = buffer.slice(idx + 2);
+          if (e) onEvent(e);
+        }
+      }
+      onEnd();
+    } catch (err) {
+      if (!controller.signal.aborted) onEnd(err);
+    }
+  })();
+  return () => controller.abort();
+}

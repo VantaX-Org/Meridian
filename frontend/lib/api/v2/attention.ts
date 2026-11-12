@@ -39,3 +39,6 @@ export const getAttention = (q: { kinds?: string; system_id?: string }) =>
     "/attention",
     Object.fromEntries(Object.entries({ ...q, limit: ATTENTION_LIMIT }).filter(([, v]) => v !== undefined && v !== "")),
   );
+
+/** GET /attention/count: the Rail badge and the home verdict button. Counts by severity and the top item, for the caller. */
+export const getAttentionCount = () => v2Get<AttentionCounts & { top: AttentionItem | null }>("/attention/count");

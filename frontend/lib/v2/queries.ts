@@ -5,6 +5,7 @@ import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import type { Landscape } from "@/lib/api/v2/types";
 import { currentLang, tx } from "./i18n";
+import { getAttentionCount } from "@/lib/api/v2/attention";
 import { getCounts, getLandscape, getObjectRules, getReceipt, getRunList, getStatus, getTopWork } from "@/lib/api/v2/landscape";
 
 /** Query keys for the v2 reads. The fixture flag is part of every key, so fixture and live answers never mix. */
@@ -16,6 +17,7 @@ export const v2Keys = {
   receipt: (fixture: boolean, module: string, run: string | null) => ["v2", "receipt", fixture, module, run] as const,
   runs: (fixture: boolean) => ["v2", "runs", fixture] as const,
   counts: (fixture: boolean) => ["v2", "counts", fixture] as const,
+  attentionCount: (fixture: boolean) => ["v2", "attention-count", fixture] as const,
   topWork: (fixture: boolean, limit: number) => ["v2", "top-work", fixture, limit] as const,
   rules: (fixture: boolean, module: string, run: string | null, rows: number) => ["v2", "rules", fixture, module, run, rows] as const,
 };
@@ -48,6 +50,12 @@ export function useRunList() {
 export function useCounts() {
   const fixture = useFixture();
   return useQuery({ queryKey: v2Keys.counts(fixture), queryFn: getCounts, staleTime: STALE, refetchInterval: fixture ? false : 60_000 });
+}
+
+/** The Rail's Fix badge: open attention items of every severity (GET /attention/count). */
+export function useAttentionCount() {
+  const fixture = useFixture();
+  return useQuery({ queryKey: v2Keys.attentionCount(fixture), queryFn: getAttentionCount, staleTime: STALE, refetchInterval: fixture ? false : 60_000, retry: false });
 }
 
 export function useTopWork(limit = 5, enabled = true) {

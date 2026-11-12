@@ -371,3 +371,11 @@ describe("menu for every role", () => {
     expect(destinationAt("/status", all)?.id).toBe("runs");
   });
 });
+
+describe("rail attention badge", () => {
+  it("counts the Fix badge from the attention count route", async () => {
+    mount();
+    const fix = within(screen.getByTestId("rail")).getByRole("link", { name: "Fix" });
+    await waitFor(() => expect(fix).toHaveTextContent("1,242"));
+  });
+});
