@@ -25,7 +25,7 @@ _MODULES = ("CASE WHEN jsonb_typeof(v.metadata->'modules') = 'array' THEN v.meta
 _RUNS = f"""
 SELECT {{pick}} m.module, v.id::text AS id, v.status, v.run_at, v.run_number, v.parent_version_id::text AS parent
   FROM analysis_versions v CROSS JOIN LATERAL jsonb_array_elements_text({_MODULES}) AS m(module)
- WHERE v.tenant_id = CAST(:t AS uuid) AND {lineage_sql('v')} = :scope {{extra}}
+ WHERE v.tenant_id = CAST(:t AS uuid) AND {lineage_sql('v').replace('{', '{{').replace('}', '}}')} = :scope {{extra}}
    AND v.metadata->>'purpose' IS DISTINCT FROM 'process_discovery' AND v.metadata->>'archived' IS DISTINCT FROM 'true'
  ORDER BY m.module, v.run_at DESC"""
 _DOWNLOADS = f"""
