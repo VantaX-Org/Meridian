@@ -50,6 +50,12 @@ OBJECTS: dict[str, dict] = {
                    "KNVK", "KNAS", "KNKK", "KNKA", "TIBAN", "ADRC", "ADR2", "ADR3", "ADR6",
                    "UKMBP_CMS", "UKMBP_CMS_SGM", "CVI_CUST_LINK"],
     },
+    "business_partner": {
+        "title": "ECC business partner",
+        "system": "ecc",
+        "tables": ["BUT000", "BUT020", "BUT021_FS", "BUT0BK", "BUT0ID", "BUT100", "BUT050", "DFKKBPTAXNUM",
+                   "ADRC", "ADR2", "ADR6", "CVI_CUST_LINK", "CVI_VEND_LINK"],
+    },
     "employee_central": {
         "title": "SuccessFactors Employee Central",
         "system": "successfactors",
