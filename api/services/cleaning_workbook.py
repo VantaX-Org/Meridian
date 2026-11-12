@@ -456,6 +456,24 @@ def cleaning_context(data: dict, rules: dict[str, dict]) -> tuple[list[SheetSpec
     return sheets, counts
 
 
+def aletheia_plan_sheet(s: Session, tid: str, vid: str, module: str) -> Optional[SheetSpec]:
+    """Fix batches with their instruction text and the change since the previous run (api/services/aletheia_cleaning.py,
+    deterministic layer only, so the download never waits on the engine)."""
+    from api.services import aletheia_cleaning as ac
+
+    data = ac.load(s, tid, vid, module)
+    if data is None:
+        return None
+    p = ac.build(data, use_engine=False)
+    if not p["batches"]:
+        return None
+    cols = [ColumnSpec("order", "Order", "int", width=8), ColumnSpec("kind", "Kind of fix", width=22),
+            ColumnSpec("field", "Field", width=34), ColumnSpec("rules", "Rules", width=30),
+            ColumnSpec("affected", "Failing records", "int", width=14),
+            ColumnSpec("instruction", "What to do", width=70), ColumnSpec("evidence", "Evidence", width=44)]
+    return SheetSpec("Fix batches", cols, ac.workbook_rows(p), note=p["changes"]["narrative"])
+
+
 def build(s: Session, tid: str, vid: str, module: str,
           generated_at: Optional[datetime] = None) -> Optional[tuple[bytes, str]]:
     data = load(s, tid, vid, module)
@@ -463,6 +481,10 @@ def build(s: Session, tid: str, vid: str, module: str,
         return None
     generated_at = generated_at or datetime.now(timezone.utc)
     sheets, _ = cleaning_context(data, rule_meta(module))
+    plan_sheet = aletheia_plan_sheet(s, tid, vid, module)
+    if plan_sheet is not None:
+        sheets.insert(next((i for i, sh in enumerate(sheets) if sh.title.startswith("Records to clean")), len(sheets)),
+                      plan_sheet)
     run = data["run"]
     # hidden and last: tells the upload-back which run and object this file came from (api/services/sf_roundtrip.py)
     sheets.append(SheetSpec(MARKER, [ColumnSpec("key", "key"), ColumnSpec("value", "value")],

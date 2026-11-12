@@ -3,7 +3,7 @@ Insights. Both answer 200 when the engine is off; the body says why (api/service
 import uuid
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes.insights import _agg
 from sqlalchemy import text
 
+from api.services import aletheia_cleaning as cleaning
 from api.services import aletheia_engine as engine
 from api.services import aletheia_foresight as foresight
 from api.services import aletheia_reason as reasoning
@@ -238,3 +239,115 @@ async def get_reason(version_id: Optional[uuid.UUID] = None, system_id: Optional
     data = await _agg(db, tenant, reasoning.load, version_id and str(version_id), system_id, limit)
     out = await run_in_threadpool(reasoning.reason, data["runs"], data["rules"], data["rule_names"])
     return {"lineage": data["lineage"], "labels": engine.METRICS, **out}
+
+
+class CleaningPattern(BaseModel):
+    """Pattern counts of a rule's listed failing values; never a value."""
+    listed: int
+    blank: int
+    masks: list[dict[str, Any]]
+    leading_ws: int
+    trailing_ws: int
+    inner_ws: int
+    case: dict[str, int]
+
+
+class CleaningSuggestion(BaseModel):
+    value: str
+    source: str  # fix_draft | value_fix_map | rule_auto_fix
+    covered: int
+    base: int
+    confidence: int
+    evidence: str
+
+
+class CleaningItem(BaseModel):
+    rule: str
+    message: str
+    field: str
+    field_label: str
+    severity: str
+    dimension: str
+    check_class: str | None = None
+    affected: int
+    total: int
+    pass_rate: float | None = None
+    kind: str  # auto | fill | pick | review
+    explanation: str
+    pattern: CleaningPattern | None = None
+    suggestion: CleaningSuggestion | None = None
+
+
+class CleaningBatch(BaseModel):
+    id: str
+    kind: str
+    field: str
+    field_label: str
+    rules: list[str]
+    affected: int
+    suggested: int
+    instruction: str
+    evidence: str
+
+
+class RuleChange(BaseModel):
+    rule: str
+    before: int
+    after: int
+
+
+class CleaningChanges(BaseModel):
+    available: bool
+    previous: dict[str, Any] | None = None
+    new: list[RuleChange]
+    resolved: list[RuleChange]
+    worse: list[RuleChange]
+    better: list[RuleChange]
+    narrative: str
+
+
+class RuleRange(BaseModel):
+    rule: str
+    mean: Any = None
+    low: Any = None
+    high: Any = None
+    n: Any = None
+    latest: float
+    outside: bool
+
+
+class CleaningEngine(BaseModel):
+    available: bool
+    reason: str | None = None
+    runs: int
+    ranges: list[RuleRange]
+    evidence: Evidence
+
+
+class CleaningPlan(BaseModel):
+    version_id: str
+    run_label: str | None = None
+    module: str
+    items: list[CleaningItem]
+    batches: list[CleaningBatch]
+    changes: CleaningChanges
+    engine: CleaningEngine
+
+
+@router.get("/api/v1/aletheia/cleaning-plan", response_model=CleaningPlan,
+            dependencies=[Depends(require_permission("view"))])
+async def get_cleaning_plan(module: str, version_id: Optional[uuid.UUID] = None, db: AsyncSession = Depends(get_db),
+                            tenant: Tenant = Depends(get_tenant)):
+    """Why each failing rule of one object fails, the fix Meridian can suggest with confidence and evidence, the fix
+    batches, and what changed since the previous run. Failing values are reduced to pattern counts in Meridian; the
+    engine is sent per-rule failure counts only."""
+    from api.services.pdf_reports import _modules
+    from api.services.run_context import latest_run
+
+    if module not in _modules():
+        raise HTTPException(status_code=422, detail=f"Unknown module: {module}")
+    vid = str(version_id) if version_id else await latest_run(db, tenant.id, module=module)
+    if not vid:
+        raise HTTPException(status_code=404, detail="No run of this object yet.")
+    data = await _agg(db, tenant, cleaning.load, str(vid), module)
+    return await run_in_threadpool(cleaning.build, data)

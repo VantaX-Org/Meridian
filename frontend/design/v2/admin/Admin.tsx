@@ -285,6 +285,7 @@ function Section({ slug }: { slug: AdminSlug }) {
 
 /** /admin/<section>: one section in the content pane. */
 export function AdminCanvas({ section }: { section: string }) {
+  const can = useCan();
   if (!isAdminSlug(section)) {
     return (
       <CcPage dock={false}>
@@ -299,6 +300,16 @@ export function AdminCanvas({ section }: { section: string }) {
           {t("There is no administration section called \"{section}\". {ADMIN_SECTIONSCount} sections exist.", { section, ADMIN_SECTIONSCount: ADMIN_SECTIONS.length })}
         </EmptyFrame>
       </AdminPage>
+      </CcPage>
+    );
+  }
+  const meta = ADMIN_SECTIONS.find((x) => x.slug === section)!;
+  if (!meta.needs.some((n) => can(n))) {
+    return (
+      <CcPage dock={false}>
+        <AdminPage title={meta.label}>
+          <NeedsPermission what={meta.label} permission={meta.needs[0]} />
+        </AdminPage>
       </CcPage>
     );
   }

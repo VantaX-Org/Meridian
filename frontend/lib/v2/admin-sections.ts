@@ -60,7 +60,7 @@ export function visibleSections(can: (action: string) => boolean): AdminSection[
   return ADMIN_SECTIONS.filter((s) => s.needs.some((n) => can(n)));
 }
 
-const ADMIN_ACTIONS = ["manage_users", "manage_settings", "manage_system", "view_audit", "manage_field_mappings", "manage_systems", "manage_digests"] as const;
-
-/** True when the viewer holds any administrative permission: that is what puts "Administration" in the account menu. */
-export const canAdminister = (can: (action: string) => boolean): boolean => ADMIN_ACTIONS.some((a) => can(a));
+/** True when the viewer may act in at least one section (read-only "view" alone does not count). The rail, the
+ *  /admin home and the command line all derive from visibleSections, so they agree on who sees Administration. */
+export const canAdminister = (can: (action: string) => boolean): boolean =>
+  visibleSections(can).some((s) => s.needs.some((n) => n !== "view" && can(n)));

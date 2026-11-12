@@ -92,7 +92,7 @@ function Update() {
       {ask && s ? (
         <Confirm
           title={t("Update to {latest_version}", { latest_version: s.latest_version })}
-          body={t("The services restart one after another and the database migrates. Screens may be unavailable for a few minutes. If a step fails, the previous version is restored.")}
+          body={t("The services restart one after another and the database migrates. Screens may be unavailable for a few minutes. If a step fails, the previous images are put back. The database is not restored automatically: a backup taken before the update is kept, and an administrator can restore it.")}
           confirm={t("Run the update")}
           pending={pending === "update"}
           onCancel={() => setAsk(false)}

@@ -131,7 +131,8 @@ def test_system_objects_catalogue_exposes_preview_sources(monkeypatch) -> None:
                 return MagicMock(scalar=lambda: "successfactors")
             return MagicMock(fetchall=lambda: [])
 
-    out = asyncio.run(so.list_objects(uuid.uuid4(), db=_DB(), tenant=SimpleNamespace(id=uuid.uuid4())))
+    out = asyncio.run(so.list_objects(uuid.uuid4(), SimpleNamespace(state=SimpleNamespace()), db=_DB(),
+                                      tenant=SimpleNamespace(id=uuid.uuid4())))
     objs = {o["object"]: o for o in out["objects"]}
     assert [p["source"] for p in objs["payroll_integration"]["preview_sources"]] == ["EmpPayrollRunResults"]
     assert objs["employee_central"]["preview_sources"] == []
