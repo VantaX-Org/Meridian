@@ -14053,16 +14053,16 @@ rules:
   check_class: cross_field_check
   severity: low
   dimension: consistency
-  message: Student dependent older than 30
+  message: Student dependent older than 25
   why_it_matters: Student status extends dependent benefits only up to an age limit, typically 25 to 27. A student dependent
-    over 30 is likely stale.
+    over 25 is likely stale.
   rule_authority: best_practice
   sap_impact: Benefit plans continue cover past the plan age limit.
   fix_map:
     __other__: Confirm student status and clear IS_STUDENT if no longer true.
-  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: IS_STUDENT is true and the contact is older than 30.'
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: IS_STUDENT is true and the contact is older than 25.'
   fail_when: (`PEREMERGENCY.IS_STUDENT`.astype('string').str.lower() == 'true') & ((@today - `PEREMERGENCY.DATE_OF_BIRTH`).dt.days
-    > 10957)
+    > 9131)
 - id: EC774
   field: PEREMERGENCY.SECOND_PHONE
   check_class: cross_field_check
