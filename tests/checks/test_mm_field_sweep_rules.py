@@ -34,6 +34,11 @@ def mara(**c):
     return {"MARA": _f("MARA", MATNR=["OK", "BAD"], **c)}
 
 
+def knmt(**c):
+    base = dict(KUNNR=["C1", "C1"], VKORG=["1000", "1000"], VTWEG=["10", "10"], KDMAT=["P1", "P2"])
+    return {"KNMT": _f("KNMT", MATNR=["OK", "BAD"], **{**base, **c})}
+
+
 def keyed(t, keys, **c):
     return {t: _f(t, MATNR=["OK", "BAD"], **keys, **c)}
 
@@ -83,6 +88,25 @@ CASES = {
     "MM1149": keyed("MDMA", {"BERID": ["A1", "A1"]}, LGRAD=["95", "95"], LOSFX=["1", "-1"]),
     "MM1150": keyed("MDMA", {"BERID": ["A1", "A1"]}, VRBFK=["1", "1"], VRBMT=["REF", ""]),
     "MM1151": {"CKMLHD": _f("CKMLHD", KALNR=["OK", "BAD"], ABRECHDAT=[_day(-1), _day(5)])},
+    "MM1152": keyed("KNMT", {"KUNNR": ["C1", "C1"], "VKORG": ["1000", "1000"], "VTWEG": ["10", "10"]}, KDMAT=["P1", ""]),
+    "MM1153": {**knmt(), "MARA": _f("MARA", MATNR=["OK"])},
+    "MM1154": {**knmt(KUNNR=["C1", "C9"]), "KNA1": _f("KNA1", KUNNR=["C1"])},
+    "MM1155": {**knmt(), "MARA": _f("MARA", MATNR=["OK", "BAD"], LVORM=["", "X"])},
+    "MM1156": {**knmt(KUNNR=["C1", "C2"]),
+               "KNA1": _f("KNA1", KUNNR=["C1", "C2"], LOEVM=["", ""], SPERR=["", "X"], AUFSD=["", ""])},
+    "MM1157": {**knmt(VTWEG=["10", "99"]), "TVKOV": _f("TVKOV", VKORG=["1000"], VTWEG=["10"])},
+    "MM1158": {**knmt(), "MVKE": _f("MVKE", MATNR=["OK"], VKORG=["1000"], VTWEG=["10"])},
+    "MM1159": {**knmt(WERKS=["1000", "2000"]), "MARC": _f("MARC", MATNR=["OK", "BAD"], WERKS=["1000", "1000"])},
+    "MM1160": knmt(UNTTO=["10", "-1"], UEBTO=["10", "10"], MINLF=["0", "0"]),
+    "MM1161": knmt(UEBTK=["X", "X"], UEBTO=["0", "5"]),
+    "MM1162": knmt(MINLF=["5", "5"], MEINS=["EA", ""]),
+    "MM1164": {"TVKOV": _f("TVKOV", VKORG=["1000", "9999"], VTWEG=["10", "10"]),
+               "TVKO": _f("TVKO", VKORG=["1000"])},
+    "MM1165": {"TVKOV": _f("TVKOV", VKORG=["1000", "1000"], VTWEG=["10", "99"]),
+               "TVTW": _f("TVTW", VTWEG=["10"])},
+    "MM1166": {"TVKOV": _f("TVKOV", VKORG=["1000", "1000"], VTWEG=["10", "20"], VTWKO=["10", "30"])},
+    "MM1167": {"MARC": _f("MARC", MATNR=["OK", "BAD"], WERKS=["1000", "1000"], SERNP=["S1", ""]),
+               "MARA": _f("MARA", MATNR=["OK", "BAD"], SERLV=["3", "3"])},
 }
 
 
@@ -92,3 +116,12 @@ def test_rule_fires_on_dirty_and_passes_clean(check_id):
     _, res = run_rule(rule, TableFrames(CASES[check_id], D, module=M))
     assert res.error is None, res.error
     assert res.affected_count == 1, (res.total_count, res.affected_count)
+
+
+def test_mm1163_duplicate_customer_material_flags_both_rows():
+    frames = {"KNMT": _f("KNMT", MATNR=["OK", "BAD", "BAD2"], KUNNR=["C1"] * 3, VKORG=["1000"] * 3,
+                         VTWEG=["10"] * 3, KDMAT=["P1", "P2", "P2"])}
+    rule = {**next(r for r in module_rules(M) if r["id"] == "MM1163"), "module": M}
+    _, res = run_rule(rule, TableFrames(frames, D, module=M))
+    assert res.error is None, res.error
+    assert (res.total_count, res.affected_count) == (3, 2)
