@@ -5,6 +5,7 @@ import { TrendChart } from "../charts/TrendChart";
 import { Money } from "../Money";
 import { createContext, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePathname, useSearchParams } from "next/navigation";
 import { checkClassLabel, formatDate } from "@/lib/format";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getRuleReads } from "@/lib/api/v2/lineage";
@@ -902,6 +903,16 @@ export function RuleActions({ view, canvas }: { view: RuleView; canvas?: boolean
   };
   const own = view.scope.tenant_rule;
   const toast = useToast();
+  const [confirmOff, setConfirmOff] = useState(false);
+  const path = usePathname() ?? "";
+  const params = useSearchParams();
+  // The drill keeps where it came from: the object page and its run, so the rule page can link back and read the same run.
+  const failing = new URLSearchParams({ tab: "failing" });
+  if (params?.get("run")) failing.set("run", params.get("run")!);
+  if (path.startsWith("/o/")) failing.set("from", path);
+  const issues = new URLSearchParams({ rule: view.id });
+  if (mod) issues.set("module", mod);
+  if (params?.get("system")) issues.set("system", params.get("system")!);
   const flip = useMutation({
     mutationFn: (on: boolean) => setRuleEnabled(own!.id, on),
     onSuccess: (_r, on) => finish(on ? tr("{id} is enabled; the next run checks it.", { id: view.id }) : tr("{id} is disabled; the next run skips it.", { id: view.id })),
@@ -915,10 +926,10 @@ export function RuleActions({ view, canvas }: { view: RuleView; canvas?: boolean
             {tr("Open the rule")}
           </V2Link>
         )}
-        <V2Link href={`/r/${encodeURIComponent(view.id)}?tab=failing`} className="m2-btn">
+        <V2Link href={`/r/${encodeURIComponent(view.id)}?${failing.toString()}`} className="m2-btn" data-testid="rule-failing">
           {tr("Open failing records")}
         </V2Link>
-        <V2Link href={`/issues?rule=${encodeURIComponent(view.id)}`} className="m2-btn" data-testid="rule-issues">
+        <V2Link href={`/issues?${issues.toString()}`} className="m2-btn" data-testid="rule-issues">
           {tr("Open its issues")}
         </V2Link>
         {canSuppress ? (
@@ -927,7 +938,7 @@ export function RuleActions({ view, canvas }: { view: RuleView; canvas?: boolean
           </button>
         ) : null}
         {canEdit && own ? (
-          <button type="button" className="m2-btn" disabled={flip.isPending} aria-pressed={own.enabled} onClick={() => flip.mutate(!own.enabled)}>
+          <button type="button" className="m2-btn" disabled={flip.isPending} aria-pressed={own.enabled} onClick={() => (own.enabled ? setConfirmOff(true) : flip.mutate(true))}>
             {own.enabled ? tr("Disable rule") : tr("Enable rule")}
           </button>
         ) : null}
@@ -947,6 +958,25 @@ export function RuleActions({ view, canvas }: { view: RuleView; canvas?: boolean
           </button>
         ) : null}
       </div>
+      {confirmOff && own ? (
+        <section className="m2-confirm" role="alertdialog" aria-label={tr("Disable rule")} data-testid="rule-disable-confirm">
+          <p>{tr("Disable {id}? The next run skips it, so its failures stop counting in the score. You can enable it again.", { id: view.id })}</p>
+          <button
+            type="button"
+            className="m2-btn m2-btn-primary"
+            disabled={flip.isPending}
+            onClick={() => {
+              setConfirmOff(false);
+              flip.mutate(false);
+            }}
+          >
+            {tr("Disable rule")}
+          </button>{" "}
+          <button type="button" className="m2-btn" onClick={() => setConfirmOff(false)}>
+            {tr("Cancel")}
+          </button>
+        </section>
+      ) : null}
       {panel === "suppress" ? <SuppressForm view={view} onDone={() => finish(tr("{id} is suppressed until the date you set.", { id: view.id }))} /> : null}
       {panel === "handoff" ? <HandoffForm view={view} onDone={() => finish(tr("{id} is handed over; the steward finds it in the inbox.", { id: view.id }))} /> : null}
       {done ? <p role="status" className="m2-prov">{done}</p> : null}

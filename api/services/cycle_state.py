@@ -18,14 +18,14 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.services.run_lineage import lineage_sql
-from api.services.version_status import ENDED, FINISHED, finished_sql
+from api.services.version_status import ENDED, finished_sql
 
 _MODULES = ("CASE WHEN jsonb_typeof(v.metadata->'modules') = 'array' THEN v.metadata->'modules' "
             "ELSE '[]'::jsonb END")
 _RUNS = f"""
 SELECT {{pick}} m.module, v.id::text AS id, v.status, v.run_at, v.run_number, v.parent_version_id::text AS parent
   FROM analysis_versions v CROSS JOIN LATERAL jsonb_array_elements_text({_MODULES}) AS m(module)
- WHERE v.tenant_id = CAST(:t AS uuid) AND {lineage_sql('v')} = :scope {{extra}}
+ WHERE v.tenant_id = CAST(:t AS uuid) AND {lineage_sql('v').replace('{', '{{').replace('}', '}}')} = :scope {{extra}}
    AND v.metadata->>'purpose' IS DISTINCT FROM 'process_discovery' AND v.metadata->>'archived' IS DISTINCT FROM 'true'
  ORDER BY m.module, v.run_at DESC"""
 _DOWNLOADS = f"""

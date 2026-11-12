@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import type { ChangeKind, CompareObject, CompareSummary } from "@/lib/api/v2/runs";
+import { useSearchParams } from "next/navigation";
 import { useOpenItem, useUrlParam, useV2Href } from "@/lib/v2/hooks";
 import { runLabel } from "@/lib/v2/run-label";
 import { useCompareSummary, useTimeline, useVersionChanges, useVersionHead } from "@/lib/v2/runs-queries";
@@ -169,7 +170,7 @@ function WhatChanged({ a, b, totals, labelOf }: { a: string; b: string; totals: 
  *
  * The table has no Verified column: CompareObject carries no per-object verified figure (Verified exists per run only),
  * so it shows the measured score. "Open what got worse" opens Work as of run b for the system and the object that lost
- * the most: Work has no filter for "new in run b" yet, so the list is everything open then, not only what is new.
+ * the most, filtered with `since` to the rules that started failing after run a: only what got worse, not everything open.
  */
 export function CompareCanvas({ a, b }: { a: string; b: string }) {
   const router = useRouter();
@@ -180,6 +181,9 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
   const timeline = useTimeline(null, 50);
   const land = useLandscape(null);
   const [view] = useUrlParam("view", "changes", ["changes", "records"] as const);
+  // Opened from an object's trend: the way back to that object. Only an object path is accepted from the address.
+  const fromParam = useSearchParams().get("from");
+  const backTo = fromParam && /^\/o\/[\w-]+\/[\w-]+$/.test(fromParam) ? fromParam : null;
   const runs = timeline.data?.runs ?? [];
   const S = sum.data;
   const rows = useMemo(() => (S?.objects ?? []).map((o) => ({ o, d: measuredChange(o) })), [S]);
@@ -196,7 +200,12 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
   const nameA = runLabel(nameOf(sysA), chipA?.run_number);
   const nameB = runLabel(nameOf(sysB), chipB?.run_number);
 
-  const swapTo = (nextA: string, nextB: string) => router.push(v2Href(`/run/${nextA}/vs/${nextB}`));
+  // The earlier run always comes first: a pick that would reverse the pair swaps it, so "worse" keeps its meaning.
+  const swapTo = (nextA: string, nextB: string) => {
+    const at = (id: string) => runs.find((r) => r.id === id)?.run_at ?? "";
+    const [x, y] = at(nextA) > at(nextB) ? [nextB, nextA] : [nextA, nextB];
+    if (x !== y) router.push(v2Href(`/run/${x}/vs/${y}`));
+  };
   // Only runs of the same system: the swap can never make a pair the page would refuse.
   const options = [...runs].reverse().filter((r) => sameSystem(r.system_id, sysB));
 
@@ -229,7 +238,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
   const { up, dn } = S ? changeCounts(S) : { up: 0, dn: 0 };
   const held = (S?.objects ?? []).filter((o) => o.after?.capped).length;
   const t = S?.totals;
-  const title = chipA && chipB ? tr("{b} vs {a}", { b: nameB, a: nameA }) : tr("Compare runs");
+  const title = chipA && chipB ? tr("{later} compared with {earlier}", { later: nameB, earlier: nameA }) : tr("Compare runs");
   const worst = S ? worstObject(S) : null;
   const workQuery = new URLSearchParams({ version_id: b, since: a, filter: "open" });
   if (sysB) workQuery.set("system", sysB);
@@ -239,6 +248,14 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
   return (
     <CcPage>
       <PageTitle>{title}</PageTitle>
+      <p className="m2-prov" data-testid="compare-back">
+        {backTo ? (
+          <>
+            <V2Link href={`${backTo}/trend`}>{tr("Back to the object")}</V2Link>{" "}
+          </>
+        ) : null}
+        <V2Link href={`/run/${b}`}>{tr("Back to {name}", { name: nameB })}</V2Link>
+      </p>
       <div className="m2-cta" data-testid="compare-chips">
         {chipB ? <RunChip run={chipB} system={nameOf(sysB)} /> : null}
         <span className="m2-meta">{tr("compared with")}</span>
@@ -248,7 +265,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
             <label htmlFor="cmp-from" className="m2-meta">
               {tr("Earlier run")}
             </label>
-            <select id="cmp-from" className="m2-sel" aria-label={tr("From run")} value={a} onChange={(e) => swapTo(e.target.value, b)}>
+            <select id="cmp-from" className="m2-sel" value={a} onChange={(e) => swapTo(e.target.value, b)}>
               {options.map((r) => (
                 <option key={r.id} value={r.id}>
                   {runLabel(nameOf(r.system_id), r.run_number)}, {formatDate(r.run_at, "date")}
@@ -258,7 +275,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
             <label htmlFor="cmp-to" className="m2-meta">
               {tr("Later run")}
             </label>
-            <select id="cmp-to" className="m2-sel" aria-label={tr("To run")} value={b} onChange={(e) => swapTo(a, e.target.value)}>
+            <select id="cmp-to" className="m2-sel" value={b} onChange={(e) => swapTo(a, e.target.value)}>
               {options.map((r) => (
                 <option key={r.id} value={r.id}>
                   {runLabel(nameOf(r.system_id), r.run_number)}, {formatDate(r.run_at, "date")}

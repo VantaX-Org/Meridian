@@ -164,7 +164,8 @@ def suggest(cid: str, rule: dict, f: dict, values: list[str], draft: Optional[di
                     "evidence": f"The rule allows one value; {hit:,} of {len(values):,} listed failing values map to it."}
     text_ = wb.auto_fix_text(rule)
     if text_:
-        spec = rule.get("auto_fix") if isinstance(rule.get("auto_fix"), dict) else {}
+        spec = rule.get("auto_fix")
+        spec = spec if isinstance(spec, dict) else {}
         label = str(spec.get("confidence") or "medium")
         return {"value": text_, "source": "rule_auto_fix", "covered": affected, "base": affected,
                 "confidence": _CONF.get(label, 60),

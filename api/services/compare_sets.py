@@ -66,7 +66,7 @@ def reason_for(p: Optional[dict], n: Optional[dict], change: str) -> str:
     return "data"
 
 
-async def check_metas(db: AsyncSession, v1, v2) -> dict[str, tuple]:
+async def check_metas(db: AsyncSession, v1, v2) -> dict[str, tuple[Optional[dict], Optional[dict]]]:
     """{check_id: (meta in P, meta in N)}."""
     out: dict[str, list] = {}
     for r in (await db.execute(text(META_SQL), {"v1": v1, "v2": v2})).mappings():

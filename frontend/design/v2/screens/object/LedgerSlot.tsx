@@ -85,11 +85,12 @@ export function resetLedgerCache(): void {
 }
 
 /** The Records tab: the ledger scoped to the object. */
-export function RecordsTab({ system: systemSegment, module: moduleSegment }: { system: string; module: string }) {
+export function RecordsTab({ system: systemSegment, module: moduleSegment, loader }: { system: string; module: string; loader?: LedgerLoader }) {
   const run = useRunParam();
   const apiModule = moduleFromSlug(moduleSegment);
   const L = useLandscape(run).data;
   const system = L ? findSystem(L.systems, decodeURIComponent(systemSegment)) : undefined;
   const label = L?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ");
-  return <LedgerSlot label={label} scope={{ module: apiModule, system: system?.id }} />;
+  // A chosen run shows the ledger as it stood at that run, not today's.
+  return <LedgerSlot label={label} scope={{ module: apiModule, system: system?.id, filters: run ? { as_of_run: run } : undefined }} loader={loader} />;
 }

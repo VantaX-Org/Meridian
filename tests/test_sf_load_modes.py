@@ -31,7 +31,9 @@ def _frames():  # two people, history out of order; u2 is terminated
 
 def _rows(tabs, report):
     sheet = next(r for r in report["sheets"] if r["table"] == "EMPJOBHIST")
-    return sheet, tabs[JOB]
+    df = tabs[JOB]
+    # The template carries a label row under the field ids once most columns are described; records start below it.
+    return sheet, (df.iloc[1:].reset_index(drop=True) if df.iloc[0].tolist()[1:2] == ["Record effective start"] else df)
 
 
 def test_full_load_keeps_every_history_row_in_order_with_inactive_people():
