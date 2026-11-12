@@ -59,6 +59,7 @@ import { processAnalyticsRead, NONE_PROCESS_ANALYTICS } from "./process-analytic
 import { fieldLineageRead, NONE_FIELD_LINEAGE } from "./field-lineage";
 import { survivorshipPreviewWrite, NONE_SURVIVORSHIP_PREVIEW } from "./survivorship-preview";
 import { fixDraftsRead, fixDraftsWrite, NONE_FIX_DRAFTS } from "./fixDrafts";
+import { dataRequestsRead, dataRequestsWrite, NONE_DATA_REQUESTS } from "./dataRequests";
 import { learnedMonitorsRead, learnedMonitorsWrite, NONE_LEARNED_MONITORS } from "./learnedMonitors";
 import { anomalyRulesRead, anomalyRulesWrite, NONE_ANOMALY_RULES } from "./anomalyRules";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
@@ -180,6 +181,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (riw !== NONE_RULE_IMPACT) return riw as T;
   const fdw = fixDraftsWrite(method, path, body);
   if (fdw !== NONE_FIX_DRAFTS) return fdw as T;
+  const dcw = dataRequestsWrite(method, path, body);
+  if (dcw !== NONE_DATA_REQUESTS) return dcw as T;
   const svw = survivorshipWrite(method, path, body);
   if (svw !== NONE_SURVIVORSHIP) return svw as T;
   const svp = survivorshipPreviewWrite(method, path, body);
@@ -406,6 +409,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (rpr !== NONE_RULE_PROMOTION) return rpr as T;
   const fdr = fixDraftsRead(path);
   if (fdr !== NONE_FIX_DRAFTS) return fdr as T;
+  const dcr = dataRequestsRead(path);
+  if (dcr !== NONE_DATA_REQUESTS) return dcr as T;
   const sv = survivorshipRead(path);
   if (sv !== NONE_SURVIVORSHIP) return sv as T;
   const rdr = referenceDataRead(path, params);

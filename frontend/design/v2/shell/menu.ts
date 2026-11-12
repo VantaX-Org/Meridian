@@ -37,6 +37,7 @@ export function destinations(): Destination[] {
         { href: "/attention", label: t("Action centre") },
         { href: "/work", label: t("Work") },
         { href: "/fix-drafts", label: t("Aletheia verified fixes") },
+        { href: "/data-requests", label: t("Data requests") },
         { href: "/cleansing", label: t("Cleansing") },
         { href: "/requests", label: t("Requests") },
         { href: "/requests/new", label: t("Data collection form") },
