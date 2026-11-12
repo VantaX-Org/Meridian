@@ -2,7 +2,7 @@
 
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { useOpenItem } from "@/lib/v2/hooks";
-import { formatDate } from "@/lib/format";
+import { formatDate, systemTypeLabel } from "@/lib/format";
 import type { SAPSystemExtended } from "@/types/api";
 import { EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../../parts";
 import { StatusWord } from "../../admin/kit";
@@ -13,6 +13,13 @@ const TONE: Record<SAPSystemExtended["health_status"], Tone> = { healthy: "go", 
 const word = (h: SAPSystemExtended["health_status"]): string =>
   ({ healthy: t("Connected"), degraded: t("Degraded"), unreachable: t("Unreachable"), auth_failed: t("Sign-in failed"), unknown: t("Not tested") })[h];
 const ROW = 44;
+/** The last sync's outcome in words; a sync that finished says nothing, the date beside it is enough. */
+const syncWord = (status: string | null): string => {
+  if (!status || status === "success" || status === "completed") return "";
+  if (status === "failed" || status === "error") return t("The last sync failed");
+  if (status === "running" || status === "in_progress") return t("Syncing now");
+  return t("Last sync: {status}", { status });
+};
 
 /** `/s`: every connected system as a hairline map (sources, Meridian, targets) and a health row each. */
 export function SystemsCanvas() {
@@ -48,10 +55,10 @@ export function SystemsCanvas() {
         {all.map((s) => (
           <li key={s.id} data-open={openId === s.id ? "true" : undefined}>
             <V2Link href={hrefFor({ kind: "system", id: s.id })} className="m2-sysrow" aria-current={openId === s.id ? "true" : undefined}>
-              <span className="m2-sysname">{s.name}<small>{s.sap_release ?? s.system_type} {s.environment}</small></span>
+              <span className="m2-sysname">{s.name}<small>{s.sap_release ?? systemTypeLabel(s.system_type)} {s.environment}</small></span>
               <StatusWord tone={TONE[s.health_status]}>{word(s.health_status)}</StatusWord>
               <span className="m2-meta">{s.last_sync_at ? t("Last sync {when}", { when: formatDate(s.last_sync_at, "datetime") }) : t("Never synced")}</span>
-              <span className="m2-meta">{s.health_status !== "healthy" && s.health_message ? s.health_message : s.last_sync_status && s.last_sync_status !== "success" ? s.last_sync_status : ""}</span>
+              <span className="m2-meta">{s.health_status !== "healthy" && s.health_message ? s.health_message : syncWord(s.last_sync_status)}</span>
             </V2Link>
           </li>
         ))}

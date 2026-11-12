@@ -1,0 +1,37 @@
+WEBVTT
+
+1
+00:00:00.037 --> 00:00:08.756
+The data catalogue: every SAP table and field Meridian knows, across your systems.
+
+2
+00:00:08.756 --> 00:00:18.341
+Each table with its fields, the rules that read it, its objects and the systems that use it.
+
+3
+00:00:18.341 --> 00:00:28.069
+Open a table to see its fields.
+
+4
+00:00:28.069 --> 00:00:38.365
+Its key, where it is defined, its systems and the owners of the objects that read it.
+
+5
+00:00:38.365 --> 00:00:47.522
+Every field with its type, its rules, its business term and how much of it is blank.
+
+6
+00:00:47.522 --> 00:00:56.645
+Open a field: its facts, its profile, the rules that check it and its business term.
+
+7
+00:00:56.645 --> 00:01:04.857
+Below them, where its values go: process steps, processes, S/4 features and KPIs.
+
+8
+00:01:04.857 --> 00:01:14.360
+Search the fields by name, description or business term.
+
+9
+00:01:14.360 --> 00:01:22.009
+Each match names its table, its type and how many rules read it.

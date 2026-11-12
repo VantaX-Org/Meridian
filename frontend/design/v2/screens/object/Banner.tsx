@@ -11,7 +11,7 @@ import { V2Link } from "../../parts";
 import { BandMark } from "../../BandMark";
 
 /** The object's headline: the S/4 verdict, the score in plain words, what it costs, and the one thing to do next. */
-export function ObjectBanner({ cell, receipt, label, system, module, cap }: { cell: LandscapeCell; receipt: Receipt | undefined; label: string; system: string; module: string; cap: ReactNode }) {
+export function ObjectBanner({ cell, receipt, label, system, systemName, module, cap }: { cell: LandscapeCell; receipt: Receipt | undefined; label: string; system: string; systemName?: string; module: string; cap: ReactNode }) {
   const blockers = cell.breaches.length;
   const open = receipt?.open_work ?? cell.open_work ?? 0;
   const risk = receipt?.value_at_risk;
@@ -19,7 +19,7 @@ export function ObjectBanner({ cell, receipt, label, system, module, cap }: { ce
   return (
     <section className="m2-cc-banner m2-co-banner" data-verdict={cell.verdict} aria-label={t("S/4 readiness")} data-testid="object-banner">
       <div className="m2-cc-verdict">
-        <span className="m2-cc-eyebrow">{t("{label} on {system}: S/4 readiness", { label, system: decodeURIComponent(system) })}</span>
+        <span className="m2-cc-eyebrow">{t("{label} on {system}: S/4 readiness", { label, system: systemName ?? decodeURIComponent(system) })}</span>
         <strong>
           <VerdictMark verdict={cell.verdict} /> {VERDICT_LABEL[cell.verdict]}
         </strong>
@@ -33,7 +33,7 @@ export function ObjectBanner({ cell, receipt, label, system, module, cap }: { ce
           <dd>{receipt || cell.open_work != null ? int(open) : "—"}</dd>
           <dd className="m2-cc-note">{t("of {n} checked", { n: int(cell.records_checked) })}</dd>
         </div>
-        <div>
+        <div data-tone={cell.verdict === "no-go" ? "crit" : cell.verdict === "at-risk" ? "warn" : undefined}>
           <dt>{t("Money at risk")}</dt>
           <dd>{risk == null ? "—" : moneyCompactText(risk, receipt?.currency)}</dd>
           <dd className="m2-cc-note">{risk == null ? t("no cost model") : receipt?.cost_model_source === "default" ? t("estimate, default costs") : t("per month")}</dd>

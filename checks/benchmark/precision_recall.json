@@ -9,7 +9,7 @@
   "employee_central": {
    "benchmarked": 410,
    "perfect": 410,
-   "rules": 791
+   "rules": 795
   },
   "material_master": {
    "benchmarked": 249,
@@ -16690,6 +16690,34 @@
    "module": "employee_central",
    "reason": "condition not modelled: `POSITION.VACANT`.astype('string').str.lower() == 'true'",
    "rule_id": "EC781"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "employee_central",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "EC900"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "employee_central",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "EC901"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "employee_central",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "EC902"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "employee_central",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "EC903"
   },
   {
    "benchmarkable": true,

@@ -85,7 +85,7 @@ export function S4Readiness() {
         why={t("The conversion-readiness rules are grouped by SAP simplification area. A failing blocking rule stops the conversion; a failing warning rule needs cleansing but does not stop it.")}
         figs={[
           { label: t("Areas ready"), value: t("{a} of {b}", { a: int(measured.filter((a) => a.status === "green").length), b: int(measured.length) }), note: d.areas.length > measured.length ? t("{n} not measured", { n: int(d.areas.length - measured.length) }) : undefined },
-          { label: t("Blocking rules failing"), value: int(d.blocking_failing) },
+          { label: t("Blocking rules failing"), value: int(d.blocking_failing), tone: d.blocking_failing > 0 ? "crit" : undefined },
           { label: t("Warning rules failing"), value: int(d.warning_failing) },
           { label: t("Records to fix"), value: int(d.failing_records) },
         ]}

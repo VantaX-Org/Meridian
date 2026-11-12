@@ -298,10 +298,21 @@ or path).
 
 ![Connect a system: system type, environment, connection and the test.](img/system-connect.png)
 
+### The data catalogue
+
+**Master data**, **Data catalogue** (`/catalogue`) lists every SAP table and field Meridian knows, across the
+connected systems. It reads the shipped SAP dictionary and, for a system that discovery has read (the system's
+**Source design**, **Discover again**), that system's own dictionary, so customer tables and customer fields appear
+with their own definitions. Search a table, a field (`MARA-MEINS`) or a business term; choose **System** to see only
+what one system uses. Open a field to see its type, the rules that check it (and whether your tenant has switched one
+off), its business terms, its latest profile, the owners of the objects that read it and where its values go. The
+catalogue only reads; it needs the view permission.
+
 ### Checks
 
 - You should now see the system in the **Objects** menu and on **Systems** (`/s`) and, for the SAP Basis role, a row under **Connections** on the Basis
   home with "Connected" and what the last test said.
+- After the first discovery, **Data catalogue** with the new system chosen in **System** lists the tables it uses.
 - A table the user may not read shows "No authorisation to read this table. The user needs read access to it."; SU53
   on the SAP side shows the failed check.
 

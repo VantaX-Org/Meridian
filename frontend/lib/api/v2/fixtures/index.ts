@@ -36,6 +36,7 @@ import { NONE_S4, s4Read } from "./s4";
 import { NONE_SCORE, scoreRead } from "./score";
 import { designRead, designWrite, NONE_DESIGN } from "./design";
 import { linksRead, NONE_LINKS } from "./links";
+import { catalogueRead, NONE_CATALOGUE } from "./catalogue";
 import { attentionRead, NONE_ATTENTION } from "./attention";
 import { materialsRead, NONE_MATERIALS } from "./materials";
 import { issuesRead, issuesWrite, NONE_ISSUES, resetIssuesFixture } from "./issues";
@@ -443,6 +444,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (ds !== NONE_DESIGN) return ds as T;
   const lk = linksRead(path, params);
   if (lk !== NONE_LINKS) return lk as T;
+  const ctg = catalogueRead(path, params);
+  if (ctg !== NONE_CATALOGUE) return ctg as T;
   const iss = issuesRead(path, params);
   if (iss !== NONE_ISSUES) return iss as T;
   const exc = exceptionsRead(path, params);

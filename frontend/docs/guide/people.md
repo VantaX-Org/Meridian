@@ -4,9 +4,9 @@
 
 ## People
 
-The banner on top says "Overdue work" and answers it: "2 people have overdue work", or "Nobody has overdue work". The line under it names who holds the most, for example "Thandi Nkosi has the most, 21 records past the due date.", or says "Everything assigned is still inside its due date." Three figures: **Open records** ("held by 4 people"), **Overdue** ("past the due date") and **Unassigned** ("nobody holds them"). The one button opens the work of the person with most overdue ("Open Thandi Nkosi's overdue work"), or **Open the work list** when nothing is overdue.
+The banner on top says "Overdue work" and answers it: "2 people have overdue work", or "Nobody has overdue work". The line under it names who holds the most, for example "Thandi Nkosi has the most, 21 records past the due date.", or says "Everything assigned is still inside its due date." Three figures: **Open records** ("held by 4 people"), **Overdue** ("past the due date") and **Unassigned** ("nobody holds them"). The one button, under the sentence at the top of the page, opens the work of the person with most overdue ("Open Thandi Nkosi's overdue work"), with who holds the most beside it; when nothing is overdue there is no button.
 
-**Open work per person** is a horizontal bar chart of the ten people with most open work, each with name and role and "48 open, 21 overdue" at the end of the row. "Red bars belong to people with overdue work." Aletheia is docked on the right, as on every screen.
+**Open work per person** is a horizontal bar chart of the ten people with most open work, each with name and role and "48 open, 21 overdue" at the end of the row. "Red bars belong to people with overdue work." People carries no run, so Aletheia is not docked here and the table takes the full width.
 
 The sentence sums the team up, for example "4 of 6 people hold open work: 270 records, 34 overdue. 2 batches wait for your approval. 26,330 of the 26,600 open records are assigned to nobody." and "Counts are read from the work assigned in the latest state."
 

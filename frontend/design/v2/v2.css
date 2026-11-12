@@ -642,6 +642,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 
 /* Command centre: the home page's go-live banner, landscape heat map, docked Aletheia and bottom row. */
 .m2-cc { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--m2-s4); align-items: start; }
+.m2-cc[data-dock="none"] { grid-template-columns: minmax(0, 1fr); }
 .m2-cc-main { display: flex; flex-direction: column; gap: var(--m2-s4); min-width: 0; }
 .m2-cc-banner { margin-bottom: var(--m2-s4); display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) auto; gap: var(--m2-s5); align-items: center; padding: var(--m2-s5); border: 1px solid var(--m2-line); border-radius: var(--m2-r2); background: var(--m2-sheet); }
 .m2-cc-verdict { display: flex; flex-direction: column; gap: var(--m2-s1); }
@@ -1081,8 +1082,9 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 .m2-cc-figs dd small { color: var(--m2-hero-meta); }
 .m2-cc-figs > div > dd.m2-cc-note { color: var(--m2-hero-meta); }
 .m2-cc-figs > div:first-child dd:not(.m2-cc-note) { color: var(--m2-hero-accent); }
-.m2-cc-banner[data-verdict="no-go"] .m2-cc-figs > div:nth-child(2) dd:not(.m2-cc-note) { color: var(--m2-on-hero-crit); }
-.m2-cc-banner[data-verdict="at-risk"] .m2-cc-figs > div:nth-child(2) dd:not(.m2-cc-note) { color: var(--m2-on-hero-warn); }
+/* A figure is drawn in a status ink only when it says so itself (data-tone), never by its place in the row. */
+.m2-cc-figs > div[data-tone="crit"] dd:not(.m2-cc-note) { color: var(--m2-on-hero-crit); }
+.m2-cc-figs > div[data-tone="warn"] dd:not(.m2-cc-note) { color: var(--m2-on-hero-warn); }
 /* The verdict ribbon under "Objects ready": one tile per object in scope in its verdict ink, go first; the figure above it, drawn. */
 .m2-cc-ribbon { display: flex; gap: var(--m2-s1); height: 6px; margin-top: var(--m2-s2); }
 .m2-cc-ribbon i { flex: 1 1 0; min-width: 2px; border-radius: 1px; background: var(--m2-on-hero-pass); }

@@ -78,6 +78,8 @@ html[data-theme="dark"] .m2-root .m2-preview[data-accent] { --m2-data: var(--m2-
 @media (max-width: 760px) {
   .m2-root .m2-top-l { flex: 0 0 auto; }
   .m2-root .m2-top-r { flex: 1 1 auto; min-width: 0; }
+  /* The breadcrumb cannot share 390 pixels with the bar's buttons; the page title and the bottom tabs carry the place. */
+  .m2-root .m2-top .m2-crumb { display: none; }
   .m2-root .m2-top-r .m2-tbtn:not(.m2-help) { min-width: 0; flex: 0 1 auto; }
   .m2-root .m2-persona > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .m2-root .m2-btn.m2-next { white-space: normal; height: auto; min-height: 44px; padding-top: var(--m2-s2); padding-bottom: var(--m2-s2); text-align: center; }

@@ -649,7 +649,7 @@ export function RequestsCanvas() {
         why={overdue > 0 ? t("{n} {overdue, plural, one {request is} other {requests are}} past the due time of the waiting approval step.", { n: overdue, overdue }) : failed > 0 ? t("{n} {failed, plural, one {request} other {requests}} failed to reach SAP and need a new look.", { n: failed, failed }) : t("Nothing has failed in this list.")}
         figs={[
           { label: t("Waiting"), value: waiting, note: t("submitted or in approval") },
-          { label: t("Overdue"), value: overdue, note: t("past the step due time") },
+          { label: t("Overdue"), value: overdue, note: t("past the step due time"), tone: overdue > 0 ? "crit" : undefined },
           { label: t("Failed"), value: failed, note: t("did not reach SAP") },
           { label: t("Drafts"), value: drafts, note: t("not yet submitted") },
         ]}
