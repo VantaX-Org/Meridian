@@ -182,7 +182,7 @@ for (const size of SIZES) {
         await expect(dialog.getByText("RFC connection succeeded (client 100, 41 ms)")).toBeVisible();
         await dialog.getByRole("button", { name: "Test connection" }).click();
         await expect(dialog.getByTestId("action-result")).toContainText("RFC connection works");
-        await dialog.getByRole("button", { name: "Extract" }).click();
+        await dialog.getByRole("button", { name: "Extract", exact: true }).click();
         await expect(dialog.getByTestId("extract-picker").getByRole("checkbox")).toHaveCount(17); // 15 objects, the analyse switch and changes only
         await page.waitForLoadState("networkidle");
         await shot(page, "system-inspector");
