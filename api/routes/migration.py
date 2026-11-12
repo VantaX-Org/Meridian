@@ -1516,11 +1516,15 @@ def _mark_learned(report: dict, pending: dict, unresolved: Optional[dict] = None
 
 
 def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "",
-                   column_map: Optional[dict] = None, cleansed: bool = False) -> tuple:
+                   column_map: Optional[dict] = None, cleansed: bool = False, *, load_mode: str = "full",
+                   since: Optional[datetime.date] = None) -> tuple:
     """Parse an uploaded workbook and fill it from one finished run. Nothing is stored.
 
     `column_map` holds a person's corrections to unresolved columns ("sheet::header" to TABLE.FIELD). With
-    `cleansed`, the approved proposals of the run's modules' remediation batches replace the extracted values first."""
+    `cleansed`, the approved proposals of the run's modules' remediation batches replace the extracted values first.
+    `load_mode` is a full load (every history row) or an incremental one (rows changed on or after `since`)."""
+    if load_mode == "incremental" and since is None:
+        raise HTTPException(status_code=422, detail="An incremental load needs a since date.")
     from api.services.migration import workbook as wb
     from api.services.connectivity_manager import ConnectivityManager
     from api.services.source_design import dictionary_for, store_learned
@@ -1599,7 +1603,7 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "",
             for target, vm in load_value_maps(s, module, system_id).items():
                 maps.setdefault(target, {}).update(vm)
         strict = {t for t, vm in maps.items() if vm.keys() - config.get(t, {}).keys()}
-    tabs, report = wb.fill(book, frames, maps, strict)
+    tabs, report = wb.fill(book, frames, maps, strict, load_mode=load_mode, since=since)
     if cleansed:
         report["cleansed"] = {"approved": len(fixes), **({k: stats[k] for k in ("cells_changed", "by_field")}
                                                          if fixes else {"cells_changed": 0, "by_field": {}})}
@@ -1623,14 +1627,16 @@ def _approved_fixes(s, modules: list[str]) -> list[dict]:
 
 
 def _export_workbook(tenant_id, version_id: str, data: bytes, filename: str, export_format: str,
-                     column_map: Optional[dict] = None, cleansed: bool = False) -> tuple[bytes, str, dict]:
+                     column_map: Optional[dict] = None, cleansed: bool = False, *, load_mode: str = "full",
+                     since: Optional[datetime.date] = None) -> tuple[bytes, str, dict]:
     """The filled workbook as bytes, its extension and the fill summary, with held rows on their own tab or file."""
     import pandas as pd
     from api.services.branded_xlsx import guard_frame
     from api.services.migration import workbook as wb
     from api.services.migration.export import to_csv_zip, to_xlsx
 
-    book, tabs, report = _fill_workbook(tenant_id, version_id, data, filename, column_map, cleansed)
+    book, tabs, report = _fill_workbook(tenant_id, version_id, data, filename, column_map, cleansed,
+                                        load_mode=load_mode, since=since)
     if not tabs:
         raise HTTPException(status_code=422, detail="Nothing in this run matches the sheets in this workbook.")
     # Record keys are source values, so held rows take the formula guard; load tabs stay exact.
@@ -1644,6 +1650,8 @@ def _export_workbook(tenant_id, version_id: str, data: bytes, filename: str, exp
         return *wb.same_format(book, tabs, held_csv), summary
     if held is not None:
         tabs[wb.HELD_BACK_TAB] = held
+    if report.get("purge_type"):  # a SuccessFactors load says which purge type to import it with
+        tabs[wb.INSTRUCTIONS_TAB] = wb.instructions(load_mode, since, report["sheets"])
     if export_format != "xlsx":
         return to_csv_zip(tabs), "zip", summary
     # The hidden marker lets the edited file come back as the next run of this lineage (sf_roundtrip).
@@ -1656,6 +1664,7 @@ def _export_workbook(tenant_id, version_id: str, data: bytes, filename: str, exp
 @router.post("/target-workbook/{version_id}/check")
 async def check_target_workbook(
     version_id: str, file: UploadFile = File(...), tenant: Tenant = Depends(get_tenant),
+    load_mode: Literal["full", "incremental"] = Query("full"), since: Optional[datetime.date] = Query(None),
     _=Depends(require_permission("export", scope=scope_from_path)),
 ):
     """What this run can fill in the uploaded workbook, before anything is exported."""
@@ -1663,7 +1672,7 @@ async def check_target_workbook(
     from api.services.migration.workbook import HELD_SAMPLE
 
     _, _, report = await run_in_threadpool(_fill_workbook, tenant.id, version_id, await _read_workbook(file),
-                                           file.filename or "")
+                                           file.filename or "", load_mode=load_mode, since=since)
     return {**report, "held": report["held"][:HELD_SAMPLE], "held_total": len(report["held"])}
 
 
@@ -1671,6 +1680,7 @@ async def check_target_workbook(
 async def export_target_workbook(
     version_id: str, request: Request, file: UploadFile = File(...),
     export_format: Literal["xlsx", "csv", "source"] = Query("xlsx", alias="format"),
+    load_mode: Literal["full", "incremental"] = Query("full"), since: Optional[datetime.date] = Query(None),
     tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
     _=Depends(require_permission("export", scope=scope_from_path)),
 ):
@@ -1682,7 +1692,8 @@ async def export_target_workbook(
 
     data = await _read_workbook(file)
     content, ext, summary = await run_in_threadpool(_export_workbook, tenant.id, version_id, data,
-                                                    file.filename or "", export_format)
+                                                    file.filename or "", export_format, load_mode=load_mode,
+                                                    since=since)
     await _set_rls(db, tenant.id)
     await write_audit(db, tenant.id, request, "migration.target_workbook.export", "analysis_version", version_id,
                       None, {"format": export_format, **summary})
@@ -1811,11 +1822,13 @@ async def template_fields(module: str, tenant: Tenant = Depends(get_tenant),
 
 @router.get("/templates/{module}/blank", response_class=Response)
 async def blank_template(module: str, request: Request, system_id: Optional[str] = Query(None),
+                         all_entities: bool = Query(False),
                          tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
                          _=Depends(require_permission("export", scope=scope_from_path))):
     """A blank template for the module: every field its rules read, with description, required flag and values.
 
-    Value lists come from the rules, the domain and the target's check tables (`system_id`, else the S/4 baseline)."""
+    Value lists come from the rules, the domain and the target's check tables (`system_id`, else the S/4 baseline).
+    `all_entities` gives every SuccessFactors entity the dictionary describes, each marked as generated."""
     from starlette.concurrency import run_in_threadpool
 
     rules = _module_rules(module)
@@ -1830,12 +1843,13 @@ async def blank_template(module: str, request: Request, system_id: Optional[str]
         with tenant_session(get_sync_engine(), tenant.id) as s:
             values, _basis = load_target_config(s, system_id)
             dictionary = dictionary_for(s, system_id)
-        return to_xlsx(wb.blank_template(dictionary, rules, values), sanitize_formulas=True)
+        tabs = wb.sf_load_templates(dictionary, values) if all_entities else wb.blank_template(dictionary, rules, values)
+        return to_xlsx(tabs, sanitize_formulas=True)
 
     content = await run_in_threadpool(_build)
     await _set_rls(db, tenant.id)
     await write_audit(db, tenant.id, request, "migration.template.blank", "module", module, None,
-                      {"system_id": system_id})
+                      {"system_id": system_id, "all_entities": all_entities})
     await db.commit()
     return Response(content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f"attachment; filename={module}_template.xlsx"})
@@ -1883,6 +1897,8 @@ async def map_template(module: str, template_id: str, body: TemplateMapping, req
 
 @router.post("/templates/{module}/{template_id}/check")
 async def check_template(module: str, template_id: str, version_id: Optional[str] = Query(None),
+                         load_mode: Literal["full", "incremental"] = Query("full"),
+                         since: Optional[datetime.date] = Query(None),
                          tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
                          _=Depends(require_permission("export", scope=scope_from_path))) -> dict[str, Any]:
     """What a run (the module's latest finished one by default) fills in the template, with approved cleansing applied."""
@@ -1892,13 +1908,15 @@ async def check_template(module: str, template_id: str, version_id: Optional[str
     t = await _template(db, tenant, module, template_id, content=True)
     vid = await _latest_run(db, tenant, module, version_id)
     _, _, report = await run_in_threadpool(_fill_workbook, tenant.id, vid, bytes(t["content"]), t["filename"],
-                                           t["column_map"] or {}, True)
+                                           t["column_map"] or {}, True, load_mode=load_mode, since=since)
     return {**report, "version_id": vid, "held": report["held"][:HELD_SAMPLE], "held_total": len(report["held"])}
 
 
 @router.post("/templates/{module}/{template_id}/export", response_class=Response)
 async def export_template(module: str, template_id: str, request: Request, version_id: Optional[str] = Query(None),
                           export_format: Literal["xlsx", "csv", "source"] = Query("xlsx", alias="format"),
+                          load_mode: Literal["full", "incremental"] = Query("full"),
+                          since: Optional[datetime.date] = Query(None),
                           tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
                           _=Depends(require_permission("export", scope=scope_from_path))):
     """The template filled from a run, cleansed values applied where approved, failing rows on the Held back tab."""
@@ -1908,7 +1926,8 @@ async def export_template(module: str, template_id: str, request: Request, versi
     t = await _template(db, tenant, module, template_id, content=True)
     vid = await _latest_run(db, tenant, module, version_id)
     content, ext, summary = await run_in_threadpool(_export_workbook, tenant.id, vid, bytes(t["content"]),
-                                                    t["filename"], export_format, t["column_map"] or {}, True)
+                                                    t["filename"], export_format, t["column_map"] or {}, True,
+                                                    load_mode=load_mode, since=since)
     await _set_rls(db, tenant.id)
     await db.execute(text("UPDATE target_templates SET last_fill_at = now(), last_fill_version_id = :v "
                           "WHERE id = CAST(:i AS uuid) AND tenant_id = :t"),
