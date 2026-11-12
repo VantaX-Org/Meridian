@@ -9,6 +9,7 @@ import { useLandscape } from "@/lib/v2/queries";
 import { int, moduleFromSlug } from "@/lib/v2/score";
 import { t as tr } from "@/lib/v2/i18n";
 import { CleanedUpload } from "./CleanedUpload";
+import { AletheiaCleaningPlan } from "./AletheiaCleaningPlan";
 import { Grid, type GridColumn } from "../../Grid";
 import { Dash, EmptyFrame, ErrorFrame, Mono, V2Link } from "../../parts";
 
@@ -38,6 +39,7 @@ export function FixesTab({ module: moduleSegment }: { system: string; module: st
     return (
       <>
         <CleanedUpload module={apiModule} label={label} />
+        <AletheiaCleaningPlan module={apiModule} label={label} versionId={run} />
         <EmptyFrame action={<V2Link href="/work" className="m2-btn">{tr("Open Work")}</V2Link>}>
           {tr("No fix batches for {l} yet. A batch starts when a steward accepts suggested values or imports a filled fix sheet.", { l: label })}
         </EmptyFrame>
@@ -47,6 +49,7 @@ export function FixesTab({ module: moduleSegment }: { system: string; module: st
   return (
     <>
     <CleanedUpload module={apiModule} label={label} />
+    <AletheiaCleaningPlan module={apiModule} label={label} versionId={run} />
     <section aria-label={tr("Fix batches")} className="m2-sec">
       <div className="m2-sechead">
         <h2 className="m2-h2">{tr("Fix batches")}</h2>

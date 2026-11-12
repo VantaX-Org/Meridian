@@ -94,3 +94,27 @@ export interface Reason {
 }
 
 export const getReason = () => v2Get<Reason>("/aletheia/reason", { limit: 12 });
+
+/** Pattern counts over a rule's listed failing values (shape masks such as "AA9", never a value itself). */
+export interface CleaningPattern { listed: number; blank: number; masks: { mask: string; count: number }[]; leading_ws: number; trailing_ws: number; inner_ws: number; case: Record<string, number> }
+export type CleaningKind = "auto" | "fill" | "pick" | "review";
+/** A fix value Meridian computed locally; confidence is 0 to 100 and covered of base is what it rests on. */
+export interface CleaningSuggestion { value: string; source: string; covered: number; base: number; confidence: number; evidence: string }
+export interface CleaningItem {
+  rule: string; message: string; field: string; field_label: string; severity: string; dimension: string; check_class?: string | null;
+  affected: number; total: number; pass_rate?: number | null; kind: string; explanation: string;
+  pattern?: CleaningPattern | null; suggestion?: CleaningSuggestion | null;
+}
+export interface CleaningBatch { id: string; kind: string; field: string; field_label: string; rules: string[]; affected: number; suggested: number; instruction: string; evidence: string }
+export interface RuleChange { rule: string; before: number; after: number }
+export interface CleaningChanges { available: boolean; previous?: Record<string, unknown> | null; new: RuleChange[]; resolved: RuleChange[]; worse: RuleChange[]; better: RuleChange[]; narrative: string }
+export interface RuleRange { rule: string; mean: number | null; low: number | null; high: number | null; n: number | null; latest: number; outside: boolean }
+export interface CleaningPlan {
+  version_id: string; run_label?: string | null; module: string;
+  items: CleaningItem[]; batches: CleaningBatch[]; changes: CleaningChanges;
+  engine: { available: boolean; reason?: string | null; runs: number; ranges: RuleRange[]; evidence: Evidence };
+}
+
+/** GET /aletheia/cleaning-plan: why each rule fails, the suggested fix, fix batches and what changed since the last run. */
+export const getCleaningPlan = (module: string, versionId?: string | null) =>
+  v2Get<CleaningPlan>("/aletheia/cleaning-plan", versionId ? { module, version_id: versionId } : { module });
