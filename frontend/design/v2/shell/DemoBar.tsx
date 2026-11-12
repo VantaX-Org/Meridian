@@ -15,7 +15,9 @@ export function DemoBar({ on }: { on?: boolean }) {
   return (
     <div className="m2-demobar" role="status" data-testid="demo-bar">
       <strong>{t("Demo data")}</strong>
-      <span>{t("Every figure on this page is sample data built into the interface, not read from your SAP systems.")}</span>
+      <span className="m2-demobar-long">{t("Every figure on this page is sample data built into the interface, not read from your SAP systems.")}</span>
+      {/* On a phone the bar keeps to one line, so it does not push the page's first screen down. */}
+      <span className="m2-demobar-short">{t("Sample figures, not your SAP data.")}</span>
     </div>
   );
 }

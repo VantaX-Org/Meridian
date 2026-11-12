@@ -122,7 +122,7 @@ describe("the Runs tab chart", () => {
     const t = await screen.findByRole("table", { name: "Runs shown in the chart" });
     const rows = within(t).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(8);
-    expect(Array.from(rows[0].querySelectorAll("th,td")).map((c) => norm(c as HTMLElement))).toEqual(["ECC production run 1, 16 Oct 2026, 05:17", "71.8", "70.0", "400,662"]);
+    expect(Array.from(rows[0].querySelectorAll("th,td")).map((c) => norm(c as HTMLElement))).toEqual(["ECC production run 8, 16 Oct 2026, 05:17", "71.8", "70.0", "400,662"]);
     expect(norm(rows[2])).toContain("baseline"); // 2 Oct
     expect(within(rows[0]).getByRole("link")).toHaveAttribute("href", expect.stringContaining(`open=run%3A${CURRENT}`));
   });

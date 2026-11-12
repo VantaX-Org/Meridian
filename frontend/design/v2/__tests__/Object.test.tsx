@@ -183,12 +183,20 @@ describe("object canvas states", () => {
   });
 
   it("puts the tabs straight under the title, before the banner and the receipt", async () => {
-    setUrl("/o/ecc-production/material-master/records");
+    setUrl("/o/ecc-production/material-master");
     frame();
     const tabs = await screen.findByRole("navigation", { name: "Views of Material master" });
     const ruler = await screen.findByTestId("object-banner");
     expect(tabs.compareDocumentPosition(ruler) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // Off the Rules view the receipt stays out of the way of the tab's content.
+    // The banner names the system as people know it, never its address slug.
+    expect(ruler).toHaveTextContent("Material master on ECC production: S/4 readiness");
+  });
+
+  it("keeps the banner and the receipt out of the way of the other views' content", async () => {
+    setUrl("/o/ecc-production/material-master/records");
+    frame();
+    await screen.findByRole("navigation", { name: "Views of Material master" });
+    expect(screen.queryByTestId("object-banner")).toBeNull();
     expect(screen.queryByText(/How 70\.0 is made/)).toBeNull();
   });
 

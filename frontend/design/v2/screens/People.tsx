@@ -18,6 +18,7 @@ import { PeopleActions } from "./PeopleActions";
 import { t } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { PrimaryAction } from "../RunParts";
 
 const n = (x: number): string => whole(x);
 const slaNote = (): string => t("Share of their open work that is not yet past its due date.");
@@ -107,20 +108,9 @@ function PeopleOverview({ rows, unassigned }: { rows: readonly Person[]; unassig
         why={worst ? t("{name} has the most, {n} {overdue, plural, one {record} other {records}} past the due date.", { name: worst.name, n: int(worst.overdue), overdue: worst.overdue }) : t("Everything assigned is still inside its due date.")}
         figs={[
           { label: t("Open records"), value: int(open), note: t("held by {n} people", { n: int(rows.filter((p) => p.open_work > 0).length) }) },
-          { label: t("Overdue"), value: int(lateTotal), note: t("past the due date") },
+          { label: t("Overdue"), value: int(lateTotal), note: t("past the due date"), tone: lateTotal > 0 ? "crit" : undefined },
           { label: t("Unassigned"), value: unassigned == null ? "—" : int(unassigned), note: t("nobody holds them") },
         ]}
-        action={
-          worst ? (
-            <V2Link href={`/work?assigned=${encodeURIComponent(worst.id)}&due=overdue`} className="m2-btn m2-strong">
-              {t("Open {name}'s overdue work", { name: worst.name })}
-            </V2Link>
-          ) : (
-            <V2Link href="/work" className="m2-btn m2-strong">
-              {t("Open the work list")}
-            </V2Link>
-          )
-        }
       />
       {bars.length > 0 ? (
         <div className="m2-cc-split">
@@ -158,10 +148,12 @@ export function PeopleCanvas() {
     }
   };
   const openId = open?.kind === "person" ? open.id : null;
+  // The person to chase first: the most records past their due date.
+  const worstLate = [...rows].filter((p) => p.overdue > 0).sort((a, b) => b.overdue - a.overdue)[0];
 
   if (q.isError) {
     return (
-      <CcPage>
+      <CcPage dock={false}>
         <PageTitle>{t("People")}</PageTitle>
         <ErrorFrame onRetry={() => void q.refetch()}>{t("The people could not be read. Check that the API is reachable, then retry.")}</ErrorFrame>
       </CcPage>
@@ -169,7 +161,7 @@ export function PeopleCanvas() {
   }
   if (q.isLoading) {
     return (
-      <CcPage>
+      <CcPage dock={false}>
         <PageTitle>{t("People")}</PageTitle>
         <Skeleton width="100%" height={220} />
       </CcPage>
@@ -177,7 +169,7 @@ export function PeopleCanvas() {
   }
   if (rows.length === 0) {
     return (
-      <CcPage>
+      <CcPage dock={false}>
         <PageTitle>{t("People")}</PageTitle>
         <EmptyFrame>{t("Nobody owns an object or holds work yet. Set an owner on an object, or assign records, and people appear here with their open work.")}</EmptyFrame>
       </CcPage>
@@ -185,7 +177,7 @@ export function PeopleCanvas() {
   }
 
   return (
-    <CcPage>
+    <CcPage dock={false}>
     <div data-testid="people-canvas">
       <PageTitle sub={t("Owners and stewards")}>{t("People")}</PageTitle>
       <FixHead
@@ -204,6 +196,16 @@ export function PeopleCanvas() {
       <p className="m2-prov">
         {t("Counts are read from the work assigned in the latest state.")}{" "}<V2Link href={hrefFor({ kind: "triage", id: "" })}>{t("Triage and SLA")}</V2Link>
       </p>
+      {worstLate ? (
+        <PrimaryAction
+          action={
+            <V2Link href={`/work?assigned=${encodeURIComponent(worstLate.id)}&due=overdue`} className="m2-btn m2-strong" data-testid="people-next">
+              {t("Open {name}'s overdue work", { name: worstLate.name })}
+            </V2Link>
+          }
+          why={t("{name} has the most, {n} {overdue, plural, one {record} other {records}} past the due date.", { name: worstLate.name, n: int(worstLate.overdue), overdue: worstLate.overdue })}
+        />
+      ) : null}
       <PeopleActions />
       {phone ? (
         <ul className="m2-plist" aria-label={t("People")}>

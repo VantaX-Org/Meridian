@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getFindings } from "@/lib/api/v2/insights";
@@ -16,10 +15,11 @@ import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { Money } from "../Money";
 import { ObjectTrend } from "../ObjectTrend";
-import { CodeWithText, InactiveChip, PrimaryAction } from "../RunParts";
+import { InactiveChip } from "../RunParts";
 import { Ruler } from "../Ruler";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { dimsOf } from "../shell/ObjectsTree";
+import { KeyText, keyValue } from "./work-parts";
 
 const LIMIT = 50;
 const measured = (c: LandscapeCell): number | null => c.raw_score ?? c.score;
@@ -151,34 +151,19 @@ function FindingsUnverified() {
  */
 export function HomeHeadlines({ L }: { L: Landscape }) {
   const fixture = useFixture();
-  const systems = useMemo(() => L.systems.filter((s) => s.state !== "not_extracted" || L.cells.some((c) => c.system_id === s.id)), [L]);
+  // Every system keeps its strip, a never-extracted one included, so the strips add up to the lede's count.
+  const systems = L.systems;
   const lines = useQueries({ queries: systems.map((s) => ({ queryKey: runKeys.timeline(fixture, s.id, LIMIT, undefined), queryFn: () => getTimeline(s.id, LIMIT), staleTime: 30_000 })) });
   const work = useTopWork(5);
   const label = (m: string) => L.objects.find((o) => o.module === m)?.label ?? m;
   const timelines = lines.map((q) => q.data?.runs);
   const movers = worstMovers(systems, timelines, label);
-  const first = movers[0];
-  const lowest = L.cells.filter((c) => measured(c) != null).sort((a, b) => (measured(a) as number) - (measured(b) as number))[0];
-  const lowSystem = lowest ? L.systems.find((s) => s.id === lowest.system_id) : undefined;
-  const nSys = systems.length;
+  const nSys = systems.filter((s) => L.cells.some((c) => c.system_id === s.id)).length;
   return (
     <>
       <p className="m2-meta" data-testid="home-strips-note">
-        {t("{s} {s, plural, one {system} other {systems}} at their newest finished runs. Scores are measured out of 100; open any system's object for its run detail.", { s: nSys })}
+        {t("{s} of {n} systems have a finished run, each shown at its newest. Scores are measured out of 100; open any object for its run detail.", { s: nSys, n: systems.length })}
       </p>
-      {first ? (
-        <PrimaryAction
-          action={<V2Link className="m2-btn m2-strong" href={objectHref(first.system.name, first.module)}>{t("Open {object} on {system}", { object: first.label, system: first.system.name })}</V2Link>}
-          why={t("It fell furthest since its previous run: {from} to {to}.", { from: f1(first.from), to: f1(first.to) })}
-        />
-      ) : lowest && lowSystem ? (
-        <PrimaryAction
-          action={<V2Link className="m2-btn m2-strong" href={objectHref(lowSystem.name, lowest.module)}>{t("Open {object} on {system}", { object: label(lowest.module), system: lowSystem.name })}</V2Link>}
-          why={t("No object fell since its previous run. This one has the lowest measured score, {score}.", { score: f1(measured(lowest)) })}
-        />
-      ) : (
-        <PrimaryAction action={<V2Link className="m2-btn m2-strong" href="/s">{t("Open systems")}</V2Link>} why={t("Extract a system and run an analysis to score its objects.")} />
-      )}
       <section className="m2-sec" aria-labelledby="hs-sys" data-testid="home-strips">
         <div className="m2-sechead">
           <h2 className="m2-h2" id="hs-sys">{t("Systems")}</h2>
@@ -202,7 +187,7 @@ export function HomeHeadlines({ L }: { L: Landscape }) {
             <ul className="m2-hs-list">
               {movers.map((m) => (
                 <li key={`${m.system.id}:${m.module}`} title={t("{name}, {date}: measured {score}", { name: runLabel(m.system.name, m.run.run_number), date: formatDate(m.run.run_at, "date"), score: f1(m.to) })}>
-                  <V2Link href={objectHref(m.system.name, m.module)}><CodeWithText code={m.module} text={m.label} /></V2Link>{" "}
+                  <V2Link href={objectHref(m.system.name, m.module)}>{m.label}</V2Link>{" "}
                   <span className="m2-meta">{m.system.name}</span> <b>{m.delta.toFixed(1)}</b>
                 </li>
               ))}
@@ -221,12 +206,17 @@ export function HomeHeadlines({ L }: { L: Landscape }) {
           ) : (
             <>
               <ul className="m2-hs-list">
-                {(work.data?.items ?? []).map((r) => (
-                  <li key={`${r.module}:${r.record_key}`}>
-                    <V2Link href={`/work?module=${encodeURIComponent(r.module)}`}>{r.top_message ?? r.record_key}</V2Link>{" "}
-                    <span className="m2-meta">{label(r.module)}</span>
-                  </li>
-                ))}
+                {(work.data?.items ?? []).map((r) => {
+                  // Several rows can fail the same rule: the record key tells them apart, as SAP shows it.
+                  const key = keyValue(r, 0);
+                  const rule = r.checks[0];
+                  return (
+                    <li key={`${r.module}:${r.record_key}`}>
+                      <V2Link href={rule ? `/work?module=${encodeURIComponent(r.module)}&rule=${encodeURIComponent(rule)}` : `/work?module=${encodeURIComponent(r.module)}`}>{r.top_message ?? r.record_key}</V2Link>{" "}
+                      <span className="m2-meta">{label(r.module)}</span>{key ? <> <KeyText value={key} /></> : null}
+                    </li>
+                  );
+                })}
               </ul>
               <V2Link href="/work">{t("Open the whole fix queue ({total})", { total: int(work.data?.total ?? 0) })}</V2Link>
             </>
