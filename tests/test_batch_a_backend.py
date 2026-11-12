@@ -63,6 +63,13 @@ def test_compare_reasons():
     assert compare_sets.reason_for(ok(10), ok(10), "new") == "data"
 
 
+def test_compare_values_decode_jsonb_and_text():
+    assert compare_sets._values({"MARA.MTART": "ZZ"}) == {"MARA.MTART": "ZZ"}
+    assert compare_sets._values('{"MARA.MTART": "ZZ"}') == {"MARA.MTART": "ZZ"}
+    assert compare_sets._values(None) is None
+    assert compare_sets._values("[]") is None
+
+
 def test_cleaning_edits_strip_the_field_description():
     rows = [("Table", "Record key", "Field", "Corrected value"), ("MARA", "MATNR=1", "MARA.MATKL (Material Group)", "X1"),
             ("MARA", "MATNR=2", "MARA.MATKL (Material Group)", "")]

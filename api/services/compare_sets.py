@@ -21,13 +21,14 @@ CHANGES = ("new", "regressed", "resolved", "persisting")
 SORTS = {"record_key": "record_key", "check_id": "check_id", "change": "change", "module": "module"}
 
 _CLASSIFIED = """
-WITH a AS (SELECT check_id, record_key, module FROM finding_records WHERE version_id = :v1),
-     b AS (SELECT check_id, record_key, module FROM finding_records WHERE version_id = :v2),
+WITH a AS (SELECT check_id, record_key, module, field_values FROM finding_records WHERE version_id = :v1),
+     b AS (SELECT check_id, record_key, module, field_values FROM finding_records WHERE version_id = :v2),
      seen AS (SELECT DISTINCT check_id, record_key FROM finding_records
                WHERE version_id = ANY(CAST(:earlier AS uuid[]))),
      c AS (
        SELECT COALESCE(b.check_id, a.check_id) AS check_id, COALESCE(b.record_key, a.record_key) AS record_key,
               COALESCE(b.module, a.module) AS module,
+              a.field_values AS values_before, b.field_values AS values_after,
               CASE WHEN a.record_key IS NOT NULL AND b.record_key IS NOT NULL THEN 'persisting'
                    WHEN b.record_key IS NULL THEN 'resolved'
                    WHEN seen.record_key IS NOT NULL THEN 'regressed' ELSE 'new' END AS change
@@ -39,10 +40,17 @@ META_SQL = ("SELECT version_id, check_id, total_count, rule_context, details->>'
             "WHERE version_id IN (:v1, :v2)")
 
 
+def _values(v: Any) -> Optional[dict]:
+    """field_values as a dict: jsonb arrives decoded from asyncpg, as text from SQLite."""
+    if isinstance(v, str):
+        v = json.loads(v)
+    return v if isinstance(v, dict) else None
+
+
 def list_sql(sort: str) -> str:
     """Page of classified records; ``sort`` is a key of SORTS with an optional leading ``-``."""
     col = SORTS[sort.lstrip("-")]
-    return (_CLASSIFIED + "SELECT check_id, record_key, module, change, count(*) OVER() AS total FROM c "
+    return (_CLASSIFIED + "SELECT check_id, record_key, module, change, values_before, values_after, count(*) OVER() AS total FROM c "
             "WHERE (CAST(:change AS text) IS NULL OR change = :change) "
             "AND (CAST(:cid AS text) IS NULL OR check_id = :cid) AND (CAST(:module AS text) IS NULL OR module = :module) "
             f"ORDER BY {col} {'DESC' if sort.startswith('-') else 'ASC'}, check_id, record_key LIMIT :limit OFFSET :offset")
@@ -105,5 +113,7 @@ async def records(db: AsyncSession, v1, v2, earlier: list[str], *, change=None, 
         "v1": v1, "v2": v2, "earlier": earlier, "change": change, "cid": check_id, "module": module,
         "limit": limit, "offset": offset})).mappings().all()
     items = [{"check_id": r["check_id"], "record_key": r["record_key"], "module": r["module"], "change": r["change"],
-              "reason": reason_for(*metas.get(r["check_id"], (None, None)), r["change"])} for r in rows]
+              "reason": reason_for(*metas.get(r["check_id"], (None, None)), r["change"]),
+              # The failing record's values in each run; a resolved record passes in v2, so v2 stored none for it.
+              "values_before": _values(r["values_before"]), "values_after": _values(r["values_after"])} for r in rows]
     return items, int(rows[0]["total"]) if rows else 0
