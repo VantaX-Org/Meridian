@@ -81,7 +81,7 @@ export function StepDecide({ kind, id }: { kind: "fix_batch" | "change_request";
       <Actions>
         {rejecting ? (
           <>
-            <button type="button" className="m2-btn m2-btn-primary" disabled={pending !== null || !reason.trim()} onClick={() => void decide("reject")}>
+            <button type="button" className="m2-btn m2-strong" disabled={pending !== null || !reason.trim()} onClick={() => void decide("reject")}>
               {tr("Reject")}
             </button>
             <button type="button" className="m2-btn" disabled={pending !== null} onClick={() => setRejecting(false)}>
@@ -90,7 +90,7 @@ export function StepDecide({ kind, id }: { kind: "fix_batch" | "change_request";
           </>
         ) : (
           <>
-            <button type="button" className="m2-btn m2-btn-primary" disabled={pending !== null} onClick={() => void decide("approve")}>
+            <button type="button" className="m2-btn m2-strong" disabled={pending !== null} onClick={() => void decide("approve")}>
               {tr("Approve")}
             </button>
             <button type="button" className="m2-btn" disabled={pending !== null} onClick={() => setRejecting(true)}>

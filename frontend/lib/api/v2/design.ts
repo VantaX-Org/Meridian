@@ -106,7 +106,7 @@ export interface DesignCoverageEntry {
   purpose?: string;
 }
 export const getDesignConfig = (id: string, table: string) => v2Get<DesignConfigTable>(`/systems/${enc(id)}/design/config/${enc(table)}`, { limit: 500 });
-export const getDesignCoverage = (id: string) => v2Get<{ snapshot_id: string | null; coverage: Record<string, DesignCoverageEntry[]> }>(`/systems/${enc(id)}/design/coverage`);
+export const getDesignCoverage = (id: string) => v2Get<{ snapshot_id: string | null; coverage: Record<string, DesignCoverageEntry[]>; waiting_for_data?: Record<string, number> }>(`/systems/${enc(id)}/design/coverage`);
 export const getConfigDeviation = (id: string) => v2Get<{ tables: ConfigDeviation[] }>(`/systems/${enc(id)}/design/config-deviation`);
 export const getDesignSnapshots = (id: string) => v2Get<DesignSnapshot[]>(`/systems/${enc(id)}/design/snapshots`);
 export const getDesignDiff = (id: string, from: string, to: string) =>

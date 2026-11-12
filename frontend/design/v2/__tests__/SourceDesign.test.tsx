@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 import { screen, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
-import { SourceDesign } from "../screens/system/SourceDesign";
+import { COVERAGE_STATUS, SourceDesign } from "../screens/system/SourceDesign";
 import { stubLayout } from "./layout-stub";
 import { setUrl } from "./nav-store";
 
@@ -59,6 +59,37 @@ describe("Source design", () => {
     const cfg = screen.getByTestId("sd-coverage-configuration");
     const t001w = within(cfg).getAllByRole("row").find((r) => r.textContent?.includes("T001W"))!;
     expect(t001w.textContent).toMatch(/Not in this system/);
+  });
+
+  it("every coverage outcome has a plain label, a tone, and a next step when the table was not read", () => {
+    const want: Record<string, [string, string | undefined, boolean]> = {
+      live: ["Read", "pass", false],
+      failed: ["Failed", "warn", false],
+      not_in_system: ["Not in this system", undefined, false],
+      delta_fallback: ["Read in full, no delta", "pass", false],
+      upload_required: ["Upload required", "warn", true],
+      preview: ["Preview source", "warn", true],
+      no_rule_mapping: ["No rules read it", undefined, true],
+      not_installed: ["Not installed", undefined, true],
+    };
+    for (const [status, [label, tone, next]] of Object.entries(want)) {
+      const s = COVERAGE_STATUS[status];
+      expect(s.label()).toBe(label);
+      expect(s.tone).toBe(tone);
+      expect(Boolean(s.next)).toBe(next);
+    }
+    expect(String(COVERAGE_STATUS.preview.next?.())).toMatch(/not yet verified against a live tenant/);
+  });
+
+  it("an upload-required table links to the upload screen and the waiting rules are counted", async () => {
+    setUrl("/s/sys-1?tab=design&part=coverage");
+    renderWithQuery(<SourceDesign id="sys-1" />);
+    const ext = await screen.findByTestId("sd-coverage-extraction");
+    const pay = within(ext).getAllByRole("row").find((r) => r.textContent?.includes("PAYRESULT"))!;
+    expect(pay.textContent).toMatch(/Upload required/);
+    expect(within(pay).getByRole("link", { name: "Upload a file" }).getAttribute("href")).toMatch(/\/admin\/runs/);
+    expect(screen.getByTestId("sd-waiting-payroll_integration").textContent).toMatch(/43 rules wait for data and are left out of the score/);
+    expect(screen.queryByTestId("sd-waiting-material_master")).toBeNull();
   });
 
   it("a configuration table opens with its stored entries and their texts", async () => {

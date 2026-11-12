@@ -56,6 +56,7 @@ class ObjectOut(BaseModel):
     anchor_text: str
     step: int
     group: list[str]
+    tables: list[str] = []  # the object's tables in load order
     status: str        # go | no_go | not_run
     blocking: int      # critical and high gap findings in the latest analysed run
     run_id: Optional[str] = None
@@ -136,7 +137,7 @@ async def load_plan(
         run_id, blocking = state.get(o.module, (None, 0))
         objects.append(ObjectOut(
             module=o.module, label=object_label(o.module), anchor=o.anchor, anchor_text=o.anchor_text,
-            step=o.step, group=o.group, status=status(o.module), blocking=blocking, run_id=run_id,
+            step=o.step, group=o.group, tables=o.tables, status=status(o.module), blocking=blocking, run_id=run_id,
             blocked_by=blockers,
             prerequisites=[PrerequisiteOut(table=p.table, text=p.text, kind=p.kind, fields=p.fields)
                            for p in o.prerequisites]))

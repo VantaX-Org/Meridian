@@ -49,9 +49,9 @@
 
 .m2-root .m2-secret { font-family: var(--m2-mono); font-size: var(--m2-fs-12); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); overflow-wrap: anywhere; background: var(--m2-hover); user-select: all; }
 
-.m2-root .m2-danger { border: 1px solid var(--m2-crit); border-radius: var(--m2-r2); padding: var(--m2-s4); background: var(--m2-crit-bg); color: var(--m2-crit-ink); }
-.m2-root .m2-danger h2 { color: var(--m2-crit-ink); }
-.m2-root .m2-danger p { margin: var(--m2-s1) 0 var(--m2-s3); font-size: var(--m2-fs-13); }
+.m2-root .m2-danger-panel { border: 1px solid var(--m2-crit); border-radius: var(--m2-r2); padding: var(--m2-s4); background: var(--m2-crit-bg); color: var(--m2-crit-ink); }
+.m2-root .m2-danger-panel h2 { color: var(--m2-crit-ink); }
+.m2-root .m2-danger-panel p { margin: var(--m2-s1) 0 var(--m2-s3); font-size: var(--m2-fs-13); }
 .m2-root .m2-btn.m2-crit { border-color: var(--m2-crit); color: var(--m2-crit-ink) !important; }
 
 .m2-root .m2-anote { background: var(--m2-hover); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); margin: var(--m2-s3) 0; font-size: var(--m2-fs-13); color: var(--m2-ink-2); max-width: 86ch; }

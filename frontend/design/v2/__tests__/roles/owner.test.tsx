@@ -31,7 +31,7 @@ describe("the data owner's jobs", () => {
     mount();
     const approve = await screen.findByRole("button", { name: "Approve" });
     expect(approve).toBeDisabled();
-    expect(approve).toHaveAttribute("title", "Four eyes: you wrote it");
+    expect(approve).toHaveAccessibleDescription("Four eyes: you wrote it");
   });
 
   it("reads the escalation chain but cannot change it", async () => {

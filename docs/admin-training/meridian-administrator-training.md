@@ -418,8 +418,8 @@ default assumptions; set your cost model in Administration".
 
 ### Quality targets per dimension
 
-A module can have a target for each dimension, for example 85 for validity. Set them in **Administration, Quality
-thresholds**.
+A module can have a target for each dimension, for example 85 for validity. Set them in **Administration, Settings,
+Quality thresholds**.
 
 1. Pick the module and the dimension, enter the target, and save.
 2. Open the score lens heat map on Monitoring. Each cell is banded against its own target, with the target beside the
@@ -662,7 +662,7 @@ touching the real one: run it monthly.
 
 ### Aletheia engine
 
-**Administration, Aletheia engine** (under Operations, with the manage system permission) shows the deployment's own
+**Administration, Aletheia engine** (under Operations; anyone with the view permission can open it, it is read only) shows the deployment's own
 analysis engine. The engine runs as a separate container next to Meridian, with its own volume, and is never shared
 with another product on the same host. It receives only run-level scores and counts, never extracted records or
 field values. When the engine is missing or stopped, Meridian keeps working; only the engine panels stay empty.
