@@ -95,6 +95,7 @@ jobs:
         e2e/v2-step10.spec.ts
         e2e/v2-systems.spec.ts
         e2e/v2-work.spec.ts
+        e2e/journeys/budgets.spec.ts
         e2e/redirects.spec.ts
         e2e/sign-in-states.spec.ts
     defaults:

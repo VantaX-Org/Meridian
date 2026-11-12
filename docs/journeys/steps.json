@@ -3,6 +3,7 @@
     "id": "admin-setup",
     "role": "platform_admin",
     "object": null,
+    "target_clicks": 30,
     "steps": [
       {
         "route": "/",
@@ -30,6 +31,7 @@
     "id": "admin-connect-system",
     "role": "platform_admin",
     "object": null,
+    "target_clicks": 30,
     "steps": [
       {
         "route": "/s",
@@ -109,6 +111,7 @@
     "id": "basis-fix-signin",
     "role": "sap_basis",
     "object": null,
+    "target_clicks": 3,
     "steps": [
       {
         "route": "/",
@@ -165,6 +168,7 @@
     "id": "steward-accept-next-step",
     "role": "data_steward",
     "object": null,
+    "target_clicks": 5,
     "steps": [
       {
         "route": "/",
@@ -244,6 +248,7 @@
     "id": "owner-approve-batch",
     "role": "data_owner",
     "object": null,
+    "target_clicks": 4,
     "steps": [
       {
         "route": "/",
@@ -330,6 +335,7 @@
     "id": "lead-waves",
     "role": "programme_lead",
     "object": null,
+    "target_clicks": 12,
     "steps": [
       {
         "route": "/?view=waves",
@@ -364,6 +370,7 @@
     "id": "lead-people",
     "role": "programme_lead",
     "object": null,
+    "target_clicks": 10,
     "steps": [
       {
         "route": "/people",
@@ -405,6 +412,7 @@
     "id": "lead-reports",
     "role": "programme_lead",
     "object": null,
+    "target_clicks": 10,
     "steps": [
       {
         "route": "/reports",
@@ -591,6 +599,7 @@
     "id": "auditor-rules",
     "role": "auditor",
     "object": null,
+    "target_clicks": 12,
     "steps": [
       {
         "route": "/",
@@ -613,6 +622,7 @@
     "id": "auditor-audit-log",
     "role": "auditor",
     "object": null,
+    "target_clicks": 12,
     "steps": [
       {
         "route": "/admin",
