@@ -17,7 +17,7 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import { ROLE_NAMES, setViewAs, VIEW_AS_ROLES } from "@/lib/v2/view-as";
 import { int } from "@/lib/v2/score";
 import { Coded, Mono } from "../parts";
-import { AdminPage, Block, Loaded, NeedsPermission, Note, StatusWord, useCan } from "./kit";
+import { AdminPage, Block, Confirm, Loaded, NeedsPermission, Note, StatusWord, useCan } from "./kit";
 import "../roles.css";
 import { t as tr, lc } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
@@ -134,9 +134,10 @@ export function StewardshipSection() {
                   })}>
                     {tr("Save the template")}
                   </button>
-                  <button type="button" className="m2-btn" disabled={Boolean(draft)} title={draft ? tr("Save the template first") : undefined} onClick={() => void run(async () => setPlan(await applyTemplate(true)))}>
+                  <button type="button" className="m2-btn" disabled={Boolean(draft)} aria-describedby={draft ? "template-apply-why" : undefined} onClick={() => void run(async () => setPlan(await applyTemplate(true)))}>
                     {tr("Check what applying does")}
                   </button>
+                  {draft ? <span id="template-apply-why" className="m2-prov">{tr("Save the template first")}</span> : null}
                   <button type="button" className="m2-btn m2-next" disabled={!plan || Boolean(draft)} onClick={() => void run(async () => {
                     const done = await applyTemplate(false);
                     setPlan(null);
@@ -429,6 +430,7 @@ export function ShareLinksSection() {
   const qc = useQueryClient();
   const q = useShareLinks(true);
   const [error, setError] = useState<string | null>(null);
+  const [asking, setAsking] = useState<{ id: string; label: string } | null>(null);
   if (!can("manage_users")) {
     return (
       <AdminPage title={tr("Share links")}>
@@ -450,7 +452,7 @@ export function ShareLinksSection() {
                   <span className="m2-meta">{tr("{created_by_label}, {value}, opened {open_count} {open_count2, plural, one {time} other {times}}", { created_by_label: l.created_by_label ?? l.created_by, value: l.state_word === "active" ? tr("until {expires_at}", { expires_at: formatDate(l.expires_at, "date") }) : lc(labelText(l.state_word)), open_count: int(l.open_count), open_count2: l.open_count })}</span>
                   <Mono>{l.route}</Mono>
                   {l.state_word === "active" ? (
-                    <button type="button" className="m2-linkbtn2" onClick={() => void revokeShareLink(l.id).then(() => refreshRoles(qc, "links")).catch((e) => setError(failureText(e)))}>
+                    <button type="button" className="m2-linkbtn2" onClick={() => setAsking({ id: l.id, label: l.label ?? l.route })}>
                       {tr("Revoke")}
                     </button>
                   ) : null}
@@ -461,6 +463,20 @@ export function ShareLinksSection() {
         }
       </Loaded>
       {error ? <Note tone="bad">{error}</Note> : null}
+      {asking ? (
+        <Confirm
+          title={tr("Revoke the share link to {label}", { label: asking.label })}
+          body={tr("The link stops working at once. Anyone who opens it afterwards sees nothing; to share the page again, make a new link.")}
+          confirm={tr("Revoke")}
+          danger
+          onCancel={() => setAsking(null)}
+          onConfirm={() => {
+            const id = asking.id;
+            setAsking(null);
+            void revokeShareLink(id).then(() => refreshRoles(qc, "links")).catch((e) => setError(failureText(e)));
+          }}
+        />
+      ) : null}
     </AdminPage>
   );
 }
@@ -471,6 +487,7 @@ export function DelegationsSection() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["v2", "roles", fx, "delegations", "all"], queryFn: getAllDelegations, enabled: can("manage_users"), retry: false });
   const [error, setError] = useState<string | null>(null);
+  const [asking, setAsking] = useState<{ id: string; from: string; to: string } | null>(null);
   if (!can("manage_users")) {
     return (
       <AdminPage title={tr("Out of office")}>
@@ -491,7 +508,7 @@ export function DelegationsSection() {
                   <span>{tr("{from_name} to {to_name}", { from_name: x.from_name, to_name: x.to_name })}</span>
                   <span className="m2-meta">{tr("{starts_on} to {ends_on}, {state}", { starts_on: x.starts_on, ends_on: x.ends_on, state: lc(labelText(x.state)) })}</span>
                   {x.state === "active" || x.state === "scheduled" ? (
-                    <button type="button" className="m2-linkbtn2" onClick={() => void revokeDelegation(x.id).then(() => refreshRoles(qc, "delegations")).catch((e) => setError(failureText(e)))}>
+                    <button type="button" className="m2-linkbtn2" onClick={() => setAsking({ id: x.id, from: x.from_name, to: x.to_name })}>
                       {tr("End it")}
                     </button>
                   ) : null}
@@ -502,6 +519,20 @@ export function DelegationsSection() {
         }
       </Loaded>
       {error ? <Note tone="bad">{error}</Note> : null}
+      {asking ? (
+        <Confirm
+          title={tr("End the out of office of {from_name}", { from_name: asking.from })}
+          body={tr("{to_name} stops covering the approvals and assigned work of {from_name} from now on.", { to_name: asking.to, from_name: asking.from })}
+          confirm={tr("End it")}
+          danger
+          onCancel={() => setAsking(null)}
+          onConfirm={() => {
+            const id = asking.id;
+            setAsking(null);
+            void revokeDelegation(id).then(() => refreshRoles(qc, "delegations")).catch((e) => setError(failureText(e)));
+          }}
+        />
+      ) : null}
     </AdminPage>
   );
 }

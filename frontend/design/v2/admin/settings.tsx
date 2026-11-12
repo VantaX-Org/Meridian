@@ -574,7 +574,7 @@ function TenantPurge() {
   }, []);
   const ready = req ? now >= Date.parse(req.executes_after) : false;
   return (
-    <section className="m2-adm-blk m2-danger" aria-label={tr("Delete all data")} data-testid="tenant-purge">
+    <section className="m2-adm-blk m2-danger-panel" aria-label={tr("Delete all data")} data-testid="tenant-purge">
       <h2>{tr("Delete all data")}</h2>
       <p>{tr("Removes every run, report and audit row of this organisation, and its stored files, for good. A request issues a token that works after 24 hours, so a mistake can be caught. The purge log keeps the record of the deletion.")}</p>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
