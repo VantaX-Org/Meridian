@@ -14365,3 +14365,3113 @@ rules:
     fix_map:
       __other__: Enter the account holder in XD02 / FD02 > Payment transactions > Bank details.
     record_fix_template: 'Customer {KNBK.KUNNR}, bank {KNBK.BANKS}/{KNBK.BANKL}: account holder name is blank.'
+  - id: SDCM939
+    field: KNA1.MCOD2
+    check_class: regex_check
+    pattern: ^[^a-z]{0,25}$
+    severity: low
+    dimension: validity
+    message: Search Term for Matchcode Search must be upper case and fit 25 characters
+    why_it_matters: KNA1.MCOD2 is not defined as case-sensitive, so SAP stores it in upper case, and it holds 25 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on MCOD2 miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1.MCOD2 to upper case within 25 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: MCOD2 is {actual_value}. Correct KNA1.MCOD2 to upper case within 25 characters.'
+  - id: SDCM940
+    field: KNA1.ANRED
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Title must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.ANRED is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on ANRED treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.ANRED.
+    record_fix_template: 'Customer {KNA1.KUNNR}: ANRED is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.ANRED.'
+  - id: SDCM941
+    field: KNA1.BAHNE
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Express train station must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.BAHNE is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on BAHNE treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.BAHNE.
+    record_fix_template: 'Customer {KNA1.KUNNR}: BAHNE is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.BAHNE.'
+  - id: SDCM942
+    field: KNA1.BAHNS
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Train station must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.BAHNS is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on BAHNS treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.BAHNS.
+    record_fix_template: 'Customer {KNA1.KUNNR}: BAHNS is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.BAHNS.'
+  - id: SDCM943
+    field: KNA1.BEGRU
+    check_class: regex_check
+    pattern: ^[^a-z]{0,4}$
+    severity: low
+    dimension: validity
+    message: Authorization Group must be upper case and fit 4 characters
+    why_it_matters: KNA1.BEGRU is not defined as case-sensitive, so SAP stores it in upper case, and it holds 4 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on BEGRU miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1.BEGRU to upper case within 4 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: BEGRU is {actual_value}. Correct KNA1.BEGRU to upper case within 4 characters.'
+  - id: SDCM944
+    field: KNA1.BUBKZ
+    check_class: regex_check
+    pattern: ^[0-9]{1,1}$
+    severity: low
+    dimension: validity
+    message: Check digit for the international location number must contain digits only, at most 1
+    why_it_matters: KNA1.BUBKZ is a numeric-character field of length 1. Letters, signs or extra characters cannot be stored
+      in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on BUBKZ fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct KNA1.BUBKZ to digits only, at most 1 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: BUBKZ is {actual_value}. Correct KNA1.BUBKZ to digits only, at most 1 characters.'
+  - id: SDCM945
+    field: KNA1.DATLT
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Data communication line no must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.DATLT is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on DATLT treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.DATLT.
+    record_fix_template: 'Customer {KNA1.KUNNR}: DATLT is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.DATLT.'
+  - id: SDCM946
+    field: KNA1.EXABL
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Unloading points exist must be blank or ''X'''
+    why_it_matters: KNA1.EXABL is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read EXABL behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.EXABL to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: EXABL is {actual_value}. Set KNA1.EXABL to blank or ''X''.'
+  - id: SDCM947
+    field: KNA1.KONZS
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: Group key must be upper case and fit 10 characters
+    why_it_matters: KNA1.KONZS is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on KONZS miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1.KONZS to upper case within 10 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: KONZS is {actual_value}. Correct KNA1.KONZS to upper case within 10 characters.'
+  - id: SDCM948
+    field: KNA1.LOCCO
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: City Coordinates must be upper case and fit 10 characters
+    why_it_matters: KNA1.LOCCO is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on LOCCO miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1.LOCCO to upper case within 10 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: LOCCO is {actual_value}. Correct KNA1.LOCCO to upper case within 10 characters.'
+  - id: SDCM949
+    field: KNA1.RPMKR
+    check_class: regex_check
+    pattern: ^[^a-z]{0,5}$
+    severity: low
+    dimension: validity
+    message: Regional market must be upper case and fit 5 characters
+    why_it_matters: KNA1.RPMKR is not defined as case-sensitive, so SAP stores it in upper case, and it holds 5 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on RPMKR miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1.RPMKR to upper case within 5 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: RPMKR is {actual_value}. Correct KNA1.RPMKR to upper case within 5 characters.'
+  - id: SDCM950
+    field: KNA1.TELBX
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Telebox number must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.TELBX is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on TELBX treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.TELBX.
+    record_fix_template: 'Customer {KNA1.KUNNR}: TELBX is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.TELBX.'
+  - id: SDCM951
+    field: KNA1.TELTX
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Teletex number must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.TELTX is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on TELTX treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.TELTX.
+    record_fix_template: 'Customer {KNA1.KUNNR}: TELTX is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.TELTX.'
+  - id: SDCM952
+    field: KNA1.TELX1
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Telex number must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.TELX1 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on TELX1 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.TELX1.
+    record_fix_template: 'Customer {KNA1.KUNNR}: TELX1 is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.TELX1.'
+  - id: SDCM953
+    field: KNA1.XZEMP
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Is an alternative payer allowed in document? must be blank or ''X'''
+    why_it_matters: KNA1.XZEMP is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read XZEMP behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.XZEMP to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: XZEMP is {actual_value}. Set KNA1.XZEMP to blank or ''X''.'
+  - id: SDCM954
+    field: KNA1.DEAR1
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Competitor must be blank or ''X'''
+    why_it_matters: KNA1.DEAR1 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read DEAR1 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.DEAR1 to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: DEAR1 is {actual_value}. Set KNA1.DEAR1 to blank or ''X''.'
+  - id: SDCM955
+    field: KNA1.DEAR2
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Sales partner must be blank or ''X'''
+    why_it_matters: KNA1.DEAR2 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read DEAR2 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.DEAR2 to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: DEAR2 is {actual_value}. Set KNA1.DEAR2 to blank or ''X''.'
+  - id: SDCM956
+    field: KNA1.DEAR3
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Sales prospect must be blank or ''X'''
+    why_it_matters: KNA1.DEAR3 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read DEAR3 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.DEAR3 to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: DEAR3 is {actual_value}. Set KNA1.DEAR3 to blank or ''X''.'
+  - id: SDCM957
+    field: KNA1.DEAR4
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Indicator for customer type 4 must be blank or 'X'
+    why_it_matters: KNA1.DEAR4 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read DEAR4 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.DEAR4 to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: DEAR4 is {actual_value}. Set KNA1.DEAR4 to blank or ''X''.'
+  - id: SDCM958
+    field: KNA1.DEAR5
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: ID for default sold-to party must be blank or 'X'
+    why_it_matters: KNA1.DEAR5 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read DEAR5 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.DEAR5 to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: DEAR5 is {actual_value}. Set KNA1.DEAR5 to blank or ''X''.'
+  - id: SDCM959
+    field: KNA1.DTAWS
+    check_class: regex_check
+    pattern: ^[^a-z]{0,2}$
+    severity: low
+    dimension: validity
+    message: Instruction key for data medium exchange must be upper case and fit 2 characters
+    why_it_matters: KNA1.DTAWS is not defined as case-sensitive, so SAP stores it in upper case, and it holds 2 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on DTAWS miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1.DTAWS to upper case within 2 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: DTAWS is {actual_value}. Correct KNA1.DTAWS to upper case within 2 characters.'
+  - id: SDCM960
+    field: KNA1.HZUOR
+    check_class: regex_check
+    pattern: ^[0-9]{1,2}$
+    severity: low
+    dimension: validity
+    message: Assignment to Hierarchy must contain digits only, at most 2
+    why_it_matters: KNA1.HZUOR is a numeric-character field of length 2. Letters, signs or extra characters cannot be stored
+      in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on HZUOR fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct KNA1.HZUOR to digits only, at most 2 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: HZUOR is {actual_value}. Correct KNA1.HZUOR to digits only, at most 2 characters.'
+  - id: SDCM961
+    field: KNA1.SPERZ
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Payment Block must be blank or 'X'
+    why_it_matters: KNA1.SPERZ is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read SPERZ behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.SPERZ to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: SPERZ is {actual_value}. Set KNA1.SPERZ to blank or ''X''.'
+  - id: SDCM962
+    field: KNA1.XKNZA
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Alternative payer using account number must be blank or ''X'''
+    why_it_matters: KNA1.XKNZA is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read XKNZA behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.XKNZA to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: XKNZA is {actual_value}. Set KNA1.XKNZA to blank or ''X''.'
+  - id: SDCM963
+    field: KNA1.STCD5
+    check_class: regex_check
+    pattern: ^[^a-z]{0,60}$
+    severity: low
+    dimension: validity
+    message: Tax Number 5 must be upper case and fit 60 characters
+    why_it_matters: KNA1.STCD5 is not defined as case-sensitive, so SAP stores it in upper case, and it holds 60 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on STCD5 miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1.STCD5 to upper case within 60 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: STCD5 is {actual_value}. Correct KNA1.STCD5 to upper case within 60 characters.'
+  - id: SDCM964
+    field: KNA1.CCC01
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Indicator for biochemical warfare for legal control must be blank or 'X'
+    why_it_matters: KNA1.CCC01 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read CCC01 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.CCC01 to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: CCC01 is {actual_value}. Set KNA1.CCC01 to blank or ''X''.'
+  - id: SDCM965
+    field: KNA1.CCC02
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Indicator for nuclear nonproliferation for legal control must be blank or 'X'
+    why_it_matters: KNA1.CCC02 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read CCC02 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.CCC02 to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: CCC02 is {actual_value}. Set KNA1.CCC02 to blank or ''X''.'
+  - id: SDCM966
+    field: KNA1.CCC03
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Indicator for national security for legal control must be blank or 'X'
+    why_it_matters: KNA1.CCC03 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read CCC03 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.CCC03 to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: CCC03 is {actual_value}. Set KNA1.CCC03 to blank or ''X''.'
+  - id: SDCM967
+    field: KNA1.CCC04
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Indicator for missile technology for legal control must be blank or 'X'
+    why_it_matters: KNA1.CCC04 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read CCC04 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.CCC04 to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: CCC04 is {actual_value}. Set KNA1.CCC04 to blank or ''X''.'
+  - id: SDCM968
+    field: KNA1.CONFS
+    check_class: regex_check
+    pattern: ^[^a-z]{0,1}$
+    severity: low
+    dimension: validity
+    message: Status of Change Authorization (Central) must be upper case and fit 1 characters
+    why_it_matters: KNA1.CONFS is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on CONFS miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1.CONFS to upper case within 1 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: CONFS is {actual_value}. Correct KNA1.CONFS to upper case within 1 characters.'
+  - id: SDCM969
+    field: KNA1.DEAR6
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Consumer must be blank or ''X'''
+    why_it_matters: KNA1.DEAR6 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read DEAR6 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNA1.DEAR6 to blank or 'X'.
+    record_fix_template: 'Customer {KNA1.KUNNR}: DEAR6 is {actual_value}. Set KNA1.DEAR6 to blank or ''X''.'
+  - id: SDCM970
+    field: KNA1.EXP
+    check_class: regex_check
+    pattern: ^[^a-z]{0,3}$
+    severity: low
+    dimension: validity
+    message: Issued by must be upper case and fit 3 characters
+    why_it_matters: KNA1.EXP is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters. Lower
+      case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on EXP miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1.EXP to upper case within 3 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: EXP is {actual_value}. Correct KNA1.EXP to upper case within 3 characters.'
+  - id: SDCM971
+    field: KNA1.UF
+    check_class: regex_check
+    pattern: ^[^a-z]{0,2}$
+    severity: low
+    dimension: validity
+    message: State must be upper case and fit 2 characters
+    why_it_matters: KNA1.UF is not defined as case-sensitive, so SAP stores it in upper case, and it holds 2 characters. Lower
+      case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on UF miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1.UF to upper case within 2 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: UF is {actual_value}. Correct KNA1.UF to upper case within 2 characters.'
+  - id: SDCM972
+    field: KNA1.RIC
+    check_class: regex_check
+    pattern: ^[0-9]{1,11}$
+    severity: low
+    dimension: validity
+    message: RIC Number must contain digits only, at most 11
+    why_it_matters: KNA1.RIC is a numeric-character field of length 11. Letters, signs or extra characters cannot be stored
+      in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on RIC fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct KNA1.RIC to digits only, at most 11 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: RIC is {actual_value}. Correct KNA1.RIC to digits only, at most 11 characters.'
+  - id: SDCM973
+    field: KNA1./VSO/R_PK_MAT
+    check_class: regex_check
+    pattern: ^[^a-z]{0,1}$
+    severity: low
+    dimension: validity
+    message: Customer-Related Packing for Each Packaging Material (VSO) must be upper case and fit 1 characters
+    why_it_matters: KNA1./VSO/R_PK_MAT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on /VSO/R_PK_MAT miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1./VSO/R_PK_MAT to upper case within 1 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: /VSO/R_PK_MAT is {actual_value}. Correct KNA1./VSO/R_PK_MAT to upper case within
+      1 characters.'
+  - id: SDCM974
+    field: KNA1./VSO/R_I_NO_LYR
+    check_class: regex_check
+    pattern: ^[0-9]{1,2}$
+    severity: low
+    dimension: validity
+    message: Number Layers Under an Inter-Pallet (VSO) must contain digits only, at most 2
+    why_it_matters: KNA1./VSO/R_I_NO_LYR is a numeric-character field of length 2. Letters, signs or extra characters cannot
+      be stored in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on /VSO/R_I_NO_LYR fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct KNA1./VSO/R_I_NO_LYR to digits only, at most 2 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: /VSO/R_I_NO_LYR is {actual_value}. Correct KNA1./VSO/R_I_NO_LYR to digits only,
+      at most 2 characters.'
+  - id: SDCM975
+    field: KNA1./VSO/R_ONE_MAT
+    check_class: regex_check
+    pattern: ^[^a-z]{0,1}$
+    severity: low
+    dimension: validity
+    message: Packing Material-Specific for Each Packaging Material must be upper case and fit 1 characters
+    why_it_matters: KNA1./VSO/R_ONE_MAT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on /VSO/R_ONE_MAT miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1./VSO/R_ONE_MAT to upper case within 1 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: /VSO/R_ONE_MAT is {actual_value}. Correct KNA1./VSO/R_ONE_MAT to upper case
+      within 1 characters.'
+  - id: SDCM976
+    field: KNA1./VSO/R_ONE_SORT
+    check_class: regex_check
+    pattern: ^[^a-z]{0,1}$
+    severity: low
+    dimension: validity
+    message: Pack Only One Package Type for Each PKM (VSO) must be upper case and fit 1 characters
+    why_it_matters: KNA1./VSO/R_ONE_SORT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on /VSO/R_ONE_SORT miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1./VSO/R_ONE_SORT to upper case within 1 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: /VSO/R_ONE_SORT is {actual_value}. Correct KNA1./VSO/R_ONE_SORT to upper case
+      within 1 characters.'
+  - id: SDCM977
+    field: KNA1./VSO/R_ULD_SIDE
+    check_class: regex_check
+    pattern: ^[0-9]{1,1}$
+    severity: low
+    dimension: validity
+    message: Side Preference of Loading/Unloading (VSO) must contain digits only, at most 1
+    why_it_matters: KNA1./VSO/R_ULD_SIDE is a numeric-character field of length 1. Letters, signs or extra characters cannot
+      be stored in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on /VSO/R_ULD_SIDE fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct KNA1./VSO/R_ULD_SIDE to digits only, at most 1 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: /VSO/R_ULD_SIDE is {actual_value}. Correct KNA1./VSO/R_ULD_SIDE to digits only,
+      at most 1 characters.'
+  - id: SDCM978
+    field: KNA1./VSO/R_LOAD_PREF
+    check_class: regex_check
+    pattern: ^[0-9]{1,1}$
+    severity: low
+    dimension: validity
+    message: Front/Back Preference of Loading/Unloading (VSO) must contain digits only, at most 1
+    why_it_matters: KNA1./VSO/R_LOAD_PREF is a numeric-character field of length 1. Letters, signs or extra characters cannot
+      be stored in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on /VSO/R_LOAD_PREF fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct KNA1./VSO/R_LOAD_PREF to digits only, at most 1 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: /VSO/R_LOAD_PREF is {actual_value}. Correct KNA1./VSO/R_LOAD_PREF to digits
+      only, at most 1 characters.'
+  - id: SDCM979
+    field: KNA1.PSOIS
+    check_class: regex_check
+    pattern: ^[^a-z]{0,20}$
+    severity: low
+    dimension: validity
+    message: Subledger acct preprocessing procedure must be upper case and fit 20 characters
+    why_it_matters: KNA1.PSOIS is not defined as case-sensitive, so SAP stores it in upper case, and it holds 20 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on PSOIS miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNA1.PSOIS to upper case within 20 characters.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSOIS is {actual_value}. Correct KNA1.PSOIS to upper case within 20 characters.'
+  - id: SDCM980
+    field: KNA1.PSON1
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Name 1 must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.PSON1 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on PSON1 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.PSON1.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSON1 is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.PSON1.'
+  - id: SDCM981
+    field: KNA1.PSON2
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Name 2 must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.PSON2 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on PSON2 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.PSON2.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSON2 is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.PSON2.'
+  - id: SDCM982
+    field: KNA1.PSON3
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Name 3 must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.PSON3 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on PSON3 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.PSON3.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSON3 is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.PSON3.'
+  - id: SDCM983
+    field: KNA1.PSOVN
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: First Name must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.PSOVN is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on PSOVN treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.PSOVN.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSOVN is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.PSOVN.'
+  - id: SDCM984
+    field: KNA1.PSOTL
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Title must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.PSOTL is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on PSOTL treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.PSOTL.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSOTL is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.PSOTL.'
+  - id: SDCM985
+    field: KNA1.PSOHS
+    check_class: cross_field_check
+    fail_when: '`KNA1.PSOHS`.notna()'
+    severity: low
+    dimension: lifecycle
+    message: 'House number: is no longer used from Release 4.6B (PSOHS) is documented as unused but holds a value'
+    why_it_matters: SAP documents KNA1.PSOHS as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+      data that no standard process reads, and it is carried into every extract and load.
+    rule_authority: best_practice
+    sap_impact: The value in PSOHS has no effect in standard processing and adds noise to migration scope and reconciliation.
+    fix_map:
+      __other__: Clear KNA1.PSOHS; the field is not used by standard processing.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSOHS is {actual_value}. Clear KNA1.PSOHS; the field is not used by standard
+      processing.'
+  - id: SDCM986
+    field: KNA1.PSOST
+    check_class: cross_field_check
+    fail_when: '`KNA1.PSOST`.notna()'
+    severity: low
+    dimension: lifecycle
+    message: 'Street: No longer used from Release 4.6B (PSOST) is documented as unused but holds a value'
+    why_it_matters: SAP documents KNA1.PSOST as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+      data that no standard process reads, and it is carried into every extract and load.
+    rule_authority: best_practice
+    sap_impact: The value in PSOST has no effect in standard processing and adds noise to migration scope and reconciliation.
+    fix_map:
+      __other__: Clear KNA1.PSOST; the field is not used by standard processing.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSOST is {actual_value}. Clear KNA1.PSOST; the field is not used by standard
+      processing.'
+  - id: SDCM987
+    field: KNA1.PSOO1
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Description must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.PSOO1 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on PSOO1 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.PSOO1.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSOO1 is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.PSOO1.'
+  - id: SDCM988
+    field: KNA1.PSOO2
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Description must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.PSOO2 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on PSOO2 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.PSOO2.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSOO2 is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.PSOO2.'
+  - id: SDCM989
+    field: KNA1.PSOO3
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Description must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.PSOO3 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on PSOO3 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.PSOO3.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSOO3 is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.PSOO3.'
+  - id: SDCM990
+    field: KNA1.PSOO4
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Description must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.PSOO4 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on PSOO4 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.PSOO4.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSOO4 is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.PSOO4.'
+  - id: SDCM991
+    field: KNA1.PSOO5
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Description must not contain leading, trailing or repeated blanks
+    why_it_matters: KNA1.PSOO5 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on PSOO5 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNA1.PSOO5.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PSOO5 is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNA1.PSOO5.'
+  - id: SDCM992
+    field: KNB1.PERNR
+    check_class: regex_check
+    pattern: ^[0-9]{1,8}$
+    severity: low
+    dimension: validity
+    message: Personnel Number must contain digits only, at most 8
+    why_it_matters: KNB1.PERNR is a numeric-character field of length 8. Letters, signs or extra characters cannot be stored
+      in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on PERNR fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct KNB1.PERNR to digits only, at most 8 characters.
+    record_fix_template: 'Customer {KNB1.KUNNR}: PERNR is {actual_value}. Correct KNB1.PERNR to digits only, at most 8 characters.'
+  - id: SDCM993
+    field: KNB1.BEGRU
+    check_class: regex_check
+    pattern: ^[^a-z]{0,4}$
+    severity: low
+    dimension: validity
+    message: Authorization Group must be upper case and fit 4 characters
+    why_it_matters: KNB1.BEGRU is not defined as case-sensitive, so SAP stores it in upper case, and it holds 4 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on BEGRU miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNB1.BEGRU to upper case within 4 characters.
+    record_fix_template: 'Customer {KNB1.KUNNR}: BEGRU is {actual_value}. Correct KNB1.BEGRU to upper case within 4 characters.'
+  - id: SDCM994
+    field: KNB1.ZAMIM
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Payment notice to customer (with cleared items)? must be blank or ''X'''
+    why_it_matters: KNB1.ZAMIM is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read ZAMIM behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNB1.ZAMIM to blank or 'X'.
+    record_fix_template: 'Customer {KNB1.KUNNR}: ZAMIM is {actual_value}. Set KNB1.ZAMIM to blank or ''X''.'
+  - id: SDCM995
+    field: KNB1.ZAMIV
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: payment notice to sales department? must be blank or ''X'''
+    why_it_matters: KNB1.ZAMIV is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read ZAMIV behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNB1.ZAMIV to blank or 'X'.
+    record_fix_template: 'Customer {KNB1.KUNNR}: ZAMIV is {actual_value}. Set KNB1.ZAMIV to blank or ''X''.'
+  - id: SDCM996
+    field: KNB1.ZAMIR
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: payment notice to legal department? must be blank or ''X'''
+    why_it_matters: KNB1.ZAMIR is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read ZAMIR behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNB1.ZAMIR to blank or 'X'.
+    record_fix_template: 'Customer {KNB1.KUNNR}: ZAMIR is {actual_value}. Set KNB1.ZAMIR to blank or ''X''.'
+  - id: SDCM997
+    field: KNB1.ZAMIB
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Payment notice to the accounting department ? must be blank or ''X'''
+    why_it_matters: KNB1.ZAMIB is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read ZAMIB behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNB1.ZAMIB to blank or 'X'.
+    record_fix_template: 'Customer {KNB1.KUNNR}: ZAMIB is {actual_value}. Set KNB1.ZAMIB to blank or ''X''.'
+  - id: SDCM998
+    field: KNB1.ZAMIO
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: payment notice to customer (w/o cleared items)? must be blank or ''X'''
+    why_it_matters: KNB1.ZAMIO is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read ZAMIO behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNB1.ZAMIO to blank or 'X'.
+    record_fix_template: 'Customer {KNB1.KUNNR}: ZAMIO is {actual_value}. Set KNB1.ZAMIO to blank or ''X''.'
+  - id: SDCM999
+    field: KNB1.EIKTO
+    check_class: regex_check
+    pattern: ^[^a-z]{0,12}$
+    severity: low
+    dimension: validity
+    message: Our account number at customer must be upper case and fit 12 characters
+    why_it_matters: KNB1.EIKTO is not defined as case-sensitive, so SAP stores it in upper case, and it holds 12 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on EIKTO miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNB1.EIKTO to upper case within 12 characters.
+    record_fix_template: 'Customer {KNB1.KUNNR}: EIKTO is {actual_value}. Correct KNB1.EIKTO to upper case within 12 characters.'
+  - id: SDCM1000
+    field: KNB1.ZSABE
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: User at customer must not contain leading, trailing or repeated blanks
+    why_it_matters: KNB1.ZSABE is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on ZSABE treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNB1.ZSABE.
+    record_fix_template: 'Customer {KNB1.KUNNR}: ZSABE is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNB1.ZSABE.'
+  - id: SDCM1001
+    field: KNB1.KVERM
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Memo must not contain leading, trailing or repeated blanks
+    why_it_matters: KNB1.KVERM is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on KVERM treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNB1.KVERM.
+    record_fix_template: 'Customer {KNB1.KUNNR}: KVERM is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNB1.KVERM.'
+  - id: SDCM1002
+    field: KNB1.PERKZ
+    check_class: regex_check
+    pattern: ^[^a-z]{0,1}$
+    severity: low
+    dimension: validity
+    message: Collective invoice variant must be upper case and fit 1 characters
+    why_it_matters: KNB1.PERKZ is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on PERKZ miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNB1.PERKZ to upper case within 1 characters.
+    record_fix_template: 'Customer {KNB1.KUNNR}: PERKZ is {actual_value}. Correct KNB1.PERKZ to upper case within 1 characters.'
+  - id: SDCM1003
+    field: KNB1.XPORE
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Pay all items separately ? must be blank or ''X'''
+    why_it_matters: KNB1.XPORE is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read XPORE behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNB1.XPORE to blank or 'X'.
+    record_fix_template: 'Customer {KNB1.KUNNR}: XPORE is {actual_value}. Set KNB1.XPORE to blank or ''X''.'
+  - id: SDCM1004
+    field: KNB1.BLNKZ
+    check_class: regex_check
+    pattern: ^[^a-z]{0,2}$
+    severity: low
+    dimension: validity
+    message: Subsidy Indicator for Determining the Reduction Rates must be upper case and fit 2 characters
+    why_it_matters: KNB1.BLNKZ is not defined as case-sensitive, so SAP stores it in upper case, and it holds 2 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on BLNKZ miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNB1.BLNKZ to upper case within 2 characters.
+    record_fix_template: 'Customer {KNB1.KUNNR}: BLNKZ is {actual_value}. Correct KNB1.BLNKZ to upper case within 2 characters.'
+  - id: SDCM1005
+    field: KNB1.XEDIP
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Send Payment Advices by EDI must be blank or ''X'''
+    why_it_matters: KNB1.XEDIP is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read XEDIP behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNB1.XEDIP to blank or 'X'.
+    record_fix_template: 'Customer {KNB1.KUNNR}: XEDIP is {actual_value}. Set KNB1.XEDIP to blank or ''X''.'
+  - id: SDCM1006
+    field: KNB1.XKNZB
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Alternative payer using account number must be blank or ''X'''
+    why_it_matters: KNB1.XKNZB is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read XKNZB behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNB1.XKNZB to blank or 'X'.
+    record_fix_template: 'Customer {KNB1.KUNNR}: XKNZB is {actual_value}. Set KNB1.XKNZB to blank or ''X''.'
+  - id: SDCM1007
+    field: KNB1.AD_HASH
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: 'E-Mail Address for Avis: Hash Value must be upper case and fit 10 characters'
+    why_it_matters: KNB1.AD_HASH is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on AD_HASH miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNB1.AD_HASH to upper case within 10 characters.
+    record_fix_template: 'Customer {KNB1.KUNNR}: AD_HASH is {actual_value}. Correct KNB1.AD_HASH to upper case within 10 characters.'
+  - id: SDCM1008
+    field: KNB1.GMVKZD
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Customer is in execution must be blank or 'X'
+    why_it_matters: KNB1.GMVKZD is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read GMVKZD behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNB1.GMVKZD to blank or 'X'.
+    record_fix_template: 'Customer {KNB1.KUNNR}: GMVKZD is {actual_value}. Set KNB1.GMVKZD to blank or ''X''.'
+  - id: SDCM1009
+    field: KNBK.XEZER
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Is there collection authorization ? must be blank or ''X'''
+    why_it_matters: KNBK.XEZER is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read XEZER behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNBK.XEZER to blank or 'X'.
+    record_fix_template: 'Customer {KNBK.KUNNR}: XEZER is {actual_value}. Set KNBK.XEZER to blank or ''X''.'
+  - id: SDCM1010
+    field: KNBK.BKREF
+    check_class: regex_check
+    pattern: ^[^a-z]{0,20}$
+    severity: low
+    dimension: validity
+    message: Reference specifications for bank details must be upper case and fit 20 characters
+    why_it_matters: KNBK.BKREF is not defined as case-sensitive, so SAP stores it in upper case, and it holds 20 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on BKREF miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNBK.BKREF to upper case within 20 characters.
+    record_fix_template: 'Customer {KNBK.KUNNR}: BKREF is {actual_value}. Correct KNBK.BKREF to upper case within 20 characters.'
+  - id: SDCM1011
+    field: KNBK.EBPP_ACCNAME
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: User-Defined Name of Bank Details must not contain leading, trailing or repeated blanks
+    why_it_matters: KNBK.EBPP_ACCNAME is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups
+      and make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on EBPP_ACCNAME treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNBK.EBPP_ACCNAME.
+    record_fix_template: 'Customer {KNBK.KUNNR}: EBPP_ACCNAME is {actual_value}. Remove leading, trailing and repeated blanks
+      from KNBK.EBPP_ACCNAME.'
+  - id: SDCM1012
+    field: KNBW.WT_WTSTCD
+    check_class: regex_check
+    pattern: ^[^a-z]{0,16}$
+    severity: low
+    dimension: validity
+    message: Withholding tax identification number must be upper case and fit 16 characters
+    why_it_matters: KNBW.WT_WTSTCD is not defined as case-sensitive, so SAP stores it in upper case, and it holds 16 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on WT_WTSTCD miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNBW.WT_WTSTCD to upper case within 16 characters.
+    record_fix_template: 'Customer {KNBW.KUNNR}: WT_WTSTCD is {actual_value}. Correct KNBW.WT_WTSTCD to upper case within 16
+      characters.'
+  - id: SDCM1013
+    field: KNVV.BEGRU
+    check_class: regex_check
+    pattern: ^[^a-z]{0,4}$
+    severity: low
+    dimension: validity
+    message: Authorization Group must be upper case and fit 4 characters
+    why_it_matters: KNVV.BEGRU is not defined as case-sensitive, so SAP stores it in upper case, and it holds 4 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on BEGRU miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVV.BEGRU to upper case within 4 characters.
+    record_fix_template: 'Customer {KNVV.KUNNR}: BEGRU is {actual_value}. Correct KNVV.BEGRU to upper case within 4 characters.'
+  - id: SDCM1014
+    field: KNVV.EIKTO
+    check_class: regex_check
+    pattern: ^[^a-z]{0,12}$
+    severity: low
+    dimension: validity
+    message: Shipper's (Our) Account Number at the Customer or Vendor must be upper case and fit 12 characters
+    why_it_matters: KNVV.EIKTO is not defined as case-sensitive, so SAP stores it in upper case, and it holds 12 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on EIKTO miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVV.EIKTO to upper case within 12 characters.
+    record_fix_template: 'Customer {KNVV.KUNNR}: EIKTO is {actual_value}. Correct KNVV.EIKTO to upper case within 12 characters.'
+  - id: SDCM1015
+    field: KNVV.KVAKZ
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Cost estimate indicator (inactive) must be blank or 'X'
+    why_it_matters: KNVV.KVAKZ is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read KVAKZ behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVV.KVAKZ to blank or 'X'.
+    record_fix_template: 'Customer {KNVV.KUNNR}: KVAKZ is {actual_value}. Set KNVV.KVAKZ to blank or ''X''.'
+  - id: SDCM1016
+    field: KNVV.KLABC
+    check_class: regex_check
+    pattern: ^[^a-z]{0,2}$
+    severity: low
+    dimension: validity
+    message: Customer classification (ABC analysis) must be upper case and fit 2 characters
+    why_it_matters: KNVV.KLABC is not defined as case-sensitive, so SAP stores it in upper case, and it holds 2 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on KLABC miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVV.KLABC to upper case within 2 characters.
+    record_fix_template: 'Customer {KNVV.KUNNR}: KLABC is {actual_value}. Correct KNVV.KLABC to upper case within 2 characters.'
+  - id: SDCM1017
+    field: KNVV.BOIDT
+    check_class: cross_field_check
+    fail_when: '`KNVV.BOIDT`.dt.year < 1900'
+    severity: low
+    dimension: accuracy
+    message: Start of validity per.for the rebate index for the customer lies before the year 1900
+    why_it_matters: KNVV.BOIDT is a calendar date. A year before 1900 is almost always a placeholder or a conversion error and
+      breaks validity-period selection.
+    rule_authority: best_practice
+    sap_impact: Selections that use BOIDT as a validity start pick the wrong record or none.
+    fix_map:
+      __other__: Correct KNVV.BOIDT to the intended calendar date or clear it.
+    record_fix_template: 'Customer {KNVV.KUNNR}: BOIDT is {actual_value}. Correct KNVV.BOIDT to the intended calendar date or
+      clear it.'
+  - id: SDCM1018
+    field: KNVV.PRAT1
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: ID for product attribute 1 must be blank or 'X'
+    why_it_matters: KNVV.PRAT1 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read PRAT1 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVV.PRAT1 to blank or 'X'.
+    record_fix_template: 'Customer {KNVV.KUNNR}: PRAT1 is {actual_value}. Set KNVV.PRAT1 to blank or ''X''.'
+  - id: SDCM1019
+    field: KNVV.PRAT2
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: ID for product attribute 2 must be blank or 'X'
+    why_it_matters: KNVV.PRAT2 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read PRAT2 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVV.PRAT2 to blank or 'X'.
+    record_fix_template: 'Customer {KNVV.KUNNR}: PRAT2 is {actual_value}. Set KNVV.PRAT2 to blank or ''X''.'
+  - id: SDCM1020
+    field: KNVV.PRAT3
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: ID for product attribute 3 must be blank or 'X'
+    why_it_matters: KNVV.PRAT3 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read PRAT3 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVV.PRAT3 to blank or 'X'.
+    record_fix_template: 'Customer {KNVV.KUNNR}: PRAT3 is {actual_value}. Set KNVV.PRAT3 to blank or ''X''.'
+  - id: SDCM1021
+    field: KNVV.PRAT4
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: ID for product attribute 4 must be blank or 'X'
+    why_it_matters: KNVV.PRAT4 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read PRAT4 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVV.PRAT4 to blank or 'X'.
+    record_fix_template: 'Customer {KNVV.KUNNR}: PRAT4 is {actual_value}. Set KNVV.PRAT4 to blank or ''X''.'
+  - id: SDCM1022
+    field: KNVV.PRAT5
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: ID for product attribute 5 must be blank or 'X'
+    why_it_matters: KNVV.PRAT5 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read PRAT5 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVV.PRAT5 to blank or 'X'.
+    record_fix_template: 'Customer {KNVV.KUNNR}: PRAT5 is {actual_value}. Set KNVV.PRAT5 to blank or ''X''.'
+  - id: SDCM1023
+    field: KNVV.PRAT6
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: ID for product attribute 6 must be blank or 'X'
+    why_it_matters: KNVV.PRAT6 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read PRAT6 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVV.PRAT6 to blank or 'X'.
+    record_fix_template: 'Customer {KNVV.KUNNR}: PRAT6 is {actual_value}. Set KNVV.PRAT6 to blank or ''X''.'
+  - id: SDCM1024
+    field: KNVV.PRAT7
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: ID for product attribute 7 must be blank or 'X'
+    why_it_matters: KNVV.PRAT7 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read PRAT7 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVV.PRAT7 to blank or 'X'.
+    record_fix_template: 'Customer {KNVV.KUNNR}: PRAT7 is {actual_value}. Set KNVV.PRAT7 to blank or ''X''.'
+  - id: SDCM1025
+    field: KNVV.PRAT8
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: ID for product attribute 8 must be blank or 'X'
+    why_it_matters: KNVV.PRAT8 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read PRAT8 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVV.PRAT8 to blank or 'X'.
+    record_fix_template: 'Customer {KNVV.KUNNR}: PRAT8 is {actual_value}. Set KNVV.PRAT8 to blank or ''X''.'
+  - id: SDCM1026
+    field: KNVV.PRAT9
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: ID for product attribute 9 must be blank or 'X'
+    why_it_matters: KNVV.PRAT9 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read PRAT9 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVV.PRAT9 to blank or 'X'.
+    record_fix_template: 'Customer {KNVV.KUNNR}: PRAT9 is {actual_value}. Set KNVV.PRAT9 to blank or ''X''.'
+  - id: SDCM1027
+    field: KNVV.PRATA
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: ID for product attribute 10 must be blank or 'X'
+    why_it_matters: KNVV.PRATA is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read PRATA behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVV.PRATA to blank or 'X'.
+    record_fix_template: 'Customer {KNVV.KUNNR}: PRATA is {actual_value}. Set KNVV.PRATA to blank or ''X''.'
+  - id: SDCM1028
+    field: KNVV./BEV1/EMLGPFAND
+    check_class: regex_check
+    pattern: ^[^a-z]{0,1}$
+    severity: low
+    dimension: validity
+    message: Deposit on Empties must be upper case and fit 1 characters
+    why_it_matters: KNVV./BEV1/EMLGPFAND is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on /BEV1/EMLGPFAND miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVV./BEV1/EMLGPFAND to upper case within 1 characters.
+    record_fix_template: 'Customer {KNVV.KUNNR}: /BEV1/EMLGPFAND is {actual_value}. Correct KNVV./BEV1/EMLGPFAND to upper case
+      within 1 characters.'
+  - id: SDCM1029
+    field: KNVV./BEV1/EMLGFORTS
+    check_class: regex_check
+    pattern: ^[^a-z]{0,1}$
+    severity: low
+    dimension: validity
+    message: Indicator for Empties Update must be upper case and fit 1 characters
+    why_it_matters: KNVV./BEV1/EMLGFORTS is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on /BEV1/EMLGFORTS miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVV./BEV1/EMLGFORTS to upper case within 1 characters.
+    record_fix_template: 'Customer {KNVV.KUNNR}: /BEV1/EMLGFORTS is {actual_value}. Correct KNVV./BEV1/EMLGFORTS to upper case
+      within 1 characters.'
+  - id: SDCM1030
+    field: KNVP.PARZA
+    check_class: regex_check
+    pattern: ^[0-9]{1,3}$
+    severity: low
+    dimension: validity
+    message: Partner counter must contain digits only, at most 3
+    why_it_matters: KNVP.PARZA is a numeric-character field of length 3. Letters, signs or extra characters cannot be stored
+      in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on PARZA fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct KNVP.PARZA to digits only, at most 3 characters.
+    record_fix_template: 'Customer {KNVP.KUNNR}: PARZA is {actual_value}. Correct KNVP.PARZA to digits only, at most 3 characters.'
+  - id: SDCM1031
+    field: KNVP.KNREF
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Customer description of partner (plant, storage location) must not contain leading, trailing or repeated blanks
+    why_it_matters: KNVP.KNREF is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on KNREF treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNVP.KNREF.
+    record_fix_template: 'Customer {KNVP.KUNNR}: KNREF is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNVP.KNREF.'
+  - id: SDCM1032
+    field: KNVA.ABLAD
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Unloading Point must not contain leading, trailing or repeated blanks
+    why_it_matters: KNVA.ABLAD is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on ABLAD treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNVA.ABLAD.
+    record_fix_template: 'Customer {KNVA.KUNNR}: ABLAD is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNVA.ABLAD.'
+  - id: SDCM1033
+    field: KNVA.LFDNR
+    check_class: regex_check
+    pattern: ^[0-9]{1,2}$
+    severity: low
+    dimension: validity
+    message: Sequential number for unloading points must contain digits only, at most 2
+    why_it_matters: KNVA.LFDNR is a numeric-character field of length 2. Letters, signs or extra characters cannot be stored
+      in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on LFDNR fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct KNVA.LFDNR to digits only, at most 2 characters.
+    record_fix_template: 'Customer {KNVA.KUNNR}: LFDNR is {actual_value}. Correct KNVA.LFDNR to digits only, at most 2 characters.'
+  - id: SDCM1034
+    field: KNVA.TPQUA
+    check_class: regex_check
+    pattern: ^[^a-z]{0,1}$
+    severity: low
+    dimension: validity
+    message: not currently in use must be upper case and fit 1 characters
+    why_it_matters: KNVA.TPQUA is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on TPQUA miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVA.TPQUA to upper case within 1 characters.
+    record_fix_template: 'Customer {KNVA.KUNNR}: TPQUA is {actual_value}. Correct KNVA.TPQUA to upper case within 1 characters.'
+  - id: SDCM1035
+    field: KNVA.TPGRP
+    check_class: regex_check
+    pattern: ^[^a-z]{0,2}$
+    severity: low
+    dimension: validity
+    message: not currently in use must be upper case and fit 2 characters
+    why_it_matters: KNVA.TPGRP is not defined as case-sensitive, so SAP stores it in upper case, and it holds 2 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on TPGRP miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVA.TPGRP to upper case within 2 characters.
+    record_fix_template: 'Customer {KNVA.KUNNR}: TPGRP is {actual_value}. Correct KNVA.TPGRP to upper case within 2 characters.'
+  - id: SDCM1036
+    field: KNVA.STZKL
+    check_class: cross_field_check
+    fail_when: '`KNVA.STZKL`.notna() & (`KNVA.STZKL` < 0)'
+    severity: low
+    dimension: validity
+    message: Not Currently in Use must not be negative
+    why_it_matters: KNVA.STZKL is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+      error.
+    rule_authority: best_practice
+    sap_impact: Planning, capacity or stock logic that reads STZKL produces negative results.
+    fix_map:
+      __other__: Correct KNVA.STZKL to zero or a positive value.
+    record_fix_template: 'Customer {KNVA.KUNNR}: STZKL is {actual_value}. Correct KNVA.STZKL to zero or a positive value.'
+  - id: SDCM1037
+    field: KNVA.STZZU
+    check_class: cross_field_check
+    fail_when: '`KNVA.STZZU`.notna() & (`KNVA.STZZU` < 0)'
+    severity: low
+    dimension: validity
+    message: not currently in use must not be negative
+    why_it_matters: KNVA.STZZU is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+      error.
+    rule_authority: best_practice
+    sap_impact: Planning, capacity or stock logic that reads STZZU produces negative results.
+    fix_map:
+      __other__: Correct KNVA.STZZU to zero or a positive value.
+    record_fix_template: 'Customer {KNVA.KUNNR}: STZZU is {actual_value}. Correct KNVA.STZZU to zero or a positive value.'
+  - id: SDCM1038
+    field: KNVD.DOCTP
+    check_class: regex_check
+    pattern: ^[^a-z]{0,4}$
+    severity: low
+    dimension: validity
+    message: Output Type must be upper case and fit 4 characters
+    why_it_matters: KNVD.DOCTP is not defined as case-sensitive, so SAP stores it in upper case, and it holds 4 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on DOCTP miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVD.DOCTP to upper case within 4 characters.
+    record_fix_template: 'Customer {KNVD.KUNNR}: DOCTP is {actual_value}. Correct KNVD.DOCTP to upper case within 4 characters.'
+  - id: SDCM1039
+    field: KNVK.ORT01
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: City must not contain leading, trailing or repeated blanks
+    why_it_matters: KNVK.ORT01 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on ORT01 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNVK.ORT01.
+    record_fix_template: 'Customer {KNVK.PARNR}: ORT01 is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNVK.ORT01.'
+  - id: SDCM1040
+    field: KNVK.ADRND
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: Business address must be upper case and fit 10 characters
+    why_it_matters: KNVK.ADRND is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on ADRND miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVK.ADRND to upper case within 10 characters.
+    record_fix_template: 'Customer {KNVK.PARNR}: ADRND is {actual_value}. Correct KNVK.ADRND to upper case within 10 characters.'
+  - id: SDCM1041
+    field: KNVK.ADRNP
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: Private address must be upper case and fit 10 characters
+    why_it_matters: KNVK.ADRNP is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on ADRNP miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVK.ADRNP to upper case within 10 characters.
+    record_fix_template: 'Customer {KNVK.PARNR}: ADRNP is {actual_value}. Correct KNVK.ADRNP to upper case within 10 characters.'
+  - id: SDCM1042
+    field: KNVK.ABTPA
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Contact person's department at customer must not contain leading, trailing or repeated blanks
+    why_it_matters: KNVK.ABTPA is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on ABTPA treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNVK.ABTPA.
+    record_fix_template: 'Customer {KNVK.PARNR}: ABTPA is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNVK.ABTPA.'
+  - id: SDCM1043
+    field: KNVK.ANRED
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Form of address for contact person (Mr, Mrs...etc) must not contain leading, trailing or repeated blanks
+    why_it_matters: KNVK.ANRED is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on ANRED treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNVK.ANRED.
+    record_fix_template: 'Customer {KNVK.PARNR}: ANRED is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNVK.ANRED.'
+  - id: SDCM1044
+    field: KNVK.VRTNR
+    check_class: regex_check
+    pattern: ^[0-9]{1,10}$
+    severity: low
+    dimension: validity
+    message: Representative number must contain digits only, at most 10
+    why_it_matters: KNVK.VRTNR is a numeric-character field of length 10. Letters, signs or extra characters cannot be stored
+      in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on VRTNR fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct KNVK.VRTNR to digits only, at most 10 characters.
+    record_fix_template: 'Customer {KNVK.PARNR}: VRTNR is {actual_value}. Correct KNVK.VRTNR to digits only, at most 10 characters.'
+  - id: SDCM1045
+    field: KNVK.NMAIL
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Advertising material indicator must be blank or 'X'
+    why_it_matters: KNVK.NMAIL is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read NMAIL behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVK.NMAIL to blank or 'X'.
+    record_fix_template: 'Customer {KNVK.PARNR}: NMAIL is {actual_value}. Set KNVK.NMAIL to blank or ''X''.'
+  - id: SDCM1046
+    field: KNVK.PARAU
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Notes about contact person must not contain leading, trailing or repeated blanks
+    why_it_matters: KNVK.PARAU is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on PARAU treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNVK.PARAU.
+    record_fix_template: 'Customer {KNVK.PARNR}: PARAU is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNVK.PARAU.'
+  - id: SDCM1047
+    field: KNVK.SORTL
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: Sort field must be upper case and fit 10 characters
+    why_it_matters: KNVK.SORTL is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on SORTL miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVK.SORTL to upper case within 10 characters.
+    record_fix_template: 'Customer {KNVK.PARNR}: SORTL is {actual_value}. Correct KNVK.SORTL to upper case within 10 characters.'
+  - id: SDCM1048
+    field: KNVK.SPNAM
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Nickname must not contain leading, trailing or repeated blanks
+    why_it_matters: KNVK.SPNAM is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on SPNAM treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNVK.SPNAM.
+    record_fix_template: 'Customer {KNVK.PARNR}: SPNAM is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNVK.SPNAM.'
+  - id: SDCM1049
+    field: KNVK.TITEL_AP
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Title of contact person (description of function) must not contain leading, trailing or repeated blanks
+    why_it_matters: KNVK.TITEL_AP is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+      make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on TITEL_AP treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from KNVK.TITEL_AP.
+    record_fix_template: 'Customer {KNVK.PARNR}: TITEL_AP is {actual_value}. Remove leading, trailing and repeated blanks from
+      KNVK.TITEL_AP.'
+  - id: SDCM1050
+    field: KNVK.KZHERK
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Internal indicator for origin of the CP: Customer or Vendor must be blank or ''X'''
+    why_it_matters: KNVK.KZHERK is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read KZHERK behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNVK.KZHERK to blank or 'X'.
+    record_fix_template: 'Customer {KNVK.PARNR}: KZHERK is {actual_value}. Set KNVK.KZHERK to blank or ''X''.'
+  - id: SDCM1051
+    field: KNVK.ADRNP_2
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: Address number must be upper case and fit 10 characters
+    why_it_matters: KNVK.ADRNP_2 is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on ADRNP_2 miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVK.ADRNP_2 to upper case within 10 characters.
+    record_fix_template: 'Customer {KNVK.PARNR}: ADRNP_2 is {actual_value}. Correct KNVK.ADRNP_2 to upper case within 10 characters.'
+  - id: SDCM1052
+    field: KNVK.PRSNR
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: Person number must be upper case and fit 10 characters
+    why_it_matters: KNVK.PRSNR is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on PRSNR miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNVK.PRSNR to upper case within 10 characters.
+    record_fix_template: 'Customer {KNVK.PARNR}: PRSNR is {actual_value}. Correct KNVK.PRSNR to upper case within 10 characters.'
+  - id: SDCM1053
+    field: KNKK.XCHNG
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: credit limit must be recreated must be blank or ''X'''
+    why_it_matters: KNKK.XCHNG is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read XCHNG behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNKK.XCHNG to blank or 'X'.
+    record_fix_template: 'Customer {KNKK.KUNNR}: XCHNG is {actual_value}. Set KNKK.XCHNG to blank or ''X''.'
+  - id: SDCM1054
+    field: KNKK.CRBLB
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Blocked by credit management ? must be blank or ''X'''
+    why_it_matters: KNKK.CRBLB is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read CRBLB behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set KNKK.CRBLB to blank or 'X'.
+    record_fix_template: 'Customer {KNKK.KUNNR}: CRBLB is {actual_value}. Set KNKK.CRBLB to blank or ''X''.'
+  - id: SDCM1055
+    field: KNKK.KRAUS
+    check_class: regex_check
+    pattern: ^[^a-z]{0,11}$
+    severity: low
+    dimension: validity
+    message: Credit information number must be upper case and fit 11 characters
+    why_it_matters: KNKK.KRAUS is not defined as case-sensitive, so SAP stores it in upper case, and it holds 11 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on KRAUS miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNKK.KRAUS to upper case within 11 characters.
+    record_fix_template: 'Customer {KNKK.KUNNR}: KRAUS is {actual_value}. Correct KNKK.KRAUS to upper case within 11 characters.'
+  - id: SDCM1056
+    field: KNKK.PAYDB
+    check_class: cross_field_check
+    fail_when: '`KNKK.PAYDB`.notna()'
+    severity: low
+    dimension: lifecycle
+    message: do not use - replaced by DBPAY_CM (PAYDB) is documented as unused but holds a value
+    why_it_matters: SAP documents KNKK.PAYDB as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+      data that no standard process reads, and it is carried into every extract and load.
+    rule_authority: best_practice
+    sap_impact: The value in PAYDB has no effect in standard processing and adds noise to migration scope and reconciliation.
+    fix_map:
+      __other__: Clear KNKK.PAYDB; the field is not used by standard processing.
+    record_fix_template: 'Customer {KNKK.KUNNR}: PAYDB is {actual_value}. Clear KNKK.PAYDB; the field is not used by standard
+      processing.'
+  - id: SDCM1057
+    field: KNKK.DBRAT
+    check_class: cross_field_check
+    fail_when: '`KNKK.DBRAT`.notna()'
+    severity: low
+    dimension: lifecycle
+    message: do not use - replaced by DBRTG_CM (DBRAT) is documented as unused but holds a value
+    why_it_matters: SAP documents KNKK.DBRAT as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+      data that no standard process reads, and it is carried into every extract and load.
+    rule_authority: best_practice
+    sap_impact: The value in DBRAT has no effect in standard processing and adds noise to migration scope and reconciliation.
+    fix_map:
+      __other__: Clear KNKK.DBRAT; the field is not used by standard processing.
+    record_fix_template: 'Customer {KNKK.KUNNR}: DBRAT is {actual_value}. Clear KNKK.DBRAT; the field is not used by standard
+      processing.'
+  - id: SDCM1058
+    field: KNKK.AETXT
+    check_class: cross_field_check
+    fail_when: '`KNKK.AETXT`.dt.year < 1900'
+    severity: low
+    dimension: accuracy
+    message: Date of Last Text Change lies before the year 1900
+    why_it_matters: KNKK.AETXT is a calendar date. A year before 1900 is almost always a placeholder or a conversion error and
+      breaks validity-period selection.
+    rule_authority: best_practice
+    sap_impact: Selections that use AETXT as a validity start pick the wrong record or none.
+    fix_map:
+      __other__: Correct KNKK.AETXT to the intended calendar date or clear it.
+    record_fix_template: 'Customer {KNKK.KUNNR}: AETXT is {actual_value}. Correct KNKK.AETXT to the intended calendar date or
+      clear it.'
+  - id: SDCM1059
+    field: KNKK.SBDAT
+    check_class: cross_field_check
+    fail_when: '`KNKK.SBDAT`.dt.year < 1900'
+    severity: low
+    dimension: accuracy
+    message: Reference Date lies before the year 1900
+    why_it_matters: KNKK.SBDAT is a calendar date. A year before 1900 is almost always a placeholder or a conversion error and
+      breaks validity-period selection.
+    rule_authority: best_practice
+    sap_impact: Selections that use SBDAT as a validity start pick the wrong record or none.
+    fix_map:
+      __other__: Correct KNKK.SBDAT to the intended calendar date or clear it.
+    record_fix_template: 'Customer {KNKK.KUNNR}: SBDAT is {actual_value}. Correct KNKK.SBDAT to the intended calendar date or
+      clear it.'
+  - id: SDCM1060
+    field: KNKK.KDGRP
+    check_class: regex_check
+    pattern: ^[^a-z]{0,8}$
+    severity: low
+    dimension: validity
+    message: Customer Group must be upper case and fit 8 characters
+    why_it_matters: KNKK.KDGRP is not defined as case-sensitive, so SAP stores it in upper case, and it holds 8 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on KDGRP miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNKK.KDGRP to upper case within 8 characters.
+    record_fix_template: 'Customer {KNKK.KUNNR}: KDGRP is {actual_value}. Correct KNKK.KDGRP to upper case within 8 characters.'
+  - id: SDCM1061
+    field: KNKK.DBPAY
+    check_class: regex_check
+    pattern: ^[^a-z]{0,3}$
+    severity: low
+    dimension: validity
+    message: Payment Index must be upper case and fit 3 characters
+    why_it_matters: KNKK.DBPAY is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on DBPAY miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNKK.DBPAY to upper case within 3 characters.
+    record_fix_template: 'Customer {KNKK.KUNNR}: DBPAY is {actual_value}. Correct KNKK.DBPAY to upper case within 3 characters.'
+  - id: SDCM1062
+    field: KNKK.DBRTG
+    check_class: regex_check
+    pattern: ^[^a-z]{0,5}$
+    severity: low
+    dimension: validity
+    message: Rating must be upper case and fit 5 characters
+    why_it_matters: KNKK.DBRTG is not defined as case-sensitive, so SAP stores it in upper case, and it holds 5 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on DBRTG miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct KNKK.DBRTG to upper case within 5 characters.
+    record_fix_template: 'Customer {KNKK.KUNNR}: DBRTG is {actual_value}. Correct KNKK.DBRTG to upper case within 5 characters.'
+  - id: SDCM1063
+    field: TIBAN.VALID_FROM
+    check_class: cross_field_check
+    fail_when: '`TIBAN.VALID_FROM`.dt.year < 1900'
+    severity: low
+    dimension: accuracy
+    message: Validity start of IBAN lies before the year 1900
+    why_it_matters: TIBAN.VALID_FROM is a calendar date. A year before 1900 is almost always a placeholder or a conversion error
+      and breaks validity-period selection.
+    rule_authority: best_practice
+    sap_impact: Selections that use VALID_FROM as a validity start pick the wrong record or none.
+    fix_map:
+      __other__: Correct TIBAN.VALID_FROM to the intended calendar date or clear it.
+    record_fix_template: 'Customer {TIBAN.BANKS}: VALID_FROM is {actual_value}. Correct TIBAN.VALID_FROM to the intended calendar
+      date or clear it.'
+  - id: SDCM1064
+    field: TIBAN.TABKEY
+    check_class: regex_check
+    pattern: ^[^a-z]{0,24}$
+    severity: low
+    dimension: validity
+    message: 'IBAN origin: Key to table of bank details must be upper case and fit 24 characters'
+    why_it_matters: TIBAN.TABKEY is not defined as case-sensitive, so SAP stores it in upper case, and it holds 24 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on TABKEY miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct TIBAN.TABKEY to upper case within 24 characters.
+    record_fix_template: 'Customer {TIBAN.BANKS}: TABKEY is {actual_value}. Correct TIBAN.TABKEY to upper case within 24 characters.'
+  - id: SDCM1065
+    field: ADRC.NATION
+    check_class: regex_check
+    pattern: ^[^a-z]{0,1}$
+    severity: low
+    dimension: validity
+    message: Version ID for International Addresses must be upper case and fit 1 characters
+    why_it_matters: ADRC.NATION is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on NATION miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct ADRC.NATION to upper case within 1 characters.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: NATION is {actual_value}. Correct ADRC.NATION to upper case within 1 characters.'
+  - id: SDCM1066
+    field: ADRC.NAME4
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Name 4 must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.NAME4 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on NAME4 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.NAME4.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: NAME4 is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.NAME4.'
+  - id: SDCM1067
+    field: ADRC.NAME_TEXT
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Converted name field (with form of address) must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.NAME_TEXT is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+      make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on NAME_TEXT treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.NAME_TEXT.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: NAME_TEXT is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.NAME_TEXT.'
+  - id: SDCM1068
+    field: ADRC.HOME_CITY
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: City (different from postal city) must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.HOME_CITY is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+      make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on HOME_CITY treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.HOME_CITY.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: HOME_CITY is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.HOME_CITY.'
+  - id: SDCM1069
+    field: ADRC.POST_CODE3
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: Company postal code (for large customers) must be upper case and fit 10 characters
+    why_it_matters: ADRC.POST_CODE3 is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on POST_CODE3 miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct ADRC.POST_CODE3 to upper case within 10 characters.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: POST_CODE3 is {actual_value}. Correct ADRC.POST_CODE3 to upper case within
+      10 characters.'
+  - id: SDCM1070
+    field: ADRC.PCODE1_EXT
+    check_class: cross_field_check
+    fail_when: '`ADRC.PCODE1_EXT`.notna()'
+    severity: low
+    dimension: lifecycle
+    message: (Not Supported)City Postal Code Extension, e.g. ZIP+4+2 Code (PCODE1_EXT) is documented as unused but holds a value
+    why_it_matters: SAP documents ADRC.PCODE1_EXT as deactivated, obsolete or reserved. A value here is leftover migration or
+      custom-code data that no standard process reads, and it is carried into every extract and load.
+    rule_authority: best_practice
+    sap_impact: The value in PCODE1_EXT has no effect in standard processing and adds noise to migration scope and reconciliation.
+    fix_map:
+      __other__: Clear ADRC.PCODE1_EXT; the field is not used by standard processing.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: PCODE1_EXT is {actual_value}. Clear ADRC.PCODE1_EXT; the field is not
+      used by standard processing.'
+  - id: SDCM1071
+    field: ADRC.PCODE2_EXT
+    check_class: cross_field_check
+    fail_when: '`ADRC.PCODE2_EXT`.notna()'
+    severity: low
+    dimension: lifecycle
+    message: (Not Supported) PO Box Postal Code Extension (PCODE2_EXT) is documented as unused but holds a value
+    why_it_matters: SAP documents ADRC.PCODE2_EXT as deactivated, obsolete or reserved. A value here is leftover migration or
+      custom-code data that no standard process reads, and it is carried into every extract and load.
+    rule_authority: best_practice
+    sap_impact: The value in PCODE2_EXT has no effect in standard processing and adds noise to migration scope and reconciliation.
+    fix_map:
+      __other__: Clear ADRC.PCODE2_EXT; the field is not used by standard processing.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: PCODE2_EXT is {actual_value}. Clear ADRC.PCODE2_EXT; the field is not
+      used by standard processing.'
+  - id: SDCM1072
+    field: ADRC.PCODE3_EXT
+    check_class: cross_field_check
+    fail_when: '`ADRC.PCODE3_EXT`.notna()'
+    severity: low
+    dimension: lifecycle
+    message: (Not Supported) Major Customer Postal Code Extension (PCODE3_EXT) is documented as unused but holds a value
+    why_it_matters: SAP documents ADRC.PCODE3_EXT as deactivated, obsolete or reserved. A value here is leftover migration or
+      custom-code data that no standard process reads, and it is carried into every extract and load.
+    rule_authority: best_practice
+    sap_impact: The value in PCODE3_EXT has no effect in standard processing and adds noise to migration scope and reconciliation.
+    fix_map:
+      __other__: Clear ADRC.PCODE3_EXT; the field is not used by standard processing.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: PCODE3_EXT is {actual_value}. Clear ADRC.PCODE3_EXT; the field is not
+      used by standard processing.'
+  - id: SDCM1073
+    field: ADRC.POSTALAREA
+    check_class: cross_field_check
+    fail_when: '`ADRC.POSTALAREA`.notna()'
+    severity: low
+    dimension: lifecycle
+    message: (Not Supported) Post Delivery District (POSTALAREA) is documented as unused but holds a value
+    why_it_matters: SAP documents ADRC.POSTALAREA as deactivated, obsolete or reserved. A value here is leftover migration or
+      custom-code data that no standard process reads, and it is carried into every extract and load.
+    rule_authority: best_practice
+    sap_impact: The value in POSTALAREA has no effect in standard processing and adds noise to migration scope and reconciliation.
+    fix_map:
+      __other__: Clear ADRC.POSTALAREA; the field is not used by standard processing.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: POSTALAREA is {actual_value}. Clear ADRC.POSTALAREA; the field is not
+      used by standard processing.'
+  - id: SDCM1074
+    field: ADRC.HOUSE_NUM3
+    check_class: cross_field_check
+    fail_when: '`ADRC.HOUSE_NUM3`.notna()'
+    severity: low
+    dimension: lifecycle
+    message: (Not supported) House Number Range (HOUSE_NUM3) is documented as unused but holds a value
+    why_it_matters: SAP documents ADRC.HOUSE_NUM3 as deactivated, obsolete or reserved. A value here is leftover migration or
+      custom-code data that no standard process reads, and it is carried into every extract and load.
+    rule_authority: best_practice
+    sap_impact: The value in HOUSE_NUM3 has no effect in standard processing and adds noise to migration scope and reconciliation.
+    fix_map:
+      __other__: Clear ADRC.HOUSE_NUM3; the field is not used by standard processing.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: HOUSE_NUM3 is {actual_value}. Clear ADRC.HOUSE_NUM3; the field is not
+      used by standard processing.'
+  - id: SDCM1075
+    field: ADRC.STR_SUPPL2
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Street 3 must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.STR_SUPPL2 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+      make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on STR_SUPPL2 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.STR_SUPPL2.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: STR_SUPPL2 is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.STR_SUPPL2.'
+  - id: SDCM1076
+    field: ADRC.STR_SUPPL3
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Street 4 must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.STR_SUPPL3 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+      make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on STR_SUPPL3 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.STR_SUPPL3.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: STR_SUPPL3 is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.STR_SUPPL3.'
+  - id: SDCM1077
+    field: ADRC.LOCATION
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Street 5 must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.LOCATION is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+      make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on LOCATION treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.LOCATION.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: LOCATION is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.LOCATION.'
+  - id: SDCM1078
+    field: ADRC.BUILDING
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Building (Number or Code) must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.BUILDING is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+      make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on BUILDING treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.BUILDING.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: BUILDING is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.BUILDING.'
+  - id: SDCM1079
+    field: ADRC.FLOOR
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Floor in building must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.FLOOR is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on FLOOR treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.FLOOR.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: FLOOR is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.FLOOR.'
+  - id: SDCM1080
+    field: ADRC.ROOMNUMBER
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Room or Appartment Number must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.ROOMNUMBER is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+      make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on ROOMNUMBER treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.ROOMNUMBER.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: ROOMNUMBER is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.ROOMNUMBER.'
+  - id: SDCM1081
+    field: ADRC.FLAGGROUPS
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: There are more address group assignments must be blank or ''X'''
+    why_it_matters: ADRC.FLAGGROUPS is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read FLAGGROUPS behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.FLAGGROUPS to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: FLAGGROUPS is {actual_value}. Set ADRC.FLAGGROUPS to blank or ''X''.'
+  - id: SDCM1082
+    field: ADRC.PERS_ADDR
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: This is a personal address must be blank or ''X'''
+    why_it_matters: ADRC.PERS_ADDR is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read PERS_ADDR behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.PERS_ADDR to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: PERS_ADDR is {actual_value}. Set ADRC.PERS_ADDR to blank or ''X''.'
+  - id: SDCM1083
+    field: ADRC.SORT2
+    check_class: regex_check
+    pattern: ^[^a-z]{0,20}$
+    severity: low
+    dimension: validity
+    message: Search Term 2 must be upper case and fit 20 characters
+    why_it_matters: ADRC.SORT2 is not defined as case-sensitive, so SAP stores it in upper case, and it holds 20 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on SORT2 miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct ADRC.SORT2 to upper case within 20 characters.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: SORT2 is {actual_value}. Correct ADRC.SORT2 to upper case within 20 characters.'
+  - id: SDCM1084
+    field: ADRC.SORT_PHN
+    check_class: cross_field_check
+    fail_when: '`ADRC.SORT_PHN`.notna()'
+    severity: low
+    dimension: lifecycle
+    message: (Not Supported) Phonetic Search Sort Field (SORT_PHN) is documented as unused but holds a value
+    why_it_matters: SAP documents ADRC.SORT_PHN as deactivated, obsolete or reserved. A value here is leftover migration or
+      custom-code data that no standard process reads, and it is carried into every extract and load.
+    rule_authority: best_practice
+    sap_impact: The value in SORT_PHN has no effect in standard processing and adds noise to migration scope and reconciliation.
+    fix_map:
+      __other__: Clear ADRC.SORT_PHN; the field is not used by standard processing.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: SORT_PHN is {actual_value}. Clear ADRC.SORT_PHN; the field is not used
+      by standard processing.'
+  - id: SDCM1085
+    field: ADRC.TEL_EXTENS
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: 'First Telephone No.: Extension must be upper case and fit 10 characters'
+    why_it_matters: ADRC.TEL_EXTENS is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on TEL_EXTENS miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct ADRC.TEL_EXTENS to upper case within 10 characters.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: TEL_EXTENS is {actual_value}. Correct ADRC.TEL_EXTENS to upper case within
+      10 characters.'
+  - id: SDCM1086
+    field: ADRC.FAX_EXTENS
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: 'First fax no.: extension must be upper case and fit 10 characters'
+    why_it_matters: ADRC.FAX_EXTENS is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on FAX_EXTENS miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct ADRC.FAX_EXTENS to upper case within 10 characters.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: FAX_EXTENS is {actual_value}. Correct ADRC.FAX_EXTENS to upper case within
+      10 characters.'
+  - id: SDCM1087
+    field: ADRC.FLAGCOMM4
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: Teletex number(s) maintained must be blank or ''X'''
+    why_it_matters: ADRC.FLAGCOMM4 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read FLAGCOMM4 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.FLAGCOMM4 to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: FLAGCOMM4 is {actual_value}. Set ADRC.FLAGCOMM4 to blank or ''X''.'
+  - id: SDCM1088
+    field: ADRC.FLAGCOMM5
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: Telex number(s) maintained must be blank or ''X'''
+    why_it_matters: ADRC.FLAGCOMM5 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read FLAGCOMM5 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.FLAGCOMM5 to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: FLAGCOMM5 is {actual_value}. Set ADRC.FLAGCOMM5 to blank or ''X''.'
+  - id: SDCM1089
+    field: ADRC.FLAGCOMM7
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: RML (remote mail) addresse(s) maintained must be blank or ''X'''
+    why_it_matters: ADRC.FLAGCOMM7 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read FLAGCOMM7 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.FLAGCOMM7 to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: FLAGCOMM7 is {actual_value}. Set ADRC.FLAGCOMM7 to blank or ''X''.'
+  - id: SDCM1090
+    field: ADRC.FLAGCOMM8
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: X.400 addresse(s) maintained must be blank or ''X'''
+    why_it_matters: ADRC.FLAGCOMM8 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read FLAGCOMM8 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.FLAGCOMM8 to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: FLAGCOMM8 is {actual_value}. Set ADRC.FLAGCOMM8 to blank or ''X''.'
+  - id: SDCM1091
+    field: ADRC.FLAGCOMM9
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: RFC destination(s) maintained must be blank or ''X'''
+    why_it_matters: ADRC.FLAGCOMM9 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read FLAGCOMM9 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.FLAGCOMM9 to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: FLAGCOMM9 is {actual_value}. Set ADRC.FLAGCOMM9 to blank or ''X''.'
+  - id: SDCM1092
+    field: ADRC.FLAGCOMM10
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: Printer maintained must be blank or ''X'''
+    why_it_matters: ADRC.FLAGCOMM10 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read FLAGCOMM10 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.FLAGCOMM10 to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: FLAGCOMM10 is {actual_value}. Set ADRC.FLAGCOMM10 to blank or ''X''.'
+  - id: SDCM1093
+    field: ADRC.FLAGCOMM11
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: SSF maintained must be blank or ''X'''
+    why_it_matters: ADRC.FLAGCOMM11 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read FLAGCOMM11 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.FLAGCOMM11 to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: FLAGCOMM11 is {actual_value}. Set ADRC.FLAGCOMM11 to blank or ''X''.'
+  - id: SDCM1094
+    field: ADRC.FLAGCOMM12
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: URI/FTP address maintained must be blank or ''X'''
+    why_it_matters: ADRC.FLAGCOMM12 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read FLAGCOMM12 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.FLAGCOMM12 to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: FLAGCOMM12 is {actual_value}. Set ADRC.FLAGCOMM12 to blank or ''X''.'
+  - id: SDCM1095
+    field: ADRC.FLAGCOMM13
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: Pager address maintained must be blank or ''X'''
+    why_it_matters: ADRC.FLAGCOMM13 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read FLAGCOMM13 behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.FLAGCOMM13 to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: FLAGCOMM13 is {actual_value}. Set ADRC.FLAGCOMM13 to blank or ''X''.'
+  - id: SDCM1096
+    field: ADRC.EXTENSION1
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Extension (only for data conversion) (e.g. data line) must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.EXTENSION1 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+      make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on EXTENSION1 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.EXTENSION1.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: EXTENSION1 is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.EXTENSION1.'
+  - id: SDCM1097
+    field: ADRC.EXTENSION2
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Extension (only for data conversion) (e.g. telebox) must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.EXTENSION2 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+      make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on EXTENSION2 treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.EXTENSION2.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: EXTENSION2 is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.EXTENSION2.'
+  - id: SDCM1098
+    field: ADRC.ADDRESS_ID
+    check_class: cross_field_check
+    fail_when: '`ADRC.ADDRESS_ID`.notna()'
+    severity: low
+    dimension: lifecycle
+    message: (Not supported) Physical address ID (ADDRESS_ID) is documented as unused but holds a value
+    why_it_matters: SAP documents ADRC.ADDRESS_ID as deactivated, obsolete or reserved. A value here is leftover migration or
+      custom-code data that no standard process reads, and it is carried into every extract and load.
+    rule_authority: best_practice
+    sap_impact: The value in ADDRESS_ID has no effect in standard processing and adds noise to migration scope and reconciliation.
+    fix_map:
+      __other__: Clear ADRC.ADDRESS_ID; the field is not used by standard processing.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: ADDRESS_ID is {actual_value}. Clear ADRC.ADDRESS_ID; the field is not
+      used by standard processing.'
+  - id: SDCM1099
+    field: ADRC.LANGU_CREA
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Address record creation original language must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.LANGU_CREA is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+      make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on LANGU_CREA treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.LANGU_CREA.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: LANGU_CREA is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.LANGU_CREA.'
+  - id: SDCM1100
+    field: ADRC.UUID_BELATED
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: UUID was generated later must be blank or ''X'''
+    why_it_matters: ADRC.UUID_BELATED is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read UUID_BELATED behave inconsistently when it holds a value other than blank or
+      'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.UUID_BELATED to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: UUID_BELATED is {actual_value}. Set ADRC.UUID_BELATED to blank or ''X''.'
+  - id: SDCM1101
+    field: ADRC.PO_BOX_LOBBY
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: PO Box Lobby must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.PO_BOX_LOBBY is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups
+      and make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on PO_BOX_LOBBY treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.PO_BOX_LOBBY.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: PO_BOX_LOBBY is {actual_value}. Remove leading, trailing and repeated
+      blanks from ADRC.PO_BOX_LOBBY.'
+  - id: SDCM1102
+    field: ADRC.DELI_SERV_NUMBER
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: Number of Delivery Service must be upper case and fit 10 characters
+    why_it_matters: ADRC.DELI_SERV_NUMBER is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10
+      characters. Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on DELI_SERV_NUMBER miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct ADRC.DELI_SERV_NUMBER to upper case within 10 characters.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: DELI_SERV_NUMBER is {actual_value}. Correct ADRC.DELI_SERV_NUMBER to upper
+      case within 10 characters.'
+  - id: SDCM1103
+    field: ADRC.COUNTY_CODE
+    check_class: regex_check
+    pattern: ^[^a-z]{0,8}$
+    severity: low
+    dimension: validity
+    message: County code for county must be upper case and fit 8 characters
+    why_it_matters: ADRC.COUNTY_CODE is not defined as case-sensitive, so SAP stores it in upper case, and it holds 8 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on COUNTY_CODE miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct ADRC.COUNTY_CODE to upper case within 8 characters.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: COUNTY_CODE is {actual_value}. Correct ADRC.COUNTY_CODE to upper case
+      within 8 characters.'
+  - id: SDCM1104
+    field: ADRC.COUNTY
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: County must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.COUNTY is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+      equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on COUNTY treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.COUNTY.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: COUNTY is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.COUNTY.'
+  - id: SDCM1105
+    field: ADRC.TOWNSHIP_CODE
+    check_class: regex_check
+    pattern: ^[^a-z]{0,8}$
+    severity: low
+    dimension: validity
+    message: Township code for Township must be upper case and fit 8 characters
+    why_it_matters: ADRC.TOWNSHIP_CODE is not defined as case-sensitive, so SAP stores it in upper case, and it holds 8 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on TOWNSHIP_CODE miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct ADRC.TOWNSHIP_CODE to upper case within 8 characters.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: TOWNSHIP_CODE is {actual_value}. Correct ADRC.TOWNSHIP_CODE to upper case
+      within 8 characters.'
+  - id: SDCM1106
+    field: ADRC.TOWNSHIP
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: Township must not contain leading, trailing or repeated blanks
+    why_it_matters: ADRC.TOWNSHIP is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+      make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on TOWNSHIP treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from ADRC.TOWNSHIP.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: TOWNSHIP is {actual_value}. Remove leading, trailing and repeated blanks
+      from ADRC.TOWNSHIP.'
+  - id: SDCM1107
+    field: ADRC.MC_COUNTY
+    check_class: regex_check
+    pattern: ^[^a-z]{0,25}$
+    severity: low
+    dimension: validity
+    message: County name in upper case for search help must be upper case and fit 25 characters
+    why_it_matters: ADRC.MC_COUNTY is not defined as case-sensitive, so SAP stores it in upper case, and it holds 25 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on MC_COUNTY miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct ADRC.MC_COUNTY to upper case within 25 characters.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: MC_COUNTY is {actual_value}. Correct ADRC.MC_COUNTY to upper case within
+      25 characters.'
+  - id: SDCM1108
+    field: ADRC.MC_TOWNSHIP
+    check_class: regex_check
+    pattern: ^[^a-z]{0,25}$
+    severity: low
+    dimension: validity
+    message: Township name in upper case for search help must be upper case and fit 25 characters
+    why_it_matters: ADRC.MC_TOWNSHIP is not defined as case-sensitive, so SAP stores it in upper case, and it holds 25 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on MC_TOWNSHIP miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct ADRC.MC_TOWNSHIP to upper case within 25 characters.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: MC_TOWNSHIP is {actual_value}. Correct ADRC.MC_TOWNSHIP to upper case
+      within 25 characters.'
+  - id: SDCM1109
+    field: ADRC.XPCPT
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Business Purpose Completed Flag must be blank or 'X'
+    why_it_matters: ADRC.XPCPT is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read XPCPT behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADRC.XPCPT to blank or 'X'.
+    record_fix_template: 'Customer {ADRC.ADDRNUMBER}: XPCPT is {actual_value}. Set ADRC.XPCPT to blank or ''X''.'
+  - id: SDCM1110
+    field: ADR2.CONSNUMBER
+    check_class: regex_check
+    pattern: ^[0-9]{1,3}$
+    severity: low
+    dimension: validity
+    message: Sequence Number must contain digits only, at most 3
+    why_it_matters: ADR2.CONSNUMBER is a numeric-character field of length 3. Letters, signs or extra characters cannot be stored
+      in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on CONSNUMBER fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct ADR2.CONSNUMBER to digits only, at most 3 characters.
+    record_fix_template: 'Customer {ADR2.ADDRNUMBER}: CONSNUMBER is {actual_value}. Correct ADR2.CONSNUMBER to digits only,
+      at most 3 characters.'
+  - id: SDCM1111
+    field: ADR2.HOME_FLAG
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Recipient address in this communication type (mail sys.grp) must be blank or 'X'
+    why_it_matters: ADR2.HOME_FLAG is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read HOME_FLAG behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADR2.HOME_FLAG to blank or 'X'.
+    record_fix_template: 'Customer {ADR2.ADDRNUMBER}: HOME_FLAG is {actual_value}. Set ADR2.HOME_FLAG to blank or ''X''.'
+  - id: SDCM1112
+    field: ADR2.DFT_RECEIV
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Indicator: Telephone is SMS-Enabled must be blank or ''X'''
+    why_it_matters: ADR2.DFT_RECEIV is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read DFT_RECEIV behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADR2.DFT_RECEIV to blank or 'X'.
+    record_fix_template: 'Customer {ADR2.ADDRNUMBER}: DFT_RECEIV is {actual_value}. Set ADR2.DFT_RECEIV to blank or ''X''.'
+  - id: SDCM1113
+    field: ADR3.CONSNUMBER
+    check_class: regex_check
+    pattern: ^[0-9]{1,3}$
+    severity: low
+    dimension: validity
+    message: Sequence Number must contain digits only, at most 3
+    why_it_matters: ADR3.CONSNUMBER is a numeric-character field of length 3. Letters, signs or extra characters cannot be stored
+      in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on CONSNUMBER fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct ADR3.CONSNUMBER to digits only, at most 3 characters.
+    record_fix_template: 'Customer {ADR3.ADDRNUMBER}: CONSNUMBER is {actual_value}. Correct ADR3.CONSNUMBER to digits only,
+      at most 3 characters.'
+  - id: SDCM1114
+    field: ADR3.HOME_FLAG
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Recipient address in this communication type (mail sys.grp) must be blank or 'X'
+    why_it_matters: ADR3.HOME_FLAG is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read HOME_FLAG behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADR3.HOME_FLAG to blank or 'X'.
+    record_fix_template: 'Customer {ADR3.ADDRNUMBER}: HOME_FLAG is {actual_value}. Set ADR3.HOME_FLAG to blank or ''X''.'
+  - id: SDCM1115
+    field: ADR3.DFT_RECEIV
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: Recipient is standard recipient for this number must be blank or ''X'''
+    why_it_matters: ADR3.DFT_RECEIV is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read DFT_RECEIV behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADR3.DFT_RECEIV to blank or 'X'.
+    record_fix_template: 'Customer {ADR3.ADDRNUMBER}: DFT_RECEIV is {actual_value}. Set ADR3.DFT_RECEIV to blank or ''X''.'
+  - id: SDCM1116
+    field: ADR3.R3_USER
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: Connected to an SAP System must be blank or ''X'''
+    why_it_matters: ADR3.R3_USER is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read R3_USER behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADR3.R3_USER to blank or 'X'.
+    record_fix_template: 'Customer {ADR3.ADDRNUMBER}: R3_USER is {actual_value}. Set ADR3.R3_USER to blank or ''X''.'
+  - id: SDCM1117
+    field: ADR6.CONSNUMBER
+    check_class: regex_check
+    pattern: ^[0-9]{1,3}$
+    severity: low
+    dimension: validity
+    message: Sequence Number must contain digits only, at most 3
+    why_it_matters: ADR6.CONSNUMBER is a numeric-character field of length 3. Letters, signs or extra characters cannot be stored
+      in SAP and signal a broken conversion.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loads and joins on CONSNUMBER fail or truncate when the value is not a plain number.
+    fix_map:
+      __other__: Correct ADR6.CONSNUMBER to digits only, at most 3 characters.
+    record_fix_template: 'Customer {ADR6.ADDRNUMBER}: CONSNUMBER is {actual_value}. Correct ADR6.CONSNUMBER to digits only,
+      at most 3 characters.'
+  - id: SDCM1118
+    field: ADR6.HOME_FLAG
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Recipient address in this communication type (mail sys.grp) must be blank or 'X'
+    why_it_matters: ADR6.HOME_FLAG is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read HOME_FLAG behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADR6.HOME_FLAG to blank or 'X'.
+    record_fix_template: 'Customer {ADR6.ADDRNUMBER}: HOME_FLAG is {actual_value}. Set ADR6.HOME_FLAG to blank or ''X''.'
+  - id: SDCM1119
+    field: ADR6.DFT_RECEIV
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: Recipient is standard recipient for this address must be blank or ''X'''
+    why_it_matters: ADR6.DFT_RECEIV is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read DFT_RECEIV behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADR6.DFT_RECEIV to blank or 'X'.
+    record_fix_template: 'Customer {ADR6.ADDRNUMBER}: DFT_RECEIV is {actual_value}. Set ADR6.DFT_RECEIV to blank or ''X''.'
+  - id: SDCM1120
+    field: ADR6.R3_USER
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: Connected to an SAP System must be blank or ''X'''
+    why_it_matters: ADR6.R3_USER is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+      is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read R3_USER behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADR6.R3_USER to blank or 'X'.
+    record_fix_template: 'Customer {ADR6.ADDRNUMBER}: R3_USER is {actual_value}. Set ADR6.R3_USER to blank or ''X''.'
+  - id: SDCM1121
+    field: ADR6.TNEF
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: 'Flag: Receiver can receive TNEF coding via SMTP must be blank or ''X'''
+    why_it_matters: ADR6.TNEF is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+      read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read TNEF behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set ADR6.TNEF to blank or 'X'.
+    record_fix_template: 'Customer {ADR6.ADDRNUMBER}: TNEF is {actual_value}. Set ADR6.TNEF to blank or ''X''.'
+  - id: SDCM1122
+    field: UKMBP_CMS.OWN_RATING_CALC
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: Rule for Calculating Score must be upper case and fit 10 characters
+    why_it_matters: UKMBP_CMS.OWN_RATING_CALC is not defined as case-sensitive, so SAP stores it in upper case, and it holds
+      10 characters. Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on OWN_RATING_CALC miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct UKMBP_CMS.OWN_RATING_CALC to upper case within 10 characters.
+    record_fix_template: 'Customer {UKMBP_CMS.PARTNER}: OWN_RATING_CALC is {actual_value}. Correct UKMBP_CMS.OWN_RATING_CALC
+      to upper case within 10 characters.'
+  - id: SDCM1123
+    field: UKMBP_CMS_SGM.CUST_GROUP
+    check_class: regex_check
+    pattern: ^[^a-z]{0,10}$
+    severity: low
+    dimension: validity
+    message: Customer Credit Group must be upper case and fit 10 characters
+    why_it_matters: UKMBP_CMS_SGM.CUST_GROUP is not defined as case-sensitive, so SAP stores it in upper case, and it holds
+      10 characters. Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on CUST_GROUP miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct UKMBP_CMS_SGM.CUST_GROUP to upper case within 10 characters.
+    record_fix_template: 'Customer {UKMBP_CMS_SGM.PARTNER}: CUST_GROUP is {actual_value}. Correct UKMBP_CMS_SGM.CUST_GROUP to
+      upper case within 10 characters.'
+  - id: SDCM1124
+    field: UKMBP_CMS_SGM.XCRITICAL
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Special Attention Required must be blank or 'X'
+    why_it_matters: UKMBP_CMS_SGM.XCRITICAL is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other
+      character is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read XCRITICAL behave inconsistently when it holds a value other than blank or 'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set UKMBP_CMS_SGM.XCRITICAL to blank or 'X'.
+    record_fix_template: 'Customer {UKMBP_CMS_SGM.PARTNER}: XCRITICAL is {actual_value}. Set UKMBP_CMS_SGM.XCRITICAL to blank
+      or ''X''.'
+  - id: SDCM1125
+    field: UKMBP_CMS_SGM.AUTOMATIC_REQ
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Limit Request from Automatic Calculation must be blank or 'X'
+    why_it_matters: UKMBP_CMS_SGM.AUTOMATIC_REQ is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other
+      character is read as unset by some programs and as set by others.
+    rule_authority: sap_hard_constraint
+    sap_impact: Programs and reports that read AUTOMATIC_REQ behave inconsistently when it holds a value other than blank or
+      'X'.
+    valid_values_with_labels:
+      ? ''
+      : Not set
+      X: Set
+    fix_map:
+      __other__: Set UKMBP_CMS_SGM.AUTOMATIC_REQ to blank or 'X'.
+    record_fix_template: 'Customer {UKMBP_CMS_SGM.PARTNER}: AUTOMATIC_REQ is {actual_value}. Set UKMBP_CMS_SGM.AUTOMATIC_REQ
+      to blank or ''X''.'
+  - id: SDCM1126
+    field: UKMBP_CMS_SGM.LOG_HNDL
+    check_class: regex_check
+    pattern: ^\S+( \S+)*$
+    severity: low
+    dimension: validity
+    message: 'Application Log: Log Handle must not contain leading, trailing or repeated blanks'
+    why_it_matters: UKMBP_CMS_SGM.LOG_HNDL is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups
+      and make equal values look different.
+    rule_authority: best_practice
+    sap_impact: Matching and reporting on LOG_HNDL treat padded and clean values as different.
+    fix_map:
+      __other__: Remove leading, trailing and repeated blanks from UKMBP_CMS_SGM.LOG_HNDL.
+    record_fix_template: 'Customer {UKMBP_CMS_SGM.PARTNER}: LOG_HNDL is {actual_value}. Remove leading, trailing and repeated
+      blanks from UKMBP_CMS_SGM.LOG_HNDL.'
+  - id: SDCM1127
+    field: CVI_CUST_LINK.CRUSER
+    check_class: regex_check
+    pattern: ^[^a-z]{0,12}$
+    severity: low
+    dimension: validity
+    message: User who created the object must be upper case and fit 12 characters
+    why_it_matters: CVI_CUST_LINK.CRUSER is not defined as case-sensitive, so SAP stores it in upper case, and it holds 12 characters.
+      Lower case or overflow means the value was loaded around the dialog.
+    rule_authority: sap_hard_constraint
+    sap_impact: Lookups and joins on CRUSER miss the record when the stored case differs from the entered one.
+    fix_map:
+      __other__: Correct CVI_CUST_LINK.CRUSER to upper case within 12 characters.
+    record_fix_template: 'Customer {CVI_CUST_LINK.PARTNER_GUID}: CRUSER is {actual_value}. Correct CVI_CUST_LINK.CRUSER to upper
+      case within 12 characters.'

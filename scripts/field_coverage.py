@@ -73,10 +73,6 @@ CURATED: dict[str, dict[str, str]] = {
     "material_master": {
     },
     "sd_customer_master": {
-        "KNA1.KONZS": "consistency: customers sharing a KONZS share KNA1.LAND1 or KNA1.KTOKD pattern;"
-        " flag singleton group keys (likely typos)",
-        "UKMBP_CMS_SGM.XCRITICAL": "cross-field: critical customers (XCRITICAL = X) carry a credit limit"
-        " (UKMBP_CMS_SGM.CREDIT_LIMIT > 0) in the same credit segment",
     },
     "employee_central": {
         "COMPINFO.PAYROLL_ID": "uniqueness: one USERID per PAYROLL_ID; mandatory for EC Payroll employees"
