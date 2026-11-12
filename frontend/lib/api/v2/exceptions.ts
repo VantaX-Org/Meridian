@@ -4,7 +4,7 @@
  *
  * GET /exceptions, GET /exceptions/{id}, PUT /exceptions/{id}/assign, PUT /exceptions/{id}/escalate,
  * PUT /exceptions/{id}/resolve, POST /exceptions/{id}/comment, GET /exceptions/sap-monitor, GET /exceptions/rules,
- * PUT /exceptions/rules/{id}, GET /exceptions/metrics.
+ * POST /exceptions, POST /exceptions/rules, PUT /exceptions/rules/{id}, GET /exceptions/metrics.
  */
 import { v2Get, v2Send } from "./client";
 
@@ -84,3 +84,10 @@ export const resolveException = (id: string, b: { resolution_type: string; resol
 export const commentException = (id: string, text: string, user_name: string) => v2Send("POST", `/exceptions/${enc(id)}/comment`, { text, user_name });
 /** Needs manage_rules. A new rule is created inactive; this switches it on or off. */
 export const setExceptionRuleActive = (id: string, is_active: boolean) => v2Send<ExceptionRule>("PUT", `/exceptions/rules/${enc(id)}`, { is_active });
+
+/** Body of POST /exceptions. Needs analyse or run_process_discovery. The SAP-source fields are for system managers and are not offered here. */
+export interface RaiseExceptionBody { type: string; category: string; severity: string; title: string; description: string }
+export const raiseException = (b: RaiseExceptionBody) => v2Send<{ id: string; status: string }>("POST", "/exceptions", b);
+/** Body of POST /exceptions/rules. Needs manage_rules. The rule is created inactive. */
+export interface NewExceptionRuleBody { name: string; description: string; rule_type: string; object_type: string; condition: string; severity: string; auto_assign_to?: string }
+export const createExceptionRule = (b: NewExceptionRuleBody) => v2Send<{ id: string; is_active: boolean }>("POST", "/exceptions/rules", b);

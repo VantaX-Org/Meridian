@@ -154,7 +154,15 @@ function withOpenDelta(l: Landscape): Landscape {
 }
 
 /** A write in fixture mode (POST, PUT, DELETE): applied to the in-memory work fixture. */
+const fxWritebacks = [
+  { id: "wb-1", finding_id: "f-1", version_id: null, requested_by: "u-ana", records_updated: 12, sap_host: "sap-ecc.example.com", created_at: "2026-10-16T08:00:00Z", check_id: "MM022", module: "material_master", rule_message: "Material group is blank.", requested_by_name: "Ana Roberts" },
+  { id: "wb-2", finding_id: "f-2", version_id: null, requested_by: "u-me", records_updated: 4, sap_host: "sap-ecc.example.com", created_at: "2026-10-16T09:00:00Z", check_id: "MM031", module: "material_master", rule_message: "Base unit is blank.", requested_by_name: "Demo user" },
+];
 export function fixtureWrite<T>(method: string, path: string, body: unknown, params: Params): T {
+  const wbApprove = /^\/writeback\/approve\/([^/]+)$/.exec(path);
+  if (method === "POST" && wbApprove) {
+    return { applied: 0, errors: ["Live SAP write-back is off on this deployment. Deliver the fixes with the export."], status: "blocked" } as T;
+  }
   const req = requestsWrite(method, path, body);
   if (req !== NONE_REQ) return req as T;
   const aw = insightsWrite(method, path, body);
@@ -225,6 +233,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     if (method === "POST" && path === "/actions/undo") return wf.undoFixture(body as { action_id: string });
     const batch = /^\/remediation\/batches\/([^/]+)\/(approve|send-back)$/.exec(path);
     if (method === "POST" && batch) return wf.batchFixture(batch[2] as "approve" | "send-back", decodeURIComponent(batch[1]), (body as { note?: string } | undefined)?.note, (body as { without_blank?: boolean } | undefined)?.without_blank === true);
+    const reassign = /^\/remediation\/batches\/([^/]+)\/reassign$/.exec(path);
+    if (method === "POST" && reassign) return { batch_id: decodeURIComponent(reassign[1]), reassigned: 3, action_id: "fx-reassign" };
     const send = /^\/remediation\/batches\/([^/]+)\/export$/.exec(path);
     if (method === "POST" && send) return wf.sendBatchFixture(decodeURIComponent(send[1]));
     const loaded = /^\/remediation\/batches\/([^/]+)\/loaded$/.exec(path);
@@ -299,6 +309,15 @@ function lineageRead(path: string, params: Params): unknown {
     const id = String(params.node ?? "").replace(/^check:/, "");
     if (!lin.graph[id]) throw new FixtureNotFound(path);
     return lin.graph[id];
+  }
+  const rr = /^\/lineage\/rule\/([^/]+)$/.exec(path);
+  if (rr) {
+    const id = decodeURIComponent(rr[1]);
+    const g = lin.graph[id] as { nodes: { type: string; label: string }[] } | undefined;
+    if (!g) throw new FixtureNotFound(path);
+    const fields = g.nodes.filter((n) => n.type === "field").map((n) => n.label);
+    const tables = g.nodes.filter((n) => n.type === "table").map((n) => n.label);
+    return { check_id: id, module: "material_master", fields, targets: [], tables, joins: tables.length > 1 ? [{ parent: tables[0], child: tables[1], on: [["MATNR", "MATNR"]], cardinality: "1:N" }] : [], glossary_terms: [], owners: [] };
   }
   const guards = guardsJson as { model: unknown; guards: Record<string, unknown> };
   if (path === "/lineage/model") return guards.model;
@@ -516,7 +535,7 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     if (events) return wf.batchEventsFixture(decodeURIComponent(events[1]));
     const batchOne = /^\/remediation\/batches\/([^/]+)$/.exec(path);
     if (batchOne) return wf.batchFixtureDetail(decodeURIComponent(batchOne[1]));
-    if (path === "/writeback/approvals") return { approvals: [], live_enabled: false };
+    if (path === "/writeback/approvals") return { approvals: fxWritebacks, live_enabled: false };
     if (path === "/people") return ap.peopleFixture();
     if (path === "/people/next") return ap.nextFixture();
     const steward = /^\/analytics\/operational\/team\/([^/]+)$/.exec(path);

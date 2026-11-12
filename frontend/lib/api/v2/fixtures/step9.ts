@@ -752,6 +752,13 @@ export function step9Read(path: string, params: Params): unknown {
     const current = landscape.cells.filter((cell) => cell.system_id === ECC.id && covers(c, cell.module)).flatMap((cell) => breachesOf(e.thresholds, cell.module).map((b) => ({ ...b, contract_id: id, name: c.name, enforce: e.enforce, module: cell.module, run_id: cell.run_id, system_id: cell.system_id })));
     return { contract_id: id, name: c.name, status: c.status, enforce: e.enforce, thresholds: e.thresholds ?? {}, current, history: [] };
   }
+  const cc = /^\/contracts\/([^/]+)\/compliance$/.exec(path);
+  if (cc) {
+    const id = decodeURIComponent(cc[1]);
+    if (!rolesContracts().some((x) => x.id === id)) throw new Refused(404, "Contract not found");
+    const row = (n: string, ok: boolean, at: string, d: number) => ({ id: `cch-${n}`, contract_id: id, version_id: null, completeness_actual: 90 - d, accuracy_actual: 88 - d, consistency_actual: 86 - d, timeliness_actual: 92, uniqueness_actual: 95, validity_actual: 91 - d, overall_compliant: ok, violations: ok ? [] : [{ metric: "completeness", threshold: 90, actual: 90 - d }], recorded_at: at });
+    return { contract_id: id, compliance_history: [row("2", true, "2026-10-16T08:00:00Z", 0), row("1", false, "2026-10-09T08:00:00Z", 8)] };
+  }
   const ch = /^\/versions\/([^/]+)\/changes$/.exec(path);
   if (ch) return changesFixture(decodeURIComponent(ch[1]));
   const sem = /^\/versions\/([^/]+)\/semantic-types$/.exec(path);

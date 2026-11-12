@@ -25,10 +25,22 @@ export interface BatchRowApi extends BatchSummary {
 
 export const getBatches = (): Promise<{ items: BatchRowApi[] }> => v2Get("/remediation/batches");
 export const getBatch = (id: string): Promise<BatchDetail> => v2Get(`/remediation/batches/${enc(id)}`);
+/** POST /remediation/batches/{id}/reassign (assign): every open issue on the batch's records goes to one person. Undoable. */
+export const reassignBatch = (id: string, assigneeId: string): Promise<{ batch_id: string; reassigned: number; action_id: string }> => v2Send("POST", `/remediation/batches/${enc(id)}/reassign`, { assignee_id: assigneeId });
 export const getBatchEvents = (id: string): Promise<{ items: BatchEvent[] }> => v2Get(`/remediation/batches/${enc(id)}/events`);
 
 /** GET /writeback/approvals carries the deployment's `live_enabled` flag; it needs the approve permission. */
 export const getWritebackMode = (): Promise<{ live_enabled: boolean }> => v2Get("/writeback/approvals");
+
+/** One live write-back request waiting for a second person (GET /writeback/approvals, needs approve). */
+export interface PendingWriteback {
+  id: string; finding_id: string | null; version_id: string | null; requested_by: string | null; records_updated: number; sap_host: string | null; created_at: string | null;
+  check_id: string | null; module: string | null; rule_message: string | null; requested_by_name: string | null;
+}
+export const getPendingWritebacks = (): Promise<{ approvals: PendingWriteback[]; live_enabled: boolean }> => v2Get("/writeback/approvals");
+/** POST /writeback/approve/{id} (approve): the second person releases the write to SAP. Four eyes: never the requester. */
+export interface WritebackApproved { applied: number; errors: string[]; status: string }
+export const approveWriteback = (id: string): Promise<WritebackApproved> => v2Send("POST", `/writeback/approve/${enc(id)}`);
 
 /* ── Live write-back of an approved batch (POST /writeback/batches/{id}/check and /send) ── */
 
