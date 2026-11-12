@@ -500,6 +500,11 @@ async def get_cleaning_item(
 
 # ── POST /api/v1/cleaning/approve/{id} ───────────────────────────────────────
 
+_PENDING = ("detected", "recommended")  # the only states an approval may move from
+# True unless the user named by :me proposed the item (the 'proposed' audit row). Background jobs are 'system'.
+_NOT_PROPOSER = """NOT EXISTS (SELECT 1 FROM cleaning_audit pa WHERE pa.queue_id = cq.id AND pa.action = 'proposed'
+                               AND pa.actor_name = :me AND :me <> 'system')"""
+
 
 @router.post("/cleaning/approve/{item_id}")
 async def approve_cleaning_item(
@@ -520,10 +525,17 @@ async def approve_cleaning_item(
         raise HTTPException(status_code=404, detail="Item not found")
 
     row = _row_to_dict(item)
+    if row["status"] not in _PENDING:
+        raise HTTPException(status_code=409, detail=f"This item is {row['status']}; only a waiting item can be approved")
+    me = current_user_label()
+    proposed = (await db.execute(text(f"SELECT 1 FROM cleaning_queue cq WHERE cq.id = :id AND NOT {_NOT_PROPOSER}"),
+                                 {"id": item_id, "me": me})).first()
+    if proposed:
+        raise HTTPException(status_code=403, detail="You proposed this change, so another user must approve it")
     await db.execute(
         text("""
             UPDATE cleaning_queue SET status = 'approved', approved_by = :approver
-            WHERE id = :id AND tenant_id = :tid
+            WHERE id = :id AND tenant_id = :tid AND status IN ('detected', 'recommended')
         """),
         {"id": item_id, "tid": str(tenant.id), "approver": current_user_id()},
     )
@@ -617,19 +629,20 @@ async def bulk_approve(
     if body.rule_id:
         where += " AND cq.rule_id = :rid"
         params["rid"] = body.rule_id
+    where += " AND " + _NOT_PROPOSER  # nobody approves a change they proposed (four-eyes)
 
     result = await db.execute(
         text(f"""
             UPDATE cleaning_queue cq SET status = 'approved', approved_by = :approver
             WHERE cq.id IN (
-                SELECT id FROM cleaning_queue
-                WHERE {where.replace('cq.', '')}
+                SELECT id FROM cleaning_queue cq
+                WHERE {where}
                 ORDER BY priority DESC
                 LIMIT :max_count
             )
             RETURNING cq.id, cq.record_key, cq.object_type
         """),
-        {**params, "approver": current_user_id()},
+        {**params, "approver": current_user_id(), "me": current_user_label()},
     )
     approved = result.fetchall()
     approved_ids = [str(r[0]) for r in approved]
