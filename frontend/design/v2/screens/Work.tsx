@@ -54,7 +54,7 @@ import type { Outcome } from "../inspector/shared";
 import { BATCH_STATUS_LABEL, batchLabel, groupByBatch, sentLine, type BatchRow } from "@/lib/v2/batches";
 import { useBatches } from "@/lib/v2/approvals-queries";
 import { useWaves } from "@/lib/v2/admin-queries";
-import { BulkActions, CurrentValue, DecisionCell, NewValueCell, OwnerCell, PossibleValuesCell, KeyText, PromptDialog, keyValue, rowKeyOf, type LedgerHandlers } from "./work-parts";
+import { BulkActions, CurrentValue, DecisionCell, NewValueCell, OwnerCell, PossibleValuesCell, KeyText, PromptDialog, draftStore, keyValue, rowKeyOf, type LedgerHandlers } from "./work-parts";
 import { GridTools, useGridKey } from "../GridTools";
 import { FixOrderHint } from "./object/Related";
 import { WorkTabs } from "./WorkTabs";
@@ -261,7 +261,7 @@ export function WorkCanvas() {
   useEffect(() => {
     recordRowsRef.current = recordRows;
   });
-  const [drafts] = useState(() => new Map<string, string>());
+  const drafts = useMemo(() => draftStore(state.version ?? state.asOf ?? "latest"), [state.version, state.asOf]);
   const [reason, setReason] = useState<{ rows: WorkRow[]; kind: "not_an_issue" | "accept_risk"; clear?: () => void } | null>(null);
   // A bulk change over CONFIRM_OVER rows waits here until the person confirms it (Enter) or keeps the rows (Escape).
   const [bulk, setBulk] = useState<{ count: number; message: string; confirm: string; run: () => void } | null>(null);

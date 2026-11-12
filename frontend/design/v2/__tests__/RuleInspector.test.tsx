@@ -163,7 +163,7 @@ describe("actions by role", () => {
     const a = section(d, "Actions");
     expect(within(a).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("/r/MM142"));
     expect(within(a).getByRole("link", { name: "Open failing records" })).toHaveAttribute("href", expect.stringContaining("/r/MM142?tab=failing"));
-    expect(within(a).getByRole("link", { name: "Open its issues" })).toHaveAttribute("href", expect.stringContaining("/issues?rule=MM142"));
+    expect(within(a).getByRole("link", { name: "Open its issues" })).toHaveAttribute("href", expect.stringContaining("/issues?rule=MM142&module=material_master"));
     expect(within(a).getByRole("button", { name: "Suppress" })).toBeInTheDocument();
     expect(within(a).getByRole("link", { name: "Edit in authoring" })).toHaveAttribute("href", expect.stringContaining("/rules?view=drafts&module=material_master"));
     expect(within(a).getByRole("button", { name: "Hand to a steward" })).toBeInTheDocument();
@@ -188,10 +188,22 @@ describe("actions by role", () => {
     expect(within(a).queryByRole("button", { name: "Suppress" })).toBeNull();
   });
 
+  it("keeps the object and its run on the failing-records drill", async () => {
+    setUrl("/o/ecc-production/material-master?run=r9&open=rule:MM142&fixture=1");
+    const d = await open();
+    const href = within(section(d, "Actions")).getByTestId("rule-failing").getAttribute("href") ?? "";
+    expect(href).toContain("run=r9");
+    expect(href).toContain("from=%2Fo%2Fecc-production%2Fmaterial-master");
+  });
+
   it("lets a rule manager disable the rule through the rule endpoint", async () => {
     const spy = vi.spyOn(rulelib, "setRuleEnabled").mockResolvedValue({} as never);
     const d = await open();
     fireEvent.click(within(section(d, "Actions")).getByRole("button", { name: "Disable rule" }));
+    expect(spy).not.toHaveBeenCalled();
+    const confirm = within(d).getByTestId("rule-disable-confirm");
+    expect(confirm).toHaveTextContent("The next run skips it");
+    fireEvent.click(within(confirm).getByRole("button", { name: "Disable rule" }));
     await waitFor(() => expect(spy).toHaveBeenCalledWith("rule-MM142", false));
     expect(await within(d).findByText(/MM142 is disabled/)).toBeInTheDocument();
   });

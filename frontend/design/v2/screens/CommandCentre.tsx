@@ -73,17 +73,18 @@ export function GoLiveBanner({ landscape, waves }: { landscape: Landscape; waves
           <dd className="m2-cc-note">{t("{n} critical issues open", { n: int(critical) })}</dd>
         </div>
       </dl>
+      {/* A link, not a button: the home page has one strong control, the next step under the lede. */}
       <div className="m2-cc-act">
         {blockers.length ? (
-          <V2Link href="/work?verdict=no-go" className="m2-btn m2-next">
+          <V2Link href="/work?verdict=no-go">
             {t("Fix {n} blockers", { n: blockers.length })}
           </V2Link>
         ) : critical > 0 ? (
-          <V2Link href="/work?severity=critical" className="m2-btn m2-next">
+          <V2Link href="/work?severity=critical">
             {t("Clear {n} critical issues", { n: int(critical) })}
           </V2Link>
         ) : (
-          <V2Link href="/?view=waves" className="m2-btn m2-next">
+          <V2Link href="/?view=waves">
             {t("Sign off the wave")}
           </V2Link>
         )}

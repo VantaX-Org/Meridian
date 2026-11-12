@@ -106,7 +106,7 @@ function NewReport({ onClose }: { onClose: () => void }) {
             void run("build", async () => {
               const name = await rep.buildReport(entry);
               await refreshAdmin(qc, "reports");
-              return { tone: "ok", title: tr("{name} built", { name: entry.name }), detail: tr("Saved as {name}. It is in the list of reports.", { name }) };
+              return { tone: "ok", title: tr("{name} built", { name: entry.name }), detail: tr("Downloaded {name}. A copy is also in Reports.", { name }) };
             })
           }
         >

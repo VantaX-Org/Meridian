@@ -127,11 +127,29 @@ describe("the record inspector", () => {
     expect(spy.mock.calls[0][1]).toBe("d3229ded-0708-4967-9dfb-1b7f4fada953");
   });
 
-  it("the Decision select: not an issue asks for the reason, then sends it", async () => {
+  it("refuses a new value outside the rule's list and saves an allowed one with Save", async () => {
+    const spy = vi.spyOn(workApi, "postDecide");
+    mount();
+    await body();
+    const input = screen.getByLabelText("New value for MM142");
+    fireEvent.change(input, { target: { value: "ZZZ" } });
+    expect(screen.getByTestId("new-value-outside")).toHaveTextContent("ZZZ is not one of the values this rule accepts.");
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(spy).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: "KG" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+  });
+
+  it("the Decision select changes nothing until Apply: not an issue asks for the reason, then sends it", async () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     await body();
     fireEvent.change(screen.getByLabelText("Decision for MM142"), { target: { value: "not an issue" } });
+    expect(screen.queryByRole("dialog", { name: "Mark as not an issue" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
     const dialog = await screen.findByRole("dialog", { name: "Mark as not an issue" });
     fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "Legacy part" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Mark as not an issue" }));

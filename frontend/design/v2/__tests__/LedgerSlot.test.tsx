@@ -61,4 +61,11 @@ describe("the ledger slot", () => {
     expect(ledger).toHaveTextContent("Material type is mandatory");
     expect(screen.getByRole("link", { name: "Decide in Work" })).toHaveAttribute("href", expect.stringContaining("/work?module=material_master&system=ecc-production"));
   });
+
+  it("the Records tab shows the ledger as it stood at the run in the address", async () => {
+    setUrl("/o/ecc-production/material-master/records?fixture=1&run=r2");
+    renderWithQuery(<RecordsTab system="ecc-production" module="material-master" loader={() => Promise.resolve({ Ledger: Probe })} />);
+    const ledger = await screen.findByTestId("ledger");
+    expect(JSON.parse(ledger.getAttribute("data-filters") ?? "{}")).toEqual({ as_of_run: "r2" });
+  });
 });
