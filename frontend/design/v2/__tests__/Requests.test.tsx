@@ -15,7 +15,7 @@ vi.mock("next/navigation", async () => (await import("./nav-store")).navigationM
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 vi.mock("@/lib/v2/hooks", async (orig) => {
   const m = await orig<typeof import("@/lib/v2/hooks")>();
-  return { ...m, useV2Session: () => ({ persona: "lead", label: "Programme lead", name: "Test", email: null, fixture: true, shared: false, can: (a: string) => h.allowed === "all" || h.allowed.includes(a) }) };
+  return { ...m, useV2Session: () => ({ id: "u-me", persona: "lead", label: "Programme lead", name: "Test", email: null, fixture: true, shared: false, can: (a: string) => h.allowed === "all" || h.allowed.includes(a) }) };
 });
 
 let undo: () => void = () => undefined;
@@ -143,6 +143,57 @@ describe("Requests", () => {
     setUrl("/admin/workflows?fixture=1");
     renderWithQuery(<WorkflowsSection />);
     await waitFor(() => expect(document.querySelector("[data-testid^='workflow-']")).not.toBeNull());
+  });
+});
+
+describe("Requests governance actions", () => {
+  it("edits a draft request: title and proposed values, then saves", async () => {
+    renderWithQuery(<RequestInspector id="CR-1004" onClose={() => undefined} />);
+    fireEvent.click(await screen.findByTestId("request-edit-open"));
+    const form = await screen.findByTestId("request-edit");
+    const title = within(form).getAllByRole("textbox")[0] as HTMLInputElement;
+    fireEvent.change(title, { target: { value: "Bearing 6205 for plant 1000" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save draft" }));
+    await waitFor(() => expect(screen.queryByTestId("request-edit")).toBeNull());
+    expect((await reqApi.getRequest("CR-1004")).request.title).toBe("Bearing 6205 for plant 1000");
+  });
+
+  it("offers no draft edit on a request that is not a draft", async () => {
+    renderWithQuery(<RequestInspector id="CR-1001" onClose={() => undefined} />);
+    await screen.findByTestId("request-critical");
+    expect(screen.queryByTestId("request-edit-open")).toBeNull();
+  });
+
+  it("approves a write-back in two steps and blocks the requester's own", async () => {
+    setUrl("/requests?fixture=1&view=all");
+    renderWithQuery(<RequestsCanvas />);
+    const panel = await screen.findByTestId("writeback-approvals");
+    const buttons = within(panel).getAllByRole("button", { name: "Approve write-back" });
+    expect(buttons[0]).toBeEnabled();
+    expect(buttons[1]).toBeDisabled();
+    expect(within(panel).queryByRole("button", { name: "Write to SAP" })).toBeNull();
+    fireEvent.click(buttons[0]);
+    fireEvent.click(await within(panel).findByRole("button", { name: "Write to SAP" }));
+    await waitFor(() => expect(within(panel).queryByRole("button", { name: "Write to SAP" })).toBeNull());
+  });
+
+  it("hides the write-back approvals from a role without approve", async () => {
+    h.allowed = ["write"];
+    setUrl("/requests?fixture=1&view=all");
+    renderWithQuery(<RequestsCanvas />);
+    await screen.findByTestId("requests-table");
+    expect(screen.queryByTestId("writeback-approvals")).toBeNull();
+  });
+
+  it("opens one stored workflow version", async () => {
+    setUrl("/admin/workflows?fixture=1");
+    renderWithQuery(<WorkflowsSection />);
+    const open = await screen.findAllByRole("button", { name: /^Open version/ });
+    fireEvent.click(open[0]);
+    const detail = await screen.findByTestId("workflow-definition");
+    await waitFor(() => expect(detail.textContent).toMatch(/Version \d+/));
+    fireEvent.click(within(detail).getByRole("button", { name: "Close" }));
+    expect(screen.queryByTestId("workflow-definition")).toBeNull();
   });
 });
 

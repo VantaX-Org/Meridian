@@ -36,4 +36,14 @@ describe("cleansing duplicates", () => {
     await waitFor(() => expect(screen.queryByTestId("cleansing-dedup-dd-1")).toBeNull());
     expect(screen.getByTestId("cleansing-dedup-dd-2")).toBeInTheDocument();
   });
+
+  it("filters the pairs by object type through the per-type route", async () => {
+    renderWithQuery(<Cleansing />);
+    const sel = await screen.findByTestId("cleansing-dedup-type");
+    await screen.findByTestId("cleansing-dedup-dd-2");
+    fireEvent.change(sel, { target: { value: "business_partner" } });
+    await waitFor(() => expect(screen.queryByTestId("cleansing-dedup-dd-2")).toBeNull());
+    expect(await screen.findByTestId("cleansing-dedup-dd-1")).toBeInTheDocument();
+    expect(screen.queryByTestId("cleansing-dedup-dd-2")).toBeNull();
+  });
 });

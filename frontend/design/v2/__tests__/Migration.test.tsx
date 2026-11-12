@@ -112,6 +112,19 @@ describe("Migration analysis", () => {
   });
 });
 
+describe("Dry-run report", () => {
+  it("saves the dry-run report of an analysed dry run in the chosen format", async () => {
+    const save = vi.spyOn(migrationApi, "exportDryRunReport").mockResolvedValue("dry_run.pdf");
+    renderWithQuery(<ToastProvider><Migration /></ToastProvider>);
+    const runs = await screen.findByTestId("mig-runs");
+    fireEvent.click(within(runs).getByRole("button", { name: /^Open the analysis of 22 Oct/ }));
+    const panel = await screen.findByTestId("mig-dry-run-report");
+    fireEvent.click(within(panel).getByRole("button", { name: "Download as PDF" }));
+    expect(await screen.findByText("Report saved as dry_run.pdf")).toBeTruthy();
+    expect(save.mock.calls[0][1]).toBe("pdf");
+  });
+});
+
 describe("Workbook from the new system", () => {
   const pick = async () => {
     const panel = await screen.findByTestId("mig-workbook");
