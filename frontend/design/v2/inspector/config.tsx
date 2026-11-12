@@ -15,14 +15,17 @@ import { ResultFrame, useOutcome } from "./shared";
 import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 
-function Items({ system, object }: { system: string; object: string }) {
+function Items({ system, object, total }: { system: string; object: string; total: number }) {
   const q = useConfigItems(system, object);
   if (q.isLoading) return <Skeleton width="100%" height={80} />;
   if (q.isError) return <p className="m2-rp m2-meta">{t("The rows of this object could not be read. They are stored with the last completed load.")}</p>;
   const items = q.data?.items ?? [];
   if (items.length === 0) return <p className="m2-rp m2-meta">{t("The last completed load stored no rows for this object.")}</p>;
   const cols = [...new Set(items.flatMap((i) => Object.keys(i.values)))].slice(0, 5);
+  // the read stops at 500 rows; say so when the object holds more
   return (
+    <>
+    {total > items.length ? <p className="m2-meta" data-testid="config-items-cap">{t("The first {n} of {total}", { n: int(items.length), total: int(total) })}</p> : null}
     <ScrollFrame label={t("Rows, scrollable")}>
       <table className="m2-tbl" aria-label={t("Rows of {object}", { object })} data-testid="config-items">
         <thead>
@@ -45,6 +48,7 @@ function Items({ system, object }: { system: string; object: string }) {
         </tbody>
       </table>
     </ScrollFrame>
+    </>
   );
 }
 
@@ -115,7 +119,7 @@ function Body({ system, area }: { system: string; area: string }) {
       {picked ? (
         <>
           <h3>{t("Rows of {picked}", { picked })}</h3>
-          <Items system={system} object={picked} />
+          <Items system={system} object={picked} total={a.objects.find((o) => o.object === picked)?.rows ?? 0} />
         </>
       ) : (
         <p className="m2-prov">{t("Choose an object with rows to read them, as stored by the last completed load.")}</p>

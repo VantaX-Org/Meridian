@@ -203,4 +203,20 @@ describe("Run actions", () => {
     expect(await screen.findByText("Agents started")).toBeInTheDocument();
     expect(screen.getByTestId("run-events")).toBeInTheDocument();
   });
+  it("takes the previous run from the server, so a run outside the recent window still compares with its predecessor", async () => {
+    const real = runsApi.getTimeline;
+    // the recent window holds only this run; the previous run is reachable only through the server's prev_id
+    vi.spyOn(runsApi, "getTimeline").mockImplementation((sys, limit, mod, vid) =>
+      vid ? real(sys, limit, mod, vid) : Promise.resolve({ system_id: null, limit: 50, runs: RUNS.filter((r) => r.id === R8) }));
+    renderWithQuery(<RunCanvas id={R8} />);
+    expect(await screen.findByTestId("run-since")).toBeInTheDocument();
+    expect(screen.queryByTestId("run-first")).toBeNull();
+  });
+
+  it("calls a run the first only when the server says it has no previous run", async () => {
+    setUrl(`/run/${RUNS[0].id}?fixture=1`);
+    renderWithQuery(<RunCanvas id={RUNS[0].id} />);
+    expect(await screen.findByTestId("run-first")).toBeInTheDocument();
+    expect(screen.queryByTestId("run-since")).toBeNull();
+  });
 });

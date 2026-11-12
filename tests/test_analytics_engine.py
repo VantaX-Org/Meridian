@@ -236,3 +236,8 @@ def test_prescriptive_for_one_object_ranks_only_that_objects_findings(monkeypatc
     # without an object every object's findings rank, the larger first
     body = c.get(f"/api/v1/analytics/prescriptive?version_id={vid}", headers=h).json()
     assert [a["check_id"] for a in body["actions"]][:2] == ["BP010", "MM003"]
+
+    # a short list still plans its sprints over every open action, and says how many there are
+    body = c.get(f"/api/v1/analytics/prescriptive?version_id={vid}&limit=1", headers=h).json()
+    assert len(body["actions"]) == 1 and body["total_actions"] >= 2
+    assert sum(len(s["actions"]) for s in body["sprints"]) == body["total_actions"]

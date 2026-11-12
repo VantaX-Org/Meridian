@@ -7,6 +7,7 @@ import { createWebhook, deleteWebhook, testWebhook, updateWebhook, type Webhook,
 import { formatDate } from "@/lib/format";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { lc, t } from "@/lib/v2/i18n";
+import { int } from "@/lib/v2/score";
 import { eventsWords, eventWord, WEBHOOK_PRESETS, type WebhookPreset } from "@/lib/v2/step9";
 import { refreshStep9, useDeliveries, useWebhookEvents, useWebhooks } from "@/lib/v2/step9-queries";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
@@ -172,6 +173,8 @@ function DeliveryLog({ w }: { w: Webhook }) {
       ) : q.data.deliveries.length === 0 ? (
         <EmptyFrame>{status ? t("No {state} delivery.", { state: lc(statusWord(status)) }) : t("Nothing has been sent yet. Send a test event, or wait for the first event this webhook subscribes to.")}</EmptyFrame>
       ) : (
+        <>
+        {q.data.total > q.data.deliveries.length ? <p className="m2-meta" data-testid="delivery-log-cap">{t("The first {n} of {total}", { n: int(q.data.deliveries.length), total: int(q.data.total) })}</p> : null}
         <div className="m2-frame" tabIndex={0} role="region" aria-label={t("Delivery log, scrollable")}>
           <table className="m2-tbl" aria-label={t("Deliveries to {host}", { host: w.url })} data-testid="delivery-log">
             <thead>
@@ -200,6 +203,7 @@ function DeliveryLog({ w }: { w: Webhook }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </>
   );
