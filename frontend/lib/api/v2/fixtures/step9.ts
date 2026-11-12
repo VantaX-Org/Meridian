@@ -10,7 +10,7 @@
  *   GET, PUT /settings/automation
  *   GET /config/drift/alerts
  *   GET /objects/{module}/contracts, PUT /contracts/{id}/enforcement, GET /contracts/{id}/breaches
- *   GET /versions/{id}/changes
+ *   GET /versions/{id}/changes, GET /versions/{id}/semantic-types, PUT /versions/{id}/semantic-types/{column}
  *
  * The simulation is the fixture's stand-in for api/services/simulate_fix.py, worked on the landscape's own cells: the
  * fixed failing records lift their rule's dimension by their share of the records checked, the cap is drawn again
@@ -30,6 +30,10 @@ import type {
   ChatAlerts,
   ChatEvent,
   ContactVerification,
+  SemanticColumn,
+  SemanticType,
+  SemanticTypes,
+  SuggestedRule,
   CertSigner,
   CertVersion,
   ContractBreach,
@@ -98,6 +102,7 @@ interface State {
   automation: AutomationSettings;
   chat: ChatAlerts;
   contact: ContactVerification;
+  semantic: Record<string, SemanticType | "none">;
   enforcement: Record<string, { enforce: boolean; thresholds: ContractThresholds | null }>;
 }
 
@@ -129,6 +134,58 @@ const CONTACT: ContactVerification = {
     },
   ],
 };
+
+// Synthetic profile of an uploaded file on the newest run: column names and shares only, as the backend keeps them.
+const SEM_TYPES: SemanticType[] = ["iban", "eu_vat", "email", "url", "date", "phone", "postcode", "country", "currency_amount", "person_name"];
+const SEM_COLUMNS: { column: string; type: SemanticType | null; confidence: number; filled: number; shares: Partial<Record<SemanticType, number>> }[] = [
+  { column: "contact_email", type: "email", confidence: 0.97, filled: 0.94, shares: { email: 0.982 } },
+  { column: "phone", type: "phone", confidence: 0.91, filled: 0.88, shares: { phone: 0.936 } },
+  { column: "country", type: "country", confidence: 0.99, filled: 1, shares: { country: 0.998 } },
+  { column: "postal_code", type: "postcode", confidence: 0.84, filled: 0.97, shares: { postcode: 0.951 } },
+  { column: "bank_iban", type: "iban", confidence: 0.95, filled: 0.71, shares: { iban: 0.973 } },
+  { column: "vat_number", type: "eu_vat", confidence: 0.62, filled: 0.55, shares: { eu_vat: 0.884 } },
+  { column: "last_order", type: "date", confidence: 0.99, filled: 0.9, shares: { date: 1 } },
+  { column: "row_ref", type: null, confidence: 0, filled: 1, shares: {} },
+];
+const SEM_RULES: Record<SemanticType, [string, string][]> = {
+  email: [["contact_check", "Email address follows RFC 5321 and 5322"], ["contact_check", "Email domain is not a disposable mailbox service"]],
+  phone: [["contact_check", "Phone number is plausible for E.164"]],
+  iban: [["format_check", "IBAN passes the ISO 13616 mod-97 check"]],
+  eu_vat: [["regex_check", "VAT number follows its EU member state's layout"]],
+  postcode: [["contact_check", "Postal code matches its country's format"]],
+  date: [["domain_value_check", "Date is a real calendar date"]],
+  currency_amount: [["regex_check", "Amount is a plain number with at most four decimals"]],
+  country: [["domain_value_check", "Country is an ISO 3166 code"]],
+  url: [["regex_check", "Web address starts with http or https"]],
+  person_name: [["regex_check", "Name has no digits or @"]],
+};
+const SEM_WEIGHTS = { dqs: 0.4, conformance: 0.25, freshness: 0.15, completeness: 0.2 };
+
+/** The fixture's stand-in for api/services/semantic_types.py resolve, conformance_of, trust_score and suggested_rules. */
+function semanticFixture(versionId: string): SemanticTypes {
+  if (versionId !== runs[0].id) return { profiled: false, source: null, origin: "file", rows_sampled: null, columns: [], types: SEM_TYPES, trust: { score: null, parts: { dqs: null, conformance: null, freshness: null, completeness: null }, weights: SEM_WEIGHTS }, suggested_rules: [] };
+  const over = st().semantic;
+  const columns: SemanticColumn[] = SEM_COLUMNS.map((c) => {
+    const o = over[c.column];
+    const type = o ? (o === "none" ? null : o) : c.type;
+    return { column: c.column, detected: c.type, confidence: c.confidence, type, confirmed: o !== undefined, filled: c.filled, conformance: type ? (c.shares[type] ?? 0) : null };
+  });
+  const typed = columns.filter((c) => c.type && c.conformance !== null);
+  const parts = {
+    dqs: 82.4,
+    conformance: typed.length ? Math.round((1000 * typed.reduce((n, c) => n + (c.conformance ?? 0), 0)) / typed.length) / 10 : null,
+    freshness: 96.6,
+    completeness: Math.round((1000 * SEM_COLUMNS.reduce((n, c) => n + c.filled, 0)) / SEM_COLUMNS.length) / 10,
+  };
+  const have = (Object.keys(SEM_WEIGHTS) as (keyof typeof SEM_WEIGHTS)[]).filter((k) => parts[k] !== null);
+  const total = have.reduce((n, k) => n + SEM_WEIGHTS[k], 0);
+  const score = total ? Math.round((10 * have.reduce((n, k) => n + SEM_WEIGHTS[k] * (parts[k] ?? 0), 0)) / total) / 10 : null;
+  const country = columns.find((c) => c.confirmed && c.type === "country")?.column ?? null;
+  const suggested_rules: SuggestedRule[] = columns
+    .filter((c): c is SemanticColumn & { type: SemanticType } => c.confirmed && c.type !== null && !(c.type === "postcode" && !country))
+    .flatMap((c) => SEM_RULES[c.type].map(([check_class, message]) => ({ column: c.column, type: c.type, check_class, params: country && (c.type === "postcode" || c.type === "phone") ? { country_field: country } : {}, message })));
+  return { profiled: true, source: "upload", origin: "file", rows_sampled: 4812, columns, types: SEM_TYPES, trust: { score, parts, weights: SEM_WEIGHTS }, suggested_rules };
+}
 
 function build(): State {
   return {
@@ -166,7 +223,8 @@ function build(): State {
       "wh-2": [],
     },
     automation: { drift_alerts: { enabled: true }, rule_mining: { min_records: 25 }, score_drop: { below: null, points: 5 } },
-    contact: CONTACT,
+    contact: clone(CONTACT),
+    semantic: { contact_email: "email" },
     chat: { channels: { slack: true, teams: false }, events: ["dqs_drop", "threshold_breach", "run_failed", "sla_breach"], available: ["dqs_drop", "threshold_breach", "run_failed", "sla_breach", "firewall_rejections"] },
     // `?contracts=enforced` starts the fixture with the contract enforced, so a page load can show the baseline gate.
     enforcement: { "ct-1": { enforce: fixtureParam("contracts") === "enforced", thresholds: { min_score: 85, max_critical_breaches: 0, dimensions: { completeness: 80 } } } },
@@ -696,6 +754,8 @@ export function step9Read(path: string, params: Params): unknown {
   }
   const ch = /^\/versions\/([^/]+)\/changes$/.exec(path);
   if (ch) return changesFixture(decodeURIComponent(ch[1]));
+  const sem = /^\/versions\/([^/]+)\/semantic-types$/.exec(path);
+  if (sem) return semanticFixture(decodeURIComponent(sem[1]));
   return NONE_STEP9;
 }
 
@@ -719,6 +779,15 @@ export function step9Write(method: string, path: string, body: unknown): unknown
   }
   const test = /^\/webhooks\/([^/]+)\/test$/.exec(path);
   if (method === "POST" && test) return testWebhookFixture(decodeURIComponent(test[1]));
+  const semPut = /^\/versions\/([^/]+)\/semantic-types\/([^/]+)$/.exec(path);
+  if (method === "PUT" && semPut) {
+    const type = String(b.type) as SemanticType | "none";
+    if (type !== "none" && !SEM_TYPES.includes(type)) throw new Refused(422, "Unknown semantic type.");
+    const column = decodeURIComponent(semPut[2]);
+    if (decodeURIComponent(semPut[1]) !== runs[0].id || !SEM_COLUMNS.some((c) => c.column === column)) throw new Refused(404, "No such column in this run.");
+    st().semantic[column] = type;
+    return { column, type };
+  }
   if (method === "PUT" && path === "/contact-verification/settings") {
     st().contact.settings.mx = Boolean(b.mx);
     return clone(st().contact.settings);

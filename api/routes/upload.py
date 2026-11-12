@@ -279,6 +279,8 @@ async def upload_file(
     # -> "business-partner-clean") so the Reports / Versions pages don't show
     # "Unlabelled run" for every upload. Capped at 120 chars for safety.
     label = (filename.rsplit(".", 1)[0] if "." in filename else filename).strip()[:120] or None
+    from api.services.semantic_types import safe_profile
+    metadata["semantic_profile"] = safe_profile(df)  # shares per column only, no values
     version = await create_version(db, tenant.id, metadata, label=label)
     logger.info(f"Created version: {version.id}")
 
