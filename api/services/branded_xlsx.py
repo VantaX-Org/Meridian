@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 from fastapi import Response
 from openpyxl import Workbook
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+from openpyxl.comments import Comment
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.formatting.rule import CellIsRule, ColorScaleRule, DataBarRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -47,6 +48,7 @@ _INK = _hex("ink")
 _INK3 = _hex("ink_3")
 _NAVY = _hex("navy")
 _WHITE = "FFFFFF"
+_EDIT_HEADER = _hex("ok")  # header of a column the reader fills in
 BODY_FONT, BODY_SIZE = "Calibri", 11  # Manrope is not available in Excel
 MONO_FONT, MONO_SIZE = "Consolas", 10
 
@@ -154,6 +156,8 @@ class ColumnSpec:
     width: Optional[int] = None
     choices: Optional[tuple[str, ...]] = None  # a drop-down of these values on every data cell
     muted: bool = False  # bookkeeping columns (ids for re-import): grey header and text
+    editable: bool = False  # a column the reader fills in: green header and tinted cells
+    help: str = ""  # a note shown on the header cell
 
 
 @dataclass(frozen=True)
@@ -323,9 +327,15 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
             cell.font = Font(color=_WHITE, bold=True, size=BODY_SIZE, name=MONO_FONT)
         if col.muted:
             cell.fill = PatternFill(fill_type="solid", fgColor=_INK3)
+        if col.editable:
+            cell.fill = PatternFill(fill_type="solid", fgColor=_EDIT_HEADER)
+        if col.help:
+            cell.comment = Comment(("You fill this in. " if col.editable else "Read only. ") + col.help, "Meridian",
+                                   width=320, height=110)
     ws.row_dimensions[1].height = 20
     ws.sheet_properties.tabColor = _ACCENT
     wash = PatternFill(fill_type="solid", fgColor=_WASH)
+    _EDIT_FILL = PatternFill(fill_type="solid", fgColor=STATUS_TINTS["ok"][0])
 
     sample_values: dict[int, list[str]] = {i: [] for i in range(1, len(spec.columns) + 1)}
     row_count = 0
@@ -349,6 +359,8 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
                 cell.font = Font(name=BODY_FONT, size=BODY_SIZE, color=_INK3)
             if row_idx % 2 == 1:  # alternate rows (3, 5, ...) take the wash
                 cell.fill = wash
+            if col.editable:
+                cell.fill = _EDIT_FILL
             if col.fill_by_value and raw in col.fill_by_value:
                 tint = col.fill_by_value[raw]
                 cell.fill = PatternFill(fill_type="solid", fgColor=tint)
