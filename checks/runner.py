@@ -232,6 +232,33 @@ def module_rules(module_name: str) -> list[dict]:
     return rules
 
 
+def waiting_for_data(modules: list[str], coverage: list[dict]) -> dict[str, int]:
+    """Per module, the enabled rules that cannot run until their data arrives: a rule reading a table the
+    extraction reported ``upload_required`` (or, in a module with an unverified ``preview`` source, any
+    table it did not read live). Such a rule is skipped by run_checks, so it is outside the score."""
+    from checks.overrides import apply
+    live = {c.get("table") for c in coverage if c.get("status") == "live"}
+    upload = {c.get("table") for c in coverage if c.get("status") == "upload_required"} - live
+    preview = {c.get("module") for c in coverage if c.get("status") == "preview"}
+    out: dict[str, int] = {}
+    for m in modules:
+        try:
+            rules = apply(module_rules(m), None)
+        except FileNotFoundError:
+            continue
+        n = 0
+        for r in rules:
+            try:
+                tables = set(tables_of(rule_columns(r)))
+            except Exception as e:
+                reraise_soft_limit(e)
+                continue
+            if tables & upload or (m in preview and tables - live):
+                n += 1
+        out[m] = n
+    return out
+
+
 @lru_cache(maxsize=None)
 def is_overlay(module_name: str) -> bool:
     """An overlay module (``overlay: true``) re-judges tables other modules extract,
@@ -309,7 +336,8 @@ def target_columns(rule: dict) -> list[str]:
         return []
     t = rule["target_table"]
     own = [f for f in rule["target_fields"] if "." not in f]
-    cols = [f"{t}.{f}" for f in own + list(_when_fields(rule.get("target_when")))]
+    cols = [f"{t}.{f}" for f in own + list(_when_fields(rule.get("target_when")))
+            + ([rule["target_since"]] if rule.get("target_since") else [])]
     if j := rule.get("target_join"):
         # target_join adds a second table keyed on `keys`; target_fields written TABLE.FIELD come from it
         cols += [f"{t}.{f}" for f in j["keys"]] + [f"{j['table']}.{f}" for f in j["keys"]]
@@ -347,9 +375,16 @@ def _with_targets(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | 
     if j and j["table"] in getattr(frames, "incomplete", set()) | getattr(frames, "partial", set()):
         return f"not evaluated: {j['table']} was not read in full (incomplete, windowed or scoped download)"
     target = frames.frames.get(t)
-    own = [c for c in target_columns(rule) if c.startswith(f"{t}.")]
+    since = f"{t}.{rule['target_since']}" if rule.get("target_since") and not j else None
+    own = [c for c in target_columns(rule) if c.startswith(f"{t}.") and c != since]
     if target is None or any(c not in target.columns for c in own):
         return None
+    keys = [f if "." in f else f"{t}.{f}" for f in rule["target_fields"]]
+    starts = None
+    if since and since in target.columns:  # optional: a tenant without the date judges every record as before
+        held = target[list(dict.fromkeys(keys + [since]))]
+        starts = (pd.Series(pd.to_datetime(held[since], errors="coerce", utc=True).to_numpy(), index=key_of(held, keys))
+                  .groupby(level=0).min())
     target = _target_context(target[own], t, rule.get("target_when"), as_of)
     if j:
         other = frames.frames.get(j["table"])
@@ -358,8 +393,8 @@ def _with_targets(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | 
             return None
         target = target.merge(other[theirs].drop_duplicates(), how="inner",
                               left_on=[f"{t}.{f}" for f in j["keys"]], right_on=[f"{j['table']}.{f}" for f in j["keys"]])
-    keys = [f if "." in f else f"{t}.{f}" for f in rule["target_fields"]]
-    return {**rule, "_target_values": target_keys(target, keys)}
+    return {**rule, "_target_values": target_keys(target, keys),
+            **({"_target_since": starts} if starts is not None else {})}
 
 
 def _with_target_sums(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | str | None:

@@ -6,7 +6,16 @@ import { resetTriageFixture } from "@/lib/api/v2/fixtures/triage";
 import { setUrl } from "./nav-store";
 import { stubLayout } from "./layout-stub";
 
-const h = vi.hoisted(() => ({ allowed: "all" as "all" | string[] }));
+const h = vi.hoisted(() => ({ allowed: "all" as "all" | string[], overdueTotal: 0 }));
+
+vi.mock("@/lib/api/v2/triage", async (orig) => {
+  const m = await orig<typeof import("@/lib/api/v2/triage")>();
+  // overdueTotal > 0 plays a server that holds more overdue items than the 200 it returned
+  return { ...m, getTriageQueue: async (a: string, s: boolean) => {
+    const q = await m.getTriageQueue(a, s);
+    return h.overdueTotal ? { ...q, overdue: { ...q.overdue, count: h.overdueTotal } } : q;
+  } };
+});
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
@@ -20,6 +29,7 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   undo = stubLayout();
   h.allowed = "all";
+  h.overdueTotal = 0;
   resetTriageFixture();
   setUrl("/work/triage?fixture=1");
 });
@@ -36,6 +46,17 @@ describe("Triage", () => {
     const overdue = await screen.findByTestId("triage-overdue");
     expect(within(overdue).getAllByTestId("triage-row")).toHaveLength(2);
     expect(overdue.textContent).toContain("MM142");
+  });
+
+  it("offers every overdue item when all of them are loaded", async () => {
+    renderWithQuery(<Triage />);
+    expect((await screen.findByTestId("triage-primary")).textContent).toBe("Pick the 2 past their SLA");
+  });
+
+  it("names the full overdue count beside the loaded pick", async () => {
+    h.overdueTotal = 340;
+    renderWithQuery(<Triage />);
+    expect((await screen.findByTestId("triage-primary")).textContent).toBe("Pick the first 2 of 340 past their SLA");
   });
 
   it("sets the priority of the selected items in one bulk action", async () => {

@@ -18,6 +18,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Any, Optional
 
 import pandas as pd
@@ -109,6 +110,10 @@ SHEET_ENTITIES = {
     "basicuserinfo": {"User"},
     # contingent workers are loaded as a person, an email and an employment with job data
     "contingentworker": {"PerPerson", "PerPersonal", "PerEmail", "EmpEmployment", "EmpJob"},
+    "globalassignment": {"EmpGlobalAssignment"},
+    "globalassignmentinfo": {"EmpGlobalAssignment"},
+    # the dictionary holds termination dates on the employment (no EmpEmploymentTermination entity)
+    "terminationinfo": {"EmpEmployment"},
 }
 
 
@@ -724,16 +729,67 @@ def _pick(options: dict, sheet, dictionary) -> Optional[str]:
     return max(options, key=lambda t: (t == _named_table(sheet), dated(t), len(options[t])), default=None)
 
 
+LOAD_MODES = {"full": "Full Purge", "incremental": "Incremental Load"}  # SuccessFactors Import Employee Data purge types
+_DATED_KEYS = ("START_DATE", "EFFECTIVE_DATE")
+_CHANGED = re.compile(r"\.lastModified(DateTime)?$")
+
+
+def _when(values: pd.Series) -> pd.Series:
+    return pd.to_datetime(values.astype("string"), errors="coerce", utc=True)
+
+
+def _history_order(df: pd.DataFrame, table: str, dictionary: Dictionary) -> pd.DataFrame:
+    """An effective-dated table in load order: by person, then start date, then sequence number. Every row stays."""
+    keys = dictionary.keys(table)
+    if not set(keys) & set(_DATED_KEYS):
+        return df
+    order = [k for k in keys if k not in (*_DATED_KEYS, "SEQ_NUMBER")][:1] + [k for k in keys if k in _DATED_KEYS]
+    order += [k for k in keys if k == "SEQ_NUMBER"]
+    cols = [c for c in (f"{table}.{k}" for k in order) if c in df.columns]
+
+    def sort_key(s: pd.Series) -> pd.Series:
+        name = str(s.name).split(".", 1)[1]
+        if name in _DATED_KEYS:
+            return _when(s)
+        return pd.to_numeric(s, errors="coerce") if name == "SEQ_NUMBER" else s.astype("string")
+    return df.sort_values(cols, key=sort_key, kind="stable", na_position="last") if cols else df
+
+
+def _changed_field(dictionary: Dictionary, table: str, held: Any) -> Optional[Field]:
+    """The held field an incremental load filters on: the record's last-modified time, else its start date."""
+    t = dictionary.tables[table]
+    stamp = next((f for f in t.fields.values() if (f.type or "").upper() in {"DATE", "DATETIME"}
+                  and _CHANGED.search(f.source or "") and f.qualified in held), None)
+    return stamp or next((t.fields[k] for k in t.keys if k in _DATED_KEYS and k in t.fields
+                          and t.fields[k].qualified in held), None)
+
+
+def _date_col(frames: TableFrames, table: str) -> Optional[str]:
+    """The held column of a table keyed or dated on a start or effective date, used to line up history rows."""
+    return next((f"{table}.{k}" for k in ("START_DATE", "EFFECTIVE_DATE")
+                 if f"{table}.{k}" in frames.frames[table].columns), None)
+
+
 def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str, dict[str, str]]] = None,
-         strict: frozenset[str] | set[str] = frozenset()) -> tuple[dict[str, pd.DataFrame], dict]:
+         strict: frozenset[str] | set[str] = frozenset(), *, load_mode: str = "full",
+         since: Optional[date] = None) -> tuple[dict[str, pd.DataFrame], dict]:
     """The output tabs, and the report of what could and could not be filled.
 
     A column with no source is left empty and reported; it holds no row back, or a single unmapped field would
     empty the whole tab. A row is held back only when a value it does carry breaks the workbook's rules.
 
     `value_maps` are the confirmed source to target values, by target field. Under a `strict` target a value with no
-    mapping holds its row back; other targets, such as configuration maps, keep the value as it is."""
+    mapping holds its row back; other targets, such as configuration maps, keep the value as it is.
+
+    A `full` load (the default) writes every history row of an effective-dated table, in person, start date and
+    sequence order, and never filters on status, so inactive and terminated people stay. An `incremental` load
+    keeps only rows changed on or after `since`, by the table's last-modified field or else its start date."""
+    if load_mode not in LOAD_MODES:
+        raise ValueError(f"load_mode must be one of {sorted(LOAD_MODES)}")
+    if load_mode == "incremental" and since is None:
+        raise ValueError("an incremental load needs a since date")
     maps = value_maps or {}
+    unfiltered: list[str] = []
     mapped = 0
     same = True
     unchecked: list[dict] = []
@@ -754,10 +810,11 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         hits = dict(present[table]) if table else {}
         # A sheet that spans several entities (a contingent worker's name, email and assignment) takes the columns
         # its main table lacks from another table, joined on that table's key. Only when the main table holds one
-        # row per person, so a dependant's sheet never takes the employee's own name.
+        # row per person, so a dependant's sheet never takes the employee's own name. A history table keyed on the
+        # person and a date (EmpJob history, EmpCompensation) also joins, each row taking the record in force on its date.
         joins: dict[str, list[tuple[str, Any]]] = {}
         on: set[str] = set()
-        if table and len(frames.dictionary.keys(table)) == 1:
+        if table and len(set(frames.dictionary.keys(table)) - {"START_DATE", "EFFECTIVE_DATE", "SEQ_NUMBER"}) == 1:
             for other in sorted(present, key=lambda t: -len(present[t])):
                 other_keys = frames.dictionary.keys(other)
                 if other == table or not other_keys:
@@ -804,18 +861,43 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         key_cols = [c for c in (f"{table}.{k}" for k in frames.dictionary.keys(table)) if c in stored.columns]
         country = _country_field(frames.dictionary, table, stored.columns)
         joined = {f.qualified for fs in joins.values() for _, f in fs}
+        changed = _changed_field(frames.dictionary, table, stored.columns) if load_mode == "incremental" else None
+        my_date = _date_col(frames, table)
         reads = {*key_cols, *on, *(f.qualified for f in hits.values() if f.qualified not in joined),
-                 *([country.qualified] if country else [])}
+                 *([country.qualified] if country else []), *([changed.qualified] if changed else []),
+                 *([my_date] if my_date else [])}
         df = stored[list(reads)].copy()
+        if load_mode == "incremental":
+            row["since_field"] = changed.qualified if changed else None
+            if changed:
+                df = df[(_when(df[changed.qualified]) >= pd.Timestamp(since, tz="UTC")).fillna(False)]
+            else:
+                unfiltered.append(sheet.name)
+        from api.services.connectivity_manager import _asof_join, _primary_first  # lazy: avoids an import cycle
         for other, fs in joins.items():
             key = fs[0][0]
-            # ponytail: first row per key wins (a person's first email); prefer isPrimary if several get loaded
-            side = frames.frames[other][[f"{other}.{key}", *(f.qualified for _, f in fs)]].drop_duplicates(f"{other}.{key}")
-            side = side.set_index(f"{other}.{key}")
             mine = frames.dictionary.field(table, key)
             assert mine is not None  # checked when the join was planned
-            for _, f in fs:
-                df[f.qualified] = df[mine.qualified].map(side[f.qualified])
+            cols = [f.qualified for _, f in fs]
+            their_date = _date_col(frames, other)
+            flag = f"{other}.IS_PRIMARY"
+            held_other = frames.frames[other][[f"{other}.{key}", *cols, *(c for c in (their_date, flag)
+                                                                        if c and c in frames.frames[other].columns)]]
+            if my_date and their_date:
+                left = pd.DataFrame({"__k": df[mine.qualified].to_numpy(),
+                                     "__asof": pd.to_datetime(df[my_date], errors="coerce").to_numpy()})
+                right = pd.DataFrame({"__k": held_other[f"{other}.{key}"].to_numpy(),
+                                      "__asof": pd.to_datetime(held_other[their_date], errors="coerce").to_numpy(),
+                                      **{c: held_other[c].to_numpy() for c in cols}})
+                got = _asof_join(left, right, ["__k"])
+                for c in cols:
+                    df[c] = got[c].to_numpy()
+                continue
+            # First row per key wins (a person's first email), the primary record first where the table maps isPrimary.
+            side = _primary_first(held_other, flag).drop_duplicates(f"{other}.{key}").set_index(f"{other}.{key}")
+            for c in cols:
+                df[c] = df[mine.qualified].map(side[c])
+        df = _history_order(df, table, frames.dictionary)
         keys = record_keys(df, key_cols)
         bad = pd.Series(False, index=df.index)
         countries = _row_countries(df[country.qualified]) if country else None
@@ -866,7 +948,11 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
             out = pd.concat([pd.DataFrame([label]), out], ignore_index=True)
         tabs[sheet.name] = out
         same = same and sheet.kind == "grid" and all(c.pos >= 0 for c in columns if c.header in hits)
-        row.update(rows=len(df), ready=int((~bad).sum()), held=int(bad.sum()))
+        missing = {c.id: int((values[c.header].astype("string").fillna("").str.strip() == "").sum())
+                   if c.header in values else len(df) for c in columns if c.mandatory and not c.country}
+        row.update(rows=len(df), ready=int((~bad).sum()), held=int(bad.sum()),
+                   mandatory_missing={k: v for k, v in missing.items() if v},
+                   people=int(df[key_cols[0]].nunique()) if key_cols else len(df))
 
     known = [r for r in report if r["table"]]
     source = workbook.source
@@ -880,7 +966,12 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
             "held": sum(r["held"] for r in report),
             "mandatory_sheets_empty": sum(r["required"] and not r["ready"] for r in report),
             "mapped_values": mapped,
+            "load_mode": load_mode, "since": since.isoformat() if since else None,
+            "mandatory_missing": sum(sum(r.get("mandatory_missing", {}).values()) for r in report),
+            "incremental_unfiltered": unfiltered,
         },
+        "purge_type": LOAD_MODES[load_mode] if any(
+            frames.dictionary.tables[r["table"]].provenance == "canonical:successfactors" for r in known) else None,
         "format": {
             "id": source.format if source else "xlsx", "same": bool(source and tabs and same),
             "written_as": written_as(source, files, bool(held)) if source else "xlsx",
@@ -1031,3 +1122,54 @@ def _sf_template(dictionary: Dictionary, tables: dict[str, list[Field]], require
            for sheet, rows in definitions.items()}
     return out | {grid: pd.DataFrame([[f.description for f in columns.values()]], columns=list(columns))
                   for grid, columns in grids.items()}
+
+
+INSTRUCTIONS_TAB = "Load instructions"
+GENERATED_NOTE = "generated from metadata; replace with the tenant's downloaded template if its headers differ"
+
+
+def instructions(load_mode: str = "full", since: Optional[date] = None, sheets: Optional[list[dict]] = None,
+                 generated: list[str] | tuple[str, ...] = ()) -> pd.DataFrame:
+    """The cover sheet of a SuccessFactors load: the load mode, the purge type to pick on import, and per sheet the
+    rows written and the mandatory values still missing."""
+    if load_mode == "incremental":
+        rows = [("Load mode", f"Incremental: only records changed on or after {since.isoformat() if since else '(no date)'}."),
+                ("Purge type", "Choose Incremental Load in Import Employee Data. Records not in the file stay as "
+                               "they are in the tenant.")]
+    else:
+        rows = [("Load mode", "Full: every effective-dated record of each person, in start date and sequence order. "
+                              "Inactive and terminated people are included where the extract holds them."),
+                ("Purge type", "Choose Full Purge in Import Employee Data. Each person's history in the tenant is "
+                               "replaced by the rows in this file, so load every sheet complete.")]
+    for r in sheets or []:
+        if not r.get("table"):
+            continue
+        missing = ", ".join(f"{k} ({v})" for k, v in (r.get("mandatory_missing") or {}).items()) or "none"
+        rows.append((f"Sheet {r['name']}", f"{r['rows']} rows for {r.get('people', 0)} records; {r['ready']} ready, "
+                                           f"{r['held']} held back; mandatory values missing: {missing}."))
+    rows += [(f"Sheet {name}", GENERATED_NOTE.capitalize() + ".") for name in generated]
+    return pd.DataFrame(rows, columns=["Topic", "Detail"])
+
+
+def sf_load_templates(dictionary: Dictionary, target_values: dict[str, set[str]]) -> dict[str, pd.DataFrame]:
+    """A load template for every SuccessFactors entity the dictionary describes, in the import layout of _sf_template.
+
+    Headers are the dictionary's own property names, never guessed. A table whose fields carry no SuccessFactors
+    entity (a payroll export) is left out. Every sheet is marked as generated, since a tenant's downloaded template
+    is the authority on its headers."""
+    tables: dict[str, list[Field]] = {}
+    for name, t in sorted(dictionary.tables.items()):
+        if t.provenance != "canonical:successfactors":
+            continue
+        own = [f for f in t.fields.values()
+               if re.fullmatch(r"[A-Z][A-Za-z0-9_]*\.[A-Za-z][\w.]*", (f.source or "").split(" ")[0])]
+        if own:
+            keys = [t.fields[k] for k in t.keys if k in t.fields]
+            tables[name] = keys + [f for f in own if f not in keys]
+
+    def values_of(f: Field) -> str:
+        values = sorted(f.allowed_values() or target_values.get(f.check_ref or "", set()))
+        return ", ".join(values) if 0 < len(values) <= VALUES_SHOWN else ""
+
+    tabs = _sf_template(dictionary, tables, set(), values_of)
+    return {INSTRUCTIONS_TAB: instructions(generated=sorted(tabs))} | tabs

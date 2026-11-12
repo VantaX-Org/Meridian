@@ -64,6 +64,12 @@ async def test_timeline_order_baseline_and_shape(owner, monkeypatch):
         assert [x["id"] for x in every["runs"]] == [s["run0"], s["run_mid"], s["run_spare"], s["run"]]
         spare = (await client.get("/api/v1/runs/timeline", params={"system_id": s["spare"]}, headers=headers())).json()
         assert [x["id"] for x in spare["runs"]] == [s["run_spare"]]
+        # each run carries its true previous run of the system; version_id returns that run alone, whatever the window
+        assert [x["prev_id"] for x in runs] == [None, s["run0"], s["run_mid"]]
+        one = (await client.get("/api/v1/runs/timeline", params={"version_id": s["run"], "limit": 1}, headers=headers())).json()["runs"]
+        assert [(x["id"], x["prev_id"], x["prev_run_number"]) for x in one] == [(s["run"], s["run_mid"], 2)]
+        first = (await client.get("/api/v1/runs/timeline", params={"version_id": s["run0"], "limit": 1}, headers=headers())).json()["runs"]
+        assert [(x["id"], x["prev_id"]) for x in first] == [(s["run0"], None)]
         assert (await client.get("/api/v1/runs/timeline", params={"limit": 0}, headers=headers())).status_code == 422
         assert (await client.get("/api/v1/runs/timeline", params={"system_id": "x"}, headers=headers())).status_code == 422
 

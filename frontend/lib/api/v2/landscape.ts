@@ -40,6 +40,9 @@ export async function getCounts(): Promise<ShellCounts> {
   return getShellCounts();
 }
 
+const RULES_PAGE = 200;
+const RULES_MAX_PAGES = 50;
+
 /**
  * The rules of one object. Live, this is the existing GET /findings for the object's run; fixture mode answers from
  * lib/api/v2/fixtures, and `rows` scales the list (the 100k-row grid check).
@@ -49,9 +52,16 @@ export async function getObjectRules(module: string, run: string | null | undefi
     const res = await v2Get<{ rules: RuleRow[] }>("/findings", { module, version_id: run ?? undefined, rows });
     return res.rules;
   }
-  // /findings pages at 200 at most; the failing rules come first by impact, the order the Rules tab ranks them in.
-  const list = await getFindings({ module, version_id: run ?? undefined, type: "rule", failing: true, sort: "impact", limit: 200 });
-  return list.findings.map((f) => ({
+  // /findings pages at 200 at most, so read every page: the Rules tab, the rule inspector, Simulation, Lineage,
+  // Glossary, Readiness and the cleaned upload all need the whole failing set, not the top 200 by impact.
+  // ponytail: sequential pages up to RULES_MAX_PAGES (10,000 failing rules); a server-side "all" read if one object ever fails more.
+  const findings: Awaited<ReturnType<typeof getFindings>>["findings"] = [];
+  for (let page = 0; page < RULES_MAX_PAGES; page++) {
+    const list = await getFindings({ module, version_id: run ?? undefined, type: "rule", failing: true, sort: "impact", limit: RULES_PAGE, offset: page * RULES_PAGE });
+    findings.push(...list.findings);
+    if (list.findings.length < RULES_PAGE || findings.length >= list.total) break;
+  }
+  return findings.map((f) => ({
     check_id: f.check_id,
     name: f.details.message ?? f.check_id,
     field: typeof f.details.field_checked === "string" ? f.details.field_checked : null,

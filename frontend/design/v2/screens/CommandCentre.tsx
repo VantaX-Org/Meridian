@@ -15,7 +15,7 @@ import { f1, int, VERDICT_LABEL } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { ChartFrame, ChartTable, TrendChart, niceTicks } from "../charts";
 import { VerdictMark } from "../marks";
-import { V2Link } from "../parts";
+import { ErrorFrame, V2Link } from "../parts";
 import { AskBody } from "../inspector/ask";
 
 const worst = (vs: readonly Verdict[]): Verdict => (vs.includes("no-go") ? "no-go" : vs.includes("at-risk") ? "at-risk" : "go");
@@ -29,8 +29,10 @@ export function GoLiveBanner({ landscape, waves }: { landscape: Landscape; waves
   const verdict = worst(scope.map((c) => c.verdict));
   const blockers = scope.filter((c) => c.verdict === "no-go");
   const ready = scope.filter((c) => c.verdict === "go").length;
-  const money = useMoney("landscape", null).data;
-  const critical = useWorkSummary().data?.totals.critical ?? 0;
+  const moneyQ = useMoney("landscape", null);
+  const workQ = useWorkSummary();
+  const money = moneyQ.data;
+  const critical = workQ.data?.totals.critical ?? 0;
   const cost = money?.totals.opportunity_cost_per_month;
   return (
     <section className="m2-cc-banner" data-verdict={verdict} aria-label={t("Go-live")} data-testid="golive-banner">
@@ -73,6 +75,11 @@ export function GoLiveBanner({ landscape, waves }: { landscape: Landscape; waves
           <dd className="m2-cc-note">{t("{n} critical issues open", { n: int(critical) })}</dd>
         </div>
       </dl>
+      {moneyQ.isError || workQ.isError ? (
+        <ErrorFrame onRetry={() => { if (moneyQ.isError) void moneyQ.refetch(); if (workQ.isError) void workQ.refetch(); }}>
+          {t("The cost of waiting or the count of open critical issues could not be loaded, so the figures above may be missing.")}
+        </ErrorFrame>
+      ) : null}
       <div className="m2-cc-act">
         {blockers.length ? (
           <V2Link href="/work?verdict=no-go" className="m2-btn m2-next">
@@ -118,7 +125,8 @@ export function AletheiaDock() {
 
 /** The score over the last runs: one object's measured score, or with no object the mean of all of them, per run. */
 export function LandscapeTrend({ systemId, module }: { systemId: string | null; module?: string }) {
-  const runs = useTimeline(systemId, 12).data?.runs ?? [];
+  const timeline = useTimeline(systemId, 12);
+  const runs = timeline.data?.runs ?? [];
   const points = runs.map((r) => {
     const vs = (module ? [r.objects[module]].filter(Boolean) : Object.values(r.objects))
       .map((o) => o.raw_score ?? o.score)
@@ -135,8 +143,10 @@ export function LandscapeTrend({ systemId, module }: { systemId: string | null; 
       sub={module ? t("Measured score, last {n} runs", { n: points.length }) : t("Average object score, last {n} runs", { n: points.length })}
       height={160}
       level={3}
-      state={known.length < 2 ? "empty" : "ready"}
+      state={timeline.isError ? "error" : known.length < 2 ? "empty" : "ready"}
       empty={t("Two runs are needed to draw a trend.")}
+      error={t("The run history could not be loaded.")}
+      onRetry={() => void timeline.refetch()}
       testId="cc-trend"
       table={<ChartTable caption={t("Average score by run")} head={[t("Run"), t("Score")]} rows={points.map((p) => [p.label, f1(p.value)])} />}
     >
@@ -152,6 +162,14 @@ export function AutoCleaned() {
   const last = weeks[weeks.length - 1];
   const fixed = weeks.reduce((a, w) => a + w.fixed, 0);
   const max = Math.max(1, ...weeks.map((w) => Math.max(w.fixed, w.back)));
+  if (q.isError) {
+    return (
+      <section className="m2-cc-card" aria-label={t("Cleaned and watched")} data-testid="cc-cleaned">
+        <h3>{t("Cleaned and watched")}</h3>
+        <ErrorFrame onRetry={() => void q.refetch()}>{t("The record of what was cleaned and what came back could not be loaded.")}</ErrorFrame>
+      </section>
+    );
+  }
   return (
     <section className="m2-cc-card" aria-label={t("Cleaned and watched")} data-testid="cc-cleaned">
       <h3>{t("Cleaned and watched")}</h3>

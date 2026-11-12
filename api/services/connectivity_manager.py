@@ -74,6 +74,14 @@ def _asof_join(left: pd.DataFrame, right: pd.DataFrame, on: list[str]) -> pd.Dat
             .drop(columns=["__row", "__hit"]).reset_index(drop=True))
 
 
+def _primary_first(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    """Rows whose isPrimary flag is true first, so first-row-per-key keeps the primary record."""
+    if col not in df.columns:
+        return df
+    flag = df[col].astype(str).str.strip().str.lower().isin({"true", "1", "y", "yes", "x"})
+    return df.iloc[(~flag).to_numpy().argsort(kind="stable")]
+
+
 def _bad_property(e: Exception, entity: str) -> str | None:
     """The property an SF 400 ('[COE0003]Bad property expression: Ent/prop', '[COE0021]Invalid property
     names: Ent/prop') rejects, as it appears in $select."""
@@ -1129,7 +1137,8 @@ class ConnectivityManager:
                     if on and "__asof" in merged.columns and "__asof" in out.columns:
                         merged = _asof_join(merged, out, on)
                     else:
-                        # ponytail: first row per key wins (PerNationalId, PerEmail); prefer isPrimary if tenants differ
+                        # First row per key wins (PerNationalId, PerEmail), primary record first when the table maps isPrimary.
+                        out = _primary_first(out, f"{table}.IS_PRIMARY")
                         merged = merged.merge(out.drop(columns="__asof", errors="ignore").drop_duplicates(subset=on)
                                               if on else out, how="left", on=on) if on else merged
             if merged is None:

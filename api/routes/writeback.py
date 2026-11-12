@@ -65,20 +65,14 @@ def field_support(module: str, fix: dict) -> dict:
             "bapi": plan.bapi, "reason": plan.reason, "delivery": "bapi" if plan.supported else "export"}
 
 
-class SAPConnection(BaseModel):
-    host: str
-    client: str
-    user: str
-    password: str = Field(..., description="NEVER logged or stored")
-    sysnr: str
-
-
 class WriteBackRequest(BaseModel):
     finding_id: uuid.UUID = Field(..., description="The finding (findings.id) whose record fixes are written back.")
     record_fixes: list[dict] = Field(
         ..., description="Only fixes with sql_statement are applied"
     )
-    sap_connection: SAPConnection
+    # The registered SAP system to write to. Its credentials stay in the credential store; the request never
+    # carries a user or password (as the batch write-back route).
+    system_id: uuid.UUID = Field(..., description="The registered SAP system (sap_systems.id) to write back to.")
     dry_run: bool = Field(
         True, description="ALWAYS defaults to dry-run — explicit false required"
     )
@@ -124,12 +118,6 @@ class ApprovalResponse(BaseModel):
     records: list[RecordResultOut] = []   # per record: simulation, call and commit, with SAP's RETURN messages
 
 
-def _mask_password(msg: str, password: str) -> str:
-    if password:
-        msg = msg.replace(password, "****")
-    return msg
-
-
 def _require_user(request: Request) -> str:
     """Return the authenticated user id, or fail closed.
 
@@ -169,6 +157,11 @@ async def create_writeback(
         raise HTTPException(status_code=404, detail="Finding not found")
 
     module = finding[1]
+
+    system = await _system_params(db, tenant_id, str(body.system_id))
+    if system is None:
+        raise HTTPException(status_code=404, detail="No registered SAP system with stored credentials has this id; "
+                                                    "register and connect the system before write-back")
 
     # Filter: only structured auto_fix proposals (deterministic fixes only)
     valid_fixes = []
@@ -224,7 +217,7 @@ async def create_writeback(
                 "requested_by": requesting_user,
                 "count": len(valid_fixes),
                 "errors": json.dumps({"errors": errors}) if errors else None,
-                "host": body.sap_connection.host,
+                "host": system.host,
             },
         )
         await db.commit()
@@ -255,7 +248,7 @@ async def create_writeback(
             "fid": str(body.finding_id),
             "requested_by": requesting_user,
             "count": len(valid_fixes),
-            "host": body.sap_connection.host,
+            "host": system.host,
         },
     )
     await db.commit()

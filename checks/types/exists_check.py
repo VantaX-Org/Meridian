@@ -8,7 +8,13 @@ full; a partial read is never judged) and passes it as ``_target_values``.
 Blank references are out of scope — null_check owns required fields.
 
 With ``negate: true`` the check is inverted: the key must *not* exist in the
-target (a secondary cost element whose number is already a G/L account)."""
+target (a secondary cost element whose number is already a G/L account).
+
+With ``target_since`` (a date field of the target) and ``as_of_field`` (the
+record's own date), a history record dated before the start of the target's
+current record is out of scope: the target was read as it stands today, so its
+state on that earlier date is unknown (EmpJob history against Foundation
+Objects read current only)."""
 
 import pandas as pd
 import pyarrow as pa
@@ -43,6 +49,9 @@ class ExistsCheck(BaseCheck):
     def columns(self) -> list[str]:
         return list(self.rule.get("fields") or [self.rule["field"]])
 
+    def optional_columns(self) -> list[str]:
+        return super().optional_columns() + ([self.rule["as_of_field"]] if self.rule.get("as_of_field") else [])
+
     def evaluate(self, df: pd.DataFrame) -> Evaluation:
         cols = self.columns()
         populated = pd.Series(True, index=df.index)
@@ -51,6 +60,9 @@ class ExistsCheck(BaseCheck):
         target = self.rule.get("_target_values")
         if target is None:
             target = pa.array([], pa.large_string())
+        since, as_of = self.rule.get("_target_since"), self.rule.get("as_of_field")
+        if since is not None and len(since) and as_of in df.columns:
+            populated &= ~(pd.to_datetime(df[as_of], errors="coerce", utc=True) < key_of(df, cols).map(since))
         found = pc.is_in(_arrow_keys(df, cols), value_set=target).to_numpy(zero_copy_only=False)
         missing = pd.Series(~found, index=df.index)
         if self.rule.get("require_key_overlap") and len(target) and not (populated & ~missing).any():

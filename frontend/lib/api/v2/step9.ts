@@ -279,7 +279,8 @@ export const updateWebhook = (id: string, body: Partial<{ url: string; events: W
   v2Send("PATCH", `/webhooks/${encodeURIComponent(id)}`, body);
 export const deleteWebhook = (id: string): Promise<void> => v2Send("DELETE", `/webhooks/${encodeURIComponent(id)}`);
 export const testWebhook = (id: string): Promise<WebhookTest> => v2Send("POST", `/webhooks/${encodeURIComponent(id)}/test`);
-export const listDeliveries = (id: string, status?: WebhookDelivery["status"]): Promise<{ deliveries: WebhookDelivery[] }> =>
+/** The newest 100 deliveries; `total` counts every delivery the log holds for this filter. */
+export const listDeliveries = (id: string, status?: WebhookDelivery["status"]): Promise<{ deliveries: WebhookDelivery[]; total: number }> =>
   v2Get(`/webhooks/${encodeURIComponent(id)}/deliveries`, { status, limit: 100 });
 export const getAutomation = (): Promise<AutomationSettings> => v2Get("/settings/automation");
 export const putAutomation = (body: Partial<AutomationSettings>): Promise<AutomationSettings> => v2Send("PUT", "/settings/automation", body);

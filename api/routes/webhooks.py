@@ -218,7 +218,10 @@ async def list_deliveries(webhook_id: uuid.UUID, status: Literal["pending", "ret
                next_attempt_at, delivered_at
           FROM webhook_deliveries WHERE tenant_id = :t AND webhook_id = :w AND (CAST(:s AS text) IS NULL OR status = :s)
          ORDER BY created_at DESC LIMIT :n"""), {"t": str(tenant.id), "w": str(webhook_id), "s": status, "n": limit})).mappings().all()
-    return {"deliveries": [dict(r) for r in rows]}
+    total = (await db.execute(text(
+        "SELECT count(*) FROM webhook_deliveries WHERE tenant_id = :t AND webhook_id = :w "
+        "AND (CAST(:s AS text) IS NULL OR status = :s)"), {"t": str(tenant.id), "w": str(webhook_id), "s": status})).scalar_one()
+    return {"deliveries": [dict(r) for r in rows], "total": int(total)}
 
 
 @router.get("/settings/automation", dependencies=[Depends(require_permission("view"))])

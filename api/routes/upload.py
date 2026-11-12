@@ -472,7 +472,61 @@ async def upload_roundtrip(
     The edits go onto the newest cleaned copy of the same extraction, so uploads for several objects of one run
     accumulate; the new run is tagged ``cleaned_overlay``. A file from an extraction that a newer one of the same
     object has replaced is refused (409). Status, Owner and Comment on cleaning rows update the record issues."""
+    return await _roundtrip_one(request, file, parent_version_id, db, tenant, role=role)
 
+
+class RoundTripBatchItem(BaseModel):
+    file_name: str
+    ok: bool
+    parent_version_id: Optional[str] = None
+    result: Optional[RoundTripResponse] = None
+    error: Optional[str] = None
+
+
+class RoundTripBatchResponse(BaseModel):
+    items: list[RoundTripBatchItem]
+    succeeded: int
+    failed: int
+
+
+@router.post(
+    "/upload/roundtrip/batch",
+    response_model=RoundTripBatchResponse,
+    dependencies=[Depends(_upload_rate_limit)],
+)
+async def upload_roundtrip_batch(
+    request: Request,
+    files: list[UploadFile] = File(...),
+    parent_version_id: str = Form(None),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("upload")),
+):
+    """Several edited files in one call (one per object). Each goes through the same checks as a single upload
+    (parent_mismatch, stale_run, notes, newest cleaned copy) and builds on the copies before it, so the files of
+    one run accumulate; one bad file does not stop the others."""
+    if not 1 <= len(files) <= MAX_ROUNDTRIP_BATCH:
+        raise HTTPException(status_code=422, detail=f"Send between 1 and {MAX_ROUNDTRIP_BATCH} files.")
+    items: list[RoundTripBatchItem] = []
+    for f in files:
+        try:
+            r = await _roundtrip_one(request, f, parent_version_id, db, tenant, role=role)
+            items.append(RoundTripBatchItem(file_name=f.filename or "", ok=True, parent_version_id=r.parent_version_id,
+                                            result=r))
+        except HTTPException as e:
+            await db.rollback()
+            d = e.detail
+            items.append(RoundTripBatchItem(file_name=f.filename or "", ok=False,
+                                            error=d if isinstance(d, str) else str(d.get("detail") or d.get("error"))))
+    ok = sum(1 for i in items if i.ok)
+    return RoundTripBatchResponse(items=items, succeeded=ok, failed=len(items) - ok)
+
+
+MAX_ROUNDTRIP_BATCH = 20
+
+
+async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: Optional[str], db: AsyncSession,
+                         tenant: Tenant, role: str = "") -> "RoundTripResponse":
     from starlette.concurrency import run_in_threadpool
 
     from api.middleware.licence import enforce_licensed_modules

@@ -178,7 +178,7 @@ class SheetSpec:
     hidden: bool = False  # a hidden sheet is written but not listed on the cover
     totals: Optional[list[str]] = None  # column keys that get a SUBTOTAL row (counts only, never scores)
     rules: list[ConditionalRule] = field(default_factory=list)
-    protect: bool = False  # lock every cell but the editable columns; filtering and sorting stay allowed
+    protect: bool = False  # lock every cell except the editable columns (no password; filter and sort stay on)
 
 
 def _to_sast(dt: datetime) -> datetime:
@@ -395,12 +395,6 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
                             error="This value is not in the field's allowed values. Keep it only if you are sure.")
         dv.add(" ".join(cells))
         ws.add_data_validation(dv)
-    if spec.protect:
-        ws.protection.sheet = True
-        ws.protection.autoFilter = False
-        ws.protection.sort = False
-        ws.protection.formatColumns = False
-        ws.protection.formatRows = False
     ws.freeze_panes = "A2"
     if last_row >= 1:
         ws.auto_filter.ref = ws.dimensions
@@ -409,6 +403,10 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
         _write_totals(ws, spec, last_row)
     if spec.hidden:
         ws.sheet_state = "hidden"
+    if spec.protect:
+        ws.protection.sheet = True
+        ws.protection.autoFilter = False
+        ws.protection.sort = False
     for col_idx, col in enumerate(spec.columns, start=1):
         width = col.width or _column_width(col.header, sample_values[col_idx])
         ws.column_dimensions[get_column_letter(col_idx)].width = width

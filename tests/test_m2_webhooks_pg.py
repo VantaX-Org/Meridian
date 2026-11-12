@@ -110,7 +110,9 @@ async def test_crud_test_send_and_log(owner, monkeypatch):
         h = receiver.calls[-1]["headers"]
         assert webhooks.verify("s" * 20, h["X-Meridian-Timestamp"], receiver.calls[-1]["body"], h["X-Meridian-Signature"])
 
-        log = (await client.get(f"/api/v1/webhooks/{hook['id']}/deliveries", headers=headers())).json()["deliveries"]
+        body = (await client.get(f"/api/v1/webhooks/{hook['id']}/deliveries", headers=headers())).json()
+        log = body["deliveries"]
+        assert body["total"] == len(log)
         assert [(d["event"], d["status"], d["attempts"], d["response_code"]) for d in log] == \
             [("webhook.test", "delivered", 1, 200)] * 2
 

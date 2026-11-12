@@ -13,6 +13,7 @@ import { t as tr } from "@/lib/v2/i18n";
 import { Grid, type GridColumn } from "../Grid";
 import { Fact } from "../Inspector";
 import { Confirm, StatusWord } from "../admin/kit";
+import { ConfirmBar } from "../forms";
 import { describeField } from "@/lib/v2/sap-fields";
 import { Coded, Dash, Mono } from "../parts";
 import { ResultFrame, type Outcome } from "./shared";
@@ -62,6 +63,7 @@ const RUN_WORD = (st: RunStatus) => {
 /** The progress of a run: counts, why it paused, what failed, and the actions that fit its state. */
 function RunPanel({ b, run, can, mine, busy, act }: { b: BatchRow; run: WritebackRun; can: BatchCan; mine: boolean; busy: boolean; act: (what: "resume" | "cancel" | "retry" | "retry-checked") => void }) {
   const [offset, setOffset] = useState(0);
+  const [asking, setAsking] = useState(false);
   const failColumns = useMemo(() => FAILURE_COLUMNS(), []);
   const fixture = useFixture();
   const c = run.counts;
@@ -111,7 +113,7 @@ function RunPanel({ b, run, can, mine, busy, act }: { b: BatchRow; run: Writebac
             </button>
           ) : null}
           {open && run.status !== "cancelling" ? (
-            <button type="button" className="m2-btn" disabled={busy} onClick={() => act("cancel")}>
+            <button type="button" className="m2-btn" disabled={busy} onClick={() => setAsking(true)}>
               {tr("Cancel run")}
             </button>
           ) : null}
@@ -126,6 +128,18 @@ function RunPanel({ b, run, can, mine, busy, act }: { b: BatchRow; run: Writebac
             </button>
           ) : null}
         </div>
+      ) : null}
+      {asking && open ? (
+        <ConfirmBar
+          message={tr("The write-back of batch {label} stops. Records SAP has already committed stay committed; the records still waiting are not sent.", { label: b.label })}
+          confirmLabel={tr("Cancel run")}
+          pending={busy}
+          onConfirm={() => {
+            setAsking(false);
+            act("cancel");
+          }}
+          onCancel={() => setAsking(false)}
+        />
       ) : null}
       {trouble > 0 ? (
         <>
@@ -227,12 +241,12 @@ export function LiveWriteback({ b, can }: { b: BatchRow; can: BatchCan }) {
           </button>
         ) : null}
         {canSend && can.approve ? (
-          <button type="button" className="m2-btn m2-strong" disabled={busy !== null || sendBlock !== null} title={sendBlock ?? undefined} onClick={() => setAsking(true)}>
+          <button type="button" className="m2-btn m2-strong" disabled={busy !== null || sendBlock !== null} aria-describedby={sendBlock ? `wb-send-why-${b.id}` : undefined} onClick={() => setAsking(true)}>
             {busy === "send" ? tr("Sending…") : tr("Send to SAP")}
           </button>
         ) : null}
       </div>
-      {!canSend ? null : !can.approve ? <p className="m2-prov">{tr("Sending to SAP needs the approve permission, which your role does not hold.")}</p> : mine ? <p className="m2-prov">{tr("You built this batch; a second person sends it.")}</p> : null}
+      {!canSend ? null : !can.approve ? <p className="m2-prov">{tr("Sending to SAP needs the approve permission, which your role does not hold.")}</p> : sendBlock ? <p className="m2-prov" id={`wb-send-why-${b.id}`}>{sendBlock}</p> : null}
       {failure ? <ResultFrame outcome={failure} /> : null}
 
       {check && !run ? (

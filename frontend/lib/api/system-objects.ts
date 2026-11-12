@@ -24,6 +24,8 @@ export interface SystemObject {
   last_download: { version_id: string; at: string; status: string; records: number | null } | null;
   /** Registry sources of this object whose names are not yet verified against SAP; empty when all are. */
   preview_sources?: PreviewSource[];
+  /** False when the licence does not cover this object; setup shows it but will not schedule it. */
+  licensed?: boolean;
 }
 
 export interface SystemVersion {

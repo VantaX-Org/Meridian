@@ -46,6 +46,12 @@ export function useTimeline(systemId: string | null, limit = 8, module?: string)
   return useQuery({ queryKey: runKeys.timeline(fixture, systemId, limit, module), queryFn: () => getTimeline(systemId, limit, module), staleTime: 30_000 });
 }
 
+/** One run's timeline row, with its true previous run of the system (never a window of recent runs). */
+export function useTimelineRun(id: string) {
+  const fixture = useFixture();
+  return useQuery({ queryKey: ["v2", "timeline-run", fixture, id] as const, queryFn: () => getTimeline(null, 1, undefined, id), staleTime: 30_000, enabled: Boolean(id) });
+}
+
 /** Failing records per rule across the last `limit` runs of one system, oldest first. */
 export function useRuleTrend(systemId: string | null, limit = 8) {
   const fixture = useFixture();

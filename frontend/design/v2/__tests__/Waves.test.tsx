@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { resetAdminFixture } from "@/lib/api/v2/fixtures";
@@ -19,6 +19,12 @@ vi.mock("@/lib/v2/hooks", async (orig) => {
 });
 
 let undo: () => void = () => undefined;
+// The editor is a next/dynamic panel: its first import compiles waves.tsx and its dependencies, which on a loaded CI
+// runner took longer than a findBy wait and failed whichever test happened to open it first. Pay that once, here,
+// under the hook's own budget, so every test finds the module already loaded.
+beforeAll(async () => {
+  await import("../inspector/waves");
+}, 60_000);
 beforeEach(() => {
   window.sessionStorage.clear();
   window.sessionStorage.setItem("mn_v2_fixture", "1");
@@ -111,10 +117,10 @@ describe("the Waves view of the landscape", () => {
     expect(decodeURIComponent(edit.getAttribute("href") as string)).toContain("open=waves:w-2");
     // Following the link is the router's job; here the address it leads to is opened.
     setUrl(edit.getAttribute("href") as string);
-    // The test id keeps this cheap: a role query walks the whole coverage matrix on every retry, which ran out the
-    // timeout on a loaded CI runner. The accessible name still proves it is the waves editor.
-    expect(await screen.findByTestId("inspector", {}, { timeout: 8000 })).toHaveAccessibleName("Migration waves");
-  }, 20000);
+    // The test id keeps this cheap: a role query walks the whole coverage matrix on every retry. The accessible name
+    // still proves it is the waves editor.
+    expect(await screen.findByTestId("inspector")).toHaveAccessibleName("Migration waves");
+  });
 
   it("at phone width the list keeps each wave's heading with its gate, Edit and Certificate", async () => {
     visit("&view=waves");
@@ -130,7 +136,7 @@ describe("the waves editor", () => {
   it("lists the waves with date and stage, and every object with the wave it is in", async () => {
     visit("&open=waves");
     page();
-    const dialog = await screen.findByRole("dialog", { name: "Migration waves" }, { timeout: 8000 });
+    const dialog = await screen.findByRole("dialog", { name: "Migration waves" });
     const w1 = await within(dialog).findByRole("group", { name: "Wave Wave 1: finance foundations" });
     expect(within(w1).getByLabelText("Target date")).toHaveValue("2026-11-16");
     expect(within(w1).getByLabelText("Stage")).toHaveValue("mock2");

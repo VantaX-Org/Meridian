@@ -24,7 +24,7 @@ import { v2Send } from "@/lib/api/v2/client";
 
 const sent = vi.mocked(v2Send);
 const [ECC] = landscapeFixture.systems;
-const ALL = ["manage_systems", "trigger_sync", "analyse", "ai_feedback", "manage_rules"];
+const ALL = ["manage_systems", "manage_users", "trigger_sync", "analyse", "ai_feedback", "manage_rules"];
 
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
@@ -143,6 +143,16 @@ describe("Configuration", () => {
     fireEvent.click(within(table).getByRole("button", { name: /T001 Company codes/ }));
     const rows = await within(dialog).findByTestId("config-items");
     expect(within(rows).getByText("Meridian Holdings")).toBeInTheDocument();
+    expect(within(dialog).queryByTestId("config-items-cap")).toBeNull();   // all 4 rows are listed
+  });
+
+  it("an object holding more rows than the read returned says how many are shown", async () => {
+    open(`config:${ECC.id}:enterprise_structure`);
+    const dialog = await screen.findByRole("dialog", { name: "Enterprise structure" });
+    const table = await within(dialog).findByTestId("area-objects");
+    fireEvent.click(within(table).getByRole("button", { name: /T001W Plants/ }));
+    await within(dialog).findByTestId("config-items");
+    expect(within(dialog).getByTestId("config-items-cap")).toHaveTextContent("The first 3 of 11");
   });
 
   it("a failed object says why and falls back to the baseline", async () => {
@@ -262,6 +272,38 @@ describe("the connection form", () => {
     fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
     expect(await screen.findByRole("heading", { name: "Setup complete" })).toBeInTheDocument();
     expect(bodyOf("POST", "/users/invite")).toMatchObject({ email: "a@b.co" });
+  });
+
+  it("setup asks for manage_systems before showing the form", async () => {
+    h.allowed = new Set(["view"]);
+    setUrl("/s/new?fixture=1");
+    renderWithQuery(<ConnectCanvas />);
+    expect(await screen.findByTestId("needs-permission")).toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: "Connect a system" })).toBeNull();
+  });
+
+  it("without manage_users the invite step finishes setup without inviting", async () => {
+    h.allowed = new Set(ALL.filter((a) => a !== "manage_users"));
+    setUrl("/s/new?fixture=1");
+    renderWithQuery(<ConnectCanvas />);
+    const form = await screen.findByRole("form", { name: "Connect a system" });
+    fill("Name", "ECC test");
+    fill("Host", "ecc-test.internal");
+    fill("Client", "300");
+    fill("Instance number", "01");
+    fill("Password", "s3cret");
+    fireEvent.click(within(form).getByRole("button", { name: "Connect system" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Skip for now" }));
+    fireEvent.click((await screen.findAllByRole("checkbox"))[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await screen.findByRole("heading", { name: "Choose policy packs" });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save schedule" }));
+    expect(await screen.findByText(/Inviting people needs the manage users permission/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Email")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
+    expect(await screen.findByRole("heading", { name: "Setup complete" })).toBeInTheDocument();
+    expect(sent.mock.calls.some(([m, path]) => m === "POST" && String(path).includes("/users/invite"))).toBe(false);
   });
 
   it("connects a new system, validating first, and opens it", async () => {
