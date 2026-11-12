@@ -8,6 +8,7 @@ import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
 import { int, moduleFromSlug } from "@/lib/v2/score";
 import { t as tr } from "@/lib/v2/i18n";
+import { CleanedUpload } from "./CleanedUpload";
 import { Grid, type GridColumn } from "../../Grid";
 import { Dash, EmptyFrame, ErrorFrame, Mono, V2Link } from "../../parts";
 
@@ -35,12 +36,17 @@ export function FixesTab({ module: moduleSegment }: { system: string; module: st
   if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>{tr("The fix batches could not be read.")}</ErrorFrame>;
   if (!q.isPending && rows.length === 0) {
     return (
-      <EmptyFrame action={<V2Link href="/work" className="m2-btn">{tr("Open Work")}</V2Link>}>
-        {tr("No fix batches for {l} yet. A batch starts when a steward accepts suggested values or imports a filled fix sheet.", { l: label })}
-      </EmptyFrame>
+      <>
+        <CleanedUpload module={apiModule} label={label} />
+        <EmptyFrame action={<V2Link href="/work" className="m2-btn">{tr("Open Work")}</V2Link>}>
+          {tr("No fix batches for {l} yet. A batch starts when a steward accepts suggested values or imports a filled fix sheet.", { l: label })}
+        </EmptyFrame>
+      </>
     );
   }
   return (
+    <>
+    <CleanedUpload module={apiModule} label={label} />
     <section aria-label={tr("Fix batches")} className="m2-sec">
       <div className="m2-sechead">
         <h2 className="m2-h2">{tr("Fix batches")}</h2>
@@ -61,5 +67,6 @@ export function FixesTab({ module: moduleSegment }: { system: string; module: st
         onOpen={(b) => openItem({ kind: "batch", id: b.id })}
       />
     </section>
+    </>
   );
 }
