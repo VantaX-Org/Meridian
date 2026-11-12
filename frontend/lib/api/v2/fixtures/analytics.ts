@@ -66,7 +66,7 @@ export function analyticsRead(path: string): unknown {
     ],
   };
   if (path === "/analytics/prescriptive") return {
-    actions: [...actions].sort((a, b) => b.value_per_hour - a.value_per_hour),
+    actions: [...actions].sort((a, b) => b.value_per_hour - a.value_per_hour), total_actions: actions.length,
     sprints: [sprint(1, actions.slice(0, 2), 82.4, 85.1), sprint(2, actions.slice(2), 85.1, 86.9)],
     assumptions: { minutes_per_record: 1, investigation_hours: 2, cleaning_item_hours: 0.25, exception_hours: 1, sprint_hours: 40, cost_per_record: 3.5, currency: "ZAR" },
     basis: { version_id: "v-12", findings: 3, cleaning_items: 1, exceptions: 0 },

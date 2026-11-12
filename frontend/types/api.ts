@@ -310,8 +310,6 @@ export interface AlertThresholds {
   module_floors?: Record<string, number>;
   /** Go/At-risk/No-go DQS cutoff for the readiness grid (spec 8.1) */
   readiness_dqs_threshold: number;
-  /** wave name → the migration-engine module names it covers (spec 8.1) */
-  readiness_waves: Record<string, string[]>;
 }
 
 /** One cost spec (checks/cost_model.yaml): a fixed amount per failing record, or a field of the failing records, either scaled by `factor`. */

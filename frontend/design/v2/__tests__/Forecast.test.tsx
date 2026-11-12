@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { Forecast } from "../screens/Forecast";
 import { stubLayout } from "./layout-stub";
@@ -8,11 +8,22 @@ import { setUrl } from "./nav-store";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 
+const h = vi.hoisted(() => ({ totalActions: 0 }));
+vi.mock("@/lib/api/v2/analytics", async (orig) => {
+  const m = await orig<typeof import("@/lib/api/v2/analytics")>();
+  // totalActions > 0 plays a plan that holds more actions than the list returned
+  return { ...m, getPrescriptive: async () => {
+    const p = await m.getPrescriptive();
+    return h.totalActions ? { ...p, total_actions: h.totalActions } : p;
+  } };
+});
+
 let undo: () => void = () => undefined;
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   undo = stubLayout();
   setUrl("/forecast");
+  h.totalActions = 0;
 });
 afterEach(() => {
   undo();
@@ -41,5 +52,13 @@ describe("Forecast and plan", () => {
     const queue = await screen.findByTestId("fc-queue");
     expect(within(queue).getByText("Waiting for approval")).toBeInTheDocument();
     expect(within(queue).getByTestId("fc-capacity").textContent).toMatch(/Stewards needed4/);
+    expect(actions.textContent).toContain("Ranked by severity-weighted records fixed an hour");   // every action is listed
+  });
+
+  it("says how many actions the plan holds when the list shows only the top of them", async () => {
+    h.totalActions = 90;
+    renderWithQuery(<Forecast />);
+    const actions = await screen.findByTestId("fc-actions");
+    await waitFor(() => expect(actions.textContent).toMatch(/The first \d+ of 90/));
   });
 });

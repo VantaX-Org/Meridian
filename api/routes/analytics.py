@@ -221,11 +221,12 @@ async def get_prescriptive_analytics(
     if type:
         actions = [a for a in actions if a["type"] == type]
 
-    actions = actions[:limit]
+    # the sprints plan every open action; only the ranked list is cut to `limit`
     sprints = planner.generate_sprints(actions, findings=findings_data, weights=weights)
 
     return {
-        "actions": actions,
+        "actions": actions[:limit],
+        "total_actions": len(actions),
         "sprints": sprints,
         "assumptions": cfg,
         "basis": {"version_id": str(version_row[0].id) if version_row else None,

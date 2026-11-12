@@ -13,7 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from api.services import object_monitor, work_counts
+from api.services import compare_sets, cycle_state, object_monitor, work_counts
+from api.services.paging import page_meta, sort_items
 from api.services.run_context import latest_run
 from api.services.run_lineage import lineage_sql
 
@@ -27,6 +28,7 @@ from api.services.branded_xlsx import (
     xlsx_filename,
     xlsx_response,
 )
+from api.routes import sync_trigger
 from api.routes.sync_trigger import module_label
 from api.services.rbac import require_permission, scope_from_path
 from api.services.scoring import (DEFAULT_THRESHOLDS, critical_over_tolerance, effective_weights,
@@ -66,6 +68,8 @@ class ObjectSummaryOut(BaseModel):
     owner: Optional[str] = None               # data_owners (kind 'object', ref = module) owner's name
     # measured DAMA dimension scores from the run summary (coverage 0 = not measured, omitted); {} when there is none
     dimension_scores: dict[str, float] = {}
+    # where the object stands in the clean cycle (api/services/cycle_state.py); None when the run has no lineage
+    cycle: Optional[dict] = None
 
 
 class ObjectsListOut(BaseModel):
@@ -217,6 +221,8 @@ async def list_objects(run: str = Query(..., alias="run"),
     blocking, owners, history, blocking_total = await _enrichments(db, tenant, run_id)
 
     modules = sorted(set(summary.keys()) | set(by_module.keys()))
+    scope = (await db.execute(text(f"SELECT {lineage_sql()} FROM analysis_versions WHERE id = :v"), {"v": run_id})).scalar()
+    cycles = await cycle_state.cycles_for(db, tenant.id, scope) if scope else {}
     objects = []
     for module in modules:
         mod_summary = summary.get(module) or {}
@@ -241,6 +247,7 @@ async def list_objects(run: str = Query(..., alias="run"),
             "worst_dimension": _worst_dimension(mod_summary),
             "owner": owners.get(module),
             "dimension_scores": _measured_dimensions(mod_summary),
+            "cycle": cycles.get(module),
         })
     if sort != "module":
         objects = sort_by_measured(objects, descending=sort == "-measured")
@@ -320,6 +327,139 @@ async def monitor_objects(db: AsyncSession = Depends(get_db), tenant: Tenant = D
     """Cadence, freshness, trigger, baseline and drift of every object of the current state, one row each."""
     await _rls(db, tenant)
     return {"objects": await object_monitor.for_current_state(db, tenant.id)}
+
+
+class PortfolioRowOut(BaseModel):
+    module: str
+    label: str
+    version_id: str
+    run_at: Optional[datetime] = None
+    system_id: Optional[str] = None
+    composite_score: Optional[float] = None
+    raw_score: Optional[float] = None
+    measured_score: Optional[float] = None
+    capped: bool = False
+    readiness: Optional[str] = None           # tier against the default bands; the objects list uses the tenant's
+    step: Optional[str] = None                # cycle.step, for sorting and filtering
+    cycle: Optional[dict] = None
+
+
+class PortfolioOut(BaseModel):
+    objects: list[PortfolioRowOut]
+    total: int
+    limit: int
+    offset: int
+    next_offset: Optional[int] = None
+
+
+_PORTFOLIO_SORTS = ("module", "measured_score", "composite_score", "run_at", "step")
+_PORTFOLIO_RUNS_SQL = ("SELECT id::text AS id, run_at, dqs_summary, " + lineage_sql() + " AS scope, metadata->>'system_id' AS system_id "
+                       "FROM analysis_versions WHERE tenant_id = CAST(:t AS uuid) AND id = ANY(CAST(:ids AS uuid[]))")
+
+
+@router.get("/portfolio", response_model=PortfolioOut,
+            dependencies=[Depends(require_permission("view", scope=scope_from_path))])
+async def portfolio(sort: str = Query("module", description="module, measured_score, composite_score, run_at or step; "
+                                      "a leading - sorts descending"),
+                    q: Optional[str] = Query(None, description="Part of the module id or label"),
+                    readiness: Optional[str] = Query(None),
+                    step: Optional[Literal["pull", "clean", "upload", "score", "compare"]] = Query(None),
+                    limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0),
+                    db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Every object of the current state, each at its own newest run, with its cycle step. Paged and sorted on the
+    server, so a tenant with hundreds of objects never sends them all."""
+    from api.services.current_state import current_pairs, run_ids
+
+    await _rls(db, tenant)
+    pairs = await current_pairs(db, tenant.id)
+    ids = run_ids(pairs)
+    runs = {r["id"]: r for r in (await db.execute(text(_PORTFOLIO_RUNS_SQL), {"t": str(tenant.id), "ids": ids})).mappings()} if ids else {}
+    thresholds = DEFAULT_THRESHOLDS
+    cycles: dict[str, dict] = {}
+    for scope in {r["scope"] for r in runs.values()}:
+        cycles[scope] = await cycle_state.cycles_for(db, tenant.id, scope)
+    items = []
+    for pr in pairs:
+        run = runs.get(pr["version_id"])
+        if not run:
+            continue
+        m = (run["dqs_summary"] or {}).get(pr["module"]) or {}
+        score = m.get("composite_score")
+        cyc = cycles.get(run["scope"], {}).get(pr["module"])
+        items.append({"module": pr["module"], "label": _label(pr["module"]), "version_id": pr["version_id"],
+                      "run_at": run["run_at"], "system_id": run["system_id"], "composite_score": score,
+                      "raw_score": m.get("raw_score"), "measured_score": measured_of(m), "capped": bool(m.get("capped")),
+                      "readiness": tier(score, thresholds) if score is not None else None,
+                      "cycle": cyc, "step": cyc["step"] if cyc else None})
+    if q:
+        items = [i for i in items if q.lower() in i["module"].lower() or q.lower() in i["label"].lower()]
+    if readiness:
+        items = [i for i in items if i["readiness"] == readiness]
+    if step:
+        items = [i for i in items if i["step"] == step]
+    items = sort_items(items, sort, _PORTFOLIO_SORTS, "module")
+    return {"objects": items[offset:offset + limit], **page_meta(len(items), limit, offset)}
+
+
+class BulkStartIn(BaseModel):
+    module_ids: list[str]
+
+
+@router.post("/portfolio/start", response_model=sync_trigger.TriggerResponse,
+             dependencies=[Depends(require_permission("trigger_sync"))])
+async def portfolio_start(body: BulkStartIn, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Re-run the checks of many objects at once: the sync trigger's rules, one call. At most 200 objects."""
+    if not 1 <= len(body.module_ids) <= 200:
+        raise HTTPException(422, "Give 1 to 200 objects.")
+    return await sync_trigger.trigger_modules(sync_trigger.TriggerRequest(module_ids=body.module_ids), tenant.id, db)
+
+
+class FeedItemOut(BaseModel):
+    module: str
+    label: str
+    check_id: str
+    change: Literal["new", "regressed"]
+    records: int
+    reason: Optional[str] = None
+    version_id: str
+    baseline_version_id: str
+    detected_at: Optional[datetime] = None
+
+
+class FeedOut(BaseModel):
+    items: list[FeedItemOut]
+    total: int
+    limit: int
+    offset: int
+    next_offset: Optional[int] = None
+
+
+@router.get("/monitor/feed", response_model=FeedOut,
+            dependencies=[Depends(require_permission("view", scope=scope_from_path))])
+async def monitor_feed(limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0),
+                       module: Optional[str] = Query(None),
+                       db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """New and regressed issues across objects since each object's baseline, newest run first, most records first.
+    Objects whose drift shows nothing new are not classified."""
+    await _rls(db, tenant)
+    items = []
+    for row in await object_monitor.for_current_state(db, tenant.id, module):
+        base = row["baseline"].get("version_id")
+        if not base or not row["drift"]["new_failing"]:
+            continue
+        scope = (await db.execute(text(f"SELECT {lineage_sql()} FROM analysis_versions WHERE id = :v"),
+                                  {"v": row["last_version_id"]})).scalar()
+        earlier = await compare_sets.earlier_runs(db, scope, base)
+        res = await compare_sets.counts(db, base, row["last_version_id"], earlier)
+        for c in res["checks"]:
+            for kind in ("new", "regressed"):
+                if c[kind]:
+                    items.append({"module": row["module"], "label": _label(row["module"]), "check_id": c["check_id"],
+                                  "change": kind, "records": c[kind], "reason": c["reason"],
+                                  "version_id": row["last_version_id"], "baseline_version_id": base,
+                                  "detected_at": row["last_run_at"]})
+    items.sort(key=lambda i: (-(i["detected_at"].timestamp() if i["detected_at"] else 0), -i["records"], i["module"], i["check_id"]))
+    return {"items": items[offset:offset + limit], **page_meta(len(items), limit, offset)}
 
 
 _OBJECTS_EXPORT_COLUMNS = [

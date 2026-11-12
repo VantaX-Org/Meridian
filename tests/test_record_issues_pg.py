@@ -550,9 +550,18 @@ def test_pilot_scorecard_precision_and_recall(app_engine):
         c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
         c.execute(text("INSERT INTO sap_systems (id, tenant_id, name) VALUES (:s, :t, 'PRD')"), {"s": sid, "t": tid})
     vendors = [str(i) for i in range(1, 13)]
-    _run(app_eng, tid, sid, [_result("CHK-A", vendors, total=12)], vendors)
+    vid, _ = _run(app_eng, tid, sid, [_result("CHK-A", vendors, total=12)], vendors)
     with app_eng.begin() as c:
         c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("UPDATE findings SET details = jsonb_build_object('message', 'this system''s message') "
+                       "WHERE version_id = :v"), {"v": vid})
+        ov = str(uuid.uuid4())   # a newer run of another system that raised the same rule
+        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status) VALUES (:v, :t, 'complete')"),
+                  {"v": ov, "t": tid})
+        c.execute(text("INSERT INTO findings (version_id, tenant_id, module, check_id, severity, dimension, "
+                       "affected_count, total_count, details, created_at) VALUES (:v, :t, 'accounts_payable', "
+                       "'CHK-A', 'high', 'completeness', 1, 1, '{\"message\": \"other system\"}', "
+                       "now() + interval '1 day')"), {"v": ov, "t": tid})
         for k, res in [("1", "false_positive"), ("2", "false_positive")] + [(str(i), "fixed_in_source")
                                                                            for i in range(3, 12)]:
             c.execute(text("UPDATE record_issues SET status = 'resolved', resolution = :r, steward_verdict = "
@@ -584,6 +593,7 @@ def test_pilot_scorecard_precision_and_recall(app_engine):
             assert card["precision"]["reviewed"] == 11 and card["precision"]["false_positives"] == 2
             [rule] = card["rules"]
             assert rule["check_id"] == "CHK-A" and rule["flagged"] == 12 and rule["open"] == 1
+            assert rule["message"] == "this system's message"   # not the other system's newer run
             assert rule["precision"] == round(9 / 11, 4) and rule["needs_tuning"]
             rec = card["recall"]
             assert (rec["known"], rec["caught"], rec["missed_total"]) == (4, 2, 2)
