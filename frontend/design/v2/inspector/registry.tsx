@@ -40,6 +40,7 @@ const RunInspector = dynamic<BodyProps>(() => import("./run").then((m) => m.RunI
 const SystemInspector = dynamic<BodyProps>(() => import("./system").then((m) => m.SystemInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
 const TriagePanel = dynamic<BodyProps>(() => import("./triage").then((m) => m.TriagePanel as ComponentType<BodyProps>), { loading: InspectorLoading });
 const GoldenInspector = dynamic<BodyProps>(() => import("./golden").then((m) => m.GoldenInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
+const FieldInspector = dynamic<BodyProps>(() => import("./field").then((m) => m.FieldInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
 const TermInspector = dynamic<BodyProps>(() => import("./term").then((m) => m.TermInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
 const FeatureInspector = dynamic<BodyProps>(() => import("./feature").then((m) => m.FeatureInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
 const StepInspector = dynamic<BodyProps>(() => import("./step").then((m) => m.StepInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
@@ -79,6 +80,7 @@ export const INSPECTOR_BODIES: Partial<Record<OpenKind, ComponentType<BodyProps>
   triage: TriagePanel,
   golden: GoldenInspector,
   term: TermInspector,
+  field: FieldInspector,
   feature: FeatureInspector,
   step: StepInspector,
   user: UserInspector,

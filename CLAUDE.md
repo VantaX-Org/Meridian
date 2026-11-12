@@ -65,12 +65,12 @@ meridian/
 ├── .github/workflows/               ← CI/CD (build, test, release, deploy)
 │
 ├── api/                             ← FastAPI application
-│   ├── main.py                      ← 130 registered routers + GzipMiddleware
+│   ├── main.py                      ← 131 registered routers + GzipMiddleware
 │   ├── middleware/
 │   │   ├── tenant.py                ← JWT → tenant_id → Postgres RLS
 │   │   ├── licence.py               ← module entitlement enforcement
 │   │   └── cache.py                 ← Redis response caching decorator
-│   ├── routes/                      ← all API endpoints (138 route modules)
+│   ├── routes/                      ← all API endpoints (139 route modules)
 │   │   ├── connectivity.py          ← module-aware extraction, config sync, health
 │   │   ├── spro_config.py           ← SPRO configuration reader
 │   │   ├── config_impact.py         ← feature-level impact analysis
@@ -136,7 +136,7 @@ meridian/
 ├── cloudflare/                      ← Meridian HQ + licence worker
 ├── scripts/                         ← deploy, update, backup, package, export
 ├── helm/                            ← Kubernetes Helm chart
-└── tests/                           ← 613 pytest files (Playwright specs live in frontend/e2e, 19 files)
+└── tests/                           ← 615 pytest files (Playwright specs live in frontend/e2e, 19 files)
 ```
 
 ---

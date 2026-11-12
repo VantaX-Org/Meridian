@@ -9,7 +9,7 @@ The rail on the left is the menu. It has seven places: **Home**, **Objects**, **
 - **Runs** (`/runs`) is the timeline of every measurement.
 - **Fix** holds the Action centre, Work, verified fixes from Aletheia, Cleansing, Requests and People. A count on Fix, and on Work in its menu, shows the records still to fix.
 - **Rules** holds Rules, rule promotion from Aletheia, the rule dry run, anomaly rules, learned monitors, verified survivorship from Aletheia and the evidence ledger.
-- **Master data** holds MDM health, the entry gate, reference data, record links, Material 360, issues, data mining and process discovery.
+- **Master data** holds MDM health, the entry gate, reference data, record links, the data catalogue, Material 360, issues, data mining and process discovery.
 - **Migration** holds Migration, S/4HANA readiness, go-live, the forecast and plan, value delivered, the score lens, cost and causes, and configuration. See the Migration chapter.
 - **More**, below the rail, links to Reports, the Atlas and Administration.
 
