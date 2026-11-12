@@ -71,15 +71,6 @@ OBJECTS: dict[str, dict] = {
 # report's top gaps, in this order. Every field name here must exist in the dictionary.
 CURATED: dict[str, dict[str, str]] = {
     "material_master": {
-        "MARA.DATAB": "format: valid date when populated; cross-field: DATAB not after MARA.MSTDE when both set",
-        "MARA.BEGRU": "domain + S4-prerequisite: profile values per MARA.MTART; flag authorization groups"
-        " used by fewer than a handful of materials (likely typos) before role redesign",
-        "MARD.LGPBE": "mandatory-if-used: profile bin population per MARD.LGORT; conditional null_check for"
-        " storage locations where most records carry a bin",
-        "MARD.PRCTL": "cross-field: when populated, equals MARC.PRCTR for the same material/plant (unverified:"
-        " confirm the business allows a differing storage-location profit center)",
-        "INOB.STATU": "domain: classification status is released (value 1) for classified objects; flag"
-        " locked or incomplete assignments (unverified: status values are customizing)",
     },
     "sd_customer_master": {
         "KNA1.KONZS": "consistency: customers sharing a KONZS share KNA1.LAND1 or KNA1.KTOKD pattern;"

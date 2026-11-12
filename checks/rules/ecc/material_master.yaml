@@ -18120,3 +18120,3521 @@ rules:
   fix_map:
     __other__: Rerun the actual costing settlement (CKMLCP) for the period to reset the date.
   record_fix_template: 'Cost estimate number {CKMLHD.KALNR}: last price determination date {actual_value} is in the future.'
+- id: MM1152
+  field: MARA.ZEIVR
+  check_class: regex_check
+  pattern: ^[^a-z]{0,2}$
+  severity: low
+  dimension: validity
+  message: Document version (without Document Management system) must be upper case and fit 2 characters
+  why_it_matters: MARA.ZEIVR is not defined as case-sensitive, so SAP stores it in upper case, and it holds 2 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on ZEIVR miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.ZEIVR to upper case within 2 characters.
+  record_fix_template: 'Material {MARA.MATNR}: ZEIVR is {actual_value}. Correct MARA.ZEIVR to upper case within 2 characters.'
+- id: MM1153
+  field: MARA.ZEIFO
+  check_class: regex_check
+  pattern: ^[^a-z]{0,4}$
+  severity: low
+  dimension: validity
+  message: Page format of document (without Document Management system) must be upper case and fit 4 characters
+  why_it_matters: MARA.ZEIFO is not defined as case-sensitive, so SAP stores it in upper case, and it holds 4 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on ZEIFO miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.ZEIFO to upper case within 4 characters.
+  record_fix_template: 'Material {MARA.MATNR}: ZEIFO is {actual_value}. Correct MARA.ZEIFO to upper case within 4 characters.'
+- id: MM1154
+  field: MARA.AESZN
+  check_class: regex_check
+  pattern: ^[^a-z]{0,6}$
+  severity: low
+  dimension: validity
+  message: Document change number (without document management system) must be upper case and fit 6 characters
+  why_it_matters: MARA.AESZN is not defined as case-sensitive, so SAP stores it in upper case, and it holds 6 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on AESZN miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.AESZN to upper case within 6 characters.
+  record_fix_template: 'Material {MARA.MATNR}: AESZN is {actual_value}. Correct MARA.AESZN to upper case within 6 characters.'
+- id: MM1155
+  field: MARA.BLATT
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Page number of document (without Document Management system) must be upper case and fit 3 characters
+  why_it_matters: MARA.BLATT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on BLATT miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.BLATT to upper case within 3 characters.
+  record_fix_template: 'Material {MARA.MATNR}: BLATT is {actual_value}. Correct MARA.BLATT to upper case within 3 characters.'
+- id: MM1156
+  field: MARA.BLANZ
+  check_class: regex_check
+  pattern: ^[0-9]{1,3}$
+  severity: low
+  dimension: validity
+  message: Number of sheets (without Document Management system) must contain digits only, at most 3
+  why_it_matters: MARA.BLANZ is a numeric-character field of length 3. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on BLANZ fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARA.BLANZ to digits only, at most 3 characters.
+  record_fix_template: 'Material {MARA.MATNR}: BLANZ is {actual_value}. Correct MARA.BLANZ to digits only, at most 3 characters.'
+- id: MM1157
+  field: MARA.FERTH
+  check_class: regex_check
+  pattern: ^[^a-z]{0,18}$
+  severity: low
+  dimension: validity
+  message: Production/inspection memo must be upper case and fit 18 characters
+  why_it_matters: MARA.FERTH is not defined as case-sensitive, so SAP stores it in upper case, and it holds 18 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on FERTH miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.FERTH to upper case within 18 characters.
+  record_fix_template: 'Material {MARA.MATNR}: FERTH is {actual_value}. Correct MARA.FERTH to upper case within 18 characters.'
+- id: MM1158
+  field: MARA.FORMT
+  check_class: regex_check
+  pattern: ^[^a-z]{0,4}$
+  severity: low
+  dimension: validity
+  message: Page Format of Production Memo must be upper case and fit 4 characters
+  why_it_matters: MARA.FORMT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 4 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on FORMT miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.FORMT to upper case within 4 characters.
+  record_fix_template: 'Material {MARA.MATNR}: FORMT is {actual_value}. Correct MARA.FORMT to upper case within 4 characters.'
+- id: MM1159
+  field: MARA.GROES
+  check_class: regex_check
+  pattern: ^[^a-z]{0,32}$
+  severity: low
+  dimension: validity
+  message: Size/dimensions must be upper case and fit 32 characters
+  why_it_matters: MARA.GROES is not defined as case-sensitive, so SAP stores it in upper case, and it holds 32 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on GROES miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.GROES to upper case within 32 characters.
+  record_fix_template: 'Material {MARA.MATNR}: GROES is {actual_value}. Correct MARA.GROES to upper case within 32 characters.'
+- id: MM1160
+  field: MARA.NORMT
+  check_class: regex_check
+  pattern: ^[^a-z]{0,18}$
+  severity: low
+  dimension: validity
+  message: Industry Standard Description (such as ANSI or ISO) must be upper case and fit 18 characters
+  why_it_matters: MARA.NORMT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 18 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on NORMT miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.NORMT to upper case within 18 characters.
+  record_fix_template: 'Material {MARA.MATNR}: NORMT is {actual_value}. Correct MARA.NORMT to upper case within 18 characters.'
+- id: MM1161
+  field: MARA.DISST
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Low-level code must be upper case and fit 3 characters
+  why_it_matters: MARA.DISST is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on DISST miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.DISST to upper case within 3 characters.
+  record_fix_template: 'Material {MARA.MATNR}: DISST is {actual_value}. Correct MARA.DISST to upper case within 3 characters.'
+- id: MM1162
+  field: MARA.EANNR
+  check_class: cross_field_check
+  fail_when: '`MARA.EANNR`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: European Article Number (EAN) - obsolete!!!!! (EANNR) is documented as unused but holds a value
+  why_it_matters: SAP documents MARA.EANNR as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in EANNR has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARA.EANNR; the field is not used by standard processing.
+  record_fix_template: 'Material {MARA.MATNR}: EANNR is {actual_value}. Clear MARA.EANNR; the field is not used by standard
+    processing.'
+- id: MM1163
+  field: MARA.WESCH
+  check_class: cross_field_check
+  fail_when: '`MARA.WESCH`.notna() & (`MARA.WESCH` < 0)'
+  severity: low
+  dimension: validity
+  message: 'Quantity: Number of GR/GI slips to be printed must not be negative'
+  why_it_matters: MARA.WESCH is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads WESCH produces negative results.
+  fix_map:
+    __other__: Correct MARA.WESCH to zero or a positive value.
+  record_fix_template: 'Material {MARA.MATNR}: WESCH is {actual_value}. Correct MARA.WESCH to zero or a positive value.'
+- id: MM1164
+  field: MARA.ENTAR
+  check_class: cross_field_check
+  fail_when: '`MARA.ENTAR`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Deactivated (ENTAR) is documented as unused but holds a value
+  why_it_matters: SAP documents MARA.ENTAR as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in ENTAR has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARA.ENTAR; the field is not used by standard processing.
+  record_fix_template: 'Material {MARA.MATNR}: ENTAR is {actual_value}. Clear MARA.ENTAR; the field is not used by standard
+    processing.'
+- id: MM1165
+  field: MARA.AEKLK
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Stock transfer net change costing must be blank or 'X'
+  why_it_matters: MARA.AEKLK is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read AEKLK behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.AEKLK to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: AEKLK is {actual_value}. Set MARA.AEKLK to blank or ''X''.'
+- id: MM1166
+  field: MARA.CADKZ
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: CAD Indicator must be blank or 'X'
+  why_it_matters: MARA.CADKZ is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read CADKZ behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.CADKZ to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: CADKZ is {actual_value}. Set MARA.CADKZ to blank or ''X''.'
+- id: MM1167
+  field: MARA.GEWTO
+  check_class: cross_field_check
+  fail_when: '`MARA.GEWTO`.notna() & ((`MARA.GEWTO` < 0) | (`MARA.GEWTO` > 100))'
+  severity: low
+  dimension: validity
+  message: Excess weight tolerance for shipping unit must be between 0 and 100
+  why_it_matters: MARA.GEWTO is a percentage-type value. A negative figure or one above 100 is outside the meaningful range.
+  rule_authority: best_practice
+  sap_impact: Calculations that apply GEWTO give wrong tolerances or levels.
+  fix_map:
+    __other__: Correct MARA.GEWTO to a value between 0 and 100.
+  record_fix_template: 'Material {MARA.MATNR}: GEWTO is {actual_value}. Correct MARA.GEWTO to a value between 0 and 100.'
+- id: MM1168
+  field: MARA.VOLTO
+  check_class: cross_field_check
+  fail_when: '`MARA.VOLTO`.notna() & ((`MARA.VOLTO` < 0) | (`MARA.VOLTO` > 100))'
+  severity: low
+  dimension: validity
+  message: Excess volume tolerance limit during packing must be between 0 and 100
+  why_it_matters: MARA.VOLTO is a percentage-type value. A negative figure or one above 100 is outside the meaningful range.
+  rule_authority: best_practice
+  sap_impact: Calculations that apply VOLTO give wrong tolerances or levels.
+  fix_map:
+    __other__: Correct MARA.VOLTO to a value between 0 and 100.
+  record_fix_template: 'Material {MARA.MATNR}: VOLTO is {actual_value}. Correct MARA.VOLTO to a value between 0 and 100.'
+- id: MM1169
+  field: MARA.KZREV
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: revision level has been assigned to the material must be blank or ''X'''
+  why_it_matters: MARA.KZREV is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read KZREV behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.KZREV to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: KZREV is {actual_value}. Set MARA.KZREV to blank or ''X''.'
+- id: MM1170
+  field: MARA.FUELG
+  check_class: cross_field_check
+  fail_when: '`MARA.FUELG`.notna() & ((`MARA.FUELG` < 0) | (`MARA.FUELG` > 100))'
+  severity: low
+  dimension: validity
+  message: Filling level (by volume) must be between 0 and 100
+  why_it_matters: MARA.FUELG is a percentage-type value. A negative figure or one above 100 is outside the meaningful range.
+  rule_authority: best_practice
+  sap_impact: Calculations that apply FUELG give wrong tolerances or levels.
+  fix_map:
+    __other__: Correct MARA.FUELG to a value between 0 and 100.
+  record_fix_template: 'Material {MARA.MATNR}: FUELG is {actual_value}. Correct MARA.FUELG to a value between 0 and 100.'
+- id: MM1171
+  field: MARA.BEGRU
+  check_class: regex_check
+  pattern: ^[^a-z]{0,4}$
+  severity: low
+  dimension: validity
+  message: Authorization Group must be upper case and fit 4 characters
+  why_it_matters: MARA.BEGRU is not defined as case-sensitive, so SAP stores it in upper case, and it holds 4 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on BEGRU miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.BEGRU to upper case within 4 characters.
+  record_fix_template: 'Material {MARA.MATNR}: BEGRU is {actual_value}. Correct MARA.BEGRU to upper case within 4 characters.'
+- id: MM1172
+  field: MARA.DATAB
+  check_class: cross_field_check
+  fail_when: '`MARA.DATAB`.dt.year < 1900'
+  severity: low
+  dimension: accuracy
+  message: Valid-From Date lies before the year 1900
+  why_it_matters: MARA.DATAB is a calendar date. A year before 1900 is almost always a placeholder or a conversion error and
+    breaks validity-period selection.
+  rule_authority: best_practice
+  sap_impact: Selections that use DATAB as a validity start pick the wrong record or none.
+  fix_map:
+    __other__: Correct MARA.DATAB to the intended calendar date or clear it.
+  record_fix_template: 'Material {MARA.MATNR}: DATAB is {actual_value}. Correct MARA.DATAB to the intended calendar date or
+    clear it.'
+- id: MM1173
+  field: MARA.MLGUT
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Empties Bill of Material must be blank or 'X'
+  why_it_matters: MARA.MLGUT is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read MLGUT behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.MLGUT to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: MLGUT is {actual_value}. Set MARA.MLGUT to blank or ''X''.'
+- id: MM1174
+  field: MARA.KZKUP
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: Material can be co-product must be blank or ''X'''
+  why_it_matters: MARA.KZKUP is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read KZKUP behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.KZKUP to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: KZKUP is {actual_value}. Set MARA.KZKUP to blank or ''X''.'
+- id: MM1175
+  field: MARA.CUOBF
+  check_class: regex_check
+  pattern: ^[0-9]{1,18}$
+  severity: low
+  dimension: validity
+  message: Internal object number must contain digits only, at most 18
+  why_it_matters: MARA.CUOBF is a numeric-character field of length 18. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on CUOBF fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARA.CUOBF to digits only, at most 18 characters.
+  record_fix_template: 'Material {MARA.MATNR}: CUOBF is {actual_value}. Correct MARA.CUOBF to digits only, at most 18 characters.'
+- id: MM1176
+  field: MARA.IHIVI
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: Highly viscous must be blank or ''X'''
+  why_it_matters: MARA.IHIVI is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read IHIVI behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.IHIVI to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: IHIVI is {actual_value}. Set MARA.IHIVI to blank or ''X''.'
+- id: MM1177
+  field: MARA.ILOOS
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: In bulk/liquid must be blank or ''X'''
+  why_it_matters: MARA.ILOOS is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read ILOOS behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.ILOOS to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: ILOOS is {actual_value}. Set MARA.ILOOS to blank or ''X''.'
+- id: MM1178
+  field: MARA.KZGVH
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Shipping material is closed packaging must be blank or 'X'
+  why_it_matters: MARA.KZGVH is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read KZGVH behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.KZGVH to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: KZGVH is {actual_value}. Set MARA.KZGVH to blank or ''X''.'
+- id: MM1179
+  field: MARA.PRZUS
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: Product composition printed on packaging must be blank or ''X'''
+  why_it_matters: MARA.PRZUS is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PRZUS behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.PRZUS to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: PRZUS is {actual_value}. Set MARA.PRZUS to blank or ''X''.'
+- id: MM1180
+  field: MARA.BBTYP
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Assortment List Type must be upper case and fit 1 characters
+  why_it_matters: MARA.BBTYP is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on BBTYP miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.BBTYP to upper case within 1 characters.
+  record_fix_template: 'Material {MARA.MATNR}: BBTYP is {actual_value}. Correct MARA.BBTYP to upper case within 1 characters.'
+- id: MM1181
+  field: MARA.WEORA
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Acceptance At Origin must be blank or 'X'
+  why_it_matters: MARA.WEORA is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read WEORA behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.WEORA to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: WEORA is {actual_value}. Set MARA.WEORA to blank or ''X''.'
+- id: MM1182
+  field: MARA.PILFERABLE
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Pilferable must be blank or 'X'
+  why_it_matters: MARA.PILFERABLE is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+    is read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PILFERABLE behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.PILFERABLE to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: PILFERABLE is {actual_value}. Set MARA.PILFERABLE to blank or ''X''.'
+- id: MM1183
+  field: MARA.TARE_VAR
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Variable Tare Weight must be blank or 'X'
+  why_it_matters: MARA.TARE_VAR is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+    is read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read TARE_VAR behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.TARE_VAR to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: TARE_VAR is {actual_value}. Set MARA.TARE_VAR to blank or ''X''.'
+- id: MM1184
+  field: MARA.CWQREL
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'EWM CW: Material Is a Catch Weight Material must be blank or ''X'''
+  why_it_matters: MARA.CWQREL is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read CWQREL behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.CWQREL to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: CWQREL is {actual_value}. Set MARA.CWQREL to blank or ''X''.'
+- id: MM1185
+  field: MARA.IPMIPPRODUCT
+  check_class: regex_check
+  pattern: ^[^a-z]{0,40}$
+  severity: low
+  dimension: validity
+  message: ID for an Intellectual Property (CRM Product) must be upper case and fit 40 characters
+  why_it_matters: MARA.IPMIPPRODUCT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 40 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on IPMIPPRODUCT miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.IPMIPPRODUCT to upper case within 40 characters.
+  record_fix_template: 'Material {MARA.MATNR}: IPMIPPRODUCT is {actual_value}. Correct MARA.IPMIPPRODUCT to upper case within
+    40 characters.'
+- id: MM1186
+  field: MARA.ALLOW_PMAT_IGNO
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Variant Price Allowed (for Material Master) must be blank or 'X'
+  why_it_matters: MARA.ALLOW_PMAT_IGNO is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+    is read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read ALLOW_PMAT_IGNO behave inconsistently when it holds a value other than blank
+    or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.ALLOW_PMAT_IGNO to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: ALLOW_PMAT_IGNO is {actual_value}. Set MARA.ALLOW_PMAT_IGNO to blank or ''X''.'
+- id: MM1187
+  field: MARA.ANIMAL_ORIGIN
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: Contains Non-Textile Parts of Animal Origin must be blank or ''X'''
+  why_it_matters: MARA.ANIMAL_ORIGIN is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+    is read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read ANIMAL_ORIGIN behave inconsistently when it holds a value other than blank or
+    'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.ANIMAL_ORIGIN to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: ANIMAL_ORIGIN is {actual_value}. Set MARA.ANIMAL_ORIGIN to blank or ''X''.'
+- id: MM1188
+  field: MARA.TEXTILE_COMP_IND
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: New Textile Composition Function must be blank or ''X'''
+  why_it_matters: MARA.TEXTILE_COMP_IND is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+    is read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read TEXTILE_COMP_IND behave inconsistently when it holds a value other than blank
+    or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARA.TEXTILE_COMP_IND to blank or 'X'.
+  record_fix_template: 'Material {MARA.MATNR}: TEXTILE_COMP_IND is {actual_value}. Set MARA.TEXTILE_COMP_IND to blank or ''X''.'
+- id: MM1189
+  field: MARA./BEV1/LULEINH
+  check_class: regex_check
+  pattern: ^[0-9]{1,8}$
+  severity: low
+  dimension: validity
+  message: Loading Units must contain digits only, at most 8
+  why_it_matters: MARA./BEV1/LULEINH is a numeric-character field of length 8. Letters, signs or extra characters cannot be
+    stored in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on /BEV1/LULEINH fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARA./BEV1/LULEINH to digits only, at most 8 characters.
+  record_fix_template: 'Material {MARA.MATNR}: /BEV1/LULEINH is {actual_value}. Correct MARA./BEV1/LULEINH to digits only,
+    at most 8 characters.'
+- id: MM1190
+  field: MARA./BEV1/NESTRUCCAT
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Structure Category for Material Relationship must be upper case and fit 1 characters
+  why_it_matters: MARA./BEV1/NESTRUCCAT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /BEV1/NESTRUCCAT miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA./BEV1/NESTRUCCAT to upper case within 1 characters.
+  record_fix_template: 'Material {MARA.MATNR}: /BEV1/NESTRUCCAT is {actual_value}. Correct MARA./BEV1/NESTRUCCAT to upper
+    case within 1 characters.'
+- id: MM1191
+  field: MARA./VSO/R_TILT_IND
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Material may be Tilted (Vehicle Space Optimization) must be upper case and fit 1 characters
+  why_it_matters: MARA./VSO/R_TILT_IND is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /VSO/R_TILT_IND miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA./VSO/R_TILT_IND to upper case within 1 characters.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_TILT_IND is {actual_value}. Correct MARA./VSO/R_TILT_IND to upper case
+    within 1 characters.'
+- id: MM1192
+  field: MARA./VSO/R_STACK_IND
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Stacking not Allowed (VSO) must be upper case and fit 1 characters
+  why_it_matters: MARA./VSO/R_STACK_IND is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /VSO/R_STACK_IND miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA./VSO/R_STACK_IND to upper case within 1 characters.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_STACK_IND is {actual_value}. Correct MARA./VSO/R_STACK_IND to upper
+    case within 1 characters.'
+- id: MM1193
+  field: MARA./VSO/R_BOT_IND
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Bottom Layer (Vehicle Space Optimization) must be upper case and fit 1 characters
+  why_it_matters: MARA./VSO/R_BOT_IND is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /VSO/R_BOT_IND miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA./VSO/R_BOT_IND to upper case within 1 characters.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_BOT_IND is {actual_value}. Correct MARA./VSO/R_BOT_IND to upper case
+    within 1 characters.'
+- id: MM1194
+  field: MARA./VSO/R_TOP_IND
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Top Layer (VSO) must be upper case and fit 1 characters
+  why_it_matters: MARA./VSO/R_TOP_IND is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /VSO/R_TOP_IND miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA./VSO/R_TOP_IND to upper case within 1 characters.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_TOP_IND is {actual_value}. Correct MARA./VSO/R_TOP_IND to upper case
+    within 1 characters.'
+- id: MM1195
+  field: MARA./VSO/R_STACK_NO
+  check_class: regex_check
+  pattern: ^[0-9]{1,3}$
+  severity: low
+  dimension: validity
+  message: Stacking Factor (Vehicle Space Optimization) must contain digits only, at most 3
+  why_it_matters: MARA./VSO/R_STACK_NO is a numeric-character field of length 3. Letters, signs or extra characters cannot
+    be stored in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on /VSO/R_STACK_NO fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARA./VSO/R_STACK_NO to digits only, at most 3 characters.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_STACK_NO is {actual_value}. Correct MARA./VSO/R_STACK_NO to digits only,
+    at most 3 characters.'
+- id: MM1196
+  field: MARA./VSO/R_PAL_IND
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Load without Packaging Material (VSO) must be upper case and fit 1 characters
+  why_it_matters: MARA./VSO/R_PAL_IND is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /VSO/R_PAL_IND miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA./VSO/R_PAL_IND to upper case within 1 characters.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_PAL_IND is {actual_value}. Correct MARA./VSO/R_PAL_IND to upper case
+    within 1 characters.'
+- id: MM1197
+  field: MARA./VSO/R_PAL_OVR_D
+  check_class: cross_field_check
+  fail_when: '`MARA./VSO/R_PAL_OVR_D`.notna() & (`MARA./VSO/R_PAL_OVR_D` < 0)'
+  severity: low
+  dimension: validity
+  message: Permissible Overhang (Depth) of Packaging Material (VSO) must not be negative
+  why_it_matters: MARA./VSO/R_PAL_OVR_D is a quantity, duration or factor. A negative value has no physical meaning and signals
+    a sign error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads /VSO/R_PAL_OVR_D produces negative results.
+  fix_map:
+    __other__: Correct MARA./VSO/R_PAL_OVR_D to zero or a positive value.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_PAL_OVR_D is {actual_value}. Correct MARA./VSO/R_PAL_OVR_D to zero or
+    a positive value.'
+- id: MM1198
+  field: MARA./VSO/R_PAL_OVR_W
+  check_class: cross_field_check
+  fail_when: '`MARA./VSO/R_PAL_OVR_W`.notna() & (`MARA./VSO/R_PAL_OVR_W` < 0)'
+  severity: low
+  dimension: validity
+  message: Permissible Overhang (Width) of Shipping Material (VSO) must not be negative
+  why_it_matters: MARA./VSO/R_PAL_OVR_W is a quantity, duration or factor. A negative value has no physical meaning and signals
+    a sign error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads /VSO/R_PAL_OVR_W produces negative results.
+  fix_map:
+    __other__: Correct MARA./VSO/R_PAL_OVR_W to zero or a positive value.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_PAL_OVR_W is {actual_value}. Correct MARA./VSO/R_PAL_OVR_W to zero or
+    a positive value.'
+- id: MM1199
+  field: MARA./VSO/R_PAL_B_HT
+  check_class: cross_field_check
+  fail_when: '`MARA./VSO/R_PAL_B_HT`.notna() & (`MARA./VSO/R_PAL_B_HT` < 0)'
+  severity: low
+  dimension: validity
+  message: Maximum Stacking Height of the Packaging Material (VSO) must not be negative
+  why_it_matters: MARA./VSO/R_PAL_B_HT is a quantity, duration or factor. A negative value has no physical meaning and signals
+    a sign error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads /VSO/R_PAL_B_HT produces negative results.
+  fix_map:
+    __other__: Correct MARA./VSO/R_PAL_B_HT to zero or a positive value.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_PAL_B_HT is {actual_value}. Correct MARA./VSO/R_PAL_B_HT to zero or
+    a positive value.'
+- id: MM1200
+  field: MARA./VSO/R_PAL_MIN_H
+  check_class: cross_field_check
+  fail_when: '`MARA./VSO/R_PAL_MIN_H`.notna() & (`MARA./VSO/R_PAL_MIN_H` < 0)'
+  severity: low
+  dimension: validity
+  message: Minimum Stacking Height of the Packaging Material (VSO) must not be negative
+  why_it_matters: MARA./VSO/R_PAL_MIN_H is a quantity, duration or factor. A negative value has no physical meaning and signals
+    a sign error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads /VSO/R_PAL_MIN_H produces negative results.
+  fix_map:
+    __other__: Correct MARA./VSO/R_PAL_MIN_H to zero or a positive value.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_PAL_MIN_H is {actual_value}. Correct MARA./VSO/R_PAL_MIN_H to zero or
+    a positive value.'
+- id: MM1201
+  field: MARA./VSO/R_TOL_B_HT
+  check_class: cross_field_check
+  fail_when: '`MARA./VSO/R_TOL_B_HT`.notna() & (`MARA./VSO/R_TOL_B_HT` < 0)'
+  severity: low
+  dimension: validity
+  message: Tolerance to Exceed the Max. Stacking Height (VSO) must not be negative
+  why_it_matters: MARA./VSO/R_TOL_B_HT is a quantity, duration or factor. A negative value has no physical meaning and signals
+    a sign error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads /VSO/R_TOL_B_HT produces negative results.
+  fix_map:
+    __other__: Correct MARA./VSO/R_TOL_B_HT to zero or a positive value.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_TOL_B_HT is {actual_value}. Correct MARA./VSO/R_TOL_B_HT to zero or
+    a positive value.'
+- id: MM1202
+  field: MARA./VSO/R_NO_P_GVH
+  check_class: regex_check
+  pattern: ^[0-9]{1,2}$
+  severity: low
+  dimension: validity
+  message: Number of Materials for each Closed PKM (VSO) must contain digits only, at most 2
+  why_it_matters: MARA./VSO/R_NO_P_GVH is a numeric-character field of length 2. Letters, signs or extra characters cannot
+    be stored in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on /VSO/R_NO_P_GVH fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARA./VSO/R_NO_P_GVH to digits only, at most 2 characters.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_NO_P_GVH is {actual_value}. Correct MARA./VSO/R_NO_P_GVH to digits only,
+    at most 2 characters.'
+- id: MM1203
+  field: MARA./VSO/R_QUAN_UNIT
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Unit of Measure Vehicle Space Optimization must be upper case and fit 3 characters
+  why_it_matters: MARA./VSO/R_QUAN_UNIT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /VSO/R_QUAN_UNIT miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA./VSO/R_QUAN_UNIT to upper case within 3 characters.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_QUAN_UNIT is {actual_value}. Correct MARA./VSO/R_QUAN_UNIT to upper
+    case within 3 characters.'
+- id: MM1204
+  field: MARA./VSO/R_KZGVH_IND
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Closed Packaging Material Required (VSO) must be upper case and fit 1 characters
+  why_it_matters: MARA./VSO/R_KZGVH_IND is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /VSO/R_KZGVH_IND miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA./VSO/R_KZGVH_IND to upper case within 1 characters.
+  record_fix_template: 'Material {MARA.MATNR}: /VSO/R_KZGVH_IND is {actual_value}. Correct MARA./VSO/R_KZGVH_IND to upper
+    case within 1 characters.'
+- id: MM1205
+  field: MARA.RETDELC
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Return Code must be upper case and fit 1 characters
+  why_it_matters: MARA.RETDELC is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on RETDELC miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.RETDELC to upper case within 1 characters.
+  record_fix_template: 'Material {MARA.MATNR}: RETDELC is {actual_value}. Correct MARA.RETDELC to upper case within 1 characters.'
+- id: MM1206
+  field: MARA.LOGLEV_RETO
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Return to Logistics Level must be upper case and fit 1 characters
+  why_it_matters: MARA.LOGLEV_RETO is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on LOGLEV_RETO miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.LOGLEV_RETO to upper case within 1 characters.
+  record_fix_template: 'Material {MARA.MATNR}: LOGLEV_RETO is {actual_value}. Correct MARA.LOGLEV_RETO to upper case within
+    1 characters.'
+- id: MM1207
+  field: MARA.NSNID
+  check_class: regex_check
+  pattern: ^[^a-z]{0,9}$
+  severity: low
+  dimension: validity
+  message: NATO Stock Number must be upper case and fit 9 characters
+  why_it_matters: MARA.NSNID is not defined as case-sensitive, so SAP stores it in upper case, and it holds 9 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on NSNID miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.NSNID to upper case within 9 characters.
+  record_fix_template: 'Material {MARA.MATNR}: NSNID is {actual_value}. Correct MARA.NSNID to upper case within 9 characters.'
+- id: MM1208
+  field: MARA.IMATN
+  check_class: regex_check
+  pattern: ^[^a-z]{0,18}$
+  severity: low
+  dimension: validity
+  message: FFF class must be upper case and fit 18 characters
+  why_it_matters: MARA.IMATN is not defined as case-sensitive, so SAP stores it in upper case, and it holds 18 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on IMATN miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.IMATN to upper case within 18 characters.
+  record_fix_template: 'Material {MARA.MATNR}: IMATN is {actual_value}. Correct MARA.IMATN to upper case within 18 characters.'
+- id: MM1209
+  field: MARA.PICNUM
+  check_class: regex_check
+  pattern: ^[^a-z]{0,18}$
+  severity: low
+  dimension: validity
+  message: Supersession chain number must be upper case and fit 18 characters
+  why_it_matters: MARA.PICNUM is not defined as case-sensitive, so SAP stores it in upper case, and it holds 18 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on PICNUM miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.PICNUM to upper case within 18 characters.
+  record_fix_template: 'Material {MARA.MATNR}: PICNUM is {actual_value}. Correct MARA.PICNUM to upper case within 18 characters.'
+- id: MM1210
+  field: MARA.COLOR_ATINN
+  check_class: regex_check
+  pattern: ^[0-9]{1,10}$
+  severity: low
+  dimension: validity
+  message: Internal Charactieristic Number for Color Characteristics must contain digits only, at most 10
+  why_it_matters: MARA.COLOR_ATINN is a numeric-character field of length 10. Letters, signs or extra characters cannot be
+    stored in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on COLOR_ATINN fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARA.COLOR_ATINN to digits only, at most 10 characters.
+  record_fix_template: 'Material {MARA.MATNR}: COLOR_ATINN is {actual_value}. Correct MARA.COLOR_ATINN to digits only, at
+    most 10 characters.'
+- id: MM1211
+  field: MARA.SIZE1_ATINN
+  check_class: regex_check
+  pattern: ^[0-9]{1,10}$
+  severity: low
+  dimension: validity
+  message: Internal Char. Number for Characteristics for Main Sizes must contain digits only, at most 10
+  why_it_matters: MARA.SIZE1_ATINN is a numeric-character field of length 10. Letters, signs or extra characters cannot be
+    stored in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on SIZE1_ATINN fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARA.SIZE1_ATINN to digits only, at most 10 characters.
+  record_fix_template: 'Material {MARA.MATNR}: SIZE1_ATINN is {actual_value}. Correct MARA.SIZE1_ATINN to digits only, at
+    most 10 characters.'
+- id: MM1212
+  field: MARA.SIZE2_ATINN
+  check_class: regex_check
+  pattern: ^[0-9]{1,10}$
+  severity: low
+  dimension: validity
+  message: Internal Char. Number for Characteristics for Second Sizes must contain digits only, at most 10
+  why_it_matters: MARA.SIZE2_ATINN is a numeric-character field of length 10. Letters, signs or extra characters cannot be
+    stored in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on SIZE2_ATINN fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARA.SIZE2_ATINN to digits only, at most 10 characters.
+  record_fix_template: 'Material {MARA.MATNR}: SIZE2_ATINN is {actual_value}. Correct MARA.SIZE2_ATINN to digits only, at
+    most 10 characters.'
+- id: MM1213
+  field: MARA.COLOR
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Characteristic Value for Colors of Variants must not contain leading, trailing or repeated blanks
+  why_it_matters: MARA.COLOR is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+    equal values look different.
+  rule_authority: best_practice
+  sap_impact: Matching and reporting on COLOR treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from MARA.COLOR.
+  record_fix_template: 'Material {MARA.MATNR}: COLOR is {actual_value}. Remove leading, trailing and repeated blanks from
+    MARA.COLOR.'
+- id: MM1214
+  field: MARA.SIZE1
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Characteristic Value for Main Sizes of Variants must not contain leading, trailing or repeated blanks
+  why_it_matters: MARA.SIZE1 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+    equal values look different.
+  rule_authority: best_practice
+  sap_impact: Matching and reporting on SIZE1 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from MARA.SIZE1.
+  record_fix_template: 'Material {MARA.MATNR}: SIZE1 is {actual_value}. Remove leading, trailing and repeated blanks from
+    MARA.SIZE1.'
+- id: MM1215
+  field: MARA.SIZE2
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Characteristic Value for Second Size for Variants must not contain leading, trailing or repeated blanks
+  why_it_matters: MARA.SIZE2 is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and make
+    equal values look different.
+  rule_authority: best_practice
+  sap_impact: Matching and reporting on SIZE2 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from MARA.SIZE2.
+  record_fix_template: 'Material {MARA.MATNR}: SIZE2 is {actual_value}. Remove leading, trailing and repeated blanks from
+    MARA.SIZE2.'
+- id: MM1216
+  field: MARA.FREE_CHAR
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Characteristic Value for Evaluation Purposes must not contain leading, trailing or repeated blanks
+  why_it_matters: MARA.FREE_CHAR is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups and
+    make equal values look different.
+  rule_authority: best_practice
+  sap_impact: Matching and reporting on FREE_CHAR treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from MARA.FREE_CHAR.
+  record_fix_template: 'Material {MARA.MATNR}: FREE_CHAR is {actual_value}. Remove leading, trailing and repeated blanks from
+    MARA.FREE_CHAR.'
+- id: MM1217
+  field: MARA.CARE_CODE
+  check_class: regex_check
+  pattern: ^[^a-z]{0,16}$
+  severity: low
+  dimension: validity
+  message: Care Codes (such as Washing Code, Ironing Code, etc.) must be upper case and fit 16 characters
+  why_it_matters: MARA.CARE_CODE is not defined as case-sensitive, so SAP stores it in upper case, and it holds 16 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on CARE_CODE miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARA.CARE_CODE to upper case within 16 characters.
+  record_fix_template: 'Material {MARA.MATNR}: CARE_CODE is {actual_value}. Correct MARA.CARE_CODE to upper case within 16
+    characters.'
+- id: MM1218
+  field: MARC.KZDIE
+  check_class: cross_field_check
+  fail_when: '`MARC.KZDIE`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: 'Indicator: MRP controller is buyer (deactivated) (KZDIE) is documented as unused but holds a value'
+  why_it_matters: SAP documents MARC.KZDIE as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in KZDIE has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARC.KZDIE; the field is not used by standard processing.
+  record_fix_template: 'Material {MARC.MATNR}: KZDIE is {actual_value}. Clear MARC.KZDIE; the field is not used by standard
+    processing.'
+- id: MM1219
+  field: MARC.PFREI
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: automatic fixing of planned orders must be blank or ''X'''
+  why_it_matters: MARC.PFREI is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PFREI behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARC.PFREI to blank or 'X'.
+  record_fix_template: 'Material {MARC.MATNR}: PFREI is {actual_value}. Set MARC.PFREI to blank or ''X''.'
+- id: MM1220
+  field: MARC.FFREI
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Release indicator for production orders must be blank or 'X'
+  why_it_matters: MARC.FFREI is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read FFREI behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARC.FFREI to blank or 'X'.
+  record_fix_template: 'Material {MARC.MATNR}: FFREI is {actual_value}. Set MARC.FFREI to blank or ''X''.'
+- id: MM1221
+  field: MARC.KZPRO
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: withdrawal of stock from production bin must be blank or ''X'''
+  why_it_matters: MARC.KZPRO is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read KZPRO behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARC.KZPRO to blank or 'X'.
+  record_fix_template: 'Material {MARC.MATNR}: KZPRO is {actual_value}. Set MARC.KZPRO to blank or ''X''.'
+- id: MM1222
+  field: MARC.GPMKZ
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: material included in rough-cut planning must be blank or ''X'''
+  why_it_matters: MARC.GPMKZ is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read GPMKZ behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARC.GPMKZ to blank or 'X'.
+  record_fix_template: 'Material {MARC.MATNR}: GPMKZ is {actual_value}. Set MARC.GPMKZ to blank or ''X''.'
+- id: MM1223
+  field: MARC.SPROZ
+  check_class: cross_field_check
+  fail_when: '`MARC.SPROZ`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Sample for quality inspection (in %) (deactivated) (SPROZ) is documented as unused but holds a value
+  why_it_matters: SAP documents MARC.SPROZ as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in SPROZ has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARC.SPROZ; the field is not used by standard processing.
+  record_fix_template: 'Material {MARC.MATNR}: SPROZ is {actual_value}. Clear MARC.SPROZ; the field is not used by standard
+    processing.'
+- id: MM1224
+  field: MARC.QUAZT
+  check_class: cross_field_check
+  fail_when: '`MARC.QUAZT`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Quarantine period (deactivated) (QUAZT) is documented as unused but holds a value
+  why_it_matters: SAP documents MARC.QUAZT as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in QUAZT has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARC.QUAZT; the field is not used by standard processing.
+  record_fix_template: 'Material {MARC.MATNR}: QUAZT is {actual_value}. Clear MARC.QUAZT; the field is not used by standard
+    processing.'
+- id: MM1225
+  field: MARC.MPDAU
+  check_class: cross_field_check
+  fail_when: '`MARC.MPDAU`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Mean inspection duration (deactivated) (MPDAU) is documented as unused but holds a value
+  why_it_matters: SAP documents MARC.MPDAU as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in MPDAU has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARC.MPDAU; the field is not used by standard processing.
+  record_fix_template: 'Material {MARC.MATNR}: MPDAU is {actual_value}. Clear MARC.MPDAU; the field is not used by standard
+    processing.'
+- id: MM1226
+  field: MARC.KZPPV
+  check_class: cross_field_check
+  fail_when: '`MARC.KZPPV`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Indicator for inspection plan (deactivated) (KZPPV) is documented as unused but holds a value
+  why_it_matters: SAP documents MARC.KZPPV as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in KZPPV has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARC.KZPPV; the field is not used by standard processing.
+  record_fix_template: 'Material {MARC.MATNR}: KZPPV is {actual_value}. Clear MARC.KZPPV; the field is not used by standard
+    processing.'
+- id: MM1227
+  field: MARC.KZDKZ
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Documentation required indicator must be blank or 'X'
+  why_it_matters: MARC.KZDKZ is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read KZDKZ behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARC.KZDKZ to blank or 'X'.
+  record_fix_template: 'Material {MARC.MATNR}: KZDKZ is {actual_value}. Set MARC.KZDKZ to blank or ''X''.'
+- id: MM1228
+  field: MARC.WSTGH
+  check_class: cross_field_check
+  fail_when: '`MARC.WSTGH`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Active substance content (deactivated) (WSTGH) is documented as unused but holds a value
+  why_it_matters: SAP documents MARC.WSTGH as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in WSTGH has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARC.WSTGH; the field is not used by standard processing.
+  record_fix_template: 'Material {MARC.MATNR}: WSTGH is {actual_value}. Clear MARC.WSTGH; the field is not used by standard
+    processing.'
+- id: MM1229
+  field: MARC.PRFRQ
+  check_class: cross_field_check
+  fail_when: '`MARC.PRFRQ`.notna() & (`MARC.PRFRQ` < 0)'
+  severity: low
+  dimension: validity
+  message: Interval until next recurring inspection must not be negative
+  why_it_matters: MARC.PRFRQ is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads PRFRQ produces negative results.
+  fix_map:
+    __other__: Correct MARC.PRFRQ to zero or a positive value.
+  record_fix_template: 'Material {MARC.MATNR}: PRFRQ is {actual_value}. Correct MARC.PRFRQ to zero or a positive value.'
+- id: MM1230
+  field: MARC.NKMPR
+  check_class: cross_field_check
+  fail_when: '`MARC.NKMPR`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Date according to check sampling inspection (deactivated) (NKMPR) is documented as unused but holds a value
+  why_it_matters: SAP documents MARC.NKMPR as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in NKMPR has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARC.NKMPR; the field is not used by standard processing.
+  record_fix_template: 'Material {MARC.MATNR}: NKMPR is {actual_value}. Clear MARC.NKMPR; the field is not used by standard
+    processing.'
+- id: MM1231
+  field: MARC.OBJID
+  check_class: regex_check
+  pattern: ^[0-9]{1,8}$
+  severity: low
+  dimension: validity
+  message: Object ID must contain digits only, at most 8
+  why_it_matters: MARC.OBJID is a numeric-character field of length 8. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on OBJID fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARC.OBJID to digits only, at most 8 characters.
+  record_fix_template: 'Material {MARC.MATNR}: OBJID is {actual_value}. Correct MARC.OBJID to digits only, at most 8 characters.'
+- id: MM1232
+  field: MARC.KZKFK
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: take correction factors into account must be blank or ''X'''
+  why_it_matters: MARC.KZKFK is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read KZKFK behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARC.KZKFK to blank or 'X'.
+  record_fix_template: 'Material {MARC.MATNR}: KZKFK is {actual_value}. Set MARC.KZKFK to blank or ''X''.'
+- id: MM1233
+  field: MARC.VRVEZ
+  check_class: cross_field_check
+  fail_when: '`MARC.VRVEZ`.notna() & (`MARC.VRVEZ` < 0)'
+  severity: low
+  dimension: validity
+  message: Shipping setup time must not be negative
+  why_it_matters: MARC.VRVEZ is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads VRVEZ produces negative results.
+  fix_map:
+    __other__: Correct MARC.VRVEZ to zero or a positive value.
+  record_fix_template: 'Material {MARC.MATNR}: VRVEZ is {actual_value}. Correct MARC.VRVEZ to zero or a positive value.'
+- id: MM1234
+  field: MARC.VBAMG
+  check_class: cross_field_check
+  fail_when: '`MARC.VBAMG`.notna() & (`MARC.VBAMG` < 0)'
+  severity: low
+  dimension: validity
+  message: Base quantity for capacity planning in shipping must not be negative
+  why_it_matters: MARC.VBAMG is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads VBAMG produces negative results.
+  fix_map:
+    __other__: Correct MARC.VBAMG to zero or a positive value.
+  record_fix_template: 'Material {MARC.MATNR}: VBAMG is {actual_value}. Correct MARC.VBAMG to zero or a positive value.'
+- id: MM1235
+  field: MARC.VBEAZ
+  check_class: cross_field_check
+  fail_when: '`MARC.VBEAZ`.notna() & (`MARC.VBEAZ` < 0)'
+  severity: low
+  dimension: validity
+  message: Shipping processing time must not be negative
+  why_it_matters: MARC.VBEAZ is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads VBEAZ produces negative results.
+  fix_map:
+    __other__: Correct MARC.VBEAZ to zero or a positive value.
+  record_fix_template: 'Material {MARC.MATNR}: VBEAZ is {actual_value}. Correct MARC.VBEAZ to zero or a positive value.'
+- id: MM1236
+  field: MARC.LIZYK
+  check_class: cross_field_check
+  fail_when: '`MARC.LIZYK`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Deactivated (LIZYK) is documented as unused but holds a value
+  why_it_matters: SAP documents MARC.LIZYK as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in LIZYK has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARC.LIZYK; the field is not used by standard processing.
+  record_fix_template: 'Material {MARC.MATNR}: LIZYK is {actual_value}. Clear MARC.LIZYK; the field is not used by standard
+    processing.'
+- id: MM1237
+  field: MARC.COPAM
+  check_class: regex_check
+  pattern: ^[^a-z]{0,10}$
+  severity: low
+  dimension: validity
+  message: Local field name for CO/PA link to SOP must be upper case and fit 10 characters
+  why_it_matters: MARC.COPAM is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on COPAM miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARC.COPAM to upper case within 10 characters.
+  record_fix_template: 'Material {MARC.MATNR}: COPAM is {actual_value}. Correct MARC.COPAM to upper case within 10 characters.'
+- id: MM1238
+  field: MARC.CUOBJ
+  check_class: regex_check
+  pattern: ^[0-9]{1,18}$
+  severity: low
+  dimension: validity
+  message: Internal object number must contain digits only, at most 18
+  why_it_matters: MARC.CUOBJ is a numeric-character field of length 18. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on CUOBJ fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARC.CUOBJ to digits only, at most 18 characters.
+  record_fix_template: 'Material {MARC.MATNR}: CUOBJ is {actual_value}. Correct MARC.CUOBJ to digits only, at most 18 characters.'
+- id: MM1239
+  field: MARC.CUOBV
+  check_class: regex_check
+  pattern: ^[0-9]{1,18}$
+  severity: low
+  dimension: validity
+  message: Internal object number of configurable material for planning must contain digits only, at most 18
+  why_it_matters: MARC.CUOBV is a numeric-character field of length 18. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on CUOBV fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARC.CUOBV to digits only, at most 18 characters.
+  record_fix_template: 'Material {MARC.MATNR}: CUOBV is {actual_value}. Correct MARC.CUOBV to digits only, at most 18 characters.'
+- id: MM1240
+  field: MARC.RESVP
+  check_class: cross_field_check
+  fail_when: '`MARC.RESVP`.notna() & (`MARC.RESVP` < 0)'
+  severity: low
+  dimension: validity
+  message: Period of adjustment for planned independent requirements must not be negative
+  why_it_matters: MARC.RESVP is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads RESVP produces negative results.
+  fix_map:
+    __other__: Correct MARC.RESVP to zero or a positive value.
+  record_fix_template: 'Material {MARC.MATNR}: RESVP is {actual_value}. Correct MARC.RESVP to zero or a positive value.'
+- id: MM1241
+  field: MARC.ABFAC
+  check_class: cross_field_check
+  fail_when: '`MARC.ABFAC`.notna() & (`MARC.ABFAC` < 0)'
+  severity: low
+  dimension: validity
+  message: Air Bouyancy Factor must not be negative
+  why_it_matters: MARC.ABFAC is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads ABFAC produces negative results.
+  fix_map:
+    __other__: Correct MARC.ABFAC to zero or a positive value.
+  record_fix_template: 'Material {MARC.MATNR}: ABFAC is {actual_value}. Correct MARC.ABFAC to zero or a positive value.'
+- id: MM1242
+  field: MARC.GLGMG
+  check_class: cross_field_check
+  fail_when: '`MARC.GLGMG`.notna() & (`MARC.GLGMG` < 0)'
+  severity: low
+  dimension: validity
+  message: Tied empties stock must not be negative
+  why_it_matters: MARC.GLGMG is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads GLGMG produces negative results.
+  fix_map:
+    __other__: Correct MARC.GLGMG to zero or a positive value.
+  record_fix_template: 'Material {MARC.MATNR}: GLGMG is {actual_value}. Correct MARC.GLGMG to zero or a positive value.'
+- id: MM1243
+  field: MARC.MATGR
+  check_class: regex_check
+  pattern: ^[^a-z]{0,20}$
+  severity: low
+  dimension: validity
+  message: Group of materials for transition matrix must be upper case and fit 20 characters
+  why_it_matters: MARC.MATGR is not defined as case-sensitive, so SAP stores it in upper case, and it holds 20 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on MATGR miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARC.MATGR to upper case within 20 characters.
+  record_fix_template: 'Material {MARC.MATNR}: MATGR is {actual_value}. Correct MARC.MATGR to upper case within 20 characters.'
+- id: MM1244
+  field: MARC.MCRUE
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: MARDH rec. already exists for per. before last of MARD per must be blank or 'X'
+  why_it_matters: MARC.MCRUE is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read MCRUE behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARC.MCRUE to blank or 'X'.
+  record_fix_template: 'Material {MARC.MATNR}: MCRUE is {actual_value}. Set MARC.MCRUE to blank or ''X''.'
+- id: MM1245
+  field: MARC.LFGJA
+  check_class: regex_check
+  pattern: ^(0000|(19|20)[0-9]{2})$
+  severity: low
+  dimension: validity
+  message: Fiscal Year of Current Period must be a four-digit fiscal year
+  why_it_matters: MARC.LFGJA is a fiscal year. Only 0000 (not set) or a year from 1900 to 2099 is plausible.
+  rule_authority: sap_hard_constraint
+  sap_impact: Period-end and history logic that reads LFGJA skips or misplaces the record.
+  fix_map:
+    __other__: Correct MARC.LFGJA to a four-digit fiscal year or 0000.
+  record_fix_template: 'Material {MARC.MATNR}: LFGJA is {actual_value}. Correct MARC.LFGJA to a four-digit fiscal year or
+    0000.'
+- id: MM1246
+  field: MARC./VSO/R_LANE_NUM
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Line within the Automatic Picking Zone (VSO) must be upper case and fit 3 characters
+  why_it_matters: MARC./VSO/R_LANE_NUM is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /VSO/R_LANE_NUM miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARC./VSO/R_LANE_NUM to upper case within 3 characters.
+  record_fix_template: 'Material {MARC.MATNR}: /VSO/R_LANE_NUM is {actual_value}. Correct MARC./VSO/R_LANE_NUM to upper case
+    within 3 characters.'
+- id: MM1247
+  field: MARC./VSO/R_PAL_VEND
+  check_class: regex_check
+  pattern: ^[^a-z]{0,18}$
+  severity: low
+  dimension: validity
+  message: Material No. of the Packaging Material of the Vendor (VSO) must be upper case and fit 18 characters
+  why_it_matters: MARC./VSO/R_PAL_VEND is not defined as case-sensitive, so SAP stores it in upper case, and it holds 18 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /VSO/R_PAL_VEND miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARC./VSO/R_PAL_VEND to upper case within 18 characters.
+  record_fix_template: 'Material {MARC.MATNR}: /VSO/R_PAL_VEND is {actual_value}. Correct MARC./VSO/R_PAL_VEND to upper case
+    within 18 characters.'
+- id: MM1248
+  field: MARC./VSO/R_FORK_DIR
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Pick Packaging Materials only Lengthwise (VSO) must be upper case and fit 1 characters
+  why_it_matters: MARC./VSO/R_FORK_DIR is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /VSO/R_FORK_DIR miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARC./VSO/R_FORK_DIR to upper case within 1 characters.
+  record_fix_template: 'Material {MARC.MATNR}: /VSO/R_FORK_DIR is {actual_value}. Correct MARC./VSO/R_FORK_DIR to upper case
+    within 1 characters.'
+- id: MM1249
+  field: MARC.MULTIPLE_EKGRP
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Purchasing Across Purchasing Group must be blank or 'X'
+  why_it_matters: MARC.MULTIPLE_EKGRP is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+    is read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read MULTIPLE_EKGRP behave inconsistently when it holds a value other than blank or
+    'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARC.MULTIPLE_EKGRP to blank or 'X'.
+  record_fix_template: 'Material {MARC.MATNR}: MULTIPLE_EKGRP is {actual_value}. Set MARC.MULTIPLE_EKGRP to blank or ''X''.'
+- id: MM1250
+  field: MARD.PSTAT
+  check_class: regex_check
+  pattern: ^[^a-z]{0,15}$
+  severity: low
+  dimension: validity
+  message: Maintenance status must be upper case and fit 15 characters
+  why_it_matters: MARD.PSTAT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 15 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on PSTAT miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARD.PSTAT to upper case within 15 characters.
+  record_fix_template: 'Material {MARD.MATNR}: PSTAT is {actual_value}. Correct MARD.PSTAT to upper case within 15 characters.'
+- id: MM1251
+  field: MARD.LFGJA
+  check_class: regex_check
+  pattern: ^(0000|(19|20)[0-9]{2})$
+  severity: low
+  dimension: validity
+  message: Fiscal Year of Current Period must be a four-digit fiscal year
+  why_it_matters: MARD.LFGJA is a fiscal year. Only 0000 (not set) or a year from 1900 to 2099 is plausible.
+  rule_authority: sap_hard_constraint
+  sap_impact: Period-end and history logic that reads LFGJA skips or misplaces the record.
+  fix_map:
+    __other__: Correct MARD.LFGJA to a four-digit fiscal year or 0000.
+  record_fix_template: 'Material {MARD.MATNR}: LFGJA is {actual_value}. Correct MARD.LFGJA to a four-digit fiscal year or
+    0000.'
+- id: MM1252
+  field: MARD.VMUML
+  check_class: cross_field_check
+  fail_when: '`MARD.VMUML`.notna() & (`MARD.VMUML` < 0)'
+  severity: low
+  dimension: validity
+  message: Stock in transfer, previous period must not be negative
+  why_it_matters: MARD.VMUML is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads VMUML produces negative results.
+  fix_map:
+    __other__: Correct MARD.VMUML to zero or a positive value.
+  record_fix_template: 'Material {MARD.MATNR}: VMUML is {actual_value}. Correct MARD.VMUML to zero or a positive value.'
+- id: MM1253
+  field: MARD.VMINS
+  check_class: cross_field_check
+  fail_when: '`MARD.VMINS`.notna() & (`MARD.VMINS` < 0)'
+  severity: low
+  dimension: validity
+  message: Stock in quality inspection from previous period must not be negative
+  why_it_matters: MARD.VMINS is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads VMINS produces negative results.
+  fix_map:
+    __other__: Correct MARD.VMINS to zero or a positive value.
+  record_fix_template: 'Material {MARD.MATNR}: VMINS is {actual_value}. Correct MARD.VMINS to zero or a positive value.'
+- id: MM1254
+  field: MARD.VMEIN
+  check_class: cross_field_check
+  fail_when: '`MARD.VMEIN`.notna() & (`MARD.VMEIN` < 0)'
+  severity: low
+  dimension: validity
+  message: Restricted-use stock in previous period must not be negative
+  why_it_matters: MARD.VMEIN is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads VMEIN produces negative results.
+  fix_map:
+    __other__: Correct MARD.VMEIN to zero or a positive value.
+  record_fix_template: 'Material {MARD.MATNR}: VMEIN is {actual_value}. Correct MARD.VMEIN to zero or a positive value.'
+- id: MM1255
+  field: MARD.VMSPE
+  check_class: cross_field_check
+  fail_when: '`MARD.VMSPE`.notna() & (`MARD.VMSPE` < 0)'
+  severity: low
+  dimension: validity
+  message: Blocked stock of previous period must not be negative
+  why_it_matters: MARD.VMSPE is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads VMSPE produces negative results.
+  fix_map:
+    __other__: Correct MARD.VMSPE to zero or a positive value.
+  record_fix_template: 'Material {MARD.MATNR}: VMSPE is {actual_value}. Correct MARD.VMSPE to zero or a positive value.'
+- id: MM1256
+  field: MARD.VMRET
+  check_class: cross_field_check
+  fail_when: '`MARD.VMRET`.notna() & (`MARD.VMRET` < 0)'
+  severity: low
+  dimension: validity
+  message: Blocked stock returns, previous period must not be negative
+  why_it_matters: MARD.VMRET is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads VMRET produces negative results.
+  fix_map:
+    __other__: Correct MARD.VMRET to zero or a positive value.
+  record_fix_template: 'Material {MARD.MATNR}: VMRET is {actual_value}. Correct MARD.VMRET to zero or a positive value.'
+- id: MM1257
+  field: MARD.KZILL
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Physical inventory indicator for whse stock in current year must be upper case and fit 3 characters
+  why_it_matters: MARD.KZILL is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on KZILL miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARD.KZILL to upper case within 3 characters.
+  record_fix_template: 'Material {MARD.MATNR}: KZILL is {actual_value}. Correct MARD.KZILL to upper case within 3 characters.'
+- id: MM1258
+  field: MARD.KZILQ
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Phys. inventory ind. f. stock in qual. insp. in current year must be upper case and fit 3 characters
+  why_it_matters: MARD.KZILQ is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on KZILQ miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARD.KZILQ to upper case within 3 characters.
+  record_fix_template: 'Material {MARD.MATNR}: KZILQ is {actual_value}. Correct MARD.KZILQ to upper case within 3 characters.'
+- id: MM1259
+  field: MARD.KZILE
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Physical inventory indicator for restricted-use stock must be upper case and fit 3 characters
+  why_it_matters: MARD.KZILE is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on KZILE miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARD.KZILE to upper case within 3 characters.
+  record_fix_template: 'Material {MARD.MATNR}: KZILE is {actual_value}. Correct MARD.KZILE to upper case within 3 characters.'
+- id: MM1260
+  field: MARD.KZILS
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Physical inventory indicator for blocked stock must be upper case and fit 3 characters
+  why_it_matters: MARD.KZILS is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on KZILS miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARD.KZILS to upper case within 3 characters.
+  record_fix_template: 'Material {MARD.MATNR}: KZILS is {actual_value}. Correct MARD.KZILS to upper case within 3 characters.'
+- id: MM1261
+  field: MARD.KZVLL
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Physical inventory indicator for stock in previous year must be upper case and fit 3 characters
+  why_it_matters: MARD.KZVLL is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on KZVLL miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARD.KZVLL to upper case within 3 characters.
+  record_fix_template: 'Material {MARD.MATNR}: KZVLL is {actual_value}. Correct MARD.KZVLL to upper case within 3 characters.'
+- id: MM1262
+  field: MARD.KZVLQ
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Phys. inventory ind. f. stock in qual. insp. in prev. period must be upper case and fit 3 characters
+  why_it_matters: MARD.KZVLQ is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on KZVLQ miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARD.KZVLQ to upper case within 3 characters.
+  record_fix_template: 'Material {MARD.MATNR}: KZVLQ is {actual_value}. Correct MARD.KZVLQ to upper case within 3 characters.'
+- id: MM1263
+  field: MARD.KZVLE
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Physical inventory ind. for restricted-use stock, prev.pd must be upper case and fit 3 characters
+  why_it_matters: MARD.KZVLE is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on KZVLE miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARD.KZVLE to upper case within 3 characters.
+  record_fix_template: 'Material {MARD.MATNR}: KZVLE is {actual_value}. Correct MARD.KZVLE to upper case within 3 characters.'
+- id: MM1264
+  field: MARD.KZVLS
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Phys. inventory indicator for blocked stock in prev. period must be upper case and fit 3 characters
+  why_it_matters: MARD.KZVLS is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on KZVLS miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARD.KZVLS to upper case within 3 characters.
+  record_fix_template: 'Material {MARD.MATNR}: KZVLS is {actual_value}. Correct MARD.KZVLS to upper case within 3 characters.'
+- id: MM1265
+  field: MARD.EXPPG
+  check_class: cross_field_check
+  fail_when: '`MARD.EXPPG`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Preference indicator (deactivated) (EXPPG) is documented as unused but holds a value
+  why_it_matters: SAP documents MARD.EXPPG as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in EXPPG has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARD.EXPPG; the field is not used by standard processing.
+  record_fix_template: 'Material {MARD.MATNR}: EXPPG is {actual_value}. Clear MARD.EXPPG; the field is not used by standard
+    processing.'
+- id: MM1266
+  field: MARD.EXVER
+  check_class: cross_field_check
+  fail_when: '`MARD.EXVER`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Export indicator (deactivated) (EXVER) is documented as unused but holds a value
+  why_it_matters: SAP documents MARD.EXVER as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in EXVER has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARD.EXVER; the field is not used by standard processing.
+  record_fix_template: 'Material {MARD.MATNR}: EXVER is {actual_value}. Clear MARD.EXVER; the field is not used by standard
+    processing.'
+- id: MM1267
+  field: MARD.LGPBE
+  check_class: regex_check
+  pattern: ^[^a-z]{0,10}$
+  severity: low
+  dimension: validity
+  message: Storage Bin must be upper case and fit 10 characters
+  why_it_matters: MARD.LGPBE is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on LGPBE miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARD.LGPBE to upper case within 10 characters.
+  record_fix_template: 'Material {MARD.MATNR}: LGPBE is {actual_value}. Correct MARD.LGPBE to upper case within 10 characters.'
+- id: MM1268
+  field: MARD.PRCTL
+  check_class: regex_check
+  pattern: ^[^a-z]{0,10}$
+  severity: low
+  dimension: validity
+  message: Profit Center must be upper case and fit 10 characters
+  why_it_matters: MARD.PRCTL is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on PRCTL miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARD.PRCTL to upper case within 10 characters.
+  record_fix_template: 'Material {MARD.MATNR}: PRCTL is {actual_value}. Correct MARD.PRCTL to upper case within 10 characters.'
+- id: MM1269
+  field: MARD.LWMKB
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Picking area for lean WM must be upper case and fit 3 characters
+  why_it_matters: MARD.LWMKB is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on LWMKB miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MARD.LWMKB to upper case within 3 characters.
+  record_fix_template: 'Material {MARD.MATNR}: LWMKB is {actual_value}. Correct MARD.LWMKB to upper case within 3 characters.'
+- id: MM1270
+  field: MARD.MDRUE
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: MARDH rec. already exists for per. before last of MARD per must be blank or 'X'
+  why_it_matters: MARD.MDRUE is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read MDRUE behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARD.MDRUE to blank or 'X'.
+  record_fix_template: 'Material {MARD.MATNR}: MDRUE is {actual_value}. Set MARD.MDRUE to blank or ''X''.'
+- id: MM1271
+  field: MARD.MDJIN
+  check_class: regex_check
+  pattern: ^(0000|(19|20)[0-9]{2})$
+  severity: low
+  dimension: validity
+  message: Fiscal year of current physical inventory indicator must be a four-digit fiscal year
+  why_it_matters: MARD.MDJIN is a fiscal year. Only 0000 (not set) or a year from 1900 to 2099 is plausible.
+  rule_authority: sap_hard_constraint
+  sap_impact: Period-end and history logic that reads MDJIN skips or misplaces the record.
+  fix_map:
+    __other__: Correct MARD.MDJIN to a four-digit fiscal year or 0000.
+  record_fix_template: 'Material {MARD.MATNR}: MDJIN is {actual_value}. Correct MARD.MDJIN to a four-digit fiscal year or
+    0000.'
+- id: MM1272
+  field: MBEW.VVJLB
+  check_class: cross_field_check
+  fail_when: '`MBEW.VVJLB`.notna() & (`MBEW.VVJLB` < 0)'
+  severity: low
+  dimension: validity
+  message: Total valuated stock in year before last must not be negative
+  why_it_matters: MBEW.VVJLB is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads VVJLB produces negative results.
+  fix_map:
+    __other__: Correct MBEW.VVJLB to zero or a positive value.
+  record_fix_template: 'Material {MBEW.MATNR}: VVJLB is {actual_value}. Correct MBEW.VVJLB to zero or a positive value.'
+- id: MM1273
+  field: MBEW.VVMLB
+  check_class: cross_field_check
+  fail_when: '`MBEW.VVMLB`.notna() & (`MBEW.VVMLB` < 0)'
+  severity: low
+  dimension: validity
+  message: Total valuated stock in period before last must not be negative
+  why_it_matters: MBEW.VVMLB is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads VVMLB produces negative results.
+  fix_map:
+    __other__: Correct MBEW.VVMLB to zero or a positive value.
+  record_fix_template: 'Material {MBEW.MATNR}: VVMLB is {actual_value}. Correct MBEW.VVMLB to zero or a positive value.'
+- id: MM1274
+  field: MBEW.PPERZ
+  check_class: cross_field_check
+  fail_when: '`MBEW.PPERZ`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Period for future standard cost estimate (deactivated) (PPERZ) is documented as unused but holds a value
+  why_it_matters: SAP documents MBEW.PPERZ as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in PPERZ has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MBEW.PPERZ; the field is not used by standard processing.
+  record_fix_template: 'Material {MBEW.MATNR}: PPERZ is {actual_value}. Clear MBEW.PPERZ; the field is not used by standard
+    processing.'
+- id: MM1275
+  field: MBEW.PPERL
+  check_class: cross_field_check
+  fail_when: '`MBEW.PPERL`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Period for current standard cost estimate (deactivated) (PPERL) is documented as unused but holds a value
+  why_it_matters: SAP documents MBEW.PPERL as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in PPERL has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MBEW.PPERL; the field is not used by standard processing.
+  record_fix_template: 'Material {MBEW.MATNR}: PPERL is {actual_value}. Clear MBEW.PPERL; the field is not used by standard
+    processing.'
+- id: MM1276
+  field: MBEW.PPERV
+  check_class: cross_field_check
+  fail_when: '`MBEW.PPERV`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Period for previous standard cost estimate (deactivated) (PPERV) is documented as unused but holds a value
+  why_it_matters: SAP documents MBEW.PPERV as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in PPERV has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MBEW.PPERV; the field is not used by standard processing.
+  record_fix_template: 'Material {MBEW.MATNR}: PPERV is {actual_value}. Clear MBEW.PPERV; the field is not used by standard
+    processing.'
+- id: MM1277
+  field: MBEW.KALSC
+  check_class: cross_field_check
+  fail_when: '`MBEW.KALSC`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Overhead key (deactivated) (KALSC) is documented as unused but holds a value
+  why_it_matters: SAP documents MBEW.KALSC as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in KALSC has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MBEW.KALSC; the field is not used by standard processing.
+  record_fix_template: 'Material {MBEW.MATNR}: KALSC is {actual_value}. Clear MBEW.KALSC; the field is not used by standard
+    processing.'
+- id: MM1278
+  field: MBEW.ABWKZ
+  check_class: regex_check
+  pattern: ^[0-9]{1,2}$
+  severity: low
+  dimension: validity
+  message: 'Lowest value: devaluation indicator must contain digits only, at most 2'
+  why_it_matters: MBEW.ABWKZ is a numeric-character field of length 2. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on ABWKZ fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MBEW.ABWKZ to digits only, at most 2 characters.
+  record_fix_template: 'Material {MBEW.MATNR}: ABWKZ is {actual_value}. Correct MBEW.ABWKZ to digits only, at most 2 characters.'
+- id: MM1279
+  field: MBEW.PSTAT
+  check_class: regex_check
+  pattern: ^[^a-z]{0,15}$
+  severity: low
+  dimension: validity
+  message: Maintenance status must be upper case and fit 15 characters
+  why_it_matters: MBEW.PSTAT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 15 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on PSTAT miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MBEW.PSTAT to upper case within 15 characters.
+  record_fix_template: 'Material {MBEW.MATNR}: PSTAT is {actual_value}. Correct MBEW.PSTAT to upper case within 15 characters.'
+- id: MM1280
+  field: MBEW.KALNR
+  check_class: regex_check
+  pattern: ^[0-9]{1,12}$
+  severity: low
+  dimension: validity
+  message: Cost Estimate Number for Cost Est. w/o Qty Structure must contain digits only, at most 12
+  why_it_matters: MBEW.KALNR is a numeric-character field of length 12. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on KALNR fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MBEW.KALNR to digits only, at most 12 characters.
+  record_fix_template: 'Material {MBEW.MATNR}: KALNR is {actual_value}. Correct MBEW.KALNR to digits only, at most 12 characters.'
+- id: MM1281
+  field: MBEW.VERS1
+  check_class: regex_check
+  pattern: ^[0-9]{1,2}$
+  severity: low
+  dimension: validity
+  message: Costing version of the future standard cost estimate must contain digits only, at most 2
+  why_it_matters: MBEW.VERS1 is a numeric-character field of length 2. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on VERS1 fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MBEW.VERS1 to digits only, at most 2 characters.
+  record_fix_template: 'Material {MBEW.MATNR}: VERS1 is {actual_value}. Correct MBEW.VERS1 to digits only, at most 2 characters.'
+- id: MM1282
+  field: MBEW.VERS2
+  check_class: regex_check
+  pattern: ^[0-9]{1,2}$
+  severity: low
+  dimension: validity
+  message: Costing version of the current standard cost estimate must contain digits only, at most 2
+  why_it_matters: MBEW.VERS2 is a numeric-character field of length 2. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on VERS2 fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MBEW.VERS2 to digits only, at most 2 characters.
+  record_fix_template: 'Material {MBEW.MATNR}: VERS2 is {actual_value}. Correct MBEW.VERS2 to digits only, at most 2 characters.'
+- id: MM1283
+  field: MBEW.VERS3
+  check_class: regex_check
+  pattern: ^[0-9]{1,2}$
+  severity: low
+  dimension: validity
+  message: Costing version of the previous standard cost estimate must contain digits only, at most 2
+  why_it_matters: MBEW.VERS3 is a numeric-character field of length 2. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on VERS3 fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MBEW.VERS3 to digits only, at most 2 characters.
+  record_fix_template: 'Material {MBEW.MATNR}: VERS3 is {actual_value}. Correct MBEW.VERS3 to digits only, at most 2 characters.'
+- id: MM1284
+  field: MBEW.KZIWL
+  check_class: regex_check
+  pattern: ^[^a-z]{0,3}$
+  severity: low
+  dimension: validity
+  message: Phys. inventory indicator for  value-only material must be upper case and fit 3 characters
+  why_it_matters: MBEW.KZIWL is not defined as case-sensitive, so SAP stores it in upper case, and it holds 3 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on KZIWL miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MBEW.KZIWL to upper case within 3 characters.
+  record_fix_template: 'Material {MBEW.MATNR}: KZIWL is {actual_value}. Correct MBEW.KZIWL to upper case within 3 characters.'
+- id: MM1285
+  field: MBEW.ABCIW
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Physical inventory indicator for cycle counting must be upper case and fit 1 characters
+  why_it_matters: MBEW.ABCIW is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on ABCIW miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MBEW.ABCIW to upper case within 1 characters.
+  record_fix_template: 'Material {MBEW.MATNR}: ABCIW is {actual_value}. Correct MBEW.ABCIW to upper case within 1 characters.'
+- id: MM1286
+  field: MBEW.XBEWM
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Valuation based on the batch-specific unit of measure must be blank or 'X'
+  why_it_matters: MBEW.XBEWM is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read XBEWM behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MBEW.XBEWM to blank or 'X'.
+  record_fix_template: 'Material {MBEW.MATNR}: XBEWM is {actual_value}. Set MBEW.XBEWM to blank or ''X''.'
+- id: MM1287
+  field: MBEW.MBRUE
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: MBEWH rec. already exists for per. before last of MBEW per must be blank or 'X'
+  why_it_matters: MBEW.MBRUE is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read MBRUE behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MBEW.MBRUE to blank or 'X'.
+  record_fix_template: 'Material {MBEW.MATNR}: MBRUE is {actual_value}. Set MBEW.MBRUE to blank or ''X''.'
+- id: MM1288
+  field: MBEW.OIPPINV
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Prepaid Inventory Flag for Material Valuation Type Segment must be blank or 'X'
+  why_it_matters: MBEW.OIPPINV is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+    is read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read OIPPINV behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MBEW.OIPPINV to blank or 'X'.
+  record_fix_template: 'Material {MBEW.MATNR}: OIPPINV is {actual_value}. Set MBEW.OIPPINV to blank or ''X''.'
+- id: MM1289
+  field: MVKE.LSTAK
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Listing functions (assortments) are active must be blank or 'X'
+  why_it_matters: MVKE.LSTAK is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read LSTAK behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.LSTAK to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: LSTAK is {actual_value}. Set MVKE.LSTAK to blank or ''X''.'
+- id: MM1290
+  field: MVKE.PRAT1
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: ID for product attribute 1 must be blank or 'X'
+  why_it_matters: MVKE.PRAT1 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PRAT1 behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.PRAT1 to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: PRAT1 is {actual_value}. Set MVKE.PRAT1 to blank or ''X''.'
+- id: MM1291
+  field: MVKE.PRAT2
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: ID for product attribute 2 must be blank or 'X'
+  why_it_matters: MVKE.PRAT2 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PRAT2 behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.PRAT2 to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: PRAT2 is {actual_value}. Set MVKE.PRAT2 to blank or ''X''.'
+- id: MM1292
+  field: MVKE.PRAT3
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: ID for product attribute 3 must be blank or 'X'
+  why_it_matters: MVKE.PRAT3 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PRAT3 behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.PRAT3 to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: PRAT3 is {actual_value}. Set MVKE.PRAT3 to blank or ''X''.'
+- id: MM1293
+  field: MVKE.PRAT4
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: ID for product attribute 4 must be blank or 'X'
+  why_it_matters: MVKE.PRAT4 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PRAT4 behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.PRAT4 to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: PRAT4 is {actual_value}. Set MVKE.PRAT4 to blank or ''X''.'
+- id: MM1294
+  field: MVKE.PRAT5
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: ID for product attribute 5 must be blank or 'X'
+  why_it_matters: MVKE.PRAT5 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PRAT5 behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.PRAT5 to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: PRAT5 is {actual_value}. Set MVKE.PRAT5 to blank or ''X''.'
+- id: MM1295
+  field: MVKE.PRAT6
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: ID for product attribute 6 must be blank or 'X'
+  why_it_matters: MVKE.PRAT6 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PRAT6 behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.PRAT6 to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: PRAT6 is {actual_value}. Set MVKE.PRAT6 to blank or ''X''.'
+- id: MM1296
+  field: MVKE.PRAT7
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: ID for product attribute 7 must be blank or 'X'
+  why_it_matters: MVKE.PRAT7 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PRAT7 behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.PRAT7 to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: PRAT7 is {actual_value}. Set MVKE.PRAT7 to blank or ''X''.'
+- id: MM1297
+  field: MVKE.PRAT8
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: ID for product attribute 8 must be blank or 'X'
+  why_it_matters: MVKE.PRAT8 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PRAT8 behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.PRAT8 to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: PRAT8 is {actual_value}. Set MVKE.PRAT8 to blank or ''X''.'
+- id: MM1298
+  field: MVKE.PRAT9
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: ID for product attribute 9 must be blank or 'X'
+  why_it_matters: MVKE.PRAT9 is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PRAT9 behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.PRAT9 to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: PRAT9 is {actual_value}. Set MVKE.PRAT9 to blank or ''X''.'
+- id: MM1299
+  field: MVKE.PRATA
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: ID for product attribute 10 must be blank or 'X'
+  why_it_matters: MVKE.PRATA is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read PRATA behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.PRATA to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: PRATA is {actual_value}. Set MVKE.PRATA to blank or ''X''.'
+- id: MM1300
+  field: MVKE.RJART
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Flag rackjobber material must be blank or 'X'
+  why_it_matters: MVKE.RJART is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read RJART behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.RJART to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: RJART is {actual_value}. Set MVKE.RJART to blank or ''X''.'
+- id: MM1301
+  field: MVKE.VAVME
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Variable Sales Unit Not Allowed must be blank or 'X'
+  why_it_matters: MVKE.VAVME is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read VAVME behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MVKE.VAVME to blank or 'X'.
+  record_fix_template: 'Material {MVKE.MATNR}: VAVME is {actual_value}. Set MVKE.VAVME to blank or ''X''.'
+- id: MM1302
+  field: MVKE.PVMSO
+  check_class: regex_check
+  pattern: ^[0-9]{1,8}$
+  severity: low
+  dimension: validity
+  message: Material sorting in product proposal must contain digits only, at most 8
+  why_it_matters: MVKE.PVMSO is a numeric-character field of length 8. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on PVMSO fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MVKE.PVMSO to digits only, at most 8 characters.
+  record_fix_template: 'Material {MVKE.MATNR}: PVMSO is {actual_value}. Correct MVKE.PVMSO to digits only, at most 8 characters.'
+- id: MM1303
+  field: MVKE./BEV1/EMDRCKSPL
+  check_class: regex_check
+  pattern: ^[0-9]{1,1}$
+  severity: low
+  dimension: validity
+  message: Print Column Empties Returns Block must contain digits only, at most 1
+  why_it_matters: MVKE./BEV1/EMDRCKSPL is a numeric-character field of length 1. Letters, signs or extra characters cannot
+    be stored in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on /BEV1/EMDRCKSPL fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MVKE./BEV1/EMDRCKSPL to digits only, at most 1 characters.
+  record_fix_template: 'Material {MVKE.MATNR}: /BEV1/EMDRCKSPL is {actual_value}. Correct MVKE./BEV1/EMDRCKSPL to digits only,
+    at most 1 characters.'
+- id: MM1304
+  field: MVKE./BEV1/RPBEZME
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Base Unit of Measure for Statistics Totals List/Planning must not contain leading, trailing or repeated blanks
+  why_it_matters: MVKE./BEV1/RPBEZME is a free-text field. Leading, trailing or repeated blanks defeat exact-match lookups
+    and make equal values look different.
+  rule_authority: best_practice
+  sap_impact: Matching and reporting on /BEV1/RPBEZME treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from MVKE./BEV1/RPBEZME.
+  record_fix_template: 'Material {MVKE.MATNR}: /BEV1/RPBEZME is {actual_value}. Remove leading, trailing and repeated blanks
+    from MVKE./BEV1/RPBEZME.'
+- id: MM1305
+  field: MVKE./BEV1/RPSNS
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: No Allocation to Totals Field (Do not Total) must be upper case and fit 1 characters
+  why_it_matters: MVKE./BEV1/RPSNS is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /BEV1/RPSNS miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MVKE./BEV1/RPSNS to upper case within 1 characters.
+  record_fix_template: 'Material {MVKE.MATNR}: /BEV1/RPSNS is {actual_value}. Correct MVKE./BEV1/RPSNS to upper case within
+    1 characters.'
+- id: MM1306
+  field: MVKE./BEV1/RPSFA
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Assignment to Totals Field Category 1 must be upper case and fit 1 characters
+  why_it_matters: MVKE./BEV1/RPSFA is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /BEV1/RPSFA miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MVKE./BEV1/RPSFA to upper case within 1 characters.
+  record_fix_template: 'Material {MVKE.MATNR}: /BEV1/RPSFA is {actual_value}. Correct MVKE./BEV1/RPSFA to upper case within
+    1 characters.'
+- id: MM1307
+  field: MVKE./BEV1/RPSKI
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Assignment to Totals Field Category 2 must be upper case and fit 1 characters
+  why_it_matters: MVKE./BEV1/RPSKI is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /BEV1/RPSKI miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MVKE./BEV1/RPSKI to upper case within 1 characters.
+  record_fix_template: 'Material {MVKE.MATNR}: /BEV1/RPSKI is {actual_value}. Correct MVKE./BEV1/RPSKI to upper case within
+    1 characters.'
+- id: MM1308
+  field: MVKE./BEV1/RPSCO
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Assignment to Totals Field Category 3 must be upper case and fit 1 characters
+  why_it_matters: MVKE./BEV1/RPSCO is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /BEV1/RPSCO miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MVKE./BEV1/RPSCO to upper case within 1 characters.
+  record_fix_template: 'Material {MVKE.MATNR}: /BEV1/RPSCO is {actual_value}. Correct MVKE./BEV1/RPSCO to upper case within
+    1 characters.'
+- id: MM1309
+  field: MVKE./BEV1/RPSSO
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Assignment to Totals Field Category 4 must be upper case and fit 1 characters
+  why_it_matters: MVKE./BEV1/RPSSO is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on /BEV1/RPSSO miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MVKE./BEV1/RPSSO to upper case within 1 characters.
+  record_fix_template: 'Material {MVKE.MATNR}: /BEV1/RPSSO is {actual_value}. Correct MVKE./BEV1/RPSSO to upper case within
+    1 characters.'
+- id: MM1310
+  field: MARM.EANNR
+  check_class: cross_field_check
+  fail_when: '`MARM.EANNR`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: European Article Number (EAN) - obsolete!!!!! (EANNR) is documented as unused but holds a value
+  why_it_matters: SAP documents MARM.EANNR as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in EANNR has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear MARM.EANNR; the field is not used by standard processing.
+  record_fix_template: 'Material {MARM.MATNR}: EANNR is {actual_value}. Clear MARM.EANNR; the field is not used by standard
+    processing.'
+- id: MM1311
+  field: MARM.ATINN
+  check_class: regex_check
+  pattern: ^[0-9]{1,10}$
+  severity: low
+  dimension: validity
+  message: Internal characteristic must contain digits only, at most 10
+  why_it_matters: MARM.ATINN is a numeric-character field of length 10. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on ATINN fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARM.ATINN to digits only, at most 10 characters.
+  record_fix_template: 'Material {MARM.MATNR}: ATINN is {actual_value}. Correct MARM.ATINN to digits only, at most 10 characters.'
+- id: MM1312
+  field: MARM.MESRT
+  check_class: regex_check
+  pattern: ^[0-9]{1,2}$
+  severity: low
+  dimension: validity
+  message: Unit of measure sort number must contain digits only, at most 2
+  why_it_matters: MARM.MESRT is a numeric-character field of length 2. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on MESRT fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct MARM.MESRT to digits only, at most 2 characters.
+  record_fix_template: 'Material {MARM.MATNR}: MESRT is {actual_value}. Correct MARM.MESRT to digits only, at most 2 characters.'
+- id: MM1313
+  field: MARM.XFHDW
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Leading batch-specific unit of measure must be blank or 'X'
+  why_it_matters: MARM.XFHDW is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read XFHDW behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARM.XFHDW to blank or 'X'.
+  record_fix_template: 'Material {MARM.MATNR}: XFHDW is {actual_value}. Set MARM.XFHDW to blank or ''X''.'
+- id: MM1314
+  field: MARM.XBEWW
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Valuation based on the batch-specific unit of measure must be blank or 'X'
+  why_it_matters: MARM.XBEWW is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read XBEWW behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MARM.XBEWW to blank or 'X'.
+  record_fix_template: 'Material {MARM.MATNR}: XBEWW is {actual_value}. Set MARM.XBEWW to blank or ''X''.'
+- id: MM1315
+  field: MEAN.LFNUM
+  check_class: regex_check
+  pattern: ^[^a-z]{0,5}$
+  severity: low
+  dimension: validity
+  message: Consecutive number must be upper case and fit 5 characters
+  why_it_matters: MEAN.LFNUM is not defined as case-sensitive, so SAP stores it in upper case, and it holds 5 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on LFNUM miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MEAN.LFNUM to upper case within 5 characters.
+  record_fix_template: 'Material {MEAN.MATNR}: LFNUM is {actual_value}. Correct MEAN.LFNUM to upper case within 5 characters.'
+- id: MM1316
+  field: MLAN.TAXM5
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Tax Classification of Material must be upper case and fit 1 characters
+  why_it_matters: MLAN.TAXM5 is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on TAXM5 miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MLAN.TAXM5 to upper case within 1 characters.
+  record_fix_template: 'Material {MLAN.MATNR}: TAXM5 is {actual_value}. Correct MLAN.TAXM5 to upper case within 1 characters.'
+- id: MM1317
+  field: MLAN.TAXM6
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Tax Classification of Material must be upper case and fit 1 characters
+  why_it_matters: MLAN.TAXM6 is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on TAXM6 miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MLAN.TAXM6 to upper case within 1 characters.
+  record_fix_template: 'Material {MLAN.MATNR}: TAXM6 is {actual_value}. Correct MLAN.TAXM6 to upper case within 1 characters.'
+- id: MM1318
+  field: MLAN.TAXM7
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Tax Classification of Material must be upper case and fit 1 characters
+  why_it_matters: MLAN.TAXM7 is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on TAXM7 miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MLAN.TAXM7 to upper case within 1 characters.
+  record_fix_template: 'Material {MLAN.MATNR}: TAXM7 is {actual_value}. Correct MLAN.TAXM7 to upper case within 1 characters.'
+- id: MM1319
+  field: MLAN.TAXM8
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Tax Classification of Material must be upper case and fit 1 characters
+  why_it_matters: MLAN.TAXM8 is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on TAXM8 miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MLAN.TAXM8 to upper case within 1 characters.
+  record_fix_template: 'Material {MLAN.MATNR}: TAXM8 is {actual_value}. Correct MLAN.TAXM8 to upper case within 1 characters.'
+- id: MM1320
+  field: MLAN.TAXM9
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Tax Classification of Material must be upper case and fit 1 characters
+  why_it_matters: MLAN.TAXM9 is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on TAXM9 miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MLAN.TAXM9 to upper case within 1 characters.
+  record_fix_template: 'Material {MLAN.MATNR}: TAXM9 is {actual_value}. Correct MLAN.TAXM9 to upper case within 1 characters.'
+- id: MM1321
+  field: MLGN.KZZUL
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: Allow addition to existing stock must be blank or ''X'''
+  why_it_matters: MLGN.KZZUL is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read KZZUL behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MLGN.KZZUL to blank or 'X'.
+  record_fix_template: 'Material {MLGN.MATNR}: KZZUL is {actual_value}. Set MLGN.KZZUL to blank or ''X''.'
+- id: MM1322
+  field: MLGN.BLOCK
+  check_class: regex_check
+  pattern: ^[^a-z]{0,2}$
+  severity: low
+  dimension: validity
+  message: Bulk storage indicator must be upper case and fit 2 characters
+  why_it_matters: MLGN.BLOCK is not defined as case-sensitive, so SAP stores it in upper case, and it holds 2 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on BLOCK miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MLGN.BLOCK to upper case within 2 characters.
+  record_fix_template: 'Material {MLGN.MATNR}: BLOCK is {actual_value}. Correct MLGN.BLOCK to upper case within 2 characters.'
+- id: MM1323
+  field: MLGN.KZMBF
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: Message to inventory management must be blank or ''X'''
+  why_it_matters: MLGN.KZMBF is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read KZMBF behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MLGN.KZMBF to blank or 'X'.
+  record_fix_template: 'Material {MLGN.MATNR}: KZMBF is {actual_value}. Set MLGN.KZMBF to blank or ''X''.'
+- id: MM1324
+  field: MDMA.TAKZT
+  check_class: cross_field_check
+  fail_when: '`MDMA.TAKZT`.notna() & (`MDMA.TAKZT` < 0)'
+  severity: low
+  dimension: validity
+  message: Takt time must not be negative
+  why_it_matters: MDMA.TAKZT is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads TAKZT produces negative results.
+  fix_map:
+    __other__: Correct MDMA.TAKZT to zero or a positive value.
+  record_fix_template: 'Material {MDMA.MATNR}: TAKZT is {actual_value}. Correct MDMA.TAKZT to zero or a positive value.'
+- id: MM1325
+  field: MDMA.PROPR
+  check_class: regex_check
+  pattern: ^[^a-z]{0,4}$
+  severity: low
+  dimension: validity
+  message: Forecast profile must be upper case and fit 4 characters
+  why_it_matters: MDMA.PROPR is not defined as case-sensitive, so SAP stores it in upper case, and it holds 4 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on PROPR miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MDMA.PROPR to upper case within 4 characters.
+  record_fix_template: 'Material {MDMA.MATNR}: PROPR is {actual_value}. Correct MDMA.PROPR to upper case within 4 characters.'
+- id: MM1326
+  field: MDMA.VRBDB
+  check_class: regex_check
+  pattern: ^[^a-z]{0,10}$
+  severity: low
+  dimension: validity
+  message: Reference MRP area - consumption must be upper case and fit 10 characters
+  why_it_matters: MDMA.VRBDB is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on VRBDB miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MDMA.VRBDB to upper case within 10 characters.
+  record_fix_template: 'Material {MDMA.MATNR}: VRBDB is {actual_value}. Correct MDMA.VRBDB to upper case within 10 characters.'
+- id: MM1327
+  field: MDMA.VRBDT
+  check_class: cross_field_check
+  fail_when: '`MDMA.VRBDT`.dt.year < 1900'
+  severity: low
+  dimension: accuracy
+  message: To date of the material to be copied for consumption lies before the year 1900
+  why_it_matters: MDMA.VRBDT is a calendar date. A year before 1900 is almost always a placeholder or a conversion error and
+    breaks validity-period selection.
+  rule_authority: best_practice
+  sap_impact: Selections that use VRBDT as a validity start pick the wrong record or none.
+  fix_map:
+    __other__: Correct MDMA.VRBDT to the intended calendar date or clear it.
+  record_fix_template: 'Material {MDMA.MATNR}: VRBDT is {actual_value}. Correct MDMA.VRBDT to the intended calendar date or
+    clear it.'
+- id: MM1328
+  field: MDMA.PSTAT
+  check_class: regex_check
+  pattern: ^[^a-z]{0,15}$
+  severity: low
+  dimension: validity
+  message: Maintenance status must be upper case and fit 15 characters
+  why_it_matters: MDMA.PSTAT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 15 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on PSTAT miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MDMA.PSTAT to upper case within 15 characters.
+  record_fix_template: 'Material {MDMA.MATNR}: PSTAT is {actual_value}. Correct MDMA.PSTAT to upper case within 15 characters.'
+- id: MM1329
+  field: MDMA.KZKFK
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: take correction factors into account must be blank or ''X'''
+  why_it_matters: MDMA.KZKFK is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read KZKFK behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set MDMA.KZKFK to blank or 'X'.
+  record_fix_template: 'Material {MDMA.MATNR}: KZKFK is {actual_value}. Set MDMA.KZKFK to blank or ''X''.'
+- id: MM1330
+  field: MKAL.MDV01
+  check_class: regex_check
+  pattern: ^[^a-z]{0,8}$
+  severity: low
+  dimension: validity
+  message: Production line for repetitive manufacturing must be upper case and fit 8 characters
+  why_it_matters: MKAL.MDV01 is not defined as case-sensitive, so SAP stores it in upper case, and it holds 8 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on MDV01 miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MKAL.MDV01 to upper case within 8 characters.
+  record_fix_template: 'Material {MKAL.MATNR}: MDV01 is {actual_value}. Correct MKAL.MDV01 to upper case within 8 characters.'
+- id: MM1331
+  field: MKAL.PRVBE
+  check_class: regex_check
+  pattern: ^[^a-z]{0,10}$
+  severity: low
+  dimension: validity
+  message: Default supply area for components must be upper case and fit 10 characters
+  why_it_matters: MKAL.PRVBE is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on PRVBE miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MKAL.PRVBE to upper case within 10 characters.
+  record_fix_template: 'Material {MKAL.MATNR}: PRVBE is {actual_value}. Correct MKAL.PRVBE to upper case within 10 characters.'
+- id: MM1332
+  field: MKAL.UCMAT
+  check_class: regex_check
+  pattern: ^[^a-z]{0,18}$
+  severity: low
+  dimension: validity
+  message: Reference Material for Original Batches must be upper case and fit 18 characters
+  why_it_matters: MKAL.UCMAT is not defined as case-sensitive, so SAP stores it in upper case, and it holds 18 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on UCMAT miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct MKAL.UCMAT to upper case within 18 characters.
+  record_fix_template: 'Material {MKAL.MATNR}: UCMAT is {actual_value}. Correct MKAL.UCMAT to upper case within 18 characters.'
+- id: MM1333
+  field: QMAT.AVE
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Automatic Usage Decision Planned must be blank or 'X'
+  why_it_matters: QMAT.AVE is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is read
+    as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read AVE behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set QMAT.AVE to blank or 'X'.
+  record_fix_template: 'Material {QMAT.ART}: AVE is {actual_value}. Set QMAT.AVE to blank or ''X''.'
+- id: MM1334
+  field: QMAT.MST
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Trigger Sample Calculation Manually must be blank or 'X'
+  why_it_matters: QMAT.MST is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is read
+    as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read MST behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set QMAT.MST to blank or 'X'.
+  record_fix_template: 'Material {QMAT.ART}: MST is {actual_value}. Set QMAT.MST to blank or ''X''.'
+- id: MM1335
+  field: QMAT.EIN
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Serial Number Management Possible must be blank or 'X'
+  why_it_matters: QMAT.EIN is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is read
+    as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read EIN behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set QMAT.EIN to blank or 'X'.
+  record_fix_template: 'Material {QMAT.ART}: EIN is {actual_value}. Set QMAT.EIN to blank or ''X''.'
+- id: MM1336
+  field: QMAT.KZPRFKOST
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Record Appraisal Costs in Individual QM Order must be blank or 'X'
+  why_it_matters: QMAT.KZPRFKOST is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+    is read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read KZPRFKOST behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set QMAT.KZPRFKOST to blank or 'X'.
+  record_fix_template: 'Material {QMAT.ART}: KZPRFKOST is {actual_value}. Set QMAT.KZPRFKOST to blank or ''X''.'
+- id: MM1337
+  field: QMAT.APA
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Preferred Inspection Type must be blank or 'X'
+  why_it_matters: QMAT.APA is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is read
+    as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read APA behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set QMAT.APA to blank or 'X'.
+  record_fix_template: 'Material {QMAT.ART}: APA is {actual_value}. Set QMAT.APA to blank or ''X''.'
+- id: MM1338
+  field: QMAT.AFR
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Inspection for Handling Unit must be blank or 'X'
+  why_it_matters: QMAT.AFR is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is read
+    as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read AFR behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set QMAT.AFR to blank or 'X'.
+  record_fix_template: 'Material {QMAT.ART}: AFR is {actual_value}. Set QMAT.AFR to blank or ''X''.'
+- id: MM1339
+  field: QMAT.MMA
+  check_class: cross_field_check
+  fail_when: '`QMAT.MMA`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Field Not Used as of 3.0       Field Reserved for SAP (MMA) is documented as unused but holds a value
+  why_it_matters: SAP documents QMAT.MMA as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in MMA has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear QMAT.MMA; the field is not used by standard processing.
+  record_fix_template: 'Material {QMAT.ART}: MMA is {actual_value}. Clear QMAT.MMA; the field is not used by standard processing.'
+- id: MM1340
+  field: QMAT.FEH
+  check_class: cross_field_check
+  fail_when: '`QMAT.FEH`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Field Not Used as of 3.0       Field Reserved for SAP (FEH) is documented as unused but holds a value
+  why_it_matters: SAP documents QMAT.FEH as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in FEH has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear QMAT.FEH; the field is not used by standard processing.
+  record_fix_template: 'Material {QMAT.ART}: FEH is {actual_value}. Clear QMAT.FEH; the field is not used by standard processing.'
+- id: MM1341
+  field: QMAT.PRFRQ
+  check_class: cross_field_check
+  fail_when: '`QMAT.PRFRQ`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Field Not Used as of 3.0       Field Reserved for SAP (PRFRQ) is documented as unused but holds a value
+  why_it_matters: SAP documents QMAT.PRFRQ as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in PRFRQ has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear QMAT.PRFRQ; the field is not used by standard processing.
+  record_fix_template: 'Material {QMAT.ART}: PRFRQ is {actual_value}. Clear QMAT.PRFRQ; the field is not used by standard
+    processing.'
+- id: MM1342
+  field: QMAT.NKMPR
+  check_class: cross_field_check
+  fail_when: '`QMAT.NKMPR`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Field Not Used as of 3.0       Field Reserved for SAP (NKMPR) is documented as unused but holds a value
+  why_it_matters: SAP documents QMAT.NKMPR as deactivated, obsolete or reserved. A value here is leftover migration or custom-code
+    data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in NKMPR has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear QMAT.NKMPR; the field is not used by standard processing.
+  record_fix_template: 'Material {QMAT.ART}: NKMPR is {actual_value}. Clear QMAT.NKMPR; the field is not used by standard
+    processing.'
+- id: MM1343
+  field: QMAT.MS_FLAG
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: Multiple Specifications must be blank or ''X'''
+  why_it_matters: QMAT.MS_FLAG is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+    is read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read MS_FLAG behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set QMAT.MS_FLAG to blank or 'X'.
+  record_fix_template: 'Material {QMAT.ART}: MS_FLAG is {actual_value}. Set QMAT.MS_FLAG to blank or ''X''.'
+- id: MM1344
+  field: CKMLHD.XABRECH
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Movements have Occurred Since the Last Price Determination must be blank or 'X'
+  why_it_matters: CKMLHD.XABRECH is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+    is read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read XABRECH behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set CKMLHD.XABRECH to blank or 'X'.
+  record_fix_template: 'Material {CKMLHD.KALNR}: XABRECH is {actual_value}. Set CKMLHD.XABRECH to blank or ''X''.'
+- id: MM1345
+  field: CKMLHD.XABRERR
+  check_class: cross_field_check
+  fail_when: '`CKMLHD.XABRERR`.notna()'
+  severity: low
+  dimension: lifecycle
+  message: Obsolete (XABRERR) is documented as unused but holds a value
+  why_it_matters: SAP documents CKMLHD.XABRERR as deactivated, obsolete or reserved. A value here is leftover migration or
+    custom-code data that no standard process reads, and it is carried into every extract and load.
+  rule_authority: best_practice
+  sap_impact: The value in XABRERR has no effect in standard processing and adds noise to migration scope and reconciliation.
+  fix_map:
+    __other__: Clear CKMLHD.XABRERR; the field is not used by standard processing.
+  record_fix_template: 'Material {CKMLHD.KALNR}: XABRERR is {actual_value}. Clear CKMLHD.XABRERR; the field is not used by
+    standard processing.'
+- id: MM1346
+  field: CKMLHD.ABRECHUHR
+  check_class: regex_check
+  pattern: ^([01][0-9]|2[0-3])[0-5][0-9][0-5][0-9]$
+  severity: low
+  dimension: validity
+  message: Time of Last Sucessful Price Determination must be a valid time (HHMMSS)
+  why_it_matters: CKMLHD.ABRECHUHR holds a time of day as six digits. Hours above 23 or minutes and seconds above 59 are not
+    valid.
+  rule_authority: sap_hard_constraint
+  sap_impact: Time-based sequencing that uses ABRECHUHR fails or sorts the record wrongly.
+  fix_map:
+    __other__: Correct CKMLHD.ABRECHUHR to a valid HHMMSS time.
+  record_fix_template: 'Material {CKMLHD.KALNR}: ABRECHUHR is {actual_value}. Correct CKMLHD.ABRECHUHR to a valid HHMMSS time.'
+- id: MM1347
+  field: CKMLHD.XOBEW
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: Vendor Stock Valuation Indicator must be blank or 'X'
+  why_it_matters: CKMLHD.XOBEW is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character
+    is read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read XOBEW behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set CKMLHD.XOBEW to blank or 'X'.
+  record_fix_template: 'Material {CKMLHD.KALNR}: XOBEW is {actual_value}. Set CKMLHD.XOBEW to blank or ''X''.'
+- id: MM1348
+  field: CKMLHD.SOBKZ
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Special Stock Indicator must be upper case and fit 1 characters
+  why_it_matters: CKMLHD.SOBKZ is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on SOBKZ miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct CKMLHD.SOBKZ to upper case within 1 characters.
+  record_fix_template: 'Material {CKMLHD.KALNR}: SOBKZ is {actual_value}. Correct CKMLHD.SOBKZ to upper case within 1 characters.'
+- id: MM1349
+  field: CKMLHD.VBELN
+  check_class: regex_check
+  pattern: ^[^a-z]{0,10}$
+  severity: low
+  dimension: validity
+  message: Sales and Distribution Document Number must be upper case and fit 10 characters
+  why_it_matters: CKMLHD.VBELN is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on VBELN miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct CKMLHD.VBELN to upper case within 10 characters.
+  record_fix_template: 'Material {CKMLHD.KALNR}: VBELN is {actual_value}. Correct CKMLHD.VBELN to upper case within 10 characters.'
+- id: MM1350
+  field: CKMLHD.POSNR
+  check_class: regex_check
+  pattern: ^[0-9]{1,6}$
+  severity: low
+  dimension: validity
+  message: Item number of the SD document must contain digits only, at most 6
+  why_it_matters: CKMLHD.POSNR is a numeric-character field of length 6. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on POSNR fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct CKMLHD.POSNR to digits only, at most 6 characters.
+  record_fix_template: 'Material {CKMLHD.KALNR}: POSNR is {actual_value}. Correct CKMLHD.POSNR to digits only, at most 6 characters.'
+- id: MM1351
+  field: CKMLHD.PSPNR
+  check_class: regex_check
+  pattern: ^[0-9]{1,8}$
+  severity: low
+  dimension: validity
+  message: Work Breakdown Structure Element (WBS Element) must contain digits only, at most 8
+  why_it_matters: CKMLHD.PSPNR is a numeric-character field of length 8. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on PSPNR fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct CKMLHD.PSPNR to digits only, at most 8 characters.
+  record_fix_template: 'Material {CKMLHD.KALNR}: PSPNR is {actual_value}. Correct CKMLHD.PSPNR to digits only, at most 8 characters.'
+- id: MM1352
+  field: CKMLHD.LIFNR
+  check_class: regex_check
+  pattern: ^[^a-z]{0,10}$
+  severity: low
+  dimension: validity
+  message: Account Number of Vendor or Creditor must be upper case and fit 10 characters
+  why_it_matters: CKMLHD.LIFNR is not defined as case-sensitive, so SAP stores it in upper case, and it holds 10 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on LIFNR miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct CKMLHD.LIFNR to upper case within 10 characters.
+  record_fix_template: 'Material {CKMLHD.KALNR}: LIFNR is {actual_value}. Correct CKMLHD.LIFNR to upper case within 10 characters.'
+- id: MM1353
+  field: AUSP.ATZHL
+  check_class: regex_check
+  pattern: ^[0-9]{1,3}$
+  severity: low
+  dimension: validity
+  message: Characteristic value counter must contain digits only, at most 3
+  why_it_matters: AUSP.ATZHL is a numeric-character field of length 3. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on ATZHL fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct AUSP.ATZHL to digits only, at most 3 characters.
+  record_fix_template: 'Material {AUSP.OBJEK}: ATZHL is {actual_value}. Correct AUSP.ATZHL to digits only, at most 3 characters.'
+- id: MM1354
+  field: AUSP.MAFID
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: 'Indicator: Object/Class must be upper case and fit 1 characters'
+  why_it_matters: AUSP.MAFID is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on MAFID miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct AUSP.MAFID to upper case within 1 characters.
+  record_fix_template: 'Material {AUSP.OBJEK}: MAFID is {actual_value}. Correct AUSP.MAFID to upper case within 1 characters.'
+- id: MM1355
+  field: AUSP.ADZHL
+  check_class: regex_check
+  pattern: ^[0-9]{1,4}$
+  severity: low
+  dimension: validity
+  message: Internal counter for archiving objects via engin. chg. mgmt must contain digits only, at most 4
+  why_it_matters: AUSP.ADZHL is a numeric-character field of length 4. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on ADZHL fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct AUSP.ADZHL to digits only, at most 4 characters.
+  record_fix_template: 'Material {AUSP.OBJEK}: ADZHL is {actual_value}. Correct AUSP.ADZHL to digits only, at most 4 characters.'
+- id: MM1356
+  field: AUSP.ATCOD
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Code for value dependency must be upper case and fit 1 characters
+  why_it_matters: AUSP.ATCOD is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on ATCOD miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct AUSP.ATCOD to upper case within 1 characters.
+  record_fix_template: 'Material {AUSP.OBJEK}: ATCOD is {actual_value}. Correct AUSP.ATCOD to upper case within 1 characters.'
+- id: MM1357
+  field: AUSP.AENNR
+  check_class: regex_check
+  pattern: ^[^a-z]{0,12}$
+  severity: low
+  dimension: validity
+  message: Change Number must be upper case and fit 12 characters
+  why_it_matters: AUSP.AENNR is not defined as case-sensitive, so SAP stores it in upper case, and it holds 12 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on AENNR miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct AUSP.AENNR to upper case within 12 characters.
+  record_fix_template: 'Material {AUSP.OBJEK}: AENNR is {actual_value}. Correct AUSP.AENNR to upper case within 12 characters.'
+- id: MM1358
+  field: AUSP.ATIMB
+  check_class: regex_check
+  pattern: ^[0-9]{1,10}$
+  severity: low
+  dimension: validity
+  message: Characteristic Number of User-Defined Data Type must contain digits only, at most 10
+  why_it_matters: AUSP.ATIMB is a numeric-character field of length 10. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on ATIMB fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct AUSP.ATIMB to digits only, at most 10 characters.
+  record_fix_template: 'Material {AUSP.OBJEK}: ATIMB is {actual_value}. Correct AUSP.ATIMB to digits only, at most 10 characters.'
+- id: MM1359
+  field: AUSP.ATZIS
+  check_class: regex_check
+  pattern: ^[0-9]{1,3}$
+  severity: low
+  dimension: validity
+  message: Instance counter must contain digits only, at most 3
+  why_it_matters: AUSP.ATZIS is a numeric-character field of length 3. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on ATZIS fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct AUSP.ATZIS to digits only, at most 3 characters.
+  record_fix_template: 'Material {AUSP.OBJEK}: ATZIS is {actual_value}. Correct AUSP.ATZIS to digits only, at most 3 characters.'
+- id: MM1360
+  field: AUSP.ATSRT
+  check_class: regex_check
+  pattern: ^[0-9]{1,4}$
+  severity: low
+  dimension: validity
+  message: Sort field for AUSP char. values must contain digits only, at most 4
+  why_it_matters: AUSP.ATSRT is a numeric-character field of length 4. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on ATSRT fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct AUSP.ATSRT to digits only, at most 4 characters.
+  record_fix_template: 'Material {AUSP.OBJEK}: ATSRT is {actual_value}. Correct AUSP.ATSRT to digits only, at most 4 characters.'
+- id: MM1361
+  field: KSSK.ADZHL
+  check_class: regex_check
+  pattern: ^[0-9]{1,4}$
+  severity: low
+  dimension: validity
+  message: Internal counter for archiving objects via engin. chg. mgmt must contain digits only, at most 4
+  why_it_matters: KSSK.ADZHL is a numeric-character field of length 4. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on ADZHL fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct KSSK.ADZHL to digits only, at most 4 characters.
+  record_fix_template: 'Material {KSSK.OBJEK}: ADZHL is {actual_value}. Correct KSSK.ADZHL to digits only, at most 4 characters.'
+- id: MM1362
+  field: KSSK.ZAEHL
+  check_class: cross_field_check
+  fail_when: '`KSSK.ZAEHL`.notna() & (`KSSK.ZAEHL` < 0)'
+  severity: low
+  dimension: validity
+  message: Sort position must not be negative
+  why_it_matters: KSSK.ZAEHL is a quantity, duration or factor. A negative value has no physical meaning and signals a sign
+    error.
+  rule_authority: best_practice
+  sap_impact: Planning, capacity or stock logic that reads ZAEHL produces negative results.
+  fix_map:
+    __other__: Correct KSSK.ZAEHL to zero or a positive value.
+  record_fix_template: 'Material {KSSK.OBJEK}: ZAEHL is {actual_value}. Correct KSSK.ZAEHL to zero or a positive value.'
+- id: MM1363
+  field: KSSK.REKRI
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: low
+  dimension: validity
+  message: 'Indicator: BOM is recursive must be blank or ''X'''
+  why_it_matters: KSSK.REKRI is a one-character indicator. Only blank (off) and 'X' (on) are valid; any other character is
+    read as unset by some programs and as set by others.
+  rule_authority: sap_hard_constraint
+  sap_impact: Programs and reports that read REKRI behave inconsistently when it holds a value other than blank or 'X'.
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: Set
+  fix_map:
+    __other__: Set KSSK.REKRI to blank or 'X'.
+  record_fix_template: 'Material {KSSK.OBJEK}: REKRI is {actual_value}. Set KSSK.REKRI to blank or ''X''.'
+- id: MM1364
+  field: KSSK.AENNR
+  check_class: regex_check
+  pattern: ^[^a-z]{0,12}$
+  severity: low
+  dimension: validity
+  message: Change Number must be upper case and fit 12 characters
+  why_it_matters: KSSK.AENNR is not defined as case-sensitive, so SAP stores it in upper case, and it holds 12 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on AENNR miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct KSSK.AENNR to upper case within 12 characters.
+  record_fix_template: 'Material {KSSK.OBJEK}: AENNR is {actual_value}. Correct KSSK.AENNR to upper case within 12 characters.'
+- id: MM1365
+  field: INOB.CUOBJ
+  check_class: regex_check
+  pattern: ^[0-9]{1,18}$
+  severity: low
+  dimension: validity
+  message: Configuration (internal object number) must contain digits only, at most 18
+  why_it_matters: INOB.CUOBJ is a numeric-character field of length 18. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on CUOBJ fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct INOB.CUOBJ to digits only, at most 18 characters.
+  record_fix_template: 'Material {INOB.CUOBJ}: CUOBJ is {actual_value}. Correct INOB.CUOBJ to digits only, at most 18 characters.'
+- id: MM1366
+  field: INOB.ROBJEK
+  check_class: regex_check
+  pattern: ^[^a-z]{0,50}$
+  severity: low
+  dimension: validity
+  message: Key of configurable object must be upper case and fit 50 characters
+  why_it_matters: INOB.ROBJEK is not defined as case-sensitive, so SAP stores it in upper case, and it holds 50 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on ROBJEK miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct INOB.ROBJEK to upper case within 50 characters.
+  record_fix_template: 'Material {INOB.CUOBJ}: ROBJEK is {actual_value}. Correct INOB.ROBJEK to upper case within 50 characters.'
+- id: MM1367
+  field: INOB.STATU
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: Classification status must be upper case and fit 1 characters
+  why_it_matters: INOB.STATU is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on STATU miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct INOB.STATU to upper case within 1 characters.
+  record_fix_template: 'Material {INOB.CUOBJ}: STATU is {actual_value}. Correct INOB.STATU to upper case within 1 characters.'
+- id: MM1368
+  field: INOB.CUCOZHL
+  check_class: regex_check
+  pattern: ^[0-9]{1,4}$
+  severity: low
+  dimension: validity
+  message: Internal counter must contain digits only, at most 4
+  why_it_matters: INOB.CUCOZHL is a numeric-character field of length 4. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on CUCOZHL fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct INOB.CUCOZHL to digits only, at most 4 characters.
+  record_fix_template: 'Material {INOB.CUOBJ}: CUCOZHL is {actual_value}. Correct INOB.CUCOZHL to digits only, at most 4 characters.'
+- id: MM1369
+  field: INOB.PARENT
+  check_class: regex_check
+  pattern: ^[0-9]{1,18}$
+  severity: low
+  dimension: validity
+  message: Configuration (internal object number) must contain digits only, at most 18
+  why_it_matters: INOB.PARENT is a numeric-character field of length 18. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on PARENT fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct INOB.PARENT to digits only, at most 18 characters.
+  record_fix_template: 'Material {INOB.CUOBJ}: PARENT is {actual_value}. Correct INOB.PARENT to digits only, at most 18 characters.'
+- id: MM1370
+  field: INOB.ROOT
+  check_class: regex_check
+  pattern: ^[0-9]{1,18}$
+  severity: low
+  dimension: validity
+  message: Configuration (internal object number) must contain digits only, at most 18
+  why_it_matters: INOB.ROOT is a numeric-character field of length 18. Letters, signs or extra characters cannot be stored
+    in SAP and signal a broken conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: Loads and joins on ROOT fail or truncate when the value is not a plain number.
+  fix_map:
+    __other__: Correct INOB.ROOT to digits only, at most 18 characters.
+  record_fix_template: 'Material {INOB.CUOBJ}: ROOT is {actual_value}. Correct INOB.ROOT to digits only, at most 18 characters.'
+- id: MM1371
+  field: INOB.EXPERTE
+  check_class: regex_check
+  pattern: ^[^a-z]{0,1}$
+  severity: low
+  dimension: validity
+  message: User as expert must be upper case and fit 1 characters
+  why_it_matters: INOB.EXPERTE is not defined as case-sensitive, so SAP stores it in upper case, and it holds 1 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on EXPERTE miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct INOB.EXPERTE to upper case within 1 characters.
+  record_fix_template: 'Material {INOB.CUOBJ}: EXPERTE is {actual_value}. Correct INOB.EXPERTE to upper case within 1 characters.'
+- id: MM1372
+  field: INOB.MATNR
+  check_class: regex_check
+  pattern: ^[^a-z]{0,18}$
+  severity: low
+  dimension: validity
+  message: Material Number must be upper case and fit 18 characters
+  why_it_matters: INOB.MATNR is not defined as case-sensitive, so SAP stores it in upper case, and it holds 18 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on MATNR miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct INOB.MATNR to upper case within 18 characters.
+  record_fix_template: 'Material {INOB.CUOBJ}: MATNR is {actual_value}. Correct INOB.MATNR to upper case within 18 characters.'
+- id: MM1373
+  field: INOB.DATUV
+  check_class: cross_field_check
+  fail_when: '`INOB.DATUV`.dt.year < 1900'
+  severity: low
+  dimension: accuracy
+  message: Valid-From Date lies before the year 1900
+  why_it_matters: INOB.DATUV is a calendar date. A year before 1900 is almost always a placeholder or a conversion error and
+    breaks validity-period selection.
+  rule_authority: best_practice
+  sap_impact: Selections that use DATUV as a validity start pick the wrong record or none.
+  fix_map:
+    __other__: Correct INOB.DATUV to the intended calendar date or clear it.
+  record_fix_template: 'Material {INOB.CUOBJ}: DATUV is {actual_value}. Correct INOB.DATUV to the intended calendar date or
+    clear it.'
+- id: MM1374
+  field: INOB.TECHS
+  check_class: regex_check
+  pattern: ^[^a-z]{0,12}$
+  severity: low
+  dimension: validity
+  message: Parameter Variant/Standard Variant must be upper case and fit 12 characters
+  why_it_matters: INOB.TECHS is not defined as case-sensitive, so SAP stores it in upper case, and it holds 12 characters.
+    Lower case or overflow means the value was loaded around the dialog.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lookups and joins on TECHS miss the record when the stored case differs from the entered one.
+  fix_map:
+    __other__: Correct INOB.TECHS to upper case within 12 characters.
+  record_fix_template: 'Material {INOB.CUOBJ}: TECHS is {actual_value}. Correct INOB.TECHS to upper case within 12 characters.'
