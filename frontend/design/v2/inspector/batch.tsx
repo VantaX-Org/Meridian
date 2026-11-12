@@ -207,7 +207,7 @@ function BatchBody({ b }: { b: BatchRow }) {
       <Actions>
         <BatchButtons b={b} c={controls} sm={false} live={live} />
         {b.status === "approved" && can.approve ? (
-          <button type="button" className="m2-btn" disabled={mine || controls.busy !== null} title={mine ? tr("You built this batch; a second person sends it back.") : undefined} onClick={() => controls.askSendBack(b)}>
+          <button type="button" className="m2-btn" disabled={mine || controls.busy !== null} aria-describedby={mine ? `batch-back-why-${b.id}` : undefined} onClick={() => controls.askSendBack(b)}>
             {tr("Send back")}
           </button>
         ) : null}
@@ -215,7 +215,7 @@ function BatchBody({ b }: { b: BatchRow }) {
           {tr("Download sheet")}
         </button>
         {b.status === "awaiting_load" && can.confirmLoad ? (
-          <button type="button" className="m2-btn m2-btn-primary" disabled={mine || loading} title={mine ? tr("You built this batch; a second person confirms the load.") : undefined} onClick={() => void confirmLoad()}>
+          <button type="button" className="m2-btn m2-strong" disabled={mine || loading} aria-describedby={mine ? `batch-load-why-${b.id}` : undefined} onClick={() => void confirmLoad()}>
             {tr("Loaded in SAP")}
           </button>
         ) : null}
@@ -223,7 +223,8 @@ function BatchBody({ b }: { b: BatchRow }) {
         {b.status !== "exported" ? <ReassignMenu rows={rows} disabled={!can.assign} subject={tr("batch {label}", { label: b.label })} /> : null}
       </Actions>
       {b.status === "draft" && !can.approve ? <p className="m2-prov">{tr("Approving needs the approve permission, which your role does not hold.")}</p> : null}
-      {b.status === "draft" && can.approve && mine ? <p className="m2-prov">{tr("You built this batch, so a second person approves it.")}</p> : null}
+      {b.status === "approved" && can.approve && mine ? <p className="m2-prov" id={`batch-back-why-${b.id}`}>{tr("You built this batch; a second person sends it back.")}</p> : null}
+      {b.status === "awaiting_load" && can.confirmLoad && mine ? <p className="m2-prov" id={`batch-load-why-${b.id}`}>{tr("You built this batch; a second person confirms the load.")}</p> : null}
       {b.status === "draft" && can.approve && !mine ? <p className="m2-prov">{tr("Approving acts on the whole batch. You can take it back from the notice that follows.")}</p> : null}
       {b.status === "approved" && !live ? <p className="m2-prov">{tr("Export load file hands the approved values over as a Migration Cockpit file, for the person you name to load in SAP. It cannot be taken back.")}</p> : null}
       {b.status === "approved" && live ? <p className="m2-prov">{tr("Export load file hands the approved values over as a Migration Cockpit file instead of writing them live. It cannot be taken back.")}</p> : null}

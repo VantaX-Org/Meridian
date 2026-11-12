@@ -9707,6 +9707,21 @@ export const en = {
   "Not in your licence": "Not in your licence",
   "Not saved yet": "Not saved yet",
   "Inviting people needs the manage users permission. An administrator can invite them later.": "Inviting people needs the manage users permission. An administrator can invite them later.",
+  "Revoke the share link to {label}": "Revoke the share link to {label}",
+  "The link stops working at once. Anyone who opens it afterwards sees nothing; to share the page again, make a new link.": "The link stops working at once. Anyone who opens it afterwards sees nothing; to share the page again, make a new link.",
+  "End the out of office of {from_name}": "End the out of office of {from_name}",
+  "{to_name} stops covering the approvals and assigned work of {from_name} from now on.": "{to_name} stops covering the approvals and assigned work of {from_name} from now on.",
+  "Your comment of {created_at} is removed for everyone who reads this item.": "Your comment of {created_at} is removed for everyone who reads this item.",
+  "You can't suspend or remove yourself.": "You can't suspend or remove yourself.",
+  "This request is cancelled: its approval stops and nothing from it is sent to SAP.": "This request is cancelled: its approval stops and nothing from it is sent to SAP.",
+  "The SLA policy for {what} is removed. Records that start their clock from now on use the default days.": "The SLA policy for {what} is removed. Records that start their clock from now on use the default days.",
+  "The write-back of batch {label} stops. Records SAP has already committed stay committed; the records still waiting are not sent.": "The write-back of batch {label} stops. Records SAP has already committed stay committed; the records still waiting are not sent.",
+  "The cost of waiting or the count of open critical issues could not be loaded, so the figures above may be missing.": "The cost of waiting or the count of open critical issues could not be loaded, so the figures above may be missing.",
+  "The run history could not be loaded.": "The run history could not be loaded.",
+  "The record of what was cleaned and what came back could not be loaded.": "The record of what was cleaned and what came back could not be loaded.",
+  "The default {value} for {field} of {object} is removed. New create requests keep that field empty when the requester leaves it empty.": "The default {value} for {field} of {object} is removed. New create requests keep that field empty when the requester leaves it empty.",
+  "The rule that sets {field} of {object} is removed. Requests saved from now on no longer get that value from it.": "The rule that sets {field} of {object} is removed. Requests saved from now on no longer get that value from it.",
+  "The write-backs waiting for a second approver could not be loaded.": "The write-backs waiting for a second approver could not be loaded.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

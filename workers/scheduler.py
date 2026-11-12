@@ -163,6 +163,18 @@ def daily_analysis():
 
 # ── Trigger 2: weekly_cleaning_batch — 03:00 SAST Monday ────────────────────
 
+# Runs an UPDATE ... RETURNING on cleaning_queue and writes one cleaning_audit row per changed item, actor
+# 'system:scheduler' (the same columns as api.routes.cleaning._create_audit).
+_AUTO_AUDIT_SQL = """
+    WITH changed AS ({update}
+        RETURNING cq.id, cq.rule_id, cq.record_key, cq.object_type, cq.record_data_before, cq.record_data_after)
+    INSERT INTO cleaning_audit (id, tenant_id, queue_id, rule_id, action, actor_name, record_key, object_type,
+                                data_before, data_after, metadata, created_at)
+    SELECT gen_random_uuid(), CAST(:tid AS uuid), id, rule_id, '{action}', 'system:scheduler', record_key, object_type,
+           record_data_before, record_data_after, '{{}}'::jsonb, now()
+      FROM changed
+"""
+
 
 @celery_app.task(name="workers.scheduler.weekly_cleaning_batch",
                  soft_time_limit=1800, time_limit=1860)
@@ -180,9 +192,10 @@ def weekly_cleaning_batch():
             with Session(engine) as session:
                 _set_rls(session, tid)
 
-                # 1. Auto-approve detected items where rule automation_level=auto
+                # 1. Auto-approve detected items where rule automation_level=auto. Each approval writes a
+                # cleaning_audit row with actor 'system:scheduler' in the same statement.
                 result = session.execute(
-                    text("""
+                    text(_AUTO_AUDIT_SQL.format(action="approved", update="""
                         UPDATE cleaning_queue cq
                         SET status = 'approved', approved_by = NULL  -- NULL = automation (see cleaning_audit)
                         WHERE cq.tenant_id = :tid
@@ -190,31 +203,30 @@ def weekly_cleaning_batch():
                           AND EXISTS (
                               SELECT 1 FROM cleaning_rules cr
                               WHERE cr.id = cq.rule_id AND cr.automation_level = 'auto'
-                          )
-                        RETURNING cq.id
-                    """),
+                          )""")),
                     {"tid": tid},
                 )
-                auto_approved = len(result.fetchall())
+                auto_approved = result.rowcount
                 logger.info(f"  tenant={tid}: auto-approved {auto_approved} items")
 
-                # 2. Auto-apply approved standardisation items
+                # 2. Auto-apply standardisation items that automation approved (approved_by NULL, rule 'auto').
+                # A human-approved item stays 'approved' so a second user applies it (four-eyes).
                 result = session.execute(
-                    text("""
+                    text(_AUTO_AUDIT_SQL.format(action="applied", update="""
                         UPDATE cleaning_queue cq
                         SET status = 'applied', applied_at = now(),
                             rollback_deadline = now() + interval '72 hours'
                         WHERE cq.tenant_id = :tid
                           AND cq.status = 'approved'
+                          AND cq.approved_by IS NULL
                           AND EXISTS (
                               SELECT 1 FROM cleaning_rules cr
                               WHERE cr.id = cq.rule_id AND cr.category = 'standardisation'
-                          )
-                        RETURNING cq.id
-                    """),
+                                AND cr.automation_level = 'auto'
+                          )""")),
                     {"tid": tid},
                 )
-                auto_applied = len(result.fetchall())
+                auto_applied = result.rowcount
                 logger.info(f"  tenant={tid}: auto-applied {auto_applied} standardisation items")
 
                 # 3. Materialise cleaning_metrics for the week — one row per

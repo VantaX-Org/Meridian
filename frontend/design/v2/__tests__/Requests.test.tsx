@@ -215,7 +215,7 @@ describe("Requests task flow", () => {
     renderWithQuery(<RequestsCanvas />);
     const btn = await screen.findByRole("button", { name: "New request" });
     expect(btn).toBeDisabled();
-    expect(btn).toHaveAttribute("title", "A new request needs the master data write permission");
+    expect(btn).toHaveAccessibleDescription("A new request needs the master data write permission");
   });
 
   it("tells the user the next step for an empty to-approve list", async () => {

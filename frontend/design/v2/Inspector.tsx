@@ -66,7 +66,7 @@ export function InspectorFrame({ title, status, onClose, children }: InspectorFr
     // The aside is the inspector's landmark (a skip link and a screen reader's region list reach it); the dialog inside
     // it holds the focus loop and Esc.
     <aside className="m2-insp" id="m2-inspector" aria-label={t("Inspector")}>
-      <div ref={root} className="m2-insp-d" role="dialog" aria-modal="false" aria-labelledby={titleId} onKeyDown={onKeyDown} data-testid="inspector">
+      <div ref={root} className="m2-insp-d" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={onKeyDown} data-testid="inspector">
       <div className="m2-ih">
         <div style={{ minWidth: 0 }}>
           <h2 id={titleId}>{title}</h2>

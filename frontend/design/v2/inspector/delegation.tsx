@@ -9,6 +9,7 @@ import { failureText } from "@/lib/v2/errors";
 import { useV2Session } from "@/lib/v2/hooks";
 import { notFound, refreshRoles, useMyDelegations } from "@/lib/v2/roles-queries";
 import { InspectorFrame } from "../Inspector";
+import { ConfirmBar } from "../forms";
 import { Dash, Skeleton } from "../parts";
 import "../roles.css";
 import { t } from "@/lib/v2/i18n";
@@ -70,7 +71,9 @@ export function OutOfOfficePanel({ onClose }: { onClose: () => void }) {
       setBusy(false);
     }
   };
+  const [asking, setAsking] = useState<string | null>(null);
   const end = async (id: string) => {
+    setAsking(null);
     try {
       await revokeDelegation(id);
       await refreshRoles(qc, "delegations");
@@ -83,9 +86,17 @@ export function OutOfOfficePanel({ onClose }: { onClose: () => void }) {
       <span className="m2-meta">{t("{day} to {day2}, {state}", { day: day(d.starts_on), day2: day(d.ends_on), state: d.state })}</span>
       <span>{text}</span>
       {!readOnly && d.state !== "revoked" && d.state !== "ended" ? (
-        <button type="button" className="m2-linkbtn2" onClick={() => void end(d.id)}>
+        <button type="button" className="m2-linkbtn2" onClick={() => setAsking(d.id)}>
           {t("End it")}
         </button>
+      ) : null}
+      {asking === d.id ? (
+        <ConfirmBar
+          message={t("{to_name} stops covering the approvals and assigned work of {from_name} from now on.", { to_name: d.to_name, from_name: d.from_name })}
+          confirmLabel={t("End it")}
+          onConfirm={() => void end(d.id)}
+          onCancel={() => setAsking(null)}
+        />
       ) : null}
     </li>
   );
