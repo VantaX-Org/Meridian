@@ -366,7 +366,6 @@ async def upload_roundtrip(
 ):
     """An edited SuccessFactors export (filled template or cleaning workbook) comes back as the next run of the
     same lineage and is analysed at once. The hidden marker names the parent run; without one the caller sends it."""
-    import json
 
     from starlette.concurrency import run_in_threadpool
 
