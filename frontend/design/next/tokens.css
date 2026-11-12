@@ -1,0 +1,185 @@
+/*
+ * Meridian "next" tokens (the app-like redesign, spec design-app-like.md section 3.2). The third file lint:tokens
+ * accepts raw colour in (scripts/lint-tokens.mjs TOKEN_FILES); every other file under design/next and app/(next)
+ * reads these through var(--nx-*). Scoped to .nx-root so the v2 interface and the next one never share a name.
+ *
+ * Light is the default. Dark applies when the page theme is dark (html[data-theme="dark"]), when the system is dark and
+ * the person chose nothing, or when one subtree asks for it (data-nx-theme="dark", used by the kit page to show both
+ * themes at once). design/next/__tests__/tokens.test.ts holds every text and edge pair below to WCAG 2.1 AA.
+ *
+ * Beyond the spec table: --nx-*-ink are the text colours on the soft fills (the spec hues alone miss 4.5:1 on their
+ * own wash for warn), and --nx-control-edge is the 3:1 edge of an input, because --nx-border is a hairline, not an edge.
+ */
+
+.nx-root,
+.nx-root[data-nx-theme="light"] {
+  --nx-bg: #F6F7F9;
+  --nx-surface: #FFFFFF;
+  --nx-surface-2: #F0F2F5;
+  --nx-border: #E3E6EB;
+  --nx-border-strong: #C9CED6;
+  --nx-control-edge: #8A919D;
+  --nx-ink: #14161A;
+  --nx-ink-2: #4A505A;
+  --nx-ink-3: #6F7682;
+  --nx-accent: #1F5EFF;
+  --nx-accent-ink: #FFFFFF;
+  --nx-accent-soft: #E8EEFF;
+  --nx-aletheia: #6D4FD6;
+  --nx-aletheia-soft: #EFEAFF;
+  --nx-good: #1A7F4B;
+  --nx-good-soft: #E3F5EA;
+  --nx-good-ink: #11603A;
+  --nx-warn: #B26A00;
+  --nx-warn-soft: #FFF2DB;
+  --nx-warn-ink: #7A4500;
+  --nx-bad: #C92A2A;
+  --nx-bad-soft: #FDE7E7;
+  --nx-bad-ink: #A61F1F;
+  --nx-sev-critical: #C92A2A;
+  --nx-sev-high: #E8590C;
+  --nx-sev-medium: #D9A400;
+  --nx-sev-low: #5C7CFA;
+  --nx-focus: #1F5EFF;
+  --nx-scrim: rgb(20 22 26 / 24%);
+  --nx-elev-2: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
+.nx-root[data-nx-theme="dark"] {
+  --nx-bg: #0E1013;
+  --nx-surface: #15181D;
+  --nx-surface-2: #1C2027;
+  --nx-border: #2A2F38;
+  --nx-border-strong: #3A414D;
+  --nx-control-edge: #6A7280;
+  --nx-ink: #ECEEF2;
+  --nx-ink-2: #A9B0BC;
+  --nx-ink-3: #7F8795;
+  --nx-accent: #6B96FF;
+  --nx-accent-ink: #0E1013;
+  --nx-accent-soft: #1B2A52;
+  --nx-aletheia: #B3A0FF;
+  --nx-aletheia-soft: #2A2250;
+  --nx-good: #4FCB85;
+  --nx-good-soft: #143524;
+  --nx-good-ink: #4FCB85;
+  --nx-warn: #F5B544;
+  --nx-warn-soft: #3A2B0E;
+  --nx-warn-ink: #F5B544;
+  --nx-bad: #FF7A7A;
+  --nx-bad-soft: #3E1717;
+  --nx-bad-ink: #FF7A7A;
+  --nx-sev-critical: #FF7A7A;
+  --nx-sev-high: #FF9A5C;
+  --nx-sev-medium: #F2C94C;
+  --nx-sev-low: #8FA6FF;
+  --nx-focus: #6B96FF;
+  --nx-scrim: rgb(236 238 242 / 24%);
+  --nx-elev-2: 0 8px 24px rgb(0 0 0 / 40%);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .nx-root:not([data-nx-theme="light"]) {
+    --nx-bg: #0E1013;
+    --nx-surface: #15181D;
+    --nx-surface-2: #1C2027;
+    --nx-border: #2A2F38;
+    --nx-border-strong: #3A414D;
+    --nx-control-edge: #6A7280;
+    --nx-ink: #ECEEF2;
+    --nx-ink-2: #A9B0BC;
+    --nx-ink-3: #7F8795;
+    --nx-accent: #6B96FF;
+    --nx-accent-ink: #0E1013;
+    --nx-accent-soft: #1B2A52;
+    --nx-aletheia: #B3A0FF;
+    --nx-aletheia-soft: #2A2250;
+    --nx-good: #4FCB85;
+    --nx-good-soft: #143524;
+    --nx-good-ink: #4FCB85;
+    --nx-warn: #F5B544;
+    --nx-warn-soft: #3A2B0E;
+    --nx-warn-ink: #F5B544;
+    --nx-bad: #FF7A7A;
+    --nx-bad-soft: #3E1717;
+    --nx-bad-ink: #FF7A7A;
+    --nx-sev-critical: #FF7A7A;
+    --nx-sev-high: #FF9A5C;
+    --nx-sev-medium: #F2C94C;
+    --nx-sev-low: #8FA6FF;
+    --nx-focus: #6B96FF;
+    --nx-scrim: rgb(236 238 242 / 24%);
+    --nx-elev-2: 0 8px 24px rgb(0 0 0 / 40%);
+  }
+}
+
+/* Type, space and shape do not change with the theme. */
+.nx-root {
+  --nx-font: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --nx-mono: var(--font-jbmono), ui-monospace, "SF Mono", Menlo, monospace;
+  /* The scale from the spec: display 2.0/1.1, h1 1.5/1.2, h2 1.125/1.3, body 0.9375/1.5, small 0.8125/1.45, micro 0.75/1.4 */
+  --nx-fs-display: 2rem;
+  --nx-lh-display: 1.1;
+  --nx-fs-h1: 1.5rem;
+  --nx-lh-h1: 1.2;
+  --nx-fs-h2: 1.125rem;
+  --nx-lh-h2: 1.3;
+  --nx-fs-body: 0.9375rem;
+  --nx-lh-body: 1.5;
+  --nx-fs-small: 0.8125rem;
+  --nx-lh-small: 1.45;
+  --nx-fs-micro: 0.75rem;
+  --nx-lh-micro: 1.4;
+  --nx-w-body: 400;
+  --nx-w-label: 500;
+  --nx-w-heading: 600;
+  /* Spacing scale 4, 8, 12, 16, 24, 32, 48, 64 */
+  --nx-s1: 4px;
+  --nx-s2: 8px;
+  --nx-s3: 12px;
+  --nx-s4: 16px;
+  --nx-s5: 24px;
+  --nx-s6: 32px;
+  --nx-s7: 48px;
+  --nx-s8: 64px;
+  --nx-gutter: var(--nx-s5);
+  /* Shape */
+  --nx-r-control: 6px;
+  --nx-r-card: 10px;
+  --nx-r-pill: 999px;
+  /* Sizes */
+  --nx-h-control: 40px;
+  --nx-h-control-sm: 32px;
+  --nx-h-row: 36px;
+  --nx-h-row-comfortable: 44px;
+  --nx-panel-w: 420px;
+  --nx-ring: 2px;
+  --nx-ring-offset: 2px;
+
+  font-family: var(--nx-font);
+  font-size: var(--nx-fs-body);
+  line-height: var(--nx-lh-body);
+  font-weight: var(--nx-w-body);
+  font-feature-settings: "cv11", "ss01", "tnum";
+  color: var(--nx-ink);
+  background: var(--nx-bg);
+  color-scheme: light;
+}
+
+html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
+.nx-root[data-nx-theme="dark"] {
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .nx-root:not([data-nx-theme="light"]) {
+    color-scheme: dark;
+  }
+}
+
+@media (max-width: 640px) {
+  .nx-root {
+    --nx-gutter: var(--nx-s4);
+  }
+}

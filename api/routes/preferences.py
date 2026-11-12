@@ -51,6 +51,8 @@ class Preferences(_Strict):
     start_screen: Optional[str] = Field(default=None, min_length=1, max_length=40)
     # show keyboard shortcut hints next to actions
     keyboard_hints: Optional[bool] = None
+    # opt in to the redesigned interface (frontend/design/next); off unless the person turns it on
+    ui_next: Optional[bool] = None
 
     @field_validator("start_screen")
     @classmethod
