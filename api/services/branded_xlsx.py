@@ -368,7 +368,8 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
                 if spec.protect:
                     cell.protection = unlocked
             if col.row_choices_key:
-                vals = tuple(str(v) for v in (row.get(col.row_choices_key) or ()))
+                choices = row.get(col.row_choices_key)
+                vals = tuple(str(v) for v in choices) if isinstance(choices, (list, tuple)) else ()
                 # an Excel list formula holds 255 characters and no commas: longer lists stay a typed value
                 if vals and len(",".join(vals)) <= 250 and not any("," in v or '"' in v for v in vals):
                     row_lists.setdefault((col_idx, vals), []).append(f"{get_column_letter(col_idx)}{row_idx}")
