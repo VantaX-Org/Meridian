@@ -2877,7 +2877,7 @@ rules:
   check_class: contact_check
   kind: phone
   country_field: ADR2.COUNTRY
-  grain: BUT000
+  grain: ADR2
   severity: medium
   dimension: validity
   message: Telephone number is not a plausible number for its country
@@ -2888,7 +2888,7 @@ rules:
     the number.
   fix_map:
     __other__: Correct the value in transaction BP > Addresses (ECC) or Fiori app Maintain Business Partner (S/4HANA).
-  record_fix_template: 'Partner {BUT000.PARTNER}: ADR2.TEL_NUMBER is ''{actual_value}'': telephone number is not a plausible
+  record_fix_template: 'Address {ADR2.ADDRNUMBER}: ADR2.TEL_NUMBER is ''{actual_value}'': telephone number is not a plausible
     number for its country.'
 - id: BP904
   field: ADRC.POST_CODE1

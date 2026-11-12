@@ -5,7 +5,7 @@ import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { useVersionChanges } from "@/lib/v2/step9-queries";
 import { int } from "@/lib/v2/score";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, SapCode } from "../../parts";
+import { Dash, EmptyFrame, ErrorFrame, Skeleton, SapCode } from "../../parts";
 import { TableExport } from "@/design/v2/TableExport";
 
 const modeWord = (mode: string): string => (mode === "change_date" ? t("Changes by date") : mode === "full" ? t("Read in full") : mode);

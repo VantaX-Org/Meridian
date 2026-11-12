@@ -242,6 +242,8 @@ _TAX_ID_SAMPLES = {k: [k[0], *v] for k, v in {
     ("AR", "STCD1"): ["20172543597", "20172543598"], ("CL", "STCD1"): ["760864285", "760864286"],
     ("CO", "STCD1"): ["8001972684", "8001972685"], ("PE", "STCD1"): ["20100066603", "20100066604"],
     ("RU", "STCD1"): ["7707083893", "7707083894"], ("BR", "STCD2"): ["11144477735", "11144477736"]}.items()}
+_CONTACT_SAMPLES = {"email": ["ap@example.co.za", "bad"], "disposable": ["ap@example.co.za", "x@mailinator.com"],
+                    "phone": ["0115551234", "12"], "postcode": ["2196", "ABC"]}
 _FORMAT_SAMPLES = {"gtin": "4006381333931", "ean": "4006381333931", "iban": "GB82WEST12345698765432",
                    "luhn": "4539148803436467", "email": "ap@example.co.za", "date": TODAY,
                    # national-identifier specimens (checks/types/format_check.py self-check)
@@ -350,6 +352,12 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             # (sd_sales_orders SDSO232 etc). A non-key, non-join anchor (e.g. COMP143's SALARY,
             # flagged but absent from fail_when) still needs a value, since _rows() only
             # defaults key/join columns to "K{i}".
+        if rule.get("check_class") == "contact_check":
+            # a well-formed and a broken specimen per kind; phone and postcode are judged for a country
+            if c == rule.get("country_field"):
+                vals += ["ZA"]
+            elif c == rule["field"]:
+                vals += _CONTACT_SAMPLES[rule["kind"]]
         if rule.get("check_class") == "value_placement_check" and c in (rule.get("fields") or [rule["field"]]):
             vals += _PLACEMENT_SAMPLES[rule["family"]] if rule["family"] != "tax_checkdigit" else \
                 _TAX_ID_SAMPLES[rule["applies_when"][rule["fields"][1]][0], rule["field"].split(".")[1]]

@@ -58,7 +58,7 @@ def _series(runs: list[dict]) -> dict[str, list[float]]:
     out = engine.trend_series(runs)
     for m in sorted({m for r in runs for m in (r.get("modules") or {})}):
         vals = [(r.get("modules") or {}).get(m) for r in runs]
-        nums = [float(v) for v in vals if _num(v)]
+        nums = [float(v) for v in vals if v is not None and _num(v)]
         if len(nums) == len(vals):
             out[f"module:{m}"] = nums
     return out

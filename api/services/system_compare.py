@@ -24,7 +24,7 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
-from typing import Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -86,7 +86,7 @@ def _strings(df: pd.DataFrame, table: str, fields: list[str], dictionary: Dictio
     return out
 
 
-def _unpad(v: str) -> str:
+def _unpad(v: Any) -> Any:
     return (v.lstrip("0") or "0") if v.isdigit() else v
 
 

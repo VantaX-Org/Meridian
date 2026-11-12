@@ -10,7 +10,7 @@ import { notFound, refreshRoles, useEscalationChain, useWaveGates } from "@/lib/
 import { useCertificates } from "@/lib/v2/step9-queries";
 import { int } from "@/lib/v2/score";
 import { VerdictMark } from "../marks";
-import { Dash, Mono, Skeleton, V2Link, SapCode } from "../parts";
+import { Dash, Skeleton, V2Link, SapCode } from "../parts";
 import "../roles.css";
 import { t as tr } from "@/lib/v2/i18n";
 
