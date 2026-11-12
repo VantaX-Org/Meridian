@@ -9727,7 +9727,6 @@ export const en = {
   "Cleaning plan": "Cleaning plan",
   "Why {label} records fail and how to fix them": "Why {label} records fail and how to fix them",
   "No rule fails for {label} in this run.": "No rule fails for {label} in this run.",
-||||||| 6eb5c82c5
   "{failed} of {total} schedules could not be saved. Save again to retry only those.": "{failed} of {total} schedules could not be saved. Save again to retry only those.",
   "Connecting a system": "Connecting a system",
   "Not in your licence": "Not in your licence",

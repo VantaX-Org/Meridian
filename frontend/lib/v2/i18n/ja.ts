@@ -9728,7 +9728,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Cleaning plan": "クレンジング計画",
   "Why {label} records fail and how to fix them": "{label}のレコードが不合格になる理由と修正方法",
   "No rule fails for {label} in this run.": "この実行では{label}で不合格のルールはありません。",
-||||||| 6eb5c82c5
   "{failed} of {total} schedules could not be saved. Save again to retry only those.": "{total} 件中 {failed} 件のスケジュールを保存できませんでした。もう一度保存すると、失敗したものだけを再試行します。",
   "Connecting a system": "システムの接続",
   "Not in your licence": "ライセンスに含まれていません",

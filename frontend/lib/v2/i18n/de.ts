@@ -9728,7 +9728,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Cleaning plan": "Bereinigungsplan",
   "Why {label} records fail and how to fix them": "Warum {label}-Datensätze fehlschlagen und wie man sie korrigiert",
   "No rule fails for {label} in this run.": "Für {label} schlägt in diesem Lauf keine Regel fehl.",
-||||||| 6eb5c82c5
   "{failed} of {total} schedules could not be saved. Save again to retry only those.": "{failed} von {total} Zeitplänen konnten nicht gespeichert werden. Speichern Sie erneut, um nur diese zu wiederholen.",
   "Connecting a system": "Ein System verbinden",
   "Not in your licence": "Nicht in Ihrer Lizenz",
