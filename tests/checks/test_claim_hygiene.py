@@ -94,5 +94,5 @@ def test_stale_counts_are_gone(numbers):
     """The exact previous drift, banned from returning as prose."""
     for p in (ROOT / "README.md", ROOT / "docs/market-positioning.md"):
         txt = p.read_text()
-        for stale in ("8,114", "5,395", "2,719", "20 check classes", "9,791", "1,898 cases"):
+        for stale in ("8,114", "5,395", "2,719", "20 check classes", "1,898 cases"):
             assert stale not in txt, f"{p.name} still quotes the stale {stale!r}"

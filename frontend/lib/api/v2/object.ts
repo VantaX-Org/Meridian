@@ -430,10 +430,6 @@ export async function getWorkGroupsFor(module: string, run: string | null | unde
   return res.groups;
 }
 
-export function acceptAllSuggested(checkId: string, run: string | null | undefined): Promise<{ accepted: number; draft_batch_id: string }> {
-  return v2Post(`/work/groups/${encodeURIComponent(checkId)}/accept-all`, null, { version_id: run ?? undefined });
-}
-
 /* ---- GET /learned-rules, /rule-authoring/drafts ---- */
 
 /** Step 9: the evidence of a rule mined from stewards' fixes (api/services/fix_mining.py). */

@@ -118,10 +118,12 @@ function WhyMoved({ module, baseline, current }: { module: string; baseline: Tim
 }
 
 /** Compare any two runs: the canvas for that is /run/{a}/vs/{b}. */
-function ComparePicker({ runs, from, to, system }: { runs: TimelineRun[]; from: string; to: string; system: string }) {
+function ComparePicker({ runs, from, to, system, back }: { runs: TimelineRun[]; from: string; to: string; system: string; back: string }) {
   const [a, setA] = useState(from);
   const [b, setB] = useState(to);
   const label = (r: TimelineRun) => t("{run}, {date}", { run: runLabel(system, r.run_number), date: formatDate(r.run_at, "datetime") });
+  const at = (id: string) => runs.find((r) => r.id === id)?.run_at ?? "";
+  const inOrder = a !== b && at(a) < at(b);
   return (
     <form className="m2-cmp" aria-label={t("Compare two runs")} onSubmit={(e) => e.preventDefault()}>
       <span className="m2-cmp-t">{t("Compare with…")}</span>
@@ -142,10 +144,13 @@ function ComparePicker({ runs, from, to, system }: { runs: TimelineRun[]; from: 
           ))}
         </select>
       </label>
-      {a === b ? (
-        <button type="button" className="m2-btn m2-sm" disabled>{t("Compare")}</button>
+      {!inOrder ? (
+        <>
+          <button type="button" className="m2-btn m2-sm" disabled aria-describedby="m2-cmp-order">{t("Compare")}</button>
+          <span id="m2-cmp-order" className="m2-meta" data-testid="compare-order">{a === b ? t("Pick two different runs.") : t("The earlier run must come before the later run.")}</span>
+        </>
       ) : (
-        <V2Link href={`/run/${a}/vs/${b}`} className="m2-btn m2-sm m2-strong">{t("Compare")}</V2Link>
+        <V2Link href={`/run/${a}/vs/${b}?from=${encodeURIComponent(back)}`} className="m2-btn m2-sm m2-strong">{t("Compare")}</V2Link>
       )}
     </form>
   );
@@ -179,8 +184,9 @@ export function TrendTab({ system: systemSegment, module: moduleSegment }: { sys
   const points = useMemo<ChartPoint[]>(
     () =>
       series.map((r) => {
-        const m = r.objects[apiModule].raw_score ?? r.objects[apiModule].score ?? 0;
-        return { id: r.id, label: shortDate(r.run_at), title: t("{name}, {date}: measured {score}", { name: runLabel(system?.name, r.run_number), date: longDate(r.run_at), score: f1(m) }), measured: m, baseline: baseline?.id === r.id };
+        // The score shown in the header (after any cap), so the chart and the header never disagree.
+        const m = r.objects[apiModule].score ?? r.objects[apiModule].raw_score ?? 0;
+        return { id: r.id, label: shortDate(r.run_at), title: t("{name}, {date}: score {score}", { name: runLabel(system?.name, r.run_number), date: longDate(r.run_at), score: f1(m) }), measured: m, baseline: baseline?.id === r.id };
       }),
     [series, apiModule, baseline, system?.name],
   );
@@ -207,19 +213,19 @@ export function TrendTab({ system: systemSegment, module: moduleSegment }: { sys
   const cap = receipt?.cap_level ?? null;
   const first = points[0];
   const last = points[points.length - 1];
-  const aria = t("Measured score of {label}, last {pointsCount} runs: {measured} on {label2}, {measured2} on {label3}{value}{value2}.", { label, pointsCount: points.length, measured: f1(first.measured), label2: first.label, measured2: f1(last.measured), label3: last.label, value: baseline ? t(". Baseline run {shortDate}", { shortDate: shortDate(baseline.run_at) }) : "", value2: cap != null ? t(". Cap {cap}", { cap }) : "" });
+  const aria = t("Score of {label}, last {pointsCount} runs: {measured} on {label2}, {measured2} on {label3}{value}{value2}.", { label, pointsCount: points.length, measured: f1(first.measured), label2: first.label, measured2: f1(last.measured), label3: last.label, value: baseline ? t(". Baseline run {shortDate}", { shortDate: shortDate(baseline.run_at) }) : "", value2: cap != null ? t(". Cap {cap}", { cap }) : "" });
   const rows = [...series].reverse();
 
   return (
     <div className="m2-rungrid">
       <div>
-        <Lede>{t("{object} on {system}: measured score at each of its {n} finished runs, newest {run}.", { object: label, system: system.name, n: points.length, run: runLabel(system.name, current.run_number) })}</Lede>
+        <Lede>{t("{object} on {system}: the score at each of its {n} finished runs, newest {run}.", { object: label, system: system.name, n: points.length, run: runLabel(system.name, current.run_number) })}</Lede>
         <div className="m2-sechead">
-          <h2 className="m2-h2">{t("Measured score, last {pointsCount} runs", { pointsCount: points.length })}</h2>
+          <h2 className="m2-h2">{t("Score, last {pointsCount} runs", { pointsCount: points.length })}</h2>
           <span className="m2-sub">{cap != null ? t("Held at {cap}.0 because {breachesCount, plural, one {# critical rule fails} other {# critical rules fail}}", { cap, breachesCount: receipt?.breaches.length ?? 0 }) : t("Nothing holds the score down")}</span>
         </div>
         <ScoreChart points={points} capLevel={cap} label={aria} compact={narrow} />
-        <p className="m2-prov">{t("{object}, measured score per finished run (before any cap). Hover a point for its run and date.", { object: label })}</p>
+        <p className="m2-prov">{t("{object}, the score shown per finished run (after any cap, as in the header). Hover a point for its run and date.", { object: label })}</p>
         <ScrollFrame label={t("Runs, scrollable")} style={{ marginTop: "var(--m2-s4)" }}>
           <TableExport><table className="m2-tbl" aria-label={t("Runs shown in the chart")}>
             <thead>
@@ -246,7 +252,7 @@ export function TrendTab({ system: systemSegment, module: moduleSegment }: { sys
           </table></TableExport>
 </ScrollFrame>
         <p className="m2-prov">{t("Scores are as stored with each run; the measured score is before the cap, the shown score after it.")}</p>
-        <ComparePicker runs={series} from={(baseline ?? series[0]).id} to={current.id} system={system.name} />
+        <ComparePicker runs={series} from={(baseline ?? series[0]).id} to={current.id} system={system.name} back={`/o/${systemSegment}/${moduleSegment}`} />
       </div>
       {baseline ? (
         <WhyMoved module={apiModule} baseline={baseline} current={current} />

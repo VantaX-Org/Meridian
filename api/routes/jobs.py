@@ -87,7 +87,8 @@ async def _analysis(job: dict, request: Request, db: AsyncSession, tenant: Tenan
     await db.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": str(tenant.id)})
     kept = (await db.execute(text("SELECT metadata->'analysis_options' FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
                              {"v": job["version_id"], "t": str(tenant.id)})).scalar()  # a limited run is retried as limited
-    return await analyse_version(job["version_id"], db, tenant, AnalyseOptions(**kept) if kept else None)
+    return await analyse_version(job["version_id"], request, db=db, tenant=tenant,
+                                 body=AnalyseOptions(**kept) if kept else None)
 
 
 async def _config_load(job: dict, request: Request, db: AsyncSession, tenant: Tenant) -> Any:

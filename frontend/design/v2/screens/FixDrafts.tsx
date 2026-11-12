@@ -6,6 +6,7 @@ import { approveFix, draftFix, getFixCoverage, getFixDrafts, rejectFix, type Fix
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { useV2Session } from "@/lib/v2/hooks";
+import { refreshV2 } from "@/lib/v2/queries";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
@@ -96,6 +97,8 @@ function DraftForm({ onDone }: { onDone: (d: FixDraft) => void }) {
 function Card({ d, allowed, onDecide, busy }: { d: FixDraft; allowed: boolean; onDecide: (id: string, ok: boolean) => void; busy: boolean }) {
   const s = d.shape;
   const v = d.verification;
+  // A decision is final (the API has no undo), so it asks once before it is sent.
+  const [asking, setAsking] = useState<boolean | null>(null);
   const masks: StackPart[] = s.masks.slice(0, 5).map((x, i) => ({ key: x.mask, label: x.mask, value: x.count, colour: CHART[i % CHART.length], title: t("Shape {mask}: {n} values", { mask: x.mask, n: int(x.count) }) }));
   const proof: StackPart[] = v ? [
     { key: "fixed", label: t("Fixed"), value: v.fixed, colour: "--m2-chart-3", title: t("{n} fixed", { n: int(v.fixed) }) },
@@ -135,10 +138,18 @@ function Card({ d, allowed, onDecide, busy }: { d: FixDraft; allowed: boolean; o
       {allowed && d.status === "pending" ? (
         <>
         <Consequence>{t("Approving makes these steps the rule's fix. Nothing in SAP changes until a cleansing run uses it.")}</Consequence>
-        <div className="m2-acts">
-          <button type="button" className="m2-btn m2-strong" disabled={busy} onClick={() => onDecide(d.rule_id, true)} data-testid={`fix-approve-${d.rule_id}`}>{t("Approve")}</button>
-          <button type="button" className="m2-btn m2-ghost" disabled={busy} onClick={() => onDecide(d.rule_id, false)} data-testid={`fix-reject-${d.rule_id}`}>{t("Reject")}</button>
-        </div>
+        {asking === null ? (
+          <div className="m2-acts">
+            <button type="button" className="m2-btn m2-strong" disabled={busy} onClick={() => setAsking(true)} data-testid={`fix-approve-${d.rule_id}`}>{t("Approve")}</button>
+            <button type="button" className="m2-btn m2-ghost" disabled={busy} onClick={() => setAsking(false)} data-testid={`fix-reject-${d.rule_id}`}>{t("Reject")}</button>
+          </div>
+        ) : (
+          <div className="m2-acts" role="group" aria-label={t("Confirm the decision")} data-testid={`fix-confirm-${d.rule_id}`}>
+            <span>{asking ? t("Approve this fix for {rule}? This cannot be undone here.", { rule: d.rule_id }) : t("Reject this fix for {rule}? This cannot be undone here.", { rule: d.rule_id })}</span>
+            <button type="button" className="m2-btn m2-strong" disabled={busy} onClick={() => { onDecide(d.rule_id, asking); setAsking(null); }} data-testid={`fix-confirm-yes-${d.rule_id}`}>{asking ? t("Yes, approve") : t("Yes, reject")}</button>
+            <button type="button" className="m2-btn m2-ghost" onClick={() => setAsking(null)}>{t("Cancel")}</button>
+          </div>
+        )}
         </>
       ) : null}
     </article>
@@ -152,7 +163,8 @@ export function FixDrafts() {
   const { can } = useV2Session();
   const allowed = can("manage_rules");
   const q = useQuery({ queryKey: ["fix-drafts", fixture, "list"], queryFn: getFixDrafts, staleTime: 15_000 });
-  const refresh = () => void qc.invalidateQueries({ queryKey: ["fix-drafts", fixture] });
+  // An approved fix changes what the rule screens and the ledger offer, so every v2 read refetches, not only this list.
+  const refresh = () => { void qc.invalidateQueries({ queryKey: ["fix-drafts", fixture] }); void refreshV2(qc); };
   const decide = useMutation({
     mutationFn: ({ id, ok }: { id: string; ok: boolean }) => (ok ? approveFix(id) : rejectFix(id)),
     onSuccess: (d) => { toast.show(d.status === "approved" ? t("Fix approved. The steps are now the rule's fix.") : t("Fix rejected.")); refresh(); },

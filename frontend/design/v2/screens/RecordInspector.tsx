@@ -19,7 +19,7 @@ import { useRecordLinks, useWorkRecord } from "@/lib/v2/work-queries";
 import { InspectorFrame } from "../Inspector";
 import { MenuButton } from "../Menu";
 import { SeverityMark, type SeverityKey } from "../marks";
-import { Value, Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Coded, Value, Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { PromptDialog } from "./work-parts";
 import { CollabSections } from "../inspector/collab";
@@ -55,6 +55,20 @@ function FixBlock({ issue, detail, row, canFix, canSign, onReason, actions }: { 
   const list = showAll ? allowed : allowed.slice(0, SHOWN_ALLOWED);
   const decision = status === "not_an_issue" ? (issue.resolution === "accepted_risk" ? tr("accept risk") : tr("not an issue")) : status === "to_fix" ? "" : "fix";
   const hasSuggestion = Boolean(issue.suggestion?.value);
+  const labelOf = (v: string | null | undefined) => (v ? allowed.find((a) => a.value === v)?.label ?? null : null);
+  const typed = value.trim();
+  // A rule with a value list accepts only those values; free text is for rules without one.
+  const outside = typed !== "" && allowed.length > 0 && !allowed.some((a) => a.value === typed);
+  const canSave = typed !== "" && typed !== serverValue && !outside;
+  const [chosen, setChosen] = useState(decision);
+  const apply = () => {
+    if (chosen === "fix") {
+      if (canSave) void run("edit", typed);
+      else if (hasSuggestion) void run("accept");
+      else void actions.decide([{ ...row, suggested_value: null }], "accept");
+    } else if (chosen === "not an issue") onReason("not_an_issue", issue);
+    else if (chosen === "accept risk") onReason("accept_risk", issue);
+  };
   const run = async (kind: "accept" | "edit", v?: string) => {
     setLocal({ status: "proposed", value: v ?? issue.suggestion?.value });
     const ok = await actions.decide([row], kind, { value: v });
@@ -87,7 +101,7 @@ function FixBlock({ issue, detail, row, canFix, canSign, onReason, actions }: { 
       ) : null}
       <div className="m2-fixrow">
         <span>{tr("Current value")}</span>
-        <span>{issue.current_value ? <Mono>{issue.current_value}</Mono> : <span className="m2-meta">{tr("blank")}</span>}</span>
+        <span>{issue.current_value ? <Coded code={issue.current_value} text={labelOf(issue.current_value)} first /> : <span className="m2-meta">{tr("blank")}</span>}</span>
       </div>
       <div className="m2-fixrow">
         <span>{tr("Possible values")}</span>
@@ -118,7 +132,7 @@ function FixBlock({ issue, detail, row, canFix, canSign, onReason, actions }: { 
         <span>
           {issue.suggestion?.value ? (
             <>
-              <Mono>{issue.suggestion.value}</Mono>
+              <Coded code={issue.suggestion.value} text={labelOf(issue.suggestion.value)} first />
               {issue.suggestion.why ? <span className="m2-meta">{` ${issue.suggestion.why}`}</span> : null}
             </>
           ) : (
@@ -129,21 +143,43 @@ function FixBlock({ issue, detail, row, canFix, canSign, onReason, actions }: { 
       <div className="m2-fixrow">
         <span>{tr("New value")}</span>
         {canFix ? (
-          <input
-            type="text"
-            className="m2-inp m2-mono"
-            aria-label={tr("New value for {check_id}", { check_id: issue.check_id })}
-            placeholder={tr("Type a value")}
-            value={local?.value ?? value}
-            spellCheck={false}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && value.trim()) {
-                e.preventDefault();
-                void run("edit", value.trim());
-              }
-            }}
-          />
+          <span>
+            <input
+              type="text"
+              className="m2-inp m2-mono"
+              aria-label={tr("New value for {check_id}", { check_id: issue.check_id })}
+              aria-invalid={outside || undefined}
+              placeholder={allowed.length ? tr("Pick or type an allowed value") : tr("Type a value")}
+              list={allowed.length ? `allowed-${issue.check_id}` : undefined}
+              value={local?.value ?? value}
+              spellCheck={false}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canSave) {
+                  e.preventDefault();
+                  void run("edit", typed);
+                }
+              }}
+            />
+            {allowed.length ? (
+              <datalist id={`allowed-${issue.check_id}`}>
+                {allowed.map((a) => (
+                  <option key={a.value} value={a.value}>
+                    {a.label ?? a.value}
+                  </option>
+                ))}
+              </datalist>
+            ) : null}{" "}
+            <button type="button" className="m2-btn m2-sm" disabled={!canSave} onClick={() => void run("edit", typed)}>
+              {tr("Save")}
+            </button>
+            {outside ? (
+              <span role="alert" className="m2-meta" data-testid="new-value-outside">
+                {" "}
+                {tr("{value} is not one of the values this rule accepts.", { value: typed })}
+              </span>
+            ) : null}
+          </span>
         ) : (
           <span>{serverValue ? <Mono>{serverValue}</Mono> : <Dash why={tr("Read-only for your role")} />}</span>
         )}
@@ -151,25 +187,17 @@ function FixBlock({ issue, detail, row, canFix, canSign, onReason, actions }: { 
       <div className="m2-fixrow">
         <span>{tr("Decision")}</span>
         {canFix || canSign ? (
-          <select
-            className="m2-sel"
-            aria-label={tr("Decision for {check_id}", { check_id: issue.check_id })}
-            value={decision}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "fix") {
-                if (value.trim() && value.trim() !== serverValue) void run("edit", value.trim());
-                else if (hasSuggestion) void run("accept");
-                else void actions.decide([{ ...row, suggested_value: null }], "accept");
-              } else if (v === "not an issue") onReason("not_an_issue", issue);
-              else if (v === "accept risk") onReason("accept_risk", issue);
-            }}
-          >
-            {decision === "" ? <option value="">{tr("Decide")}</option> : null}
-            <option value="fix" disabled={!canFix}>{tr("fix")}</option>
-            <option value="not an issue" disabled={!canSign}>{tr("not an issue")}</option>
-            <option value="accept risk" disabled={!canSign}>{tr("accept risk")}</option>
-          </select>
+          <span>
+            <select className="m2-sel" aria-label={tr("Decision for {check_id}", { check_id: issue.check_id })} value={chosen} onChange={(e) => setChosen(e.target.value)}>
+              {decision === "" ? <option value="">{tr("Decide")}</option> : null}
+              <option value="fix" disabled={!canFix}>{tr("fix")}</option>
+              <option value="not an issue" disabled={!canSign}>{tr("not an issue")}</option>
+              <option value="accept risk" disabled={!canSign}>{tr("accept risk")}</option>
+            </select>{" "}
+            <button type="button" className="m2-btn m2-sm" disabled={chosen === "" || chosen === decision || (chosen === "fix" && outside)} onClick={apply}>
+              {tr("Apply")}
+            </button>
+          </span>
         ) : (
           <span>{decision || "—"}</span>
         )}
@@ -337,7 +365,7 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
       <h3>{tr("{issuesCount, plural, one {Fix} other {Fix by rule}}", { issuesCount: issues.length })}</h3>
       <div ref={firstInput} className="m2-fixes">
         {issues.map((i) => (
-          <FixBlock key={`${i.check_id}|${i.status}|${i.decision?.value ?? ""}`} issue={i} detail={detail} row={rowFor(i)} canFix={can.apply} canSign={can.approve} actions={actions} onReason={(kind, issue) => setReason({ kind, issues: [issue] })} />
+          <FixBlock key={`${id}|${i.check_id}|${i.status}|${i.decision?.value ?? ""}`} issue={i} detail={detail} row={rowFor(i)} canFix={can.apply} canSign={can.approve} actions={actions} onReason={(kind, issue) => setReason({ kind, issues: [issue] })} />
         ))}
       </div>
 
