@@ -692,6 +692,111 @@ rules:
     __other__: KLAH.MEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: KLAH.MEINS points at a check table T006.MSEHI entry that does not exist.
+- id: DXR070f5e0e
+  enabled: false
+  field: KNMT.LPRIO
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Delivery priority must exist in the check table TPRIO.LPRIO
+  why_it_matters: LPRIO (Delivery priority) is defined in the SAP Data Dictionary with check table TPRIO.LPRIO on domain LPRIO.
+    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
+    on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read LPRIO resolve it through check table TPRIO.LPRIO; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: KNMT.LPRIO '{invalid_value}' is not defined in the check table TPRIO.LPRIO. Correct it there or add the missing
+      entry.
+  record_fix_template: KNMT.LPRIO points at a check table TPRIO.LPRIO entry that does not exist.
+- id: DXR70884583
+  enabled: false
+  field: KNMT.MEINS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Base Unit of Measure must exist in the check table T006.MSEHI
+  why_it_matters: MEINS (Base Unit of Measure) is defined in the SAP Data Dictionary with check table T006.MSEHI on domain
+    MEINS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read MEINS resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: KNMT.MEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
+      entry.
+  record_fix_template: KNMT.MEINS points at a check table T006.MSEHI entry that does not exist.
+- id: DXV8eaf62cd
+  enabled: false
+  field: KNMT.KZTLF
+  check_class: domain_value_check
+  severity: medium
+  dimension: validity
+  message: Partial delivery at item level must be a value of domain KZTLF (e.g. A, B, C, D)
+  why_it_matters: Domain KZTLF fixes the permitted values of KZTLF (Partial delivery at item level) in the SAP Data Dictionary.
+    Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume
+    the field.
+  rule_authority: sap_hard_constraint
+  sap_impact: KZTLF will not evaluate correctly wherever SAP branches on its value.
+  allowed_values:
+  - A
+  - B
+  - C
+  - D
+  fix_map:
+    __other__: 'KNMT.KZTLF ''{invalid_value}'' is not in domain KZTLF. Set it to one of: A, B, C, D.'
+  record_fix_template: 'KNMT.KZTLF is {actual_value}; expected one of: A, B, C, D.'
+- id: DXRde786f13
+  enabled: false
+  field: KNMT.RDPRF
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Rounding Profile must exist in the check table RDPR.RDPRF
+  why_it_matters: RDPRF (Rounding Profile) is defined in the SAP Data Dictionary with check table RDPR.RDPRF on domain RDPRF.
+    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
+    on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read RDPRF resolve it through check table RDPR.RDPRF; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: KNMT.RDPRF '{invalid_value}' is not defined in the check table RDPR.RDPRF. Correct it there or add the missing
+      entry.
+  record_fix_template: KNMT.RDPRF points at a check table RDPR.RDPRF entry that does not exist.
+- id: DXR9d74fbee
+  enabled: false
+  field: KNMT.J_1BTXSDC
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: SD tax code must exist in the check table J_1BTXSDC.TAXCODE
+  why_it_matters: J_1BTXSDC (SD tax code) is defined in the SAP Data Dictionary with check table J_1BTXSDC.TAXCODE on domain
+    J_1BTXSDC. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read J_1BTXSDC resolve it through check table J_1BTXSDC.TAXCODE; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: KNMT.J_1BTXSDC '{invalid_value}' is not defined in the check table J_1BTXSDC.TAXCODE. Correct it there or add
+      the missing entry.
+  record_fix_template: KNMT.J_1BTXSDC points at a check table J_1BTXSDC.TAXCODE entry that does not exist.
+- id: DXRad0dc59c
+  enabled: false
+  field: KNMT.VWPOS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Item usage must exist in the check table TVVW.VWPOS
+  why_it_matters: VWPOS (Item usage) is defined in the SAP Data Dictionary with check table TVVW.VWPOS on domain VWPOS. A
+    value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
+    on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read VWPOS resolve it through check table TVVW.VWPOS; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: KNMT.VWPOS '{invalid_value}' is not defined in the check table TVVW.VWPOS. Correct it there or add the missing
+      entry.
+  record_fix_template: KNMT.VWPOS points at a check table TVVW.VWPOS entry that does not exist.
 - id: DXR331e9fe2
   enabled: false
   field: MARA.WRKST
