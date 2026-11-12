@@ -461,7 +461,7 @@ async def compare_records_list(
 async def _classify_args(db: AsyncSession, v1: Optional[str], v2: str):
     vid1, vid2 = await _resolve_pair(db, v1, v2)
     from api.services.compare_sets import earlier_runs
-    return vid1, vid2, await earlier_runs(db, await _scope_of(db, vid2), vid1)
+    return vid1, vid2, await earlier_runs(db, await _scope_of(db, vid2) or "", vid1)
 
 
 @router.get("/versions/compare/sets")

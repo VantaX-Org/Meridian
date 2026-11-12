@@ -18,7 +18,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.services.run_lineage import lineage_sql
-from api.services.version_status import ENDED, FINISHED, finished_sql
+from api.services.version_status import ENDED, finished_sql
 
 _MODULES = ("CASE WHEN jsonb_typeof(v.metadata->'modules') = 'array' THEN v.metadata->'modules' "
             "ELSE '[]'::jsonb END")
