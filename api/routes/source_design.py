@@ -78,6 +78,9 @@ class DesignTableItem(BaseModel):
 class DesignCoverageOut(BaseModel):
     snapshot_id: str | None = None
     coverage: dict[str, Any] = {}
+    # per module: enabled rules that read a table the last extraction could not read (upload required,
+    # preview source); they are skipped by the run and left out of the score until the data arrives
+    waiting_for_data: dict[str, int] = {}
 
 
 class DesignConfigOut(BaseModel):
@@ -198,7 +201,17 @@ async def design_summary(system_id: uuid.UUID, db: AsyncSession = Depends(get_db
 async def design_coverage(system_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     snap = await _snapshot(db, system_id)
-    return {"snapshot_id": str(snap.id) if snap else None, "coverage": snap.coverage if snap else {}}
+    coverage = dict((snap.coverage if snap else None) or {})
+    run = (await db.execute(text(
+        "SELECT metadata->'coverage', metadata->'modules' FROM analysis_versions WHERE tenant_id = :tid "
+        "AND metadata->>'system_id' = :sid AND metadata->>'source' = 'extraction' ORDER BY run_at DESC LIMIT 1"),
+        {"tid": str(tenant.id), "sid": str(system_id)})).fetchone()
+    waiting: dict[str, int] = {}
+    if run and isinstance(run[0], list):
+        coverage["extraction"] = run[0]
+        from checks.runner import waiting_for_data
+        waiting = waiting_for_data(list(run[1] or []), run[0])
+    return {"snapshot_id": str(snap.id) if snap else None, "coverage": coverage, "waiting_for_data": waiting}
 
 
 @router.get("/{system_id}/design/tables", response_model=DesignTablesOut, dependencies=[Depends(require_permission("view"))])

@@ -724,6 +724,12 @@ def _pick(options: dict, sheet, dictionary) -> Optional[str]:
     return max(options, key=lambda t: (t == _named_table(sheet), dated(t), len(options[t])), default=None)
 
 
+def _date_col(frames: TableFrames, table: str) -> Optional[str]:
+    """The held column of a table keyed or dated on a start or effective date, used to line up history rows."""
+    return next((f"{table}.{k}" for k in ("START_DATE", "EFFECTIVE_DATE")
+                 if f"{table}.{k}" in frames.frames[table].columns), None)
+
+
 def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str, dict[str, str]]] = None,
          strict: frozenset[str] | set[str] = frozenset()) -> tuple[dict[str, pd.DataFrame], dict]:
     """The output tabs, and the report of what could and could not be filled.
@@ -754,10 +760,11 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         hits = dict(present[table]) if table else {}
         # A sheet that spans several entities (a contingent worker's name, email and assignment) takes the columns
         # its main table lacks from another table, joined on that table's key. Only when the main table holds one
-        # row per person, so a dependant's sheet never takes the employee's own name.
+        # row per person, so a dependant's sheet never takes the employee's own name. A history table keyed on the
+        # person and a date (EmpJob history, EmpCompensation) also joins, each row taking the record in force on its date.
         joins: dict[str, list[tuple[str, Any]]] = {}
         on: set[str] = set()
-        if table and len(frames.dictionary.keys(table)) == 1:
+        if table and len(set(frames.dictionary.keys(table)) - {"START_DATE", "EFFECTIVE_DATE", "SEQ_NUMBER"}) == 1:
             for other in sorted(present, key=lambda t: -len(present[t])):
                 other_keys = frames.dictionary.keys(other)
                 if other == table or not other_keys:
@@ -804,18 +811,34 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         key_cols = [c for c in (f"{table}.{k}" for k in frames.dictionary.keys(table)) if c in stored.columns]
         country = _country_field(frames.dictionary, table, stored.columns)
         joined = {f.qualified for fs in joins.values() for _, f in fs}
+        my_date = _date_col(frames, table)
         reads = {*key_cols, *on, *(f.qualified for f in hits.values() if f.qualified not in joined),
-                 *([country.qualified] if country else [])}
+                 *([country.qualified] if country else []), *([my_date] if my_date else [])}
         df = stored[list(reads)].copy()
+        from api.services.connectivity_manager import _asof_join, _primary_first  # lazy: avoids an import cycle
         for other, fs in joins.items():
             key = fs[0][0]
-            # ponytail: first row per key wins (a person's first email); prefer isPrimary if several get loaded
-            side = frames.frames[other][[f"{other}.{key}", *(f.qualified for _, f in fs)]].drop_duplicates(f"{other}.{key}")
-            side = side.set_index(f"{other}.{key}")
             mine = frames.dictionary.field(table, key)
             assert mine is not None  # checked when the join was planned
-            for _, f in fs:
-                df[f.qualified] = df[mine.qualified].map(side[f.qualified])
+            cols = [f.qualified for _, f in fs]
+            their_date = _date_col(frames, other)
+            flag = f"{other}.IS_PRIMARY"
+            held_other = frames.frames[other][[f"{other}.{key}", *cols, *(c for c in (their_date, flag)
+                                                                        if c and c in frames.frames[other].columns)]]
+            if my_date and their_date:
+                left = pd.DataFrame({"__k": df[mine.qualified].to_numpy(),
+                                     "__asof": pd.to_datetime(df[my_date], errors="coerce").to_numpy()})
+                right = pd.DataFrame({"__k": held_other[f"{other}.{key}"].to_numpy(),
+                                      "__asof": pd.to_datetime(held_other[their_date], errors="coerce").to_numpy(),
+                                      **{c: held_other[c].to_numpy() for c in cols}})
+                got = _asof_join(left, right, ["__k"])
+                for c in cols:
+                    df[c] = got[c].to_numpy()
+                continue
+            # First row per key wins (a person's first email), the primary record first where the table maps isPrimary.
+            side = _primary_first(held_other, flag).drop_duplicates(f"{other}.{key}").set_index(f"{other}.{key}")
+            for c in cols:
+                df[c] = df[mine.qualified].map(side[c])
         keys = record_keys(df, key_cols)
         bad = pd.Series(False, index=df.index)
         countries = _row_countries(df[country.qualified]) if country else None

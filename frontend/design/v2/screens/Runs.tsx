@@ -340,10 +340,11 @@ export function RunsExport({ system, archived }: { system: string; archived: boo
   return (
     <span className="m2-cta" data-testid="runs-export">
       {(["xlsx", "csv"] as const).map((f) => (
-        <button key={f} type="button" className="m2-btn" disabled={!allowed || pending !== null} title={allowed ? t("Export runs") : t("Exporting runs needs the export permission")} onClick={() => go(f)}>
+        <button key={f} type="button" className="m2-btn" disabled={!allowed || pending !== null} title={allowed ? t("Export runs") : undefined} aria-describedby={allowed ? undefined : "runs-export-why"} onClick={() => go(f)}>
           {f === "xlsx" ? t("Export runs to Excel") : t("Export runs to CSV")}
         </button>
       ))}
+      {allowed ? null : <span id="runs-export-why" className="m2-prov">{t("Exporting runs needs the export permission")}</span>}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
     </span>
   );
@@ -395,9 +396,12 @@ export function RunsCanvas() {
     </nav>
   );
   const startButton = (
-    <button type="button" className="m2-btn m2-next" aria-expanded={starting} disabled={!session.can("analyse")} title={session.can("analyse") ? undefined : t("Starting a run needs the analyse permission")} onClick={() => setStarting((v) => !v)}>
+    <>
+    <button type="button" className="m2-btn m2-next" aria-expanded={starting} disabled={!session.can("analyse")} aria-describedby={session.can("analyse") ? undefined : "start-run-why"} onClick={() => setStarting((v) => !v)}>
       {t("Start a run")}
     </button>
+    {session.can("analyse") ? null : <span id="start-run-why" className="m2-prov">{t("Starting a run needs the analyse permission")}</span>}
+    </>
   );
 
   return (

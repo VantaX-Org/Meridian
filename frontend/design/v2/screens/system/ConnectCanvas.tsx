@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useV2Href } from "@/lib/v2/hooks";
+import { useV2Href, useV2Session } from "@/lib/v2/hooks";
+import { NeedsPermission } from "../../admin/kit";
 import { useSystemObjectList } from "@/lib/v2/runs-queries";
 import { usePolicyPacks } from "@/lib/v2/step10-queries";
 import { applyPolicyPack, unapplyPolicyPack } from "@/lib/api/v2/step10";
@@ -43,6 +44,9 @@ export function ConnectCanvas() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
+  // Per object: true once its schedule is saved, else the reason it failed. A retry sends only the rest.
+  const [saved, setSaved] = useState<Record<string, true | string>>({});
+  const { can } = useV2Session();
   const main = sap ?? sf;
   const objects = useSystemObjectList(main?.id ?? "", !!main);
   const packs = usePolicyPacks(step >= 3);
@@ -64,9 +68,15 @@ export function ConnectCanvas() {
     if (!main) return;
     setBusy(true);
     try {
-      for (const o of chosen) await createProfile(main.id, { system_id: main.id, domain: o.object, tables: o.tables, schedule_cron: sched.cron, active: true, extraction_mode: sched.mode });
-      advance();
-    } catch (e) { fail(e); } finally { setBusy(false); }
+      const todo = chosen.filter((o) => saved[o.object] !== true);
+      const res = await Promise.allSettled(todo.map((o) => createProfile(main.id, { system_id: main.id, domain: o.object, tables: o.tables, schedule_cron: sched.cron, active: true, extraction_mode: sched.mode })));
+      const after = { ...saved };
+      res.forEach((r, i) => { after[todo[i].object] = r.status === "fulfilled" ? true : r.reason instanceof Error ? r.reason.message : t("Something went wrong. Try again."); });
+      setSaved(after);
+      const failed = todo.filter((o) => after[o.object] !== true).length;
+      if (failed === 0) advance();
+      else setErr(t("{failed} of {total} schedules could not be saved. Save again to retry only those.", { failed, total: chosen.length }));
+    } finally { setBusy(false); }
   }
   async function sendInvites() {
     setBusy(true);
@@ -82,6 +92,15 @@ export function ConnectCanvas() {
   const next = (label: string, onClick: () => void, disabled?: boolean) => (
     <button type="button" className="m2-btn m2-next" onClick={onClick} disabled={disabled || busy}>{label}</button>
   );
+
+  if (!can("manage_systems")) {
+    return (
+      <>
+        <PageTitle>{t("Set up Meridian")}</PageTitle>
+        <NeedsPermission what={t("Connecting a system")} permission="manage_systems" />
+      </>
+    );
+  }
 
   return (
     <>
@@ -149,10 +168,10 @@ export function ConnectCanvas() {
               <ul className="m2-setup-list">
                 {list.map((o) => (
                   <li key={o.object}>
-                    <button type="button" role="checkbox" aria-checked={picked.includes(o.object)} className="m2-setup-ck" onClick={() => toggle(o.object)}>
+                    <button type="button" role="checkbox" aria-checked={picked.includes(o.object)} className="m2-setup-ck" disabled={o.licensed === false} onClick={() => toggle(o.object)}>
                       <span className="m2-setup-mark" aria-hidden="true">{picked.includes(o.object) ? "✓" : ""}</span>
                       <span>{o.object}</span>
-                      <span className="m2-setup-meta">{num(o.tables.length)} {t("tables")}</span>
+                      <span className="m2-setup-meta">{o.licensed === false ? t("Not in your licence") : `${num(o.tables.length)} ${t("tables")}`}</span>
                     </button>
                   </li>
                 ))}
@@ -189,11 +208,27 @@ export function ConnectCanvas() {
             <>
               <h2>{STEPS[4]}</h2>
               <ScheduleFields value={sched} onChange={setSched} disabled={busy} />
+              {Object.keys(saved).length > 0 ? (
+                <ul className="m2-setup-list" aria-label={t("Schedules")}>
+                  {chosen.map((o) => (
+                    <li key={o.object} data-testid={`setup-sched-${o.object}`}>
+                      <span>{o.object}</span>{" "}
+                      <span className="m2-setup-meta">{saved[o.object] === true ? t("Saved") : saved[o.object] ?? t("Not saved yet")}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               <div className="m2-setup-acts">{next(t("Save schedule"), saveSchedule, !!cronError(sched.cron))}</div>
             </>
           ) : (
             <>
               <h2>{STEPS[5]}</h2>
+              {!can("manage_users") ? (
+                <>
+                  <p className="m2-note">{t("Inviting people needs the manage users permission. An administrator can invite them later.")}</p>
+                  <div className="m2-setup-acts">{next(t("Finish setup"), () => { setDone((d) => [...d, step]); setFinished(true); })}</div>
+                </>
+              ) : (<>
               {invites.map((inv, i) => (
                 <div key={i} className="m2-setup-inv">
                   <input type="email" aria-label={t("Email")} value={inv.email} onChange={(e) => setInvites((a) => a.map((x, j) => (j === i ? { ...x, email: e.target.value } : x)))} />
@@ -206,6 +241,7 @@ export function ConnectCanvas() {
                 <button type="button" className="m2-btn" onClick={() => setInvites((a) => [...a, { email: "", role: "viewer" }])}>{t("Add another")}</button>
                 {next(t("Finish setup"), sendInvites)}
               </div>
+              </>)}
             </>
           )}
           {err ? <p role="alert" className="m2-setup-err">{err}</p> : null}

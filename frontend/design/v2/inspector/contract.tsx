@@ -238,10 +238,11 @@ export function ContractInspector({ id, onClose }: { id: string; onClose: () => 
                 </button>
               ) : null}
               {c.status === "pending_approval" && session.can("approve") ? (
-                <button type="button" className="m2-btn m2-strong" disabled={c.created_by === session.id} title={c.created_by === session.id ? t("Four eyes: you wrote it") : undefined} onClick={() => void act(() => activateContract(c.id), t("Approved: the contract is active."))}>
+                <button type="button" className="m2-btn m2-strong" disabled={c.created_by === session.id} aria-describedby={c.created_by === session.id ? `contract-why-${c.id}` : undefined} onClick={() => void act(() => activateContract(c.id), t("Approved: the contract is active."))}>
                   {t("Approve")}
                 </button>
               ) : null}
+              {c.status === "pending_approval" && session.can("approve") && c.created_by === session.id ? <span id={`contract-why-${c.id}`} className="m2-prov">{t("Four eyes: you wrote it")}</span> : null}
               {c.status === "active" && session.can("manage_rules") ? (
                 <button type="button" className="m2-btn" onClick={() => void act(() => reviseContract(c.id), t("Version {count} opened as a draft.", { count: c.version + 1 }))}>
                   {t("Revise as a new version")}

@@ -67,7 +67,12 @@ export function designRead(path: string, params: Record<string, unknown> = {}): 
           { table: "T134", status: "live", rows: 52 },
           { table: "T001W", status: "not_in_system" },
         ],
+        extraction: [
+          { table: "EMPEMPLOYMENT", status: "live", rows: 60 },
+          { table: "PAYRESULT", status: "upload_required" },
+        ],
       },
+      waiting_for_data: { payroll_integration: 43, material_master: 0 },
     };
   }
   const cfg = /^\/config\/([^/]+)$/.exec(sub);

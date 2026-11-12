@@ -316,7 +316,8 @@ class ReferenceDeleteOut(BaseModel):
 
 
 @router.get("/{system_id}/objects", response_model=ObjectsOut, dependencies=[Depends(require_permission("view"))])
-async def list_objects(system_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+async def list_objects(system_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
+                       tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     st = await _system_type(db, system_id)
     objects = await run_in_threadpool(_catalogue, str(system_id), st, str(tenant.id))
@@ -331,7 +332,10 @@ async def list_objects(system_id: uuid.UUID, db: AsyncSession = Depends(get_db),
     preview: dict[str, list[dict]] = {}
     for p in preview_sources(st):
         preview.setdefault(p["module"], []).append({"source": p["source"], "reason": p["reason"]})
+    # same entitlement test as enforce_licensed_modules: None (no licence state) or "*" entitles all
+    lic = getattr(request.state, "licensed_modules", None)
     for o in objects:
+        o["licensed"] = lic is None or "*" in lic or o["object"] in lic
         # registry sources whose names are not yet verified against SAP (Preview badge)
         o["preview_sources"] = preview.get(o["object"], [])
         r = last.get(o["object"])

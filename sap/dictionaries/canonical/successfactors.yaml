@@ -797,6 +797,133 @@ tables:
       WORK_SCHEDULE: {source: EmpJob.workscheduleCode, type: STRING, length: 128, verify: true}
       HOLIDAY_CALENDAR: {source: EmpJob.holidayCalendarCode, type: STRING, length: 128, verify: true}
       TIME_TYPE_PROFILE: {source: EmpJob.timeTypeProfileCode, type: STRING, length: 128, verify: true}
+      # The current-record EmpJob fields EMPEMPLOYMENT carries, read here for every history record.
+      LAST_MODIFIED:   {source: EmpJob.lastModifiedDateTime, type: DATETIME, description: Job info last modified}
+      JOB_TITLE:       {source: EmpJob.jobTitle, type: STRING, length: 256, description: Job title}
+      WORKING_DAYS_PER_WEEK: {source: EmpJob.workingDaysPerWeek, type: DECIMAL, verify: true, description: Working days per week}
+      REGULAR_TEMP:    {source: EmpJob.regularTemp, type: STRING, length: 128, verify: true, picklist: regular-temp, description: Regular or temporary}
+      CONTRACT_TYPE:   {source: EmpJob.contractType, type: STRING, length: 128, verify: true, picklist: contractType, description: Contract type}
+      CONTRACT_END_DATE: {source: EmpJob.contractEndDate, type: DATE, verify: true, description: Fixed-term contract end date}
+      PROBATION_END_DATE: {source: EmpJob.probationPeriodEndDate, type: DATE, verify: true, description: Probation period end date}
+      PAY_SCALE_TYPE:  {source: EmpJob.payScaleType, type: STRING, length: 128, verify: true, description: Pay scale type}
+      PAY_SCALE_AREA:  {source: EmpJob.payScaleArea, type: STRING, length: 128, verify: true, description: Pay scale area}
+      PAY_SCALE_GROUP: {source: EmpJob.payScaleGroup, type: STRING, length: 128, verify: true, description: Pay scale group}
+      PAY_SCALE_LEVEL: {source: EmpJob.payScaleLevel, type: STRING, length: 128, verify: true, description: Pay scale level}
+      POSITION_ENTRY_DATE:         {source: EmpJob.positionEntryDate, type: DATE, verify: true, description: Position entry date}
+      TIME_IN_POSITION:            {source: EmpJob.timeInPosition, type: STRING, length: 128, verify: true, description: Time in position}
+      LOCAL_JOB_TITLE:             {source: EmpJob.localJobTitle, type: STRING, length: 256, verify: true, description: Local job title (country-specific)}
+      IS_SHIFT_EMPLOYEE:           {source: EmpJob.isShiftEmployee, type: BOOLEAN, verify: true, description: Is shift employee}
+      SHIFT_CODE:                  {source: EmpJob.shiftCode, type: STRING, length: 256, verify: true, description: Shift code}
+      SHIFT_RATE:                  {source: EmpJob.shiftRate, type: DECIMAL, verify: true, description: Shift rate}
+      SHIFT_FACTOR:                {source: EmpJob.shiftFactor, type: DECIMAL, verify: true, description: Shift factor}
+      IS_CROSS_BORDER_WORKER:      {source: EmpJob.isCrossBorderWorker, type: BOOLEAN, verify: true, description: Is cross border worker}
+      IS_COMPETITION_CLAUSE_ACTIVE: {source: EmpJob.isCompetitionClauseActive, type: BOOLEAN, verify: true, description: Is competition clause active (country-specific)}
+      IS_SIDE_LINE_JOB_ALLOWED:    {source: EmpJob.isSideLineJobAllowed, type: BOOLEAN, verify: true, description: Is side line job allowed (country-specific)}
+      SICK_PAY_SUPPLEMENT:         {source: EmpJob.sickPaySupplement, type: STRING, length: 256, verify: true, picklist: SICKPAYSUPP, description: Sick pay supplement (country-specific)}
+      JOB_ENTRY_DATE:              {source: EmpJob.jobEntryDate, type: DATE, verify: true, description: Job entry date}
+      TIME_IN_JOB:                 {source: EmpJob.timeInJob, type: STRING, length: 256, verify: true, description: Time in job}
+      COMPANY_ENTRY_DATE:          {source: EmpJob.companyEntryDate, type: DATE, verify: true, description: Company entry date}
+      TIME_IN_COMPANY:             {source: EmpJob.timeInCompany, type: STRING, length: 128, verify: true, description: Time in company}
+      LOCATION_ENTRY_DATE:         {source: EmpJob.locationEntryDate, type: DATE, verify: true, description: Location entry date}
+      TIME_IN_LOCATION:            {source: EmpJob.timeInLocation, type: STRING, length: 128, verify: true, description: Time in location}
+      DEPARTMENT_ENTRY_DATE:       {source: EmpJob.departmentEntryDate, type: DATE, verify: true, description: Department entry date}
+      TIME_IN_DEPARTMENT:          {source: EmpJob.timeInDepartment, type: STRING, length: 128, verify: true, description: Time in department}
+      PAY_SCALE_LEVEL_ENTRY_DATE:  {source: EmpJob.payScaleLevelEntryDate, type: DATE, verify: true, description: Pay scale level entry date}
+      TIME_IN_PAY_SCALE_LEVEL:     {source: EmpJob.timeInPayScaleLevel, type: STRING, length: 128, verify: true, description: Time in pay scale level}
+      HIRE_DATE:                   {source: EmpJob.hireDate, type: DATE, verify: true, description: Hire date}
+      TERMINATION_DATE:            {source: EmpJob.terminationDate, type: DATE, verify: true, description: Termination date}
+      LEAVE_OF_ABSENCE_START_DATE: {source: EmpJob.leaveOfAbsenceStartDate, type: DATE, verify: true, description: Leave of absence start date}
+      LEAVE_OF_ABSENCE_RETURN_DATE: {source: EmpJob.leaveOfAbsenceReturnDate, type: DATE, verify: true, description: Leave of absence return date}
+      EMPLOYEE_NOTICE_PERIOD:      {source: EmpJob.employeeNoticePeriod, type: STRING, length: 256, verify: true, picklist: EENoticePeriod, description: Employee notice period}
+      TIME_RECORDING_ADMISSIBILITY_CODE: {source: EmpJob.timeRecordingAdmissibilityCode, type: STRING, verify: true, description: Time recording admissibility code}
+      DEFAULT_OVERTIME_COMPENSATION_VARIANT: {source: EmpJob.defaultOvertimeCompensationVariant, type: STRING, verify: true, description: Default overtime compensation variant}
+      INITIAL_ENTRY_DATE:          {source: EmpJob.initialEntryDate, type: DATE, verify: true, description: Initial entry date (country-specific)}
+      ENTRY_INTO_GROUP:            {source: EmpJob.entryIntoGroup, type: DATE, verify: true, description: Entry into group (country-specific)}
+      CONTINUED_SICKNESS_PAY_PERIOD: {source: EmpJob.continuedSicknessPayPeriod, type: INTEGER, verify: true, description: Continued sickness pay period (country-specific)}
+      CONTINUED_SICKNESS_PAY_MEASURE: {source: EmpJob.continuedSicknessPayMeasure, type: STRING, length: 256, verify: true, picklist: periodIndicator, description: Continued sickness pay measure (country-specific)}
+      CORPORATION:                 {source: EmpJob.corporation, type: STRING, length: 256, verify: true, description: Corporation (country-specific)}
+      TRAVEL_DISTANCE:             {source: EmpJob.travelDistance, type: DECIMAL, verify: true, description: Travel distance (country-specific)}
+      TRANSPORTATION_SUBSIDY:      {source: EmpJob.transportationSubsidy, type: STRING, length: 256, verify: true, picklist: transportationSubsidy, description: Transportation subsidy (country-specific)}
+      EMP_RELATIONSHIP:            {source: EmpJob.empRelationship, type: STRING, length: 256, verify: true, picklist: employmentRelationship, description: Emp relationship (country-specific)}
+      WORKER_CATEGORY:             {source: EmpJob.workerCategory, type: STRING, length: 256, verify: true, picklist: workerCategory, description: Worker category (country-specific)}
+      MANDATORY_WORK_BREAK_RECORD: {source: EmpJob.mandatoryWorkBreakRecord, type: STRING, length: 38, verify: true, picklist: yesNo, description: Mandatory work break record (country-specific)}
+      HARMFUL_AGENT_EXPOSURE:      {source: EmpJob.harmfulAgentExposure, type: STRING, length: 256, verify: true, picklist: harmfulAgentExposureCode, description: Harmful agent exposure (country-specific)}
+      COMMITMENT_INDICATOR:        {source: EmpJob.commitmentIndicator, type: STRING, length: 256, verify: true, picklist: commitmentIndicator, description: Commitment indicator (country-specific)}
+      PERMIT_INDICATOR:            {source: EmpJob.permitIndicator, type: BOOLEAN, verify: true, description: Permit indicator (country-specific)}
+      PCFM:                        {source: EmpJob.pcfm, type: BOOLEAN, verify: true, description: Pcfm (country-specific)}
+      RETIRED:                     {source: EmpJob.retired, type: BOOLEAN, verify: true, description: Retired (country-specific)}
+      HEALTH_RISK:                 {source: EmpJob.healthRisk, type: BOOLEAN, verify: true, description: Health risk (country-specific)}
+      HAZARD:                      {source: EmpJob.hazard, type: BOOLEAN, verify: true, description: Hazard (country-specific)}
+      FGTS_OPTANT:                 {source: EmpJob.fgtsOptant, type: BOOLEAN, verify: true, description: Fgts optant (country-specific)}
+      FGTS_DATE:                   {source: EmpJob.fgtsDate, type: DATE, verify: true, description: Fgts date (country-specific)}
+      FGTS_PERCENT:                {source: EmpJob.fgtsPercent, type: DECIMAL, verify: true, description: Fgts percent (country-specific)}
+      PROBATIONARY_PERIOD:         {source: EmpJob.probationaryPeriod, type: INTEGER, verify: true, description: Probationary period (country-specific)}
+      PROBATIONARY_PERIOD_MEASURE: {source: EmpJob.probationaryPeriodMeasure, type: STRING, length: 256, verify: true, picklist: periodIndicator, description: Probationary period measure (country-specific)}
+      INCLUDED_CHALLENGED_PERSON_QUOTA: {source: EmpJob.includedChallengedPersonQuota, type: STRING, length: 256, verify: true, picklist: yesNo, description: Included challenged person quota (country-specific)}
+      INTERNSHIP_SCHOOL:           {source: EmpJob.internshipSchool, type: STRING, length: 256, verify: true, picklist: InternshipSchool_BRA, description: Internship school (country-specific)}
+      MANDATORY_INTERNSHIP:        {source: EmpJob.mandatoryInternship, type: STRING, length: 256, verify: true, picklist: yesNo, description: Mandatory internship (country-specific)}
+      INTERNSHIP_LEVEL:            {source: EmpJob.internshipLevel, type: STRING, length: 256, verify: true, picklist: InternshipLevel_BRA, description: Internship level (country-specific)}
+      INTEGRATION_AGENT:           {source: EmpJob.integrationAgent, type: STRING, length: 256, verify: true, description: Integration agent (country-specific)}
+      EDUCATIONAL_ENTITY:          {source: EmpJob.educationalEntity, type: STRING, length: 256, verify: true, description: Educational entity (country-specific)}
+      WORK_LOCATION:               {source: EmpJob.workLocation, type: STRING, length: 256, verify: true, description: Work location (country-specific)}
+      LABOR_PROTECTION:            {source: EmpJob.laborProtection, type: BOOLEAN, verify: true, description: Labor protection (country-specific)}
+      OCCUPATION_CRI:              {source: EmpJob.occupationCri, type: STRING, length: 256, verify: true, picklist: OccupCode_CRI, description: Occupation cri (country-specific)}
+      NEW_CALC_AVG_PPU:            {source: EmpJob.newCalcAvgPpu, type: BOOLEAN, verify: true, description: New calc avg ppu (country-specific)}
+      NEW_CALC_AVG_DNP:            {source: EmpJob.newCalcAvgDnp, type: BOOLEAN, verify: true, description: New calc avg dnp (country-specific)}
+      CODE_OF_JOB_FOR_ELDP:        {source: EmpJob.codeOfJobForEldp, type: STRING, length: 256, verify: true, picklist: codeOfJobELDP, description: Code of job for eldp (country-specific)}
+      ASSEDIC_CERT_INITIAL_STATE_NUM: {source: EmpJob.assedicCertInitialStateNum, type: INTEGER, verify: true, description: Assedic cert initial state num (country-specific)}
+      ASSEDIC_CERT_OBJECT_NUM:     {source: EmpJob.assedicCertObjectNum, type: INTEGER, verify: true, description: Assedic cert object num (country-specific)}
+      FAMILY_RELATIONSHIP_WITH_EMPLOYER: {source: EmpJob.familyRelationshipWithEmployer, type: STRING, length: 256, verify: true, picklist: familyRelationship, description: Family relationship with employer (country-specific)}
+      CONTRACT_REFERENCE_FOR_AED:  {source: EmpJob.contractReferenceForAed, type: STRING, length: 256, verify: true, description: Contract reference for aed (country-specific)}
+      ELECTORAL_COLLEGE_FOR_WORKERS_REPRESENTATIVES: {source: EmpJob.electoralCollegeForWorkersRepresentatives, type: STRING, length: 256, verify: true, picklist: electoralCollegeRepresentativesCouncil, description: Electoral college for workers representatives (country-specific)}
+      ELECTORAL_COLLEGE_FOR_WORKS_COUNCIL: {source: EmpJob.electoralCollegeForWorksCouncil, type: STRING, length: 256, verify: true, picklist: electoralCollegeRepresentativesCouncil, description: Electoral college for works council (country-specific)}
+      ELECTORAL_COLLEGE_FOR_LABOR_COURT: {source: EmpJob.electoralCollegeForLaborCourt, type: STRING, length: 256, verify: true, picklist: electoralCollegeLaborCourt, description: Electoral college for labor court (country-specific)}
+      LABOR_COURT_SECTOR:          {source: EmpJob.laborCourtSector, type: STRING, length: 256, verify: true, picklist: laborCourtSector, description: Labor court sector (country-specific)}
+      EXCL_EXECUTIVE_SECTOR:       {source: EmpJob.exclExecutiveSector, type: BOOLEAN, verify: true, description: Excl executive sector (country-specific)}
+      RESIDENT_VOTE:               {source: EmpJob.residentVote, type: BOOLEAN, verify: true, description: Resident vote (country-specific)}
+      MUNICIPAL_INSEE_CODE:        {source: EmpJob.municipalInseeCode, type: INTEGER, verify: true, description: Municipal insee code (country-specific)}
+      EMPLOYEE_WORKGROUP_MEMBERSHIP: {source: EmpJob.employeeWorkgroupMembership, type: STRING, length: 60, verify: true, picklist: yesNo, description: Employee workgroup membership (country-specific)}
+      NOTICE_PERIOD:               {source: EmpJob.noticePeriod, type: STRING, length: 256, verify: true, description: Notice period (country-specific)}
+      OCCUPATION_GTM:              {source: EmpJob.occupationGtm, type: STRING, length: 256, verify: true, picklist: OccupCode_GTM, description: Occupation gtm (country-specific)}
+      CONTRACT_ID:                 {source: EmpJob.contractId, type: STRING, length: 256, verify: true, description: Contract id (country-specific)}
+      CONTRACT_NUMBER:             {source: EmpJob.contractNumber, type: INTEGER, verify: true, description: Contract number (country-specific)}
+      INELIGIBLE_STATUTORY_MIN_WAGE: {source: EmpJob.ineligibleStatutoryMinWage, type: BOOLEAN, verify: true, description: Ineligible statutory min wage (country-specific)}
+      SPCL_RULE_NON_MANUAL_WORKER: {source: EmpJob.spclRuleNonManualWorker, type: BOOLEAN, verify: true, description: Spcl rule non manual worker (country-specific)}
+      PAYMENT_IN_LIEU_OF_NOTICE:   {source: EmpJob.paymentInLieuOfNotice, type: BOOLEAN, verify: true, description: Payment in lieu of notice (country-specific)}
+      GUARANTEED_PAYMENT:          {source: EmpJob.guaranteedPayment, type: INTEGER, verify: true, description: Guaranteed payment (country-specific)}
+      PERIOD_INDICATOR:            {source: EmpJob.periodIndicator, type: STRING, length: 256, verify: true, picklist: periodIndicator, description: Period indicator (country-specific)}
+      CALCULATION_BASE:            {source: EmpJob.calculationBase, type: STRING, length: 256, verify: true, description: Calculation base (country-specific)}
+      WORK_PERMIT_EXPIRY:          {source: EmpJob.workPermitExpiry, type: DATE, verify: true, description: Work permit expiry (country-specific)}
+      CREDIT_FOR_PREVIOUS_SERVICE: {source: EmpJob.creditForPreviousService, type: STRING, length: 256, verify: true, description: Credit for previous service (country-specific)}
+      ASSESSMENT_STATUS:           {source: EmpJob.assessmentStatus, type: STRING, length: 256, verify: true, picklist: assessmentStatus, description: Assessment status (country-specific)}
+      CURRENT_WAGE_LEVEL:          {source: EmpJob.currentWageLevel, type: DECIMAL, verify: true, description: Current wage level (country-specific)}
+      DEGREE_OF_PRODUCTIVITY:      {source: EmpJob.degreeOfProductivity, type: DECIMAL, verify: true, description: Degree of productivity (country-specific)}
+      SICK_PAY_SUPPLEMENT_PERIOD:  {source: EmpJob.sickPaySupplementPeriod, type: INTEGER, verify: true, description: Sick pay supplement period (country-specific)}
+      SICK_PAY_SUPPLEMENT_MEASURE: {source: EmpJob.sickPaySupplementMeasure, type: STRING, length: 256, verify: true, picklist: periodIndicator, description: Sick pay supplement measure (country-specific)}
+      OCCUPATIONAL_LEVEL_KEN:      {source: EmpJob.occupationalLevelKen, type: STRING, length: 256, verify: true, picklist: occupationalLevel_KEN, description: Occupational level ken (country-specific)}
+      OCCUPATIONAL_LEVELS:         {source: EmpJob.occupationalLevels, type: STRING, length: 256, verify: true, picklist: occupationalLevels, description: Occupational levels (country-specific)}
+      OCCUPATION_PER:              {source: EmpJob.occupationPer, type: STRING, length: 256, verify: true, picklist: OccupCode_PER, description: Occupation per (country-specific)}
+      JOB_GROUP:                   {source: EmpJob.jobGroup, type: STRING, length: 256, verify: true, picklist: jobGroup_Per, description: Job group (country-specific)}
+      FLSA_STATUS:                 {source: EmpJob.flsaStatus, type: STRING, length: 256, verify: true, picklist: FLSASTATUS_USA, description: Flsa status (country-specific)}
+      EEO_CLASS:                   {source: EmpJob.eeoClass, type: STRING, length: 256, verify: true, picklist: EEOJOBGROUP_USA, description: Eeo class (country-specific)}
+      CHANGE_REASON:               {source: EmpJob.changeReason, type: STRING, length: 128, verify: true, description: Change reason (country-specific)}
+      CHANGE_REASON_EXTERNAL:      {source: EmpJob.changeReasonExternal, type: STRING, length: 128, verify: true, description: Change reason external (country-specific)}
+      EEO1_JOB_CATEGORY:           {source: EmpJob.eeo1JobCategory, type: STRING, length: 256, verify: true, picklist: EEO1CODE_USA, description: Eeo1 job category (country-specific)}
+      EEO4_JOB_CATEGORY:           {source: EmpJob.eeo4JobCategory, type: STRING, length: 256, verify: true, picklist: EEO4CODE_USA, description: Eeo4 job category (country-specific)}
+      EEO5_JOB_CATEGORY:           {source: EmpJob.eeo5JobCategory, type: STRING, length: 256, verify: true, picklist: EEO5CODE_USA, description: Eeo5 job category (country-specific)}
+      EEO6_JOB_CATEGORY:           {source: EmpJob.eeo6JobCategory, type: STRING, length: 256, verify: true, picklist: EEO6CODE_USA, description: Eeo6 job category (country-specific)}
+      FROM_CURRENCY:               {source: EmpJob.fromCurrency, type: STRING, length: 256, verify: true, picklist: currency, description: From currency (country-specific)}
+      TO_CURRENCY:                 {source: EmpJob.toCurrency, type: STRING, length: 256, verify: true, picklist: currency, description: To currency (country-specific)}
+      EXCHANGE_RATE:               {source: EmpJob.exchangeRate, type: DECIMAL, verify: true, description: Exchange rate (country-specific)}
+      VALID_FROM:                  {source: EmpJob.validFrom, type: DATE, verify: true, description: Valid from (country-specific)}
+      DISMISSALS_NOTICE_PERIOD_FOR_EMPLOYER: {source: EmpJob.dismissalsNoticePeriodForEmployer, type: STRING, length: 256, verify: true, picklist: dismissalsNoticePeriod, description: Dismissals notice period for employer (country-specific)}
+      CONTRACT_DATE:               {source: EmpJob.contractDate, type: DATE, verify: true, description: Contract date (country-specific)}
+      CALC_METHOD_INDICATOR:       {source: EmpJob.calcMethodIndicator, type: BOOLEAN, verify: true, description: Calc method indicator (country-specific)}
+      WORKING_TIME_DIRECTIVE:      {source: EmpJob.workingTimeDirective, type: BOOLEAN, verify: true, description: Working time directive (country-specific)}
+      WTD_HOURS_LIMIT:             {source: EmpJob.wtdHoursLimit, type: STRING, length: 256, verify: true, description: Wtd hours limit (country-specific)}
+      TUPE_ORG_NUMBER:             {source: EmpJob.tupeOrgNumber, type: STRING, length: 256, verify: true, description: Tupe org number (country-specific)}
+      PENSION_PROTECTION:          {source: EmpJob.pensionProtection, type: BOOLEAN, verify: true, description: Pension protection (country-specific)}
+      TEACHERS_PENSION:            {source: EmpJob.teachersPension, type: BOOLEAN, verify: true, description: Teachers pension (country-specific)}
 
   EMPWORKPERMIT:
     description: Work permits and visas

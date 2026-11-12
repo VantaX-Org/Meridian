@@ -10,6 +10,7 @@ import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { notFound, refreshRoles, useActivity, useComments, useMyWatches, useSubscriptions, useUnreadMentions, useWatch } from "@/lib/v2/roles-queries";
 import { useLandscape } from "@/lib/v2/queries";
 import { Dash, Mono, Skeleton, V2Link } from "../parts";
+import { ConfirmBar } from "../forms";
 import "../roles.css";
 import { t } from "@/lib/v2/i18n";
 
@@ -52,9 +53,10 @@ export function WatchToggle({ kind, id, label }: { kind: WatchKind; id: string; 
   };
   return (
     <span className="m2-watch" data-testid="watch">
-      <button type="button" className="m2-btn m2-sm" aria-pressed={watching} disabled={busy || !q.data || readOnly} onClick={() => void toggle()} title={readOnly ? t("Read-only view") : undefined}>
+      <button type="button" className="m2-btn m2-sm" aria-pressed={watching} disabled={busy || !q.data || readOnly} onClick={() => void toggle()} aria-describedby={readOnly ? `watch-why-${kind}-${id}` : undefined}>
         {watching ? t("Watching") : t("Watch")}
       </button>
+      {readOnly ? <span id={`watch-why-${kind}-${id}`} className="m2-prov">{t("Read-only view")}</span> : null}
       <span className="m2-meta">{watching ? t("You hear about runs, score drops, new critical breaches and comments on {label}.", { label }) : t("Hear about runs, score drops and comments on {label}.", { label })}</span>
       {error ? (
         <span className="m2-err" role="alert">
@@ -74,6 +76,7 @@ export function CommentsSection({ kind, id }: { kind: CommentKind; id: string })
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [asking, setAsking] = useState<string | null>(null);
   const typing = typingHandle(draft);
   const suggestions = useMemo(
     () => (typing === null ? [] : (people.data ?? []).filter((p) => handleOf(p.email).startsWith(typing) || p.name.toLowerCase().includes(typing)).slice(0, 5)),
@@ -100,6 +103,7 @@ export function CommentsSection({ kind, id }: { kind: CommentKind; id: string })
     }
   };
   const remove = async (cid: string) => {
+    setAsking(null);
     try {
       await deleteComment(cid);
       await refreshRoles(qc, "comments");
@@ -133,9 +137,17 @@ export function CommentsSection({ kind, id }: { kind: CommentKind; id: string })
               <span>{c.body}</span>
               {c.mentions.length ? <span className="m2-meta">{`Mentioned: ${c.mentions.map((m) => names.get(m) ?? m).join(", ")}`}</span> : null}
               {c.mine && canWrite ? (
-                <button type="button" className="m2-linkbtn2" onClick={() => void remove(c.id)} aria-label={t("Remove your comment of {created_at}", { created_at: formatDate(c.created_at, "date") })}>
+                <button type="button" className="m2-linkbtn2" onClick={() => setAsking(c.id)} aria-label={t("Remove your comment of {created_at}", { created_at: formatDate(c.created_at, "date") })}>
                   {t("Remove")}
                 </button>
+              ) : null}
+              {asking === c.id ? (
+                <ConfirmBar
+                  message={t("Your comment of {created_at} is removed for everyone who reads this item.", { created_at: formatDate(c.created_at, "date") })}
+                  confirmLabel={t("Remove")}
+                  onConfirm={() => void remove(c.id)}
+                  onCancel={() => setAsking(null)}
+                />
               ) : null}
             </li>
           ))}

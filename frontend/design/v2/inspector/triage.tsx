@@ -13,6 +13,7 @@ import { useWorkCan } from "@/lib/v2/work-actions";
 import { InspectorFrame } from "../Inspector";
 import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { ResultFrame, type Outcome } from "./shared";
+import { ConfirmBar } from "../forms";
 import { EscalationChainEditor } from "./governance";
 import { t } from "@/lib/v2/i18n";
 
@@ -58,6 +59,20 @@ function Body() {
   const [days, setDays] = useState<Partial<Record<TriageSeverity, string>>>({});
   const [digest, setDigest] = useState<Digest | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [asking, setAsking] = useState<{ id: string; what: string; override: boolean } | null>(null);
+  const resetBar = (override: boolean) =>
+    asking && asking.override === override ? (
+      <ConfirmBar
+        message={t("The SLA policy for {what} is removed. Records that start their clock from now on use the default days.", { what: asking.what })}
+        confirmLabel={override ? t("Remove") : t("Use default")}
+        pending={reset.isPending}
+        onConfirm={() => {
+          reset.mutate(asking.id);
+          setAsking(null);
+        }}
+        onCancel={() => setAsking(null)}
+      />
+    ) : null;
 
   const tenantWide = useMemo(() => (sla.data ?? []).filter((p) => p.module == null), [sla.data]);
   const overrides = useMemo(() => (sla.data ?? []).filter((p) => p.module != null && p.id), [sla.data]);
@@ -115,7 +130,7 @@ function Body() {
                   <input id={id} className="m2-num" inputMode="decimal" value={shown} onChange={(e) => setDays((d) => ({ ...d, [s.key]: e.target.value }))} aria-invalid={Number.isNaN(parsed(s.key)) ? "true" : undefined} />
                   <span className="m2-unit">{t("days")}</span>
                   {p?.id && !p.is_default ? (
-                    <button type="button" className="m2-btn" disabled={reset.isPending} onClick={() => reset.mutate(p.id as string)} aria-label={t("Use the default for {sev}", { sev: s.label })}>
+                    <button type="button" className="m2-btn" disabled={reset.isPending} onClick={() => setAsking({ id: p.id as string, what: s.label, override: false })} aria-label={t("Use the default for {sev}", { sev: s.label })}>
                       {t("Use default")}
                     </button>
                   ) : null}
@@ -128,6 +143,7 @@ function Body() {
         })}
         {p0(tenantWide)?.is_default ? <p className="m2-hint">{t("Severities without a policy of their own use the built-in default.")}</p> : null}
       </div>
+      {resetBar(false)}
 
       {overrides.length ? (
         <>
@@ -137,13 +153,14 @@ function Body() {
               <FormRow key={p.id} label={`${moduleText(p.module as string)} (${p.module}), ${SEVERITIES.find((s) => s.key === p.severity)?.label ?? p.severity}`} htmlFor={null}>
                 <span>{t("{daysOf} {daysOf, plural, one {day} other {days}}", { daysOf: daysOf(p.resolve_minutes) })}</span>
                 {canEdit ? (
-                  <button type="button" className="m2-btn" disabled={reset.isPending} onClick={() => reset.mutate(p.id as string)}>
+                  <button type="button" className="m2-btn" disabled={reset.isPending} onClick={() => setAsking({ id: p.id as string, what: `${moduleText(p.module as string)}, ${SEVERITIES.find((s) => s.key === p.severity)?.label ?? p.severity}`, override: true })}>
                     {t("Remove")}
                   </button>
                 ) : null}
               </FormRow>
             ))}
           </div>
+          {resetBar(true)}
         </>
       ) : null}
 

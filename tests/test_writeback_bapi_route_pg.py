@@ -22,7 +22,6 @@ HEADERS = {"X-User-Role": "admin", "Authorization": "Bearer test-token"}
 KEY = "MATNR=000000000000000042|WERKS=1000"
 FIXES = [{"auto_fix": True, "record_key": KEY, "field": "MARC.PLIFZ", "proposed_value": "12"},
          {"auto_fix": True, "record_key": KEY, "field": "MARC.NFMAT", "proposed_value": "X1"}]
-CONN = {"host": "sap-host", "client": "100", "user": "u", "password": "p", "sysnr": "00"}
 
 
 @pytest.fixture
@@ -43,7 +42,7 @@ def finding():
                        "VALUES (:s, :t, 'ECC', 'ecc', 'sap-host', '100', '00')"), {"s": sid, "t": tid})
         c.execute(text("INSERT INTO system_credentials (id, system_id, encrypted_password) "
                        "VALUES (gen_random_uuid(), :s, 'enc')"), {"s": sid})
-    yield tid, fid
+    yield tid, fid, sid
     with engine.begin() as c:
         c.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
         c.execute(text("DELETE FROM system_credentials WHERE system_id = :s"), {"s": sid})
@@ -61,9 +60,10 @@ async def _post(path: str, body=None):
 
 @pytest.mark.anyio
 async def test_dry_run_says_per_field_what_a_bapi_carries(finding, monkeypatch):
-    tid, fid = finding
+    tid, fid, sid = finding
     patch_tenant(monkeypatch, tid)
-    r = await _post("/api/v1/writeback", {"finding_id": fid, "record_fixes": FIXES, "sap_connection": CONN,
+    monkeypatch.setattr("api.services.credential_store.decrypt_password", lambda t, e: "pw")
+    r = await _post("/api/v1/writeback", {"finding_id": fid, "record_fixes": FIXES, "system_id": sid,
                                           "dry_run": True})
     assert r.status_code == 200, r.text
     fields = {f["field"]: f for f in r.json()["fields"]}
@@ -77,7 +77,7 @@ async def test_dry_run_says_per_field_what_a_bapi_carries(finding, monkeypatch):
 async def test_approval_simulates_commits_and_records_return_per_record(finding, monkeypatch):
     from api.config import settings
 
-    tid, fid = finding
+    tid, fid, sid = finding
     patch_tenant(monkeypatch, tid)
     monkeypatch.setattr(settings, "live_writeback_enabled", True)
     engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
@@ -113,3 +113,12 @@ async def test_approval_simulates_commits_and_records_return_per_record(finding,
         stored = c.execute(text("SELECT errors, records_updated FROM write_back_log WHERE id = :a"), {"a": aid}).one()
     assert stored[1] == 1 and stored[0]["records"][0]["messages"][0]["message"] == "saved"
     engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_an_unknown_system_id_is_refused(finding, monkeypatch):
+    tid, fid, _ = finding
+    patch_tenant(monkeypatch, tid)
+    r = await _post("/api/v1/writeback", {"finding_id": fid, "record_fixes": FIXES, "system_id": str(uuid.uuid4()),
+                                          "dry_run": True})
+    assert r.status_code == 404, r.text
