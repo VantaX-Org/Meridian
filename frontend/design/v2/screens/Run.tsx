@@ -30,6 +30,7 @@ import { ObjectChangeBars, changeSentence } from "./Compare";
 import { CcBanner, CcPage } from "./cc-parts";
 import { WhatIf } from "./WhatIf";
 import { RunSteps } from "./RunSteps";
+import { RunSemantics } from "./RunSemantics";
 import "../basis.css";
 import { TableExport } from "@/design/v2/TableExport";
 
@@ -587,6 +588,7 @@ export function RunCanvas({ id }: { id: string }) {
       ) : null}
 
       <RunShape cells={cells} labelOf={labelOf} severity={v?.severity_counts ?? null} loading={land.isLoading || head.isPending} />
+      <RunSemantics id={id} />
 
       <section className="m2-sec" aria-label={tr("By object")}>
         <div className="m2-sechead">

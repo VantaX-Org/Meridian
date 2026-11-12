@@ -12,7 +12,7 @@
  *   GET /webhooks/events, GET, PUT /settings/automation
  *   GET /config/drift/alerts
  *   GET /objects/{module}/contracts, PUT /contracts/{id}/enforcement, GET /contracts/{id}/breaches
- *   GET /versions/{id}/changes
+ *   GET /versions/{id}/changes, GET /versions/{id}/semantic-types, PUT /versions/{id}/semantic-types/{column}
  * A field the backend does not return is not here; the screens show a dash for a null.
  */
 import { v2Get, v2Send } from "./client";
@@ -318,6 +318,33 @@ export interface ContactRule {
 export interface ContactVerification { rules: ContactRule[]; settings: { mx: boolean } }
 export const getContactVerification = (): Promise<ContactVerification> => v2Get("/contact-verification");
 export const putContactVerification = (mx: boolean): Promise<{ mx: boolean }> => v2Send("PUT", "/contact-verification/settings", { mx });
+
+/** Semantic types and trust score of an uploaded run (api/routes/semantic_types.py). Shares only, never values. */
+export type SemanticType = "iban" | "eu_vat" | "email" | "url" | "date" | "phone" | "postcode" | "country" | "currency_amount" | "person_name";
+export interface SemanticColumn {
+  column: string;
+  detected: SemanticType | null;
+  confidence: number;
+  type: SemanticType | null;
+  confirmed: boolean;
+  filled: number;
+  conformance: number | null;
+}
+export interface SuggestedRule { column: string; type: SemanticType; check_class: string; params: Record<string, unknown>; message: string }
+export interface TrustParts { dqs: number | null; conformance: number | null; freshness: number | null; completeness: number | null }
+export interface SemanticTypes {
+  profiled: boolean;
+  source: string | null;
+  origin: string;
+  rows_sampled: number | null;
+  columns: SemanticColumn[];
+  types: SemanticType[];
+  trust: { score: number | null; parts: TrustParts; weights: Record<keyof TrustParts, number> };
+  suggested_rules: SuggestedRule[];
+}
+export const getSemanticTypes = (versionId: string): Promise<SemanticTypes> => v2Get(`/versions/${encodeURIComponent(versionId)}/semantic-types`);
+export const putSemanticType = (versionId: string, column: string, type: SemanticType | "none"): Promise<{ column: string; type: string }> =>
+  v2Send("PUT", `/versions/${encodeURIComponent(versionId)}/semantic-types/${encodeURIComponent(column)}`, { type });
 
 // ── config drift alerts ──────────────────────────────────────────────────────
 

@@ -284,6 +284,8 @@ async def load(request: Request, conn_id: str, body: LoadIn, db: AsyncSession = 
     }
     if system_id:
         metadata["system_id"] = system_id
+    from api.services.semantic_types import safe_profile
+    metadata["semantic_profile"] = safe_profile(df)  # shares per column only, no values
     version = await versions.create_version(db, tenant.id, metadata, label=label)
     step_n, _ = STEP_PARSE
     jobs.start_job(str(tenant.id), str(version.id), "upload", label, status="queued",
