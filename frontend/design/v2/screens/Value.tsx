@@ -11,6 +11,7 @@ import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
 import { EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { Disclose, Guide } from "./Guide";
+import { ImpactPortfolio } from "./ExtraPanels";
 import { Sparkline } from "../charts";
 import { valueRibbons } from "@/lib/v2/value-ribbon";
 import { useTimeline } from "@/lib/v2/runs-queries";
@@ -102,6 +103,7 @@ export function Value() {
       />
       <ImpactPanel rows={impacts} />
       <RibbonPanel />
+      <Disclose title={t("Impact of the latest run")}><ImpactPortfolio categoryName={(k) => CATEGORY[k]?.name()} /></Disclose>
       <Disclose title={t("Cost avoided month by month")}><MonthsPanel rows={months} currency={cur} /></Disclose>
       <Disclose title={t("What the latest run puts at risk")} hint={t("KPIs, processes and S/4HANA features")}><RunImpactPanel currency={cur} /></Disclose>
       <Disclose title={t("Rules guarding each KPI")} hint={t("Steps no rule guards come first")}><GuardsPanel /></Disclose>

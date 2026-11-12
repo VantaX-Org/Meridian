@@ -11,6 +11,7 @@ import { useRecordLinks, useWorkRecord } from "@/lib/v2/work-queries";
 import { t as tr } from "@/lib/v2/i18n";
 import { SeverityMark, type SeverityKey } from "../marks";
 import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, Value, V2Link } from "../parts";
+import { DuplicateCluster, RecordSheetFallback } from "./ExtraPanels";
 import { historyLine } from "./RecordInspector";
 
 const sev = (s: string | null | undefined): SeverityKey => (s === "critical" || s === "high" || s === "medium" || s === "low" ? s : "low");
@@ -54,7 +55,7 @@ export function RecordCanvas({ module: slug, recordKey }: { module: string; reco
       <>
         <PageTitle><Mono>{title}</Mono></PageTitle>
         {missing ? (
-          <EmptyFrame>{tr("No failing record with the key {key} is in the latest run. Check the key; a record fixed since the list was read also leaves it.", { key })}</EmptyFrame>
+          <RecordSheetFallback object={mod} recordKey={key} notFound={tr("No failing record with the key {key} is in the latest run. Check the key; a record fixed since the list was read also leaves it.", { key })} />
         ) : (
           <ErrorFrame onRetry={() => void q.refetch()}>{tr("The record could not be read.")}</ErrorFrame>
         )}
@@ -125,6 +126,7 @@ export function RecordCanvas({ module: slug, recordKey }: { module: string; reco
         {dup && dup.open > 0 ? <p><V2Link href={dup.href}>{tr("Possible duplicate")} ({dup.open})</V2Link></p> : null}
         {detail.golden_record ? <p><V2Link href={detail.golden_record.href}>{tr("Golden record")}</V2Link></p> : null}
         {!(dup && dup.open > 0) && !detail.golden_record ? <p className="m2-meta">{tr("No golden record is named.")}</p> : null}
+        {detail.golden_record?.id ? <DuplicateCluster object={mod} recordId={detail.golden_record.id} /> : null}
       </section>
     </div>
   );

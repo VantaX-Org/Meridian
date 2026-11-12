@@ -13,6 +13,7 @@ import { ChartFrame, ChartTable, niceTicks, TrendChart } from "../charts";
 import { Sev } from "../inspector/rule";
 import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { Disclose, Guide } from "./Guide";
+import { CleansingPipeline, ExecRead } from "./ExtraPanels";
 import { CcBanner, CcPage } from "./cc-parts";
 import { pctOf, retry, Section, status, Table, useRuleName } from "./WorkAnalytics";
 
@@ -143,6 +144,8 @@ export function Insights() {
       <Disclose title={t("Trend over time")} hint={t("How the cost and the causes moved run by run.")}>
         <TrendPanel />
       </Disclose>
+      <Disclose title={t("Executive read")} hint={t("Headline, loss by business area and owners")}><ExecRead area={area} /></Disclose>
+      <Disclose title={t("Cleansing pipeline")}><CleansingPipeline /></Disclose>
       <Disclose title={t("What moves the score")} hint={t("Normal ranges and lead and lag links the Aletheia engine learned from the run trend.")}>
         <DriversPanel />
       </Disclose>
