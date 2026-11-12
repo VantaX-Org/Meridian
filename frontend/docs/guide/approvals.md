@@ -32,10 +32,10 @@ The sentence reads "48 records are signed off as not an issue or an accepted ris
 
 ## Act on exceptions, write-backs, change requests and contract breaches
 
-1. **An exception**: open the exception, read the reason it was raised, then choose **Approve exception** with a reason, or **Reject**. An approved exception keeps the record out of the failing count until the date you set; the decision is in the audit log.
+1. **An exception**: open the exception, read the reason it was raised, then choose **Accept risk** with a reason, or **Not an issue**. An accepted risk keeps the record out of the failing count until the date you set; the decision is in the audit log.
 2. **A write-back**: open the batch that is waiting to be sent to SAP and check the proposed values. Select **Send to SAP** to write them. If SAP refuses a row, the row stays in the batch with SAP's message; fix it and send again, or remove it.
 3. **A change request**: open it from Requests, read the checks, then **Approve** or **Reject** with a reason. If a step has passed its due time, say so in a comment so the next approver is told.
-4. **A contract breach**: open the contract on People. A breached promise shows which score or dimension fell short. Choose **Notify the producer** to tell the owner, or open the failing records to start the fix. The contract is compliant again after a run that meets it.
+4. **A contract breach**: open the contract on People. A breached promise shows which score or dimension fell short. Tell the owner, or open the failing records to start the fix. The contract is compliant again after a run that meets it.
 
 ## The numbers and where they come from
 

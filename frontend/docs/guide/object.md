@@ -60,7 +60,7 @@ The **run picker** beside the object's name chooses which of this object's runs 
 - **Data owner**: apply the steward template to objects you own, from the object's steward template action.
 - **Programme lead**: share the page as a link, compare runs.
 - **Process analyst**: the Processes tab and its what-if simulation.
-- **Rules manager**: turn a mined dependency on the Profile tab into a rule.
+- **Make it a rule**: turn a mined dependency on the Profile tab into a rule.
 
 ## Keyboard
 

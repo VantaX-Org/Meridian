@@ -7,7 +7,7 @@ Preferences is how Meridian looks and reads for you, where it starts, and what i
 - **Display**: **Theme** (Light, Dark or System; Light is the default, and the account menu switches between light and dark too) and **Row density** (Compact, Default or Comfortable).
 - **Language and region**: **Number and date format** (Browser default or a locale such as en-ZA or de-DE) and **Time zone** (UTC by default). A sample line shows the result: "Dates read 16 Oct 2026, 05:17, scores 71.8, counts 1,234,567."
 - **Start screen**: **Open Meridian as** your role's default or another role's start screen. "It changes the next step on the landscape and the work it shows first. Your access does not change."
-- **Keyboard**: "Show keyboard hints beside menu items and places".
+- **Keyboard**: "Show keyboard hints beside menu entries and places".
 - **Notifications**: the digest of your open items (Off, Daily, Weekly), "Tell me at once about critical findings" and "Also email me". **Inbox and triage settings** opens triage.
 - **What you hear about**: the events that reach your inbox, such as run finished, score drop, new critical breach, batch waiting and mentions, each on or off.
 - **Out of office**: set from People, Out of office, or `?open=away`.

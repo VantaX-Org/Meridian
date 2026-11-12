@@ -98,7 +98,7 @@ Before you start:
 2. Confirm at least 10 GB of free disk. If short, run `docker image prune -f` and `docker builder prune -f`.
 3. Take a full backup ([runbook 4](#4-back-up-and-restore)). `update.sh` dumps the database itself, but not object storage or `.env`.
 
-Update from the user interface: Administration, Platform and updates, **Update now**. This needs the updater overlay.
+Update from the user interface: Administration, Platform and updates, **Update to** the offered version, then **Run the update**. This needs the updater overlay.
 
 Update from the host:
 ```bash
