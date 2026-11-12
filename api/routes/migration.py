@@ -1376,6 +1376,83 @@ async def value_candidates(
 # ── Load files (ready records only) ───────────────────────────────────────────
 
 
+class LoadHistoryItem(BaseModel):
+    id: str
+    run_id: str
+    export_format: str
+    filename: str
+    record_count: int
+    exported_by: Optional[str] = None
+    exported_at: Optional[datetime.datetime] = None
+    modules: list[str] = []
+    snapshot_kept: bool = False
+
+
+class LoadHistoryOut(BaseModel):
+    items: list[LoadHistoryItem]
+    total: int
+    limit: int
+    offset: int
+    next_offset: Optional[int] = None
+
+
+@router.get("/load-history", response_model=LoadHistoryOut)
+async def load_history(
+    module: Optional[str] = Query(None, description="Only load files of runs that include this object"),
+    limit: int = Query(50, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
+):
+    """Every load file Meridian handed over, newest first, with the run and objects it came from."""
+    from api.services.paging import page_meta
+
+    await _set_rls(db, tenant.id)
+    where = "f.tenant_id = :t AND (CAST(:m AS text) IS NULL OR CAST(:m AS text) = ANY(r.modules))"
+    args = {"t": str(tenant.id), "m": module}
+    total = (await db.execute(text(f"SELECT count(*) FROM migration_export_files f JOIN migration_runs r "
+                                   f"ON r.id = f.run_id WHERE {where}"), args)).scalar() or 0
+    rows = (await db.execute(text(
+        f"SELECT f.id::text AS id, f.run_id::text AS run_id, f.export_format, f.filename, "
+        f"COALESCE(f.record_count, 0) AS record_count, f.exported_by::text AS exported_by, f.created_at, "
+        f"r.modules, (f.snapshot_prefix IS NOT NULL) AS kept FROM migration_export_files f "
+        f"JOIN migration_runs r ON r.id = f.run_id WHERE {where} "
+        f"ORDER BY f.created_at DESC, f.id LIMIT :l OFFSET :o"), {**args, "l": limit, "o": offset})).mappings().all()
+    items = [LoadHistoryItem(id=r["id"], run_id=r["run_id"], export_format=r["export_format"], filename=r["filename"],
+                             record_count=r["record_count"], exported_by=r["exported_by"], exported_at=r["created_at"],
+                             modules=list(r["modules"] or []), snapshot_kept=bool(r["kept"])) for r in rows]
+    return LoadHistoryOut(items=items, **page_meta(total, limit, offset))
+
+
+class LoadOrderObject(BaseModel):
+    module: str
+    anchor: str
+    tables: list[str]
+
+
+class LoadOrderOut(BaseModel):
+    objects: list[LoadOrderObject]
+
+
+@router.get("/load-order", response_model=LoadOrderOut)
+async def load_order(
+    modules: Optional[str] = Query(None, description="Comma-separated objects; default every licensed object"),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
+):
+    """The tables each object loads, in load order (Employee Central follows its foundation, person, employment, job
+    sequence). Static: object-to-object dependencies and go/no-go state are on /load-plan."""
+    from api.services.migration.load_plan import EC_LOAD_ORDER, OWNED_TABLES
+
+    licensed = tenant.licensed_modules or []
+    wanted = [m.strip() for m in modules.split(",") if m.strip()] if modules else list(OWNED_TABLES)
+    out = [LoadOrderObject(module=m, anchor=OWNED_TABLES[m][0],
+                           tables=list(EC_LOAD_ORDER if m == "employee_central" else OWNED_TABLES[m]))
+           for m in wanted if m in OWNED_TABLES and ("*" in licensed or m in licensed)]
+    return LoadOrderOut(objects=out)
+
+
 @router.get("/export/{run_id}/{export_format}")
 async def export_migration(
     run_id: uuid.UUID,

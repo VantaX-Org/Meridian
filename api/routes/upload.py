@@ -366,7 +366,58 @@ async def upload_roundtrip(
 ):
     """An edited SuccessFactors export (filled template or cleaning workbook) comes back as the next run of the
     same lineage and is analysed at once. The hidden marker names the parent run; without one the caller sends it."""
+    return await _roundtrip_one(request, file, parent_version_id, db, tenant)
 
+
+class RoundTripBatchItem(BaseModel):
+    file_name: str
+    ok: bool
+    parent_version_id: Optional[str] = None
+    result: Optional[RoundTripResponse] = None
+    error: Optional[str] = None
+
+
+class RoundTripBatchResponse(BaseModel):
+    items: list[RoundTripBatchItem]
+    succeeded: int
+    failed: int
+
+
+@router.post(
+    "/upload/roundtrip/batch",
+    response_model=RoundTripBatchResponse,
+    dependencies=[Depends(_upload_rate_limit), Depends(require_permission("upload"))],
+)
+async def upload_roundtrip_batch(
+    request: Request,
+    files: list[UploadFile] = File(...),
+    parent_version_id: str = Form(None),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Several edited files in one call (one per object). Each is applied on its own and linked to its parent run
+    (the marker's run, else ``parent_version_id``); one bad file does not stop the others."""
+    if not 1 <= len(files) <= MAX_ROUNDTRIP_BATCH:
+        raise HTTPException(status_code=422, detail=f"Send between 1 and {MAX_ROUNDTRIP_BATCH} files.")
+    items: list[RoundTripBatchItem] = []
+    for f in files:
+        try:
+            r = await _roundtrip_one(request, f, parent_version_id, db, tenant)
+            items.append(RoundTripBatchItem(file_name=f.filename or "", ok=True, parent_version_id=r.parent_version_id,
+                                            result=r))
+        except HTTPException as e:
+            await db.rollback()
+            d = e.detail
+            items.append(RoundTripBatchItem(file_name=f.filename or "", ok=False,
+                                            error=d if isinstance(d, str) else str(d.get("detail") or d.get("error"))))
+    ok = sum(1 for i in items if i.ok)
+    return RoundTripBatchResponse(items=items, succeeded=ok, failed=len(items) - ok)
+
+
+MAX_ROUNDTRIP_BATCH = 20
+
+
+async def _roundtrip_one(request, file, parent_version_id, db, tenant) -> "RoundTripResponse":
     from starlette.concurrency import run_in_threadpool
 
     from api.middleware.licence import enforce_licensed_modules
