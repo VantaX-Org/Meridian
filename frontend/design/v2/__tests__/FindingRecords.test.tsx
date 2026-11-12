@@ -26,6 +26,14 @@ describe("Finding records", () => {
     await waitFor(() => expect(screen.getByTestId("finding-records-range")).toHaveTextContent("Records 26 to 50 of 137"));
   });
 
+  it("shows the meaning beside a value the rule's value list explains, and the bare code otherwise", async () => {
+    renderWithQuery(<FindingRecords checkId="MM-001" runs={[{ id: "r1", label: "Material master" }]} />);
+    const table = await screen.findByTestId("finding-records-table");
+    const first = within(table).getAllByRole("row")[1];
+    expect(within(first).getByTitle("Raw material (ROH)")).toBeInTheDocument();
+    expect(within(first).getByText("002").closest("[title]")).toBeNull();
+  });
+
   it("offers a run choice only when there is more than one run", async () => {
     renderWithQuery(<FindingRecords checkId="MM-001" runs={[{ id: "r1", label: "A" }, { id: "r2", label: "B" }]} />);
     expect(await screen.findByRole("combobox", { name: "Run" })).toBeInTheDocument();

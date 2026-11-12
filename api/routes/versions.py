@@ -46,6 +46,8 @@ class VersionResponse(BaseModel):
     metadata: Optional[dict]
     # open findings per severity ({critical, high, medium, low}) for the run; the list endpoint fills it, other callers leave None
     severity_counts: Optional[dict[str, int]] = None
+    # name of the system the run was downloaded from (sap_systems.name via metadata.system_id); the list endpoint fills it
+    system_name: Optional[str] = None
 
 
 class PatchVersionRequest(BaseModel):
@@ -170,13 +172,35 @@ async def list_versions(
             "GROUP BY version_id, severity"), {"t": str(tenant.id), "ids": [str(v.id) for v in versions]})).fetchall()
         for vid, sev, n in rows:
             counts.setdefault(str(vid), {})[sev] = n
+    names = await system_names(db, tenant.id, [(v.metadata_ or {}).get("system_id") for v in versions])
     out = []
     for v in versions:
         r = _version_to_response(v)
+        r.system_name = names.get(str((v.metadata_ or {}).get("system_id")))
         c = counts.get(str(v.id), {})
         r.severity_counts = {k: c.get(k, 0) for k in ("critical", "high", "medium", "low")}
         out.append(r)
     return {"versions": out, "total": total}
+
+
+
+async def system_names(db: AsyncSession, tenant_id: Any, system_ids: list[Any]) -> dict[str, str]:
+    """{system id: name} for the given ids in one query; ids that are not UUIDs or not this tenant's are left out."""
+    ids = sorted({str(i) for i in system_ids if i and _is_uuid(str(i))})
+    if not ids:
+        return {}
+    rows = (await db.execute(text(
+        "SELECT id, name FROM sap_systems WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[]))"),
+        {"t": str(tenant_id), "ids": ids})).fetchall()
+    return {str(i): n for i, n in rows}
+
+
+def _is_uuid(s: str) -> bool:
+    try:
+        uuid.UUID(s)
+        return True
+    except ValueError:
+        return False
 
 
 ARCHIVE_SQL = """
@@ -445,8 +469,26 @@ async def finding_records(
          WHERE {where}
          ORDER BY record_key LIMIT :limit OFFSET :offset
     """), {**p, "limit": limit, "offset": offset})
-    return {"version_id": str(version_id), "check_id": check_id, "total": int(total or 0),
-            "records": [dict(r._mapping) for r in rows.fetchall()]}
+    records = [dict(r._mapping) for r in rows.fetchall()]
+    for rec in records:
+        rec["value_labels"] = value_labels(rec.get("field_values"), rec.get("module"), check_id)
+    return {"version_id": str(version_id), "check_id": check_id, "total": int(total or 0), "records": records}
+
+
+def value_labels(field_values: Optional[dict], module: Optional[str], check_id: str) -> dict[str, str]:
+    """What the rule's own field value means, from the rule's value list (EA: "each"): {field key: label}.
+    Only the field the rule checks is labelled, and only when the list gives a meaning; other fields stay codes."""
+    from api.routes.work import _allowed_values, _meaning, _shipped_rule
+
+    field = str(_shipped_rule(module, check_id).get("field") or "")
+    if not field or not field_values:
+        return {}
+    allowed = _allowed_values(None, module, check_id, limit=None)
+    out: dict[str, str] = {}
+    for key in (field, field.rpartition(".")[2]):
+        if key in field_values and (label := _meaning(field_values[key], allowed)):
+            out[key] = label
+    return out
 
 
 @router.get("/versions/{version_id}/findings/{check_id}/root-cause", response_model=FindingRootCauseOut)

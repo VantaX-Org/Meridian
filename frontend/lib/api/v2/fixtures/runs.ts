@@ -716,7 +716,7 @@ export function fixtureAction(name: string, args: Record<string, unknown>): unkn
       const offset = Number(args.offset ?? 0);
       const records = Array.from({ length: Math.max(0, Math.min(limit, total - offset)) }, (_, i) => {
         const n = offset + i + 1;
-        return { record_key: `MAT${100000 + n}`, grain: "MARA", module: "material_master", field_values: { MTART: n % 3 ? "ROH" : "FERT", MEINS: n % 5 ? "EA" : "", MATKL: `00${(n % 4) + 1}` } };
+        return { record_key: `MAT${100000 + n}`, grain: "MARA", module: "material_master", field_values: { MTART: n % 3 ? "ROH" : "FERT", MEINS: n % 5 ? "EA" : "", MATKL: `00${(n % 4) + 1}` }, value_labels: n % 3 ? { MTART: "Raw material" } : { MTART: "Finished product" } };
       });
       return { version_id: String(args.versionId), check_id: String(args.checkId), total, records };
     }

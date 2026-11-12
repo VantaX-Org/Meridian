@@ -158,6 +158,8 @@ export interface FindingRecord {
   module: string;
   /** Masked for sensitive fields; null on runs made before values were kept. */
   field_values: Record<string, unknown> | null;
+  /** What the rule's own field value means, from the rule's value list: {field: text}. Other fields have no entry. */
+  value_labels?: Record<string, string>;
 }
 
 export interface FindingRecords {

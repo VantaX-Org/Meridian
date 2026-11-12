@@ -5,7 +5,7 @@ import { useFindingRecords } from "@/lib/v2/runs-queries";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { t as tr } from "@/lib/v2/i18n";
-import { Dash, EmptyFrame, ErrorFrame, Mono, SapCode, Skeleton, V2Link, Value } from "../parts";
+import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, SapCode, Skeleton, V2Link, Value } from "../parts";
 import { TableExport } from "@/design/v2/TableExport";
 import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
 
@@ -84,7 +84,7 @@ export function FindingRecords({ checkId, runs }: { checkId: string; runs: { id:
                       <td>{moduleText(r.module)}</td>
                       {fields.map((f) => {
                         const v = r.field_values?.[f];
-                        return <td key={f}>{v == null || v === "" ? <Dash /> : <Value value={String(v)} />}</td>;
+                        return <td key={f}>{v == null || v === "" ? <Dash /> : r.value_labels?.[f] ? <Coded code={String(v)} text={r.value_labels[f]} first /> : <Value value={String(v)} />}</td>;
                       })}
                     </tr>
                   ))}
