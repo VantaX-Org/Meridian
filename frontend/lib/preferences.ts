@@ -31,6 +31,8 @@ export interface Preferences {
   /** The last "What's new" version the user saw (wired by the What's new drawer). */
   seen_version?: string;
   notifications?: NotificationPrefs;
+  /** Try the new Meridian (design/next). Off unless the person turns it on. */
+  ui_next?: boolean;
 }
 
 /** A JSON merge patch: objects merge key by key, null removes a key, arrays and scalars replace. */
@@ -42,6 +44,7 @@ export interface PreferencesPatch {
   saved_views?: Record<string, SavedViewRecord[] | null> | null;
   tours_done?: string[] | null;
   seen_version?: string | null;
+  ui_next?: boolean | null;
   notifications?: {
     digest?: DigestFrequency | null;
     immediate_critical?: boolean | null;
