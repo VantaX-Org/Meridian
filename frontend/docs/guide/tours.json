@@ -220,6 +220,20 @@
       ]
     },
     {
+      "video": "guide2-catalogue", "chapter": "catalogue", "params": "persona=steward",
+      "steps": [
+        {"caption": "The data catalogue: every SAP table and field Meridian knows, across your systems.", "go": "/catalogue"},
+        {"caption": "Each table with its fields, the rules that read it, its objects and the systems that use it.", "point": {"testid": "catalogue-tables"}},
+        {"caption": "Open a table to see its fields.", "click": {"text": "General Material Data", "nth": 0}},
+        {"caption": "Its key, where it is defined, its systems and the owners of the objects that read it.", "point": {"testid": "catalogue-table"}},
+        {"caption": "Every field with its type, its rules, its business term and how much of it is blank.", "point": {"testid": "catalogue-fields"}},
+        {"caption": "Open a field: its facts, its profile, the rules that check it and its business term.", "click": {"text": "MEINS", "nth": 0}},
+        {"caption": "Below them, where its values go: process steps, processes, S/4 features and KPIs.", "point": {"text": "Where its values go", "nth": 0}},
+        {"caption": "Search the fields by name, description or business term.", "go": "/catalogue?view=fields&q=weight"},
+        {"caption": "Each match names its table, its type and how many rules read it.", "point": {"testid": "catalogue-field-hits"}}
+      ]
+    },
+    {
       "video": "guide2-lineage", "chapter": "lineage", "params": "persona=lead",
       "steps": [
         {"caption": "Lineage draws why a failing value matters.", "go": "/o/ecc-production/material-master/lineage"},

@@ -28,6 +28,11 @@
 .m2-root .m2-gate-list { list-style: none; margin: var(--m2-s2) 0; padding: 0; display: grid; gap: var(--m2-s1); font-size: var(--m2-fs-13); }
 .m2-root .m2-gate-list li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--m2-s2); align-items: baseline; }
 .m2-root .m2-gate-list .m2-meta { grid-column: 2; font-size: var(--m2-fs-12); }
+.m2-root .m2-gate-ev > li > meter, .m2-root .m2-gate-ev-items { grid-column: 2; width: 100%; }
+.m2-root .m2-gate-ev-items { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--m2-s1); font-size: var(--m2-fs-12); }
+.m2-root .m2-gate-ev-items li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--m2-s2); align-items: center; }
+.m2-root .m2-gate-ev-items .m2-meta { grid-column: auto; }
+.m2-root .m2-gate-ev-items meter { width: 100%; }
 
 .m2-root .m2-whatif { margin-top: var(--m2-s6); border-top: 1px solid var(--m2-line); padding-top: var(--m2-s4); }
 .m2-root .m2-whatif-rules { list-style: none; margin: var(--m2-s2) 0; padding: 0; display: grid; gap: var(--m2-s1); max-height: 220px; overflow: auto; }
@@ -53,5 +58,12 @@
 /* The demo data bar (shell/DemoBar.tsx): the critical hue, so sample figures never read as measured ones. */
 .m2-root .m2-demobar { display: flex; align-items: baseline; gap: var(--m2-s3); flex-wrap: wrap; padding: var(--m2-s1) var(--m2-s4); background: var(--m2-warn-bg); color: var(--m2-warn-ink); border-bottom: 1px solid var(--m2-line); font-size: var(--m2-fs-13); }
 .m2-root .m2-demobar strong { font-weight: 600; }
+.m2-root .m2-demobar-short { display: none; }
+@media (max-width: 760px) {
+  .m2-root .m2-demobar { flex-wrap: nowrap; }
+  .m2-root .m2-demobar-long { display: none; }
+  .m2-root .m2-demobar-short { display: inline; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
 /* The confirmation of a bulk change over 25 rows (Work): stays in view at the foot of the canvas. */
 .m2-root .m2-bulkconfirm { position: sticky; bottom: 0; z-index: 6; background: var(--m2-sheet); }
+.m2-root .m2-tx-bar { display: flex; justify-content: flex-end; margin-bottom: var(--m2-s2); }

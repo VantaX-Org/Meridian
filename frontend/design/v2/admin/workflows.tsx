@@ -11,6 +11,7 @@ import { int } from "@/lib/v2/score";
 import { t as tr } from "@/lib/v2/i18n";
 import { Mono } from "../parts";
 import { AdminPage, Block, Confirm, Fld, Loaded, NeedsPermission, Note, StatusWord, Sw, useCan, useDone } from "./kit";
+import { TableExport } from "@/design/v2/TableExport";
 
 const pretty = (x: unknown): string => JSON.stringify(x, null, 2);
 
@@ -34,7 +35,7 @@ function Preview({ d }: { d: DryRun }) {
         <Note>{tr("The definition is valid. With these facts, {n} of {total} steps apply.", { n: int(d.steps.filter((s) => s.applies).length), total: int(d.steps.length) })}</Note>
       )}
       {d.steps.length ? (
-        <table className="m2-tbl" aria-label={tr("Steps with these facts")}>
+        <TableExport><table className="m2-tbl" aria-label={tr("Steps with these facts")}>
           <thead>
             <tr>
               <th scope="col">{tr("Step")}</th>
@@ -53,7 +54,7 @@ function Preview({ d }: { d: DryRun }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       ) : null}
     </div>
   );
@@ -89,7 +90,7 @@ function Workflow({ versions }: { versions: WorkflowDefinition[] }) {
   };
   return (
     <Block title={active.name} hint={tr("{key} for {kind}", { key: active.key, kind: active.object_kind.replace(/_/g, " ") })}>
-      <table className="m2-tbl" aria-label={tr("Versions of {name}", { name: active.name })} data-testid={`workflow-${active.key}`}>
+      <TableExport><table className="m2-tbl" aria-label={tr("Versions of {name}", { name: active.name })} data-testid={`workflow-${active.key}`}>
         <thead>
           <tr>
             <th scope="col">{tr("Version")}</th>
@@ -121,7 +122,7 @@ function Workflow({ versions }: { versions: WorkflowDefinition[] }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
       <Fld label={tr("Definition of the next version")} hint={facts.data ? tr("Facts a step can test: {facts}. Operators: {ops}.", { facts: Object.keys(facts.data.facts).join(", "), ops: facts.data.ops.join(", ") }) : undefined} error={"error" in def ? def.error : null} wide mono>
         <textarea rows={14} value={text} spellCheck={false} onChange={(e) => setText(e.target.value)} />
       </Fld>

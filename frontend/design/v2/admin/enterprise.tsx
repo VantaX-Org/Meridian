@@ -15,6 +15,7 @@ import { ResultFrame, useOutcome } from "../inspector/shared";
 import { Block, Confirm, Fld, Kv, Loaded, Note, StatusWord, copyText, since, useCan, useUnsaved } from "./kit";
 import { t as tr } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
+import { TableExport } from "@/design/v2/TableExport";
 
 /* ── Appearance (GET/PUT /settings/theme, POST /settings/theme/logo) ── */
 
@@ -276,7 +277,7 @@ function ComplianceForm({ data, write }: { data: ComplianceStatement; write: boo
       {enc.database_volume === false || enc.object_storage === false ? <Note tone="warn">{tr("Part of the storage is not encrypted at rest. Turn it on in the database and storage configuration of this deployment.")}</Note> : null}
       <p className="m2-prov">{tr("A dash means this deployment does not declare it.")}</p>
       <div className="m2-frame" tabIndex={0} role="region" aria-label={tr("Retention by kind of data")} style={{ marginTop: "var(--m2-s3)", maxWidth: 620 }}>
-        <table className="m2-tbl">
+        <TableExport><table className="m2-tbl">
           <thead>
             <tr>
               <th scope="col">{tr("Kind of data")}</th>
@@ -304,7 +305,7 @@ function ComplianceForm({ data, write }: { data: ComplianceStatement; write: boo
               );
             })}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
       <p className="m2-prov">
         {tr("The baseline run is {kept}; the newest {n, plural, one {run} other {# runs}} of each system {n, plural, one {is} other {are}} always kept.", { kept: data.retention.keep_baseline ? tr("kept") : tr("not kept"), n: data.retention.keep_latest_per_system })}
@@ -521,7 +522,7 @@ export function GroupRoleEditor({ initial }: { initial: ScimMappings }) {
   return (
     <>
       <div className="m2-frame" tabIndex={0} role="region" aria-label={tr("Group to role mapping")} style={{ maxWidth: 760 }}>
-        <table className="m2-tbl m2-maptbl">
+        <TableExport><table className="m2-tbl m2-maptbl">
           <thead>
             <tr>
               <th scope="col">{tr("Identity provider group")}</th>
@@ -565,7 +566,7 @@ export function GroupRoleEditor({ initial }: { initial: ScimMappings }) {
               </tr>
             ) : null}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
       <p className="m2-prov">{tr("Members counts the people the identity provider has put in the group. Not sent yet: the provider has not sent a group of that name.")}</p>
       {empty ? <p className="m2-prov" role="alert">{tr("Every row needs a group name.")}</p> : null}

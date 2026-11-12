@@ -604,6 +604,29 @@ class CriticalBody(BaseModel):
     field: str = Field(min_length=3, max_length=60, description="TABLE.FIELD")
 
 
+@router.get("/form/{object}", dependencies=[Depends(require_permission("mdm.read"))])
+async def request_form(object: Obj, system_id: Optional[uuid.UUID] = None, db: AsyncSession = Depends(get_db),
+                       tenant: Tenant = Depends(get_tenant)) -> dict:
+    """The data collection form for a new or changed record of ``object``: its fields from SAP's dictionary and
+    Meridian's rules, with the allowed values of each check-table field (the system's live configuration when
+    ``system_id`` names one). Filling it writes a draft (POST ""), /validate runs the rules on it, /submit opens it."""
+    live: dict[str, set[str]] = {}
+    if system_id:
+        await _rls(db, tenant)
+        checks = sorted({f["check_table"] for f in crs.form_fields(object) if f["check_table"]})
+        rows = (await db.execute(text(
+            "SELECT config_table, config_data FROM config_snapshots WHERE tenant_id = :t AND system_id = :s "
+            "AND source = 'live' AND config_table = ANY(:tables)"),
+            {"t": str(tenant.id), "s": str(system_id), "tables": checks})).fetchall() if checks else []
+        for table, data in rows:
+            for rec in data or []:
+                for col, val in (rec or {}).items():
+                    if val not in (None, ""):
+                        live.setdefault(f"{table}.{col}", set()).add(str(val).strip())
+    return {"object": object, "key_field": ".".join(crs.KEY_FIELD[object]),
+            "fields": crs.form_fields(object, live)}
+
+
 @router.get("/critical-fields", dependencies=[Depends(require_permission("mdm.read"))])
 async def list_critical_fields(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
     """The fields whose change needs the extra critical field approval step."""

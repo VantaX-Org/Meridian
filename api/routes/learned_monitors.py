@@ -7,6 +7,7 @@ baselines, or accept it as the new normal) or snooze a break; each is audited. A
 the figures; only sentences whose numbers are in the figures are kept, else the deterministic text stands.
 """
 
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
@@ -311,3 +312,141 @@ async def explain(break_id: uuid.UUID, request: Request, db: AsyncSession = Depe
     await db.commit()
     shaped.explanation = Explanation(**exp)
     return shaped
+
+
+# -- why this is a break ----------------------------------------------------------------------------------------------
+
+VALUE_METRICS = ("distinct_pct", "pattern_pct")  # cardinality and shape shifts: which codes came and went
+
+
+class EvidenceRun(BaseModel):
+    run_id: str
+    run_number: Optional[int] = None
+    run_at: Optional[str] = None
+    value: float
+
+
+class FixedValueOut(BaseModel):
+    low: str
+    high: Optional[str] = None
+    text: str
+
+
+class FieldContext(BaseModel):
+    """The DDIC definition of the break's TABLE.FIELD: the system's live dictionary over the SAP standard."""
+    table: str
+    field: str
+    table_text: Optional[str] = None
+    description: Optional[str] = None
+    data_element: Optional[str] = None
+    domain: Optional[str] = None
+    type: Optional[str] = None
+    length: Optional[int] = None
+    check_table: Optional[str] = None
+    check_field: Optional[str] = None
+    fixed_values: list[FixedValueOut] = []
+    fixed_values_total: int = 0
+
+
+class ShiftCode(BaseModel):
+    value: str
+    text: Optional[str] = None
+    in_check_table: Optional[bool] = None
+    count: Optional[int] = None  # appeared: rows with it in this run
+    runs: Optional[int] = None   # vanished: baseline runs that had it among their top values
+
+
+class ValueShiftOut(BaseModel):
+    baseline_runs: int
+    check_table_snapshot: bool
+    appeared: list[ShiftCode]
+    vanished: list[ShiftCode]
+
+
+class EvidenceOut(BaseModel):
+    break_id: str
+    metric: str
+    subject_code: str
+    observed: float
+    expected_low: Optional[float] = None
+    expected_high: Optional[float] = None
+    basis: Literal["runs", "band"]
+    median: Optional[float] = None
+    mad: float
+    scaled_mad: float
+    z: Optional[float] = None
+    z_threshold: float
+    floored: bool
+    runs: list[EvidenceRun]
+    field: Optional[FieldContext] = None
+    values: Optional[ValueShiftOut] = None
+
+
+FIXED_CAP = 40
+
+
+def _gather(s, tid: str, r) -> dict:
+    """Sync: the baseline series the detector reads (lm.collect), run numbers, and for a TABLE.FIELD subject its DDIC
+    entry and, on a cardinality or shape shift, the top values of this run and the baseline runs. Counts and codes of
+    code-like non-personal fields only: field_profiles masks the rest."""
+    from api.services.source_design import dictionary_for
+    vid, module, metric, subject, ids = r[1], r[3], r[5], r[6], list(r[13] or [])
+    _run, series, _mine = lm.collect(s, tid, vid, module)
+    pts = series.get(f"{metric}|{subject}", [])
+    nums = {x[0]: x[1] for x in s.execute(text(
+        "SELECT id::text, run_number FROM analysis_versions WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[]))"),
+        {"t": tid, "ids": ids or [vid]})}
+    out: dict = {"points": pts, "numbers": nums, "field": None, "table_text": None, "values": None}
+    if metric not in FIELD_METRICS or "." not in subject:
+        return out
+    sid = s.execute(text("SELECT metadata->>'system_id' FROM analysis_versions WHERE id = CAST(:v AS uuid) AND tenant_id = :t"),
+                    {"v": vid, "t": tid}).scalar()
+    d = dictionary_for(s, sid)
+    f = d.resolve(subject)
+    tab = d.table(subject.split(".", 1)[0])
+    out.update(field=f, table_text=tab.description if tab else None)
+    if metric not in VALUE_METRICS:
+        return out
+    table, name = subject.split(".", 1)
+    tops = {x[0]: json.loads(x[1]) if isinstance(x[1], str) else x[1] for x in s.execute(text(
+        "SELECT version_id::text, stats->'top_values' FROM field_profiles WHERE tenant_id = :t AND module = :m "
+        "AND table_name = :tb AND field = :f AND version_id = ANY(CAST(:ids AS uuid[]))"),
+        {"t": tid, "m": module, "tb": table, "f": name, "ids": [*ids, vid]})}
+    check = None
+    if f and f.check_ref and sid:
+        from api.services.rule_promotion import live_references
+        snaps = [(t, json.loads(c) if isinstance(c, str) else c) for t, c in s.execute(text(
+            "SELECT config_table, config_data FROM config_snapshots WHERE tenant_id = :t "
+            "AND system_id = :sid AND source = 'live' AND config_table = :ct"), {"t": tid, "sid": sid, "ct": f.check_table})]
+        check = live_references(snaps).get(f.check_ref) if snaps else None
+    texts = {v.low: v.text for v in (f.fixed_values if f else ()) if not v.high}
+    shift = lm.value_shift(tops.get(vid), [tops.get(i) for i in ids], texts, check)
+    out["values"] = {**shift, "check_table_snapshot": check is not None} if shift else None
+    return out
+
+
+@router.get("/{break_id}/evidence", response_model=EvidenceOut, dependencies=[Depends(require_permission("view"))])
+async def evidence(break_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> EvidenceOut:
+    """Why this is a break: the robust z against the values of the baseline runs, the DDIC definition of the field and,
+    for a cardinality or shape shift, the codes that came and went, checked against the live check table. Deterministic;
+    nothing is sent to a model."""
+    r = await _get(db, tenant, break_id)
+    tid = str(tenant.id)
+    g = await db.run_sync(lambda s: _gather(s, tid, r))
+    e = lm.break_evidence({"observed": r[11], "expected_low": r[8], "expected_high": r[9], "median": r[10],
+                           "baseline_run_ids": r[13]}, g["points"])
+    f = g["field"]
+    ctx = None
+    if f:
+        fixed = [FixedValueOut(low=v.low, high=v.high, text=v.text) for v in f.fixed_values]
+        ctx = FieldContext(table=f.table, field=f.name, table_text=g["table_text"], description=f.description or None,
+                           data_element=f.data_element, domain=f.domain, type=f.type, length=f.length,
+                           check_table=f.check_table, check_field=f.check_field, fixed_values=fixed[:FIXED_CAP],
+                           fixed_values_total=len(fixed))
+    return EvidenceOut(
+        break_id=r[0], metric=r[5], subject_code=r[6], observed=r[11], expected_low=r[8], expected_high=r[9],
+        basis=e["basis"], median=e["median"], mad=e["mad"], scaled_mad=e["scaled_mad"], z=e["z"],
+        z_threshold=e["z_threshold"], floored=e["floored"], field=ctx,
+        runs=[EvidenceRun(run_id=p["run_id"], run_number=g["numbers"].get(p["run_id"]), run_at=_iso(p["run_at"]),
+                          value=p["value"]) for p in e["runs"]],
+        values=ValueShiftOut(**g["values"]) if g["values"] else None)

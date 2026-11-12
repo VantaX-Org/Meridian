@@ -1,4 +1,4 @@
-"""Employee Central field-sweep rules EC782-EC908: Boolean, text, count and date fields
+"""Employee Central field-sweep rules EC782-EC912: Boolean, text, count and date fields
 that no earlier rule covered. Each rule fires on its bad row ("k2") and passes the clean one."""
 import re
 
@@ -13,7 +13,7 @@ from sap.ddic import get_dictionary
 S4 = get_dictionary("s4hana")
 RULES = yaml.safe_load(open("checks/rules/successfactors/employee_central.yaml"))["rules"]
 BY_ID = {r["id"]: r for r in RULES}
-NEW = [r for r in RULES if re.fullmatch(r"EC\d+", r["id"]) and 782 <= int(r["id"][2:]) <= 908]
+NEW = [r for r in RULES if re.fullmatch(r"EC\d+", r["id"]) and 782 <= int(r["id"][2:]) <= 912 and not 900 <= int(r["id"][2:]) <= 903]
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message",
              "why_it_matters", "rule_authority", "sap_impact", "fix_map", "record_fix_template"]
 
@@ -137,15 +137,15 @@ CASES = {
     "EC897": ("FOBUSINESSUNIT", "NAME", ['a b', 'a  b']),
     "EC898": ("FOBUSINESSUNIT", "DESCRIPTION", ['a b', 'a  b']),
     "EC899": ("FOBUSINESSUNIT", "HEAD_OF_UNIT", ['a b', 'a  b']),
-    "EC900": ("FODEPARTMENT", "DESCRIPTION", ['a b', 'a  b']),
-    "EC901": ("FODEPARTMENT", "HEAD_OF_UNIT", ['a b', 'a  b']),
-    "EC902": ("FOLOCATION", "CITY", ['a b', 'a  b']),
-    "EC903": ("FOJOBCODE", "NAME", ['a b', 'a  b']),
-    "EC904": ("FOJOBCODE", "DESCRIPTION", ['a b', 'a  b']),
-    "EC905": ("FOJOBCODE", "WORKER_COMP_CODE", ['a b', 'a  b']),
-    "EC906": ("FOJOBCODE", "DEFAULT_JOB_LEVEL", ['a b', 'a  b']),
-    "EC907": ("FOJOBCODE", "STANDARD_WEEKLY_HOURS", ['a b', 'a  b']),
-    "EC908": ("FOJOBCODE", "FULLTIME_EMPLOYEE", ['a b', 'a  b']),
+    "EC904": ("FODEPARTMENT", "DESCRIPTION", ['a b', 'a  b']),
+    "EC905": ("FODEPARTMENT", "HEAD_OF_UNIT", ['a b', 'a  b']),
+    "EC906": ("FOLOCATION", "CITY", ['a b', 'a  b']),
+    "EC907": ("FOJOBCODE", "NAME", ['a b', 'a  b']),
+    "EC908": ("FOJOBCODE", "DESCRIPTION", ['a b', 'a  b']),
+    "EC909": ("FOJOBCODE", "WORKER_COMP_CODE", ['a b', 'a  b']),
+    "EC910": ("FOJOBCODE", "DEFAULT_JOB_LEVEL", ['a b', 'a  b']),
+    "EC911": ("FOJOBCODE", "STANDARD_WEEKLY_HOURS", ['a b', 'a  b']),
+    "EC912": ("FOJOBCODE", "FULLTIME_EMPLOYEE", ['a b', 'a  b']),
 }
 
 
@@ -158,7 +158,7 @@ def frame(table, field, values):
 
 
 def test_ids_contiguous_and_fully_enriched():
-    assert [int(r["id"][2:]) for r in NEW] == list(range(782, 909))
+    assert [int(r["id"][2:]) for r in NEW] == list(range(782, 900)) + list(range(904, 913))
     for r in NEW:
         for k in MANDATORY:
             assert r.get(k), (r["id"], k)

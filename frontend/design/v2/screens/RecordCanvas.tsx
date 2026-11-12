@@ -3,9 +3,9 @@
 import { useMemo } from "react";
 import type { WorkIssue } from "@/lib/api/work";
 import { formatDate } from "@/lib/format";
-import { describeField, sapField } from "@/lib/v2/sap-fields";
+import { describeField, describeTable, sapField } from "@/lib/v2/sap-fields";
 import { moduleFromSlug } from "@/lib/v2/score";
-import { STATUS_LABEL, splitKey } from "@/lib/v2/work";
+import { STATUS_LABEL, recordItemId, splitKey } from "@/lib/v2/work";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { useRecordLinks, useWorkRecord } from "@/lib/v2/work-queries";
 import { t as tr } from "@/lib/v2/i18n";
@@ -48,10 +48,16 @@ export function RecordCanvas({ module: slug, recordKey }: { module: string; reco
 
   if (q.isPending) return <div aria-busy="true"><PageTitle><Mono>{title}</Mono></PageTitle><Skeleton width="100%" height={160} /></div>;
   if (q.isError || !detail) {
+    const err = q.error as { status?: number; response?: { status?: number } } | null;
+    const missing = err?.status === 404 || err?.response?.status === 404;
     return (
       <>
         <PageTitle><Mono>{title}</Mono></PageTitle>
-        <ErrorFrame onRetry={() => void q.refetch()}>{tr("The record could not be read.")}</ErrorFrame>
+        {missing ? (
+          <EmptyFrame>{tr("No failing record with the key {key} is in the latest run. Check the key; a record fixed since the list was read also leaves it.", { key })}</EmptyFrame>
+        ) : (
+          <ErrorFrame onRetry={() => void q.refetch()}>{tr("The record could not be read.")}</ErrorFrame>
+        )}
       </>
     );
   }
@@ -60,12 +66,13 @@ export function RecordCanvas({ module: slug, recordKey }: { module: string; reco
     <div data-testid="record-canvas">
       <PageTitle sub={detail.name}><Mono>{title}</Mono></PageTitle>
       <p className="m2-statusline">
-        <span>{STATUS_LABEL[detail.status] ?? detail.status}</span>
+        <span>{STATUS_LABEL[detail.status] ?? detail.status}</span>{" "}
+        <V2Link href={hrefFor({ kind: "record", id: recordItemId({ module: mod, record_key: key }) })} data-testid="record-act">{tr("Fix in the inspector")}</V2Link>
       </p>
 
       <section className="m2-sec" aria-label={tr("Findings")}>
         <div className="m2-sechead"><h2 className="m2-h2">{tr("Findings")}</h2></div>
-        {detail.issues.length === 0 ? <EmptyFrame>{tr("No changes have been made to this record yet.")}</EmptyFrame> : (
+        {detail.issues.length === 0 ? <EmptyFrame>{tr("No rule fails this record in this run.")}</EmptyFrame> : (
           <ul className="m2-hist" data-testid="record-findings">
             {detail.issues.map((i) => (
               <li key={`${i.check_id}|${i.field}`}>
@@ -79,13 +86,14 @@ export function RecordCanvas({ module: slug, recordKey }: { module: string; reco
 
       <section className="m2-sec" aria-label={tr("Facts")}>
         <div className="m2-sechead"><h2 className="m2-h2">{tr("Facts")}</h2></div>
+        {groups.length === 0 ? <EmptyFrame>{tr("No field values were extracted for this record.")}</EmptyFrame> : null}
         {groups.map(([table, fields]) => (
           <div key={table} data-testid="record-table">
-            <h3 className="m2-h3">{table ? <Mono>{table}</Mono> : tr("Record")}</h3>
+            <h3 className="m2-h3">{table ? <>{describeTable(table) ? `${describeTable(table)} ` : ""}<Mono>{table}</Mono></> : tr("Record")}</h3>
             <dl className="m2-facts">
               {fields.map(([field, value]) => {
                 const hits = [...new Map((failing.get(field) ?? []).map((h) => [h.check_id, h])).values()];
-                const desc = describeField(field);
+                const desc = describeField(field, detail.field_descriptions);
                 return (
                   <div className="m2-fact" key={field}>
                     <dt>{desc ? `${desc} ` : ""}<Mono className="m2-fid">{sapField(field)}</Mono></dt>

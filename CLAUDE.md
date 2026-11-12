@@ -6,7 +6,7 @@ You are building **Meridian**, a customer-deployed SAP Data Quality and Master D
 
 ## What you are building
 
-Meridian analyses SAP data quality across **29 modules** and **10,276 YAML validation rules** (7,514 enabled; the DDIC-derived rest ship disabled) on data from **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP). It ships as a customer-hosted Docker Compose stack — SAP data, findings, and reports never leave the customer's own environment.
+Meridian analyses SAP data quality across **29 modules** and **10,289 YAML validation rules** (7,527 enabled; the DDIC-derived rest ship disabled) on data from **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP). It ships as a customer-hosted Docker Compose stack — SAP data, findings, and reports never leave the customer's own environment.
 
 The product includes:
 - **Data Quality Engine** — deterministic checks with DAMA DMBOK scoring (6 dimensions, record-level pass rates)
@@ -65,12 +65,12 @@ meridian/
 ├── .github/workflows/               ← CI/CD (build, test, release, deploy)
 │
 ├── api/                             ← FastAPI application
-│   ├── main.py                      ← 130 registered routers + GzipMiddleware
+│   ├── main.py                      ← 131 registered routers + GzipMiddleware
 │   ├── middleware/
 │   │   ├── tenant.py                ← JWT → tenant_id → Postgres RLS
 │   │   ├── licence.py               ← module entitlement enforcement
 │   │   └── cache.py                 ← Redis response caching decorator
-│   ├── routes/                      ← all API endpoints (138 route modules)
+│   ├── routes/                      ← all API endpoints (139 route modules)
 │   │   ├── connectivity.py          ← module-aware extraction, config sync, health
 │   │   ├── spro_config.py           ← SPRO configuration reader
 │   │   ├── config_impact.py         ← feature-level impact analysis
@@ -136,7 +136,7 @@ meridian/
 ├── cloudflare/                      ← Meridian HQ + licence worker
 ├── scripts/                         ← deploy, update, backup, package, export
 ├── helm/                            ← Kubernetes Helm chart
-└── tests/                           ← 613 pytest files (Playwright specs live in frontend/e2e, 19 files)
+└── tests/                           ← 615 pytest files (Playwright specs live in frontend/e2e, 19 files)
 ```
 
 ---

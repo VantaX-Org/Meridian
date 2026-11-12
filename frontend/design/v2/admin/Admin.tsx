@@ -20,6 +20,7 @@ import { BillingSection, LicenceSection } from "./tenant";
 import { UsersSection } from "./users";
 import { MatchRulesSection } from "./matchrules";
 import { WebhooksSection } from "./webhooks";
+import { ContactVerifySection } from "./contactverify";
 import { DqFirewallSection } from "./dqfirewall";
 import { ExternalDbSection } from "./externaldb";
 import { SystemsSection } from "./systems";
@@ -123,7 +124,7 @@ function AdminHealth({ people, licensed }: { people: boolean; licensed: boolean 
 
   const figs: CcFig[] = [];
   if (used != null) figs.push({ label: t("Seats in use"), value: int(used), note: seats ? t("of {n} the licence grants", { n: int(seats) }) : t("no seat limit") });
-  if (requests) figs.push({ label: t("Waiting for access"), value: int(waiting), note: t("open requests") });
+  if (requests) figs.push({ label: t("Waiting for access"), value: int(waiting), note: t("open requests"), tone: waiting > 0 ? "warn" : undefined });
   if (days != null) figs.push({ label: t("Licence"), value: int(days), note: t("days left") });
 
   const bars = (roles ?? [])
@@ -173,7 +174,7 @@ export function AdminHome() {
   const can = useCan();
   if (!canAdminister(can)) {
     return (
-      <CcPage>
+      <CcPage dock={false}>
         <AdminPage title={t("Administration")}>
           <NeedsPermission what={t("Administration")} permission="manage_settings" />
         </AdminPage>
@@ -184,7 +185,7 @@ export function AdminHome() {
   const groups = [...new Set(sections.map((s) => s.group))];
   const shown = new Set(sections.map((s) => s.slug));
   return (
-    <CcPage>
+    <CcPage dock={false}>
     <AdminPage title={t("Administration")} lead={t("Everything that sets up this tenant: who can sign in, what the licence covers, how scoring and alerts behave, and the state of the platform. Each section opens in this column.")}>
       <AdminHealth people={shown.has("users")} licensed={shown.has("licence")} />
       {groups.map((g) => (
@@ -230,6 +231,8 @@ function Section({ slug }: { slug: AdminSlug }) {
       return <MappingsSection />;
     case "reference":
       return <ReferenceSection />;
+    case "contactverify":
+      return <ContactVerifySection />;
     case "matchrules":
       return <MatchRulesSection />;
     case "audit":
@@ -281,7 +284,7 @@ function Section({ slug }: { slug: AdminSlug }) {
 export function AdminCanvas({ section }: { section: string }) {
   if (!isAdminSlug(section)) {
     return (
-      <CcPage>
+      <CcPage dock={false}>
       <AdminPage title={t("Administration")}>
         <EmptyFrame
           action={
@@ -297,7 +300,7 @@ export function AdminCanvas({ section }: { section: string }) {
     );
   }
   return (
-    <CcPage>
+    <CcPage dock={false}>
       <Section slug={section} />
     </CcPage>
   );

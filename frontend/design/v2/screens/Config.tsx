@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
-import { getConfigAlignment, getConfigDrift, getConfigHealth, getConfigInventory, getConfigLicence, getConfigProcesses, rediscoverConfig, type AlignmentFinding, type ProcessHealth } from "@/lib/api/v2/config";
+import { downloadConfigMatches, getConfigAlignment, getConfigMatchSummary, getConfigMatches, type ConfigMatchClass, getConfigDrift, getConfigHealth, getConfigInventory, getConfigLicence, getConfigProcesses, rediscoverConfig, type AlignmentFinding, type ProcessHealth } from "@/lib/api/v2/config";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
@@ -14,6 +14,7 @@ import { useToast } from "../Toast";
 import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Configuration: the SAP configuration Meridian reads back out of the transactions of the latest run. The process
@@ -161,7 +162,7 @@ export function Config() {
         {kind && KIND_HINT[kind] && shown !== findings ? <p className="m2-meta">{KIND_HINT[kind]()}</p> : null}
         {findings.length === 0 ? <EmptyFrame>{t("The configuration matches how the system is used.")}</EmptyFrame> : (
           <ScrollFrame label={t("Findings table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Severity")}</th>
@@ -188,7 +189,7 @@ export function Config() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -233,6 +234,9 @@ export function Config() {
         </Panel>
       </div>
       </Disclose>
+      <Disclose title={t("Data errors or configuration choices")} hint={t("Failing records, split into mistakes in the data and values the configuration allows.")}>
+        <ConfigMatches versionId={alignment.data.run_id} />
+      </Disclose>
       <Disclose title={t("Changes since the last run")} hint={t("Settings that differ from the previous reading.")}>
       <Panel title={t("Changes since the last run")} meta={drift.data ? t("{n} settings changed", { n: int(drift.data.drift_entries.length) }) : undefined} testId="config-changes">
         {drift.isPending ? <Skeleton width="100%" height={80} /> : notFound(drift.error) ? (
@@ -241,7 +245,7 @@ export function Config() {
           <EmptyFrame>{t("No setting changed since the last run.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Changes table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Change")}</th>
@@ -262,12 +266,88 @@ export function Config() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
       </Disclose>
     </CcPage>
+  );
+}
+
+const MATCH_CLASS: Record<ConfigMatchClass, () => string> = {
+  data_error: () => t("Data error"),
+  config_deviation: () => t("Configuration choice"),
+  ambiguous: () => t("Cannot tell"),
+};
+
+/** Failing records of the analysed version, each judged a data error, a configuration choice or ambiguous. */
+function ConfigMatches({ versionId }: { versionId: string }) {
+  const fixture = useFixture();
+  const toast = useToast();
+  const { can } = useV2Session();
+  const [cls, setCls] = useState<ConfigMatchClass | null>(null);
+  const summary = useQuery({ queryKey: ["config-matches-summary", fixture, versionId], queryFn: () => getConfigMatchSummary(versionId), staleTime: 60_000, retry: (n, e) => !notFound(e) && n < 2 });
+  const list = useQuery({ queryKey: ["config-matches", fixture, versionId, cls], queryFn: () => getConfigMatches(versionId, cls ?? undefined), staleTime: 60_000, retry: (n, e) => !notFound(e) && n < 2 });
+  const save = useMutation({ mutationFn: () => downloadConfigMatches(versionId), onError: (e) => toast.show(errorSentence(e, t("The workbook could not be saved.")), "error") });
+  const counts = summary.data && "data_errors" in summary.data ? summary.data : null;
+  const filters: [ConfigMatchClass | null, string, number | null][] = [
+    [null, t("All"), counts ? counts.data_errors + counts.config_deviations + counts.ambiguous : null],
+    ["data_error", MATCH_CLASS.data_error(), counts?.data_errors ?? null],
+    ["config_deviation", MATCH_CLASS.config_deviation(), counts?.config_deviations ?? null],
+    ["ambiguous", MATCH_CLASS.ambiguous(), counts?.ambiguous ?? null],
+  ];
+  return (
+    <Panel title={t("Data errors or configuration choices")} meta={list.data ? t("{n} records", { n: int(list.data.total) }) : undefined} testId="config-matches">
+      {list.isPending ? <Skeleton width="100%" height={80} /> : notFound(list.error) || (list.data && list.data.total === 0 && cls === null) ? (
+        <EmptyFrame>{t("No failing record has been matched against the configuration yet.")}</EmptyFrame>
+      ) : list.isError ? <ErrorFrame onRetry={() => void list.refetch()}>{t("The records could not be read.")}</ErrorFrame> : (
+        <>
+          <div className="m2-segs" role="group" aria-label={t("Kind of record")}>
+            {filters.map(([k, label, n]) => (
+              <button key={label} type="button" className="m2-seg" aria-pressed={cls === k} onClick={() => setCls(k)}>
+                {label}{n != null ? ` ${int(n)}` : ""}
+              </button>
+            ))}
+            {can("export") ? (
+              <button type="button" className="m2-btn" disabled={save.isPending} onClick={() => save.mutate()} data-testid="config-matches-export">
+                {t("Save as workbook")}
+              </button>
+            ) : null}
+          </div>
+          {list.data.items.length === 0 ? <EmptyFrame>{t("No record of this kind.")}</EmptyFrame> : (
+            <ScrollFrame label={t("Records table, scrollable")}>
+              <table className="m2-tbl m2-cards">
+                <thead>
+                  <tr>
+                    <th scope="col">{t("Record")}</th>
+                    <th scope="col">{t("Area")}</th>
+                    <th scope="col">{t("Field")}</th>
+                    <th scope="col">{t("Value")}</th>
+                    <th scope="col">{t("Kind of record")}</th>
+                    <th scope="col">{t("What the configuration shows")}</th>
+                    <th scope="col">{t("What to do")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.data.items.map((m) => (
+                    <tr key={`${m.check_id}-${m.record_key}-${m.field}`}>
+                      <th scope="row" className="m2-card-lead"><Mono>{m.record_key ?? DASH}</Mono></th>
+                      <td data-label={t("Area")}>{labelText(m.module)}</td>
+                      <td data-label={t("Field")}>{m.field ? <Mono>{m.field}</Mono> : <Dash />}</td>
+                      <td data-label={t("Value")}>{m.actual_value ? <Mono>{m.actual_value}</Mono> : <Dash />}</td>
+                      <td data-label={t("Kind of record")}>{MATCH_CLASS[m.classification]?.() ?? labelText(m.classification)}</td>
+                      <td data-label={t("What the configuration shows")}>{m.config_evidence ?? <Dash />}</td>
+                      <td data-label={t("What to do")}>{m.recommended_action ?? <Dash />}{m.sap_tcode ? <> <Mono>{m.sap_tcode}</Mono></> : null}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ScrollFrame>
+          )}
+        </>
+      )}
+    </Panel>
   );
 }
 

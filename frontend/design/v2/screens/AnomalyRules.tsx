@@ -10,6 +10,7 @@ import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { labelText, moduleText } from "@/lib/v2/labels";
 import { f1, int } from "@/lib/v2/score";
+import { NeedsPermission } from "../admin/kit";
 import { Sev } from "../inspector/rule";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { useToast } from "../Toast";
@@ -18,6 +19,7 @@ import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Consequence, Steps } from "./rules-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Aletheia anomaly to rule: a statistically found outlier becomes a proposed rule. The rule is a template on the
@@ -94,7 +96,9 @@ export function AnomalyRules() {
         steps={[t("Pick a field"), t("Check what the rule would flag"), t("Save it as a draft"), t("Publish it in the rule workbench")]}
         current={!picked ? 0 : saved ? 3 : propose.data?.rule_yaml ? 2 : 1}
       />
-      {allowed ? <Consequence>{t("Proposing a rule only drafts it and runs it once on the same data. Nothing is saved and nothing is flagged until you save the draft.")}</Consequence> : null}
+      {allowed ? <Consequence>{t("Proposing a rule only drafts it and runs it once on the same data. Nothing is saved and nothing is flagged until you save the draft.")}</Consequence> : (
+        <NeedsPermission what={t("Proposing an anomaly rule")} permission="manage_rules" />
+      )}
 
       <Panel title={t("Fields with outliers")} meta={t("Most outliers first.")} testId="anomaly-rules-fields">
         {groups.length === 0 ? <EmptyFrame>{t("No outlier was found.")}</EmptyFrame> : (
@@ -105,7 +109,7 @@ export function AnomalyRules() {
             rows={groups.slice(0, 8).map(({ first: a, count }) => ({ key: a.id, label: a.field_description ?? a.field_name, value: count, text: int(count), tone: "warn" as const }))}
           />
           <ScrollFrame label={t("Fields with outliers table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Object")}</th>
@@ -134,7 +138,7 @@ export function AnomalyRules() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
           </>
         )}
@@ -165,7 +169,7 @@ function FieldShifts({ allowed }: { allowed: boolean }) {
         <ErrorFrame onRetry={() => void q.refetch()}>{t("The field shifts could not be read.")}</ErrorFrame>
       ) : q.data.length === 0 ? <EmptyFrame>{t("No null spike or unexpected code was found.")}</EmptyFrame> : (
         <ScrollFrame label={t("Null spikes and unexpected codes table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Object")}</th>
@@ -202,7 +206,7 @@ function FieldShifts({ allowed }: { allowed: boolean }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>

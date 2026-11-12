@@ -22,6 +22,7 @@ import { ConfigChanges } from "./step9/Drift";
 import { VerdictMark } from "../marks";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { t as tr } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 export const SYSTEM_TABS = [
   { key: "overview", get label() { return tr("Overview"); }, old: "overview" },
@@ -86,7 +87,7 @@ function Overview({ id }: { id: string }) {
           <EmptyFrame>{system?.state === "extracted" ? tr("This system is extracted but no rule has run on it. Run an analysis.") : tr("No object has a run on this system yet.")}</EmptyFrame>
         ) : (
           <div className="m2-frame">
-            <table className="m2-tbl" data-testid="system-objects">
+            <TableExport><table className="m2-tbl" data-testid="system-objects">
               <thead>
                 <tr>
                   <th scope="col">{tr("Object")}</th>
@@ -116,7 +117,7 @@ function Overview({ id }: { id: string }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </div>
         )}
       </section>
@@ -129,7 +130,7 @@ function Overview({ id }: { id: string }) {
           <EmptyFrame>{tr("No job has run on this system in the last 7 days.")}</EmptyFrame>
         ) : (
           <div className="m2-frame">
-            <table className="m2-tbl">
+            <TableExport><table className="m2-tbl">
               <thead>
                 <tr>
                   <th scope="col">{tr("Job")}</th>
@@ -153,7 +154,7 @@ function Overview({ id }: { id: string }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </div>
         )}
       </section>
@@ -172,7 +173,7 @@ function Extractions({ id }: { id: string }) {
   return (
     <>
     <div className="m2-frame">
-      <table className="m2-tbl" data-testid="system-extractions">
+      <TableExport><table className="m2-tbl" data-testid="system-extractions">
         <thead>
           <tr>
             <th scope="col">{tr("Extracted")}</th>
@@ -220,7 +221,7 @@ function Extractions({ id }: { id: string }) {
             );
           })}
         </tbody>
-      </table>
+      </table></TableExport>
     </div>
     <ChangeLog key={chosen.id} versionId={chosen.id} when={chosen.run_at} />
     </>

@@ -42,6 +42,7 @@ CONTENT_TYPES: dict[str, str] = {
     "pdf": "application/pdf",
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "json": "application/json",
+    "csv": "text/csv",
 }
 CADENCES = ("daily", "weekly", "monthly")
 SOURCES = ("download", "schedule", "run_now")
@@ -78,6 +79,14 @@ REPORT_TYPES: dict[str, ReportType] = {
     # Issued per migration wave (api/routes/wave_certificates.py), never on a schedule.
     "readiness_certificate": ReportType("Readiness certificate", "pdf", needs_run=False, schedulable=False),
 }
+# Export centre datasets (api/services/export_centre.py): any of xlsx, csv, json, pdf; the format is a param.
+REPORT_TYPES.update({
+    f"export_{k}": ReportType(f"{name} export", "xlsx", needs_run=False)
+    for k, name in (("findings", "Findings"), ("failing_records", "Failing records"),
+                    ("cleansing", "Cleansing proposals"), ("changes", "Approved changes"),
+                    ("score_history", "Score history"), ("rule_catalogue", "Rule catalogue"),
+                    ("audit_log", "Audit log"))
+})
 
 # Report route endpoint (function name) -> report kind, for the downloads that are stored.
 ENDPOINT_KINDS: dict[str, str] = {
@@ -223,6 +232,10 @@ def generate_report(session: Session, tenant_id: str, kind: str, params: dict) -
     finished run; None when the builder found nothing to report on."""
     import json
 
+    if kind.startswith("export_"):
+        from api.services import export_centre
+
+        return export_centre.build(session, tenant_id, kind[len("export_"):], params)
     t = REPORT_TYPES[kind]
     module = params.get("module") or None
     vid = resolve_run(session, tenant_id, params.get("scope")) if t.needs_run else None

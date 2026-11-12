@@ -15,6 +15,7 @@ import { useOutcome, ResultFrame } from "../../inspector/shared";
 import { ScrollFrame } from "../object/ScrollFrame";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
 import { t as tr } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 const PARTS = [
   { key: "areas", get label() { return tr("Areas"); } },
@@ -89,7 +90,7 @@ function Source({ id }: { id: string }) {
         <EmptyFrame>{tr("No SPRO configuration is defined for this object, so its rules read the SAP standard baseline.")}</EmptyFrame>
       ) : q.data ? (
         <ScrollFrame label={tr("Table 1, scrollable")}  style={{ marginTop: "var(--m2-s3)" }}>
-          <table className="m2-tbl" data-testid="spro-sources">
+          <TableExport><table className="m2-tbl" data-testid="spro-sources">
             <thead>
               <tr>
                 <th scope="col">{tr("Table")}</th>
@@ -106,7 +107,7 @@ function Source({ id }: { id: string }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       ) : null}
       {q.data ? <p className="m2-prov">{tr("Overall: {SOURCE_WORD}.", { SOURCE_WORD: SOURCE_WORD[q.data.source] ?? q.data.source })}</p> : null}
@@ -125,7 +126,7 @@ function Drift() {
     <>
       <p className="m2-note">{tr("The log covers every connected system, between the last two runs.")}</p>
       <ScrollFrame label={tr("Table 2, scrollable")}>
-        <table className="m2-tbl" data-testid="config-drift">
+        <TableExport><table className="m2-tbl" data-testid="config-drift">
           <thead>
             <tr>
               <th scope="col">{tr("Module")}</th>
@@ -146,7 +147,7 @@ function Drift() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </ScrollFrame>
     </>
   );
@@ -177,7 +178,7 @@ function Compare({ id }: { id: string }) {
         <EmptyFrame>{tr("The source and the target have no configuration object in common.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={tr("Table 3, scrollable")}>
-          <table className="m2-tbl" data-testid="compare-objects">
+          <TableExport><table className="m2-tbl" data-testid="compare-objects">
             <thead>
               <tr>
                 <th scope="col">{tr("Object")}</th>
@@ -202,12 +203,12 @@ function Compare({ id }: { id: string }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
       {object && d.rows.length > 0 ? (
         <ScrollFrame label={tr("Table 4, scrollable")}  style={{ marginTop: "var(--m2-s3)" }}>
-          <table className="m2-tbl" aria-label={tr("Values of {object}", { object })}>
+          <TableExport><table className="m2-tbl" aria-label={tr("Values of {object}", { object })}>
             <thead>
               <tr>
                 <th scope="col">{tr("Value")}</th>
@@ -224,7 +225,7 @@ function Compare({ id }: { id: string }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       ) : null}
       <div className="m2-acts" style={{ marginTop: "var(--m2-s3)" }}>

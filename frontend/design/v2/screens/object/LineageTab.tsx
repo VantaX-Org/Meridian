@@ -8,6 +8,7 @@ import { useLandscape, useObjectRules, useReceipt } from "@/lib/v2/queries";
 import { int, moduleFromSlug } from "@/lib/v2/score";
 import "../../mdm.css";
 import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
+import { FieldLineagePanel } from "./FieldLineage";
 import { ScrollFrame } from "./ScrollFrame";
 import { t as tr } from "@/lib/v2/i18n";
 
@@ -192,6 +193,8 @@ export function LineageTab({ module: moduleSegment }: { system: string; module: 
   const rulesQ = useObjectRules(apiModule, run);
   const impactQ = useConfigImpact(receiptQ.data?.run_id);
   const graph = useMemo(() => buildLineage(rulesQ.data ?? [], impactQ.data ?? [], apiModule), [rulesQ.data, impactQ.data, apiModule]);
+  const labelOf = (m: string): string => L.data?.objects.find((o) => o.module === m)?.label ?? m.replace(/_/g, " ");
+  const fields = <FieldLineagePanel module={apiModule} labelOf={labelOf} />;
 
   if (rulesQ.isError) return <ErrorFrame onRetry={() => void rulesQ.refetch()}>{tr("The lineage of {label} could not be read.", { label })}</ErrorFrame>;
   if (rulesQ.isPending || (receiptQ.isPending && !receiptQ.isError)) {
@@ -203,15 +206,19 @@ export function LineageTab({ module: moduleSegment }: { system: string; module: 
   }
   if (graph.nodes.length === 0) {
     return (
-      <EmptyFrame action={<V2Link href="/runs" className="m2-btn">{tr("Open the runs")}</V2Link>}>
-        {tr("Lineage for {label} fills when an analysis finds failing rules: it draws the tables and fields those rules read and the S/4HANA features they block or degrade.", { label })}
-      </EmptyFrame>
+      <>
+        <EmptyFrame action={<V2Link href="/runs" className="m2-btn">{tr("Open the runs")}</V2Link>}>
+          {tr("Lineage for {label} fills when an analysis finds failing rules: it draws the tables and fields those rules read and the S/4HANA features they block or degrade.", { label })}
+        </EmptyFrame>
+        {fields}
+      </>
     );
   }
   return (
     <>
       {impactQ.isError ? <ErrorFrame onRetry={() => void impactQ.refetch()}>{tr("The S/4 features could not be read for this run, so the graph stops at the rules.")}</ErrorFrame> : null}
       <LineageView graph={graph} label={label} />
+      {fields}
     </>
   );
 }

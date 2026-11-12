@@ -9,6 +9,9 @@ GET    /api/v1/webhooks/{id}/deliveries         the delivery log: event, status,
 GET    /api/v1/webhooks/events                  the events a webhook can subscribe to
 GET    /api/v1/settings/automation              drift alerts, rule mining and score.dropped thresholds
 PUT    /api/v1/settings/automation
+GET    /api/v1/settings/chat-alerts             Slack/Teams configured or not (env only) and the events sent to chat
+PUT    /api/v1/settings/chat-alerts
+POST   /api/v1/settings/chat-alerts/test        one test message to each configured channel
 
 Everything here needs ``manage_settings`` and is audited (audit_log). See api/services/webhooks.py for the signature.
 """
@@ -25,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
-from api.services import automation_settings, webhooks
+from api.services import automation_settings, chat_alerts, webhooks
 from api.services.rbac import current_user_id, require_permission, write_audit
 
 router = APIRouter(prefix="/api/v1", tags=["webhooks"])
@@ -238,3 +241,59 @@ async def put_automation(body: AutomationSettings, request: Request, db: AsyncSe
                       before, after)
     await db.commit()
     return after
+
+
+ChatEvent = Literal["dqs_drop", "threshold_breach", "run_failed", "sla_breach", "firewall_rejections"]
+
+
+class ChatAlertsIn(BaseModel):
+    events: list[ChatEvent]
+
+
+async def _chat_view(db, tid: str) -> dict:
+    return {"channels": chat_alerts.configured(), **(await chat_alerts.load(db, tid)), "available": list(chat_alerts.EVENTS)}
+
+
+@router.get("/settings/chat-alerts", dependencies=[Depends(require_permission("view"))])
+async def get_chat_alerts(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
+    """Whether each chat channel is configured (the URL itself is an environment secret and never leaves the server)
+    and which events go to chat."""
+    await _rls(db, tenant)
+    return await _chat_view(db, str(tenant.id))
+
+
+@router.put("/settings/chat-alerts", dependencies=[Depends(require_permission("manage_settings"))])
+async def put_chat_alerts(body: ChatAlertsIn, request: Request, db: AsyncSession = Depends(get_db),
+                          tenant: Tenant = Depends(get_tenant)) -> dict:
+    from api.services.tenant_settings import put_setting
+
+    await _rls(db, tenant)
+    before = await chat_alerts.load(db, str(tenant.id))
+    after = chat_alerts.merged({"events": list(body.events)})
+    await put_setting(db, tenant.id, chat_alerts.KEY, after, current_user_id(request))
+    await write_audit(db, tenant.id, request, "chat_alerts_settings", "tenant_settings", chat_alerts.KEY, before, after)
+    await db.commit()
+    return await _chat_view(db, str(tenant.id))
+
+
+@router.post("/settings/chat-alerts/test", dependencies=[Depends(require_permission("manage_settings"))])
+async def test_chat_alerts(request: Request, db: AsyncSession = Depends(get_db),
+                           tenant: Tenant = Depends(get_tenant)) -> dict:
+    """Send one test message to each configured channel now and say, per channel, whether it was taken."""
+    from workers.tasks.chat_alerts import send
+
+    await _rls(db, tenant)
+    out: dict[str, dict] = {}
+    for kind, on in chat_alerts.configured().items():
+        if not on:
+            out[kind] = {"configured": False, "delivered": False, "error": None}
+            continue
+        try:
+            ok = await asyncio.to_thread(send, kind, "test", {"tenant_checks": 1}, chat_alerts.PATHS["test"])
+            out[kind] = {"configured": True, "delivered": ok, "error": None}
+        except Exception as e:  # noqa: BLE001 - the error names the status, never the URL
+            out[kind] = {"configured": True, "delivered": False, "error": str(e)[:200] if "HTTP" in str(e) else type(e).__name__}
+    await write_audit(db, tenant.id, request, "chat_alerts_test", "tenant_settings", chat_alerts.KEY, None,
+                      {k: v["delivered"] for k, v in out.items()})
+    await db.commit()
+    return {"channels": out}

@@ -24,6 +24,7 @@ import { ResultFrame, useOutcome } from "../inspector/shared";
 import { duration } from "../shell/StatusStrip";
 import { t } from "@/lib/v2/i18n";
 import { RunForecast } from "./step10/Prediction";
+import { TableExport } from "@/design/v2/TableExport";
 
 const RUN_STATUS: Record<string, { word: string; mark: "go" | "no-go" | null }> = {
   complete: { get word() { return t("Complete"); }, mark: "go" },
@@ -86,7 +87,12 @@ function StartRun({ onClose }: { onClose: () => void }) {
   return (
     <div className="m2-handoff" data-testid="start-run" role="group" aria-label={t("Start a run")}>
       {systems.length === 0 ? (
-        <p>{t("No system has been extracted yet, so there is nothing to analyse. Extract a system first.")}</p>
+        <>
+          <p>{t("No system has been extracted yet, so there is nothing to analyse. Extract a system first.")}</p>
+          <V2Link href="/s" className="m2-btn m2-strong" data-testid="start-run-pick-system">
+            {t("Choose a system to extract")}
+          </V2Link>
+        </>
       ) : (
         <>
           <p>{t("An analysis scores the newest stored extraction of a system with every rule. To read fresh data first, extract the system from its page.")}</p>
@@ -117,6 +123,11 @@ function StartRun({ onClose }: { onClose: () => void }) {
             >
               {pending === "analyse" ? t("Starting…") : t("Analyse {name}", { name: system?.name ?? "" }).trim()}
             </button>
+            {chosen ? (
+              <V2Link href={`/s/${encodeURIComponent(chosen)}?open=${encodeURIComponent(`system:${chosen}`)}`} className="m2-btn" data-testid="start-run-extract">
+                {t("Extract fresh data first")}
+              </V2Link>
+            ) : null}
             <button type="button" className="m2-btn m2-ghost" onClick={onClose}>
               {t("Close")}
             </button>
@@ -147,7 +158,7 @@ function LedgerGroup({ name, inactive, rows, meta }: { name: string; inactive: b
           {failed ? t("{rowsCount} {rowsCount, plural, one {run} other {runs}}, {failed} failed", { rowsCount: rows.length, failed }) : t("{rowsCount} {rowsCount, plural, one {run} other {runs}}", { rowsCount: rows.length })}
         </span>
       </h3>
-      <table className="m2-tbl" data-testid="runs-table">
+      <TableExport><table className="m2-tbl" data-testid="runs-table">
         <thead>
           <tr>
             <th scope="col">{t("Run")}</th>
@@ -208,7 +219,7 @@ function LedgerGroup({ name, inactive, rows, meta }: { name: string; inactive: b
             );
           })}
         </tbody>
-      </table>
+      </table></TableExport>
       {chartRuns.length > 1 ? (
         <div className="m2-ledger-chart" data-testid="runs-group-chart">
           <p className="m2-prov">{t("Where each {name} run falls in time. The table above lists the same runs. Choose a square to open that run.", { name })}</p>
@@ -268,7 +279,7 @@ function JobsTable({ kind, status }: { kind: string; status: string }) {
   const sys = (j: Job) => land.data?.systems.find((s) => s.id === j.system_id)?.name;
   return (
     <div className="m2-frame">
-      <table className="m2-tbl" data-testid="jobs-table">
+      <TableExport><table className="m2-tbl" data-testid="jobs-table">
         <thead>
           <tr>
             <th scope="col">{t("Job")}</th>
@@ -309,7 +320,7 @@ function JobsTable({ kind, status }: { kind: string; status: string }) {
             );
           })}
         </tbody>
-      </table>
+      </table></TableExport>
     </div>
   );
 }

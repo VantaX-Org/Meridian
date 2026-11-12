@@ -148,3 +148,102 @@ def test_a_break_below_the_minimum_can_only_be_confirmed(monkeypatch):
     assert not db.committed and not c.audits
     r = c.post(f"{URL}/acknowledge", json={}, headers=ADMIN)
     assert r.status_code == 200 and db.committed and c.audits[0][0] == "learned_monitor.acknowledge"
+
+
+# -- why this is a break ----------------------------------------------------------------------------------------------
+
+from datetime import timedelta  # noqa: E402
+
+from api.services import learned_monitors as lm  # noqa: E402
+
+B_IDS = [str(uuid.uuid4()) for _ in range(5)]
+PTS = [(i, NOW - timedelta(days=5 - n), v) for n, (i, v) in enumerate(zip(B_IDS, [10.0, 11.0, 12.0, 13.0, 14.0]))]
+
+
+def test_break_evidence_robust_z_from_the_baseline_runs():
+    extra = (str(uuid.uuid4()), NOW - timedelta(days=9), 500.0)  # not a baseline run: ignored
+    e = lm.break_evidence({"observed": 30.0, "expected_low": 0.0, "expected_high": 40.0, "median": 12.0,
+                           "baseline_run_ids": B_IDS}, [extra, *PTS])
+    assert e["basis"] == "runs" and e["median"] == 12.0 and e["mad"] == 1.0
+    assert e["z"] == round(18 / 1.4826, 2) and e["z_threshold"] == 3.5 and len(e["runs"]) == 5
+    assert e["floored"]  # 40 wide > 2 * 3.5 * 1.4826: the minimum spread set the band
+
+
+def test_break_evidence_falls_back_to_the_band_and_flat_runs_have_no_z():
+    e = lm.break_evidence({"observed": 20.0, "expected_low": 3.0, "expected_high": 17.0, "median": 10.0,
+                           "baseline_run_ids": B_IDS}, [])
+    assert e["basis"] == "band" and e["scaled_mad"] == 2.0 and e["z"] == 5.0 and not e["floored"]
+    flat = [(i, at, 7.0) for i, at, _ in PTS]
+    assert lm.break_evidence({"observed": 9.0, "expected_low": 6.0, "expected_high": 8.0, "median": 7.0,
+                              "baseline_run_ids": B_IDS}, flat)["z"] is None
+
+
+def test_value_shift_names_codes_that_came_and_went():
+    base = [[{"value": "FERT", "count": 90}, {"value": "HALB", "count": 10}]] * 3 + [None]
+    s = lm.value_shift([{"value": "FERT", "count": 80}, {"value": "ZXX1", "count": 20}], base,
+                       {"FERT": "Finished product"}, {"FERT", "HALB"})
+    assert s["baseline_runs"] == 3
+    assert s["appeared"] == [{"value": "ZXX1", "text": None, "in_check_table": False, "count": 20}]
+    assert s["vanished"] == [{"value": "HALB", "text": None, "in_check_table": True, "runs": 3}]
+    assert lm.value_shift(None, base, {}, None) is None and lm.value_shift([{"value": "A"}], [None], {}, None) is None
+
+
+class _IRes(_Res):
+    def __iter__(self):
+        return iter(self.rows)
+
+
+class _Sync:
+    """A scripted sync session for _gather: answers by the table the SQL reads."""
+    def __init__(self, tops, snaps):
+        self.tops, self.snaps, self.sql = tops, snaps, []
+
+    def execute(self, stmt, params=None):
+        q = str(stmt)
+        self.sql.append((q, params or {}))
+        if "run_number FROM analysis_versions" in q:
+            return _IRes([(i, n + 1) for n, i in enumerate(B_IDS)])
+        if "metadata->>'system_id'" in q:
+            return _IRes([("SYS1",)])
+        if "FROM field_profiles" in q:
+            return _IRes(list(self.tops.items()))
+        if "FROM config_snapshots" in q:
+            return _IRes(self.snaps)
+        return _IRes([])
+
+
+def test_gather_reads_ddic_and_checks_new_codes_against_the_live_check_table(monkeypatch):
+    from api.services import source_design
+    from sap.ddic import get_dictionary
+    monkeypatch.setattr(route.lm, "collect", lambda s, t, v, m: ({}, {"distinct_pct|MARA.MTART": PTS}, {}))
+    monkeypatch.setattr(source_design, "dictionary_for", lambda s, sid: get_dictionary("s4hana"))
+    tops = {i: [{"value": "FERT", "count": 9}, {"value": "HALB", "count": 1}] for i in B_IDS}
+    tops[VID] = [{"value": "FERT", "count": 5}, {"value": "ZNEW", "count": 5}]
+    s = _Sync(tops, [("T134", '[{"MTART": "FERT"}, {"MTART": "HALB"}]')])
+    row = list(brk())
+    row[4], row[5], row[6], row[13] = "cardinality_shift", "distinct_pct", "MARA.MTART", B_IDS
+    g = route._gather(s, "T1", tuple(row))
+    assert g["field"].check_table == "T134" and g["table_text"] == "General Material Data"
+    assert g["values"]["appeared"][0] == {"value": "ZNEW", "text": None, "in_check_table": False, "count": 5}
+    assert g["values"]["vanished"][0]["value"] == "HALB" and g["values"]["check_table_snapshot"]
+    assert all(p.get("t") == "T1" for _, p in s.sql)
+
+
+def test_evidence_route_returns_z_runs_and_field(monkeypatch):
+    from sap.ddic import get_dictionary
+    f = get_dictionary("s4hana").resolve("MARA.MTART")
+    monkeypatch.setattr(route, "_gather", lambda s, t, r: {"points": PTS, "numbers": {B_IDS[0]: 1}, "field": f,
+                                                          "table_text": "General Material Data", "values": None})
+    row = list(brk())
+    row[5], row[6], row[13] = "distinct_pct", "MARA.MTART", B_IDS
+    db = _DB([tuple(row)])
+
+    async def run_sync(fn):
+        return fn(None)
+    db.run_sync = run_sync
+    r = _client(monkeypatch, db).get(f"{URL}/evidence", headers=VIEWER)
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["basis"] == "runs" and j["median"] == 12.0 and j["runs"][0]["run_number"] == 1
+    assert j["field"]["check_table"] == "T134" and j["field"]["data_element"] == "MTART"
+    assert _client(monkeypatch, _DB(missing=True)).get(f"{URL}/evidence", headers=VIEWER).status_code == 404

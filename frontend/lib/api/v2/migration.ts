@@ -19,6 +19,13 @@
  *   GET/PUT/DELETE /migration/value-map         (source value to target value, per target field)
  *   POST   /migration/target-workbook/{version_id}/check   (what a finished run can fill in the new system's workbook)
  *   POST   /migration/target-workbook/{version_id}/export  (that data in the workbook's own columns, as Excel or a zip of CSV)
+ *   GET/POST /migration/templates/{module}       (the template library: kept target templates, one row per version)
+ *   GET    /migration/templates/{module}/fields  (dictionary fields an unresolved column may be mapped to)
+ *   GET    /migration/templates/{module}/blank   (a blank template built from the dictionary and the rules)
+ *   GET    /migration/templates/{module}/{id}/file     (the template as uploaded)
+ *   PUT    /migration/templates/{module}/{id}/mapping  (corrections to unresolved columns, kept per tenant)
+ *   POST   /migration/templates/{module}/{id}/check    (what the latest finished run fills, approved cleansing applied)
+ *   POST   /migration/templates/{module}/{id}/export   (the filled template, with held rows on a Held back tab)
  */
 import { uploadApiClient } from "@/lib/api/client";
 import { v2Get, v2Send } from "./client";
@@ -203,6 +210,42 @@ export async function checkTargetWorkbook(versionId: string, file: File): Promis
 export const exportTargetWorkbook = (versionId: string, file: File, fmt: WorkbookFormat, writtenAs = "zip") =>
   v2Download(`${P}/target-workbook/${encodeURIComponent(versionId)}/export`, { format: fmt }, `target_workbook_${versionId}.${fmt === "source" ? writtenAs : fmt === "xlsx" ? "xlsx" : "zip"}`, "post", workbookForm(file));
 
+export interface TemplateCoverage {
+  columns: number;
+  matched: number;
+  sheets: { name: string; table: string | null; columns: number; matched: number; unmapped: { header: string; id: string; label: string; mandatory: boolean }[] }[];
+}
+export interface TargetTemplate {
+  id: string;
+  name: string;
+  version: number;
+  filename: string;
+  size_bytes: number;
+  coverage: TemplateCoverage | null;
+  /** "sheet::header" to TABLE.FIELD, set by a person for columns the template did not resolve. */
+  column_map: Record<string, string>;
+  last_fill_at: string | null;
+  last_fill_version_id: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+export interface TemplateField { field: string; description: string; key: boolean; table_description: string }
+const tpl = (module: string, id?: string) => `${P}/templates/${encodeURIComponent(module)}${id ? `/${encodeURIComponent(id)}` : ""}`;
+export const getTemplates = (module: string) => v2Get<{ module: string; templates: TargetTemplate[] }>(tpl(module));
+export const getTemplateFields = (module: string) => v2Get<{ fields: TemplateField[] }>(`${tpl(module)}/fields`);
+export async function uploadTemplate(module: string, file: File, name: string): Promise<{ id: string; name: string; version: number; coverage: TemplateCoverage }> {
+  if (fixtureActive()) return { id: "tpl-new", name: name || file.name, version: 1, coverage: { columns: 0, matched: 0, sheets: [] } };
+  const { data } = await uploadApiClient.post(`/api/v1${tpl(module)}`, workbookForm(file), { params: { name }, headers: { "Content-Type": "multipart/form-data" } });
+  return data;
+}
+export const saveTemplateMapping = (module: string, id: string, columns: Record<string, string>) =>
+  v2Send<{ column_map: Record<string, string>; coverage: TemplateCoverage }>("PUT", `${tpl(module, id)}/mapping`, { columns });
+export const checkTemplate = (module: string, id: string) => v2Send<WorkbookReport & { version_id: string; cleansed?: { approved: number; cells_changed: number } }>("POST", `${tpl(module, id)}/check`, {});
+export const downloadBlankTemplate = (module: string) => v2Download(`${tpl(module)}/blank`, undefined, `${module}_template.xlsx`);
+export const downloadTemplateFile = (module: string, t: TargetTemplate) => v2Download(`${tpl(module, t.id)}/file`, undefined, t.filename);
+export const exportTemplate = (module: string, t: TargetTemplate, fmt: WorkbookFormat) =>
+  v2Download(`${tpl(module, t.id)}/export`, { format: fmt }, `${t.name}_v${t.version}.${fmt === "csv" ? "zip" : "xlsx"}`, "post");
+
 export const startMigration = (body: AnalyzeBody) => v2Send<{ run_id: string; status: string }>("POST", `${P}/analyze`, body);
 
 export const getFieldMap = (module: string, destType: string) => v2Get<{ mappings: FieldMapping[] }>(`${P}/field-map`, { module, dest_system_type: destType });
@@ -232,6 +275,9 @@ export interface ReconField {
   compared: number;
   matched: number;
   differing: number;
+  /** Differences explained by an expected cause (padding, case, mapping, truncation, format). Absent on older results. */
+  expected_differences?: number;
+  real_differences?: number;
 }
 
 export interface ReconTable {
@@ -251,6 +297,10 @@ export interface ReconTable {
   records_total: Record<ReconKind, number>;
   capped: boolean;
   unmapped_keys?: string[];
+  expected_differences?: number;
+  real_differences?: number;
+  /** Differences per cause: alpha_padding, case, value_mapping, truncation, number_format, date_format, real. */
+  causes?: Record<string, number>;
 }
 
 export interface ReconReason {
@@ -287,7 +337,7 @@ export interface Reconciliation {
   stale: boolean;
   latest_target_synced_at: string | null;
   record_cap: number | null;
-  summary: { tables?: number; comparable?: number; expected?: number; found?: number; missing?: number; unexpected?: number; differing_fields?: number;
+  summary: { tables?: number; comparable?: number; expected?: number; found?: number; missing?: number; unexpected?: number; differing_fields?: number; expected_differences?: number; real_differences?: number;
     /** What the expected side was built from: the files exported (snapshot) or the mappings as they stand (rebuilt). Absent on older results. */
     basis?: "snapshot" | "rebuilt"; snapshot_export_id?: string; snapshot_exported_at?: string; snapshot_skipped?: string;
     /** The newest export kept no copy: over the size limit, a storage failure, or removed. */
@@ -310,6 +360,20 @@ export interface ReconRecord {
   expected: string | null;
   found: string | null;
   withheld?: boolean;
+  /** Why a differing value differs: an expected cause, or real. Absent on older results and on missing/unexpected rows. */
+  cause?: ReconCause | null;
+  /** The target field's dictionary entry the cause was judged against. */
+  ddic?: ReconDdic | null;
+}
+
+export type ReconCause = "alpha_padding" | "case" | "value_mapping" | "truncation" | "number_format" | "date_format" | "real";
+
+export interface ReconDdic {
+  description: string;
+  type: string | null;
+  length: number | null;
+  conversion_exit: string | null;
+  lowercase: boolean | null;
 }
 
 export interface ReconRecordsPage {
@@ -323,8 +387,8 @@ export interface ReconRecordsPage {
 
 export const getReconciliation = (id: string) => v2Get<Reconciliation>(`${run(id)}/reconciliation`);
 export const startReconciliation = (id: string) => v2Send<{ reconciliation_id: string; task_id: string | null; status: string }>("POST", `${run(id)}/reconcile`);
-export const getReconciliationRecords = (id: string, q: { table?: string; kind?: ReconKind; offset?: number; limit?: number }) =>
-  v2Get<ReconRecordsPage>(`${run(id)}/reconciliation/records`, { ...q });
+export const getReconciliationRecords = (id: string, q: { table?: string; kind?: ReconKind; offset?: number; limit?: number; real_only?: boolean }) =>
+  v2Get<ReconRecordsPage>(`${run(id)}/reconciliation/records`, { ...q, real_only: q.real_only ? "true" : undefined });
 export const exportReconciliation = (id: string) =>
   v2Download(`${run(id)}/reconciliation/export`, undefined, `post_load_reconciliation_${id}.xlsx`);
 export const extractMigrationTarget = (id: string) => v2Send<{ job_id: string; version_id: string; status: string; modules: string[] }>("POST", `${run(id)}/extract-target`);

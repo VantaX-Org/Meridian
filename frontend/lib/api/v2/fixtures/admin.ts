@@ -79,6 +79,8 @@ interface State {
   keys: ApiKey[];
   licence: Record<string, unknown>;
   scoring: Record<string, unknown>;
+  /** quality_thresholds rows: module "*" is the tenant default. */
+  quality: { module: string; dimension: string; target: number; warning: number; critical: number }[];
   planner: Record<string, unknown>;
   cost: Record<string, unknown>;
   retention: { policy: Record<string, unknown>; enforcement: Record<string, unknown> };
@@ -262,6 +264,11 @@ function build(): State {
       critical_tolerance: { pct: 0.1, rows: 25 },
       defaults: { dimension_weights: { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 }, module_weights: {}, thresholds: { target: 90, warning: 75, critical: 60 }, severity_weights: { critical: 4, high: 3, medium: 2, low: 1 }, severity_multipliers: { critical: 5, high: 2, medium: 1, low: 1 }, critical_tolerance: { pct: 0.1, rows: 25 } },
     },
+    quality: [
+      { module: "*", dimension: "completeness", target: 95, warning: 85, critical: 70 },
+      { module: "material_master", dimension: "overall", target: 92, warning: 80, critical: 65 },
+      { module: "material_master", dimension: "validity", target: 97, warning: 90, critical: 75 },
+    ],
     planner: { minutes_per_record: 2, investigation_hours: 1, cleaning_item_hours: 0.5, exception_hours: 2, sprint_hours: 60, cost_per_record: 38, currency: "ZAR" },
     cost: { currency: "ZAR", severity: { critical: { per_record: 120 }, high: { per_record: 60 }, medium: { per_record: 25 }, low: { per_record: 5 } }, modules: {}, rules: {}, features: { MIGO: 38, ME21N: 55, VF01: 72 }, impact: { duplicate_payment: { unit_cost: 4200, factor: 1, mitigation: 0.6 } }, config_alignment: { ghost_config: 150 }, subscription_monthly: 48000 },
     retention: { policy: { versions_days: 365, reports_days: 180, audit_days: null, keep_baseline: true, keep_latest_per_system: 3 }, enforcement: { flag_enabled: true, dry_run_until: "2026-10-24T00:00:00Z", enforced: false } },
@@ -343,7 +350,12 @@ function waveCockpit(w: MigrationWave) {
   const blocked = objects.reduce((n, o) => n + o.records_blocked, 0);
   return {
     wave: clone(w), run_id: w.last_run_id, source_version_id: null, dest_system_type: "s4hana", verdict: w.last_verdict ?? "no_go", threshold: w.min_readiness, score: w.last_score,
-    records_total: objects.reduce((n, o) => n + o.records, 0), records_blocked: blocked, objects, trend: [], blockers,
+    records_total: objects.reduce((n, o) => n + o.records, 0), records_blocked: blocked, objects, blockers,
+    // three analysed runs a week apart, blocking findings falling 40, 30, 22: a straight line reaches zero about 17 days after the latest
+    trend: w.last_run_id ? [{ run_id: "r-1", completed_at: ago(18), score: 70, blocking: 40 }, { run_id: "r-2", completed_at: ago(11), score: 76, blocking: 30 }, { run_id: w.last_run_id, completed_at: ago(4), score: w.last_score ?? 80, blocking: 22 }] : [],
+    forecast: w.last_run_id
+      ? { status: "projected" as const, runs_used: 3, slope_per_day: -1.2857, projected_date: ago(-13).slice(0, 10), latest: 22, latest_at: ago(4) }
+      : { status: "no_trend" as const, runs_used: 0, slope_per_day: null, projected_date: null, latest: null, latest_at: null },
   };
 }
 
@@ -358,6 +370,16 @@ export function resetAdminFixture(): void {
 
 const text = (v: unknown): string => (v === undefined || v === null ? "" : String(v));
 const nextId = (p: string): string => `${p}-${++st().seq}`;
+
+const QUALITY_DIMENSIONS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity", "overall"];
+function qualityView(s: State) {
+  const fallback = clone((s.scoring as { thresholds: { target: number; warning: number; critical: number } }).thresholds);
+  const pick = (r: State["quality"][number]) => ({ target: r.target, warning: r.warning, critical: r.critical });
+  const tenant = Object.fromEntries(QUALITY_DIMENSIONS.map((d) => { const r = s.quality.find((x) => x.module === "*" && x.dimension === d); return [d, r ? pick(r) : clone(fallback)]; }));
+  const modules: Record<string, Record<string, ReturnType<typeof pick>>> = {};
+  for (const r of s.quality) if (r.module !== "*") (modules[r.module] ??= {})[r.dimension] = pick(r);
+  return { dimensions: QUALITY_DIMENSIONS, fallback, tenant, modules };
+}
 
 function userView(u: User): User {
   return { ...u, grants: clone(st().grants[u.id] ?? []) as User["grants"] };
@@ -456,6 +478,20 @@ function scheduleOptions() {
     channels: st().channels.map((c) => ({ id: c.id, label: `${c.kind}: ${c.target}` })),
     systems: [{ id: SYS_ECC, label: "ECC production" }, { id: SYS_S4, label: "S/4HANA sandbox" }],
     modules: ["material_master", "business_partner", "accounts_payable", "accounts_receivable", "fi_gl"],
+  };
+}
+
+/** GET /reports/exports/options, two of the export centre's datasets (api/services/export_centre.py). */
+function exportOptions() {
+  const col = (key: string, header: string) => ({ key, header });
+  return {
+    datasets: [
+      { id: "findings", name: "Findings by rule", filters: ["system", "module", "run", "severity"], pdf: false, columns: [col("module", "Object"), col("module_text", "Object description"), col("rule_id", "Rule"), col("rule_text", "Rule description"), col("severity", "Severity"), col("failed", "Records failing")] },
+      { id: "rule_catalogue", name: "Rule catalogue", filters: ["module", "severity"], pdf: false, columns: [col("module", "Object"), col("rule_id", "Rule"), col("rule_text", "Rule description"), col("severity", "Severity")] },
+    ],
+    formats: ["xlsx", "csv", "json", "pdf"],
+    splits: ["none", "module", "severity", "run"],
+    severities: ["critical", "high", "medium", "low"],
   };
 }
 
@@ -578,6 +614,7 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
   if (path === "/health") return { status: "ok", version: s.update.current_version, llm_provider: "ollama", llm_connected: true, licence: "valid", email_backend: null, timestamp: NOW };
   if (path === "/settings") return { name: "Demo Corp", licensed_modules: (s.licence.enabled_modules as string[]), planner_config: s.planner, dqs_weights: null, alert_thresholds: s.thresholds, notification_config: s.digest, stripe_customer_id: null, live_writeback: false };
   if (path === "/settings/scoring") return clone(s.scoring);
+  if (path === "/settings/quality-thresholds") return qualityView(s);
   if (path === "/settings/cost-model") return { defaults: s.cost, tenant: s.cost, effective: clone(s.cost) };
   if (path === "/settings/cost-model/features") return { features: [{ feature: "MIGO", l1: "Procure to pay" }, { feature: "ME21N", l1: "Procure to pay" }, { feature: "VF01", l1: "Order to cash" }, { feature: "FB01", l1: "Record to report" }] };
   if (path === "/settings/retention") return clone(s.retention);
@@ -639,6 +676,7 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
   }
   if (path === "/reports/schedules") return clone(s.schedules);
   if (path === "/reports/schedules/options") return scheduleOptions();
+  if (path === "/reports/exports/options") return exportOptions();
   if (path === "/migration/waves") return { waves: clone(s.waves) };
   const wc = /^\/migration\/waves\/([^/]+)\/cockpit$/.exec(path);
   if (wc) {
@@ -840,6 +878,17 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     s.update.update_available = false;
     return { status: "started" };
   }
+  if (path === "/settings/quality-thresholds" && (method === "PUT" || method === "DELETE")) {
+    const module = String((method === "PUT" ? b.module : params.module) ?? "*");
+    const dimension = String((method === "PUT" ? b.dimension : params.dimension) ?? "");
+    s.quality = s.quality.filter((r) => !(r.module === module && r.dimension === dimension));
+    if (method === "PUT") {
+      const [target, warning, critical] = [b.target, b.warning, b.critical].map(Number);
+      if (!(critical <= warning && warning <= target)) throw new AdminRefused(422, "Critical must not exceed warning, and warning must not exceed target.");
+      s.quality.push({ module, dimension, target, warning, critical });
+    }
+    return { status: "ok" };
+  }
   if (method === "PUT" && path === "/settings/scoring") {
     Object.assign(s.scoring, clone(b));
     return { status: "ok" };
@@ -966,6 +1015,7 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     s.history = s.history.filter((h) => h.id !== decodeURIComponent(hist[1]));
     return undefined;
   }
+  if (method === "POST" && path === "/reports/exports") return { job_id: nextId("job") };
   if (method === "POST" && path === "/reports/schedules") {
     const i = b as unknown as ReportScheduleInput;
     const sch = mkSchedule(nextId("sch"), i, { last: null, lastAt: null, next: "2026-10-27T05:00:00Z" });

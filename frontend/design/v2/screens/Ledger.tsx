@@ -12,6 +12,7 @@ import { SeverityMark, type SeverityKey } from "../marks";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import type { LedgerProps } from "./object/LedgerSlot";
 import { CurrentValue, KeyText } from "./work-parts";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * The scoped ledger: the failing records of one object or one rule, ranked by value at risk, read only. Each row shows
@@ -57,7 +58,7 @@ export function Ledger({ module, system, filters }: LedgerProps) {
         <V2Link href={workHref} className="m2-btn m2-next">{t("Decide in Work")}</V2Link>
       </div>
       <div className="m2-ledger-scroll">
-        <table className="m2-tbl">
+        <TableExport><table className="m2-tbl">
           <thead>
             <tr>
               <th scope="col">{t("Record")}</th>
@@ -74,7 +75,7 @@ export function Ledger({ module, system, filters }: LedgerProps) {
               <Row key={recordItemId(r)} r={r} max={max} href={hrefFor({ kind: "record", id: recordItemId(r) })} />
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
       {q.hasNextPage ? (
         <button type="button" className="m2-btn" onClick={() => void q.fetchNextPage()} disabled={q.isFetchingNextPage}>

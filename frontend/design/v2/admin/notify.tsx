@@ -17,6 +17,7 @@ import { AdminPage, Block, Fld, Loaded, Note, StatusWord, Sw, useCan, useDone } 
 import { ToolGrid } from "../GridTools";
 import { t as tr } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
+import { TableExport } from "@/design/v2/TableExport";
 
 export const KIND_LABEL: Record<AlertChannel["kind"], string> = { get email() { return tr("Email"); }, get slack() { return tr("Slack"); }, get teams() { return tr("Microsoft Teams"); }, get webhook() { return tr("Webhook (signed)"); } };
 export const DIGEST_LABEL: Record<AlertChannel["digest"], string> = { get daily() { return tr("Daily digest"); }, get weekly() { return tr("Weekly digest"); }, get off() { return tr("No digest"); } };
@@ -64,7 +65,7 @@ function Thresholds({ initial, licensed }: { initial: AlertThresholds | null; li
         <p className="m2-prov">{tr("No floors set.")}</p>
       ) : (
         <div className="m2-frame" tabIndex={0} style={{ maxWidth: 480 }}>
-          <table className="m2-tbl" aria-label={tr("Score floors")}>
+          <TableExport><table className="m2-tbl" aria-label={tr("Score floors")}>
             <thead>
               <tr>
                 <th scope="col">{tr("Object")}</th>
@@ -89,7 +90,7 @@ function Thresholds({ initial, licensed }: { initial: AlertThresholds | null; li
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </div>
       )}
       {write && unfloored.length ? (

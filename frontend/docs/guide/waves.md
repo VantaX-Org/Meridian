@@ -24,6 +24,16 @@ For each wave: **Name**, **Target date**, **Stage** (Plan, Mock load 1, Mock loa
 
 **Add a wave** creates one; **Objects** assigns each object to a wave or to none; **Save changes** or **Discard**. **Delete** removes a wave.
 
+## Gate evidence and readiness forecast
+
+Open a wave and its readiness cockpit shows **Gate evidence**: each gate condition as the actual value against its threshold, so you see how far off it is, not only that it fails.
+
+- **Lowest object score**, for example "72.0 against 80.0", with one bar per object. An object that has not been measured shows "not measured" and keeps the gate shut.
+- **Critical rules failing**, with the top five critical rules that cap an object: the rule and its message, the field and its text from the SAP data dictionary (for example MARA-MTART, Material type), and how many systems it fails on.
+- **Contracts met**, for example "1 against 2", with each contract and whether it is met.
+
+Below it, the forecast says when the wave's blocking findings (critical and high) reach zero. Meridian fits a straight line through the blocking count of every analysed run of the wave and reads off the date where it crosses zero, and it names how many runs it used. When the count is flat or rising, it says "Not converging" and projects no date; a crossing more than two years out also counts as not converging. With fewer than two analysed runs there is no trend yet. The line is plain arithmetic on the counts, so the same runs always give the same date.
+
 ## The numbers and where they come from
 
 - **Go, at risk, no-go** counts are the verdicts of the wave's objects in the run in the top bar, from the score bands.

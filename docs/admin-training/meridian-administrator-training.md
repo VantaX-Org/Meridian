@@ -285,6 +285,10 @@ or path).
    an optional **User** (empty uses the deployment's default RFC user, `SAP_RFC_USER`), with the password under
    **Sign-in secrets**, then the **Extraction path** and the **Table reader**. Cloud systems ask for their base URL
    and OAuth details instead.
+   Behind a SAProuter, enter the **SAProuter string (optional)** as `/H/host/S/port` hops; a router password
+   (`/W/`) is refused. **Secure Network Communications (SNC)** asks for the **SNC partner name**, a **Protection
+   level** (1, 2, 3, 8 or 9) and an optional **Own SNC name**; the SNC library comes from `SNC_LIB` on the server.
+   All of these stay editable on the system's connection form. The password is write-only and the audit log masks it.
 2. **Test connection**. A passing test reads like "RFC connection succeeded (client 100, 41 ms)".
 3. **Connect and continue**, then work through the remaining steps and **Finish setup**. Nothing is read from SAP
    until the first run; setup only reads, and nothing is written to SAP until an approved batch is sent.
@@ -294,10 +298,21 @@ or path).
 
 ![Connect a system: system type, environment, connection and the test.](img/system-connect.png)
 
+### The data catalogue
+
+**Master data**, **Data catalogue** (`/catalogue`) lists every SAP table and field Meridian knows, across the
+connected systems. It reads the shipped SAP dictionary and, for a system that discovery has read (the system's
+**Source design**, **Discover again**), that system's own dictionary, so customer tables and customer fields appear
+with their own definitions. Search a table, a field (`MARA-MEINS`) or a business term; choose **System** to see only
+what one system uses. Open a field to see its type, the rules that check it (and whether your tenant has switched one
+off), its business terms, its latest profile, the owners of the objects that read it and where its values go. The
+catalogue only reads; it needs the view permission.
+
 ### Checks
 
 - You should now see the system in the **Objects** menu and on **Systems** (`/s`) and, for the SAP Basis role, a row under **Connections** on the Basis
   home with "Connected" and what the last test said.
+- After the first discovery, **Data catalogue** with the new system chosen in **System** lists the tables it uses.
 - A table the user may not read shows "No authorisation to read this table. The user needs read access to it."; SU53
   on the SAP side shows the failed check.
 

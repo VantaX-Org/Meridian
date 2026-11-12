@@ -14,6 +14,7 @@ import { AdminPage, Block, Dialog, Loaded, NeedsPermission, StatusWord, useCan, 
 import { auditSentence } from "@/lib/v2/audit-sentence";
 import { ToolGrid } from "../GridTools";
 import { t } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 export const matrixToPairs = (m: Matrix): Pair[] => Object.entries(m).flatMap(([resource, acts]) => Object.entries(acts).filter(([, on]) => on).map(([action]) => ({ resource, action })));
 
@@ -23,7 +24,7 @@ export function PermissionMatrix({ matrix, editable, base, onToggle }: { matrix:
   const actions = Object.keys(matrix[resources[0]] ?? {});
   return (
     <div className="m2-frame" tabIndex={0} style={{ maxHeight: 420 }}>
-      <table className="m2-pmx" aria-label={t("Permissions by resource and action")}>
+      <TableExport><table className="m2-pmx" aria-label={t("Permissions by resource and action")}>
         <thead>
           <tr>
             <th scope="col">{t("Resource")}</th>
@@ -60,7 +61,7 @@ export function PermissionMatrix({ matrix, editable, base, onToggle }: { matrix:
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
     </div>
   );
 }
@@ -102,7 +103,7 @@ function Requests() {
             <EmptyFrame>{t("No open requests. A request appears here when someone asks for access they do not have.")}</EmptyFrame>
           ) : (
             <div className="m2-frame" tabIndex={0}>
-              <table className="m2-tbl">
+              <TableExport><table className="m2-tbl">
                 <thead>
                   <tr>
                     <th scope="col">{t("Who")}</th>
@@ -130,7 +131,7 @@ function Requests() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </div>
           )
         }
@@ -239,7 +240,7 @@ export function RolesSection() {
         <Loaded q={matrix} what={t("The matrix")} rows={3}>
           {(m) => (
             <div className="m2-frame" tabIndex={0}>
-              <table className="m2-tbl" aria-label={t("Roles by resource")}>
+              <TableExport><table className="m2-tbl" aria-label={t("Roles by resource")}>
                 <thead>
                   <tr>
                     <th scope="col">{t("Resource")}</th>
@@ -265,7 +266,7 @@ export function RolesSection() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </div>
           )}
         </Loaded>

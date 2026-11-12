@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -243,6 +243,10 @@ class GateCheck(BaseModel):
     label: str
     passed: bool
     detail: str
+    # the evidence as numbers: actual against threshold, with per-object scores, failing rules or contracts
+    actual: Optional[float] = None
+    threshold: Optional[float] = None
+    items: list[dict[str, Any]] = []
 
 
 class GateStatus(BaseModel):

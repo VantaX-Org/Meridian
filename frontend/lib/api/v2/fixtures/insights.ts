@@ -27,6 +27,56 @@ const engineDrivers = {
   ],
 };
 
+/** Foresight (GET /aletheia/foresight): twelve weekly runs climbing toward the 90 target, one run the engine did not expect. */
+const foresightRuns = Array.from({ length: 12 }, (_, i) => ({
+  version_id: `v-${i + 1}`, label: `Run ${i + 1}`,
+  run_at: new Date(Date.UTC(2026, 7, 24 + i * 7, 8)).toISOString(), composite: [78.2, 79.0, 79.6, 80.9, 81.4, 82.8, 83.1, 84.0, 85.2, 85.9, 86.7, 87.4][i],
+}));
+const foresight = {
+  lineage: engineDrivers.lineage, labels: engineDrivers.labels, target: 90, target_source: "tenant", runs: foresightRuns,
+  projection: {
+    available: true, latest: 87.4, slope_per_30d: 3.89,
+    next: { date: "2026-11-16", point: 88.4, low: 87.6, high: 89.2 },
+    go_live: { status: "projected", projected: "2026-11-29", earliest: "2026-11-21", latest: "2026-12-10" },
+    band: [
+      { date: "2026-11-13", point: 88.1, low: 87.3, high: 88.9 }, { date: "2026-11-17", point: 88.6, low: 87.8, high: 89.4 },
+      { date: "2026-11-21", point: 89.1, low: 88.2, high: 90.0 }, { date: "2026-11-25", point: 89.6, low: 88.6, high: 90.6 },
+      { date: "2026-11-29", point: 90.1, low: 89.0, high: 91.2 }, { date: "2026-12-03", point: 90.6, low: 89.4, high: 91.8 },
+      { date: "2026-12-07", point: 91.1, low: 89.8, high: 92.4 }, { date: "2026-12-11", point: 91.6, low: 90.1, high: 93.1 },
+    ],
+    evidence: { inputs: ["Composite score of 12 runs"], method: "Least-squares line through the composite score of each run against calendar days, with a 95% prediction interval from the fit residuals.", confidence: 82, runs: 12, first_run: foresightRuns[0].run_at, last_run: foresightRuns[11].run_at },
+  },
+  engine: {
+    available: true, reason: null,
+    normal: { mean: 84.1, low: 81.6, high: 86.6, n: 12, latest: 87.4, outside: true },
+    surprises: [
+      { metric: "failing_rules", version_id: "v-6", label: "Run 6", run_at: foresightRuns[5].run_at, expected: 34.0, observed: 22.0, z: 4.8, severity: "high" },
+      { metric: "dimension:completeness", version_id: "v-9", label: "Run 9", run_at: foresightRuns[8].run_at, expected: 87.1, observed: 90.4, z: 2.9, severity: "medium" },
+    ],
+    methodology: ["Spiking encoder over the run-level measures", "JEPA latent dynamics predicts the next run", "Surprise is scored against the median with robust deviations"],
+    evidence: { inputs: ["9 run-level measures over 12 runs (scores and counts only, no record values)"], method: "Aletheia world model: spiking encoder plus JEPA latent dynamics, surprise above 2.5 robust deviations.", confidence: null },
+  },
+};
+
+/** Reason (GET /aletheia/reason): two runs that fell out of line, and the rule and dimension that moved with the score. */
+const reason = {
+  lineage: engineDrivers.lineage, labels: engineDrivers.labels, runs: foresightRuns,
+  deterministic: {
+    available: true, reason: null,
+    anomalies: [
+      { metric: "failing_rules", version_id: "v-6", label: "Run 6", run_at: foresightRuns[5].run_at, expected: 34.0, observed: 22.0, z: -4.8, severity: "medium" },
+      { metric: "dimension:completeness", version_id: "v-9", label: "Run 9", run_at: foresightRuns[8].run_at, expected: 87.1, observed: 80.4, z: -3.9, severity: "high" },
+    ],
+    risks: [
+      { kind: "rule", driver: "MM-PLANT-001", name: "Plant is missing on the material", change: 41, effect: -1.9, confidence: 76 },
+      { kind: "dimension", driver: "completeness", name: "completeness", change: -2.4, effect: -1.6, confidence: 64 },
+    ],
+    anomaly_evidence: { inputs: ["9 run-level measures and failure counts of 14 rules over 12 runs (scores and counts only, no record values)"], method: "Each run-level measure is compared with the runs before it: z = (observed - mean of earlier runs) / standard deviation of earlier runs, flagged at |z| of 2.5 or more.", confidence: null, runs: 12, first_run: foresightRuns[0].run_at, last_run: foresightRuns[11].run_at },
+    risk_evidence: { inputs: ["9 run-level measures and failure counts of 14 rules over 12 runs (scores and counts only, no record values)"], method: "Least-squares slope of the composite on each rule's affected-record count, times its latest change; dimensions against the mean of earlier runs.", confidence: 76, runs: 12, first_run: foresightRuns[0].run_at, last_run: foresightRuns[11].run_at },
+  },
+  engine: { available: false, reason: "not_configured", anomalies: [], risks: [], evidence: { inputs: ["9 run-level measures and failure counts of 14 rules over 12 runs (scores and counts only, no record values)"], method: "Aletheia dynamic reasoning over one snapshot of run-level aggregates.", confidence: null } },
+};
+
 const impact = [
   { feature: "Automatic payment run", l1: "procure_to_pay", status: "blocked", record_count: 1_412, value_per_record: 850, value_at_risk: 1_200_200, causing_rules: ["MM035", { check_id: "MM142", severity: "critical" }] },
   { feature: "MRP planning run", l1: "plan_to_produce", status: "degraded", record_count: 2_904, value_per_record: 320, value_at_risk: 929_280, causing_rules: ["MM003"] },
@@ -151,5 +201,7 @@ export function insightsRead(path: string, params: Record<string, unknown> = {})
   if (path === "/insights/trends") return { lineage: [], runs, annotations: [] };
   if (path === "/insights/engine-drivers") return structuredClone(engineDrivers);
   if (path === "/aletheia/engine") return structuredClone(engineStatus);
+  if (path === "/aletheia/foresight") return structuredClone(foresight);
+  if (path === "/aletheia/reason") return structuredClone(reason);
   return NONE_INSIGHTS;
 }

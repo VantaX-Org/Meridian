@@ -76,6 +76,8 @@ export function issuesRead(path: string, params: Record<string, unknown>): unkno
   const search = String(params.search ?? "").toLowerCase();
   const base = state()
     .filter((i) => !params.severity || i.severity === params.severity)
+    .filter((i) => !params.module || i.module === params.module)
+    .filter((i) => !params.check_id || i.check_id === params.check_id)
     .filter((i) => !who || (who === "unassigned" ? !i.assigned_to : i.assigned_to === (who === "me" ? "u-me" : who)))
     .filter((i) => !search || i.record_key.toLowerCase().includes(search));
   const counts: Partial<Record<IssueStatus, number>> = {};

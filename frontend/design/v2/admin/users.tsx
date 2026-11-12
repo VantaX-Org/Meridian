@@ -16,6 +16,7 @@ import { AdminPage, Block, Confirm, Dialog, Fld, NeedsPermission, Note, StatusWo
 import { ScimCard } from "./enterprise";
 import { t as tr } from "@/lib/v2/i18n";
 import { inviteAttentionText, roleText, seatsText, userStatusText } from "@/lib/v2/labels";
+import { TableExport } from "@/design/v2/TableExport";
 
 const STATUS_TONE: Record<UserStatus, "go" | "at-risk" | "no-go" | "neutral"> = { active: "go", invited: "at-risk", invite_expired: "no-go", locked: "no-go", suspended: "neutral" };
 
@@ -108,7 +109,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
       </label>
       {preview ? (
         <div className="m2-frame" tabIndex={0} style={{ maxHeight: 200 }}>
-          <table className="m2-tbl">
+          <TableExport><table className="m2-tbl">
             <thead>
               <tr>
                 <th scope="col">{tr("Line")}</th>
@@ -129,7 +130,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </div>
       ) : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}

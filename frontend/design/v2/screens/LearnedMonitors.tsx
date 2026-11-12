@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { acknowledgeBreak, expectBreak, explainBreak, getLearnedMonitors, snoozeBreak, type BreakKind, type BreakMetric, type LearnedBreak, type MonitorThreshold } from "@/lib/api/v2/learned-monitors";
+import { acknowledgeBreak, expectBreak, explainBreak, getBreakEvidence, getLearnedMonitors, snoozeBreak, type BreakEvidence, type BreakKind, type BreakMetric, type LearnedBreak, type MonitorThreshold } from "@/lib/api/v2/learned-monitors";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { useV2Session } from "@/lib/v2/hooks";
@@ -11,13 +11,15 @@ import { moduleText } from "@/lib/v2/labels";
 import { relTime } from "@/lib/v2/format";
 import { f1, int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
+import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
+import { ChartFrame, ChartTable, TrendChart, niceTicks } from "../charts";
 import { useToast } from "../Toast";
 import { Lede, PrimaryAction } from "../RunParts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Consequence } from "./rules-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Learned monitors: for every licensed object Meridian learns what a run normally looks like from its own earlier
@@ -83,7 +85,7 @@ function Thresholds({ rows }: { rows: MonitorThreshold[] }) {
     <Panel title={t("Learned minimum effect")} meta={t("How big a break must be before it is raised. Stewards' decisions move it between the fixed floor and the ceiling.")} testId="monitors-thresholds">
       {rows.length === 0 ? <EmptyFrame>{t("No decision has moved a minimum yet. Every monitor uses its fixed floor.")}</EmptyFrame> : (
         <ScrollFrame label={t("Learned minimum effects table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Object")}</th>
@@ -117,7 +119,7 @@ function Thresholds({ rows }: { rows: MonitorThreshold[] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>
@@ -184,7 +186,7 @@ export function LearnedMonitors() {
       <Panel title={t("Breaks in the latest run")} meta={t("Most severe first.")} testId="monitors-breaks">
         {breaks.length === 0 ? <EmptyFrame>{t("No break. Every watched figure is inside its usual range.")}</EmptyFrame> : (
           <ScrollFrame label={t("Breaks table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Object")}</th>
@@ -215,7 +217,7 @@ export function LearnedMonitors() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -223,7 +225,7 @@ export function LearnedMonitors() {
       <Panel title={t("Between full runs")} meta={t("Volume only. An extraction that landed after the latest finished run, whose analysis has not finished, compared with the rows of earlier syncs. Score, fail rate and empty share exist only after the checks run.")} testId="monitors-interim">
         {interim.length === 0 ? <EmptyFrame>{t("No break between full runs. No pending extraction is outside its usual size.")}</EmptyFrame> : (
           <ScrollFrame label={t("Breaks between full runs table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Object")}</th>
@@ -254,7 +256,7 @@ export function LearnedMonitors() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -270,7 +272,7 @@ export function LearnedMonitors() {
             rows={coverage.filter((c) => c.state === "active").map((c) => ({ key: c.module, label: moduleText(c.module), value: c.breaks, text: int(c.breaks), tone: c.breaks > 0 ? "warn" as const : "pass" as const }))}
           />
           <ScrollFrame label={t("Learned objects table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Object")}</th>
@@ -291,7 +293,7 @@ export function LearnedMonitors() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
           </>
         )}
@@ -317,7 +319,7 @@ function BelowMinimum({ rows, thresholds, allowed, onChanged }: { rows: LearnedB
     <Panel title={t("Below the learned minimum")} meta={t("Outside the usual range but smaller than the minimum a steward raised. Nothing is alerted. Confirm one that is real and the minimum drops.")} testId="monitors-below-minimum">
       {rows.length === 0 ? <EmptyFrame>{t("No break sits below a raised minimum.")}</EmptyFrame> : (
         <ScrollFrame label={t("Breaks below the learned minimum table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Object")}</th>
@@ -345,7 +347,7 @@ function BelowMinimum({ rows, thresholds, allowed, onChanged }: { rows: LearnedB
                 );
               })}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>
@@ -377,6 +379,7 @@ function Detail({ b, allowed, onChanged }: { b: LearnedBreak; allowed: boolean; 
         </li>
         {b.status !== "open" && b.decided_by ? <li>{t("{status} by {who}", { status: STATUS[b.status](), who: b.decided_by })}{b.baseline_effect ? ` ${b.baseline_effect === "exclude" ? t("This run is left out of later baselines.") : t("The baseline restarts at this run.")}` : ""}</li> : null}
       </ul>
+      <WhyBreak key={b.id} b={b} />
       <div className="m2-gtools">
         <button type="button" className="m2-btn m2-sm" disabled={why.isPending} onClick={() => why.mutate()} data-testid="monitors-explain">{t("Ask Aletheia to explain")}</button>
       </div>
@@ -408,5 +411,99 @@ function Detail({ b, allowed, onChanged }: { b: LearnedBreak; allowed: boolean; 
         </>
       ) : null}
     </Panel>
+  );
+}
+
+/**
+ * Why this is a break, statistically: the robust z of the observed value against the baseline runs' median and MAD,
+ * the band those runs give, the field's DDIC entry and, for a distinct-value or shape shift, the codes that came and
+ * went checked against the live check table. Read when opened. A range metric keeps its values off the screen.
+ */
+function WhyBreak({ b }: { b: LearnedBreak }) {
+  const fixture = useFixture();
+  const [open, setOpen] = useState(false);
+  const q = useQuery({ queryKey: ["learned-monitor-evidence", b.id, fixture], queryFn: () => getBreakEvidence(b.id), enabled: open, staleTime: 60_000, retry: false });
+  return (
+    <details className="m2-gtools" data-testid="monitors-why" onToggle={(ev) => setOpen(ev.currentTarget.open)}>
+      <summary>{t("Why this is a break")}</summary>
+      {!open ? null : q.isPending ? <Skeleton width="100%" height={160} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The evidence could not be read.")}</ErrorFrame> : <Evidence b={b} e={q.data} />}
+    </details>
+  );
+}
+
+function Evidence({ b, e }: { b: LearnedBreak; e: BreakEvidence }) {
+  const hide = RANGE.has(b.metric);
+  const num = (v: number) => (e.metric === "records" ? int(v) : f1(v));
+  const vals = [...e.runs.map((r) => r.value), e.observed, ...(e.expected_low == null ? [] : [e.expected_low]), ...(e.expected_high == null ? [] : [e.expected_high])];
+  const ticks = niceTicks(Math.min(...vals), Math.max(...vals));
+  const points = [
+    ...e.runs.map((r) => ({ id: r.run_id, label: r.run_number == null ? "-" : t("Run {n}", { n: r.run_number }), title: r.run_number == null ? "-" : t("Run {n}", { n: r.run_number }), value: r.value })),
+    { id: "observed", label: t("This run"), title: t("This run"), value: e.observed },
+  ];
+  const refs = [
+    ...(e.expected_low == null ? [] : [{ value: e.expected_low, label: t("Band low"), testId: "why-band-low" }]),
+    ...(e.expected_high == null ? [] : [{ value: e.expected_high, label: t("Band high"), testId: "why-band-high" }]),
+  ];
+  const f = e.field;
+  const v = e.values;
+  return (
+    <div data-testid="monitors-evidence">
+      <ul className="m2-cl-changes">
+        <li data-testid="why-z">
+          {e.z == null ? t("The baseline runs did not vary, so no z can be computed. Any move past the minimum spread is a break.")
+            : e.basis === "runs" ? t("Robust z {z}: the observed value is {z} scaled MADs from the baseline median. A break needs at least {k}.", { z: f1(Math.abs(e.z)), k: f1(e.z_threshold) })
+            : t("Robust z of at least {z}: the baseline runs could not be read, so the spread comes from the stored band. A break needs at least {k}.", { z: f1(Math.abs(e.z)), k: f1(e.z_threshold) })}
+        </li>
+        {!hide && e.median != null ? <li>{t("Median {m}, MAD {mad}, scaled MAD {s} (MAD times 1.4826).", { m: num(e.median), mad: num(e.mad), s: num(e.scaled_mad) })}</li> : null}
+        {e.floored ? <li>{t("The band was widened to the minimum spread: the baseline runs alone vary less than that.")}</li> : null}
+      </ul>
+      {hide ? <p className="m2-meta">{t("Only the size of the move is shown, not a value of the field.")}</p> : e.runs.length === 0 ? null : (
+        <ChartFrame
+          title={t("Baseline runs against this run")}
+          sub={t("The band is the median plus or minus {k} scaled MADs.", { k: f1(e.z_threshold) })}
+          level={3}
+          testId="why-chart"
+          height={140}
+          table={<ChartTable caption={t("Baseline runs and this run")} head={[t("Run"), METRIC[e.metric]()]} rows={points.map((p) => [p.label, num(p.value)])} />}
+        >
+          <TrendChart points={points} domain={[ticks[0], ticks[ticks.length - 1]] as const} ticks={ticks} refs={refs} marker={{ index: points.length - 1, label: t("This run") }} height={140} label={METRIC[e.metric]()} format={num} />
+        </ChartFrame>
+      )}
+      {f ? (
+        <dl className="m2-meta" data-testid="why-field">
+          <dt>{t("Field")}</dt><dd><Coded code={`${f.table}.${f.field}`} text={f.description ?? undefined} />{f.table_text ? <> {t("in {table}", { table: f.table_text })}</> : null}</dd>
+          <dt>{t("Data element and domain")}</dt><dd>{f.data_element ? <Mono>{f.data_element}</Mono> : <Dash />} / {f.domain ? <Mono>{f.domain}</Mono> : <Dash />}{f.type ? <> {f.type} {f.length ?? ""}</> : null}</dd>
+          <dt>{t("Check table")}</dt><dd>{f.check_table ? <Mono>{f.check_field ? `${f.check_table}.${f.check_field}` : f.check_table}</Mono> : <Dash why={t("The dictionary names no check table for this field.")} />}</dd>
+          {f.fixed_values_total > 0 ? <><dt>{t("Fixed values")}</dt><dd>{f.fixed_values.map((x) => <span key={x.low}><Coded code={x.low || " "} text={x.text} />{" "}</span>)}{f.fixed_values_total > f.fixed_values.length ? t("and {n} more", { n: f.fixed_values_total - f.fixed_values.length }) : null}</dd></> : null}
+        </dl>
+      ) : null}
+      {v ? (
+        <ScrollFrame label={t("Codes that came and went, scrollable")}>
+          <table className="m2-tbl" data-testid="why-codes">
+            <caption className="m2-sr">{t("Codes that entered or left the top values against {n, plural, one {# baseline run} other {# baseline runs}}", { n: v.baseline_runs })}</caption>
+            <thead><tr><th scope="col">{t("Code")}</th><th scope="col">{t("Change")}</th><th scope="col">{t("In the check table")}</th><th scope="col">{t("Records or runs")}</th></tr></thead>
+            <tbody>
+              {v.appeared.map((c) => (
+                <tr key={`a-${c.value}`} data-testid={`why-appeared-${c.value}`}>
+                  <th scope="row"><Coded code={c.value} text={c.text ?? undefined} /></th>
+                  <td>{t("Appeared")}</td>
+                  <td>{c.in_check_table == null ? <Dash why={t("No live snapshot of the check table.")} /> : c.in_check_table ? t("Yes") : <strong>{t("No")}</strong>}</td>
+                  <td className="m2-num">{c.count == null ? <Dash /> : t("{n, plural, one {# record} other {# records}}", { n: c.count })}</td>
+                </tr>
+              ))}
+              {v.vanished.map((c) => (
+                <tr key={`v-${c.value}`} data-testid={`why-vanished-${c.value}`}>
+                  <th scope="row"><Coded code={c.value} text={c.text ?? undefined} /></th>
+                  <td>{t("Vanished")}</td>
+                  <td>{c.in_check_table == null ? <Dash why={t("No live snapshot of the check table.")} /> : c.in_check_table ? t("Yes") : t("No")}</td>
+                  <td className="m2-num">{c.runs == null ? <Dash /> : t("in {n, plural, one {# baseline run} other {# baseline runs}}", { n: c.runs })}</td>
+                </tr>
+              ))}
+              {v.appeared.length + v.vanished.length === 0 ? <tr><td colSpan={4}>{t("The same codes lead the field as in the baseline runs.")}</td></tr> : null}
+            </tbody>
+          </table>
+        </ScrollFrame>
+      ) : null}
+    </div>
   );
 }

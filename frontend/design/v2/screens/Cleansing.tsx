@@ -4,9 +4,11 @@ import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
 import {
-  applyProposal, approveGroup, EXPORT_FORMATS, exportCleaning, getExportOptions, type ExportFormat, approveProposal, CONFIDENT, getAppliedCleaning, getDedupCandidates, mergeDedup, previewDedup, getCleaningAudit, getCleaningGroups, getCleaningMetrics, getProposals, rejectProposal,
-  rollbackCleaning, sendAiFeedback, WAITING, type CleaningGroup, type CleaningItem, type CleaningMetric, type DedupCandidate, type Proposal, type RecordData,
+  applyProposal, approveGroup, EXPORT_FORMATS, exportCleaning, getExportOptions, type ExportFormat, approveProposal, CONFIDENT, getAppliedCleaning, getDedupCandidates, mergeDedup, previewDedup, getCleaningAudit, getCleaningGroups, getCleaningMetrics, getCleaningSafety, getProposals, rejectProposal,
+  rejectGroup, rollbackCleaning, sendAiFeedback, WAITING, type CleaningGroup, type CleaningItem, type CleaningMetric, type DedupCandidate, type Proposal, type RecordData, type SafetyItem,
 } from "@/lib/api/v2/cleaning";
+import { getBackAfterClean } from "@/lib/api/remediation";
+import { queryKeys } from "@/lib/query-keys";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
 import { useV2Session } from "@/lib/v2/hooks";
@@ -18,8 +20,10 @@ import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { Consequence, FixHead, FlowSteps, MoreDetail, ObjectRunChip } from "../FixParts";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { DdicCard, SafetyBadge } from "./DdicEvidence";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { Fld } from "../admin/kit";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Cleansing: what the cleaning engine proposed, what was applied to SAP and what was undone. The weekly task stores a
@@ -127,6 +131,7 @@ export function Cleansing() {
       />
 
       <Proposals />
+      <Safety />
       <Rollbacks query={queue} />
       <Duplicates />
 
@@ -177,7 +182,7 @@ export function Cleansing() {
           <EmptyFrame>{t("No decision has been recorded yet.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Audit trail table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("When")}</th>
@@ -198,16 +203,37 @@ export function Cleansing() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
       </MoreDetail>
 
-      <p className="m2-meta">
-        {t("Whether the cleansed records stayed clean is tracked week by week on")} <V2Link href="/work/monitor">{t("Work, Monitor")}</V2Link>.
-      </p>
+      <StayClean />
     </CcPage>
+  );
+}
+
+/** The monitoring that follows a cleanse: what failed again and what stayed clean, with the way on to the monitor. */
+function StayClean() {
+  const q = useQuery({ queryKey: queryKeys.backAfterClean(), queryFn: () => getBackAfterClean(12), staleTime: 30_000 });
+  const sum = (k: "back" | "fixed") => (q.data?.weeks ?? []).reduce((a, w) => a + w[k], 0);
+  return (
+    <Panel title={t("Do the cleansed records stay clean?")} meta={t("Checked after every run, for the last 12 weeks.")} testId="cleansing-stay-clean">
+      {q.isPending ? <Skeleton width="100%" height={60} /> : q.isError ? (
+        <ErrorFrame onRetry={() => void q.refetch()}>{t("The monitor could not be read.")}</ErrorFrame>
+      ) : sum("fixed") + sum("back") === 0 ? (
+        <EmptyFrame>{t("Nothing has been fixed yet, so there is nothing to monitor.")}</EmptyFrame>
+      ) : (
+        <p data-testid="cleansing-stay-clean-figs">
+          <strong>{int(sum("fixed"))}</strong> {t("Fixed and still clean")}, <strong>{int(sum("back"))}</strong> {t("Failing again")}
+        </p>
+      )}
+      <div className="m2-row-actions">
+        <V2Link href="/work/monitor" className="m2-btn m2-next">{t("Open the monitor")}</V2Link>
+        <V2Link href="/work" className="m2-btn">{t("Open the work list")}</V2Link>
+      </div>
+    </Panel>
   );
 }
 
@@ -254,7 +280,7 @@ function Rollbacks({ query }: { query: ReturnType<typeof useCleaning<{ items: Cl
         <EmptyFrame>{t("No applied change is waiting out its rollback window.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Applied changes table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Record")}</th>
@@ -291,7 +317,7 @@ function Rollbacks({ query }: { query: ReturnType<typeof useCleaning<{ items: Cl
                 );
               })}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>
@@ -323,6 +349,11 @@ function useDecide() {
       onSuccess: (r) => done(t("{n} proposals approved. Export them as a load file and load it in SAP.", { n: int(r.approved_count) }))(),
       onError: fail(t("The proposals could not be approved.")),
     }),
+    rejectAll: useMutation({
+      mutationFn: ({ g, reason }: { g: CleaningGroup; reason: string }) => rejectGroup(g, reason),
+      onSuccess: (r) => done(t("{n} proposals rejected. The reason is kept in the audit trail.", { n: int(r.rejected_count) }))(),
+      onError: fail(t("The proposals could not be rejected.")),
+    }),
     approve: useMutation({ mutationFn: approveProposal, onSuccess: done(t("The proposal was approved.")), onError: fail(t("The proposal could not be approved.")) }),
     reject: useMutation({
       mutationFn: async ({ item, reason }: { item: Proposal; reason: string }) => {
@@ -344,6 +375,8 @@ function Proposals() {
   const approved = useCleaning("approved", () => getProposals({ status: "approved" }));
   const decide = useDecide();
   const [open, setOpen] = useState<string | null>(null);
+  const [rejecting, setRejecting] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
   const key = (g: CleaningGroup) => `${g.version_id ?? ""}|${g.object_type}|${g.kind}`;
   const list = groups.data?.groups ?? [];
   return (
@@ -361,7 +394,7 @@ function Proposals() {
           <EmptyFrame>{t("No proposal is waiting for a decision. New proposals appear after the next cleansing task has run.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Proposals table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("What it does")}</th>
@@ -390,11 +423,34 @@ function Proposals() {
                             {t("Approve the {n} confident", { n: int(g.confident) })}
                           </button>
                         ) : null}
+                        {can("approve") ? (
+                          <button type="button" className="m2-btn" onClick={() => { setRejecting(rejecting === k ? null : k); setReason(""); }} data-testid={`cleansing-reject-group-${g.kind}`}>
+                            {t("Reject the group")}
+                          </button>
+                        ) : null}
                         <button type="button" className="m2-btn" aria-expanded={open === k} onClick={() => setOpen(open === k ? null : k)} data-testid={`cleansing-open-${g.kind}`}>
                           {open === k ? t("Close") : t("Open")}
                         </button>
                       </td>
                     </tr>,
+                    rejecting === k ? (
+                      <tr key={`${k}-reject`}>
+                        <td colSpan={7}>
+                          <form
+                            className="m2-row-actions"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              if (!reason.trim()) return;
+                              decide.rejectAll.mutate({ g, reason: reason.trim() }, { onSuccess: () => { setRejecting(null); setReason(""); } });
+                            }}
+                          >
+                            <input className="m2-inp" aria-label={t("Why are these proposals wrong?")} placeholder={t("Why are these proposals wrong?")} value={reason} onChange={(e) => setReason(e.target.value)} data-testid={`cleansing-group-reason-${g.kind}`} autoFocus />
+                            <button type="submit" className="m2-btn m2-next" disabled={!reason.trim() || decide.rejectAll.isPending} data-testid={`cleansing-confirm-reject-group-${g.kind}`}>{t("Reject")}</button>
+                            <button type="button" className="m2-btn" onClick={() => { setRejecting(null); setReason(""); }}>{t("Cancel")}</button>
+                          </form>
+                        </td>
+                      </tr>
+                    ) : null,
                     open === k ? (
                       <tr key={`${k}-items`}>
                         <td colSpan={7}><GroupItems group={g} decide={decide} /></td>
@@ -403,7 +459,7 @@ function Proposals() {
                   ];
                 })}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -418,7 +474,7 @@ function Proposals() {
           <EmptyFrame>{t("No approved proposal is waiting to be loaded.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Approved proposals table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Record")}</th>
@@ -447,7 +503,7 @@ function Proposals() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -458,6 +514,7 @@ function Proposals() {
 function GroupItems({ group, decide }: { group: CleaningGroup; decide: ReturnType<typeof useDecide> }) {
   const { can } = useV2Session();
   const items = useCleaning(`items-${group.version_id}-${group.kind}`, () => getProposals({ status: WAITING, version_id: group.version_id, kind: group.kind }));
+  const safety = useCleaning("safety", getCleaningSafety);
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   if (items.isPending) return <Skeleton width="100%" height={80} />;
@@ -468,7 +525,7 @@ function GroupItems({ group, decide }: { group: CleaningGroup; decide: ReturnTyp
     <ul className="m2-cl-items" data-testid={`cleansing-items-${group.kind}`}>
       {rows.map((i) => (
         <li key={i.id} data-testid={`cleansing-item-${i.id}`}>
-          <div><Mono>{i.record_key}</Mono> <span className="m2-meta">{t("{p} confidence", { p: pct(i.confidence) })}</span></div>
+          <div><Mono>{i.record_key}</Mono> <span className="m2-meta">{t("{p} confidence", { p: pct(i.confidence) })}</span>{" "}{worst(safety.data?.items, i.id)}</div>
           <Changes item={i} />
           {can("approve") ? (
             rejecting === i.id ? (
@@ -497,6 +554,64 @@ function GroupItems({ group, decide }: { group: CleaningGroup; decide: ReturnTyp
   );
 }
 
+/** The worst SAP verdict over one proposal's new values: one rejected value makes the proposal unsafe to apply. */
+export function worstVerdict(items: readonly SafetyItem[] | undefined, id: string): SafetyItem["verdict"] | null {
+  const mine = (items ?? []).filter((x) => x.id === id);
+  if (!mine.length) return null;
+  return mine.some((x) => x.verdict === "reject") ? "reject" : mine.some((x) => x.verdict === "unknown") ? "unknown" : "safe";
+}
+
+function worst(items: readonly SafetyItem[] | undefined, id: string) {
+  const v = worstVerdict(items, id);
+  return v ? <SafetyBadge verdict={v} /> : null;
+}
+
+/** Each waiting proposal's new values checked against the target system's ABAP Dictionary before anyone approves. */
+function Safety() {
+  const q = useCleaning("safety", getCleaningSafety);
+  const tot = q.data?.totals;
+  return (
+    <Panel title={t("Would SAP accept the new values")} meta={t("Each new value checked against the SAP dictionary of the target system: type, length, fixed values and check table.")} testId="cleansing-safety">
+      {q.isPending ? <Skeleton width="100%" height={80} /> : status(q.error) === 403 ? (
+        <Dash why={t("Your role cannot see the cleansing proposals.")} />
+      ) : q.isError || !tot ? <Dash why={t("The safety check could not be read.")} /> : tot.checked === 0 ? (
+        <EmptyFrame>{t("No waiting proposal has a new value to check.")}</EmptyFrame>
+      ) : (
+        <>
+          <p role="status" data-testid="cleansing-safety-banner">
+            {t("{safe} of {checked} new values are safe to apply, {reject} would be rejected by SAP, {unknown} not checked.", { safe: int(tot.safe), checked: int(tot.checked), reject: int(tot.reject), unknown: int(tot.unknown) })}
+            {q.data.truncated ? ` ${t("Only the first proposals were checked.")}` : null}
+          </p>
+          <ScrollFrame label={t("Safety table, scrollable")}>
+            <table className="m2-tbl m2-cards">
+              <thead>
+                <tr>
+                  <th scope="col">{t("Record")}</th>
+                  <th scope="col">{t("Object")}</th>
+                  <th scope="col">{t("New value")}</th>
+                  <th scope="col">{t("Verdict")}</th>
+                  <th scope="col">{t("SAP dictionary")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {q.data.items.map((x) => (
+                  <tr key={`${x.id}:${x.field ?? ""}:${x.value ?? ""}`} data-testid={`cleansing-safety-${x.id}`}>
+                    <th scope="row" className="m2-card-lead"><Mono>{x.record_key ?? x.id}</Mono></th>
+                    <td data-label={t("Object")}>{x.object_type ? moduleText(x.object_type) : DASH}</td>
+                    <td data-label={t("New value")}><Mono>{x.field ?? ""}</Mono> <Mono>{x.value ?? ""}</Mono></td>
+                    <td data-label={t("Verdict")}><SafetyBadge verdict={x.verdict} /></td>
+                    <td data-label={t("SAP dictionary")}>{x.evidence ? <DdicCard e={x.evidence} /> : x.reasons.join(" ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollFrame>
+        </>
+      )}
+    </Panel>
+  );
+}
+
 function Duplicates() {
   const { can } = useV2Session();
   const pairs = useCleaning("dedup", getDedupCandidates);
@@ -509,7 +624,7 @@ function Duplicates() {
         <EmptyFrame>{t("No duplicate pair is waiting to be merged.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Duplicate records table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Records")}</th>
@@ -541,7 +656,7 @@ function Duplicates() {
                 ) : null,
               ])}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>
@@ -572,7 +687,7 @@ function Merge({ pair, onDone }: { pair: DedupCandidate; onDone: () => void }) {
     <div data-testid={`cleansing-dedup-merge-${pair.id}`}>
       <Consequence>{t("Merging keeps the record you pick as the survivor and folds the other into it.")}</Consequence>
       {rows.length ? (
-        <table className="m2-tbl">
+        <TableExport><table className="m2-tbl">
           <thead>
             <tr>
               <th scope="col">{t("Field")}</th>
@@ -591,7 +706,7 @@ function Merge({ pair, onDone }: { pair: DedupCandidate; onDone: () => void }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       ) : <Dash why={t("The cleaning queue holds no data for these records.")} />}
       {can("approve") ? (
         <form

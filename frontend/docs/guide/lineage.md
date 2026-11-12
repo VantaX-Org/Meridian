@@ -18,6 +18,10 @@ The object header lists the related objects with their relation, **upstream** or
 - The rules drawn are the failing rules of this object in the current run, highest value at risk first.
 - The features and whether each is blocked or degraded come from the feature impact rules of the run: the same mapping the Readiness tab shows.
 
+## Field lineage
+
+Below the drawing, **Field lineage** lists every field the object extracts, table by table: the business term (the glossary term when one is defined, otherwise the SAP dictionary text), the check table the field points to, and who owns that check table. An owner of *Configuration* means customizing; an object as owner means master data that has to load first. The rule count shows how many rules read the field, with links to the first rules. Filter by table, field or term. A field the dictionary does not know is marked, never guessed.
+
 ## What you can do, by role
 
 - **Everyone**: read, open a rule or a feature, export as SVG.

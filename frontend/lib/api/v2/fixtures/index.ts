@@ -23,18 +23,20 @@ import { enterpriseFixtureDownload, enterpriseFixtureResponse, enterpriseFixture
 import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, step9Read, step9Write, withContractMarks } from "./step9";
 import { NONE_REQ, requestsDownload, requestsRead, requestsWrite, resetRequestsFixture } from "./requests";
 import { externalDbRead, externalDbWrite, NONE_EXTERNAL_DB } from "./external-db";
-import { configRead, configWrite, NONE_CONFIG } from "./config";
+import { configDownload, configMatchRead, configRead, configWrite, NONE_CONFIG } from "./config";
 import { cleaningRead, cleaningWrite, NONE_CLEANING, resetCleaningFixture } from "./cleaning";
 import { matchRead, matchWrite, NONE_MATCH } from "./match-rules";
 import { mdmHealthRead, NONE_MDM_HEALTH } from "./mdm-health";
 import { NONE_WORK_ANALYTICS, workAnalyticsRead } from "./work-analytics";
 import { migrationRead, migrationWrite, NONE_MIGRATION } from "./migration";
+import { compareRead, compareWrite, NONE_COMPARE } from "./compare";
 import { insightsRead, insightsWrite, NONE_INSIGHTS, NONE_INSIGHTS_WRITE } from "./insights";
 import { analyticsRead, NONE_ANALYTICS } from "./analytics";
 import { NONE_S4, s4Read } from "./s4";
 import { NONE_SCORE, scoreRead } from "./score";
 import { designRead, designWrite, NONE_DESIGN } from "./design";
 import { linksRead, NONE_LINKS } from "./links";
+import { catalogueRead, NONE_CATALOGUE } from "./catalogue";
 import { attentionRead, NONE_ATTENTION } from "./attention";
 import { materialsRead, NONE_MATERIALS } from "./materials";
 import { issuesRead, issuesWrite, NONE_ISSUES, resetIssuesFixture } from "./issues";
@@ -51,6 +53,11 @@ import { ruleImpactWrite, NONE_RULE_IMPACT } from "./ruleImpact";
 import { migrationScenariosRead, NONE_MIGRATION_SCENARIOS } from "./migrationScenarios";
 import { survivorshipRead, survivorshipWrite, NONE_SURVIVORSHIP } from "./survivorship";
 import { referenceDataRead, referenceDataWrite, NONE_REFERENCE_DATA } from "./reference-data";
+import { loadPlanRead, NONE_LOAD_PLAN } from "./load-plan";
+import { loadSimulationRead, NONE_LOAD_SIMULATION } from "./load-simulation";
+import { processAnalyticsRead, NONE_PROCESS_ANALYTICS } from "./process-analytics";
+import { fieldLineageRead, NONE_FIELD_LINEAGE } from "./field-lineage";
+import { survivorshipPreviewWrite, NONE_SURVIVORSHIP_PREVIEW } from "./survivorship-preview";
 import { fixDraftsRead, fixDraftsWrite, NONE_FIX_DRAFTS } from "./fixDrafts";
 import { learnedMonitorsRead, learnedMonitorsWrite, NONE_LEARNED_MONITORS } from "./learnedMonitors";
 import { anomalyRulesRead, anomalyRulesWrite, NONE_ANOMALY_RULES } from "./anomalyRules";
@@ -175,6 +182,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (fdw !== NONE_FIX_DRAFTS) return fdw as T;
   const svw = survivorshipWrite(method, path, body);
   if (svw !== NONE_SURVIVORSHIP) return svw as T;
+  const svp = survivorshipPreviewWrite(method, path, body);
+  if (svp !== NONE_SURVIVORSHIP_PREVIEW) return svp as T;
   const rdw = referenceDataWrite(method, path, body);
   if (rdw !== NONE_REFERENCE_DATA) return rdw as T;
   const ar = anomalyRulesWrite(method, path, body);
@@ -183,6 +192,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (lmw !== NONE_LEARNED_MONITORS) return lmw as T;
   const mn = miningWrite(method, path, body);
   if (mn !== NONE_MINING) return mn as T;
+  const cw = compareWrite(method, path, body);
+  if (cw !== NONE_COMPARE) return cw as T;
   const mg = migrationWrite(method, path, body);
   if (mg !== NONE_MIGRATION) return mg as T;
   const mr = matchWrite(method, path, body);
@@ -255,7 +266,7 @@ export { resetEnterpriseFixture } from "./enterprise";
 
 /** A file in fixture mode: the step 9 certificate PDF, the enterprise stand-ins, then the admin area's. */
 export function fixtureDownload(path: string, params: Record<string, unknown>, fallback: string): { name: string; text: string } {
-  return requestsDownload(path) ?? discoveryDownload(path) ?? step9Download(path) ?? enterpriseFixtureDownload(path) ?? adminFixtureDownload(path, params, fallback);
+  return requestsDownload(path) ?? configDownload(path) ?? discoveryDownload(path) ?? step9Download(path) ?? enterpriseFixtureDownload(path) ?? adminFixtureDownload(path, params, fallback);
 }
 export const fixtureExport = wf.exportFixture;
 export const fixtureImport = wf.importFixture;
@@ -385,6 +396,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (fc !== undefined) return fc as T;
   const cfg = configRead(path);
   if (cfg !== NONE_CONFIG) return cfg as T;
+  const cfm = configMatchRead(path, params);
+  if (cfm !== NONE_CONFIG) return cfm as T;
   const cl = cleaningRead(path, params);
   if (cl !== NONE_CLEANING) return cl as T;
   const pd = discoveryRead(path, params);
@@ -397,6 +410,14 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (sv !== NONE_SURVIVORSHIP) return sv as T;
   const rdr = referenceDataRead(path, params);
   if (rdr !== NONE_REFERENCE_DATA) return rdr as T;
+  const lsr = loadSimulationRead(path);
+  if (lsr !== NONE_LOAD_SIMULATION) return lsr as T;
+  const lpr = loadPlanRead(path, params);
+  if (lpr !== NONE_LOAD_PLAN) return lpr as T;
+  const par = processAnalyticsRead(path, params);
+  if (par !== NONE_PROCESS_ANALYTICS) return par as T;
+  const flr = fieldLineageRead(path, params);
+  if (flr !== NONE_FIELD_LINEAGE) return flr as T;
   const ars = anomalyRulesRead(path);
   if (ars !== NONE_ANOMALY_RULES) return ars as T;
   const lmr = learnedMonitorsRead(path);
@@ -407,6 +428,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (mh !== NONE_MDM_HEALTH) return mh as T;
   const wa = workAnalyticsRead(path, params);
   if (wa !== NONE_WORK_ANALYTICS) return wa as T;
+  const cr = compareRead(path, params);
+  if (cr !== NONE_COMPARE) return cr as T;
   const mg = migrationRead(path, params);
   if (mg !== NONE_MIGRATION) return mg as T;
   const ins = insightsRead(path, params);
@@ -421,6 +444,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (ds !== NONE_DESIGN) return ds as T;
   const lk = linksRead(path, params);
   if (lk !== NONE_LINKS) return lk as T;
+  const ctg = catalogueRead(path, params);
+  if (ctg !== NONE_CATALOGUE) return ctg as T;
   const iss = issuesRead(path, params);
   if (iss !== NONE_ISSUES) return iss as T;
   const exc = exceptionsRead(path, params);

@@ -4,7 +4,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { apiErrorMessage } from "@/lib/error";
 import { useFormErrors } from "@/lib/forms";
 import {
-  authFor, authOptions, connectionKey, connectionOf, defaultAuth, ENVIRONMENTS, EMPTY, HINT, NEEDS_TOKEN_URL, pathsFor, READ_FUNCTIONS, RFC_TYPES, schemaFor, testBlockedHint, TOKEN_HINT, TYPES,
+  authFor, authOptions, connectionKey, connectionOf, defaultAuth, ENVIRONMENTS, EMPTY, HINT, NEEDS_TOKEN_URL, pathsFor, READ_FUNCTIONS, RFC_TYPES, schemaFor, SNC_QOPS, testBlockedHint, TOKEN_HINT, TYPES,
   type ConnectionValues,
 } from "@/lib/connection-form";
 import type { SAPSystemExtended, SystemType, TestConnectionResponse } from "@/types/api";
@@ -22,6 +22,7 @@ export const editValues = (s: SAPSystemExtended): ConnectionValues => ({
   host: s.host ?? "", client: s.client ?? "", sysnr: s.sysnr ?? "", username: s.username ?? "", password: "",
   base_url: s.base_url ?? "", token_url: s.token_url ?? "", company_id: s.company_id ?? "", client_id: "", client_secret: "", api_key: "",
   extraction_path: s.extraction_path ?? "table_reader", read_function: s.read_function ?? "",
+  saprouter: s.saprouter ?? "", snc_mode: s.snc_mode ? "1" : "", snc_partnername: s.snc_partnername ?? "", snc_qop: s.snc_qop ?? "", snc_myname: s.snc_myname ?? "",
 });
 
 /** The extraction path choices, in the words the editor shows (sap/extraction_plan.py EXTRACTION_PATHS). */
@@ -36,6 +37,15 @@ const PATH_HINT: Record<string, () => string> = {
   odp: () => tr("Reads mapped tables through ODP providers (RODPS_REPL). Fields a provider does not carry are reported per table; other tables use the table reader."),
   auto: () => tr("Reads with the table reader. ODP is used only when you choose it, after confirming with SAP that your licence allows it (SAP Note 3255746)."),
   odata: () => tr("Reads through the released APIs your Gateway exposes, such as API_PRODUCT_SRV and API_BUSINESS_PARTNER, with this system's user."),
+};
+/** SNC quality of protection, as SAP names the levels (pyrfc snc_qop). */
+const QOP_LABEL: Record<string, () => string> = {
+  "": () => tr("SAP default"),
+  "1": () => tr("1: authentication only"),
+  "2": () => tr("2: integrity"),
+  "3": () => tr("3: privacy (encryption)"),
+  "8": () => tr("8: the system's default"),
+  "9": () => tr("9: maximum available"),
 };
 const READER_LABEL: Record<string, () => string> = {
   "": () => tr("Deployment default"),
@@ -72,12 +82,12 @@ const asOutcome = (r: TestConnectionResponse): Outcome => ({ connected: r.connec
  * credentials, Test connection, rotate credentials and remove. Secrets are never shown; an empty secret keeps the
  * stored one. Needs manage_systems; without it the form says so and nothing is sent.
  */
-export function ConnectionForm({ system, onSaved, onRemoved, saveLabel }: { system?: SAPSystemExtended; onSaved?: (s: { id: string; name: string }) => void | Promise<void>; onRemoved?: () => void; saveLabel?: string }) {
+export function ConnectionForm({ system, onSaved, onRemoved, saveLabel, initialType }: { system?: SAPSystemExtended; initialType?: SystemType; onSaved?: (s: { id: string; name: string }) => void | Promise<void>; onRemoved?: () => void; saveLabel?: string }) {
   const { can } = useV2Session();
   const refresh = useRefreshV2();
   const others = useSystemsExtended().data ?? [];
   const allowed = can("manage_systems");
-  const [v, setV] = useState<ConnectionValues>(() => (system ? editValues(system) : EMPTY));
+  const [v, setV] = useState<ConnectionValues>(() => (system ? editValues(system) : initialType ? { ...EMPTY, system_type: initialType, auth_type: defaultAuth(initialType) } : EMPTY));
   const [description, setDescription] = useState(system?.description ?? "");
   const [active, setActive] = useState(system?.is_active ?? true);
   const [role, setRole] = useState<"source" | "target">(system?.role ?? "source");
@@ -93,7 +103,8 @@ export function ConnectionForm({ system, onSaved, onRemoved, saveLabel }: { syst
   const rfc = RFC_TYPES.includes(type);
   const auth = authFor(type, v.auth_type);
   const odataPath = type === "s4hana_onprem" && v.extraction_path === "odata";
-  const schema = useMemo(() => schemaFor(type, auth, { secretsOptional: Boolean(system), odataPath }), [type, auth, system, odataPath]);
+  const snc = rfc && v.snc_mode === "1";
+  const schema = useMemo(() => schemaFor(type, auth, { secretsOptional: Boolean(system), odataPath, snc }), [type, auth, system, odataPath, snc]);
   const form = useFormErrors(schema, v);
   const key = connectionKey(v);
   const blocked = testBlockedHint(form.errors, type);
@@ -247,6 +258,35 @@ export function ConnectionForm({ system, onSaved, onRemoved, saveLabel }: { syst
                 <Field label={tr("Instance number")} hint={HINT.sysnr} error={form.error("sysnr")}>{(p) => <input {...p} {...bind("sysnr")} inputMode="numeric" maxLength={2} />}</Field>
               </div>
               <Field label={tr("User (optional)")} hint={HINT.username}>{(p) => <input {...p} {...bind("username")} autoComplete="off" />}</Field>
+              <Field label={tr("SAProuter string (optional)")} hint={tr("Only when SAP is reached through a SAProuter, for example /H/router.example.com/S/3299/H/. Leave empty for a direct connection.")} error={form.error("saprouter")}>
+                {(p) => <input {...p} {...bind("saprouter")} autoComplete="off" spellCheck={false} data-testid="saprouter" />}
+              </Field>
+              <label className="m2-chk">
+                <input type="checkbox" checked={snc} onChange={(e) => set({ snc_mode: e.target.checked ? "1" : "" })} data-testid="snc-mode" />
+                {tr("Secure Network Communications (SNC)")}
+              </label>
+              {snc ? (
+                <>
+                  <Field label={tr("SNC partner name")} hint={tr("The SAP system's SNC name, for example p:CN=ECC, O=Company, C=ZA. Your Basis team has it.")} error={form.error("snc_partnername")}>
+                    {(p) => <input {...p} {...bind("snc_partnername")} autoComplete="off" spellCheck={false} data-testid="snc-partnername" />}
+                  </Field>
+                  <div className="m2-grid2">
+                    <Field label={tr("Protection level")} error={form.error("snc_qop")}>
+                      {(p) => (
+                        <select {...p} value={v.snc_qop} onChange={(e) => set({ snc_qop: e.target.value })} data-testid="snc-qop">
+                          {SNC_QOPS.map((x) => (
+                            <option key={x || "default"} value={x}>{QOP_LABEL[x]()}</option>
+                          ))}
+                        </select>
+                      )}
+                    </Field>
+                    <Field label={tr("Own SNC name (optional)")} hint={tr("Leave empty to use the name of the server's SNC credential.")}>
+                      {(p) => <input {...p} {...bind("snc_myname")} autoComplete="off" spellCheck={false} />}
+                    </Field>
+                  </div>
+                  <p className="m2-note">{tr("The SNC library path is set on the server (SNC_LIB). It is not entered here.")}</p>
+                </>
+              ) : null}
               <Field label={tr("Extraction path")} hint={(PATH_HINT[v.extraction_path] ?? PATH_HINT.table_reader)()} error={form.error("extraction_path")}>
                 {(p) => (
                   <select {...p} value={v.extraction_path} onChange={(e) => set({ extraction_path: e.target.value })} data-testid="extraction-path">

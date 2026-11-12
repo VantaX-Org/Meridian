@@ -52,6 +52,17 @@ describe("entry gate", () => {
     expect(s.textContent).toContain("rule MM003");
   });
 
+  it("shows what the SAP dictionary says about a value its check table rejects, with the nearest valid codes", async () => {
+    renderWithQuery(<EntryGate />);
+    fireEvent.change(await screen.findByTestId("entry-gate-json"), { target: { value: JSON.stringify([{ "MARA.MATNR": "ENTRY-TEST-2", "MARA.MTART": "FERX", "MARA.MEINS": "KG" }]) } });
+    fireEvent.click(screen.getByTestId("entry-gate-run"));
+    const card = await screen.findByTestId("ddic-card");
+    expect(card.textContent).toContain("Material Type");
+    expect(card.textContent).toContain("check table T134, read from the system");
+    expect(within(card).getByTestId("ddic-reasons").textContent).toContain("not in check table T134");
+    expect(within(card).getByTestId("ddic-nearest").textContent).toContain("FERT");
+  });
+
   it("lists the requests the gate opened, each with its status and object in words and a link to the request", async () => {
     renderWithQuery(<EntryGate />);
     const panel = await screen.findByTestId("entry-gate-requests");
@@ -133,5 +144,22 @@ describe("entry gate", () => {
   it("names a released request that has not been exported in words", () => {
     expect(statusWord("approved", "2026-10-18T09:00:00Z")).toBe("Released to the SAP save");
     expect(statusWord("approved", null)).not.toBe("Released to the SAP save");
+  });
+});
+
+function asViewer(path: string) {
+  const url = `${path}?fixture=1&role=viewer`;
+  window.history.pushState({}, "", url);
+  setUrl(url);
+}
+
+describe("entry gate: roles", () => {
+  it("tells a viewer the check needs mdm.write instead of offering a button the API refuses", async () => {
+    asViewer("/entry-gate");
+    renderWithQuery(<EntryGate />);
+    const lock = await screen.findByTestId("needs-permission");
+    expect(lock).toHaveTextContent("Checking records at the gate needs the mdm.write permission");
+    expect(within(lock).getByTestId("request-access")).toBeInTheDocument();
+    expect(screen.queryByTestId("entry-gate-run")).toBeNull();
   });
 });

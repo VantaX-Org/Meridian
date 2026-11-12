@@ -10,13 +10,16 @@ import { formatDate } from "@/lib/format";
 import { errorSentence } from "@/lib/api/v2/client";
 import { createRequest, deleteCriticalField, deleteDefault, deleteDerivation, putCriticalField, putDefault, putDerivation, submitRequest, validateRequest, type ChangeRequest, type Precheck, type RequestKind, type RequestObject, type RequestStatus, type RequestView } from "@/lib/api/v2/requests";
 import { useOpenItem, useUrlParam, useV2Session } from "@/lib/v2/hooks";
-import { useCriticalFields, useDerivations, useEntryDefaults, useMassPreview, useRequests } from "@/lib/v2/requests-queries";
+import { useApprovalForecast, useCriticalFields, useDerivations, useEntryDefaults, useMassPreview, useRequests } from "@/lib/v2/requests-queries";
+import type { ForecastRow } from "@/lib/api/v2/process-analytics";
+import { pct1 } from "@/lib/v2/score";
 import { describeField } from "@/lib/v2/sap-fields";
 import { t } from "@/lib/v2/i18n";
 import { ageWord, kindWord, objectWord, PrecheckView, statusWord } from "../inspector/request";
 import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { Consequence, FixHead, FlowSteps, MoreDetail } from "../FixParts";
 import { CcBanner, CcHBars, CcPage, type CcBarRow } from "./cc-parts";
+import { TableExport } from "@/design/v2/TableExport";
 
 const VIEWS: readonly RequestView[] = ["mine", "to_approve", "all"];
 const OBJECTS: readonly RequestObject[] = ["material", "customer", "vendor", "business_partner"];
@@ -54,7 +57,7 @@ function MassPreviewGrid({ id }: { id: string }) {
       <p className="m2-prov">
         {t("{records} {n, plural, one {record} other {records}}: {found} found, {missing} not found, {changing} would change, {unchanged} already hold the value.", { records: counts.records, n: counts.records, found: counts.found, missing: counts.missing, changing: counts.changing, unchanged: counts.unchanged })}
       </p>
-      <table className="m2-tbl" aria-label={t("Preview of the mass change")}>
+      <TableExport><table className="m2-tbl" aria-label={t("Preview of the mass change")}>
         <thead>
           <tr>
             <th scope="col">{t("Record")}</th>
@@ -79,7 +82,7 @@ function MassPreviewGrid({ id }: { id: string }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
       {q.data.truncated ? <p className="m2-prov">{t("Only the first rows are shown.")}</p> : null}
     </div>
   );
@@ -237,7 +240,7 @@ function EntryDefaults({ canEdit }: { canEdit: boolean }) {
       ) : items.length === 0 ? (
         <EmptyFrame>{t("No entry default is set.")}</EmptyFrame>
       ) : (
-        <table className="m2-tbl" aria-label={t("Entry defaults")}>
+        <TableExport><table className="m2-tbl" aria-label={t("Entry defaults")}>
           <thead>
             <tr>
               <th scope="col">{t("Object")}</th>
@@ -266,7 +269,7 @@ function EntryDefaults({ canEdit }: { canEdit: boolean }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       )}
       {canEdit ? (
         <div className="m2-rfilters">
@@ -365,7 +368,7 @@ function DerivationRules({ canEdit }: { canEdit: boolean }) {
       ) : items.length === 0 ? (
         <EmptyFrame>{t("No derivation rule is set.")}</EmptyFrame>
       ) : (
-        <table className="m2-tbl" aria-label={t("Derivation rules")}>
+        <TableExport><table className="m2-tbl" aria-label={t("Derivation rules")}>
           <thead>
             <tr>
               <th scope="col">{t("Object")}</th>
@@ -408,7 +411,7 @@ function DerivationRules({ canEdit }: { canEdit: boolean }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       )}
       {canEdit ? (
         <div className="m2-rfilters">
@@ -483,7 +486,7 @@ function CriticalFields({ canEdit }: { canEdit: boolean }) {
       ) : items.length === 0 ? (
         <EmptyFrame>{t("No critical field is set.")}</EmptyFrame>
       ) : (
-        <table className="m2-tbl" aria-label={t("Critical fields")}>
+        <TableExport><table className="m2-tbl" aria-label={t("Critical fields")}>
           <thead>
             <tr>
               <th scope="col">{t("Object")}</th>
@@ -508,7 +511,7 @@ function CriticalFields({ canEdit }: { canEdit: boolean }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       )}
       {canEdit ? (
         <div className="m2-rfilters">
@@ -537,12 +540,29 @@ function CriticalFields({ canEdit }: { canEdit: boolean }) {
   );
 }
 
+/** ETA of the waiting step and the chance it misses its SLA, from how long the same step took on decided requests. */
+function ForecastCell({ f }: { f: ForecastRow | undefined }) {
+  if (!f) return null;
+  if (f.eta == null) return <span className="m2-meta">{t("No history")}</span>;
+  const p = f.breach_probability;
+  const risk = f.breached || (p != null && p >= 0.5);
+  return (
+    <span data-testid={`forecast-${f.request_id}`} title={t("{step}: from {n, plural, one {# decided task} other {# decided tasks}}", { step: f.step, n: f.n })}>
+      {formatDate(f.eta, "date")}{" "}
+      {f.breached ? <strong>{t("SLA missed")}</strong> : p == null ? null : risk ? <strong>{t("{p} breach risk", { p: pct1(p) })}</strong> : <span className="m2-meta">{t("{p} breach risk", { p: pct1(p) })}</span>}
+    </span>
+  );
+}
+
 function Table({ rows }: { rows: ChangeRequest[] }) {
   const { open, hrefFor } = useOpenItem();
   const openId = open?.kind === "request" ? open.id : null;
+  const waiting = rows.some((r) => r.status === "submitted" || r.status === "in_approval");
+  const fc = useApprovalForecast(waiting);
+  const byId = new Map((fc.data?.requests ?? []).map((f) => [f.request_id, f]));
   return (
     <div className="m2-frame">
-      <table className="m2-tbl" aria-label={t("Change requests")} data-testid="requests-table">
+      <TableExport><table className="m2-tbl" aria-label={t("Change requests")} data-testid="requests-table">
         <thead>
           <tr>
             <th scope="col">{t("Request")}</th>
@@ -553,6 +573,7 @@ function Table({ rows }: { rows: ChangeRequest[] }) {
             <th scope="col">{t("Updated")}</th>
             <th scope="col">{t("Age")}</th>
             <th scope="col">{t("Due")}</th>
+            <th scope="col">{t("Forecast")}</th>
           </tr>
         </thead>
         <tbody>
@@ -573,10 +594,11 @@ function Table({ rows }: { rows: ChangeRequest[] }) {
                 {r.due_at ? formatDate(r.due_at, "date") : ""}
                 {r.overdue ? <strong>{` ${t("Overdue")}`}</strong> : null}
               </td>
+              <td><ForecastCell f={byId.get(r.id)} /></td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
     </div>
   );
 }
@@ -627,14 +649,21 @@ export function RequestsCanvas() {
         why={overdue > 0 ? t("{n} {overdue, plural, one {request is} other {requests are}} past the due time of the waiting approval step.", { n: overdue, overdue }) : failed > 0 ? t("{n} {failed, plural, one {request} other {requests}} failed to reach SAP and need a new look.", { n: failed, failed }) : t("Nothing has failed in this list.")}
         figs={[
           { label: t("Waiting"), value: waiting, note: t("submitted or in approval") },
-          { label: t("Overdue"), value: overdue, note: t("past the step due time") },
+          { label: t("Overdue"), value: overdue, note: t("past the step due time"), tone: overdue > 0 ? "crit" : undefined },
           { label: t("Failed"), value: failed, note: t("did not reach SAP") },
           { label: t("Drafts"), value: drafts, note: t("not yet submitted") },
         ]}
         action={
+          <>
           <button type="button" className="m2-btn m2-strong" aria-expanded={composing} disabled={!canWrite} title={canWrite ? undefined : t("A new request needs the master data write permission")} onClick={() => setComposing((c) => !c)}>
             {t("New request")}
           </button>
+          {canWrite ? (
+            <V2Link href="/requests/new" className="m2-btn">
+              {t("Use the form")}
+            </V2Link>
+          ) : null}
+          </>
         }
       />
       <FixHead

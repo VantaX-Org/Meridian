@@ -24,6 +24,7 @@ from api.routes.writeback import router as writeback_router
 from api.routes.external_db import router as external_db_router
 from api.routes.cleaning import router as cleaning_router
 from api.routes.migration import router as migration_router
+from api.routes.load_plan import router as load_plan_router
 from api.routes.exceptions import router as exceptions_router
 from api.routes.source_design import router as source_design_router
 from api.routes.materials import router as materials_router
@@ -87,6 +88,7 @@ from api.routes.aletheia_engine import router as aletheia_engine_router
 from api.routes.assistant import router as assistant_router
 from api.routes.owner_digests import router as owner_digests_router
 from api.routes.lineage import router as lineage_router
+from api.routes.catalogue import router as catalogue_router
 from api.routes.business_process import router as business_process_router
 from api.routes.events import router as events_router
 from api.routes.jobs import router as jobs_router
@@ -125,6 +127,7 @@ from api.routes.people import router as people_router
 from api.routes.record_links import router as record_links_router
 from api.routes.rule_scope import router as rule_scope_router
 from api.routes.reconcile import router as reconcile_router
+from api.routes.system_compare import router as system_compare_router
 from api.routes.run_timeline import router as run_timeline_router
 from api.routes.views import router as views_router
 from api.routes.scim import router as scim_router
@@ -142,9 +145,12 @@ from api.routes.workflows import router as workflows_router
 from api.routes.change_requests import router as change_requests_router
 from api.routes.dq_firewall import router as dq_firewall_router
 from api.routes.governance import router as governance_router
+from api.routes.process_analytics import router as process_analytics_router
 from api.routes.grid_export import router as grid_export_router
 from api.routes.share_links import router as share_links_router
 from api.routes.stewardship_template import router as stewardship_template_router
+from api.routes.contact_verification import router as contact_verification_router
+from api.routes.semantic_types import router as semantic_types_router
 
 from api.utils.structured_logging import configure_logging
 
@@ -431,6 +437,7 @@ app.include_router(connect_router)
 app.include_router(writeback_router)
 app.include_router(external_db_router)
 app.include_router(cleaning_router)
+app.include_router(load_plan_router)
 app.include_router(migration_router)
 app.include_router(exceptions_router)
 app.include_router(source_design_router)
@@ -498,6 +505,7 @@ app.include_router(aletheia_engine_router)
 app.include_router(assistant_router)
 app.include_router(owner_digests_router)
 app.include_router(lineage_router)
+app.include_router(catalogue_router)
 app.include_router(business_process_router)
 app.include_router(events_router)
 app.include_router(jobs_router)
@@ -535,6 +543,7 @@ app.include_router(people_router)
 app.include_router(record_links_router)
 app.include_router(rule_scope_router)
 app.include_router(reconcile_router)
+app.include_router(system_compare_router)
 app.include_router(run_timeline_router)
 app.include_router(views_router)
 app.include_router(scim_router)
@@ -544,8 +553,9 @@ app.include_router(diagnostics_router)
 app.include_router(theme_router)
 app.include_router(compliance_router)
 for _r in (admin_tools_router, balance_router, collab_router, delegations_router, workflows_router, change_requests_router, dq_firewall_router,
-           governance_router,
-           grid_export_router, share_links_router, stewardship_template_router):
+           governance_router, process_analytics_router,
+           grid_export_router, share_links_router, stewardship_template_router, contact_verification_router,
+           semantic_types_router):
     app.include_router(_r)
 
 from api.routes.auth import router as auth_router

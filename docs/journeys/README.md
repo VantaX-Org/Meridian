@@ -35,6 +35,10 @@ show the expected text and offer the next control. A step with `needs` depends o
 cannot reach (an upload, an approval, a SuccessFactors analysis). For those the spec checks only that the route draws;
 the component tests cover the state itself.
 
+The click targets in the table below are enforced: a journey in steps.json with `target_clicks` (the target of its
+row) may take at most that target plus 20 percent, rounded up, checked by `frontend/lib/v2/journey-budget.test.ts` and
+walked by `frontend/e2e/journeys/budgets.spec.ts`.
+
 | Journey | Roles | Trigger | Target time | Target clicks |
 |---|---|---|---|---|
 | [First live week](first-live-week.md) | Administrator, SAP Basis, the SAP team that proves the numbers | The licence is bought and a host is ready | 5 working days elapsed; under 2 hours in Meridian | 30 |

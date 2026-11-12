@@ -21,6 +21,7 @@ from api.services import attention, run_schedules
 from api.services.config_pairing import enqueue_config_load, pair_error
 from api.services.rbac import Scope, _as_uuid, current_user_label, require_permission, require_scope, scope_from_path
 from api.services.version_status import finished_sql
+from sap.base import rfc_route_params
 from api.services.connectivity_manager import (
     RFC_SYSTEM_TYPES,
     CLOUD_SYSTEM_TYPES,
@@ -53,6 +54,26 @@ def extraction_path_error(system_type: str, path: Optional[str], base_url: Optio
     return None
 
 
+SncQop = Literal["1", "2", "3", "8", "9", ""]
+# A SAProuter string: one or more /H/<host> hops, each with an optional /S/<service> and /W/ or /P/ password-free part.
+_SAPROUTER_RE = re.compile(r"^(/H/[^/\s]+(/S/[^/\s]+)?)+(/H/)?/?$", re.IGNORECASE)
+
+
+def rfc_route_error(system_type: str, saprouter: Optional[str], snc_mode: Optional[bool],
+                    snc_partnername: Optional[str]) -> Optional[str]:
+    """Why the router string or SNC settings cannot be stored for this system, or None."""
+    router = (saprouter or "").strip()
+    if system_type not in RFC_SYSTEM_TYPES and (router or snc_mode):
+        return "The router string and SNC apply to ECC, S/4HANA on premise and EWM systems only."
+    if router and not _SAPROUTER_RE.match(router):
+        return "The router string must look like /H/saprouter.example.com/S/3299/H/ (one /H/ hop or more)."
+    if router and re.search(r"/[WP]/", router, re.IGNORECASE):
+        return "Leave route passwords (/W/ or /P/) out of the router string: it is not a secret field."
+    if snc_mode and not (snc_partnername or "").strip():
+        return "SNC needs the partner name of the application server, for example p:CN=P01, O=Example, C=ZA."
+    return None
+
+
 class RegisterSystemRequest(BaseModel):
     name: str
     system_type: str = Field(default="ecc")
@@ -76,6 +97,12 @@ class RegisterSystemRequest(BaseModel):
     # ABAP systems: how tables are read (sap/extraction_plan.py EXTRACTION_PATHS) and which table reader
     extraction_path: ExtractionPath = "table_reader"
     read_function: Optional[ReadFunction] = None
+    # ABAP systems: SAProuter string and Secure Network Communication (migration 150). None of them is a secret.
+    saprouter: Optional[str] = None
+    snc_mode: bool = False
+    snc_partnername: Optional[str] = None
+    snc_qop: SncQop = ""
+    snc_myname: Optional[str] = None
 
 
 class SystemResponse(BaseModel):
@@ -110,6 +137,11 @@ class SystemResponse(BaseModel):
     target_system_id: Optional[str] = None
     extraction_path: str = "table_reader"
     read_function: Optional[str] = None
+    saprouter: Optional[str] = None
+    snc_mode: bool = False
+    snc_partnername: Optional[str] = None
+    snc_qop: Optional[str] = None
+    snc_myname: Optional[str] = None
 
 
 class UpdateSystemRequest(BaseModel):
@@ -132,6 +164,12 @@ class UpdateSystemRequest(BaseModel):
     target_system_id: Optional[str] = None  # "" clears the target
     extraction_path: Optional[ExtractionPath] = None
     read_function: Optional[Literal["RFC_READ_TABLE", "/BODS/RFC_READ_TABLE2", "BBP_RFC_READ_TABLE", "auto", ""]] = None  # "" clears it
+    # "" clears the text fields; a changed router string needs the password typed again (see _ENDPOINT_FIELDS)
+    saprouter: Optional[str] = None
+    snc_mode: Optional[bool] = None
+    snc_partnername: Optional[str] = None
+    snc_qop: Optional[SncQop] = None
+    snc_myname: Optional[str] = None
 
 
 class TestConnectionResponse(BaseModel):
@@ -211,6 +249,9 @@ async def register_system(
         auth_type = body.auth_type or "oauth2_client_credentials"
     if msg := extraction_path_error(body.system_type, body.extraction_path, body.base_url):
         raise HTTPException(status_code=400, detail=msg)
+    if msg := rfc_route_error(body.system_type, body.saprouter, body.snc_mode, body.snc_partnername):
+        raise HTTPException(status_code=400, detail=msg)
+    rfc = body.system_type in RFC_SYSTEM_TYPES
 
     from api.services.credential_store import encrypt_password
 
@@ -219,12 +260,12 @@ async def register_system(
             INSERT INTO sap_systems (
                 id, tenant_id, name, system_type, host, client, sysnr, username,
                 base_url, company_id, auth_type, token_url, description, environment, role,
-                extraction_path, read_function
+                extraction_path, read_function, saprouter, snc_mode, snc_partnername, snc_qop, snc_myname
             )
             VALUES (
                 gen_random_uuid(), :tid, :name, :system_type, :host, :client, :sysnr, :username,
                 :base_url, :company_id, :auth_type, :token_url, :description, :environment, :role,
-                :extraction_path, :read_function
+                :extraction_path, :read_function, :saprouter, :snc_mode, :snc_partnername, :snc_qop, :snc_myname
             )
             RETURNING id, name, system_type, host, client, sysnr, username, base_url, company_id,
                       auth_type, description, environment, is_active,
@@ -247,6 +288,7 @@ async def register_system(
             "role": body.role,
             "extraction_path": body.extraction_path if body.system_type in RFC_SYSTEM_TYPES else "table_reader",
             "read_function": body.read_function if body.system_type in RFC_SYSTEM_TYPES else None,
+            **_route_values(body, rfc),
         },
     )
     row = result.fetchone()
@@ -308,7 +350,18 @@ async def register_system(
         token_url=body.token_url,
         extraction_path=body.extraction_path if body.system_type in RFC_SYSTEM_TYPES else "table_reader",
         read_function=body.read_function if body.system_type in RFC_SYSTEM_TYPES else None,
+        **_route_values(body, rfc),
     )
+
+
+def _route_values(body: BaseModel, rfc: bool) -> dict:
+    """The router and SNC columns of a register body: empty text is stored as NULL, all of it off for cloud types."""
+    def clean(v: Optional[str]) -> Optional[str]:
+        return (v or "").strip() or None
+    snc = rfc and bool(getattr(body, "snc_mode", False))
+    return {"saprouter": clean(body.saprouter) if rfc else None, "snc_mode": snc,
+            "snc_partnername": clean(body.snc_partnername) if snc else None,
+            "snc_qop": clean(body.snc_qop) if snc else None, "snc_myname": clean(body.snc_myname) if snc else None}
 
 
 @router.get("/systems", response_model=list[SystemResponse])
@@ -338,7 +391,8 @@ async def list_systems(
                    s.discovery_status, s.discovered_at::text, s.sap_release,
                    (SELECT max(v.run_at)::text FROM analysis_versions v
                     WHERE v.metadata->>'system_id' = s.id::text AND {finished_sql('v.status')}) AS last_analysis_at,
-                   s.role, s.target_system_id::text, s.token_url, s.extraction_path, s.read_function
+                   s.role, s.target_system_id::text, s.token_url, s.extraction_path, s.read_function,
+                   s.saprouter, s.snc_mode, s.snc_partnername, s.snc_qop, s.snc_myname
             FROM sap_systems s
             WHERE s.tenant_id = :tid
             ORDER BY s.created_at DESC
@@ -359,6 +413,7 @@ async def list_systems(
             discovery_status=r[22], discovered_at=r[23], sap_release=r[24], last_analysis_at=r[25],
             role=r[26], target_system_id=r[27], token_url=r[28],
             extraction_path=r[29] or "table_reader", read_function=r[30],
+            saprouter=r[31], snc_mode=bool(r[32]), snc_partnername=r[33], snc_qop=r[34], snc_myname=r[35],
         )
         for r in rows
     ]
@@ -396,6 +451,11 @@ async def update_system(
         if msg := extraction_path_error(stored["system_type"], body.extraction_path,
                                         body.base_url if body.base_url is not None else stored["base_url"]):
             raise HTTPException(status_code=400, detail=msg)
+    if body.saprouter is not None or body.snc_mode is not None or body.snc_partnername is not None:
+        snc_on = body.snc_mode if body.snc_mode is not None else stored.get("snc_mode")
+        partner = body.snc_partnername if body.snc_partnername is not None else stored.get("snc_partnername")
+        if msg := rfc_route_error(stored["system_type"], body.saprouter, snc_on, partner):
+            raise HTTPException(status_code=400, detail=msg)
     if body.read_function and stored["system_type"] not in RFC_SYSTEM_TYPES:
         raise HTTPException(status_code=400, detail="The table reader applies to ECC, S/4HANA on premise and EWM "
                                                     "systems only.")
@@ -409,6 +469,13 @@ async def update_system(
     if body.read_function is not None:
         set_parts.append("read_function = :read_function")
         updates["read_function"] = body.read_function or None
+    for col in ("saprouter", "snc_partnername", "snc_qop", "snc_myname"):
+        if getattr(body, col) is not None:
+            set_parts.append(f"{col} = :{col}")
+            updates[col] = getattr(body, col).strip() or None
+    if body.snc_mode is not None:
+        set_parts.append("snc_mode = :snc_mode")
+        updates["snc_mode"] = body.snc_mode
     if body.name is not None:
         set_parts.append("name = :name")
         updates["name"] = body.name
@@ -524,7 +591,7 @@ async def update_system(
             SELECT id, name, system_type, host, client, sysnr, username, base_url, company_id,
                    auth_type, description, environment, is_active,
                    created_at::text, updated_at::text, role, target_system_id::text, token_url,
-                   extraction_path, read_function
+                   extraction_path, read_function, saprouter, snc_mode, snc_partnername, snc_qop, snc_myname
             FROM sap_systems WHERE id = :sid AND tenant_id = :tid
         """),
         {"sid": system_id, "tid": str(tenant.id)},
@@ -539,6 +606,7 @@ async def update_system(
         description=row[10], environment=row[11], is_active=row[12],
         created_at=row[13], updated_at=row[14], role=row[15], target_system_id=row[16],
         token_url=row[17], extraction_path=row[18] or "table_reader", read_function=row[19],
+        saprouter=row[20], snc_mode=bool(row[21]), snc_partnername=row[22], snc_qop=row[23], snc_myname=row[24],
     )
 
 
@@ -604,7 +672,15 @@ def _connection_test_once(system_type: str, params: dict, secrets_to_mask: list[
         connected = connector.ping()
         if connected:
             return TestConnectionResponse(connected=True, message="Connection successful")
-        return TestConnectionResponse(connected=False, message="Ping failed")
+        reason = getattr(connector, "ping_error", "")
+        if system_type in RFC_SYSTEM_TYPES and reason:
+            # The RFC logon itself succeeded (connect raised nothing); only the RFC_PING call
+            # was refused, typically a missing S_RFC authorisation. The connection works.
+            return TestConnectionResponse(
+                connected=True,
+                message=f"Logged on. RFC_PING was refused: {mask(reason)}",
+            )
+        return TestConnectionResponse(connected=False, message=f"Ping failed: {mask(reason)}" if reason else "Ping failed")
     except SAPConnectorError as e:
         if "pyrfc_not_installed" in str(e):
             return TestConnectionResponse(connected=False, message="PyRFC is not installed")
@@ -659,7 +735,8 @@ def _require_endpoint_fields(system_type: str, params: dict) -> None:
 _SECRET_KEYS = ("password", "client_id", "client_secret", "api_key")
 
 # The fields that decide where a stored secret is sent. Changing any of them needs the secrets retyped.
-_ENDPOINT_FIELDS = ("host", "client", "sysnr", "base_url", "token_url", "auth_type")
+# The router string is one too: a new route is a new endpoint.
+_ENDPOINT_FIELDS = ("host", "client", "sysnr", "saprouter", "base_url", "token_url", "auth_type")
 
 
 async def _stored_connection(db: AsyncSession, system_id: str, tenant_id: str) -> Optional[dict]:
@@ -668,7 +745,8 @@ async def _stored_connection(db: AsyncSession, system_id: str, tenant_id: str) -
         text("""
             SELECT s.system_type, s.auth_type, s.client_id_encrypted, s.client_secret_encrypted,
                    s.api_key_encrypted, sc.encrypted_password,
-                   s.host, s.client, s.sysnr, s.base_url, s.token_url
+                   s.host, s.client, s.sysnr, s.base_url, s.token_url,
+                   s.saprouter, s.snc_mode, s.snc_partnername, s.snc_qop, s.snc_myname
             FROM sap_systems s
             LEFT JOIN system_credentials sc ON sc.system_id = s.id
             WHERE s.id = :sid AND s.tenant_id = :tid
@@ -678,7 +756,8 @@ async def _stored_connection(db: AsyncSession, system_id: str, tenant_id: str) -
     if not row:
         return None
     keys = ("system_type", "auth_type", "client_id", "client_secret", "api_key", "password",
-            "host", "client", "sysnr", "base_url", "token_url")
+            "host", "client", "sysnr", "base_url", "token_url",
+            "saprouter", "snc_mode", "snc_partnername", "snc_qop", "snc_myname")
     return dict(zip(keys, row))
 
 
@@ -691,7 +770,7 @@ def _endpoint_changes(stored: dict, body: BaseModel) -> list[str]:
             continue
         if field == "auth_type" and (stored["system_type"] in RFC_SYSTEM_TYPES or not stored["auth_type"]):
             continue  # RFC ignores it; an unset stored auth type is the connector's default
-        if value.strip() != (stored[field] or "").strip():
+        if value.strip() != (stored.get(field) or "").strip():
             changed.append(field)
     return changed
 
@@ -732,6 +811,7 @@ def _draft_params(body: RegisterSystemRequest, system_type: str, secrets: dict[s
         "client_secret": secrets.get("client_secret", ""),
         "api_key": secrets.get("api_key", ""),
         "token_url": body.token_url or "",
+        **rfc_route_params(body.model_dump()),
     }
 
 
@@ -800,7 +880,10 @@ async def test_edited_connection(
             return TestConnectionResponse(connected=False, message="Failed to decrypt the stored credentials")
 
     # The type is the stored one (an edit cannot change it); an absent auth type keeps the stored one.
-    draft = body.model_copy(update={"auth_type": auth_type})
+    # Router and SNC fields the form did not send keep the stored values.
+    sent = body.model_fields_set
+    route = {k: stored.get(k) for k in ("saprouter", "snc_mode", "snc_partnername", "snc_qop", "snc_myname") if k not in sent}
+    draft = body.model_copy(update={"auth_type": auth_type, **route})
     params = _draft_params(draft, system_type, secrets)
     _require_endpoint_fields(system_type, params)
     return await _run_connection_test(system_type, params, [secrets["password"], secrets["client_secret"], secrets["api_key"]])
@@ -822,7 +905,8 @@ async def test_connection(
         text("""
             SELECT s.system_type, s.host, s.client, s.sysnr, s.username, s.base_url, s.company_id,
                    s.auth_type, s.client_id_encrypted, s.client_secret_encrypted,
-                   s.api_key_encrypted, sc.encrypted_password, s.token_url, s.discovery_status
+                   s.api_key_encrypted, sc.encrypted_password, s.token_url, s.discovery_status,
+                   s.saprouter, s.snc_mode, s.snc_partnername, s.snc_qop, s.snc_myname
             FROM sap_systems s
             LEFT JOIN system_credentials sc ON sc.system_id = s.id
             WHERE s.id = :sid AND s.tenant_id = :tid
@@ -835,7 +919,7 @@ async def test_connection(
 
     (system_type, host, client, sysnr, username, base_url, company_id, auth_type,
      client_id_encrypted, client_secret_encrypted, api_key_encrypted, encrypted_password,
-     token_url, discovery_status) = row
+     token_url, discovery_status) = row[:14]
 
     from api.services.credential_store import decrypt_password
     import os
@@ -866,6 +950,7 @@ async def test_connection(
         "client_secret": client_secret,
         "api_key": api_key,
         "token_url": token_url or "",
+        **rfc_route_params(row),
     }
     result = await _run_connection_test(system_type, params, [password, client_secret, api_key])
     if result.connected and not discovery_status:

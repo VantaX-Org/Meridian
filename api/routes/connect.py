@@ -95,6 +95,11 @@ class SAPConnectionRequest(BaseModel):
     table: str = Field(..., description="SAP table to read, e.g. 'BUT000'")
     fields: list[str] = Field(..., description="List of field names to extract")
     where: Optional[str] = Field(None, description="Optional WHERE clause for RFC_READ_TABLE")
+    saprouter: str = Field("", description="Optional SAProuter string, e.g. /H/router.example.com/S/3299/H/")
+    snc_mode: bool = False
+    snc_partnername: str = ""
+    snc_qop: str = ""
+    snc_myname: str = ""
 
 
 class SAPConnectionResponse(BaseModel):
@@ -139,6 +144,11 @@ async def connect_sap(
         sysnr=body.sysnr,
         user=body.user,
         password=body.password,
+        saprouter=body.saprouter,
+        snc_mode=body.snc_mode,
+        snc_partnername=body.snc_partnername,
+        snc_qop=body.snc_qop,
+        snc_myname=body.snc_myname,
     )
     validated_where = validate_rfc_where(body.where)
 

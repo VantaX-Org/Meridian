@@ -335,8 +335,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | PERADDRESS | ADDRESS_LINE2 |  | y | 2 / 2 | EC615, EC616 |  |
 | PERADDRESS | CITY |  | y | 4 / 4 | EC031, EC120, EC156, EC616 |  |
 | PERADDRESS | STATE |  | y | 5 / 5 | EC032, EC157, EC158, EC159, EC427 |  |
-| PERADDRESS | ZIPCODE |  | y | 19 / 19 | EC033, EC064, EC065, EC066, EC067, EC068 +13 more |  |
-| PERADDRESS | COUNTRY |  | y | 26 / 26 | EC023, EC032, EC033, EC053, EC064, EC065 +20 more |  |
+| PERADDRESS | ZIPCODE |  | y | 20 / 20 | EC033, EC064, EC065, EC066, EC067, EC068 +14 more |  |
+| PERADDRESS | COUNTRY |  | y | 27 / 27 | EC023, EC032, EC033, EC053, EC064, EC065 +21 more |  |
 | PERADDRESS | ADDRESS3 | Address3 (country-specific) | y | 1 / 1 | EC858 |  |
 | PERADDRESS | PROVINCE | Province (country-specific) | y | 1 / 0 | DXRffc7ee61 | only disabled (DDIC-generated) rules; review for enabling |
 | PERADDRESS | ADDRESS4 | Address4 (country-specific) | y | 1 / 1 | EC859 |  |
@@ -363,7 +363,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 |---|---|---|---|---|---|---|
 | PEREMAIL | PERSON_ID |  | y | 7 / 7 | EC151, EC152, EC463, EC464, EC465, EC466 +1 more |  |
 | PEREMAIL | EMAIL_TYPE | E-mail type | y | 5 / 5 | EC019, EC045, EC061, EC466, EC469 |  |
-| PEREMAIL | EMAIL_ADDRESS | E-mail address | y | 10 / 10 | EC017, EC018, EC061, EC149, EC150, EC463 +4 more |  |
+| PEREMAIL | EMAIL_ADDRESS | E-mail address | y | 12 / 12 | EC017, EC018, EC061, EC149, EC150, EC463 +6 more |  |
 | PEREMAIL | IS_PRIMARY | Primary e-mail flag | y | 3 / 3 | EC151, EC152, EC470 |  |
 
 ### PERPHONE
@@ -372,8 +372,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 |---|---|---|---|---|---|---|
 | PERPHONE | PERSON_ID |  | y | 8 / 8 | EC153, EC446, EC462, EC471, EC472, EC474 +2 more |  |
 | PERPHONE | PHONE_TYPE | Phone type | y | 4 / 4 | EC020, EC473, EC474, EC476 |  |
-| PERPHONE | PHONE_NUMBER | Phone number | y | 9 / 9 | EC040, EC063, EC086, EC155, EC462, EC475 +3 more |  |
-| PERPHONE | COUNTRY_CODE | International dialling code | y | 3 / 3 | EC154, EC477, EC478 |  |
+| PERPHONE | PHONE_NUMBER | Phone number | y | 10 / 10 | EC040, EC063, EC086, EC155, EC462, EC475 +4 more |  |
+| PERPHONE | COUNTRY_CODE | International dialling code | y | 4 / 4 | EC154, EC477, EC478, EC902 |  |
 | PERPHONE | AREA_CODE | Area code | y | 1 / 1 | EC479 |  |
 | PERPHONE | EXTENSION | Extension | y | 1 / 1 | EC480 |  |
 | PERPHONE | IS_PRIMARY | Primary phone flag | y | 2 / 2 | EC153, EC446 |  |
@@ -603,8 +603,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | FODEPARTMENT | STATUS | A active / I inactive | y | 8 / 8 | EC103, EC252, EC288, EC310, EC331, EC333 +2 more |  |
 | FODEPARTMENT | EFFECTIVE_START_DATE | Effective start date | y | 1 / 1 | EC677 |  |
 | FODEPARTMENT | NAME | Name | y | 1 / 1 | EC713 |  |
-| FODEPARTMENT | DESCRIPTION | Description | y | 1 / 1 | EC900 |  |
-| FODEPARTMENT | HEAD_OF_UNIT | Head of unit | y | 1 / 1 | EC901 |  |
+| FODEPARTMENT | DESCRIPTION | Description | y | 1 / 1 | EC904 |  |
+| FODEPARTMENT | HEAD_OF_UNIT | Head of unit | y | 1 / 1 | EC905 |  |
 | FODEPARTMENT | PARENT_DEPARTMENT | Parent department | y | 2 / 1 | DXR072aeebe, EC716 |  |
 
 ### FOLOCATION
@@ -617,7 +617,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | FOLOCATION | STANDARD_HOURS |  | y | 5 / 5 | EC184, EC337, EC431, EC491, EC492 |  |
 | FOLOCATION | LOCATION_GROUP | Location group | y | 1 / 0 | DXR778dc9b0 | only disabled (DDIC-generated) rules; review for enabling |
 | FOLOCATION | GEOZONE | Geozone | y | 1 / 0 | DXR1e73ecf2 | only disabled (DDIC-generated) rules; review for enabling |
-| FOLOCATION | CITY | City | y | 1 / 1 | EC902 |  |
+| FOLOCATION | CITY | City | y | 1 / 1 | EC906 |  |
 
 ### FOCOSTCENTER
 
@@ -637,13 +637,13 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | FOJOBCODE | EMPLOYEE_CLASS |  | y | 3 / 3 | EC201, EC422, EC436 |  |
 | FOJOBCODE | REGULAR_TEMP |  | y | 2 / 2 | EC423, EC495 |  |
 | FOJOBCODE | EFFECTIVE_START_DATE | Effective start date | y | 1 / 1 | EC679 |  |
-| FOJOBCODE | NAME | Name | y | 1 / 1 | EC903 |  |
-| FOJOBCODE | DESCRIPTION | Description | y | 1 / 1 | EC904 |  |
-| FOJOBCODE | WORKER_COMP_CODE | Worker comp code | y | 1 / 1 | EC905 |  |
+| FOJOBCODE | NAME | Name | y | 1 / 1 | EC907 |  |
+| FOJOBCODE | DESCRIPTION | Description | y | 1 / 1 | EC908 |  |
+| FOJOBCODE | WORKER_COMP_CODE | Worker comp code | y | 1 / 1 | EC909 |  |
 | FOJOBCODE | PARENT_JOB_CLASSIFICATION | Parent job classification | y | 1 / 0 | DXR87ccfb57 | only disabled (DDIC-generated) rules; review for enabling |
-| FOJOBCODE | DEFAULT_JOB_LEVEL | Default job level | y | 1 / 1 | EC906 |  |
-| FOJOBCODE | STANDARD_WEEKLY_HOURS | Standard weekly hours | y | 1 / 1 | EC907 |  |
-| FOJOBCODE | FULLTIME_EMPLOYEE | Fulltime employee | y | 1 / 1 | EC908 |  |
+| FOJOBCODE | DEFAULT_JOB_LEVEL | Default job level | y | 1 / 1 | EC910 |  |
+| FOJOBCODE | STANDARD_WEEKLY_HOURS | Standard weekly hours | y | 1 / 1 | EC911 |  |
+| FOJOBCODE | FULLTIME_EMPLOYEE | Fulltime employee | y | 1 / 1 | EC912 |  |
 | FOJOBCODE | PAY_GRADE | Pay grade | y | 1 / 0 | DXR38c9b7e0 | only disabled (DDIC-generated) rules; review for enabling |
 | FOJOBCODE | JOB_FUNCTION | Job function | y | 1 / 0 | DXRbbd9dba2 | only disabled (DDIC-generated) rules; review for enabling |
 

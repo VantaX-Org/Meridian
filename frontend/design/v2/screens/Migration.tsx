@@ -1,5 +1,6 @@
 "use client";
 import { Disclose, Guide, Steps } from "./Guide";
+import { LoadSimulationPanel } from "./LoadSimulation";
 import { PairedQuality } from "./PairedQuality";
 import "../runs.css";
 
@@ -8,10 +9,11 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
-  checkTargetWorkbook, deleteFieldMapping, deleteMigrationRun, deleteValueEntry, decideValueEntry, exportLoadFiles, exportTargetWorkbook, extractMigrationTarget, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
+  checkTargetWorkbook, checkTemplate, deleteFieldMapping, downloadBlankTemplate, downloadTemplateFile, exportTemplate, getTemplateFields, getTemplates, saveTemplateMapping, uploadTemplate, type TargetTemplate, deleteMigrationRun, deleteValueEntry, decideValueEntry, exportLoadFiles, exportTargetWorkbook, extractMigrationTarget, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
   getMigrationRecords, getMigrationRun, getMigrationRuns, getReconciliation, getReconciliationRecords, getValueCandidates, getValueMap,
   saveValueMap, seedFieldMap, startMigration, startReconciliation, updateFieldMapping, type FieldDef, type MigrationMode, type WorkbookFormat, type MigrationRun,
   type ReconKind,
+  type ReconRecord,
 } from "@/lib/api/v2/migration";
 import { extractObjects, getVersionsPage } from "@/lib/api/v2/runs";
 import { formatDate, formatModuleName } from "@/lib/format";
@@ -28,6 +30,7 @@ import { useToast } from "../Toast";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Migration analysis: how ready the source data is to load into the target system (api/routes/migration.py). Every
@@ -87,11 +90,11 @@ function useMig<T>(key: unknown[], fn: () => Promise<T>, enabled = true, poll: n
 function Table({ title, head, children }: { title: string; head: string[]; children: ReactNode }) {
   return (
     <ScrollFrame label={title}>
-      <table className="m2-tbl m2-cards">
+      <TableExport><table className="m2-tbl m2-cards">
         <caption className="m2-sr">{title}</caption>
         <thead><tr>{head.map((h, i) => <th key={i} scope="col">{h}</th>)}</tr></thead>
         <tbody>{children}</tbody>
-      </table>
+      </table></TableExport>
     </ScrollFrame>
   );
 }
@@ -199,6 +202,7 @@ export function Migration() {
         />
       ) : null}
       <TargetWorkbookPanel />
+      <TemplateLibraryPanel />
       <Disclose title={t("Quality in the source and in the target")} hint={t("Source quality, projected and actual target quality, and why they differ.")}><PairedQuality /></Disclose>
       <Disclose title={t("All analyses")} hint={t("{n} analyses, newest first", { n: int(list.length) })} open={!latest}>
       <Panel title={t("Analyses")} meta={t("{n} analyses, newest first", { n: int(list.length) })} testId="mig-runs">
@@ -313,6 +317,7 @@ function RunDetail({ run }: { run: MigrationRun }) {
           </>
         )}
       </Panel>
+      {analysed(run) ? <LoadSimulationPanel runId={run.id} /> : null}
       <LoadFilesPanel run={run} />
       {analysed(run) ? <PostLoadPanel run={run} /> : null}
       <FindingsPanel run={run} gapTypes={[...new Set((q.data?.gap_breakdown ?? []).map((g) => g.gap_type))]} />
@@ -386,9 +391,14 @@ function TargetWorkbookPanel() {
     checked.current = waiting;
     check.mutate({ run: waiting, file }, { onSettled: () => { setPicked(waiting); setWaiting(""); update.reset(); } });
   }, [done, file, waiting, update, check]);
-  if (!allowed) return null;
   const title = t("Workbook from the new system");
   const meta = t("Fill the new system's workbook or load file from a finished run");
+  if (!allowed) {
+    const why = systems.length === 0 && can("export") && !shared && !viewAs
+      ? t("No source system is connected yet. Connect one and finish a run before a workbook can be filled.")
+      : t("Your role cannot export migration data, so the workbook cannot be filled here.");
+    return <Panel title={title} meta={meta} testId="mig-workbook-locked"><EmptyFrame>{why}</EmptyFrame></Panel>;
+  }
   if (versions.isPending) return <Panel title={title} meta={meta} testId="mig-workbook"><Skeleton width="100%" height={120} /></Panel>;
   if (versions.isError) return <Panel title={title} meta={meta} testId="mig-workbook"><ErrorFrame onRetry={() => void versions.refetch()}>{t("The runs could not be read.")}</ErrorFrame></Panel>;
   if (versions.data.length === 0) return <Panel title={title} meta={meta} testId="mig-workbook"><EmptyFrame>{t("No run has finished yet. A finished run is needed before the workbook can be filled.")}</EmptyFrame></Panel>;
@@ -440,13 +450,17 @@ function TargetWorkbookPanel() {
                 </Table>
               </Disclose>
               {update.isSuccess ? (
-                <p data-testid="mig-workbook-updating">{t("A new run has started. When it finishes, Meridian checks the workbook again on it, so the added columns are filled.")}</p>
+                <p data-testid="mig-workbook-updating">{t("A new run has started. When it finishes, Meridian checks the workbook again on it, so the added columns are filled.")}{" "}
+                  <button type="button" className="m2-btn m2-sm" data-testid="mig-workbook-stop" onClick={() => { setWaiting(""); update.reset(); }}>{t("Stop waiting")}</button></p>
               ) : can("trigger_sync") ? (
                 <p><button type="button" className="m2-btn m2-next" data-testid="mig-workbook-update" disabled={update.isPending} onClick={() => update.mutate({ system_id: report.learned!.system_id!, modules: report.learned!.modules })}>{update.isPending ? t("Starting the run") : t("Update the run")}</button></p>
               ) : (
                 <p className="m2-meta">{t("Ask someone who can start extractions to update the run.")}</p>
               )}
             </div>
+          ) : null}
+          {learned.length > 0 && !report.learned?.system_id ? (
+            <p role="status" data-testid="mig-workbook-learned-nosystem">{t("{n} columns in this workbook are not in the extraction, but this run is not tied to a source system, so they cannot be added. Start the run from a connected system.", { n: int(learned.length) })}</p>
           ) : null}
           {(report.learned?.missing ?? 0) > 0 ? (
             <p role="status" data-testid="mig-workbook-not-in-system">{t("{n} columns ask for fields the source system did not return on the last run, so another run will not fill them. Ask the system owner whether the field exists, or fill these columns in the new system.", { n: int(report.learned!.missing!) })}</p>
@@ -529,6 +543,124 @@ function TargetWorkbookPanel() {
   );
 }
 
+/** Kept target templates per object: upload, correct unresolved columns, download blank, original or filled. */
+function TemplateLibraryPanel() {
+  const { can, shared, viewAs } = useV2Session();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const objects = useLandscape(null).data?.objects ?? [];
+  const [module, setModule] = useUrlParam<string>("tpl_module", "material_master");
+  const [file, setFile] = useState<File | null>(null);
+  const [name, setName] = useState("");
+  const [mapping, setMapping] = useState<string | null>(null);
+  const list = useMig(["templates", module], () => getTemplates(module));
+  const write = can("analyse") && !shared && !viewAs;
+  const take = can("export") && !shared && !viewAs;
+  const fail = (msg: string) => (e: unknown) => toast.show(errorSentence(e, msg), "error");
+  const saved = (n: string) => toast.show(t("Saved as {name}", { name: n }));
+  const upload = useMutation({
+    mutationFn: () => uploadTemplate(module, file as File, name),
+    onSuccess: (r) => { toast.show(t("{name} is kept as version {v}.", { name: r.name, v: int(r.version) })); setFile(null); setName(""); void qc.invalidateQueries({ queryKey: ["migration", "templates"] }); },
+    onError: fail(t("The template could not be kept.")),
+  });
+  const blank = useMutation({ mutationFn: () => downloadBlankTemplate(module), onSuccess: saved, onError: fail(t("The blank template could not be prepared.")) });
+  const original = useMutation({ mutationFn: (tp: TargetTemplate) => downloadTemplateFile(module, tp), onSuccess: saved, onError: fail(t("The template could not be read.")) });
+  const fill = useMutation({
+    mutationFn: (tp: TargetTemplate) => exportTemplate(module, tp, "xlsx"),
+    onSuccess: (n) => { saved(n); void qc.invalidateQueries({ queryKey: ["migration", "templates"] }); },
+    onError: fail(t("The template could not be filled.")),
+  });
+  const check = useMutation({ mutationFn: (tp: TargetTemplate) => checkTemplate(module, tp.id), onError: fail(t("The template could not be checked.")) });
+  const rows = list.data?.templates ?? [];
+  const report = check.data;
+  const editing = rows.find((r) => r.id === mapping) ?? null;
+  return (
+    <Panel title={t("Template library")} meta={t("Target templates kept per object, filled from the latest finished run")} testId="mig-templates">
+      <form className="m2-rfilters" onSubmit={(e) => { e.preventDefault(); if (file) upload.mutate(); }}>
+        <label>{t("Object")}
+          <select className="m2-sel" value={module} onChange={(e) => { setModule(e.target.value); setMapping(null); check.reset(); }}>
+            {[...new Set([module, ...objects.map((o) => o.module)])].map((m) => <option key={m} value={m}>{moduleText(m)}</option>)}
+          </select>
+        </label>
+        {write ? (
+          <>
+            <label>{t("Template name")}<input className="m2-sel" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} /></label>
+            <label>{t("Template file")}<input type="file" accept={WORKBOOK_TYPES} data-testid="mig-template-file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+            <button type="submit" className="m2-btn m2-next" disabled={!file || upload.isPending}>{upload.isPending ? t("Keeping the template") : t("Keep the template")}</button>
+          </>
+        ) : null}
+        {take ? <button type="button" className="m2-btn" data-testid="mig-template-blank" disabled={blank.isPending} onClick={() => blank.mutate()}>{t("Download a blank template")}</button> : null}
+      </form>
+      <p className="m2-meta">{t("A blank template lists every field the object's rules read, with its description, whether it is required and its allowed values. The same name again is kept as a new version, with the column corrections carried over.")}</p>
+      {list.isPending ? <Skeleton width="100%" height={120} /> : list.isError ? (
+        status(list.error) === 403 ? <EmptyFrame>{t("Your role cannot read the template library.")}</EmptyFrame> : <ErrorFrame onRetry={() => void list.refetch()}>{t("The template library could not be read.")}</ErrorFrame>
+      ) : rows.length === 0 ? <EmptyFrame>{t("No template is kept for this object yet.")}</EmptyFrame> : (
+        <Table title={t("Template library")} head={[t("Template"), t("Columns resolved"), t("Last filled"), t("Actions")]}>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <th scope="row" className="m2-card-lead">{t("{name}, version {v}", { name: r.name, v: int(r.version) })}<div className="m2-meta">{r.filename}</div></th>
+              <td data-label={t("Columns resolved")}>{r.coverage ? t("{a} of {b}", { a: int(r.coverage.matched), b: int(r.coverage.columns) }) : "-"}</td>
+              <td data-label={t("Last filled")}>{r.last_fill_at ? formatDate(r.last_fill_at, "datetime") : t("Never")}</td>
+              <td data-label={t("Actions")}>
+                {take ? <>
+                  <button type="button" className="m2-btn m2-sm" onClick={() => original.mutate(r)}>{t("Original")}</button>{" "}
+                  <button type="button" className="m2-btn m2-sm" data-testid={`mig-template-check-${r.id}`} disabled={check.isPending} onClick={() => check.mutate(r)}>{t("Check")}</button>{" "}
+                  <button type="button" className="m2-btn m2-sm m2-next" disabled={fill.isPending} onClick={() => fill.mutate(r)}>{t("Fill from the latest run")}</button>{" "}
+                </> : null}
+                {write && (r.coverage?.matched ?? 0) < (r.coverage?.columns ?? 0) ? (
+                  <button type="button" className="m2-btn m2-sm" aria-expanded={mapping === r.id} data-testid={`mig-template-map-${r.id}`} onClick={() => setMapping((m) => (m === r.id ? null : r.id))}>{t("Map columns")}</button>
+                ) : null}
+              </td>
+            </tr>
+          ))}
+        </Table>
+      )}
+      {report ? (
+        <div role="status" data-testid="mig-template-report">
+          <p>{t("{ready} rows are ready and {held} are held back. {filled} of {sheets} sheets can be filled, with {matched} of {columns} columns.", { ready: int(report.summary.ready), held: int(report.summary.held), filled: int(report.summary.filled_sheets), sheets: int(report.summary.sheets), matched: int(report.summary.matched_columns), columns: int(report.summary.columns) })}</p>
+          {report.cleansed ? <p className="m2-meta">{t("{n} approved cleansing values were applied, changing {c} cells.", { n: int(report.cleansed.approved), c: int(report.cleansed.cells_changed) })}</p> : null}
+        </div>
+      ) : null}
+      {editing ? <TemplateMappingForm module={module} template={editing} onDone={() => setMapping(null)} /> : null}
+    </Panel>
+  );
+}
+
+function TemplateMappingForm({ module, template, onDone }: { module: string; template: TargetTemplate; onDone: () => void }) {
+  const toast = useToast();
+  const qc = useQueryClient();
+  const fields = useMig(["template-fields", module], () => getTemplateFields(module));
+  const open = template.coverage?.sheets.flatMap((s) => s.unmapped.map((u) => ({ key: `${s.name}::${u.header}`, sheet: s.name, ...u }))) ?? [];
+  const [picks, setPicks] = useState<Record<string, string>>({});
+  const save = useMutation({
+    mutationFn: () => saveTemplateMapping(module, template.id, picks),
+    onSuccess: (r) => { toast.show(t("The column map is saved. {a} of {b} columns resolve.", { a: int(r.coverage.matched), b: int(r.coverage.columns) })); void qc.invalidateQueries({ queryKey: ["migration", "templates"] }); onDone(); },
+    onError: (e) => toast.show(errorSentence(e, t("The column map could not be saved.")), "error"),
+  });
+  return (
+    <form data-testid="mig-template-mapping" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+      <p className="m2-meta">{t("Choose the field each unresolved column holds. Only fields of this object's tables are offered. A column left open is reported as absent.")}</p>
+      {fields.isPending ? <Skeleton width="100%" height={80} /> : fields.isError ? <ErrorFrame onRetry={() => void fields.refetch()}>{t("The fields could not be read.")}</ErrorFrame> : (
+        <Table title={t("Unresolved columns")} head={[t("Sheet"), t("Column"), t("Field")]}>
+          {open.map((u) => (
+            <tr key={u.key}>
+              <th scope="row" className="m2-card-lead">{u.sheet}</th>
+              <td data-label={t("Column")}><Coded code={u.id} text={u.label} /></td>
+              <td data-label={t("Field")}>
+                <select className="m2-sel" aria-label={t("Field for {column}", { column: u.header })} value={picks[u.key] ?? ""} onChange={(e) => setPicks((p) => ({ ...p, [u.key]: e.target.value }))}>
+                  <option value="">{t("Leave open")}</option>
+                  {fields.data.fields.map((f) => <option key={f.field} value={f.field}>{`${f.field} ${f.description}`}</option>)}
+                </select>
+              </td>
+            </tr>
+          ))}
+        </Table>
+      )}
+      <p><button type="submit" className="m2-btn m2-next" disabled={save.isPending || Object.values(picks).every((v) => !v)}>{t("Save the column map")}</button></p>
+    </form>
+  );
+}
+
 function LoadFilesPanel({ run }: { run: MigrationRun }) {
   const { can, shared, viewAs } = useV2Session();
   const toast = useToast();
@@ -569,6 +701,27 @@ const RECON_KIND: Record<ReconKind, () => string> = {
   differing: () => t("Different in target"),
   unexpected: () => t("Held back but present"),
 };
+
+/** Why a loaded value differs from the target: each expected cause is read from the target field's DDIC entry or a confirmed value mapping. */
+const RECON_CAUSE: Record<string, () => string> = {
+  alpha_padding: () => t("Leading zeros (ALPHA conversion)"),
+  case: () => t("Upper case (field not lower case in the dictionary)"),
+  value_mapping: () => t("Confirmed value mapping"),
+  truncation: () => t("Cut to the target field length"),
+  number_format: () => t("Same number, other format"),
+  date_format: () => t("Same date, other format"),
+  real: () => t("Real difference"),
+};
+
+function causeEvidence(r: ReconRecord): string | undefined {
+  const d = r.ddic;
+  if (!d || !d.type) return undefined;
+  return t("{type} {length}, {lower}{exit}", {
+    type: d.type, length: d.length ?? 0,
+    lower: d.lowercase ? t("lower case allowed") : t("upper case only"),
+    exit: d.conversion_exit ? `, ${t("conversion exit {exit}", { exit: d.conversion_exit })}` : "",
+  });
+}
 const RECON_STATUS: Record<string, () => string> = { ...STATUS_TEXT, done: () => t("Done") };
 const signed = (n: number) => `${n > 0 ? "+" : ""}${f1(n)}`;
 const signedInt = (n: number) => `${n > 0 ? "+" : ""}${int(n)}`;
@@ -582,13 +735,15 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
   const [kind, setKind] = useState<ReconKind>("missing");
   const [table, setTable] = useState("");
   const [offset, setOffset] = useState(0);
+  const [realOnly, setRealOnly] = useState(false);
   const q = useQuery({
     queryKey: ["migration", "recon", run.id, fixture], queryFn: () => getReconciliation(run.id), staleTime: 30_000,
     retry, refetchInterval: (c) => (c.state.data?.status === "queued" || c.state.data?.status === "running" ? 5_000 : false),
   });
   const done = q.data?.status === "done";
   const rec = useQuery({
-    queryKey: ["migration", "recon-records", run.id, table, kind, offset, fixture], queryFn: () => getReconciliationRecords(run.id, { table: table || undefined, kind, offset, limit: PAGE }),
+    queryKey: ["migration", "recon-records", run.id, table, kind, offset, realOnly, fixture],
+    queryFn: () => getReconciliationRecords(run.id, { table: table || undefined, kind, offset, limit: PAGE, real_only: kind === "differing" && realOnly }),
     staleTime: 60_000, retry, enabled: done,
   });
   const start = useMutation({
@@ -642,6 +797,13 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                   n: int(sum.comparable ?? 0), m: int(sum.tables ?? 0), e: int(sum.expected ?? 0), f: int(sum.found ?? 0), x: int(sum.missing ?? 0), u: int(sum.unexpected ?? 0), w: int(sum.differing_fields ?? 0),
                 })}
               </p>
+              {sum.real_differences !== undefined ? (
+                <p className="m2-meta" data-testid="mig-post-load-split">
+                  {t("Of the differences, {r, plural, one {# is real} other {# are real}} and {x, plural, one {# has an expected cause} other {# have an expected cause}} (padding, case, value mapping, truncation or format). Only real differences count against the load.", {
+                    r: sum.real_differences, x: sum.expected_differences ?? 0,
+                  })}
+                </p>
+              ) : null}
               {d!.automatic ? <p className="m2-meta" data-testid="mig-post-load-auto">{t("Started automatically when the target system was analysed again.")}</p> : null}
               {d!.previous ? (
                 <p className="m2-meta" data-testid="mig-post-load-change">
@@ -683,7 +845,7 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                   ))}
                 </Table>
               ) : null}
-              <Table title={t("Records per target table")} head={[t("Table"), t("Expected"), t("Found"), t("Missing"), t("Held back but present"), t("Fields that differ")]}>
+              <Table title={t("Records per target table")} head={[t("Table"), t("Expected"), t("Found"), t("Missing"), t("Held back but present"), t("Fields that differ"), t("Real differences")]}>
                 {d!.tables.map((x) => (
                   <tr key={x.table}>
                     <th scope="row" className="m2-card-lead"><Coded code={x.table} text={x.description} first /></th>
@@ -694,14 +856,15 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                         <td data-label={t("Missing")}>{int(x.missing)}</td>
                         <td data-label={t("Held back but present")}>{int(x.unexpected)}</td>
                         <td data-label={t("Fields that differ")}>{int(x.fields.reduce((a, f) => a + f.differing, 0))}</td>
+                        <td data-label={t("Real differences")}>{x.real_differences === undefined ? f1(null) : int(x.real_differences)}</td>
                       </>
                     ) : (
-                      <td colSpan={5} data-label={t("Not compared")}>{t("Not compared")}: <Coded code={x.reason ?? ""} text={x.reason ? RECON_REASON[x.reason]?.() : undefined} /></td>
+                      <td colSpan={6} data-label={t("Not compared")}>{t("Not compared")}: <Coded code={x.reason ?? ""} text={x.reason ? RECON_REASON[x.reason]?.() : undefined} /></td>
                     )}
                   </tr>
                 ))}
               </Table>
-              <Table title={t("Fields compared")} head={[t("Table"), t("Field"), t("Compared"), t("Matched"), t("Different")]}>
+              <Table title={t("Fields compared")} head={[t("Table"), t("Field"), t("Compared"), t("Matched"), t("Different"), t("Real differences")]}>
                 {tablesWithRecords.flatMap((x) => x.fields.map((f) => (
                   <tr key={`${x.table}-${f.field}`}>
                     <th scope="row" className="m2-card-lead"><Coded code={x.table} text={x.description} first /></th>
@@ -709,6 +872,7 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                     <td data-label={t("Compared")}>{f.in_target_extract ? int(f.compared) : t("Not in the target extraction")}</td>
                     <td data-label={t("Matched")}>{f.in_target_extract ? int(f.matched) : f1(null)}</td>
                     <td data-label={t("Different")}>{f.in_target_extract ? int(f.differing) : f1(null)}</td>
+                    <td data-label={t("Real differences")}>{f.in_target_extract && f.real_differences !== undefined ? int(f.real_differences) : f1(null)}</td>
                   </tr>
                 )))}
               </Table>
@@ -716,6 +880,9 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                 {(Object.keys(RECON_KIND) as ReconKind[]).map((k) => (
                   <button key={k} type="button" className="m2-btn" aria-pressed={kind === k} onClick={() => { setKind(k); setOffset(0); }}>{RECON_KIND[k]()}</button>
                 ))}{" "}
+                {kind === "differing" ? (
+                  <button type="button" className="m2-btn" aria-pressed={realOnly} data-testid="mig-post-load-real-only" onClick={() => { setRealOnly(!realOnly); setOffset(0); }}>{t("Real differences only")}</button>
+                ) : null}{" "}
                 <select aria-label={t("Table")} value={table} onChange={(e) => { setTable(e.target.value); setOffset(0); }}>
                   <option value="">{t("All tables")}</option>
                   {tablesWithRecords.map((x) => <option key={x.table} value={x.table}>{x.table} {x.description}</option>)}
@@ -725,7 +892,7 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                 <EmptyFrame>{t("No records in this list.")}</EmptyFrame>
               ) : (
                 <>
-                  <Table title={RECON_KIND[kind]()} head={[t("Record"), t("Load file record"), t("Field"), t("Expected"), t("Found")]}>
+                  <Table title={RECON_KIND[kind]()} head={kind === "differing" ? [t("Record"), t("Load file record"), t("Field"), t("Expected"), t("Found"), t("Cause")] : [t("Record"), t("Load file record"), t("Field"), t("Expected"), t("Found")]}>
                     {rec.data.rows.map((r) => (
                       <tr key={`${r.source_record}-${r.key}-${r.field}`}>
                         <th scope="row" className="m2-card-lead"><Coded code={r.key} text={undefined} first /></th>
@@ -733,6 +900,9 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                         <td data-label={t("Field")}>{r.field ? <Coded code={r.field} text={fieldText.get(r.field)} first /> : f1(null)}</td>
                         <td data-label={t("Expected")}>{r.withheld ? t("Withheld") : r.expected ?? f1(null)}</td>
                         <td data-label={t("Found")}>{r.withheld ? t("Withheld") : r.found ?? f1(null)}</td>
+                        {kind === "differing" ? (
+                          <td data-label={t("Cause")}>{r.cause ? <>{RECON_CAUSE[r.cause]?.() ?? r.cause}{causeEvidence(r) ? <span className="m2-meta"> {causeEvidence(r)}</span> : null}</> : f1(null)}</td>
+                        ) : null}
                       </tr>
                     ))}
                   </Table>

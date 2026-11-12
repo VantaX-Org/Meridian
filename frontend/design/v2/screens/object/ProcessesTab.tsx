@@ -10,9 +10,11 @@ import { f1, int, moduleFromSlug } from "@/lib/v2/score";
 import { DqWord } from "../../inspector/step";
 import "../../mdm.css";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { describeField } from "@/lib/v2/sap-fields";
 import { ScrollFrame } from "./ScrollFrame";
 import { WhatIfPanel } from "./WhatIf";
 import { t } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 /** The process designer of an object: a canvas of its own under the object. */
 export const designerHref = (system: string, module: string): string => `/o/${system}/${module}/processes/design`;
@@ -42,7 +44,7 @@ function StepBlock({ step, module, openId }: { step: StepView; module: string; o
               <p className="m2-rp m2-meta">{t("No field is mapped to this activity.")}</p>
             ) : (
               <ScrollFrame label={t("Fields of {l5_name}, scrollable", { l5_name: a.l5_name })}>
-                <table className="m2-tbl m2-ftbl" aria-label={t("Fields of {l5_name}", { l5_name: a.l5_name })}>
+                <TableExport><table className="m2-tbl m2-ftbl" aria-label={t("Fields of {l5_name}", { l5_name: a.l5_name })}>
                   <thead>
                     <tr>
                       <th scope="col">{t("Field")}</th>
@@ -56,7 +58,7 @@ function StepBlock({ step, module, openId }: { step: StepView; module: string; o
                       <tr key={f.field} data-status={f.dq_status}>
                         <th scope="row" className="m2-fcell">
                           <Mono>{f.field}</Mono>
-                          <span className="m2-meta">{f.description}</span>
+                          <span className="m2-meta">{f.description || describeField(f.field)}</span>
                         </th>
                         <td>
                           <DqWord status={f.dq_status} />
@@ -66,7 +68,7 @@ function StepBlock({ step, module, openId }: { step: StepView; module: string; o
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></TableExport>
               </ScrollFrame>
             )}
           </div>

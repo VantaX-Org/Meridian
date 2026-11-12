@@ -728,6 +728,12 @@ class SAPSystem(Base):
     # table_reader | odp | odata | auto; and the table reader itself (NULL = MERIDIAN_RFC_READ_FUNCTION)
     extraction_path = Column(Text, nullable=False, server_default="table_reader")
     read_function = Column(Text, nullable=True)
+    # RFC routing and Secure Network Communication (migration 150). Not secrets; SNC_LIB stays a deployment setting.
+    saprouter = Column(Text, nullable=True)
+    snc_mode = Column(Boolean, nullable=False, server_default="false")
+    snc_partnername = Column(Text, nullable=True)
+    snc_qop = Column(Text, nullable=True)
+    snc_myname = Column(Text, nullable=True)
 
     credentials = relationship("SystemCredential", back_populates="system", cascade="all, delete-orphan")
     sync_profiles = relationship("SyncProfile", back_populates="system", cascade="all, delete-orphan")

@@ -14,6 +14,7 @@ import { ScrollFrame } from "../object/ScrollFrame";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
 import { ScheduleFields, scheduleValid, type ScheduleValue } from "./ScheduleFields";
 import { t } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * System › Schedules: the extraction schedules (sync profiles) of the system. Add one for an object, open one to change
@@ -66,7 +67,7 @@ export function Schedules({ id }: { id: string }) {
         <EmptyFrame>{allowed ? t("Nothing is scheduled for this system. Objects are only checked again when someone extracts them; add a schedule below.") : t("Nothing is scheduled for this system. Objects are only checked again when someone extracts them.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Table 1, scrollable")}>
-          <table className="m2-tbl" data-testid="system-schedules">
+          <TableExport><table className="m2-tbl" data-testid="system-schedules">
             <thead>
               <tr>
                 <th scope="col">{t("Object")}</th>
@@ -104,7 +105,7 @@ export function Schedules({ id }: { id: string }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
       {removing ? (

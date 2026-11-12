@@ -63,7 +63,7 @@ Named people for each role: To confirm (Project manager).
 
 1. The signed-in go-live acceptance run in [docs/journeys/go-live-acceptance-test.md](../journeys/go-live-acceptance-test.md) passes sections 1 to 3 and is signed off. A fail in those sections stops the release.
 2. A real workbook from the new system passes the load tool's own validation (section 4 of the acceptance test).
-3. The release installs with `scripts/update.sh`, reports the expected version, reaches alembic head 149, returns status ok on `/health` and has no tracebacks in the API log.
+3. The release installs with `scripts/update.sh`, reports the expected version, reaches alembic head 154, returns status ok on `/health` and has no tracebacks in the API log.
 4. The support team accepts the hand-over pack in [docs/sustain/README.md](../sustain/README.md).
 5. The open items in the [RAID log](raid-log.md) have an owner and a date.
 

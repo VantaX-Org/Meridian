@@ -15,7 +15,9 @@ from typing import Any, Optional
 
 import pandas as pd
 
+from api.services import ddic_value_check as dvc
 from checks import auto_fix
+from sap.ddic import dictionary_for_system
 from api.services.fix_sheet import field_label
 from checks.runner import CATEGORIES, RULES_DIR, is_overlay, module_rules, rule_columns, run_checks
 
@@ -87,7 +89,8 @@ MAX_ALLOWED = 25  # allowed values listed in one suggestion; more are cut and fl
 
 
 def _suggestions(tid: str, module: str, row: dict[str, str], fails: list[dict], rules: dict[str, dict],
-                 overrides: Optional[dict], extra_rules: Optional[list[dict]]) -> None:
+                 overrides: Optional[dict], extra_rules: Optional[list[dict]],
+                 refs: Optional[dict[str, set[str]]] = None) -> None:
     """Attach ``suggestion`` to the failures that have a grounded fix. Deterministic: the only sources are the failing
     rule's own definition (its ``auto_fix`` steps, its ``allowed_values`` with ``valid_values_with_labels``). The
     record is never sent anywhere; a corrected value is re-judged by the same engine and dropped unless the rule now
@@ -108,7 +111,7 @@ def _suggestions(tid: str, module: str, row: dict[str, str], fails: list[dict], 
                                        "source": f"rule {rule['id']} auto_fix steps", "verified": False}, hit[0])
             fixed[rule["field"].upper()] = hit[0]
     if proposed:
-        again = {r.check_id for r in run_checks(module, pd.DataFrame([fixed]), tid, overrides=overrides,
+        again = {r.check_id for r in run_checks(module, pd.DataFrame([fixed]), tid, reference_values=refs, overrides=overrides,
                                                 extra_rules=extra_rules) if not r.passed and not r.error and r.affected_count}
         for f in fails:
             if f["rule_id"] in proposed and f["rule_id"] not in again:
@@ -130,10 +133,19 @@ def _suggestions(tid: str, module: str, row: dict[str, str], fails: list[dict], 
 
 def validate(tid: str, module: str, records: list[dict[str, Any]], overrides: Optional[dict] = None,
              extra_rules: Optional[list[dict]] = None, suggest: bool = False,
-             allow: frozenset = frozenset()) -> dict[str, Any]:
+             allow: frozenset = frozenset(), live: Optional[dvc.Values] = None,
+             system_type: str = "ecc") -> dict[str, Any]:
     """{verdict, block_severity, module, rules_run, records: [{index, verdict, failures: [{rule_id, description, field,
-    severity, dimension, reason[, suggestion]}]}]}. ``suggest`` is opt-in; ``allow`` names extra fields a record may carry (the duplicate search's match fields). Raises FirewallError for a request it refuses."""
+    severity, dimension, reason, ddic[, suggestion]}]}]}. ``suggest`` is opt-in; ``allow`` names extra fields a record may carry (the duplicate search's match fields). Raises FirewallError for a request it refuses.
+
+    ``live`` is the tenant system's live check-table values (ddic_value_check.load_live): handed to the engine as its
+    reference values, so a check-table rule judges against the system's own configuration (a customer's Z material
+    type passes) and falls back to the SAP-standard list only for a table not read live. Each failure on a field the
+    dictionary knows carries ``ddic``: the field's DDIC evidence and verdict, with the nearest valid values."""
     rows = _clean(module, records, allow)
+    live = live or {}
+    refs = {k: set(v) for k, v in live.items()}
+    dictionary, baseline = dictionary_for_system(system_type), dvc.baseline_values(system_type)
     desc = {r.get("id"): (r.get("message") or "") for r in module_rules(module)}
     desc.update({r.get("id"): (r.get("message") or "") for r in (extra_rules or []) if r.get("module") == module})
     by_id = {r.get("id"): r for r in module_rules(module)}
@@ -141,14 +153,18 @@ def validate(tid: str, module: str, records: list[dict[str, Any]], overrides: Op
     out, rules_run = [], 0
     for i, row in enumerate(rows):
         # ponytail: one run_checks per record, about 0.09s each, so 100 records is about 9s; batch one frame with key attribution if that is too slow
-        results = run_checks(module, pd.DataFrame([row]), tid, overrides=overrides, extra_rules=extra_rules)
+        results = run_checks(module, pd.DataFrame([row]), tid, reference_values=refs, overrides=overrides,
+                             extra_rules=extra_rules)
         rules_run = max(rules_run, len(results))
         fails = [{"rule_id": r.check_id, "description": desc.get(r.check_id) or r.message, "field": r.field,
                   "field_description": field_label(r.field), "severity": r.severity, "dimension": r.dimension, "reason": (r.message or "")[:300]}
                  for r in results if not r.passed and not r.error and r.affected_count]
         fails.sort(key=lambda f: (_ORDER.get(str(f["severity"]), 9), f["rule_id"]))
+        for f in fails:
+            if f["field"] and dictionary.resolve(f["field"]) is not None:
+                f["ddic"] = dvc.check_value(dictionary, f["field"], row.get(f["field"].upper(), ""), live, baseline)
         if suggest and fails:
-            _suggestions(tid, module, row, fails, by_id, overrides, extra_rules)
+            _suggestions(tid, module, row, fails, by_id, overrides, extra_rules, refs)
         out.append({"index": i, "verdict": "block" if any(f["severity"] == BLOCK_SEVERITY for f in fails) else "pass",
                     "failures": fails})
     return {"verdict": "block" if any(r["verdict"] == "block" for r in out) else "pass",

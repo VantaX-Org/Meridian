@@ -19,6 +19,7 @@ import { t as tr } from "@/lib/v2/i18n";
 import { CcBanner, CcDelta, CcPage } from "./cc-parts";
 import { CompareRecords } from "./CompareRecords";
 import { ScoreDeltaPanel } from "./ScoreDeltaPanel";
+import { TableExport } from "@/design/v2/TableExport";
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
@@ -347,7 +348,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
         ) : (
           <>
             <div className="m2-frame m2-only-wide">
-              <table className="m2-tbl" data-testid="compare-table" style={{ minWidth: 1040 }}>
+              <TableExport><table className="m2-tbl" data-testid="compare-table" style={{ minWidth: 1040 }}>
                 <thead>
                   <tr>
                     <th scope="col">{tr("Object")}</th>
@@ -438,7 +439,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
                     <td className="m2-r">{int(t?.better)}</td>
                   </tr>
                 </tfoot>
-              </table>
+              </table></TableExport>
             </div>
             <div className="m2-only-narrow" data-testid="compare-list">
               {rows.map(({ o, d }) => (

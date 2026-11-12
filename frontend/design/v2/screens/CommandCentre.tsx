@@ -53,7 +53,7 @@ export function GoLiveBanner({ landscape, waves }: { landscape: Landscape; waves
           <dd>{days == null ? "—" : int(Math.max(days, 0))}</dd>
           <dd className="m2-cc-note">{wave?.target_date ? formatDate(wave.target_date, "date") : t("no date set")}</dd>
         </div>
-        <div>
+        <div data-tone={verdict === "no-go" ? "crit" : verdict === "at-risk" ? "warn" : undefined}>
           <dt>{t("Cost of waiting")}</dt>
           <dd>{cost == null ? "—" : moneyCompactText(cost, money?.currency)}</dd>
           <dd className="m2-cc-note">{cost == null ? t("no cost model") : t("per month")}</dd>

@@ -19,11 +19,11 @@ import { Explain } from "../Explain";
 import "../object.css";
 import { SeverityMark, VerdictMark, type SeverityKey } from "../marks";
 import { describeField } from "@/lib/v2/sap-fields";
-import { Coded, Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Coded, Dash, ErrorFrame, Mono, SapCode, Skeleton, V2Link } from "../parts";
 import { CollabSections } from "./collab";
 import { t as tr, lc, tx } from "@/lib/v2/i18n";
 import { labelText, moneyCompactText } from "@/lib/v2/labels";
-import { createRuleVersion, getRuleVersionDiff, transitionRuleVersion, type RuleVersionState } from "@/lib/api/v2/rulelib";
+import { setRuleEnabled, createRuleVersion, getRuleVersionDiff, transitionRuleVersion, type RuleVersionState } from "@/lib/api/v2/rulelib";
 import { errorSentence } from "@/lib/api/v2/client";
 import { useToast } from "../Toast";
 
@@ -662,7 +662,7 @@ function ProvePack({ p }: { p: Reconcile }) {
       </p>
       <Facts>
         <Fact label={tr("Run")}>{p.run_at ? formatDate(p.run_at, "date") : <Mono>{p.run_id}</Mono>}</Fact>
-        <Fact label={tr("Record grain")}>{p.grain.table ? <><Mono>{p.grain.table}</Mono>{p.grain.key_fields.length ? <span className="m2-meta"> {tr("one record per {keys}", { keys: p.grain.key_fields.join(", ") })}</span> : null}</> : <Dash />}</Fact>
+        <Fact label={tr("Record grain")}>{p.grain.table ? <><SapCode table={p.grain.table} />{p.grain.key_fields.length ? <span className="m2-meta"> {tr("one record per {keys}", { keys: p.grain.key_fields.join(", ") })}</span> : null}</> : <Dash />}</Fact>
         <Fact label={tr("Tables")}>{p.tables.length ? <Mono>{p.tables.join(", ")}</Mono> : <Dash />}</Fact>
         <Fact label={tr("Population")}>{tr("{population} records checked", { population: int(p.population) })}</Fact>
         <Fact label={tr("Failing")}>{tr("{failing} records", { failing: int(p.failing) })}</Fact>
@@ -874,6 +874,13 @@ export function RuleActions({ view, canvas }: { view: RuleView; canvas?: boolean
     setPanel(null);
     void qc.invalidateQueries({ queryKey: ["v2", "rule-scope"] });
   };
+  const own = view.scope.tenant_rule;
+  const toast = useToast();
+  const flip = useMutation({
+    mutationFn: (on: boolean) => setRuleEnabled(own!.id, on),
+    onSuccess: (_r, on) => finish(on ? tr("{id} is enabled; the next run checks it.", { id: view.id }) : tr("{id} is disabled; the next run skips it.", { id: view.id })),
+    onError: (e) => toast.show(errorSentence(e, tr("The rule could not be changed.")), "error"),
+  });
   return (
     <Sec title={tr("Actions")}>
       <div className="m2-acts">
@@ -885,9 +892,17 @@ export function RuleActions({ view, canvas }: { view: RuleView; canvas?: boolean
         <V2Link href={`/r/${encodeURIComponent(view.id)}?tab=failing`} className="m2-btn">
           {tr("Open failing records")}
         </V2Link>
+        <V2Link href={`/issues?rule=${encodeURIComponent(view.id)}`} className="m2-btn" data-testid="rule-issues">
+          {tr("Open its issues")}
+        </V2Link>
         {canSuppress ? (
           <button type="button" className="m2-btn" aria-expanded={panel === "suppress"} onClick={() => setPanel(panel === "suppress" ? null : "suppress")}>
             {tr("Suppress")}
+          </button>
+        ) : null}
+        {canEdit && own ? (
+          <button type="button" className="m2-btn" disabled={flip.isPending} aria-pressed={own.enabled} onClick={() => flip.mutate(!own.enabled)}>
+            {own.enabled ? tr("Disable rule") : tr("Enable rule")}
           </button>
         ) : null}
         {canEdit ? (

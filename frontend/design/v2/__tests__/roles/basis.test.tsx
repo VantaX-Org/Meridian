@@ -31,7 +31,7 @@ describe("the SAP Basis jobs", () => {
     fireEvent.click(within(dry).getByRole("button", { name: "Dry run" }));
     const plan = await within(dry).findByTestId("dry-run-plan");
     expect(norm(plan)).toContain("512,346 rows in 5 tables, about 2 minutes (this system's recent speed, 4,211 rows a second).");
-    expect(within(plan).getByRole("rowheader", { name: "MARA" })).toBeInTheDocument();
+    expect(within(plan).getByRole("rowheader", { name: / MARA$/ })).toBeInTheDocument();
   });
 
   it("starts a delta extraction when the last download allows one", async () => {

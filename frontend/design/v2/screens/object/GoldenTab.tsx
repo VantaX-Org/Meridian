@@ -10,7 +10,7 @@ import { useLandscape } from "@/lib/v2/queries";
 import { int, moduleFromSlug } from "@/lib/v2/score";
 import { type GridColumn } from "../../Grid";
 import "../../mdm.css";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link, SapCode } from "../../parts";
 import { ToolGrid } from "../../GridTools";
 import { t } from "@/lib/v2/i18n";
 import { ResultFrame, useOutcome } from "../../inspector/shared";
@@ -63,7 +63,7 @@ function Survivorship({ module }: { module: string }) {
         <ul className="m2-flist" aria-label={t("Survivorship rules by field")}>
           {rules.map((r) => (
             <li key={r.id}>
-              <Mono>{r.field}</Mono>
+              <span><SapCode field={r.field} /></span>
               <span className="m2-meta">
                 {RULE_LABEL[r.rule_type] ?? r.rule_type}
                 {r.trusted_sources?.length ? `, ${r.trusted_sources.join(", ")}` : ""}

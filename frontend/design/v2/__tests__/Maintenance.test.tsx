@@ -4,6 +4,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import { fixtureResponse, fixtureWrite } from "@/lib/api/v2/fixtures";
 import { resetMaintenanceFixture } from "@/lib/api/v2/fixtures/maintenance";
 import type { MaintenanceWindow } from "@/lib/api/v2/maintenance";
+import * as maintApi from "@/lib/api/v2/maintenance";
 import { resetKeptOutcomes } from "../inspector/shared";
 import { MaintenanceBlock } from "../admin/maintenance";
 import { setUrl } from "./nav-store";
@@ -51,6 +52,12 @@ describe("scheduled maintenance", () => {
 
   it("the fixture refuses times without a zone, as the route does", () => {
     expect(() => fixtureWrite("PUT", "/settings/maintenance", { windows: [{ title: "x", starts_at: "2030-01-01T00:00", ends_at: "2030-01-01T01:00", detail: null }] }, {})).toThrow(/time zone/);
+  });
+
+  it("says when no window is scheduled", async () => {
+    vi.spyOn(maintApi, "getMaintenance").mockResolvedValue({ windows: [] } as Awaited<ReturnType<typeof maintApi.getMaintenance>>);
+    renderWithQuery(<MaintenanceBlock />);
+    expect(await screen.findByTestId("maint-none")).toHaveTextContent("No maintenance window is scheduled.");
   });
 
   it("is hidden without manage_settings", () => {

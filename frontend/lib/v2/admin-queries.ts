@@ -108,6 +108,10 @@ export const useScoring = (enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "settings", "scoring"), api.getScoring, enabled);
 };
+export const useQualityThresholds = (enabled = true) => {
+  const f = useFixture();
+  return useRead(k(f, "settings", "quality-thresholds"), api.getQualityThresholds, enabled);
+};
 export const useCostModel = (enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "settings", "cost"), api.getCostModel, enabled);
@@ -167,6 +171,10 @@ export const useMyPreferences = () => {
   return useRead(k(f, "me", "preferences"), api.getMyPreferences);
 };
 
+export const useExportOptions = (enabled = true) => {
+  const f = useFixture();
+  return useRead(k(f, "reports", "exports", "options"), rep.getExportOptions, enabled);
+};
 export const useReportHistory = (kind?: string) => {
   const f = useFixture();
   return useRead(k(f, "reports", "history", kind ?? ""), () => rep.getReportHistory({ kind, limit: 100 }));

@@ -12,7 +12,7 @@
  *   GET /webhooks/events, GET, PUT /settings/automation
  *   GET /config/drift/alerts
  *   GET /objects/{module}/contracts, PUT /contracts/{id}/enforcement, GET /contracts/{id}/breaches
- *   GET /versions/{id}/changes
+ *   GET /versions/{id}/changes, GET /versions/{id}/semantic-types, PUT /versions/{id}/semantic-types/{column}
  * A field the backend does not return is not here; the screens show a dash for a null.
  */
 import { v2Get, v2Send } from "./client";
@@ -283,6 +283,68 @@ export const listDeliveries = (id: string, status?: WebhookDelivery["status"]): 
   v2Get(`/webhooks/${encodeURIComponent(id)}/deliveries`, { status, limit: 100 });
 export const getAutomation = (): Promise<AutomationSettings> => v2Get("/settings/automation");
 export const putAutomation = (body: Partial<AutomationSettings>): Promise<AutomationSettings> => v2Send("PUT", "/settings/automation", body);
+
+export type ChatEvent = "dqs_drop" | "threshold_breach" | "run_failed" | "sla_breach" | "firewall_rejections";
+export type ChatKind = "slack" | "teams";
+/** Chat alerts: the webhook URLs are server environment secrets; the API only says whether each is set. */
+export interface ChatAlerts {
+  channels: Record<ChatKind, boolean>;
+  events: ChatEvent[];
+  available: ChatEvent[];
+}
+export interface ChatTest {
+  channels: Record<ChatKind, { configured: boolean; delivered: boolean; error: string | null }>;
+}
+export const getChatAlerts = (): Promise<ChatAlerts> => v2Get("/settings/chat-alerts");
+export const putChatAlerts = (events: ChatEvent[]): Promise<ChatAlerts> => v2Send("PUT", "/settings/chat-alerts", { events });
+export const testChatAlerts = (): Promise<ChatTest> => v2Send("POST", "/settings/chat-alerts/test");
+
+/** Email, phone and address verification: the latest result of each contact rule, with every sampled record's own reason. */
+export interface ContactReason { count: number; text: string }
+export interface ContactSample { record_key: string; value: string | null; reason: string | null; reason_text: string | null }
+export interface ContactRule {
+  check_id: string;
+  module: string;
+  message: string;
+  field: string | null;
+  affected: number;
+  total: number;
+  pass_rate: number;
+  reasons: Record<string, ContactReason>;
+  fixes: number;
+  samples: ContactSample[];
+  checked_at: string | null;
+}
+export interface ContactVerification { rules: ContactRule[]; settings: { mx: boolean } }
+export const getContactVerification = (): Promise<ContactVerification> => v2Get("/contact-verification");
+export const putContactVerification = (mx: boolean): Promise<{ mx: boolean }> => v2Send("PUT", "/contact-verification/settings", { mx });
+
+/** Semantic types and trust score of an uploaded run (api/routes/semantic_types.py). Shares only, never values. */
+export type SemanticType = "iban" | "eu_vat" | "email" | "url" | "date" | "phone" | "postcode" | "country" | "currency_amount" | "person_name";
+export interface SemanticColumn {
+  column: string;
+  detected: SemanticType | null;
+  confidence: number;
+  type: SemanticType | null;
+  confirmed: boolean;
+  filled: number;
+  conformance: number | null;
+}
+export interface SuggestedRule { column: string; type: SemanticType; check_class: string; params: Record<string, unknown>; message: string }
+export interface TrustParts { dqs: number | null; conformance: number | null; freshness: number | null; completeness: number | null }
+export interface SemanticTypes {
+  profiled: boolean;
+  source: string | null;
+  origin: string;
+  rows_sampled: number | null;
+  columns: SemanticColumn[];
+  types: SemanticType[];
+  trust: { score: number | null; parts: TrustParts; weights: Record<keyof TrustParts, number> };
+  suggested_rules: SuggestedRule[];
+}
+export const getSemanticTypes = (versionId: string): Promise<SemanticTypes> => v2Get(`/versions/${encodeURIComponent(versionId)}/semantic-types`);
+export const putSemanticType = (versionId: string, column: string, type: SemanticType | "none"): Promise<{ column: string; type: string }> =>
+  v2Send("PUT", `/versions/${encodeURIComponent(versionId)}/semantic-types/${encodeURIComponent(column)}`, { type });
 
 // ── config drift alerts ──────────────────────────────────────────────────────
 

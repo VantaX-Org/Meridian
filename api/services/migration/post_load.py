@@ -5,8 +5,8 @@ exists (``snapshot.py``), else a rebuild from the current mappings by ``export.b
 mapping changed after export shows up as a difference. Both carry target tables, target field names, values after value
 mapping and SOURCE_RECORD. The found side is the target system's latest extraction. Records are
 matched on the target table's DDIC key, with ALPHA / MATN1 keys padded to their internal form on both sides
-(``checks.frames.internal_format``) and values trimmed. Nothing else is normalised: a value that differs only in
-number format or case is reported as different.
+(``checks.frames.internal_format``) and values trimmed. Nothing else is normalised before the comparison: a value that
+differs only in number format or case is reported as different, and the classifier below says why.
 
 Claims are limited to the loaded key set. A target record that is not in the load is not "unexpected"; only a record
 whose key matches a record the blocking gaps held back is, because that one was meant to stay out. A table is reported
@@ -16,11 +16,20 @@ compared on the fields present; the lost ones carry ``in_target_extract`` false.
 ``key_not_in_target_extract``. A field the load left blank is not compared, since the target may fill
 its own default. Pure and deterministic; no model sees any value. A differing personal field (``is_pii_field``) is
 counted and listed with ``withheld`` set and no values, so a stored result never repeats personal data.
+
+Every differing value is then classified (``classify_difference``) as an expected difference, with the cause and the
+target DDIC evidence for it, or as real. Expected causes: ALPHA / MATN1 conversion padding, case on a field the
+dictionary does not mark lowercase (SAP uppercases it on input), a confirmed value mapping, truncation at the target
+field length, and number or date format equivalence on a numeric or DATS field. Anything else is real, and the
+verdict counts real differences only. Classification runs before personal values are dropped, so a withheld row
+still carries its cause.
 """
 
 from __future__ import annotations
 
 from typing import Any, Optional
+
+from datetime import datetime
 
 import pandas as pd
 
@@ -29,12 +38,85 @@ from api.utils.pii_fields import is_pii_field
 from api.services.scoring import score_module
 from checks.base import CheckResult, record_keys
 from checks.frames import TableFrames, internal_format
-from sap.ddic import Dictionary
+from sap.ddic import Dictionary, Field
 
 RECORD_CAP = 100  # record rows kept per table and kind (missing, differing, unexpected)
 REASON_TOP = 10
 KINDS = ("missing", "differing", "unexpected")
 NO_TARGET_ANALYSIS = "The target system has no completed analysis. Extract the target first."
+EXPECTED_CAUSES = ("alpha_padding", "case", "value_mapping", "truncation", "number_format", "date_format")
+NUMERIC_TYPES = {"QUAN", "CURR", "DEC", "FLTP", "INT1", "INT2", "INT4", "INT8", "NUMC"}
+_DATE_FORMATS = ("%Y%m%d", "%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%m/%d/%Y")
+
+
+def _number(v: str) -> Optional[float]:
+    """A number written with a thousands separator, a decimal comma or SAP's trailing minus, else None."""
+    s = v.strip().replace(" ", "")
+    if s.endswith("-"):
+        s = "-" + s[:-1]
+    if "," in s and "." in s:  # the later one is the decimal mark
+        s = s.replace(".", "").replace(",", ".") if s.rfind(",") > s.rfind(".") else s.replace(",", "")
+    elif "," in s:
+        s = s.replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _date(v: str) -> Optional[str]:
+    s = v.strip()[:10]
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(s, fmt).strftime("%Y%m%d")
+        except ValueError:
+            continue
+    return None
+
+
+def ddic_evidence(field: Optional[Field]) -> dict:
+    """The target DDIC attributes a cause rests on."""
+    if field is None:
+        return {"description": "", "type": None, "length": None, "conversion_exit": None, "lowercase": None}
+    return {"description": field.description, "type": field.type, "length": field.length,
+            "conversion_exit": field.conversion_exit or None, "lowercase": field.lowercase}
+
+
+def classify_difference(expected: str, found: str, field: Optional[Field],
+                        mapping: Optional[dict[str, str]] = None) -> str:
+    """Why a loaded value differs from the one in the target: one of EXPECTED_CAUSES, or "real".
+
+    Every cause is read from the target field's DDIC entry or a confirmed value mapping, never guessed. A field the
+    dictionary does not know can still be explained by a mapping; otherwise it is real."""
+    e, f = (expected or "").strip(), (found or "").strip()
+    if mapping and (mapping.get(e) == f or mapping.get(f) == e):
+        return "value_mapping"
+    if field is None:
+        return "real"
+    if field.conversion_exit in ("ALPHA", "MATN1") and e.lstrip("0") == f.lstrip("0") and (e or f):
+        return "alpha_padding"
+    if not field.lowercase and field.type in ("CHAR", "SSTR", "STRG", "LANG", "CUKY", "UNIT") and e.upper() == f.upper():
+        return "case"
+    if field.length and len(e) > field.length and e[:field.length].rstrip() == f:
+        return "truncation"
+    if field.type in NUMERIC_TYPES:
+        a, b = _number(e), _number(f)
+        if a is not None and b is not None and abs(a - b) <= 10 ** -(field.decimals or 0) / 2:
+            return "number_format"
+    if field.type == "DATS" and _date(e) is not None and _date(e) == _date(f):
+        return "date_format"
+    return "real"
+
+
+def _mapping_for(value_maps: Optional[dict[str, dict[str, str]]], table: str, field: Optional[Field],
+                 name: str) -> Optional[dict[str, str]]:
+    """The confirmed map for the target field, else for the check table field it is validated against."""
+    if not value_maps:
+        return None
+    own = value_maps.get(f"{table}.{name}")
+    if own is None and field is not None and field.check_table and field.check_field:
+        own = value_maps.get(f"{field.check_table}.{field.check_field}")
+    return own
 
 
 def _prepare(df: pd.DataFrame, table: str, fields: list[str], dictionary: Dictionary) -> pd.DataFrame:
@@ -48,12 +130,13 @@ def _prepare(df: pd.DataFrame, table: str, fields: list[str], dictionary: Dictio
 
 
 def _comparison(table: str, exp: pd.DataFrame, held: Optional[pd.DataFrame], target: TableFrames,
-                dictionary: Dictionary, cap: int) -> dict:
+                dictionary: Dictionary, cap: int, value_maps: Optional[dict[str, dict[str, str]]] = None) -> dict:
     t = dictionary.table(table)
     out: dict = {
         "table": table, "description": t.description if t else "", "comparable": False, "reason": None,
         "key_fields": [], "expected": 0, "found": 0, "missing": 0, "unexpected": 0, "duplicate_expected": 0,
         "duplicate_found": 0, "fields": [], "records": [], "records_total": dict.fromkeys(KINDS, 0), "capped": False,
+        "expected_differences": 0, "real_differences": 0, "causes": {},
     }
     keys = list(dictionary.keys(table))
     out["key_fields"] = keys
@@ -118,7 +201,9 @@ def _comparison(table: str, exp: pd.DataFrame, held: Optional[pd.DataFrame], tar
             continue
         fd = dictionary.field(table, f)
         info = {"field": f, "description": fd.description if fd else "",
-                "in_target_extract": f in in_target, "compared": 0, "matched": 0, "differing": 0}
+                "in_target_extract": f in in_target, "compared": 0, "matched": 0, "differing": 0,
+                "expected_differences": 0, "real_differences": 0, "ddic": ddic_evidence(fd)}
+        mapping = _mapping_for(value_maps, table, fd, f)
         if f in in_target and len(hit):
             sel = hit[f] != ""  # a blank in the load is not a claim about the target
             info["compared"] = int(sel.sum())
@@ -127,9 +212,15 @@ def _comparison(table: str, exp: pd.DataFrame, held: Optional[pd.DataFrame], tar
             info["differing"] = info["compared"] - info["matched"]
             personal = is_pii_field(f"{table}.{f}")
             for i in same.index[~same]:
+                cause = classify_difference(hit.at[i, f], landed.at[i, f], fd, mapping)
+                side = "real_differences" if cause == "real" else "expected_differences"
+                info[side] += 1
+                out[side] += 1
+                out["causes"][cause] = out["causes"].get(cause, 0) + 1
                 add("differing", {"key": hit.at[i, "_key"], "source_record": hit.at[i, "SOURCE_RECORD"], "field": f,
                                   "expected": None if personal else hit.at[i, f],
-                                  "found": None if personal else landed.at[i, f], "withheld": personal})
+                                  "found": None if personal else landed.at[i, f], "withheld": personal,
+                                  "cause": cause, "ddic": info["ddic"]})
         out["fields"].append(info)
 
     if held is not None and not held.empty and all(k in held.columns for k in keys):
@@ -145,9 +236,12 @@ def _comparison(table: str, exp: pd.DataFrame, held: Optional[pd.DataFrame], tar
 
 
 def reconcile(expected: dict[str, pd.DataFrame], held_back: dict[str, pd.DataFrame], target: TableFrames,
-              dictionary: Dictionary, cap: int = RECORD_CAP) -> dict:
-    """Per target table: expected, found, missing, unexpected, per-field match counts and capped record rows."""
-    tables = [_comparison(t, df, held_back.get(t), target, dictionary, cap) for t, df in sorted(expected.items())]
+              dictionary: Dictionary, cap: int = RECORD_CAP,
+              value_maps: Optional[dict[str, dict[str, str]]] = None) -> dict:
+    """Per target table: expected, found, missing, unexpected, per-field match counts, expected vs real
+    differences by cause, and capped record rows. ``value_maps`` is {TABLE.FIELD: {source: target}}, confirmed only."""
+    tables = [_comparison(t, df, held_back.get(t), target, dictionary, cap, value_maps)
+              for t, df in sorted(expected.items())]
     ok = [t for t in tables if t["comparable"]]
     return {
         "tables": tables,
@@ -156,6 +250,8 @@ def reconcile(expected: dict[str, pd.DataFrame], held_back: dict[str, pd.DataFra
             "tables": len(tables), "comparable": len(ok),
             **{k: sum(t[k] for t in ok) for k in ("expected", "found", "missing", "unexpected")},
             "differing_fields": sum(f["differing"] for t in ok for f in t["fields"]),
+            "expected_differences": sum(t["expected_differences"] for t in ok),
+            "real_differences": sum(t["real_differences"] for t in ok),
         },
     }
 

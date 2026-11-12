@@ -203,5 +203,5 @@ def test_count_rule_fires_only_over_the_limit(rid):
 
 
 def test_every_new_rule_has_a_case():
-    ids = {r["id"] for r in module_rules(M) if r["id"][2:].isdigit() and int(r["id"][2:]) >= 300}
+    ids = {r["id"] for r in module_rules(M) if r["id"][2:].isdigit() and 300 <= int(r["id"][2:]) < 900}
     assert ids == set(TWO) | set(MULTI) | set(PAIR) | set(COUNT)

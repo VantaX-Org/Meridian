@@ -15,7 +15,7 @@ import { int } from "@/lib/v2/score";
 import { duration } from "../shell/StatusStrip";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
 import { VerdictMark } from "../marks";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, SapCode, Skeleton, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "./shared";
 import { t as tr } from "@/lib/v2/i18n";
 
@@ -59,7 +59,7 @@ function TableProgress({ job }: { job: Job }) {
           {job.tables.map((t) => (
             <tr key={t.table}>
               <td>
-                <Mono>{t.table}</Mono>
+                <SapCode table={t.table} />
               </td>
               <td>{t.status === "live" ? tr("Read") : t.status === "failed" ? tr("Failed") : t.status === "running" ? tr("Reading") : t.status === "queued" ? tr("Waiting") : t.status.replace(/_/g, " ")}</td>
               {withPath ? <td data-testid="job-table-path">{readPathLabel(t)}</td> : null}

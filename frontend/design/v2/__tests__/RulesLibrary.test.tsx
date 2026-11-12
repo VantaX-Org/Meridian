@@ -66,6 +66,7 @@ describe("the rules library", () => {
   });
 
   it("opens on one object from /rules?object=, pages through every rule and exports the grid", async () => {
+    h.allowed.add("export");
     const spy = vi.spyOn(rulelib, "getRuleList");
     setUrl("/rules?fixture=1&object=business_partner");
     render();

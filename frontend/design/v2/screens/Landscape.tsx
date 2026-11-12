@@ -32,6 +32,7 @@ import { contractMark } from "@/lib/v2/step9";
 import { policyMark } from "@/lib/v2/step10";
 import { WavesByValue } from "./step9/Money";
 import { t } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 const SEL_KEY = "mn_v2_sel";
 
@@ -367,7 +368,7 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
         <ViewToggle view={view} />
       </div>
       <div className="m2-frame m2-only-wide">
-        <table className="m2-tbl m2-mx" data-testid="coverage-matrix">
+        <TableExport><table className="m2-tbl m2-mx" data-testid="coverage-matrix">
           <colgroup>
             <col style={{ width: 170 }} />
             {systems.map((s) => (
@@ -426,7 +427,7 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
               </tr>
                 ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
       <div className="m2-mlist">
         {groups
@@ -458,7 +459,7 @@ function BasisTasks({ landscape }: { landscape: Landscape }) {
         <h2 className="m2-h2">{t("Your next work")}</h2>
       </div>
       <div className="m2-frame">
-        <table className="m2-tbl">
+        <TableExport><table className="m2-tbl">
           <thead>
             <tr>
               <th scope="col">{t("Task")}</th>
@@ -477,7 +478,7 @@ function BasisTasks({ landscape }: { landscape: Landscape }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
       <p className="m2-prov">{t("Tasks come from each system's state in the last run.")}</p>
     </section>
@@ -685,6 +686,11 @@ export function LandscapeCanvas() {
           : t("This page shows every connected system at its newest run: {systems} systems and {objects} objects. {held_under_85} cannot reach 85 yet. Start with the fix queue, or open any object to see its run.", { systems: L.systems.length, objects: L.sentence.objects, held_under_85: L.sentence.held_under_85 })}
       </Lede>
       <Welcome />
+      {/* The role's next step comes first, under the lede: it is the one strong control of the canvas. */}
+      {session.persona === "owner" ? <OwnerLine /> : null}
+      <div className="m2-cta" data-testid="home-next">
+        <NextStep landscape={L} persona={session.persona} waves={waves} />
+      </div>
       <HomeHeadlines L={L} />
       <GoLiveBanner landscape={L} waves={waves} />
       {L.cells.length ? <ReadinessMatrix landscape={L} run={run} /> : null}
@@ -714,10 +720,6 @@ export function LandscapeCanvas() {
         <AletheiaDock />
       </div>
       {L.cells.length === 0 ? <FirstSteps connected analysed={false} systemId={L.systems[0]?.id} /> : null}
-      {session.persona === "owner" ? <OwnerLine /> : null}
-      <div className="m2-cta">
-        <NextStep landscape={L} persona={session.persona} waves={waves} />
-      </div>
       {session.persona === "basis" ? <BasisTasks landscape={L} /> : null}
       {session.persona === "basis" ? <BasisHome landscape={L} /> : null}
       <Coverage landscape={L} run={run} view={view} waves={waves} />

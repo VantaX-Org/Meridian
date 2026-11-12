@@ -21,6 +21,7 @@ import { AdminPage, Block, Confirm, Fld, Loaded, NeedsPermission, Note, Pager, S
 import { ToolGrid } from "../GridTools";
 import { t } from "@/lib/v2/i18n";
 import { labelText, moduleText } from "@/lib/v2/labels";
+import { TableExport } from "@/design/v2/TableExport";
 
 /* ── Field mappings ── */
 
@@ -260,7 +261,7 @@ export function ReferenceSection() {
                 <EmptyFrame>{t("No reference data is loaded for {name}. Upload a list below.", { name: system?.name ?? t("this system") })}</EmptyFrame>
               ) : (
                 <div className="m2-frame" tabIndex={0}>
-                  <table className="m2-tbl" aria-label={t("Reference lists")}>
+                  <TableExport><table className="m2-tbl" aria-label={t("Reference lists")}>
                     <thead>
                       <tr>
                         <th scope="col">{t("List")}</th>
@@ -277,13 +278,13 @@ export function ReferenceSection() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></TableExport>
                 </div>
               )
             }
           </Loaded>
           {write ? (
-            <Block title={t("Upload or replace a list")} hint={t("Postal codes: a CSV with the columns country, postcode (the SAP country key). Bank codes: the licensed SWIFT BIC directory as CSV, BIC in the first column. An upload replaces the system's current list.")}>
+            <Block title={t("Upload or replace a list")} hint={t("Postal codes: a CSV with the columns country, postcode (the SAP country key), and optionally city and region, so address rules also check each record's city and region against its postal code. Bank codes: the licensed SWIFT BIC directory as CSV, BIC in the first column. An upload replaces the system's current list.")}>
               <div className="m2-fgrid">
                 <Fld label={t("List")}>
                   <select value={kind} onChange={(e) => setKind(e.target.value as "postal-codes" | "bic")}>
@@ -352,7 +353,7 @@ function AiAudit() {
           ) : (
             <>
               <div className="m2-frame" tabIndex={0}>
-                <table className="m2-tbl" aria-label={t("AI calls")}>
+                <TableExport><table className="m2-tbl" aria-label={t("AI calls")}>
                   <thead>
                     <tr>
                       <th scope="col">{t("When")}</th>
@@ -375,7 +376,7 @@ function AiAudit() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></TableExport>
               </div>
               <Pager offset={page * 10} limit={10} total={d.total} onPage={(o) => setPage(o / 10)} />
             </>

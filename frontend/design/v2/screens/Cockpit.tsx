@@ -14,7 +14,8 @@ import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { Sparkline } from "../charts";
 import { SeverityMark, VerdictMark, type SeverityKey } from "../marks";
-import { V2Link } from "../parts";
+import { SapCode, V2Link } from "../parts";
+import { TableExport } from "@/design/v2/TableExport";
 
 const DAY = 86_400_000;
 const SEV_WORD: Record<string, string> = { get critical() { return t("Critical"); }, get high() { return t("High"); }, get medium() { return t("Medium"); }, get low() { return t("Low"); }, get info() { return t("Info"); } };
@@ -67,7 +68,7 @@ export function ReadinessMatrix({ landscape, run }: { landscape: Landscape; run:
         </span>
       </header>
       <div className="m2-ck-scroll">
-        <table className="m2-ck-matrix">
+        <TableExport><table className="m2-ck-matrix">
           <thead>
             <tr>
               <th scope="col">{t("Object")}</th>
@@ -88,7 +89,7 @@ export function ReadinessMatrix({ landscape, run }: { landscape: Landscape; run:
           {landscape.systems.map((s) => (
             <SystemRows key={s.id} system={s} cells={landscape.cells.filter((c) => c.system_id === s.id)} label={label} value={value} currency={money?.currency ?? null} run={run} />
           ))}
-        </table>
+        </table></TableExport>
       </div>
     </section>
   );
@@ -187,7 +188,7 @@ export function FixPipeline({ label, module }: { label: (m: string) => string; m
               </li>
             ))}
           </ol>
-          <table className="m2-ck-mini">
+          <TableExport><table className="m2-ck-mini">
             <caption className="m2-sr">{t("Records at each step, by object")}</caption>
             <thead>
               <tr>
@@ -213,7 +214,7 @@ export function FixPipeline({ label, module }: { label: (m: string) => string; m
                 );
               })}
             </tbody>
-          </table>
+          </table></TableExport>
         </>
       ) : (
         <p className="m2-cc-empty">{t("Reading the work")}</p>
@@ -293,7 +294,7 @@ export function RuleBoard({ label, module, limit = 12 }: { label: (m: string) =>
       <p className="m2-meta m2-ck-note">{t("Rules ordered by records failing; the bar is the share of that rule's population that fails, worked out from the newest run of each object.")}</p>
       {rows.length ? (
         <div className="m2-ck-scroll">
-          <table className="m2-ck-rules">
+          <TableExport><table className="m2-ck-rules">
             <thead>
               <tr>
                 <th scope="col">{t("Rule")}</th>
@@ -311,7 +312,7 @@ export function RuleBoard({ label, module, limit = 12 }: { label: (m: string) =>
                 <RuleRow key={`${g.module}:${g.check_id}`} g={g} object={label(g.module)} owner={owner(g.module)} top={top} />
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </div>
       ) : (
         <p className="m2-cc-empty">{q.isPending ? t("Reading the rules") : t("No rule is failing.")}</p>
@@ -331,7 +332,7 @@ function RuleRow({ g, object, owner, top }: { g: WorkGroup; object: string; owne
         <V2Link href={`/work?rule=${encodeURIComponent(g.check_id)}`} className="m2-ck-rule">
           <span className="m2-mono">{g.check_id}</span>
           <span>{g.message ?? "—"}</span>
-          {g.field ? <small className="m2-mono">{g.field}</small> : null}
+          {g.field ? <small><SapCode field={g.field} /></small> : null}
         </V2Link>
       </th>
       <td>{object}</td>

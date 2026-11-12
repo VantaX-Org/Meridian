@@ -46,17 +46,19 @@ describe("Run canvas", () => {
   it("draws a row per object scored by this run: measured, shown, verdict, records, rules, open work", async () => {
     renderWithQuery(<RunCanvas id={R8} />);
     const table = await screen.findByTestId("run-objects");
-    expect(within(table).getAllByRole("columnheader").map((h) => norm(h))).toEqual(["Object", "Measured", "Shown", "Verdict", "Records checked", "Rules", "Open work"]);
+    expect(within(table).getAllByRole("columnheader").map((h) => norm(h))).toEqual(["Object", "Measured", "Shown", "Verdict", "Band", "Records checked", "Rules", "Open work"]);
     const rows = within(table).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(15);
     const mm = within(table).getByRole("row", { name: /Material master/ });
-    expect(within(mm).getAllByRole("cell").map((c) => norm(c))).toEqual(["71.8", "70.0 capped", "No-go", "61,816", "80", "25,712"]);
+    // the band reads the tenant quality thresholds: material master overall is held to 92, 80, 65
+    await waitFor(() => expect(within(mm).getByTestId("band-overall")).toBeInTheDocument());
+    expect(within(mm).getAllByRole("cell").map((c) => norm(c))).toEqual(["71.8", "70.0 capped", "No-go", "Below warning", "61,816", "80", "25,712"]);
     expect(within(mm).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining(`/o/ecc-production/material-master?run=${R8}`));
     const gl = within(table).getByRole("row", { name: /FI general ledger/ });
     expect(within(gl).getByText("Go")).toBeInTheDocument();
     // the table adds up to the status line
-    const records = rows.reduce((sum, r) => sum + n(norm(within(r).getAllByRole("cell")[3])), 0);
-    const rules = rows.reduce((sum, r) => sum + n(norm(within(r).getAllByRole("cell")[4])), 0);
+    const records = rows.reduce((sum, r) => sum + n(norm(within(r).getAllByRole("cell")[4])), 0);
+    const rules = rows.reduce((sum, r) => sum + n(norm(within(r).getAllByRole("cell")[5])), 0);
     expect(records).toBe(landscapeFixture.status_strip.records_checked);
     expect(rules).toBe(landscapeFixture.status_strip.rules_measured);
     expect(screen.getByTestId("run-sentence")).toHaveTextContent("15 objects scored: 2 go, 2 at risk, 11 no-go.");

@@ -52,44 +52,44 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
 | KNA1 | KUNNR | Customer Number | y | 35 / 35 | SDCM001, SDCM002, SDCM022, SDCM024, SDCM051, SDCM055 +29 more |  |
-| KNA1 | LAND1 | Country Key | y | 76 / 76 | SDCM005, SDCM050, SDCM300, SDCM301, SDCM302, SDCM303 +70 more |  |
+| KNA1 | LAND1 | Country Key | y | 78 / 78 | SDCM005, SDCM050, SDCM300, SDCM301, SDCM302, SDCM303 +72 more |  |
 | KNA1 | NAME1 | Name 1 | y | 11 / 11 | SDCM003, SDCM381, SDCM413, SDCM428, SDCM438, SDCM439 +5 more |  |
 | KNA1 | NAME2 | Name 2 | y | 2 / 2 | SDCM414, SDCM438 |  |
 | KNA1 | ORT01 | City | y | 5 / 5 | SDCM057, SDCM429, SDCM437, SDCM440, SDCM838 |  |
-| KNA1 | PSTLZ | Postal Code | y | 34 / 34 | SDCM300, SDCM301, SDCM302, SDCM303, SDCM304, SDCM305 +28 more |  |
+| KNA1 | PSTLZ | Postal Code | y | 35 / 35 | SDCM300, SDCM301, SDCM302, SDCM303, SDCM304, SDCM305 +29 more |  |
 | KNA1 | REGIO | Region (State, Province, County) | y | 4 / 4 | SDCM330, SDCM331, SDCM332, SDCM333 |  |
 | KNA1 | SORTL | Sort field | y | 1 / 1 | SDCM422 |  |
 | KNA1 | STRAS | House number and street | y | 2 / 2 | SDCM057, SDCM425 |  |
-| KNA1 | TELF1 | First telephone number | y | 5 / 5 | SDCM382, SDCM423, SDCM426, SDCM442, SDCM443 |  |
+| KNA1 | TELF1 | First telephone number | y | 6 / 6 | SDCM382, SDCM423, SDCM426, SDCM442, SDCM443, SDCM941 |  |
 | KNA1 | TELFX | Fax Number | y | 4 / 4 | SDCM384, SDCM424, SDCM427, SDCM443 |  |
 | KNA1 | XCPDK | Indicator: Is the account a one-time account? | y | 1 / 1 | SDCM057 |  |
 | KNA1 | ADRNR | Address | y | 1 / 1 | SDCM863 |  |
 | KNA1 | MCOD1 | Search term for matchcode search | y | 1 / 1 | SDCM428 |  |
-| KNA1 | MCOD2 | Search Term for Matchcode Search | y | 1 / 1 | SDCM939 |  |
+| KNA1 | MCOD2 | Search Term for Matchcode Search | y | 1 / 1 | SDCM943 |  |
 | KNA1 | MCOD3 | Search term for matchcode search | y | 1 / 1 | SDCM429 |  |
-| KNA1 | ANRED | Title | y | 1 / 1 | SDCM940 |  |
+| KNA1 | ANRED | Title | y | 1 / 1 | SDCM944 |  |
 | KNA1 | AUFSD | Central order block for customer | y | 3 / 3 | SDCM209, SDCM228, SDCM817 |  |
-| KNA1 | BAHNE | Express train station | y | 1 / 1 | SDCM941 |  |
-| KNA1 | BAHNS | Train station | y | 1 / 1 | SDCM942 |  |
+| KNA1 | BAHNE | Express train station | y | 1 / 1 | SDCM945 |  |
+| KNA1 | BAHNS | Train station | y | 1 / 1 | SDCM946 |  |
 | KNA1 | BBBNR | International location number  (part 1) | y | 2 / 2 | SDCM866, SDCM867 |  |
 | KNA1 | BBSNR | International location number (Part 2) | y | 2 / 2 | SDCM866, SDCM867 |  |
-| KNA1 | BEGRU | Authorization Group | y | 1 / 1 | SDCM943 |  |
+| KNA1 | BEGRU | Authorization Group | y | 1 / 1 | SDCM947 |  |
 | KNA1 | BRSCH | Industry key | y | 1 / 1 | SDCM813 |  |
-| KNA1 | BUBKZ | Check digit for the international location number | y | 1 / 1 | SDCM944 |  |
-| KNA1 | DATLT | Data communication line no. | y | 1 / 1 | SDCM945 |  |
+| KNA1 | BUBKZ | Check digit for the international location number | y | 1 / 1 | SDCM948 |  |
+| KNA1 | DATLT | Data communication line no. | y | 1 / 1 | SDCM949 |  |
 | KNA1 | ERDAT | Date on which the Record Was Created | y | 2 / 2 | SDCM460, SDCM708 |  |
 | KNA1 | ERNAM | Name of Person who Created the Object |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
-| KNA1 | EXABL | Indicator: Unloading points exist | y | 1 / 1 | SDCM946 |  |
+| KNA1 | EXABL | Indicator: Unloading points exist | y | 1 / 1 | SDCM950 |  |
 | KNA1 | FAKSD | Central billing block for customer | y | 3 / 3 | SDCM211, SDCM742, SDCM766 |  |
 | KNA1 | FISKN | Account number of the master record with the fiscal address | y | 1 / 1 | SDCM819 |  |
 | KNA1 | KNAZK | Working Time Calendar | y | 1 / 0 | DXR9344fd3a | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | KNRZA | Account number of an alternative payer | y | 1 / 1 | SDCM818 |  |
-| KNA1 | KONZS | Group key | y | 1 / 1 | SDCM947 |  |
+| KNA1 | KONZS | Group key | y | 1 / 1 | SDCM951 |  |
 | KNA1 | KTOKD | Customer Account Group | y | 1 / 1 | SDCM008 |  |
 | KNA1 | KUKLA | Customer classification | y | 1 / 1 | SDCM815 |  |
 | KNA1 | LIFNR | Account Number of Vendor or Creditor | y | 3 / 3 | SDCM055, SDCM761, SDCM812 |  |
 | KNA1 | LIFSD | Central delivery block for the customer | y | 3 / 3 | SDCM210, SDCM741, SDCM763 |  |
-| KNA1 | LOCCO | City Coordinates | y | 1 / 1 | SDCM948 |  |
+| KNA1 | LOCCO | City Coordinates | y | 1 / 1 | SDCM952 |  |
 | KNA1 | LOEVM | Central Deletion Flag for Master Record | y | 18 / 18 | SDCM051, SDCM208, SDCM239, SDCM246, SDCM431, SDCM532 +12 more |  |
 | KNA1 | NAME3 | Name 3 | y | 1 / 1 | SDCM872 |  |
 | KNA1 | NAME4 | Name 4 | y | 1 / 1 | SDCM873 |  |
@@ -99,26 +99,26 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNA1 | PSTL2 | P.O. Box Postal Code | y | 3 / 3 | SDCM329, SDCM416, SDCM436 |  |
 | KNA1 | COUNC | County Code | y | 1 / 0 | DXRbff95e76 | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | CITYC | City Code | y | 1 / 0 | DXR19821014 | only disabled (DDIC-generated) rules; review for enabling |
-| KNA1 | RPMKR | Regional market | y | 1 / 1 | SDCM949 |  |
+| KNA1 | RPMKR | Regional market | y | 1 / 1 | SDCM953 |  |
 | KNA1 | SPERR | Central posting block | y | 2 / 2 | SDCM212, SDCM229 |  |
 | KNA1 | SPRAS | Language Key | y | 1 / 1 | SDCM419 |  |
 | KNA1 | STCD1 | Tax Number 1 | y | 28 / 28 | SDCM006, SDCM356, SDCM357, SDCM364, SDCM366, SDCM367 +22 more |  |
 | KNA1 | STCD2 | Tax Number 2 | y | 7 / 7 | SDCM355, SDCM365, SDCM374, SDCM380, SDCM841, SDCM848 +1 more |  |
 | KNA1 | STKZA | Indicator: Business Partner Subject to Equalization Tax? | y | 1 / 1 | SDCM865 |  |
 | KNA1 | STKZU | Liable for VAT | y | 1 / 1 | SDCM864 |  |
-| KNA1 | TELBX | Telebox number | y | 1 / 1 | SDCM950 |  |
+| KNA1 | TELBX | Telebox number | y | 1 / 1 | SDCM954 |  |
 | KNA1 | TELF2 | Second telephone number | y | 2 / 2 | SDCM383, SDCM442 |  |
-| KNA1 | TELTX | Teletex number | y | 1 / 1 | SDCM951 |  |
-| KNA1 | TELX1 | Telex number | y | 1 / 1 | SDCM952 |  |
+| KNA1 | TELTX | Teletex number | y | 1 / 1 | SDCM955 |  |
+| KNA1 | TELX1 | Telex number | y | 1 / 1 | SDCM956 |  |
 | KNA1 | LZONE | Transportation zone to or from which the goods are delivered | y | 2 / 1 | DXR8bf067bd, SDCM420 |  |
-| KNA1 | XZEMP | Indicator: Is an alternative payer allowed in document? | y | 1 / 1 | SDCM953 |  |
+| KNA1 | XZEMP | Indicator: Is an alternative payer allowed in document? | y | 1 / 1 | SDCM957 |  |
 | KNA1 | VBUND | Company ID of trading partner | y | 1 / 1 | SDCM814 |  |
 | KNA1 | STCEG | VAT Registration Number | y | 28 / 28 | SDCM006, SDCM334, SDCM335, SDCM336, SDCM337, SDCM338 +22 more |  |
-| KNA1 | DEAR1 | Indicator: Competitor | y | 1 / 1 | SDCM954 |  |
-| KNA1 | DEAR2 | Indicator: Sales partner | y | 1 / 1 | SDCM955 |  |
-| KNA1 | DEAR3 | Indicator: Sales prospect | y | 1 / 1 | SDCM956 |  |
-| KNA1 | DEAR4 | Indicator for customer type 4 | y | 1 / 1 | SDCM957 |  |
-| KNA1 | DEAR5 | ID for default sold-to party | y | 1 / 1 | SDCM958 |  |
+| KNA1 | DEAR1 | Indicator: Competitor | y | 1 / 1 | SDCM958 |  |
+| KNA1 | DEAR2 | Indicator: Sales partner | y | 1 / 1 | SDCM959 |  |
+| KNA1 | DEAR3 | Indicator: Sales prospect | y | 1 / 1 | SDCM960 |  |
+| KNA1 | DEAR4 | Indicator for customer type 4 | y | 1 / 1 | SDCM961 |  |
+| KNA1 | DEAR5 | ID for default sold-to party | y | 1 / 1 | SDCM962 |  |
 | KNA1 | GFORM | Legal status | y | 1 / 0 | DXR8ba37941 | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | BRAN1 | Industry code 1 | y | 5 / 4 | DXR8a2f370b, SDCM445, SDCM446, SDCM447, SDCM448 |  |
 | KNA1 | BRAN2 | Industry code 2 | y | 5 / 4 | DXR29878fca, SDCM445, SDCM446, SDCM447, SDCM448 |  |
@@ -152,10 +152,10 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNA1 | PFORT | PO Box city | y | 2 / 2 | SDCM418, SDCM436 |  |
 | KNA1 | WERKS | Plant | y | 1 / 0 | DXR4d18f1dc | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | DTAMS | Report key for data medium exchange | y | 1 / 0 | DXV2047c5cf | only disabled (DDIC-generated) rules; review for enabling |
-| KNA1 | DTAWS | Instruction key for data medium exchange | y | 1 / 1 | SDCM959 |  |
+| KNA1 | DTAWS | Instruction key for data medium exchange | y | 1 / 1 | SDCM963 |  |
 | KNA1 | DUEFL | Status of Data Transfer into Subsequent Release | y | 1 / 0 | DXVd5dcc824 | only disabled (DDIC-generated) rules; review for enabling |
-| KNA1 | HZUOR | Assignment to Hierarchy | y | 1 / 1 | SDCM960 |  |
-| KNA1 | SPERZ | Payment Block | y | 1 / 1 | SDCM961 |  |
+| KNA1 | HZUOR | Assignment to Hierarchy | y | 1 / 1 | SDCM964 |  |
+| KNA1 | SPERZ | Payment Block | y | 1 / 1 | SDCM965 |  |
 | KNA1 | ETIKG | IS-R Labeling: customer/plant group | y | 1 / 0 | DXR53454720 | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | CIVVE | ID for mainly non-military use | y | 1 / 1 | SDCM444 |  |
 | KNA1 | MILVE | ID for mainly military use | y | 1 / 1 | SDCM444 |  |
@@ -164,38 +164,38 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNA1 | KDKG3 | Customer condition group 3 | y | 1 / 0 | DXRa695445f | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | KDKG4 | Customer condition group 4 | y | 1 / 0 | DXR7a7e015f | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | KDKG5 | Customer condition group 5 | y | 1 / 0 | DXR707e5f86 | only disabled (DDIC-generated) rules; review for enabling |
-| KNA1 | XKNZA | Indicator: Alternative payer using account number | y | 1 / 1 | SDCM962 |  |
+| KNA1 | XKNZA | Indicator: Alternative payer using account number | y | 1 / 1 | SDCM966 |  |
 | KNA1 | FITYP | Tax type | y | 1 / 0 | DXR9cbbf0d1 | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | STCDT | Tax Number Type | y | 1 / 0 | DXR1907ca4d | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | STCD3 | Tax Number 3 | y | 1 / 1 | SDCM870 |  |
 | KNA1 | STCD4 | Tax Number 4 | y | 1 / 1 | SDCM871 |  |
-| KNA1 | STCD5 | Tax Number 5 | y | 1 / 1 | SDCM963 |  |
+| KNA1 | STCD5 | Tax Number 5 | y | 1 / 1 | SDCM967 |  |
 | KNA1 | XICMS | Customer is ICMS-exempt | y | 1 / 1 | SDCM874 |  |
 | KNA1 | XXIPI | Customer is IPI-exempt | y | 1 / 1 | SDCM875 |  |
 | KNA1 | XSUBT | Customer group for Substituiçao Tributária calculation | y | 1 / 0 | DXR8ffd9a7c | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | CFOPC | Customer's CFOP category | y | 1 / 0 | DXVe0448aeb | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | TXLW1 | Tax law: ICMS | y | 1 / 0 | DXR35325366 | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | TXLW2 | Tax law: IPI | y | 1 / 0 | DXR90f084a4 | only disabled (DDIC-generated) rules; review for enabling |
-| KNA1 | CCC01 | Indicator for biochemical warfare for legal control | y | 1 / 1 | SDCM964 |  |
-| KNA1 | CCC02 | Indicator for nuclear nonproliferation for legal control | y | 1 / 1 | SDCM965 |  |
-| KNA1 | CCC03 | Indicator for national security for legal control | y | 1 / 1 | SDCM966 |  |
-| KNA1 | CCC04 | Indicator for missile technology for legal control | y | 1 / 1 | SDCM967 |  |
+| KNA1 | CCC01 | Indicator for biochemical warfare for legal control | y | 1 / 1 | SDCM968 |  |
+| KNA1 | CCC02 | Indicator for nuclear nonproliferation for legal control | y | 1 / 1 | SDCM969 |  |
+| KNA1 | CCC03 | Indicator for national security for legal control | y | 1 / 1 | SDCM970 |  |
+| KNA1 | CCC04 | Indicator for missile technology for legal control | y | 1 / 1 | SDCM971 |  |
 | KNA1 | CASSD | Central sales block for customer | y | 1 / 1 | SDCM817 |  |
 | KNA1 | KNURL | Uniform resource locator | y | 1 / 1 | SDCM441 |  |
 | KNA1 | J_1KFREPRE | Name of Representative | y | 1 / 1 | SDCM884 |  |
 | KNA1 | J_1KFTBUS | Type of Business | y | 1 / 0 | DXR2144cbc5 | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | J_1KFTIND | Type of Industry | y | 1 / 0 | DXR6c672a02 | only disabled (DDIC-generated) rules; review for enabling |
-| KNA1 | CONFS | Status of Change Authorization (Central) | y | 1 / 1 | SDCM968 |  |
+| KNA1 | CONFS | Status of Change Authorization (Central) | y | 1 / 1 | SDCM972 |  |
 | KNA1 | UPDAT | Date on Which the Changes Were Confirmed |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | KNA1 | UPTIM | Time of Last Change Confirmation |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | KNA1 | NODEL | Central deletion block for master record | y | 1 / 1 | SDCM816 |  |
-| KNA1 | DEAR6 | Indicator: Consumer | y | 1 / 1 | SDCM969 |  |
+| KNA1 | DEAR6 | Indicator: Consumer | y | 1 / 1 | SDCM973 |  |
 | KNA1 | SUFRAMA | Suframa Code | y | 2 / 2 | SDCM876, SDCM877 |  |
 | KNA1 | RG | RG Number | y | 2 / 2 | SDCM879, SDCM880 |  |
-| KNA1 | EXP | Issued by | y | 1 / 1 | SDCM970 |  |
-| KNA1 | UF | State | y | 1 / 1 | SDCM971 |  |
+| KNA1 | EXP | Issued by | y | 1 / 1 | SDCM974 |  |
+| KNA1 | UF | State | y | 1 / 1 | SDCM975 |  |
 | KNA1 | RGDATE | RG Issue Date | y | 2 / 2 | SDCM878, SDCM879 |  |
-| KNA1 | RIC | RIC Number | y | 1 / 1 | SDCM972 |  |
+| KNA1 | RIC | RIC Number | y | 1 / 1 | SDCM976 |  |
 | KNA1 | RNE | Foreign National Registration | y | 2 / 2 | SDCM882, SDCM883 |  |
 | KNA1 | RNEDATE | RNE Issue Date | y | 2 / 2 | SDCM881, SDCM882 |  |
 | KNA1 | CNAE | CNAE | y | 1 / 0 | DXR27dfaac7 | only disabled (DDIC-generated) rules; review for enabling |
@@ -208,30 +208,30 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNA1 | DECREGPC | Declaration Regimen for PIS/COFINS | y | 1 / 0 | DXR914d5843 | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | /VSO/R_PALHGT | Maximum Stacking Height of the Packaging Material (VSO) | y | 1 / 1 | SDCM886 |  |
 | KNA1 | /VSO/R_PAL_UL | Unit of Length for Packaging Material (VSO) | y | 1 / 0 | DXRada003c0 | only disabled (DDIC-generated) rules; review for enabling |
-| KNA1 | /VSO/R_PK_MAT | Customer-Related Packing for Each Packaging Material (VSO) | y | 1 / 1 | SDCM973 |  |
+| KNA1 | /VSO/R_PK_MAT | Customer-Related Packing for Each Packaging Material (VSO) | y | 1 / 1 | SDCM977 |  |
 | KNA1 | /VSO/R_MATPAL | Packaging Material of the Customer in VSO | y | 1 / 0 | DXR75d47d4e | only disabled (DDIC-generated) rules; review for enabling |
-| KNA1 | /VSO/R_I_NO_LYR | Number Layers Under an Inter-Pallet (VSO) | y | 1 / 1 | SDCM974 |  |
-| KNA1 | /VSO/R_ONE_MAT | Packing Material-Specific for Each Packaging Material | y | 1 / 1 | SDCM975 |  |
-| KNA1 | /VSO/R_ONE_SORT | Pack Only One Package Type for Each PKM (VSO) | y | 1 / 1 | SDCM976 |  |
-| KNA1 | /VSO/R_ULD_SIDE | Side Preference of Loading/Unloading (VSO) | y | 1 / 1 | SDCM977 |  |
-| KNA1 | /VSO/R_LOAD_PREF | Front/Back Preference of Loading/Unloading (VSO) | y | 1 / 1 | SDCM978 |  |
+| KNA1 | /VSO/R_I_NO_LYR | Number Layers Under an Inter-Pallet (VSO) | y | 1 / 1 | SDCM978 |  |
+| KNA1 | /VSO/R_ONE_MAT | Packing Material-Specific for Each Packaging Material | y | 1 / 1 | SDCM979 |  |
+| KNA1 | /VSO/R_ONE_SORT | Pack Only One Package Type for Each PKM (VSO) | y | 1 / 1 | SDCM980 |  |
+| KNA1 | /VSO/R_ULD_SIDE | Side Preference of Loading/Unloading (VSO) | y | 1 / 1 | SDCM981 |  |
+| KNA1 | /VSO/R_LOAD_PREF | Front/Back Preference of Loading/Unloading (VSO) | y | 1 / 1 | SDCM982 |  |
 | KNA1 | /VSO/R_DPOINT | Collective Unloading Point for VSO | y | 1 / 0 | DXR1033bc6f | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | ALC | Agency Location Code | y | 1 / 0 | DXRc440a046 | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | PMT_OFFICE | Payment Office | y | 1 / 0 | DXRf406b783 | only disabled (DDIC-generated) rules; review for enabling |
 | KNA1 | PSOFG | Processor group | y | 1 / 0 | DXR216b6e6c | only disabled (DDIC-generated) rules; review for enabling |
-| KNA1 | PSOIS | Subledger acct preprocessing procedure | y | 1 / 1 | SDCM979 |  |
-| KNA1 | PSON1 | Name 1 | y | 1 / 1 | SDCM980 |  |
-| KNA1 | PSON2 | Name 2 | y | 1 / 1 | SDCM981 |  |
-| KNA1 | PSON3 | Name 3 | y | 1 / 1 | SDCM982 |  |
-| KNA1 | PSOVN | First Name | y | 1 / 1 | SDCM983 |  |
-| KNA1 | PSOTL | Title | y | 1 / 1 | SDCM984 |  |
-| KNA1 | PSOHS | House number: is no longer used from Release 4.6B | y | 1 / 1 | SDCM985 |  |
-| KNA1 | PSOST | Street: No longer used from Release 4.6B | y | 1 / 1 | SDCM986 |  |
-| KNA1 | PSOO1 | Description | y | 1 / 1 | SDCM987 |  |
-| KNA1 | PSOO2 | Description | y | 1 / 1 | SDCM988 |  |
-| KNA1 | PSOO3 | Description | y | 1 / 1 | SDCM989 |  |
-| KNA1 | PSOO4 | Description | y | 1 / 1 | SDCM990 |  |
-| KNA1 | PSOO5 | Description | y | 1 / 1 | SDCM991 |  |
+| KNA1 | PSOIS | Subledger acct preprocessing procedure | y | 1 / 1 | SDCM983 |  |
+| KNA1 | PSON1 | Name 1 | y | 1 / 1 | SDCM984 |  |
+| KNA1 | PSON2 | Name 2 | y | 1 / 1 | SDCM985 |  |
+| KNA1 | PSON3 | Name 3 | y | 1 / 1 | SDCM986 |  |
+| KNA1 | PSOVN | First Name | y | 1 / 1 | SDCM987 |  |
+| KNA1 | PSOTL | Title | y | 1 / 1 | SDCM988 |  |
+| KNA1 | PSOHS | House number: is no longer used from Release 4.6B | y | 1 / 1 | SDCM989 |  |
+| KNA1 | PSOST | Street: No longer used from Release 4.6B | y | 1 / 1 | SDCM990 |  |
+| KNA1 | PSOO1 | Description | y | 1 / 1 | SDCM991 |  |
+| KNA1 | PSOO2 | Description | y | 1 / 1 | SDCM992 |  |
+| KNA1 | PSOO3 | Description | y | 1 / 1 | SDCM993 |  |
+| KNA1 | PSOO4 | Description | y | 1 / 1 | SDCM994 |  |
+| KNA1 | PSOO5 | Description | y | 1 / 1 | SDCM995 |  |
 
 ### KNB1
 
@@ -239,7 +239,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 |---|---|---|---|---|---|---|
 | KNB1 | KUNNR | Customer Number | y | 9 / 9 | SDCM054, SDCM213, SDCM525, SDCM528, SDCM529, SDCM635 +3 more |  |
 | KNB1 | BUKRS | Company Code | y | 13 / 13 | SDCM519, SDCM520, SDCM521, SDCM522, SDCM523, SDCM524 +7 more |  |
-| KNB1 | PERNR | Personnel Number | y | 1 / 1 | SDCM992 |  |
+| KNB1 | PERNR | Personnel Number | y | 1 / 1 | SDCM996 |  |
 | KNB1 | ERDAT | Date on which the Record Was Created | y | 2 / 2 | SDCM512, SDCM514 |  |
 | KNB1 | ERNAM | Name of Person who Created the Object |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | KNB1 | SPERR | Posting block for company code | y | 2 / 2 | SDCM805, SDCM806 |  |
@@ -247,14 +247,14 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNB1 | ZUAWA | Key for sorting according to assignment numbers | y | 1 / 1 | SDCM808 |  |
 | KNB1 | BUSAB | Accounting clerk | y | 1 / 1 | SDCM522 |  |
 | KNB1 | AKONT | Reconciliation Account in General Ledger | y | 3 / 3 | SDCM800, SDCM801, SDCM802 |  |
-| KNB1 | BEGRU | Authorization Group | y | 1 / 1 | SDCM993 |  |
+| KNB1 | BEGRU | Authorization Group | y | 1 / 1 | SDCM997 |  |
 | KNB1 | KNRZE | Head office account number (in branch accounts) | y | 1 / 1 | SDCM503 |  |
 | KNB1 | KNRZB | Account number of an alternative payer | y | 1 / 1 | SDCM525 |  |
-| KNB1 | ZAMIM | Indicator: Payment notice to customer (with cleared items)? | y | 1 / 1 | SDCM994 |  |
-| KNB1 | ZAMIV | Indicator: payment notice to sales department? | y | 1 / 1 | SDCM995 |  |
-| KNB1 | ZAMIR | Indicator: payment notice to legal department? | y | 1 / 1 | SDCM996 |  |
-| KNB1 | ZAMIB | Indicator: Payment notice to the accounting department ? | y | 1 / 1 | SDCM997 |  |
-| KNB1 | ZAMIO | Indicator: payment notice to customer (w/o cleared items)? | y | 1 / 1 | SDCM998 |  |
+| KNB1 | ZAMIM | Indicator: Payment notice to customer (with cleared items)? | y | 1 / 1 | SDCM998 |  |
+| KNB1 | ZAMIV | Indicator: payment notice to sales department? | y | 1 / 1 | SDCM999 |  |
+| KNB1 | ZAMIR | Indicator: payment notice to legal department? | y | 1 / 1 | SDCM1000 |  |
+| KNB1 | ZAMIB | Indicator: Payment notice to the accounting department ? | y | 1 / 1 | SDCM1001 |  |
+| KNB1 | ZAMIO | Indicator: payment notice to customer (w/o cleared items)? | y | 1 / 1 | SDCM1002 |  |
 | KNB1 | ZWELS | List of the Payment Methods to be Considered | y | 1 / 1 | SDCM803 |  |
 | KNB1 | XVERR | Indicator: Clearing between customer and vendor ? | y | 1 / 1 | SDCM812 |  |
 | KNB1 | ZAHLS | Block Key for Payment | y | 1 / 1 | SDCM804 |  |
@@ -263,9 +263,9 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNB1 | VZSKZ | Interest calculation indicator | y | 1 / 1 | SDCM509 |  |
 | KNB1 | ZINDT | Key date of the last interest calculation | y | 1 / 1 | SDCM510 |  |
 | KNB1 | ZINRT | Interest calculation frequency in months | y | 2 / 1 | DXV824e43ba, SDCM509 |  |
-| KNB1 | EIKTO | Our account number at customer | y | 1 / 1 | SDCM999 |  |
-| KNB1 | ZSABE | User at customer | y | 1 / 1 | SDCM1000 |  |
-| KNB1 | KVERM | Memo | y | 1 / 1 | SDCM1001 |  |
+| KNB1 | EIKTO | Our account number at customer | y | 1 / 1 | SDCM1003 |  |
+| KNB1 | ZSABE | User at customer | y | 1 / 1 | SDCM1004 |  |
+| KNB1 | KVERM | Memo | y | 1 / 1 | SDCM1005 |  |
 | KNB1 | FDGRV | Planning group | y | 1 / 1 | SDCM809 |  |
 | KNB1 | VRBKZ | Export credit insurance institution number | y | 1 / 1 | SDCM507 |  |
 | KNB1 | VLIBB | Amount Insured | y | 4 / 4 | SDCM504, SDCM505, SDCM506, SDCM507 |  |
@@ -273,7 +273,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNB1 | VRSPR | Deductible percentage rate | y | 1 / 1 | SDCM508 |  |
 | KNB1 | VRSNR | Insurance number | y | 1 / 1 | SDCM506 |  |
 | KNB1 | VERDT | Insurance validity date | y | 2 / 2 | SDCM504, SDCM505 |  |
-| KNB1 | PERKZ | Collective invoice variant | y | 1 / 1 | SDCM1002 |  |
+| KNB1 | PERKZ | Collective invoice variant | y | 1 / 1 | SDCM1006 |  |
 | KNB1 | XDEZV | Indicator: Local processing? | y | 1 / 1 | SDCM503 |  |
 | KNB1 | XAUSZ | Indicator for periodic account statements | y | 1 / 1 | SDCM810 |  |
 | KNB1 | WEBTR | Bill of exchange limit (in local currency) | y | 1 / 1 | SDCM862 |  |
@@ -283,8 +283,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNB1 | TOGRU | Tolerance group for the business partner/G/L account | y | 1 / 1 | SDCM520 |  |
 | KNB1 | KULTG | Probable time until check is paid | y | 1 / 1 | SDCM888 |  |
 | KNB1 | HBKID | Short key for a house bank | y | 1 / 1 | SDCM523 |  |
-| KNB1 | XPORE | Indicator: Pay all items separately ? | y | 1 / 1 | SDCM1003 |  |
-| KNB1 | BLNKZ | Subsidy Indicator for Determining the Reduction Rates | y | 1 / 1 | SDCM1004 |  |
+| KNB1 | XPORE | Indicator: Pay all items separately ? | y | 1 / 1 | SDCM1007 |  |
+| KNB1 | BLNKZ | Subsidy Indicator for Determining the Reduction Rates | y | 1 / 1 | SDCM1008 |  |
 | KNB1 | ALTKN | Previous Master Record Number | y | 1 / 1 | SDCM519 |  |
 | KNB1 | ZGRUP | Key for Payment Grouping | y | 1 / 0 | DXR7a49c8e6 | only disabled (DDIC-generated) rules; review for enabling |
 | KNB1 | URLID | Short Key for Known/Negotiated Leave | y | 1 / 0 | DXRc663b2fa | only disabled (DDIC-generated) rules; review for enabling |
@@ -293,12 +293,12 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNB1 | UZAWE | Payment method supplement | y | 1 / 1 | SDCM811 |  |
 | KNB1 | EKVBD | Account Number of Buying Group | y | 1 / 1 | SDCM861 |  |
 | KNB1 | SREGL | Selection Rule for Payment Advices | y | 1 / 0 | DXR8149bb57 | only disabled (DDIC-generated) rules; review for enabling |
-| KNB1 | XEDIP | Indicator: Send Payment Advices by EDI | y | 1 / 1 | SDCM1005 |  |
+| KNB1 | XEDIP | Indicator: Send Payment Advices by EDI | y | 1 / 1 | SDCM1009 |  |
 | KNB1 | FRGRP | Release Approval Group | y | 1 / 0 | DXR8efe8098 | only disabled (DDIC-generated) rules; review for enabling |
 | KNB1 | VRSDG | Reason Code Conversion Version | y | 1 / 0 | DXRe1cc96c2 | only disabled (DDIC-generated) rules; review for enabling |
 | KNB1 | TLFXS | Accounting clerk's fax number at the customer/vendor | y | 1 / 1 | SDCM518 |  |
 | KNB1 | INTAD | Internet address of partner company clerk | y | 1 / 1 | SDCM516 |  |
-| KNB1 | XKNZB | Indicator: Alternative payer using account number | y | 1 / 1 | SDCM1006 |  |
+| KNB1 | XKNZB | Indicator: Alternative payer using account number | y | 1 / 1 | SDCM1010 |  |
 | KNB1 | GUZTE | Payment Terms Key for Credit Memos | y | 1 / 1 | SDCM501 |  |
 | KNB1 | GRICD | Activity Code for Gross Income Tax | y | 1 / 0 | DXR727e8f2d | only disabled (DDIC-generated) rules; review for enabling |
 | KNB1 | GRIDT | Distribution Type for Employment Tax | y | 1 / 0 | DXRc0f6fa22 | only disabled (DDIC-generated) rules; review for enabling |
@@ -310,9 +310,9 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNB1 | TLFNS | Accounting clerk's telephone number at business partner | y | 1 / 1 | SDCM517 |  |
 | KNB1 | CESSION_KZ | Accounts Receivable Pledging Indicator | y | 1 / 1 | SDCM524 |  |
 | KNB1 | AVSND | Indicator: Send Payment Advice by XML | y | 1 / 0 | DXVc370e610 | only disabled (DDIC-generated) rules; review for enabling |
-| KNB1 | AD_HASH | E-Mail Address for Avis: Hash Value | y | 1 / 1 | SDCM1007 |  |
+| KNB1 | AD_HASH | E-Mail Address for Avis: Hash Value | y | 1 / 1 | SDCM1011 |  |
 | KNB1 | QLAND | Withholding Tax Country Key | y | 1 / 0 | DXR9d9b6597 | only disabled (DDIC-generated) rules; review for enabling |
-| KNB1 | GMVKZD | Customer is in execution | y | 1 / 1 | SDCM1008 |  |
+| KNB1 | GMVKZD | Customer is in execution | y | 1 / 1 | SDCM1012 |  |
 
 ### KNB5
 
@@ -339,10 +339,10 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNBK | BANKN | Bank account number | y | 1 / 1 | SDCM938 |  |
 | KNBK | BKONT | Bank Control Key | y | 3 / 3 | SDCM537, SDCM538, SDCM539 |  |
 | KNBK | BVTYP | Partner bank type | y | 1 / 1 | SDCM826 |  |
-| KNBK | XEZER | Indicator: Is there collection authorization ? | y | 1 / 1 | SDCM1009 |  |
-| KNBK | BKREF | Reference specifications for bank details | y | 1 / 1 | SDCM1010 |  |
+| KNBK | XEZER | Indicator: Is there collection authorization ? | y | 1 / 1 | SDCM1013 |  |
+| KNBK | BKREF | Reference specifications for bank details | y | 1 / 1 | SDCM1014 |  |
 | KNBK | KOINH | Account Holder Name | y | 1 / 1 | SDCM938 |  |
-| KNBK | EBPP_ACCNAME | User-Defined Name of Bank Details | y | 1 / 1 | SDCM1011 |  |
+| KNBK | EBPP_ACCNAME | User-Defined Name of Bank Details | y | 1 / 1 | SDCM1015 |  |
 | KNBK | EBPP_BVSTATUS | Status of Bank Details in Biller Direct | y | 1 / 1 | SDCM825 |  |
 | KNBK | KOVON | Bank Details Valid From | y | 1 / 1 | SDCM824 |  |
 | KNBK | KOBIS | Bank details valid to | y | 1 / 1 | SDCM824 |  |
@@ -358,7 +358,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNBW | WT_AGENT | Indicator: Withholding tax agent? | y | 3 / 3 | SDCM638, SDCM646, SDCM647 |  |
 | KNBW | WT_AGTDF | Obligated to withhold tax from | y | 2 / 2 | SDCM639, SDCM647 |  |
 | KNBW | WT_AGTDT | Obligated to withhold tax until | y | 3 / 3 | SDCM639, SDCM646, SDCM647 |  |
-| KNBW | WT_WTSTCD | Withholding tax identification number | y | 1 / 1 | SDCM1012 |  |
+| KNBW | WT_WTSTCD | Withholding tax identification number | y | 1 / 1 | SDCM1016 |  |
 | KNBW | WT_EXNR | Exemption certificate number | y | 1 / 1 | SDCM643 |  |
 | KNBW | WT_EXRT | Exemption rate | y | 5 / 5 | SDCM641, SDCM642, SDCM643, SDCM644, SDCM645 |  |
 | KNBW | WT_EXDF | Date on which exemption begins | y | 2 / 2 | SDCM640, SDCM644 |  |
@@ -375,7 +375,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNVV | SPART | Division | y | 12 / 12 | SDCM028, SDCM205, SDCM233, SDCM245, SDCM700, SDCM701 +6 more |  |
 | KNVV | ERNAM | Name of Person who Created the Object | y | 1 / 1 | SDCM706 |  |
 | KNVV | ERDAT | Date on which the record was created | y | 3 / 3 | SDCM100, SDCM707, SDCM708 |  |
-| KNVV | BEGRU | Authorization Group | y | 1 / 1 | SDCM1013 |  |
+| KNVV | BEGRU | Authorization Group | y | 1 / 1 | SDCM1017 |  |
 | KNVV | LOEVM | Deletion flag for customer (sales level) | y | 8 / 8 | SDCM047, SDCM205, SDCM207, SDCM208, SDCM212, SDCM233 +2 more |  |
 | KNVV | VERSG | Customer Statistics Group | y | 2 / 2 | SDCM019, SDCM035 |  |
 | KNVV | AUFSD | Customer order block (sales area) | y | 6 / 6 | SDCM044, SDCM207, SDCM209, SDCM212, SDCM743, SDCM827 |  |
@@ -394,16 +394,16 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNVV | KZAZU | Order combination indicator | y | 1 / 1 | SDCM017 |  |
 | KNVV | CHSPL | Batch split allowed | y | 1 / 1 | SDCM722 |  |
 | KNVV | LPRIO | Delivery priority | y | 1 / 1 | SDCM020 |  |
-| KNVV | EIKTO | Shipper's (Our) Account Number at the Customer or Vendor | y | 1 / 1 | SDCM1014 |  |
+| KNVV | EIKTO | Shipper's (Our) Account Number at the Customer or Vendor | y | 1 / 1 | SDCM1018 |  |
 | KNVV | VSBED | Shipping conditions | y | 2 / 2 | SDCM021, SDCM033 |  |
 | KNVV | FAKSD | Billing block for customer (sales and distribution) | y | 4 / 4 | SDCM046, SDCM207, SDCM211, SDCM745 |  |
 | KNVV | MRNKZ | Manual invoice maintenance | y | 1 / 1 | SDCM724 |  |
 | KNVV | PERFK | Invoice dates (calendar identification) | y | 2 / 2 | SDCM038, SDCM710 |  |
 | KNVV | PERRL | Invoice list schedule (calendar identification) | y | 2 / 2 | SDCM709, SDCM710 |  |
-| KNVV | KVAKZ | Cost estimate indicator (inactive) | y | 1 / 1 | SDCM1015 |  |
+| KNVV | KVAKZ | Cost estimate indicator (inactive) | y | 1 / 1 | SDCM1019 |  |
 | KNVV | KVAWT | Value limit for cost estimate (inactive) | y | 1 / 1 | SDCM890 |  |
 | KNVV | WAERS | Currency | y | 4 / 4 | SDCM018, SDCM025, SDCM099, SDCM214 |  |
-| KNVV | KLABC | Customer classification (ABC analysis) | y | 1 / 1 | SDCM1016 |  |
+| KNVV | KLABC | Customer classification (ABC analysis) | y | 1 / 1 | SDCM1020 |  |
 | KNVV | KTGRD | Account assignment group for this customer | y | 2 / 2 | SDCM031, SDCM032 |  |
 | KNVV | ZTERM | Terms of payment key | y | 3 / 3 | SDCM014, SDCM034, SDCM213 |  |
 | KNVV | VWERK | Delivering Plant (Own or External) | y | 4 / 4 | SDCM040, SDCM206, SDCM702, SDCM859 |  |
@@ -416,19 +416,19 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNVV | KVGR4 | Customer group 4 | y | 1 / 1 | SDCM219 |  |
 | KNVV | KVGR5 | Customer group 5 | y | 1 / 1 | SDCM220 |  |
 | KNVV | BOKRE | ID: Customer is to receive rebates | y | 2 / 2 | SDCM719, SDCM721 |  |
-| KNVV | BOIDT | Start of validity per.for the rebate index for the customer | y | 1 / 1 | SDCM1017 |  |
+| KNVV | BOIDT | Start of validity per.for the rebate index for the customer | y | 1 / 1 | SDCM1021 |  |
 | KNVV | KURST | Exchange Rate Type | y | 1 / 1 | SDCM215 |  |
 | KNVV | PRFRE | Relevant for Pricing ID | y | 1 / 1 | SDCM723 |  |
-| KNVV | PRAT1 | ID for product attribute 1 | y | 1 / 1 | SDCM1018 |  |
-| KNVV | PRAT2 | ID for product attribute 2 | y | 1 / 1 | SDCM1019 |  |
-| KNVV | PRAT3 | ID for product attribute 3 | y | 1 / 1 | SDCM1020 |  |
-| KNVV | PRAT4 | ID for product attribute 4 | y | 1 / 1 | SDCM1021 |  |
-| KNVV | PRAT5 | ID for product attribute 5 | y | 1 / 1 | SDCM1022 |  |
-| KNVV | PRAT6 | ID for product attribute 6 | y | 1 / 1 | SDCM1023 |  |
-| KNVV | PRAT7 | ID for product attribute 7 | y | 1 / 1 | SDCM1024 |  |
-| KNVV | PRAT8 | ID for product attribute 8 | y | 1 / 1 | SDCM1025 |  |
-| KNVV | PRAT9 | ID for product attribute 9 | y | 1 / 1 | SDCM1026 |  |
-| KNVV | PRATA | ID for product attribute 10 | y | 1 / 1 | SDCM1027 |  |
+| KNVV | PRAT1 | ID for product attribute 1 | y | 1 / 1 | SDCM1022 |  |
+| KNVV | PRAT2 | ID for product attribute 2 | y | 1 / 1 | SDCM1023 |  |
+| KNVV | PRAT3 | ID for product attribute 3 | y | 1 / 1 | SDCM1024 |  |
+| KNVV | PRAT4 | ID for product attribute 4 | y | 1 / 1 | SDCM1025 |  |
+| KNVV | PRAT5 | ID for product attribute 5 | y | 1 / 1 | SDCM1026 |  |
+| KNVV | PRAT6 | ID for product attribute 6 | y | 1 / 1 | SDCM1027 |  |
+| KNVV | PRAT7 | ID for product attribute 7 | y | 1 / 1 | SDCM1028 |  |
+| KNVV | PRAT8 | ID for product attribute 8 | y | 1 / 1 | SDCM1029 |  |
+| KNVV | PRAT9 | ID for product attribute 9 | y | 1 / 1 | SDCM1030 |  |
+| KNVV | PRATA | ID for product attribute 10 | y | 1 / 1 | SDCM1031 |  |
 | KNVV | KABSS | Customer payment guarantee procedure | y | 1 / 0 | DXRd9e9a962 | only disabled (DDIC-generated) rules; review for enabling |
 | KNVV | KKBER | Credit control area | y | 3 / 3 | SDCM039, SDCM222, SDCM243 |  |
 | KNVV | CASSD | Sales block for customer (sales area) | y | 1 / 1 | SDCM827 |  |
@@ -443,8 +443,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNVV | PODTG | Timeframe for Confirmation of POD | y | 1 / 1 | SDCM717 |  |
 | KNVV | BLIND | Index Structure Active for Subsequent Settlement (in AB) | y | 1 / 1 | SDCM727 |  |
 | KNVV | CARRIER_NOTIF | Carrier is to be notified | y | 1 / 1 | SDCM728 |  |
-| KNVV | /BEV1/EMLGPFAND | Deposit on Empties | y | 1 / 1 | SDCM1028 |  |
-| KNVV | /BEV1/EMLGFORTS | Indicator for Empties Update | y | 1 / 1 | SDCM1029 |  |
+| KNVV | /BEV1/EMLGPFAND | Deposit on Empties | y | 1 / 1 | SDCM1032 |  |
+| KNVV | /BEV1/EMLGFORTS | Indicator for Empties Update | y | 1 / 1 | SDCM1033 |  |
 
 ### KNVP
 
@@ -455,12 +455,12 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNVP | VTWEG | Distribution Channel | y | 12 / 12 | SDCM052, SDCM053, SDCM200, SDCM203, SDCM205, SDCM233 +6 more |  |
 | KNVP | SPART | Division | y | 12 / 12 | SDCM052, SDCM053, SDCM200, SDCM203, SDCM205, SDCM233 +6 more |  |
 | KNVP | PARVW | Partner Role | y | 23 / 23 | SDCM052, SDCM053, SDCM054, SDCM200, SDCM203, SDCM204 +17 more |  |
-| KNVP | PARZA | Partner counter | y | 1 / 1 | SDCM1030 |  |
+| KNVP | PARZA | Partner counter | y | 1 / 1 | SDCM1034 |  |
 | KNVP | KUNN2 | Customer number of business partner | y | 17 / 17 | SDCM051, SDCM054, SDCM203, SDCM204, SDCM205, SDCM228 +11 more |  |
 | KNVP | LIFNR | Account Number of Vendor or Creditor | y | 6 / 6 | SDCM231, SDCM733, SDCM734, SDCM736, SDCM739, SDCM740 |  |
 | KNVP | PERNR | Personnel Number | y | 5 / 5 | SDCM733, SDCM734, SDCM737, SDCM746, SDCM747 |  |
 | KNVP | PARNR | Number of contact person | y | 4 / 4 | SDCM230, SDCM733, SDCM734, SDCM738 |  |
-| KNVP | KNREF | Customer description of partner (plant, storage location) | y | 1 / 1 | SDCM1031 |  |
+| KNVP | KNREF | Customer description of partner (plant, storage location) | y | 1 / 1 | SDCM1035 |  |
 | KNVP | DEFPA | Default partner | y | 2 / 2 | SDCM731, SDCM732 |  |
 
 ### KNVI
@@ -477,14 +477,14 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
 | KNVA | KUNNR | Customer Number | y | 7 / 7 | SDCM240, SDCM748, SDCM750, SDCM751, SDCM752, SDCM753 +1 more |  |
-| KNVA | ABLAD | Unloading Point | y | 1 / 1 | SDCM1032 |  |
-| KNVA | LFDNR | Sequential number for unloading points | y | 1 / 1 | SDCM1033 |  |
+| KNVA | ABLAD | Unloading Point | y | 1 / 1 | SDCM1036 |  |
+| KNVA | LFDNR | Sequential number for unloading points | y | 1 / 1 | SDCM1037 |  |
 | KNVA | KNFAK | Customer's factory calendar | y | 1 / 1 | SDCM241 |  |
 | KNVA | WANID | Goods receiving hours ID (default value) | y | 1 / 1 | SDCM242 |  |
-| KNVA | TPQUA | not currently in use | y | 1 / 1 | SDCM1034 |  |
-| KNVA | TPGRP | not currently in use | y | 1 / 1 | SDCM1035 |  |
-| KNVA | STZKL | Not Currently in Use | y | 1 / 1 | SDCM1036 |  |
-| KNVA | STZZU | not currently in use | y | 1 / 1 | SDCM1037 |  |
+| KNVA | TPQUA | not currently in use | y | 1 / 1 | SDCM1038 |  |
+| KNVA | TPGRP | not currently in use | y | 1 / 1 | SDCM1039 |  |
+| KNVA | STZKL | Not Currently in Use | y | 1 / 1 | SDCM1040 |  |
+| KNVA | STZZU | not currently in use | y | 1 / 1 | SDCM1041 |  |
 | KNVA | MOAB1 | Goods receipt times: Monday morning from ... | y | 3 / 3 | SDCM750, SDCM751, SDCM753 |  |
 | KNVA | MOBI1 | Goods receiving hours: Monday morning until ... | y | 4 / 4 | SDCM750, SDCM751, SDCM752, SDCM753 |  |
 | KNVA | MOAB2 | Goods receiving hours: Monday afternoon from ... | y | 4 / 4 | SDCM750, SDCM751, SDCM752, SDCM753 |  |
@@ -523,7 +523,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNVD | VKORG | Sales Organization | y | 1 / 1 | SDCM245 |  |
 | KNVD | VTWEG | Distribution Channel | y | 1 / 1 | SDCM245 |  |
 | KNVD | SPART | Division | y | 1 / 1 | SDCM245 |  |
-| KNVD | DOCTP | Output Type | y | 1 / 1 | SDCM1038 |  |
+| KNVD | DOCTP | Output Type | y | 1 / 1 | SDCM1042 |  |
 | KNVD | SPRAS | Message language | y | 1 / 1 | SDCM755 |  |
 | KNVD | DOANZ | Output quantity (original + copies) | y | 1 / 1 | SDCM249 |  |
 | KNVD | DOVER | Dispatch time | y | 1 / 1 | SDCM756 |  |
@@ -537,25 +537,25 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNVK | KUNNR | Customer Number | y | 3 / 3 | SDCM234, SDCM456, SDCM457 |  |
 | KNVK | NAMEV | First name | y | 2 / 2 | SDCM451, SDCM457 |  |
 | KNVK | NAME1 | Name 1 | y | 3 / 3 | SDCM457, SDCM458, SDCM459 |  |
-| KNVK | ORT01 | City | y | 1 / 1 | SDCM1039 |  |
-| KNVK | ADRND | Business address | y | 1 / 1 | SDCM1040 |  |
-| KNVK | ADRNP | Private address | y | 1 / 1 | SDCM1041 |  |
-| KNVK | ABTPA | Contact person's department at customer | y | 1 / 1 | SDCM1042 |  |
+| KNVK | ORT01 | City | y | 1 / 1 | SDCM1043 |  |
+| KNVK | ADRND | Business address | y | 1 / 1 | SDCM1044 |  |
+| KNVK | ADRNP | Private address | y | 1 / 1 | SDCM1045 |  |
+| KNVK | ABTPA | Contact person's department at customer | y | 1 / 1 | SDCM1046 |  |
 | KNVK | ABTNR | Contact person department | y | 1 / 1 | SDCM235 |  |
 | KNVK | UEPAR | Higher-level contact person | y | 2 / 2 | SDCM454, SDCM455 |  |
 | KNVK | TELF1 | First telephone number | y | 1 / 1 | SDCM385 |  |
-| KNVK | ANRED | Form of address for contact person (Mr, Mrs...etc) | y | 1 / 1 | SDCM1043 |  |
+| KNVK | ANRED | Form of address for contact person (Mr, Mrs...etc) | y | 1 / 1 | SDCM1047 |  |
 | KNVK | PAFKT | Contact person function | y | 1 / 1 | SDCM236 |  |
 | KNVK | PARVO | Partner's power of attorney | y | 1 / 1 | SDCM237 |  |
 | KNVK | PAVIP | VIP Partner | y | 1 / 0 | DXR0209ceab | only disabled (DDIC-generated) rules; review for enabling |
 | KNVK | PARGE | Partner's gender | y | 1 / 0 | DXV4716204c | only disabled (DDIC-generated) rules; review for enabling |
 | KNVK | PARLA | Partner language | y | 1 / 1 | SDCM238 |  |
 | KNVK | GBDAT | Date of Birth | y | 1 / 1 | SDCM452 |  |
-| KNVK | VRTNR | Representative number | y | 1 / 1 | SDCM1044 |  |
+| KNVK | VRTNR | Representative number | y | 1 / 1 | SDCM1048 |  |
 | KNVK | BRYTH | Call frequency | y | 1 / 0 | DXRc68cc558 | only disabled (DDIC-generated) rules; review for enabling |
 | KNVK | AKVER | Buying habits | y | 1 / 0 | DXR0d6942fc | only disabled (DDIC-generated) rules; review for enabling |
-| KNVK | NMAIL | Advertising material indicator | y | 1 / 1 | SDCM1045 |  |
-| KNVK | PARAU | Notes about contact person | y | 1 / 1 | SDCM1046 |  |
+| KNVK | NMAIL | Advertising material indicator | y | 1 / 1 | SDCM1049 |  |
+| KNVK | PARAU | Notes about contact person | y | 1 / 1 | SDCM1050 |  |
 | KNVK | PARH1 | Contact Partner: Attribute 1 | y | 1 / 0 | DXR8d9bfb38 | only disabled (DDIC-generated) rules; review for enabling |
 | KNVK | PARH2 | Contact person: Attribute 2 | y | 1 / 0 | DXRf6a6a142 | only disabled (DDIC-generated) rules; review for enabling |
 | KNVK | PARH3 | Contact person: Attribute 3 | y | 1 / 0 | DXR5b3359c5 | only disabled (DDIC-generated) rules; review for enabling |
@@ -594,18 +594,18 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNVK | PAKN3 | Contact person: Attribute 8 | y | 1 / 0 | DXR8833653e | only disabled (DDIC-generated) rules; review for enabling |
 | KNVK | PAKN4 | Contact person: Attribute 9 | y | 1 / 0 | DXRe9ea0356 | only disabled (DDIC-generated) rules; review for enabling |
 | KNVK | PAKN5 | Contact person: Attribute 10 | y | 1 / 0 | DXR7bfd9491 | only disabled (DDIC-generated) rules; review for enabling |
-| KNVK | SORTL | Sort field | y | 1 / 1 | SDCM1047 |  |
+| KNVK | SORTL | Sort field | y | 1 / 1 | SDCM1051 |  |
 | KNVK | FAMST | Marital Status Key | y | 1 / 0 | DXR0928f47e | only disabled (DDIC-generated) rules; review for enabling |
-| KNVK | SPNAM | Nickname | y | 1 / 1 | SDCM1048 |  |
-| KNVK | TITEL_AP | Title of contact person (description of function) | y | 1 / 1 | SDCM1049 |  |
+| KNVK | SPNAM | Nickname | y | 1 / 1 | SDCM1052 |  |
+| KNVK | TITEL_AP | Title of contact person (description of function) | y | 1 / 1 | SDCM1053 |  |
 | KNVK | ERDAT | Date on which the Record Was Created | y | 1 / 1 | SDCM460 |  |
 | KNVK | ERNAM | Name of Person who Created the Object |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | KNVK | DUEFL | Status of Data Transfer into Subsequent Release | y | 1 / 0 | DXV4716ac66 | only disabled (DDIC-generated) rules; review for enabling |
 | KNVK | LIFNR | Account Number of Vendor or Creditor | y | 1 / 1 | SDCM456 |  |
 | KNVK | LOEVM | Central Deletion Flag for Master Record | y | 4 / 4 | SDCM230, SDCM239, SDCM451, SDCM457 |  |
-| KNVK | KZHERK | Internal indicator for origin of the CP: Customer or Vendor | y | 1 / 1 | SDCM1050 |  |
-| KNVK | ADRNP_2 | Address number | y | 1 / 1 | SDCM1051 |  |
-| KNVK | PRSNR | Person number | y | 1 / 1 | SDCM1052 |  |
+| KNVK | KZHERK | Internal indicator for origin of the CP: Customer or Vendor | y | 1 / 1 | SDCM1054 |  |
+| KNVK | ADRNP_2 | Address number | y | 1 / 1 | SDCM1055 |  |
+| KNVK | PRSNR | Person number | y | 1 / 1 | SDCM1056 |  |
 
 ### KNAS
 
@@ -627,29 +627,29 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | KNKK | SKFOR | Total receivables (for credit limit check) | y | 1 / 1 | SDCM894 |  |
 | KNKK | SSOBL | Relevant special liabilities for credit limit check | y | 1 / 1 | SDCM895 |  |
 | KNKK | UEDAT | Date on which the credit limit was exceeded | y | 1 / 1 | SDCM657 |  |
-| KNKK | XCHNG | Indicator: credit limit must be recreated | y | 1 / 1 | SDCM1053 |  |
+| KNKK | XCHNG | Indicator: credit limit must be recreated | y | 1 / 1 | SDCM1057 |  |
 | KNKK | ERNAM | Name of Person who Created the Object |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | KNKK | ERDAT | Date on which the Record Was Created | y | 2 / 2 | SDCM652, SDCM658 |  |
 | KNKK | CTLPC | Credit management: Risk category | y | 1 / 1 | SDCM648 |  |
 | KNKK | DTREV | Last internal review | y | 1 / 1 | SDCM654 |  |
-| KNKK | CRBLB | Indicator: Blocked by credit management ? | y | 1 / 1 | SDCM1054 |  |
+| KNKK | CRBLB | Indicator: Blocked by credit management ? | y | 1 / 1 | SDCM1058 |  |
 | KNKK | SBGRP | Credit Representative Group for Credit Management | y | 1 / 1 | SDCM649 |  |
 | KNKK | NXTRV | Next internal review | y | 1 / 1 | SDCM891 |  |
-| KNKK | KRAUS | Credit information number | y | 1 / 1 | SDCM1055 |  |
-| KNKK | PAYDB | do not use - replaced by DBPAY_CM | y | 1 / 1 | SDCM1056 |  |
-| KNKK | DBRAT | do not use - replaced by DBRTG_CM | y | 1 / 1 | SDCM1057 |  |
+| KNKK | KRAUS | Credit information number | y | 1 / 1 | SDCM1059 |  |
+| KNKK | PAYDB | do not use - replaced by DBPAY_CM | y | 1 / 1 | SDCM1060 |  |
+| KNKK | DBRAT | do not use - replaced by DBRTG_CM | y | 1 / 1 | SDCM1061 |  |
 | KNKK | REVDB | Last review (external) | y | 1 / 1 | SDCM656 |  |
 | KNKK | AEDAT | Date of Last Change | y | 2 / 2 | SDCM653, SDCM658 |  |
-| KNKK | AETXT | Date of Last Text Change | y | 1 / 1 | SDCM1058 |  |
+| KNKK | AETXT | Date of Last Text Change | y | 1 / 1 | SDCM1062 |  |
 | KNKK | GRUPP | Customer credit group | y | 1 / 1 | SDCM650 |  |
 | KNKK | AENAM | Last changed by |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
-| KNKK | SBDAT | Reference Date | y | 1 / 1 | SDCM1059 |  |
-| KNKK | KDGRP | Customer Group | y | 1 / 1 | SDCM1060 |  |
+| KNKK | SBDAT | Reference Date | y | 1 / 1 | SDCM1063 |  |
+| KNKK | KDGRP | Customer Group | y | 1 / 1 | SDCM1064 |  |
 | KNKK | CASHD | Date of Last Payment | y | 1 / 1 | SDCM655 |  |
 | KNKK | CASHA | Amount of Last Payment | y | 1 / 1 | SDCM661 |  |
 | KNKK | CASHC | Currency of Last Payment | y | 1 / 1 | SDCM661 |  |
-| KNKK | DBPAY | Payment Index | y | 1 / 1 | SDCM1061 |  |
-| KNKK | DBRTG | Rating | y | 1 / 1 | SDCM1062 |  |
+| KNKK | DBPAY | Payment Index | y | 1 / 1 | SDCM1065 |  |
+| KNKK | DBRTG | Rating | y | 1 / 1 | SDCM1066 |  |
 | KNKK | DBEKR | Recommended credit limit | y | 1 / 1 | SDCM660 |  |
 | KNKK | DBWAE | Currency of recommended credit limit | y | 1 / 1 | SDCM660 |  |
 | KNKK | DBMON | Date Monitoring | y | 1 / 1 | SDCM892 |  |
@@ -674,11 +674,11 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | TIBAN | BANKN | Bank account number | y | 7 / 7 | SDCM618, SDCM620, SDCM623, SDCM625, SDCM628, SDCM630 +1 more |  |
 | TIBAN | BKONT | Bank Control Key | y | 3 / 3 | SDCM627, SDCM631, SDCM632 |  |
 | TIBAN | IBAN | IBAN (International Bank Account Number) | y | 95 / 95 | SDCM541, SDCM542, SDCM543, SDCM544, SDCM545, SDCM546 +89 more |  |
-| TIBAN | VALID_FROM | Validity start of IBAN | y | 1 / 1 | SDCM1063 |  |
+| TIBAN | VALID_FROM | Validity start of IBAN | y | 1 / 1 | SDCM1067 |  |
 | TIBAN | ERNAM | Name of person who created the object |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | TIBAN | ERDAT | Date on which the record was created |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | TIBAN | TABNAME | Table name, 16 characters | y | 95 / 95 | SDCM541, SDCM542, SDCM543, SDCM544, SDCM545, SDCM546 +89 more |  |
-| TIBAN | TABKEY | IBAN origin: Key to table of bank details | y | 1 / 1 | SDCM1064 |  |
+| TIBAN | TABKEY | IBAN origin: Key to table of bank details | y | 1 / 1 | SDCM1068 |  |
 
 ### ADRC
 
@@ -686,29 +686,29 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 |---|---|---|---|---|---|---|
 | ADRC | ADDRNUMBER | Address number | y | 6 / 6 | SDCM425, SDCM426, SDCM427, SDCM833, SDCM834, SDCM835 |  |
 | ADRC | DATE_FROM | Valid-from date - in current Release only 00010101 possible | y | 1 / 1 | SDCM430 |  |
-| ADRC | NATION | Version ID for International Addresses | y | 1 / 1 | SDCM1065 |  |
+| ADRC | NATION | Version ID for International Addresses | y | 1 / 1 | SDCM1069 |  |
 | ADRC | DATE_TO | Valid-to date in current Release only 99991231 possible | y | 2 / 2 | SDCM430, SDCM431 |  |
 | ADRC | TITLE | Form-of-Address Key | y | 1 / 0 | DXR679248cf | only disabled (DDIC-generated) rules; review for enabling |
 | ADRC | NAME1 | Name 1 | y | 4 / 4 | SDCM413, SDCM927, SDCM932, SDCM933 |  |
 | ADRC | NAME2 | Name 2 | y | 1 / 1 | SDCM414 |  |
 | ADRC | NAME3 | Name 3 | y | 1 / 1 | SDCM933 |  |
-| ADRC | NAME4 | Name 4 | y | 1 / 1 | SDCM1066 |  |
-| ADRC | NAME_TEXT | Converted name field (with form of address) | y | 1 / 1 | SDCM1067 |  |
+| ADRC | NAME4 | Name 4 | y | 1 / 1 | SDCM1070 |  |
+| ADRC | NAME_TEXT | Converted name field (with form of address) | y | 1 / 1 | SDCM1071 |  |
 | ADRC | NAME_CO | c/o name | y | 1 / 1 | SDCM932 |  |
 | ADRC | CITY1 | City | y | 3 / 3 | SDCM828, SDCM926, SDCM928 |  |
 | ADRC | CITY2 | District | y | 1 / 1 | SDCM415 |  |
 | ADRC | CITY_CODE | City code for city/street file | y | 1 / 0 | DXRc80503eb | only disabled (DDIC-generated) rules; review for enabling |
 | ADRC | CITYP_CODE | District code for City and Street file | y | 1 / 0 | DXRc9602f29 | only disabled (DDIC-generated) rules; review for enabling |
-| ADRC | HOME_CITY | City (different from postal city) | y | 1 / 1 | SDCM1068 |  |
+| ADRC | HOME_CITY | City (different from postal city) | y | 1 / 1 | SDCM1072 |  |
 | ADRC | CITYH_CODE | Different city for city/street file | y | 1 / 0 | DXRe71f9596 | only disabled (DDIC-generated) rules; review for enabling |
 | ADRC | CHCKSTATUS | City file test status | y | 1 / 0 | DXV620316fd | only disabled (DDIC-generated) rules; review for enabling |
 | ADRC | REGIOGROUP | Regional structure grouping | y | 1 / 0 | DXRdabcab80 | only disabled (DDIC-generated) rules; review for enabling |
 | ADRC | POST_CODE1 | City postal code | y | 30 / 30 | SDCM897, SDCM898, SDCM899, SDCM900, SDCM901, SDCM902 +24 more |  |
 | ADRC | POST_CODE2 | PO Box postal code | y | 1 / 1 | SDCM416 |  |
-| ADRC | POST_CODE3 | Company postal code (for large customers) | y | 1 / 1 | SDCM1069 |  |
-| ADRC | PCODE1_EXT | (Not Supported)City Postal Code Extension, e.g. ZIP+4+2 Code | y | 1 / 1 | SDCM1070 |  |
-| ADRC | PCODE2_EXT | (Not Supported) PO Box Postal Code Extension | y | 1 / 1 | SDCM1071 |  |
-| ADRC | PCODE3_EXT | (Not Supported) Major Customer Postal Code Extension | y | 1 / 1 | SDCM1072 |  |
+| ADRC | POST_CODE3 | Company postal code (for large customers) | y | 1 / 1 | SDCM1073 |  |
+| ADRC | PCODE1_EXT | (Not Supported)City Postal Code Extension, e.g. ZIP+4+2 Code | y | 1 / 1 | SDCM1074 |  |
+| ADRC | PCODE2_EXT | (Not Supported) PO Box Postal Code Extension | y | 1 / 1 | SDCM1075 |  |
+| ADRC | PCODE3_EXT | (Not Supported) Major Customer Postal Code Extension | y | 1 / 1 | SDCM1076 |  |
 | ADRC | PO_BOX | PO Box | y | 2 / 2 | SDCM417, SDCM832 |  |
 | ADRC | DONT_USE_P | PO Box Address Undeliverable Flag | y | 1 / 0 | DXRd28982d7 | only disabled (DDIC-generated) rules; review for enabling |
 | ADRC | PO_BOX_NUM | Flag: PO Box without number | y | 1 / 1 | SDCM832 |  |
@@ -716,7 +716,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | ADRC | CITY_CODE2 | City PO box code (City file) | y | 1 / 0 | DXR1ef81d80 | only disabled (DDIC-generated) rules; review for enabling |
 | ADRC | PO_BOX_REG | Region for PO Box (Country, State, Province, ...) | y | 1 / 0 | DXRb253226b | only disabled (DDIC-generated) rules; review for enabling |
 | ADRC | PO_BOX_CTY | PO box country | y | 1 / 1 | SDCM830 |  |
-| ADRC | POSTALAREA | (Not Supported) Post Delivery District | y | 1 / 1 | SDCM1073 |  |
+| ADRC | POSTALAREA | (Not Supported) Post Delivery District | y | 1 / 1 | SDCM1077 |  |
 | ADRC | TRANSPZONE | Transportation zone to or from which the goods are delivered | y | 2 / 1 | DXR16005873, SDCM420 |  |
 | ADRC | STREET | Street | y | 5 / 5 | SDCM425, SDCM433, SDCM434, SDCM929, SDCM931 |  |
 | ADRC | DONT_USE_S | Street Address Undeliverable Flag | y | 1 / 0 | DXR715d47a3 | only disabled (DDIC-generated) rules; review for enabling |
@@ -724,64 +724,64 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | ADRC | STREETABBR | (Not Supported) Abbreviation of Street Name | y | 1 / 0 | DXR74c259c8 | only disabled (DDIC-generated) rules; review for enabling |
 | ADRC | HOUSE_NUM1 | House Number | y | 3 / 3 | SDCM433, SDCM434, SDCM930 |  |
 | ADRC | HOUSE_NUM2 | House number supplement | y | 1 / 1 | SDCM930 |  |
-| ADRC | HOUSE_NUM3 | (Not supported) House Number Range | y | 1 / 1 | SDCM1074 |  |
+| ADRC | HOUSE_NUM3 | (Not supported) House Number Range | y | 1 / 1 | SDCM1078 |  |
 | ADRC | STR_SUPPL1 | Street 2 | y | 1 / 1 | SDCM931 |  |
-| ADRC | STR_SUPPL2 | Street 3 | y | 1 / 1 | SDCM1075 |  |
-| ADRC | STR_SUPPL3 | Street 4 | y | 1 / 1 | SDCM1076 |  |
-| ADRC | LOCATION | Street 5 | y | 1 / 1 | SDCM1077 |  |
-| ADRC | BUILDING | Building (Number or Code) | y | 1 / 1 | SDCM1078 |  |
-| ADRC | FLOOR | Floor in building | y | 1 / 1 | SDCM1079 |  |
-| ADRC | ROOMNUMBER | Room or Appartment Number | y | 1 / 1 | SDCM1080 |  |
+| ADRC | STR_SUPPL2 | Street 3 | y | 1 / 1 | SDCM1079 |  |
+| ADRC | STR_SUPPL3 | Street 4 | y | 1 / 1 | SDCM1080 |  |
+| ADRC | LOCATION | Street 5 | y | 1 / 1 | SDCM1081 |  |
+| ADRC | BUILDING | Building (Number or Code) | y | 1 / 1 | SDCM1082 |  |
+| ADRC | FLOOR | Floor in building | y | 1 / 1 | SDCM1083 |  |
+| ADRC | ROOMNUMBER | Room or Appartment Number | y | 1 / 1 | SDCM1084 |  |
 | ADRC | COUNTRY | Country Key | y | 32 / 32 | SDCM434, SDCM829, SDCM897, SDCM898, SDCM899, SDCM900 +26 more |  |
 | ADRC | LANGU | Language Key | y | 1 / 1 | SDCM419 |  |
 | ADRC | REGION | Region (State, Province, County) | y | 1 / 1 | SDCM829 |  |
 | ADRC | ADDR_GROUP | Address Group (Key) (Business Address Services) | y | 1 / 0 | DXR434fafee | only disabled (DDIC-generated) rules; review for enabling |
-| ADRC | FLAGGROUPS | Flag: There are more address group assignments | y | 1 / 1 | SDCM1081 |  |
-| ADRC | PERS_ADDR | Flag: This is a personal address | y | 1 / 1 | SDCM1082 |  |
+| ADRC | FLAGGROUPS | Flag: There are more address group assignments | y | 1 / 1 | SDCM1085 |  |
+| ADRC | PERS_ADDR | Flag: This is a personal address | y | 1 / 1 | SDCM1086 |  |
 | ADRC | SORT1 | Search Term 1 | y | 1 / 1 | SDCM422 |  |
-| ADRC | SORT2 | Search Term 2 | y | 1 / 1 | SDCM1083 |  |
-| ADRC | SORT_PHN | (Not Supported) Phonetic Search Sort Field | y | 1 / 1 | SDCM1084 |  |
+| ADRC | SORT2 | Search Term 2 | y | 1 / 1 | SDCM1087 |  |
+| ADRC | SORT_PHN | (Not Supported) Phonetic Search Sort Field | y | 1 / 1 | SDCM1088 |  |
 | ADRC | DEFLT_COMM | Communication Method (Key) (Business Address Services) | y | 2 / 1 | DXR264a4c7b, SDCM432 |  |
 | ADRC | TEL_NUMBER | First telephone no.: dialling code+number | y | 3 / 3 | SDCM423, SDCM426, SDCM432 |  |
-| ADRC | TEL_EXTENS | First Telephone No.: Extension | y | 1 / 1 | SDCM1085 |  |
+| ADRC | TEL_EXTENS | First Telephone No.: Extension | y | 1 / 1 | SDCM1089 |  |
 | ADRC | FAX_NUMBER | First fax no.: dialling code+number | y | 3 / 3 | SDCM424, SDCM427, SDCM432 |  |
-| ADRC | FAX_EXTENS | First fax no.: extension | y | 1 / 1 | SDCM1086 |  |
+| ADRC | FAX_EXTENS | First fax no.: extension | y | 1 / 1 | SDCM1090 |  |
 | ADRC | FLAGCOMM2 | Flag: Telephone number(s) maintained | y | 1 / 1 | SDCM833 |  |
 | ADRC | FLAGCOMM3 | Flag: Fax number(s) maintained | y | 1 / 1 | SDCM834 |  |
-| ADRC | FLAGCOMM4 | Flag: Teletex number(s) maintained | y | 1 / 1 | SDCM1087 |  |
-| ADRC | FLAGCOMM5 | Flag: Telex number(s) maintained | y | 1 / 1 | SDCM1088 |  |
+| ADRC | FLAGCOMM4 | Flag: Teletex number(s) maintained | y | 1 / 1 | SDCM1091 |  |
+| ADRC | FLAGCOMM5 | Flag: Telex number(s) maintained | y | 1 / 1 | SDCM1092 |  |
 | ADRC | FLAGCOMM6 | Indicator: E-Mail Address(es) Maintained | y | 1 / 1 | SDCM835 |  |
-| ADRC | FLAGCOMM7 | Flag: RML (remote mail) addresse(s) maintained | y | 1 / 1 | SDCM1089 |  |
-| ADRC | FLAGCOMM8 | Flag: X.400 addresse(s) maintained | y | 1 / 1 | SDCM1090 |  |
-| ADRC | FLAGCOMM9 | Flag: RFC destination(s) maintained | y | 1 / 1 | SDCM1091 |  |
-| ADRC | FLAGCOMM10 | Flag: Printer maintained | y | 1 / 1 | SDCM1092 |  |
-| ADRC | FLAGCOMM11 | Flag: SSF maintained | y | 1 / 1 | SDCM1093 |  |
-| ADRC | FLAGCOMM12 | Flag: URI/FTP address maintained | y | 1 / 1 | SDCM1094 |  |
-| ADRC | FLAGCOMM13 | Flag: Pager address maintained | y | 1 / 1 | SDCM1095 |  |
+| ADRC | FLAGCOMM7 | Flag: RML (remote mail) addresse(s) maintained | y | 1 / 1 | SDCM1093 |  |
+| ADRC | FLAGCOMM8 | Flag: X.400 addresse(s) maintained | y | 1 / 1 | SDCM1094 |  |
+| ADRC | FLAGCOMM9 | Flag: RFC destination(s) maintained | y | 1 / 1 | SDCM1095 |  |
+| ADRC | FLAGCOMM10 | Flag: Printer maintained | y | 1 / 1 | SDCM1096 |  |
+| ADRC | FLAGCOMM11 | Flag: SSF maintained | y | 1 / 1 | SDCM1097 |  |
+| ADRC | FLAGCOMM12 | Flag: URI/FTP address maintained | y | 1 / 1 | SDCM1098 |  |
+| ADRC | FLAGCOMM13 | Flag: Pager address maintained | y | 1 / 1 | SDCM1099 |  |
 | ADRC | ADDRORIGIN | (Not Supported) Address Data Source (Key) | y | 1 / 0 | DXR8ca91548 | only disabled (DDIC-generated) rules; review for enabling |
 | ADRC | MC_NAME1 | Name (field NAME1) in upper case for matchcode | y | 1 / 1 | SDCM927 |  |
 | ADRC | MC_CITY1 | City name in upper case for search help | y | 1 / 1 | SDCM928 |  |
 | ADRC | MC_STREET | Street name in upper case for search help | y | 1 / 1 | SDCM929 |  |
-| ADRC | EXTENSION1 | Extension (only for data conversion) (e.g. data line) | y | 1 / 1 | SDCM1096 |  |
-| ADRC | EXTENSION2 | Extension (only for data conversion) (e.g. telebox) | y | 1 / 1 | SDCM1097 |  |
+| ADRC | EXTENSION1 | Extension (only for data conversion) (e.g. data line) | y | 1 / 1 | SDCM1100 |  |
+| ADRC | EXTENSION2 | Extension (only for data conversion) (e.g. telebox) | y | 1 / 1 | SDCM1101 |  |
 | ADRC | TIME_ZONE | Address time zone | y | 1 / 0 | DXRd8acf494 | only disabled (DDIC-generated) rules; review for enabling |
 | ADRC | TAXJURCODE | Tax Jurisdiction | y | 1 / 1 | SDCM421 |  |
-| ADRC | ADDRESS_ID | (Not supported) Physical address ID | y | 1 / 1 | SDCM1098 |  |
-| ADRC | LANGU_CREA | Address record creation original language | y | 1 / 1 | SDCM1099 |  |
+| ADRC | ADDRESS_ID | (Not supported) Physical address ID | y | 1 / 1 | SDCM1102 |  |
+| ADRC | LANGU_CREA | Address record creation original language | y | 1 / 1 | SDCM1103 |  |
 | ADRC | ADRC_UUID | UUID Used in the Address |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
-| ADRC | UUID_BELATED | Indicator: UUID was generated later | y | 1 / 1 | SDCM1100 |  |
+| ADRC | UUID_BELATED | Indicator: UUID was generated later | y | 1 / 1 | SDCM1104 |  |
 | ADRC | ID_CATEGORY | Category of an Address ID | y | 1 / 1 | SDCM831 |  |
 | ADRC | ADRC_ERR_STATUS | Error Status of Address | y | 1 / 0 | DXV9aa1c789 | only disabled (DDIC-generated) rules; review for enabling |
-| ADRC | PO_BOX_LOBBY | PO Box Lobby | y | 1 / 1 | SDCM1101 |  |
+| ADRC | PO_BOX_LOBBY | PO Box Lobby | y | 1 / 1 | SDCM1105 |  |
 | ADRC | DELI_SERV_TYPE | Type of Delivery Service | y | 1 / 0 | DXR2966c2d8 | only disabled (DDIC-generated) rules; review for enabling |
-| ADRC | DELI_SERV_NUMBER | Number of Delivery Service | y | 1 / 1 | SDCM1102 |  |
-| ADRC | COUNTY_CODE | County code for county | y | 1 / 1 | SDCM1103 |  |
-| ADRC | COUNTY | County | y | 1 / 1 | SDCM1104 |  |
-| ADRC | TOWNSHIP_CODE | Township code for Township | y | 1 / 1 | SDCM1105 |  |
-| ADRC | TOWNSHIP | Township | y | 1 / 1 | SDCM1106 |  |
-| ADRC | MC_COUNTY | County name in upper case for search help | y | 1 / 1 | SDCM1107 |  |
-| ADRC | MC_TOWNSHIP | Township name in upper case for search help | y | 1 / 1 | SDCM1108 |  |
-| ADRC | XPCPT | Business Purpose Completed Flag | y | 1 / 1 | SDCM1109 |  |
+| ADRC | DELI_SERV_NUMBER | Number of Delivery Service | y | 1 / 1 | SDCM1106 |  |
+| ADRC | COUNTY_CODE | County code for county | y | 1 / 1 | SDCM1107 |  |
+| ADRC | COUNTY | County | y | 1 / 1 | SDCM1108 |  |
+| ADRC | TOWNSHIP_CODE | Township code for Township | y | 1 / 1 | SDCM1109 |  |
+| ADRC | TOWNSHIP | Township | y | 1 / 1 | SDCM1110 |  |
+| ADRC | MC_COUNTY | County name in upper case for search help | y | 1 / 1 | SDCM1111 |  |
+| ADRC | MC_TOWNSHIP | Township name in upper case for search help | y | 1 / 1 | SDCM1112 |  |
+| ADRC | XPCPT | Business Purpose Completed Flag | y | 1 / 1 | SDCM1113 |  |
 
 ### ADR2
 
@@ -790,16 +790,16 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | ADR2 | ADDRNUMBER | Address number | y | 3 / 3 | SDCM400, SDCM401, SDCM833 |  |
 | ADR2 | PERSNUMBER | Person number | y | 2 / 2 | SDCM400, SDCM401 |  |
 | ADR2 | DATE_FROM | Valid-from date - in current Release only 00010101 possible | y | 2 / 2 | SDCM400, SDCM401 |  |
-| ADR2 | CONSNUMBER | Sequence Number | y | 1 / 1 | SDCM1110 |  |
+| ADR2 | CONSNUMBER | Sequence Number | y | 1 / 1 | SDCM1114 |  |
 | ADR2 | COUNTRY | Country for telephone/fax number | y | 1 / 1 | SDCM394 |  |
 | ADR2 | FLGDEFAULT | Standard Sender Address in this Communication Type | y | 2 / 2 | SDCM400, SDCM936 |  |
 | ADR2 | FLG_NOUSE | Flag: This Communication Number is Not Used | y | 1 / 1 | SDCM936 |  |
-| ADR2 | HOME_FLAG | Recipient address in this communication type (mail sys.grp) | y | 1 / 1 | SDCM1111 |  |
+| ADR2 | HOME_FLAG | Recipient address in this communication type (mail sys.grp) | y | 1 / 1 | SDCM1115 |  |
 | ADR2 | TEL_NUMBER | Telephone no.: dialling code+number | y | 6 / 6 | SDCM386, SDCM390, SDCM394, SDCM395, SDCM401, SDCM934 |  |
 | ADR2 | TEL_EXTENS | Telephone no.: Extension | y | 3 / 3 | SDCM388, SDCM390, SDCM401 |  |
 | ADR2 | TELNR_LONG | Complete number: dialling code+number+extension | y | 2 / 2 | SDCM395, SDCM397 |  |
 | ADR2 | TELNR_CALL | Telephone number for determining caller | y | 1 / 1 | SDCM934 |  |
-| ADR2 | DFT_RECEIV | Indicator: Telephone is SMS-Enabled | y | 1 / 1 | SDCM1112 |  |
+| ADR2 | DFT_RECEIV | Indicator: Telephone is SMS-Enabled | y | 1 / 1 | SDCM1116 |  |
 | ADR2 | R3_USER | Indicator: Telephone is a Mobile Telephone | y | 1 / 0 | DXVfb70c9eb | only disabled (DDIC-generated) rules; review for enabling |
 | ADR2 | VALID_FROM | Communication Data: Valid From (YYYYMMDDHHMMSS) | y | 1 / 1 | SDCM399 |  |
 | ADR2 | VALID_TO | Communication Data: Valid To (YYYYMMDDHHMMSS) | y | 1 / 1 | SDCM399 |  |
@@ -811,18 +811,18 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | ADR3 | ADDRNUMBER | Address number | y | 3 / 3 | SDCM404, SDCM405, SDCM834 |  |
 | ADR3 | PERSNUMBER | Person number | y | 2 / 2 | SDCM404, SDCM405 |  |
 | ADR3 | DATE_FROM | Valid-from date - in current Release only 00010101 possible | y | 2 / 2 | SDCM404, SDCM405 |  |
-| ADR3 | CONSNUMBER | Sequence Number | y | 1 / 1 | SDCM1113 |  |
+| ADR3 | CONSNUMBER | Sequence Number | y | 1 / 1 | SDCM1117 |  |
 | ADR3 | COUNTRY | Country for telephone/fax number | y | 2 / 1 | DXRe1d4264e, SDCM393 |  |
 | ADR3 | FLGDEFAULT | Standard Sender Address in this Communication Type | y | 2 / 2 | SDCM402, SDCM404 |  |
 | ADR3 | FLG_NOUSE | Flag: This Communication Number is Not Used | y | 1 / 1 | SDCM402 |  |
-| ADR3 | HOME_FLAG | Recipient address in this communication type (mail sys.grp) | y | 1 / 1 | SDCM1114 |  |
+| ADR3 | HOME_FLAG | Recipient address in this communication type (mail sys.grp) | y | 1 / 1 | SDCM1118 |  |
 | ADR3 | FAX_NUMBER | Fax number: dialling code+number | y | 7 / 7 | SDCM387, SDCM391, SDCM392, SDCM393, SDCM396, SDCM405 +1 more |  |
 | ADR3 | FAX_EXTENS | Fax no.: Extension | y | 3 / 3 | SDCM389, SDCM391, SDCM405 |  |
 | ADR3 | FAXNR_LONG | Complete number: dialling code+number+extension | y | 2 / 2 | SDCM396, SDCM398 |  |
 | ADR3 | FAXNR_CALL | Fax number for finding sender | y | 1 / 1 | SDCM935 |  |
 | ADR3 | FAX_GROUP | Fax group (G3, G4, ...) | y | 1 / 0 | DXVff460e7f | only disabled (DDIC-generated) rules; review for enabling |
-| ADR3 | DFT_RECEIV | Flag: Recipient is standard recipient for this number | y | 1 / 1 | SDCM1115 |  |
-| ADR3 | R3_USER | Flag: Connected to an SAP System | y | 1 / 1 | SDCM1116 |  |
+| ADR3 | DFT_RECEIV | Flag: Recipient is standard recipient for this number | y | 1 / 1 | SDCM1119 |  |
+| ADR3 | R3_USER | Flag: Connected to an SAP System | y | 1 / 1 | SDCM1120 |  |
 | ADR3 | VALID_FROM | Communication Data: Valid From (YYYYMMDDHHMMSS) | y | 1 / 1 | SDCM403 |  |
 | ADR3 | VALID_TO | Communication Data: Valid To (YYYYMMDDHHMMSS) | y | 1 / 1 | SDCM403 |  |
 
@@ -833,16 +833,16 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | ADR6 | ADDRNUMBER | Address number | y | 3 / 3 | SDCM407, SDCM408, SDCM835 |  |
 | ADR6 | PERSNUMBER | Person number | y | 2 / 2 | SDCM407, SDCM408 |  |
 | ADR6 | DATE_FROM | Valid-from date - in current Release only 00010101 possible | y | 2 / 2 | SDCM407, SDCM408 |  |
-| ADR6 | CONSNUMBER | Sequence Number | y | 1 / 1 | SDCM1117 |  |
+| ADR6 | CONSNUMBER | Sequence Number | y | 1 / 1 | SDCM1121 |  |
 | ADR6 | FLGDEFAULT | Flag: this address is the default address | y | 2 / 2 | SDCM407, SDCM937 |  |
 | ADR6 | FLG_NOUSE | Flag: This Communication Number is Not Used | y | 1 / 1 | SDCM937 |  |
-| ADR6 | HOME_FLAG | Recipient address in this communication type (mail sys.grp) | y | 1 / 1 | SDCM1118 |  |
-| ADR6 | SMTP_ADDR | E-Mail Address | y | 7 / 7 | SDCM007, SDCM408, SDCM409, SDCM410, SDCM411, SDCM412 +1 more |  |
+| ADR6 | HOME_FLAG | Recipient address in this communication type (mail sys.grp) | y | 1 / 1 | SDCM1122 |  |
+| ADR6 | SMTP_ADDR | E-Mail Address | y | 9 / 9 | SDCM007, SDCM408, SDCM409, SDCM410, SDCM411, SDCM412 +3 more |  |
 | ADR6 | SMTP_SRCH | E-Mail Address Search Field | y | 2 / 2 | SDCM409, SDCM410 |  |
-| ADR6 | DFT_RECEIV | Flag: Recipient is standard recipient for this address | y | 1 / 1 | SDCM1119 |  |
-| ADR6 | R3_USER | Flag: Connected to an SAP System | y | 1 / 1 | SDCM1120 |  |
+| ADR6 | DFT_RECEIV | Flag: Recipient is standard recipient for this address | y | 1 / 1 | SDCM1123 |  |
+| ADR6 | R3_USER | Flag: Connected to an SAP System | y | 1 / 1 | SDCM1124 |  |
 | ADR6 | ENCODE | Desired Data Coding (E-Mail) | y | 1 / 0 | DXVdb0f6084 | only disabled (DDIC-generated) rules; review for enabling |
-| ADR6 | TNEF | Flag: Receiver can receive TNEF coding via SMTP | y | 1 / 1 | SDCM1121 |  |
+| ADR6 | TNEF | Flag: Receiver can receive TNEF coding via SMTP | y | 1 / 1 | SDCM1125 |  |
 | ADR6 | VALID_FROM | Communication Data: Valid From (YYYYMMDDHHMMSS) | y | 1 / 1 | SDCM406 |  |
 | ADR6 | VALID_TO | Communication Data: Valid To (YYYYMMDDHHMMSS) | y | 1 / 1 | SDCM406 |  |
 
@@ -857,7 +857,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | UKMBP_CMS | RATING_VAL_DATE | Valid To Date | y | 1 / 1 | SDCM671 |  |
 | UKMBP_CMS | RATING_CHG_DATE | Change Date for Score | y | 1 / 1 | SDCM672 |  |
 | UKMBP_CMS | ALTERNATE_BP | Partner for Credit Account | y | 2 / 2 | SDCM674, SDCM675 |  |
-| UKMBP_CMS | OWN_RATING_CALC | Rule for Calculating Score | y | 1 / 1 | SDCM1122 |  |
+| UKMBP_CMS | OWN_RATING_CALC | Rule for Calculating Score | y | 1 / 1 | SDCM1126 |  |
 | UKMBP_CMS | RISK_CLASS | Risk Class | y | 3 / 3 | SDCM667, SDCM669, SDCM676 |  |
 | UKMBP_CMS | RISK_CLASS_CALC | Risk Class Calculated | y | 2 / 1 | DXR6395262e, SDCM676 |  |
 | UKMBP_CMS | RISK_CLASS_CHGDT | Risk Class Changed On | y | 1 / 1 | SDCM673 |  |
@@ -874,18 +874,18 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | UKMBP_CMS_SGM | LIMIT_VALID_DATE | Valid To Date | y | 1 / 1 | SDCM680 |  |
 | UKMBP_CMS_SGM | LIMIT_CHG_DATE | Change Date for Credit Limit | y | 1 / 1 | SDCM686 |  |
 | UKMBP_CMS_SGM | COORDINATOR | Credit Analyst | y | 1 / 0 | DXR53f676e4 | only disabled (DDIC-generated) rules; review for enabling |
-| UKMBP_CMS_SGM | CUST_GROUP | Customer Credit Group | y | 1 / 1 | SDCM1123 |  |
+| UKMBP_CMS_SGM | CUST_GROUP | Customer Credit Group | y | 1 / 1 | SDCM1127 |  |
 | UKMBP_CMS_SGM | FOLLOW_UP_DT | Resubmission Date | y | 1 / 1 | SDCM687 |  |
 | UKMBP_CMS_SGM | CRED_LIM_CALC | Calculated Credit Limit |  | 0 / 0 |  | domain: value >= 0 when populated (confirm sign convention before enabling) |
-| UKMBP_CMS_SGM | XCRITICAL | Special Attention Required | y | 1 / 1 | SDCM1124 |  |
+| UKMBP_CMS_SGM | XCRITICAL | Special Attention Required | y | 1 / 1 | SDCM1128 |  |
 | UKMBP_CMS_SGM | X_LIMIT_ZERO | Limit is Zero | y | 1 / 1 | SDCM683 |  |
 | UKMBP_CMS_SGM | BLOCK_REASON | Reason for Block in Credit Management | y | 3 / 2 | DXR945ff77d, SDCM681, SDCM682 |  |
 | UKMBP_CMS_SGM | CRED_LIM_REQ | Credit Limit Requested | y | 1 / 1 | SDCM688 |  |
-| UKMBP_CMS_SGM | AUTOMATIC_REQ | Limit Request from Automatic Calculation | y | 1 / 1 | SDCM1125 |  |
+| UKMBP_CMS_SGM | AUTOMATIC_REQ | Limit Request from Automatic Calculation | y | 1 / 1 | SDCM1129 |  |
 | UKMBP_CMS_SGM | LIM_VAL_DATE_REQ | Valid To Date (Requested) | y | 1 / 1 | SDCM689 |  |
 | UKMBP_CMS_SGM | REQ_DATE | Request Date | y | 2 / 2 | SDCM688, SDCM689 |  |
 | UKMBP_CMS_SGM | ITEM_ERROR | Error Occurred in Liability Update | y | 1 / 1 | SDCM685 |  |
-| UKMBP_CMS_SGM | LOG_HNDL | Application Log: Log Handle | y | 1 / 1 | SDCM1126 |  |
+| UKMBP_CMS_SGM | LOG_HNDL | Application Log: Log Handle | y | 1 / 1 | SDCM1130 |  |
 
 ### CVI_CUST_LINK
 
@@ -893,6 +893,6 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 |---|---|---|---|---|---|---|
 | CVI_CUST_LINK | PARTNER_GUID | Business Partner GUID | y | 1 / 1 | SDCM761 |  |
 | CVI_CUST_LINK | CUSTOMER | Customer Number | y | 1 / 1 | SDCM761 |  |
-| CVI_CUST_LINK | CRUSER | User who created the object | y | 1 / 1 | SDCM1127 |  |
+| CVI_CUST_LINK | CRUSER | User who created the object | y | 1 / 1 | SDCM1131 |  |
 | CVI_CUST_LINK | CRDAT | Date on which the object was created | y | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | CVI_CUST_LINK | CRTIM | Time at which the object was created |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |

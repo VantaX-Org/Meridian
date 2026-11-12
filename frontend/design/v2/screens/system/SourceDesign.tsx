@@ -13,7 +13,8 @@ import { Fact, Facts } from "../../Inspector";
 import { Field, Gate } from "../../forms";
 import { ResultFrame, useOutcome } from "../../inspector/shared";
 import { ScrollFrame } from "../object/ScrollFrame";
-import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link, SapCode } from "../../parts";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Source design: what discovery read from this system's data dictionary, each table and field against the SAP
@@ -75,7 +76,7 @@ function TableDetail({ id, table }: { id: string; table: string }) {
               <Fact label={tr("Standard fields not here")}>{d.standard_fields_missing.length ? d.standard_fields_missing.map((n) => <Mono key={n}>{n} </Mono>) : int(0)}</Fact>
             </Facts>
             <ScrollFrame label={tr("Fields of {table}, scrollable", { table: d.table })}>
-              <table className="m2-tbl">
+              <TableExport><table className="m2-tbl">
                 <thead>
                   <tr>
                     <th scope="col">{tr("Field")}</th>
@@ -96,7 +97,7 @@ function TableDetail({ id, table }: { id: string; table: string }) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </ScrollFrame>
           </>
         ) : null}
@@ -128,7 +129,7 @@ function Tables({ id, href }: { id: string; href: (p: Record<string, string | nu
           <EmptyFrame>{tr("No table matches.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={tr("Discovered tables, scrollable")}>
-            <table className="m2-tbl" data-testid="sd-tables">
+            <TableExport><table className="m2-tbl" data-testid="sd-tables">
               <caption className="m2-meta">{tr("{shown} of {total} tables", { shown: int(items.length), total: int(q.data?.total ?? items.length) })}</caption>
               <thead>
                 <tr>
@@ -152,7 +153,7 @@ function Tables({ id, href }: { id: string; href: (p: Record<string, string | nu
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Feed>
@@ -172,7 +173,7 @@ function ConfigDeviation({ id }: { id: string }) {
         <EmptyFrame>{tr("No live configuration has been read from this system yet.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={tr("Configuration against standard, scrollable")}>
-          <table className="m2-tbl" data-testid="sd-deviation">
+          <TableExport><table className="m2-tbl" data-testid="sd-deviation">
             <thead>
               <tr>
                 <th scope="col">{tr("Check table and field")}</th>
@@ -193,7 +194,7 @@ function ConfigDeviation({ id }: { id: string }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Feed>
@@ -243,7 +244,7 @@ function Drift({ id }: { id: string }) {
                 <EmptyFrame>{tr("The dictionary did not change between these discoveries.")}</EmptyFrame>
               ) : (
                 <ScrollFrame label={tr("Dictionary changes, scrollable")}>
-                  <table className="m2-tbl" data-testid="sd-drift">
+                  <TableExport><table className="m2-tbl" data-testid="sd-drift">
                     <thead>
                       <tr>
                         <th scope="col">{tr("Table")}</th>
@@ -255,8 +256,8 @@ function Drift({ id }: { id: string }) {
                     <tbody>
                       {(diff.data?.changes ?? []).map((c) => (
                         <tr key={`${c.table}:${c.field ?? ""}:${c.change}`}>
-                          <th scope="row"><Mono>{c.table}</Mono></th>
-                          <td data-label={tr("Field")}>{c.field ? <Mono>{c.field}</Mono> : <Dash />}</td>
+                          <th scope="row"><SapCode table={c.table} /></th>
+                          <td data-label={tr("Field")}>{c.field ? <SapCode field={c.field.includes(".") || c.field.includes("-") ? c.field : `${c.table}-${c.field}`} /> : <Dash />}</td>
                           <td data-label={tr("Change")}>{CHANGE[c.change]?.() ?? c.change}</td>
                           <td data-label={tr("What changed")}>
                             {c.diff ? Object.entries(c.diff).map(([k, [a, b]]) => <span key={k} className="m2-meta">{tr("{what} from {a} to {b}", { what: k, a: String(a ?? ""), b: String(b ?? "") })} </span>) : <Dash />}
@@ -264,7 +265,7 @@ function Drift({ id }: { id: string }) {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></TableExport>
                 </ScrollFrame>
               )}
             </Feed>

@@ -18,6 +18,7 @@ import { SeverityMark, VerdictMark } from "../marks";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import "../basis.css";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * The SAP Basis home on the landscape: what a Basis or integration administrator looks after, from the reads the Runs
@@ -149,7 +150,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
           <EmptyFrame action={<V2Link href="/s/new" className="m2-btn">{t("Connect a system")}</V2Link>}>{t("No system is connected yet.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Connections table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("System")}</th>
@@ -175,14 +176,14 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                   );
                 })}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Block>
 
       <Block title={t("Last extraction")} testid="basis-extractions">
         <ScrollFrame label={t("Extractions table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("System")}</th>
@@ -207,7 +208,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       </Block>
 
@@ -218,7 +219,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
           <EmptyFrame>{t("No failed job is waiting. A job that fails and is not followed by a success of the same kind lands here.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Failed jobs table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Job")}</th>
@@ -239,7 +240,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Block>
@@ -249,7 +250,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
           <EmptyFrame>{t("No refused credentials or missing authorisations in the connection tests and the jobs read.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Authorisation errors table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Where")}</th>
@@ -277,7 +278,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Block>
@@ -287,7 +288,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
           <EmptyFrame action={<V2Link href="/admin/runs" className="m2-btn">{t("Start and schedule")}</V2Link>}>{t("No extraction is scheduled.")}</EmptyFrame>
         ) : (
           <ScrollFrame label={t("Schedules table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("System")}</th>
@@ -314,7 +315,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                   );
                 })}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Block>

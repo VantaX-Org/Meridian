@@ -17,7 +17,7 @@ NEW = [r for r in RULES if re.fullmatch(r"EC\d+", r["id"]) and 121 <= int(r["id"
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 ALLOWED_OPS = {"strip", "collapse_spaces", "upper", "lower", "title", "pad_left", "strip_leading_zeros",
-               "regex_replace", "truncate", "map", "set", "copy", "lookup", "date_format", "gtin_check_digit"}
+               "regex_replace", "truncate", "map", "set", "copy", "lookup", "date_format", "gtin_check_digit", "postcode"}
 # Business judgement: never auto-fix managers, termination/end dates, pay amounts or identities.
 NO_AUTOFIX_FIELDS = re.compile(r"\.(MANAGER_ID|END_DATE|LAST_DATE_WORKED|PAYROLL_END_DATE|CONTRACT_END_DATE|"
                                r"PAY_GROUP|PAY_SCALE_\w+|PERCENT|AMOUNT|SALARY|USERID|PERSON_ID|DATE_OF_\w+)$")

@@ -4,7 +4,7 @@ reference lists (official postal codes, SWIFT BIC directory)."""
 import pandas as pd
 
 from checks.base import BaseCheck, Evaluation, is_blank
-from checks.country_rules import violates
+from checks.country_rules import place_key, violates
 
 _BIC = r"[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?"  # malformed BICs are AP087's
 
@@ -14,7 +14,7 @@ class CountryFormatCheck(BaseCheck):
 
     def columns(self) -> list[str]:
         cols = [self.rule["field"], self.rule["country_field"]]
-        return cols + ([self.rule["street_field"]] if self.rule.get("street_field") else [])
+        return cols + [self.rule[k] for k in ("street_field", "postcode_field") if self.rule.get(k)]
 
     def evaluate(self, df: pd.DataFrame) -> Evaluation:
         r = self.rule
@@ -31,6 +31,13 @@ class CountryFormatCheck(BaseCheck):
             population = country.isin(r["countries"]) & street
             return Evaluation(population, value.eq(""), {"countries_requiring_postal_code": len(r["countries"])})
         keys = set(r["keys"])
+        if r["family"] == "place":  # city / region against the postal code's entries in REF_POSTAL
+            pair = pd.Series([place_key(c, p) for c, p in zip(country, df[r["postcode_field"]].astype("string")
+                                                                .fillna(""))], index=df.index)
+            full = pd.Series([place_key(p, v) for p, v in zip(pair, value)], index=df.index)
+            population = value.ne("") & pair.isin(set(r["scope"]))
+            return Evaluation(population, ~full.isin(keys), {"reference": "REF_POSTAL"},
+                              invalid_values_field=r["field"])
         if r["family"] == "bic":  # BIC8 is the head office: BIC11 with branch 'XXX'
             bic = value.str.upper()
             bic11 = bic.where(bic.str.len() != 8, bic + "XXX")

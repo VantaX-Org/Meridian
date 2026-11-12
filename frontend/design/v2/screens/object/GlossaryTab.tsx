@@ -13,7 +13,7 @@ import { type GridColumn } from "../../Grid";
 import { VerdictMark } from "../../marks";
 import "../../mdm.css";
 import { ResultFrame, useOutcome } from "../../inspector/shared";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link, SapCode } from "../../parts";
 import { ToolGrid } from "../../GridTools";
 import { t as tr, lc } from "@/lib/v2/i18n";
 
@@ -51,7 +51,7 @@ function WithoutTerm({ module, terms, label }: { module: string; terms: readonly
           <ul className="m2-flist" aria-label={tr("Fields without a term")}>
             {rows.map((r) => (
               <li key={r.field}>
-                <Mono>{r.field}</Mono>
+                <span><SapCode field={r.field} /></span>
                 <span className="m2-meta">
                   {r.rules.map((id, i) => (
                     <span key={id}>

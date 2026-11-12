@@ -75,7 +75,7 @@ for (const size of SIZES) {
       test("the Run canvas: status line, per-object table, actions and jobs", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto(`/run/${R8}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
-        await expect(page.getByRole("heading", { level: 1 })).toContainText("ECC production run 1", NAV);
+        await expect(page.getByRole("heading", { level: 1 })).toContainText("ECC production run 8", NAV);
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
         await expect(page.getByTestId("run-status-line")).toContainText("400,662 records checked");
         await expect(page.getByTestId("run-status-line")).toContainText("scored in 11 m 42 s");
@@ -93,7 +93,7 @@ for (const size of SIZES) {
       test("the Compare canvas: sentence, rows, totals that add up, method and what changed", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto(`/run/${R6}/vs/${R8}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
-        await expect(page.getByRole("heading", { level: 1 })).toContainText("ECC production run 1 vs ECC production run 3", NAV);
+        await expect(page.getByRole("heading", { level: 1 })).toContainText("ECC production run 8 vs ECC production run 6", NAV);
         await expect(page.getByTestId("compare-sentence")).toContainText("12 of 15 objects scored higher and 3 lower. 14 rules started failing and 37 stopped.");
         await expect(page.getByTestId("compare-method")).toContainText("11 rules added since the baseline of 2 Oct 2026 are excluded");
         if (phone) {

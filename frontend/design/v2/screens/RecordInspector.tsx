@@ -77,7 +77,7 @@ function FixBlock({ issue, detail, row, canFix, canSign, onReason, actions }: { 
       </div>
       <div className="m2-fixrow">
         <span>{tr("Field")}</span>
-        <span>{fieldName ? <>{describeField(issue.field ?? "") ?? ""} <Mono>{fieldName}</Mono></> : <Dash />}</span>
+        <span>{fieldName ? <>{describeField(issue.field ?? "", detail.field_descriptions) ?? ""} <Mono>{fieldName}</Mono></> : <Dash />}</span>
       </div>
       {issue.failing != null ? (
         <div className="m2-fixrow">
@@ -278,7 +278,7 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
       <dl className="m2-facts" data-testid="record-facts">
         {Object.entries(detail.values).map(([field, value]) => {
           const hits = failing.get(field) ?? [];
-          const desc = describeField(field);
+          const desc = describeField(field, detail.field_descriptions);
           return (
             <div className="m2-fact" key={field}>
               <dt>

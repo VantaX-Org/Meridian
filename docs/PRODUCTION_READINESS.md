@@ -7,7 +7,7 @@ This document is the point-in-time snapshot of what's been done to get Meridian 
 ## What's shipped (engineering)
 
 ### Core platform
-- 45 SAP modules, 10,276 deterministic rules (7,514 hand-authored, 2,762 derived), each proved against fixtures, DAMA DMBOK scoring
+- 45 SAP modules, 10,289 deterministic rules (7,527 hand-authored, 2,762 derived), each proved against fixtures, DAMA DMBOK scoring
 - Every database migration has a working downgrade, proved by a round-trip test
 - `npm audit` clean in the frontend, portal, install worker and LLM proxy
 - Auto-selecting check engine (pandas ↔ polars at 50k rows)

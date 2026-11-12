@@ -168,6 +168,23 @@ export interface GateCheck {
   label: string;
   passed: boolean;
   detail: string;
+  /** The evidence as numbers: actual against threshold (score, failing critical rules, contracts met). */
+  actual?: number | null;
+  threshold?: number | null;
+  items?: GateItem[];
+}
+/** One line of gate evidence: an object's score, a failing critical rule with its field and DDIC text, or a contract. */
+export interface GateItem {
+  module?: string;
+  actual?: number | null;
+  threshold?: number;
+  passed?: boolean;
+  check_id?: string;
+  cells?: number;
+  message?: string | null;
+  field?: string | null;
+  field_description?: string | null;
+  name?: string;
 }
 export interface WaveGate {
   wave_id: string;

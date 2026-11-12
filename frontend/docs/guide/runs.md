@@ -28,6 +28,14 @@ Every start form (Administration, Start and schedule; the system inspector's **E
 - **The prediction** reads the tenant's last eight finished runs of each object: the median records, the median seconds per record, and a band from the 25th to the 75th percentile; with fewer than four runs the band is the lowest to the highest. Nothing is estimated by a language model.
 - The baseline is the run you pinned; every comparison and "since the baseline" figure measures against it.
 
+## Column types and trust of an uploaded file
+
+A run made from an uploaded file or an external database (anything that is not an SAP extraction) shows **Column types and trust** on its run page, under the shape of the run. Meridian reads up to 20,000 rows of the file and, for each column, checks the values against fixed detectors: IBAN (ISO 13616 mod-97), EU VAT number (member state layout), email address, web address, date, phone number (E.164), postal code, country code (ISO 3166), amount and person name. The values decide: a column needs 80% of its values in a type's shape (60% when its header names the type, which also adds to the confidence). A postal code and a person name are only detected on a column whose header says so. Only the share of values that match each type is kept, never a value itself, and nothing goes to a language model.
+
+- **Column types**: each column with its detected type, the **Confidence** (the share of values in the type's shape, lowered for a column with fewer than 20 filled values), **Filled** (the share of non-empty values), **Conforms** (the share of filled values that match the type in force) and **Type in force**. Choose a type in the select to confirm it, or **No type** to override a wrong guess. A detected type stays "not confirmed" until someone chooses. Confirming needs the upload permission, and every change is in the audit log.
+- **Trust score**: one number out of 100 for the dataset, from four weighted parts: the run's data quality score (40%), type conformance across typed columns (25%), freshness (15%: 100 for data loaded in the last day, falling to 0 at 90 days) and completeness across all columns (20%). A missing part gives its weight to the others, so a file with no typed column is scored on the other three.
+- **Rules suggested from confirmed types**: the rules each confirmed type implies, for example "IBAN passes the ISO 13616 mod-97 check" for a confirmed IBAN column, and a postal code format rule tied to the confirmed country column. Only confirmed types suggest rules. **Open rules to add them**.
+
 ## What you can do, by role
 
 - **SAP Basis and analyst** (trigger sync, analyse): start an extraction or an analysis, retry a failed job.

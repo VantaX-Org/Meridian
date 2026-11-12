@@ -7,7 +7,7 @@ import { formatModuleName } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { pairQuality } from "@/lib/v2/paired-quality";
 import { f1 } from "@/lib/v2/score";
-import { Coded, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { Coded, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { retry, Section, status, Table } from "./WorkAnalytics";
 
 const ACTUAL_WHY: Record<string, () => string> = {
@@ -57,13 +57,14 @@ export function PairedQuality({ testId = "paired-quality" }: { testId?: string }
               <td data-label={t("Projected")} className="m2-num">{f1(m.projected)}</td>
               <td data-label={t("Actual in target")} className="m2-num">
                 {m.actual === null ? <span className="m2-meta">{f1(null)} {m.actualReason ? ACTUAL_WHY[m.actualReason]?.() ?? m.actualReason : ""}</span> : f1(m.actual)}
+                {m.moved !== null ? <span className="m2-meta"> {t("{n} from the source", { n: signed(m.moved) })}</span> : null}
               </td>
               <td data-label={t("Why they differ")}>
                 {m.reasons.length === 0 ? (
                   <span className="m2-meta">{f1(null)} {t("Reasons are not yet calculated")}</span>
                 ) : (
                   <ul className="m2-pq-why">
-                    {m.reasons.map((r) => <li key={r.check_id}><Coded code={r.check_id} text={r.description} /> {signed(r.change)}</li>)}
+                    {m.reasons.map((r) => <li key={r.check_id}><V2Link href={`/r/${encodeURIComponent(r.check_id)}`}><Coded code={r.check_id} text={r.description} /></V2Link> {signed(r.change)}</li>)}
                   </ul>
                 )}
               </td>

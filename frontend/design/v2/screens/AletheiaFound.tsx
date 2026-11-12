@@ -15,10 +15,11 @@ import { objectHref } from "@/lib/v2/people";
 import { useLandscape } from "@/lib/v2/queries";
 import { DASH, f1, int, pct1 } from "@/lib/v2/score";
 import { Sparkline } from "../charts/Sparkline";
-import { Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Dash, ErrorFrame, Mono, Skeleton, V2Link, SapCode } from "../parts";
 import { CcDelta } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 const signed = (n: number | null | undefined, fmt: (v: number) => string = int) => (n == null ? DASH : `${n > 0 ? "+" : ""}${fmt(n)}`);
 
@@ -53,7 +54,7 @@ export function AletheiaFound({ module }: { module?: string }) {
     <Panel title={t("Aletheia found")} meta={t("Ranked by score impact, from the latest run of each object")} testId="aletheia-found">
       {findings.length ? (
         <ScrollFrame label={t("Aletheia found")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <caption className="m2-sr">{t("Aletheia found")}</caption>
             <thead>
               <tr>
@@ -68,7 +69,7 @@ export function AletheiaFound({ module }: { module?: string }) {
             <tbody>
               {findings.map((f) => <FindingRow key={f.id} f={f} queryKey={key} />)}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       ) : null}
       <div className="m2-cc-split">
@@ -129,8 +130,18 @@ function FindingRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }
   return f.action.kind === "across" ? <AcrossRow f={f} /> : <ActionRow f={f} queryKey={queryKey} />;
 }
 
+/** The permission the backend checks for the tune (POST /rule-tuning/{id}/draft) and cleanse (POST /remediation/batches) actions. */
+const ACTION_NEEDS: Partial<Record<AletheiaFinding["action"]["kind"], string>> = { tune: "manage_rules", cleanse: "apply" };
+const ACTION_LOCKED = {
+  tune: () => t("Drafting a tuned version needs the manage rules permission, which your role does not hold."),
+  cleanse: () => t("Drafting a cleansing batch needs the apply permission, which your role does not hold."),
+};
+
 function ActionRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }) {
   const qc = useQueryClient();
+  const session = useV2Session();
+  const need = ACTION_NEEDS[f.action.kind];
+  const locked = need != null && (!session.can(need) || session.shared || Boolean(session.viewAs));
   const [done, setDone] = useState(false);
   const act = useMutation({
     mutationFn: async () => {
@@ -152,7 +163,7 @@ function ActionRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] })
         <span className="m2-meta">
           {" "}
           {moduleText(f.module)}
-          {f.field ? <>, <Mono>{f.field}</Mono></> : null}. {reason ?? null}
+          {f.field ? <>, <SapCode field={f.field} /></> : null}. {reason ?? null}
         </span>
       </th>
       <td data-label={t("Failing records")} className="m2-num">
@@ -186,6 +197,8 @@ function ActionRow({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] })
           <V2Link href={`/r/${encodeURIComponent(f.check_id)}`} className="m2-btn m2-sm">{ACTION_LABEL.open()}</V2Link>
         ) : done ? (
           <span className="m2-meta" role="status">{ACTION_TEXT[f.action.kind]()}</span>
+        ) : locked && (f.action.kind === "tune" || f.action.kind === "cleanse") ? (
+          <span className="m2-meta" data-testid="aletheia-action-locked">{ACTION_LOCKED[f.action.kind]()}</span>
         ) : (
           <button type="button" className="m2-btn m2-sm" disabled={act.isPending} onClick={() => act.mutate()}>
             {ACTION_LABEL[f.action.kind]()}

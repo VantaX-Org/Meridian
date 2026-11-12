@@ -4,6 +4,7 @@ import type { DuplicateNotSearched, FirewallVerdict, FuzzyNotRun, NearNotRun } f
 import { t } from "@/lib/v2/i18n";
 import { Mono } from "../parts";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * The duplicate search of the entry gate: which existing records a candidate looks like. Shows the existing record's
@@ -110,7 +111,7 @@ export function DuplicateResults({ res }: { res: FirewallVerdict }) {
       ) : null}
       {rows.length ? (
         <ScrollFrame label={t("Likely duplicates table, scrollable")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Record")}</th>
@@ -145,7 +146,7 @@ export function DuplicateResults({ res }: { res: FirewallVerdict }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       ) : null}
     </div>
