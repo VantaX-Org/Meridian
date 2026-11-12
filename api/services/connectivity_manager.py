@@ -58,6 +58,22 @@ def _not_found(e: Exception) -> bool:
     return e.__cause__ is None and bool(re.search(r"\b404\b|is not found", str(e)))
 
 
+def _asof_join(left: pd.DataFrame, right: pd.DataFrame, on: list[str]) -> pd.DataFrame:
+    """Each history row of ``left`` takes the ``right`` record in force on its ``__asof`` date: the latest right
+    record that starts on or before it, else the earliest one. Undated rows take the first right record."""
+    right = right.dropna(subset=["__asof"]).assign(__hit=True).sort_values("__asof", kind="stable")
+    left = left.assign(__row=range(len(left)))
+    dated = left[left["__asof"].notna()].sort_values("__asof", kind="stable").reset_index(drop=True)
+    back = pd.merge_asof(dated, right, on="__asof", by=on, direction="backward")
+    fwd = pd.merge_asof(dated, right, on="__asof", by=on, direction="forward")
+    miss = back["__hit"].isna().to_numpy()
+    back.loc[miss] = fwd.loc[miss]
+    undated = left[left["__asof"].isna()].merge(
+        right.drop(columns="__asof").drop_duplicates(subset=on), how="left", on=on)
+    return (pd.concat([back, undated], ignore_index=True).sort_values("__row", kind="stable")
+            .drop(columns=["__row", "__hit"]).reset_index(drop=True))
+
+
 def _bad_property(e: Exception, entity: str) -> str | None:
     """The property an SF 400 ('[COE0003]Bad property expression: Ent/prop', '[COE0021]Invalid property
     names: Ent/prop') rejects, as it appears in $select."""
@@ -983,7 +999,10 @@ class ConnectivityManager:
                                  "detail": "source is not an SF OData entity (e.g. payroll export)"})
                 continue
             # effective-dated entities return only today's record unless fromDate is given
-            history = {"from_date": "1900-01-01"} if "all records" in (t.note or "") else {}
+            # A table keyed on a start or effective date is a history table: the entity feeding that date
+            # is read with every record. Other entities in the table stay current and join first row per key.
+            all_records = "all records" in (t.note or "")
+            date_keys = set(t.keys) & {"START_DATE", "EFFECTIVE_DATE"}
             merged = None
             absent: list[str] = []
             absent_keys: set[str] = set()
@@ -1016,6 +1035,11 @@ class ConnectivityManager:
                         missing |= set(names)
                 if not sel:
                     return None, missing, None
+                base = any(set(props[p]) & date_keys for p in sel)
+                # a secondary entity of a history table is read with its own history too, so each history row
+                # takes the values in force on its date (as-of join below)
+                asof = bool(date_keys) and not base and model is not None and "startDate" in model[0]
+                history = {"from_date": "1900-01-01"} if all_records or base or asof else {}
                 # merge keys only when several entities feed the table (FO objects and Position carry neither)
                 join = [p for p in ("userId", "personIdExternal") if p not in props
                         and (model is None or p in model[0])] if len(by_entity) > 1 else []
@@ -1029,7 +1053,8 @@ class ConnectivityManager:
                                 and "locale" in (model[1].get(nav) or ()) for s in (f"{nav}/locale", "defaultLanguage")}
                         try:
                             df = connector.read_entity_set(
-                                ent, select=sorted(set(sel.values()) | set(join) | lang), **history,
+                                ent, select=sorted(set(sel.values()) | set(join) | lang | ({"startDate"} if asof else set())),
+                                **history,
                                 **({"expand": expand} if expand else {}))
                             break
                         except Exception as e:
@@ -1057,12 +1082,17 @@ class ConnectivityManager:
                 for j in ("userId", "personIdExternal", "relatedPersonIdExternal"):
                     if j in df.columns:
                         out[f"__{j}"] = df[j]
+                dated = next((f"{table}.{n}" for p in sel for n in props[p] if n in date_keys), None) if base else None
+                if dated or (asof and "startDate" in df.columns):
+                    out["__asof"] = pd.to_datetime(out[dated] if dated else df["startDate"], errors="coerce")
                 if related:  # the related person's own id meets the relationship's relatedPersonIdExternal
                     out = out.drop(columns=["__userId"], errors="ignore").rename(
                         columns={"__personIdExternal": "__relatedPersonIdExternal"})
                 return out, missing, None
 
-            for key, props in by_entity.items():
+            # the entity holding the date key is the base frame, so its history rows survive the left joins
+            for key, props in sorted(by_entity.items(),
+                                     key=lambda kv: not any(set(n) & date_keys for n in kv[1].values())):
                 ent, related = key.removesuffix(RELATED), key.endswith(RELATED)
                 # "Family*": every per-country entity set of one object (PerGlobalInfoBRA, …), rows stacked
                 members = self._sf_family(connector, ent.rstrip("*")) if ent.endswith("*") else [ent]
@@ -1096,9 +1126,12 @@ class ConnectivityManager:
                 else:
                     on = [c for c in ("__userId", "__personIdExternal", "__relatedPersonIdExternal")
                           if c in merged.columns and c in out.columns]
-                    # ponytail: first row per key wins (PerNationalId, PerEmail); prefer isPrimary if tenants differ
-                    merged = merged.merge(out.drop_duplicates(subset=on) if on else out,
-                                          how="left", on=on) if on else merged
+                    if on and "__asof" in merged.columns and "__asof" in out.columns:
+                        merged = _asof_join(merged, out, on)
+                    else:
+                        # ponytail: first row per key wins (PerNationalId, PerEmail); prefer isPrimary if tenants differ
+                        merged = merged.merge(out.drop(columns="__asof", errors="ignore").drop_duplicates(subset=on)
+                                              if on else out, how="left", on=on) if on else merged
             if merged is None:
                 if not failed:  # every entity absent, or none has a property the dictionary maps
                     coverage.append({"table": table, "status": "not_in_system", "entities": sorted(by_entity),

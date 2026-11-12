@@ -54,3 +54,26 @@ def test_extract_target_does_not_pass_from_date_for_odata_v4_systems():
     for system_type in ("s4hana_cloud", "btp"):
         df = mgr._extract_target(FakeODataV4Connector(), system_type, target, max_rows=0)
         assert df is not None
+
+
+def test_date_keyed_table_reads_full_history_only_for_its_date_entity():
+    """COMPINFO is keyed on EFFECTIVE_DATE: EmpCompensation is read with fromDate, its side entities stay current."""
+    import inspect
+    src = inspect.getsource(ConnectivityManager._extract_successfactors)
+    assert 'date_keys = set(t.keys) & {"START_DATE", "EFFECTIVE_DATE"}' in src
+    assert "set(props[p]) & date_keys for p in sel" in src
+
+
+def test_history_rows_take_the_secondary_record_in_force_on_their_date():
+    import pandas as pd
+    from api.services.connectivity_manager import _asof_join
+    d = pd.to_datetime
+    jobs = pd.DataFrame({"__userId": ["u1", "u1", "u1", "u2", "u2"],
+                         "T.START_DATE": ["2019-01-01", "2021-06-01", "2023-01-01", "2020-01-01", None],
+                         "__asof": d(["2019-01-01", "2021-06-01", "2023-01-01", "2020-01-01", None])})
+    pay = pd.DataFrame({"__userId": ["u1", "u1", "u2"], "T.PAY": ["B", "A", "C"],
+                        "__asof": d(["2021-01-01", "2020-01-01", "2022-01-01"])})
+    out = _asof_join(jobs, pay, ["__userId"])
+    assert len(out) == 5 and list(out["T.START_DATE"][:4]) == list(jobs["T.START_DATE"][:4])  # order and rows kept
+    # 2019 predates every pay record so takes the earliest; 2021 and 2023 take the latest started on or before
+    assert list(out["T.PAY"]) == ["A", "B", "B", "C", "C"]
