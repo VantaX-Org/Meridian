@@ -166,3 +166,61 @@ export const markActed = (body: { module: string; check_id: string; action: Alet
 /** A cleansing batch over one rule's open issues (POST /remediation/batches), drafted for approval. */
 export const createRuleBatch = (name: string, filter: Pick<BatchFilter, "module" | "check_id">) =>
   v2Send<BatchCreated>("POST", "/remediation/batches", { name, filter });
+
+/** GET /insights/overview: the headline of a run. Only the fields the page reads are typed. */
+export interface InsightOverview {
+  version_id: string | null;
+  run_label: string | null;
+  run_at: string | null;
+  dqs: { composite: number | null; previous: number | null; delta: number | null; tier: string | null; capped: boolean; cap_reason: string | null } | null;
+  blockers: { count: number; previous: number | null } | null;
+  auto_fixable: { records: number; failing_records: number; pct: number | null; high_confidence: number } | null;
+  value_at_risk: { worst_l1: string | null; worst_l1_amount: number | null; currency: string | null; features_blocked: number } | null;
+  narrative: string | null;
+}
+export const getOverview = () => v2Get<InsightOverview>(`${P}/overview`, current);
+
+/** GET /insights/exec: the executive read. A day-one tenant gets empty fields. */
+export interface InsightExec {
+  version_id: string | null;
+  composite: number | null;
+  cap: number | null;
+  cap_reason: string | null;
+  narrative: string | null;
+  waterfall: { x: string; y: number; l1: string | null }[];
+}
+export const getExec = () => v2Get<InsightExec>(`${P}/exec`, current);
+
+/** GET /insights/cleansing: the pipeline from failing records to applied fixes. */
+export interface Cleansing {
+  version_id: string | null;
+  currency: string | null;
+  steps: { key: string; label: string; records: number }[];
+  by_module: { module: string; failing: number; proposed: number; high: number }[];
+  by_rule: { check_id: string; proposed: number; high: number; auto: number }[];
+}
+export const getCleansing = () => v2Get<Cleansing>(`${P}/cleansing`, current);
+
+/** GET /insights/owners: each owner's score, open items and the digest they get. */
+export interface OwnerRow {
+  owner: string;
+  score: number | null;
+  delta: number | null;
+  open_by_severity: Record<string, number>;
+  fixed_since_baseline: number | null;
+  oldest_item_age_days: number | null;
+  digest: string | null;
+  user_id: string | null;
+  schedule: string | null;
+  last_sent: string | null;
+}
+export const getOwners = () => v2Get<{ owners: OwnerRow[] }>(`${P}/owners`);
+
+/** GET /insights/duplicates/{object}/{record_id}: record_id is the golden record's id. */
+export interface DuplicateCluster {
+  nodes: { id: string; size: number; label: string }[];
+  edges: { source: string; target: string; label: string }[];
+  thresholds: { auto_merge: number; review_floor: number };
+}
+export const getDuplicateCluster = (object: string, recordId: string) =>
+  v2Get<DuplicateCluster>(`${P}/duplicates/${encodeURIComponent(object)}/${encodeURIComponent(recordId)}`);

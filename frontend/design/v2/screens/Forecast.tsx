@@ -11,6 +11,7 @@ import { Sparkline } from "../charts";
 import { Sev } from "../inspector/rule";
 import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { Disclose, Guide } from "./Guide";
+import { SprintPlanner } from "./ExtraPanels";
 import { CcBanner, CcPage } from "./cc-parts";
 import { retry, Section, status, Table, useRuleName } from "./WorkAnalytics";
 
@@ -125,6 +126,7 @@ export function Forecast() {
       <Disclose title={t("Sprint plan")}>
       <SprintsPanel q={plan} />
       </Disclose>
+      <Disclose title={t("Sprint planner")}><SprintPlanner /></Disclose>
       <Disclose title={t("Open work queue")}>
       <QueuePanel />
       </Disclose>

@@ -9,6 +9,7 @@ import { f1, int, pct1 } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, niceTicks, Sparkline, TrendChart } from "../charts";
 import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { Disclose, Guide } from "./Guide";
+import { MdmHealthScorecard } from "./ExtraPanels";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -123,6 +124,7 @@ export function MdmHealth() {
           </table></TableExport>
         </ScrollFrame>
       </Panel>
+      <Disclose title={t("Scorecard")}><MdmHealthScorecard /></Disclose>
       <Disclose title={t("Trends over time")}>
       <Trend days={days} pick={(d) => d.mdm_health_score} title={t("Health score, day by day")} unit={t("points")} testId="mdm-trend" format={f1} fixed />
       </Disclose>
