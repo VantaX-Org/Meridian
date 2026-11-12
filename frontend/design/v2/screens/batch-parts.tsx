@@ -9,6 +9,9 @@ import { useWorkActions } from "@/lib/v2/work-actions";
 import { approveBlock, type BatchRow } from "@/lib/v2/batches";
 import { useBatchActions, useBatchCan } from "@/lib/v2/batch-actions";
 import { useAssignable } from "@/lib/v2/approvals-queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { reassignBatch } from "@/lib/api/v2/batches";
+import { refreshV2 } from "@/lib/v2/queries";
 import { int } from "@/lib/v2/score";
 import { useToast } from "../Toast";
 import { MenuButton, type MenuEntry } from "../Menu";
@@ -257,5 +260,42 @@ export function ReassignMenu({ rows, disabled, className = "m2-btn", subject }: 
         {t("Reassign…")}
       </MenuButton>
     </span>
+  );
+}
+
+/** Reassign a whole batch to one person (POST /remediation/batches/{id}/reassign, needs assign). Undoable, so no confirm. */
+export function ReassignBatch({ b, sm = true }: { b: BatchRow; sm?: boolean }) {
+  const can = useBatchCan();
+  const [open, setOpen] = useState(false);
+  const users = useAssignable(open && can.assign);
+  const toast = useToast();
+  const qc = useQueryClient();
+  if (!can.assign) return null;
+  const entries: MenuEntry[] = [
+    { kind: "heading", label: t("Reassign to") },
+    ...(users.data ?? []).map<MenuEntry>((u) => ({
+      kind: "item",
+      id: u.id,
+      label: u.name,
+      sub: u.email,
+      onSelect: () => {
+        void (async () => {
+          try {
+            const r = await reassignBatch(b.id, u.id);
+            await refreshV2(qc);
+            toast.show(t("Batch {label}: {count} {count2, plural, one {record} other {records}} reassigned to {name}", { label: b.label, count: int(r.reassigned), count2: r.reassigned, name: u.name }));
+          } catch (e) {
+            toast.show(errorSentence(e, t("The batch could not be reassigned.")), "error");
+          }
+        })();
+      },
+    })),
+    ...(users.isLoading ? [{ kind: "item", id: "loading", label: t("Reading the people…"), disabled: true } as MenuEntry] : []),
+    ...(users.isError ? [{ kind: "item", id: "error", label: t("The people could not be read"), disabled: true } as MenuEntry] : []),
+  ];
+  return (
+    <MenuButton label={t("Reassign batch {label}", { label: b.label })} buttonLabel={t("Reassign batch {label}", { label: b.label })} entries={entries} className={`m2-btn${sm ? " m2-sm" : ""}`} onOpen={() => setOpen(true)}>
+      {t("Reassign whole batch")}
+    </MenuButton>
   );
 }

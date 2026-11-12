@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
 import {
-  exportComparison, getDifferences, getLatest, getRecordPair, getTrend, patchPair, runPair,
+  exportComparison, getComparison, getDifferences, getLatest, getRecordPair, getTrend, patchPair, runPair,
   type CompareKind, type Comparison, type ComparePair, type DiffQuery, type DiffRow, type KeyMap, type TableCompare,
 } from "@/lib/api/v2/compare";
 import type { ReconScores } from "@/lib/api/v2/migration";
@@ -162,8 +162,27 @@ function Reasons({ scores }: { scores: Comparison["scores"] }) {
   );
 }
 
+/** One earlier comparison of the pair, read from GET /compare/comparisons/{id}. */
+function SavedComparison({ cid, onClose }: { cid: string; onClose: () => void }) {
+  const fixture = useFixture();
+  const q = useQuery({ queryKey: ["system-compare", "comparison", cid, fixture], queryFn: () => getComparison(cid), retry });
+  return (
+    <div data-testid="cmp-saved">
+      {q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The saved comparison could not be read.")}</ErrorFrame> : null}
+      {q.data ? (
+        <>
+          <p className="m2-meta">{t("Comparison of {date}, {status}", { date: formatDate(q.data.completed_at ?? q.data.created_at, "date"), status: STATUS_TEXT[q.data.status]() })}</p>
+          <Tables c={q.data} />
+        </>
+      ) : null}
+      <button type="button" className="m2-linkbtn2" onClick={onClose}>{t("Close")}</button>
+    </div>
+  );
+}
+
 function Trend({ id }: { id: string }) {
   const fixture = useFixture();
+  const [open, setOpen] = useState<string | null>(null);
   const q = useQuery({ queryKey: ["system-compare", "trend", id, fixture], queryFn: () => getTrend(id), staleTime: 60_000, retry });
   const points = useMemo(() => [...(q.data?.points ?? [])].sort((a, b) => a.at.localeCompare(b.at)), [q.data]);
   const series = trendSeries(points);
@@ -193,6 +212,17 @@ function Trend({ id }: { id: string }) {
           reference={{ value: 85, label: t("85 cap") }}
         />
       </ChartFrame>
+      {points.length > 0 ? (
+        <ul className="m2-rows">
+          {points.map((p) => (
+            <li key={p.comparison_id}>
+              <span>{formatDate(p.at, "date")}</span>
+              <button type="button" className="m2-linkbtn2" aria-label={t("Open the comparison of {date}", { date: formatDate(p.at, "date") })} onClick={() => setOpen(p.comparison_id)}>{t("Open")}</button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {open ? <SavedComparison cid={open} onClose={() => setOpen(null)} /> : null}
     </section>
   );
 }

@@ -2,10 +2,10 @@
 
 import "../approvals.css";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
 import { errorSentence } from "@/lib/api/v2/client";
-import { activateDefinition, createDefinition, dryRun, newVersion, type DryRun, type WorkflowDefinition } from "@/lib/api/v2/requests";
+import { activateDefinition, createDefinition, dryRun, getDefinition, newVersion, type DryRun, type WorkflowDefinition } from "@/lib/api/v2/requests";
 import { useDefinitions, useFacts } from "@/lib/v2/requests-queries";
 import { int } from "@/lib/v2/score";
 import { t as tr } from "@/lib/v2/i18n";
@@ -61,6 +61,26 @@ function Preview({ d }: { d: DryRun }) {
 }
 
 /** One workflow, its versions, and the editor for the next version with its dry run. */
+/** One stored version, read from GET /workflows/definitions/{id}: the definition exactly as the engine holds it. */
+function DefinitionDetail({ id, onClose }: { id: string; onClose: () => void }) {
+  const q = useQuery({ queryKey: ["v2", "workflow-definition", id], queryFn: () => getDefinition(id), retry: false });
+  return (
+    <div data-testid="workflow-definition">
+      {q.isError ? <Note tone="bad">{errorSentence(q.error, tr("The workflow version could not be opened."))}</Note> : null}
+      {q.data ? (
+        <>
+          <p className="m2-meta">{tr("Version {version}, {state}", { version: int(q.data.version), state: q.data.active ? tr("Active") : tr("Inactive") })}</p>
+          {q.data.description ? <p>{q.data.description}</p> : null}
+          <pre className="m2-mono">{pretty(q.data.definition)}</pre>
+        </>
+      ) : null}
+      <button type="button" className="m2-linkbtn2" onClick={onClose}>
+        {tr("Close")}
+      </button>
+    </div>
+  );
+}
+
 function Workflow({ versions }: { versions: WorkflowDefinition[] }) {
   const qc = useQueryClient();
   const done = useDone();
@@ -73,6 +93,7 @@ function Workflow({ versions }: { versions: WorkflowDefinition[] }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<WorkflowDefinition | null>(null);
+  const [view, setView] = useState<string | null>(null);
   const def = parseObject(text);
   const fx = parseObject(sample);
   const act = async (fn: () => Promise<unknown>, label: string) => {
@@ -115,6 +136,9 @@ function Workflow({ versions }: { versions: WorkflowDefinition[] }) {
                     {tr("Activate")}
                   </button>
                 )}
+                <button type="button" className="m2-linkbtn2" aria-label={tr("Open version {version}", { version: int(v.version) })} onClick={() => setView(v.id)}>
+                  {tr("Open")}
+                </button>
                 <button type="button" className="m2-linkbtn2" onClick={() => setText(pretty(v.definition))}>
                   {tr("Edit from this one")}
                 </button>
@@ -123,6 +147,7 @@ function Workflow({ versions }: { versions: WorkflowDefinition[] }) {
           ))}
         </tbody>
       </table></TableExport>
+      {view ? <DefinitionDetail id={view} onClose={() => setView(null)} /> : null}
       <Fld label={tr("Definition of the next version")} hint={facts.data ? tr("Facts a step can test: {facts}. Operators: {ops}.", { facts: Object.keys(facts.data.facts).join(", "), ops: facts.data.ops.join(", ") }) : undefined} error={"error" in def ? def.error : null} wide mono>
         <textarea rows={14} value={text} spellCheck={false} onChange={(e) => setText(e.target.value)} />
       </Fld>

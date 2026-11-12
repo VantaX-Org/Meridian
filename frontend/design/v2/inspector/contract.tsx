@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { activateContract, createContract, reviseContract, updateContract, type Contract } from "@/lib/api/v2/roles";
+import { getContractBreaches, getContractCompliance } from "@/lib/api/v2/step9";
+import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
 import { failureText } from "@/lib/v2/errors";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
@@ -30,6 +32,69 @@ function Compliance({ c }: { c: Contract }) {
       <VerdictMark verdict={c.latest_compliant ? "go" : "no-go"} />
       {c.latest_compliant ? t("Met") : t("Breached")}
     </span>
+  );
+}
+
+/** GET /contracts/{id}/breaches and /compliance: the thresholds breached now, earlier runs that breached them, and the recent checks. */
+function ContractChecks({ id }: { id: string }) {
+  const fx = useFixture();
+  const br = useQuery({ queryKey: ["v2", "contract-breaches", fx, id], queryFn: () => getContractBreaches(id), retry: false });
+  const co = useQuery({ queryKey: ["v2", "contract-compliance", fx, id], queryFn: () => getContractCompliance(id), retry: false });
+  const rows = co.data?.compliance_history ?? [];
+  return (
+    <>
+      <h3>{t("Thresholds breached")}</h3>
+      {br.data && br.data.current.length + br.data.history.length > 0 ? (
+        <ul className="m2-rows" data-testid="contract-threshold-breaches">
+          {br.data.current.map((b, i) => (
+            <li key={`c${i}`}>
+              <span className="m2-meta">{t("Now")}</span>
+              <span>{t("{metric}: {actual} against {threshold}", { metric: b.metric, actual: b.actual ?? "-", threshold: b.threshold })}</span>
+              {b.run_id ? <V2Link href={`/run/${encodeURIComponent(b.run_id)}`}>{t("Open the run")}</V2Link> : null}
+            </li>
+          ))}
+          {br.data.history.map((b, i) => (
+            <li key={`h${i}`}>
+              <span className="m2-meta">{b.run_at ? formatDate(b.run_at, "date") : <Dash why={t("No date")} />}</span>
+              <span>{t("{metric}: {actual} against {threshold}", { metric: b.metric, actual: b.actual ?? "-", threshold: b.threshold })}</span>
+              {b.run_id ? <V2Link href={`/run/${encodeURIComponent(b.run_id)}`}>{t("Open the run")}</V2Link> : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="m2-meta">{br.isLoading ? t("Loading") : t("No threshold is breached.")}</p>
+      )}
+      <h3>{t("Recent checks")}</h3>
+      {rows.length > 0 ? (
+        <table className="m2-tbl" data-testid="contract-compliance">
+          <thead>
+            <tr>
+              <th>{t("Checked")}</th>
+              <th>{t("Completeness")}</th>
+              <th>{t("Accuracy")}</th>
+              <th>{t("Consistency")}</th>
+              <th>{t("Timeliness")}</th>
+              <th>{t("Uniqueness")}</th>
+              <th>{t("Validity")}</th>
+              <th>{t("Result")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td>{formatDate(r.recorded_at, "date")}</td>
+                {[r.completeness_actual, r.accuracy_actual, r.consistency_actual, r.timeliness_actual, r.uniqueness_actual, r.validity_actual].map((v, i) => (
+                  <td key={i}>{v === null ? <Dash why={t("Not measured")} /> : Math.round(Number(v))}</td>
+                ))}
+                <td>{r.overall_compliant ? t("Met") : t("Breached")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="m2-meta">{co.isLoading ? t("Loading") : t("No check in the last 90 days.")}</p>
+      )}
+    </>
   );
 }
 
@@ -204,6 +269,7 @@ export function ContractInspector({ id, onClose }: { id: string; onClose: () => 
               ))}
             </ul>
           )}
+          <ContractChecks id={c.id} />
           <h3>{t("Versions")}</h3>
           <ul className="m2-rows" data-testid="contract-versions">
             <li>

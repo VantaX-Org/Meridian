@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
 import {
-  applyProposal, approveGroup, EXPORT_FORMATS, exportCleaning, getExportOptions, type ExportFormat, approveProposal, CONFIDENT, getAppliedCleaning, getDedupCandidates, mergeDedup, previewDedup, getCleaningAudit, getCleaningGroups, getCleaningMetrics, getCleaningSafety, getProposals, rejectProposal,
+  applyProposal, approveGroup, EXPORT_FORMATS, exportCleaning, getExportOptions, type ExportFormat, approveProposal, CONFIDENT, getAppliedCleaning, getDedupCandidates, getDedupCandidatesFor, mergeDedup, previewDedup, getCleaningAudit, getCleaningGroups, getCleaningMetrics, getCleaningSafety, getProposals, rejectProposal,
   rejectGroup, rollbackCleaning, sendAiFeedback, WAITING, type CleaningGroup, type CleaningItem, type CleaningMetric, type DedupCandidate, type Proposal, type RecordData, type SafetyItem,
 } from "@/lib/api/v2/cleaning";
 import { getBackAfterClean } from "@/lib/api/remediation";
@@ -614,10 +614,22 @@ function Safety() {
 
 function Duplicates() {
   const { can } = useV2Session();
-  const pairs = useCleaning("dedup", getDedupCandidates);
+  const all = useCleaning("dedup", getDedupCandidates);
+  const [objectType, setObjectType] = useState("");
+  const one = useCleaning(`dedup-${objectType}`, () => (objectType ? getDedupCandidatesFor(objectType) : getDedupCandidates()));
+  const pairs = objectType ? one : all;
+  const types = [...new Set((all.data?.items ?? []).map((c) => c.object_type))].sort();
   const [open, setOpen] = useState<string | null>(null);
   return (
     <Panel title={t("Duplicate records to merge")} meta={pairs.data ? t("{n} pairs the cleaning engine found to be the same record", { n: int(pairs.data.total) }) : undefined} testId="cleansing-dedup">
+      {types.length > 1 || objectType ? (
+        <p>
+          <select className="m2-inp" aria-label={t("Object type")} data-testid="cleansing-dedup-type" value={objectType} onChange={(e) => { setObjectType(e.target.value); setOpen(null); }}>
+            <option value="">{t("All objects")}</option>
+            {types.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </p>
+      ) : null}
       {pairs.isPending ? <Skeleton width="100%" height={80} /> : status(pairs.error) === 403 ? (
         <Dash why={t("Your role cannot see the duplicate records.")} />
       ) : pairs.isError ? <Dash why={t("The duplicate records could not be read.")} /> : pairs.data.items.length === 0 ? (

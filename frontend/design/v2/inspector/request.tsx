@@ -8,11 +8,12 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDate, labelOf } from "@/lib/format";
 import { errorSentence } from "@/lib/api/v2/client";
-import { attachToRequest, cancelRequest, commentRequest, exportRequest, retryRequest, submitRequest, type ChangeRequest, type FieldAction, type Precheck, type RequestDetail, type RequestKind, type RequestObject, type RequestStatus } from "@/lib/api/v2/requests";
+import { attachToRequest, cancelRequest, commentRequest, exportRequest, retryRequest, submitRequest, updateRequest, type ChangeRequest, type FieldAction, type Precheck, type RequestDetail, type RequestKind, type RequestObject, type RequestStatus } from "@/lib/api/v2/requests";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { useFieldHistory, useRequest } from "@/lib/v2/requests-queries";
 import { int } from "@/lib/v2/score";
 import { t as tr } from "@/lib/v2/i18n";
+import { Field } from "../forms";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
 import { describeField } from "@/lib/v2/sap-fields";
 import { Coded, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
@@ -301,6 +302,8 @@ function RequestBody({ d }: { d: RequestDetail }) {
         </tbody>
       </table>
 
+      {r.status === "draft" && mine && write ? <EditDraft r={r} onSaved={() => done(tr("Draft saved."))} /> : null}
+
       <h3>{tr("Field history")}</h3>
       <FieldHistory id={r.id} />
 
@@ -371,6 +374,38 @@ function RequestBody({ d }: { d: RequestDetail }) {
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Talk d={d} />
     </>
+  );
+}
+
+/** Edit an open (draft) request: title and the proposed values it already holds (PATCH /change-requests/{id}). Saving clears the old check. */
+function EditDraft({ r, onSaved }: { r: ChangeRequest; onSaved: () => Promise<unknown> }) {
+  const toast = useToast();
+  const [on, setOn] = useState(false);
+  const [title, setTitle] = useState(r.title ?? "");
+  const [vals, setVals] = useState<Record<string, string>>(r.payload);
+  const [busy, setBusy] = useState(false);
+  if (!on) return <button type="button" className="m2-btn m2-sm" data-testid="request-edit-open" onClick={() => setOn(true)}>{tr("Edit draft")}</button>;
+  const save = async () => {
+    setBusy(true);
+    try {
+      await updateRequest(r.id, { title: title.trim(), payload: vals });
+      await onSaved();
+      setOn(false);
+    } catch (e) {
+      toast.show(errorSentence(e, tr("The draft could not be saved.")), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form className="m2-rfilters" data-testid="request-edit" aria-label={tr("Edit draft")} onSubmit={(e) => { e.preventDefault(); void save(); }}>
+      <Field label={tr("Title")}>{(p) => <input {...p} className="m2-inp" value={title} onChange={(e) => setTitle(e.target.value)} />}</Field>
+      {Object.keys(vals).map((k) => (
+        <Field key={k} label={describeField(k) ?? k} hint={k}>{(p) => <input {...p} className="m2-inp" value={vals[k]} onChange={(e) => setVals({ ...vals, [k]: e.target.value })} />}</Field>
+      ))}
+      <button type="submit" className="m2-btn m2-next" disabled={busy}>{busy ? tr("Working…") : tr("Save draft")}</button>
+      <button type="button" className="m2-btn m2-ghost" onClick={() => setOn(false)}>{tr("Cancel")}</button>
+    </form>
   );
 }
 
