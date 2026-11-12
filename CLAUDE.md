@@ -6,7 +6,7 @@ You are building **Meridian**, a customer-deployed SAP Data Quality and Master D
 
 ## What you are building
 
-Meridian analyses SAP data quality across **29 modules** and **9,635 YAML validation rules** (6,873 enabled; the DDIC-derived rest ship disabled) on data from **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP). It ships as a customer-hosted Docker Compose stack — SAP data, findings, and reports never leave the customer's own environment.
+Meridian analyses SAP data quality across **29 modules** and **9,737 YAML validation rules** (6,975 enabled; the DDIC-derived rest ship disabled) on data from **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP). It ships as a customer-hosted Docker Compose stack — SAP data, findings, and reports never leave the customer's own environment.
 
 The product includes:
 - **Data Quality Engine** — deterministic checks with DAMA DMBOK scoring (6 dimensions, record-level pass rates)
