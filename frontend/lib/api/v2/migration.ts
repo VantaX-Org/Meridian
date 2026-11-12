@@ -55,6 +55,8 @@ export interface MigrationRun {
   error_detail: string | null;
   created_at: string | null;
   completed_at: string | null;
+  /** The wave the run belongs to; a fix batch can only be drafted for a wave's run. */
+  wave_id?: string | null;
 }
 
 export interface GapGroup {
@@ -145,10 +147,36 @@ export interface ValueEntry {
 export interface AnalyzeBody {
   mode: MigrationMode;
   source_system_id?: string;
+  /** The source run to analyse. Absent: the latest complete run of the source system. */
+  source_version_id?: string;
   dest_system_id?: string;
   target_release?: string;
   modules: string[];
 }
+
+/** sap/ddic.py RELEASE_FOR_SYSTEM: the dictionary release a system type loads into. */
+export const RELEASE_FOR_SYSTEM: Record<string, "ecc6" | "s4hana"> = {
+  ecc: "ecc6", ecc6: "ecc6", ewm: "ecc6", ewms: "ecc6", s4hana_onprem: "s4hana", s4hana_cloud: "s4hana", s4hana: "s4hana",
+};
+export const releaseFor = (systemType: string | null | undefined): "ecc6" | "s4hana" =>
+  RELEASE_FOR_SYSTEM[systemType ?? ""] ?? "s4hana";
+
+/** One load file handed over: a row of migration_export_files, written by the /export route. */
+export interface LoadEvent {
+  id: string;
+  run_id: string;
+  export_format: string;
+  record_count: number | null;
+  filename: string | null;
+  created_at: string | null;
+  exported_by: string | null;
+  exported_by_label: string | null;
+  modules: string[];
+  wave_id: string | null;
+  wave_name: string | null;
+  wave_stage: string | null;
+}
+export const getLoadEvents = () => v2Get<{ events: LoadEvent[] }>(`${P}/load-events`);
 
 const run = (id: string) => `${P}/runs/${encodeURIComponent(id)}`;
 
@@ -354,6 +382,11 @@ export interface Reconciliation {
   needs_target_extraction: boolean;
   /** The reconciliation before this one, counts only. Null when there is none. */
   previous: { created_at: string; summary: Reconciliation["summary"] } | null;
+  /** Four-eyes sign-off: who ran it and who accepted it (never the same user). */
+  requested_by?: string | null;
+  accepted_by?: string | null;
+  accepted_by_label?: string | null;
+  accepted_at?: string | null;
 }
 
 export interface ReconRecord {
@@ -390,6 +423,7 @@ export interface ReconRecordsPage {
 }
 
 export const getReconciliation = (id: string) => v2Get<Reconciliation>(`${run(id)}/reconciliation`);
+export const acceptReconciliation = (id: string) => v2Send<Reconciliation>("POST", `${run(id)}/reconciliation/accept`);
 export const startReconciliation = (id: string) => v2Send<{ reconciliation_id: string; task_id: string | null; status: string }>("POST", `${run(id)}/reconcile`);
 export const getReconciliationRecords = (id: string, q: { table?: string; kind?: ReconKind; offset?: number; limit?: number; real_only?: boolean }) =>
   v2Get<ReconRecordsPage>(`${run(id)}/reconciliation/records`, { ...q, real_only: q.real_only ? "true" : undefined });

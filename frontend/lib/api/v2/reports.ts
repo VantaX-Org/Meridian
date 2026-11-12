@@ -117,4 +117,4 @@ export interface FixBatchDraft {
   with_proposal: number;
   auto_approvable: number;
 }
-export const draftBlockerFixBatch = (id: string, body: { module: string; gap_type: string; field: string | null }): Promise<FixBatchDraft> => v2Send("POST", `/migration/waves/${enc(id)}/blockers/fix-batch`, body);
+export const draftBlockerFixBatch = (id: string, body: { module: string; gap_type?: string; field?: string | null; record_keys?: string[] }): Promise<FixBatchDraft> => v2Send("POST", `/migration/waves/${enc(id)}/blockers/fix-batch`, body);

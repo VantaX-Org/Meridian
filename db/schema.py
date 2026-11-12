@@ -1540,6 +1540,8 @@ class MigrationReconciliation(Base):
     error_detail = Column(Text, nullable=True)
     task_id = Column(Text, nullable=True)
     requested_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    accepted_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)   # four-eyes sign-off (166)
+    accepted_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
