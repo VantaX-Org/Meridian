@@ -5,7 +5,7 @@
  *
  * POST /systems/{id}/discover, GET /systems/{id}/design, GET /systems/{id}/design/tables,
  * GET /systems/{id}/design/tables/{table}, GET /systems/{id}/design/config-deviation,
- * GET /systems/{id}/design/snapshots, GET /systems/{id}/design/diff.
+ * GET /systems/{id}/design/config/{table}, GET /systems/{id}/design/coverage, GET /systems/{id}/design/snapshots, GET /systems/{id}/design/diff.
  */
 import { v2Get, v2Send } from "./client";
 
@@ -88,6 +88,25 @@ export const getDesign = (id: string) => v2Get<DesignSummary>(`/systems/${enc(id
 export const getDesignTables = (id: string, search: string, customerOnly: boolean) =>
   v2Get<{ total: number; items: DesignTable[] }>(`/systems/${enc(id)}/design/tables`, { search: search || undefined, customer_only: customerOnly || undefined, limit: 200 });
 export const getDesignTable = (id: string, table: string) => v2Get<DesignTableDetail>(`/systems/${enc(id)}/design/tables/${enc(table)}`);
+/** One configuration table as read from the system: rows are the stored check-table entries, as the system returned them. */
+export interface DesignConfigTable {
+  table: string;
+  scope: string | null;
+  rows: Record<string, unknown>[];
+  total: number | null;
+  source: string | null;
+  synced_at: string | null;
+}
+/** What discovery managed to read, per part; each entry is one table with its status. */
+export interface DesignCoverageEntry {
+  table?: string;
+  status: string;
+  rows?: number;
+  detail?: string;
+  purpose?: string;
+}
+export const getDesignConfig = (id: string, table: string) => v2Get<DesignConfigTable>(`/systems/${enc(id)}/design/config/${enc(table)}`, { limit: 500 });
+export const getDesignCoverage = (id: string) => v2Get<{ snapshot_id: string | null; coverage: Record<string, DesignCoverageEntry[]> }>(`/systems/${enc(id)}/design/coverage`);
 export const getConfigDeviation = (id: string) => v2Get<{ tables: ConfigDeviation[] }>(`/systems/${enc(id)}/design/config-deviation`);
 export const getDesignSnapshots = (id: string) => v2Get<DesignSnapshot[]>(`/systems/${enc(id)}/design/snapshots`);
 export const getDesignDiff = (id: string, from: string, to: string) =>

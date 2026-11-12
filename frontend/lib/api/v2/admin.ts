@@ -191,6 +191,10 @@ export async function uploadReference(systemId: string, kind: "postal-codes" | "
   return data;
 }
 
+/** Removes one uploaded list. 404 when the system has none, 409 while an enabled rule still names it. */
+export const deleteReference = (systemId: string, kind: "postal-codes" | "bic"): Promise<{ kind: string; system_id: string; status: string; records: number }> =>
+  v2Send("DELETE", `/systems/${enc(systemId)}/reference/${kind}`);
+
 /* ── Audit ── */
 
 export const listAudit = (q: AuditListParams = {}): Promise<AuditListResponse> => v2Get("/audit", q as Record<string, string | number>);

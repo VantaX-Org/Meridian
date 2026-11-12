@@ -4,10 +4,11 @@ import { useDeferredValue, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { discoverDesign, getConfigDeviation, getDesign, getDesignDiff, getDesignSnapshots, getDesignTable, getDesignTables, type DesignChange, type DesignField } from "@/lib/api/v2/design";
+import { discoverDesign, getConfigDeviation, getDesign, getDesignConfig, getDesignCoverage, getDesignDiff, getDesignSnapshots, getDesignTable, getDesignTables, type DesignChange, type DesignField } from "@/lib/api/v2/design";
 import { formatDate } from "@/lib/format";
 import { useV2Session } from "@/lib/v2/hooks";
 import { t as tr } from "@/lib/v2/i18n";
+import { labelText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { Fact, Facts } from "../../Inspector";
 import { Field, Gate } from "../../forms";
@@ -25,6 +26,7 @@ import { TableExport } from "@/design/v2/TableExport";
 const PARTS = [
   { key: "tables", get label() { return tr("Tables and fields"); } },
   { key: "config", get label() { return tr("Configuration against standard"); } },
+  { key: "coverage", get label() { return tr("What discovery read"); } },
   { key: "drift", get label() { return tr("Drift between discoveries"); } },
 ] as const;
 type Part = (typeof PARTS)[number]["key"];
@@ -162,8 +164,103 @@ function Tables({ id, href }: { id: string; href: (p: Record<string, string | nu
   );
 }
 
-function ConfigDeviation({ id }: { id: string }) {
+/** The stored entries of one configuration table, columns exactly as the system returned them. */
+function ConfigTableDetail({ id, table }: { id: string; table: string }) {
   const fixture = useFixture();
+  const q = useQuery({ queryKey: ["design", id, "config", table, fixture], queryFn: () => getDesignConfig(id, table), staleTime: 60_000 });
+  const d = q.data;
+  const cols = d ? [...new Set(d.rows.flatMap((r) => Object.keys(r)))] : [];
+  return (
+    <section style={{ marginTop: "var(--m2-s4)" }} data-testid="sd-config-table" aria-label={tr("Configuration table {table}", { table })}>
+      <Feed q={q} empty={tr("No configuration was read for this table.")}>
+        {d ? (
+          <>
+            <h3 className="m2-h3"><SapCode table={d.table} /></h3>
+            <Facts>
+              <Fact label={tr("Scope")}>{d.scope ? labelText(d.scope) : <Dash />}</Fact>
+              <Fact label={tr("Entries")}>{num(d.total)}</Fact>
+              <Fact label={tr("Shown")}>{int(d.rows.length)}</Fact>
+              <Fact label={tr("Read")}>{when(d.synced_at)}</Fact>
+            </Facts>
+            {d.rows.length === 0 ? (
+              <EmptyFrame>{tr("The table has no stored entries.")}</EmptyFrame>
+            ) : (
+              <ScrollFrame label={tr("Entries of {table}, scrollable", { table: d.table })}>
+                <TableExport><table className="m2-tbl">
+                  <thead>
+                    <tr>{cols.map((c) => <th key={c} scope="col"><Mono>{c}</Mono></th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {d.rows.map((r, i) => (
+                      <tr key={i}>
+                        {cols.map((c) => <td key={c}>{r[c] == null || r[c] === "" ? <Dash /> : <Mono>{String(r[c])}</Mono>}</td>)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table></TableExport>
+              </ScrollFrame>
+            )}
+          </>
+        ) : null}
+      </Feed>
+    </section>
+  );
+}
+
+const COVERAGE_STATUS: Record<string, () => string> = {
+  live: () => tr("Read"),
+  failed: () => tr("Failed"),
+  not_in_system: () => tr("Not in this system"),
+  delta_fallback: () => tr("Read in full, no delta"),
+};
+
+/** Which tables the last discovery read, which it could not, and why. */
+function Coverage({ id }: { id: string }) {
+  const fixture = useFixture();
+  const q = useQuery({ queryKey: ["design", id, "coverage", fixture], queryFn: () => getDesignCoverage(id), staleTime: 60_000 });
+  const parts = Object.entries(q.data?.coverage ?? {}).filter(([, list]) => Array.isArray(list) && list.length > 0);
+  return (
+    <Feed q={q} empty={tr("This system has not been discovered yet.")}>
+      <p className="m2-note">{tr("Every table the last discovery tried to read, grouped by what it was read for, with the outcome and the system's reason when it failed.")}</p>
+      {parts.length === 0 ? (
+        <EmptyFrame>{tr("The last discovery stored no coverage.")}</EmptyFrame>
+      ) : (
+        parts.map(([part, list]) => (
+          <ScrollFrame key={part} label={tr("{part}, scrollable", { part: labelText(part) })}>
+            <TableExport><table className="m2-tbl" data-testid={`sd-coverage-${part}`}>
+              <caption className="m2-meta">{labelText(part)}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{tr("Table")}</th>
+                  <th scope="col">{tr("Outcome")}</th>
+                  <th scope="col">{tr("Rows")}</th>
+                  <th scope="col">{tr("Detail")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((c, i) => (
+                  <tr key={`${c.table ?? ""}:${i}`}>
+                    <th scope="row">{c.table ? <SapCode table={c.table} /> : <Dash />}</th>
+                    <td data-label={tr("Outcome")}>{COVERAGE_STATUS[c.status]?.() ?? labelText(c.status)}</td>
+                    <td data-label={tr("Rows")} className="m2-num">{num(c.rows)}</td>
+                    <td data-label={tr("Detail")}>{c.detail ?? <Dash />}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table></TableExport>
+          </ScrollFrame>
+        ))
+      )}
+    </Feed>
+  );
+}
+
+function ConfigDeviation({ id, href }: { id: string; href: (p: Record<string, string | null>) => string }) {
+  const fixture = useFixture();
+  const params = useSearchParams();
+  const picked = params.get("cfg");
+  const summary = useQuery({ queryKey: ["design", id, "summary", fixture], queryFn: () => getDesign(id), staleTime: 60_000 });
+  const read = summary.data?.configuration ?? [];
   const q = useQuery({ queryKey: ["design", id, "deviation", fixture], queryFn: () => getConfigDeviation(id), staleTime: 60_000 });
   const rows = [...(q.data?.tables ?? [])].sort((a, b) => b.custom.length + b.missing.length - (a.custom.length + a.missing.length));
   return (
@@ -197,6 +294,32 @@ function ConfigDeviation({ id }: { id: string }) {
           </table></TableExport>
         </ScrollFrame>
       )}
+      {read.length > 0 ? (
+        <ScrollFrame label={tr("Configuration tables read, scrollable")}>
+          <TableExport><table className="m2-tbl" data-testid="sd-config-read">
+            <caption className="m2-meta">{tr("Configuration tables read")}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{tr("Table")}</th>
+                <th scope="col">{tr("Scope")}</th>
+                <th scope="col">{tr("Entries")}</th>
+                <th scope="col">{tr("Read")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {read.map((r) => (
+                <tr key={r.table} aria-current={r.table === picked ? "true" : undefined}>
+                  <th scope="row"><V2Link href={href({ cfg: r.table })}><SapCode table={r.table} /></V2Link></th>
+                  <td data-label={tr("Scope")}>{r.scope ? labelText(r.scope) : <Dash />}</td>
+                  <td data-label={tr("Entries")} className="m2-num">{num(r.rows)}</td>
+                  <td data-label={tr("Read")}>{when(r.synced_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table></TableExport>
+        </ScrollFrame>
+      ) : null}
+      {picked ? <ConfigTableDetail id={id} table={picked} /> : null}
     </Feed>
   );
 }
@@ -327,12 +450,12 @@ export function SourceDesign({ id }: { id: string }) {
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <nav className="m2-subtabs" aria-label={tr("Source design views")}>
         {PARTS.map((p) => (
-          <V2Link key={p.key} href={href({ part: p.key === "tables" ? null : p.key, table: null })} className="m2-seg" aria-current={p.key === part ? "page" : undefined}>
+          <V2Link key={p.key} href={href({ part: p.key === "tables" ? null : p.key, table: null, cfg: null })} className="m2-seg" aria-current={p.key === part ? "page" : undefined}>
             {p.label}
           </V2Link>
         ))}
       </nav>
-      {part === "tables" ? <Tables id={id} href={href} /> : part === "config" ? <ConfigDeviation id={id} /> : <Drift id={id} />}
+      {part === "tables" ? <Tables id={id} href={href} /> : part === "config" ? <ConfigDeviation id={id} href={href} /> : part === "coverage" ? <Coverage id={id} /> : <Drift id={id} />}
     </>
   );
 }

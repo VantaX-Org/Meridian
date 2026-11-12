@@ -238,6 +238,7 @@ export function ReferenceSection() {
   const [csv, setCsv] = useState("");
   const { outcome, pending, run } = useOutcome();
   const system = systems.data?.find((s) => s.id === id);
+  const [removing, setRemoving] = useState<string | null>(null);
   return (
     <AdminPage title={t("Reference data")} lead={t("Official postal code and bank code lists, per system, that address and bank rules compare against. Until a list is loaded those rules check the format only.")}>
       <div className="m2-fbar">
@@ -267,6 +268,7 @@ export function ReferenceSection() {
                         <th scope="col">{t("List")}</th>
                         <th scope="col" className="m2-r">{t("Records")}</th>
                         <th scope="col">{t("Countries")}</th>
+                        {write ? <th scope="col"><span className="m2-sr">{t("Remove")}</span></th> : null}
                       </tr>
                     </thead>
                     <tbody>
@@ -275,6 +277,13 @@ export function ReferenceSection() {
                           <th scope="row">{kindLabel(r.kind)}</th>
                           <td className="m2-r">{int(r.records)}</td>
                           <td>{r.countries.join(", ") || "—"}</td>
+                          {write ? (
+                            <td>
+                              <button type="button" className="m2-btn" aria-label={t("Remove {name}", { name: kindLabel(r.kind) })} onClick={() => setRemoving(r.kind)}>
+                                {t("Remove")}
+                              </button>
+                            </td>
+                          ) : null}
                         </tr>
                       ))}
                     </tbody>
@@ -283,6 +292,25 @@ export function ReferenceSection() {
               )
             }
           </Loaded>
+          {removing ? (
+            <Confirm
+              title={t("Remove {name}", { name: kindLabel(removing) })}
+              body={t("The list is deleted from {system}. The address and bank checks generated from it stop at the next analysis and fall back to the format check. A rule that still names the list blocks the removal.", { system: system?.name ?? t("this system") })}
+              confirm={t("Remove the list")}
+              danger
+              pending={pending === "remove"}
+              onCancel={() => setRemoving(null)}
+              onConfirm={() => {
+                const k = removing as "postal-codes" | "bic";
+                void run("remove", async () => {
+                  const r = await api.deleteReference(id, k);
+                  await refreshAdmin(qc, "reference");
+                  return { tone: "ok", title: t("{kindLabel} removed", { kindLabel: kindLabel(r.kind) }), detail: t("{records} records deleted.", { records: int(r.records) }) };
+                }).then(() => setRemoving(null));
+              }}
+            />
+          ) : null}
+          {outcome && !write ? <ResultFrame outcome={outcome} /> : null}
           {write ? (
             <Block title={t("Upload or replace a list")} hint={t("Postal codes: a CSV with the columns country, postcode (the SAP country key), and optionally city and region, so address rules also check each record's city and region against its postal code. Bank codes: the licensed SWIFT BIC directory as CSV, BIC in the first column. An upload replaces the system's current list.")}>
               <div className="m2-fgrid">

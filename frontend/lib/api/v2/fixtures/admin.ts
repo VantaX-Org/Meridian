@@ -976,6 +976,13 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     s.reference[id] = [...(s.reference[id] ?? []).filter((r) => r.kind !== refUp[2]), list];
     return list;
   }
+  if (refUp && method === "DELETE") {
+    const id = decodeURIComponent(refUp[1]);
+    const gone = (s.reference[id] ?? []).find((r) => r.kind === refUp[2]);
+    if (!gone) throw new AdminNotFound(path);
+    s.reference[id] = (s.reference[id] ?? []).filter((r) => r.kind !== refUp[2]);
+    return { kind: refUp[2], system_id: id, status: "deleted", records: gone.records };
+  }
   if (method === "POST" && path === "/alert-channels") {
     const ch: AlertChannel = { id: nextId("ch"), kind: b.kind as AlertChannel["kind"], target: text(b.target).replace(/^https?:\/\//, "").split("/")[0], digest: b.digest as AlertChannel["digest"], report_pack: (b.report_pack as AlertChannel["report_pack"]) ?? "off", immediate_critical: b.immediate_critical === true, enabled: true, created_at: NOW, has_secret: !!b.secret };
     s.channels.push(ch);
