@@ -86,6 +86,7 @@ jobs:
         e2e/v2-landscape.spec.ts
         e2e/v2-mdm.spec.ts
         e2e/v2-object.spec.ts
+        e2e/v2-journeys.spec.ts
         e2e/v2-people.spec.ts
         e2e/v2-roles.spec.ts
         e2e/v2-rules.spec.ts
