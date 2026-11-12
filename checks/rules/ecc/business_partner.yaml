@@ -2835,7 +2835,7 @@ rules:
     address across.
   fix_map:
     __other__: Correct the value in transaction BP > Addresses (ECC) or Fiori app Maintain Business Partner (S/4HANA).
-  record_fix_template: 'Partner {BUT000.PARTNER}: ADR6.SMTP_ADDR is ''{actual_value}'': email address breaks the rfc 5321/5322
+  record_fix_template: 'Partner {BUT000.PARTNER}: ADR6.SMTP_ADDR: email address breaks the rfc 5321/5322
     syntax or length limits.'
 - id: BP901
   field: ADR6.SMTP_ADDR
@@ -2852,7 +2852,7 @@ rules:
     party.
   fix_map:
     __other__: Correct the value in transaction BP > Addresses (ECC) or Fiori app Maintain Business Partner (S/4HANA).
-  record_fix_template: 'Partner {BUT000.PARTNER}: ADR6.SMTP_ADDR is ''{actual_value}'': email address uses a disposable mailbox
+  record_fix_template: 'Partner {BUT000.PARTNER}: ADR6.SMTP_ADDR: email address uses a disposable mailbox
     service.'
 - id: BP902
   field: ADRC.TEL_NUMBER
@@ -2870,14 +2870,14 @@ rules:
     the number.
   fix_map:
     __other__: Correct the value in transaction BP > Addresses (ECC) or Fiori app Maintain Business Partner (S/4HANA).
-  record_fix_template: 'Partner {BUT000.PARTNER}: ADRC.TEL_NUMBER is ''{actual_value}'': telephone number is not a plausible
+  record_fix_template: 'Partner {BUT000.PARTNER}: ADRC.TEL_NUMBER: telephone number is not a plausible
     number for its country.'
 - id: BP903
   field: ADR2.TEL_NUMBER
   check_class: contact_check
   kind: phone
   country_field: ADR2.COUNTRY
-  grain: BUT000
+  grain: ADR2
   severity: medium
   dimension: validity
   message: Telephone number is not a plausible number for its country
@@ -2888,7 +2888,7 @@ rules:
     the number.
   fix_map:
     __other__: Correct the value in transaction BP > Addresses (ECC) or Fiori app Maintain Business Partner (S/4HANA).
-  record_fix_template: 'Partner {BUT000.PARTNER}: ADR2.TEL_NUMBER is ''{actual_value}'': telephone number is not a plausible
+  record_fix_template: 'Address {ADR2.ADDRNUMBER}: ADR2.TEL_NUMBER: telephone number is not a plausible
     number for its country.'
 - id: BP904
   field: ADRC.POST_CODE1
@@ -2906,7 +2906,7 @@ rules:
     on change.
   fix_map:
     __other__: Correct the value in transaction BP > Addresses (ECC) or Fiori app Maintain Business Partner (S/4HANA).
-  record_fix_template: 'Partner {BUT000.PARTNER}: ADRC.POST_CODE1 is ''{actual_value}'': postal code does not match the format
+  record_fix_template: 'Partner {BUT000.PARTNER}: ADRC.POST_CODE1: postal code does not match the format
     of its country.'
   auto_fix:
     steps:

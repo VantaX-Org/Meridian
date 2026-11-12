@@ -12931,7 +12931,7 @@ rules:
       address across.
     fix_map:
       __other__: Correct the value in XD02 / VD02 > Address (ECC) or Fiori app Maintain Business Partner (S/4HANA).
-    record_fix_template: 'ADR6.SMTP_ADDR is ''{actual_value}'': email address breaks the rfc 5321/5322 syntax or length limits.'
+    record_fix_template: 'ADR6.SMTP_ADDR: email address breaks the rfc 5321/5322 syntax or length limits.'
   - id: SDCM901
     field: ADR6.SMTP_ADDR
     check_class: contact_check
@@ -12947,7 +12947,7 @@ rules:
       party.
     fix_map:
       __other__: Correct the value in XD02 / VD02 > Address (ECC) or Fiori app Maintain Business Partner (S/4HANA).
-    record_fix_template: 'ADR6.SMTP_ADDR is ''{actual_value}'': email address uses a disposable mailbox service.'
+    record_fix_template: 'ADR6.SMTP_ADDR: email address uses a disposable mailbox service.'
   - id: SDCM902
     field: KNA1.TELF1
     check_class: contact_check
@@ -12964,7 +12964,7 @@ rules:
       the number.
     fix_map:
       __other__: Correct the value in XD02 / VD02 > Address (ECC) or Fiori app Maintain Business Partner (S/4HANA).
-    record_fix_template: 'Customer {KNA1.KUNNR}: KNA1.TELF1 is ''{actual_value}'': telephone number is not a plausible number
+    record_fix_template: 'Customer {KNA1.KUNNR}: KNA1.TELF1: telephone number is not a plausible number
       for its country.'
   - id: SDCM903
     field: KNA1.PSTLZ
@@ -12982,7 +12982,7 @@ rules:
       on change.
     fix_map:
       __other__: Correct the value in XD02 / VD02 > Address (ECC) or Fiori app Maintain Business Partner (S/4HANA).
-    record_fix_template: 'Customer {KNA1.KUNNR}: KNA1.PSTLZ is ''{actual_value}'': postal code does not match the format of
+    record_fix_template: 'Customer {KNA1.KUNNR}: KNA1.PSTLZ: postal code does not match the format of
       its country.'
     auto_fix:
       steps:

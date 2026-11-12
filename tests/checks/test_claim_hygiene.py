@@ -61,8 +61,8 @@ def numbers() -> dict:
             "integrity": _collected("tests/checks/test_rule_integrity.py")}
 
 
-def test_registry_class_count_is_24(numbers):
-    assert numbers["classes"] == 24  # guards the market-positioning row; REGISTRY changing means docs change
+def test_registry_class_count_is_25(numbers):
+    assert numbers["classes"] == 25  # guards the market-positioning row; REGISTRY changing means docs change
 
 
 def test_rule_split_adds_up(numbers):

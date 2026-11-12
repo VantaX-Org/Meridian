@@ -4,12 +4,12 @@
   "business_partner": {
    "benchmarked": 71,
    "perfect": 71,
-   "rules": 157
+   "rules": 162
   },
   "employee_central": {
    "benchmarked": 377,
    "perfect": 377,
-   "rules": 737
+   "rules": 741
   },
   "material_master": {
    "benchmarked": 238,
@@ -19,7 +19,7 @@
   "sd_customer_master": {
    "benchmarked": 261,
    "perfect": 261,
-   "rules": 581
+   "rules": 585
   }
  },
  "records_per_rule": 40,
@@ -15747,6 +15747,34 @@
    "true_positives": 10
   },
   {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "employee_central",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "EC900"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "employee_central",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "EC901"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "employee_central",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "EC902"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "employee_central",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "EC903"
+  },
+  {
    "benchmarkable": true,
    "check_class": "null_check",
    "f1": 1.0,
@@ -21641,6 +21669,34 @@
    "true_positives": 10
   },
   {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "sd_customer_master",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "SDCM900"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "sd_customer_master",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "SDCM901"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "sd_customer_master",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "SDCM902"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "sd_customer_master",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "SDCM903"
+  },
+  {
    "benchmarkable": true,
    "check_class": "null_check",
    "f1": 1.0,
@@ -23235,6 +23291,41 @@
    "module": "business_partner",
    "reason": "count_per_parent_check needs reference data or a second dataset",
    "rule_id": "BP299"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "business_partner",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "BP900"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "business_partner",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "BP901"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "business_partner",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "BP902"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "business_partner",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "BP903"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "contact_check",
+   "module": "business_partner",
+   "reason": "contact_check needs reference data or a second dataset",
+   "rule_id": "BP904"
   }
  ]
 }

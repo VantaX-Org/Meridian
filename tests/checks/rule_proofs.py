@@ -297,6 +297,14 @@ def _inequality_cols(expr: str) -> set[str]:
     return cols
 
 
+_CONTACT_SAMPLES = {
+    "email": ["a@example.com", "a@@b"],
+    "disposable": ["a@example.com", "a@mailinator.com"],
+    "phone": ["+49 30 1234567", "12"],
+    "postcode": ["10115", "ABC"],
+}
+
+
 def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
     cols = rule_columns(rule)
     expr = rule.get("fail_when") or rule.get("condition") or ""
@@ -353,6 +361,15 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
         if rule.get("check_class") == "value_placement_check" and c in (rule.get("fields") or [rule["field"]]):
             vals += _PLACEMENT_SAMPLES[rule["family"]] if rule["family"] != "tax_checkdigit" else \
                 _TAX_ID_SAMPLES[rule["applies_when"][rule["fields"][1]][0], rule["field"].split(".")[1]]
+        if rule.get("check_class") == "contact_check":
+            # one value contact_verify accepts and one it rejects, per kind; country and dial
+            # fields get the matching country so the phone and postcode layouts apply
+            if c == rule["field"]:
+                vals += _CONTACT_SAMPLES[rule["kind"]]
+            elif c == rule.get("country_field"):
+                vals.append("DE")
+            elif c == rule.get("dial_field"):
+                vals.append("49")
         if c == rule.get("split_field"):
             vals += [str(v) for v in rule["left_values"][:1] + rule["right_values"][:1]]
         if c == rule.get("field"):

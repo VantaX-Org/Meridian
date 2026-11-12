@@ -341,8 +341,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | PERADDRESS | ADDRESS_LINE2 |  | y | 2 / 2 | EC615, EC616 |  |
 | PERADDRESS | CITY |  | y | 4 / 4 | EC031, EC120, EC156, EC616 |  |
 | PERADDRESS | STATE |  | y | 5 / 5 | EC032, EC157, EC158, EC159, EC427 |  |
-| PERADDRESS | ZIPCODE |  | y | 19 / 19 | EC033, EC064, EC065, EC066, EC067, EC068 +13 more |  |
-| PERADDRESS | COUNTRY |  | y | 26 / 26 | EC023, EC032, EC033, EC053, EC064, EC065 +20 more |  |
+| PERADDRESS | ZIPCODE |  | y | 20 / 20 | EC033, EC064, EC065, EC066, EC067, EC068 +14 more |  |
+| PERADDRESS | COUNTRY |  | y | 27 / 27 | EC023, EC032, EC033, EC053, EC064, EC065 +21 more |  |
 | PERADDRESS | ADDRESS3 | Address3 (country-specific) | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | PERADDRESS | PROVINCE | Province (country-specific) | y | 1 / 0 | DXRffc7ee61 | only disabled (DDIC-generated) rules; review for enabling |
 | PERADDRESS | ADDRESS4 | Address4 (country-specific) | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
@@ -369,7 +369,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 |---|---|---|---|---|---|---|
 | PEREMAIL | PERSON_ID |  | y | 7 / 7 | EC151, EC152, EC463, EC464, EC465, EC466 +1 more |  |
 | PEREMAIL | EMAIL_TYPE | E-mail type | y | 5 / 5 | EC019, EC045, EC061, EC466, EC469 |  |
-| PEREMAIL | EMAIL_ADDRESS | E-mail address | y | 10 / 10 | EC017, EC018, EC061, EC149, EC150, EC463 +4 more |  |
+| PEREMAIL | EMAIL_ADDRESS | E-mail address | y | 12 / 12 | EC017, EC018, EC061, EC149, EC150, EC463 +6 more |  |
 | PEREMAIL | IS_PRIMARY | Primary e-mail flag | y | 3 / 3 | EC151, EC152, EC470 |  |
 
 ### PERPHONE
@@ -378,8 +378,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 |---|---|---|---|---|---|---|
 | PERPHONE | PERSON_ID |  | y | 8 / 8 | EC153, EC446, EC462, EC471, EC472, EC474 +2 more |  |
 | PERPHONE | PHONE_TYPE | Phone type | y | 4 / 4 | EC020, EC473, EC474, EC476 |  |
-| PERPHONE | PHONE_NUMBER | Phone number | y | 9 / 9 | EC040, EC063, EC086, EC155, EC462, EC475 +3 more |  |
-| PERPHONE | COUNTRY_CODE | International dialling code | y | 3 / 3 | EC154, EC477, EC478 |  |
+| PERPHONE | PHONE_NUMBER | Phone number | y | 10 / 10 | EC040, EC063, EC086, EC155, EC462, EC475 +4 more |  |
+| PERPHONE | COUNTRY_CODE | International dialling code | y | 4 / 4 | EC154, EC477, EC478, EC902 |  |
 | PERPHONE | AREA_CODE | Area code | y | 1 / 1 | EC479 |  |
 | PERPHONE | EXTENSION | Extension | y | 1 / 1 | EC480 |  |
 | PERPHONE | IS_PRIMARY | Primary phone flag | y | 2 / 2 | EC153, EC446 |  |

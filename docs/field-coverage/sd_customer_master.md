@@ -64,15 +64,15 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
 | KNA1 | KUNNR | Customer Number | y | 35 / 35 | SDCM001, SDCM002, SDCM022, SDCM024, SDCM051, SDCM055 +29 more |  |
-| KNA1 | LAND1 | Country Key | y | 67 / 67 | SDCM005, SDCM050, SDCM300, SDCM301, SDCM302, SDCM303 +61 more |  |
+| KNA1 | LAND1 | Country Key | y | 69 / 69 | SDCM005, SDCM050, SDCM300, SDCM301, SDCM302, SDCM303 +63 more |  |
 | KNA1 | NAME1 | Name 1 | y | 9 / 9 | SDCM003, SDCM381, SDCM413, SDCM428, SDCM438, SDCM439 +3 more |  |
 | KNA1 | NAME2 | Name 2 | y | 2 / 2 | SDCM414, SDCM438 |  |
 | KNA1 | ORT01 | City | y | 5 / 5 | SDCM057, SDCM429, SDCM437, SDCM440, SDCM838 |  |
-| KNA1 | PSTLZ | Postal Code | y | 34 / 34 | SDCM300, SDCM301, SDCM302, SDCM303, SDCM304, SDCM305 +28 more |  |
+| KNA1 | PSTLZ | Postal Code | y | 35 / 35 | SDCM300, SDCM301, SDCM302, SDCM303, SDCM304, SDCM305 +29 more |  |
 | KNA1 | REGIO | Region (State, Province, County) | y | 4 / 4 | SDCM330, SDCM331, SDCM332, SDCM333 |  |
 | KNA1 | SORTL | Sort field | y | 1 / 1 | SDCM422 |  |
 | KNA1 | STRAS | House number and street | y | 2 / 2 | SDCM057, SDCM425 |  |
-| KNA1 | TELF1 | First telephone number | y | 5 / 5 | SDCM382, SDCM423, SDCM426, SDCM442, SDCM443 |  |
+| KNA1 | TELF1 | First telephone number | y | 6 / 6 | SDCM382, SDCM423, SDCM426, SDCM442, SDCM443, SDCM902 |  |
 | KNA1 | TELFX | Fax Number | y | 4 / 4 | SDCM384, SDCM424, SDCM427, SDCM443 |  |
 | KNA1 | XCPDK | Indicator: Is the account a one-time account? | y | 1 / 1 | SDCM057 |  |
 | KNA1 | ADRNR | Address | y | 0 / 0 |  | format: ALPHA-converted (numeric values zero-padded) |
@@ -849,7 +849,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | ADR6 | FLGDEFAULT | Flag: this address is the default address | y | 1 / 1 | SDCM407 |  |
 | ADR6 | FLG_NOUSE | Flag: This Communication Number is Not Used |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
 | ADR6 | HOME_FLAG | Recipient address in this communication type (mail sys.grp) |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
-| ADR6 | SMTP_ADDR | E-Mail Address | y | 7 / 7 | SDCM007, SDCM408, SDCM409, SDCM410, SDCM411, SDCM412 +1 more |  |
+| ADR6 | SMTP_ADDR | E-Mail Address | y | 9 / 9 | SDCM007, SDCM408, SDCM409, SDCM410, SDCM411, SDCM412 +3 more |  |
 | ADR6 | SMTP_SRCH | E-Mail Address Search Field | y | 2 / 2 | SDCM409, SDCM410 |  |
 | ADR6 | DFT_RECEIV | Flag: Recipient is standard recipient for this address |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
 | ADR6 | R3_USER | Flag: Connected to an SAP System |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
