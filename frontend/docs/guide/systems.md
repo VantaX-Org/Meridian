@@ -64,6 +64,15 @@ In the system inspector, **Extract** asks for the objects and the scope: "Choose
 
 **Run analysis on ECC production** scores a stored extraction against the rules as they stand now. "Earlier scores are kept as they were."
 
+## Look into a connected SAP system
+
+1. **Test the connection**: open the system and select **Test connection**. A pass shows the client and the time taken; a fail names the step that failed in plain words.
+2. **Browse the system**: select **Browse** to look at the tables the system holds and their fields, with the dictionary text beside each name, before you choose what to extract. Browsing reads only the structure, never the records.
+3. **Pull the configuration**: select **Pull configuration** to read which plants, company codes and features are active. Rules that do not apply to your setup are then left out of the config-aware score.
+4. **Extract**: select **Extract**, choose the objects and the scope, use **Dry run** to see the size, then start it. The run appears on Runs when it finishes.
+
+Do not start an extraction while another one is running on the same system.
+
 ## The numbers and where they come from
 
 - **Systems connected** on `/s` counts every system; the systems that cannot be reached or signed in to are those whose health is Unreachable or Sign-in failed.

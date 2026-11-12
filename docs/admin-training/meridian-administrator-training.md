@@ -416,6 +416,28 @@ default assumptions; set your cost model in Administration".
 - You should now see amounts marked **est.** instead of **default estimate**.
 - A change to weights or tolerance applies to the next analysis; scores stored with earlier runs stay as they were.
 
+### Quality targets per dimension
+
+A module can have a target for each dimension, for example 85 for validity. Set them in **Administration, Quality
+thresholds**.
+
+1. Pick the module and the dimension, enter the target, and save.
+2. Open the score lens heat map on Monitoring. Each cell is banded against its own target, with the target beside the
+   colour.
+3. After the next analysis, a dimension below its target raises a breach alert, for example "Material master: validity
+   78.4 is below its target of 85".
+
+Targets apply from the next analysis. Alerts for earlier runs do not change.
+
+### Cleaning workbook and the SuccessFactors round trip
+
+- The cleaning workbook opens with a **How to use** sheet and a **Column guide** sheet. Records with an empty required
+  field carry a **Required field empty** column and are also listed on the **Required fields missing** sheet. Teach
+  data owners to fix those first.
+- For SuccessFactors, download the workbook, have the owner clean it in Excel, and upload it back to the same system.
+  Then re-analyse and use **Compare old and new** to see the change in score. See the Migration chapter of the user
+  guide for the full steps.
+
 ### Exercise
 
 Before saving the cost model, find one amount marked **default estimate** on Work. Save your cost model, reload and
