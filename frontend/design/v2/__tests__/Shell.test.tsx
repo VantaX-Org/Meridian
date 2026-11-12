@@ -360,4 +360,14 @@ describe("menu for every role", () => {
     expect(kidsFor(rules, (p) => p === "manage_rules").map((k) => k.href)).toEqual(rules.kids.filter((k) => k.need !== "manage_settings").map((k) => k.href));
     expect(destinationAt("/rule-dry-run", all)?.id).toBe("rules");
   });
+
+  it("lists Systems and Platform status under Runs, and both routes resolve there", async () => {
+    const { destinations, destinationAt, kidsFor } = await import("../shell/menu");
+    const all = destinations();
+    const runs = all.find((d) => d.id === "runs")!;
+    expect(kidsFor(runs, () => false).map((k) => k.href)).toEqual(["/runs", "/s", "/status"]);
+    expect(destinationAt("/s", all)?.id).toBe("runs");
+    expect(destinationAt("/s/abc", all)?.id).toBe("runs");
+    expect(destinationAt("/status", all)?.id).toBe("runs");
+  });
 });

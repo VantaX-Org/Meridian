@@ -641,6 +641,49 @@ function TenantPurge() {
   );
 }
 
+/** Edit the tenant's display name and currency; only the changed keys are sent. */
+function TenantProfileForm({ name: savedName, currency: savedCurrency }: { name: string; currency: string }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState(savedName);
+  const [currency, setCurrency] = useState(savedCurrency);
+  const { outcome, pending, run } = useOutcome("set-tenant");
+  const nameOk = name.trim().length >= 1 && name.trim().length <= 200;
+  const currencyOk = currency === "" || /^[A-Z]{3}$/.test(currency);
+  const body: { name?: string; currency?: string } = {};
+  if (name.trim() !== savedName) body.name = name.trim();
+  if (currency !== "" && currency !== savedCurrency) body.currency = currency;
+  const changed = Object.keys(body).length > 0;
+  return (
+    <>
+      <div className="m2-fgrid">
+        <Fld label={tr("Tenant name")} error={nameOk ? null : tr("Use 1 to 200 characters")}>
+          <input value={name} maxLength={200} onChange={(e) => setName(e.target.value)} />
+        </Fld>
+        <Fld label={tr("Tenant currency")} hint={tr("Three-letter ISO 4217 code, such as ZAR, EUR or USD.")} error={currencyOk ? null : tr("Use three capital letters")}>
+          <input value={currency} maxLength={3} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
+        </Fld>
+      </div>
+      {outcome ? <ResultFrame outcome={outcome} /> : null}
+      <div className="m2-adm-acts">
+        <button
+          type="button"
+          className="m2-btn m2-next"
+          disabled={!changed || !nameOk || !currencyOk || pending !== null}
+          onClick={() =>
+            void run("tenant", async () => {
+              await api.patchTenant(body);
+              await refreshAdmin(qc, "settings");
+              return { tone: "ok", title: tr("Tenant saved") };
+            })
+          }
+        >
+          {pending === "tenant" ? tr("Saving…") : tr("Save the tenant")}
+        </button>
+      </div>
+    </>
+  );
+}
+
 /** Admin › Settings: the tenant, how it is scored and priced, and how long data is kept. */
 export function SettingsSection() {
   const can = useCan();
@@ -658,13 +701,14 @@ export function SettingsSection() {
             <Kv
               rows={[
                 [tr("Name"), t.name],
-                [tr("Currency"), cost.data?.currency ?? "—"],
+                [tr("Currency"), t.currency ?? cost.data?.currency ?? "—"],
                 [tr("Licensed modules"), tr("{licensed_modulesCount} {licensed_modulesCount, plural, one {module} other {modules}}{value}", { licensed_modulesCount: (t.licensed_modules ?? []).length, value: (t.licensed_modules ?? []).length ? `: ${(t.licensed_modules ?? []).slice(0, 4).map(formatModuleName).join(", ")}${(t.licensed_modules ?? []).length > 4 ? tr(" and more") : ""}` : "" })],
               ]}
             />
           )}
         </Loaded>
-        <p className="m2-prov">{tr("The tenant name and licensed modules come from the licence, set in Meridian HQ.")}</p>
+        {write && tenant.data ? <TenantProfileForm key={`${tenant.data.name}|${tenant.data.currency ?? ""}`} name={tenant.data.name} currency={tenant.data.currency ?? ""} /> : null}
+        <p className="m2-prov">{write ? tr("Licensed modules come from the licence, set in Meridian HQ.") : tr("The tenant name and licensed modules come from the licence, set in Meridian HQ.")}</p>
       </Block>
       <AppearanceBlock />
       <Loaded q={scoring} what={tr("The scoring settings")} rows={3}>

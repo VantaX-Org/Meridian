@@ -183,6 +183,10 @@ export const useCatalogue = (q: { version_id?: string; module?: string; compare?
   const f = useFixture();
   return useRead(k(f, "reports", "catalogue", q), () => rep.getCatalogue(q));
 };
+export const useRunSchedules = (enabled = true) => {
+  const f = useFixture();
+  return useRead(k(f, "runschedules"), api.listRunSchedules, enabled);
+};
 export const useSchedules = () => {
   const f = useFixture();
   return useRead(k(f, "reports", "schedules"), rep.getSchedules);

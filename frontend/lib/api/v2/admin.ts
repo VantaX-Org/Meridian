@@ -237,3 +237,36 @@ export const createProfile = (systemId: string, body: { system_id: string; domai
 export const updateProfile = (systemId: string, id: string, body: { schedule_cron?: string; active?: boolean; extraction_mode?: "full" | "delta" }): Promise<SyncProfile> =>
   v2Send("PATCH", `/systems/${enc(systemId)}/profiles/${enc(id)}`, body);
 export const deleteProfile = (systemId: string, id: string): Promise<void> => v2Send("DELETE", `/systems/${enc(systemId)}/profiles/${enc(id)}`);
+
+/** Run schedules across systems (api/routes/schedules.py). The same rows as the per-system profiles. */
+export type SchedulePreset = "hourly" | "daily" | "weekdays" | "weekly" | "monthly";
+export interface ScheduleScope { company_codes: string[]; plants: string[]; sales_orgs: string[]; purchasing_orgs: string[]; date_from: string | null; date_to: string | null; exclude_deleted: boolean }
+export interface RunSchedule {
+  id: string;
+  name: string | null;
+  system_id: string;
+  system_name: string;
+  domain: string;
+  modules: string[];
+  tables: string[];
+  cadence: { cron: string | null; preset: SchedulePreset | null };
+  schedule_cron: string | null;
+  scope: Partial<ScheduleScope>;
+  extraction_mode: "full" | "delta";
+  active: boolean;
+  status: string;
+  last_run_at: string | null;
+  next_run_at: string | null;
+}
+export interface ScheduleCreate { system_id: string; modules: string[]; name?: string | null; cron?: string | null; preset?: SchedulePreset | null; scope?: Partial<ScheduleScope>; extraction_mode?: "full" | "delta"; active?: boolean }
+export type SchedulePatch = Partial<Omit<ScheduleCreate, "system_id" | "active">>;
+export const listRunSchedules = (): Promise<{ schedules: RunSchedule[] }> => v2Get("/schedules");
+export const getRunSchedule = (id: string): Promise<RunSchedule> => v2Get(`/schedules/${enc(id)}`);
+export const createRunSchedule = (body: ScheduleCreate): Promise<RunSchedule> => v2Send("POST", "/schedules", body);
+export const patchRunSchedule = (id: string, body: SchedulePatch): Promise<RunSchedule> => v2Send("PATCH", `/schedules/${enc(id)}`, body);
+export const pauseRunSchedule = (id: string): Promise<RunSchedule> => v2Send("POST", `/schedules/${enc(id)}/pause`);
+export const resumeRunSchedule = (id: string): Promise<RunSchedule> => v2Send("POST", `/schedules/${enc(id)}/resume`);
+export const deleteRunSchedule = (id: string): Promise<{ id: string; status: string }> => v2Send("DELETE", `/schedules/${enc(id)}`);
+
+/** PATCH /settings/tenant: only the keys sent change. */
+export const patchTenant = (body: { name?: string; currency?: string }): Promise<TenantSettings> => v2Send("PATCH", "/settings/tenant", body);
