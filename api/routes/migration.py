@@ -14,7 +14,7 @@ import io
 import logging
 import re
 import uuid
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response, StreamingResponse
@@ -1742,7 +1742,7 @@ async def _latest_run(db: AsyncSession, tenant: Tenant, module: str, version_id:
 
 @router.get("/templates/{module}")
 async def list_templates(module: str, tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
-                         _=Depends(require_permission("view", scope=scope_from_path))):
+                         _=Depends(require_permission("view", scope=scope_from_path))) -> dict[str, Any]:
     """Every uploaded template of a module, newest version first, with its coverage and last fill."""
     _module_rules(module)
     await _set_rls(db, tenant.id)
@@ -1756,7 +1756,7 @@ async def list_templates(module: str, tenant: Tenant = Depends(get_tenant), db: 
 @router.post("/templates/{module}")
 async def upload_template(module: str, request: Request, file: UploadFile = File(...), name: str = Query("", max_length=120),
                           tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
-                          _=Depends(require_permission("analyse", scope=scope_from_path))):
+                          _=Depends(require_permission("analyse", scope=scope_from_path))) -> dict[str, Any]:
     """Keep an uploaded target template. The same name again is a new version, carrying the earlier column map."""
     import hashlib
     import json
@@ -1789,7 +1789,7 @@ async def upload_template(module: str, request: Request, file: UploadFile = File
 
 @router.get("/templates/{module}/fields")
 async def template_fields(module: str, tenant: Tenant = Depends(get_tenant),
-                          _=Depends(require_permission("view", scope=scope_from_path))):
+                          _=Depends(require_permission("view", scope=scope_from_path))) -> dict[str, Any]:
     """The dictionary fields of the module's tables, which an unresolved column may be mapped to."""
     from checks.frames import tables_of
     from checks.runner import get_required_columns
@@ -1803,7 +1803,7 @@ async def template_fields(module: str, tenant: Tenant = Depends(get_tenant),
                        for f in d.tables[t].fields.values()]}
 
 
-@router.get("/templates/{module}/blank")
+@router.get("/templates/{module}/blank", response_class=Response)
 async def blank_template(module: str, request: Request, system_id: Optional[str] = Query(None),
                          tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
                          _=Depends(require_permission("export", scope=scope_from_path))):
@@ -1835,7 +1835,7 @@ async def blank_template(module: str, request: Request, system_id: Optional[str]
                     headers={"Content-Disposition": f"attachment; filename={module}_template.xlsx"})
 
 
-@router.get("/templates/{module}/{template_id}/file")
+@router.get("/templates/{module}/{template_id}/file", response_class=Response)
 async def template_file(module: str, template_id: str, tenant: Tenant = Depends(get_tenant),
                         db: AsyncSession = Depends(get_db),
                         _=Depends(require_permission("export", scope=scope_from_path))):
@@ -1852,7 +1852,7 @@ class TemplateMapping(BaseModel):
 @router.put("/templates/{module}/{template_id}/mapping")
 async def map_template(module: str, template_id: str, body: TemplateMapping, request: Request,
                        tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
-                       _=Depends(require_permission("analyse", scope=scope_from_path))):
+                       _=Depends(require_permission("analyse", scope=scope_from_path))) -> dict[str, Any]:
     """Save a person's corrections to unresolved columns. Every field must exist in the dictionary."""
     import json
     from starlette.concurrency import run_in_threadpool
@@ -1878,7 +1878,7 @@ async def map_template(module: str, template_id: str, body: TemplateMapping, req
 @router.post("/templates/{module}/{template_id}/check")
 async def check_template(module: str, template_id: str, version_id: Optional[str] = Query(None),
                          tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
-                         _=Depends(require_permission("export", scope=scope_from_path))):
+                         _=Depends(require_permission("export", scope=scope_from_path))) -> dict[str, Any]:
     """What a run (the module's latest finished one by default) fills in the template, with approved cleansing applied."""
     from starlette.concurrency import run_in_threadpool
     from api.services.migration.workbook import HELD_SAMPLE
@@ -1890,7 +1890,7 @@ async def check_template(module: str, template_id: str, version_id: Optional[str
     return {**report, "version_id": vid, "held": report["held"][:HELD_SAMPLE], "held_total": len(report["held"])}
 
 
-@router.post("/templates/{module}/{template_id}/export")
+@router.post("/templates/{module}/{template_id}/export", response_class=Response)
 async def export_template(module: str, template_id: str, request: Request, version_id: Optional[str] = Query(None),
                           export_format: Literal["xlsx", "csv", "source"] = Query("xlsx", alias="format"),
                           tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),

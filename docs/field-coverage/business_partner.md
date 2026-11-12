@@ -265,7 +265,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | ADRC | CITYH_CODE | Different city for city/street file |  | 0 / 0 |  | domain: value exists in check table `ADRCITY.CITY_CODE` (referential_check) |
 | ADRC | CHCKSTATUS | City file test status |  | 0 / 0 |  | domain: value in DDIC fixed values {' ', C, D} (domain_value_check) |
 | ADRC | REGIOGROUP | Regional structure grouping |  | 0 / 0 |  | domain: value exists in check table `ADRREGGRP.REGIOGROUP` (referential_check) |
-| ADRC | POST_CODE1 | City postal code | y | 3 / 3 | BP021, BP226, BP357 |  |
+| ADRC | POST_CODE1 | City postal code | y | 4 / 4 | BP021, BP226, BP357, BP904 |  |
 | ADRC | POST_CODE2 | PO Box postal code | y | 2 / 2 | BP356, BP357 |  |
 | ADRC | POST_CODE3 | Company postal code (for large customers) | y | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | ADRC | PCODE1_EXT | (Not Supported)City Postal Code Extension, e.g. ZIP+4+2 Code |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
@@ -294,7 +294,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | ADRC | BUILDING | Building (Number or Code) |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | ADRC | FLOOR | Floor in building | y | 1 / 1 | BP365 |  |
 | ADRC | ROOMNUMBER | Room or Appartment Number | y | 1 / 1 | BP365 |  |
-| ADRC | COUNTRY | Country Key | y | 6 / 6 | BP019, BP021, BP062, BP226, BP243, BP379 |  |
+| ADRC | COUNTRY | Country Key | y | 8 / 8 | BP019, BP021, BP062, BP226, BP243, BP379 +2 more |  |
 | ADRC | LANGU | Language Key | y | 2 / 2 | BP023, BP289 |  |
 | ADRC | REGION | Region (State, Province, County) | y | 2 / 2 | BP063, BP243 |  |
 | ADRC | ADDR_GROUP | Address Group (Key) (Business Address Services) | y | 1 / 1 | BP366 |  |
@@ -304,7 +304,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | ADRC | SORT2 | Search Term 2 | y | 1 / 1 | BP368 |  |
 | ADRC | SORT_PHN | (Not Supported) Phonetic Search Sort Field |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | ADRC | DEFLT_COMM | Communication Method (Key) (Business Address Services) | y | 3 / 3 | BP369, BP370, BP371 |  |
-| ADRC | TEL_NUMBER | First telephone no.: dialling code+number | y | 3 / 3 | BP032, BP370, BP372 |  |
+| ADRC | TEL_NUMBER | First telephone no.: dialling code+number | y | 4 / 4 | BP032, BP370, BP372, BP902 |  |
 | ADRC | TEL_EXTENS | First Telephone No.: Extension | y | 1 / 1 | BP372 |  |
 | ADRC | FAX_NUMBER | First fax no.: dialling code+number | y | 3 / 3 | BP369, BP373, BP374 |  |
 | ADRC | FAX_EXTENS | First fax no.: extension | y | 1 / 1 | BP373 |  |
@@ -353,11 +353,11 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | ADR2 | PERSNUMBER | Person number | y | 1 / 1 | BP389 |  |
 | ADR2 | DATE_FROM | Valid-from date - in current Release only 00010101 possible |  | 0 / 0 |  | mandatory: key field never blank (null_check) |
 | ADR2 | CONSNUMBER | Sequence Number |  | 0 / 0 |  | mandatory: key field never blank (null_check) |
-| ADR2 | COUNTRY | Country for telephone/fax number | y | 1 / 1 | BP293 |  |
+| ADR2 | COUNTRY | Country for telephone/fax number | y | 2 / 2 | BP293, BP903 |  |
 | ADR2 | FLGDEFAULT | Standard Sender Address in this Communication Type | y | 1 / 1 | BP292 |  |
 | ADR2 | FLG_NOUSE | Flag: This Communication Number is Not Used | y | 3 / 3 | BP292, BP294, BP388 |  |
 | ADR2 | HOME_FLAG | Recipient address in this communication type (mail sys.grp) | y | 1 / 1 | BP389 |  |
-| ADR2 | TEL_NUMBER | Telephone no.: dialling code+number | y | 3 / 3 | BP294, BP386, BP387 |  |
+| ADR2 | TEL_NUMBER | Telephone no.: dialling code+number | y | 4 / 4 | BP294, BP386, BP387, BP903 |  |
 | ADR2 | TEL_EXTENS | Telephone no.: Extension | y | 1 / 1 | BP386 |  |
 | ADR2 | TELNR_LONG | Complete number: dialling code+number+extension | y | 1 / 1 | BP387 |  |
 | ADR2 | TELNR_CALL | Telephone number for determining caller |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
@@ -377,7 +377,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | ADR6 | FLGDEFAULT | Flag: this address is the default address | y | 1 / 1 | BP291 |  |
 | ADR6 | FLG_NOUSE | Flag: This Communication Number is Not Used | y | 2 / 2 | BP291, BP392 |  |
 | ADR6 | HOME_FLAG | Recipient address in this communication type (mail sys.grp) | y | 1 / 1 | BP393 |  |
-| ADR6 | SMTP_ADDR | E-Mail Address | y | 3 / 3 | BP017, BP018, BP391 |  |
+| ADR6 | SMTP_ADDR | E-Mail Address | y | 5 / 5 | BP017, BP018, BP391, BP900, BP901 |  |
 | ADR6 | SMTP_SRCH | E-Mail Address Search Field | y | 1 / 1 | BP391 |  |
 | ADR6 | DFT_RECEIV | Flag: Recipient is standard recipient for this address | y | 1 / 1 | BP392 |  |
 | ADR6 | R3_USER | Flag: Connected to an SAP System |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |

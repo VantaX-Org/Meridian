@@ -14187,7 +14187,7 @@ rules:
     address across.
   fix_map:
     __other__: Correct the value in SuccessFactors Employee Central > Personal Information.
-  record_fix_template: 'PEREMAIL.EMAIL_ADDRESS is ''{actual_value}'': email address breaks the rfc 5321/5322 syntax or length
+  record_fix_template: 'PEREMAIL.EMAIL_ADDRESS: email address breaks the rfc 5321/5322 syntax or length
     limits.'
 - id: EC901
   field: PEREMAIL.EMAIL_ADDRESS
@@ -14203,7 +14203,7 @@ rules:
     party.
   fix_map:
     __other__: Correct the value in SuccessFactors Employee Central > Personal Information.
-  record_fix_template: 'PEREMAIL.EMAIL_ADDRESS is ''{actual_value}'': email address uses a disposable mailbox service.'
+  record_fix_template: 'PEREMAIL.EMAIL_ADDRESS: email address uses a disposable mailbox service.'
 - id: EC902
   field: PERPHONE.PHONE_NUMBER
   check_class: contact_check
@@ -14219,7 +14219,7 @@ rules:
     the number.
   fix_map:
     __other__: Correct the value in SuccessFactors Employee Central > Personal Information.
-  record_fix_template: 'PERPHONE.PHONE_NUMBER is ''{actual_value}'': telephone number is not a plausible number for its country.'
+  record_fix_template: 'PERPHONE.PHONE_NUMBER: telephone number is not a plausible number for its country.'
 - id: EC903
   field: PERADDRESS.ZIPCODE
   check_class: contact_check
@@ -14235,7 +14235,7 @@ rules:
     on change.
   fix_map:
     __other__: Correct the value in SuccessFactors Employee Central > Personal Information.
-  record_fix_template: 'PERADDRESS.ZIPCODE is ''{actual_value}'': postal code does not match the format of its country.'
+  record_fix_template: 'PERADDRESS.ZIPCODE: postal code does not match the format of its country.'
   auto_fix:
     steps:
     - op: postcode

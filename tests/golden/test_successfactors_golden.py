@@ -207,6 +207,7 @@ def test_employee_central_golden():
         "EC042": {"USERID=100113"},
         "EC004": {"PERSON_ID=100109"},
         "EC018": {"PERSON_ID=100110|EMAIL_TYPE=B"},
+        "EC900": {"PERSON_ID=100110|EMAIL_TYPE=B"},               # same address: breaks e-mail syntax
         "EC033": {"PERSON_ID=100111|ADDRESS_TYPE=home"},
         "EC356": {"PERSON_ID=100111|ADDRESS_TYPE=home"},
         "EC020": {"PERSON_ID=100112|PHONE_TYPE=M"},
@@ -223,6 +224,7 @@ def test_employee_central_golden():
         "EC063": {"PERSON_ID=100123|PHONE_TYPE=B"},
         "EC086": {"PERSON_ID=100123|PHONE_TYPE=B"},                             # no digits at all
         "EC072": {"PERSON_ID=100124|ADDRESS_TYPE=home"},
+        "EC903": {"PERSON_ID=100124|ADDRESS_TYPE=home"},          # same postcode: not valid for ZA
         "EC055": {"PERSON_ID=100125"},
         "EC052": {"PERSON_ID=100126"},
         # EC115: the two leavers in the fixture (100104 left 2025, 100108 left 2024) keep their position

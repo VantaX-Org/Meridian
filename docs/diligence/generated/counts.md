@@ -5,7 +5,7 @@ Written by `scripts/diligence_counts.py` (via `bash scripts/diligence_audit.sh`)
 ```json
 {
   "api": {
-    "include_router_calls": 131,
+    "include_router_calls": 135,
     "middleware": [
       "MetricsMiddleware",
       "SecurityHeadersMiddleware",
@@ -16,8 +16,8 @@ Written by `scripts/diligence_counts.py` (via `bash scripts/diligence_audit.sh`)
       "TenantMiddleware",
       "LocalAuthMiddleware"
     ],
-    "route_modules": 139,
-    "service_modules": 209
+    "route_modules": 146,
+    "service_modules": 227
   },
   "celery_beat_entries": 33,
   "code_size": {
@@ -26,20 +26,20 @@ Written by `scripts/diligence_counts.py` (via `bash scripts/diligence_audit.sh`)
       "lines": 2257
     },
     "api": {
-      "files": 375,
-      "lines": 105203
+      "files": 400,
+      "lines": 115382
     },
     "checks": {
-      "files": 56,
-      "lines": 8943
+      "files": 57,
+      "lines": 9095
     },
     "db": {
-      "files": 160,
-      "lines": 17376
+      "files": 167,
+      "lines": 17720
     },
     "frontend (ts, tsx)": {
-      "files": 784,
-      "lines": 143014
+      "files": 861,
+      "lines": 157133
     },
     "llm": {
       "files": 2,
@@ -47,28 +47,28 @@ Written by `scripts/diligence_counts.py` (via `bash scripts/diligence_audit.sh`)
     },
     "sap": {
       "files": 36,
-      "lines": 16699
+      "lines": 16875
     },
     "scripts": {
-      "files": 26,
-      "lines": 7099
+      "files": 27,
+      "lines": 7193
     },
     "tests (py)": {
-      "files": 657,
-      "lines": 99495
+      "files": 714,
+      "lines": 105937
     },
     "updater": {
       "files": 1,
       "lines": 142
     },
     "workers": {
-      "files": 67,
-      "lines": 14225
+      "files": 70,
+      "lines": 14532
     }
   },
   "migrations": {
-    "files": 146,
-    "newest_file": "148_external_db_key_version.py"
+    "files": 153,
+    "newest_file": "160_semantic_type_overrides.py"
   },
   "rbac": {
     "action_count": 28,
@@ -125,57 +125,58 @@ Written by `scripts/diligence_counts.py` (via `bash scripts/diligence_audit.sh`)
       "aggregate_check": 5,
       "all_children_check": 1,
       "balance_check": 2,
-      "count_per_parent_check": 1,
-      "cross_field_check": 2267,
+      "contact_check": 13,
+      "count_per_parent_check": 3,
+      "cross_field_check": 2555,
       "dependency_check": 6,
-      "domain_value_check": 949,
-      "exists_check": 1118,
+      "domain_value_check": 947,
+      "exists_check": 1166,
       "format_check": 40,
-      "freshness_check": 115,
+      "freshness_check": 113,
       "group_sum_check": 14,
       "hierarchy_check": 9,
-      "interval_check": 39,
-      "null_check": 1274,
-      "referential_check": 2685,
-      "regex_check": 560,
+      "interval_check": 40,
+      "null_check": 1291,
+      "referential_check": 2684,
+      "regex_check": 593,
       "similarity_check": 12,
-      "uniqueness_check": 231,
+      "uniqueness_check": 236,
       "value_placement_check": 20
     },
     "by_dimension": {
-      "accuracy": 359,
-      "completeness": 1633,
-      "consistency": 4406,
+      "accuracy": 371,
+      "completeness": 1694,
+      "consistency": 4600,
       "freshness": 2,
-      "lifecycle": 76,
-      "timeliness": 263,
-      "uniqueness": 243,
-      "validity": 2366
+      "lifecycle": 77,
+      "timeliness": 264,
+      "uniqueness": 251,
+      "validity": 2491
     },
     "by_severity": {
-      "critical": 410,
-      "high": 4305,
+      "critical": 409,
+      "high": 4372,
       "info": 8,
-      "low": 1326,
-      "medium": 3299
+      "low": 1452,
+      "medium": 3509
     },
     "by_system": {
       "ariba": 141,
       "concur": 97,
-      "ecc": 6665,
-      "successfactors": 1865,
+      "ecc": 6976,
+      "successfactors": 1956,
       "warehouse": 579,
       "ztables": 1
     },
-    "check_type_classes": 24,
-    "enabled_by_default": 6581,
-    "generated_from_ddic": 2767,
-    "hand_written": 6581,
+    "check_type_classes": 25,
+    "enabled_by_default": 6988,
+    "generated_from_ddic": 2762,
+    "hand_written": 6988,
     "modules": 47,
-    "total": 9348
+    "total": 9750
   },
   "tests": {
-    "playwright_spec_files": 19,
+    "playwright_spec_files": 20,
     "playwright_specs": [
       "acceptance.spec.ts",
       "guided-tours-v2.spec.ts",
@@ -184,6 +185,7 @@ Written by `scripts/diligence_counts.py` (via `bash scripts/diligence_audit.sh`)
       "v2-a11y.spec.ts",
       "v2-admin.spec.ts",
       "v2-help.spec.ts",
+      "v2-journeys.spec.ts",
       "v2-landscape.spec.ts",
       "v2-mdm.spec.ts",
       "v2-object.spec.ts",
@@ -197,10 +199,10 @@ Written by `scripts/diligence_counts.py` (via `bash scripts/diligence_audit.sh`)
       "v2-systems.spec.ts",
       "v2-work.spec.ts"
     ],
-    "playwright_tests_declared (static count of test( calls)": 216,
-    "pytest_files": 631,
-    "pytest_files_postgres (_pg.py)": 133,
-    "vitest_files": 206
+    "playwright_tests_declared (static count of test( calls)": 219,
+    "pytest_files": 688,
+    "pytest_files_postgres (_pg.py)": 136,
+    "vitest_files": 230
   }
 }
 ```

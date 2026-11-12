@@ -183,6 +183,8 @@ def test_business_partner_golden():
     assert found == {
         "XDUP006": {"PARTNER=0001000013|TAXTYPE=DE0", "PARTNER=0001000019|TAXTYPE=DE0"},  # one VAT no., two BPs
         "BP017": {"PARTNER=0001000020"},                         # no e-mail address
+        "BP900": {"PARTNER=0001000026"},                         # e-mail address breaks RFC 5321 syntax (comma domain)
+        "BP902": {"PARTNER=0001000025"},                         # 0000000000 is not a plausible telephone number
         "BP009": {"PARTNER=0001000021"},                         # 'MR' is not a form-of-address key
         "BP024": {"PARTNER=0001000022|RLTYP=FLVN00|DFVAL="},     # role valid-to before valid-from
         "VP-BUT000-NAME_ORG2": {"PARTNER=0001000023"},           # e-mail in the second name line

@@ -7,9 +7,10 @@ under RLS. Key overrides are checked against the systems' dictionaries, so no SA
 
 import json
 import uuid
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -102,7 +103,7 @@ async def _check_key_map(db: AsyncSession, key_map: dict[str, KeySide], source_i
 
 @router.get("/pairs")
 async def list_pairs(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
-                     _r: str = Depends(require_permission("view"))):
+                     _r: str = Depends(require_permission("view"))) -> dict[str, Any]:
     """Pairs with their latest comparison, and suggested pairs from each system's default target."""
     await _set_rls(db, tenant.id)
     pairs = [_pair(r) for r in (await db.execute(text(_PAIR_SQL + " ORDER BY p.module, s.name, g.name"),
@@ -122,7 +123,7 @@ async def list_pairs(db: AsyncSession = Depends(get_db), tenant: Tenant = Depend
 
 @router.post("/pairs")
 async def create_pair(body: PairIn, request: Request, db: AsyncSession = Depends(get_db),
-                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("analyse"))):
+                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("analyse"))) -> dict[str, Any]:
     """Pair two of the tenant's systems for one module."""
     await _set_rls(db, tenant.id)
     if body.source_system_id == body.target_system_id:
@@ -147,7 +148,7 @@ async def create_pair(body: PairIn, request: Request, db: AsyncSession = Depends
 
 @router.patch("/pairs/{pair_id}")
 async def update_pair(pair_id: uuid.UUID, body: PairPatch, request: Request, db: AsyncSession = Depends(get_db),
-                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("analyse"))):
+                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("analyse"))) -> dict[str, Any]:
     """Replace the pair's key overrides."""
     p = await _load_pair(db, tenant, pair_id)
     km = await _check_key_map(db, body.key_map, p.source_system_id, p.target_system_id)
@@ -160,7 +161,7 @@ async def update_pair(pair_id: uuid.UUID, body: PairPatch, request: Request, db:
 
 @router.delete("/pairs/{pair_id}")
 async def delete_pair(pair_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
-                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("analyse"))):
+                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("analyse"))) -> dict[str, Any]:
     """Delete the pair and its comparisons."""
     await _load_pair(db, tenant, pair_id)
     await db.execute(text("DELETE FROM system_pairs WHERE id = :id AND tenant_id = :t"),
@@ -172,7 +173,7 @@ async def delete_pair(pair_id: uuid.UUID, request: Request, db: AsyncSession = D
 
 @router.post("/pairs/{pair_id}/run")
 async def run_pair(pair_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
-                   tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("analyse"))):
+                   tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("analyse"))) -> dict[str, Any]:
     """Queue a comparison. One at a time per pair."""
     await _load_pair(db, tenant, pair_id)
     busy = (await db.execute(text("SELECT id FROM system_comparisons WHERE pair_id = :p AND tenant_id = :t "
@@ -224,7 +225,7 @@ def _detail(r) -> dict:
 
 @router.get("/pairs/{pair_id}/latest")
 async def latest(pair_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
-                 _r: str = Depends(require_permission("view"))):
+                 _r: str = Depends(require_permission("view"))) -> dict[str, Any]:
     """The pair and its latest comparison (null before the first run)."""
     p = await _load_pair(db, tenant, pair_id)
     r = (await db.execute(text("SELECT id, pair_id, status, progress, error_detail, created_at, completed_at, "
@@ -268,7 +269,7 @@ async def differences(cid: uuid.UUID, table: Optional[str] = None, field: Option
                       kind: Optional[Literal["missing", "extra", "differing"]] = None, q: Optional[str] = None,
                       offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=1000),
                       db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
-                      _r: str = Depends(require_permission("view"))):
+                      _r: str = Depends(require_permission("view"))) -> dict[str, Any]:
     """Missing, extra and differing records, filtered. Records are capped per table and kind at run time."""
     rows = _rows(await _comparison(db, tenant, cid, "id, tables, records"), table, field, kind, q)
     return {"total": len(rows), "offset": offset, "rows": rows[offset:offset + limit], "kinds": list(KINDS)}
@@ -276,7 +277,7 @@ async def differences(cid: uuid.UUID, table: Optional[str] = None, field: Option
 
 @router.get("/comparisons/{cid}/pair")
 async def record_pair(cid: uuid.UUID, table: str, key: str, db: AsyncSession = Depends(get_db),
-                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("view"))):
+                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("view"))) -> dict[str, Any]:
     """One record side by side: every field with its description, source value, target value and verdict."""
     from api.services.system_compare import explain
 
@@ -300,7 +301,7 @@ async def record_pair(cid: uuid.UUID, table: str, key: str, db: AsyncSession = D
 
 @router.get("/pairs/{pair_id}/trend")
 async def trend(pair_id: uuid.UUID, limit: int = Query(24, ge=1, le=200), db: AsyncSession = Depends(get_db),
-                tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("view"))):
+                tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("view"))) -> dict[str, Any]:
     """Source, projected and actual target DQS per completed comparison, oldest first."""
     await _load_pair(db, tenant, pair_id)
     rows = (await db.execute(text("SELECT id, completed_at, scores, summary FROM system_comparisons "
@@ -313,7 +314,7 @@ async def trend(pair_id: uuid.UUID, limit: int = Query(24, ge=1, le=200), db: As
                         "differing_fields": (r.summary or {}).get("differing_fields")} for r in reversed(rows)]}
 
 
-@router.get("/comparisons/{cid}/export")
+@router.get("/comparisons/{cid}/export", response_class=Response)
 async def export(cid: uuid.UUID, format: Literal["xlsx", "csv"] = "xlsx", table: Optional[str] = None,
                  field: Optional[str] = None, kind: Optional[Literal["missing", "extra", "differing"]] = None,
                  q: Optional[str] = None, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),

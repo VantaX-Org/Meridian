@@ -351,7 +351,7 @@ async def _threshold_rows(db: AsyncSession, tenant: TenantDep) -> list[dict]:
 
 
 @router.get("/quality-thresholds", dependencies=[Depends(require_permission("view"))])
-async def get_quality_thresholds(db: AsyncSession = Depends(get_db), tenant: TenantDep = Depends(get_tenant)):
+async def get_quality_thresholds(db: AsyncSession = Depends(get_db), tenant: TenantDep = Depends(get_tenant)) -> dict[str, Any]:
     """fallback: the tenant composite bands. tenant: the default per dimension, resolved.
     modules: each module's overrides as stored (only the dimensions it sets). Banding a module's
     score: modules[m][dim], else tenant[dim]."""
@@ -378,7 +378,7 @@ def _threshold_problem(body: QualityThreshold) -> str | None:
 
 @router.put("/quality-thresholds", dependencies=[Depends(require_permission("manage_settings"))])
 async def put_quality_threshold(body: QualityThreshold, request: Request, db: AsyncSession = Depends(get_db),
-                                tenant: TenantDep = Depends(get_tenant)):
+                                tenant: TenantDep = Depends(get_tenant)) -> dict[str, Any]:
     """Set one (module, dimension) band. module "*" sets the tenant default."""
     problem = _threshold_problem(body)
     if problem:
@@ -407,7 +407,7 @@ async def put_quality_threshold(body: QualityThreshold, request: Request, db: As
 
 @router.delete("/quality-thresholds", dependencies=[Depends(require_permission("manage_settings"))])
 async def delete_quality_threshold(module: str, dimension: str, request: Request,
-                                   db: AsyncSession = Depends(get_db), tenant: TenantDep = Depends(get_tenant)):
+                                   db: AsyncSession = Depends(get_db), tenant: TenantDep = Depends(get_tenant)) -> dict[str, Any]:
     """Drop one override, so the module (or the tenant default) falls back a level."""
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     await db.execute(text("DELETE FROM quality_thresholds WHERE tenant_id = CAST(:tid AS uuid) "

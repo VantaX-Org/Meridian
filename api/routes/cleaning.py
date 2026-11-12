@@ -656,7 +656,7 @@ async def bulk_reject(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("approve", scope=scope_from_path)),
-):
+) -> dict[str, Any]:
     """Reject every waiting proposal in a group (or the named ids) with one reason, one audit row each."""
     if not body.reason.strip():
         raise HTTPException(status_code=422, detail="A reason is required")

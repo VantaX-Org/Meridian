@@ -8015,7 +8015,7 @@
    "benchmarkable": false,
    "check_class": "cross_field_check",
    "module": "material_master",
-   "reason": "condition not modelled: `MARC.MIN_TROC`.fillna('0').astype('float') > 0",
+   "reason": "condition not modelled: `MARC.MIN_TROC`.fillna('0').where(`MARC.MIN_TROC`.fillna('0'",
    "rule_id": "MM1121"
   },
   {
@@ -8176,7 +8176,7 @@
    "benchmarkable": false,
    "check_class": "cross_field_check",
    "module": "material_master",
-   "reason": "condition not modelled: (`MARA.FIBER_PART1`.fillna('0').astype('float') + `MARA.FIBE",
+   "reason": "condition not modelled: (`MARA.FIBER_PART1`.fillna('0').where(`MARA.FIBER_PART1`.fil",
    "rule_id": "MM1140"
   },
   {
@@ -22659,14 +22659,14 @@
    "benchmarkable": false,
    "check_class": "cross_field_check",
    "module": "sd_customer_master",
-   "reason": "condition not modelled: `KNA1.BBBNR`.fillna('0').astype('float') > 0",
+   "reason": "condition not modelled: `KNA1.BBBNR`.fillna('0').where(`KNA1.BBBNR`.fillna('0').str.",
    "rule_id": "SDCM866"
   },
   {
    "benchmarkable": false,
    "check_class": "cross_field_check",
    "module": "sd_customer_master",
-   "reason": "condition not modelled: `KNA1.BBSNR`.fillna('0').astype('float') > 0",
+   "reason": "condition not modelled: `KNA1.BBSNR`.fillna('0').where(`KNA1.BBSNR`.fillna('0').str.",
    "rule_id": "SDCM867"
   },
   {

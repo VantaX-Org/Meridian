@@ -242,8 +242,6 @@ _TAX_ID_SAMPLES = {k: [k[0], *v] for k, v in {
     ("AR", "STCD1"): ["20172543597", "20172543598"], ("CL", "STCD1"): ["760864285", "760864286"],
     ("CO", "STCD1"): ["8001972684", "8001972685"], ("PE", "STCD1"): ["20100066603", "20100066604"],
     ("RU", "STCD1"): ["7707083893", "7707083894"], ("BR", "STCD2"): ["11144477735", "11144477736"]}.items()}
-_CONTACT_SAMPLES = {"email": ["ap@example.co.za", "bad"], "disposable": ["ap@example.co.za", "x@mailinator.com"],
-                    "phone": ["0115551234", "12"], "postcode": ["2196", "ABC"]}
 _FORMAT_SAMPLES = {"gtin": "4006381333931", "ean": "4006381333931", "iban": "GB82WEST12345698765432",
                    "luhn": "4539148803436467", "email": "ap@example.co.za", "date": TODAY,
                    # national-identifier specimens (checks/types/format_check.py self-check)
@@ -299,6 +297,14 @@ def _inequality_cols(expr: str) -> set[str]:
     return cols
 
 
+_CONTACT_SAMPLES = {
+    "email": ["a@example.com", "a@@b"],
+    "disposable": ["a@example.com", "a@mailinator.com"],
+    "phone": ["+49 30 1234567", "12"],
+    "postcode": ["10115", "ABC"],
+}
+
+
 def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
     cols = rule_columns(rule)
     expr = rule.get("fail_when") or rule.get("condition") or ""
@@ -352,15 +358,18 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             # (sd_sales_orders SDSO232 etc). A non-key, non-join anchor (e.g. COMP143's SALARY,
             # flagged but absent from fail_when) still needs a value, since _rows() only
             # defaults key/join columns to "K{i}".
-        if rule.get("check_class") == "contact_check":
-            # a well-formed and a broken specimen per kind; phone and postcode are judged for a country
-            if c == rule.get("country_field"):
-                vals += ["ZA"]
-            elif c == rule["field"]:
-                vals += _CONTACT_SAMPLES[rule["kind"]]
         if rule.get("check_class") == "value_placement_check" and c in (rule.get("fields") or [rule["field"]]):
             vals += _PLACEMENT_SAMPLES[rule["family"]] if rule["family"] != "tax_checkdigit" else \
                 _TAX_ID_SAMPLES[rule["applies_when"][rule["fields"][1]][0], rule["field"].split(".")[1]]
+        if rule.get("check_class") == "contact_check":
+            # one value contact_verify accepts and one it rejects, per kind; country and dial
+            # fields get the matching country so the phone and postcode layouts apply
+            if c == rule["field"]:
+                vals += _CONTACT_SAMPLES[rule["kind"]]
+            elif c == rule.get("country_field"):
+                vals.append("DE")
+            elif c == rule.get("dial_field"):
+                vals.append("49")
         if c == rule.get("split_field"):
             vals += [str(v) for v in rule["left_values"][:1] + rule["right_values"][:1]]
         if c == rule.get("field"):
@@ -408,6 +417,8 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             # as it was in round 2) so the 10-item cap below evicts this candidate first
             # instead of evicting a higher-priority probe value.
             vals += [overflow]
+        for op, n in re.findall(rf"`{re.escape(c)}`\.str\.len\(\)\s*(>=|>)\s*(\d+)", expr):
+            vals.append("1" * (int(n) + (op == ">")))  # a value long enough to trip a minimum-length rule
         if f"`{c}`" in expr:
             vals += literals[:4] + numbers[:4] + number_variants[:4]
             if re.search(rf"`{re.escape(c)}`[^`]*\.str\.islower\(\)", expr):
