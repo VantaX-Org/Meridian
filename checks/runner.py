@@ -232,6 +232,33 @@ def module_rules(module_name: str) -> list[dict]:
     return rules
 
 
+def waiting_for_data(modules: list[str], coverage: list[dict]) -> dict[str, int]:
+    """Per module, the enabled rules that cannot run until their data arrives: a rule reading a table the
+    extraction reported ``upload_required`` (or, in a module with an unverified ``preview`` source, any
+    table it did not read live). Such a rule is skipped by run_checks, so it is outside the score."""
+    from checks.overrides import apply
+    live = {c.get("table") for c in coverage if c.get("status") == "live"}
+    upload = {c.get("table") for c in coverage if c.get("status") == "upload_required"} - live
+    preview = {c.get("module") for c in coverage if c.get("status") == "preview"}
+    out: dict[str, int] = {}
+    for m in modules:
+        try:
+            rules = apply(module_rules(m), None)
+        except FileNotFoundError:
+            continue
+        n = 0
+        for r in rules:
+            try:
+                tables = set(tables_of(rule_columns(r)))
+            except Exception as e:
+                reraise_soft_limit(e)
+                continue
+            if tables & upload or (m in preview and tables - live):
+                n += 1
+        out[m] = n
+    return out
+
+
 @lru_cache(maxsize=None)
 def is_overlay(module_name: str) -> bool:
     """An overlay module (``overlay: true``) re-judges tables other modules extract,
