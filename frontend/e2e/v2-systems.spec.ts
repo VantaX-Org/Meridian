@@ -141,7 +141,7 @@ for (const size of SIZES) {
         await page.goto(`/s/${ECC}?fixture=1&open=system:${ECC}`, { waitUntil: "load", timeout: 90_000 });
         const dialog = page.getByRole("dialog", { name: "ECC production" });
         await dialog.getByRole("button", { name: "Extract", exact: true }).click();
-        await dialog.getByRole("checkbox", { name: /Material master/ }).check();
+        await dialog.getByRole("checkbox", { name: /^Material master/ }).check();
         const scope = dialog.getByTestId("scope-editor");
         await scope.getByLabel("Plants").fill("1000, 1100");
         await expect(dialog.getByTestId("scope-sentence")).toContainText("plants 1000, 1100");

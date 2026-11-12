@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- typed rest args let tests read mock.calls
 const post = vi.fn(async (..._a: unknown[]) => ({ data: { version_id: "new" } }));
 vi.mock("@/lib/api/client", () => ({ uploadApiClient: { post, get: vi.fn() } }));
 vi.mock("./fixture", () => ({ fixtureActive: () => false }));
