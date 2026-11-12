@@ -26,6 +26,7 @@ import { breachWords } from "@/lib/v2/step9";
 import { moduleText } from "@/lib/v2/labels";
 import { runLabel } from "@/lib/v2/run-label";
 import { Lede } from "../RunParts";
+import { AletheiaCleaningPlan } from "./object/AletheiaCleaningPlan";
 import { ObjectChangeBars, changeSentence } from "./Compare";
 import { CcBanner, CcPage } from "./cc-parts";
 import { WhatIf } from "./WhatIf";
@@ -664,6 +665,8 @@ export function RunCanvas({ id }: { id: string }) {
       </section>
 
       <ProveThree run={id} modules={[...new Set(cells.map((c) => c.module))]} />
+
+      {[...new Set(cells.map((c) => c.module))].map((m) => <AletheiaCleaningPlan key={m} module={m} label={labelOf(m)} versionId={id} />)}
 
       <WhatIf run={id} canRun={canChange} />
 
