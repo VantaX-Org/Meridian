@@ -102,7 +102,8 @@ def cleaning_edits(sheets: list) -> tuple[list[dict], int]:
             if not get("Corrected value"):
                 blank += 1
                 continue
-            out.append({"table": get("Table"), "key": get("Record key"), "field": get("Field"),
+            # the workbook writes "TABLE.FIELD (description)"; edits match on the name alone
+            out.append({"table": get("Table"), "key": get("Record key"), "field": get("Field").split(" (", 1)[0],
                         "value": get("Corrected value")})
     return out, blank
 
