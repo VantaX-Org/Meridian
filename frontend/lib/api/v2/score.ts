@@ -26,6 +26,8 @@ export interface HeatRow {
   group: string;
   scores: Record<string, number | null>;
   tier: Record<string, HeatTier>;
+  /** The pass target each score is held to (per module and dimension, else the tenant default). */
+  target?: Record<string, number>;
   critical: number;
   cap_reason: string | null;
 }

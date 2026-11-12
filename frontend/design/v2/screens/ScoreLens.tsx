@@ -7,6 +7,7 @@ import { formatDate, formatModuleName } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { f1, int, moduleSlug } from "@/lib/v2/score";
 import { ChartFrame, ChartTable, DeltaBar, niceTicks, scoreDomain, Sparkline, TrendChart } from "../charts";
+import { VerdictMark } from "../marks";
 import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
@@ -204,7 +205,8 @@ function HeatPanel({ q }: { q: HeatQ }) {
       {(h) => {
         if (!h || h.rows.length === 0) return <EmptyFrame>{t("No finished run has dimension scores yet.")}</EmptyFrame>;
         const dims = h.dimensions;
-        const cell = (v: number | null | undefined, tier: HeatTier | undefined, d: string, name: string) => (
+        const VM = { pass: "go", warn: "at-risk", fail: "no-go" } as const;
+        const cell = (v: number | null | undefined, tier: HeatTier | undefined, d: string, name: string, target?: number) => (
           <td
             key={d}
             data-label={DIM[d]?.() ?? d}
@@ -213,6 +215,11 @@ function HeatPanel({ q }: { q: HeatQ }) {
             title={v == null ? t("{name}: {dim} not measured", { name, dim: DIM[d]?.() ?? d }) : t("{name}: {dim} {score}, {tier}", { name, dim: DIM[d]?.() ?? d, score: f1(v), tier: tier ? TIER[tier]() : f1(null) })}
           >
             {f1(v ?? null)}
+            {v != null && tier ? (
+              <span className="m2-meta" data-testid={`sl-heat-status-${d}`}>
+                {" "}<VerdictMark verdict={VM[tier]} />{TIER[tier]()}{target != null ? `, ${t("Target")} ${f1(target)}` : ""}
+              </span>
+            ) : null}
           </td>
         );
         return (
@@ -227,7 +234,7 @@ function HeatPanel({ q }: { q: HeatQ }) {
                         <V2Link href={`/objects?module=${moduleSlug(r.module)}`} data-testid="sl-heat-link">{name}</V2Link> <span className="m2-mono m2-meta">{r.module}</span>
                         <span className="m2-meta"> {GROUP[r.group]?.() ?? r.group}</span>
                       </th>
-                      {dims.map((d) => cell(r.scores[d], r.tier[d], d, name))}
+                      {dims.map((d) => cell(r.scores[d], r.tier[d], d, name, r.target?.[d]))}
                       <td data-label={t("Critical rules failing")} className="m2-num">{int(r.critical)}</td>
                     </tr>
                   );

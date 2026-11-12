@@ -31,6 +31,7 @@ from workers.db import get_sync_engine
 from workers.email_backends.microsoft_graph import create_graph_client
 
 from api.services import app_links
+from api.services.scoring import resolve_thresholds
 
 logger = logging.getLogger("meridian.worker.notifications")
 
@@ -149,8 +150,10 @@ def _previous_dqs(session: Session, version_id: str, tenant_id: str, version_dat
     return (row[0] if row and isinstance(row[0], dict) else {}) or {}
 
 
-def threshold_breaches(config: dict, dqs: dict, prev_dqs: dict, counts: dict) -> list[dict]:
-    """Every alert threshold this analysis crosses. Pure — the caller loads the data."""
+def threshold_breaches(config: dict, dqs: dict, prev_dqs: dict, counts: dict,
+                       dim_rows: list[dict] | None = None) -> list[dict]:
+    """Every alert threshold this analysis crosses. Pure — the caller loads the data.
+    ``dim_rows`` are quality_thresholds rows: a measured dimension under its target is a breach."""
     out: list[dict] = []
     crit, high = counts.get("critical", 0), counts.get("high", 0)
     if crit and crit >= config.get("critical_threshold", 1):
@@ -173,7 +176,21 @@ def threshold_breaches(config: dict, dqs: dict, prev_dqs: dict, counts: dict) ->
         if floor is not None and score < floor:
             out.append({"kind": "floor", "module": module,
                         "message": f"{module}: DQS {score:.1f} is below its floor of {floor:g}"})
+        if dim_rows:
+            bands = resolve_thresholds(dim_rows, module)
+            for dim, val in sorted(((cur or {}).get("dimension_scores") or {}).items()):
+                target = bands.get(dim, {}).get("target") if any(
+                    r["dimension"] == dim and r["module"] in ("*", module) for r in dim_rows) else None
+                if val is not None and target is not None and val < target:
+                    out.append({"kind": "dimension", "module": module, "dimension": dim,
+                                "message": f"{module}: {dim} {val:.1f} is below its target of {target:g}"})
     return out
+
+
+def _dim_rows(session: Session, tenant_id: str) -> list[dict]:
+    rows = session.execute(text("SELECT module, dimension, target, warning, critical FROM quality_thresholds "
+                                "WHERE tenant_id = :t"), {"t": tenant_id}).mappings().all()
+    return [dict(r) for r in rows]
 
 
 def _check_trigger(trigger: str, config: dict, version_data: dict, session: Session, version_id: str, tenant_id: str) -> bool:
@@ -190,7 +207,8 @@ def _check_trigger(trigger: str, config: dict, version_data: dict, session: Sess
         prev = _previous_dqs(session, version_id, tenant_id, version_data)
         version_data["breaches"] = threshold_breaches(
             config, version_data.get("dqs_summary", {}), prev,
-            {"critical": version_data.get("critical_count", 0), "high": version_data.get("high_count", 0)})
+            {"critical": version_data.get("critical_count", 0), "high": version_data.get("high_count", 0)},
+            _dim_rows(session, tenant_id))
         return bool(version_data["breaches"])
 
     if trigger.startswith("scheduled_"):

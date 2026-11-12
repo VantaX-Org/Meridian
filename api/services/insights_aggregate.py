@@ -20,7 +20,7 @@ from api.services.insights_impact import feature_l1, tenant_currency, value_at_r
 from api.services.pdf_reports import (
     _SEV_RANK, DIMENSIONS, _all, _one, _rule, failing, fmt_module, load_scoring, module_deltas,
 )
-from api.services.scoring import CLEAN_KEY_CEILING, impact, rescore, scoring_config, tier
+from api.services.scoring import CLEAN_KEY_CEILING, impact, resolve_thresholds, rescore, scoring_config, tier
 
 GROUPS = ("ecc", "successfactors", "warehouse")
 NARRATIVE_MAX = 4
@@ -295,7 +295,10 @@ def rule_rows(findings: list[dict], previous: Optional[list[dict]], fixes: dict[
     return out
 
 
-def heatmap_rows(summary: dict, thresholds: dict, module: Optional[str] = None) -> list[dict]:
+def heatmap_rows(summary: dict, thresholds: dict, module: Optional[str] = None,
+                 dim_rows: Optional[list[dict]] = None) -> list[dict]:
+    """``dim_rows`` are quality_thresholds rows: each cell is banded against its module's dimension
+    target (composite against "overall"), else the tenant composite bands, and ``target`` says which."""
     rows = []
     for mod, r in sorted(summary.items()):
         if not isinstance(r, dict) or (module and mod != module) or r.get("composite_score") is None:
@@ -303,8 +306,11 @@ def heatmap_rows(summary: dict, thresholds: dict, module: Optional[str] = None) 
         scores = {d: r["dimension_scores"].get(d) for d in DIMENSIONS if d in (r.get("dimension_scores") or {})}
         scores["composite"] = r["composite_score"]
         cov = {d: (r.get("dimension_coverage") or {}).get(d) for d in DIMENSIONS}
+        bands = resolve_thresholds(dim_rows or [], mod, thresholds)
+        bands["composite"] = bands["overall"]
         rows.append({"module": mod, "group": module_group(mod), "scores": scores,
-                     "tier": {k: tier(v, thresholds) for k, v in scores.items()}, "coverage": cov,
+                     "tier": {k: tier(v, bands.get(k, thresholds)) for k, v in scores.items()},
+                     "target": {k: bands.get(k, thresholds)["target"] for k in scores}, "coverage": cov,
                      "critical": int(r.get("critical_count") or 0), "cap_reason": r.get("cap_reason")})
     rows.sort(key=lambda x: (GROUPS.index(x["group"]), x["scores"]["composite"], x["module"]))
     return rows
@@ -538,8 +544,10 @@ def heatmap(s: Session, tid: str, vid: Optional[str], module: Optional[str]) -> 
     if not v:
         return None
     thresholds = scoring_config(load_scoring(s, tid))["thresholds"]
+    dim_rows = _all(s, "SELECT module, dimension, target, warning, critical FROM quality_thresholds "
+                       "WHERE tenant_id = :t", t=tid)
     return {"version_id": str(v["id"]), "dimensions": [*DIMENSIONS, "composite"],
-            "rows": heatmap_rows(v.get("dqs_summary") or {}, thresholds, module)}
+            "rows": heatmap_rows(v.get("dqs_summary") or {}, thresholds, module, dim_rows)}
 
 
 def trends(s: Session, tid: str, vid: Optional[str], system_id: Optional[str], limit: int = 12) -> Optional[dict]:

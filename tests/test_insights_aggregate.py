@@ -314,3 +314,12 @@ async def test_no_payload_carries_a_cross_l1_sum(two_l1_tenant, monkeypatch):
         for n in _numbers(body):
             for bad in forbidden:
                 assert abs(n - bad) > 0.005, (name, n)
+
+
+def test_heatmap_rows_band_each_dimension_against_its_own_target():
+    s = _summary(80.0)
+    s["dimension_scores"] = {"validity": 85.0}
+    rows = [{"module": "*", "dimension": "validity", "target": 90, "warning": 80, "critical": 60}]
+    r = agg.heatmap_rows({"material_master": s}, {}, None, rows)[0]
+    assert r["tier"]["validity"] == "warn" and r["target"]["validity"] == 90
+    assert agg.heatmap_rows({"material_master": s}, {})[0]["target"]["validity"] == 90.0
