@@ -98,8 +98,8 @@ def _keyed(df: pd.DataFrame, cols: list[str], names: list[str], maps: list[dict[
         # Numeric key parts lose ALPHA / MATN1 padding, so an old number held in a plain field (BISMT) still matches.
         v = df[c].map(_unpad)
         if m:
-            m = {_unpad(k): x for k, x in m.items()}
-            mapped = v.map(lambda x: _unpad(m.get(x, x)))
+            unpadded = {_unpad(k): x for k, x in m.items()}
+            mapped = v.map(lambda x: _unpad(unpadded.get(x, x)))
             changed |= mapped != v
             v = mapped
         parts.append(n + "=" + v)

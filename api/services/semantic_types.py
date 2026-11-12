@@ -155,12 +155,12 @@ def _column(name: str, s: pd.Series) -> dict:
         if t not in shares:
             continue
         hint = bool(_HINT_RE[t].search(name))
-        shape = shares[t][0]
-        if (t in NEEDS_HINT and not hint) or shape < (0.6 if hint else 0.8):
+        share = shares[t][0]
+        if (t in NEEDS_HINT and not hint) or share < (0.6 if hint else 0.8):
             continue
         if t == "person_name" and not hint:
             continue  # ponytail: name heuristic only on a named column; a word list would widen it
-        c = min(1.0, shape + (0.1 if hint else 0.0)) * min(1.0, filled / 20)
+        c = min(1.0, share + (0.1 if hint else 0.0)) * min(1.0, filled / 20)
         if c > conf + 1e-9:
             best, conf = t, c
     return {"column": name, "type": best, "confidence": round(conf, 2),
@@ -187,8 +187,8 @@ def profile(df: pd.DataFrame) -> dict:
 
 
 def dqs_of(dqs_summary: dict | None) -> float | None:
-    scores = [m.get("composite_score") for m in (dqs_summary or {}).values() if isinstance(m, dict)]
-    scores = [float(s) for s in scores if isinstance(s, (int, float))]
+    raw = [m.get("composite_score") for m in (dqs_summary or {}).values() if isinstance(m, dict)]
+    scores = [float(s) for s in raw if isinstance(s, (int, float))]
     return round(sum(scores) / len(scores), 1) if scores else None
 
 
@@ -232,7 +232,7 @@ def conformance_of(columns: list[dict]) -> float | None:
     return round(100 * sum(typed) / len(typed), 1) if typed else None
 
 
-_RULES = {
+_RULES: dict[str, list[tuple[str, dict, str]]] = {
     "email": [("contact_check", {"kind": "email"}, "Email address follows RFC 5321 and 5322"),
               ("contact_check", {"kind": "disposable"}, "Email domain is not a disposable mailbox service")],
     "phone": [("contact_check", {"kind": "phone"}, "Phone number is plausible for E.164")],

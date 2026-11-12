@@ -59,8 +59,8 @@ def table_owners(system_type: str) -> dict[str, str]:
             if not t.is_config:
                 owners.setdefault(t.source.upper(), module)
     for module, tables in OWNED_TABLES.items():
-        for t in tables:
-            owners[t] = module  # the curated ownership wins over an incidental extraction
+        for tbl in tables:
+            owners[tbl] = module  # the curated ownership wins over an incidental extraction
     return owners
 
 

@@ -263,7 +263,9 @@ def usage(codes: list[dict], profiles: dict[str, Optional[dict]]) -> dict[str, A
     are lower bounds: ``orphans_complete`` and ``unused_certain`` are False and ``covered_at_least`` is True. A
     composite code (``PickListV2_id/externalCode``) is matched on its last part, the value the record holds."""
     known = {str(c["code"]).rsplit("/", 1)[-1] for c in codes}
-    fields, orphans, used = [], {}, set()
+    fields: list[dict[str, Any]] = []
+    orphans: dict[str, dict[str, Any]] = {}
+    used: set[str] = set()
     filled_all = covered_all = 0
     complete = True
     for col, st in profiles.items():

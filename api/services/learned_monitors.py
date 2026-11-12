@@ -578,6 +578,7 @@ def break_evidence(b: dict, points: list[Point]) -> dict:
     pts = [p for p in points if p[0] in ids]
     obs, low, high = b["observed"], b.get("expected_low"), b.get("expected_high")
     band = high - low if low is not None and high is not None else None
+    med: Optional[float]
     if pts:
         vals = [p[2] for p in pts]
         med = statistics.median(vals)

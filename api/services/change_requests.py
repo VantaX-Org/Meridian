@@ -212,7 +212,7 @@ def form_fields(obj: str, live_values: Optional[dict[str, set[str]]] = None) -> 
         ct = d.table(f.check_table) if f.check_table else None
         out.append({
             "field": qf, "table": table, "name": name, "label": f.description or qf,
-            "table_label": (d.table(table).description if d.table(table) else None) or table,
+            "table_label": ((tb.description if (tb := d.table(table)) else None) or table),
             "type": f.type, "length": f.length, "decimals": f.decimals, "key": bool(f.key) or qf == key,
             "required": qf in required, "check_table": f.check_table,
             "check_table_label": ct.description if ct else None,

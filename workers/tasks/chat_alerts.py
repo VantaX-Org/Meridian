@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-import requests
+import requests  # type: ignore[import-untyped]
 
 from api.services import chat_alerts
 from workers.celery_app import celery_app

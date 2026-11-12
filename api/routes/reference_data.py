@@ -278,7 +278,7 @@ async def get_usage(list_id: str, system_id: str, request: Request, tenant: Tena
     lst = _list(list_id, request)
     sid = await _system(db, tenant, system_id)
     await _rls(db, tenant)
-    cols = {f: tuple(f.split(".", 1)) for f in lst.target_fields}
+    cols: dict[str, tuple[str, str]] = {f: (f.split(".", 1)[0], f.split(".", 1)[1]) for f in lst.target_fields}
     tables = sorted({t for t, _ in cols.values()})
     t = str(tenant.id)
     ver = (await db.execute(text(
@@ -286,7 +286,7 @@ async def get_usage(list_id: str, system_id: str, request: Request, tenant: Tena
         "AND av.metadata->>'system_id' = :s AND EXISTS (SELECT 1 FROM field_profiles fp WHERE fp.tenant_id = :t "
         "AND fp.version_id = av.id AND fp.table_name = ANY(:tb)) ORDER BY av.run_at DESC LIMIT 1"),
         {"t": t, "s": sid, "tb": tables})).mappings().all()
-    stats: dict[tuple[str, str], dict] = {}
+    stats: dict[tuple[str, str], Optional[dict]] = {}
     if ver:
         for r in (await db.execute(text(
                 "SELECT table_name, field, stats FROM field_profiles WHERE tenant_id = :t "
@@ -296,7 +296,7 @@ async def get_usage(list_id: str, system_id: str, request: Request, tenant: Tena
             stats[(r["table_name"], r["field"])] = st if isinstance(st, dict) else None
     c = await _codes(db, sid, lst, None, await _lang(db, tenant, request))
     u = rd.usage(c["source"], {f: stats.get(k) for f, k in cols.items()})
-    run_at = ver[0]["run_at"] if ver else None
+    run_at: Any = ver[0]["run_at"] if ver else None
     return UsageOut(id=lst.id, table=lst.table, version_id=ver[0]["id"] if ver else None,
                     run_at=run_at.isoformat() if hasattr(run_at, "isoformat") else run_at, **u)
 

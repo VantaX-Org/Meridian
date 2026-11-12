@@ -79,7 +79,7 @@ def _guard_columns(expr: str) -> list[str]:
 def columns(rule: dict) -> list[str]:
     """Record columns auto_fix reads besides the rule's field (guard, copy, lookup match)."""
     spec = rule.get("auto_fix") or {}
-    cols = _guard_columns(spec["when"]) if isinstance(spec.get("when"), str) else []
+    cols: list[Any] = _guard_columns(spec["when"]) if isinstance(spec.get("when"), str) else []
     for s in spec.get("steps") or []:
         if isinstance(s, dict) and s.get("op") == "copy":
             cols.append(s.get("from"))

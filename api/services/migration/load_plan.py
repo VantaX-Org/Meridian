@@ -19,7 +19,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Iterable, Optional
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from sap.ddic import Dictionary
 
@@ -156,7 +156,7 @@ def build_plan(modules: Iterable[str], dictionary: Dictionary, columns_of) -> Lo
     found: dict[tuple[str, str], list[Evidence]] = {}
     for m in planned:
         anchor = dictionary.table(OWNED_TABLES[m][0])
-        obj = PlanObject(module=m, anchor=anchor.name, anchor_text=anchor.description or "")
+        obj = PlanObject(module=m, anchor=anchor.name if anchor else "", anchor_text=(anchor.description if anchor else "") or "")
         prereq: dict[str, list[str]] = {}
         for q in sorted(columns_of(m)):
             f = dictionary.resolve(q)

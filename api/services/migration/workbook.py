@@ -479,7 +479,7 @@ def coverage(workbook: Workbook, dictionary: Dictionary) -> dict:
     for sheet in workbook.sheets:
         options = _candidates(sheet, dictionary)
         table = max(options, key=lambda t: (len(options[t]), t == _named_table(sheet)), default=None)
-        hits = options.get(table, {})
+        hits = options.get(table, {}) if table else {}
         sheets.append({"name": sheet.name, "table": table, "columns": len(sheet.columns), "matched": len(hits),
                        "unmapped": [{"header": c.header, "id": c.id, "label": c.label, "mandatory": c.mandatory}
                                     for c in sheet.columns if c.header not in hits]})
@@ -975,7 +975,8 @@ def _sf_template(dictionary: Dictionary, tables: dict[str, list[Field]], require
     (its name, with the table, is longer than Excel allows), goes on a technical grid of TABLE-FIELD ids. Only
     dictionary fields are written, so no field name is guessed."""
     def entity(f: Field) -> str:
-        return f.source.split(".", 1)[0] if "." in (f.source or "") else ""
+        src = f.source or ""
+        return src.split(".", 1)[0] if "." in src else ""
 
     spread: dict[str, set[str]] = {}
     for table, fields in tables.items():
@@ -997,7 +998,7 @@ def _sf_template(dictionary: Dictionary, tables: dict[str, list[Field]], require
                 continue
             columns = grids.setdefault(grid, {})
             for f in keys + own:  # a key is written once, by its own property name
-                columns.setdefault(f.source.split(".", 1)[1].split(" ")[0] if entity(f) else f.name, f)
+                columns.setdefault((f.source or "").split(".", 1)[1].split(" ")[0] if entity(f) else f.name, f)
             rows = definitions.setdefault(sheet, {})
             for prop, f in columns.items():
                 row = rows.setdefault(prop, {

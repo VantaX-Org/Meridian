@@ -4,7 +4,7 @@ import io
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -424,8 +424,9 @@ async def cleaning_queue_safety(
     from sap.ddic import dictionary_for_system
     await _set_rls(db, tenant.id)
     tid = str(tenant.id)
-    where, params = ["tenant_id = :tid", "status IN ('detected', 'recommended')",
-                     "record_data_after IS NOT NULL", "record_data_after <> '{}'::jsonb"], {"tid": tid}
+    where = ["tenant_id = :tid", "status IN ('detected', 'recommended')",
+             "record_data_after IS NOT NULL", "record_data_after <> '{}'::jsonb"]
+    params: dict[str, Any] = {"tid": tid}
     if version_id:
         where.append("version_id = :vid")
         params["vid"] = str(version_id)

@@ -201,6 +201,7 @@ def forecast(requests: list[dict], tasks: list[dict], history: list[dict], now: 
         dw = [h["dwell"] for h in used]
         p50, p90 = percentile(dw, 50), percentile(dw, 90)
         due, sla = cur.get("due_at"), cur.get("sla_hours")
+        prob: Optional[float]
         if due is not None and now > due:
             prob, breached = 1.0, True
         else:

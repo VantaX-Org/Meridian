@@ -112,7 +112,7 @@ SAMPLES = ["12345", "1234", "123456", "1234567", "12345-6789", "123-4567", "12-3
 
 def _pairs():
     rules = module_rules(M)
-    src = [r for r in rules if r.get("field") == "KNA1.PSTLZ"]
+    src = [r for r in rules if r.get("field") == "KNA1.PSTLZ" and "applies_when" in r]
     dst = [r for r in rules if r.get("field") == "ADRC.POST_CODE1" and r.get("grain") == "ADRC"
            and "applies_when" in r]
     assert len(src) == len(dst) == 29

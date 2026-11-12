@@ -63,7 +63,7 @@ def lift(kind: str, body: dict, confidence: Optional[float], det_stats: Optional
         out["reason"] = "the proposal has no confidence"
         return out
     dep, dep_exh, why = _counts(dep_stats)
-    if dep is None:
+    if dep is None or dep_stats is None:
         out["reason"] = f"dependent field: {why}"
         return out
     filled = int(dep_stats.get("rows", 0)) - int(dep_stats.get("blank", 0))

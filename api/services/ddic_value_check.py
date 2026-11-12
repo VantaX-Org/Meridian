@@ -116,7 +116,7 @@ def _type_check(f, v: str) -> Optional[str]:
     return None
 
 
-def _nearest(v: str, codes: Values | dict, limit: int = NEAREST) -> list[dict[str, Optional[str]]]:
+def _nearest(v: str, codes: dict[str, Optional[str]], limit: int = NEAREST) -> list[dict[str, Optional[str]]]:
     keys = sorted(c for c in codes if c)
     hits = [c for c in keys if c.upper() == v.upper()][:1]
     hits += [c for c in difflib.get_close_matches(v.upper(), keys, n=limit, cutoff=0.5) if c not in hits]

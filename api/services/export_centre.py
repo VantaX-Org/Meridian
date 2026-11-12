@@ -358,6 +358,8 @@ def build(session: Session, tenant_id: str, dataset: str, params: dict,
     tick = progress or (lambda stage, pct: None)
     stamp = datetime.now(timezone.utc)
     if p["format"] == "pdf":
+        if ds.pdf_kind is None:
+            raise ValueError(f"{dataset} has no pdf report")
         pdf_params = {"scope": p.get("system") or "latest", "module": p.get("module")}
         return rh.generate_report(session, tenant_id, ds.pdf_kind, pdf_params)
     tick("read", 10)

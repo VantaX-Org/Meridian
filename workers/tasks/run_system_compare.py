@@ -79,7 +79,7 @@ def _scores(session, tenant_id, pair, sv, tv) -> dict:
         {"t": str(tenant_id), "s": pair.source_system_id, "d": pair.target_system_id, "m": m}).fetchone()
     src = _findings(session, tenant_id, sv, [m])
     tgt = _findings(session, tenant_id, tv, [m]) if tv else None
-    rule_text = {m: {r.get("id"): r.get("message", "") for r in module_rules(m)}}
+    rule_text = {m: {str(r.get("id")): r.get("message", "") for r in module_rules(m)}}
     row = score_sides([m], (run.gap_summary if run else None) or {}, tgt, src, cfg, rule_text)["modules"][0]
     if row["source"] is None and src[m]:
         row["source"] = score_module(list(_rates(src[m], m).values()), cfg, module=m).composite_score

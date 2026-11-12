@@ -37,12 +37,13 @@ def project(runs: list[dict], target: float) -> dict:
     be projected: too_few_runs (under three scored runs), undated (runs without distinct dates)."""
     pts = [(r.get("run_at"), float(r["composite"])) for r in runs
            if isinstance(r.get("composite"), (int, float)) and not isinstance(r.get("composite"), bool)]
-    stamps = [_stamp(t) for t, _ in pts]
+    raw_stamps = [_stamp(t) for t, _ in pts]
     evidence = {"inputs": [f"Composite score of {len(pts)} runs"], "method": _METHOD, "confidence": 0,
                 "runs": len(pts), "first_run": pts[0][0] if pts else None, "last_run": pts[-1][0] if pts else None}
     if len(pts) < 3:
         return {"available": False, "reason": "too_few_runs", "evidence": evidence}
-    if any(s is None for s in stamps) or len({s.date() for s in stamps}) < 2:
+    stamps = [s for s in raw_stamps if s is not None]
+    if len(stamps) < len(raw_stamps) or len({s.date() for s in stamps}) < 2:
         return {"available": False, "reason": "undated", "evidence": evidence}
     days = _days_since_first([t for t, _ in pts])
     scores = [s for _, s in pts]

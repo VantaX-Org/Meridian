@@ -10,7 +10,7 @@ counts per rule id and module codes. No record value, field content or personal 
 from __future__ import annotations
 
 from statistics import mean, pstdev
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 from sqlalchemy.orm import Session
@@ -58,14 +58,15 @@ def _series(runs: list[dict]) -> dict[str, list[float]]:
     out = engine.trend_series(runs)
     for m in sorted({m for r in runs for m in (r.get("modules") or {})}):
         vals = [(r.get("modules") or {}).get(m) for r in runs]
-        if all(_num(v) for v in vals):
-            out[f"module:{m}"] = [float(v) for v in vals]
+        nums = [float(v) for v in vals if _num(v)]
+        if len(nums) == len(vals):
+            out[f"module:{m}"] = nums
     return out
 
 
 def aggregates(runs: list[dict], rules: dict[str, dict[str, int]]) -> dict:
     """Everything the engine layer may be sent: numbers keyed by metric name or rule id, nothing else."""
-    ids = [r.get("version_id") for r in runs]
+    ids: list[Any] = [r.get("version_id") for r in runs]
     return {"series": _series(runs),
             "rule_failures": {c: [float(rules.get(i, {}).get(c, 0)) for i in ids]
                               for c in sorted({c for i in ids for c in rules.get(i, {})})}}
@@ -78,7 +79,7 @@ def _sev(z: float, metric: str, observed: float, expected: float) -> str:
 
 
 def anomalies(series: dict[str, list[float]], runs: list[dict]) -> list[dict]:
-    out = []
+    out: list[dict[str, Any]] = []
     for metric, vals in series.items():
         for i in range(MIN_RUNS - 1, len(vals)):
             prior = vals[:i]
@@ -110,8 +111,8 @@ def risks(series: dict[str, list[float]], rules: dict[str, dict[str, int]], name
     comp = series.get("composite")
     if not comp:
         return []
-    ids = [r.get("version_id") for r in runs]
-    out = []
+    ids: list[Any] = [r.get("version_id") for r in runs]
+    out: list[dict[str, Any]] = []
     for cid in sorted({c for i in ids for c in rules.get(i, {})}):
         v = [float(rules.get(i, {}).get(cid, 0)) for i in ids]
         change = v[-1] - v[-2]
@@ -141,6 +142,7 @@ def reason(runs: list[dict], rules: dict[str, dict[str, int]], names: dict[str, 
                                    "last_run": runs[-1].get("run_at") if runs else None}
     inputs = [f"{len(series)} run-level measures and failure counts of {len({c for d in rules.values() for c in d})} "
               f"rules over {n} runs (scores and counts only, no record values)"]
+    det: dict[str, Any]
     if n < MIN_RUNS:
         det = {"available": False, "reason": "too_few_runs", "anomalies": [], "risks": []}
     else:
