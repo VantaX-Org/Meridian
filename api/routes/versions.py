@@ -1,7 +1,7 @@
 import json
 import logging
 import uuid
-from typing import Any, Literal, Optional
+from typing import Annotated, Any, Literal, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 
@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import jobs
+from api.services.paging import order_by, page_meta
 from api.services.run_lineage import lineage_sql
 from api.services.version_status import ENDED, finished_sql
 from api.services.branded_xlsx import (
@@ -32,6 +33,12 @@ logger = logging.getLogger("meridian.versions")
 # Raw statuses the run ledger reads as "failed" (frontend/design/primitives/Status.tsx LIFECYCLE_ALIAS), so the
 # server-side filter and the Status pill agree on which runs are failed.
 FAILED_STATUSES: tuple[str, ...] = ("failed", "agents_failed", "error", "errored")
+# the Runs screen's status filter groups, the same grouping as its status words
+STATUS_GROUPS: dict[str, tuple[str, ...]] = {
+    "failed": FAILED_STATUSES,
+    "complete": ("complete", "agents_complete", "ai_enriched"),
+    "active": ("pending", "running"),
+}
 
 
 class VersionResponse(BaseModel):
@@ -46,6 +53,8 @@ class VersionResponse(BaseModel):
     metadata: Optional[dict]
     # open findings per severity ({critical, high, medium, low}) for the run; the list endpoint fills it, other callers leave None
     severity_counts: Optional[dict[str, int]] = None
+    # name of the system the run was downloaded from (sap_systems.name via metadata.system_id); the list endpoint fills it
+    system_name: Optional[str] = None
 
 
 class PatchVersionRequest(BaseModel):
@@ -55,6 +64,18 @@ class PatchVersionRequest(BaseModel):
 class VersionListOut(BaseModel):
     versions: list[VersionResponse]
     total: int
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+    next_offset: Optional[int] = None
+
+
+class CompareSetsSummaryOut(BaseModel):
+    """Counts per change (new, regressed, resolved, persisting), in total and per check with its reason."""
+    model_config = ConfigDict(extra="allow")
+    v1: str
+    v2: str
+    totals: dict[str, int]
+    checks: list[dict[str, Any]]
 
 
 class ArchivedOut(BaseModel):
@@ -77,6 +98,9 @@ class FindingRecordsOut(BaseModel):
     check_id: str
     total: int
     records: list[dict[str, Any]]
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+    next_offset: Optional[int] = None
 
 
 class FindingRootCauseOut(BaseModel):
@@ -111,6 +135,10 @@ class VersionStatusOut(BaseModel):
     metadata: Optional[dict[str, Any]] = None
 
 
+def _meta(v: AnalysisVersion) -> dict[str, Any]:
+    return dict(v.metadata_ or {})
+
+
 def _version_to_response(v: AnalysisVersion) -> VersionResponse:
     return VersionResponse(
         id=str(v.id),
@@ -126,14 +154,18 @@ def _version_to_response(v: AnalysisVersion) -> VersionResponse:
 
 @router.get("/versions", response_model=VersionListOut)
 async def list_versions(
-    limit: int = Query(20, ge=1, le=1000,
-                       description="Runs per page (default 20, up to 1000); `total` counts the whole filtered set"),
-    offset: int = Query(0, ge=0),
-    module: Optional[str] = Query(None),
-    system_id: Optional[str] = Query(None, description="Only versions downloaded from this system"),
-    include_archived: bool = Query(False),
-    status: Optional[Literal["failed"]] = Query(
-        None, description="`failed`: only runs that failed (status failed, agents_failed, error or errored)"),
+    # Annotated, so a direct Python call (runs.export_runs) gets plain defaults, not Query() objects.
+    limit: Annotated[int, Query(ge=1, le=1000, description="Runs per page (default 20, up to 1000); "
+                                                           "`total` counts the whole filtered set")] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    sort: Annotated[str, Query(description="`run_at`, `run_number`, `label` or `status`; "
+                                           "a leading `-` sorts descending")] = "-run_at",
+    module: Optional[str] = None,
+    system_id: Annotated[Optional[str], Query(description="Only versions downloaded from this system")] = None,
+    include_archived: bool = False,
+    status: Annotated[Optional[Literal["failed", "complete", "active"]], Query(
+        description="`failed`: only runs that failed (status failed, agents_failed, error or errored); "
+                    "`complete`: complete, agents_complete or ai_enriched; `active`: pending or running")] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -141,7 +173,6 @@ async def list_versions(
     stmt = (
         select(AnalysisVersion)
         .where(AnalysisVersion.tenant_id == tenant.id)
-        .order_by(AnalysisVersion.run_at.desc())
     )
     # a process discovery download is not a data quality run
     stmt = stmt.where(AnalysisVersion.metadata_.op("->>")("purpose").is_distinct_from("process_discovery"))
@@ -154,11 +185,12 @@ async def list_versions(
         )
     if system_id:
         stmt = stmt.where(AnalysisVersion.metadata_.op("->>")("system_id") == system_id)
-    if status == "failed":
-        stmt = stmt.where(AnalysisVersion.status.in_(FAILED_STATUSES))
+    if status:
+        stmt = stmt.where(AnalysisVersion.status.in_(STATUS_GROUPS[status]))
     # total of the filtered set, so a capped list can say "N of total" instead of silently stopping
     total = (await db.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))).scalar() or 0
-    stmt = stmt.offset(offset).limit(limit)
+    col = getattr(AnalysisVersion, order_by(sort, {k: k for k in ("run_at", "run_number", "label", "status")}, "-run_at").split()[0])
+    stmt = stmt.order_by(col.desc() if sort.startswith("-") else col.asc(), AnalysisVersion.id).offset(offset).limit(limit)
     result = await db.execute(stmt)
     versions = result.scalars().all()
     # one grouped query for the whole page of runs, none per run
@@ -170,13 +202,35 @@ async def list_versions(
             "GROUP BY version_id, severity"), {"t": str(tenant.id), "ids": [str(v.id) for v in versions]})).fetchall()
         for vid, sev, n in rows:
             counts.setdefault(str(vid), {})[sev] = n
+    names = await system_names(db, tenant.id, [_meta(v).get("system_id") for v in versions])
     out = []
     for v in versions:
         r = _version_to_response(v)
+        r.system_name = names.get(str(_meta(v).get("system_id")))
         c = counts.get(str(v.id), {})
         r.severity_counts = {k: c.get(k, 0) for k in ("critical", "high", "medium", "low")}
         out.append(r)
-    return {"versions": out, "total": total}
+    return {"versions": out, "total": total, **page_meta(total, limit, offset)}
+
+
+
+async def system_names(db: AsyncSession, tenant_id: Any, system_ids: list[Any]) -> dict[str, str]:
+    """{system id: name} for the given ids in one query; ids that are not UUIDs or not this tenant's are left out."""
+    ids = sorted({str(i) for i in system_ids if i and _is_uuid(str(i))})
+    if not ids:
+        return {}
+    rows = (await db.execute(text(
+        "SELECT id, name FROM sap_systems WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[]))"),
+        {"t": str(tenant_id), "ids": ids})).fetchall()
+    return {str(i): n for i, n in rows}
+
+
+def _is_uuid(s: str) -> bool:
+    try:
+        uuid.UUID(s)
+        return True
+    except ValueError:
+        return False
 
 
 ARCHIVE_SQL = """
@@ -419,6 +473,71 @@ async def compare_records_list(
     return {"v1": str(vid1), "v2": str(vid2), "change": change, "record_keys": [r[0] for r in rows]}
 
 
+async def _classify_args(db: AsyncSession, v1: Optional[str], v2: str):
+    vid1, vid2 = await _resolve_pair(db, v1, v2)
+    from api.services.compare_sets import earlier_runs
+    return vid1, vid2, await earlier_runs(db, await _scope_of(db, vid2) or "", vid1)
+
+
+@router.get("/versions/compare/sets")
+async def compare_sets_list(
+    v2: str = Query(...),
+    v1: Optional[str] = Query(None, description="Default: pinned baseline, else the previous run"),
+    change: Optional[Literal["new", "regressed", "resolved", "persisting"]] = Query(None),
+    check_id: Optional[str] = Query(None),
+    module: Optional[str] = Query(None),
+    sort: str = Query("record_key", description="`record_key`, `check_id`, `change` or `module`; `-` for descending"),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Failing records of v2 against v1 as new, regressed, resolved or persisting, each with a reason, paged."""
+    from api.services import compare_sets as cs
+
+    order_by(sort, cs.SORTS, "record_key")
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    vid1, vid2, earlier = await _classify_args(db, v1, v2)
+    items, total = await cs.records(db, vid1, vid2, earlier, change=change, check_id=check_id, module=module,
+                                    sort=sort, limit=limit, offset=offset)
+    return {"v1": str(vid1), "v2": str(vid2), "records": items, **page_meta(total, limit, offset)}
+
+
+@router.get("/versions/compare/sets/summary", response_model=CompareSetsSummaryOut)
+async def compare_sets_summary(
+    v2: str = Query(...),
+    v1: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Counts per change, in total and per check, each check with its reason."""
+    from api.services import compare_sets as cs
+
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    vid1, vid2, earlier = await _classify_args(db, v1, v2)
+    return {"v1": str(vid1), "v2": str(vid2), **await cs.counts(db, vid1, vid2, earlier)}
+
+
+@router.get("/versions/compare/multi")
+async def compare_multi(
+    runs: str = Query(..., description="Two to ten run ids, oldest first, comma separated"),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Totals of each consecutive pair of the runs, so a trend over several cycles reads in one call."""
+    from api.services import compare_sets as cs
+
+    ids = [r.strip() for r in runs.split(",") if r.strip()]
+    if not 2 <= len(ids) <= 10:
+        raise HTTPException(status_code=422, detail="Give two to ten run ids.")
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    steps = []
+    for a, b in zip(ids, ids[1:]):
+        vid1, vid2, earlier = await _classify_args(db, a, b)
+        steps.append({"v1": str(vid1), "v2": str(vid2), **await cs.counts(db, vid1, vid2, earlier)})
+    return {"runs": [str(_run_id(i)) for i in ids], "steps": steps}
+
+
 @router.get("/versions/{version_id}/findings/{check_id}/records", response_model=FindingRecordsOut)
 async def finding_records(
     version_id: uuid.UUID,
@@ -426,6 +545,7 @@ async def finding_records(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     grain: Optional[str] = Query(None, description="Only records at this grain (e.g. MARA, MARC)"),
+    sort: str = Query("record_key", description="`record_key` or `-record_key`"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -443,10 +563,29 @@ async def finding_records(
     rows = await db.execute(text(f"""
         SELECT record_key, grain, module, field_values FROM finding_records
          WHERE {where}
-         ORDER BY record_key LIMIT :limit OFFSET :offset
+         ORDER BY {order_by(sort, {"record_key": "record_key"}, "record_key")} LIMIT :limit OFFSET :offset
     """), {**p, "limit": limit, "offset": offset})
-    return {"version_id": str(version_id), "check_id": check_id, "total": int(total or 0),
-            "records": [dict(r._mapping) for r in rows.fetchall()]}
+    records = [dict(r._mapping) for r in rows.fetchall()]
+    for rec in records:
+        rec["value_labels"] = value_labels(rec.get("field_values"), rec.get("module"), check_id)
+    return {"version_id": str(version_id), "check_id": check_id, "total": int(total or 0), "records": records,
+            **page_meta(int(total or 0), limit, offset)}
+
+
+def value_labels(field_values: Optional[dict], module: Optional[str], check_id: str) -> dict[str, str]:
+    """What the rule's own field value means, from the rule's value list (EA: "each"): {field key: label}.
+    Only the field the rule checks is labelled, and only when the list gives a meaning; other fields stay codes."""
+    from api.routes.work import _allowed_values, _meaning, _shipped_rule
+
+    field = str(_shipped_rule(module, check_id).get("field") or "")
+    if not field or not field_values:
+        return {}
+    allowed = _allowed_values(None, module, check_id, limit=None)
+    out: dict[str, str] = {}
+    for key in (field, field.rpartition(".")[2]):
+        if key in field_values and (label := _meaning(field_values[key], allowed)):
+            out[key] = label
+    return out
 
 
 @router.get("/versions/{version_id}/findings/{check_id}/root-cause", response_model=FindingRootCauseOut)

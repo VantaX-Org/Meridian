@@ -22,7 +22,7 @@ from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.comments import Comment
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.formatting.rule import CellIsRule, ColorScaleRule, DataBarRule
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
@@ -177,6 +177,7 @@ class SheetSpec:
     hidden: bool = False  # a hidden sheet is written but not listed on the cover
     totals: Optional[list[str]] = None  # column keys that get a SUBTOTAL row (counts only, never scores)
     rules: list[ConditionalRule] = field(default_factory=list)
+    protect: bool = False  # lock every cell except the editable columns (no password; filter and sort stay on)
 
 
 def _to_sast(dt: datetime) -> datetime:
@@ -361,6 +362,7 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
                 cell.fill = wash
             if col.editable:
                 cell.fill = _EDIT_FILL
+                cell.protection = Protection(locked=False)
             if col.fill_by_value and raw in col.fill_by_value:
                 tint = col.fill_by_value[raw]
                 cell.fill = PatternFill(fill_type="solid", fgColor=tint)
@@ -386,6 +388,10 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
         _write_totals(ws, spec, last_row)
     if spec.hidden:
         ws.sheet_state = "hidden"
+    if spec.protect:
+        ws.protection.sheet = True
+        ws.protection.autoFilter = False
+        ws.protection.sort = False
     for col_idx, col in enumerate(spec.columns, start=1):
         width = col.width or _column_width(col.header, sample_values[col_idx])
         ws.column_dimensions[get_column_letter(col_idx)].width = width

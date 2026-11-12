@@ -90,6 +90,8 @@ export interface Sprint {
 
 export interface Prescriptive {
   actions: PlanAction[];
+  /** every open action; `actions` holds the top `limit` of them, the sprints plan them all */
+  total_actions: number;
   sprints: Sprint[];
   assumptions: { minutes_per_record: number; investigation_hours: number; sprint_hours: number; cost_per_record: number | null; currency: string };
   basis: { version_id: string | null; findings: number; cleaning_items: number; exceptions: number };

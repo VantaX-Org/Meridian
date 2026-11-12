@@ -40,8 +40,8 @@ def _run(status: Any) -> list[str]:
     db = _Session()
     tenant = Tenant(uuid.UUID("00000000-0000-0000-0000-0000000000aa"), "t", [])
     body = asyncio.run(versions.list_versions(limit=100, offset=0, module=None, system_id="sys-1",
-                                              include_archived=False, status=status, db=db, tenant=tenant))
-    assert body == {"versions": [], "total": 0}
+                                              include_archived=False, status=status, sort="-run_at", db=db, tenant=tenant))
+    assert body["versions"] == [] and body["total"] == 0
     return db.sql
 
 
@@ -60,10 +60,16 @@ def test_no_status_filter_by_default():
     assert all("analysis_versions.status IN" not in q for q in sql)
 
 
-def test_status_param_only_accepts_failed():
+def test_complete_and_active_groups_filter_on_the_server():
+    """The Runs screen's other status groups filter before paging, so its "N of total" is the filtered total."""
+    assert "analysis_versions.status IN ('complete', 'agents_complete', 'ai_enriched')" in _run("complete")[1]
+    assert "analysis_versions.status IN ('pending', 'running')" in _run("active")[1]
+
+
+def test_status_param_accepts_only_the_screen_groups():
     app = FastAPI()
     app.include_router(versions.router)
     op = app.openapi()["paths"]["/api/v1/versions"]["get"]
     p = next(p for p in op["parameters"] if p["name"] == "status")
     allowed = p["schema"]["anyOf"][0]
-    assert allowed.get("enum", [allowed.get("const")]) == ["failed"]
+    assert sorted(allowed.get("enum", [allowed.get("const")])) == ["active", "complete", "failed"]

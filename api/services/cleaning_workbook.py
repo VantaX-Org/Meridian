@@ -32,7 +32,7 @@ from api.services.pdf_reports import _all, fmt_module
 from api.services.sf_roundtrip import MARKER, marker_rows
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
-STATUSES = ("Open", "In progress", "Fixed", "Not an error")
+STATUSES = ("Open", "In progress", "Needs owner", "Fixed", "Not an error")
 
 
 # ── loaders ──────────────────────────────────────────────────────────────────
@@ -260,12 +260,64 @@ def _guide(module: str) -> list[dict]:
                                           "Suggested value is filled only where the rule can work one out, so check it before you use it."),
         ("Fill the green columns only", "Green columns are yours: Corrected value, Owner, Status and Comment. "
                                         "Do not edit, delete or reorder the other columns or rows, and do not rename sheets."),
-        ("Mark the status", "Pick Open, In progress, Fixed or Not an error from the list in Status. "
+        ("Mark the status", "Pick Open, In progress, Needs owner, Fixed or Not an error from the list in Status. "
                             "If a record is right as it is, choose Not an error and say why in Comment."),
         ("Return the file", "Save it with the same name and send it back to the person who gave it to you. "
                             "After the fixes are made in the source system, run the analysis again to confirm they passed."),
     ]
     return [{"n": i + 1, "step": s, "what": w.replace("{module}", fmt_module(module))} for i, (s, w) in enumerate(steps)]
+
+
+_STATUS_HELP = {
+    "Open": "Nobody has started on this record.", "In progress": "Someone is fixing it now.",
+    "Needs owner": "Nobody owns this record yet. Name an owner in Owner or pass it on.",
+    "Fixed": "You changed it in the source system. Type the new value in Corrected value.",
+    "Not an error": "The record is right as it is. Say why in Comment.",
+}
+
+
+def _extras(data: dict, rows: list[dict], rules: dict[str, dict], summary: list[dict], n_required: int) -> list[SheetSpec]:
+    """Start here, Allowed values and Examples: the sheets that tell a first-time reader what to do and what to type."""
+    run = data.get("run") or {}
+    start = [
+        {"item": "Object", "what": fmt_module(data["module"])},
+        {"item": "Run", "what": str(run.get("label") or str(run.get("id") or "")[:8])},
+        {"item": "Failing rules", "what": f"{len(summary):,}"},
+        {"item": "Failing records listed", "what": f"{len(rows):,}"},
+        {"item": "Required fields empty", "what": f"{n_required:,} (fill these first)"},
+        {"item": "Step 1", "what": "Read Instructions for what each rule needs."},
+        {"item": "Step 2", "what": "Open Records to clean. Type the right value in Corrected value, one row per record and rule. "
+                                    "The grey columns are locked: they tell the file which record you mean."},
+        {"item": "Step 3", "what": "Set Status and Owner. Use Allowed values for the codes a field accepts and Examples to see how others look."},
+        {"item": "Step 4", "what": "Save with the same name and upload it to Meridian. Rows with no Corrected value are left alone."},
+    ]
+    allowed = [{"rule": "", "field": "Status", "value": k, "meaning": v} for k, v in _STATUS_HELP.items()]
+    for f in summary:
+        r = rules.get(f["rule"]) or {}
+        vals = r.get("allowed_values")
+        if isinstance(vals, (list, tuple, set)):
+            allowed += [{"rule": f["rule"], "field": f["field"], "value": str(v), "meaning": ""} for v in list(vals)[:200]]
+    seen: dict[str, int] = {}
+    examples = []
+    for x in rows:
+        if x["suggested"] and seen.get(x["rule"], 0) < 2:
+            seen[x["rule"]] = seen.get(x["rule"], 0) + 1
+            examples.append({"rule": x["rule"], "field": x["field"], "record_key": x["record_key"],
+                             "current": x["current"], "corrected": x["suggested"], "why": x["why"]})
+    return [
+        SheetSpec("Start here", [ColumnSpec("item", "Item", width=26), ColumnSpec("what", "Detail", width=100)], start,
+                  note="Read this first: what the file is and the four steps."),
+        SheetSpec("Allowed values", [ColumnSpec("rule", "Rule", "mono", width=12), ColumnSpec("field", "Field", "mono", width=40),
+                                     ColumnSpec("value", "Allowed value", "mono", width=28),
+                                     ColumnSpec("meaning", "Meaning", width=70)], allowed,
+                  note="The values you can type. Status values first, then the codes each rule accepts."),
+        SheetSpec("Examples", [ColumnSpec("rule", "Rule", "mono", width=12), ColumnSpec("field", "Field", "mono", width=40),
+                               ColumnSpec("record_key", "Record key", "mono", width=36),
+                               ColumnSpec("current", "Current value", "mono", width=24),
+                               ColumnSpec("corrected", "What to type", "mono", width=24),
+                               ColumnSpec("why", "Why", width=60)], examples,
+                  note="Up to two real records per rule where Meridian can work out the fix."),
+    ]
 
 
 def cleaning_context(data: dict, rules: dict[str, dict]) -> tuple[list[SheetSpec], dict]:
@@ -338,7 +390,7 @@ def cleaning_context(data: dict, rules: dict[str, dict]) -> tuple[list[SheetSpec
                    help="Type the value you set in the source system."),
         ColumnSpec("owner", "Owner", width=18, editable=True, help="Who is fixing this record."),
         ColumnSpec("status", "Status", width=13, choices=STATUSES, editable=True,
-                   help="Pick one: Open, In progress, Fixed or Not an error."),
+                   help="Pick one: Open, In progress, Needs owner, Fixed or Not an error."),
         ColumnSpec("comment", "Comment", width=30, editable=True,
                    help="Anything the next person should know. Say why when you choose Not an error."),
     ]
@@ -397,10 +449,29 @@ def cleaning_context(data: dict, rules: dict[str, dict]) -> tuple[list[SheetSpec
         note = "Every failing record with its value, suggestion and instruction. Required fields that are empty come first."
         if len(chunks) > 1:
             note += f" Part {i + 1} of {len(chunks)}."
-        sheets.append(SheetSpec(title, rec_cols, chunk, note=note))
+        sheets.append(SheetSpec(title, rec_cols, chunk, note=note, protect=True))
+    sheets[:0] = _extras(data, rows, rules, summary, len(miss))
     counts = {"rules": len(summary), "records": len(rows), "suggested": sum(1 for x in rows if x["suggested"]),
               "required_empty": len(miss)}
     return sheets, counts
+
+
+def aletheia_plan_sheet(s: Session, tid: str, vid: str, module: str) -> Optional[SheetSpec]:
+    """Fix batches with their instruction text and the change since the previous run (api/services/aletheia_cleaning.py,
+    deterministic layer only, so the download never waits on the engine)."""
+    from api.services import aletheia_cleaning as ac
+
+    data = ac.load(s, tid, vid, module)
+    if data is None:
+        return None
+    p = ac.build(data, use_engine=False)
+    if not p["batches"]:
+        return None
+    cols = [ColumnSpec("order", "Order", "int", width=8), ColumnSpec("kind", "Kind of fix", width=22),
+            ColumnSpec("field", "Field", width=34), ColumnSpec("rules", "Rules", width=30),
+            ColumnSpec("affected", "Failing records", "int", width=14),
+            ColumnSpec("instruction", "What to do", width=70), ColumnSpec("evidence", "Evidence", width=44)]
+    return SheetSpec("Fix batches", cols, ac.workbook_rows(p), note=p["changes"]["narrative"])
 
 
 def build(s: Session, tid: str, vid: str, module: str,
@@ -410,6 +481,10 @@ def build(s: Session, tid: str, vid: str, module: str,
         return None
     generated_at = generated_at or datetime.now(timezone.utc)
     sheets, _ = cleaning_context(data, rule_meta(module))
+    plan_sheet = aletheia_plan_sheet(s, tid, vid, module)
+    if plan_sheet is not None:
+        sheets.insert(next((i for i, sh in enumerate(sheets) if sh.title.startswith("Records to clean")), len(sheets)),
+                      plan_sheet)
     run = data["run"]
     # hidden and last: tells the upload-back which run and object this file came from (api/services/sf_roundtrip.py)
     sheets.append(SheetSpec(MARKER, [ColumnSpec("key", "key"), ColumnSpec("value", "value")],

@@ -4,10 +4,12 @@ import { Money } from "../../Money";
 import { ScrollFrame } from "./ScrollFrame";
 import { LearnedReview } from "./LearnedReview";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getWork } from "@/lib/api/v2/work";
+import { useWorkActions } from "@/lib/v2/work-actions";
 import { moneyCompactText } from "@/lib/v2/labels";
 import { fixtureParam } from "@/lib/api/v2/fixture";
-import { acceptAllSuggested, approveLearned, dryRunDraft, mineFixes, publishDraft, rejectLearned, type DraftDryRun, type LearnedProposal, type RuleDraft } from "@/lib/api/v2/object";
+import { approveLearned, dryRunDraft, mineFixes, publishDraft, rejectLearned, type DraftDryRun, type LearnedProposal, type RuleDraft } from "@/lib/api/v2/object";
 import { formatDate } from "@/lib/format";
 import { DIMENSIONS, type Receipt, type RuleRow } from "@/lib/api/v2/types";
 import { KIND_LABEL } from "@/lib/api/learnedRules";
@@ -21,7 +23,7 @@ import { findSystem, int, moduleFromSlug, pct1 } from "@/lib/v2/score";
 import { SimulateDialog, TopFixesView } from "../step9/Simulation";
 import { Explain } from "../../Explain";
 import { IconChevron, SeverityMark } from "../../marks";
-import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, SapCode, Skeleton, V2Link } from "../../parts";
+import { Coded, Dash, Dot, EmptyFrame, ErrorFrame, Mono, SapCode, Skeleton, V2Link } from "../../parts";
 import { describeField } from "@/lib/v2/sap-fields";
 import { t, lc, tn } from "@/lib/v2/i18n";
 import { TableExport } from "@/design/v2/TableExport";
@@ -301,7 +303,7 @@ function RulesList(p: TableProps) {
           <span className="m2-c">
             <Sev severity={l.rule.severity} />
             <Dot />
-            {l.over == null ? t("tolerance not read") : l.over ? t("fails on too many records") : t("within the allowed limit")}
+            {l.over == null ? t("We could not read the allowed tolerance for this rule.") : l.over ? t("fails on too many records") : t("within the allowed limit")}
             <Dot />
             {t("{affected_count} rows ({pct2})", { affected_count: int(l.rule.affected_count), pct2: pct2(l.failingPct) })}
             {l.rule.why ? <><br />{l.rule.why}</> : null}
@@ -599,13 +601,46 @@ function DraftsTable({ module, items, onChanged }: { module: string; items: Rule
   );
 }
 
+/* ---- accept all: a preview of what changes, then confirm ---- */
+
+type SampleRows = Parameters<ReturnType<typeof useWorkActions>["acceptRule"]>[3];
+
+function AcceptPreview({ check, module, run, count, busy, onConfirm, onCancel }: { check: string; module: string; run: string | undefined; count: number; busy: boolean; onConfirm: (check: string, rows: SampleRows) => void; onCancel: () => void }) {
+  const q = useQuery({ queryKey: ["v2", "accept-preview", module, check, run], queryFn: () => getWork({ module, check_id: check, proposed: true, version_id: run, limit: 5 }) });
+  const rows = q.data?.items ?? [];
+  return (
+    <section className="m2-confirm" role="region" aria-label={t("Accept the suggested values for {check}", { check })} data-testid="accept-preview">
+      <p>{t("Accept {n} suggested values for {check}? They go into your fix batch; nothing reaches SAP until an owner approves. You can undo this.", { n: int(count), check })}</p>
+      {q.isPending ? <Skeleton width="50%" height={12} /> : rows.length ? (
+        <ul className="m2-prov">
+          {rows.map((r) => (
+            <li key={r.record_key}>
+              <Mono>{r.record_key}</Mono>{": "}
+              {r.current_value ? <Coded code={r.current_value} text={r.current_label} first /> : <Dash />}
+              {" "}{t("to")}{" "}
+              {r.suggested_value ? <Coded code={r.suggested_value} text={r.suggested_label} first /> : <Dash />}
+            </li>
+          ))}
+          {count > rows.length ? <li>{t("and {n} more", { n: int(count - rows.length) })}</li> : null}
+        </ul>
+      ) : null}
+      <div>
+      <button type="button" className="m2-btn m2-sm m2-btn-primary" disabled={busy} onClick={() => onConfirm(check, rows)}>
+        {t("Accept {n} suggested values", { n: int(count) })}
+      </button>{" "}
+      <button type="button" className="m2-btn m2-sm" disabled={busy} onClick={onCancel}>{t("Cancel")}</button>
+      </div>
+    </section>
+  );
+}
+
 /* ---- the tab ---- */
 
 /** The Rules tab: the object's rules ranked by value at risk, pivots, and the Learned and Drafts views. */
 export function RulesTab({ module: moduleSegment, system: systemSegment }: { system: string; module: string }) {
   const run = useRunParam();
   const apiModule = moduleFromSlug(moduleSegment);
-  const { open, openItem } = useOpenItem();
+  const { open, openItem, hrefFor } = useOpenItem();
   const { can } = useV2Session();
   const narrow = useNarrow();
   const qc = useQueryClient();
@@ -650,16 +685,21 @@ export function RulesTab({ module: moduleSegment, system: systemSegment }: { sys
   }, [impactQ.data, apiModule]);
   const groups = useMemo(() => (pivot === "rule" ? [] : pivotRules(ranked, pivot, features)), [ranked, pivot, features]);
 
-  const accept = useMutation({
-    mutationFn: (id: string) => acceptAllSuggested(id, receipt?.run_id),
-    onSuccess: (r, id) => {
-      setAccepted((prev) => new Set(prev).add(id));
-      setNote(t("{accepted} suggested values for {id} are in your draft batch {draft_batch_id}. Nothing reaches SAP until an owner approves.", { accepted: int(r.accepted), id, draft_batch_id: r.draft_batch_id }));
-      void qc.invalidateQueries({ queryKey: ["v2", "work-groups"] });
-    },
-    onError: () => setNote(t("The suggested values could not be accepted. Try again in a moment.")),
-  });
-  const onAccept = useCallback((id: string) => accept.mutate(id), [accept]);
+  const actions = useWorkActions();
+  const [pending, setPending] = useState<string | null>(null);
+  const [batch, setBatch] = useState<string | null>(null);
+  const [accepting, setAccepting] = useState(false);
+  const onAccept = useCallback((id: string) => { setNote(null); setPending(id); }, [setNote, setPending]);
+  const confirmAccept = async (id: string, sample: Parameters<typeof actions.acceptRule>[3]) => {
+    setAccepting(true);
+    const r = await actions.acceptRule(id, proposed.get(id) ?? 0, receipt?.run_id, sample);
+    setAccepting(false);
+    setPending(null);
+    if (!r) return setNote(t("The suggested values could not be accepted. Try again in a moment."));
+    setAccepted((prev) => new Set(prev).add(id));
+    setNote(t("{accepted} suggested values for {id} are in your fix batch. Nothing reaches SAP until an owner approves.", { accepted: int(r.accepted ?? proposed.get(id) ?? 0), id }));
+    setBatch(r.draft_batch_id);
+  };
   const onOpen = useCallback((id: string) => openItem({ kind: "rule", id }), [openItem]);
   const refresh = (key: string) => () => void qc.invalidateQueries({ queryKey: ["v2", key] });
 
@@ -738,7 +778,7 @@ export function RulesTab({ module: moduleSegment, system: systemSegment }: { sys
   }
 
   const openId = open?.kind === "rule" ? open.id : null;
-  const props: TableProps = { label: tableLabel, lines, receipt, module: apiModule, currency, total, canApply: can("apply"), accepted, onAccept, busy: accept.isPending, viewHref, more: moreButton, openId, onOpen };
+  const props: TableProps = { label: tableLabel, lines, receipt, module: apiModule, currency, total, canApply: can("apply"), accepted, onAccept, busy: accepting, viewHref, more: moreButton, openId, onOpen };
 
   return (
     <>
@@ -765,7 +805,13 @@ export function RulesTab({ module: moduleSegment, system: systemSegment }: { sys
       ) : (
         <RulesTable {...props} />
       )}
-      {note ? <p role="status" className="m2-prov" data-testid="rules-note">{note}</p> : null}
+      {pending ? <AcceptPreview check={pending} module={apiModule} run={receipt?.run_id} count={proposed.get(pending) ?? 0} busy={accepting} onConfirm={confirmAccept} onCancel={() => setPending(null)} /> : null}
+      {note ? (
+        <p role="status" className="m2-prov" data-testid="rules-note">
+          {note}
+          {batch ? <> <V2Link href={hrefFor({ kind: "batch", id: batch })}>{t("Open the fix batch")}</V2Link></> : null}
+        </p>
+      ) : null}
       {view === "all" && ranked.length > 0 ? (
         <p className="m2-prov">
           {t("Ranked by value at risk{value}. Failing % is of {records_checked} records checked.", { value: receipt?.value_at_risk != null ? t("; total {formatMoneyCompact} across {rules_measured} rules measured", { formatMoneyCompact: moneyCompactText(receipt.value_at_risk, currency), rules_measured: int(receipt.rules_measured) }) : "", records_checked: int(receipt?.records_checked ?? ranked[0].total_count) })}

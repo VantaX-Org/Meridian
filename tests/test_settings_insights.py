@@ -1,4 +1,4 @@
-"""Task 1: readiness_dqs_threshold/readiness_waves on AlertThresholds, features on CostModel."""
+"""Task 1: readiness_dqs_threshold on AlertThresholds, features on CostModel. Waves live in migration_waves."""
 import os
 import uuid
 
@@ -52,7 +52,7 @@ async def test_alert_thresholds_round_trips_readiness_fields(tenant_row, monkeyp
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r = await client.patch(
             "/api/v1/settings/alert-thresholds",
-            json={"readiness_dqs_threshold": 80, "readiness_waves": {"wave1": ["material_master"]}},
+            json={"readiness_dqs_threshold": 80},
             headers=headers,
         )
         assert r.status_code == 200
@@ -60,7 +60,6 @@ async def test_alert_thresholds_round_trips_readiness_fields(tenant_row, monkeyp
     assert r.status_code == 200
     body = r.json()["alert_thresholds"]
     assert body["readiness_dqs_threshold"] == 80
-    assert body["readiness_waves"] == {"wave1": ["material_master"]}
     # unset fields keep their defaults, not wiped by the partial PATCH
     assert body["critical_threshold"] == 1
 

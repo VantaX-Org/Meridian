@@ -12,7 +12,7 @@ import { analyseRun, archiveRuns, downloadRunReport, pinBaseline, restoreRuns, t
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject, jobSeconds } from "@/lib/v2/jobs";
 import { useLandscape, v2Keys } from "@/lib/v2/queries";
-import { useCompareSummary, useTimeline, useV2Jobs, useVersionHead, useVersionsPage } from "@/lib/v2/runs-queries";
+import { useCompareSummary, useTimeline, useTimelineRun, useV2Jobs, useVersionHead, useVersionsPage } from "@/lib/v2/runs-queries";
 import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { VerdictMark } from "../marks";
 import { ChartFrame, ChartTable, DIST_H, Distribution, STACK_H, StackedBar, scoreDomain, severityParts } from "../charts";
@@ -26,6 +26,7 @@ import { breachWords } from "@/lib/v2/step9";
 import { moduleText } from "@/lib/v2/labels";
 import { runLabel } from "@/lib/v2/run-label";
 import { Lede } from "../RunParts";
+import { AletheiaCleaningPlan } from "./object/AletheiaCleaningPlan";
 import { ObjectChangeBars, changeSentence } from "./Compare";
 import { CcBanner, CcPage } from "./cc-parts";
 import { WhatIf } from "./WhatIf";
@@ -382,12 +383,14 @@ export function RunCanvas({ id }: { id: string }) {
   const head = useVersionHead(id);
   const land = useLandscape(id);
   const timeline = useTimeline(null, 50);
+  const self = useTimelineRun(id);
   const page = useVersionsPage({ limit: 200 });
   const { outcome, pending, run } = useOutcome();
 
   const v = head.data;
   const L = land.data;
-  const meta = timeline.data?.runs.find((r) => r.id === id) ?? null;
+  // this run's own row: its true previous run comes from the server, not from a window of recent runs
+  const meta = self.data?.runs.find((r) => r.id === id) ?? null;
   const systemId = v?.metadata?.system_id ?? L?.cells[0]?.system_id ?? null;
   const system = L?.systems.find((s) => s.id === systemId) ?? null;
   const labelOf = (m: string) => L?.objects.find((o) => o.module === m)?.label ?? m;
@@ -426,9 +429,7 @@ export function RunCanvas({ id }: { id: string }) {
     : [];
 
   const verdict = counts["no-go"] ? "no-go" : counts["at-risk"] ? "at-risk" : "go";
-  const runsOfSystem = (timeline.data?.runs ?? []).filter((r) => !meta?.system_id || r.system_id === meta.system_id);
-  const at = runsOfSystem.findIndex((r) => r.id === id);
-  const prev = at > 0 ? runsOfSystem[at - 1] : null;
+  const prev = meta?.prev_id ? { id: meta.prev_id, run_at: meta.prev_run_at ?? null, run_number: meta.prev_run_number ?? null } : null;
 
   return (
     <CcPage>
@@ -664,6 +665,8 @@ export function RunCanvas({ id }: { id: string }) {
       </section>
 
       <ProveThree run={id} modules={[...new Set(cells.map((c) => c.module))]} />
+
+      {[...new Set(cells.map((c) => c.module))].map((m) => <AletheiaCleaningPlan key={m} module={m} label={labelOf(m)} versionId={id} />)}
 
       <WhatIf run={id} canRun={canChange} />
 

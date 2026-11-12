@@ -55,6 +55,10 @@ export interface TimelineRun {
   objects: Record<string, TimelineObject>;
   records_checked: number | null;
   duration_s: number | null;
+  /** The system's previous finished run, whatever window was read; null when this is its first run. */
+  prev_id?: string | null;
+  prev_run_at?: string | null;
+  prev_run_number?: number | null;
 }
 
 /** GET /runs/timeline: the last N finished runs of the scope, OLDEST first. */
@@ -133,6 +137,8 @@ export interface VersionHead {
   dqs_summary: Record<string, { total_checks?: number; composite_score?: number | null; raw_score?: number | null; capped?: boolean }> | null;
   metadata: { system_id?: string; trigger?: string; baseline?: boolean; archived?: boolean; modules?: string[]; source?: string; upload_id?: string; file_name?: string; filename?: string } | null;
   severity_counts?: Record<string, number> | null;
+  /** The name of the system the run came from; the list endpoint fills it, null when the system is gone. */
+  system_name?: string | null;
 }
 
 export interface VersionPage {
@@ -148,8 +154,8 @@ export interface VersionCompare {
   checks: Record<ChangeKind, CheckChange[]>;
 }
 
-export function getTimeline(systemId: string | null, limit = 8, module?: string): Promise<Timeline> {
-  return v2Get<Timeline>("/runs/timeline", { system_id: systemId ?? undefined, module, limit }).then(scoreRunsOnly);
+export function getTimeline(systemId: string | null, limit = 8, module?: string, versionId?: string): Promise<Timeline> {
+  return v2Get<Timeline>("/runs/timeline", { system_id: systemId ?? undefined, module, limit, version_id: versionId }).then(scoreRunsOnly);
 }
 
 /** Failing records per rule across a system's latest runs, oldest first. A null is a run where the rule did not run. */
@@ -217,7 +223,8 @@ export interface VersionsQuery {
   limit?: number;
   system_id?: string;
   include_archived?: boolean;
-  status?: "failed";
+  /** The Runs screen's status groups, filtered on the server before paging and `total`. */
+  status?: "failed" | "complete" | "active";
 }
 
 export function getVersionsPage(q: VersionsQuery = {}): Promise<VersionPage> {

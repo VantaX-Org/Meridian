@@ -43,12 +43,15 @@ describe("verified fixes", () => {
     expect(within(card).getByText("Material number must be upper case")).toBeInTheDocument();
     expect(within(card).getByText("Change to upper case")).toBeInTheDocument();
     fireEvent.click(within(card).getByTestId("fix-approve-MM_FIX_DEMO_1"));
+    expect(screen.queryByText("Fix approved. The steps are now the rule's fix.")).toBeNull();
+    fireEvent.click(within(card).getByTestId("fix-confirm-yes-MM_FIX_DEMO_1"));
     expect(await screen.findByText("Fix approved. The steps are now the rule's fix.")).toBeInTheDocument();
   });
 
   it("rejects a draft", async () => {
     renderWithQuery(<ToastProvider><FixDrafts /></ToastProvider>);
     fireEvent.click(await screen.findByTestId("fix-reject-SD_FIX_DEMO_2"));
+    fireEvent.click(screen.getByTestId("fix-confirm-yes-SD_FIX_DEMO_2"));
     expect(await screen.findByText("Fix rejected.")).toBeInTheDocument();
   });
 });

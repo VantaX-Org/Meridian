@@ -30,6 +30,43 @@ export interface LedgerHandlers {
 
 export const rowKeyOf = (r: Pick<WorkRow, "module" | "record_key">) => `${r.module}|${r.record_key}`;
 
+/**
+ * The values typed in New value but not yet saved, kept in sessionStorage per run so a reload or a trip to another
+ * screen does not lose them. Storage can be missing (private window); the drafts then live in memory only.
+ */
+export function draftStore(scope: string): Map<string, string> {
+  const key = `mn_work_drafts:${scope}`;
+  let start: [string, string][] = [];
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (raw) start = Object.entries(JSON.parse(raw) as Record<string, string>);
+  } catch {
+    start = [];
+  }
+  const map = new Map<string, string>(start);
+  const save = () => {
+    try {
+      if (map.size) sessionStorage.setItem(key, JSON.stringify(Object.fromEntries(map)));
+      else sessionStorage.removeItem(key);
+    } catch {
+      /* storage unavailable: memory only */
+    }
+  };
+  const set = map.set.bind(map);
+  const del = map.delete.bind(map);
+  map.set = (k: string, v: string) => {
+    set(k, v);
+    save();
+    return map;
+  };
+  map.delete = (k: string) => {
+    const had = del(k);
+    if (had) save();
+    return had;
+  };
+  return map;
+}
+
 /** The first key part's value ("000000000000000101"), leading zeros kept. */
 export function keyValue(row: Pick<WorkRow, "record_key">, index: number): string | null {
   return splitKey(row.record_key)[index]?.value ?? null;

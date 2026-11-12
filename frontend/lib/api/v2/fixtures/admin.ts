@@ -279,7 +279,7 @@ function build(): State {
     reference: { [SYS_ECC]: [{ kind: "postal-codes", records: 48210, countries: ["ZA", "DE", "GB"] }], [SYS_S4]: [] },
     audit,
     channels,
-    thresholds: { critical_threshold: 1, high_threshold: 10, dqs_drop_threshold: 5, module_floors: { material_master: 75, accounts_payable: 80 }, readiness_dqs_threshold: 75, readiness_waves: {} },
+    thresholds: { critical_threshold: 1, high_threshold: 10, dqs_drop_threshold: 5, module_floors: { material_master: 75, accounts_payable: 80 }, readiness_dqs_threshold: 75 },
     digest: { email: "dq-team@demo-corp.example", teams_webhook: "", daily_digest: false, weekly_summary: true, monthly_report: true },
     prefs: { theme: "system", density: "default", locale: "en-GB", timezone: "Africa/Johannesburg", notifications: { digest: "weekly", immediate_critical: true, channels: { email: true } } },
     history,

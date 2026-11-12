@@ -141,7 +141,8 @@ for (const size of SIZES) {
         await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load", timeout: 90_000 });
         const grid = page.getByRole("grid", { name: "Rules for Material master" });
         await grid.getByRole("button", { name: "Accept all 112 suggested values for MM142" }).click(NAV);
-        await expect(page.getByTestId("rules-note")).toContainText("112 suggested values for MM142 are in your draft batch B-243");
+        await page.getByTestId("accept-preview").getByRole("button", { name: "Accept 112 suggested values" }).click(NAV);
+        await expect(page.getByTestId("rules-note")).toContainText("112 suggested values for MM142 are in your fix batch");
         await expect(grid.getByRole("row").nth(1)).toContainText("Suggested values accepted");
       });
 

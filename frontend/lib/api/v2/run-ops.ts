@@ -15,8 +15,8 @@ export type ExportFormat = "csv" | "xlsx";
 
 // ── Runs export and steps ─────────────────────────────────────────────────────
 
-/** GET /runs/export: the runs list as CSV or Excel, up to 100 runs, following the list's filters. Needs the export permission. */
-export function exportRuns(format: ExportFormat, filters: { system_id?: string; include_archived?: boolean } = {}): Promise<string> {
+/** GET /runs/export: the runs list as CSV or Excel, up to 1,000 runs, following the list's filters. Needs the export permission. */
+export function exportRuns(format: ExportFormat, filters: { system_id?: string; include_archived?: boolean; status?: "failed" | "complete" | "active" } = {}): Promise<string> {
   return v2Download("/runs/export", { format, ...filters }, `runs.${format}`);
 }
 
@@ -158,6 +158,8 @@ export interface FindingRecord {
   module: string;
   /** Masked for sensitive fields; null on runs made before values were kept. */
   field_values: Record<string, unknown> | null;
+  /** What the rule's own field value means, from the rule's value list: {field: text}. Other fields have no entry. */
+  value_labels?: Record<string, string>;
 }
 
 export interface FindingRecords {

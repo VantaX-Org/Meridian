@@ -42,7 +42,7 @@ describe("sign and change helpers", () => {
 describe("Compare canvas", () => {
   it("is titled by both run names, shows both chips, and says it in one sentence", async () => {
     renderWithQuery(<CompareCanvas a={A} b={B} />);
-    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^ECC production run \d+ vs ECC production run \d+/));
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^ECC production run \d+ compared with ECC production run \d+/));
     const chips = within(screen.getByTestId("compare-chips")).getAllByTestId("run-chip");
     expect(chips).toHaveLength(2);
     expect(chips[1]).toHaveTextContent("2 Oct 2026");
@@ -124,16 +124,41 @@ describe("Compare canvas", () => {
 
   it("choosing other runs in the two selects goes to that pair", async () => {
     renderWithQuery(<CompareCanvas a={A} b={B} />);
-    const from = await screen.findByRole("combobox", { name: "From run" });
+    const from = await screen.findByRole("combobox", { name: "Earlier run" });
     await waitFor(() => expect(within(from).getAllByRole("option")).toHaveLength(8));
     fireEvent.change(from, { target: { value: RUNS[0].id } });
     expect(getUrl()).toContain(`/run/${RUNS[0].id}/vs/${B}`);
   });
 
+  it("a pick that would put the later run first swaps the pair, so the earlier run stays first", async () => {
+    renderWithQuery(<CompareCanvas a={A} b={B} />);
+    const to = await screen.findByRole("combobox", { name: "Later run" });
+    await waitFor(() => expect(within(to).getAllByRole("option")).toHaveLength(8));
+    fireEvent.change(to, { target: { value: RUNS[0].id } });
+    expect(getUrl()).toContain(`/run/${RUNS[0].id}/vs/${A}`);
+  });
+
+  it("links back to the run, and to the object it was opened from when the address names one", async () => {
+    setUrl(`/run/${A}/vs/${B}?fixture=1&from=${encodeURIComponent("/o/ecc-prd/material-master")}`);
+    renderWithQuery(<CompareCanvas a={A} b={B} />);
+    const back = await screen.findByTestId("compare-back");
+    const links = within(back).getAllByRole("link");
+    expect(links[0]).toHaveTextContent("Back to the object");
+    expect(links[0].getAttribute("href")).toContain("/o/ecc-prd/material-master/trend");
+    expect(links[1].getAttribute("href")).toContain(`/run/${B}`);
+  });
+
+  it("ignores a from address that is not an object path", async () => {
+    setUrl(`/run/${A}/vs/${B}?fixture=1&from=${encodeURIComponent("https://evil.example")}`);
+    renderWithQuery(<CompareCanvas a={A} b={B} />);
+    const back = await screen.findByTestId("compare-back");
+    expect(within(back).getAllByRole("link")).toHaveLength(1);
+  });
+
   it("offers only runs of the same system in the swap, by name", async () => {
     vi.spyOn(runsApi, "getTimeline").mockResolvedValue({ system_id: null, limit: 50, runs: [...RUNS, { ...RUNS[7], id: "other", system_id: "elsewhere" }] });
     renderWithQuery(<CompareCanvas a={A} b={B} />);
-    const from = await screen.findByRole("combobox", { name: "From run" });
+    const from = await screen.findByRole("combobox", { name: "Earlier run" });
     await waitFor(() => expect(within(from).getAllByRole("option")).toHaveLength(8));
     expect(within(from).getAllByRole("option")[0]).toHaveTextContent(/^ECC production run \d+, /);
   });
