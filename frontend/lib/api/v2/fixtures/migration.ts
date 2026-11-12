@@ -143,13 +143,13 @@ let seq = 10;
 /** One downloaded load file: the S/4HANA migration cockpit file of run mig-0002, in wave 1. */
 const loadEvents: LoadEvent[] = [{
   id: "exp-0001", run_id: "mig-0002", export_format: "s4_migration_cockpit", record_count: 42_139, filename: "material_master_cockpit.xlsx",
-  created_at: "2026-11-01T09:30:00Z", exported_by: "u-me", exported_by_label: "Resh Naidoo", modules: ["material_master", "business_partner"],
-  wave_id: "wave-1", wave_name: "Wave 1", wave_stage: "mock_load",
+  exported_at: "2026-11-01T09:30:00Z", exported_by: "u-me", exported_by_label: "Resh Naidoo", modules: ["material_master", "business_partner"],
+  wave_id: "wave-1", wave_name: "Wave 1", wave_stage: "mock_load", snapshot_kept: true,
 }];
 
 export function migrationRead(path: string, params: Record<string, unknown> = {}): unknown {
   if (path === "/migration/runs") return { runs };
-  if (path === "/migration/load-events") return { events: loadEvents };
+  if (path === "/migration/load-history") return { items: loadEvents, total: loadEvents.length, limit: 50, offset: 0, next_offset: null };
   const m = /^\/migration\/runs\/([^/]+)(\/.+)?$/.exec(path);
   if (m) {
     const r = runs.find((x) => x.id === m[1]);

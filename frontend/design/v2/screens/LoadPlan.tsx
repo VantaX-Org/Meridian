@@ -62,7 +62,7 @@ function LoadHistory({ events }: { events: LoadEvent[] | undefined }) {
             <tbody>
               {events.map((e) => (
                 <tr key={e.id} data-testid={`lp-load-${e.id}`}>
-                  <td>{formatDate(e.created_at, "datetime")}</td>
+                  <td>{formatDate(e.exported_at, "datetime")}</td>
                   <td>{e.wave_name ? <Coded code={e.wave_stage ?? ""} text={e.wave_name} /> : <span className="m2-meta">{t("No wave")}</span>}</td>
                   <td>{e.modules.map((m) => <span key={m}><Coded code={m} text={moduleText(m)} />{" "}</span>)}</td>
                   <td><Coded code={e.export_format} text={e.filename} /></td>
@@ -81,8 +81,8 @@ function LoadHistory({ events }: { events: LoadEvent[] | undefined }) {
 export function LoadPlan() {
   const fixture = useFixture();
   const q = useQuery({ queryKey: ["load-plan", fixture], queryFn: () => getLoadPlan(), staleTime: 60_000 });
-  const ev = useQuery({ queryKey: ["load-events", fixture], queryFn: () => getLoadEvents(), staleTime: 60_000 });
-  const events = ev.data?.events ?? (ev.isError ? [] : undefined);
+  const ev = useQuery({ queryKey: ["load-history", fixture], queryFn: () => getLoadEvents(), staleTime: 60_000 });
+  const events = ev.data?.items ?? (ev.isError ? [] : undefined);
   const loaded = (events?.length ?? 0) > 0;
   const title = t("Load plan");
   if (q.isPending) return <CcPage title={title}><Skeleton width="100%" height={320} /></CcPage>;

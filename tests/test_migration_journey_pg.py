@@ -81,11 +81,11 @@ async def test_start_passes_the_picked_source_run_and_refuses_a_foreign_or_unfin
 
 
 @pytest.mark.anyio
-async def test_load_events_list_each_download_with_its_wave_and_objects(seeded, monkeypatch):
+async def test_load_history_lists_each_download_with_its_wave_and_objects(seeded, monkeypatch):
     async with await _client(monkeypatch, seeded.tid) as client:
-        r = await client.get("/api/v1/migration/load-events", headers=H)
+        r = await client.get("/api/v1/migration/load-history", headers=H)
     assert r.status_code == 200, r.text
-    (e,) = r.json()["events"]
+    (e,) = r.json()["items"]
     assert (e["run_id"], e["filename"], e["record_count"]) == (seeded.run, "mm.xlsx", 12)
     assert (e["wave_name"], e["wave_stage"], e["modules"], e["exported_by_label"]) == \
         ("Wave 1", "mock_load", ["material_master"], "Dev")

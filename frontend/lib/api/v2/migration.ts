@@ -166,17 +166,19 @@ export interface LoadEvent {
   id: string;
   run_id: string;
   export_format: string;
-  record_count: number | null;
-  filename: string | null;
-  created_at: string | null;
+  record_count: number;
+  filename: string;
+  exported_at: string | null;
   exported_by: string | null;
   exported_by_label: string | null;
   modules: string[];
   wave_id: string | null;
   wave_name: string | null;
   wave_stage: string | null;
+  snapshot_kept: boolean;
 }
-export const getLoadEvents = () => v2Get<{ events: LoadEvent[] }>(`${P}/load-events`);
+export interface LoadHistoryPage { items: LoadEvent[]; total: number; limit: number; offset: number; next_offset: number | null }
+export const getLoadEvents = () => v2Get<LoadHistoryPage>(`${P}/load-history`);
 
 const run = (id: string) => `${P}/runs/${encodeURIComponent(id)}`;
 
