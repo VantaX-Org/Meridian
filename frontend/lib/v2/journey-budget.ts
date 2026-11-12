@@ -13,5 +13,7 @@ export const clicksOf = (j: Journey): number => j.steps.filter((s) => s.control 
 /** The most clicks a journey with this target may take. */
 export const budgetOf = (target: number): number => Math.ceil(target * 1.2);
 
+// a test failure message, never shown in the product
 export const budgetMessage = (id: string, clicks: number, target: number): string =>
+  // i18n-ignore
   `journey ${id} takes ${clicks} clicks, over its budget of ${budgetOf(target)} (target ${target} plus 20 percent)`;
