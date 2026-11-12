@@ -12,7 +12,7 @@ The **Processes** tab of an object shows which business process steps its data b
 
 ## The step inspector
 
-Open a step for its transaction, its activities and fields, the rules failing on them and **Hand off**, which hands a blocking rule to a steward with a note.
+Open a step for its transaction, its activities and fields, the rules failing on them and **Hand to a steward**, which hands a blocking rule to a steward with a note.
 
 ## The process designer
 

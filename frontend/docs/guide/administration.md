@@ -53,8 +53,8 @@ To set a per-dimension target:
 
 - **Chat alerts** (under Webhooks): Slack and Microsoft Teams each show **Configured** or **Not configured**. The channel address is a secret: it is set on the server as `MERIDIAN_SLACK_WEBHOOK_URL` or `MERIDIAN_TEAMS_WEBHOOK_URL` and is never shown or typed on this screen. Choose which events post to chat: **Score drops**, **New threshold breaches**, **Failed runs**, **SLA breaches** (the SLA sweep finds work past its acknowledge or resolve time) and **Firewall rejections** (at most one message per object every 15 minutes), then **Save chat alerts**. **Send a test message** posts one test card to each configured channel and says which channels it reached. Each message carries counts and a button back into Meridian, never record values; in sandbox mode chat messages are held back and counted like the others. Needs manage settings.
 
-- **Analysis schedules** (needs the schedule permission): the rhythm, mode and objects of each automatic analysis. To change one, open its row, edit the cadence or the objects, and save; the next run time updates at once. A paused schedule keeps its settings and does not run.
-- **Tenant profile**: the tenant's name, time zone, currency and language. To change them, open the profile, edit the fields and save. Dates, money and alerts follow the profile from the next page load.
+- **Run schedules** (needs the schedule permission): the rhythm, mode and objects of each automatic analysis. To change one, open its row, edit the cadence or the objects, and save; the next run time updates at once. A paused schedule keeps its settings and does not run.
+- **Settings**: the tenant's name, time zone, currency and language. To change them, open Settings, edit the fields and save. Dates, money and alerts follow the profile from the next page load.
 
 ## Operations
 
