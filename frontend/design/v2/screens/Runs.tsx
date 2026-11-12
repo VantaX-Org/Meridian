@@ -240,7 +240,7 @@ export function groupRuns(rows: readonly VersionHead[], systems: readonly { id: 
   const stamp = (v: VersionHead) => new Date(v.run_at ?? 0).getTime();
   const out = [...by.entries()].map(([id, list]) => {
     const sys = systems.find((s) => s.id === id);
-    return { id, name: sys?.name ?? t("Unknown system"), inactive: sys?.is_active === false, rows: [...list].sort((a, b) => stamp(b) - stamp(a)) };
+    return { id, name: sys?.name ?? list.find((v) => v.system_name)?.system_name ?? t("Unknown system"), inactive: sys?.is_active === false, rows: [...list].sort((a, b) => stamp(b) - stamp(a)) };
   });
   return out.sort((a, b) => Number(a.inactive) - Number(b.inactive) || a.name.localeCompare(b.name));
 }

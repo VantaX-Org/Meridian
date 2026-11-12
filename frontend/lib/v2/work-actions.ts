@@ -6,7 +6,7 @@ import { useRole } from "@/hooks/use-role";
 import { fixtureParam } from "@/lib/api/v2/fixture";
 import { useToast } from "@/design/v2/Toast";
 import type { WorkRow } from "@/lib/api/v2/types";
-import { errorSentence, postAcceptAll, postDecide, type Decision } from "@/lib/api/v2/work";
+import { errorSentence, postAcceptAll, postDecide, type Decision, type GroupResult } from "@/lib/api/v2/work";
 import { useV2Session } from "./hooks";
 import { refreshV2 } from "./queries";
 import { overrideKey, splitKey } from "./work";
@@ -137,23 +137,24 @@ export function useWorkActions() {
     [me, qc, settle, toast],
   );
 
-  /** Accept every suggested value of one rule (POST /work/groups/{check}/accept-all). */
+  /** Accept every suggested value of one rule (POST /work/groups/{check}/accept-all). The server's answer (its fix batch), or null. */
   const acceptRule = useCallback(
-    async (check: string, count: number, version: string | undefined, loaded: readonly RowRef[] = []): Promise<boolean> => {
+    async (check: string, count: number, version: string | undefined, loaded: readonly RowRef[] = []): Promise<GroupResult | null> => {
       const rows = loaded.filter((r) => r.checks[0] === check && r.suggested_value && r.status === "to_fix");
       const keys = rows.map(overrideKey);
       for (const r of rows) setPatches([overrideKey(r)], patchFor("accept", {}, r, me));
+      let res: GroupResult;
       try {
-        const res = await postAcceptAll(check, version);
+        res = await postAcceptAll(check, version);
         const n = res.accepted ?? count;
         toast.done({ ids: res.action_id ? [res.action_id] : [], label: t("Accepted {n} suggested {n2, plural, one {value} other {values}} for {check}", { n: whole(n), n2: n, check }) });
       } catch (err) {
         dropPatches(keys);
         toast.show(errorSentence(err, t("The suggested values could not be accepted.")), "error");
-        return false;
+        return null;
       }
       await settle(keys);
-      return true;
+      return res;
     },
     [me, settle, toast],
   );

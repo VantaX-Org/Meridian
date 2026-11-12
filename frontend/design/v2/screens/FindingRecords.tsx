@@ -5,14 +5,17 @@ import { useFindingRecords } from "@/lib/v2/runs-queries";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { t as tr } from "@/lib/v2/i18n";
-import { Dash, EmptyFrame, ErrorFrame, Mono, SapCode, Skeleton, Value } from "../parts";
+import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, SapCode, Skeleton, V2Link, Value } from "../parts";
 import { TableExport } from "@/design/v2/TableExport";
+import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
 
 const PAGE = 25;
 
 /** The records that fail one rule at one run, a page at a time, with the values of the fields the rule reads. */
 export function FindingRecords({ checkId, runs }: { checkId: string; runs: { id: string; label: string }[] }) {
-  const [runId, setRunId] = useState<string | null>(runs[0]?.id ?? null);
+  const asked = useRunParam();
+  const { hrefFor } = useOpenItem();
+  const [runId, setRunId] = useState<string | null>(runs.find((r) => r.id === asked)?.id ?? runs[0]?.id ?? null);
   const [offset, setOffset] = useState(0);
   const q = useFindingRecords(runId, checkId, { limit: PAGE, offset });
   const rows = q.data?.records ?? [];
@@ -71,7 +74,9 @@ export function FindingRecords({ checkId, runs }: { checkId: string; runs: { id:
                   {rows.map((r) => (
                     <tr key={`${r.grain}:${r.record_key}`}>
                       <th scope="row">
-                        <Mono>{r.record_key}</Mono>
+                        <V2Link href={hrefFor({ kind: "record", id: `${r.module}:${r.record_key}` })} data-testid="finding-record-link">
+                          <Mono>{r.record_key}</Mono>
+                        </V2Link>
                       </th>
                       <td>
                         <SapCode table={r.grain} />
@@ -79,7 +84,7 @@ export function FindingRecords({ checkId, runs }: { checkId: string; runs: { id:
                       <td>{moduleText(r.module)}</td>
                       {fields.map((f) => {
                         const v = r.field_values?.[f];
-                        return <td key={f}>{v == null || v === "" ? <Dash /> : <Value value={String(v)} />}</td>;
+                        return <td key={f}>{v == null || v === "" ? <Dash /> : r.value_labels?.[f] ? <Coded code={String(v)} text={r.value_labels[f]} first /> : <Value value={String(v)} />}</td>;
                       })}
                     </tr>
                   ))}

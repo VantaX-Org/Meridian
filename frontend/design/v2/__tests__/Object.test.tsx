@@ -44,7 +44,8 @@ describe("object canvas header", () => {
     expect(norm(status)).toContain("25,712 to fix");
     expect(norm(status)).toContain("ZAR 4.2 m est. at risk, estimated from your cost model");
     expect(norm(status)).toContain("3 features blocked");
-    expect(norm(status)).toContain("No-go for wave 1");
+    expect(norm(status)).toContain("No-go");
+    expect(norm(status)).not.toContain("wave 1");
   });
 
   it("draws the 240 ruler, the measured score as the tick, and says what caps it with links to the rules", async () => {
@@ -218,5 +219,7 @@ describe("object canvas states", () => {
     frame();
     const link = await screen.findByTestId("object-issues");
     expect(link.getAttribute("href")).toMatch(/\/issues\?module=material-master/);
+    // One primary action: the issues link is a plain link, not a second button.
+    expect(link).not.toHaveClass("m2-btn");
   });
 });

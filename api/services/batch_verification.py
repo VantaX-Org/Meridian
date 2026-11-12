@@ -120,7 +120,7 @@ _CLEANING_VERIFIED_SQL = f"""
                           AND ri.record_key = cq.record_key AND ri.resolved_version = CAST(:v AS uuid)
                           AND ri.resolution = 'verified_fixed')
         RETURNING cq.id, cq.rule_id, cq.record_key, cq.object_type)
-    INSERT INTO cleaning_audit (id, tenant_id, queue_id, rule_id, action, actor_name, record_key, object_type, metadata,
+    INSERT INTO cleaning_audit (id, tenant_id, queue_id, rule_id, action, actor_name, record_key, object_type, metadata_,
                                 created_at)
     SELECT gen_random_uuid(), CAST(:t AS uuid), id, rule_id, 'verified', 'system:verification', record_key, object_type,
            jsonb_build_object('version_id', CAST(:v AS text)), now()
@@ -128,7 +128,7 @@ _CLEANING_VERIFIED_SQL = f"""
 # Still failing: there is no 'reopened' status (migration 005), so the item stays 'applied' and the run's verdict is
 # audited once per run as 'verify_failed'.
 _CLEANING_FAILED_SQL = f"""
-    INSERT INTO cleaning_audit (id, tenant_id, queue_id, rule_id, action, actor_name, record_key, object_type, metadata,
+    INSERT INTO cleaning_audit (id, tenant_id, queue_id, rule_id, action, actor_name, record_key, object_type, metadata_,
                                 created_at)
     SELECT gen_random_uuid(), cq.tenant_id, cq.id, cq.rule_id, 'verify_failed', 'system:verification', cq.record_key,
            cq.object_type, jsonb_build_object('version_id', CAST(:v AS text)), now()
@@ -139,7 +139,7 @@ _CLEANING_FAILED_SQL = f"""
                       AND fr.record_key = cq.record_key)
        AND NOT EXISTS (SELECT 1 FROM cleaning_audit a
                         WHERE a.queue_id = cq.id AND a.action = 'verify_failed'
-                          AND a.metadata->>'version_id' = CAST(:v AS text))"""
+                          AND a.metadata_->>'version_id' = CAST(:v AS text))"""
 
 
 def verify_cleaning(session: Session, tenant_id: str, version_id: str) -> tuple[int, int]:

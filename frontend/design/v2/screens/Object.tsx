@@ -211,7 +211,7 @@ function statusItems(receipt: Receipt, cell: LandscapeCell | undefined): ReactNo
   if (receipt.open_work != null) items.push(tr("{open_work} to fix", { open_work: int(receipt.open_work) }));
   if (receipt.value_at_risk != null) items.push(<span key="m">{tn("{money} at risk", { money: <Money amount={receipt.value_at_risk} currency={receipt.currency} source={receipt.cost_model_source} /> })}, <EstimateNote source={receipt.cost_model_source} /></span>);
   if (receipt.features_blocked != null) items.push(tr("{features_blocked} {features_blocked, plural, one {feature} other {features}} blocked", { features_blocked: receipt.features_blocked }));
-  if (cell) items.push(<span key="v" className="m2-v"><VerdictMark verdict={cell.verdict} />{VERDICT_LABEL[cell.verdict]}{" "}{tr("for wave 1")}</span>);
+  if (cell) items.push(<span key="v" className="m2-v"><VerdictMark verdict={cell.verdict} />{VERDICT_LABEL[cell.verdict]}</span>);
   return items;
 }
 
@@ -322,7 +322,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
       {oldRun ? <OldRunBand shown={shownRun} system={system.name} latest={latestRun} /> : null}
       {cell && shownRun ? (
         <Lede>
-          {tr("{object} on {system}, {run} from {date}: measured {score} out of 100.", { object: label, system: system.name, run: runLabel(system.name, shownRun.run_number), date: formatDate(shownRun.run_at, "date"), score: f1(cell.raw_score ?? cell.score) })}
+          {tr("{object} on {system}, {run} from {date}: measured {score} out of 100.", { object: label, system: system.name, run: runLabel(system.name, shownRun.run_number), date: formatDate(shownRun.run_at, "date"), score: f1(cell.score) })}
         </Lede>
       ) : null}
       <RelatedObjects module={apiModule} system={systemSegment} systemId={system.id} label={label} />
@@ -371,7 +371,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
                       <V2Link className="m2-btn m2-strong" href={`${base}${cell.open_work ? "/records" : "/rules"}${query}`}>
                         {cell.open_work ? tr("Open the failing records") : tr("Open the rules")}
                       </V2Link>
-                      <V2Link className="m2-btn" href={`/issues?module=${moduleSlug(apiModule)}`} data-testid="object-issues">
+                      <V2Link href={`/issues?module=${moduleSlug(apiModule)}`} data-testid="object-issues">
                         {tr("Open the issues")}
                       </V2Link>
                     </>
@@ -408,6 +408,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               <div className="m2-tabpanel">
                 {oldRun ? (
                   <fieldset disabled className="m2-oldrun-gate" title={OLD_RUN_REASON()} data-testid="action-gate">
+                    <p className="m2-why1" data-testid="action-gate-reason">{OLD_RUN_REASON()}</p>
                     {children}
                   </fieldset>
                 ) : (
@@ -432,9 +433,9 @@ const EMPTY: Record<Exclude<TabKey, "overview" | "rules" | "trend">, { text: (la
   readiness: { text: (l) => tr("Feature impact for {l} is calculated from the rules that fail. It fills when the impact model has run for this object.", { l }), get action() { return tr("Open the capping rules"); }, href: () => "" },
   processes: { text: (l) => tr("No process step reads {l} yet. Process readiness fills when a step of the process model reads the fields of the object.", { l }), get action() { return tr("Open the designer"); }, href: (s, m) => `/o/${s}/${m}/processes/design` },
   lineage: { text: (l) => tr("Lineage fills when a field map is loaded for {l}: it shows where its fields come from and which rules read them.", { l }), get action() { return tr("Open the landscape"); }, href: () => "/" },
-  profile: { text: (l) => tr("This run did not profile {l}. A profile is taken when an analysis reads the object from SAP.", { l }), get action() { return tr("Open the rules"); }, href: (s, m) => `/o/${s}/${m}` },
-  glossary: { text: (l) => tr("No glossary terms are linked to {l} yet. A data owner links a term to a field and it appears here.", { l }), get action() { return tr("Open the rules"); }, href: (s, m) => `/o/${s}/${m}` },
-  golden: { text: (l) => tr("No golden records for {l} yet. A match run creates them from the records that describe the same thing.", { l }), get action() { return tr("Open the rules"); }, href: (s, m) => `/o/${s}/${m}` },
+  profile: { text: (l) => tr("This run did not profile {l}. A profile is taken when an analysis reads the object from SAP.", { l }), get action() { return tr("Open the rules"); }, href: (s, m) => `/o/${s}/${m}/rules` },
+  glossary: { text: (l) => tr("No glossary terms are linked to {l} yet. A data owner links a term to a field and it appears here.", { l }), get action() { return tr("Open the rules"); }, href: (s, m) => `/o/${s}/${m}/rules` },
+  golden: { text: (l) => tr("No golden records for {l} yet. A match run creates them from the records that describe the same thing.", { l }), get action() { return tr("Open the rules"); }, href: (s, m) => `/o/${s}/${m}/rules` },
 };
 
 /** A tab that has no data behind it in this step: a designed empty frame with its one action. */
