@@ -2,13 +2,16 @@
 
 One workbook per object (module). Sheets:
 
-* How to use: the working steps for the people who clean the data.
-* Summary: one row per failing rule with its counts.
+* How to use: plain-language steps for the people who clean the data.
+* Column guide: what every column is and whether you fill it in or leave it alone.
+* Summary: one row per failing rule with its counts, including required fields left empty.
 * Instructions: one row per failing rule with why it matters, the business impact and the fix steps.
 * Records to clean: one row per failing record and rule, with the current value, a suggested value
   where the rule can derive one, the reason it failed and the record's own instruction, plus blank
   columns for the corrected value, owner, status and comment. Split over numbered sheets when a
-  module has more rows than one sheet holds.
+  module has more rows than one sheet holds. Rows where a required field is empty come first.
+* Required fields missing: only the records whose required field is blank, grouped by field with
+  the field with the most blanks first, so the owner knows what to fill first.
 
 The suggested value comes from the run's stored proposal for that record, else the rule's
 ``auto_fix`` pipeline run on the record, else the run's per-value suggestion. A record with none
@@ -171,6 +174,41 @@ def auto_fix_text(rule: dict) -> str:
     return ""
 
 
+BLANKS = ("", "nan", "none", "00000000", "000000")
+
+
+def is_required_rule(check_id: str, rule: dict) -> bool:
+    """A rule that insists a field is populated: a null check, or a field-status rule for a required field."""
+    return rule.get("check_class") == "null_check" or (check_id.startswith("FS-") and check_id.endswith("-REQ"))
+
+
+def required_empty(check_id: str, rule: dict, value: str) -> bool:
+    return is_required_rule(check_id, rule) and value.strip().lower() in BLANKS
+
+
+def field_label(field: str) -> str:
+    """``TABLE.FIELD (description)`` from the data dictionary; the bare name when it has no description."""
+    if not field:
+        return ""
+    from sap.ddic import get_dictionary
+
+    for release in ("s4hana", "ecc6"):
+        f = get_dictionary(release).resolve(field)
+        if f is not None and f.description:
+            return f"{field} ({f.description})"
+    return field
+
+
+def rule_steps(rule: dict, required: bool) -> str:
+    """Numbered steps: find the record, the rule's own fix steps, then record the fix."""
+    own = [ln.split(". ", 1)[1] for ln in fix_steps(rule).splitlines() if ". " in ln]
+    first = ("Find the records where the required field is empty (Required field empty = Yes in Records to clean)."
+             if required else "Find the failing records for this rule in Records to clean (filter on the Rule column).")
+    steps = [first, *own, "Type the value you set in Corrected value, then set Status.",
+             "Make the same change in the source system and run the analysis again to confirm it passes."]
+    return "\n".join(f"{i}. {t}" for i, t in enumerate(steps, 1))
+
+
 # ── sheets (pure) ────────────────────────────────────────────────────────────
 
 _SEV_FILL = {"critical": "F8D7DA", "high": "FCE5CD", "medium": "FFF2CC", "low": "E2EFDA"}
@@ -196,44 +234,60 @@ def _rows(findings: list[dict], records: Iterable[dict], rules: dict[str, dict])
         sv, src, conf = suggestion(rule, rec, st, f["value_fix_map"], value)
         out.append({
             "severity": f.get("severity") or rule.get("severity") or "", "rule": r["check_id"], "message": message,
-            "table": r.get("grain") or "", "record_key": r.get("record_key") or "", "field": field or "",
+            "table": r.get("grain") or "", "record_key": r.get("record_key") or "", "field": field_label(field or ""),
+            "required": "Yes" if required_empty(r["check_id"], rule, value) else "",
             "current": value, "suggested": sv, "source": src, "confidence": conf, "why": reason(value, message),
             "instruction": (st or {}).get("fix_instruction") or render(rule.get("record_fix_template"), rec, value,
                                                                        instruction) or instruction,
             "corrected": "", "owner": "", "status": "Open", "comment": "",
         })
-    out.sort(key=lambda x: (SEVERITY_ORDER.get(str(x["severity"]), 9), x["rule"], x["record_key"]))
+    out.sort(key=lambda x: (x["required"] != "Yes", SEVERITY_ORDER.get(str(x["severity"]), 9), x["rule"],
+                            x["record_key"]))
     return out
 
 
 def _guide(module: str) -> list[dict]:
     steps = [
-        ("Start with Summary", "Each row is one failing rule. Work critical and high rules first."),
-        ("Read the instruction", "Instructions explains why each rule matters, what breaks in SAP and how to fix it."),
-        ("Clean the records", "Records to clean lists every failing record. Current value is what the system holds now."),
-        ("Use the suggestion", "Suggested value is filled only where the rule can derive one. Check it before use."),
-        ("Record your fix", "Type the value you set in Corrected value. Fill Owner and set Status."),
-        ("Fix at source", "Make the change in the source system, then run the analysis again to confirm it passes."),
-        ("Not an error", "When a record is right as it is, set Status to Not an error and say why in Comment."),
+        ("What this file is", "A list of the {module} records that failed Meridian's checks, with what to change. "
+                              "Nothing here changes your system. You fix the records in the source system."),
+        ("Start with Summary", "Each row is one failing rule. Work the most severe rules first. "
+                               "The column Required fields empty shows how many records have a mandatory field left blank."),
+        ("Fill required fields first", "The sheet Required fields missing lists records where a mandatory field is "
+                                       "blank, field by field. Fill the field at the top first: it clears the most records."),
+        ("Read the instructions", "Instructions says why each rule matters and gives numbered steps to fix it."),
+        ("Work through Records to clean", "One row per failing record. Current value is what the system holds now. "
+                                          "Suggested value is filled only where the rule can work one out, so check it before you use it."),
+        ("Fill the green columns only", "Green columns are yours: Corrected value, Owner, Status and Comment. "
+                                        "Do not edit, delete or reorder the other columns or rows, and do not rename sheets."),
+        ("Mark the status", "Pick Open, In progress, Fixed or Not an error from the list in Status. "
+                            "If a record is right as it is, choose Not an error and say why in Comment."),
+        ("Return the file", "Save it with the same name and send it back to the person who gave it to you. "
+                            "After the fixes are made in the source system, run the analysis again to confirm they passed."),
     ]
     return [{"n": i + 1, "step": s, "what": w.replace("{module}", fmt_module(module))} for i, (s, w) in enumerate(steps)]
 
 
 def cleaning_context(data: dict, rules: dict[str, dict]) -> tuple[list[SheetSpec], dict]:
-    """The sheets plus counts ``{rules, records, suggested}`` for the caller."""
+    """The sheets plus counts ``{rules, records, suggested, required_empty}`` for the caller."""
     findings = data["findings"]
     rows = _rows(findings, data["records"], rules)
     per_rule: dict[str, int] = {}
+    req_rule: dict[str, int] = {}
     for x in rows:
         per_rule[x["rule"]] = per_rule.get(x["rule"], 0) + 1
-    sev = ColumnSpec("severity", "Severity", fill_by_value=_SEV_FILL, width=10)
+        if x["required"]:
+            req_rule[x["rule"]] = req_rule.get(x["rule"], 0) + 1
+    sev = ColumnSpec("severity", "Severity", fill_by_value=_SEV_FILL, width=10,
+                     help="How serious the failure is: critical, high, medium or low.")
 
     summary = [{
         "severity": f.get("severity") or "", "rule": f["check_id"],
         "message": (rules.get(f["check_id"]) or {}).get("message") or f.get("message") or "",
-        "dimension": f.get("dimension") or "", "field": f.get("field") or (rules.get(f["check_id"]) or {}).get("field") or "",
+        "dimension": f.get("dimension") or "",
+        "field": field_label(f.get("field") or (rules.get(f["check_id"]) or {}).get("field") or ""),
         "affected": f.get("affected_count") or 0, "total": f.get("total_count") or 0,
         "pass_rate": f.get("pass_rate"), "listed": per_rule.get(f["check_id"], 0),
+        "required": req_rule.get(f["check_id"], 0),
     } for f in findings]
     for x in summary:
         x["coverage"] = listed_note(int(x["affected"] or 0), int(x["listed"] or 0))
@@ -242,50 +296,109 @@ def cleaning_context(data: dict, rules: dict[str, dict]) -> tuple[list[SheetSpec
     instr = []
     for x in summary:
         r = rules.get(x["rule"]) or {}
+        req = is_required_rule(x["rule"], r)
         instr.append({"severity": x["severity"], "rule": x["rule"], "message": x["message"], "field": x["field"],
+                      "required": "Yes" if req else "",
                       "why": r.get("why_it_matters") or "", "impact": r.get("sap_impact") or "",
                       "authority": str(r.get("rule_authority") or "").replace("_", " "),
-                      "steps": fix_steps(r), "auto": auto_fix_text(r), "affected": x["affected"]})
+                      "steps": rule_steps(r, req), "auto": auto_fix_text(r), "affected": x["affected"]})
+
+    # Required fields missing: the fields with the most blank records come first.
+    miss = [x for x in rows if x["required"]]
+    per_field: dict[str, int] = {}
+    for x in miss:
+        per_field[x["field"]] = per_field.get(x["field"], 0) + 1
+    order = {f: i for i, f in enumerate(sorted(per_field, key=lambda f: (-per_field[f], f)), 1)}
+    miss.sort(key=lambda x: (order[x["field"]], SEVERITY_ORDER.get(str(x["severity"]), 9), x["record_key"]))
+    missing = [{"order": order[x["field"]], "field": x["field"], "count": per_field[x["field"]],
+                "severity": x["severity"], "table": x["table"], "record_key": x["record_key"], "rule": x["rule"],
+                "instruction": x["instruction"]} for x in miss]
 
     rec_cols = [
-        sev, ColumnSpec("rule", "Rule", "mono", width=12), ColumnSpec("message", "Rule text", width=50),
-        ColumnSpec("table", "Table", "mono", width=18), ColumnSpec("record_key", "Record key", "mono", width=36),
-        ColumnSpec("field", "Field", "mono", width=28), ColumnSpec("current", "Current value", "mono", width=24),
-        ColumnSpec("suggested", "Suggested value", "mono", width=24), ColumnSpec("source", "Suggestion from", width=16),
-        ColumnSpec("confidence", "Confidence", width=11), ColumnSpec("why", "Why it failed", width=50),
-        ColumnSpec("instruction", "What to do", width=60), ColumnSpec("corrected", "Corrected value", "mono", width=20),
-        ColumnSpec("owner", "Owner", width=18), ColumnSpec("status", "Status", width=13, choices=STATUSES),
-        ColumnSpec("comment", "Comment", width=30),
+        sev,
+        ColumnSpec("required", "Required field empty", width=12, fill_by_value={"Yes": "F8D7DA"},
+                   help="Yes when the field is mandatory and has no value. Fill these first."),
+        ColumnSpec("rule", "Rule", "mono", width=12, help="The check that failed. See Instructions for the fix."),
+        ColumnSpec("message", "Rule text", width=50, help="What the rule requires, in words."),
+        ColumnSpec("table", "Table", "mono", width=18, help="The table or entity the record lives in."),
+        ColumnSpec("record_key", "Record key", "mono", width=36,
+                   help="Identifies the record. Use it to find the record in the source system."),
+        ColumnSpec("field", "Field", "mono", width=40,
+                   help="The field that failed, with its description where one exists."),
+        ColumnSpec("current", "Current value", "mono", width=24,
+                   help="What the system holds now. Blank means nothing is stored."),
+        ColumnSpec("suggested", "Suggested value", "mono", width=24,
+                   help="A value Meridian worked out. Blank when it cannot work one out. Check it before you use it."),
+        ColumnSpec("source", "Suggestion from", width=16, help="Where the suggestion came from."),
+        ColumnSpec("confidence", "Confidence", width=11, help="How sure Meridian is about the suggestion."),
+        ColumnSpec("why", "Why it failed", width=50, help="The reason this record fails the rule."),
+        ColumnSpec("instruction", "What to do", width=60, help="The fix for this record."),
+        ColumnSpec("corrected", "Corrected value", "mono", width=20, editable=True,
+                   help="Type the value you set in the source system."),
+        ColumnSpec("owner", "Owner", width=18, editable=True, help="Who is fixing this record."),
+        ColumnSpec("status", "Status", width=13, choices=STATUSES, editable=True,
+                   help="Pick one: Open, In progress, Fixed or Not an error."),
+        ColumnSpec("comment", "Comment", width=30, editable=True,
+                   help="Anything the next person should know. Say why when you choose Not an error."),
     ]
+    guide_cols = [{"column": c.header, "who": "You fill this in" if c.editable else "Read only", "what": c.help}
+                  for c in rec_cols]
     sheets = [
-        SheetSpec("How to use", [ColumnSpec("n", "Step", "int", width=6), ColumnSpec("step", "Step name", width=22),
-                                 ColumnSpec("what", "What to do", width=90)], _guide(data["module"])),
-        SheetSpec("Summary", [sev, ColumnSpec("rule", "Rule", "mono", width=12),
-                              ColumnSpec("message", "Rule text", width=60), ColumnSpec("dimension", "Dimension", width=14),
-                              ColumnSpec("field", "Field", "mono", width=28),
-                              ColumnSpec("affected", "Records failing", "int"), ColumnSpec("total", "Records checked", "int"),
-                              ColumnSpec("pass_rate", "Pass rate", "pct"), ColumnSpec("listed", "Rows in this file", "int"),
+        SheetSpec("How to use", [ColumnSpec("n", "Step", "int", width=6), ColumnSpec("step", "Step name", width=30),
+                                 ColumnSpec("what", "What to do", width=100)], _guide(data["module"])),
+        SheetSpec("Column guide", [ColumnSpec("column", "Column in Records to clean", width=28),
+                                   ColumnSpec("who", "Who", width=18, fill_by_value={"You fill this in": "E2F5E9"}),
+                                   ColumnSpec("what", "What it is", width=90)], guide_cols,
+                  note="What each column in Records to clean means, and which ones you fill in."),
+        SheetSpec("Summary", [sev, ColumnSpec("rule", "Rule", "mono", width=12, help="The check that failed."),
+                              ColumnSpec("message", "Rule text", width=60, help="What the rule requires."),
+                              ColumnSpec("dimension", "Dimension", width=14,
+                                         help="The kind of quality problem, such as completeness."),
+                              ColumnSpec("field", "Field", "mono", width=40,
+                                         help="The field checked, with its description."),
+                              ColumnSpec("affected", "Records failing", "int", help="How many records fail this rule."),
+                              ColumnSpec("total", "Records checked", "int", help="How many records the rule looked at."),
+                              ColumnSpec("pass_rate", "Pass rate", "pct", help="Share of records that pass."),
+                              ColumnSpec("listed", "Rows in this file", "int",
+                                         help="How many failing records are listed here."),
+                              ColumnSpec("required", "Required fields empty", "int",
+                                         help="Records where a mandatory field has no value. Fill these first."),
                               ColumnSpec("coverage", "Listing note", width=50)],
-                  summary, note="One row per failing rule, most severe first.", totals=["affected", "listed"],
-                  rules=[ConditionalRule("affected", "databar")]),
+                  summary, note="One row per failing rule, most severe first.",
+                  totals=["affected", "listed", "required"], rules=[ConditionalRule("affected", "databar")]),
+        SheetSpec("Required fields missing",
+                  [ColumnSpec("order", "Fill order", "int", width=10,
+                              help="1 is the field with the most blank records. Start there."),
+                   ColumnSpec("field", "Field", "mono", width=40, help="The mandatory field that is empty."),
+                   ColumnSpec("count", "Records empty", "int", width=10,
+                              help="How many records have this field empty."),
+                   sev, ColumnSpec("table", "Table", "mono", width=18),
+                   ColumnSpec("record_key", "Record key", "mono", width=36, help="Use it to find the record."),
+                   ColumnSpec("rule", "Rule", "mono", width=12), ColumnSpec("instruction", "What to do", width=60)],
+                  missing, note="Records whose mandatory field is empty, field by field, most blanks first. "
+                                "Record what you set in Records to clean."),
         SheetSpec("Instructions", [sev, ColumnSpec("rule", "Rule", "mono", width=12),
-                                   ColumnSpec("message", "Rule text", width=45), ColumnSpec("field", "Field", "mono", width=26),
+                                   ColumnSpec("message", "Rule text", width=45),
+                                   ColumnSpec("field", "Field", "mono", width=40),
+                                   ColumnSpec("required", "Required field", width=10,
+                                              help="Yes when the rule makes this field mandatory."),
                                    ColumnSpec("why", "Why it matters", width=60),
                                    ColumnSpec("impact", "What breaks in SAP", width=50),
                                    ColumnSpec("authority", "Source of the rule", width=16),
-                                   ColumnSpec("steps", "How to fix", width=80),
+                                   ColumnSpec("steps", "How to fix", width=80, help="Numbered steps. Follow them in order."),
                                    ColumnSpec("auto", "Automatic fix", width=26),
                                    ColumnSpec("affected", "Records failing", "int")], instr,
-                  note="Why each rule matters and how to fix it."),
+                  note="Why each rule matters and numbered steps to fix it."),
     ]
     chunks = [rows[i:i + ROW_CAP] for i in range(0, len(rows), ROW_CAP)] or [[]]
     for i, chunk in enumerate(chunks):
         title = "Records to clean" if len(chunks) == 1 else f"Records to clean {i + 1}"
-        note = "Every failing record with its value, suggestion and instruction."
+        note = "Every failing record with its value, suggestion and instruction. Required fields that are empty come first."
         if len(chunks) > 1:
             note += f" Part {i + 1} of {len(chunks)}."
         sheets.append(SheetSpec(title, rec_cols, chunk, note=note))
-    counts = {"rules": len(summary), "records": len(rows), "suggested": sum(1 for x in rows if x["suggested"])}
+    counts = {"rules": len(summary), "records": len(rows), "suggested": sum(1 for x in rows if x["suggested"]),
+              "required_empty": len(miss)}
     return sheets, counts
 
 
