@@ -69,6 +69,7 @@ import workers.tasks.run_golden_writeback  # noqa: F401 — golden-record write-
 import workers.tasks.run_batch_writeback  # noqa: F401 — approved batch write-back in chunks
 import workers.tasks.run_migration  # noqa: F401 — source→source/dest migration
 import workers.tasks.run_reconciliation  # noqa: F401 — post-load reconciliation against the target
+import workers.tasks.run_system_compare  # noqa: F401 — source and target system comparison
 import workers.tasks.run_extraction  # noqa: F401 — live SAP extraction → checks
 import workers.tasks.run_config_sync  # noqa: F401 — SPRO/FO config sync
 import workers.tasks.run_load_config  # noqa: F401 — read-only config snapshot + flow derivation
@@ -86,7 +87,9 @@ import workers.tasks.purge_expired  # noqa: F401 — nightly retention purge (be
 import workers.tasks.build_worklist  # noqa: F401 — steward work list per run
 import workers.tasks.reconcile_work_counts  # registers the nightly work_counts drift check (beat)
 import workers.tasks.report_schedules  # noqa: F401 — scheduled reports (beat) and run now
+import workers.tasks.export_centre  # noqa: F401 — export centre files (Reports)
 import workers.tasks.webhooks  # outbound webhook deliveries (beat)
+import workers.tasks.chat_alerts  # noqa: F401 — Slack/Teams chat alerts from env-held URLs
 import workers.tasks.workflows  # noqa: F401 — approval steps past due climb the escalation chain (beat)
 import workers.tasks.change_requests  # noqa: F401 — approved master data change requests written to SAP
 import workers.tasks.handoff_notices  # noqa: F401 — the emails of hand-off notices (batch waiting, approved, ...)

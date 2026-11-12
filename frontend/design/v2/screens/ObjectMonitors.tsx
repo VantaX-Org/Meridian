@@ -16,6 +16,7 @@ import { VerdictMark } from "../marks";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { duration } from "../shell/StatusStrip";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 export function useObjectsMonitor() {
   const fixture = useFixture();
@@ -128,7 +129,7 @@ export function ObjectsMonitor() {
         <EmptyFrame>{t("No object has been measured yet.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Objects")}>
-          <table className="m2-tbl" data-testid="objects-monitor-table">
+          <TableExport><table className="m2-tbl" data-testid="objects-monitor-table">
             <thead>
               <tr>
                 <th scope="col">{t("Object")}</th>
@@ -163,7 +164,7 @@ export function ObjectsMonitor() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </section>

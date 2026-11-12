@@ -1,6 +1,6 @@
 /** Shape of api/services/jobs.py — one record per long-running task. */
 
-export type JobKind = "extraction" | "config_sync" | "config_load" | "analysis" | "upload" | "simulation" | "process_discovery";
+export type JobKind = "extraction" | "config_sync" | "config_load" | "analysis" | "upload" | "simulation" | "process_discovery" | "export";
 export type JobStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
 export type JobStageStatus = "queued" | "running" | "done" | "failed" | "skipped";
 

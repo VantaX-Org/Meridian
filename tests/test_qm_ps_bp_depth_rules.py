@@ -15,12 +15,12 @@ MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "
              "sap_impact", "fix_map", "record_fix_template"]
 DDIC = get_dictionary("ecc6")
 RULES, NEW, MODULE = {}, [], {}
-for _mod, (_prefix, _start, _) in PACKS.items():
+for _mod, (_prefix, _start, _count) in PACKS.items():
     for _r in yaml.safe_load(open(f"checks/rules/ecc/{_mod}.yaml"))["rules"]:
         RULES[_r["id"]] = _r
         MODULE[_r["id"]] = _mod
         _num = _r["id"][len(_prefix):]
-        if _r["id"].startswith(_prefix) and _num.isdigit() and int(_num) >= _start:
+        if _r["id"].startswith(_prefix) and _num.isdigit() and _start <= int(_num) < _start + _count:  # later packs (BP300+, contact 900+) have their own tests
             NEW.append(_r)
 # keys a similarity rule may report as evidence
 KEYS = {"KUNNR", "BUKRS", "VKORG", "VTWEG", "SPART", "PARVW", "PARTNER", "CUSTOMER", "VENDOR", "KKBER", "PARNR",

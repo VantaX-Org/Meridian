@@ -1075,8 +1075,17 @@ export interface SAPSystemExtended {
   extraction_path?: ExtractionPath;
   /** The table reader (sap/rfc.py); null keeps the deployment's default. */
   read_function?: ReadFunction | null;
+  /** RFC only: SAProuter string (/H/host/S/port hops); null when the system is reached directly. */
+  saprouter?: string | null;
+  /** RFC only: Secure Network Communications on; the partner name, protection level and own name apply only then. */
+  snc_mode?: boolean;
+  snc_partnername?: string | null;
+  snc_qop?: SncQop | null;
+  snc_myname?: string | null;
 }
 
+/** SNC quality of protection: 1 authentication, 2 integrity, 3 privacy, 8 SAP default, 9 maximum; "" none set. */
+export type SncQop = "1" | "2" | "3" | "8" | "9" | "";
 export type ExtractionPath = "table_reader" | "odp" | "odata" | "auto";
 export type ReadFunction = "RFC_READ_TABLE" | "/BODS/RFC_READ_TABLE2" | "BBP_RFC_READ_TABLE" | "auto";
 
@@ -1285,6 +1294,18 @@ export interface WaveTrendPoint {
   run_id: string;
   completed_at: string;
   score: number;
+  /** Blocking (critical and high) findings of the wave's objects in this run. */
+  blocking?: number;
+}
+
+/** When the wave's blocking findings reach zero: a least-squares line over the per-run trend. */
+export interface WaveForecast {
+  status: "passing" | "projected" | "not_converging" | "no_trend";
+  runs_used: number;
+  slope_per_day: number | null;
+  projected_date: string | null;
+  latest: number | null;
+  latest_at: string | null;
 }
 
 export interface WaveCockpit {
@@ -1298,6 +1319,7 @@ export interface WaveCockpit {
   records_blocked: number;
   objects: WaveObject[];
   trend: WaveTrendPoint[];
+  forecast?: WaveForecast;
   blockers: WaveBlocker[];
 }
 

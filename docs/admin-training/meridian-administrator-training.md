@@ -285,6 +285,10 @@ or path).
    an optional **User** (empty uses the deployment's default RFC user, `SAP_RFC_USER`), with the password under
    **Sign-in secrets**, then the **Extraction path** and the **Table reader**. Cloud systems ask for their base URL
    and OAuth details instead.
+   Behind a SAProuter, enter the **SAProuter string (optional)** as `/H/host/S/port` hops; a router password
+   (`/W/`) is refused. **Secure Network Communications (SNC)** asks for the **SNC partner name**, a **Protection
+   level** (1, 2, 3, 8 or 9) and an optional **Own SNC name**; the SNC library comes from `SNC_LIB` on the server.
+   All of these stay editable on the system's connection form. The password is write-only and the audit log masks it.
 2. **Test connection**. A passing test reads like "RFC connection succeeded (client 100, 41 ms)".
 3. **Connect and continue**, then work through the remaining steps and **Finish setup**. Nothing is read from SAP
    until the first run; setup only reads, and nothing is written to SAP until an approved batch is sent.

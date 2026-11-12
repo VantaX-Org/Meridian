@@ -144,14 +144,21 @@ def emit(session, tenant_id: str, event: str, data: dict, *, webhook_id: str | N
 
 
 def emit_safe(session, tenant_id: str, event: str, data: dict) -> list[str]:
-    """``emit`` in a savepoint: a webhook problem never costs the caller's transaction."""
+    """``emit`` in a savepoint: a webhook problem never costs the caller's transaction. Run events also go to the
+    env-configured chat channels (api/services/chat_alerts.py) as counts only."""
     import logging
+
+    from api.services import chat_alerts
     try:
         with session.begin_nested():
-            return emit(session, tenant_id, event, data)
+            ids = emit(session, tenant_id, event, data)
     except Exception as e:  # noqa: BLE001 - events are best effort; the log names the event, never the payload
         logging.getLogger("meridian.webhooks").warning(f"webhook event {event} not queued: {type(e).__name__}: {e}")
-        return []
+        ids = []
+    if event in chat_alerts.FROM_WEBHOOK:
+        counts, path = chat_alerts.counts_of(event, data)
+        chat_alerts.notify_sync(session, tenant_id, chat_alerts.FROM_WEBHOOK[event], counts, path)
+    return ids
 
 
 def body_of(payload: dict) -> bytes:

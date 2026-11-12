@@ -1,5 +1,6 @@
 "use client";
 
+import { BandMark } from "../BandMark";
 import { Fragment, useMemo, useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -29,7 +30,9 @@ import { ObjectChangeBars, changeSentence } from "./Compare";
 import { CcBanner, CcPage } from "./cc-parts";
 import { WhatIf } from "./WhatIf";
 import { RunSteps } from "./RunSteps";
+import { RunSemantics } from "./RunSemantics";
 import "../basis.css";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * The shape of a run in two figures: how its objects spread over the measured score, against the verdict bands, and
@@ -173,7 +176,7 @@ export function CompareControl({ id, runs: all, system }: { id: string; runs: re
 function ObjectTable({ cells, labelOf, systemName, run }: { cells: LandscapeCell[]; labelOf: (m: string) => string; systemName: string; run: string }) {
   return (
     <div className="m2-frame">
-      <table className="m2-tbl" data-testid="run-objects">
+      <TableExport><table className="m2-tbl" data-testid="run-objects">
         <thead>
           <tr>
             <th scope="col">{tr("Object")}</th>
@@ -184,6 +187,9 @@ function ObjectTable({ cells, labelOf, systemName, run }: { cells: LandscapeCell
               {tr("Shown")}
             </th>
             <th scope="col">{tr("Verdict")}</th>
+            <th scope="col" title={tr("The shown score against the quality thresholds set in Admin, Settings")}>
+              {tr("Band")}
+            </th>
             <th scope="col" className="m2-r">
               {tr("Records checked")}
             </th>
@@ -212,13 +218,16 @@ function ObjectTable({ cells, labelOf, systemName, run }: { cells: LandscapeCell
                   {VERDICT_LABEL[c.verdict]}
                 </span>
               </td>
+              <td>
+                <BandMark score={c.score} module={c.module} dimension="overall" />
+              </td>
               <td className="m2-r">{int(c.records_checked)}</td>
               <td className="m2-r">{int(c.rules_measured)}</td>
               <td className="m2-r">{c.open_work == null ? <Dash why={tr("Open work is counted for the objects with a work ledger")} /> : int(c.open_work)}</td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
     </div>
   );
 }
@@ -240,7 +249,7 @@ export function RunJobs({ runId }: { runId: string }) {
         <EmptyFrame>{tr("No job record is kept for this run. The registry holds jobs for 7 days, and the 200 most recent.")}</EmptyFrame>
       ) : (
         <div className="m2-frame">
-          <table className="m2-tbl" data-testid="run-jobs">
+          <TableExport><table className="m2-tbl" data-testid="run-jobs">
             <thead>
               <tr>
                 <th scope="col">{tr("Job")}</th>
@@ -271,7 +280,7 @@ export function RunJobs({ runId }: { runId: string }) {
                 );
               })}
             </tbody>
-          </table>
+          </table></TableExport>
         </div>
       )}
     </section>
@@ -579,6 +588,7 @@ export function RunCanvas({ id }: { id: string }) {
       ) : null}
 
       <RunShape cells={cells} labelOf={labelOf} severity={v?.severity_counts ?? null} loading={land.isLoading || head.isPending} />
+      <RunSemantics id={id} />
 
       <section className="m2-sec" aria-label={tr("By object")}>
         <div className="m2-sechead">

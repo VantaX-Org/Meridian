@@ -560,3 +560,58 @@ def explanation(f: dict, generated: Optional[list[str]]) -> dict:
         if keep:
             return {"source": "ai", "sentences": keep, "dropped": dropped}
     return {"source": "template", "sentences": template_explanation(f), "dropped": dropped}
+
+
+# -- why this is a break: the statistics behind one break -------------------------------------------------------------
+
+MAD_SCALE = 1.4826  # MAD times this estimates the standard deviation of normal data (checks/anomaly.py)
+
+
+def break_evidence(b: dict, points: list[Point]) -> dict:
+    """The robust z of one break, z = (observed - median) / (1.4826 * MAD), from the values of the very runs its
+    baseline used (``b["baseline_run_ids"]``, read from the same series the detector reads). When those runs are no
+    longer readable the spread is recovered from the stored band, (high - low) / (2 * Z): the band may have been widened
+    to its floor, so that z is a lower bound (``basis`` "band"). ``floored`` says the band is wider than 2 * Z MADs, i.e.
+    the minimum spread set it, not the data. A MAD of 0 (every baseline run equal) has no finite z."""
+    from checks.anomaly import Z
+    ids = set(b.get("baseline_run_ids") or [])
+    pts = [p for p in points if p[0] in ids]
+    obs, low, high = b["observed"], b.get("expected_low"), b.get("expected_high")
+    band = high - low if low is not None and high is not None else None
+    med: Optional[float]
+    if pts:
+        vals = [p[2] for p in pts]
+        med = statistics.median(vals)
+        spread = MAD_SCALE * statistics.median(abs(v - med) for v in vals)
+        basis = "runs"
+    else:
+        med = b.get("median")
+        spread = band / (2 * Z) if band else 0.0
+        basis = "band"
+    z = (obs - med) / spread if spread and med is not None else None
+    return {"basis": basis, "median": med, "mad": spread / MAD_SCALE if spread else 0.0, "scaled_mad": spread,
+            "z": round(z, 2) if z is not None else None, "z_threshold": Z,
+            "floored": bool(basis == "runs" and band is not None and band > 2 * Z * spread + 1e-9),
+            "runs": [{"run_id": p[0], "run_at": p[1], "value": p[2]} for p in pts]}
+
+
+def value_shift(current: Optional[list[dict]], baseline: list[Optional[list[dict]]],
+                texts: dict[str, str], check: Optional[set[str]]) -> Optional[dict]:
+    """Codes that entered or left a field's top values between the baseline runs and this run. ``current`` and each of
+    ``baseline`` are field_profiles ``top_values`` ([{value, count}], code-like non-personal fields only; None when masked).
+    Each code carries its domain fixed-value text (``texts``) and whether the live check table holds it (``check``,
+    None when no snapshot of it). None when this run or every baseline run has no top values."""
+    base = [b for b in baseline if b]
+    if not current or not base:
+        return None
+    seen: dict[str, int] = {}
+    for tv in base:
+        for v in {str(x["value"]) for x in tv}:
+            seen[v] = seen.get(v, 0) + 1
+    now = {str(x["value"]): int(x.get("count") or 0) for x in current}
+
+    def tag(v: str) -> dict:
+        return {"value": v, "text": texts.get(v), "in_check_table": None if check is None else v in check}
+    return {"baseline_runs": len(base),
+            "appeared": [{**tag(v), "count": c} for v, c in sorted(now.items(), key=lambda x: -x[1]) if v not in seen],
+            "vanished": [{**tag(v), "runs": n} for v, n in sorted(seen.items(), key=lambda x: -x[1]) if v not in now]}

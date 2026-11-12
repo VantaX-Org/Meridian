@@ -51,6 +51,9 @@ async def test_scope_of_a_shipped_rule(owner, monkeypatch):
         d = b["definition"]
         assert (d["source"], d["check_class"], d["field"], d["table"], d["dimension"]) == ("shipped", "null_check", "MARA.NTGEW", "MARA", "completeness")
         assert d["expression"] is None and isinstance(d["params"], dict)
+        # the tenant's own rule row, so the UI can enable or disable it through PATCH /rules/{id}
+        tr = b["tenant_rule"]
+        assert tr is None or (isinstance(tr["id"], str) and isinstance(tr["enabled"], bool))
         a = b["authority"]
         assert a["rule_authority"] and a["why_it_matters"] and a["sap_impact"]
 

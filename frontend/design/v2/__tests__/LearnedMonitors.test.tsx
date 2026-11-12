@@ -164,3 +164,32 @@ describe("stage 5: monitors steward consequence", () => {
     expect(c).toHaveTextContent("Mark expected");
   });
 });
+
+describe("why this is a break", () => {
+  it("shows the robust z, the band chart, the field's dictionary entry and the codes that came and went", async () => {
+    renderWithQuery(<LearnedMonitors />);
+    fireEvent.click(within(await screen.findByTestId("break-lm-6")).getByRole("button", { name: "Value shapes shifted" }));
+    const why = await screen.findByTestId("monitors-why");
+    fireEvent.click(within(why).getByText("Why this is a break"));
+    why.setAttribute("open", "");
+    fireEvent(why, new Event("toggle"));
+    expect(await screen.findByTestId("why-z")).toHaveTextContent(/Robust z [\d.]+: the observed value/);
+    expect(screen.getByTestId("why-chart")).toBeInTheDocument();
+    expect(screen.getByTestId("why-field")).toHaveTextContent("T134-MTART");
+    expect(within(screen.getByTestId("why-appeared-ZRW1")).getByText("No")).toBeInTheDocument();
+    expect(within(screen.getByTestId("why-appeared-UNBW")).getByText("Yes")).toBeInTheDocument();
+    expect(screen.getByTestId("why-vanished-HAWA")).toHaveTextContent("Trading good");
+  });
+
+  it("keeps the values of a range metric off the screen", async () => {
+    renderWithQuery(<LearnedMonitors />);
+    fireEvent.click(within(await screen.findByTestId("break-lm-8")).getByRole("button", { name: /Range shifted/ }));
+    const why = await screen.findByTestId("monitors-why");
+    why.setAttribute("open", "");
+    fireEvent(why, new Event("toggle"));
+    await screen.findByTestId("why-z");
+    expect(screen.queryByTestId("why-chart")).toBeNull();
+    expect(screen.getByTestId("monitors-evidence")).toHaveTextContent("Only the size of the move is shown");
+  });
+});
+

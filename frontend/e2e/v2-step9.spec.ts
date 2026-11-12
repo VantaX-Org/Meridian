@@ -144,7 +144,7 @@ for (const size of SIZES) {
       test("rule mining: the Learned view with the evidence of mined rules", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load" });
-        await page.getByRole("button", { name: "Learned 4" }).click(NAV);
+        await page.getByRole("button", { name: "Learned 5" }).click(NAV);
         await expect(page.getByTestId("learned-evidence").first()).toContainText("From fixes: 30 records", NAV);
         await shot(page, "learned");
       });

@@ -11,6 +11,7 @@ import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Fld, Kv, Loaded, NeedsPermission, Note, StatusWord, useCan } from "./kit";
 import { t as tr } from "@/lib/v2/i18n";
 import { labelText, moduleText } from "@/lib/v2/labels";
+import { TableExport } from "@/design/v2/TableExport";
 
 /** Admin › Licence: what the deployment is licensed for and whether Meridian HQ has confirmed it. */
 export function LicenceSection() {
@@ -136,7 +137,7 @@ export function BillingSection() {
           <Kv rows={[[tr("Total"), <b key="t">{money(b.total_amount, b.currency)}</b>], [tr("Meridian base fee"), money(b.base_fee, b.currency)], [tr("Currency"), b.currency], [tr("Invoice"), b.stripe_invoice_id ? tr("Invoiced; the invoice is in Meridian HQ") : tr("Not invoiced yet")]]} />
           <Block title={tr("Resolved exceptions by tier")}>
             <div className="m2-frame" tabIndex={0}>
-              <table className="m2-tbl" aria-label={tr("Billing by tier")}>
+              <TableExport><table className="m2-tbl" aria-label={tr("Billing by tier")}>
                 <thead>
                   <tr>
                     <th scope="col">{tr("Tier")}</th>
@@ -153,7 +154,7 @@ export function BillingSection() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </div>
           </Block>
         </>

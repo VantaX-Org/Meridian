@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,7 +26,7 @@ async def list_config_matches(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-):
+) -> dict[str, Any]:
     rows = await get_config_matches(
         db=db,
         version_id=version_id,

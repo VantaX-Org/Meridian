@@ -7,6 +7,7 @@ puts a mapping into effect. The target code of a proposal must exist in the targ
 """
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any, Literal, Optional
 
@@ -20,7 +21,7 @@ from api.middleware.licence import enforce_licensed_modules
 from api.routes.config_pairing import _system
 from api.services import config_pairing as cp
 from api.services import reference_data as rd
-from api.services.rbac import current_user_id, require_permission, write_audit
+from api.services.rbac import current_user_id, require_permission, scope_from_path, write_audit
 
 router = APIRouter(prefix="/api/v1/reference-data", tags=["reference-data"])
 
@@ -227,6 +228,77 @@ async def get_list(list_id: str, system_id: str, request: Request, load_id: Opti
         source=[Code(**x) for x in c["source"]], target=[Code(**x) for x in c["target"]],
         mappings=[Mapping(**m) for m in _with_text(rows, c["source"], c["target"])],
         coverage=Coverage(**rd.coverage(c["source"], rows, c["target"])))
+
+
+class UsageField(BaseModel):
+    field: str
+    profiled: bool
+    rows: int
+    filled: int
+    covered: int
+    orphan_rows: int
+    masked: bool
+    mask_reason: Optional[str] = None
+    truncated: bool
+    sampled: bool
+
+
+class Orphan(BaseModel):
+    value: str
+    count: int
+    fields: list[str]
+
+
+class UsageOut(BaseModel):
+    id: str
+    table: str
+    version_id: Optional[str] = None
+    run_at: Optional[str] = None
+    fields: list[UsageField]
+    orphans: list[Orphan]
+    orphans_complete: bool
+    unused: list[str]
+    unused_certain: bool
+    codes: int
+    used: int
+    filled: int
+    covered: int
+    covered_share: Optional[float] = None
+    covered_at_least: bool
+
+
+@router.get("/lists/{list_id}/usage", response_model=UsageOut)
+async def get_usage(list_id: str, system_id: str, request: Request, tenant: Tenant = Depends(get_tenant),
+                    db: AsyncSession = Depends(get_db),
+                    _role: str = Depends(require_permission("view", scope=scope_from_path))) -> UsageOut:
+    """Which of the list's codes the records hold, read from the field profiles of the newest analysis run of the
+    system that profiled a target field: orphan values (in records, not in the check table), codes never used, and
+    the share of filled records whose value is a valid code."""
+    from api.routes.record_issues import _rls
+    lst = _list(list_id, request)
+    sid = await _system(db, tenant, system_id)
+    await _rls(db, tenant)
+    cols: dict[str, tuple[str, str]] = {f: (f.split(".", 1)[0], f.split(".", 1)[1]) for f in lst.target_fields}
+    tables = sorted({t for t, _ in cols.values()})
+    t = str(tenant.id)
+    ver = (await db.execute(text(
+        "SELECT CAST(av.id AS text) AS id, av.run_at FROM analysis_versions av WHERE av.tenant_id = :t "
+        "AND av.metadata->>'system_id' = :s AND EXISTS (SELECT 1 FROM field_profiles fp WHERE fp.tenant_id = :t "
+        "AND fp.version_id = av.id AND fp.table_name = ANY(:tb)) ORDER BY av.run_at DESC LIMIT 1"),
+        {"t": t, "s": sid, "tb": tables})).mappings().all()
+    stats: dict[tuple[str, str], Optional[dict]] = {}
+    if ver:
+        for r in (await db.execute(text(
+                "SELECT table_name, field, stats FROM field_profiles WHERE tenant_id = :t "
+                "AND version_id = CAST(:v AS uuid) AND table_name = ANY(:tb)"),
+                {"t": t, "v": ver[0]["id"], "tb": tables})).mappings().all():
+            st = json.loads(r["stats"]) if isinstance(r["stats"], str) else r["stats"]
+            stats[(r["table_name"], r["field"])] = st if isinstance(st, dict) else None
+    c = await _codes(db, sid, lst, None, await _lang(db, tenant, request))
+    u = rd.usage(c["source"], {f: stats.get(k) for f, k in cols.items()})
+    run_at: Any = ver[0]["run_at"] if ver else None
+    return UsageOut(id=lst.id, table=lst.table, version_id=ver[0]["id"] if ver else None,
+                    run_at=run_at.isoformat() if hasattr(run_at, "isoformat") else run_at, **u)
 
 
 async def _row(db: AsyncSession, tid: str, mid: str) -> Optional[Any]:

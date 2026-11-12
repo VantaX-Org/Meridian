@@ -12916,3 +12916,1525 @@ rules:
     fix_map:
       __other__: Set the bill of exchange limit to zero or a positive amount in XD02 / FD02 > Company code data > Payment transactions.
     record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: bill of exchange limit {actual_value} is negative.'
+  - id: SDCM863
+    field: KNA1.ADRNR
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Customer has no central address number
+    why_it_matters: Since release 4.0 every customer address lives in the central address tables (ADRC) and KNA1.ADRNR points
+      to it. A blank address number means the address exists only in the old KNA1 fields, which output, tax jurisdiction and
+      the business partner conversion do not read.
+    rule_authority: s4hana_migration
+    sap_impact: Customer/vendor integration (CVI) cannot build the business partner address, so the S/4HANA conversion stops
+      on the customer.
+    fix_map:
+      __other__: Open the customer in XD02 and save the address so SAP creates the ADRC record, or run report RSADRQU1 / the
+        address conversion for legacy customers.
+    record_fix_template: 'Customer {KNA1.KUNNR}: no central address number (KNA1.ADRNR).'
+  - id: SDCM864
+    field: KNA1.STKZU
+    check_class: cross_field_check
+    fail_when: (`KNA1.STKZU` == 'X') & `KNA1.STCEG`.isna()
+    applies_when:
+      KNA1.LAND1:
+      - AT
+      - BE
+      - BG
+      - CY
+      - CZ
+      - DE
+      - DK
+      - EE
+      - ES
+      - FI
+      - FR
+      - GR
+      - HR
+      - HU
+      - IE
+      - IT
+      - LT
+      - LU
+      - LV
+      - MT
+      - NL
+      - PL
+      - PT
+      - RO
+      - SE
+      - SI
+      - SK
+    severity: high
+    dimension: completeness
+    message: Customer liable for VAT in an EU country has no VAT registration number
+    why_it_matters: A customer flagged liable for VAT (KNA1.STKZU) inside the EU must carry a VAT registration number. Intra-community
+      supplies are zero-rated only when the buyer's VAT number is on the invoice and in the EC sales list.
+    rule_authority: regulatory
+    sap_impact: Intra-community invoices print no buyer VAT number and the EC sales list (VIES recapitulative statement) omits
+      or rejects the customer.
+    fix_map:
+      __other__: Enter the VAT registration number in XD02 > Control data > VAT reg. no., or clear 'Liable for VAT' if the customer
+        is not VAT registered.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: liable for VAT but no VAT registration number (KNA1.STCEG).'
+  - id: SDCM865
+    field: KNA1.STKZA
+    check_class: cross_field_check
+    fail_when: (`KNA1.STKZA` == 'X') & (`KNA1.LAND1` != 'ES')
+    severity: low
+    dimension: consistency
+    message: Equalization tax flag set on a customer outside Spain
+    why_it_matters: Equalization tax (recargo de equivalencia) is a Spanish VAT surcharge for retailers. The flag on a customer
+      in another country is a copy error and adds a surcharge condition nobody owes.
+    rule_authority: regulatory
+    sap_impact: Pricing can add the equalization tax surcharge to invoices for a customer who is not subject to it.
+    fix_map:
+      __other__: Clear 'Subject to equalization tax' in XD02 > Control data for customers outside Spain.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: equalization tax flag is set.'
+  - id: SDCM866
+    field: KNA1.BBBNR
+    check_class: cross_field_check
+    fail_when: (`KNA1.BBBNR`.fillna('0').where(`KNA1.BBBNR`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') > 0) & (`KNA1.BBSNR`.fillna('0').where(`KNA1.BBSNR`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') == 0)
+    severity: medium
+    dimension: completeness
+    message: International location number part 1 without part 2
+    why_it_matters: The international location number (GLN / ILN) is split across BBBNR (part 1), BBSNR (part 2) and the check
+      digit BUBKZ. Part 1 alone is an incomplete number that EDI partners cannot match.
+    rule_authority: iso_standard
+    sap_impact: EDI inbound orders and outbound despatch advices that identify the customer by GLN fail partner determination.
+    fix_map:
+      __other__: Complete the international location number in XD02 > Control data, or clear part 1 if the customer has no GLN.
+    record_fix_template: 'Customer {KNA1.KUNNR}: GLN part 1 {KNA1.BBBNR} has no part 2 (KNA1.BBSNR).'
+  - id: SDCM867
+    field: KNA1.BBSNR
+    check_class: cross_field_check
+    fail_when: (`KNA1.BBSNR`.fillna('0').where(`KNA1.BBSNR`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') > 0) & (`KNA1.BBBNR`.fillna('0').where(`KNA1.BBBNR`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') == 0)
+    severity: medium
+    dimension: completeness
+    message: International location number part 2 without part 1
+    why_it_matters: Part 2 of the international location number is meaningless without the company prefix in part 1. The pair
+      was loaded incompletely.
+    rule_authority: iso_standard
+    sap_impact: EDI partner determination by GLN cannot find the customer.
+    fix_map:
+      __other__: Enter part 1 of the international location number in XD02 > Control data, or clear part 2.
+    record_fix_template: 'Customer {KNA1.KUNNR}: GLN part 2 {KNA1.BBSNR} has no part 1 (KNA1.BBBNR).'
+  - id: SDCM868
+    field: KNA1.UMSAT
+    check_class: cross_field_check
+    fail_when: '`KNA1.UMSAT` < 0'
+    severity: low
+    dimension: validity
+    message: Customer annual sales is negative
+    why_it_matters: Annual sales (KNA1.UMSAT) is a reported turnover figure. A negative value is a sign or load error.
+    rule_authority: best_practice
+    sap_impact: Customer segmentation and credit reviews that read annual sales rank the customer wrongly.
+    fix_map:
+      __other__: Correct the annual sales in XD02 > Marketing to the reported turnover.
+    record_fix_template: 'Customer {KNA1.KUNNR}: annual sales {KNA1.UMSAT} is negative.'
+  - id: SDCM869
+    field: KNA1.UMJAH
+    check_class: cross_field_check
+    fail_when: (`KNA1.UMSAT`.fillna(0) > 0) & (`KNA1.UMJAH`.fillna('0').where(`KNA1.UMJAH`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') == 0)
+    severity: low
+    dimension: completeness
+    message: Customer annual sales has no reference year
+    why_it_matters: Annual sales is only meaningful for a stated year (KNA1.UMJAH). Without it nobody can tell whether the figure
+      is current or ten years old.
+    rule_authority: best_practice
+    sap_impact: Segmentation and credit reviews treat a stale turnover figure as current.
+    fix_map:
+      __other__: Enter the year the annual sales figure refers to in XD02 > Marketing.
+    record_fix_template: 'Customer {KNA1.KUNNR}: annual sales is set but the year (KNA1.UMJAH) is blank.'
+  - id: SDCM870
+    field: KNA1.STCD3
+    check_class: cross_field_check
+    fail_when: '`KNA1.STCD3` == `KNA1.STCD1`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Tax number 3 repeats tax number 1
+    why_it_matters: Each tax number field holds a different national identifier. The same value in STCD1 and STCD3 is a keying
+      copy, and the real third number is missing.
+    rule_authority: regulatory
+    sap_impact: Tax reports that read tax number 3 (for example state registrations) report the wrong identifier.
+    fix_map:
+      __other__: Enter the correct tax number 3 in XD02 > Control data, or clear it.
+    record_fix_template: 'Customer {KNA1.KUNNR}: tax number 3 equals tax number 1.'
+  - id: SDCM871
+    field: KNA1.STCD4
+    check_class: cross_field_check
+    fail_when: '`KNA1.STCD4` == `KNA1.STCD2`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Tax number 4 repeats tax number 2
+    why_it_matters: Tax numbers 2 and 4 hold different national identifiers. The same value in both is a keying copy.
+    rule_authority: regulatory
+    sap_impact: Tax reports that read tax number 4 report the wrong identifier.
+    fix_map:
+      __other__: Enter the correct tax number 4 in XD02 > Control data, or clear it.
+    record_fix_template: 'Customer {KNA1.KUNNR}: tax number 4 equals tax number 2.'
+  - id: SDCM872
+    field: KNA1.NAME3
+    check_class: cross_field_check
+    fail_when: '`KNA1.NAME3` == `KNA1.NAME1`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Customer name line 3 repeats name 1
+    why_it_matters: Name lines 2 to 4 continue the customer name. Repeating NAME1 in NAME3 prints the name twice on every form
+      and inflates duplicate matching.
+    rule_authority: best_practice
+    sap_impact: Invoices, delivery notes and dunning letters print the customer name twice.
+    fix_map:
+      __other__: Clear NAME3 or move the real continuation of the name into it in XD02 > Address.
+    record_fix_template: 'Customer {KNA1.KUNNR}: NAME3 repeats NAME1.'
+  - id: SDCM873
+    field: KNA1.NAME4
+    check_class: cross_field_check
+    fail_when: '`KNA1.NAME4` == `KNA1.NAME1`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Customer name line 4 repeats name 1
+    why_it_matters: Name lines 2 to 4 continue the customer name. Repeating NAME1 in NAME4 prints the name twice on every form
+      and inflates duplicate matching.
+    rule_authority: best_practice
+    sap_impact: Invoices, delivery notes and dunning letters print the customer name twice.
+    fix_map:
+      __other__: Clear NAME4 or move the real continuation of the name into it in XD02 > Address.
+    record_fix_template: 'Customer {KNA1.KUNNR}: NAME4 repeats NAME1.'
+  - id: SDCM874
+    field: KNA1.XICMS
+    check_class: cross_field_check
+    fail_when: (`KNA1.XICMS` == 'X') & (`KNA1.LAND1` != 'BR')
+    severity: medium
+    dimension: consistency
+    message: Brazilian ICMS exemption flag set on a customer outside Brazil
+    why_it_matters: ICMS and IPI are Brazilian taxes. The ICMS exemption flag on a customer in another country is copied from
+      a template and can change tax determination.
+    rule_authority: regulatory
+    sap_impact: Tax determination can skip a tax that applies or the flag is carried into the business partner for no reason.
+    fix_map:
+      __other__: Clear KNA1.XICMS in XD02 > Control data for customers outside Brazil.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: ICMS exemption flag is set.'
+  - id: SDCM875
+    field: KNA1.XXIPI
+    check_class: cross_field_check
+    fail_when: (`KNA1.XXIPI` == 'X') & (`KNA1.LAND1` != 'BR')
+    severity: medium
+    dimension: consistency
+    message: Brazilian IPI exemption flag set on a customer outside Brazil
+    why_it_matters: ICMS and IPI are Brazilian taxes. The IPI exemption flag on a customer in another country is copied from
+      a template and can change tax determination.
+    rule_authority: regulatory
+    sap_impact: Tax determination can skip a tax that applies or the flag is carried into the business partner for no reason.
+    fix_map:
+      __other__: Clear KNA1.XXIPI in XD02 > Control data for customers outside Brazil.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: IPI exemption flag is set.'
+  - id: SDCM876
+    field: KNA1.SUFRAMA
+    check_class: cross_field_check
+    fail_when: '`KNA1.SUFRAMA`.notna() & (`KNA1.LAND1` != ''BR'')'
+    severity: low
+    dimension: consistency
+    message: SUFRAMA code on a customer outside Brazil
+    why_it_matters: SUFRAMA registers companies in the Manaus free trade zone. The code only exists for Brazilian customers.
+    rule_authority: regulatory
+    sap_impact: Brazilian tax incentives are evaluated for a customer they cannot apply to.
+    fix_map:
+      __other__: Clear the SUFRAMA code in XD02 > Control data for customers outside Brazil.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: SUFRAMA code {KNA1.SUFRAMA} is set.'
+  - id: SDCM877
+    field: KNA1.SUFRAMA
+    check_class: cross_field_check
+    fail_when: '`KNA1.SUFRAMA`.notna() & ~`KNA1.SUFRAMA`.str.strip().str.fullmatch(''[0-9]{8,9}'')'
+    applies_when:
+      KNA1.LAND1:
+      - BR
+    severity: medium
+    dimension: validity
+    message: SUFRAMA code is not eight or nine digits
+    why_it_matters: A SUFRAMA registration code is numeric with eight or nine digits. Any other value is a typing error and
+      the Manaus free trade zone tax benefit is lost on the Nota Fiscal.
+    rule_authority: regulatory
+    sap_impact: The Nota Fiscal carries an invalid SUFRAMA code and SEFAZ rejects or the tax benefit is denied.
+    fix_map:
+      __other__: Correct the SUFRAMA code in XD02 > Control data to the registration issued by SUFRAMA.
+    record_fix_template: 'Customer {KNA1.KUNNR}: SUFRAMA code {KNA1.SUFRAMA} is not 8 or 9 digits.'
+  - id: SDCM878
+    field: KNA1.RGDATE
+    check_class: cross_field_check
+    fail_when: '`KNA1.RGDATE` > @today'
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: RG identity card issue date lies in the future
+    why_it_matters: An issue date records when the RG identity card was issued. A date after today cannot be true.
+    rule_authority: best_practice
+    sap_impact: Brazilian identity data printed on fiscal documents carries an impossible date.
+    fix_map:
+      __other__: Correct KNA1.RGDATE to the real issue date in XD02.
+    record_fix_template: 'Customer {KNA1.KUNNR}: RGDATE is in the future.'
+  - id: SDCM879
+    field: KNA1.RG
+    check_class: cross_field_check
+    fail_when: '`KNA1.RG`.notna() & `KNA1.RGDATE`.isna()'
+    severity: low
+    dimension: completeness
+    message: RG identity card number without an issue date
+    why_it_matters: Brazilian identity documents are cited with their number and issue date. A number without RGDATE is incomplete.
+    rule_authority: regulatory
+    sap_impact: Fiscal documents and registrations that cite the document lack the issue date.
+    fix_map:
+      __other__: Enter KNA1.RGDATE in XD02 or clear the number.
+    record_fix_template: 'Customer {KNA1.KUNNR}: RG {KNA1.RG} has no issue date.'
+  - id: SDCM880
+    field: KNA1.RG
+    check_class: cross_field_check
+    fail_when: '`KNA1.RG`.notna() & (`KNA1.LAND1` != ''BR'')'
+    severity: low
+    dimension: consistency
+    message: Brazilian RG identity card number on a customer outside Brazil
+    why_it_matters: The RG identity card is a Brazilian personal document. On a customer in another country it is copied from
+      a template or entered in the wrong field.
+    rule_authority: best_practice
+    sap_impact: Personal identity data is kept and migrated for a customer it does not belong to.
+    fix_map:
+      __other__: Clear KNA1.RG in XD02 for customers outside Brazil, or move the value to the correct field.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: RG is set.'
+  - id: SDCM881
+    field: KNA1.RNEDATE
+    check_class: cross_field_check
+    fail_when: '`KNA1.RNEDATE` > @today'
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: foreign national registration (RNE) issue date lies in the future
+    why_it_matters: An issue date records when the foreign national registration (RNE) was issued. A date after today cannot
+      be true.
+    rule_authority: best_practice
+    sap_impact: Brazilian identity data printed on fiscal documents carries an impossible date.
+    fix_map:
+      __other__: Correct KNA1.RNEDATE to the real issue date in XD02.
+    record_fix_template: 'Customer {KNA1.KUNNR}: RNEDATE is in the future.'
+  - id: SDCM882
+    field: KNA1.RNE
+    check_class: cross_field_check
+    fail_when: '`KNA1.RNE`.notna() & `KNA1.RNEDATE`.isna()'
+    severity: low
+    dimension: completeness
+    message: foreign national registration (RNE) number without an issue date
+    why_it_matters: Brazilian identity documents are cited with their number and issue date. A number without RNEDATE is incomplete.
+    rule_authority: regulatory
+    sap_impact: Fiscal documents and registrations that cite the document lack the issue date.
+    fix_map:
+      __other__: Enter KNA1.RNEDATE in XD02 or clear the number.
+    record_fix_template: 'Customer {KNA1.KUNNR}: RNE {KNA1.RNE} has no issue date.'
+  - id: SDCM883
+    field: KNA1.RNE
+    check_class: cross_field_check
+    fail_when: '`KNA1.RNE`.notna() & (`KNA1.LAND1` != ''BR'')'
+    severity: low
+    dimension: consistency
+    message: Brazilian foreign national registration (RNE) number on a customer outside Brazil
+    why_it_matters: The foreign national registration (RNE) is a Brazilian personal document. On a customer in another country
+      it is copied from a template or entered in the wrong field.
+    rule_authority: best_practice
+    sap_impact: Personal identity data is kept and migrated for a customer it does not belong to.
+    fix_map:
+      __other__: Clear KNA1.RNE in XD02 for customers outside Brazil, or move the value to the correct field.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: RNE is set.'
+  - id: SDCM884
+    field: KNA1.J_1KFREPRE
+    check_class: cross_field_check
+    fail_when: '`KNA1.J_1KFREPRE`.notna() & (`KNA1.LAND1` != ''KR'')'
+    severity: low
+    dimension: consistency
+    message: Korean representative name on a customer outside Korea
+    why_it_matters: The representative name (J_1KFREPRE) is printed on Korean tax invoices. It has no use for customers in other
+      countries.
+    rule_authority: best_practice
+    sap_impact: Korean localisation data is migrated for a customer it does not apply to.
+    fix_map:
+      __other__: Clear the representative name in XD02 for customers outside Korea.
+    record_fix_template: 'Customer {KNA1.KUNNR} in {KNA1.LAND1}: Korean representative name is set.'
+  - id: SDCM885
+    field: KNA1.INSPBYDEBI
+    check_class: cross_field_check
+    fail_when: (`KNA1.INSPBYDEBI` == 'X') & (`KNA1.INSPATDEBI` == 'X')
+    severity: low
+    dimension: consistency
+    message: Customer inspects goods itself and also requires a delivery-note inspection
+    why_it_matters: INSPBYDEBI says the customer carries out the inspection, so no inspection lot is created. INSPATDEBI asks
+      for an inspection lot on the delivery. Both together contradict each other.
+    rule_authority: best_practice
+    sap_impact: Quality management creates or suppresses delivery inspection lots unpredictably for the customer.
+    fix_map:
+      __other__: Decide who inspects and keep only one of the two flags in XD02 > Control data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: both INSPBYDEBI and INSPATDEBI are set.'
+  - id: SDCM886
+    field: KNA1./VSO/R_PALHGT
+    check_class: cross_field_check
+    fail_when: '`KNA1./VSO/R_PALHGT` < 0'
+    severity: low
+    dimension: validity
+    message: Maximum stacking height of packaging is negative
+    why_it_matters: The vehicle space optimisation stacking height is a physical length. A negative height is a sign error.
+    rule_authority: sap_hard_constraint
+    sap_impact: Packing and load planning for the customer compute impossible pallet layouts.
+    fix_map:
+      __other__: Correct the maximum stacking height in XD02 > Unloading points / VSO data to zero or a positive length.
+    record_fix_template: 'Customer {KNA1.KUNNR}: VSO stacking height is negative.'
+  - id: SDCM887
+    field: KNB1.VRSZL
+    check_class: cross_field_check
+    fail_when: '`KNB1.VRSZL` < 0'
+    severity: low
+    dimension: validity
+    message: Insurance lead months is negative
+    why_it_matters: Insurance lead months (KNB1.VRSZL) is a count of months or days. A negative value is a keying error.
+    rule_authority: sap_hard_constraint
+    sap_impact: Export credit insurance lead time is computed backwards.
+    fix_map:
+      __other__: Correct KNB1.VRSZL in XD02 / FD02 > Company code data to zero or a positive value.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: VRSZL is negative.'
+  - id: SDCM888
+    field: KNB1.KULTG
+    check_class: cross_field_check
+    fail_when: '`KNB1.KULTG` < 0'
+    severity: low
+    dimension: validity
+    message: Probable time until check is paid is negative
+    why_it_matters: Probable time until check is paid (KNB1.KULTG) is a count of months or days. A negative value is a keying
+      error.
+    rule_authority: sap_hard_constraint
+    sap_impact: Cash management forecasts the cheque as cleared before it arrives.
+    fix_map:
+      __other__: Correct KNB1.KULTG in XD02 / FD02 > Company code data to zero or a positive value.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: KULTG is negative.'
+  - id: SDCM889
+    field: KNVV.UNTTO
+    check_class: cross_field_check
+    fail_when: (`KNVV.UNTTO` < 0) | (`KNVV.UNTTO` > 100)
+    severity: high
+    dimension: validity
+    message: Underdelivery tolerance outside 0 to 100 percent
+    why_it_matters: 'The underdelivery tolerance is a percentage of the order quantity. Below zero or above 100 percent is impossible:
+      a delivery cannot be short by more than the whole quantity.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Delivery completion and the 'complete delivery' check accept any short delivery or none.
+    fix_map:
+      __other__: Set the underdelivery tolerance in XD02 > Sales area data > Shipping to a value between 0 and 100.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: underdelivery tolerance
+      {KNVV.UNTTO} is outside 0 to 100.'
+  - id: SDCM890
+    field: KNVV.KVAWT
+    check_class: cross_field_check
+    fail_when: '`KNVV.KVAWT` < 0'
+    severity: low
+    dimension: validity
+    message: Value limit for cost estimate is negative
+    why_it_matters: The value limit (KNVV.KVAWT) is an amount threshold. A negative limit has no meaning.
+    rule_authority: sap_hard_constraint
+    sap_impact: Cost estimate determination in sales works from an impossible threshold.
+    fix_map:
+      __other__: Correct the value limit in XD02 > Sales area data to zero or a positive amount.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: value limit is negative.'
+  - id: SDCM891
+    field: KNKK.NXTRV
+    check_class: cross_field_check
+    fail_when: '`KNKK.NXTRV` < @today'
+    require_populated: true
+    severity: medium
+    dimension: timeliness
+    message: Next credit review date has passed
+    why_it_matters: The next internal review date (KNKK.NXTRV) is when credit management promised to re-assess the customer.
+      A date in the past means the review is overdue and the limit may no longer reflect the customer's risk.
+    rule_authority: best_practice
+    sap_impact: Credit limits stay in force without review; with automatic credit control the 'next review date' check can block
+      orders.
+    fix_map:
+      __other__: Review the customer's credit in FD32 and set the next review date to a future date.
+    record_fix_template: 'Customer {KNKK.KUNNR}, credit control area {KNKK.KKBER}: next credit review date {KNKK.NXTRV} has
+      passed.'
+  - id: SDCM892
+    field: KNKK.DBMON
+    check_class: cross_field_check
+    fail_when: '`KNKK.DBMON` > @today'
+    require_populated: true
+    severity: low
+    dimension: validity
+    message: Dun & Bradstreet monitoring date lies in the future
+    why_it_matters: The D&B monitoring date records when the external rating was last checked. A future date cannot be true.
+    rule_authority: best_practice
+    sap_impact: Credit reviews treat the external rating as fresher than it is.
+    fix_map:
+      __other__: Correct the D&B monitoring date in FD32 to the real date.
+    record_fix_template: 'Customer {KNKK.KUNNR}, credit control area {KNKK.KKBER}: D&B monitoring date is in the future.'
+  - id: SDCM893
+    field: KNKK.SAUFT
+    check_class: cross_field_check
+    fail_when: '`KNKK.SAUFT` < 0'
+    severity: medium
+    dimension: validity
+    message: Credit sales value is negative
+    why_it_matters: KNKK.SAUFT (sales value) is an exposure amount that credit management updates. A negative value is a failed
+      update or a manual edit.
+    rule_authority: sap_hard_constraint
+    sap_impact: Credit exposure is understated, so the credit check can release orders over the limit.
+    fix_map:
+      __other__: Reorganise the credit data with report RFDKLI20 (credit limit reorganisation) and check KNKK.SAUFT in FD32.
+    record_fix_template: 'Customer {KNKK.KUNNR}, credit control area {KNKK.KKBER}: sales value is negative.'
+  - id: SDCM894
+    field: KNKK.SKFOR
+    check_class: cross_field_check
+    fail_when: '`KNKK.SKFOR` < 0'
+    severity: medium
+    dimension: validity
+    message: Credit total receivables is negative
+    why_it_matters: KNKK.SKFOR (total receivables) is an exposure amount that credit management updates. A negative value is
+      a failed update or a manual edit.
+    rule_authority: sap_hard_constraint
+    sap_impact: Credit exposure is understated, so the credit check can release orders over the limit.
+    fix_map:
+      __other__: Reorganise the credit data with report RFDKLI20 (credit limit reorganisation) and check KNKK.SKFOR in FD32.
+    record_fix_template: 'Customer {KNKK.KUNNR}, credit control area {KNKK.KKBER}: total receivables is negative.'
+  - id: SDCM895
+    field: KNKK.SSOBL
+    check_class: cross_field_check
+    fail_when: '`KNKK.SSOBL` < 0'
+    severity: medium
+    dimension: validity
+    message: Credit special liabilities is negative
+    why_it_matters: KNKK.SSOBL (special liabilities) is an exposure amount that credit management updates. A negative value
+      is a failed update or a manual edit.
+    rule_authority: sap_hard_constraint
+    sap_impact: Credit exposure is understated, so the credit check can release orders over the limit.
+    fix_map:
+      __other__: Reorganise the credit data with report RFDKLI20 (credit limit reorganisation) and check KNKK.SSOBL in FD32.
+    record_fix_template: 'Customer {KNKK.KUNNR}, credit control area {KNKK.KKBER}: special liabilities is negative.'
+  - id: SDCM896
+    field: KNKK.ABSBT
+    check_class: cross_field_check
+    fail_when: '`KNKK.ABSBT` < 0'
+    severity: medium
+    dimension: validity
+    message: Credit secured amount is negative
+    why_it_matters: KNKK.ABSBT (secured amount) is an exposure amount that credit management updates. A negative value is a
+      failed update or a manual edit.
+    rule_authority: sap_hard_constraint
+    sap_impact: Credit exposure is understated, so the credit check can release orders over the limit.
+    fix_map:
+      __other__: Reorganise the credit data with report RFDKLI20 (credit limit reorganisation) and check KNKK.ABSBT in FD32.
+    record_fix_template: 'Customer {KNKK.KUNNR}, credit control area {KNKK.KKBER}: secured amount is negative.'
+  - id: SDCM897
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[0-9]{5}$
+    applies_when:
+      ADRC.COUNTRY:
+      - DE
+      - FR
+      - IT
+      - FI
+      - EE
+      - UA
+      - TR
+      - RS
+      - MX
+      - PE
+      - KR
+      - MY
+      - TH
+      - ID
+      - EG
+      - MA
+      - KE
+      - PK
+      - DZ
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for DE, FR, IT, FI, EE, UA, TR, RS, MX, PE, KR,
+      MY, TH, ID, EG, MA, KE, PK, DZ (five digits)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits) is a typing error, a code from
+      another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business
+      partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM898
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^(0[1-9]|[1-4][0-9]|5[0-2])[0-9]{3}$
+    applies_when:
+      ADRC.COUNTRY:
+      - ES
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for ES (five digits starting with a province code
+      01-52)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits starting with a province code 01-52)
+      is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go
+      astray and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM899
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^(GIR 0AA|[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2})$
+    applies_when:
+      ADRC.COUNTRY:
+      - GB
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for GB (outward code, space, inward code (SW1A
+      1AA))'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (outward code, space, inward code (SW1A 1AA))
+      is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go
+      astray and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM900
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[1-9][0-9]{3} ?[A-Z]{2}$
+    applies_when:
+      ADRC.COUNTRY:
+      - NL
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for NL (four digits and two capital letters (1012
+      AB))'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (four digits and two capital letters (1012 AB))
+      is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go
+      astray and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM901
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[1-9][0-9]{3}$
+    applies_when:
+      ADRC.COUNTRY:
+      - BE
+      - AT
+      - CH
+      - HU
+      - BG
+      - SI
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for BE, AT, CH, HU, BG, SI (four digits not starting
+      with 0)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (four digits not starting with 0) is a typing
+      error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the
+      S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM902
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^94[89][0-9]$
+    applies_when:
+      ADRC.COUNTRY:
+      - LI
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for LI (four digits 9485-9499)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (four digits 9485-9499) is a typing error, a
+      code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM903
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[0-9]{4}$
+    applies_when:
+      ADRC.COUNTRY:
+      - 'NO'
+      - LU
+      - CY
+      - PH
+      - AU
+      - NZ
+      - ZA
+      - DK
+      - BD
+      - TN
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for NO, LU, CY, PH, AU, NZ, ZA, DK, BD, TN (four
+      digits)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (four digits) is a typing error, a code from
+      another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business
+      partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM904
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[0-9]{3} ?[0-9]{2}$
+    applies_when:
+      ADRC.COUNTRY:
+      - CZ
+      - SK
+      - GR
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for CZ, SK, GR (five digits written 999 99)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits written 999 99) is a typing error,
+      a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM905
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[1-9][0-9]{2} ?[0-9]{2}$
+    applies_when:
+      ADRC.COUNTRY:
+      - SE
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for SE (five digits written 999 99, not starting
+      with 0)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits written 999 99, not starting with
+      0) is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries
+      go astray and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM906
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[1-9][0-9]{3}-[0-9]{3}$
+    applies_when:
+      ADRC.COUNTRY:
+      - PT
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for PT (seven digits written 9999-999)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (seven digits written 9999-999) is a typing error,
+      a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM907
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^([AC-FHKNPRTV-Y][0-9]{2}|D6W) ?[0-9AC-FHKNPRTV-Y]{4}$
+    applies_when:
+      ADRC.COUNTRY:
+      - IE
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for IE (an Eircode (A65 F4E2))'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (an Eircode (A65 F4E2)) is a typing error, a
+      code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM908
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[0-9]{2}-[0-9]{3}$
+    applies_when:
+      ADRC.COUNTRY:
+      - PL
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for PL (five digits written 99-999)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits written 99-999) is a typing error,
+      a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM909
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^([1-9][0-9]{5}|0[0-9]{5})$
+    applies_when:
+      ADRC.COUNTRY:
+      - RO
+      - RU
+      - BY
+      - CN
+      - SG
+      - CO
+      - NG
+      - EC
+      - KZ
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for RO, RU, BY, CN, SG, CO, NG, EC, KZ (six digits)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (six digits) is a typing error, a code from another
+      country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business partner
+      conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM910
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[1-5][0-9]{4}$
+    applies_when:
+      ADRC.COUNTRY:
+      - HR
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for HR (five digits starting with 1-5)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits starting with 1-5) is a typing error,
+      a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM911
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^LV-[0-9]{4}$
+    applies_when:
+      ADRC.COUNTRY:
+      - LV
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for LV (LV- and four digits)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (LV- and four digits) is a typing error, a code
+      from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business
+      partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM912
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^(LT-)?[0-9]{5}$
+    applies_when:
+      ADRC.COUNTRY:
+      - LT
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for LT (five digits, optionally prefixed LT-)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits, optionally prefixed LT-) is a typing
+      error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the
+      S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM913
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[A-Z]{3} ?[0-9]{4}$
+    applies_when:
+      ADRC.COUNTRY:
+      - MT
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for MT (three letters and four digits (VLT 1117))'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (three letters and four digits (VLT 1117)) is
+      a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray
+      and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM914
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[0-9]{3}$
+    applies_when:
+      ADRC.COUNTRY:
+      - IS
+      - OM
+      - PG
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for IS, OM, PG (three digits)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (three digits) is a typing error, a code from
+      another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business
+      partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM915
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[1-9][0-9]{5}$
+    applies_when:
+      ADRC.COUNTRY:
+      - IN
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for IN (a six-digit PIN code not starting with
+      0)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (a six-digit PIN code not starting with 0) is
+      a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray
+      and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM916
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[0-9]{3}-[0-9]{4}$
+    applies_when:
+      ADRC.COUNTRY:
+      - JP
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for JP (seven digits written 999-9999)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (seven digits written 999-9999) is a typing error,
+      a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM917
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[0-9]{3}([0-9]{2,3})?$
+    applies_when:
+      ADRC.COUNTRY:
+      - TW
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for TW (three, five or six digits)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (three, five or six digits) is a typing error,
+      a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA
+      business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM918
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[0-9]{5}(-[0-9]{4})?$
+    applies_when:
+      ADRC.COUNTRY:
+      - US
+      - PR
+      - VI
+      - GU
+      - AS
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for US, PR, VI, GU, AS (a ZIP code: five digits
+      or ZIP+4 (99999-9999))'
+    why_it_matters: 'The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier''s sorting. A code that does not have the national format (a ZIP code: five digits or ZIP+4 (99999-9999))
+      is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go
+      astray and the S/4HANA business partner conversion rejects the address once the country check is active.'
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM919
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[0-9]{5}(-[0-9]{4})?$
+    applies_when:
+      ADRC.COUNTRY:
+      - SA
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for SA (five digits, optionally followed by a four-digit
+      extension)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (five digits, optionally followed by a four-digit
+      extension) is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries
+      go astray and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM920
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[ABCEGHJ-NPRSTVXY][0-9][A-Z] [0-9][A-Z][0-9]$
+    applies_when:
+      ADRC.COUNTRY:
+      - CA
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for CA (A9A 9A9 with a space and a valid first
+      letter)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (A9A 9A9 with a space and a valid first letter)
+      is a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go
+      astray and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM921
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[0-9]{5}-[0-9]{3}$
+    applies_when:
+      ADRC.COUNTRY:
+      - BR
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for BR (a CEP of eight digits written 99999-999)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (a CEP of eight digits written 99999-999) is
+      a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray
+      and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM922
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^([A-HJ-NP-Z][0-9]{4}[A-Z]{3}|[0-9]{4})$
+    applies_when:
+      ADRC.COUNTRY:
+      - AR
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for AR (a CPA (C1425DKF) or the old four digits)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (a CPA (C1425DKF) or the old four digits) is
+      a typing error, a code from another country or a city name in the wrong field, so mail, invoices and deliveries go astray
+      and the S/4HANA business partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM923
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[0-9]{7}$
+    applies_when:
+      ADRC.COUNTRY:
+      - CL
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for CL (seven digits)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (seven digits) is a typing error, a code from
+      another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business
+      partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM924
+    field: ADRC.POST_CODE1
+    check_class: regex_check
+    pattern: ^[0-9]{7}$
+    applies_when:
+      ADRC.COUNTRY:
+      - IL
+    grain: ADRC
+    severity: medium
+    dimension: validity
+    message: 'Central address: postal code does not have the national format for IL (seven digits)'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The postal code drives the address check, the tax jurisdiction, the transportation zone and route determination,
+      and the carrier's sorting. A code that does not have the national format (seven digits) is a typing error, a code from
+      another country or a city name in the wrong field, so mail, invoices and deliveries go astray and the S/4HANA business
+      partner conversion rejects the address once the country check is active.
+    rule_authority: iso_standard
+    sap_impact: Address validation, tax jurisdiction and transportation zone determination fail or pick the wrong value; the
+      BP conversion rejects the address when the country's postal code check is active.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} does not have the national
+      format.'
+  - id: SDCM925
+    field: ADRC.POST_CODE1
+    check_class: cross_field_check
+    fail_when: '`ADRC.POST_CODE1`.notna()'
+    applies_when:
+      ADRC.COUNTRY:
+      - AE
+      - QA
+      - HK
+      - MO
+      - AG
+      - BS
+      - BZ
+      - BW
+      - DM
+      - FJ
+      - GD
+      - GY
+      - KN
+      - SR
+      - SC
+      - ZW
+    grain: ADRC
+    severity: low
+    dimension: validity
+    message: 'Central address: postal code entered for a country that has no postal code system'
+    why_it_matters: The central address (ADRC) is what output, tax jurisdiction and the S/4HANA business partner read; KNA1.PSTLZ
+      is only a copy. The United Arab Emirates, Qatar, Hong Kong, Macao, Botswana, Zimbabwe and several Caribbean states have
+      no national postal code. A value in the field is a placeholder (00000), a PO box number or a code from another country,
+      and it is printed on the address label where the post office does not expect it.
+    rule_authority: best_practice
+    sap_impact: Address labels carry a meaningless code and duplicate checks that compare postal codes miss matches.
+    fix_map:
+      __other__: Correct the postal code in the address of the customer (XD02 > Address) or the business partner (BP > Address).
+    record_fix_template: 'Address {ADRC.ADDRNUMBER} in {ADRC.COUNTRY}: postal code {ADRC.POST_CODE1} is set for a country without
+      postal codes.'
+  - id: SDCM926
+    field: ADRC.POST_CODE1
+    check_class: cross_field_check
+    fail_when: '`ADRC.CITY1`.notna() & `ADRC.POST_CODE1`.isna() & ~`ADRC.COUNTRY`.isin([''AE'', ''QA'', ''HK'', ''MO'', ''AG'',
+      ''BS'', ''BZ'', ''BW'', ''DM'', ''FJ'', ''GD'', ''GY'', ''KN'', ''SR'', ''SC'', ''ZW''])'
+    severity: medium
+    dimension: completeness
+    message: Central address has a city but no postal code
+    why_it_matters: Almost every country sorts mail by postal code, and SAP derives the transportation zone, tax jurisdiction
+      and regional structure checks from it. A city without a postal code is an incomplete address.
+    rule_authority: best_practice
+    sap_impact: Address checks, route determination and tax jurisdiction fall back to defaults; the BP conversion rejects the
+      address where the country requires a postal code.
+    fix_map:
+      __other__: Enter the postal code in the customer or business partner address.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: city is set in {ADRC.COUNTRY} but has no postal code.'
+  - id: SDCM927
+    field: ADRC.MC_NAME1
+    check_class: cross_field_check
+    fail_when: '`ADRC.NAME1`.notna() & `ADRC.MC_NAME1`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Address search field for the name is empty
+    why_it_matters: SAP fills ADRC.MC_NAME1 with the upper-case name whenever an address is saved through the address services.
+      An empty search field next to a filled NAME1 shows the record was loaded around the address services, so search helps
+      and duplicate checks do not find it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Customer search by name and the duplicate check miss the address.
+    fix_map:
+      __other__: Re-save the address through XD02 / BP, or run the address search index regeneration for the affected addresses.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: NAME1 is set but MC_NAME1 is empty.'
+  - id: SDCM928
+    field: ADRC.MC_CITY1
+    check_class: cross_field_check
+    fail_when: '`ADRC.CITY1`.notna() & `ADRC.MC_CITY1`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Address search field for the city is empty
+    why_it_matters: SAP fills ADRC.MC_CITY1 with the upper-case city whenever an address is saved through the address services.
+      An empty search field next to a filled CITY1 shows the record was loaded around the address services, so search helps
+      and duplicate checks do not find it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Customer search by city and the duplicate check miss the address.
+    fix_map:
+      __other__: Re-save the address through XD02 / BP, or run the address search index regeneration for the affected addresses.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: CITY1 is set but MC_CITY1 is empty.'
+  - id: SDCM929
+    field: ADRC.MC_STREET
+    check_class: cross_field_check
+    fail_when: '`ADRC.STREET`.notna() & `ADRC.MC_STREET`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Address search field for the street is empty
+    why_it_matters: SAP fills ADRC.MC_STREET with the upper-case street whenever an address is saved through the address services.
+      An empty search field next to a filled STREET shows the record was loaded around the address services, so search helps
+      and duplicate checks do not find it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Customer search by street and the duplicate check miss the address.
+    fix_map:
+      __other__: Re-save the address through XD02 / BP, or run the address search index regeneration for the affected addresses.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: STREET is set but MC_STREET is empty.'
+  - id: SDCM930
+    field: ADRC.HOUSE_NUM2
+    check_class: cross_field_check
+    fail_when: '`ADRC.HOUSE_NUM2` == `ADRC.HOUSE_NUM1`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: House number supplement repeats the house number
+    why_it_matters: ADRC.HOUSE_NUM2 is meant to add to ADRC.HOUSE_NUM1. The same value in both prints twice on every address
+      label and makes duplicate matching weaker.
+    rule_authority: best_practice
+    sap_impact: Address labels, invoices and delivery notes print the value twice.
+    fix_map:
+      __other__: Clear ADRC.HOUSE_NUM2 or enter the real supplement in the address.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: HOUSE_NUM2 repeats HOUSE_NUM1.'
+  - id: SDCM931
+    field: ADRC.STR_SUPPL1
+    check_class: cross_field_check
+    fail_when: '`ADRC.STR_SUPPL1` == `ADRC.STREET`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Street 2 repeats the street
+    why_it_matters: ADRC.STR_SUPPL1 is meant to add to ADRC.STREET. The same value in both prints twice on every address label
+      and makes duplicate matching weaker.
+    rule_authority: best_practice
+    sap_impact: Address labels, invoices and delivery notes print the value twice.
+    fix_map:
+      __other__: Clear ADRC.STR_SUPPL1 or enter the real supplement in the address.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: STR_SUPPL1 repeats STREET.'
+  - id: SDCM932
+    field: ADRC.NAME_CO
+    check_class: cross_field_check
+    fail_when: '`ADRC.NAME_CO` == `ADRC.NAME1`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: c/o name repeats name 1
+    why_it_matters: ADRC.NAME_CO is meant to add to ADRC.NAME1. The same value in both prints twice on every address label and
+      makes duplicate matching weaker.
+    rule_authority: best_practice
+    sap_impact: Address labels, invoices and delivery notes print the value twice.
+    fix_map:
+      __other__: Clear ADRC.NAME_CO or enter the real supplement in the address.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: NAME_CO repeats NAME1.'
+  - id: SDCM933
+    field: ADRC.NAME3
+    check_class: cross_field_check
+    fail_when: '`ADRC.NAME3` == `ADRC.NAME1`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Name 3 repeats name 1
+    why_it_matters: ADRC.NAME3 is meant to add to ADRC.NAME1. The same value in both prints twice on every address label and
+      makes duplicate matching weaker.
+    rule_authority: best_practice
+    sap_impact: Address labels, invoices and delivery notes print the value twice.
+    fix_map:
+      __other__: Clear ADRC.NAME3 or enter the real supplement in the address.
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: NAME3 repeats NAME1.'
+  - id: SDCM934
+    field: ADR2.TELNR_CALL
+    check_class: cross_field_check
+    fail_when: '`ADR2.TEL_NUMBER`.notna() & `ADR2.TELNR_CALL`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Telephone number has no normalised call number
+    why_it_matters: The address services write the dialable form of every telephone number into ADR2.TELNR_CALL when it is saved.
+      A blank call number next to a telephone number shows a load that bypassed the address services.
+    rule_authority: sap_hard_constraint
+    sap_impact: Telephone search, CTI call-centre lookup and the BP telephone check do not find the number.
+    fix_map:
+      __other__: Re-save the telephone number in XD02 / BP so the address services build the call number.
+    record_fix_template: 'Address {ADR2.ADDRNUMBER}, number {ADR2.CONSNUMBER}: telephone number has no call number.'
+  - id: SDCM935
+    field: ADR3.FAXNR_CALL
+    check_class: cross_field_check
+    fail_when: '`ADR3.FAX_NUMBER`.notna() & `ADR3.FAXNR_CALL`.isna()'
+    severity: low
+    dimension: consistency
+    message: Fax number has no normalised call number
+    why_it_matters: The address services write the dialable form of every fax number into ADR3.FAXNR_CALL. A blank value next
+      to a fax number shows a load that bypassed the address services.
+    rule_authority: sap_hard_constraint
+    sap_impact: Fax output and fax number search work from the unnormalised number.
+    fix_map:
+      __other__: Re-save the fax number in XD02 / BP so the address services build the call number.
+    record_fix_template: 'Address {ADR3.ADDRNUMBER}, number {ADR3.CONSNUMBER}: fax number has no call number.'
+  - id: SDCM936
+    field: ADR2.FLG_NOUSE
+    check_class: cross_field_check
+    fail_when: '`ADR2.FLG_NOUSE` == ''X'''
+    applies_when:
+      ADR2.FLGDEFAULT:
+      - X
+    severity: medium
+    dimension: consistency
+    message: Default telephone number is flagged as not to be used
+    why_it_matters: The default telephone number is the one SAP communicates with. Flagging it 'do not use' at the same time
+      leaves the customer without a usable default.
+    rule_authority: sap_hard_constraint
+    sap_impact: Calls and SMS from CRM and call-centre tools go to a number flagged not to be used, or to none.
+    fix_map:
+      __other__: Either clear the 'do not use' flag or make another telephone number the default in XD02 / BP > Communication.
+    record_fix_template: 'Address {ADR2.ADDRNUMBER}, number {ADR2.CONSNUMBER}: default telephone number is flagged do-not-use.'
+  - id: SDCM937
+    field: ADR6.FLG_NOUSE
+    check_class: cross_field_check
+    fail_when: '`ADR6.FLG_NOUSE` == ''X'''
+    applies_when:
+      ADR6.FLGDEFAULT:
+      - X
+    severity: medium
+    dimension: consistency
+    message: Default e-mail address is flagged as not to be used
+    why_it_matters: The default e-mail address is the one SAP communicates with. Flagging it 'do not use' at the same time leaves
+      the customer without a usable default.
+    rule_authority: sap_hard_constraint
+    sap_impact: E-mail output (invoices, order confirmations) fails or goes to a non-default address.
+    fix_map:
+      __other__: Either clear the 'do not use' flag or make another e-mail address the default in XD02 / BP > Communication.
+    record_fix_template: 'Address {ADR6.ADDRNUMBER}, number {ADR6.CONSNUMBER}: default e-mail address is flagged do-not-use.'
+  - id: SDCM938
+    field: KNBK.KOINH
+    check_class: cross_field_check
+    fail_when: '`KNBK.BANKN`.notna() & `KNBK.KOINH`.isna()'
+    severity: low
+    dimension: completeness
+    message: Customer bank account has no account holder name
+    why_it_matters: SEPA direct debit mandates and many payment formats require the account holder name. When KOINH is blank
+      SAP falls back to the customer name, which is wrong whenever the account belongs to someone else.
+    rule_authority: best_practice
+    sap_impact: Direct debits can be rejected by the bank for a name mismatch.
+    fix_map:
+      __other__: Enter the account holder in XD02 / FD02 > Payment transactions > Bank details.
+    record_fix_template: 'Customer {KNBK.KUNNR}, bank country {KNBK.BANKS}: account holder name is blank.'
+  - id: SDCM939
+    field: ADR6.SMTP_ADDR
+    check_class: contact_check
+    kind: email
+    grain: ADR6
+    severity: high
+    dimension: validity
+    message: Email address breaks the RFC 5321/5322 syntax or length limits
+    why_it_matters: Mail servers reject an address that breaks the RFC syntax or length limits, so invoices, dunning letters
+      and notifications sent to it bounce. The finding names the exact reason for each address.
+    rule_authority: best_practice
+    sap_impact: Output by email (invoices, dunning, payment advice, notifications) bounces; S/4HANA migration carries the broken
+      address across.
+    fix_map:
+      __other__: Correct the value in XD02 / VD02 > Address (ECC) or Fiori app Maintain Business Partner (S/4HANA).
+    record_fix_template: 'ADR6.SMTP_ADDR: email address breaks the rfc 5321/5322 syntax or length limits.'
+  - id: SDCM940
+    field: ADR6.SMTP_ADDR
+    check_class: contact_check
+    kind: disposable
+    grain: ADR6
+    severity: medium
+    dimension: validity
+    message: Email address uses a disposable mailbox service
+    why_it_matters: Disposable mailbox domains expire within hours or days. A master record that points at one loses its only
+      email channel, and the pattern often marks a test or fraudulent record.
+    rule_authority: best_practice
+    sap_impact: Correspondence and notifications go to a mailbox that no longer exists; the record may not belong to a real
+      party.
+    fix_map:
+      __other__: Correct the value in XD02 / VD02 > Address (ECC) or Fiori app Maintain Business Partner (S/4HANA).
+    record_fix_template: 'ADR6.SMTP_ADDR: email address uses a disposable mailbox service.'
+  - id: SDCM941
+    field: KNA1.TELF1
+    check_class: contact_check
+    kind: phone
+    country_field: KNA1.LAND1
+    grain: KNA1
+    severity: medium
+    dimension: validity
+    message: Telephone number is not a plausible number for its country
+    why_it_matters: A number with the wrong length or calling code for its country cannot be dialled. The check normalises to
+      E.164 and names the reason, so a steward knows whether the digits or the country is wrong.
+    rule_authority: best_practice
+    sap_impact: Call-centre, delivery and SMS processes cannot reach the party; downstream CRM and telephony integrations reject
+      the number.
+    fix_map:
+      __other__: Correct the value in XD02 / VD02 > Address (ECC) or Fiori app Maintain Business Partner (S/4HANA).
+    record_fix_template: 'Customer {KNA1.KUNNR}: KNA1.TELF1: telephone number is not a plausible number
+      for its country.'
+  - id: SDCM942
+    field: KNA1.PSTLZ
+    check_class: contact_check
+    kind: postcode
+    country_field: KNA1.LAND1
+    grain: KNA1
+    severity: high
+    dimension: validity
+    message: Postal code does not match the format of its country
+    why_it_matters: Each country has a fixed postal code layout. A code that breaks it fails address validation, carrier label
+      printing and tax jurisdiction look-up.
+    rule_authority: best_practice
+    sap_impact: Carrier integration and tax jurisdiction determination fail; S/4HANA address checks (TSAD) reject the address
+      on change.
+    fix_map:
+      __other__: Correct the value in XD02 / VD02 > Address (ECC) or Fiori app Maintain Business Partner (S/4HANA).
+    record_fix_template: 'Customer {KNA1.KUNNR}: KNA1.PSTLZ: postal code does not match the format of
+      its country.'
+    auto_fix:
+      steps:
+      - op: postcode
+        country_field: KNA1.LAND1
+      confidence: medium

@@ -13,6 +13,7 @@ import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Record links: which records are linked across objects, as relationship discovery read them from SAP's link tables
@@ -162,7 +163,7 @@ export function Links() {
           </Disclose>
           <Panel title={t("Links")} meta={t("Newest first")} testId="links-table">
             <ScrollFrame label={t("Links")}>
-              <table className="m2-tbl m2-cards">
+              <TableExport><table className="m2-tbl m2-cards">
                 <caption className="m2-sr">{t("Links")}</caption>
                 <thead>
                   <tr>
@@ -176,7 +177,7 @@ export function Links() {
                 <tbody>
                   {rows.map((l) => <LinkRow key={l.id} l={l} />)}
                 </tbody>
-              </table>
+              </table></TableExport>
             </ScrollFrame>
           </Panel>
         </>
@@ -189,7 +190,7 @@ export function Links() {
           <Skeleton width="100%" height={80} />
         ) : (
           <ScrollFrame label={t("Link types SAP defines")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <caption className="m2-sr">{t("Link types SAP defines")}</caption>
               <thead>
                 <tr>
@@ -209,7 +210,7 @@ export function Links() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>

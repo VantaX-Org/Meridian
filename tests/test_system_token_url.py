@@ -19,7 +19,7 @@ class _Row:
     def fetchone(self):
         return (SID, "BTP", "btp", None, None, None, None, "https://api.example", None,
                 "oauth2_client_credentials", None, "PRD", True, "2026-01-01", "2026-01-02",
-                "source", None, self.token_url, "table_reader", None)
+                "source", None, self.token_url, "table_reader", None, None, False, None, None, None)
 
 
 class _Stored:
@@ -28,7 +28,7 @@ class _Stored:
 
     def fetchone(self):
         return ("btp", "oauth2_client_credentials", "enc-id", "enc-secret", None, None,
-                None, None, None, "https://api.example", self.token_url)
+                None, None, None, "https://api.example", self.token_url, None, False, None, None, None)
 
 
 class _DB:

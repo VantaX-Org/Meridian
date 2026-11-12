@@ -3,7 +3,7 @@
  * business partner data against S/4HANA, their gaps, the records that will not load, and an editable field map and
  * value map. Writes change the in-memory map until the page reloads.
  */
-import type { FieldMapping, ValueEntry, WorkbookReport } from "../migration";
+import type { FieldMapping, TargetTemplate, ValueEntry, WorkbookReport } from "../migration";
 
 const refuse = (detail: string, code = 409): never => {
   throw Object.assign(new Error(detail), { status: code, response: { status: code, data: { detail } } });
@@ -73,19 +73,20 @@ let valueMap: ValueEntry[] = [
   { id: "vm-2", target_field: "MARA.MTART", source_value: "ZROH", target_value: "ROH", note: "Raw materials", updated_at: "2026-11-02T09:00:00Z", status: "proposed", proposed_by: "u-steward", decided_by: null },
 ];
 
-const field = (f: string, description: string, compared: number, differing: number) => ({ field: f, description, in_target_extract: true, compared, matched: compared - differing, differing });
+const field = (f: string, description: string, compared: number, differing: number, real = differing) => ({ field: f, description, in_target_extract: true, compared, matched: compared - differing, differing, expected_differences: differing - real, real_differences: real });
 const reconTables = [
-  { table: "MARA", description: "General material data", comparable: true, reason: null, key_fields: ["MATNR"], expected: 41_990, found: 41_902, missing: 88, unexpected: 3, duplicate_expected: 0, duplicate_found: 0, capped: true, records_total: { missing: 88, differing: 143, unexpected: 3 },
-    fields: [field("MTART", "Material type", 41_990, 61), field("MATKL", "Material group", 41_990, 12), field("MEINS", "Base unit of measure", 41_990, 0)] },
-  { table: "MAKT", description: "Material descriptions", comparable: true, reason: null, key_fields: ["MATNR", "SPRAS"], expected: 41_990, found: 41_880, missing: 110, unexpected: 0, duplicate_expected: 0, duplicate_found: 0, capped: true, records_total: { missing: 110, differing: 70, unexpected: 0 },
-    fields: [field("MAKTX", "Material description", 41_990, 70)] },
+  { table: "MARA", description: "General material data", comparable: true, reason: null, key_fields: ["MATNR"], expected: 41_990, found: 41_902, missing: 88, unexpected: 3, duplicate_expected: 0, duplicate_found: 0, capped: true, records_total: { missing: 88, differing: 143, unexpected: 3 }, expected_differences: 52, real_differences: 21, causes: { value_mapping: 52, real: 21 },
+    fields: [field("MTART", "Material type", 41_990, 61, 9), field("MATKL", "Material group", 41_990, 12, 12), field("MEINS", "Base unit of measure", 41_990, 0)] },
+  { table: "MAKT", description: "Material descriptions", comparable: true, reason: null, key_fields: ["MATNR", "SPRAS"], expected: 41_990, found: 41_880, missing: 110, unexpected: 0, duplicate_expected: 0, duplicate_found: 0, capped: true, records_total: { missing: 110, differing: 70, unexpected: 0 }, expected_differences: 70, real_differences: 0, causes: { truncation: 70 },
+    fields: [field("MAKTX", "Material description", 41_990, 70, 0)] },
   { table: "MARC", description: "Plant data for material", comparable: false, reason: "target_extract_partial", key_fields: ["MATNR", "WERKS"], expected: 0, found: 0, missing: 0, unexpected: 0, duplicate_expected: 0, duplicate_found: 0, capped: false, records_total: { missing: 0, differing: 0, unexpected: 0 }, fields: [] },
 ];
 const reconRecords = [
   { kind: "missing", key: "MATNR=000000000010004801", source_record: "MARA:000000000010004801", field: null, expected: null, found: null },
   { kind: "missing", key: "MATNR=000000000010004802", source_record: "MARA:000000000010004802", field: null, expected: null, found: null },
-  { kind: "differing", key: "MATNR=000000000010004711", source_record: "MARA:000000000010004711", field: "MTART", expected: "ROH", found: "HALB" },
-  { kind: "differing", key: "MATNR=000000000010009001|SPRAS=E", source_record: "MAKT:000000000010009001", field: "MAKTX", expected: "Hydraulic hose assembly 3/4in 2-wire", found: "Hydraulic hose assembly 3/4in 2-wi" },
+  { kind: "differing", key: "MATNR=000000000010004711", source_record: "MARA:000000000010004711", field: "MTART", expected: "ROH", found: "HALB", cause: "real", ddic: { description: "Material type", type: "CHAR", length: 4, conversion_exit: null, lowercase: false } },
+  { kind: "differing", key: "MATNR=000000000010009001|SPRAS=E", source_record: "MAKT:000000000010009001", field: "MAKTX", expected: "Hydraulic hose assembly 3/4in 2-wire braid, 1200 mm", found: "Hydraulic hose assembly 3/4in 2-wire bra", cause: "truncation", ddic: { description: "Material description", type: "CHAR", length: 40, conversion_exit: null, lowercase: true } },
+  { kind: "differing", key: "MATNR=000000000010004712", source_record: "MARA:000000000010004712", field: "MTART", expected: "ZFRT", found: "FERT", cause: "value_mapping", ddic: { description: "Material type", type: "CHAR", length: 4, conversion_exit: null, lowercase: false } },
   { kind: "differing", key: "LIFNR=0000100234", source_record: "LFA1:0000100234", field: "NAME1", expected: null, found: null, withheld: true },
   { kind: "unexpected", key: "MATNR=000000000010004711", source_record: "MARA:000000000010004711", field: null, expected: null, found: null },
 ] as const;
@@ -93,7 +94,7 @@ const recon = {
   reconciliation_id: "rec-0001", run_id: "mig-0002", status: "done", error_detail: null, target_system_id: S4, target_version_id: "v-s4-3",
   target_synced_at: "2026-11-02T04:10:00Z", created_at: "2026-11-02T06:00:00Z", completed_at: "2026-11-02T06:04:00Z", stale: false,
   latest_target_synced_at: "2026-11-02T04:10:00Z", record_cap: 100,
-  summary: { tables: 3, comparable: 2, expected: 83_980, found: 83_782, missing: 198, unexpected: 3, differing_fields: 143, basis: "snapshot", snapshot_export_id: "exp-0001", snapshot_exported_at: "2026-11-01T09:30:00Z" },
+  summary: { tables: 3, comparable: 2, expected: 83_980, found: 83_782, missing: 198, unexpected: 3, differing_fields: 143, expected_differences: 122, real_differences: 21, basis: "snapshot", snapshot_export_id: "exp-0001", snapshot_exported_at: "2026-11-01T09:30:00Z" },
   automatic: true,
   previous: { created_at: "2026-10-28T06:00:00Z", summary: { tables: 3, comparable: 2, expected: 83_980, found: 83_541, missing: 439, unexpected: 3, differing_fields: 201 } },
   tables: reconTables,
@@ -128,6 +129,16 @@ export const fixtureWorkbookReport = (): WorkbookReport => ({
   held_total: 2,
   learned: { new: 1, waiting: 1, missing: 1, system_id: "sys-sf", modules: ["employee_central"] },
 });
+/** One kept template: a synthetic cockpit file with one column the dictionary did not resolve. */
+let templates: TargetTemplate[] = [{
+  id: "tpl-0001", name: "Material cockpit", version: 2, filename: "material_cockpit.xlsx", size_bytes: 48_211,
+  coverage: { columns: 5, matched: 4, sheets: [{ name: "Basic Data", table: "MARA", columns: 5, matched: 4, unmapped: [{ header: "Legacy group", id: "Legacy group", label: "Legacy group", mandatory: false }] }] },
+  column_map: {}, last_fill_at: "2026-11-02T10:00:00Z", last_fill_version_id: "v-0001", created_by: "u-me", created_at: "2026-11-01T09:00:00Z",
+}];
+const templateFields = [
+  { field: "MARA.MATKL", description: "Material Group", key: false, table_description: "General Material Data" },
+  { field: "MARA.MATNR", description: "Material Number", key: true, table_description: "General Material Data" },
+];
 let seq = 10;
 
 export function migrationRead(path: string, params: Record<string, unknown> = {}): unknown {
@@ -150,12 +161,14 @@ export function migrationRead(path: string, params: Record<string, unknown> = {}
     }
     if (rest === "/reconciliation") return r.id === "mig-0002" ? recon : r.id === "mig-0003" ? reconNoTarget : NONE_MIGRATION;
     if (rest === "/reconciliation/records" && r.id === "mig-0002") {
-      const rows = reconRecords.filter((x) => (!params.kind || x.kind === params.kind) && (!params.table || x.source_record.startsWith(`${params.table}:`)));
+      const rows = reconRecords.filter((x) => (!params.kind || x.kind === params.kind) && (!params.table || x.source_record.startsWith(`${params.table}:`)) && (!params.real_only || !("cause" in x) || x.cause === "real"));
       return { table: params.table ?? null, kind: params.kind ?? null, total: rows.length, capped: true, record_cap: 100, rows };
     }
     if (rest === "/value-candidates") return { target_field: params.target_field, values: [{ source_value: "ZROH", records: 2_904 }, { source_value: "ZFRT", records: 611 }, { source_value: "HALB", records: 4_020 }] };
     return NONE_MIGRATION;
   }
+  const tp = /^\/migration\/templates\/([^/]+)(\/fields)?$/.exec(path);
+  if (tp) return tp[2] ? { fields: templateFields } : { module: tp[1], templates: tp[1] === "material_master" ? templates : [] };
   if (path === "/migration/field-map") return { mappings: fieldMap.filter((f) => (!params.module || f.module === params.module) && (!params.dest_system_type || f.dest_system_type === params.dest_system_type)) };
   if (path === "/migration/value-map") return { entries: valueMap.filter((v) => !params.target_field || v.target_field === params.target_field) };
   return NONE_MIGRATION;
@@ -169,6 +182,18 @@ export function migrationWrite(method: string, path: string, body: unknown): unk
   if (method === "POST" && ex) return { job_id: "dl-fixture", version_id: "v-fixture", status: "queued", modules: runs.find((x) => x.id === ex[1])?.modules ?? [] };
   const rd = /^\/migration\/runs\/([^/]+)$/.exec(path);
   if (method === "DELETE" && rd) { runs = runs.filter((x) => x.id !== rd[1]); return {}; }
+  const tm = /^\/migration\/templates\/[^/]+\/([^/]+)\/(mapping|check)$/.exec(path);
+  if (tm && method === "PUT") {
+    const cols = (b.columns ?? {}) as Record<string, string>;
+    templates = templates.map((x) => {
+      if (x.id !== tm[1] || !x.coverage) return x;
+      const sheets = x.coverage.sheets.map((sh) => { const left = sh.unmapped.filter((u) => !cols[`${sh.name}::${u.header}`]); return { ...sh, matched: sh.columns - left.length, unmapped: left }; });
+      return { ...x, column_map: { ...x.column_map, ...cols }, coverage: { ...x.coverage, matched: sheets.reduce((n, sh) => n + sh.matched, 0), sheets } };
+    });
+    const t = templates.find((x) => x.id === tm[1]);
+    return { column_map: t?.column_map ?? {}, coverage: t?.coverage };
+  }
+  if (tm && method === "POST") return { ...fixtureWorkbookReport(), version_id: "v-0001", cleansed: { approved: 3, cells_changed: 3, by_field: { "MARA.MTART": 3 } } };
   if (method === "POST" && path === "/migration/field-map/seed") return { seeded: 0, module: b.module, dest_system_type: b.dest_system_type };
   if (method === "POST" && path === "/migration/field-map") {
     const row = { id: `fm-${++seq}`, module: String(b.module), source_field: String(b.source_field), dest_system_type: String(b.dest_system_type), dest_table: (b.dest_table as string) ?? null, dest_field: (b.dest_field as string) ?? null, value_map: false, origin: "steward", transform_note: (b.transform_note as string) ?? null, is_confirmed: false, source_def: null, target_def: null };

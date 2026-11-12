@@ -22,6 +22,7 @@ import { CcBanner, CcDelta, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { WorkTabs } from "./WorkTabs";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Triage (api/routes/triage.py): the ranked queue of open issues and stewardship items, overdue first, worked in bulk;
@@ -157,7 +158,7 @@ export function Triage() {
         BUCKETS.map(([b, label]) => q[b].items.length ? (
           <Panel key={b} title={label()} meta={t("{n} items", { n: int(q[b].count) })} testId={`triage-${b}`}>
             <ScrollFrame label={label()}>
-              <table className="m2-tbl m2-cards">
+              <TableExport><table className="m2-tbl m2-cards">
                 <caption className="m2-sr">{label()}</caption>
                 <thead>
                   <tr>
@@ -176,7 +177,7 @@ export function Triage() {
                     <Row key={keyOf(x)} x={x} people={people.data} teams={teams.data} pick={can("assign") ? { on: picked.has(keyOf(x)), toggle: () => toggle(keyOf(x)) } : null} />
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </ScrollFrame>
           </Panel>
         ) : null)
@@ -444,7 +445,7 @@ function Teams({ people }: { people: AssignableUser[] }) {
         <EmptyFrame>{t("No team is set up yet. A team shares work by turns or by load.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Teams")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <caption className="m2-sr">{t("Teams")}</caption>
             <thead>
               <tr>
@@ -502,7 +503,7 @@ function Teams({ people }: { people: AssignableUser[] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
       {edit ? (
@@ -587,7 +588,7 @@ function Rules({ people, teams, modules }: { people: AssignableUser[]; teams: Te
         <EmptyFrame>{t("No assignment rule is set up. New work waits with no owner.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Rules that route new work")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <caption className="m2-sr">{t("Rules that route new work")}</caption>
             <thead>
               <tr>
@@ -628,7 +629,7 @@ function Rules({ people, teams, modules }: { people: AssignableUser[]; teams: Te
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
       {edit ? (

@@ -25,3 +25,48 @@ export const deleteModel = (id: string): Promise<void> => v2Send<void>("DELETE",
 
 /** PUT /survivorship-rules: replaces every rule of the domain; a rule left out is deleted. Needs mdm.write. */
 export const putSurvivorship = (domain: string, rules: SurvivorshipRuleInput[]): Promise<{ rules: SurvivorshipRule[]; total: number }> => v2Send("PUT", "/survivorship-rules", { domain, rules });
+
+/** One attribute whose golden value would change under candidate survivorship rules, with its DDIC check. */
+export interface SurvivorshipPreviewAttribute {
+  field: string;
+  changed: number;
+  in_dictionary: boolean;
+  table?: string | null;
+  text: string;
+  length?: number | null;
+  check_table?: string | null;
+  fixed_values: number;
+  check_status: "checked" | "unknown" | "not_checked";
+  invalid: number;
+  invalid_reasons: Record<string, number>;
+  invalid_samples: string[];
+}
+
+export interface SurvivorshipPreviewSample {
+  golden_id?: string | null;
+  key?: string | null;
+  field: string;
+  before: string;
+  after: string;
+  rule?: string | null;
+  winner_key?: string | null;
+  winner_system?: string | null;
+}
+
+export interface SurvivorshipPreview {
+  domain: string;
+  clusters_total: number;
+  clusters_scanned: number;
+  capped: boolean;
+  cap: number;
+  records_changed: number;
+  values_changed: number;
+  invalid_values: number;
+  value_set_source: "live" | "baseline" | "none";
+  attributes: SurvivorshipPreviewAttribute[];
+  samples: SurvivorshipPreviewSample[];
+}
+
+/** What-if: the golden values the candidate rules would change, without saving them. */
+export const previewSurvivorship = (domain: string, rules: SurvivorshipRuleInput[]): Promise<SurvivorshipPreview> =>
+  v2Send("POST", "/survivorship-rules/preview", { domain, rules });

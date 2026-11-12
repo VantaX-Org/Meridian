@@ -134,6 +134,32 @@ def tier(score: float | None, thresholds: dict | None = None) -> str | None:
     return "pass" if score >= t["target"] else "warn" if score >= t["warning"] else "fail"
 
 
+THRESHOLD_DIMENSIONS = (*DEFAULT_WEIGHTS, "overall")  # "overall" is the composite DQS
+
+
+def band(score: float | None, thresholds: dict | None = None) -> str | None:
+    """A score's band against target / warning / critical: pass at or above target, warn at or
+    above warning, fail at or above critical, critical below it."""
+    if score is None:
+        return None
+    t = thresholds_of(thresholds)
+    if score >= t["target"]:
+        return "pass"
+    return "warn" if score >= t["warning"] else "fail" if score >= t["critical"] else "critical"
+
+
+def resolve_thresholds(rows: list[dict], module: str, fallback: dict | None = None) -> dict:
+    """dimension -> bands for one module: its own row, else the tenant default (module '*'),
+    else ``fallback`` (the tenant's composite thresholds). ``rows`` are quality_thresholds rows."""
+    base = thresholds_of(fallback)
+    picked = {d: dict(base) for d in THRESHOLD_DIMENSIONS}
+    for scope in ("*", module):
+        for r in rows:
+            if r["module"] == scope and r["dimension"] in picked:
+                picked[r["dimension"]] = {k: float(r[k]) for k in ("target", "warning", "critical")}
+    return picked
+
+
 def impact(affected: int | float | None, severity: str | None) -> int:
     """Rule impact = failing records x severity weight (unknown severity weighs 1)."""
     return int(affected or 0) * SEV_WEIGHT.get(severity or "", 1)

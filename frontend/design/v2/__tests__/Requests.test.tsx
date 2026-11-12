@@ -68,6 +68,14 @@ describe("Requests", () => {
     expect(link?.getAttribute("href")).toContain("open=request");
   });
 
+  it("shows the forecast decision and breach risk of an open request from decided tasks", async () => {
+    setUrl("/requests?fixture=1&view=all");
+    renderWithQuery(<RequestsCanvas />);
+    const cell = await screen.findByTestId("forecast-CR-1001");
+    expect(cell).toHaveTextContent("33.3% breach risk");
+    expect(cell.getAttribute("title")).toBe("Four-eyes approval: from 6 decided tasks");
+  });
+
   it("shows the age and due time of an open request and the tenant entry defaults", async () => {
     setUrl("/requests?fixture=1&view=all");
     renderWithQuery(<RequestsCanvas />);

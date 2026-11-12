@@ -9,7 +9,7 @@ import { applyPolicyPack, unapplyPolicyPack } from "@/lib/api/v2/step10";
 import { createProfile } from "@/lib/api/v2/sys";
 import { inviteUser } from "@/lib/api/v2/admin";
 import { ROLE_NAMES } from "@/lib/v2/view-as";
-import { PageTitle, V2Link } from "../../parts";
+import { EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../../parts";
 import { ConnectionForm } from "./ConnectionForm";
 import { ScheduleFields, type ScheduleValue } from "./ScheduleFields";
 import { cronError } from "@/lib/v2/cron";
@@ -19,6 +19,15 @@ type Saved = { id: string; name: string };
 const steps = () => [t("Connect SAP"), t("Connect SuccessFactors"), t("Choose objects"), t("Choose policy packs"), t("Schedule runs"), t("Invite people")];
 const ROLES = ["data_steward", "data_owner", "analyst", "viewer"];
 const num = (n: number) => n.toLocaleString();
+
+function Saved({ name, onContinue }: { name: string; onContinue: () => void }) {
+  return (
+    <>
+      <p className="m2-note" role="status" data-testid="setup-saved">{t("{name} is connected.", { name })}</p>
+      <div className="m2-setup-acts"><button type="button" className="m2-btn m2-next" onClick={onContinue}>{t("Continue")}</button></div>
+    </>
+  );
+}
 
 /** `/s/new`: first-run setup. Connect SAP, optionally SuccessFactors, pick objects and policy packs, schedule runs, invite people. */
 export function ConnectCanvas() {
@@ -34,7 +43,8 @@ export function ConnectCanvas() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
-  const objects = useSystemObjectList(sap?.id ?? "", !!sap);
+  const main = sap ?? sf;
+  const objects = useSystemObjectList(main?.id ?? "", !!main);
   const packs = usePolicyPacks(step >= 3);
 
   const STEPS = steps();
@@ -51,10 +61,10 @@ export function ConnectCanvas() {
   const toggle = (o: string) => setPicked((p) => (p.includes(o) ? p.filter((x) => x !== o) : [...p, o]));
 
   async function saveSchedule() {
-    if (!sap) return;
+    if (!main) return;
     setBusy(true);
     try {
-      for (const o of chosen) await createProfile(sap.id, { system_id: sap.id, domain: o.object, tables: o.tables, schedule_cron: sched.cron, active: true, extraction_mode: sched.mode });
+      for (const o of chosen) await createProfile(main.id, { system_id: main.id, domain: o.object, tables: o.tables, schedule_cron: sched.cron, active: true, extraction_mode: sched.mode });
       advance();
     } catch (e) { fail(e); } finally { setBusy(false); }
   }
@@ -97,24 +107,45 @@ export function ConnectCanvas() {
             <>
               <h2>{t("Setup complete")}</h2>
               <p className="m2-note">{t("The first run starts on the schedule you set. Open the system to start it now.")}</p>
-              {sap ? next(t("Open the system"), () => router.replace(v2(`/s/${sap.id}?open=system:${sap.id}`))) : null}
+              {main ? next(t("Open the system"), () => router.replace(v2(`/s/${main.id}?open=system:${main.id}`))) : null}
             </>
           ) : step === 0 ? (
             <>
               <h2>{STEPS[0]}</h2>
-              <ConnectionForm onSaved={(s) => { setSap(s); advance(); }} />
+              {sap ? (
+                <Saved name={sap.name} onContinue={() => advance()} />
+              ) : (
+                <>
+                  <ConnectionForm onSaved={(s) => { setSap(s); advance(); }} />
+                  <div className="m2-setup-acts"><button type="button" className="m2-btn" onClick={() => advance()}>{t("I only use SuccessFactors")}</button></div>
+                </>
+              )}
             </>
           ) : step === 1 ? (
             <>
               <h2>{STEPS[1]}</h2>
-              <p className="m2-note">{t("Optional. Choose SuccessFactors as the system type.")}</p>
-              <ConnectionForm onSaved={(s) => { setSf(s); advance(); }} />
-              <div className="m2-setup-acts">{next(t("Skip for now"), () => advance())}</div>
+              <p className="m2-note">{sap ? t("Optional. The form is set to SuccessFactors.") : t("The form is set to SuccessFactors.")}</p>
+              {sf ? (
+                <Saved name={sf.name} onContinue={() => advance()} />
+              ) : (
+                <>
+                  <ConnectionForm initialType="successfactors" onSaved={(s) => { setSf(s); advance(); }} />
+                  {sap ? <div className="m2-setup-acts">{next(t("Skip for now"), () => advance())}</div> : null}
+                </>
+              )}
             </>
           ) : step === 2 ? (
             <>
               <h2>{STEPS[2]}</h2>
-              {objects.isLoading ? <p className="m2-note">{t("Reading the objects the system offers")}</p> : null}
+              {!main ? (
+                <EmptyFrame action={<button type="button" className="m2-btn" onClick={() => setStep(0)}>{t("Back to the connect step")}</button>}>{t("Connect a system first, then choose its objects.")}</EmptyFrame>
+              ) : objects.isError ? (
+                <ErrorFrame onRetry={() => void objects.refetch()}>{t("The objects of this system could not be read.")}</ErrorFrame>
+              ) : objects.isLoading ? (
+                <><p className="m2-note">{t("Reading the objects the system offers")}</p><Skeleton width="100%" height={96} /></>
+              ) : list.length === 0 ? (
+                <EmptyFrame>{t("This system offers no objects to choose yet. You can add them later from the system.")}</EmptyFrame>
+              ) : null}
               <ul className="m2-setup-list">
                 {list.map((o) => (
                   <li key={o.object}>
@@ -126,11 +157,21 @@ export function ConnectCanvas() {
                   </li>
                 ))}
               </ul>
-              <div className="m2-setup-acts">{next(t("Continue"), () => advance(), picked.length === 0)}</div>
+              <div className="m2-setup-acts">
+                {next(t("Continue"), () => advance(), picked.length === 0)}
+                {main && !objects.isLoading && list.length === 0 ? <button type="button" className="m2-btn" onClick={() => advance(5)}>{t("Skip to invitations")}</button> : null}
+              </div>
             </>
           ) : step === 3 ? (
             <>
               <h2>{STEPS[3]}</h2>
+              {packs.isError ? (
+                <ErrorFrame onRetry={() => void packs.refetch()}>{t("The policy packs could not be read.")}</ErrorFrame>
+              ) : packs.isLoading ? (
+                <Skeleton width="100%" height={96} />
+              ) : (packs.data?.packs ?? []).length === 0 ? (
+                <EmptyFrame>{t("No policy pack is available. You can continue without one.")}</EmptyFrame>
+              ) : null}
               <ul className="m2-setup-list">
                 {(packs.data?.packs ?? []).map((p) => (
                   <li key={p.id}>

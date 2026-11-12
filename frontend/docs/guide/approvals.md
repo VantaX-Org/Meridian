@@ -47,6 +47,12 @@ The banner on top says "Change requests". Its headline counts what waits ("3 req
 - **The request inspector** shows the proposed values, the checks, the approval steps with who decided each and when, the history, comments and attachments. The requester can cancel a request that is not finished; a request that failed in SAP can be retried once you have checked in SAP that the record does not exist; a request with a load file can be exported.
 - **Your decision**: when a step waits for you, the inspector of the request shows **Approve**, and **Reject** with a reason the requester reads. The step, its due time and whether you decide on behalf of someone are stated.
 
+### Data collection form
+
+**Use the form**, beside **New request** on the Requests banner, opens the data collection form (`/requests/new`). Choose the object (material, customer, vendor or business partner) and whether you create a new record or change one; a change needs the SAP key of the record, and the label names its key field. The fields come from the SAP data dictionary and the object's rules, never from a free list: each shows its `TABLE.FIELD`, its description, and whether it is required to create. A field checked against an SAP check table offers its allowed values as a list, with the table it was checked against; the live values of the connected system appear when the address carries `?system=`, otherwise the values the rules and the data dictionary know.
+
+**Check against the rules** saves a draft and runs the object's rules: a failing rule shows under the field it concerns, and a list says which required fields are still empty. **Submit for approval** sends the request into the same approval workflow as any other request and opens it. Nothing is written to SAP until the request is approved. The form needs the master data write permission; without it the screen says so.
+
 ### Ageing and due time
 
 An open request shows how long it has waited. The list has **Age** and **Due** columns: the age in days or hours, and the due time of the approval step that waits. The banner adds an **Overdue** figure, and when a request is past the due time of its waiting step the banner turns to no-go and says "2 requests are past the due time of the waiting approval step." The inspector states **Waiting for** (the step), **Due** and **Age**. The due time comes from the hours set on the step in the approval workflow.
@@ -69,6 +75,18 @@ The button **Derivations and critical fields**, beside Entry defaults, opens two
 
 - **Derivation rules.** A rule says: when a field of the request holds one of the listed values ("Is one of", separated by commas), set another field. The new value is either a **constant value** or a **copy from field**: the request's proposed value of a source field, skipped when that source is empty. For example, when `MARA.MTART` is `ROH`, set `MARC.BESKZ` to `F`. Rules run in the order they were made when a request is created or updated, before the check, so a later rule sees what an earlier one set. A derived value is authoritative and shows as **Derived** in the field history.
 - **Critical fields.** A list of fields per object. A request that touches one is flagged critical in the list and the inspector and gets an extra **Critical field** approval step after the usual steps, decided by a second person who is not the requester or an earlier approver. Administrators can also use the critical fields of a request in the conditions of their own workflow steps.
+
+## Process analytics
+
+Process analytics at /requests/analytics shows how change requests move through approval. Pick a window of 30, 90, 180 or 365 days and, if you like, one object.
+
+Cycle time runs from submission until the record is created in SAP. Approval time runs from submission until the last decision. A step's dwell runs from the moment the step became active until its decision. A task breaches its SLA when it was decided after its due time, or is still pending past it. The bottleneck is the step with the longest median dwell; a tie goes to the step with the most breaches. Percentiles are nearest-rank, so each figure is a real request or task.
+
+The open backlog is split by the time since submission, and the weekly flow compares requests submitted with records created. The objects table shows the outcome of the requests for each object and its cycle time.
+
+### Forecast
+
+The Forecast panel on process analytics, and the Forecast column of the change request list, say when the step each open request waits on is likely decided and how likely it is to miss its SLA. Both come from the dwell of the same step on requests decided in the last year: first the same object, kind and step when at least three such tasks exist, otherwise the same step on any object. Only tasks that waited longer than this one has already count, so a request that has waited two days is compared with tasks that also took more than two days. The likely decision is the median of those dwells, the late case is the 90th percentile, and the breach risk is the share of them that took longer than the step's SLA. A request already past its due time shows SLA missed. The steps still to come add their own median dwell, which gives the time the whole request is likely done. Open the Based on cell to see each decided task the forecast rests on, with its dwell and decision date. A step with no decided history shows No history rather than a guess.
 
 ## Out of office and escalation
 

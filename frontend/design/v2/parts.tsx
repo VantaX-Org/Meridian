@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, type ComponentProps, type ReactNode, type RefObject } from "react";
 import { useV2Href } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
+import { describeField, describeTable } from "@/lib/v2/sap-fields";
 
 /** A link inside the v2 interface: keeps `?fixture=1` when the page is in fixture mode. */
 export function V2Link({ href, ...rest }: Omit<ComponentProps<typeof Link>, "href"> & { href: string }) {
@@ -186,4 +187,11 @@ export function PageTitle({ children, sub }: { children: ReactNode; sub?: ReactN
       ) : null}
     </h1>
   );
+}
+
+/** A SAP field or table code with its standard text before it, when the text is known: "Base unit of measure MARA-MEINS". */
+export function SapCode({ field, table, text }: { field?: string; table?: string; text?: string | null }) {
+  const code = field ?? table ?? "";
+  const d = text ?? (field ? describeField(field) : describeTable(code));
+  return <>{d ? `${d} ` : null}<Mono>{code}</Mono></>;
 }

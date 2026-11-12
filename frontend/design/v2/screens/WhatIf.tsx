@@ -10,11 +10,12 @@ import { moduleText } from "@/lib/v2/labels";
 import { f1, int } from "@/lib/v2/score";
 import { signed1 } from "@/lib/v2/step9";
 import { SeverityMark, type SeverityKey } from "../marks";
-import { ErrorFrame, Skeleton, V2Link } from "../parts";
+import { ErrorFrame, SapCode, Skeleton, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { simulationNote } from "./step9/Simulation";
 import { Fld, Sw } from "../admin/kit";
 import "../admin.css";
+import { TableExport } from "@/design/v2/TableExport";
 
 /** The backend's key rule for a value map, so a bad key is caught before the request. */
 const KEY = /^[A-Z0-9_/]+\.[A-Z0-9_/]+$/;
@@ -46,7 +47,7 @@ function RuleTable({ rows, label }: { rows: SimRule[]; label: string }) {
   const { hrefFor } = useOpenItem();
   return (
     <div className="m2-frame" tabIndex={0}>
-      <table className="m2-tbl" aria-label={label}>
+      <TableExport><table className="m2-tbl" aria-label={label}>
         <thead>
           <tr>
             <th scope="col">{t("Rule")}</th>
@@ -65,7 +66,7 @@ function RuleTable({ rows, label }: { rows: SimRule[]; label: string }) {
               <th scope="row">
                 <SeverityMark severity={r.severity as SeverityKey} /> <V2Link href={hrefFor({ kind: "rule", id: r.check_id })} className="m2-mono">{r.check_id}</V2Link>
               </th>
-              <td className="m2-mono">{r.field}</td>
+              <td>{r.field ? <SapCode field={r.field} /> : null}</td>
               <td>{moduleText(r.module)}</td>
               <td>{STATUS[r.status]?.() ?? r.status}</td>
               <td className="m2-r">{failing(r.before)}</td>
@@ -75,7 +76,7 @@ function RuleTable({ rows, label }: { rows: SimRule[]; label: string }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></TableExport>
     </div>
   );
 }
@@ -94,7 +95,7 @@ function Result({ doc }: { doc: SimulationDoc }) {
       </p>
 
       <div className="m2-frame" tabIndex={0}>
-        <table className="m2-tbl" aria-label={t("Score by object")}>
+        <TableExport><table className="m2-tbl" aria-label={t("Score by object")}>
           <thead>
             <tr><th scope="col">{t("Object")}</th><th scope="col" className="m2-r">{t("Before")}</th><th scope="col" className="m2-r">{t("After")}</th><th scope="col" className="m2-r">{t("Change")}</th></tr>
           </thead>
@@ -106,11 +107,11 @@ function Result({ doc }: { doc: SimulationDoc }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
 
       <div className="m2-frame" tabIndex={0}>
-        <table className="m2-tbl" aria-label={t("Score by dimension")}>
+        <TableExport><table className="m2-tbl" aria-label={t("Score by dimension")}>
           <thead>
             <tr><th scope="col">{t("Dimension")}</th><th scope="col" className="m2-r">{t("Before")}</th><th scope="col" className="m2-r">{t("After")}</th><th scope="col" className="m2-r">{t("Change")}</th></tr>
           </thead>
@@ -122,7 +123,7 @@ function Result({ doc }: { doc: SimulationDoc }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
 
       {doc.rules.length ? <RuleTable rows={doc.rules} label={t("Rules that change")} /> : <p className="m2-prov">{t("No rule changes its result.")}</p>}
@@ -150,7 +151,7 @@ function Result({ doc }: { doc: SimulationDoc }) {
         <>
           <h3 className="m2-h3">{t("Best next fixes")}</h3>
           <div className="m2-frame" tabIndex={0}>
-            <table className="m2-tbl" aria-label={t("Best next fixes")}>
+            <TableExport><table className="m2-tbl" aria-label={t("Best next fixes")}>
               <thead>
                 <tr><th scope="col">{t("Fix")}</th><th scope="col" className="m2-r">{t("Records changed")}</th><th scope="col" className="m2-r">{t("Score gain")}</th><th scope="col" className="m2-r">{t("Score after")}</th></tr>
               </thead>
@@ -162,7 +163,7 @@ function Result({ doc }: { doc: SimulationDoc }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </div>
         </>
       ) : null}
@@ -238,7 +239,7 @@ export function WhatIf({ run, canRun }: { run: string; canRun: boolean }) {
         <>
           {maps.length ? (
             <div className="m2-frame" tabIndex={0}>
-              <table className="m2-tbl" aria-label={t("Value maps")}>
+              <TableExport><table className="m2-tbl" aria-label={t("Value maps")}>
                 <thead>
                   <tr><th scope="col">{t("Table and field")}</th><th scope="col">{t("Value now")}</th><th scope="col">{t("New value")}</th><th scope="col" /></tr>
                 </thead>
@@ -255,7 +256,7 @@ export function WhatIf({ run, canRun }: { run: string; canRun: boolean }) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </div>
           ) : null}
           <Fld label={t("Apply the stored fix of these rules")} hint={t("Rule IDs, separated by spaces or commas.")} mono>

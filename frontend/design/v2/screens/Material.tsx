@@ -11,12 +11,13 @@ import { splitKey } from "@/lib/v2/work";
 import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
-import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link, SapCode } from "../parts";
 import { Disclose, Guide } from "./Guide";
 import { CcBanner, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { Section, Table } from "./WorkAnalytics";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Material 360: one material across every view and organisational level, the rules it fails in each view, its
@@ -88,7 +89,7 @@ export function Material() {
     <CcPage title={t("Material 360")}>
       <Guide
         shows={t("Gathers one material across its views, plants, rule findings and follow-up chain.")}
-        next={{ href: "/issues", label: t("Open the issues") }}
+        next={{ href: "/issues?module=material-master", label: t("Open the issues") }}
         why={t("This screen only reads. Nothing in SAP is changed.")}
         means={[
           [t("Rules failing"), t("Rules this material fails, out of all rules that apply to it.")],
@@ -191,7 +192,7 @@ function MaterialBody({ m }: { m: string }) {
         </header>
         {d.levels_total > d.levels.length ? <p className="m2-meta">{t("Showing the first {n} of {total} levels.", { n: int(d.levels.length), total: int(d.levels_total) })}</p> : null}
         <div className="m2-ck-scroll">
-          <table className="m2-ck-matrix">
+          <TableExport><table className="m2-ck-matrix">
             <caption className="m2-sr">{t("Views by level")}</caption>
             <thead>
               <tr>
@@ -213,7 +214,7 @@ function MaterialBody({ m }: { m: string }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </div>
       </section>
       <Panel title={t("Rules failing, by view")} meta={fin.data ? t("{n} failing", { n: int(failing.length) }) : ""} testId="material-findings">
@@ -242,7 +243,7 @@ function MaterialBody({ m }: { m: string }) {
               <p className="m2-meta">{t("No bill of material uses this material.")}</p>
             ) : (
               <ScrollFrame label={t("Bills of material that use it")}>
-                <table className="m2-tbl m2-cards">
+                <TableExport><table className="m2-tbl m2-cards">
                   <caption className="m2-sr">{t("Bills of material that use it")}</caption>
                   <thead><tr><th scope="col">{t("Bill of material")}</th><th scope="col">{t("Item")}</th><th scope="col">{t("Plant")}</th><th scope="col">{t("Discontinuation group")}</th><th scope="col">{t("Problems")}</th></tr></thead>
                   <tbody>
@@ -256,7 +257,7 @@ function MaterialBody({ m }: { m: string }) {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></TableExport>
               </ScrollFrame>
             )}
           </>
@@ -269,7 +270,7 @@ function MaterialBody({ m }: { m: string }) {
           <p className="m2-meta">{t("No other material looks like this one.")}</p>
         ) : (
           <ScrollFrame label={t("Materials that look like it")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <caption className="m2-sr">{t("Materials that look like it")}</caption>
               <thead><tr><th scope="col">{t("Material")}</th><th scope="col">{t("Type")}</th><th scope="col">{t("Group")}</th><th scope="col">{t("Matches on")}</th><th scope="col" className="m2-num">{t("Score")}</th></tr></thead>
               <tbody>
@@ -285,7 +286,7 @@ function MaterialBody({ m }: { m: string }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -299,7 +300,7 @@ function Findings({ f }: { f: MaterialFindings }) {
   if (views.every((v) => v.failing.length === 0)) return <p className="m2-meta">{t("Every rule that ran on this material passes.")}</p>;
   return (
     <ScrollFrame label={t("Rules failing, by view")}>
-      <table className="m2-tbl m2-cards">
+      <TableExport><table className="m2-tbl m2-cards">
         <caption className="m2-sr">{t("Rules failing, by view")}</caption>
         <thead><tr><th scope="col">{t("Rule")}</th><th scope="col">{t("View")}</th><th scope="col">{t("Level")}</th><th scope="col">{t("Field")}</th><th scope="col">{t("Value")}</th><th scope="col">{t("Severity")}</th><th scope="col">{t("Issue")}</th></tr></thead>
         <tbody>
@@ -310,14 +311,14 @@ function Findings({ f }: { f: MaterialFindings }) {
               </th>
               <td data-label={t("View")}>{viewText(v.view, v.label)}</td>
               <td data-label={t("Level")}>{levelText(r.level)}</td>
-              <td data-label={t("Field")}>{r.field ? <Mono>{r.field}</Mono> : <Dash />}</td>
+              <td data-label={t("Field")}>{r.field ? <SapCode field={r.field} /> : <Dash />}</td>
               <td data-label={t("Value")}>{r.actual_value ? <Mono>{r.actual_value}</Mono> : <Dash why={t("Blank")} />}</td>
               <td data-label={t("Severity")}><Sev severity={r.severity} /></td>
               <td data-label={t("Issue")}>{r.issue_id ? <V2Link href={`/issues?search=${encodeURIComponent(r.record_key)}`}>{t("Open issue")}</V2Link> : <Dash />}</td>
             </tr>
           )))}
         </tbody>
-      </table>
+      </table></TableExport>
     </ScrollFrame>
   );
 }

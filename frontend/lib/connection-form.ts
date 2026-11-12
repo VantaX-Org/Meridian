@@ -1,5 +1,5 @@
 import { length, oneOf, pattern, required, url, type FormErrors, type Rule, type Schema } from "@/lib/forms";
-import type { ExtractionPath, ReadFunction, SystemType } from "@/types/api";
+import type { ExtractionPath, ReadFunction, SncQop, SystemType } from "@/types/api";
 
 /** The pure part of the connect and edit forms (types, auth options, hints, validation, the request bodies), shared by the
  * current interface's dialog and the v2 connection form. */
@@ -23,6 +23,10 @@ export const pathsFor = (type: SystemType): readonly string[] => (type === "s4ha
 /** The table readers of sap/rfc.py; "" keeps the deployment's default. */
 export const READ_FUNCTIONS = ["", "RFC_READ_TABLE", "/BODS/RFC_READ_TABLE2", "BBP_RFC_READ_TABLE", "auto"] as const;
 /** Cloud types whose OAuth flow has no default token endpoint (sap/s4hana_cloud.py, sap/btp.py, sap/ariba.py). */
+/** SNC quality of protection (pyrfc snc_qop); "" keeps the SAP default. */
+export const SNC_QOPS = ["", "1", "2", "3", "8", "9"] as const;
+/** A SAProuter string of /H/host[/S/port] hops, as api/routes/systems.py _SAPROUTER_RE accepts it; /W/ passwords are refused. */
+export const SAPROUTER_RE = /^(\/H\/[^/\s]+(\/S\/[^/\s]+)?)+(\/H\/)?\/?$/i;
 export const NEEDS_TOKEN_URL: readonly SystemType[] = ["s4hana_cloud", "btp", "ariba"];
 
 /**
@@ -66,6 +70,8 @@ export const EMPTY = {
   host: "", client: "", sysnr: "", username: "", password: "",
   base_url: "", token_url: "", company_id: "", client_id: "", client_secret: "", api_key: "",
   extraction_path: "table_reader", read_function: "",
+  /** RFC only. snc_mode is "1" when Secure Network Communications is on, else "". */
+  saprouter: "", snc_mode: "", snc_partnername: "", snc_qop: "", snc_myname: "",
 };
 export type ConnectionValues = typeof EMPTY;
 export type Key = keyof ConnectionValues;
@@ -74,13 +80,14 @@ export type Key = keyof ConnectionValues;
 export const CONNECTION_KEYS: readonly Key[] = [
   "system_type", "auth_type", "host", "client", "sysnr", "username", "password",
   "base_url", "token_url", "company_id", "client_id", "client_secret", "api_key",
+  "saprouter", "snc_mode", "snc_partnername", "snc_qop", "snc_myname",
 ];
 export const connectionKey = (v: ConnectionValues): string => JSON.stringify(CONNECTION_KEYS.map((k) => v[k].trim()));
 
 /** How each field is named in the "to test, complete ..." hint. */
 const FIELD_NAMES: Partial<Record<Key, string>> = {
   host: "the host", client: "the client", sysnr: "the instance number", username: "the user", password: "the password",
-  base_url: "the base URL", token_url: "the token URL", company_id: "the company ID", client_id: "the client ID", client_secret: "the client secret", api_key: "the API key",
+  saprouter: "the router string", snc_partnername: "the SNC partner name", snc_qop: "the protection level", base_url: "the base URL", token_url: "the token URL", company_id: "the company ID", client_id: "the client ID", client_secret: "the client secret", api_key: "the API key",
 };
 
 /**
@@ -88,8 +95,9 @@ const FIELD_NAMES: Partial<Record<Key, string>> = {
  * the secrets of their auth type. `secretsOptional` (the edit form) lets a secret stay empty: the stored one is kept.
  */
 /** `odataPath`: an S/4HANA on premise system read through its Gateway, which then needs the Gateway base URL. */
-export function schemaFor(type: SystemType, auth: string, { secretsOptional = false, odataPath = false } = {}): Schema<ConnectionValues> {
-  const secret = (message: string): Rule | undefined => (secretsOptional ? undefined : required(message));
+/** `snc`: Secure Network Communications is on, which needs the partner name. */
+export function schemaFor(type: SystemType, auth: string, { secretsOptional = false, odataPath = false, snc = false } = {}): Schema<ConnectionValues> {
+    const secret = (message: string): Rule | undefined => (secretsOptional ? undefined : required(message));
   const common: Schema<ConnectionValues> = {
     name: [required("Enter a system name"), length(1, 100, "Use up to 100 characters")],
     system_type: oneOf(TYPES.map((t) => t.value)),
@@ -105,6 +113,14 @@ export function schemaFor(type: SystemType, auth: string, { secretsOptional = fa
       client: [required("Enter the 3-digit client"), pattern(/^\d{3}$/, "Enter a 3-digit client")],
       sysnr: [required("Enter the 2-digit instance number"), pattern(/^\d{2}$/, "Enter a 2-digit instance number")],
       password: secret("Enter the password"),
+      saprouter: (value) => {
+        const s = value.trim();
+        if (!s) return undefined;
+        if (/\/[WP]\//i.test(s)) return "Leave the password out of the router string";
+        return SAPROUTER_RE.test(s) ? undefined : "Enter hops as /H/host/S/port";
+      },
+      snc_qop: oneOf([...SNC_QOPS]),
+      ...(snc ? { snc_partnername: required("Enter the SNC partner name, for example p:CN=ECC, O=Company") } : {}),
     };
   }
   const basic = auth === "basic";
@@ -132,7 +148,8 @@ export function testBlockedHint(errors: FormErrors<ConnectionValues>, type: Syst
 
 /** The connection part of a register, update or test body, with only the secrets that were typed. */
 export function connectionOf(v: ConnectionValues): {
-  connection: { host?: string; client?: string; sysnr?: string; username?: string; base_url?: string; token_url?: string; company_id?: string; auth_type: string; extraction_path?: ExtractionPath; read_function?: ReadFunction };
+  connection: { host?: string; client?: string; sysnr?: string; username?: string; base_url?: string; token_url?: string; company_id?: string; auth_type: string; extraction_path?: ExtractionPath; read_function?: ReadFunction;
+    saprouter?: string; snc_mode?: boolean; snc_partnername?: string; snc_qop?: SncQop; snc_myname?: string };
   credentials: Record<string, string>;
 } {
   const type = v.system_type as SystemType;
@@ -145,6 +162,10 @@ export function connectionOf(v: ConnectionValues): {
         extraction_path: (pathsFor(type).includes(v.extraction_path) ? v.extraction_path : "table_reader") as ExtractionPath,
         ...(v.read_function ? { read_function: v.read_function as ReadFunction } : {}),
         ...(type === "s4hana_onprem" && v.base_url.trim() ? { base_url: v.base_url.trim() } : {}),
+        saprouter: v.saprouter.trim(), snc_mode: v.snc_mode === "1",
+        snc_partnername: v.snc_mode === "1" ? v.snc_partnername.trim() : "",
+        snc_qop: (v.snc_mode === "1" ? v.snc_qop : "") as SncQop,
+        snc_myname: v.snc_mode === "1" ? v.snc_myname.trim() : "",
       },
       credentials: typed(["password"]),
     };

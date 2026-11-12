@@ -11,6 +11,7 @@ import { StatusScreen } from "../screens/Status";
 import { StatusStrip } from "../shell/StatusStrip";
 import { setUrl } from "./nav-store";
 
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 
 beforeEach(() => {

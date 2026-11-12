@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from checks.country_rules import generate, violates
+from checks.country_rules import generate, rule_name, violates
 from checks.frames import TableFrames
 from checks.runner import run_rule
 from sap.ddic import get_dictionary
@@ -70,6 +70,25 @@ def test_postal_codes_against_the_customers_official_list():
     # 9999 is not a South African postal code; lower case is the same code; DE has no list loaded
     assert r.failing_record_keys == ["LIFNR=2"] and r.total_count == 3
     assert r.details["reference"] == "REF_POSTAL"
+
+
+def test_city_and_region_against_the_postal_codes_entries():
+    config = {"REF_POSTAL": [{"COUNTRY": "ZA", "POSTCODE": "2196", "CITY": "Sandton", "REGION": "GP"},
+                             {"COUNTRY": "ZA", "POSTCODE": "2196", "CITY": "Bryanston", "REGION": "GP"},
+                             {"COUNTRY": "ZA", "POSTCODE": "0700", "CITY": "", "REGION": ""}]}
+    static = [{"field": "LFA1.LIFNR", "check_class": "null_check"}]
+    rules = {r["id"]: r for r in generate("accounts_payable", static, config, D)}
+    lfa1 = pd.DataFrame({"LFA1.LIFNR": list("12345"), "LFA1.LAND1": ["ZA"] * 5,
+                         "LFA1.PSTLZ": ["2196", "2196", "2196", "0700", "2196"],
+                         "LFA1.ORT01": ["SANDTON", "Bryanston ", "Durban", "Anywhere", ""],
+                         "LFA1.REGIO": ["GP", "GP", "KZN", "WC", "GP"]})
+    frames = TableFrames({"LFA1": lfa1}, D, module="accounts_payable")
+    _, city = run_rule(rules["PC-LFA1-ORT01"], frames)
+    # case and spacing are the same city; 0700 has no city in the list; blank city is out of scope
+    assert city.failing_record_keys == ["LIFNR=3"] and city.total_count == 3
+    _, region = run_rule(rules["PR-LFA1-REGIO"], frames)
+    assert region.failing_record_keys == ["LIFNR=3"] and region.total_count == 4
+    assert rule_name("PC-LFA1-ORT01").startswith("City (LFA1.ORT01)")
 
 
 def test_bic_against_the_customers_swift_directory():

@@ -2,7 +2,7 @@
  * Fixture answers for change requests and the workflow engine (`?fixture=1`). This file owns exactly the paths below;
  * every other path answers NONE_REQ and falls through.
  *
- *   /change-requests (GET, POST), /change-requests/{id} (GET), /validate, /submit, /decide, /cancel, /retry,
+ *   /change-requests (GET, POST), /change-requests/form/{object} (GET), /change-requests/{id} (GET), /validate, /submit, /decide, /cancel, /retry,
  *   /comments, /attachments, POST /change-requests/{id}/export, GET /change-requests/{id}/field-history, GET /change-requests/{id}/preview,
  *   GET and PUT /change-requests/defaults, DELETE /change-requests/defaults/{id}
  *   GET and PUT /change-requests/derivations and /change-requests/critical-fields, DELETE on {id} of each
@@ -14,6 +14,7 @@
  */
 import type { ChangeRequest, CriticalField, Derivation, DryRun, EntryDefault, Facts, FieldChange, Precheck, RequestDetail, TaskRow, WorkflowDefinition, WorkflowEvent } from "../requests";
 import * as wf from "./work-fixture";
+import { REQUEST_FORMS } from "./request-form";
 
 export const NONE_REQ = Symbol("no-requests-fixture");
 
@@ -241,6 +242,12 @@ export function requestsRead(path: string, params: Record<string, unknown>): unk
   if (path === "/change-requests/defaults") return { items: clone(state.defaults) };
   if (path === "/change-requests/derivations") return { items: clone(state.derivations) };
   if (path === "/change-requests/critical-fields") return { items: clone(state.criticalFields) };
+  const form = /^\/change-requests\/form\/([^/]+)$/.exec(path);
+  if (form) {
+    const f = REQUEST_FORMS[decodeURIComponent(form[1])];
+    if (!f) fail(404, "Unknown object.");
+    return clone(f);
+  }
   const hist = /^\/change-requests\/([^/]+)\/field-history$/.exec(path);
   if (hist) {
     const id = find(decodeURIComponent(hist[1])).request.id;

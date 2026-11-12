@@ -541,8 +541,10 @@ class ReferenceSummary(BaseModel):
              dependencies=[Depends(require_permission("manage_systems"))])
 async def upload_postal_codes(system_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
                               tenant: Tenant = Depends(get_tenant)):
-    """Official postal codes as CSV (country,postcode — SAP country key). Every partner
-    address in a listed country is then checked against the list (PX- rules)."""
+    """Official postal codes as CSV (country,postcode[,city[,region]] — SAP country key, SAP region
+    code). Every partner address in a listed country is then checked against the list (PX- rules);
+    with city or region columns, the address's city and region must also be one the list gives for
+    its postal code (PC- / PR- rules). A postal code may appear on several rows, one per city."""
     import csv
     import io
     import re
@@ -557,10 +559,12 @@ async def upload_postal_codes(system_id: uuid.UUID, request: Request, db: AsyncS
         if len(rec) < 2:
             continue
         country, postcode = rec[0].strip().upper(), rec[1].strip().upper()
+        city = " ".join(rec[2].split())[:40] if len(rec) > 2 else ""
+        region = rec[3].strip().upper()[:3] if len(rec) > 3 else ""
         if i == 0 and country in ("COUNTRY", "LAND1"):
             continue  # header
         if re.fullmatch(_REF_COUNTRY, country) and re.fullmatch(_REF_POSTCODE, postcode):
-            rows.add((country, postcode))
+            rows.add((country, postcode, city, region))
         else:
             bad += 1
         if len(rows) > _REF_MAX_ROWS:
@@ -569,8 +573,9 @@ async def upload_postal_codes(system_id: uuid.UUID, request: Request, db: AsyncS
         raise HTTPException(400, "No valid rows (expected CSV columns: country,postcode).")
     if bad > len(rows):
         raise HTTPException(400, f"{bad} rows are not 'country,postcode' — check the file layout.")
-    await _store_reference(db, tenant, system_id, "REF_POSTAL", [{"COUNTRY": c, "POSTCODE": p} for c, p in sorted(rows)])
-    return ReferenceSummary(kind="postal-codes", records=len(rows), countries=sorted({c for c, _ in rows}))
+    await _store_reference(db, tenant, system_id, "REF_POSTAL",
+                           [{"COUNTRY": c, "POSTCODE": p, "CITY": ci, "REGION": rg} for c, p, ci, rg in sorted(rows)])
+    return ReferenceSummary(kind="postal-codes", records=len(rows), countries=sorted({r[0] for r in rows}))
 
 
 _BIC_RE = r"^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$"

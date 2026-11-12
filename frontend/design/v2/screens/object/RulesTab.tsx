@@ -2,6 +2,7 @@
 
 import { Money } from "../../Money";
 import { ScrollFrame } from "./ScrollFrame";
+import { LearnedReview } from "./LearnedReview";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { moneyCompactText } from "@/lib/v2/labels";
@@ -20,8 +21,10 @@ import { findSystem, int, moduleFromSlug, pct1 } from "@/lib/v2/score";
 import { SimulateDialog, TopFixesView } from "../step9/Simulation";
 import { Explain } from "../../Explain";
 import { IconChevron, SeverityMark } from "../../marks";
-import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, SapCode, Skeleton, V2Link } from "../../parts";
+import { describeField } from "@/lib/v2/sap-fields";
 import { t, lc, tn } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 type View = "all" | "top" | "learned" | "drafts";
 
@@ -173,7 +176,7 @@ function RulesTable(p: TableProps) {
   const money = (n: number | null) => (n == null ? <Dash /> : <Money amount={n} compact={false} currency={p.currency} source={receipt?.cost_model_source} />);
   return (
     <ScrollFrame label={t("Rules table, scrollable")}>
-      <table className="m2-tbl m2-rtbl" role="grid" aria-label={p.label} aria-rowcount={lines.length + 3} tabIndex={0} onKeyDown={onKeyDown} aria-activedescendant={active >= 0 ? `m2-rule-row-${lines[active]?.rule.check_id}` : undefined}>
+      <TableExport><table className="m2-tbl m2-rtbl" role="grid" aria-label={p.label} aria-rowcount={lines.length + 3} tabIndex={0} onKeyDown={onKeyDown} aria-activedescendant={active >= 0 ? `m2-rule-row-${lines[active]?.rule.check_id}` : undefined}>
         <colgroup>
           <col style={{ width: 272 }} />
           <col style={{ width: 112 }} />
@@ -231,7 +234,7 @@ function RulesTable(p: TableProps) {
               </td>
               <td role="gridcell">
                 <div className="m2-rn">
-                  <span>{l.rule.field_description ?? <Dash />}</span>
+                  <span>{l.rule.field_description ?? (l.rule.field ? describeField(l.rule.field) : null) ?? <Dash />}</span>
                   {l.rule.field ? <span className="m2-rs m2-mono">{l.rule.field}</span> : null}
                 </div>
               </td>
@@ -264,7 +267,7 @@ function RulesTable(p: TableProps) {
             <td role="gridcell" className="m2-r">{money(receipt?.value_at_risk ?? null)}</td>
           </tr>
         </tbody>
-      </table>
+      </table></TableExport>
     </ScrollFrame>
   );
 }
@@ -326,7 +329,7 @@ function PivotTable({ groups, pivot, label }: { groups: PivotGroup[]; pivot: Exc
   const word = PIVOT_WORD[pivot]?.() ?? t("Group");
   return (
     <ScrollFrame label={t("Pivot table, scrollable")}>
-      <table className="m2-tbl m2-ptbl" aria-label={label}>
+      <TableExport><table className="m2-tbl m2-ptbl" aria-label={label}>
         <thead>
           <tr>
             <th scope="col">{word.charAt(0).toUpperCase() + word.slice(1)}</th>
@@ -374,7 +377,7 @@ function PivotTable({ groups, pivot, label }: { groups: PivotGroup[]; pivot: Exc
             );
           })}
         </tbody>
-      </table>
+      </table></TableExport>
 </ScrollFrame>
   );
 }
@@ -439,7 +442,7 @@ function LearnedTable({ module, items, canApprove, canReject, onChanged }: { mod
   return (
     <>
       <ScrollFrame label={t("Learned rules, scrollable")}>
-        <table className="m2-tbl" aria-label={t("Learned rules waiting for a decision")}>
+        <TableExport><table className="m2-tbl" aria-label={t("Learned rules waiting for a decision")}>
           <thead>
             <tr>
               <th scope="col">{t("Proposed rule")}</th>
@@ -494,7 +497,7 @@ function LearnedTable({ module, items, canApprove, canReject, onChanged }: { mod
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
 </ScrollFrame>
       {approve.isError || reject.isError ? <p role="alert" className="m2-prov">{t("That decision could not be saved. It may already have been decided.")}</p> : null}
       {note ? <p role="status" className="m2-prov">{note}</p> : null}
@@ -543,7 +546,7 @@ function DraftsTable({ module, items, onChanged }: { module: string; items: Rule
   return (
     <>
       <ScrollFrame label={t("Rule drafts, scrollable")}>
-        <table className="m2-tbl" aria-label={t("Rule drafts")}>
+        <TableExport><table className="m2-tbl" aria-label={t("Rule drafts")}>
           <thead>
             <tr>
               <th scope="col">{t("Draft")}</th>
@@ -566,7 +569,7 @@ function DraftsTable({ module, items, onChanged }: { module: string; items: Rule
                       {d.rationale ? <span className="m2-rs m2-meta">{d.rationale}</span> : null}
                     </div>
                   </th>
-                  <td>{r.field ? <Mono>{String(r.field)}</Mono> : <Dash />}</td>
+                  <td>{r.field ? <SapCode field={String(r.field)} /> : <Dash />}</td>
                   <td>{dimLabel(r.dimension) || <Dash />}</td>
                   <td>{r.severity ? <Sev severity={r.severity as RuleRow["severity"]} /> : <Dash />}</td>
                   <td>
@@ -588,7 +591,7 @@ function DraftsTable({ module, items, onChanged }: { module: string; items: Rule
               );
             })}
           </tbody>
-        </table>
+        </table></TableExport>
 </ScrollFrame>
       {publish.isError ? <p role="alert" className="m2-prov">{t("The draft could not be published. Run the dry run first and check the expression.")}</p> : null}
       {note ? <p role="status" className="m2-prov">{note}</p> : null}
@@ -721,6 +724,7 @@ export function RulesTab({ module: moduleSegment, system: systemSegment }: { sys
         {filters}
         {canDrafts ? <MineFixes onDone={refresh("learned")} /> : null}
         {learnedQ.isPending ? <Skeleton width="60%" height={14} /> : learnedQ.isError ? <ErrorFrame onRetry={() => void learnedQ.refetch()}>{t("The learned rules could not be read.")}</ErrorFrame> : <LearnedTable module={apiModule} items={learnedQ.data} canApprove={canApprove} canReject={canReject} onChanged={refresh("learned")} />}
+        <LearnedReview module={apiModule} />
       </>
     );
   }

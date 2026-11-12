@@ -2820,3 +2820,1620 @@ rules:
   fix_map:
     __other__: In transaction BP > Addresses > Address overview, keep the standard flag on one address and clear it on the others.
   record_fix_template: 'BP {BUT020.PARTNER}, address {BUT020.ADDRNUMBER}: one of several addresses flagged as standard.'
+- id: BP900
+  field: ADR6.SMTP_ADDR
+  check_class: contact_check
+  kind: email
+  grain: BUT000
+  severity: high
+  dimension: validity
+  message: Email address breaks the RFC 5321/5322 syntax or length limits
+  why_it_matters: Mail servers reject an address that breaks the RFC syntax or length limits, so invoices, dunning letters
+    and notifications sent to it bounce. The finding names the exact reason for each address.
+  rule_authority: best_practice
+  sap_impact: Output by email (invoices, dunning, payment advice, notifications) bounces; S/4HANA migration carries the broken
+    address across.
+  fix_map:
+    __other__: Correct the value in transaction BP > Addresses (ECC) or Fiori app Maintain Business Partner (S/4HANA).
+  record_fix_template: 'Partner {BUT000.PARTNER}: ADR6.SMTP_ADDR: email address breaks the rfc 5321/5322
+    syntax or length limits.'
+- id: BP901
+  field: ADR6.SMTP_ADDR
+  check_class: contact_check
+  kind: disposable
+  grain: BUT000
+  severity: medium
+  dimension: validity
+  message: Email address uses a disposable mailbox service
+  why_it_matters: Disposable mailbox domains expire within hours or days. A master record that points at one loses its only
+    email channel, and the pattern often marks a test or fraudulent record.
+  rule_authority: best_practice
+  sap_impact: Correspondence and notifications go to a mailbox that no longer exists; the record may not belong to a real
+    party.
+  fix_map:
+    __other__: Correct the value in transaction BP > Addresses (ECC) or Fiori app Maintain Business Partner (S/4HANA).
+  record_fix_template: 'Partner {BUT000.PARTNER}: ADR6.SMTP_ADDR: email address uses a disposable mailbox
+    service.'
+- id: BP902
+  field: ADRC.TEL_NUMBER
+  check_class: contact_check
+  kind: phone
+  country_field: ADRC.COUNTRY
+  grain: BUT000
+  severity: medium
+  dimension: validity
+  message: Telephone number is not a plausible number for its country
+  why_it_matters: A number with the wrong length or calling code for its country cannot be dialled. The check normalises to
+    E.164 and names the reason, so a steward knows whether the digits or the country is wrong.
+  rule_authority: best_practice
+  sap_impact: Call-centre, delivery and SMS processes cannot reach the party; downstream CRM and telephony integrations reject
+    the number.
+  fix_map:
+    __other__: Correct the value in transaction BP > Addresses (ECC) or Fiori app Maintain Business Partner (S/4HANA).
+  record_fix_template: 'Partner {BUT000.PARTNER}: ADRC.TEL_NUMBER: telephone number is not a plausible
+    number for its country.'
+- id: BP903
+  field: ADR2.TEL_NUMBER
+  check_class: contact_check
+  kind: phone
+  country_field: ADR2.COUNTRY
+  grain: ADR2
+  severity: medium
+  dimension: validity
+  message: Telephone number is not a plausible number for its country
+  why_it_matters: A number with the wrong length or calling code for its country cannot be dialled. The check normalises to
+    E.164 and names the reason, so a steward knows whether the digits or the country is wrong.
+  rule_authority: best_practice
+  sap_impact: Call-centre, delivery and SMS processes cannot reach the party; downstream CRM and telephony integrations reject
+    the number.
+  fix_map:
+    __other__: Correct the value in transaction BP > Addresses (ECC) or Fiori app Maintain Business Partner (S/4HANA).
+  record_fix_template: 'Address {ADR2.ADDRNUMBER}: ADR2.TEL_NUMBER: telephone number is not a plausible
+    number for its country.'
+- id: BP904
+  field: ADRC.POST_CODE1
+  check_class: contact_check
+  kind: postcode
+  country_field: ADRC.COUNTRY
+  grain: BUT000
+  severity: high
+  dimension: validity
+  message: Postal code does not match the format of its country
+  why_it_matters: Each country has a fixed postal code layout. A code that breaks it fails address validation, carrier label
+    printing and tax jurisdiction look-up.
+  rule_authority: best_practice
+  sap_impact: Carrier integration and tax jurisdiction determination fail; S/4HANA address checks (TSAD) reject the address
+    on change.
+  fix_map:
+    __other__: Correct the value in transaction BP > Addresses (ECC) or Fiori app Maintain Business Partner (S/4HANA).
+  record_fix_template: 'Partner {BUT000.PARTNER}: ADRC.POST_CODE1: postal code does not match the format
+    of its country.'
+  auto_fix:
+    steps:
+    - op: postcode
+      country_field: ADRC.COUNTRY
+    confidence: medium
+- id: BP300
+  field: BUT000.NAME_ORG2
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_ORG2`.notna() & `BUT000.NAME_ORG1`.isna()'
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '2'
+  severity: medium
+  dimension: consistency
+  message: Organisation name 2 is filled but name 1 is blank
+  why_it_matters: Name 2 continues name 1. A continuation line with no first line prints as an orphan fragment on letters
+    and payment advices.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Move the text to NAME_ORG1 in BP, or clear NAME_ORG2.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: organisation name 2 is filled but name 1 is blank.'
+- id: BP301
+  field: BUT000.NAME_ORG3
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_ORG3`.notna() & `BUT000.NAME_ORG2`.isna()'
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '2'
+  severity: low
+  dimension: consistency
+  message: Organisation name 3 is filled but name 2 is blank
+  why_it_matters: Name lines fill in order. A gap makes the address block print with a hole in it.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Shift the text up into NAME_ORG2, or clear NAME_ORG3.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: organisation name 3 is filled but name 2 is blank.'
+- id: BP302
+  field: BUT000.NAME_ORG4
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_ORG4`.notna() & `BUT000.NAME_ORG3`.isna()'
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '2'
+  severity: low
+  dimension: consistency
+  message: Organisation name 4 is filled but name 3 is blank
+  why_it_matters: Name lines fill in order. A gap makes the address block print with a hole in it.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Shift the text up into NAME_ORG3, or clear NAME_ORG4.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: organisation name 4 is filled but name 3 is blank.'
+- id: BP303
+  field: BUT000.NAME_LST2
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_LST2`.notna() & `BUT000.NAME_LAST`.isna()'
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '1'
+  severity: medium
+  dimension: consistency
+  message: Second last name is filled but the last name is blank
+  why_it_matters: A second last name only makes sense next to a last name. Name matching and the formatted name use NAME_LAST
+    first.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Fill NAME_LAST in BP, or clear NAME_LST2.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: second last name is filled but the last name is blank.'
+- id: BP304
+  field: BUT000.NAMEMIDDLE
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAMEMIDDLE`.notna() & `BUT000.NAME_FIRST`.isna()'
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '1'
+  severity: low
+  dimension: consistency
+  message: Middle name is filled but the first name is blank
+  why_it_matters: A middle name without a first name breaks the formatted person name and duplicate matching.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Fill NAME_FIRST in BP, or clear NAMEMIDDLE.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: middle name is filled but the first name is blank.'
+- id: BP305
+  field: BUT000.INITIALS
+  check_class: cross_field_check
+  fail_when: '`BUT000.INITIALS`.notna() & `BUT000.NAME_FIRST`.isna()'
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '1'
+  severity: low
+  dimension: consistency
+  message: Initials are filled but the first name is blank
+  why_it_matters: Initials are derived from the given names. With no first name they cannot be checked and are often stale.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Fill NAME_FIRST in BP, or clear INITIALS.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: initials are filled but the first name is blank.'
+- id: BP306
+  field: BUT000.TITLE_ACA2
+  check_class: cross_field_check
+  fail_when: '`BUT000.TITLE_ACA2`.notna() & `BUT000.TITLE_ACA1`.isna()'
+  grain: BUT000
+  severity: low
+  dimension: consistency
+  message: Second academic title is filled but the first is blank
+  why_it_matters: Academic titles fill in order; a second title alone prints incorrectly in the salutation.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Move the title to TITLE_ACA1, or clear TITLE_ACA2.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: second academic title is filled but the first is blank.'
+- id: BP307
+  field: BUT000.PREFIX2
+  check_class: cross_field_check
+  fail_when: '`BUT000.PREFIX2`.notna() & `BUT000.PREFIX1`.isna()'
+  grain: BUT000
+  severity: low
+  dimension: consistency
+  message: Second name prefix is filled but the first is blank
+  why_it_matters: Name prefixes fill in order; a second prefix alone breaks the formatted name.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Move the prefix to PREFIX1, or clear PREFIX2.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: second name prefix is filled but the first is blank.'
+- id: BP308
+  field: BUT000.BU_SORT2
+  check_class: cross_field_check
+  fail_when: '`BUT000.BU_SORT2`.notna() & `BUT000.BU_SORT1`.isna()'
+  grain: BUT000
+  severity: low
+  dimension: consistency
+  message: Search term 2 is filled but search term 1 is blank
+  why_it_matters: Search term 1 is the primary search key. Search help and duplicate checks look at it first.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Fill BU_SORT1 in BP, or clear BU_SORT2.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: search term 2 is filled but search term 1 is blank.'
+- id: BP309
+  field: BUT000.TITLE_LET
+  check_class: cross_field_check
+  fail_when: '`BUT000.TITLE_LET`.notna() & `BUT000.TITLE`.isna()'
+  grain: BUT000
+  severity: low
+  dimension: consistency
+  message: Letter salutation is filled but the form-of-address key is blank
+  why_it_matters: The letter salutation is built around the title key. Without it the text is free text that nobody maintains.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Set TITLE in BP, or clear the letter salutation.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: letter salutation is filled but the form-of-address key is blank.'
+- id: BP310
+  field: BUT000.NAME_GRP2
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_GRP2`.notna() & `BUT000.NAME_GRP1`.isna()'
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '3'
+  severity: low
+  dimension: consistency
+  message: Group name 2 is filled but group name 1 is blank
+  why_it_matters: Group name 2 continues group name 1; alone it prints as an orphan fragment.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Move the text to NAME_GRP1, or clear NAME_GRP2.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: group name 2 is filled but group name 1 is blank.'
+- id: BP311
+  field: BUT000.NAME_FIRST
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_FIRST`.notna()'
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '2'
+  severity: medium
+  dimension: consistency
+  message: Organisation partner carries a first name
+  why_it_matters: First name is a person field. On an organisation it is usually left over from creating the partner in the
+    wrong category.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Move the partner to the right category in BP, or clear NAME_FIRST.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: organisation partner carries a first name.'
+- id: BP312
+  field: BUT000.NAME_ORG1
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_ORG1`.notna()'
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '1'
+  severity: medium
+  dimension: consistency
+  message: Person partner carries an organisation name
+  why_it_matters: NAME_ORG1 belongs to organisations. On a person it is a leftover that name matching and printing treat as
+    the real name.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Move the name to the person fields in BP, or clear NAME_ORG1.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: person partner carries an organisation name.'
+- id: BP313
+  field: BUT000.BIRTHPL
+  check_class: cross_field_check
+  fail_when: '`BUT000.BIRTHPL`.notna()'
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '2'
+  severity: low
+  dimension: consistency
+  message: Organisation partner carries a place of birth
+  why_it_matters: Place of birth is a person field and cannot apply to an organisation.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Clear BIRTHPL, or correct the partner category in BP.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: organisation partner carries a place of birth.'
+- id: BP314
+  field: BUT000.NOT_LG_COMPETENT
+  check_class: cross_field_check
+  fail_when: '`BUT000.NOT_LG_COMPETENT` == ''X'''
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '2'
+  severity: medium
+  dimension: consistency
+  message: Organisation partner is flagged as not legally competent
+  why_it_matters: The legal competence flag describes natural persons. On an organisation it wrongly blocks contract and credit
+    processes that read it.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Clear the flag in BP, or correct the partner category.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: organisation partner is flagged as not legally competent.'
+- id: BP315
+  field: BUT000.MC_NAME1
+  check_class: cross_field_check
+  fail_when: (`BUT000.NAME_ORG1`.notna() | `BUT000.NAME_LAST`.notna()) & `BUT000.MC_NAME1`.isna()
+  grain: BUT000
+  severity: medium
+  dimension: consistency
+  message: Search name 1 (MC_NAME1) is blank although the partner has a name
+  why_it_matters: MC_NAME1 is the upper-case name used by BP search. A partner without it cannot be found by name.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Re-save the partner in BP so SAP rebuilds the search names.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: search name 1 (MC_NAME1) is blank although the partner has a name.'
+- id: BP316
+  field: BUT000.MC_NAME2
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_FIRST`.notna() & `BUT000.MC_NAME2`.isna()'
+  grain: BUT000
+  severity: low
+  dimension: consistency
+  message: Search name 2 (MC_NAME2) is blank although the person has a first name
+  why_it_matters: MC_NAME2 is the upper-case first name used by BP search. Without it a person cannot be found by first name.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Re-save the partner in BP so SAP rebuilds the search names.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: search name 2 (MC_NAME2) is blank although the person has a first
+    name.'
+- id: BP317
+  field: BUT000.NAME1_TEXT
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_LAST`.notna() & `BUT000.NAME1_TEXT`.isna()'
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '1'
+  severity: low
+  dimension: completeness
+  message: Full name text (NAME1_TEXT) is blank although the person has a last name
+  why_it_matters: NAME1_TEXT is the formatted full name that many lists and interfaces show. A blank breaks them.
+  rule_authority: best_practice
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __other__: Re-save the partner in BP so SAP rebuilds the formatted name.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: full name text (NAME1_TEXT) is blank although the person has a
+    last name.'
+- id: BP318
+  field: BUT000.NAMEFORMAT
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAMEFORMAT`.notna() & `BUT000.NAMCOUNTRY`.isna()'
+  grain: BUT000
+  severity: low
+  dimension: consistency
+  message: Name format is set but the name country is blank
+  why_it_matters: 'Name format and name country go together: the country picks the name sequence. One without the other is
+    ignored or defaulted.'
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Set NAMCOUNTRY in BP, or clear NAMEFORMAT.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: name format is set but the name country is blank.'
+- id: BP319
+  field: BUT000.NAMCOUNTRY
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAMCOUNTRY`.notna() & ~`BUT000.NAMCOUNTRY`.str.strip().str.fullmatch(''[A-Z]{2}'')'
+  grain: BUT000
+  severity: low
+  dimension: validity
+  message: Name country is not a two-letter ISO code
+  why_it_matters: The name country selects the name format by ISO code. Any other form is not found in the country table.
+  rule_authority: best_practice
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Correct NAMCOUNTRY in BP.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: name country is not a two-letter ISO code.'
+- id: BP320
+  field: BUT000.LOCATION_1
+  check_class: cross_field_check
+  fail_when: '`BUT000.LOCATION_1`.notna() & (`BUT000.LOCATION_2`.isna() | `BUT000.LOCATION_3`.isna())'
+  grain: BUT000
+  severity: low
+  dimension: completeness
+  message: Location number is incomplete (parts 1 to 3 must be set together)
+  why_it_matters: 'The location number (GLN) is held in three parts: prefix, number and check digit. A partial value cannot
+    be used in EDI.'
+  rule_authority: best_practice
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __other__: Complete LOCATION_1, LOCATION_2 and LOCATION_3 together, or clear all three.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: location number is incomplete (parts 1 to 3 must be set together).'
+- id: BP321
+  field: BUT000.CRDAT
+  check_class: cross_field_check
+  fail_when: '`BUT000.CRDAT`.notna() & `BUT000.CRUSR`.isna()'
+  grain: BUT000
+  severity: low
+  dimension: completeness
+  message: Partner has a creation date but no creating user
+  why_it_matters: Creator and creation date are audit data. A date without a user makes it impossible to trace who created
+    the partner.
+  rule_authority: best_practice
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __other__: None needed in SAP; document the source of the load.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: partner has a creation date but no creating user.'
+- id: BP322
+  field: BUT000.CHDAT
+  check_class: cross_field_check
+  fail_when: '`BUT000.CHDAT`.notna() & `BUT000.CHUSR`.isna()'
+  grain: BUT000
+  severity: low
+  dimension: completeness
+  message: Partner has a change date but no changing user
+  why_it_matters: Change date without a user is an incomplete audit trail.
+  rule_authority: best_practice
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __other__: None needed in SAP; document the source of the load.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: partner has a change date but no changing user.'
+- id: BP323
+  field: BUT000.CHDAT
+  check_class: cross_field_check
+  fail_when: '`BUT000.CHDAT` < `BUT000.CRDAT`'
+  require_populated: true
+  grain: BUT000
+  severity: medium
+  dimension: consistency
+  message: Partner change date is earlier than its creation date
+  why_it_matters: A partner cannot be changed before it exists. The dates point to a faulty load or a manual table edit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Correct the dates at source or re-create the partner through BP.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: partner change date is earlier than its creation date.'
+- id: BP324
+  field: BUT020.NATION
+  check_class: cross_field_check
+  fail_when: '`BUT020.NATION`.notna() & ~`BUT020.NATION`.isin([''I''])'
+  grain: BUT020
+  severity: medium
+  dimension: validity
+  message: Address version is not blank or I (international)
+  why_it_matters: Address version identifies the national or international form of the address. Other values have no address
+    layout and are not displayed.
+  rule_authority: sap_hard_constraint
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Set the address version to blank or I in BP > Address > Versions.
+  record_fix_template: 'Business partner address {BUT020.PARTNER}: address version is not blank or I (international).'
+- id: BP325
+  field: BUT020.MOVE_ADDR
+  check_class: cross_field_check
+  fail_when: '`BUT020.MOVE_ADDR`.notna() & `BUT020.ADDR_MOVE_DATE`.isna()'
+  grain: BUT020
+  severity: medium
+  dimension: consistency
+  message: Move-to address is set but the move date is blank
+  why_it_matters: A relocation needs the date from which the new address applies. Without it the move is never executed.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the move date, or clear the move-to address.
+  record_fix_template: 'Business partner address {BUT020.PARTNER}: move-to address is set but the move date is blank.'
+- id: BP326
+  field: BUT020.ADDR_MOVE_DATE
+  check_class: cross_field_check
+  fail_when: '`BUT020.ADDR_MOVE_DATE`.notna() & `BUT020.MOVE_ADDR`.isna()'
+  grain: BUT020
+  severity: medium
+  dimension: consistency
+  message: Move date is set but there is no move-to address
+  why_it_matters: A move date with no target address means the relocation cannot be completed.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the move-to address, or clear the move date.
+  record_fix_template: 'Business partner address {BUT020.PARTNER}: move date is set but there is no move-to address.'
+- id: BP327
+  field: BUT020.MOVE_ADDR
+  check_class: cross_field_check
+  fail_when: '`BUT020.MOVE_ADDR` == `BUT020.ADDRNUMBER`'
+  grain: BUT020
+  severity: medium
+  dimension: consistency
+  message: Address is flagged as moving to itself
+  why_it_matters: The move-to address must be a different address. A self reference loops every process that follows the relocation.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Point the relocation at the new address, or clear it.
+  record_fix_template: 'Business partner address {BUT020.PARTNER}: address is flagged as moving to itself.'
+- id: BP328
+  field: BUT020.ADDRESS_GUID
+  check_class: null_check
+  grain: BUT020
+  severity: medium
+  dimension: completeness
+  message: Address assignment has no address GUID
+  why_it_matters: The GUID links the assignment to the address in the central address tables. Without it the S/4HANA address
+    conversion cannot match them.
+  rule_authority: s4hana_migration
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __blank__: Re-save the address in BP so SAP creates the GUID.
+  record_fix_template: 'Business partner address {BUT020.PARTNER}: address assignment has no address GUID.'
+- id: BP329
+  field: BUT020.ADEXT
+  check_class: uniqueness_check
+  fields:
+  - BUT020.ADEXT
+  normalize: alnum
+  grain: BUT020
+  severity: low
+  dimension: uniqueness
+  message: Several address assignments share the same external address number
+  why_it_matters: The external address number identifies an address in a legacy system. Two assignments with the same value
+    mean one address was loaded twice.
+  rule_authority: best_practice
+  sap_impact: The same fact is held twice; programs pick one copy at random and the others drift.
+  fix_map:
+    __other__: Compare the addresses in BP and remove the duplicate.
+  record_fix_template: 'Business partner address {BUT020.PARTNER}: several address assignments share the same external address
+    number.'
+- id: BP330
+  field: BUT021_FS.XDFADU
+  check_class: count_per_parent_check
+  parent_keys:
+  - BUT021_FS.PARTNER
+  - BUT021_FS.ADR_KIND
+  - BUT021_FS.VALID_TO
+  count_when:
+    BUT021_FS.XDFADU:
+    - X
+  max: 1
+  grain: BUT021_FS
+  severity: medium
+  dimension: uniqueness
+  message: Partner has more than one default address for the same usage and validity
+  why_it_matters: Each address usage has a single default address. With two, output determination picks whichever the read
+    returns first.
+  rule_authority: best_practice
+  sap_impact: The same fact is held twice; programs pick one copy at random and the others drift.
+  fix_map:
+    __other__: In BP > Address overview > Address usages keep the default flag on one address.
+  record_fix_template: 'Address usage {BUT021_FS.PARTNER}: partner has more than one default address for the same usage and
+    validity.'
+- id: BP331
+  field: BUT021_FS.ADR_KIND
+  check_class: cross_field_check
+  fail_when: '`BUT021_FS.ADR_KIND`.notna() & ~`BUT021_FS.ADR_KIND`.str.strip().str.fullmatch(''[A-Z0-9_]+'')'
+  grain: BUT021_FS
+  severity: medium
+  dimension: validity
+  message: Address usage key is not upper case letters, digits or underscore
+  why_it_matters: Address usage keys are defined in customizing in upper case. Other forms do not match a defined usage and
+    are ignored.
+  rule_authority: best_practice
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Correct the address usage in BP > Address overview.
+  record_fix_template: 'Address usage {BUT021_FS.PARTNER}: address usage key is not upper case letters, digits or underscore.'
+- id: BP332
+  field: BUT0BK.BKVID
+  check_class: cross_field_check
+  fail_when: '`BUT0BK.BKVID`.notna() & ~`BUT0BK.BKVID`.str.strip().str.fullmatch(''[A-Z0-9]{1,4}'')'
+  grain: BUT0BK
+  severity: low
+  dimension: validity
+  message: Bank details ID contains characters other than upper case letters and digits
+  why_it_matters: The bank details ID is the key of the bank line. Odd characters break lookups from payment programs and
+    interfaces.
+  rule_authority: best_practice
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Recreate the bank line with a plain ID in BP > Payment transactions.
+  record_fix_template: 'Business partner bank {BUT0BK.PARTNER}: bank details ID contains characters other than upper case
+    letters and digits.'
+- id: BP333
+  field: BUT0BK.ACCNAME
+  check_class: cross_field_check
+  fail_when: '`BUT0BK.ACCNAME`.notna() & `BUT0BK.KOINH`.isna()'
+  grain: BUT0BK
+  severity: low
+  dimension: consistency
+  message: Account name is filled but the account holder is blank
+  why_it_matters: Payment media print the account holder. An account name alone is not used and the payment shows no holder.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the account holder in BP > Payment transactions.
+  record_fix_template: 'Business partner bank {BUT0BK.PARTNER}: account name is filled but the account holder is blank.'
+- id: BP334
+  field: BUT0BK.XEZER
+  check_class: cross_field_check
+  fail_when: (`BUT0BK.XEZER` == 'X') & `BUT0BK.BANKN`.isna() & `BUT0BK.IBAN`.isna()
+  grain: BUT0BK
+  severity: high
+  dimension: consistency
+  message: Collection authorization is set but the bank line has no account number or IBAN
+  why_it_matters: A direct debit mandate needs the account to collect from. Without it the debit run has no target and fails.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the account number or IBAN, or clear the collection authorization.
+  record_fix_template: 'Business partner bank {BUT0BK.PARTNER}: collection authorization is set but the bank line has no account
+    number or IBAN.'
+- id: BP335
+  field: BUT0BK.ACCOUNT_ID
+  check_class: cross_field_check
+  fail_when: '`BUT0BK.ACCOUNT_ID`.notna() & `BUT0BK.BANKN`.isna() & `BUT0BK.IBAN`.isna()'
+  grain: BUT0BK
+  severity: low
+  dimension: consistency
+  message: Account ID is filled but the bank line has no account number or IBAN
+  why_it_matters: The account ID is a second identifier of the bank account. Alone it points at an account that does not exist.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the account number or IBAN, or clear the account ID.
+  record_fix_template: 'Business partner bank {BUT0BK.PARTNER}: account ID is filled but the bank line has no account number
+    or IBAN.'
+- id: BP336
+  field: BUT0BK.CHECK_DIGIT
+  check_class: cross_field_check
+  fail_when: '`BUT0BK.CHECK_DIGIT`.notna() & ~`BUT0BK.CHECK_DIGIT`.str.strip().str.fullmatch(''[0-9]{1,2}'')'
+  grain: BUT0BK
+  severity: medium
+  dimension: validity
+  message: Bank control key is not numeric
+  why_it_matters: The control key is a one or two digit check number. Letters or symbols make the account fail bank checks.
+  rule_authority: best_practice
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Correct the control key in BP > Payment transactions.
+  record_fix_template: 'Business partner bank {BUT0BK.PARTNER}: bank control key is not numeric.'
+- id: BP337
+  field: BUT0BK.ACCOUNT_TYPE
+  check_class: cross_field_check
+  fail_when: '`BUT0BK.ACCOUNT_TYPE`.notna() & ~`BUT0BK.ACCOUNT_TYPE`.str.strip().str.fullmatch(''[A-Z0-9]{1,3}'')'
+  grain: BUT0BK
+  severity: low
+  dimension: validity
+  message: Account type is not upper case letters or digits
+  why_it_matters: Account types are keys used by payment formats. Other forms do not match any format.
+  rule_authority: best_practice
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Correct the account type in BP > Payment transactions.
+  record_fix_template: 'Business partner bank {BUT0BK.PARTNER}: account type is not upper case letters or digits.'
+- id: BP338
+  field: BUT0BK.MOVE_BKVID
+  check_class: cross_field_check
+  fail_when: '`BUT0BK.MOVE_BKVID` == `BUT0BK.BKVID`'
+  grain: BUT0BK
+  severity: low
+  dimension: consistency
+  message: Bank line is flagged as moving to itself
+  why_it_matters: The move-to bank line must be a different line. A self reference loops every process that follows the move.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Point the move at the new bank line, or clear it.
+  record_fix_template: 'Business partner bank {BUT0BK.PARTNER}: bank line is flagged as moving to itself.'
+- id: BP339
+  field: BUT0BK.MOVE_BKVID
+  check_class: cross_field_check
+  fail_when: '`BUT0BK.MOVE_BKVID`.notna() & `BUT0BK.BK_MOVE_DATE`.isna()'
+  grain: BUT0BK
+  severity: low
+  dimension: consistency
+  message: Move-to bank line is set but the move date is blank
+  why_it_matters: A bank line move needs the date from which the new line applies.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the move date, or clear the move-to bank line.
+  record_fix_template: 'Business partner bank {BUT0BK.PARTNER}: move-to bank line is set but the move date is blank.'
+- id: BP340
+  field: BUT0BK.BK_MOVE_DATE
+  check_class: cross_field_check
+  fail_when: '`BUT0BK.BK_MOVE_DATE`.notna() & `BUT0BK.MOVE_BKVID`.isna()'
+  grain: BUT0BK
+  severity: low
+  dimension: consistency
+  message: Bank move date is set but there is no move-to bank line
+  why_it_matters: A move date with no target line means the move cannot be completed.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the move-to bank line, or clear the date.
+  record_fix_template: 'Business partner bank {BUT0BK.PARTNER}: bank move date is set but there is no move-to bank line.'
+- id: BP341
+  field: BUT0BK.BANK_GUID
+  check_class: null_check
+  grain: BUT0BK
+  severity: low
+  dimension: completeness
+  message: Bank line has no bank GUID
+  why_it_matters: The GUID links the bank line to the partner in S/4HANA. Without it the conversion cannot match the bank
+    detail.
+  rule_authority: s4hana_migration
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __blank__: Re-save the bank line in BP so SAP creates the GUID.
+  record_fix_template: 'Business partner bank {BUT0BK.PARTNER}: bank line has no bank GUID.'
+- id: BP342
+  field: BUT0ID.IDNUMBER_GUID
+  check_class: null_check
+  grain: BUT0ID
+  severity: low
+  dimension: completeness
+  message: Identification has no GUID
+  why_it_matters: The GUID is the technical key of the identification in S/4HANA. Without it the conversion cannot match records.
+  rule_authority: s4hana_migration
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __blank__: Re-save the identification in BP so SAP creates the GUID.
+  record_fix_template: 'Identification {BUT0ID.PARTNER}: identification has no GUID.'
+- id: BP343
+  field: BUT050.XDFREL
+  check_class: count_per_parent_check
+  parent_keys:
+  - BUT050.PARTNER1
+  - BUT050.RELTYP
+  count_when:
+    BUT050.XDFREL:
+    - X
+  max: 1
+  grain: BUT050
+  severity: medium
+  dimension: uniqueness
+  message: Partner has more than one default relationship of the same type
+  why_it_matters: Each relationship category has one default relationship. With two, processes that read the default pick
+    either.
+  rule_authority: best_practice
+  sap_impact: The same fact is held twice; programs pick one copy at random and the others drift.
+  fix_map:
+    __other__: In BP > Relationships keep the default flag on one relationship.
+  record_fix_template: 'Relationship {BUT050.RELNR}: partner has more than one default relationship of the same type.'
+- id: BP344
+  field: BUT050.CRDAT
+  check_class: cross_field_check
+  fail_when: '`BUT050.CRDAT`.notna() & `BUT050.CRUSR`.isna()'
+  grain: BUT050
+  severity: low
+  dimension: completeness
+  message: Relationship has a creation date but no creating user
+  why_it_matters: Creator and creation date are audit data. A date without a user is an incomplete trail.
+  rule_authority: best_practice
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __other__: None needed in SAP; document the source of the load.
+  record_fix_template: 'Relationship {BUT050.RELNR}: relationship has a creation date but no creating user.'
+- id: BP345
+  field: BUT050.CHDAT
+  check_class: cross_field_check
+  fail_when: '`BUT050.CHDAT` < `BUT050.CRDAT`'
+  require_populated: true
+  grain: BUT050
+  severity: medium
+  dimension: consistency
+  message: Relationship change date is earlier than its creation date
+  why_it_matters: A relationship cannot be changed before it exists. The dates point to a faulty load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Correct the dates at source or re-create the relationship.
+  record_fix_template: 'Relationship {BUT050.RELNR}: relationship change date is earlier than its creation date.'
+- id: BP346
+  field: BUT050.RELKIND
+  check_class: cross_field_check
+  fail_when: '`BUT050.RELKIND`.notna() & ~`BUT050.RELKIND`.str.strip().str.fullmatch(''[A-Z0-9]{1,4}'')'
+  grain: BUT050
+  severity: low
+  dimension: validity
+  message: Relationship category key is not four upper case characters or digits
+  why_it_matters: Relationship categories are four-character keys. Other forms do not match customizing.
+  rule_authority: best_practice
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Correct the relationship in BP > Relationships.
+  record_fix_template: 'Relationship {BUT050.RELNR}: relationship category key is not four upper case characters or digits.'
+- id: BP347
+  field: DFKKBPTAXNUM.TAXNUM
+  check_class: cross_field_check
+  fail_when: '`DFKKBPTAXNUM.TAXNUM`.notna() & (`DFKKBPTAXNUM.TAXNUM`.str.len() >= 20) & `DFKKBPTAXNUM.TAXNUMXL`.isna()'
+  grain: DFKKBPTAXNUM
+  severity: medium
+  dimension: validity
+  message: Tax number is 20 characters long and the long field is blank, so it may be truncated
+  why_it_matters: TAXNUM holds 20 characters; longer numbers belong in TAXNUMXL. A value that fills the field exactly is often
+    cut off.
+  rule_authority: best_practice
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Check the number against the tax certificate and move it to TAXNUMXL if it is longer.
+  record_fix_template: 'Tax number {DFKKBPTAXNUM.PARTNER}: tax number is 20 characters long and the long field is blank, so
+    it may be truncated.'
+- id: BP348
+  field: DFKKBPTAXNUM.TAXNUM
+  check_class: cross_field_check
+  fail_when: '`DFKKBPTAXNUM.TAXNUM`.notna() & ~`DFKKBPTAXNUM.TAXNUM`.str.strip().str.fullmatch(''[A-Za-z0-9 ./-]*'')'
+  grain: DFKKBPTAXNUM
+  severity: medium
+  dimension: validity
+  message: Tax number contains characters outside letters, digits, space, dot, slash and hyphen
+  why_it_matters: Tax authorities issue numbers in these characters only. Others are typing errors or pasted text.
+  rule_authority: best_practice
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Correct the tax number in BP > Tax numbers.
+  record_fix_template: 'Tax number {DFKKBPTAXNUM.PARTNER}: tax number contains characters outside letters, digits, space,
+    dot, slash and hyphen.'
+- id: BP349
+  field: DFKKBPTAXNUM.TAXNUMXL
+  check_class: cross_field_check
+  fail_when: '`DFKKBPTAXNUM.TAXNUM`.notna() & `DFKKBPTAXNUM.TAXNUMXL`.notna() & (`DFKKBPTAXNUM.TAXNUMXL`.str.slice(0, 5) !=
+    `DFKKBPTAXNUM.TAXNUM`.str.slice(0, 5))'
+  grain: DFKKBPTAXNUM
+  severity: low
+  dimension: consistency
+  message: Long tax number does not start with the short tax number
+  why_it_matters: When both fields are filled they hold the same number. A different start means one of them is wrong.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Align TAXNUM and TAXNUMXL in BP > Tax numbers.
+  record_fix_template: 'Tax number {DFKKBPTAXNUM.PARTNER}: long tax number does not start with the short tax number.'
+- id: BP350
+  field: ADRC.NAME2
+  check_class: cross_field_check
+  fail_when: '`ADRC.NAME2`.notna() & `ADRC.NAME1`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Address name 2 is filled but name 1 is blank
+  why_it_matters: Name 2 continues name 1; alone it prints as an orphan line on the address block.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Move the text to NAME1, or clear NAME2.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: address name 2 is filled but name 1 is blank.'
+- id: BP351
+  field: ADRC.NAME2
+  check_class: cross_field_check
+  fail_when: '`ADRC.NAME2`.notna() & (`ADRC.NAME2`.str.strip().str.upper() == `ADRC.NAME1`.str.strip().str.upper())'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Address name 2 repeats name 1
+  why_it_matters: Repeating the name on a second line prints it twice on every label and letter.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Clear NAME2 or enter the real second line.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: address name 2 repeats name 1.'
+- id: BP352
+  field: ADRC.NAME4
+  check_class: cross_field_check
+  fail_when: '`ADRC.NAME4`.notna() & `ADRC.NAME3`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Address name 4 is filled but name 3 is blank
+  why_it_matters: Name lines fill in order; a gap prints a hole in the address block.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Shift the text up into NAME3, or clear NAME4.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: address name 4 is filled but name 3 is blank.'
+- id: BP353
+  field: ADRC.CITY2
+  check_class: cross_field_check
+  fail_when: '`ADRC.CITY2`.notna() & (`ADRC.CITY2`.str.strip().str.upper() == `ADRC.CITY1`.str.strip().str.upper())'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: District repeats the city
+  why_it_matters: A district identical to the city adds nothing and prints the city twice on address labels.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Clear the district or enter the real district.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: district repeats the city.'
+- id: BP354
+  field: ADRC.STREETCODE
+  check_class: cross_field_check
+  fail_when: '`ADRC.STREETCODE`.notna() & `ADRC.CITY_CODE`.isna()'
+  grain: ADRC
+  severity: medium
+  dimension: consistency
+  message: Street code is set but the city code is blank
+  why_it_matters: Street codes are only valid inside a city from the city file. Without the city code the street code cannot
+    be resolved.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Set the city code, or clear the street code.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: street code is set but the city code is blank.'
+- id: BP355
+  field: ADRC.CITYP_CODE
+  check_class: cross_field_check
+  fail_when: '`ADRC.CITYP_CODE`.notna() & `ADRC.CITY_CODE`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: District code is set but the city code is blank
+  why_it_matters: District codes are only valid inside a city from the city file.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Set the city code, or clear the district code.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: district code is set but the city code is blank.'
+- id: BP356
+  field: ADRC.POST_CODE2
+  check_class: cross_field_check
+  fail_when: '`ADRC.POST_CODE2`.notna() & `ADRC.PO_BOX`.isna() & `ADRC.PO_BOX_NUM`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: PO box postal code is set but there is no PO box
+  why_it_matters: A PO box postal code with no PO box is a leftover and can send mail to the wrong place.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the PO box, or clear the PO box postal code.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: pO box postal code is set but there is no PO box.'
+- id: BP357
+  field: ADRC.PO_BOX
+  check_class: cross_field_check
+  fail_when: '`ADRC.PO_BOX`.notna() & `ADRC.POST_CODE2`.isna() & `ADRC.POST_CODE1`.isna()'
+  grain: ADRC
+  severity: medium
+  dimension: completeness
+  message: PO box is set but no postal code is held
+  why_it_matters: A PO box needs a postal code (PO box code or city code) to be deliverable.
+  rule_authority: best_practice
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __other__: Enter the PO box postal code.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: pO box is set but no postal code is held.'
+- id: BP358
+  field: ADRC.PO_BOX_LOC
+  check_class: cross_field_check
+  fail_when: '`ADRC.PO_BOX_LOC`.notna() & `ADRC.PO_BOX`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: PO box city is set but there is no PO box
+  why_it_matters: The PO box city is only used with a PO box.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the PO box, or clear the PO box city.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: pO box city is set but there is no PO box.'
+- id: BP359
+  field: ADRC.PO_BOX_REG
+  check_class: cross_field_check
+  fail_when: '`ADRC.PO_BOX_REG`.notna() & `ADRC.PO_BOX_CTY`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: PO box region is set but the PO box country is blank
+  why_it_matters: A region only means something inside a country.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Set the PO box country, or clear the region.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: pO box region is set but the PO box country is blank.'
+- id: BP360
+  field: ADRC.PO_BOX_NUM
+  check_class: cross_field_check
+  fail_when: (`ADRC.PO_BOX_NUM` == 'X') & `ADRC.PO_BOX`.notna()
+  grain: ADRC
+  severity: medium
+  dimension: consistency
+  message: PO box is flagged 'without number' but a PO box number is held
+  why_it_matters: The flag says the box has no number. Both together contradict each other.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Clear the flag or the number.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: pO box is flagged ''without number'' but a PO box number is held.'
+- id: BP361
+  field: ADRC.DONT_USE_P
+  check_class: cross_field_check
+  fail_when: '`ADRC.DONT_USE_P`.notna() & `ADRC.PO_BOX`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: PO box is marked undeliverable but no PO box is held
+  why_it_matters: An undeliverable reason for a box that does not exist is a leftover.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Clear the reason, or enter the PO box.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: pO box is marked undeliverable but no PO box is held.'
+- id: BP362
+  field: ADRC.DONT_USE_S
+  check_class: cross_field_check
+  fail_when: '`ADRC.DONT_USE_S`.notna() & `ADRC.STREET`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Street address is marked undeliverable but no street is held
+  why_it_matters: An undeliverable reason for a street that does not exist is a leftover.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Clear the reason, or enter the street.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: street address is marked undeliverable but no street is held.'
+- id: BP363
+  field: ADRC.STR_SUPPL2
+  check_class: cross_field_check
+  fail_when: '`ADRC.STR_SUPPL2`.notna() & `ADRC.STR_SUPPL1`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Street 3 is filled but street 2 is blank
+  why_it_matters: Street lines fill in order; a gap prints a hole in the address.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Shift the text up into STR_SUPPL1, or clear STR_SUPPL2.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: street 3 is filled but street 2 is blank.'
+- id: BP364
+  field: ADRC.STR_SUPPL3
+  check_class: cross_field_check
+  fail_when: '`ADRC.STR_SUPPL3`.notna() & `ADRC.STR_SUPPL2`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Street 4 is filled but street 3 is blank
+  why_it_matters: Street lines fill in order; a gap prints a hole in the address.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Shift the text up into STR_SUPPL2, or clear STR_SUPPL3.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: street 4 is filled but street 3 is blank.'
+- id: BP365
+  field: ADRC.ROOMNUMBER
+  check_class: cross_field_check
+  fail_when: (`ADRC.ROOMNUMBER`.notna() | `ADRC.FLOOR`.notna()) & `ADRC.STREET`.isna()
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Room or floor is set but there is no street
+  why_it_matters: A room or floor refers to a building on a street. Without a street the detail points nowhere.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the street, or clear room and floor.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: room or floor is set but there is no street.'
+- id: BP366
+  field: ADRC.ADDR_GROUP
+  check_class: null_check
+  grain: ADRC
+  severity: low
+  dimension: completeness
+  message: Address has no address group
+  why_it_matters: The address group steers which fields are shown and which numbering applies. Blank means the default rules
+    are guessed.
+  rule_authority: best_practice
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __blank__: Set the address group in BP.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: address has no address group.'
+- id: BP367
+  field: ADRC.SORT1
+  check_class: cross_field_check
+  fail_when: '`ADRC.NAME1`.notna() & `ADRC.SORT1`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: completeness
+  message: Address search term 1 is blank although the address has a name
+  why_it_matters: Search term 1 is what address search uses. Without it the address is found only by exact name.
+  rule_authority: best_practice
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __other__: Fill SORT1.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: address search term 1 is blank although the address has a name.'
+- id: BP368
+  field: ADRC.SORT2
+  check_class: cross_field_check
+  fail_when: '`ADRC.SORT2`.notna() & `ADRC.SORT1`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Address search term 2 is filled but search term 1 is blank
+  why_it_matters: Search term 1 is the primary search key.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Fill SORT1 or clear SORT2.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: address search term 2 is filled but search term 1 is blank.'
+- id: BP369
+  field: ADRC.DEFLT_COMM
+  check_class: cross_field_check
+  fail_when: (`ADRC.DEFLT_COMM` == 'FAX') & `ADRC.FAX_NUMBER`.isna()
+  grain: ADRC
+  severity: medium
+  dimension: consistency
+  message: Standard communication method is fax but no fax number is held
+  why_it_matters: Output set to the standard method fax has no number to send to; the document fails or is lost.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter a fax number or change the standard method.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: standard communication method is fax but no fax number is held.'
+- id: BP370
+  field: ADRC.DEFLT_COMM
+  check_class: cross_field_check
+  fail_when: (`ADRC.DEFLT_COMM` == 'TEL') & `ADRC.TEL_NUMBER`.isna()
+  grain: ADRC
+  severity: medium
+  dimension: consistency
+  message: Standard communication method is telephone but no telephone number is held
+  why_it_matters: Output set to the standard method telephone has no number to call.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter a telephone number or change the standard method.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: standard communication method is telephone but no telephone number is held.'
+- id: BP371
+  field: ADRC.DEFLT_COMM
+  check_class: cross_field_check
+  fail_when: (`ADRC.DEFLT_COMM` == 'INT') & `ADRC.FLAGCOMM6`.isna()
+  grain: ADRC
+  severity: medium
+  dimension: consistency
+  message: Standard communication method is e-mail but the e-mail flag is blank
+  why_it_matters: Output set to the standard method e-mail has no recipient address; mail output fails.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter an e-mail address or change the standard method.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: standard communication method is e-mail but the e-mail flag is blank.'
+- id: BP372
+  field: ADRC.TEL_EXTENS
+  check_class: cross_field_check
+  fail_when: '`ADRC.TEL_EXTENS`.notna() & `ADRC.TEL_NUMBER`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Telephone extension is set but the telephone number is blank
+  why_it_matters: An extension needs the main number it belongs to.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the number or clear the extension.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: telephone extension is set but the telephone number is blank.'
+- id: BP373
+  field: ADRC.FAX_EXTENS
+  check_class: cross_field_check
+  fail_when: '`ADRC.FAX_EXTENS`.notna() & `ADRC.FAX_NUMBER`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Fax extension is set but the fax number is blank
+  why_it_matters: An extension needs the main number it belongs to.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the number or clear the extension.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: fax extension is set but the fax number is blank.'
+- id: BP374
+  field: ADRC.FAX_NUMBER
+  check_class: cross_field_check
+  fail_when: '`ADRC.FAX_NUMBER`.notna() & ~`ADRC.FAX_NUMBER`.str.strip().str.fullmatch(''[0-9 +()/.-]+'')'
+  grain: ADRC
+  severity: medium
+  dimension: validity
+  message: Fax number contains characters other than digits, space, plus, brackets, dot, slash and hyphen
+  why_it_matters: Fax gateways only accept dialling characters. Letters or symbols make the transmission fail.
+  rule_authority: best_practice
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Correct the fax number.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: fax number contains characters other than digits, space, plus, brackets,
+    dot, slash and hyphen.'
+- id: BP375
+  field: ADRC.MC_NAME1
+  check_class: cross_field_check
+  fail_when: '`ADRC.NAME1`.notna() & `ADRC.MC_NAME1`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Search field MC_NAME1 is blank although NAME1 is filled
+  why_it_matters: MC_NAME1 is the upper-case search copy of NAME1. A blank copy hides the address from address search.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Re-save the address so SAP rebuilds the search fields.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: search field MC_NAME1 is blank although NAME1 is filled.'
+- id: BP376
+  field: ADRC.MC_CITY1
+  check_class: cross_field_check
+  fail_when: '`ADRC.CITY1`.notna() & `ADRC.MC_CITY1`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Search field MC_CITY1 is blank although CITY1 is filled
+  why_it_matters: MC_CITY1 is the upper-case search copy of CITY1. A blank copy hides the address from address search.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Re-save the address so SAP rebuilds the search fields.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: search field MC_CITY1 is blank although CITY1 is filled.'
+- id: BP377
+  field: ADRC.MC_STREET
+  check_class: cross_field_check
+  fail_when: '`ADRC.STREET`.notna() & `ADRC.MC_STREET`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Search field MC_STREET is blank although STREET is filled
+  why_it_matters: MC_STREET is the upper-case search copy of STREET. A blank copy hides the address from address search.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Re-save the address so SAP rebuilds the search fields.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: search field MC_STREET is blank although STREET is filled.'
+- id: BP378
+  field: ADRC.TIME_ZONE
+  check_class: null_check
+  grain: ADRC
+  severity: low
+  dimension: completeness
+  message: Address has no time zone
+  why_it_matters: Time zone drives date and time conversion for appointments and service orders at the address.
+  rule_authority: best_practice
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __blank__: Set the time zone in BP > Address.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: address has no time zone.'
+- id: BP379
+  field: ADRC.TAXJURCODE
+  check_class: null_check
+  grain: ADRC
+  applies_when:
+    ADRC.COUNTRY:
+    - US
+  severity: medium
+  dimension: completeness
+  message: US address has no tax jurisdiction code
+  why_it_matters: US sales tax is calculated from the jurisdiction code. Without it tax determination fails or falls back
+    to the wrong rate.
+  rule_authority: regulatory
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __blank__: Set the jurisdiction code in BP > Address.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: uS address has no tax jurisdiction code.'
+- id: BP380
+  field: ADRC.ADRC_ERR_STATUS
+  check_class: cross_field_check
+  fail_when: '`ADRC.ADRC_ERR_STATUS` == ''E'''
+  grain: ADRC
+  severity: medium
+  dimension: validity
+  message: Address carries an error status from SAP address checks
+  why_it_matters: SAP sets status E when the address failed its own checks. Such addresses are rejected by postal validation
+    and by S/4HANA conversion.
+  rule_authority: sap_hard_constraint
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Open the address in BP and correct the reported error.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: address carries an error status from SAP address checks.'
+- id: BP381
+  field: ADRC.COUNTY_CODE
+  check_class: cross_field_check
+  fail_when: '`ADRC.COUNTY_CODE`.notna() & `ADRC.COUNTY`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: County code is set but the county name is blank
+  why_it_matters: The code and the name describe the same county; one without the other prints incompletely.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Fill COUNTY or clear the code.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: county code is set but the county name is blank.'
+- id: BP382
+  field: ADRC.TOWNSHIP_CODE
+  check_class: cross_field_check
+  fail_when: '`ADRC.TOWNSHIP_CODE`.notna() & `ADRC.TOWNSHIP`.isna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Township code is set but the township name is blank
+  why_it_matters: The code and the name describe the same township; one without the other prints incompletely.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Fill TOWNSHIP or clear the code.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: township code is set but the township name is blank.'
+- id: BP383
+  field: ADRC.DELI_SERV_TYPE
+  check_class: cross_field_check
+  fail_when: '`ADRC.DELI_SERV_TYPE`.notna() != `ADRC.DELI_SERV_NUMBER`.notna()'
+  grain: ADRC
+  severity: low
+  dimension: consistency
+  message: Delivery service type and number are not both filled
+  why_it_matters: A delivery service (for example a post bag) needs both its type and its number.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Fill both or clear both.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: delivery service type and number are not both filled.'
+- id: BP384
+  field: ADRC.EXTENSION1
+  check_class: cross_field_check
+  fail_when: '`ADRC.EXTENSION1`.notna() | `ADRC.EXTENSION2`.notna()'
+  grain: ADRC
+  severity: low
+  dimension: validity
+  message: Data-conversion extension fields hold values
+  why_it_matters: EXTENSION1 and EXTENSION2 are reserved for data conversion. Leftover values carry stale migration data into
+    S/4HANA.
+  rule_authority: s4hana_migration
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Clear the fields after confirming nothing reads them.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: data-conversion extension fields hold values.'
+- id: BP385
+  field: ADRC.DATE_TO
+  check_class: cross_field_check
+  fail_when: '`ADRC.DATE_TO` < `ADRC.DATE_FROM`'
+  require_populated: true
+  grain: ADRC
+  severity: medium
+  dimension: consistency
+  message: Address valid-to date is before its valid-from date
+  why_it_matters: A validity interval that ends before it starts is never active; the address is invisible to every process.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Correct the validity dates.
+  record_fix_template: 'Address {ADRC.ADDRNUMBER}: address valid-to date is before its valid-from date.'
+- id: BP386
+  field: ADR2.TEL_EXTENS
+  check_class: cross_field_check
+  fail_when: '`ADR2.TEL_EXTENS`.notna() & `ADR2.TEL_NUMBER`.isna()'
+  grain: ADR2
+  severity: low
+  dimension: consistency
+  message: Telephone extension is set but the number is blank
+  why_it_matters: An extension needs the main number it belongs to.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Enter the number or clear the extension.
+  record_fix_template: 'Telephone {ADR2.ADDRNUMBER}: telephone extension is set but the number is blank.'
+- id: BP387
+  field: ADR2.TELNR_LONG
+  check_class: cross_field_check
+  fail_when: '`ADR2.TEL_NUMBER`.notna() & `ADR2.TELNR_LONG`.isna()'
+  grain: ADR2
+  severity: low
+  dimension: consistency
+  message: Telephone number is set but the long number is blank
+  why_it_matters: TELNR_LONG is the number in international format used by dialling and SMS. A blank copy breaks them.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Re-save the number in BP so SAP rebuilds it.
+  record_fix_template: 'Telephone {ADR2.ADDRNUMBER}: telephone number is set but the long number is blank.'
+- id: BP388
+  field: ADR2.DFT_RECEIV
+  check_class: cross_field_check
+  fail_when: (`ADR2.DFT_RECEIV` == 'X') & (`ADR2.FLG_NOUSE` == 'X')
+  grain: ADR2
+  severity: low
+  dimension: consistency
+  message: Default SMS receiver is also flagged as not to be used
+  why_it_matters: A number cannot be both the default receiver and excluded from use.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Clear one of the two flags.
+  record_fix_template: 'Telephone {ADR2.ADDRNUMBER}: default SMS receiver is also flagged as not to be used.'
+- id: BP389
+  field: ADR2.HOME_FLAG
+  check_class: cross_field_check
+  fail_when: (`ADR2.HOME_FLAG` == 'X') & (`ADR2.PERSNUMBER`.isna())
+  grain: ADR2
+  severity: low
+  dimension: consistency
+  message: Telephone is flagged as private but is not linked to a person
+  why_it_matters: A private number belongs to a contact person. Without a person number the flag points nowhere.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Link the number to the person or clear the flag.
+  record_fix_template: 'Telephone {ADR2.ADDRNUMBER}: telephone is flagged as private but is not linked to a person.'
+- id: BP390
+  field: ADR2.VALID_TO
+  check_class: cross_field_check
+  fail_when: '`ADR2.VALID_TO` < `ADR2.VALID_FROM`'
+  require_populated: true
+  grain: ADR2
+  severity: medium
+  dimension: consistency
+  message: Telephone valid-to is before valid-from
+  why_it_matters: A validity interval that ends before it starts is never active.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Correct the validity dates.
+  record_fix_template: 'Telephone {ADR2.ADDRNUMBER}: telephone valid-to is before valid-from.'
+- id: BP391
+  field: ADR6.SMTP_ADDR
+  check_class: cross_field_check
+  fail_when: '`ADR6.SMTP_ADDR`.notna() & `ADR6.SMTP_SRCH`.isna()'
+  grain: ADR6
+  severity: medium
+  dimension: consistency
+  message: E-mail address is set but the search field is blank
+  why_it_matters: SMTP_SRCH is the search copy of the address. Without it the address is not found by e-mail search.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Re-save the address in BP so SAP rebuilds the search field.
+  record_fix_template: 'E-mail address {ADR6.ADDRNUMBER}: e-mail address is set but the search field is blank.'
+- id: BP392
+  field: ADR6.DFT_RECEIV
+  check_class: cross_field_check
+  fail_when: (`ADR6.DFT_RECEIV` == 'X') & (`ADR6.FLG_NOUSE` == 'X')
+  grain: ADR6
+  severity: low
+  dimension: consistency
+  message: Default e-mail receiver is also flagged as not to be used
+  why_it_matters: An address cannot be both the default receiver and excluded from use.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Clear one of the two flags.
+  record_fix_template: 'E-mail address {ADR6.ADDRNUMBER}: default e-mail receiver is also flagged as not to be used.'
+- id: BP393
+  field: ADR6.HOME_FLAG
+  check_class: cross_field_check
+  fail_when: (`ADR6.HOME_FLAG` == 'X') & (`ADR6.PERSNUMBER`.isna())
+  grain: ADR6
+  severity: low
+  dimension: consistency
+  message: E-mail is flagged as private but is not linked to a person
+  why_it_matters: A private address belongs to a contact person. Without a person number the flag points nowhere.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Link the address to the person or clear the flag.
+  record_fix_template: 'E-mail address {ADR6.ADDRNUMBER}: e-mail is flagged as private but is not linked to a person.'
+- id: BP394
+  field: ADR6.VALID_TO
+  check_class: cross_field_check
+  fail_when: '`ADR6.VALID_TO` < `ADR6.VALID_FROM`'
+  require_populated: true
+  grain: ADR6
+  severity: medium
+  dimension: consistency
+  message: E-mail valid-to is before valid-from
+  why_it_matters: A validity interval that ends before it starts is never active.
+  rule_authority: sap_hard_constraint
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Correct the validity dates.
+  record_fix_template: 'E-mail address {ADR6.ADDRNUMBER}: e-mail valid-to is before valid-from.'
+- id: BP395
+  field: CVI_CUST_LINK.CRUSER
+  check_class: cross_field_check
+  fail_when: '`CVI_CUST_LINK.CRDAT`.notna() & `CVI_CUST_LINK.CRUSER`.isna()'
+  grain: CVI_CUST_LINK
+  severity: low
+  dimension: completeness
+  message: Link has a creation date but no creating user
+  why_it_matters: The link audit trail names who created the customer-partner link. A date without a user cannot be traced.
+  rule_authority: best_practice
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __other__: None needed in SAP; document the source of the load.
+  record_fix_template: 'Customer link {CVI_CUST_LINK.PARTNER_GUID}: link has a creation date but no creating user.'
+- id: BP396
+  field: CVI_CUST_LINK.CRDAT
+  check_class: cross_field_check
+  fail_when: '`CVI_CUST_LINK.CRDAT` > @today'
+  require_populated: true
+  grain: CVI_CUST_LINK
+  severity: medium
+  dimension: validity
+  message: Link creation date is in the future
+  why_it_matters: A link cannot be created tomorrow. A future date comes from a faulty load or wrong system clock.
+  rule_authority: sap_hard_constraint
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Correct the date at source.
+  record_fix_template: 'Customer link {CVI_CUST_LINK.PARTNER_GUID}: link creation date is in the future.'
+- id: BP397
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: cross_field_check
+  fail_when: (`BUT000.TYPE` == '2') & `BUT000.NAME_ORG1`.notna() & `KNA1.NAME1`.notna() & (`BUT000.NAME_ORG1`.str.strip().str.upper()
+    != `KNA1.NAME1`.str.strip().str.upper())
+  grain: CVI_CUST_LINK
+  severity: medium
+  dimension: consistency
+  message: Organisation partner name differs from the linked customer name
+  why_it_matters: CVI keeps the business partner name and KNA1.NAME1 in step. A difference means one side was changed outside
+    the synchronisation.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Correct the name on the side that is wrong and re-synchronise.
+  record_fix_template: 'Customer link {CVI_CUST_LINK.PARTNER_GUID}: organisation partner name differs from the linked customer
+    name.'
+- id: BP398
+  field: CVI_VEND_LINK.CRUSER
+  check_class: cross_field_check
+  fail_when: '`CVI_VEND_LINK.CRDAT`.notna() & `CVI_VEND_LINK.CRUSER`.isna()'
+  grain: CVI_VEND_LINK
+  severity: low
+  dimension: completeness
+  message: Link has a creation date but no creating user
+  why_it_matters: The link audit trail names who created the customer-partner link. A date without a user cannot be traced.
+  rule_authority: best_practice
+  sap_impact: The record is incomplete after migration; downstream processes fall back to defaults or stop.
+  fix_map:
+    __other__: None needed in SAP; document the source of the load.
+  record_fix_template: 'Vendor link {CVI_VEND_LINK.PARTNER_GUID}: link has a creation date but no creating user.'
+- id: BP399
+  field: CVI_VEND_LINK.CRDAT
+  check_class: cross_field_check
+  fail_when: '`CVI_VEND_LINK.CRDAT` > @today'
+  require_populated: true
+  grain: CVI_VEND_LINK
+  severity: medium
+  dimension: validity
+  message: Link creation date is in the future
+  why_it_matters: A link cannot be created tomorrow. A future date comes from a faulty load or wrong system clock.
+  rule_authority: sap_hard_constraint
+  sap_impact: The value is rejected or misread by S/4HANA conversion and by downstream interfaces.
+  fix_map:
+    __other__: Correct the date at source.
+  record_fix_template: 'Vendor link {CVI_VEND_LINK.PARTNER_GUID}: link creation date is in the future.'
+- id: BP400
+  field: CVI_VEND_LINK.VENDOR
+  check_class: cross_field_check
+  fail_when: (`BUT000.TYPE` == '2') & `BUT000.NAME_ORG1`.notna() & `LFA1.NAME1`.notna() & (`BUT000.NAME_ORG1`.str.strip().str.upper()
+    != `LFA1.NAME1`.str.strip().str.upper())
+  grain: CVI_VEND_LINK
+  severity: medium
+  dimension: consistency
+  message: Organisation partner name differs from the linked vendor name
+  why_it_matters: CVI keeps the business partner name and LFA1.NAME1 in step. A difference means one side was changed outside
+    the synchronisation.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Correct the name on the side that is wrong and re-synchronise.
+  record_fix_template: 'Vendor link {CVI_VEND_LINK.PARTNER_GUID}: organisation partner name differs from the linked vendor
+    name.'
+- id: BP401
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: cross_field_check
+  fail_when: '`BUT000.BU_SORT1`.notna() & `KNA1.KUNNR`.notna() & `KNA1.SORTL`.isna()'
+  grain: CVI_CUST_LINK
+  severity: low
+  dimension: consistency
+  message: Partner search term 1 is set but the linked customer has no search term
+  why_it_matters: CVI keeps BUT000.BU_SORT1 and KNA1.SORTL in step. A blank on the customer side means the synchronisation
+    did not run for that field.
+  rule_authority: best_practice
+  sap_impact: Related fields disagree, so different programs read different answers from the same partner.
+  fix_map:
+    __other__: Re-run the synchronisation or fill SORTL.
+  record_fix_template: 'Customer link {CVI_CUST_LINK.PARTNER_GUID}: partner search term 1 is set but the linked customer has
+    no search term.'

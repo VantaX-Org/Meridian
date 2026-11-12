@@ -9,6 +9,7 @@ import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import type { RuleView } from "../inspector/rule";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { CcHBars } from "./cc-parts";
+import { TableExport } from "@/design/v2/TableExport";
 
 const ORIGIN: Record<RootCauseOrigin["origin"], () => string> = {
   interface: () => tr("Interface or batch user"),
@@ -43,7 +44,7 @@ export function RuleRootCause({ view }: { view: RuleView }) {
           rows={d.origins.map((o) => ({ key: `${o.origin}|${o.username}|${o.tcode}`, label: `${ORIGIN[o.origin]()}${o.username ? ` ${o.username}` : ""}`, value: o.records, text: `${f1(o.share)}%`, tone: "data" as const }))}
         />
         <ScrollFrame label={tr("Who set these values, scrollable")}>
-          <table className="m2-tbl" aria-label={title}>
+          <TableExport><table className="m2-tbl" aria-label={title}>
             <thead>
               <tr>
                 <th scope="col">{tr("Origin")}</th>
@@ -64,7 +65,7 @@ export function RuleRootCause({ view }: { view: RuleView }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       </>
     );

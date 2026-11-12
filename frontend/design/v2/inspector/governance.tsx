@@ -10,7 +10,7 @@ import { notFound, refreshRoles, useEscalationChain, useWaveGates } from "@/lib/
 import { useCertificates } from "@/lib/v2/step9-queries";
 import { int } from "@/lib/v2/score";
 import { VerdictMark } from "../marks";
-import { Dash, Mono, Skeleton, V2Link } from "../parts";
+import { Dash, Skeleton, V2Link, SapCode } from "../parts";
 import "../roles.css";
 import { t as tr } from "@/lib/v2/i18n";
 
@@ -277,7 +277,7 @@ export function DryRunBlock({ systemId, objects }: { systemId: string; objects: 
                 {plan.tables.map((t) => (
                   <tr key={t.table}>
                     <th scope="row">
-                      <Mono>{t.table}</Mono>
+                      <SapCode table={t.table} />
                     </th>
                     <td className="m2-r">{t.rows === null ? <Dash why={tr("Never extracted")} /> : int(t.rows)}</td>
                   </tr>

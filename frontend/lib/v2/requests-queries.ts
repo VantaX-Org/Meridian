@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { getFacts, getFieldHistory, getMassPreview, getRequest, getWorkflowInstance, listCriticalFields, listDefaults, listDefinitions, listDerivations, listRequests, listTasks, type RequestFilter } from "@/lib/api/v2/requests";
+import { getApprovalForecast } from "@/lib/api/v2/process-analytics";
+import { getFacts, getFieldHistory, getMassPreview, getRequest, getRequestForm, getWorkflowInstance, listCriticalFields, listDefaults, listDefinitions, listDerivations, listRequests, listTasks, type RequestFilter, type RequestObject } from "@/lib/api/v2/requests";
 
 const STALE = 15_000;
 
@@ -10,6 +11,12 @@ const STALE = 15_000;
 export function useRequests(f: RequestFilter) {
   const fx = useFixture();
   return useQuery({ queryKey: ["v2", "change-requests", fx, f], queryFn: () => listRequests(f), staleTime: STALE, retry: false });
+}
+
+/** The approval ETA and SLA-breach forecast of every open request, read from the tenant's own decided tasks. */
+export function useApprovalForecast(enabled = true) {
+  const fx = useFixture();
+  return useQuery({ queryKey: ["v2", "approval-forecast", fx], queryFn: () => getApprovalForecast(), staleTime: 60_000, retry: false, enabled });
 }
 
 export function useRequest(id: string) {
@@ -67,4 +74,10 @@ export function useDerivations() {
 export function useCriticalFields() {
   const fx = useFixture();
   return useQuery({ queryKey: ["v2", "request-critical-fields", fx], queryFn: listCriticalFields, staleTime: STALE, retry: false });
+}
+
+/** The data collection form of one object: its DDIC fields and allowed values; check-table values when a system is named. */
+export function useRequestForm(object: RequestObject, systemId?: string) {
+  const fx = useFixture();
+  return useQuery({ queryKey: ["v2", "request-form", fx, object, systemId ?? null], queryFn: () => getRequestForm(object, systemId), staleTime: 300_000, retry: false });
 }

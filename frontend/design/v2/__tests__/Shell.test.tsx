@@ -94,7 +94,7 @@ describe("rail and flyout", () => {
     fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Fix" }));
     const fly = await screen.findByTestId("flyout");
     const links = within(within(fly).getByRole("navigation", { name: "Fix" })).getAllByRole("link");
-    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Action centre", "Work", "Aletheia verified fixes", "Cleansing", "Requests", "People"]);
+    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Action centre", "Work", "Aletheia verified fixes", "Cleansing", "Requests", "Data collection form", "Process analytics", "People"]);
     await waitFor(() => expect(links[1]).toHaveTextContent("25,712"));
     expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/work/));
     keyOnBody("Escape");
@@ -357,7 +357,7 @@ describe("menu for every role", () => {
     expect(viewer).not.toContain("/rule-dry-run");
     expect(viewer).not.toContain("/rule-promotion");
     expect(viewer).toContain("/rules");
-    expect(kidsFor(rules, (p) => p === "manage_rules").map((k) => k.href)).toEqual(rules.kids.map((k) => k.href));
+    expect(kidsFor(rules, (p) => p === "manage_rules").map((k) => k.href)).toEqual(rules.kids.filter((k) => k.need !== "manage_settings").map((k) => k.href));
     expect(destinationAt("/rule-dry-run", all)?.id).toBe("rules");
   });
 });

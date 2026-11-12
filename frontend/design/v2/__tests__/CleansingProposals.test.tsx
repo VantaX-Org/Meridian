@@ -90,3 +90,29 @@ describe("cleansing proposals", () => {
     expect(screen.queryAllByTestId(/^cleansing-apply-/)).toHaveLength(0);
   });
 });
+
+describe("cleansing group reject and monitoring", () => {
+  it("rejects a whole group only with a reason", async () => {
+    renderWithQuery(<Cleansing />);
+    fireEvent.click(await screen.findByTestId("cleansing-reject-group-TEL_NUMBER"));
+    const confirm = screen.getByTestId("cleansing-confirm-reject-group-TEL_NUMBER");
+    expect(confirm).toBeDisabled();
+    fireEvent.change(screen.getByTestId("cleansing-group-reason-TEL_NUMBER"), { target: { value: "Wrong country" } });
+    fireEvent.click(confirm);
+    await waitFor(() => expect(screen.queryByTestId("cleansing-group-TEL_NUMBER")).toBeNull());
+  });
+
+  it("hides the group reject without the approve permission", async () => {
+    h.allowed = [];
+    renderWithQuery(<Cleansing />);
+    await screen.findByTestId("cleansing-group-TEL_NUMBER");
+    expect(screen.queryByTestId("cleansing-reject-group-TEL_NUMBER")).toBeNull();
+  });
+
+  it("shows the monitoring after a cleanse with the way to the monitor", async () => {
+    renderWithQuery(<Cleansing />);
+    const panel = await screen.findByTestId("cleansing-stay-clean");
+    expect(await within(panel).findByTestId("cleansing-stay-clean-figs")).toBeInTheDocument();
+    expect(within(panel).getByText("Open the monitor").closest("a")).toHaveAttribute("href", expect.stringContaining("/work/monitor"));
+  });
+});

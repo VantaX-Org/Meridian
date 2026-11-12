@@ -27,12 +27,13 @@ import { useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { useLandscape } from "@/lib/v2/queries";
 import { DASH, int } from "@/lib/v2/score";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, SapCode, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { RunChip } from "../RunChip";
 import { Guide } from "./Guide";
 import { CcBanner, CcDelta, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Process discovery: the as-is flows mined from a system's own event tables, one L1 process at a time. The catalogue
@@ -176,7 +177,7 @@ function Catalogue({ systemId, rows, runId, onOpen }: { systemId: string; rows: 
   return (
     <Panel title={t("Processes")} meta={t("{count} L1 processes", { count: rows.length })} testId="pd-catalogue">
       <ScrollFrame label={t("Processes")}>
-        <table className="m2-tbl m2-cards">
+        <TableExport><table className="m2-tbl m2-cards">
           <thead>
             <tr>
               <th scope="col">{t("Process")}</th>
@@ -217,7 +218,7 @@ function Catalogue({ systemId, rows, runId, onOpen }: { systemId: string; rows: 
               );
             })}
           </tbody>
-        </table>
+        </table></TableExport>
       </ScrollFrame>
     </Panel>
   );
@@ -258,7 +259,7 @@ function Schedules({ systemId, l1s }: { systemId: string; l1s: string[] }) {
       ) : !q.data?.length ? (
         <EmptyFrame>{t("No schedules. Each process is mined only when someone starts a run.")}</EmptyFrame>
       ) : (
-        <table className="m2-tbl m2-cards">
+        <TableExport><table className="m2-tbl m2-cards">
           <thead>
             <tr>
               <th scope="col">{t("Process")}</th>
@@ -284,7 +285,7 @@ function Schedules({ systemId, l1s }: { systemId: string; l1s: string[] }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       )}
       {edit && l1s.length ? (
         <form className="m2-cc-split" onSubmit={(e) => (e.preventDefault(), add.mutate())}>
@@ -356,7 +357,7 @@ function RunDetail({ entry, runId }: { entry: CatalogueEntry; runId: string }) {
             />
             {dfg.data.edges.length ? (
               <ScrollFrame label={t("Hand-offs")}>
-                <table className="m2-tbl m2-cards" data-testid="pd-edges">
+                <TableExport><table className="m2-tbl m2-cards" data-testid="pd-edges">
                   <thead>
                     <tr>
                       <th scope="col">{t("From")}</th>
@@ -375,7 +376,7 @@ function RunDetail({ entry, runId }: { entry: CatalogueEntry; runId: string }) {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></TableExport>
               </ScrollFrame>
             ) : null}
           </>
@@ -391,7 +392,7 @@ function RunDetail({ entry, runId }: { entry: CatalogueEntry; runId: string }) {
             <EmptyFrame>{t("No variants. This run stored no case paths.")}</EmptyFrame>
           ) : (
             <ScrollFrame label={t("Variants")}>
-              <table className="m2-tbl m2-cards">
+              <TableExport><table className="m2-tbl m2-cards">
                 <thead>
                   <tr>
                     <th scope="col">{t("Path")}</th>
@@ -414,7 +415,7 @@ function RunDetail({ entry, runId }: { entry: CatalogueEntry; runId: string }) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </ScrollFrame>
           )}
         </Panel>
@@ -425,7 +426,7 @@ function RunDetail({ entry, runId }: { entry: CatalogueEntry; runId: string }) {
             status(conf.error) === 404 ? <EmptyFrame>{t("No conformance check. This run was not checked against the reference model.")}</EmptyFrame> : <ErrorFrame onRetry={() => void conf.refetch()}>{t("The process discovery data could not be read.")}</ErrorFrame>
           ) : (
             <>
-              <table className="m2-tbl m2-cards">
+              <TableExport><table className="m2-tbl m2-cards">
                 <thead>
                   <tr>
                     <th scope="col">{t("Step")}</th>
@@ -444,7 +445,7 @@ function RunDetail({ entry, runId }: { entry: CatalogueEntry; runId: string }) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
               {conf.data.extra.length ? (
                 <CcHBars
                   testId="pd-extra"
@@ -476,7 +477,7 @@ function Cases({ runId, variant }: { runId: string; variant: string | null }) {
         <EmptyFrame>{t("No cases. This run stored no cases to show.")}</EmptyFrame>
       ) : (
         <ScrollFrame label={t("Cases")}>
-          <table className="m2-tbl m2-cards">
+          <TableExport><table className="m2-tbl m2-cards">
             <thead>
               <tr>
                 <th scope="col">{t("Case")}</th>
@@ -512,7 +513,7 @@ function Cases({ runId, variant }: { runId: string; variant: string | null }) {
                                 {formatDate(ev.ts, "datetime")} {ev.activity}
                                 {ev.resource ? <> <Mono>{ev.resource}</Mono></> : null}
                                 {ev.automated === null ? null : ev.automated ? ` ${t("Automated")}` : ` ${t("Manual")}`}
-                                {ev.source_table ? <> <Mono>{ev.source_table}</Mono></> : null}
+                                {ev.source_table ? <> <SapCode table={ev.source_table} /></> : null}
                               </li>
                             ))}
                           </ol>
@@ -523,7 +524,7 @@ function Cases({ runId, variant }: { runId: string; variant: string | null }) {
                 </Fragment>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </Panel>

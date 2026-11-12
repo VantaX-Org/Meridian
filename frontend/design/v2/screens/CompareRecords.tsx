@@ -8,6 +8,7 @@ import { int } from "@/lib/v2/score";
 import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { failureText } from "@/lib/v2/errors";
 import { t as tr } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 const PAGE = 100;
 const CHANGES: RecordChange[] = ["new", "resolved", "persisting"];
@@ -94,7 +95,7 @@ export function CompareRecords({ a, b, labelOf }: { a: string; b: string; labelO
             {tr("Across the rules that can be compared: {new} newly failing, {resolved} fixed, {persisting} still failing.", { new: int(t?.new), resolved: int(t?.resolved), persisting: int(t?.persisting) })}
           </p>
           <div className="m2-frame">
-            <table className="m2-tbl">
+            <TableExport><table className="m2-tbl">
               <thead>
                 <tr>
                   <th scope="col">{tr("Rule")}</th>
@@ -134,7 +135,7 @@ export function CompareRecords({ a, b, labelOf }: { a: string; b: string; labelO
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </div>
           {row ? <RecordList key={row.check_id} a={a} b={b} row={row} onClose={() => setOpen(null)} /> : null}
         </>

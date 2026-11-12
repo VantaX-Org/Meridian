@@ -3,6 +3,7 @@
 import { SandboxBlock } from "./sandbox";
 import { MaintenanceBlock } from "./maintenance";
 import { LlmBlock } from "./llm";
+import { QualityThresholdsBlock } from "./thresholds";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { CostModel, DimensionScores, PlannerConfig } from "@/types/api";
@@ -19,6 +20,7 @@ import { AdminPage, Block, Confirm, Fld, Kv, Loaded, NeedsPermission, Note, Sw, 
 import { AppearanceBlock, ComplianceBlock } from "./enterprise";
 import { t as tr } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
+import { TableExport } from "@/design/v2/TableExport";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 const DAMA: DimensionScores = { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 };
@@ -123,7 +125,7 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
           </Fld>
         </div>
         <div className="m2-frame" tabIndex={0} style={{ marginTop: "var(--m2-s3)", maxWidth: 520 }}>
-          <table className="m2-tbl" aria-label={tr("Severity weights")}>
+          <TableExport><table className="m2-tbl" aria-label={tr("Severity weights")}>
             <thead>
               <tr>
                 <th scope="col">{tr("Severity")}</th>
@@ -144,7 +146,7 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </div>
         <div className="m2-adm-acts" style={{ marginTop: "var(--m2-s2)" }}>
           <button
@@ -227,7 +229,7 @@ function CostBlock({ model }: { model: CostModel }) {
       </div>
       <h3 className="m2-h2" style={{ margin: "var(--m2-s4) 0 var(--m2-s1)" }}>{tr("Value of one blocked record, by SAP feature")}</h3>
       <div className="m2-frame" tabIndex={0} style={{ maxWidth: 520 }}>
-        <table className="m2-tbl" aria-label={tr("Value per blocked record by SAP feature")}>
+        <TableExport><table className="m2-tbl" aria-label={tr("Value per blocked record by SAP feature")}>
           <thead>
             <tr>
               <th scope="col">{tr("SAP feature")}</th>
@@ -256,7 +258,7 @@ function CostBlock({ model }: { model: CostModel }) {
               ))
             )}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
       {unpriced.length ? (
         <div className="m2-fbar" style={{ marginTop: "var(--m2-s2)" }}>
@@ -279,7 +281,7 @@ function CostBlock({ model }: { model: CostModel }) {
         <>
           <h3 className="m2-h2" style={{ margin: "var(--m2-s4) 0 var(--m2-s1)" }}>{tr("Business-impact defects")}</h3>
           <div className="m2-frame" tabIndex={0}>
-            <table className="m2-tbl" aria-label={tr("Business impact defects")}>
+            <TableExport><table className="m2-tbl" aria-label={tr("Business impact defects")}>
               <thead>
                 <tr>
                   <th scope="col">{tr("Defect")}</th>
@@ -300,7 +302,7 @@ function CostBlock({ model }: { model: CostModel }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </div>
         </>
       ) : null}
@@ -453,7 +455,7 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
       </div>
       {items && items.length ? (
         <div className="m2-frame" tabIndex={0} style={{ marginTop: "var(--m2-s3)" }}>
-          <table className="m2-tbl" aria-label={tr("Runs past the policy")}>
+          <TableExport><table className="m2-tbl" aria-label={tr("Runs past the policy")}>
             <thead>
               <tr>
                 <th scope="col">{tr("Run")}</th>
@@ -478,7 +480,7 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </div>
       ) : null}
       <h3 className="m2-h2" style={{ margin: "var(--m2-s4) 0 var(--m2-s1)" }}>{tr("Purge log")}</h3>
@@ -488,7 +490,7 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
             <p className="m2-prov">{tr("No purge yet. Rehearsals and purges appear here with the rows removed per table.")}</p>
           ) : (
             <div className="m2-frame" tabIndex={0}>
-              <table className="m2-tbl" aria-label={tr("Purge log")}>
+              <TableExport><table className="m2-tbl" aria-label={tr("Purge log")}>
                 <thead>
                   <tr>
                     <th scope="col">{tr("When")}</th>
@@ -509,7 +511,7 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </div>
           )
         }
@@ -672,6 +674,7 @@ export function SettingsSection() {
           </Block>
         ))}
       </Loaded>
+      <QualityThresholdsBlock write={write} modules={tenant.data?.licensed_modules ?? []} />
       <div id="cost-model">
         <Loaded q={cost} what={tr("The cost model")} rows={3}>
           {(m) => (write ? <CostBlock key={JSON.stringify(m)} model={m} /> : <Block title={tr("Cost model")}><Kv rows={[[tr("Currency"), m.currency]]} /></Block>)}

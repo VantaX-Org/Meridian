@@ -15,6 +15,7 @@ import { Consequence, FixHead, FlowSteps, MoreDetail, ObjectRunChip } from "../F
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Action centre: everything that needs the viewer, ranked by the backend (api/routes/attention.py) by tier, severity,
@@ -142,7 +143,7 @@ export function Attention() {
           ]} />
           <Panel title={t("Act on these")} meta={t("Most urgent first")} testId="attention-table">
             <ScrollFrame label={t("Act on these")}>
-              <table className="m2-tbl m2-cards">
+              <TableExport><table className="m2-tbl m2-cards">
                 <caption className="m2-sr">{t("Act on these")}</caption>
                 <thead>
                   <tr>
@@ -157,7 +158,7 @@ export function Attention() {
                 <tbody>
                   {items.map((i) => <Row key={i.id} i={i} />)}
                 </tbody>
-              </table>
+              </table></TableExport>
             </ScrollFrame>
           </Panel>
           <Consequence>{t("Opening an item changes nothing. Start triage walks the same list one item at a time.")}</Consequence>

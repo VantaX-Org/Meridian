@@ -44,7 +44,9 @@ describe("the viewer's and the auditor's jobs", () => {
     visit("/reports", "viewer");
     const v = mount(<ReportsCanvas />);
     fireEvent.click((await screen.findAllByRole("button", { name: /^Share and export/ }))[0]);
-    expect(await screen.findByRole("menuitem", { name: /Export to Excel/ })).toHaveAttribute("aria-disabled", "true");
+    // Export is offered only to people holding the export permission: the viewer's menu does not list it at all.
+    expect(await screen.findByRole("menuitem", { name: /Save these columns as a view/ })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /Export to Excel/ })).toBeNull();
     v.unmount();
     visit("/reports", "auditor");
     mount(<ReportsCanvas />);

@@ -5,6 +5,7 @@ import { t, tx } from "@/lib/v2/i18n";
 import type { MigrationRelevance, MigrationScenario, MigrationScenarioId } from "@/lib/api/v2/rulelib";
 import { Field } from "../forms";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /** The name of each migration scenario. The id is the API's; the words are the interface's, in the reader's language. */
 export function scenarioName(id: MigrationScenarioId): string {
@@ -41,7 +42,7 @@ export function ScenarioPanel({ scenarios, chosen, onChoose }: { scenarios: Migr
     <section className="m2-cc-card" aria-label={t("Migration scenarios")} data-testid="migration-scenarios">
       <h3>{t("Which rules matter for your S/4HANA path")}</h3>
       <ScrollFrame label={t("Table 3, scrollable")}>
-        <table className="m2-tbl">
+        <TableExport><table className="m2-tbl">
           <thead>
             <tr>
               <th scope="col">{t("Scenario")}</th>
@@ -70,7 +71,7 @@ export function ScenarioPanel({ scenarios, chosen, onChoose }: { scenarios: Migr
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </ScrollFrame>
       <p className="m2-prov">{t("Counts are the enabled shipped rules. A rule flagged as a migration blocker is required for a system conversion and a selective data transition.")}</p>
     </section>

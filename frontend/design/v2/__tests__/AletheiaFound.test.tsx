@@ -4,6 +4,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as insights from "@/lib/api/v2/insights";
 import * as mdm from "@/lib/api/v2/mdm";
 import { AletheiaFound } from "../screens/AletheiaFound";
+import { setUrl } from "./nav-store";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
@@ -104,5 +105,22 @@ describe("Aletheia found", () => {
   it("stays out of the way for an object with nothing found", async () => {
     const { container } = renderWithQuery(<AletheiaFound module="fi_gl" />);
     await waitFor(() => expect(container.querySelector("[data-testid=aletheia-found]")).toBeNull());
+  });
+});
+
+describe("Aletheia found: roles", () => {
+  it("gives a viewer the reason in place of the tune and cleanse buttons the API would refuse", async () => {
+    const url = "/aletheia?fixture=1&role=viewer";
+    window.history.pushState({}, "", url);
+    setUrl(url);
+    const batch = vi.spyOn(insights, "createRuleBatch");
+    renderWithQuery(<AletheiaFound />);
+    const rows = await screen.findAllByTestId("aletheia-finding");
+    expect(within(rows[0]).queryByRole("button", { name: "Draft cleansing batch" })).toBeNull();
+    expect(rows[0]).toHaveTextContent("Drafting a cleansing batch needs the apply permission");
+    const mm228 = rows.find((r) => r.textContent?.includes("MM228")) as HTMLElement;
+    expect(within(mm228).queryByRole("button", { name: "Draft tuned version" })).toBeNull();
+    expect(mm228).toHaveTextContent("Drafting a tuned version needs the manage rules permission");
+    expect(batch).not.toHaveBeenCalled();
   });
 });

@@ -108,7 +108,7 @@ describe("the Golden records tab", () => {
     const sec = await screen.findByRole("region", { name: "Survivorship rules" });
     const list = await within(sec).findByRole("list", { name: "Survivorship rules by field" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(5);
-    expect(norm(within(list).getAllByRole("listitem")[1])).toBe("MARA-MEINSTrusted source, ECC production");
+    expect(norm(within(list).getAllByRole("listitem")[1])).toBe("Base unit of measure MARA-MEINSTrusted source, ECC production");
     expect(within(sec).getByRole("link", { name: "Edit the rules" })).toHaveAttribute("href", expect.stringContaining("open=survivorship%3Amaterial_master"));
   });
 

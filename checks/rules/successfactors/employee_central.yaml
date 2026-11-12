@@ -13401,3 +13401,843 @@ rules:
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: STOCK_END_DATE is before START_DATE.'
   fail_when: '`EMPEMPLOYMENT.STOCK_END_DATE` < `EMPEMPLOYMENT.START_DATE`'
   require_populated: true
+- id: EC728
+  field: EMPEMPLOYMENT.POSITION_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Position entry date lies in the future
+  why_it_matters: An entry date records when the employee joined the position. A date after today cannot be true and breaks
+    time-in-position and seniority calculations.
+  rule_authority: best_practice
+  sap_impact: Time-in-position counters, seniority-based pay progression and eligibility rules read a negative tenure.
+  fix_map:
+    __other__: Set POSITION_ENTRY_DATE to the real date the employee entered the position, on or before today.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: POSITION_ENTRY_DATE is in the future.'
+  fail_when: '`EMPEMPLOYMENT.POSITION_ENTRY_DATE` > @today'
+  require_populated: true
+- id: EC729
+  field: EMPEMPLOYMENT.JOB_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Job entry date lies in the future
+  why_it_matters: An entry date records when the employee joined the job. A date after today cannot be true and breaks time-in-job
+    and seniority calculations.
+  rule_authority: best_practice
+  sap_impact: Time-in-job counters, seniority-based pay progression and eligibility rules read a negative tenure.
+  fix_map:
+    __other__: Set JOB_ENTRY_DATE to the real date the employee entered the job, on or before today.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: JOB_ENTRY_DATE is in the future.'
+  fail_when: '`EMPEMPLOYMENT.JOB_ENTRY_DATE` > @today'
+  require_populated: true
+- id: EC730
+  field: EMPEMPLOYMENT.COMPANY_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Company entry date lies in the future
+  why_it_matters: An entry date records when the employee joined the company. A date after today cannot be true and breaks
+    time-in-company and seniority calculations.
+  rule_authority: best_practice
+  sap_impact: Time-in-company counters, seniority-based pay progression and eligibility rules read a negative tenure.
+  fix_map:
+    __other__: Set COMPANY_ENTRY_DATE to the real date the employee entered the company, on or before today.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: COMPANY_ENTRY_DATE is in the future.'
+  fail_when: '`EMPEMPLOYMENT.COMPANY_ENTRY_DATE` > @today'
+  require_populated: true
+- id: EC731
+  field: EMPEMPLOYMENT.LOCATION_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Location entry date lies in the future
+  why_it_matters: An entry date records when the employee joined the location. A date after today cannot be true and breaks
+    time-in-location and seniority calculations.
+  rule_authority: best_practice
+  sap_impact: Time-in-location counters, seniority-based pay progression and eligibility rules read a negative tenure.
+  fix_map:
+    __other__: Set LOCATION_ENTRY_DATE to the real date the employee entered the location, on or before today.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: LOCATION_ENTRY_DATE is in the future.'
+  fail_when: '`EMPEMPLOYMENT.LOCATION_ENTRY_DATE` > @today'
+  require_populated: true
+- id: EC732
+  field: EMPEMPLOYMENT.DEPARTMENT_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Department entry date lies in the future
+  why_it_matters: An entry date records when the employee joined the department. A date after today cannot be true and breaks
+    time-in-department and seniority calculations.
+  rule_authority: best_practice
+  sap_impact: Time-in-department counters, seniority-based pay progression and eligibility rules read a negative tenure.
+  fix_map:
+    __other__: Set DEPARTMENT_ENTRY_DATE to the real date the employee entered the department, on or before today.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: DEPARTMENT_ENTRY_DATE is in the future.'
+  fail_when: '`EMPEMPLOYMENT.DEPARTMENT_ENTRY_DATE` > @today'
+  require_populated: true
+- id: EC733
+  field: EMPEMPLOYMENT.PAY_SCALE_LEVEL_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Pay scale level entry date lies in the future
+  why_it_matters: An entry date records when the employee joined the pay scale level. A date after today cannot be true and
+    breaks time-in-pay scale level and seniority calculations.
+  rule_authority: best_practice
+  sap_impact: Time-in-pay scale level counters, seniority-based pay progression and eligibility rules read a negative tenure.
+  fix_map:
+    __other__: Set PAY_SCALE_LEVEL_ENTRY_DATE to the real date the employee entered the pay scale level, on or before today.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: PAY_SCALE_LEVEL_ENTRY_DATE is in the future.'
+  fail_when: '`EMPEMPLOYMENT.PAY_SCALE_LEVEL_ENTRY_DATE` > @today'
+  require_populated: true
+- id: EC734
+  field: EMPEMPLOYMENT.INITIAL_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Initial entry entry date lies in the future
+  why_it_matters: An entry date records when the employee joined the initial entry. A date after today cannot be true and
+    breaks time-in-initial entry and seniority calculations.
+  rule_authority: best_practice
+  sap_impact: Time-in-initial entry counters, seniority-based pay progression and eligibility rules read a negative tenure.
+  fix_map:
+    __other__: Set INITIAL_ENTRY_DATE to the real date the employee entered the initial entry, on or before today.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: INITIAL_ENTRY_DATE is in the future.'
+  fail_when: '`EMPEMPLOYMENT.INITIAL_ENTRY_DATE` > @today'
+  require_populated: true
+- id: EC735
+  field: EMPEMPLOYMENT.ENTRY_INTO_GROUP
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Group entry entry date lies in the future
+  why_it_matters: An entry date records when the employee joined the group entry. A date after today cannot be true and breaks
+    time-in-group entry and seniority calculations.
+  rule_authority: best_practice
+  sap_impact: Time-in-group entry counters, seniority-based pay progression and eligibility rules read a negative tenure.
+  fix_map:
+    __other__: Set ENTRY_INTO_GROUP to the real date the employee entered the group entry, on or before today.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: ENTRY_INTO_GROUP is in the future.'
+  fail_when: '`EMPEMPLOYMENT.ENTRY_INTO_GROUP` > @today'
+  require_populated: true
+- id: EC736
+  field: EMPEMPLOYMENT.PROFESSIONAL_SERVICE_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Professional service entry date lies in the future
+  why_it_matters: An entry date records when the employee joined the professional service. A date after today cannot be true
+    and breaks time-in-professional service and seniority calculations.
+  rule_authority: best_practice
+  sap_impact: Time-in-professional service counters, seniority-based pay progression and eligibility rules read a negative
+    tenure.
+  fix_map:
+    __other__: Set PROFESSIONAL_SERVICE_DATE to the real date the employee entered the professional service, on or before
+      today.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: PROFESSIONAL_SERVICE_DATE is in the future.'
+  fail_when: '`EMPEMPLOYMENT.PROFESSIONAL_SERVICE_DATE` > @today'
+  require_populated: true
+- id: EC737
+  field: EMPEMPLOYMENT.POSITION_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Position entry date is before the company entry date
+  why_it_matters: An employee cannot enter a position inside the company before entering the company. The pair is inverted
+    or one date is a default.
+  rule_authority: best_practice
+  sap_impact: Time-in-position exceeds time-in-company, which distorts tenure reports and pay scale progression.
+  fix_map:
+    __other__: Correct POSITION_ENTRY_DATE or COMPANY_ENTRY_DATE so the position entry is on or after the company entry.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: POSITION_ENTRY_DATE is before COMPANY_ENTRY_DATE.'
+  fail_when: '`EMPEMPLOYMENT.POSITION_ENTRY_DATE` < `EMPEMPLOYMENT.COMPANY_ENTRY_DATE`'
+  require_populated: true
+- id: EC738
+  field: EMPEMPLOYMENT.JOB_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Job entry date is before the company entry date
+  why_it_matters: An employee cannot enter a job inside the company before entering the company. The pair is inverted or one
+    date is a default.
+  rule_authority: best_practice
+  sap_impact: Time-in-job exceeds time-in-company, which distorts tenure reports and pay scale progression.
+  fix_map:
+    __other__: Correct JOB_ENTRY_DATE or COMPANY_ENTRY_DATE so the job entry is on or after the company entry.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: JOB_ENTRY_DATE is before COMPANY_ENTRY_DATE.'
+  fail_when: '`EMPEMPLOYMENT.JOB_ENTRY_DATE` < `EMPEMPLOYMENT.COMPANY_ENTRY_DATE`'
+  require_populated: true
+- id: EC739
+  field: EMPEMPLOYMENT.LOCATION_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Location entry date is before the company entry date
+  why_it_matters: An employee cannot enter a location inside the company before entering the company. The pair is inverted
+    or one date is a default.
+  rule_authority: best_practice
+  sap_impact: Time-in-location exceeds time-in-company, which distorts tenure reports and pay scale progression.
+  fix_map:
+    __other__: Correct LOCATION_ENTRY_DATE or COMPANY_ENTRY_DATE so the location entry is on or after the company entry.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: LOCATION_ENTRY_DATE is before COMPANY_ENTRY_DATE.'
+  fail_when: '`EMPEMPLOYMENT.LOCATION_ENTRY_DATE` < `EMPEMPLOYMENT.COMPANY_ENTRY_DATE`'
+  require_populated: true
+- id: EC740
+  field: EMPEMPLOYMENT.DEPARTMENT_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Department entry date is before the company entry date
+  why_it_matters: An employee cannot enter a department inside the company before entering the company. The pair is inverted
+    or one date is a default.
+  rule_authority: best_practice
+  sap_impact: Time-in-department exceeds time-in-company, which distorts tenure reports and pay scale progression.
+  fix_map:
+    __other__: Correct DEPARTMENT_ENTRY_DATE or COMPANY_ENTRY_DATE so the department entry is on or after the company entry.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: DEPARTMENT_ENTRY_DATE is before COMPANY_ENTRY_DATE.'
+  fail_when: '`EMPEMPLOYMENT.DEPARTMENT_ENTRY_DATE` < `EMPEMPLOYMENT.COMPANY_ENTRY_DATE`'
+  require_populated: true
+- id: EC741
+  field: EMPEMPLOYMENT.PAY_SCALE_LEVEL_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Pay scale level entry date is before the company entry date
+  why_it_matters: An employee cannot enter a pay scale level inside the company before entering the company. The pair is inverted
+    or one date is a default.
+  rule_authority: best_practice
+  sap_impact: Time-in-pay scale level exceeds time-in-company, which distorts tenure reports and pay scale progression.
+  fix_map:
+    __other__: Correct PAY_SCALE_LEVEL_ENTRY_DATE or COMPANY_ENTRY_DATE so the pay scale level entry is on or after the company
+      entry.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: PAY_SCALE_LEVEL_ENTRY_DATE is before COMPANY_ENTRY_DATE.'
+  fail_when: '`EMPEMPLOYMENT.PAY_SCALE_LEVEL_ENTRY_DATE` < `EMPEMPLOYMENT.COMPANY_ENTRY_DATE`'
+  require_populated: true
+- id: EC742
+  field: EMPEMPLOYMENT.COMPANY_ENTRY_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Company entry date is before the group entry date
+  why_it_matters: Group entry is the first date with any company of the group, so a company entry cannot be earlier.
+  rule_authority: best_practice
+  sap_impact: Group seniority comes out shorter than company seniority, which breaks long-service awards and notice periods.
+  fix_map:
+    __other__: Correct COMPANY_ENTRY_DATE or ENTRY_INTO_GROUP so group entry is on or before company entry.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: COMPANY_ENTRY_DATE is before ENTRY_INTO_GROUP.'
+  fail_when: '`EMPEMPLOYMENT.COMPANY_ENTRY_DATE` < `EMPEMPLOYMENT.ENTRY_INTO_GROUP`'
+  require_populated: true
+- id: EC743
+  field: EMPEMPLOYMENT.ENTRY_INTO_GROUP
+  check_class: cross_field_check
+  severity: low
+  dimension: consistency
+  message: Group entry date is before the initial entry date
+  why_it_matters: Initial entry is the first ever hire in the group. A later group entry is expected only on rehire, never
+    an earlier one.
+  rule_authority: best_practice
+  sap_impact: Group seniority counts service before the person was first hired.
+  fix_map:
+    __other__: Correct ENTRY_INTO_GROUP or INITIAL_ENTRY_DATE so group entry is on or after initial entry.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: ENTRY_INTO_GROUP is before INITIAL_ENTRY_DATE.'
+  fail_when: '`EMPEMPLOYMENT.ENTRY_INTO_GROUP` < `EMPEMPLOYMENT.INITIAL_ENTRY_DATE`'
+  require_populated: true
+- id: EC744
+  field: EMPEMPLOYMENT.INITIAL_STOCK_GRANT
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Initial stock grant recorded for an employee not eligible for stock
+  why_it_matters: A positive initial stock grant on an employee flagged as not eligible for stock is a contradiction. Either
+    the grant or the flag is wrong.
+  rule_authority: best_practice
+  sap_impact: Equity administration feeds send a grant for a person the plan excludes, which is a compliance and payroll tax
+    risk.
+  fix_map:
+    __other__: Set ELIGIBLE_FOR_STOCK to true if the grant is real, or clear INITIAL_STOCK_GRANT.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: INITIAL_STOCK_GRANT is positive while ELIGIBLE_FOR_STOCK is false.'
+  fail_when: (`EMPEMPLOYMENT.ELIGIBLE_FOR_STOCK`.astype('string').str.lower() == 'false') & (`EMPEMPLOYMENT.INITIAL_STOCK_GRANT`.fillna(0)
+    > 0)
+- id: EC745
+  field: EMPEMPLOYMENT.INITIAL_STOCK_GRANT
+  check_class: cross_field_check
+  severity: high
+  dimension: validity
+  message: Initial stock grant is negative
+  why_it_matters: A grant is a count of units awarded. A negative value has no meaning and is usually a sign error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Equity feeds reject the record or book a negative award.
+  fix_map:
+    __other__: Correct INITIAL_STOCK_GRANT to zero or a positive number of units.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: INITIAL_STOCK_GRANT is negative.'
+  fail_when: '`EMPEMPLOYMENT.INITIAL_STOCK_GRANT` < 0'
+- id: EC746
+  field: EMPEMPLOYMENT.INITIAL_OPTION_GRANT
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Initial option grant recorded for an employee not eligible for stock
+  why_it_matters: A positive initial option grant on an employee flagged as not eligible for stock is a contradiction. Either
+    the grant or the flag is wrong.
+  rule_authority: best_practice
+  sap_impact: Equity administration feeds send a grant for a person the plan excludes, which is a compliance and payroll tax
+    risk.
+  fix_map:
+    __other__: Set ELIGIBLE_FOR_STOCK to true if the grant is real, or clear INITIAL_OPTION_GRANT.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: INITIAL_OPTION_GRANT is positive while ELIGIBLE_FOR_STOCK is false.'
+  fail_when: (`EMPEMPLOYMENT.ELIGIBLE_FOR_STOCK`.astype('string').str.lower() == 'false') & (`EMPEMPLOYMENT.INITIAL_OPTION_GRANT`.fillna(0)
+    > 0)
+- id: EC747
+  field: EMPEMPLOYMENT.INITIAL_OPTION_GRANT
+  check_class: cross_field_check
+  severity: high
+  dimension: validity
+  message: Initial option grant is negative
+  why_it_matters: A grant is a count of units awarded. A negative value has no meaning and is usually a sign error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Equity feeds reject the record or book a negative award.
+  fix_map:
+    __other__: Correct INITIAL_OPTION_GRANT to zero or a positive number of units.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: INITIAL_OPTION_GRANT is negative.'
+  fail_when: '`EMPEMPLOYMENT.INITIAL_OPTION_GRANT` < 0'
+- id: EC748
+  field: EMPEMPLOYMENT.SHIFT_RATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Shift rate is negative
+  why_it_matters: Shift rate is a magnitude. A negative value is a keying or sign error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation that read SHIFT_RATE compute negative premiums, allowances or periods.
+  fix_map:
+    __other__: Correct SHIFT_RATE to zero or a positive value.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: SHIFT_RATE is negative.'
+  fail_when: '`EMPEMPLOYMENT.SHIFT_RATE` < 0'
+- id: EC749
+  field: EMPEMPLOYMENT.SHIFT_FACTOR
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Shift factor is negative
+  why_it_matters: Shift factor is a magnitude. A negative value is a keying or sign error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation that read SHIFT_FACTOR compute negative premiums, allowances or periods.
+  fix_map:
+    __other__: Correct SHIFT_FACTOR to zero or a positive value.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: SHIFT_FACTOR is negative.'
+  fail_when: '`EMPEMPLOYMENT.SHIFT_FACTOR` < 0'
+- id: EC750
+  field: EMPEMPLOYMENT.TRAVEL_DISTANCE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Travel distance is negative
+  why_it_matters: Travel distance is a magnitude. A negative value is a keying or sign error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation that read TRAVEL_DISTANCE compute negative premiums, allowances or periods.
+  fix_map:
+    __other__: Correct TRAVEL_DISTANCE to zero or a positive value.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: TRAVEL_DISTANCE is negative.'
+  fail_when: '`EMPEMPLOYMENT.TRAVEL_DISTANCE` < 0'
+- id: EC751
+  field: EMPEMPLOYMENT.CONTINUED_SICKNESS_PAY_PERIOD
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Continued sickness pay period is negative
+  why_it_matters: Continued sickness pay period is a magnitude. A negative value is a keying or sign error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation that read CONTINUED_SICKNESS_PAY_PERIOD compute negative premiums, allowances or
+    periods.
+  fix_map:
+    __other__: Correct CONTINUED_SICKNESS_PAY_PERIOD to zero or a positive value.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: CONTINUED_SICKNESS_PAY_PERIOD is negative.'
+  fail_when: '`EMPEMPLOYMENT.CONTINUED_SICKNESS_PAY_PERIOD` < 0'
+- id: EC752
+  field: EMPEMPLOYMENT.PROBATIONARY_PERIOD
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Probationary period is negative
+  why_it_matters: Probationary period is a magnitude. A negative value is a keying or sign error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation that read PROBATIONARY_PERIOD compute negative premiums, allowances or periods.
+  fix_map:
+    __other__: Correct PROBATIONARY_PERIOD to zero or a positive value.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: PROBATIONARY_PERIOD is negative.'
+  fail_when: '`EMPEMPLOYMENT.PROBATIONARY_PERIOD` < 0'
+- id: EC753
+  field: EMPEMPLOYMENT.SHIFT_RATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: completeness
+  message: Shift rate or factor set on a non-shift employee
+  why_it_matters: Shift premiums apply only to shift employees. A rate or factor on an employee not flagged as a shift worker
+    is stale or wrong.
+  rule_authority: best_practice
+  sap_impact: Payroll may pay a shift premium to someone who does not work shifts.
+  fix_map:
+    __other__: Set IS_SHIFT_EMPLOYEE to true if the employee works shifts, or clear SHIFT_RATE and SHIFT_FACTOR.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: SHIFT_RATE or SHIFT_FACTOR is set while IS_SHIFT_EMPLOYEE is false.'
+  fail_when: (`EMPEMPLOYMENT.IS_SHIFT_EMPLOYEE`.astype('string').str.lower() == 'false') & ((`EMPEMPLOYMENT.SHIFT_RATE`.fillna(0)
+    > 0) | (`EMPEMPLOYMENT.SHIFT_FACTOR`.fillna(0) > 0))
+- id: EC754
+  field: EMPEMPLOYMENT.PROBATIONARY_PERIOD_MEASURE
+  check_class: cross_field_check
+  severity: medium
+  dimension: completeness
+  message: Probationary period has no unit of measure
+  why_it_matters: A probationary period of 3 means nothing without days, weeks or months. The end of probation cannot be derived.
+  rule_authority: best_practice
+  sap_impact: Probation end reminders and notice period rules compute the wrong date or none.
+  fix_map:
+    __other__: Set PROBATIONARY_PERIOD_MEASURE to the unit of PROBATIONARY_PERIOD.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: PROBATIONARY_PERIOD is set but PROBATIONARY_PERIOD_MEASURE is blank.'
+  fail_when: (`EMPEMPLOYMENT.PROBATIONARY_PERIOD`.fillna(0) > 0) & `EMPEMPLOYMENT.PROBATIONARY_PERIOD_MEASURE`.isna()
+- id: EC755
+  field: EMPEMPLOYMENT.CONTINUED_SICKNESS_PAY_MEASURE
+  check_class: cross_field_check
+  severity: medium
+  dimension: completeness
+  message: Continued sickness pay period has no unit of measure
+  why_it_matters: The continued sickness pay period needs a unit (days, weeks) before payroll can apply it.
+  rule_authority: best_practice
+  sap_impact: Sick pay continuation in Employee Central Payroll stops at the wrong date.
+  fix_map:
+    __other__: Set CONTINUED_SICKNESS_PAY_MEASURE to the unit of CONTINUED_SICKNESS_PAY_PERIOD.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: CONTINUED_SICKNESS_PAY_PERIOD is set but CONTINUED_SICKNESS_PAY_MEASURE
+    is blank.'
+  fail_when: (`EMPEMPLOYMENT.CONTINUED_SICKNESS_PAY_PERIOD`.fillna(0) > 0) & `EMPEMPLOYMENT.CONTINUED_SICKNESS_PAY_MEASURE`.isna()
+- id: EC756
+  field: EMPEMPLOYMENT.FGTS_PERCENT
+  check_class: cross_field_check
+  severity: high
+  dimension: validity
+  message: FGTS percentage outside 0 to 100
+  why_it_matters: The Brazilian FGTS deposit is a percentage of pay (8 percent standard, 2 percent for apprentices). A value
+    outside 0 to 100 is impossible.
+  rule_authority: sap_hard_constraint
+  sap_impact: Brazilian payroll computes a wrong FGTS deposit and the eSocial submission is rejected.
+  fix_map:
+    __other__: Correct FGTS_PERCENT to the statutory rate for the contract.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: FGTS_PERCENT is outside 0 to 100.'
+  fail_when: (`EMPEMPLOYMENT.FGTS_PERCENT` < 0) | (`EMPEMPLOYMENT.FGTS_PERCENT` > 100)
+- id: EC757
+  field: EMPEMPLOYMENT.FGTS_DATE
+  check_class: cross_field_check
+  severity: high
+  dimension: completeness
+  message: FGTS optant without an FGTS option date
+  why_it_matters: An employee who opted into FGTS needs the option date. eSocial requires it for every optant.
+  rule_authority: sap_hard_constraint
+  sap_impact: eSocial S-2200 events are rejected and FGTS deposits cannot be reconciled.
+  fix_map:
+    __other__: Enter FGTS_DATE, the date the employee opted into FGTS.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: FGTS_OPTANT is true but FGTS_DATE is blank.'
+  fail_when: (`EMPEMPLOYMENT.FGTS_OPTANT`.astype('string').str.lower() == 'true') & `EMPEMPLOYMENT.FGTS_DATE`.isna()
+- id: EC758
+  field: EMPEMPLOYMENT.FGTS_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: FGTS option date lies in the future
+  why_it_matters: An option already exercised cannot carry a future date.
+  rule_authority: best_practice
+  sap_impact: FGTS deposits start at the wrong period.
+  fix_map:
+    __other__: Set FGTS_DATE to the real option date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: FGTS_DATE is in the future.'
+  fail_when: '`EMPEMPLOYMENT.FGTS_DATE` > @today'
+  require_populated: true
+- id: EC759
+  field: EMPEMPLOYMENT.CONTRACT_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Contract date lies more than a year in the future
+  why_it_matters: A contract is normally signed before or close to the start of work. A signing date far in the future is
+    a keying error.
+  rule_authority: best_practice
+  sap_impact: Contract-based reporting and works council lists show contracts that do not exist yet.
+  fix_map:
+    __other__: Correct CONTRACT_DATE to the real signing date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: CONTRACT_DATE is more than 365 days in the future.'
+  fail_when: (`EMPEMPLOYMENT.CONTRACT_DATE` - @today).dt.days > 365
+- id: EC760
+  field: EMPEMPLOYMENT.CONTRACT_DATE
+  check_class: cross_field_check
+  severity: low
+  dimension: consistency
+  message: Contract date is after the contract end date
+  why_it_matters: A contract cannot end before it was concluded.
+  rule_authority: best_practice
+  sap_impact: Fixed-term contract tracking shows an impossible period.
+  fix_map:
+    __other__: Correct CONTRACT_DATE or CONTRACT_END_DATE.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: CONTRACT_DATE is after CONTRACT_END_DATE.'
+  fail_when: '`EMPEMPLOYMENT.CONTRACT_DATE` > `EMPEMPLOYMENT.CONTRACT_END_DATE`'
+  require_populated: true
+- id: EC761
+  field: EMPEMPLOYMENT.EXCHANGE_RATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Exchange rate is zero or negative
+  why_it_matters: An exchange rate converts pay between currencies. Zero or a negative value makes every converted amount
+    wrong.
+  rule_authority: sap_hard_constraint
+  sap_impact: Global assignment and cross-border pay conversions return zero or negative amounts.
+  fix_map:
+    __other__: Correct EXCHANGE_RATE to the positive rate in use.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: EXCHANGE_RATE is zero or negative.'
+  fail_when: '`EMPEMPLOYMENT.EXCHANGE_RATE` <= 0'
+- id: EC762
+  field: EMPEMPLOYMENT.WTD_HOURS_LIMIT
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Working time directive hours limit is not a number from 0 to 168
+  why_it_matters: The weekly limit under the EU Working Time Directive is 48 hours unless opted out. A value below zero or
+    above the 168 hours in a week is impossible.
+  rule_authority: sap_hard_constraint
+  sap_impact: Time evaluation working time checks cannot alert on breaches.
+  fix_map:
+    __other__: Correct WTD_HOURS_LIMIT to the agreed weekly limit.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: WTD_HOURS_LIMIT is not a number from 0 to 168.'
+  fail_when: '`EMPEMPLOYMENT.WTD_HOURS_LIMIT`.notna() & ~`EMPEMPLOYMENT.WTD_HOURS_LIMIT`.str.strip().str.fullmatch(''([0-9]{1,2}|1[0-5][0-9]|16[0-7])([.][0-9]+)?|168([.]0+)?'')'
+- id: EC763
+  field: EMPEMPLOYMENT.DEGREE_OF_PRODUCTIVITY
+  check_class: cross_field_check
+  severity: low
+  dimension: validity
+  message: Degree of productivity outside 0 to 100
+  why_it_matters: Degree of productivity is a percentage of standard output. A value outside 0 to 100 cannot be applied.
+  rule_authority: best_practice
+  sap_impact: Wage-level and incentive calculations that use it produce wrong pay.
+  fix_map:
+    __other__: Correct DEGREE_OF_PRODUCTIVITY to a percentage from 0 to 100.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: DEGREE_OF_PRODUCTIVITY is outside 0 to 100.'
+  fail_when: (`EMPEMPLOYMENT.DEGREE_OF_PRODUCTIVITY` < 0) | (`EMPEMPLOYMENT.DEGREE_OF_PRODUCTIVITY` > 100)
+- id: EC764
+  field: EMPEMPLOYMENT.GUARANTEED_PAYMENT
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Guaranteed payment is negative
+  why_it_matters: A guaranteed payment is an amount owed to the employee. A negative value is a sign error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll deducts instead of pays the guaranteed amount.
+  fix_map:
+    __other__: Correct GUARANTEED_PAYMENT to zero or a positive amount.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: GUARANTEED_PAYMENT is negative.'
+  fail_when: '`EMPEMPLOYMENT.GUARANTEED_PAYMENT` < 0'
+- id: EC765
+  field: EMPEMPLOYMENT.REGRET_TERMINATION
+  check_class: cross_field_check
+  severity: low
+  dimension: consistency
+  message: Regret termination flag set on an active employee
+  why_it_matters: Regret termination classifies a leaver as a loss the company regrets. It only has meaning on a terminated
+    record.
+  rule_authority: best_practice
+  sap_impact: Regretted attrition analytics count people who are still employed.
+  fix_map:
+    __other__: Clear REGRET_TERMINATION on active employees, or complete the termination.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: REGRET_TERMINATION is true while STATUS is not terminated or retired.'
+  fail_when: (`EMPEMPLOYMENT.REGRET_TERMINATION`.astype('string').str.lower() == 'true') & ~`EMPEMPLOYMENT.STATUS`.isin(['T','R'])
+    & `EMPEMPLOYMENT.TERMINATION_DATE`.isna()
+- id: EC766
+  field: EMPEMPLOYMENT.OK_TO_REHIRE
+  check_class: cross_field_check
+  severity: low
+  dimension: consistency
+  message: Regretted leaver marked as not eligible for rehire
+  why_it_matters: A termination the company regrets is normally rehire-eligible. Not eligible for rehire on a regretted leaver
+    points to one of the two flags being wrong.
+  rule_authority: best_practice
+  sap_impact: Recruiting blocks a former employee the business wants back.
+  fix_map:
+    __other__: Review OK_TO_REHIRE and REGRET_TERMINATION and correct the wrong one.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: REGRET_TERMINATION is true but OK_TO_REHIRE is false.'
+  fail_when: (`EMPEMPLOYMENT.REGRET_TERMINATION`.astype('string').str.lower() == 'true') & (`EMPEMPLOYMENT.OK_TO_REHIRE`.astype('string').str.lower()
+    == 'false')
+- id: EC767
+  field: PAYMENTINFO.EFFECTIVE_END_DATE
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  message: Payment info end date is before its start date
+  why_it_matters: A bank detail record that ends before it starts is never valid, so the employee has no usable payment method
+    for that slice.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll bank transfer has no valid account for the period and the payment is rejected or held.
+  fix_map:
+    __other__: Correct EFFECTIVE_START_DATE or EFFECTIVE_END_DATE.
+  record_fix_template: 'Payment info {PAYMENTINFO.USERID}: EFFECTIVE_END_DATE is before EFFECTIVE_START_DATE.'
+  fail_when: '`PAYMENTINFO.EFFECTIVE_END_DATE` < `PAYMENTINFO.EFFECTIVE_START_DATE`'
+  require_populated: true
+- id: EC768
+  field: PAYMENTINFO.EFFECTIVE_START_DATE
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Payment info start date differs from its effective date
+  why_it_matters: EFFECTIVE_DATE and EFFECTIVE_START_DATE both describe when the payment record starts. A mismatch means one
+    was migrated wrongly.
+  rule_authority: best_practice
+  sap_impact: Replication to Employee Central Payroll infotype 0009 uses the wrong start date.
+  fix_map:
+    __other__: Align EFFECTIVE_START_DATE with EFFECTIVE_DATE.
+  record_fix_template: 'Payment info {PAYMENTINFO.USERID}: EFFECTIVE_START_DATE differs from EFFECTIVE_DATE.'
+  fail_when: '`PAYMENTINFO.EFFECTIVE_START_DATE` != `PAYMENTINFO.EFFECTIVE_DATE`'
+  require_populated: true
+- id: EC769
+  field: PAYMENTINFO.PAY_TYPE
+  check_class: cross_field_check
+  severity: medium
+  dimension: completeness
+  message: Payment info has no pay type
+  why_it_matters: Pay type tells payroll whether the account receives main pay, expenses or bonus. Without it the split cannot
+    be applied.
+  rule_authority: best_practice
+  sap_impact: Infotype 0009 subtype cannot be derived and the record does not replicate.
+  fix_map:
+    __other__: Set PAY_TYPE to main, expenses or the agreed type.
+  record_fix_template: 'Payment info {PAYMENTINFO.USERID}: PAY_TYPE is blank.'
+  fail_when: '`PAYMENTINFO.PAY_TYPE`.isna() & (`PAYMENTINFO.ACCOUNT_NUMBER`.notna() | `PAYMENTINFO.IBAN`.notna())'
+- id: EC770
+  field: PAYMENTINFO.JOB_COUNTRY
+  check_class: cross_field_check
+  severity: medium
+  dimension: completeness
+  message: Payment info has no job country
+  why_it_matters: Payment information in Employee Central is country specific. The job country decides which bank fields are
+    mandatory.
+  rule_authority: sap_hard_constraint
+  sap_impact: Country-specific bank validation is skipped and replication picks the wrong country version.
+  fix_map:
+    __other__: Set JOB_COUNTRY to the country of the employee's job.
+  record_fix_template: 'Payment info {PAYMENTINFO.USERID}: JOB_COUNTRY is blank.'
+  fail_when: '`PAYMENTINFO.JOB_COUNTRY`.isna()'
+- id: EC771
+  field: PEREMERGENCY.DATE_OF_BIRTH
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Dependent or emergency contact born in the future
+  why_it_matters: A date of birth after today is impossible.
+  rule_authority: sap_hard_constraint
+  sap_impact: Dependent age checks for benefits and tax allowances fail.
+  fix_map:
+    __other__: Correct DATE_OF_BIRTH.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: contact DATE_OF_BIRTH is in the future.'
+  fail_when: '`PEREMERGENCY.DATE_OF_BIRTH` > @today'
+  require_populated: true
+- id: EC772
+  field: PEREMERGENCY.DATE_OF_BIRTH
+  check_class: cross_field_check
+  severity: medium
+  dimension: completeness
+  message: Dependent has no date of birth
+  why_it_matters: Benefits and child tax allowances are age based. A dependent without a date of birth cannot be checked for
+    eligibility.
+  rule_authority: best_practice
+  sap_impact: Benefit enrolment and child allowance eligibility cannot be evaluated.
+  fix_map:
+    __other__: Enter the dependent's DATE_OF_BIRTH.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: IS_DEPENDENT is true but DATE_OF_BIRTH is blank.'
+  fail_when: (`PEREMERGENCY.IS_DEPENDENT`.astype('string').str.lower() == 'true') & `PEREMERGENCY.DATE_OF_BIRTH`.isna()
+- id: EC773
+  field: PEREMERGENCY.IS_STUDENT
+  check_class: cross_field_check
+  severity: low
+  dimension: consistency
+  message: Student dependent older than 25
+  why_it_matters: Student status extends dependent benefits only up to an age limit, typically 25 to 27. A student dependent
+    over 25 is likely stale.
+  rule_authority: best_practice
+  sap_impact: Benefit plans continue cover past the plan age limit.
+  fix_map:
+    __other__: Confirm student status and clear IS_STUDENT if no longer true.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: IS_STUDENT is true and the contact is older than 25.'
+  fail_when: (`PEREMERGENCY.IS_STUDENT`.astype('string').str.lower() == 'true') & ((@today - `PEREMERGENCY.DATE_OF_BIRTH`).dt.days
+    > 9131)
+- id: EC774
+  field: PEREMERGENCY.SECOND_PHONE
+  check_class: cross_field_check
+  severity: low
+  dimension: uniqueness
+  message: Second phone repeats the primary phone
+  why_it_matters: A second phone that equals the first adds no reach and is usually a copy error.
+  rule_authority: best_practice
+  sap_impact: Call trees try the same number twice.
+  fix_map:
+    __other__: Enter a different SECOND_PHONE or clear it.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: SECOND_PHONE equals PHONE.'
+  fail_when: '`PEREMERGENCY.SECOND_PHONE` == `PEREMERGENCY.PHONE`'
+  require_populated: true
+- id: EC775
+  field: PEREMERGENCY.ADDRESS
+  check_class: cross_field_check
+  severity: low
+  dimension: completeness
+  message: Contact address blank while not same as employee
+  why_it_matters: When the contact does not share the employee's address, the contact's own address is needed for dependants
+    and benefits.
+  rule_authority: best_practice
+  sap_impact: Benefit providers and insurers cannot write to the dependant.
+  fix_map:
+    __other__: Enter ADDRESS or set IS_ADD_SAME_AS_EMPLOYEE to true.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: ADDRESS is blank and IS_ADD_SAME_AS_EMPLOYEE is false.'
+  fail_when: (`PEREMERGENCY.IS_DEPENDENT`.astype('string').str.lower() == 'true') & (`PEREMERGENCY.IS_ADD_SAME_AS_EMPLOYEE`.astype('string').str.lower()
+    == 'false') & `PEREMERGENCY.ADDRESS`.isna()
+- id: EC776
+  field: EMPWORKPERMIT.ISSUING_AUTHORITY
+  check_class: cross_field_check
+  severity: low
+  dimension: completeness
+  message: Validated work permit has no issuing authority
+  why_it_matters: Right-to-work audits need the authority that issued the document as evidence.
+  rule_authority: best_practice
+  sap_impact: Immigration audits find permits without provenance.
+  fix_map:
+    __other__: Enter ISSUING_AUTHORITY.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: validated permit has no ISSUING_AUTHORITY.'
+  fail_when: (`EMPWORKPERMIT.IS_VALIDATED`.astype('string').str.lower() == 'true') & `EMPWORKPERMIT.ISSUING_AUTHORITY`.isna()
+- id: EC777
+  field: PERINFO.TEMPORARY_ID
+  check_class: cross_field_check
+  severity: medium
+  dimension: completeness
+  message: Temporary ID flag without a temporary ID
+  why_it_matters: When the national ID is temporary, the temporary number must be recorded so it can be replaced later.
+  rule_authority: best_practice
+  sap_impact: Tax and social security reporting has no identifier for the person.
+  fix_map:
+    __other__: Enter TEMPORARY_ID or clear IS_TEMPORARY.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: IS_TEMPORARY is true but TEMPORARY_ID is blank.'
+  fail_when: (`PERINFO.IS_TEMPORARY`.astype('string').str.lower() == 'true') & `PERINFO.TEMPORARY_ID`.isna()
+- id: EC778
+  field: PERINFO.SINCE
+  check_class: cross_field_check
+  severity: low
+  dimension: validity
+  message: Marital status since date lies in the future
+  why_it_matters: SINCE records when the marital status began. A future date is impossible.
+  rule_authority: best_practice
+  sap_impact: Tax class and benefit changes tied to marital status apply at the wrong date.
+  fix_map:
+    __other__: Correct SINCE.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: SINCE is in the future.'
+  fail_when: '`PERINFO.SINCE` > @today'
+  require_populated: true
+- id: EC779
+  field: PERINFO.SINCE
+  check_class: cross_field_check
+  severity: low
+  dimension: consistency
+  message: Marital status since date is before date of birth
+  why_it_matters: A marital status cannot start before the person was born.
+  rule_authority: best_practice
+  sap_impact: Marital status history is impossible.
+  fix_map:
+    __other__: Correct SINCE or DATE_OF_BIRTH.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: SINCE is before DATE_OF_BIRTH.'
+  fail_when: '`PERINFO.SINCE` < `PERINFO.DATE_OF_BIRTH`'
+  require_populated: true
+- id: EC780
+  field: PERINFO.CERTIFICATE_START_DATE
+  check_class: cross_field_check
+  severity: low
+  dimension: completeness
+  message: Challenged person without certificate start date
+  why_it_matters: Disability quotas and extra leave need proof of the certificate and its start date.
+  rule_authority: best_practice
+  sap_impact: Disability quota reports undercount and entitlements cannot be granted.
+  fix_map:
+    __other__: Enter CERTIFICATE_START_DATE.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: CHALLENGE_STATUS is true but CERTIFICATE_START_DATE is blank.'
+  fail_when: (`PERINFO.CHALLENGE_STATUS`.astype('string').str.lower() == 'true') & `PERINFO.CERTIFICATE_START_DATE`.isna()
+- id: EC781
+  field: POSITION.INCUMBENT
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Vacant position has an incumbent
+  why_it_matters: A vacant position has no holder. An incumbent on a vacant position means either the vacancy flag or the
+    incumbent is stale.
+  rule_authority: best_practice
+  sap_impact: Recruiting opens requisitions for filled positions, or headcount reports miss a holder.
+  fix_map:
+    __other__: Clear INCUMBENT or set VACANT to false.
+  record_fix_template: 'Position {POSITION.CODE}: VACANT is true but INCUMBENT is set.'
+  fail_when: (`POSITION.VACANT`.astype('string').str.lower() == 'true') & `POSITION.INCUMBENT`.notna()
+- id: EC900
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: contact_check
+  kind: email
+  severity: high
+  dimension: validity
+  message: Email address breaks the RFC 5321/5322 syntax or length limits
+  why_it_matters: Mail servers reject an address that breaks the RFC syntax or length limits, so invoices, dunning letters
+    and notifications sent to it bounce. The finding names the exact reason for each address.
+  rule_authority: best_practice
+  sap_impact: Output by email (invoices, dunning, payment advice, notifications) bounces; S/4HANA migration carries the broken
+    address across.
+  fix_map:
+    __other__: Correct the value in SuccessFactors Employee Central > Personal Information.
+  record_fix_template: 'PEREMAIL.EMAIL_ADDRESS: email address breaks the rfc 5321/5322 syntax or length
+    limits.'
+- id: EC901
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: contact_check
+  kind: disposable
+  severity: medium
+  dimension: validity
+  message: Email address uses a disposable mailbox service
+  why_it_matters: Disposable mailbox domains expire within hours or days. A master record that points at one loses its only
+    email channel, and the pattern often marks a test or fraudulent record.
+  rule_authority: best_practice
+  sap_impact: Correspondence and notifications go to a mailbox that no longer exists; the record may not belong to a real
+    party.
+  fix_map:
+    __other__: Correct the value in SuccessFactors Employee Central > Personal Information.
+  record_fix_template: 'PEREMAIL.EMAIL_ADDRESS: email address uses a disposable mailbox service.'
+- id: EC902
+  field: PERPHONE.PHONE_NUMBER
+  check_class: contact_check
+  kind: phone
+  dial_field: PERPHONE.COUNTRY_CODE
+  severity: medium
+  dimension: validity
+  message: Telephone number is not a plausible number for its country
+  why_it_matters: A number with the wrong length or calling code for its country cannot be dialled. The check normalises to
+    E.164 and names the reason, so a steward knows whether the digits or the country is wrong.
+  rule_authority: best_practice
+  sap_impact: Call-centre, delivery and SMS processes cannot reach the party; downstream CRM and telephony integrations reject
+    the number.
+  fix_map:
+    __other__: Correct the value in SuccessFactors Employee Central > Personal Information.
+  record_fix_template: 'PERPHONE.PHONE_NUMBER: telephone number is not a plausible number for its country.'
+- id: EC903
+  field: PERADDRESS.ZIPCODE
+  check_class: contact_check
+  kind: postcode
+  country_field: PERADDRESS.COUNTRY
+  severity: high
+  dimension: validity
+  message: Postal code does not match the format of its country
+  why_it_matters: Each country has a fixed postal code layout. A code that breaks it fails address validation, carrier label
+    printing and tax jurisdiction look-up.
+  rule_authority: best_practice
+  sap_impact: Carrier integration and tax jurisdiction determination fail; S/4HANA address checks (TSAD) reject the address
+    on change.
+  fix_map:
+    __other__: Correct the value in SuccessFactors Employee Central > Personal Information.
+  record_fix_template: 'PERADDRESS.ZIPCODE: postal code does not match the format of its country.'
+  auto_fix:
+    steps:
+    - op: postcode
+      country_field: PERADDRESS.COUNTRY
+    confidence: medium

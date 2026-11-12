@@ -2,18 +2,20 @@
 
 import json
 import math
+import uuid
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from api.services.rbac import require_permission, write_audit
+from api.services.rbac import current_user_id, require_permission, write_audit
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import get_db, get_tenant, Tenant as TenantDep
 from api.config import settings as app_settings
-from api.services.scoring import DEFAULT_THRESHOLDS, scoring_config
+from api.services.scoring import (DEFAULT_THRESHOLDS, THRESHOLD_DIMENSIONS, resolve_thresholds,
+                                  scoring_config)
 
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 
@@ -322,6 +324,96 @@ async def put_scoring(body: ScoringConfig, db: AsyncSession = Depends(get_db),
                           **body.model_dump(include={"severity_weights", "severity_multipliers",
                                                      "critical_tolerance"})}), "tid": str(tenant.id)},
     )
+    await db.commit()
+    return {"status": "ok"}
+
+
+# ─── /settings/quality-thresholds ───────────────────────────────────
+# Target / warning / critical per DQS dimension ("overall" = composite), as a tenant default
+# (module "*") plus per-module overrides, in quality_thresholds (migration 153). Object and run
+# screens band each score against them. Unset dimensions fall back to /settings/scoring thresholds.
+
+class QualityThreshold(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    module: str = Field("*", min_length=1, max_length=64, pattern=r"^(\*|[a-z0-9_]+)$")
+    dimension: str
+    target: float = Field(ge=0, le=100)
+    warning: float = Field(ge=0, le=100)
+    critical: float = Field(ge=0, le=100)
+
+
+async def _threshold_rows(db: AsyncSession, tenant: TenantDep) -> list[dict]:
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    rows = (await db.execute(text(
+        "SELECT module, dimension, target, warning, critical FROM quality_thresholds "
+        "WHERE tenant_id = CAST(:tid AS uuid) ORDER BY module, dimension"), {"tid": str(tenant.id)})).mappings().all()
+    return [dict(r) for r in rows]
+
+
+@router.get("/quality-thresholds", dependencies=[Depends(require_permission("view"))])
+async def get_quality_thresholds(db: AsyncSession = Depends(get_db), tenant: TenantDep = Depends(get_tenant)) -> dict[str, Any]:
+    """fallback: the tenant composite bands. tenant: the default per dimension, resolved.
+    modules: each module's overrides as stored (only the dimensions it sets). Banding a module's
+    score: modules[m][dim], else tenant[dim]."""
+    raw = (await db.execute(text("SELECT dqs_weights FROM tenants WHERE id = :tid"),
+                            {"tid": str(tenant.id)})).scalar() or {}
+    fallback = scoring_config(raw)["thresholds"]
+    rows = await _threshold_rows(db, tenant)
+    modules: dict[str, dict] = {}
+    for r in rows:
+        if r["module"] != "*":
+            modules.setdefault(r["module"], {})[r["dimension"]] = {
+                k: float(r[k]) for k in ("target", "warning", "critical")}
+    return {"dimensions": list(THRESHOLD_DIMENSIONS), "fallback": fallback,
+            "tenant": resolve_thresholds(rows, "*", fallback), "modules": modules}
+
+
+def _threshold_problem(body: QualityThreshold) -> str | None:
+    if body.dimension not in THRESHOLD_DIMENSIONS:
+        return f"dimension must be one of {', '.join(THRESHOLD_DIMENSIONS)}"
+    if not body.critical <= body.warning <= body.target:
+        return "Thresholds must satisfy critical <= warning <= target"
+    return None
+
+
+@router.put("/quality-thresholds", dependencies=[Depends(require_permission("manage_settings"))])
+async def put_quality_threshold(body: QualityThreshold, request: Request, db: AsyncSession = Depends(get_db),
+                                tenant: TenantDep = Depends(get_tenant)) -> dict[str, Any]:
+    """Set one (module, dimension) band. module "*" sets the tenant default."""
+    problem = _threshold_problem(body)
+    if problem:
+        raise HTTPException(status_code=422, detail=problem)
+    me = current_user_id(request)
+    try:
+        me = str(uuid.UUID(str(me))) if me else None
+    except ValueError:
+        me = None  # a service principal or dev header names no user row
+    before = next((r for r in await _threshold_rows(db, tenant)
+                   if r["module"] == body.module and r["dimension"] == body.dimension), None)
+    await db.execute(text(
+        "INSERT INTO quality_thresholds (tenant_id, module, dimension, target, warning, critical, updated_by) "
+        "VALUES (CAST(:tid AS uuid), :m, :d, :t, :w, :c, CAST(:u AS uuid)) "
+        "ON CONFLICT (tenant_id, module, dimension) DO UPDATE SET target = EXCLUDED.target, "
+        "warning = EXCLUDED.warning, critical = EXCLUDED.critical, updated_by = EXCLUDED.updated_by, updated_at = now()"),
+        {"tid": str(tenant.id), "m": body.module, "d": body.dimension, "t": body.target, "w": body.warning,
+         "c": body.critical, "u": me})
+    await write_audit(db, tenant.id, request, "quality_threshold.set", "quality_threshold",
+                      f"{body.module}:{body.dimension}",
+                      {k: float(before[k]) for k in ("target", "warning", "critical")} if before else None,
+                      body.model_dump(include={"target", "warning", "critical"}))
+    await db.commit()
+    return {"status": "ok"}
+
+
+@router.delete("/quality-thresholds", dependencies=[Depends(require_permission("manage_settings"))])
+async def delete_quality_threshold(module: str, dimension: str, request: Request,
+                                   db: AsyncSession = Depends(get_db), tenant: TenantDep = Depends(get_tenant)) -> dict[str, Any]:
+    """Drop one override, so the module (or the tenant default) falls back a level."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    await db.execute(text("DELETE FROM quality_thresholds WHERE tenant_id = CAST(:tid AS uuid) "
+                          "AND module = :m AND dimension = :d"), {"tid": str(tenant.id), "m": module, "d": dimension})
+    await write_audit(db, tenant.id, request, "quality_threshold.clear", "quality_threshold",
+                      f"{module}:{dimension}", None, None)
     await db.commit()
     return {"status": "ok"}
 

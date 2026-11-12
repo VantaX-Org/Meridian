@@ -50,6 +50,12 @@ OBJECTS: dict[str, dict] = {
                    "KNVK", "KNAS", "KNKK", "KNKA", "TIBAN", "ADRC", "ADR2", "ADR3", "ADR6",
                    "UKMBP_CMS", "UKMBP_CMS_SGM", "CVI_CUST_LINK"],
     },
+    "business_partner": {
+        "title": "ECC business partner",
+        "system": "ecc",
+        "tables": ["BUT000", "BUT020", "BUT021_FS", "BUT0BK", "BUT0ID", "BUT100", "BUT050", "DFKKBPTAXNUM",
+                   "ADRC", "ADR2", "ADR6", "CVI_CUST_LINK", "CVI_VEND_LINK"],
+    },
     "employee_central": {
         "title": "SuccessFactors Employee Central",
         "system": "successfactors",
@@ -68,28 +74,16 @@ CURATED: dict[str, dict[str, str]] = {
         "MARA.DATAB": "format: valid date when populated; cross-field: DATAB not after MARA.MSTDE when both set",
         "MARA.BEGRU": "domain + S4-prerequisite: profile values per MARA.MTART; flag authorization groups"
         " used by fewer than a handful of materials (likely typos) before role redesign",
-        "MARC.HERBL": "cross-field: when populated, MARC.HERKL (country of origin) is also populated;"
-        " region values valid for that country are country-specific (unverified)",
         "MARD.LGPBE": "mandatory-if-used: profile bin population per MARD.LGORT; conditional null_check for"
         " storage locations where most records carry a bin",
         "MARD.PRCTL": "cross-field: when populated, equals MARC.PRCTR for the same material/plant (unverified:"
         " confirm the business allows a differing storage-location profit center)",
-        "MLAN.TAXM2": "cross-field: when MLAN.TAXM1 is populated for a MLAN.ALAND whose tax procedure uses a"
-        " second tax category, TAXM2 is populated (unverified: depends on country tax determination)",
-        "QMAT.INSMK": "cross-field: an active inspection type (QMAT.AKTIV = X) for goods-receipt inspection"
-        " types (QMAT.ART 01/0101) has INSMK = X (unverified: inspection type codes are customizing)",
         "INOB.STATU": "domain: classification status is released (value 1) for classified objects; flag"
         " locked or incomplete assignments (unverified: status values are customizing)",
     },
     "sd_customer_master": {
         "KNA1.KONZS": "consistency: customers sharing a KONZS share KNA1.LAND1 or KNA1.KTOKD pattern;"
         " flag singleton group keys (likely typos)",
-        "KNA1.STKZU": "cross-field: STKZU = X requires KNA1.STCEG populated for EU countries (unverified)",
-        "KNA1.STCD3": "format: country-specific tax number pattern by KNA1.LAND1 (unverified)",
-        "KNBK.BANKN": "format: account number length/charset by KNBK.BANKS (unverified); cross-table: a"
-        " matching TIBAN row (TIBAN.BANKS/BANKL/BANKN) exists where the country uses IBAN",
-        "KNBK.KOINH": "mandatory: account holder populated; similarity check against KNA1.NAME1",
-        "ADRC.POST_CODE1": "format: length and pattern per ADRC.COUNTRY using T005.LNPLZ / T005.PRPLZ",
         "UKMBP_CMS_SGM.XCRITICAL": "cross-field: critical customers (XCRITICAL = X) carry a credit limit"
         " (UKMBP_CMS_SGM.CREDIT_LIMIT > 0) in the same credit segment",
     },

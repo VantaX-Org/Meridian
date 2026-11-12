@@ -153,6 +153,75 @@ def _frame(obj: str, payload: dict[str, Any], object_key: Optional[str]):
     return pd.DataFrame([row]), placeholders
 
 
+FORM_MAX_VALUES = 500  # a check table longer than this is typed, not picked
+
+
+def form_fields(obj: str, live_values: Optional[dict[str, set[str]]] = None) -> list[dict[str, Any]]:
+    """The data collection form of an object: every field the object's rules read (and the create BAPI needs) in
+    the object's tables, as SAP's dictionary describes it. A field the dictionary does not know is left out, never
+    guessed. Allowed values come from the domain's fixed values, else the check table's values in the system's live
+    configuration (``live_values``: CHECKTABLE.FIELD -> values), else the values the object's rules accept."""
+    from api.services.dq_firewall import module_fields
+    from checks.runner import module_rules
+    from sap.bapi_create import BP_FIELDS, CVI_ALIASES, MATERIAL_REQUIRED
+    from sap.ddic import get_dictionary
+
+    if obj not in OBJECTS:
+        return []
+    rules = module_rules(MODULE_OF[obj])
+    wanted = set(module_fields(MODULE_OF[obj])) | set(MATERIAL_REQUIRED if obj == "material" else ())
+    wanted |= set(BP_FIELDS) if obj in ("business_partner", "customer", "vendor") else set()
+    wanted |= set(CVI_ALIASES.get(obj, {}))
+    required = set(MATERIAL_REQUIRED if obj == "material" else ())
+    required |= {r["field"] for r in rules if r.get("check_class") == "null_check" and r.get("severity") == "critical"
+                 and isinstance(r.get("field"), str) and not r.get("condition")}
+    key = ".".join(KEY_FIELD[obj])
+    required.discard(key)  # a new record's number is assigned by SAP or its number range
+    by_field: dict[str, list[dict]] = {}
+    for r in rules:
+        if isinstance(r.get("field"), str):
+            by_field.setdefault(r["field"].upper(), []).append(r)
+    d = get_dictionary("ecc")
+    live_values = live_values or {}
+    out: list[dict[str, Any]] = []
+    for qf in sorted(wanted):
+        table, _, name = qf.partition(".")
+        if table not in OBJECT_TABLES[obj] or not name:
+            continue
+        f = d.field(table, name)
+        if f is None:
+            continue
+        values: list[dict[str, Optional[str]]] = []
+        source = None
+        fixed = [{"value": v.low, "label": v.text or None} for v in f.fixed_values if not v.high]
+        live = sorted(live_values.get(f.check_ref or "", ()))
+        if fixed and not any(v.high for v in f.fixed_values):
+            values, source = fixed, "domain"
+        elif live and len(live) <= FORM_MAX_VALUES:
+            values, source = [{"value": v, "label": None} for v in live], "check_table"
+        else:
+            for r in by_field.get(qf, ()):
+                src = r.get("valid_values_with_labels") or r.get("allowed_values")
+                if isinstance(src, dict) and src:
+                    values = [{"value": str(k), "label": None if v is None else str(v)} for k, v in src.items()]
+                elif isinstance(src, (list, tuple)) and src:
+                    values = [{"value": "" if v is None else str(v), "label": None} for v in src]
+                if values:
+                    source = "rule"
+                    break
+        ct = d.table(f.check_table) if f.check_table else None
+        out.append({
+            "field": qf, "table": table, "name": name, "label": f.description or qf,
+            "table_label": ((tb.description if (tb := d.table(table)) else None) or table),
+            "type": f.type, "length": f.length, "decimals": f.decimals, "key": bool(f.key) or qf == key,
+            "required": qf in required, "check_table": f.check_table,
+            "check_table_label": ct.description if ct else None,
+            "values": values, "values_source": source, "rules": len(by_field.get(qf, ())),
+        })
+    out.sort(key=lambda x: (not x["required"], x["table"], x["name"]))
+    return out
+
+
 def rule_results(tid: str, obj: str, payload: dict[str, Any], object_key: Optional[str],
                  overrides: dict | None, extra_rules: list[dict] | None) -> dict:
     """Meridian's rules on the proposal: {rules_run, failures: [{check_id, severity, dimension, field, message}]}.

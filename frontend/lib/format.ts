@@ -152,8 +152,8 @@ export function formatMoney(n: number, currency?: string | null): string {
   const base = { maximumFractionDigits: 0 };
   try {
     return currency
-      ? new Intl.NumberFormat(formatPrefs.locale, { ...base, style: "currency", currency, currencyDisplay: "code" }).format(n)
-      : new Intl.NumberFormat(formatPrefs.locale, base).format(n);
+      ? new Intl.NumberFormat(formatPrefs.locale ?? "en-US", { ...base, style: "currency", currency, currencyDisplay: "code" }).format(n)
+      : new Intl.NumberFormat(formatPrefs.locale ?? "en-US", base).format(n);
   } catch {
     return `${currency ?? ""} ${new Intl.NumberFormat(undefined, base).format(n)}`.trim();
   }
@@ -176,7 +176,7 @@ export function formatMoneyCompact(n: number | null | undefined, currency?: stri
   const rounded = Number(n.toPrecision(3));
   const scale = MONEY_SCALES.find((s) => Math.abs(rounded) >= s.at);
   if (!scale) return formatMoney(Math.round(n), currency);
-  const value = new Intl.NumberFormat(formatPrefs.locale, { maximumSignificantDigits: 3 }).format(rounded / scale.at);
+  const value = new Intl.NumberFormat(formatPrefs.locale ?? "en-US", { maximumSignificantDigits: 3 }).format(rounded / scale.at);
   return `${currency ? `${currency} ` : ""}${value} ${scale.unit}`;
 }
 
@@ -279,6 +279,7 @@ const CHECK_CLASS_LABELS: Record<string, string> = {
   count_per_parent_check: "Count per parent",
   all_children_check: "Parent matches all children",
   char_set_check: "Allowed characters",
+  contact_check: "Email, phone or postcode verification",
 };
 
 /** "domain_value_check" -> "Allowed values"; unknown ids are humanized ("older_than_days" -> "Older than days"). */
@@ -310,10 +311,10 @@ function intl(options: Intl.DateTimeFormatOptions, zone: string): Intl.DateTimeF
   }
 }
 
-/** Number formatting in the user's locale (the browser's when none is set). */
+/** Number formatting in the user's locale (US English when none is set, so a figure reads the same on every machine). */
 export function formatNumber(n: number, options?: Intl.NumberFormatOptions): string {
   try {
-    return n.toLocaleString(formatPrefs.locale, options);
+    return n.toLocaleString(formatPrefs.locale ?? "en-US", options);
   } catch {
     return n.toLocaleString(undefined, options);
   }

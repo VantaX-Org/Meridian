@@ -116,11 +116,11 @@ for (const size of SIZES) {
       test("Rules: Learned and Drafts, with their decisions", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load", timeout: 90_000 });
-        await page.getByRole("button", { name: "Learned 4" }).click(NAV);
+        await page.getByRole("button", { name: "Learned 5" }).click(NAV);
         const learned = page.getByRole("table", { name: "Learned rules waiting for a decision" });
         await expect(learned).toBeVisible();
-        await expect(learned.getByRole("button", { name: "Approve" })).toHaveCount(4);
-        await expect(learned.getByRole("button", { name: "Reject" })).toHaveCount(4);
+        await expect(learned.getByRole("button", { name: "Approve" })).toHaveCount(5);
+        await expect(learned.getByRole("button", { name: "Reject" })).toHaveCount(5);
         await page.waitForLoadState("networkidle");
         await shotTab(page, "object-rules-learned");
         await axe(page, `learned ${size.name} ${scheme}`);

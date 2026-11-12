@@ -150,3 +150,18 @@ def test_export_config_matches_route_builds_real_workbook(ten_matches, monkeypat
     wb = openpyxl.load_workbook(io.BytesIO(response.body))
     assert wb.sheetnames[0] == "Cover"
     assert "Summary" in wb.sheetnames
+
+
+def test_list_config_matches_route_wraps_rows(monkeypatch):
+    row = SimpleNamespace(_mapping={"module": "fi_gl", "classification": "data_error"})
+    fake = AsyncMock(return_value=[row])
+    monkeypatch.setattr(config_matches_module, "get_config_matches", fake)
+    out = asyncio.run(config_matches_module.list_config_matches("v1", None, "data_error", 100, 0, db=None, tenant=SimpleNamespace(id="t1")))
+    assert out == {"items": [{"module": "fi_gl", "classification": "data_error"}], "total": 1, "limit": 100, "offset": 0}
+    assert fake.await_args.kwargs["classification"] == "data_error"
+
+
+def test_summary_route_answers_message_when_empty(monkeypatch):
+    monkeypatch.setattr(config_matches_module, "get_config_match_summary", AsyncMock(return_value=None))
+    out = asyncio.run(config_matches_module.get_config_matches_summary("v1", db=None, tenant=SimpleNamespace(id="t1")))
+    assert "message" in out

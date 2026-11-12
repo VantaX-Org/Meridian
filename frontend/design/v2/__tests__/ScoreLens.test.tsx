@@ -56,4 +56,12 @@ describe("Score lens", () => {
     expect(await within(aware).findByText("Batch management is not active in any plant")).toBeTruthy();
     expect(within(aware).getByTestId("sl-processes").textContent).toMatch(/Procure to pay/);
   });
+
+  it("links each module row and heat row to the objects list filtered to that module", async () => {
+    renderWithQuery(<ScoreLens />);
+    const mods = within(await screen.findByTestId("sl-modules")).getAllByTestId("sl-module-link");
+    expect(mods[0].getAttribute("href")).toMatch(/\/objects\?module=business-partner/);
+    const heat = within(await screen.findByTestId("sl-heat")).getAllByTestId("sl-heat-link");
+    expect(heat.some((a) => /\/objects\?module=material-master/.test(a.getAttribute("href") ?? ""))).toBe(true);
+  });
 });

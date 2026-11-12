@@ -64,6 +64,8 @@ export interface IssueQuery {
   severity?: string;
   assigned_to?: string;
   search?: string;
+  module?: string;
+  check_id?: string;
   limit?: number;
   offset?: number;
 }

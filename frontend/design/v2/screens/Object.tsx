@@ -12,7 +12,7 @@ import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { useObjectRun } from "@/lib/v2/scope";
 import { runLabel } from "@/lib/v2/run-label";
-import { ANY_SYSTEM, f1, findSystem, int, moduleFromSlug, pct1, systemForModule, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
+import { ANY_SYSTEM, f1, findSystem, int, moduleFromSlug, moduleSlug, pct1, systemForModule, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { Explain } from "../Explain";
 import { VerdictMark } from "../marks";
 import { ObjectBanner, DimensionBars } from "./object/Banner";
@@ -30,6 +30,7 @@ import { TopFailing } from "./object/TopFailing";
 import { ObjectMonitorStrip } from "./ObjectMonitors";
 import { AletheiaFound } from "./AletheiaFound";
 import { t as tr, tn } from "@/lib/v2/i18n";
+import { TableExport } from "@/design/v2/TableExport";
 
 type TabKey = "overview" | "rules" | "trend" | "records" | "fixes" | "readiness" | "processes" | "lineage" | "profile" | "glossary" | "golden";
 const TABS: { key: TabKey; label: string; segment: string }[] = [
@@ -86,7 +87,7 @@ export function ReceiptTable({ receipt }: { receipt: Receipt }) {
   const n = receipt.breaches.length;
   return (
     <>
-      <table className="m2-rcpt" data-testid="receipt">
+      <TableExport><table className="m2-rcpt" data-testid="receipt">
         <thead>
           <tr>
             <th scope="col">{tr("Dimension")}</th>
@@ -161,7 +162,7 @@ export function ReceiptTable({ receipt }: { receipt: Receipt }) {
             <td />
           </tr>
         </tbody>
-      </table>
+      </table></TableExport>
       {receipt.low_confidence ? (
         <p className="m2-formula">
           <b>{tr("Low confidence.")}</b> {tr("Coverage {pct1} is low: part of the records could not be evaluated by at least one rule, so this score may move when extraction improves.", { pct1: pct1(receipt.coverage) })}
@@ -366,9 +367,14 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               {onOverview && !oldRun ? (
                 <PrimaryAction
                   action={
-                    <V2Link className="m2-btn m2-strong" href={`${base}${cell.open_work ? "/records" : "/rules"}${query}`}>
-                      {cell.open_work ? tr("Open the failing records") : tr("Open the rules")}
-                    </V2Link>
+                    <>
+                      <V2Link className="m2-btn m2-strong" href={`${base}${cell.open_work ? "/records" : "/rules"}${query}`}>
+                        {cell.open_work ? tr("Open the failing records") : tr("Open the rules")}
+                      </V2Link>
+                      <V2Link className="m2-btn" href={`/issues?module=${moduleSlug(apiModule)}`} data-testid="object-issues">
+                        {tr("Open the issues")}
+                      </V2Link>
+                    </>
                   }
                   why={cell.open_work ? tr("{n} records fail at least one rule, so fixing them is what moves this score.", { n: int(cell.open_work) }) : tr("No record is waiting for a fix. The rules show what was measured and how.")}
                 />

@@ -10,6 +10,7 @@ import logging
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from api.services import chat_alerts
 from api.services.triage import run_tenant
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine, tenant_session
@@ -27,6 +28,9 @@ def sla_sweep() -> dict:
         try:
             with tenant_session(engine, tid) as session:
                 out[tid] = run_tenant(session, tid)
+                breached = sum(n for k, n in (out[tid].get("notified") or {}).items() if not k.endswith(":at_risk"))
+                if breached:
+                    chat_alerts.notify_sync(session, tid, "sla_breach", {"items_past_sla": breached})
                 session.commit()
         except Exception:  # one tenant's failure never stops the others
             logger.exception("SLA sweep failed for tenant %s", tid)

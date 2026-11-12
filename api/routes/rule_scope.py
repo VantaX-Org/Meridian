@@ -127,6 +127,11 @@ class ScopeContractOut(BaseModel):
     threshold: Optional[float] = None       # the contract's minimum for the rule's dimension, when it sets one
 
 
+class TenantRuleOut(BaseModel):
+    id: str
+    enabled: bool
+
+
 class RuleScopeOut(BaseModel):
     check_id: str
     name: Optional[str] = None
@@ -141,6 +146,7 @@ class RuleScopeOut(BaseModel):
     versions: list[ScopeVersionOut]
     shipped: Optional[ShippedOut] = None
     contracts: list[ScopeContractOut]
+    tenant_rule: Optional[TenantRuleOut] = None  # this organisation's own copy of the rule, which the inspector enables or disables
 
 
 def _shipped(check_id: str, module: Optional[str]) -> tuple[Optional[str], dict]:
@@ -169,7 +175,7 @@ async def rule_scope(check_id: str, module: Optional[str] = Query(None, max_leng
 
     # tenant rule row (customer-authored or mined rules have no shipped YAML)
     trow = (await db.execute(text(
-        "SELECT name, module, severity, conditions FROM rules WHERE tenant_id = CAST(:t AS uuid) "
+        "SELECT id::text AS id, enabled, name, module, severity, conditions FROM rules WHERE tenant_id = CAST(:t AS uuid) "
         "AND split_part(name, ':', 1) = CAST(:c AS text) AND (CAST(:m AS text) IS NULL OR module = CAST(:m AS text)) "
         "ORDER BY (module = CAST(:m AS text)) DESC NULLS LAST, updated_at DESC NULLS LAST LIMIT 1"),
         {"t": t, "c": check_id, "m": mod})).mappings().first()
@@ -270,6 +276,7 @@ async def rule_scope(check_id: str, module: Optional[str] = Query(None, max_leng
     return {
         "check_id": check_id, "name": name, "module": mod,
         "definition": d,
+        "tenant_rule": {"id": trow["id"], "enabled": bool(trow["enabled"])} if trow else None,
         "authority": {"rule_authority": y.get("rule_authority") if y else ("customer_configured" if trow else None),
                       "why_it_matters": y.get("why_it_matters") if y else None,
                       "sap_impact": y.get("sap_impact") if y else None},

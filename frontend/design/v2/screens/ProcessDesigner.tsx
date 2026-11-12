@@ -15,7 +15,7 @@ import { useModel, useModels, useModelVersions, useRefreshV2 } from "@/lib/v2/sy
 import { ConfirmBar, Field, Gate } from "../forms";
 import { useToast } from "../Toast";
 import { ResultFrame, useOutcome } from "../inspector/shared";
-import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link, SapCode } from "../parts";
 import { t, lc } from "@/lib/v2/i18n";
 
 type Run = ReturnType<typeof useOutcome>["run"];
@@ -46,7 +46,7 @@ function ActivityEditor({ act, index, count, doc, apply, canDesign }: { act: L5;
         <ul className="m2-lk" aria-label={t("Fields of {name}", { name: act.name })}>
           {act.fields.map((f) => (
             <li key={f.field}>
-              <Mono>{f.field}</Mono>
+              <span><SapCode field={f.field} /></span>
               <span className="m2-meta">
                 <label className="m2-chk">
                   <input type="checkbox" disabled={!canDesign} checked={f.mandatory} onChange={() => apply(toggleMandatory(doc, act.id, f.field))} />

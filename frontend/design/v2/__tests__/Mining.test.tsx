@@ -31,7 +31,7 @@ afterEach(() => {
 const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 const render = () => renderWithQuery(<RulesTab system="ecc-production" module="material-master" />);
 const learned = async () => {
-  fireEvent.click(await screen.findByRole("button", { name: "Learned 4" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Learned 5" }));
   return screen.findByRole("table", { name: "Learned rules waiting for a decision" });
 };
 

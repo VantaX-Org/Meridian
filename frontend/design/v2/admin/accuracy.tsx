@@ -12,6 +12,7 @@ import { describeField } from "@/lib/v2/sap-fields";
 import { Coded, Dash, EmptyFrame, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Fld, Kv, Loaded, NeedsPermission, Note, StatusWord, useCan } from "./kit";
+import { TableExport } from "@/design/v2/TableExport";
 
 function Verdicts({ card }: { card: Scorecard }) {
   const p = card.precision;
@@ -26,7 +27,7 @@ function Verdicts({ card }: { card: Scorecard }) {
         ]}
       />
       <div className="m2-frame" tabIndex={0}>
-        <table className="m2-tbl" aria-label={t("Accuracy by rule")}>
+        <TableExport><table className="m2-tbl" aria-label={t("Accuracy by rule")}>
           <thead>
             <tr>
               <th scope="col">{t("Rule")}</th>
@@ -55,7 +56,7 @@ function Verdicts({ card }: { card: Scorecard }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableExport>
       </div>
     </Block>
   );
@@ -73,7 +74,7 @@ function Recall({ card }: { card: Scorecard }) {
           {r.objects_not_analysed.length ? <Note tone="warn">{t("Not analysed yet, so not counted as caught: {objects}.", { objects: r.objects_not_analysed.map(moduleText).join(", ") })}</Note> : null}
           {r.missed.length ? (
             <div className="m2-frame" tabIndex={0}>
-              <table className="m2-tbl" aria-label={t("Records no rule flagged")}>
+              <TableExport><table className="m2-tbl" aria-label={t("Records no rule flagged")}>
                 <thead>
                   <tr>
                     <th scope="col">{t("Object")}</th>
@@ -90,7 +91,7 @@ function Recall({ card }: { card: Scorecard }) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
               {r.missed_total > r.missed.length ? <p className="m2-prov">{t("Showing {shown} of {total} records no rule flagged.", { shown: int(r.missed.length), total: int(r.missed_total) })}</p> : null}
             </div>
           ) : null}
@@ -113,7 +114,7 @@ function TestProven() {
           <Block title={t("Test-proven on synthetic data")} hint={t("Each rule runs on {records} synthetic records with defects injected from the rule's own definition. A rule is exact when precision and recall are both 100%. Rules that need live configuration or a second dataset are not benchmarked.", { records: int(a.records_per_rule) })}>
             <Kv rows={[[t("Rules benchmarked"), t("{done} of {all}", { done: int(done), all: int(all) })], [t("Exact"), t("{exact} of {done}", { exact: int(exact), done: int(done) })]]} />
             <div className="m2-frame" tabIndex={0}>
-              <table className="m2-tbl" aria-label={t("Benchmark coverage by object")}>
+              <TableExport><table className="m2-tbl" aria-label={t("Benchmark coverage by object")}>
                 <thead>
                   <tr>
                     <th scope="col">{t("Object")}</th>
@@ -134,7 +135,7 @@ function TestProven() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></TableExport>
             </div>
           </Block>
         );

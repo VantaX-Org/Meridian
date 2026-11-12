@@ -251,3 +251,62 @@ def suggest(tenant_id: str, list_id: str, source: list[dict], target: list[dict]
     tgt = next(c for c in target if c["code"] == rec["target_code"])
     return {"source_code": source_code, "target_code": tgt["code"], "target_text": tgt.get("text"),
             "confidence": float(rec["confidence"]), "reasoning": proof["reasoning"], "checks": proof["checks"]}
+
+
+# -- Usage: which codes the records actually hold --------------------------------------------------------------------
+
+def usage(codes: list[dict], profiles: dict[str, Optional[dict]]) -> dict[str, Any]:
+    """How the records use a code list, from the stored field profiles of its target fields (``TABLE.FIELD`` ->
+    ``field_profiles.stats``, None when the field was not profiled).
+
+    A profile lists at most its top values, so when a field holds more distinct values than it lists the figures
+    are lower bounds: ``orphans_complete`` and ``unused_certain`` are False and ``covered_at_least`` is True. A
+    composite code (``PickListV2_id/externalCode``) is matched on its last part, the value the record holds."""
+    known = {str(c["code"]).rsplit("/", 1)[-1] for c in codes}
+    fields: list[dict[str, Any]] = []
+    orphans: dict[str, dict[str, Any]] = {}
+    used: set[str] = set()
+    filled_all = covered_all = 0
+    complete = True
+    for col, st in profiles.items():
+        f: dict[str, Any] = {"field": col, "profiled": st is not None, "rows": 0, "filled": 0, "covered": 0,
+                             "orphan_rows": 0, "masked": False, "mask_reason": None, "truncated": False,
+                             "sampled": False}
+        fields.append(f)
+        if st is None:
+            complete = False
+            continue
+        rows, blank = int(st.get("rows", 0)), int(st.get("blank", 0))
+        f.update(rows=rows, filled=max(rows - blank, 0), sampled=bool(st.get("sampled")))
+        tv = st.get("top_values")
+        if st.get("masked") or tv is None:
+            f.update(masked=True, mask_reason=st.get("mask_reason") or "privacy")
+            complete = False
+            continue
+        f["truncated"] = int(st.get("distinct", 0)) > len(tv)
+        complete = complete and not f["truncated"]
+        for v in tv:
+            val, n = str(v["value"]).strip(), int(v["count"])
+            if not val:
+                continue
+            if val in known:
+                used.add(val)
+                f["covered"] += n
+            else:
+                f["orphan_rows"] += n
+                o = orphans.setdefault(val, {"value": val, "count": 0, "fields": []})
+                o["count"] += n
+                o["fields"].append(col)
+        filled_all += f["filled"]
+        covered_all += f["covered"]
+    return {
+        "fields": fields,
+        "orphans": sorted(orphans.values(), key=lambda o: (-o["count"], o["value"])),
+        "orphans_complete": complete,
+        "unused": sorted(known - used),
+        "unused_certain": complete,
+        "codes": len(known), "used": len(used),
+        "filled": filled_all, "covered": covered_all,
+        "covered_share": round(covered_all / filled_all, 4) if filled_all else None,
+        "covered_at_least": not complete,
+    }

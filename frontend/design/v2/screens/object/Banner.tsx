@@ -8,6 +8,7 @@ import { f1, int, VERDICT_LABEL } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { VerdictMark } from "../../marks";
 import { V2Link } from "../../parts";
+import { BandMark } from "../../BandMark";
 
 /** The object's headline: the S/4 verdict, the score in plain words, what it costs, and the one thing to do next. */
 export function ObjectBanner({ cell, receipt, label, system, systemName, module, cap }: { cell: LandscapeCell; receipt: Receipt | undefined; label: string; system: string; systemName?: string; module: string; cap: ReactNode }) {
@@ -74,7 +75,9 @@ export function DimensionBars({ cell }: { cell: LandscapeCell }) {
               <span className="m2-cc-bar m2-co-dbar" aria-hidden="true">
                 <span style={{ width: `${v == null ? 0 : Math.max(0, Math.min(100, v))}%` }} />
               </span>
-              <span className="m2-co-dv">{v == null ? t("not measured") : f1(v)}</span>
+              <span className="m2-co-dv">
+                {v == null ? t("not measured") : f1(v)} <BandMark score={v} module={cell.module} dimension={d.key} />
+              </span>
             </li>
           );
         })}

@@ -1,6 +1,6 @@
 import { t } from "@/lib/v2/i18n";
 /** The sections of the Admin canvas, in the order the left index lists them, with the permission each one needs. */
-export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "matchrules" | "audit" | "alerts" | "notifications" | "webhooks" | "dqfirewall" | "externaldb" | "subjectrequests" | "runs" | "systems" | "system" | "aletheia" | "workflows" | Step10Slug | CapabilitySlug;
+export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "contactverify" | "matchrules" | "audit" | "alerts" | "notifications" | "webhooks" | "dqfirewall" | "externaldb" | "subjectrequests" | "runs" | "systems" | "system" | "aletheia" | "workflows" | Step10Slug | CapabilitySlug;
 /** Step 10: policy packs and scheduled digests. */
 export type Step10Slug = "policypacks" | "digests";
 /** Step 6c, the role capability audit (design/v2/admin/capabilities.tsx). */
@@ -32,6 +32,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { slug: "stewardship", get label() { return t("Stewardship"); }, get group() { return t("Tenant"); }, get lead() { return t("The steward assignment template: one owner per object, stewards per slice, and the gaps."); }, needs: ["manage_settings"] },
   { slug: "configbundle", get label() { return t("Configuration bundle"); }, get group() { return t("Tenant"); }, get lead() { return t("Export the tenant's configuration as one file, and import one with a diff first."); }, needs: ["manage_settings"] },
   { slug: "mappings", get label() { return t("Field mappings"); }, get group() { return t("Data"); }, get lead() { return t("Which column in your files holds each standard SAP field."); }, needs: ["manage_field_mappings", "manage_settings", "view"] },
+  { slug: "contactverify", get label() { return t("Contact verification"); }, get group() { return t("Data"); }, get lead() { return t("Email, phone and address checks per rule, each failing record with its reason, and the mail server check."); }, needs: ["view"] },
   { slug: "reference", get label() { return t("Reference data"); }, get group() { return t("Data"); }, get lead() { return t("Postal code and bank code lists that address and bank rules compare against."); }, needs: ["manage_systems", "manage_settings", "view"] },
   { slug: "ruleaccuracy", get label() { return t("Rule accuracy"); }, get group() { return t("Data"); }, get lead() { return t("How often each rule is right, from reviewer verdicts, and how many known bad records the rules caught."); }, needs: ["view"] },
   { slug: "matchrules", get label() { return t("Match rules"); }, get group() { return t("Data"); }, get lead() { return t("The field comparisons that decide when two records are the same, per object."); }, needs: ["manage_rules"] },

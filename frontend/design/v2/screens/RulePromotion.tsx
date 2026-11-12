@@ -17,6 +17,7 @@ import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Consequence, Steps } from "./rules-parts";
 import { Panel } from "./Mining";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { TableExport } from "@/design/v2/TableExport";
 
 /**
  * Aletheia rule promotion: the roughly 2,700 switched-off rules generated from the SAP data dictionary are dry-run on
@@ -78,7 +79,7 @@ export function RulePromotion() {
       <Panel title={t("Objects")} meta={t("Bucket counts from the last evaluation.")} testId="rule-promotion-modules">
         {list.length === 0 ? <EmptyFrame>{t("No object has generated rules.")}</EmptyFrame> : (
           <ScrollFrame label={t("Objects table, scrollable")}>
-            <table className="m2-tbl m2-cards">
+            <TableExport><table className="m2-tbl m2-cards">
               <thead>
                 <tr>
                   <th scope="col">{t("Object")}</th>
@@ -99,7 +100,7 @@ export function RulePromotion() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></TableExport>
           </ScrollFrame>
         )}
       </Panel>
@@ -203,7 +204,7 @@ function Evaluated({ data, filter, setFilter, rows, allowed, onAnyway, onRevert 
       </div>
       {rows.length === 0 ? <EmptyFrame>{t("No rule is in this bucket.")}</EmptyFrame> : (
         <ScrollFrame label={t("Generated rules table, scrollable")}>
-          <table className="m2-tbl m2-cards" data-testid="promo-rules">
+          <TableExport><table className="m2-tbl m2-cards" data-testid="promo-rules">
             <thead>
               <tr>
                 <th scope="col">{t("Rule")}</th>
@@ -238,7 +239,7 @@ function Evaluated({ data, filter, setFilter, rows, allowed, onAnyway, onRevert 
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></TableExport>
         </ScrollFrame>
       )}
     </>

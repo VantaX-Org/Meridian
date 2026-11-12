@@ -288,6 +288,8 @@ def run_slot(session: Session, tenant_id: str, sched: dict, due_at: datetime, *,
             session.commit()
             if file_id is None:
                 notes.append("not kept in history (storage unavailable or file too large)")
+            if params.get("folder"):
+                notes.append(save_to_folder(tenant_id, gen))
             delivered, failed, more = deliver(session, tenant_id, sched, gen, file_id, base_url=base_url,
                                               send_email=send_email, post=post)
             notes += more
@@ -312,6 +314,25 @@ def run_slot(session: Session, tenant_id: str, sched: dict, due_at: datetime, *,
                     {"st": status, "id": str(sched["id"]), "t": str(tenant_id)})
     session.commit()
     return {"run_id": run_id, "status": status, "report_file_id": file_id, "delivered": delivered, "failed": failed}
+
+
+def save_to_folder(tenant_id: str, gen: rh.Generated, base: Optional[str] = None) -> str:
+    """Write the file to <REPORT_EXPORT_DIR>/<tenant id>/<file name>; the run note says where, or why not."""
+    from pathlib import Path
+
+    from api.config import settings
+
+    base = base if base is not None else settings.report_export_dir
+    if not base:
+        return "server folder not configured (REPORT_EXPORT_DIR)"
+    try:
+        folder = Path(base) / str(tenant_id)
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / Path(gen.file_name).name  # name only: never a path out of the folder
+        target.write_bytes(gen.data)
+        return f"saved to the server folder as {target.name}"
+    except OSError as e:
+        return f"server folder write failed ({type(e).__name__})"
 
 
 def reap_stuck_runs(session: Session, tenant_id: str) -> int:
