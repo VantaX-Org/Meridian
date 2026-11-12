@@ -12994,7 +12994,7 @@ rules:
   - id: SDCM866
     field: KNA1.BBBNR
     check_class: cross_field_check
-    fail_when: (`KNA1.BBBNR`.fillna('0').astype('float') > 0) & (`KNA1.BBSNR`.fillna('0').astype('float') == 0)
+    fail_when: (`KNA1.BBBNR`.fillna('0').where(`KNA1.BBBNR`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') > 0) & (`KNA1.BBSNR`.fillna('0').where(`KNA1.BBSNR`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') == 0)
     severity: medium
     dimension: completeness
     message: International location number part 1 without part 2
@@ -13008,7 +13008,7 @@ rules:
   - id: SDCM867
     field: KNA1.BBSNR
     check_class: cross_field_check
-    fail_when: (`KNA1.BBSNR`.fillna('0').astype('float') > 0) & (`KNA1.BBBNR`.fillna('0').astype('float') == 0)
+    fail_when: (`KNA1.BBSNR`.fillna('0').where(`KNA1.BBSNR`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') > 0) & (`KNA1.BBBNR`.fillna('0').where(`KNA1.BBBNR`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') == 0)
     severity: medium
     dimension: completeness
     message: International location number part 2 without part 1
@@ -13035,7 +13035,7 @@ rules:
   - id: SDCM869
     field: KNA1.UMJAH
     check_class: cross_field_check
-    fail_when: (`KNA1.UMSAT`.fillna(0) > 0) & (`KNA1.UMJAH`.fillna('0').astype('float') == 0)
+    fail_when: (`KNA1.UMSAT`.fillna(0) > 0) & (`KNA1.UMJAH`.fillna('0').where(`KNA1.UMJAH`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') == 0)
     severity: low
     dimension: completeness
     message: Customer annual sales has no reference year
@@ -13060,7 +13060,7 @@ rules:
     sap_impact: Tax reports that read tax number 3 (for example state registrations) report the wrong identifier.
     fix_map:
       __other__: Enter the correct tax number 3 in XD02 > Control data, or clear it.
-    record_fix_template: 'Customer {KNA1.KUNNR}: tax number 3 equals tax number 1 ({KNA1.STCD1}).'
+    record_fix_template: 'Customer {KNA1.KUNNR}: tax number 3 equals tax number 1.'
   - id: SDCM871
     field: KNA1.STCD4
     check_class: cross_field_check
@@ -13074,7 +13074,7 @@ rules:
     sap_impact: Tax reports that read tax number 4 report the wrong identifier.
     fix_map:
       __other__: Enter the correct tax number 4 in XD02 > Control data, or clear it.
-    record_fix_template: 'Customer {KNA1.KUNNR}: tax number 4 equals tax number 2 ({KNA1.STCD2}).'
+    record_fix_template: 'Customer {KNA1.KUNNR}: tax number 4 equals tax number 2.'
   - id: SDCM872
     field: KNA1.NAME3
     check_class: cross_field_check
@@ -14183,7 +14183,7 @@ rules:
       address where the country requires a postal code.
     fix_map:
       __other__: Enter the postal code in the customer or business partner address.
-    record_fix_template: 'Address {ADRC.ADDRNUMBER}: city {ADRC.CITY1} in {ADRC.COUNTRY} has no postal code.'
+    record_fix_template: 'Address {ADRC.ADDRNUMBER}: city is set in {ADRC.COUNTRY} but has no postal code.'
   - id: SDCM927
     field: ADRC.MC_NAME1
     check_class: cross_field_check
@@ -14364,4 +14364,4 @@ rules:
     sap_impact: Direct debits can be rejected by the bank for a name mismatch.
     fix_map:
       __other__: Enter the account holder in XD02 / FD02 > Payment transactions > Bank details.
-    record_fix_template: 'Customer {KNBK.KUNNR}, bank {KNBK.BANKS}/{KNBK.BANKL}: account holder name is blank.'
+    record_fix_template: 'Customer {KNBK.KUNNR}, bank country {KNBK.BANKS}: account holder name is blank.'

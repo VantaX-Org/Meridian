@@ -17636,7 +17636,7 @@ rules:
 - id: MM1121
   field: MARC.MIN_TROC
   check_class: cross_field_check
-  fail_when: "(`MARC.MIN_TROC`.fillna('0').astype('float') > 0) & (`MARC.MAX_TROC`.fillna('0').astype('float') > 0) & (`MARC.MIN_TROC`.fillna('0').astype('float') > `MARC.MAX_TROC`.fillna('0').astype('float'))"
+  fail_when: "(`MARC.MIN_TROC`.fillna('0').where(`MARC.MIN_TROC`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') > 0) & (`MARC.MAX_TROC`.fillna('0').where(`MARC.MAX_TROC`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') > 0) & (`MARC.MIN_TROC`.fillna('0').where(`MARC.MIN_TROC`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') > `MARC.MAX_TROC`.fillna('0').where(`MARC.MAX_TROC`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float'))"
   severity: medium
   dimension: consistency
   message: Minimum target range of coverage exceeds the maximum
@@ -17940,7 +17940,7 @@ rules:
 - id: MM1140
   field: MARA.FIBER_PART1
   check_class: cross_field_check
-  fail_when: "(`MARA.FIBER_PART1`.fillna('0').astype('float') + `MARA.FIBER_PART2`.fillna('0').astype('float') + `MARA.FIBER_PART3`.fillna('0').astype('float') + `MARA.FIBER_PART4`.fillna('0').astype('float') + `MARA.FIBER_PART5`.fillna('0').astype('float')) > 100"
+  fail_when: "(`MARA.FIBER_PART1`.fillna('0').where(`MARA.FIBER_PART1`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') + `MARA.FIBER_PART2`.fillna('0').where(`MARA.FIBER_PART2`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') + `MARA.FIBER_PART3`.fillna('0').where(`MARA.FIBER_PART3`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') + `MARA.FIBER_PART4`.fillna('0').where(`MARA.FIBER_PART4`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float') + `MARA.FIBER_PART5`.fillna('0').where(`MARA.FIBER_PART5`.fillna('0').str.strip().str.fullmatch('[0-9]+'), '0').astype('float')) > 100"
   severity: medium
   dimension: accuracy
   message: Fibre composition percentages add up to more than 100
