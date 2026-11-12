@@ -86,6 +86,7 @@ export function validate(schema: Schema, value: unknown, at = "$"): string[] {
 const L = fixtureResponse<Landscape>("/landscape", {});
 const IDS: Record<string, string> = {
   module: "material_master",
+  table: "T134",
   object: "material_master",
   system_id: L.systems[0].id,
   version_id: L.cells[0].run_id,

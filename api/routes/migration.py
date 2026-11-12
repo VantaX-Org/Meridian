@@ -811,7 +811,7 @@ async def export_reconciliation(
                    f"post_load_reconciliation_{run_id}.xlsx")
 
 
-@router.get("/runs/{run_id}/dry-run/{fmt}")
+@router.get("/runs/{run_id}/dry-run/{fmt}", response_class=StreamingResponse)
 async def dry_run_report(
     run_id: uuid.UUID,
     fmt: str,

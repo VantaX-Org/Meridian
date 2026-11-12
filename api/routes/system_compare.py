@@ -11,7 +11,7 @@ from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -235,7 +235,25 @@ async def latest(pair_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant:
     return {"pair": _pair(p), "comparison": _detail(r) if r else None}
 
 
-@router.get("/comparisons/{cid}")
+class ComparisonOut(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    id: str
+    pair_id: str
+    status: str
+    progress: Any = None
+    error: Optional[str] = None
+    created_at: Any = None
+    completed_at: Any = None
+    source_version_id: Optional[str] = None
+    target_version_id: Optional[str] = None
+    summary: Any = None
+    tables: Any = None
+    config: Any = None
+    scores: Any = None
+    record_counts: dict[str, int] = {}
+
+
+@router.get("/comparisons/{cid}", response_model=ComparisonOut)
 async def comparison(cid: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
                      _r: str = Depends(require_permission("view"))):
     return _detail(await _comparison(db, tenant, cid))
