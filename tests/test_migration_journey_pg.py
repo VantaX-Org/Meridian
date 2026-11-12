@@ -39,7 +39,7 @@ def seeded():
                            "VALUES (:v, :t, :s, now(), CAST(:m AS jsonb), '{}')"),
                       {"v": vid, "t": t, "s": status, "m": json.dumps({"dataset_path": "src/", "system_id": src})})
         c.execute(text("INSERT INTO migration_waves (id, tenant_id, name, stage, source_system_id) "
-                       "VALUES (:w, :t, 'Wave 1', 'mock_load', :s)"), {"w": wave, "t": tid, "s": src})
+                       "VALUES (:w, :t, 'Wave 1', 'mock1', :s)"), {"w": wave, "t": tid, "s": src})
         c.execute(text("INSERT INTO migration_runs (id, tenant_id, mode, modules, status, source_system_id, "
                        "dest_system_id, source_version_id, gap_summary, requested_by, wave_id) VALUES (:r, :t, "
                        "'source_to_destination', '{material_master}', 'analysed', :s, :d, :v, '{}', :u, :w)"),
@@ -88,7 +88,7 @@ async def test_load_history_lists_each_download_with_its_wave_and_objects(seeded
     (e,) = r.json()["items"]
     assert (e["run_id"], e["filename"], e["record_count"]) == (seeded.run, "mm.xlsx", 12)
     assert (e["wave_name"], e["wave_stage"], e["modules"], e["exported_by_label"]) == \
-        ("Wave 1", "mock_load", ["material_master"], "Dev")
+        ("Wave 1", "mock1", ["material_master"], "Dev")
 
 
 @pytest.mark.anyio

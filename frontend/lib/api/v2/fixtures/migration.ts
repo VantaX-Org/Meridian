@@ -144,7 +144,7 @@ let seq = 10;
 const loadEvents: LoadEvent[] = [{
   id: "exp-0001", run_id: "mig-0002", export_format: "s4_migration_cockpit", record_count: 42_139, filename: "material_master_cockpit.xlsx",
   exported_at: "2026-11-01T09:30:00Z", exported_by: "u-me", exported_by_label: "Resh Naidoo", modules: ["material_master", "business_partner"],
-  wave_id: "wave-1", wave_name: "Wave 1", wave_stage: "mock_load", snapshot_kept: true,
+  wave_id: "wave-1", wave_name: "Wave 1", wave_stage: "mock1", snapshot_kept: true,
 }];
 
 export function migrationRead(path: string, params: Record<string, unknown> = {}): unknown {
