@@ -207,11 +207,24 @@ function ConfigTableDetail({ id, table }: { id: string; table: string }) {
   );
 }
 
-const COVERAGE_STATUS: Record<string, () => string> = {
-  live: () => tr("Read"),
-  failed: () => tr("Failed"),
-  not_in_system: () => tr("Not in this system"),
-  delta_fallback: () => tr("Read in full, no delta"),
+/** Each coverage outcome: its plain label, its tone, and what to do next when the table was not read. */
+export const COVERAGE_STATUS: Record<string, { label: () => string; tone?: "pass" | "warn"; next?: () => ReactNode }> = {
+  live: { label: () => tr("Read"), tone: "pass" },
+  failed: { label: () => tr("Failed"), tone: "warn" },
+  not_in_system: { label: () => tr("Not in this system") },
+  delta_fallback: { label: () => tr("Read in full, no delta"), tone: "pass" },
+  upload_required: {
+    label: () => tr("Upload required"),
+    tone: "warn",
+    next: () => <>{tr("This table cannot be read from the system. Upload it as a file; its rules wait until then.")} <V2Link href="/admin/runs">{tr("Upload a file")}</V2Link></>,
+  },
+  preview: {
+    label: () => tr("Preview source"),
+    tone: "warn",
+    next: () => tr("This source is a preview: its connector is not yet verified against a live tenant, so its rules wait and are left out of the score."),
+  },
+  no_rule_mapping: { label: () => tr("No rules read it"), next: () => tr("Read, but no rule checks this table yet, so it adds nothing to the score.") },
+  not_installed: { label: () => tr("Not installed"), next: () => tr("The component is not installed in this system, so its rules do not apply.") },
 };
 
 /** Which tables the last discovery read, which it could not, and why. */
@@ -222,6 +235,11 @@ function Coverage({ id }: { id: string }) {
   return (
     <Feed q={q} empty={tr("This system has not been discovered yet.")}>
       <p className="m2-note">{tr("Every table the last discovery tried to read, grouped by what it was read for, with the outcome and the system's reason when it failed.")}</p>
+      {Object.entries(q.data?.waiting_for_data ?? {}).filter(([, n]) => n > 0).map(([m, n]) => (
+        <p key={m} className="m2-note" data-testid={`sd-waiting-${m}`}>
+          {tr("{module}: {count} {count, plural, one {rule waits} other {rules wait}} for data and {count, plural, one {is} other {are}} left out of the score.", { module: labelText(m), count: n })}
+        </p>
+      ))}
       {parts.length === 0 ? (
         <EmptyFrame>{tr("The last discovery stored no coverage.")}</EmptyFrame>
       ) : (
@@ -241,9 +259,13 @@ function Coverage({ id }: { id: string }) {
                 {list.map((c, i) => (
                   <tr key={`${c.table ?? ""}:${i}`}>
                     <th scope="row">{c.table ? <SapCode table={c.table} /> : <Dash />}</th>
-                    <td data-label={tr("Outcome")}>{COVERAGE_STATUS[c.status]?.() ?? labelText(c.status)}</td>
+                    <td data-label={tr("Outcome")}>
+                      <span className="m2-ask-badge" data-tone={COVERAGE_STATUS[c.status]?.tone}>{COVERAGE_STATUS[c.status]?.label() ?? labelText(c.status)}</span>
+                    </td>
                     <td data-label={tr("Rows")} className="m2-num">{num(c.rows)}</td>
-                    <td data-label={tr("Detail")}>{c.detail ?? <Dash />}</td>
+                    <td data-label={tr("Detail")}>
+                      {c.detail || COVERAGE_STATUS[c.status]?.next ? <>{c.detail} {COVERAGE_STATUS[c.status]?.next?.()}</> : <Dash />}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -9723,4 +9723,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The default {value} for {field} of {object} is removed. New create requests keep that field empty when the requester leaves it empty.": "Der Standardwert {value} für {field} von {object} wird entfernt. Neue Anlageanfragen lassen dieses Feld leer, wenn der Anfragende es leer lässt.",
   "The rule that sets {field} of {object} is removed. Requests saved from now on no longer get that value from it.": "Die Regel, die {field} von {object} setzt, wird entfernt. Ab jetzt gespeicherte Anfragen erhalten diesen Wert nicht mehr von ihr.",
   "The write-backs waiting for a second approver could not be loaded.": "Die Zurückschreibungen, die auf einen zweiten Genehmiger warten, konnten nicht geladen werden.",
+  "Upload required": "Upload erforderlich",
+  "This table cannot be read from the system. Upload it as a file; its rules wait until then.": "Diese Tabelle kann nicht aus dem System gelesen werden. Laden Sie sie als Datei hoch; ihre Regeln warten bis dahin.",
+  "Preview source": "Vorschauquelle",
+  "This source is a preview: its connector is not yet verified against a live tenant, so its rules wait and are left out of the score.": "Diese Quelle ist eine Vorschau: Ihr Konnektor ist noch nicht gegen einen Live-Mandanten verifiziert, daher warten ihre Regeln und zählen nicht zur Bewertung.",
+  "No rules read it": "Keine Regel liest sie",
+  "Read, but no rule checks this table yet, so it adds nothing to the score.": "Gelesen, aber noch keine Regel prüft diese Tabelle, daher trägt sie nichts zur Bewertung bei.",
+  "Not installed": "Nicht installiert",
+  "The component is not installed in this system, so its rules do not apply.": "Die Komponente ist in diesem System nicht installiert, daher gelten ihre Regeln nicht.",
+  "{module}: {count} {count, plural, one {rule waits} other {rules wait}} for data and {count, plural, one {is} other {are}} left out of the score.": "{module}: {count} {count, plural, one {Regel wartet} other {Regeln warten}} auf Daten und {count, plural, one {zählt} other {zählen}} nicht zur Bewertung.",
 };

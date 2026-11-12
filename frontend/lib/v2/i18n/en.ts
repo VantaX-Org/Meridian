@@ -9722,6 +9722,15 @@ export const en = {
   "The default {value} for {field} of {object} is removed. New create requests keep that field empty when the requester leaves it empty.": "The default {value} for {field} of {object} is removed. New create requests keep that field empty when the requester leaves it empty.",
   "The rule that sets {field} of {object} is removed. Requests saved from now on no longer get that value from it.": "The rule that sets {field} of {object} is removed. Requests saved from now on no longer get that value from it.",
   "The write-backs waiting for a second approver could not be loaded.": "The write-backs waiting for a second approver could not be loaded.",
+  "Upload required": "Upload required",
+  "This table cannot be read from the system. Upload it as a file; its rules wait until then.": "This table cannot be read from the system. Upload it as a file; its rules wait until then.",
+  "Preview source": "Preview source",
+  "This source is a preview: its connector is not yet verified against a live tenant, so its rules wait and are left out of the score.": "This source is a preview: its connector is not yet verified against a live tenant, so its rules wait and are left out of the score.",
+  "No rules read it": "No rules read it",
+  "Read, but no rule checks this table yet, so it adds nothing to the score.": "Read, but no rule checks this table yet, so it adds nothing to the score.",
+  "Not installed": "Not installed",
+  "The component is not installed in this system, so its rules do not apply.": "The component is not installed in this system, so its rules do not apply.",
+  "{module}: {count} {count, plural, one {rule waits} other {rules wait}} for data and {count, plural, one {is} other {are}} left out of the score.": "{module}: {count} {count, plural, one {rule waits} other {rules wait}} for data and {count, plural, one {is} other {are}} left out of the score.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
