@@ -33,6 +33,23 @@ The export centre sits in Reports, under **Export centre**, for people with the 
 
 Cells that begin with `=`, `+`, `-` or `@` are written so that a spreadsheet does not run them as formulas.
 
+## Clean records in Excel with the cleaning workbook
+
+The cleaning workbook is one Excel file for one object and one run. It lists every failing record with what the system holds now, a suggested value where Meridian can work one out, why the record failed and what to do. Nothing in it changes SAP. Meridian never invents a suggestion; where it has none, the cell is blank for the data owner. It needs the export permission.
+
+To get it and use it:
+
+1. Open Reports, **Cleaning workbook**, choose the object and the run, and select **Download** (a large object is built on the worker and joins the Reports list).
+2. Open the sheet **How to use** and read the eight steps. They are the same steps as this list.
+3. Open **Column guide**. It names every column of Records to clean and says whether you fill it in (green) or leave it alone.
+4. Open **Summary**. Each row is one failing rule, most severe first. The column **Required fields empty** counts the records where a mandatory field has no value.
+5. Open **Required fields missing** and fill those first. The records are grouped by field, and the field with the most blanks is first (Fill order 1), because fixing it clears the most records.
+6. Read **Instructions** for why a rule matters and its numbered fix steps.
+7. Work through **Records to clean**, one row per failing record and rule. A row where **Required field empty** says Yes comes first. Type what you set in **Corrected value**, add the **Owner**, pick a **Status** (Open, In progress, Fixed or Not an error) and write a **Comment**, always when you choose Not an error.
+8. Make the same changes in the source system, then start a new analysis to confirm the records now pass.
+
+Only the green columns are yours. Do not rename sheets, or reorder, edit or delete the other columns. A very large object continues on Records to clean 2, 3 and so on.
+
 ## Export what is on screen
 
 Every table and grid has an export button above it. It writes exactly what you see: the rows that pass the current filters, in the current sort, with the visible columns, as XLSX or CSV. A code column gets its description in the column beside it.

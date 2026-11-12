@@ -12,6 +12,7 @@ import type { Role, Matrix } from "@/lib/api/roles";
 import type { CatalogueEntry, ReportFile, ReportSchedule, ReportScheduleInput } from "@/lib/api/reports";
 import type { MigrationWave } from "@/types/api";
 import type { Preferences } from "@/lib/preferences";
+import type { RunSchedule, ScheduleCreate } from "@/lib/api/v2/admin";
 
 interface Profile { id: string; system_id: string; domain: string; tables: string[]; schedule_cron: string | null; active: boolean; last_run_at: string | null; next_run_at: string | null; extraction_mode: "full" | "delta" }
 
@@ -96,6 +97,8 @@ interface State {
   waves: MigrationWave[];
   requests: Record<string, unknown>[];
   profiles: Record<string, Profile[]>;
+  runSchedules: RunSchedule[];
+  tenant: { name: string; currency: string };
   update: { current_version: string; latest_version: string; update_available: boolean; release_notes: string; updater_configured: boolean; progress: string };
   seq: number;
 }
@@ -289,6 +292,11 @@ function build(): State {
         { id: "pf-2", system_id: SYS_ECC, domain: "business_partner", tables: ["BUT000", "ADRC"], schedule_cron: "30 2 * * *", active: false, last_run_at: ago(9, 2), next_run_at: null, extraction_mode: "full" },
       ],
     },
+    runSchedules: [
+      { id: "rs-1", name: "Weekly material master", system_id: SYS_ECC, system_name: "ECC production", domain: "material_master", modules: ["material_master"], tables: ["MARA", "MARC", "MBEW"], cadence: { cron: null, preset: "weekly" }, schedule_cron: "0 2 * * 1", scope: { company_codes: ["1000"], plants: [], sales_orgs: [], purchasing_orgs: [], date_from: null, date_to: null, exclude_deleted: true }, extraction_mode: "delta", active: true, status: "active", last_run_at: ago(3, 4), next_run_at: soon(4) },
+      { id: "rs-2", name: null, system_id: SYS_ECC, system_name: "ECC production", domain: "business_partner", modules: ["business_partner"], tables: ["BUT000", "ADRC"], cadence: { cron: "30 2 * * *", preset: null }, schedule_cron: "30 2 * * *", scope: {}, extraction_mode: "full", active: false, status: "paused", last_run_at: ago(9, 2), next_run_at: null },
+    ],
+    tenant: { name: "Demo Corp", currency: "ZAR" },
     update: { current_version: "0.1.1", latest_version: "0.1.2", update_available: true, release_notes: "Faster ledger filters, report schedules in the new interface and a fix for retention previews.", updater_configured: true, progress: "idle" },
     seq: 100,
   };
@@ -383,6 +391,35 @@ function qualityView(s: State) {
 
 function userView(u: User): User {
   return { ...u, grants: clone(st().grants[u.id] ?? []) as User["grants"] };
+}
+
+const PRESET_CRON: Record<string, string> = { hourly: "0 * * * *", daily: "0 2 * * *", weekdays: "0 2 * * 1-5", weekly: "0 2 * * 1", monthly: "0 2 1 * *" };
+const SYSTEM_NAMES: Record<string, string> = { [SYS_ECC]: "ECC production", [SYS_S4]: "S/4HANA sandbox" };
+
+/** A schedule answer from a create body or a patch merged over the schedule it changes; cron and preset replace each other as the route does. */
+function runScheduleFrom(id: string, i: Partial<ScheduleCreate>, prev: RunSchedule | null): RunSchedule {
+  const touched = prev === null || "cron" in i || "preset" in i;
+  const cadence = touched ? { cron: i.cron ?? null, preset: i.preset ?? null } : (prev as RunSchedule).cadence;
+  const cron = cadence.preset ? PRESET_CRON[cadence.preset] : cadence.cron;
+  const modules = i.modules ?? prev?.modules ?? [];
+  const active = prev ? prev.active : i.active ?? true;
+  return {
+    id,
+    name: i.name === undefined ? prev?.name ?? null : i.name,
+    system_id: i.system_id ?? prev?.system_id ?? "",
+    system_name: SYSTEM_NAMES[i.system_id ?? prev?.system_id ?? ""] ?? "SAP system",
+    domain: modules[0] ?? "",
+    modules,
+    tables: prev?.tables ?? [],
+    cadence,
+    schedule_cron: cron ?? null,
+    scope: i.scope ?? prev?.scope ?? {},
+    extraction_mode: i.extraction_mode ?? prev?.extraction_mode ?? "full",
+    active,
+    status: active ? "active" : "paused",
+    last_run_at: prev?.last_run_at ?? null,
+    next_run_at: active && cron ? soon(1) : null,
+  };
 }
 
 function statusOf(u: User): User["status"] {
@@ -612,7 +649,14 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
     ] };
   }
   if (path === "/health") return { status: "ok", version: s.update.current_version, llm_provider: "ollama", llm_connected: true, licence: "valid", email_backend: null, timestamp: NOW };
-  if (path === "/settings") return { name: "Demo Corp", licensed_modules: (s.licence.enabled_modules as string[]), planner_config: s.planner, dqs_weights: null, alert_thresholds: s.thresholds, notification_config: s.digest, stripe_customer_id: null, live_writeback: false };
+  if (path === "/schedules") return { schedules: clone(s.runSchedules) };
+  const rsGet = /^\/schedules\/([^/]+)$/.exec(path);
+  if (rsGet) {
+    const found = s.runSchedules.find((x) => x.id === decodeURIComponent(rsGet[1]));
+    if (!found) throw new AdminNotFound(path);
+    return clone(found);
+  }
+  if (path === "/settings") return { name: s.tenant.name, currency: s.tenant.currency, licensed_modules: (s.licence.enabled_modules as string[]), planner_config: s.planner, dqs_weights: null, alert_thresholds: s.thresholds, notification_config: s.digest, stripe_customer_id: null, live_writeback: false };
   if (path === "/settings/scoring") return clone(s.scoring);
   if (path === "/settings/quality-thresholds") return qualityView(s);
   if (path === "/settings/cost-model") return { defaults: s.cost, tenant: s.cost, effective: clone(s.cost) };
@@ -691,6 +735,38 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
 export function adminFixtureWrite(method: string, path: string, body: unknown, params: Record<string, unknown>): unknown {
   const s = st();
   const b = (body ?? {}) as Record<string, unknown>;
+  if (method === "PATCH" && path === "/settings/tenant") {
+    if (typeof b.name === "string") s.tenant.name = b.name;
+    if (typeof b.currency === "string") s.tenant.currency = b.currency;
+    return adminFixtureResponse("/settings", {});
+  }
+  if (method === "POST" && path === "/schedules") {
+    const i = b as unknown as ScheduleCreate;
+    const created = runScheduleFrom(nextId("rs"), i, null);
+    s.runSchedules.push(created);
+    return clone(created);
+  }
+  const rsId = /^\/schedules\/([^/]+)(?:\/(pause|resume))?$/.exec(path);
+  if (rsId) {
+    const id = decodeURIComponent(rsId[1]);
+    const cur = s.runSchedules.find((x) => x.id === id);
+    if (!cur) throw new AdminNotFound(path);
+    if (method === "DELETE") {
+      s.runSchedules = s.runSchedules.filter((x) => x.id !== id);
+      return { id, status: "deleted" };
+    }
+    if (method === "POST" && rsId[2]) {
+      cur.active = rsId[2] === "resume";
+      cur.status = cur.active ? "active" : "paused";
+      cur.next_run_at = cur.active && cur.schedule_cron ? soon(1) : null;
+      return clone(cur);
+    }
+    if (method === "PATCH") {
+      const next = runScheduleFrom(id, { ...b, system_id: cur.system_id } as ScheduleCreate, cur);
+      s.runSchedules = s.runSchedules.map((x) => (x.id === id ? next : x));
+      return clone(next);
+    }
+  }
   const userId = /^\/users\/([^/]+)$/.exec(path)?.[1];
   if (userId && method === "PUT") {
     const u = s.users.find((x) => x.id === decodeURIComponent(userId));
@@ -975,6 +1051,13 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     const list = { kind: refUp[2], records: rows.length, countries: refUp[2] === "bic" ? [] : countries };
     s.reference[id] = [...(s.reference[id] ?? []).filter((r) => r.kind !== refUp[2]), list];
     return list;
+  }
+  if (refUp && method === "DELETE") {
+    const id = decodeURIComponent(refUp[1]);
+    const gone = (s.reference[id] ?? []).find((r) => r.kind === refUp[2]);
+    if (!gone) throw new AdminNotFound(path);
+    s.reference[id] = (s.reference[id] ?? []).filter((r) => r.kind !== refUp[2]);
+    return { kind: refUp[2], system_id: id, status: "deleted", records: gone.records };
   }
   if (method === "POST" && path === "/alert-channels") {
     const ch: AlertChannel = { id: nextId("ch"), kind: b.kind as AlertChannel["kind"], target: text(b.target).replace(/^https?:\/\//, "").split("/")[0], digest: b.digest as AlertChannel["digest"], report_pack: (b.report_pack as AlertChannel["report_pack"]) ?? "off", immediate_critical: b.immediate_critical === true, enabled: true, created_at: NOW, has_secret: !!b.secret };

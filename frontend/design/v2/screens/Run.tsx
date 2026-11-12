@@ -30,6 +30,8 @@ import { ObjectChangeBars, changeSentence } from "./Compare";
 import { CcBanner, CcPage } from "./cc-parts";
 import { WhatIf } from "./WhatIf";
 import { RunSteps } from "./RunSteps";
+import { RunEvents } from "./RunEvents";
+import { renameRun, rerunAgents } from "@/lib/api/v2/run-ops";
 import { RunSemantics } from "./RunSemantics";
 import "../basis.css";
 import { TableExport } from "@/design/v2/TableExport";
@@ -349,6 +351,31 @@ function SincePrevious({ id, prevId, prevAt, prevName }: { id: string; prevId: s
   );
 }
 
+/** Names the run. The route stores a label and nothing else, so there is no note field. A blank label clears the name. */
+function RenameRun({ label, enabled, busy, onSave }: { label: string | null; enabled: boolean; busy: boolean; onSave: (label: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const value = draft ?? label ?? "";
+  const changed = value.trim() !== (label ?? "");
+  return (
+    <form
+      className="m2-cta"
+      data-testid="run-rename"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSave(value.trim());
+        setDraft(null);
+      }}
+    >
+      <input className="m2-inp" aria-label={tr("Run name")} placeholder={tr("Name this run")} maxLength={200} value={value} disabled={!enabled || busy} onChange={(e) => setDraft(e.target.value)} />
+      <button type="submit" className="m2-btn" disabled={!enabled || busy || !changed}>
+        {tr("Save name")}
+      </button>
+    </form>
+  );
+}
+
+const AGENTS_READY = new Set(["complete", "agents_complete", "agents_failed"]);
+
 export function RunCanvas({ id }: { id: string }) {
   const qc = useQueryClient();
   const session = useV2Session();
@@ -567,9 +594,37 @@ export function RunCanvas({ id }: { id: string }) {
         >
           {pending === "analyse" ? tr("Starting…") : tr("Score again")}
         </button>
+        <button
+          type="button"
+          className="m2-btn"
+          disabled={!canChange || pending !== null || !v || !AGENTS_READY.has(v.status)}
+          title={v && !AGENTS_READY.has(v.status) ? tr("The agents can run again once the run has finished") : undefined}
+          onClick={() =>
+            void run("agents", async () => {
+              const r = await rerunAgents(id);
+              refresh();
+              return { tone: "ok", title: tr("Agents started"), detail: tr("The agents are reading this run's findings again."), job: r.job_id };
+            })
+          }
+        >
+          {pending === "agents" ? tr("Starting…") : tr("Re-run agents")}
+        </button>
         <CompareControl id={id} runs={timeline.data?.runs ?? []} system={system?.name} />
       </div>
-      {!canChange ? <p className="m2-prov">{tr("Pinning, archiving and restoring need the analyse permission.")}</p> : null}
+      <RenameRun
+        key={`${id}:${v?.label ?? ""}`}
+        label={v?.label ?? null}
+        enabled={canChange && !!v}
+        busy={pending !== null}
+        onSave={(label) =>
+          void run("rename", async () => {
+            const r = await renameRun(id, label);
+            refresh();
+            return { tone: "ok", title: r.label ? tr("Run named {name}", { name: r.label }) : tr("Run name cleared") };
+          })
+        }
+      />
+      {!canChange ? <p className="m2-prov">{tr("Pinning, archiving, restoring, renaming and re-running agents need the analyse permission.")}</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {refusal ? (
         <PinRefusal
@@ -613,6 +668,8 @@ export function RunCanvas({ id }: { id: string }) {
       <WhatIf run={id} canRun={canChange} />
 
       <RunSteps runId={id} />
+
+      <RunEvents runId={id} status={v?.status} />
 
       <RunJobs runId={id} />
     </CcPage>

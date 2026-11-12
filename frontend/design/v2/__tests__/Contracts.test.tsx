@@ -9,6 +9,7 @@ import { contractMark } from "@/lib/v2/step9";
 import { resetKeptOutcomes } from "../inspector/shared";
 import { Ruler } from "../Ruler";
 import { ObjectContractsBlock } from "../screens/step9/Contracts";
+import { ContractInspector } from "../inspector/contract";
 import { RunCanvas } from "../screens/Run";
 import { setUrl } from "./nav-store";
 import { stubLayout } from "./layout-stub";
@@ -90,6 +91,18 @@ describe("the contract editor on the Object canvas", () => {
     expect(within(one).queryByRole("button", { name: "Save thresholds" })).toBeNull();
     expect(within(one).getByLabelText("Minimum score")).toBeDisabled();
     expect(screen.queryByTestId("new-contract")).toBeNull();
+  });
+});
+
+describe("the contract inspector reads", () => {
+  it("lists the thresholds breached now and the recent compliance checks", async () => {
+    renderWithQuery(<ContractInspector id="ct-1" onClose={() => undefined} />);
+    const list = await screen.findByTestId("contract-threshold-breaches");
+    expect(norm(list)).toMatch(/completeness: .* against 80/);
+    const table = await screen.findByTestId("contract-compliance");
+    expect(within(table).getAllByRole("row")).toHaveLength(3);
+    expect(norm(table)).toContain("Met");
+    expect(norm(table)).toContain("Breached");
   });
 });
 

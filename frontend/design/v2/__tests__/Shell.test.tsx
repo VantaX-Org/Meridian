@@ -94,7 +94,7 @@ describe("rail and flyout", () => {
     fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Fix" }));
     const fly = await screen.findByTestId("flyout");
     const links = within(within(fly).getByRole("navigation", { name: "Fix" })).getAllByRole("link");
-    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Action centre", "Work", "Aletheia verified fixes", "Cleansing", "Requests", "Data collection form", "Process analytics", "People"]);
+    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Action centre", "Work", "Aletheia verified fixes", "Data requests", "Cleansing", "Requests", "Data collection form", "Process analytics", "People"]);
     await waitFor(() => expect(links[1]).toHaveTextContent("25,712"));
     expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/work/));
     keyOnBody("Escape");
@@ -359,5 +359,23 @@ describe("menu for every role", () => {
     expect(viewer).toContain("/rules");
     expect(kidsFor(rules, (p) => p === "manage_rules").map((k) => k.href)).toEqual(rules.kids.filter((k) => k.need !== "manage_settings").map((k) => k.href));
     expect(destinationAt("/rule-dry-run", all)?.id).toBe("rules");
+  });
+
+  it("lists Systems and Platform status under Runs, and both routes resolve there", async () => {
+    const { destinations, destinationAt, kidsFor } = await import("../shell/menu");
+    const all = destinations();
+    const runs = all.find((d) => d.id === "runs")!;
+    expect(kidsFor(runs, () => false).map((k) => k.href)).toEqual(["/runs", "/s", "/status"]);
+    expect(destinationAt("/s", all)?.id).toBe("runs");
+    expect(destinationAt("/s/abc", all)?.id).toBe("runs");
+    expect(destinationAt("/status", all)?.id).toBe("runs");
+  });
+});
+
+describe("rail attention badge", () => {
+  it("counts the Fix badge from the attention count route", async () => {
+    mount();
+    const fix = within(screen.getByTestId("rail")).getByRole("link", { name: "Fix" });
+    await waitFor(() => expect(fix).toHaveTextContent("1,242"));
   });
 });

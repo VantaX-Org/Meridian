@@ -162,6 +162,8 @@ export interface DedupCandidate {
 }
 export type MergePreview = Record<string, { a: string; b: string; survivor: string }>;
 
+/** GET /dedup/candidates/{object_type}: the pending pairs of one object type (every score from 60 up, no paging). */
+export const getDedupCandidatesFor = (objectType: string) => v2Get<{ items: DedupCandidate[]; total: number }>(`/dedup/candidates/${encodeURIComponent(objectType)}`);
 export const getDedupCandidates = () => v2Get<{ items: DedupCandidate[]; total: number }>("/dedup/candidates", { per_page: 50 });
 export const previewDedup = (c: Pick<DedupCandidate, "record_key_a" | "record_key_b" | "object_type">) =>
   v2Send<{ merge_preview: MergePreview }>("POST", "/dedup/preview", { record_key_a: c.record_key_a, record_key_b: c.record_key_b, object_type: c.object_type });

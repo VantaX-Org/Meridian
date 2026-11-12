@@ -151,6 +151,7 @@ from api.routes.share_links import router as share_links_router
 from api.routes.stewardship_template import router as stewardship_template_router
 from api.routes.contact_verification import router as contact_verification_router
 from api.routes.semantic_types import router as semantic_types_router
+from api.routes.data_collection import router as data_collection_router
 
 from api.utils.structured_logging import configure_logging
 
@@ -555,7 +556,7 @@ app.include_router(compliance_router)
 for _r in (admin_tools_router, balance_router, collab_router, delegations_router, workflows_router, change_requests_router, dq_firewall_router,
            governance_router, process_analytics_router,
            grid_export_router, share_links_router, stewardship_template_router, contact_verification_router,
-           semantic_types_router):
+           semantic_types_router, data_collection_router):
     app.include_router(_r)
 
 from api.routes.auth import router as auth_router

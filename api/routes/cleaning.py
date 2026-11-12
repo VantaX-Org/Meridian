@@ -1127,7 +1127,12 @@ async def list_all_dedup_candidates(
 # ── GET /api/v1/dedup/candidates/{object_type} ───────────────────────────────
 
 
-@router.get("/dedup/candidates/{object_type}")
+class DedupCandidatesOut(BaseModel):
+    items: list[dict[str, Any]]
+    total: int
+
+
+@router.get("/dedup/candidates/{object_type}", response_model=DedupCandidatesOut)
 async def list_dedup_candidates(
     object_type: str,
     min_score: int = Query(default=60, ge=0, le=100),

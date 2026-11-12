@@ -15,6 +15,7 @@ export function BandMark({ score, module, dimension }: { score: number | null | 
     <span className="m2-v" data-band={band} data-testid={`band-${dimension}`} title={t("Target {target}, warning {warning}, critical {critical}", { target: b.target, warning: b.warning, critical: b.critical })}>
       <VerdictMark verdict={BAND_VERDICT[band]} />
       {bandWord(band)}
+      <span className="m2-meta">{` ${t("Target")} ${b.target}`}</span>
     </span>
   );
 }

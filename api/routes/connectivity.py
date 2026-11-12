@@ -2,12 +2,12 @@
 
 import logging
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.services.rbac import require_permission, scope_from_path
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,7 +31,43 @@ class ConfigSyncRequest(BaseModel):
     modules: list[str]
 
 
-@router.get("/systems/{system_id}/modules")
+class SystemModuleOut(BaseModel):
+    """One module of a system with its sync status (system_module_map)."""
+    model_config = ConfigDict(extra="allow")
+    module: str
+    system_type: Optional[str] = None
+    enabled: Optional[bool] = True
+    last_synced_at: Optional[str] = None
+    last_sync_status: Optional[str] = None
+    row_count: Optional[int] = 0
+    config_synced: Optional[bool] = False
+    preview_sources: list[dict[str, Any]] = []
+
+
+class QueuedJobOut(BaseModel):
+    """A job accepted onto the queue; poll GET /api/v1/jobs/{job_id}."""
+    model_config = ConfigDict(extra="allow")
+    job_id: str
+    status: str
+    version_id: Optional[str] = None
+    modules: Optional[list[str]] = None
+
+
+class ConfigSnapshotTable(BaseModel):
+    table: Optional[str] = None
+    data: Any = None
+    record_count: Optional[int] = None
+    source: Optional[str] = None
+    synced_at: Optional[str] = None
+
+
+class ConfigSnapshotOut(BaseModel):
+    system_id: str
+    module: str
+    tables: list[ConfigSnapshotTable]
+
+
+@router.get("/systems/{system_id}/modules", response_model=list[SystemModuleOut])
 async def list_system_modules(
     system_id: str,
     db: AsyncSession = Depends(get_db),
@@ -87,7 +123,7 @@ async def list_system_modules(
     ]
 
 
-@router.post("/extract", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
+@router.post("/extract", response_model=QueuedJobOut, dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def extract_modules(
     body: ExtractModuleRequest,
     request: Request,
@@ -110,7 +146,7 @@ async def extract_modules(
     return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "modules": body.modules}
 
 
-@router.post("/config-sync", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
+@router.post("/config-sync", response_model=QueuedJobOut, dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def sync_config(
     body: ConfigSyncRequest,
     request: Request,
@@ -131,7 +167,7 @@ async def sync_config(
     return {"job_id": f"cfg-{task_id}", "status": "queued"}
 
 
-@router.post("/health-check/{system_id}", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
+@router.post("/health-check/{system_id}", response_model=QueuedJobOut, dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def health_check(
     system_id: str,
     db: AsyncSession = Depends(get_db),
@@ -141,10 +177,10 @@ async def health_check(
     from workers.tasks.run_health_check import run_health_check
 
     job = run_health_check.delay(str(tenant.id), system_id)
-    return {"job_id": job.id, "status": "queued"}
+    return {"job_id": str(job.id), "status": "queued"}
 
 
-@router.get("/config/{system_id}/{module}")
+@router.get("/config/{system_id}/{module}", response_model=ConfigSnapshotOut)
 async def get_config_snapshot(
     system_id: str,
     module: str,

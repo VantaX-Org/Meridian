@@ -45,6 +45,7 @@ import { NONE_TRIAGE, resetTriageFixture, triageRead, triageWrite } from "./tria
 import { NONE_MAINTENANCE, maintenanceRead, maintenanceWrite, resetMaintenanceFixture } from "./maintenance";
 import { NONE_LLM, llmRead, llmWrite, resetLlmFixture } from "./llm";
 import { NONE_PROFILE, profileRead, profileWrite, resetProfileFixture } from "./profile";
+import { NONE_CONNECTIVITY, connectivityRead, connectivityWrite, resetConnectivityFixture } from "./connectivity";
 import { NONE_SYNC_TRIGGER, resetSyncTriggerFixture, syncTriggerRead, syncTriggerWrite } from "./syncTrigger";
 import { NONE_SIMULATIONS, simulationsRead, simulationsWrite, resetSimulationsFixture } from "./simulations";
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
@@ -59,6 +60,7 @@ import { processAnalyticsRead, NONE_PROCESS_ANALYTICS } from "./process-analytic
 import { fieldLineageRead, NONE_FIELD_LINEAGE } from "./field-lineage";
 import { survivorshipPreviewWrite, NONE_SURVIVORSHIP_PREVIEW } from "./survivorship-preview";
 import { fixDraftsRead, fixDraftsWrite, NONE_FIX_DRAFTS } from "./fixDrafts";
+import { dataRequestsRead, dataRequestsWrite, NONE_DATA_REQUESTS } from "./dataRequests";
 import { learnedMonitorsRead, learnedMonitorsWrite, NONE_LEARNED_MONITORS } from "./learnedMonitors";
 import { anomalyRulesRead, anomalyRulesWrite, NONE_ANOMALY_RULES } from "./anomalyRules";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
@@ -154,7 +156,15 @@ function withOpenDelta(l: Landscape): Landscape {
 }
 
 /** A write in fixture mode (POST, PUT, DELETE): applied to the in-memory work fixture. */
+const fxWritebacks = [
+  { id: "wb-1", finding_id: "f-1", version_id: null, requested_by: "u-ana", records_updated: 12, sap_host: "sap-ecc.example.com", created_at: "2026-10-16T08:00:00Z", check_id: "MM022", module: "material_master", rule_message: "Material group is blank.", requested_by_name: "Ana Roberts" },
+  { id: "wb-2", finding_id: "f-2", version_id: null, requested_by: "u-me", records_updated: 4, sap_host: "sap-ecc.example.com", created_at: "2026-10-16T09:00:00Z", check_id: "MM031", module: "material_master", rule_message: "Base unit is blank.", requested_by_name: "Demo user" },
+];
 export function fixtureWrite<T>(method: string, path: string, body: unknown, params: Params): T {
+  const wbApprove = /^\/writeback\/approve\/([^/]+)$/.exec(path);
+  if (method === "POST" && wbApprove) {
+    return { applied: 0, errors: ["Live SAP write-back is off on this deployment. Deliver the fixes with the export."], status: "blocked" } as T;
+  }
   const req = requestsWrite(method, path, body);
   if (req !== NONE_REQ) return req as T;
   const aw = insightsWrite(method, path, body);
@@ -180,6 +190,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (riw !== NONE_RULE_IMPACT) return riw as T;
   const fdw = fixDraftsWrite(method, path, body);
   if (fdw !== NONE_FIX_DRAFTS) return fdw as T;
+  const dcw = dataRequestsWrite(method, path, body);
+  if (dcw !== NONE_DATA_REQUESTS) return dcw as T;
   const svw = survivorshipWrite(method, path, body);
   if (svw !== NONE_SURVIVORSHIP) return svw as T;
   const svp = survivorshipPreviewWrite(method, path, body);
@@ -210,6 +222,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (lw !== NONE_LLM) return lw as T;
   const pw = profileWrite(method, path, body);
   if (pw !== NONE_PROFILE) return pw as T;
+  const cnw = connectivityWrite(method, path, body);
+  if (cnw !== NONE_CONNECTIVITY) return cnw as T;
   const stw = syncTriggerWrite(method, path, body);
   if (stw !== NONE_SYNC_TRIGGER) return stw as T;
   const sw = simulationsWrite(method, path, body);
@@ -225,6 +239,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     if (method === "POST" && path === "/actions/undo") return wf.undoFixture(body as { action_id: string });
     const batch = /^\/remediation\/batches\/([^/]+)\/(approve|send-back)$/.exec(path);
     if (method === "POST" && batch) return wf.batchFixture(batch[2] as "approve" | "send-back", decodeURIComponent(batch[1]), (body as { note?: string } | undefined)?.note, (body as { without_blank?: boolean } | undefined)?.without_blank === true);
+    const reassign = /^\/remediation\/batches\/([^/]+)\/reassign$/.exec(path);
+    if (method === "POST" && reassign) return { batch_id: decodeURIComponent(reassign[1]), reassigned: 3, action_id: "fx-reassign" };
     const send = /^\/remediation\/batches\/([^/]+)\/export$/.exec(path);
     if (method === "POST" && send) return wf.sendBatchFixture(decodeURIComponent(send[1]));
     const loaded = /^\/remediation\/batches\/([^/]+)\/loaded$/.exec(path);
@@ -285,6 +301,7 @@ export const resetWorkFixture = (): void => {
   resetLlmFixture();
   resetProfileFixture();
   resetSyncTriggerFixture();
+  resetConnectivityFixture();
   resetSimulationsFixture();
   resetCleaningFixture();
   resetDiscoveryFixture();
@@ -299,6 +316,15 @@ function lineageRead(path: string, params: Params): unknown {
     const id = String(params.node ?? "").replace(/^check:/, "");
     if (!lin.graph[id]) throw new FixtureNotFound(path);
     return lin.graph[id];
+  }
+  const rr = /^\/lineage\/rule\/([^/]+)$/.exec(path);
+  if (rr) {
+    const id = decodeURIComponent(rr[1]);
+    const g = lin.graph[id] as { nodes: { type: string; label: string }[] } | undefined;
+    if (!g) throw new FixtureNotFound(path);
+    const fields = g.nodes.filter((n) => n.type === "field").map((n) => n.label);
+    const tables = g.nodes.filter((n) => n.type === "table").map((n) => n.label);
+    return { check_id: id, module: "material_master", fields, targets: [], tables, joins: tables.length > 1 ? [{ parent: tables[0], child: tables[1], on: [["MATNR", "MATNR"]], cardinality: "1:N" }] : [], glossary_terms: [], owners: [] };
   }
   const guards = guardsJson as { model: unknown; guards: Record<string, unknown> };
   if (path === "/lineage/model") return guards.model;
@@ -406,6 +432,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (rpr !== NONE_RULE_PROMOTION) return rpr as T;
   const fdr = fixDraftsRead(path);
   if (fdr !== NONE_FIX_DRAFTS) return fdr as T;
+  const dcr = dataRequestsRead(path);
+  if (dcr !== NONE_DATA_REQUESTS) return dcr as T;
   const sv = survivorshipRead(path);
   if (sv !== NONE_SURVIVORSHIP) return sv as T;
   const rdr = referenceDataRead(path, params);
@@ -458,6 +486,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (llm !== NONE_LLM) return llm as T;
   const pf = profileRead(path, params);
   if (pf !== NONE_PROFILE) return pf as T;
+  const cn = connectivityRead(path);
+  if (cn !== NONE_CONNECTIVITY) return cn as T;
   const str = syncTriggerRead(path);
   if (str !== NONE_SYNC_TRIGGER) return str as T;
   const sim = simulationsRead(path);
@@ -516,7 +546,7 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     if (events) return wf.batchEventsFixture(decodeURIComponent(events[1]));
     const batchOne = /^\/remediation\/batches\/([^/]+)$/.exec(path);
     if (batchOne) return wf.batchFixtureDetail(decodeURIComponent(batchOne[1]));
-    if (path === "/writeback/approvals") return { approvals: [], live_enabled: false };
+    if (path === "/writeback/approvals") return { approvals: fxWritebacks, live_enabled: false };
     if (path === "/people") return ap.peopleFixture();
     if (path === "/people/next") return ap.nextFixture();
     const steward = /^\/analytics\/operational\/team\/([^/]+)$/.exec(path);

@@ -106,6 +106,8 @@ export const getRequestForm = (object: RequestObject, systemId?: string) =>
   v2Get<RequestForm>(`/change-requests/form/${object}`, systemId ? { system_id: systemId } : undefined);
 export const createRequest = (body: RequestDraft) => v2Send<ChangeRequest>("POST", "/change-requests", body);
 export const validateRequest = (id: string) => v2Send<Precheck>("POST", `${cr(id)}/validate`);
+/** PATCH /change-requests/{id}: edits a draft (409 once submitted); only the requester. A payload replaces the proposed values. */
+export const updateRequest = (id: string, body: { title?: string; payload?: Record<string, string> }) => v2Send<ChangeRequest>("PATCH", cr(id), body);
 export const submitRequest = (id: string) => v2Send<RequestDetail>("POST", `${cr(id)}/submit`);
 export const decideRequest = (id: string, decision: "approve" | "reject", comment?: string, task_id?: string) => v2Send<RequestDetail>("POST", `${cr(id)}/decide`, { decision, comment, task_id });
 export const cancelRequest = (id: string, reason?: string) => v2Send<ChangeRequest>("POST", `${cr(id)}/cancel`, { reason });
@@ -153,6 +155,8 @@ export interface DryRun { valid: boolean; problems: string[]; facts: Record<stri
 export interface Facts { facts: Record<string, unknown>; ops: string[]; assignee_rules: string[]; object_kinds: string[] }
 export interface TaskRow extends WorkflowTask { object_kind: string; object_id: string; title: string | null; requester_label: string | null; may_decide: boolean; on_behalf_of: string | null }
 
+/** GET /workflows/definitions/{id} (view): one stored version with its definition, as the engine reads it. */
+export const getDefinition = (id: string) => v2Get<WorkflowDefinition>(`/workflows/definitions/${enc(id)}`);
 export const listDefinitions = () => v2Get<{ items: WorkflowDefinition[] }>("/workflows/definitions");
 export const getFacts = () => v2Get<Facts>("/workflows/facts");
 export const newVersion = (id: string, definition: Record<string, unknown>, activate: boolean) => v2Send<WorkflowDefinition>("POST", `/workflows/definitions/${enc(id)}/versions`, { definition, activate });

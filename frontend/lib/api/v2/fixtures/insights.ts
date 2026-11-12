@@ -199,6 +199,30 @@ export function insightsRead(path: string, params: Record<string, unknown> = {})
   };
   if (path === "/insights/root-causes") return { version_id: "v-12", clusters };
   if (path === "/insights/trends") return { lineage: [], runs, annotations: [] };
+  if (path === "/insights/overview") return {
+    version_id: "v-12", run_label: "Run 12", run_at: "2026-11-10T06:00:00Z",
+    dqs: { composite: 82.4, previous: 81.9, delta: 0.5, tier: "fair", capped: true, cap_reason: "One critical rule fails" },
+    blockers: { count: 3, previous: 4 }, auto_fixable: { records: 1_840, failing_records: 4_350, pct: 42.3, high_confidence: 1_120 },
+    value_at_risk: { worst_l1: "Procure to pay", worst_l1_amount: 1_850_000, currency: "ZAR", features_blocked: 2 },
+    narrative: "Purchasing master data holds most of the loss.",
+  };
+  if (path === "/insights/exec") return {
+    version_id: "v-12", composite: 82.4, cap: 85, cap_reason: "One critical rule fails", narrative: "Purchasing master data holds most of the loss.",
+    waterfall: [{ x: "Procure to pay", y: 9.1, l1: "Procure to pay" }, { x: "Order to cash", y: 5.2, l1: "Order to cash" }, { x: "Record to report", y: 3.3, l1: "Record to report" }],
+  };
+  if (path === "/insights/cleansing") return {
+    version_id: "v-12", currency: "ZAR",
+    steps: [{ key: "failing", label: "Failing records", records: 4_350 }, { key: "proposed", label: "Fix proposed", records: 2_900 }, { key: "high", label: "High confidence", records: 1_120 }, { key: "applied", label: "Applied", records: 410 }],
+    by_module: [{ module: "material_master", failing: 3_100, proposed: 2_200, high: 900 }, { module: "business_partner", failing: 1_250, proposed: 700, high: 220 }],
+    by_rule: [{ check_id: "MM035", proposed: 1_400, high: 600, auto: 300 }, { check_id: "MM003", proposed: 800, high: 320, auto: 110 }],
+  };
+  if (path === "/insights/owners") return {
+    owners: [{ owner: "Purchasing", score: 79.5, delta: 1.2, open_by_severity: { critical: 1, high: 4 }, fixed_since_baseline: 212, oldest_item_age_days: 34, digest: "weekly", user_id: null, schedule: "Mon 07:00", last_sent: null }],
+  };
+  if (path.startsWith("/insights/duplicates/")) return {
+    nodes: [{ id: "100234", size: 1, label: "100234" }, { id: "100871", size: 1, label: "100871" }],
+    edges: [{ source: "100234", target: "100871", label: "0.93" }], thresholds: { auto_merge: 0.95, review_floor: 0.8 },
+  };
   if (path === "/insights/engine-drivers") return structuredClone(engineDrivers);
   if (path === "/aletheia/engine") return structuredClone(engineStatus);
   if (path === "/aletheia/foresight") return structuredClone(foresight);

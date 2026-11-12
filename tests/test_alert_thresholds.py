@@ -36,3 +36,22 @@ def test_floor_and_unfloored_modules():
 
 def test_unscored_module_skipped():
     assert threshold_breaches(CONFIG, {"fi_gl": {"composite_score": None}, "x": None}, _dqs(fi_gl=99), {}) == []
+
+
+def _dims(**d):
+    return {"fi_gl": {"composite_score": 95, "dimension_scores": d}}
+
+
+ROWS = [{"module": "*", "dimension": "validity", "target": 90, "warning": 80, "critical": 60},
+        {"module": "fi_gl", "dimension": "uniqueness", "target": 99, "warning": 90, "critical": 80}]
+
+
+def test_dimension_below_target_alerts_with_module_override():
+    out = threshold_breaches(CONFIG, _dims(validity=85.0, uniqueness=97.0, accuracy=10.0), {}, {}, ROWS)
+    assert [(b["kind"], b["dimension"]) for b in out] == [("dimension", "uniqueness"), ("dimension", "validity")]
+    assert "below its target of 99" in out[0]["message"]
+
+
+def test_dimension_on_target_or_unset_does_not_alert():
+    assert threshold_breaches(CONFIG, _dims(validity=90.0, accuracy=1.0), {}, {}, ROWS) == []
+    assert threshold_breaches(CONFIG, _dims(validity=1.0), {}, {}) == []  # no targets set: no dimension alerts

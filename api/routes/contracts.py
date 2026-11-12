@@ -305,7 +305,12 @@ async def activate_contract(
 # ── 5. GET /api/v1/contracts/{id}/compliance — compliance history ────────────
 
 
-@router.get("/contracts/{contract_id}/compliance")
+class ContractComplianceOut(BaseModel):
+    contract_id: str
+    compliance_history: list[dict[str, Any]]
+
+
+@router.get("/contracts/{contract_id}/compliance", response_model=ContractComplianceOut)
 async def get_contract_compliance(
     contract_id: str,
     days: int = Query(90, ge=1, le=365),

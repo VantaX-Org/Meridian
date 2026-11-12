@@ -2,10 +2,10 @@
 deterministic — no LLM calls anywhere in this module."""
 import uuid
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,68 @@ from api.services.run_context import latest_run
 from api.services.scoring import scoring_config
 
 router = APIRouter(prefix="/api/v1/insights", tags=["insights"])
+
+class _Loose(BaseModel):
+    """Aggregate payloads are wide and vary by scope; the fields the pages read are declared, the rest pass through."""
+    model_config = ConfigDict(extra="allow")
+
+
+class InsightOverviewOut(_Loose):
+    version_id: Optional[str] = None
+    run_label: Optional[str] = None
+    run_at: Optional[str] = None
+    dqs: Optional[dict[str, Any]] = None
+    blockers: Optional[dict[str, Any]] = None
+    auto_fixable: Optional[dict[str, Any]] = None
+    value_at_risk: Optional[dict[str, Any]] = None
+    narrative: Optional[Any] = None
+
+
+class InsightExecOut(_Loose):
+    version_id: Optional[str] = None
+    latest_version_id: Optional[str] = None
+    scope: Optional[str] = None
+    composite: Optional[float] = None
+    cap: Optional[float] = None
+    cap_reason: Optional[str] = None
+    narrative: Optional[str] = None
+    readiness_cells: list[dict[str, Any]] = []
+    waterfall: list[dict[str, Any]] = []
+    impact_rows: list[dict[str, Any]] = []
+    owner_rows: list[dict[str, Any]] = []
+    proven_cost_by_l1: Optional[list[dict[str, Any]]] = None
+
+
+class InsightCleansingOut(_Loose):
+    version_id: Optional[str] = None
+    currency: Optional[str] = None
+    steps: list[dict[str, Any]] = []
+    by_module: list[dict[str, Any]] = []
+    by_rule: list[dict[str, Any]] = []
+
+
+class OwnerRowOut(_Loose):
+    owner: str
+    score: Optional[float] = None
+    delta: Optional[float] = None
+    open_by_severity: dict[str, int] = {}
+    fixed_since_baseline: Optional[int] = None
+    oldest_item_age_days: Optional[int] = None
+    digest: Optional[str] = None
+    user_id: Optional[str] = None
+    schedule: Optional[str] = None
+    last_sent: Optional[str] = None
+
+
+class OwnersOut(BaseModel):
+    owners: list[OwnerRowOut]
+
+
+class DuplicateClusterOut(BaseModel):
+    nodes: list[dict[str, Any]]
+    edges: list[dict[str, Any]]
+    thresholds: dict[str, Any]
+
 
 Scope = Literal["run", "current"]
 _SCOPE = Query("run", description="run: one run (version_id, default the latest complete run). current: every "
@@ -305,7 +367,7 @@ async def get_proven_cost(
             "value_at_risk_by_l1": var_by_l1}
 
 
-@router.get("/owners", dependencies=[Depends(require_permission("view"))])
+@router.get("/owners", response_model=OwnersOut, dependencies=[Depends(require_permission("view"))])
 async def get_owners(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     result = await db.execute(text(OWNER_ISSUE_SQL), {"tid": str(tenant.id), "cutoff": baseline_cutoff()})
@@ -334,7 +396,7 @@ async def get_owners(db: AsyncSession = Depends(get_db), tenant: Tenant = Depend
     return {"owners": rows}
 
 
-@router.get("/duplicates/{object}/{record_id}", dependencies=[Depends(require_permission("view"))])
+@router.get("/duplicates/{object}/{record_id}", response_model=DuplicateClusterOut, dependencies=[Depends(require_permission("view"))])
 async def get_duplicate_cluster(
     object: str, record_id: uuid.UUID,
     db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
@@ -436,7 +498,7 @@ def _exec_score(dqs: dict) -> dict:
     return {"composite": comp, "cap": comp if capped else None, "cap_reason": dqs.get("cap_reason") if capped else None}
 
 
-@router.get("/exec", dependencies=[Depends(require_permission("view"))])
+@router.get("/exec", response_model=InsightExecOut, dependencies=[Depends(require_permission("view"))])
 async def get_exec(
     version_id: Optional[uuid.UUID] = None,
     scope: Scope = _SCOPE,
@@ -547,7 +609,7 @@ async def _current(db: AsyncSession, tenant: Tenant, fn, version_id: Optional[uu
     return await db.run_sync(lambda s: fn(s, str(tenant.id), ids, module))
 
 
-@router.get("/overview", dependencies=[Depends(require_permission("view"))])
+@router.get("/overview", response_model=InsightOverviewOut, dependencies=[Depends(require_permission("view"))])
 async def get_overview(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None, scope: Scope = _SCOPE,
                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Board overview for one run, or (``scope=current``) for the current state across objects. A blocker is a
@@ -589,7 +651,7 @@ async def get_trends(version_id: Optional[uuid.UUID] = None, system_id: Optional
     return await _agg(db, tenant, agg.trends, version_id and str(version_id), system_id, limit)
 
 
-@router.get("/cleansing", dependencies=[Depends(require_permission("view"))])
+@router.get("/cleansing", response_model=InsightCleansingOut, dependencies=[Depends(require_permission("view"))])
 async def get_cleansing(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None, scope: Scope = _SCOPE,
                         db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     if scope == "current":

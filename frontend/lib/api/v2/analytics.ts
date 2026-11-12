@@ -169,3 +169,38 @@ export interface Value {
 }
 
 export const getValue = (): Promise<Value> => v2Get("/analytics/roi");
+
+/** GET /analytics/impact: the run's business impact by category, with the return on the subscription. */
+export interface ImpactPortfolio {
+  impacts: ImpactCategory[];
+  roi: Roi;
+  version_id?: string | null;
+}
+export const getImpactPortfolio = (): Promise<ImpactPortfolio> => v2Get("/analytics/impact");
+
+/** GET /analytics/impact/{finding_id}: what one finding costs. 404 when the finding is not found. */
+export const getFindingImpact = (id: string): Promise<{ finding_id: string; finding: Record<string, unknown>; impacts: ImpactCategory[] }> =>
+  v2Get(`/analytics/impact/${encodeURIComponent(id)}`);
+
+/** GET /analytics/sprints: the remediation plan cut into sprints of at most maxHours (8 to 80). */
+export interface SprintPlan {
+  sprints: Sprint[];
+  total_actions: number;
+  assumptions: Record<string, number | string | null>;
+}
+export const getSprintPlan = (maxHours = 40): Promise<SprintPlan> => v2Get("/analytics/sprints", { max_hours: maxHours });
+
+/** GET /analytics/mdm-health: one snapshot a day. The ai_* fields are null for a role without view_ai_confidence. */
+export interface MdmHealthSnapshot {
+  snapshot_date: string;
+  mdm_health_score: number | null;
+  golden_record_coverage_pct: number | null;
+  avg_match_confidence: number | null;
+  steward_sla_compliance_pct: number | null;
+  source_consistency_pct: number | null;
+  backlog_count: number | null;
+  ai_projected_score: number | null;
+  ai_narrative: string | null;
+  ai_risk_flags: unknown[] | null;
+}
+export const getMdmHealthSeries = (days = 56): Promise<{ data: MdmHealthSnapshot[]; days: number }> => v2Get("/analytics/mdm-health", { days });

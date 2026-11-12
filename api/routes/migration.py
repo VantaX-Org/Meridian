@@ -811,7 +811,7 @@ async def export_reconciliation(
                    f"post_load_reconciliation_{run_id}.xlsx")
 
 
-@router.get("/runs/{run_id}/dry-run/{fmt}")
+@router.get("/runs/{run_id}/dry-run/{fmt}", response_class=StreamingResponse)
 async def dry_run_report(
     run_id: uuid.UUID,
     fmt: str,
@@ -1644,7 +1644,13 @@ def _export_workbook(tenant_id, version_id: str, data: bytes, filename: str, exp
         return *wb.same_format(book, tabs, held_csv), summary
     if held is not None:
         tabs[wb.HELD_BACK_TAB] = held
-    return (to_xlsx(tabs), "xlsx", summary) if export_format == "xlsx" else (to_csv_zip(tabs), "zip", summary)
+    if export_format != "xlsx":
+        return to_csv_zip(tabs), "zip", summary
+    # The hidden marker lets the edited file come back as the next run of this lineage (sf_roundtrip).
+    from api.services.sf_roundtrip import stamp_xlsx
+    modules = report["learned"]["modules"]
+    maps = {r["name"]: {k: r[k] for k in ("table", "map", "mapped")} for r in report["sheets"] if r["name"] in tabs}
+    return stamp_xlsx(to_xlsx(tabs), version_id.lower(), modules[0] if modules else "", maps), "xlsx", summary
 
 
 @router.post("/target-workbook/{version_id}/check")

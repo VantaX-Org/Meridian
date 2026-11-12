@@ -85,7 +85,7 @@ async def _subscribe_redis(channel: str) -> AsyncGenerator[str, None]:
         await r.close()
 
 
-@router.get("/events/{version_id}")
+@router.get("/events/{version_id}", response_class=StreamingResponse)
 async def stream_events(version_id: str, tenant: Tenant = Depends(get_tenant)):
     """Server-Sent Events stream for analysis job progress.
 

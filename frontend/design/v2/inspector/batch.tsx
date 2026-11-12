@@ -13,7 +13,7 @@ import type { RowRef } from "@/lib/v2/work-actions";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
 import { describeField } from "@/lib/v2/sap-fields";
 import { Coded, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
-import { BatchButtons, ReassignMenu, day, money, useBatchControls } from "../screens/batch-parts";
+import { BatchButtons, ReassignBatch, ReassignMenu, day, money, useBatchControls } from "../screens/batch-parts";
 import { KeyText, keyValue } from "../screens/work-parts";
 import { useToast } from "../Toast";
 import { ResultFrame, WorkflowSteps, useOutcome } from "./shared";
@@ -219,6 +219,7 @@ function BatchBody({ b }: { b: BatchRow }) {
             {tr("Loaded in SAP")}
           </button>
         ) : null}
+        {b.status === "draft" || b.status === "approved" ? <ReassignBatch b={b} sm={false} /> : null}
         {b.status !== "exported" ? <ReassignMenu rows={rows} disabled={!can.assign} subject={tr("batch {label}", { label: b.label })} /> : null}
       </Actions>
       {b.status === "draft" && !can.approve ? <p className="m2-prov">{tr("Approving needs the approve permission, which your role does not hold.")}</p> : null}

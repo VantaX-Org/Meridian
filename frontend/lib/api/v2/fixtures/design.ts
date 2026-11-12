@@ -51,8 +51,33 @@ export function designRead(path: string, params: Record<string, unknown> = {}): 
   if (one) {
     const name = decodeURIComponent(one[1]).toUpperCase();
     const row = TABLES.find((t) => t.table === name);
-    if (!row) throw Object.assign(new Error("Table not in the discovery snapshot"), { response: { status: 404 } });
+    if (!row) throw Object.assign(new Error("Table not in the discovery snapshot"), { status: 404, response: { status: 404 } });
     return DETAIL[name] ?? { ...row, in_sap_standard: !row.customer_table, fields: [], standard_fields_missing: [] };
+  }
+  if (sub === "/coverage") {
+    return {
+      snapshot_id: SNAPSHOTS[0].id,
+      coverage: {
+        dictionary: [
+          { table: "DD02L", status: "live", rows: 1840 },
+          { table: "DD03L", status: "live", rows: 21400 },
+          { table: "DD04T", status: "failed", detail: "Not authorised to read the table" },
+        ],
+        configuration: [
+          { table: "T134", status: "live", rows: 52 },
+          { table: "T001W", status: "not_in_system" },
+        ],
+      },
+    };
+  }
+  const cfg = /^\/config\/([^/]+)$/.exec(sub);
+  if (cfg) {
+    const name = decodeURIComponent(cfg[1]).toUpperCase();
+    if (name !== "T134") throw Object.assign(new Error("No configuration snapshot for this table"), { status: 404, response: { status: 404 } });
+    return {
+      table: "T134", scope: "material_master", total: 52, source: "live", synced_at: "2026-10-28T02:05:00Z",
+      rows: [{ MTART: "ROH", MTBEZ: "Raw materials" }, { MTART: "FERT", MTBEZ: "Finished products" }, { MTART: "ZCOM", MTBEZ: "Commissioned parts" }],
+    };
   }
   if (sub === "/config-deviation") {
     return {

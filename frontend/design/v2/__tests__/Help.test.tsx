@@ -158,12 +158,13 @@ describe("the help panel", () => {
     const dialog = await openPanel("/?fixture=1&open=help");
     expect(within(dialog).getByRole("heading", { name: "What's new" })).toBeInTheDocument();
     const items = within(within(dialog).getByTestId("whats-new")).getAllByRole("listitem");
-    expect(items).toHaveLength(15);
-    expect(items[0]).toHaveTextContent(/^3 Nov 2026\. Anomaly rules/);
-    expect(items[2]).toHaveTextContent(/^31 Oct 2026\. The Ledger look/);
-    expect(items[3]).toHaveTextContent(/^30 Oct 2026\. A home for SAP Basis/);
-    expect(items[4]).toHaveTextContent(/^30 Oct 2026\. Policy packs/);
-    expect(items[14]).toHaveTextContent(/^29 Oct 2026\. The landscape with its coverage matrix/);
+    expect(items).toHaveLength(16);
+    expect(items[0]).toHaveTextContent(/^12 Nov 2026\. Quality targets/);
+    expect(items[1]).toHaveTextContent(/^3 Nov 2026\. Anomaly rules/);
+    expect(items[3]).toHaveTextContent(/^31 Oct 2026\. The Ledger look/);
+    expect(items[4]).toHaveTextContent(/^30 Oct 2026\. A home for SAP Basis/);
+    expect(items[5]).toHaveTextContent(/^30 Oct 2026\. Policy packs/);
+    expect(items[15]).toHaveTextContent(/^29 Oct 2026\. The landscape with its coverage matrix/);
     for (const item of items) expect(item).not.toHaveTextContent(/step \d|\/v2|new interface/i);
   });
 

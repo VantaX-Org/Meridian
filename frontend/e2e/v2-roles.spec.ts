@@ -131,7 +131,7 @@ test.describe("v2 role capabilities at 1440, light", () => {
     await prepare(page);
     await go(page, `/?open=system:${ECC}`, "sap_basis");
     await page.getByRole("button", { name: "Extract", exact: true }).click(NAV);
-    await page.getByRole("checkbox", { name: /Material master/ }).check();
+    await page.getByRole("checkbox", { name: /^Material master/ }).check();
     await page.getByRole("button", { name: "Dry run" }).click();
     await expect(page.getByTestId("dry-run-plan")).toBeVisible(NAV);
     await page.getByTestId("dry-run-plan").scrollIntoViewIfNeeded();

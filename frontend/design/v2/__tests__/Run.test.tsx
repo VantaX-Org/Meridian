@@ -52,7 +52,7 @@ describe("Run canvas", () => {
     const mm = within(table).getByRole("row", { name: /Material master/ });
     // the band reads the tenant quality thresholds: material master overall is held to 92, 80, 65
     await waitFor(() => expect(within(mm).getByTestId("band-overall")).toBeInTheDocument());
-    expect(within(mm).getAllByRole("cell").map((c) => norm(c))).toEqual(["71.8", "70.0 capped", "No-go", "Below warning", "61,816", "80", "25,712"]);
+    expect(within(mm).getAllByRole("cell").map((c) => norm(c))).toEqual(["71.8", "70.0 capped", "No-go", "Below warning Target 92", "61,816", "80", "25,712"]);
     expect(within(mm).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining(`/o/ecc-production/material-master?run=${R8}`));
     const gl = within(table).getByRole("row", { name: /FI general ledger/ });
     expect(within(gl).getByText("Go")).toBeInTheDocument();
@@ -186,5 +186,21 @@ describe("the trigger of a run", () => {
     expect(triggerOf(null, { file_name: "bp.csv" })).toBe("upload");
     expect(triggerOf(null, null)).toBeNull();
     expect(kindWord(triggerOf(null, { upload_id: "u1" }))).toBe("Upload");
+  });
+});
+
+describe("Run actions", () => {
+  it("renames the run and starts the agents again", async () => {
+    renderWithQuery(<RunCanvas id={R8} />);
+    const input = await screen.findByRole("textbox", { name: "Run name" });
+    await waitFor(() => expect(input).not.toBeDisabled());
+    fireEvent.change(input, { target: { value: "Cutover rehearsal" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save name" }));
+    expect(await screen.findByText("Run named Cutover rehearsal")).toBeInTheDocument();
+    const rerun = screen.getByRole("button", { name: "Re-run agents" });
+    await waitFor(() => expect(rerun).not.toBeDisabled());
+    fireEvent.click(rerun);
+    expect(await screen.findByText("Agents started")).toBeInTheDocument();
+    expect(screen.getByTestId("run-events")).toBeInTheDocument();
   });
 });

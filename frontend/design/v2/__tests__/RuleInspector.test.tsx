@@ -124,6 +124,12 @@ describe("the rule inspector", () => {
     expect(css).toMatch(/\.m2-lineage rect \{[^}]*stroke-width: 1;[^}]*vector-effect: non-scaling-stroke/);
   });
 
+  it("reads what the rule reads from the lineage route: columns and tables", async () => {
+    const d = await open();
+    const reads = await within(section(d, "Lineage")).findByTestId("rule-reads");
+    expect(norm(reads)).toContain("MARA.MEINS");
+  });
+
   it("lists the versions and the shipped identity", async () => {
     const d = await open();
     const v = section(d, "Versions");

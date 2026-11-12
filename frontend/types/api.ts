@@ -360,6 +360,8 @@ export interface TenantSettings {
     monthly_report: boolean;
   } | null;
   stripe_customer_id: string | null;
+  /** The tenant's currency, as PATCH /settings/tenant writes it. */
+  currency?: string | null;
   /** Whether this deployment writes approved fixes back to SAP itself (MERIDIAN_LIVE_WRITEBACK_ENABLED). */
   live_writeback?: boolean;
 }

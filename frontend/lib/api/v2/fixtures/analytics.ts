@@ -74,6 +74,19 @@ export function analyticsRead(path: string): unknown {
   if (path === "/analytics/bottlenecks") return { bottlenecks: [{ stage: "recommended", count: 61_906, avg_age_hours: 96.4 }], total_queue_size: 62_015 };
   if (path === "/analytics/capacity") return { needed: 4, current: 2, surplus_deficit: -2, daily_inflow: 412.5, per_steward: 118.2 };
   if (path === "/analytics/roi") return roi;
+  if (path === "/analytics/impact") return { impacts, roi: roi.roi, version_id: "v-12" };
+  if (path === "/analytics/sprints") return {
+    sprints: [sprint(1, actions.slice(0, 2), 82.4, 85.1), sprint(2, actions.slice(2), 85.1, 86.9)], total_actions: actions.length,
+    assumptions: { minutes_per_record: 1, investigation_hours: 2, sprint_hours: 40, cost_per_record: 3.5, currency: "ZAR" },
+  };
+  if (path === "/analytics/mdm-health") return {
+    days: 56,
+    data: [78.1, 79.4, 80.2, 80.9, 82.3, 83.0, 84.2].map((s, i) => ({
+      snapshot_date: `2026-11-0${i + 1}`, mdm_health_score: s, golden_record_coverage_pct: 61 + i, avg_match_confidence: 0.82 + i / 100,
+      steward_sla_compliance_pct: 90 + i / 2, source_consistency_pct: 88 + i / 3, backlog_count: 640 - i * 31,
+      ai_projected_score: i === 6 ? 86.5 : null, ai_narrative: i === 6 ? "Backlog is falling faster than inflow." : null, ai_risk_flags: i === 6 ? [] : null,
+    })),
+  };
   if (path === "/analytics/operational") return {
     kpis: { throughput: 412.5, automation_rate: 38.2, mttr_hours: 6.4, rejection_rate: 4.1, rollback_rate: 0.3, items_in_flight: 61_906, top_object_type: "material_master", total_processed: 7_425, total_detected: 69_331, sla_compliance_pct: 100, avg_queue_age_hours: 0, top_rule_by_volume: "material_master" },
     bottlenecks: [], capacity: {},

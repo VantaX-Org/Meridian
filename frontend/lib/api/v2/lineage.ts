@@ -4,6 +4,7 @@
  * Endpoints (api/routes/lineage.py):
  *   GET /lineage/graph?node=check:{id}&direction=both&depth=8
  *   GET /lineage/blast-radius/{version_id}/{check_id}
+ *   GET /lineage/rule/{check_id}
  */
 import { v2Get } from "./client";
 
@@ -59,6 +60,19 @@ export interface BlastRadius {
 
 export const getRuleLineage = (checkId: string): Promise<LineageGraph> =>
   v2Get("/lineage/graph", { node: `check:${checkId}`, direction: "both", depth: 8 });
+
+/** GET /lineage/rule/{check_id} (view): what a shipped rule reads, the joins between its tables, its glossary terms and owners. */
+export interface RuleReads {
+  check_id: string;
+  module: string;
+  fields: string[];
+  targets: string[];
+  tables: string[];
+  joins: { parent: string; child: string; on: string[][]; cardinality: string }[];
+  glossary_terms: { id: string; business_name: string; sap_table: string | null; sap_field: string | null }[];
+  owners: { kind: string; ref: string; owner_user_id: string | null; owner_name: string | null; steward_user_id: string | null; steward_name: string | null; updated_at: string | null }[];
+}
+export const getRuleReads = (checkId: string): Promise<RuleReads> => v2Get(`/lineage/rule/${encodeURIComponent(checkId)}`);
 
 export const getBlastRadius = (versionId: string, checkId: string): Promise<BlastRadius> =>
   v2Get(`/lineage/blast-radius/${encodeURIComponent(versionId)}/${encodeURIComponent(checkId)}`);

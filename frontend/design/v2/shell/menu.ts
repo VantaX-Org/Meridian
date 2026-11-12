@@ -25,8 +25,8 @@ export interface Destination {
 export function destinations(): Destination[] {
   return [
     { id: "home", href: "/", label: t("Home"), about: t("What needs attention today, across every system."), key: "h", kids: [], also: [] },
-    { id: "objects", href: "/objects", label: t("Objects"), about: t("Every object, scored at its latest run. Open any object at any run."), key: "o", kids: [], also: ["/o", "/s"] },
-    { id: "runs", href: "/runs", label: t("Runs"), about: t("Every scoring run, by system. Compare any two."), key: "r", kids: [], also: ["/run"] },
+    { id: "objects", href: "/objects", label: t("Objects"), about: t("Every object, scored at its latest run. Open any object at any run."), key: "o", kids: [], also: ["/o"] },
+    { id: "runs", href: "/runs", label: t("Runs"), about: t("Every scoring run, by system. Compare any two."), key: "r", kids: [{ href: "/runs", label: t("Runs") }, { href: "/s", label: t("Systems") }, { href: "/status", label: t("Platform status") }], also: ["/run"] },
     {
       id: "fix",
       href: "/attention",
@@ -37,6 +37,7 @@ export function destinations(): Destination[] {
         { href: "/attention", label: t("Action centre") },
         { href: "/work", label: t("Work") },
         { href: "/fix-drafts", label: t("Aletheia verified fixes") },
+        { href: "/data-requests", label: t("Data requests") },
         { href: "/cleansing", label: t("Cleansing") },
         { href: "/requests", label: t("Requests") },
         { href: "/requests/new", label: t("Data collection form") },

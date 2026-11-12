@@ -4,7 +4,9 @@ impact, and operational analytics."""
 import logging
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
+
+from pydantic import BaseModel, ConfigDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, text
@@ -300,10 +302,30 @@ async def get_impact_analytics(
     return await _live_impact(db, tenant, version_id)
 
 
+class FindingImpactOut(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    finding_id: str
+    finding: dict[str, Any]
+    impacts: Any
+
+
+class SprintPlanOut(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    sprints: Any
+    total_actions: int
+    assumptions: Any = None
+
+
+class MdmHealthOut(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    data: list[dict[str, Any]]
+    days: int
+
+
 # ── 4. GET /analytics/impact/{finding_id} ────────────────────────────────────
 
 
-@router.get("/impact/{finding_id}")
+@router.get("/impact/{finding_id}", response_model=FindingImpactOut)
 async def get_finding_impact(
     finding_id: str,
     db: AsyncSession = Depends(get_db),
@@ -505,7 +527,7 @@ async def get_roi(
 # ── 9. GET /analytics/sprints ────────────────────────────────────────────────
 
 
-@router.get("/sprints")
+@router.get("/sprints", response_model=SprintPlanOut)
 async def get_sprints(
     max_hours: int = Query(40, ge=8, le=80),
     db: AsyncSession = Depends(get_db),
@@ -607,7 +629,7 @@ async def get_capacity(
 # ── 12. GET /analytics/mdm-health ──────────────────────────────────────────
 
 
-@router.get("/mdm-health")
+@router.get("/mdm-health", response_model=MdmHealthOut)
 async def get_mdm_health(
     days: int = Query(56, ge=7, le=365),
     request: Request = None,

@@ -166,6 +166,10 @@ export type LoadFileFormat = "csv" | "xlsx";
 export const exportLoadFiles = (id: string, fmt: LoadFileFormat) =>
   v2Download(`${P}/export/${encodeURIComponent(id)}/${fmt}`, undefined, `migration_${id}.${fmt === "xlsx" ? "xlsx" : "zip"}`);
 
+/** GET /migration/runs/{id}/dry-run/{fmt}: the S/4 dry-run report (summary, rules hit, failing records); only for an analysed s4_dry_run run (409 otherwise). */
+export const exportDryRunReport = (id: string, fmt: "xlsx" | "pdf") =>
+  v2Download(`${run(id)}/dry-run/${fmt}`, undefined, `s4_dry_run_${id}.${fmt}`);
+
 export interface WorkbookSheet {
   name: string;
   kind: string;

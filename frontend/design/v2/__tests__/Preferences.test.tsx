@@ -60,11 +60,11 @@ describe("the preferences panel", () => {
     mount();
     const dialog = await panel();
     expect(within(dialog).getByTestId("format-sample")).toHaveTextContent("scores 71.8, counts 1,234,567");
-    await waitFor(() => expect(screen.getByTestId("rail")).toHaveTextContent("25,712"));
+    await waitFor(() => expect(screen.getByTestId("rail")).toHaveTextContent("1,242"));
     fireEvent.change(within(dialog).getByLabelText("Number and date format"), { target: { value: "de-DE" } });
     // A German locale also turns the interface German (lib/v2/i18n): the same sample, in German words.
     await waitFor(() => expect(within(dialog).getByTestId("format-sample")).toHaveTextContent("Scores 71,8, Anzahlen 1.234.567"));
-    await waitFor(() => expect(screen.getByTestId("rail")).toHaveTextContent("25.712"));
+    await waitFor(() => expect(screen.getByTestId("rail")).toHaveTextContent("1.242"));
     expect(readPrefs().locale).toBe("de-DE");
     expect(patch).toHaveBeenCalledWith({ locale: "de-DE" });
     fireEvent.change(within(dialog).getByLabelText("Zahlen- und Datumsformat"), { target: { value: "" } });

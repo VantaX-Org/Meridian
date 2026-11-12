@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 
 from api.services.branded_xlsx import ROW_CAP, ColumnSpec, ConditionalRule, SheetSpec, build_workbook, xlsx_filename
 from api.services.pdf_reports import _all, fmt_module
+from api.services.sf_roundtrip import MARKER, marker_rows
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 STATUSES = ("Open", "In progress", "Fixed", "Not an error")
@@ -410,6 +411,9 @@ def build(s: Session, tid: str, vid: str, module: str,
     generated_at = generated_at or datetime.now(timezone.utc)
     sheets, _ = cleaning_context(data, rule_meta(module))
     run = data["run"]
+    # hidden and last: tells the upload-back which run and object this file came from (api/services/sf_roundtrip.py)
+    sheets.append(SheetSpec(MARKER, [ColumnSpec("key", "key"), ColumnSpec("value", "value")],
+                            marker_rows(str(run["id"]), module, "cleaning"), hidden=True))
     label = run.get("label") or str(run["id"])[:8]
     body = build_workbook(tenant_name=data["tenant_name"], run_label=label, run_id=str(run["id"]),
                           title=f"Cleaning workbook: {fmt_module(module)}", sheets=sheets, generated_at=generated_at)

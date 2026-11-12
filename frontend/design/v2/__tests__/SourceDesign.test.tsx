@@ -49,4 +49,31 @@ describe("Source design", () => {
     expect(t.textContent).toMatch(/length from 9 to 18/);
     expect(t.textContent).toMatch(/Table added/);
   });
+  it("coverage lists every table read, the failure with the system's reason, and tables absent from the system", async () => {
+    setUrl("/s/sys-1?tab=design&part=coverage");
+    renderWithQuery(<SourceDesign id="sys-1" />);
+    const dict = await screen.findByTestId("sd-coverage-dictionary");
+    const dd04 = within(dict).getAllByRole("row").find((r) => r.textContent?.includes("DD04T"))!;
+    expect(dd04.textContent).toMatch(/Failed/);
+    expect(dd04.textContent).toMatch(/Not authorised to read the table/);
+    const cfg = screen.getByTestId("sd-coverage-configuration");
+    const t001w = within(cfg).getAllByRole("row").find((r) => r.textContent?.includes("T001W"))!;
+    expect(t001w.textContent).toMatch(/Not in this system/);
+  });
+
+  it("a configuration table opens with its stored entries and their texts", async () => {
+    setUrl("/s/sys-1?tab=design&part=config&cfg=T134");
+    renderWithQuery(<SourceDesign id="sys-1" />);
+    const t = await screen.findByTestId("sd-config-table");
+    expect(await within(t).findByText("Raw materials")).toBeTruthy();
+    expect(t.textContent).toMatch(/Commissioned parts/);
+    expect(t.textContent).toMatch(/ZCOM/);
+  });
+
+  it("lists the configuration tables the discovery read", async () => {
+    setUrl("/s/sys-1?tab=design&part=config");
+    renderWithQuery(<SourceDesign id="sys-1" />);
+    const t = await screen.findByTestId("sd-config-read");
+    expect(t.textContent).toMatch(/T134/);
+  });
 });

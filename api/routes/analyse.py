@@ -6,6 +6,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.services.rbac import require_permission
+from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +17,13 @@ router = APIRouter(prefix="/api/v1", tags=["analyse"])
 logger = logging.getLogger("meridian.analyse")
 
 
-@router.post("/versions/{version_id}/run-agents", dependencies=[Depends(require_permission("analyse"))])
+class AgentsEnqueuedOut(BaseModel):
+    version_id: str
+    job_id: str
+    status: str
+
+
+@router.post("/versions/{version_id}/run-agents", response_model=AgentsEnqueuedOut, dependencies=[Depends(require_permission("analyse"))])
 async def run_agents_endpoint(
     version_id: str,
     db: AsyncSession = Depends(get_db),

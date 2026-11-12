@@ -528,7 +528,13 @@ class Reassign(BaseModel):
     assignee_id: uuid.UUID
 
 
-@router.post("/batches/{batch_id}/reassign")
+class ReassignOut(BaseModel):
+    batch_id: str
+    reassigned: int
+    action_id: Optional[str] = None
+
+
+@router.post("/batches/{batch_id}/reassign", response_model=ReassignOut)
 async def reassign_batch(
     batch_id: uuid.UUID,
     body: Reassign,

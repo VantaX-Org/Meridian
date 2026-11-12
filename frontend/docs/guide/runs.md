@@ -14,6 +14,13 @@ Run numbers restart for each system, so outside a system's own page a run is alw
 - **Jobs** table: every background job (extraction, analysis, configuration load, configuration sync, upload, simulation, process discovery) with its object, system, state, progress, start and duration.
 - **Trend per object**: small charts, one per object, of the score across runs.
 
+## Work with one run
+
+1. **Rename a run**: open the run, select **Rename**, type a name people will recognise (for example "After the plant 1200 clean") and save. The name shows beside the run number everywhere; the number never changes.
+2. **Run it again**: open the run and select **Re-run**. Choose which agents to run again, for example only the rule check, or also the mining and Aletheia agents, and confirm. A re-run scores the same extraction against the rules as they stand now and makes a new run; the old run is kept as it was.
+3. **Follow what happened**: the **Event timeline** of a run lists, in order, each step with its time and result: started, tables read, agents finished, analysis finished, and any failure in plain words. Use it to see where a slow or failed run spent its time.
+4. **Look at the records behind a check**: open a check on the run and select **Check records** to see the records that were tested, with the failing ones marked and the reason for each. Open a record to see its values.
+
 ## The job line and the job inspector
 
 A running job shows as a thin progress line under the top bar, never a tray. Open it, or any job row, for the job inspector: its stages and tables with row counts, the percent, the error in plain words for a failed job (for example "OData refused credentials (HTTP 401). Check the client id and secret in the system settings.") and, where the job recorded how it started, **Retry**.

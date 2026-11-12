@@ -12,6 +12,7 @@ import { AdminPage, Block, NeedsPermission, useCan, useUnsavedCount } from "./ki
 import { AlertsSection, NotificationsSection } from "./notify";
 import { RolesSection } from "./roles";
 import { RunsSection } from "./runs";
+import { RunSchedulesSection } from "./runschedules";
 import { SettingsSection } from "./settings";
 import { SsoSection } from "./signin";
 import { SystemSection } from "./system";
@@ -255,6 +256,8 @@ function Section({ slug }: { slug: AdminSlug }) {
       return <DigestsSection />;
     case "runs":
       return <RunsSection />;
+    case "runschedules":
+      return <RunSchedulesSection />;
     case "systems":
       return <SystemsSection />;
     case "system":

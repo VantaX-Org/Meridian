@@ -75,6 +75,21 @@ class DesignTableItem(BaseModel):
     customer_fields: int
 
 
+class DesignCoverageOut(BaseModel):
+    snapshot_id: str | None = None
+    coverage: dict[str, Any] = {}
+
+
+class DesignConfigOut(BaseModel):
+    """Live configuration values of one table; ``rows`` are the table's own records, so their keys vary."""
+    table: str
+    scope: str | None = None
+    rows: list[Any] = []
+    total: int | None = None
+    source: str | None = None
+    synced_at: datetime | None = None
+
+
 class DesignTablesOut(BaseModel):
     total: int
     items: list[DesignTableItem]
@@ -179,7 +194,7 @@ async def design_summary(system_id: uuid.UUID, db: AsyncSession = Depends(get_db
     }
 
 
-@router.get("/{system_id}/design/coverage", dependencies=[Depends(require_permission("view"))])
+@router.get("/{system_id}/design/coverage", response_model=DesignCoverageOut, dependencies=[Depends(require_permission("view"))])
 async def design_coverage(system_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     snap = await _snapshot(db, system_id)
@@ -252,7 +267,7 @@ async def design_table(system_id: uuid.UUID, table: str, db: AsyncSession = Depe
             "standard_fields_missing": missing, "foreign_keys": (row[4] or {}).get("foreign_keys", [])}
 
 
-@router.get("/{system_id}/design/config/{table}", dependencies=[Depends(require_permission("view"))])
+@router.get("/{system_id}/design/config/{table}", response_model=DesignConfigOut, dependencies=[Depends(require_permission("view"))])
 async def design_config(system_id: uuid.UUID, table: str, limit: int = Query(500, le=5000),
                         db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Live configuration values read from the system (check tables, org structure)."""
