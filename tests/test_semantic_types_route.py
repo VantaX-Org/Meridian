@@ -30,6 +30,9 @@ class _Result:
     def all(self):
         return self.rows
 
+    def scalar(self):
+        return self.rows[0] if self.rows else None
+
 
 class _DB:
     def __init__(self):
@@ -39,6 +42,8 @@ class _DB:
         sql = str(stmt)
         if "FROM analysis_versions" in sql:
             return _Result([VERSION] if params["v"] == str(VID) else [])
+        if "FROM tenants" in sql:
+            return _Result([])
         if sql.lstrip().startswith("SELECT column_name"):
             return _Result([{"column_name": k, "semantic_type": v} for k, v in self.overrides.items()])
         self.overrides[params["c"]] = params["s"]

@@ -1,7 +1,7 @@
 import json
 import logging
 import uuid
-from typing import Any, Literal, Optional
+from typing import Annotated, Any, Literal, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 
@@ -69,6 +69,15 @@ class VersionListOut(BaseModel):
     next_offset: Optional[int] = None
 
 
+class CompareSetsSummaryOut(BaseModel):
+    """Counts per change (new, regressed, resolved, persisting), in total and per check with its reason."""
+    model_config = ConfigDict(extra="allow")
+    v1: str
+    v2: str
+    totals: dict[str, int]
+    checks: list[dict[str, Any]]
+
+
 class ArchivedOut(BaseModel):
     archived: int
 
@@ -126,6 +135,10 @@ class VersionStatusOut(BaseModel):
     metadata: Optional[dict[str, Any]] = None
 
 
+def _meta(v: AnalysisVersion) -> dict[str, Any]:
+    return dict(v.metadata_ or {})
+
+
 def _version_to_response(v: AnalysisVersion) -> VersionResponse:
     return VersionResponse(
         id=str(v.id),
@@ -141,16 +154,18 @@ def _version_to_response(v: AnalysisVersion) -> VersionResponse:
 
 @router.get("/versions", response_model=VersionListOut)
 async def list_versions(
-    limit: int = Query(20, ge=1, le=1000,
-                       description="Runs per page (default 20, up to 1000); `total` counts the whole filtered set"),
-    offset: int = Query(0, ge=0),
-    sort: str = Query("-run_at", description="`run_at`, `run_number`, `label` or `status`; a leading `-` sorts descending"),
-    module: Optional[str] = Query(None),
-    system_id: Optional[str] = Query(None, description="Only versions downloaded from this system"),
-    include_archived: bool = Query(False),
-    status: Optional[Literal["failed", "complete", "active"]] = Query(
-        None, description="`failed`: only runs that failed (status failed, agents_failed, error or errored); "
-                          "`complete`: complete, agents_complete or ai_enriched; `active`: pending or running"),
+    # Annotated, so a direct Python call (runs.export_runs) gets plain defaults, not Query() objects.
+    limit: Annotated[int, Query(ge=1, le=1000, description="Runs per page (default 20, up to 1000); "
+                                                           "`total` counts the whole filtered set")] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    sort: Annotated[str, Query(description="`run_at`, `run_number`, `label` or `status`; "
+                                           "a leading `-` sorts descending")] = "-run_at",
+    module: Optional[str] = None,
+    system_id: Annotated[Optional[str], Query(description="Only versions downloaded from this system")] = None,
+    include_archived: bool = False,
+    status: Annotated[Optional[Literal["failed", "complete", "active"]], Query(
+        description="`failed`: only runs that failed (status failed, agents_failed, error or errored); "
+                    "`complete`: complete, agents_complete or ai_enriched; `active`: pending or running")] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -187,11 +202,11 @@ async def list_versions(
             "GROUP BY version_id, severity"), {"t": str(tenant.id), "ids": [str(v.id) for v in versions]})).fetchall()
         for vid, sev, n in rows:
             counts.setdefault(str(vid), {})[sev] = n
-    names = await system_names(db, tenant.id, [(v.metadata_ or {}).get("system_id") for v in versions])
+    names = await system_names(db, tenant.id, [_meta(v).get("system_id") for v in versions])
     out = []
     for v in versions:
         r = _version_to_response(v)
-        r.system_name = names.get(str((v.metadata_ or {}).get("system_id")))
+        r.system_name = names.get(str(_meta(v).get("system_id")))
         c = counts.get(str(v.id), {})
         r.severity_counts = {k: c.get(k, 0) for k in ("critical", "high", "medium", "low")}
         out.append(r)
@@ -488,7 +503,7 @@ async def compare_sets_list(
     return {"v1": str(vid1), "v2": str(vid2), "records": items, **page_meta(total, limit, offset)}
 
 
-@router.get("/versions/compare/sets/summary")
+@router.get("/versions/compare/sets/summary", response_model=CompareSetsSummaryOut)
 async def compare_sets_summary(
     v2: str = Query(...),
     v1: Optional[str] = Query(None),
