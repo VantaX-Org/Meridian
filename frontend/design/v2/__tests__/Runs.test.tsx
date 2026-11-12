@@ -5,6 +5,8 @@ import { fixtureTimeline, resetRunsFixture } from "@/lib/api/v2/fixtures/runs";
 import { landscapeFixture } from "@/lib/api/v2/fixtures";
 import { RunsCanvas, runStatus, rulesOf, scoreRange } from "../screens/Runs";
 import { getUrl, push, setUrl } from "./nav-store";
+import * as runsApi from "@/lib/api/v2/runs";
+import * as runOps from "@/lib/api/v2/run-ops";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
@@ -94,14 +96,47 @@ describe("Runs canvas", () => {
     renderWithQuery(<RunsCanvas />);
     await screen.findAllByTestId("run-row");
     fireEvent.change(screen.getByRole("combobox", { name: "Status" }), { target: { value: "failed" } });
-    expect(screen.getAllByTestId("run-row")).toHaveLength(1);
+    await waitFor(() => expect(screen.getAllByTestId("run-row")).toHaveLength(1));
     fireEvent.change(screen.getByRole("combobox", { name: "Status" }), { target: { value: "all" } });
     fireEvent.change(screen.getByRole("combobox", { name: "System" }), { target: { value: S4.id } });
-    expect(screen.getAllByTestId("run-row")).toHaveLength(1);
+    await waitFor(() => expect(screen.getAllByTestId("run-row")).toHaveLength(1));
     fireEvent.change(screen.getByRole("combobox", { name: "System" }), { target: { value: landscapeFixture.systems[0].id } });
-    expect(screen.getAllByTestId("run-row")).toHaveLength(8);
+    await waitFor(() => expect(screen.getAllByTestId("run-row")).toHaveLength(8));
+    // the SuccessFactors run is not in the newest page of all systems; the server filter still finds it
     fireEvent.change(screen.getByRole("combobox", { name: "System" }), { target: { value: landscapeFixture.systems[2].id } });
-    expect(screen.getByText(/No run matches these filters\./)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByTestId("run-row")).toHaveLength(1));
+    fireEvent.change(screen.getByRole("combobox", { name: "Status" }), { target: { value: "failed" } });
+    expect(await screen.findByText(/No run matches these filters\./)).toBeInTheDocument();
+  });
+
+  it("filters on the server and counts the whole filtered set, not the page loaded", async () => {
+    const spy = vi.spyOn(runsApi, "getVersionsPage");
+    renderWithQuery(<RunsCanvas />);
+    await screen.findAllByTestId("run-row");
+    fireEvent.change(screen.getByRole("combobox", { name: "Status" }), { target: { value: "complete" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "System" }), { target: { value: S4.id } });
+    await waitFor(() => expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ status: "complete", system_id: S4.id })));
+  });
+
+  it("says N of total and shows more when the filtered set is bigger than the page", async () => {
+    const real = runsApi.getVersionsPage;
+    const spy = vi.spyOn(runsApi, "getVersionsPage").mockImplementation(async (q) => ({ ...(await real({ ...q, limit: 2 })), total: 120 }));
+    renderWithQuery(<RunsCanvas />);
+    expect(await screen.findByTestId("runs-shown")).toHaveTextContent("2 of 120 runs shown");
+    fireEvent.click(screen.getByTestId("runs-more"));
+    await waitFor(() => expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 100 })));
+  });
+
+  it("the export follows the status filter", async () => {
+    const spy = vi.spyOn(runOps, "exportRuns").mockResolvedValue("runs.csv");
+    renderWithQuery(<RunsCanvas />);
+    await screen.findAllByTestId("run-row");
+    fireEvent.change(screen.getByRole("combobox", { name: "Status" }), { target: { value: "failed" } });
+    const exp = screen.getByTestId("runs-export");
+    const csv = within(exp).getByRole("button", { name: "Export runs to CSV" });
+    await waitFor(() => expect(csv).toBeEnabled());
+    fireEvent.click(csv);
+    await waitFor(() => expect(spy).toHaveBeenCalledWith("csv", expect.objectContaining({ status: "failed" })));
   });
 
   it("Start a run analyses the newest stored extraction of a system and links the job it started", async () => {

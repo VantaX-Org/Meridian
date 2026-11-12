@@ -21,6 +21,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
 from api.services import semantic_types as st
 from api.services.rbac import current_user_id, require_permission, write_audit
+from api.routes.findings import _scoring_raw
 
 router = APIRouter(prefix="/api/v1", tags=["semantic-types"])
 _VERSION = text("SELECT run_at, metadata, dqs_summary FROM analysis_versions WHERE tenant_id = :t AND id = :v")
@@ -50,7 +51,7 @@ async def get_semantic_types(version_id: uuid.UUID, db: AsyncSession = Depends(g
     meta = row["metadata"] or {}
     prof = meta.get("semantic_profile") or {}
     cols = st.resolve(prof.get("columns") or [], overrides)
-    parts = {"dqs": st.dqs_of(row["dqs_summary"]), "conformance": st.conformance_of(cols),
+    parts = {"dqs": st.dqs_of(row["dqs_summary"], await _scoring_raw(db, tenant)), "conformance": st.conformance_of(cols),
              "freshness": st.freshness(row["run_at"]),
              "completeness": round(100 * prof["completeness"], 1) if prof.get("completeness") is not None else None}
     return {"profiled": bool(prof), "source": meta.get("source"), "origin": meta.get("origin") or "file",

@@ -23,7 +23,7 @@ export const KIND_LABEL: Record<AlertChannel["kind"], string> = { get email() { 
 export const DIGEST_LABEL: Record<AlertChannel["digest"], string> = { get daily() { return tr("Daily digest"); }, get weekly() { return tr("Weekly digest"); }, get off() { return tr("No digest"); } };
 export const PACK_LABEL = { get off() { return tr("Off"); }, get weekly() { return tr("Weekly"); }, get monthly() { return tr("Monthly"); } } as const;
 
-const DEFAULT_THRESHOLDS: AlertThresholds = { critical_threshold: 1, high_threshold: 10, dqs_drop_threshold: 5, module_floors: {}, readiness_dqs_threshold: 75, readiness_waves: {} };
+const DEFAULT_THRESHOLDS: AlertThresholds = { critical_threshold: 1, high_threshold: 10, dqs_drop_threshold: 5, module_floors: {}, readiness_dqs_threshold: 75 };
 const DEFAULT_DIGEST: NotificationConfig = { email: "", teams_webhook: "", daily_digest: false, weekly_summary: true, monthly_report: true };
 
 const CHANNEL_COLUMNS: GridColumn<AlertChannel>[] = [

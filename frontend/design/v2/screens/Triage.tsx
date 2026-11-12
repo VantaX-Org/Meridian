@@ -108,7 +108,9 @@ export function Triage() {
         ]}
         action={can("assign") && q.overdue.items.length ? (
           <button type="button" className="m2-btn m2-strong" data-testid="triage-primary" onClick={() => setPicked(new Set(q.overdue.items.map(keyOf)))}>
-            {t("Pick the {n} past their SLA", { n: int(q.overdue.items.length) })}
+            {q.overdue.items.length < q.overdue.count
+              ? t("Pick the first {n} of {m} past their SLA", { n: int(q.overdue.items.length), m: int(q.overdue.count) })
+              : t("Pick the {n} past their SLA", { n: int(q.overdue.items.length) })}
           </button>
         ) : undefined}
         testId="triage-banner"

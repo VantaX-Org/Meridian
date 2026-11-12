@@ -128,17 +128,23 @@ async def upload_known_issues(system_id: uuid.UUID, request: Request, db: AsyncS
             dependencies=[Depends(require_permission("view"))])
 async def scorecard(system_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     scope = await _system(db, tenant, system_id)
+    # the rule's message comes from this system's run that last saw it, not any run of any system
     agg = (await db.execute(text("""
-        SELECT ri.check_id, ri.module, (array_agg(ri.severity ORDER BY ri.last_seen_at DESC))[1] AS severity,
-               (SELECT f.details->>'message' FROM findings f WHERE f.check_id = ri.check_id
-                 ORDER BY f.created_at DESC LIMIT 1) AS message,
-               count(*) AS flagged,
-               count(*) FILTER (WHERE ri.status IN ('open', 'in_progress')) AS open,
-               count(*) FILTER (WHERE ri.steward_verdict = 'false_positive') AS false_positive,
-               count(*) FILTER (WHERE ri.steward_verdict = 'real') AS real
-          FROM record_issues ri WHERE ri.scope = :s
-         GROUP BY ri.check_id, ri.module
-    """), {"s": scope})).mappings().all()
+        WITH r AS (
+            SELECT ri.check_id, ri.module, (array_agg(ri.severity ORDER BY ri.last_seen_at DESC))[1] AS severity,
+                   (array_agg(ri.last_seen_version ORDER BY ri.last_seen_at DESC))[1] AS vid,
+                   count(*) AS flagged,
+                   count(*) FILTER (WHERE ri.status IN ('open', 'in_progress')) AS open,
+                   count(*) FILTER (WHERE ri.steward_verdict = 'false_positive') AS false_positive,
+                   count(*) FILTER (WHERE ri.steward_verdict = 'real') AS real
+              FROM record_issues ri WHERE ri.tenant_id = :t AND ri.scope = :s
+             GROUP BY ri.check_id, ri.module)
+        SELECT r.check_id, r.module, r.severity, r.flagged, r.open, r.false_positive, r.real,
+               (SELECT f.details->>'message' FROM findings f
+                 WHERE f.tenant_id = :t AND f.version_id = r.vid AND f.check_id = r.check_id
+                 LIMIT 1) AS message
+          FROM r
+    """), {"t": str(tenant.id), "s": scope})).mappings().all()
     rules = sc.rate_rules(dict(r) for r in agg)
     reviewed = sum(r["reviewed"] for r in rules)
     real = sum(r["real"] for r in rules)

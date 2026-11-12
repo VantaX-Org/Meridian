@@ -74,3 +74,10 @@ def test_trust_score_reweights_missing_parts():
     now = dt.datetime(2026, 11, 11, tzinfo=dt.timezone.utc)
     assert st.freshness(now - dt.timedelta(days=90), now) == 0.0
     assert st.dqs_of({"a": {"composite_score": 80}, "b": {"composite_score": 60}}) == 70.0
+
+
+def test_dqs_of_is_the_tenant_weighted_composite():
+    summary = {"a": {"composite_score": 80}, "b": {"composite_score": 60}, "c": {"composite_score": None}}
+    # the unmeasured module does not weigh in, and the tenant's module weights do
+    assert st.dqs_of(summary, {"module_weights": {"a": 3}}) == 75.0
+    assert st.dqs_of({}) is None

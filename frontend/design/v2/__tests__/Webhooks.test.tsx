@@ -90,6 +90,15 @@ describe("Admin, Webhooks", () => {
     expect(await within(await screen.findByTestId("inspector")).findByRole("button", { name: "Enable" })).toBeInTheDocument();
   });
 
+  it("names the full delivery count when the log holds more than it lists", async () => {
+    const orig = s9.listDeliveries;
+    vi.spyOn(s9, "listDeliveries").mockImplementation(async (id, status) => ({ ...(await orig(id, status)), total: 140 }));
+    page("webhook:wh-1");
+    const insp = await screen.findByTestId("inspector");
+    await within(insp).findByTestId("delivery-log");
+    expect(within(insp).getByTestId("delivery-log-cap").textContent).toMatch(/^The first \d+ of 140$/);
+  });
+
   it("deletes a webhook after a confirmation", async () => {
     const spy = vi.spyOn(s9, "deleteWebhook");
     page("webhook:wh-2");
