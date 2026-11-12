@@ -918,8 +918,8 @@ async def export_cleaning_data(
             continue
         after = row.get("record_data_after") or row.get("record_data_before") or {}
         record = {k: v for k, v in after.items() if k not in ("issue", "error")}
-        if export_format in ("csv", "xlsx"):  # review formats carry the SAP record key; load formats stay pure
-            record = {"RECORD_KEY": row.get("record_key"), **record}
+        # every format carries the SAP record key: none of them is a load file (see export_engine.REVIEW_ONLY)
+        record = {"RECORD_KEY": row.get("record_key"), **record}
         records_by_type.setdefault(row_object_type, []).append(record)
 
     if not records_by_type:

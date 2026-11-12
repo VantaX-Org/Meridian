@@ -22,7 +22,7 @@ from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.comments import Comment
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.formatting.rule import CellIsRule, ColorScaleRule, DataBarRule
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
@@ -158,6 +158,7 @@ class ColumnSpec:
     muted: bool = False  # bookkeeping columns (ids for re-import): grey header and text
     editable: bool = False  # a column the reader fills in: green header and tinted cells
     help: str = ""  # a note shown on the header cell
+    row_choices_key: Optional[str] = None  # row key holding this row's own drop-down values (a list)
 
 
 @dataclass(frozen=True)
@@ -177,6 +178,7 @@ class SheetSpec:
     hidden: bool = False  # a hidden sheet is written but not listed on the cover
     totals: Optional[list[str]] = None  # column keys that get a SUBTOTAL row (counts only, never scores)
     rules: list[ConditionalRule] = field(default_factory=list)
+    protect: bool = False  # lock every cell but the editable columns; filtering and sorting stay allowed
 
 
 def _to_sast(dt: datetime) -> datetime:
@@ -338,6 +340,8 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
     _EDIT_FILL = PatternFill(fill_type="solid", fgColor=STATUS_TINTS["ok"][0])
 
     sample_values: dict[int, list[str]] = {i: [] for i in range(1, len(spec.columns) + 1)}
+    row_lists: dict[tuple[int, tuple[str, ...]], list[str]] = {}  # (column, values) -> cells
+    unlocked = Protection(locked=False)
     row_count = 0
     truncated = False
     row_idx = 2
@@ -361,6 +365,13 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
                 cell.fill = wash
             if col.editable:
                 cell.fill = _EDIT_FILL
+                if spec.protect:
+                    cell.protection = unlocked
+            if col.row_choices_key:
+                vals = tuple(str(v) for v in (row.get(col.row_choices_key) or ()))
+                # an Excel list formula holds 255 characters and no commas: longer lists stay a typed value
+                if vals and len(",".join(vals)) <= 250 and not any("," in v or '"' in v for v in vals):
+                    row_lists.setdefault((col_idx, vals), []).append(f"{get_column_letter(col_idx)}{row_idx}")
             if col.fill_by_value and raw in col.fill_by_value:
                 tint = col.fill_by_value[raw]
                 cell.fill = PatternFill(fill_type="solid", fgColor=tint)
@@ -378,6 +389,18 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
             letter = get_column_letter(col_idx)
             dv.add(f"{letter}2:{letter}{last_row}")
             ws.add_data_validation(dv)
+    for (_, vals), cells in row_lists.items():
+        dv = DataValidation(type="list", formula1='"' + ",".join(vals) + '"', allow_blank=True,
+                            errorStyle="warning", showErrorMessage=True, errorTitle="Not an allowed value",
+                            error="This value is not in the field's allowed values. Keep it only if you are sure.")
+        dv.add(" ".join(cells))
+        ws.add_data_validation(dv)
+    if spec.protect:
+        ws.protection.sheet = True
+        ws.protection.autoFilter = False
+        ws.protection.sort = False
+        ws.protection.formatColumns = False
+        ws.protection.formatRows = False
     ws.freeze_panes = "A2"
     if last_row >= 1:
         ws.auto_filter.ref = ws.dimensions

@@ -1127,8 +1127,18 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                     logger.info(f"remediation items reconciled for {version_id}: {stats.get('reconciled', 0)}")
                     try:  # post-cleanup monitor: compare with the system's pinned baseline
                         from api.services import monitor
+                        skip: list[str] = []
+                        if (metadata or {}).get("source") != "roundtrip":  # cleaned-copy edits not yet in SAP
+                            with session.begin_nested():
+                                skip = monitor.fix_not_in_source(session, str(tenant_id), str(version_id),
+                                                                 scope_of(metadata))
                         with session.begin_nested():
-                            summary = monitor.check(session, str(tenant_id), str(version_id), scope_of(metadata))
+                            summary = monitor.check(session, str(tenant_id), str(version_id), scope_of(metadata),
+                                                    skip)
+                        if summary is None:  # no pin: alert on what is new or reopened since the previous run
+                            with session.begin_nested():
+                                monitor.notify_since_previous(session, str(tenant_id), str(version_id),
+                                                              scope_of(metadata), skip)
                         if summary:
                             logger.info(f"monitor for {version_id}: {summary['new_records']} regressed record(s), "
                                         f"batch {summary['batch_id']}")

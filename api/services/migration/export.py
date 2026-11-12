@@ -68,6 +68,24 @@ def build_load_tables(frames: TableFrames, module_tables: dict[str, list[str]], 
     return {t: pd.concat(parts, ignore_index=True) for t, parts in out.items() if parts}
 
 
+def load_order(tables: dict[str, pd.DataFrame], modules: list[str], dictionary: Dictionary) -> dict[str, pd.DataFrame]:
+    """``tables`` in load order: by the step of the object that owns each target table in the load plan
+    (load_plan.build_plan), then the object's own table order. Tables no planned object owns come last, by name."""
+    from checks.runner import get_required_columns
+
+    from .load_plan import OWNED_TABLES, build_plan
+
+    def cols(m: str) -> set[str]:
+        try:
+            return get_required_columns(m)
+        except Exception:  # a module without a rule pack reads nothing
+            return set()
+
+    rank = {o.module: i for i, o in enumerate(build_plan(modules, dictionary, cols).objects)}
+    pos = {t: (rank[m], j) for m in rank for j, t in enumerate(OWNED_TABLES[m])}
+    return dict(sorted(tables.items(), key=lambda kv: (*pos.get(kv[0], (len(rank), 0)), kv[0])))
+
+
 def target_dictionary(session, run) -> Dictionary:
     """The dictionary of the run's destination system, or of its target release when no system is set."""
     from sqlalchemy import text
@@ -111,11 +129,23 @@ def load_run_tables(session, run, held_back: Optional[dict[str, pd.DataFrame]] =
     maps = {m: load_mappings(session, m, target_type) for m in run.modules}
     vms = {m: load_value_maps(session, m, run.source_system_id, run.dest_system_id) for m in run.modules}
     target_dict = target_dictionary(session, run)
-    return build_load_tables(frames, mtables, maps, vms, blocked, target_dict=target_dict,
-                             held_back=held_back), target_dict
+    tables = build_load_tables(frames, mtables, maps, vms, blocked, target_dict=target_dict, held_back=held_back)
+    return load_order(tables, list(run.modules), target_dict), target_dict
 
 
-def to_xlsx(tables: dict[str, pd.DataFrame], *, sanitize_formulas: bool = False) -> bytes:
+LAYOUT_NOTE = ("Meridian layout, not SAP standard. Fill it to check your values against the rules; for a load "
+               "file, upload the SAP Migration Cockpit template for this object and export from the run.")
+
+
+def with_layout_note(tabs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    """A blank S/4 template (the Meridian Field List layout) with a Read me sheet first saying it is not the SAP
+    Migration Cockpit template. The SuccessFactors layout (no Field List) is returned as it is."""
+    if "Field List" not in tabs:
+        return tabs
+    return {"Read me": pd.DataFrame({"Note": [LAYOUT_NOTE]}), **tabs}
+
+
+def to_xlsx(tables: dict[str, pd.DataFrame], *, sanitize_formulas: bool = False, keep_order: bool = False) -> bytes:
     """xlsx of one sheet per table.
 
     ``sanitize_formulas`` runs every cell through the shared export guard
@@ -123,11 +153,12 @@ def to_xlsx(tables: dict[str, pd.DataFrame], *, sanitize_formulas: bool = False)
     default: the ``/export`` SAP load file route feeds this real target-field values — negative
     balances, ``+``-prefixed phone numbers, ``@``-containing emails — that must reach SAP
     byte-for-byte unescaped. Callers presenting findings/report data for human consumption (e.g.
-    the s4_dry_run report) should pass ``sanitize_formulas=True``.
+    the s4_dry_run report) should pass ``sanitize_formulas=True``. ``keep_order`` writes the sheets in the
+    order given (load_order) instead of by name.
     """
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as xw:
-        for name, df in sorted(tables.items()):
+        for name, df in (tables.items() if keep_order else sorted(tables.items())):
             if sanitize_formulas:
                 df = guard_frame(df)
             else:
@@ -136,9 +167,10 @@ def to_xlsx(tables: dict[str, pd.DataFrame], *, sanitize_formulas: bool = False)
     return buf.getvalue()
 
 
-def to_csv_zip(tables: dict[str, pd.DataFrame]) -> bytes:
+def to_csv_zip(tables: dict[str, pd.DataFrame], *, keep_order: bool = False) -> bytes:
+    """One CSV per table. ``keep_order`` prefixes each name with its load step (01_, 02_ ...) in the order given."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        for name, df in sorted(tables.items()):
-            z.writestr(f"{name.replace('/', '_')}.csv", df.to_csv(index=False))
+        for i, (name, df) in enumerate(tables.items() if keep_order else sorted(tables.items()), start=1):
+            z.writestr(f"{f'{i:02d}_' if keep_order else ''}{name.replace('/', '_')}.csv", df.to_csv(index=False))
     return buf.getvalue()

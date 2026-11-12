@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 import re
 import uuid
@@ -14,6 +15,8 @@ from api.config import settings
 from api.deps import Tenant, get_db, get_tenant
 from api.services import jobs
 from api.services.rbac import Scope, require_permission, require_scope
+from api.services.record_issues import scope_of
+from api.services.run_lineage import same_lineage_as
 from api.services.column_mapper import (
     apply_column_mapping,
     get_required_fields,
@@ -326,6 +329,104 @@ class RoundTripResponse(UploadResponse):
     skipped: dict[str, str]
     no_table: list[str]
     no_field: list[str]
+    notes: dict[str, int] = {}
+
+
+# A newer extraction of the same lineage holding the file's object: the file's edits would overwrite newer data.
+_NEWER_RUN_SQL = f"""
+    SELECT id, run_at FROM analysis_versions
+     WHERE tenant_id = :t AND id <> CAST(:b AS uuid) AND {same_lineage_as("b")}
+       AND status IN ('complete', 'agents_complete')
+       AND metadata->>'source' IS DISTINCT FROM 'roundtrip'
+       AND metadata->>'purpose' IS DISTINCT FROM 'process_discovery'
+       AND (CAST(:m AS text) IS NULL OR metadata->'modules' @> jsonb_build_array(CAST(:m AS text)))
+       AND run_at > (SELECT run_at FROM analysis_versions WHERE id = CAST(:b AS uuid))
+     ORDER BY run_at DESC LIMIT 1
+"""
+
+# The newest cleaned copy of the same extraction: uploads for other objects of that run build on it, so each
+# object's edits accumulate instead of replacing one another.
+# ponytail: two uploads at the same instant both build on the same tip; serialise per base run if that matters.
+_TIP_SQL = """
+    SELECT id, metadata FROM analysis_versions
+     WHERE tenant_id = :t AND metadata->>'source' = 'roundtrip'
+       AND metadata->'roundtrip'->>'base_version_id' = :b
+       AND status <> 'failed' AND metadata ? 'cleaned_overlay'
+     ORDER BY run_at DESC LIMIT 1
+"""
+
+MAX_OVERLAY_EDITS = 5000
+
+
+def _notes_sql(where: str, update: str) -> str:
+    """Status change on the issues a note names, audited the way bulk_update audits it."""
+    return f"""
+        WITH n AS (SELECT * FROM unnest(CAST(:rules AS text[]), CAST(:keys AS text[]), CAST(:notes AS text[]))
+                           AS n(check_id, record_key, note)),
+             old AS (SELECT ri.id, ri.status, n.note FROM record_issues ri
+                       JOIN n ON n.check_id = ri.check_id AND n.record_key = ri.record_key
+                      WHERE ri.tenant_id = :tid AND ri.scope = :scope AND ri.module = :m AND {where}
+                      FOR UPDATE OF ri),
+             upd AS (UPDATE record_issues ri SET {update}, updated_at = now() FROM old WHERE ri.id = old.id
+                     RETURNING ri.id, old.status AS prev, old.note)
+        INSERT INTO record_issue_events (tenant_id, issue_id, user_id, user_label, action, from_value, to_value, note)
+        SELECT :tid, id, CAST(:uid AS uuid), :label, 'status', prev, :st, note FROM upd"""
+
+
+_NOT_AN_ERROR_SQL = _notes_sql(
+    "ri.status NOT IN ('accepted', 'resolved')",
+    "status = 'accepted', resolution = 'false_positive', steward_verdict = 'false_positive', resolved_at = now(), "
+    "acknowledged_at = COALESCE(ri.acknowledged_at, now())")
+_IN_PROGRESS_SQL = _notes_sql(
+    "ri.status = 'open'", "status = 'in_progress', acknowledged_at = COALESCE(ri.acknowledged_at, now())")
+_COMMENT_SQL = """
+    INSERT INTO record_issue_events (tenant_id, issue_id, user_id, user_label, action, note)
+    SELECT :tid, ri.id, CAST(:uid AS uuid), :label, 'comment', n.note
+      FROM unnest(CAST(:rules AS text[]), CAST(:keys AS text[]), CAST(:notes AS text[])) AS n(check_id, record_key, note)
+      JOIN record_issues ri ON ri.check_id = n.check_id AND ri.record_key = n.record_key
+     WHERE ri.tenant_id = :tid AND ri.scope = :scope AND ri.module = :m"""
+
+
+def _note_text(n: dict) -> str:
+    parts = [f"Owner: {n['owner']}." if n["owner"] else "", n["comment"]]
+    return ("Cleaning workbook: " + " ".join(p for p in parts if p)).strip()
+
+
+async def _apply_notes(db: AsyncSession, tenant_id, request: Request, role: str, scope: str, module: str,
+                       notes: list[dict]) -> dict[str, int]:
+    """Status, Owner and Comment from the cleaning workbook onto the run's record issues (same system, same object).
+    Not an error accepts the issue as a false positive, which needs the approve right; without it the note is kept
+    as a comment saying an approver must confirm."""
+    from api.services.rbac import current_user_id, current_user_label, has_permission
+
+    who = {"tid": str(tenant_id), "scope": scope, "m": module, "uid": current_user_id(request),
+           "label": current_user_label()}
+    approve = has_permission(role, "approve")
+    out = {"not_an_error": 0, "in_progress": 0, "comments": 0, "needs_approver": 0}
+
+    def arrays(rows: list[dict], note) -> dict:
+        return {"rules": [r["rule"] for r in rows], "keys": [r["key"] for r in rows], "notes": [note(r) for r in rows]}
+
+    nae = [n for n in notes if n["status"] == "not_an_error"]
+    if nae and approve:
+        out["not_an_error"] = (await db.execute(text(_NOT_AN_ERROR_SQL), {
+            **who, "st": "accepted", **arrays(nae, lambda n: _note_text(n) if n["comment"] else
+                                              "Cleaning workbook: marked Not an error.")})).rowcount
+    elif nae:
+        out["needs_approver"] = len(nae)
+    prog = [n for n in notes if n["status"] == "in_progress"]
+    if prog:
+        out["in_progress"] = (await db.execute(text(_IN_PROGRESS_SQL), {
+            **who, "st": "in_progress", **arrays(prog, lambda n: _note_text(n) if n["owner"] or n["comment"] else None)})).rowcount
+    # a comment event for every note the status change did not already carry
+    said = [n for n in notes if (n["owner"] or n["comment"]) and n["status"] not in ("in_progress",)
+            and not (n["status"] == "not_an_error" and approve)]
+    said += [n for n in nae if not approve and not (n["owner"] or n["comment"])]
+    if said:
+        out["comments"] = (await db.execute(text(_COMMENT_SQL), {**who, **arrays(said, lambda n: (
+            _note_text(n) + (" Marked Not an error; an approver must confirm it." if n["status"] == "not_an_error"
+                             and not approve else "")).strip())})).rowcount
+    return out
 
 
 def _roundtrip_edits(tenant_id, parent_id: str, system_id: Optional[str], parent_modules: list[str], parsed: dict,
@@ -341,7 +442,7 @@ def _roundtrip_edits(tenant_id, parent_id: str, system_id: Optional[str], parent
         raise rt.RoundTripError("The marker in this file is damaged. Choose the run it came from.")
     if kind == "cleaning":
         edits, blank = rt.cleaning_edits(sheets)
-        return kind, edits, {"unmapped": {}, "skipped": {}, "blank": blank}
+        return kind, edits, {"unmapped": {}, "skipped": {}, "blank": blank, "notes": rt.cleaning_notes(sheets)}
     maps = marker.get("map")
     if not maps:  # no marker, or a CSV export: map the columns the way the export did
         from api.routes.migration import _fill_workbook
@@ -355,7 +456,7 @@ def _roundtrip_edits(tenant_id, parent_id: str, system_id: Optional[str], parent
 @router.post(
     "/upload/roundtrip",
     response_model=RoundTripResponse,
-    dependencies=[Depends(_upload_rate_limit), Depends(require_permission("upload"))],
+    dependencies=[Depends(_upload_rate_limit)],
 )
 async def upload_roundtrip(
     request: Request,
@@ -363,9 +464,14 @@ async def upload_roundtrip(
     parent_version_id: str = Form(None),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("upload")),
 ):
-    """An edited SuccessFactors export (filled template or cleaning workbook) comes back as the next run of the
-    same lineage and is analysed at once. The hidden marker names the parent run; without one the caller sends it."""
+    """An edited export (filled template or cleaning workbook) comes back as the next run of the same lineage
+    and is analysed at once. The hidden marker names the parent run; without one the caller sends it.
+
+    The edits go onto the newest cleaned copy of the same extraction, so uploads for several objects of one run
+    accumulate; the new run is tagged ``cleaned_overlay``. A file from an extraction that a newer one of the same
+    object has replaced is refused (409). Status, Owner and Comment on cleaning rows update the record issues."""
 
     from starlette.concurrency import run_in_threadpool
 
@@ -380,6 +486,10 @@ async def upload_roundtrip(
     except rt.RoundTripError as e:
         raise HTTPException(status_code=422, detail=str(e))
     marker = parsed["marker"]
+    if parent_version_id and marker.get("version_id") and parent_version_id.strip().lower() != marker["version_id"].lower():
+        raise HTTPException(status_code=422, detail={"error": "parent_mismatch", "detail":
+                            "This file came from a different run than the one chosen. Upload it on its own run, "
+                            "or download the workbook again from the chosen run."})
     parent = parent_version_id or marker.get("version_id")
     if not parent:
         raise HTTPException(status_code=422, detail={"error": "parent_required",
@@ -411,17 +521,45 @@ async def upload_roundtrip(
                                                       file.filename or "", data)
     except rt.RoundTripError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    if not edits:
+    notes = report.pop("notes", [])
+    if not edits and not notes:
         raise HTTPException(status_code=422, detail="The file holds no edits to apply.")
 
-    new_meta = {k: v for k, v in meta.items() if k not in ("error", "scoring")}
+    # the extraction this file's data came from: a cleaned copy points back at it
+    base = str((meta.get("roundtrip") or {}).get("base_version_id") or parent)
+    module = marker.get("module") or (modules[0] if len(modules) == 1 else None)
+    newer = (await db.execute(text(_NEWER_RUN_SQL), {"t": tenant.id, "b": base, "m": module})).fetchone()
+    if newer:
+        raise HTTPException(status_code=409, detail={
+            "error": "stale_run", "latest_version_id": str(newer[0]), "detail":
+            "A newer extraction of this object has finished since this file was exported. Download the workbook "
+            "from the latest run and make the changes there; this file would overwrite newer data."})
+
+    note_counts: dict[str, int] = {}
+    if notes and module:
+        note_counts = await _apply_notes(db, tenant.id, request, role, scope_of(meta), module, notes)
+        await write_audit(db, tenant.id, request, "upload.roundtrip_notes", "analysis_version", parent, None,
+                          {"module": module, **note_counts})
+        await db.commit()
+    if not edits:
+        return RoundTripResponse(
+            version_id=parent, job_id="", status="notes_saved", parent_version_id=parent, kind=kind, applied=0,
+            unchanged=0, unmatched=0, unmapped=report["unmapped"], skipped=report["skipped"], no_table=[],
+            no_field=[], notes=note_counts)
+
+    tip = (await db.execute(text(_TIP_SQL), {"t": tenant.id, "b": base})).fetchone()
+    source_id, source_meta = (str(tip[0]), dict(tip[1] or {})) if tip else (parent, meta)
+    prior = (source_meta.get("cleaned_overlay") or {}) if source_id != base else {}
+
+    new_meta = {k: v for k, v in meta.items() if k not in ("error", "scoring", "cleaned_overlay", "monitor")}
     new_meta.update({"source": "roundtrip", "trigger": "roundtrip", "file_name": file.filename,
-                     "roundtrip": {"parent_version_id": parent, "kind": kind, "edits": len(edits)}})
+                     "roundtrip": {"parent_version_id": source_id, "base_version_id": base, "kind": kind,
+                                   "edits": len(edits), "module": module}})
     version = await versions.create_version(db, tenant.id, new_meta,
                                             label=f"{label or 'Run'} (cleaned)"[:120])
     prefix = f"staging/{tenant.id}/{version.id}/"
     try:
-        result = await run_in_threadpool(rt.apply_edits, meta["dataset_path"], prefix, edits,
+        result = await run_in_threadpool(rt.apply_edits, source_meta["dataset_path"], prefix, edits,
                                          await run_in_threadpool(_dictionary, tenant.id, system_id))
     except Exception as e:  # noqa: BLE001 - the version row must not linger pending
         await versions.mark_version_failed(db, tenant.id, version.id, f"Could not apply the edits: {type(e).__name__}")
@@ -431,25 +569,34 @@ async def upload_roundtrip(
     if not result["applied"]:
         await versions.mark_version_failed(db, tenant.id, version.id, "No edit matched a record of the run.")
         raise HTTPException(status_code=422, detail={"error": "nothing_applied", "detail":
-                            "No edit matched a record of the run.", "unmatched": result["unmatched_total"]})
+                            "No edit matched a record of the run.", "unmatched": result["unmatched_total"],
+                            "notes": note_counts})
+    # the cleaned copy is a forecast: a later real extraction that still fails on these records is not a
+    # regression of the source, it is a fix not yet made there (workers/tasks/run_checks.py)
+    overlay = {"base_version_id": base,
+               "modules": sorted({*(prior.get("modules") or []), *([module] if module else [])}),
+               "edits": ((prior.get("edits") or []) + result.get("edited", []))[:MAX_OVERLAY_EDITS]}
     await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
     await db.execute(text(
         "UPDATE analysis_versions SET parent_version_id = CAST(:p AS uuid), "
-        "metadata = metadata || jsonb_build_object('dataset_path', CAST(:d AS text)), "
+        "metadata = metadata || jsonb_build_object('dataset_path', CAST(:d AS text), "
+        "'cleaned_overlay', CAST(:o AS jsonb)), "
         "run_number = COALESCE((SELECT max(run_number) FROM analysis_versions WHERE tenant_id = :t "
         "AND COALESCE(metadata->>'system_id', 'upload') = COALESCE(:sys, 'upload')), 0) + 1 "
         "WHERE id = :v AND tenant_id = :t"),
-        {"p": parent, "d": prefix, "t": tenant.id, "v": version.id, "sys": system_id})
+        {"p": source_id, "d": prefix, "t": tenant.id, "v": version.id, "sys": system_id, "o": json.dumps(overlay)})
     await write_audit(db, tenant.id, request, "upload.roundtrip", "analysis_version", str(version.id), None,
-                      {"parent_version_id": parent, "kind": kind, "applied": result["applied"]})
+                      {"parent_version_id": source_id, "base_version_id": base, "kind": kind,
+                       "applied": result["applied"]})
     await db.commit()
     jobs.start_job(str(tenant.id), str(version.id), "upload", file.filename or "Upload", status="queued",
                    progress_key=str(version.id), version_id=str(version.id))
     job_id = await _enqueue_checks(db, tenant.id, version.id, prefix)
     return RoundTripResponse(
-        version_id=str(version.id), job_id=job_id, status="pending", parent_version_id=parent, kind=kind,
+        version_id=str(version.id), job_id=job_id, status="pending", parent_version_id=source_id, kind=kind,
         applied=result["applied"], unchanged=result["unchanged"], unmatched=result["unmatched_total"],
-        unmapped=report["unmapped"], skipped=report["skipped"], no_table=result["no_table"], no_field=result["no_field"])
+        unmapped=report["unmapped"], skipped=report["skipped"], no_table=result["no_table"], no_field=result["no_field"],
+        notes=note_counts)
 
 
 def _dictionary(tenant_id, system_id):

@@ -46,8 +46,14 @@ SELECT check_id, severity, dimension, affected_count, total_count, pass_rate,
 
 _RECORDS_SQL = """
 SELECT check_id, grain, record_key, field_values
-  FROM finding_records
+  FROM finding_records fr
  WHERE tenant_id = :t AND version_id = CAST(:v AS uuid) AND module = :m
+   -- a record marked Not an error (accepted) on this system leaves the workbook
+   AND NOT EXISTS (SELECT 1 FROM record_issues ri
+                    WHERE ri.tenant_id = :t AND ri.module = :m AND ri.status = 'accepted'
+                      AND ri.check_id = fr.check_id AND ri.record_key = fr.record_key
+                      AND ri.scope = (SELECT COALESCE(av.metadata->>'system_id', 'upload') FROM analysis_versions av
+                                       WHERE av.id = CAST(:v AS uuid) AND av.tenant_id = :t))
  ORDER BY check_id, record_key"""
 
 
@@ -187,6 +193,35 @@ def required_empty(check_id: str, rule: dict, value: str) -> bool:
     return is_required_rule(check_id, rule) and value.strip().lower() in BLANKS
 
 
+CLEAR = "#CLEAR"  # typed in Corrected value to empty the field; a blank cell is never an edit
+
+
+def allowed_values(rule: dict) -> list[str]:
+    """The rule's own permitted values (its allowed_values list, or the keys of valid_values_with_labels)."""
+    for src in (rule, rule.get("params") or {}):
+        if not isinstance(src, dict):
+            continue
+        vals = src.get("allowed_values")
+        if isinstance(vals, list) and vals:
+            return [str(v) for v in vals]
+        labels = src.get("valid_values_with_labels")
+        if isinstance(labels, dict) and labels:
+            return [str(k) for k in labels]
+    return []
+
+
+def example_value(rule: dict, suggested: str, required: bool) -> str:
+    """One worked example for the row: the suggestion, else a permitted value, else what a fix looks like."""
+    allowed = allowed_values(rule)
+    if suggested:
+        return f"{suggested} (Meridian's suggestion)"
+    if allowed:
+        return f"{allowed[0]} (one of the allowed values)"
+    if required:
+        return "Any value that is right for this record; the field must not stay blank"
+    return ""
+
+
 def field_label(field: str) -> str:
     """``TABLE.FIELD (description)`` from the data dictionary; the bare name when it has no description."""
     if not field:
@@ -205,8 +240,9 @@ def rule_steps(rule: dict, required: bool) -> str:
     own = [ln.split(". ", 1)[1] for ln in fix_steps(rule).splitlines() if ". " in ln]
     first = ("Find the records where the required field is empty (Required field empty = Yes in Records to clean)."
              if required else "Find the failing records for this rule in Records to clean (filter on the Rule column).")
-    steps = [first, *own, "Type the value you set in Corrected value, then set Status.",
-             "Make the same change in the source system and run the analysis again to confirm it passes."]
+    steps = [first, *own, f"Type the correct value in Corrected value ({CLEAR} empties the field), then set Status.",
+             "Upload the file on the object's Fixes tab: Meridian scores a cleaned copy of the run.",
+             "Make the same change in the source system; the next extraction confirms it passes."]
     return "\n".join(f"{i}. {t}" for i, t in enumerate(steps, 1))
 
 
@@ -233,10 +269,14 @@ def _rows(findings: list[dict], records: Iterable[dict], rules: dict[str, dict])
         instruction = fix_text(rule.get("fix_map") or {}, value)
         st = stored.get((r["check_id"], r.get("record_key")))
         sv, src, conf = suggestion(rule, rec, st, f["value_fix_map"], value)
+        allowed = allowed_values(rule)
+        req = required_empty(r["check_id"], rule, value)
         out.append({
             "severity": f.get("severity") or rule.get("severity") or "", "rule": r["check_id"], "message": message,
             "table": r.get("grain") or "", "record_key": r.get("record_key") or "", "field": field_label(field or ""),
-            "required": "Yes" if required_empty(r["check_id"], rule, value) else "",
+            "required": "Yes" if req else "",
+            "allowed": allowed, "allowed_text": ", ".join(allowed[:40]) + (" ..." if len(allowed) > 40 else ""),
+            "example": example_value(rule, sv, req),
             "current": value, "suggested": sv, "source": src, "confidence": conf, "why": reason(value, message),
             "instruction": (st or {}).get("fix_instruction") or render(rule.get("record_fix_template"), rec, value,
                                                                        instruction) or instruction,
@@ -259,11 +299,22 @@ def _guide(module: str) -> list[dict]:
         ("Work through Records to clean", "One row per failing record. Current value is what the system holds now. "
                                           "Suggested value is filled only where the rule can work one out, so check it before you use it."),
         ("Fill the green columns only", "Green columns are yours: Corrected value, Owner, Status and Comment. "
-                                        "Do not edit, delete or reorder the other columns or rows, and do not rename sheets."),
+                                        "The other columns are locked: they tell Meridian which record and field "
+                                        "each row is. Do not delete or reorder rows, and do not rename sheets."),
+        ("Type the corrected value", "Where a field has a fixed list, Corrected value offers it as a drop-down and "
+                                     "Allowed values lists it. Example shows one worked value. A blank cell changes "
+                                     "nothing. To empty a field on purpose, type " + CLEAR + "."),
         ("Mark the status", "Pick Open, In progress, Fixed or Not an error from the list in Status. "
-                            "If a record is right as it is, choose Not an error and say why in Comment."),
-        ("Return the file", "Save it with the same name and send it back to the person who gave it to you. "
-                            "After the fixes are made in the source system, run the analysis again to confirm they passed."),
+                            "If a record is right as it is, choose Not an error and say why in Comment: once an "
+                            "approver uploads it, the issue stops showing on later runs. Owner and Comment are "
+                            "saved on the issue."),
+        ("Upload the file back", "Save the file and upload it on the {module} Fixes tab with Upload cleaned file. "
+                                 "Meridian writes your corrected values into a cleaned copy of this run and scores it "
+                                 "again, so you see the new score at once. Upload the file against the run it came "
+                                 "from; a file from an older run is refused."),
+        ("Fix the source system", "The cleaned copy is a forecast, not a change in SAP. Make the same changes in the "
+                                  "source system. The next extraction shows which fixes are in the source and which "
+                                  "are still waiting (Fix not yet in source)."),
     ]
     return [{"n": i + 1, "step": s, "what": w.replace("{module}", fmt_module(module))} for i, (s, w) in enumerate(steps)]
 
@@ -334,8 +385,11 @@ def cleaning_context(data: dict, rules: dict[str, dict]) -> tuple[list[SheetSpec
         ColumnSpec("confidence", "Confidence", width=11, help="How sure Meridian is about the suggestion."),
         ColumnSpec("why", "Why it failed", width=50, help="The reason this record fails the rule."),
         ColumnSpec("instruction", "What to do", width=60, help="The fix for this record."),
-        ColumnSpec("corrected", "Corrected value", "mono", width=20, editable=True,
-                   help="Type the value you set in the source system."),
+        ColumnSpec("allowed_text", "Allowed values", "mono", width=24,
+                   help="The values the rule permits for this field. Blank when the rule has no fixed list."),
+        ColumnSpec("example", "Example", width=30, help="One worked value for this row."),
+        ColumnSpec("corrected", "Corrected value", "mono", width=20, editable=True, row_choices_key="allowed",
+                   help=f"Type the correct value. A blank cell changes nothing; {CLEAR} empties the field."),
         ColumnSpec("owner", "Owner", width=18, editable=True, help="Who is fixing this record."),
         ColumnSpec("status", "Status", width=13, choices=STATUSES, editable=True,
                    help="Pick one: Open, In progress, Fixed or Not an error."),
@@ -397,7 +451,7 @@ def cleaning_context(data: dict, rules: dict[str, dict]) -> tuple[list[SheetSpec
         note = "Every failing record with its value, suggestion and instruction. Required fields that are empty come first."
         if len(chunks) > 1:
             note += f" Part {i + 1} of {len(chunks)}."
-        sheets.append(SheetSpec(title, rec_cols, chunk, note=note))
+        sheets.append(SheetSpec(title, rec_cols, chunk, note=note, protect=True))
     counts = {"rules": len(summary), "records": len(rows), "suggested": sum(1 for x in rows if x["suggested"]),
               "required_empty": len(miss)}
     return sheets, counts

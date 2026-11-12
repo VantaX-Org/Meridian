@@ -1414,7 +1414,8 @@ async def export_migration(
     if not tables:
         raise HTTPException(status_code=404, detail="No transfer-ready records to export.")
     total = sum(len(t) for t in tables.values())
-    content = to_xlsx(tables) if export_format == "xlsx" else to_csv_zip(tables)
+    # load_run_tables returns the tables in load-plan order; the file keeps it
+    content = to_xlsx(tables, keep_order=True) if export_format == "xlsx" else to_csv_zip(tables, keep_order=True)
     fname = f"migration_{run_id}.{'xlsx' if export_format == 'xlsx' else 'zip'}"
     # What was handed over is kept for post-load reconciliation. A storage failure never fails the export: the
     # row records the error, and reconciliation then rebuilds from the current mappings and says so.
@@ -1822,7 +1823,7 @@ async def blank_template(module: str, request: Request, system_id: Optional[str]
 
     def _build() -> bytes:
         from api.services.migration import workbook as wb
-        from api.services.migration.export import to_xlsx
+        from api.services.migration.export import to_xlsx, with_layout_note
         from api.services.source_design import dictionary_for
         from workers.db import get_sync_engine, tenant_session
         from workers.tasks.run_migration import load_target_config
@@ -1830,7 +1831,8 @@ async def blank_template(module: str, request: Request, system_id: Optional[str]
         with tenant_session(get_sync_engine(), tenant.id) as s:
             values, _basis = load_target_config(s, system_id)
             dictionary = dictionary_for(s, system_id)
-        return to_xlsx(wb.blank_template(dictionary, rules, values), sanitize_formulas=True)
+        return to_xlsx(with_layout_note(wb.blank_template(dictionary, rules, values)), sanitize_formulas=True,
+                       keep_order=True)
 
     content = await run_in_threadpool(_build)
     await _set_rls(db, tenant.id)
