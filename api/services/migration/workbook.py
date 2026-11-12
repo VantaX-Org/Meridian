@@ -755,12 +755,19 @@ def _history_order(df: pd.DataFrame, table: str, dictionary: Dictionary) -> pd.D
     return df.sort_values(cols, key=sort_key, kind="stable", na_position="last") if cols else df
 
 
-def _changed_field(dictionary: Dictionary, table: str) -> Optional[Field]:
-    """The field an incremental load filters on: the record's last-modified time, else its start date."""
+def _changed_field(dictionary: Dictionary, table: str, held: Any) -> Optional[Field]:
+    """The held field an incremental load filters on: the record's last-modified time, else its start date."""
     t = dictionary.tables[table]
     stamp = next((f for f in t.fields.values() if (f.type or "").upper() in {"DATE", "DATETIME"}
-                  and _CHANGED.search(f.source or "")), None)
-    return stamp or next((t.fields[k] for k in t.keys if k in _DATED_KEYS and k in t.fields), None)
+                  and _CHANGED.search(f.source or "") and f.qualified in held), None)
+    return stamp or next((t.fields[k] for k in t.keys if k in _DATED_KEYS and k in t.fields
+                          and t.fields[k].qualified in held), None)
+
+
+def _date_col(frames: TableFrames, table: str) -> Optional[str]:
+    """The held column of a table keyed or dated on a start or effective date, used to line up history rows."""
+    return next((f"{table}.{k}" for k in ("START_DATE", "EFFECTIVE_DATE")
+                 if f"{table}.{k}" in frames.frames[table].columns), None)
 
 
 def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str, dict[str, str]]] = None,
@@ -803,10 +810,11 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         hits = dict(present[table]) if table else {}
         # A sheet that spans several entities (a contingent worker's name, email and assignment) takes the columns
         # its main table lacks from another table, joined on that table's key. Only when the main table holds one
-        # row per person, so a dependant's sheet never takes the employee's own name.
+        # row per person, so a dependant's sheet never takes the employee's own name. A history table keyed on the
+        # person and a date (EmpJob history, EmpCompensation) also joins, each row taking the record in force on its date.
         joins: dict[str, list[tuple[str, Any]]] = {}
         on: set[str] = set()
-        if table and len(frames.dictionary.keys(table)) == 1:
+        if table and len(set(frames.dictionary.keys(table)) - {"START_DATE", "EFFECTIVE_DATE", "SEQ_NUMBER"}) == 1:
             for other in sorted(present, key=lambda t: -len(present[t])):
                 other_keys = frames.dictionary.keys(other)
                 if other == table or not other_keys:
@@ -853,11 +861,11 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         key_cols = [c for c in (f"{table}.{k}" for k in frames.dictionary.keys(table)) if c in stored.columns]
         country = _country_field(frames.dictionary, table, stored.columns)
         joined = {f.qualified for fs in joins.values() for _, f in fs}
-        changed = _changed_field(frames.dictionary, table) if load_mode == "incremental" else None
-        if changed is not None and changed.qualified not in stored.columns:
-            changed = None
+        changed = _changed_field(frames.dictionary, table, stored.columns) if load_mode == "incremental" else None
+        my_date = _date_col(frames, table)
         reads = {*key_cols, *on, *(f.qualified for f in hits.values() if f.qualified not in joined),
-                 *([country.qualified] if country else []), *([changed.qualified] if changed else [])}
+                 *([country.qualified] if country else []), *([changed.qualified] if changed else []),
+                 *([my_date] if my_date else [])}
         df = stored[list(reads)].copy()
         if load_mode == "incremental":
             row["since_field"] = changed.qualified if changed else None
@@ -865,22 +873,30 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                 df = df[(_when(df[changed.qualified]) >= pd.Timestamp(since, tz="UTC")).fillna(False)]
             else:
                 unfiltered.append(sheet.name)
+        from api.services.connectivity_manager import _asof_join, _primary_first  # lazy: avoids an import cycle
         for other, fs in joins.items():
             key = fs[0][0]
-            # One row per key: the primary one (a person's primary email) where the table flags it, else the first.
-            primary = next((f.qualified for f in frames.dictionary.tables[other].fields.values()
-                            if (f.source or "").endswith(".isPrimary") and f.qualified in frames.frames[other].columns), None)
-            side = frames.frames[other][list(dict.fromkeys([f"{other}.{key}", *(f.qualified for _, f in fs),
-                                                            *([primary] if primary else [])]))]
-            if primary:
-                flag = side[primary].astype("string").str.strip().str.lower().isin(["true", "yes", "y", "1", "x"])
-                side = side.assign(_primary=~flag.fillna(False)).sort_values("_primary", kind="stable")
-            side = side.drop_duplicates(f"{other}.{key}")
-            side = side.set_index(f"{other}.{key}")
             mine = frames.dictionary.field(table, key)
             assert mine is not None  # checked when the join was planned
-            for _, f in fs:
-                df[f.qualified] = df[mine.qualified].map(side[f.qualified])
+            cols = [f.qualified for _, f in fs]
+            their_date = _date_col(frames, other)
+            flag = f"{other}.IS_PRIMARY"
+            held_other = frames.frames[other][[f"{other}.{key}", *cols, *(c for c in (their_date, flag)
+                                                                        if c and c in frames.frames[other].columns)]]
+            if my_date and their_date:
+                left = pd.DataFrame({"__k": df[mine.qualified].to_numpy(),
+                                     "__asof": pd.to_datetime(df[my_date], errors="coerce").to_numpy()})
+                right = pd.DataFrame({"__k": held_other[f"{other}.{key}"].to_numpy(),
+                                      "__asof": pd.to_datetime(held_other[their_date], errors="coerce").to_numpy(),
+                                      **{c: held_other[c].to_numpy() for c in cols}})
+                got = _asof_join(left, right, ["__k"])
+                for c in cols:
+                    df[c] = got[c].to_numpy()
+                continue
+            # First row per key wins (a person's first email), the primary record first where the table maps isPrimary.
+            side = _primary_first(held_other, flag).drop_duplicates(f"{other}.{key}").set_index(f"{other}.{key}")
+            for c in cols:
+                df[c] = df[mine.qualified].map(side[c])
         df = _history_order(df, table, frames.dictionary)
         keys = record_keys(df, key_cols)
         bad = pd.Series(False, index=df.index)

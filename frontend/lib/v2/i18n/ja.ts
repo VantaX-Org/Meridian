@@ -9718,4 +9718,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The default {value} for {field} of {object} is removed. New create requests keep that field empty when the requester leaves it empty.": "{object} の {field} の既定値 {value} は削除されます。新しい作成依頼では、依頼者が空欄のままにするとその項目は空のままになります。",
   "The rule that sets {field} of {object} is removed. Requests saved from now on no longer get that value from it.": "{object} の {field} を設定するルールは削除されます。今後保存される依頼は、このルールから値を受け取りません。",
   "The write-backs waiting for a second approver could not be loaded.": "2 人目の承認者を待っている書き戻しを読み込めませんでした。",
+  "Upload required": "アップロードが必要",
+  "This table cannot be read from the system. Upload it as a file; its rules wait until then.": "このテーブルはシステムから読み取れません。ファイルとしてアップロードしてください。それまでルールは待機します。",
+  "Preview source": "プレビューソース",
+  "This source is a preview: its connector is not yet verified against a live tenant, so its rules wait and are left out of the score.": "このソースはプレビューです。コネクタが本番テナントでまだ検証されていないため、ルールは待機し、スコアから除外されます。",
+  "No rules read it": "読み取るルールなし",
+  "Read, but no rule checks this table yet, so it adds nothing to the score.": "読み取り済みですが、このテーブルを検査するルールがまだないため、スコアには影響しません。",
+  "Not installed": "未インストール",
+  "The component is not installed in this system, so its rules do not apply.": "このコンポーネントはこのシステムにインストールされていないため、ルールは適用されません。",
+  "{module}: {count} {count, plural, one {rule waits} other {rules wait}} for data and {count, plural, one {is} other {are}} left out of the score.": "{module}: {count} 件のルールがデータ待ちで、スコアから除外されています。",
 };

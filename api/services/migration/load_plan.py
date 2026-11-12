@@ -23,6 +23,20 @@ import yaml  # type: ignore[import-untyped]
 
 from sap.ddic import Dictionary
 
+# Employee Central loads in this order inside the object: foundation objects, then Position, then Person, then
+# Employment, then Job. SuccessFactors canonical tables (sap/dictionaries/canonical/successfactors.yaml).
+EC_LOAD_ORDER: tuple[str, ...] = (
+    "FOCOMPANY", "FO_LEGAL_ENTITY_LOCAL", "FOBUSINESSUNIT", "FODIVISION", "FODEPARTMENT", "FOCOSTCENTER",
+    "FOLOCATIONGROUP", "FOGEOZONE", "FOLOCATION", "FOCORPORATEADDRESSDEFLT", "FOJOBFUNCTION", "FOJOBCODE",
+    "FO_JOB_CLASS_LOCAL", "FOPAYGRADE", "FOPAYRANGE", "FOPAYGROUP", "FOFREQUENCY", "FOPAYCOMPONENT",
+    "FOPAYCOMPONENTGROUP", "FOPAYSCALETYPE", "FOPAYSCALEAREA", "FOEVENTREASON",
+    "POSITION",
+    "USERACCOUNT", "PERINFO", "PER_GLOBAL_INFO", "PEREMAIL", "PERPHONE", "PERADDRESS", "PEREMERGENCY",
+    "PERSOCIALACCOUNT",
+    "EMPEMPLOYMENT", "EMPGLOBALASSIGNMENT", "EMPWORKPERMIT",
+    "EMPJOBHIST", "EMPJOBRELATIONSHIPS", "PAYMENTINFO",
+)
+
 # The tables each migration object owns. The first table is the object's anchor; an object is planned only when its
 # anchor is in the dictionary. A table belongs to one object only.
 OWNED_TABLES: dict[str, tuple[str, ...]] = {
@@ -31,7 +45,7 @@ OWNED_TABLES: dict[str, tuple[str, ...]] = {
     "business_partner": ("BUT000",),
     "sd_customer_master": ("KNA1", "KNB1", "KNVV"),
     "accounts_payable": ("LFA1", "LFB1"),
-    "material_master": ("MARA", "MARC"),
+    "material_master": ("MARA", "MAKT", "MARM", "MEAN", "MARC", "MARD", "MBEW", "MVKE", "MLAN", "MLGN", "MLGT", "MDMA"),
     "batch_management": ("MCH1", "MCHA"),
     "asset_accounting": ("ANLA",),
     "production_planning": ("STKO", "PLKO", "CRHD"),
@@ -43,6 +57,32 @@ OWNED_TABLES: dict[str, tuple[str, ...]] = {
     "sd_sales_orders": ("VBAK",),
     "deliveries_billing": ("LIKP", "VBRK"),
     "accounts_receivable": ("BSID",),
+    # SuccessFactors: Employment is the anchor, the order inside the object is EC_LOAD_ORDER.
+    "employee_central": ("EMPEMPLOYMENT",) + tuple(t for t in EC_LOAD_ORDER if t != "EMPEMPLOYMENT"),
+    "compensation": ("COMPINFO", "PAYCOMPNONREC"),
+    "benefits": ("BENEFITENROLLMENT", "DEPENDENT"),
+    "performance_goals": ("GOALPLAN", "PMREVIEWRESULT"),
+    "succession_planning": ("SUCCESSIONCANDIDATE",),
+}
+
+# SuccessFactors has no DDIC check tables between objects (a compensation record points at its user by USERID, which
+# is a key, not a check-table field), so the edges between SF objects are stated here. Each names a real field.
+# (before, after): [(field, table it needs loaded, required, reason)]
+SF_EDGES: dict[tuple[str, str], list[tuple[str, str, bool, str]]] = {
+    ("employee_central", "compensation"): [
+        ("COMPINFO.USERID", "EMPEMPLOYMENT", True, "EmpCompensation is rejected for a user with no employment and job record")],
+    ("employee_central", "benefits"): [
+        ("BENEFITENROLLMENT.USERID", "EMPEMPLOYMENT", True, "A benefit enrolment is rejected for a user with no employment")],
+    ("compensation", "benefits"): [
+        ("BENEFITENROLLMENT.USERID", "COMPINFO", False, "Benefit eligibility and contributions are derived from pay")],
+    ("employee_central", "performance_goals"): [
+        ("GOALPLAN.USERID", "EMPEMPLOYMENT", True, "A goal is rejected for a user who does not exist")],
+    ("compensation", "performance_goals"): [
+        ("GOALPLAN.USERID", "COMPINFO", False, "Talent data loads after the full employee record, compensation included")],
+    ("employee_central", "succession_planning"): [
+        ("SUCCESSIONCANDIDATE.POSITION_ID", "POSITION", True, "A nomination is rejected for a position that does not exist")],
+    ("compensation", "succession_planning"): [
+        ("SUCCESSIONCANDIDATE.NOMINEE_ID", "COMPINFO", False, "Talent data loads after the full employee record, compensation included")],
 }
 
 _CUSTOMIZING = {"C", "G", "E", "S"}
@@ -89,6 +129,7 @@ class PlanObject:
     anchor_text: str
     step: int = 0
     group: list[str] = field(default_factory=list)  # other objects in the same required cycle
+    tables: list[str] = field(default_factory=list)  # the object's tables in the order they load
     prerequisites: list[Prerequisite] = field(default_factory=list)
 
 
@@ -156,13 +197,15 @@ def build_plan(modules: Iterable[str], dictionary: Dictionary, columns_of) -> Lo
     found: dict[tuple[str, str], list[Evidence]] = {}
     for m in planned:
         anchor = dictionary.table(OWNED_TABLES[m][0])
-        obj = PlanObject(module=m, anchor=anchor.name if anchor else "", anchor_text=(anchor.description if anchor else "") or "")
+        order = EC_LOAD_ORDER if m == "employee_central" else OWNED_TABLES[m]
+        obj = PlanObject(module=m, anchor=anchor.name if anchor else "", anchor_text=(anchor.description if anchor else "") or "",
+                         tables=[t for t in order if dictionary.table(t) is not None])
         prereq: dict[str, list[str]] = {}
         for q in sorted(columns_of(m)):
             f = dictionary.resolve(q)
             if f is None or f.key or not f.check_table or f.table not in OWNED_TABLES[m]:
                 continue  # unknown, a key, or read from a table this object does not own
-            ct = f.check_table
+            ct = f.check_table.upper()  # SF canonical check tables are entity names (FOCompany for FOCOMPANY)
             if ct in OWNED_TABLES[m]:
                 continue  # a reference inside the object itself
             dep = owner.get(ct)
@@ -177,6 +220,12 @@ def build_plan(modules: Iterable[str], dictionary: Dictionary, columns_of) -> Lo
             kind = "configuration" if dc in _CUSTOMIZING else "master_data" if dc == "A" else "unclassified"
             obj.prerequisites.append(Prerequisite(ct, (t.description if t else "") or "", kind, qs))
         objects[m] = obj
+
+    for (b, a), evs in SF_EDGES.items():
+        if b in objects and a in objects:
+            for q, ct, req, why in evs:
+                f = dictionary.resolve(q)
+                found.setdefault((b, a), []).append(Evidence(q, (f.description if f else "") or "", ct, req, why))
 
     edges = [Edge(b, a, "required" if any(e.required for e in ev) else "reference", ev)
              for (b, a), ev in sorted(found.items())]
