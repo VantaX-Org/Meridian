@@ -1,0 +1,68 @@
+/*
+ * Meridian "next" motion (spec section 3.5). The only place under design/next that declares a transition, an animation,
+ * a keyframe or a duration: lint:tokens accepts it as a token file, and every component reaches motion through a
+ * class named here. 120 ms for small feedback, 200 ms for enter and slide, 320 ms for numbers. Nothing loops except
+ * progress and the skeleton shimmer. Under prefers-reduced-motion every duration is 1 ms and movement becomes opacity.
+ */
+
+.nx-root {
+  --nx-dur-fast: 120ms;
+  --nx-dur-base: 200ms;
+  --nx-dur-slow: 320ms;
+  --nx-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes nx-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nx-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes nx-slide-in { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes nx-slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes nx-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes nx-spin { to { transform: rotate(360deg); } }
+@keyframes nx-indeterminate { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@keyframes nx-draw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+
+.nx-enter { animation: nx-fade-up var(--nx-dur-base) var(--nx-ease) both; }
+.nx-panel { animation: nx-slide-in var(--nx-dur-base) var(--nx-ease) both; }
+.nx-scrim { animation: nx-fade var(--nx-dur-base) var(--nx-ease) both; }
+.nx-toast { animation: nx-slide-up var(--nx-dur-fast) var(--nx-ease) both; }
+.nx-dialog { animation: nx-fade-up var(--nx-dur-base) var(--nx-ease) both; }
+.nx-menu { animation: nx-fade var(--nx-dur-fast) var(--nx-ease) both; }
+.nx-skeleton-bar {
+  background: linear-gradient(90deg, var(--nx-surface-2) 30%, var(--nx-border) 50%, var(--nx-surface-2) 70%);
+  background-size: 200% 100%;
+  animation: nx-shimmer 1.2s linear infinite;
+}
+.nx-spinner { animation: nx-spin 0.8s linear infinite; }
+.nx-bar-indeterminate { animation: nx-indeterminate 1.4s var(--nx-ease) infinite; }
+.nx-tick path { stroke-dasharray: 24; animation: nx-draw var(--nx-dur-base) var(--nx-ease) both; }
+
+.nx-btn,
+.nx-chip-btn,
+.nx-seg-item,
+.nx-tab,
+.nx-tr,
+.nx-th-btn,
+.nx-runsw-row,
+.nx-input,
+.nx-drop,
+.nx-step-btn,
+.nx-icon-btn,
+.nx-step-dot,
+.nx-palette-item {
+  transition: background-color var(--nx-dur-fast) var(--nx-ease), border-color var(--nx-dur-fast) var(--nx-ease), color var(--nx-dur-fast) var(--nx-ease);
+}
+.nx-bar-fill { transition: width var(--nx-dur-slow) var(--nx-ease); }
+.nx-spark-line { transition: d var(--nx-dur-slow) var(--nx-ease); }
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-root {
+    --nx-dur-fast: 1ms;
+    --nx-dur-base: 1ms;
+    --nx-dur-slow: 1ms;
+  }
+  .nx-enter, .nx-panel, .nx-toast, .nx-dialog { animation: nx-fade 1ms both; }
+  .nx-skeleton-bar, .nx-spinner, .nx-bar-indeterminate { animation: none; }
+  .nx-skeleton-bar { background: var(--nx-surface-2); }
+  .nx-bar-indeterminate { width: 100%; transform: none; opacity: 0.5; }
+  .nx-tick path { animation: none; }
+}
