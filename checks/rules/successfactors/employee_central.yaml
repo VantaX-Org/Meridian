@@ -14173,3 +14173,1936 @@ rules:
     __other__: Clear INCUMBENT or set VACANT to false.
   record_fix_template: 'Position {POSITION.CODE}: VACANT is true but INCUMBENT is set.'
   fail_when: (`POSITION.VACANT`.astype('string').str.lower() == 'true') & `POSITION.INCUMBENT`.notna()
+- id: EC782
+  field: EMPEMPLOYMENT.EMPLOYEE_FIRST_EMPLOYMENT
+  check_class: regex_check
+  pattern: ^(?=.{0,10}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Employee first employment must not contain leading, trailing or repeated blanks and at most 10 characters
+  why_it_matters: EMPEMPLOYMENT.EMPLOYEE_FIRST_EMPLOYMENT is a text field of at most 10 characters. Padded or doubled blanks
+    defeat exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on EMPLOYEE_FIRST_EMPLOYMENT treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.EMPLOYEE_FIRST_EMPLOYMENT and keep it within
+      10 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: EMPLOYEE_FIRST_EMPLOYMENT is {actual_value}. Remove leading, trailing
+    and repeated blanks from EMPEMPLOYMENT.EMPLOYEE_FIRST_EMPLOYMENT and keep it within 10 characters.'
+- id: EC783
+  field: EMPEMPLOYMENT.ELIGIBLE_FOR_SAL_CONTINUATION
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Eligible for sal continuation must be true or false
+  why_it_matters: EMPEMPLOYMENT.ELIGIBLE_FOR_SAL_CONTINUATION is a Boolean in the Employee Central OData model. Any text other
+    than true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read ELIGIBLE_FOR_SAL_CONTINUATION misread the flag, so the employee is treated as if
+    it were not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.ELIGIBLE_FOR_SAL_CONTINUATION to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: ELIGIBLE_FOR_SAL_CONTINUATION is {actual_value}. Set EMPEMPLOYMENT.ELIGIBLE_FOR_SAL_CONTINUATION
+    to true or false.'
+- id: EC784
+  field: EMPEMPLOYMENT.TIME_IN_POSITION
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Time in position must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: EMPEMPLOYMENT.TIME_IN_POSITION is a text field of at most 128 characters. Padded or doubled blanks defeat
+    exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on TIME_IN_POSITION treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.TIME_IN_POSITION and keep it within 128 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: TIME_IN_POSITION is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.TIME_IN_POSITION and keep it within 128 characters.'
+- id: EC785
+  field: EMPEMPLOYMENT.LOCAL_JOB_TITLE
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Local job title (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: EMPEMPLOYMENT.LOCAL_JOB_TITLE is a text field of at most 256 characters. Padded or doubled blanks defeat
+    exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on LOCAL_JOB_TITLE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.LOCAL_JOB_TITLE and keep it within 256 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: LOCAL_JOB_TITLE is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.LOCAL_JOB_TITLE and keep it within 256 characters.'
+- id: EC786
+  field: EMPEMPLOYMENT.IS_CROSS_BORDER_WORKER
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Is cross border worker must be true or false
+  why_it_matters: EMPEMPLOYMENT.IS_CROSS_BORDER_WORKER is a Boolean in the Employee Central OData model. Any text other than
+    true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read IS_CROSS_BORDER_WORKER misread the flag, so the employee is treated as if it were
+    not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.IS_CROSS_BORDER_WORKER to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: IS_CROSS_BORDER_WORKER is {actual_value}. Set EMPEMPLOYMENT.IS_CROSS_BORDER_WORKER
+    to true or false.'
+- id: EC787
+  field: EMPEMPLOYMENT.IS_COMPETITION_CLAUSE_ACTIVE
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Is competition clause active (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.IS_COMPETITION_CLAUSE_ACTIVE is a Boolean in the Employee Central OData model. Any text other
+    than true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read IS_COMPETITION_CLAUSE_ACTIVE misread the flag, so the employee is treated as if
+    it were not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.IS_COMPETITION_CLAUSE_ACTIVE to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: IS_COMPETITION_CLAUSE_ACTIVE is {actual_value}. Set EMPEMPLOYMENT.IS_COMPETITION_CLAUSE_ACTIVE
+    to true or false.'
+- id: EC788
+  field: EMPEMPLOYMENT.IS_SIDE_LINE_JOB_ALLOWED
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Is side line job allowed (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.IS_SIDE_LINE_JOB_ALLOWED is a Boolean in the Employee Central OData model. Any text other
+    than true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read IS_SIDE_LINE_JOB_ALLOWED misread the flag, so the employee is treated as if it were
+    not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.IS_SIDE_LINE_JOB_ALLOWED to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: IS_SIDE_LINE_JOB_ALLOWED is {actual_value}. Set EMPEMPLOYMENT.IS_SIDE_LINE_JOB_ALLOWED
+    to true or false.'
+- id: EC789
+  field: EMPEMPLOYMENT.TIME_IN_JOB
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Time in job must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: EMPEMPLOYMENT.TIME_IN_JOB is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on TIME_IN_JOB treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.TIME_IN_JOB and keep it within 256 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: TIME_IN_JOB is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.TIME_IN_JOB and keep it within 256 characters.'
+- id: EC790
+  field: EMPEMPLOYMENT.TIME_IN_COMPANY
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Time in company must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: EMPEMPLOYMENT.TIME_IN_COMPANY is a text field of at most 128 characters. Padded or doubled blanks defeat
+    exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on TIME_IN_COMPANY treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.TIME_IN_COMPANY and keep it within 128 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: TIME_IN_COMPANY is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.TIME_IN_COMPANY and keep it within 128 characters.'
+- id: EC791
+  field: EMPEMPLOYMENT.TIME_IN_LOCATION
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Time in location must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: EMPEMPLOYMENT.TIME_IN_LOCATION is a text field of at most 128 characters. Padded or doubled blanks defeat
+    exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on TIME_IN_LOCATION treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.TIME_IN_LOCATION and keep it within 128 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: TIME_IN_LOCATION is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.TIME_IN_LOCATION and keep it within 128 characters.'
+- id: EC792
+  field: EMPEMPLOYMENT.TIME_IN_DEPARTMENT
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Time in department must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: EMPEMPLOYMENT.TIME_IN_DEPARTMENT is a text field of at most 128 characters. Padded or doubled blanks defeat
+    exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on TIME_IN_DEPARTMENT treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.TIME_IN_DEPARTMENT and keep it within 128 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: TIME_IN_DEPARTMENT is {actual_value}. Remove leading, trailing and
+    repeated blanks from EMPEMPLOYMENT.TIME_IN_DEPARTMENT and keep it within 128 characters.'
+- id: EC793
+  field: EMPEMPLOYMENT.TIME_IN_PAY_SCALE_LEVEL
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Time in pay scale level must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: EMPEMPLOYMENT.TIME_IN_PAY_SCALE_LEVEL is a text field of at most 128 characters. Padded or doubled blanks
+    defeat exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on TIME_IN_PAY_SCALE_LEVEL treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.TIME_IN_PAY_SCALE_LEVEL and keep it within
+      128 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: TIME_IN_PAY_SCALE_LEVEL is {actual_value}. Remove leading, trailing
+    and repeated blanks from EMPEMPLOYMENT.TIME_IN_PAY_SCALE_LEVEL and keep it within 128 characters.'
+- id: EC794
+  field: EMPEMPLOYMENT.TIME_RECORDING_ADMISSIBILITY_CODE
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Time recording admissibility code must not contain leading, trailing or repeated blanks
+  why_it_matters: EMPEMPLOYMENT.TIME_RECORDING_ADMISSIBILITY_CODE is a text field. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on TIME_RECORDING_ADMISSIBILITY_CODE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.TIME_RECORDING_ADMISSIBILITY_CODE.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: TIME_RECORDING_ADMISSIBILITY_CODE is {actual_value}. Remove leading,
+    trailing and repeated blanks from EMPEMPLOYMENT.TIME_RECORDING_ADMISSIBILITY_CODE.'
+- id: EC795
+  field: EMPEMPLOYMENT.DEFAULT_OVERTIME_COMPENSATION_VARIANT
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Default overtime compensation variant must not contain leading, trailing or repeated blanks
+  why_it_matters: EMPEMPLOYMENT.DEFAULT_OVERTIME_COMPENSATION_VARIANT is a text field. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on DEFAULT_OVERTIME_COMPENSATION_VARIANT treat padded and clean values
+    as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.DEFAULT_OVERTIME_COMPENSATION_VARIANT.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: DEFAULT_OVERTIME_COMPENSATION_VARIANT is {actual_value}. Remove leading,
+    trailing and repeated blanks from EMPEMPLOYMENT.DEFAULT_OVERTIME_COMPENSATION_VARIANT.'
+- id: EC796
+  field: EMPEMPLOYMENT.CORPORATION
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Corporation (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: EMPEMPLOYMENT.CORPORATION is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on CORPORATION treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.CORPORATION and keep it within 256 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: CORPORATION is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.CORPORATION and keep it within 256 characters.'
+- id: EC797
+  field: EMPEMPLOYMENT.PERMIT_INDICATOR
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Permit indicator (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.PERMIT_INDICATOR is a Boolean in the Employee Central OData model. Any text other than true
+    or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read PERMIT_INDICATOR misread the flag, so the employee is treated as if it were not
+    set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.PERMIT_INDICATOR to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: PERMIT_INDICATOR is {actual_value}. Set EMPEMPLOYMENT.PERMIT_INDICATOR
+    to true or false.'
+- id: EC798
+  field: EMPEMPLOYMENT.PCFM
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Pcfm (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.PCFM is a Boolean in the Employee Central OData model. Any text other than true or false is
+    rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read PCFM misread the flag, so the employee is treated as if it were not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.PCFM to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: PCFM is {actual_value}. Set EMPEMPLOYMENT.PCFM to true or false.'
+- id: EC799
+  field: EMPEMPLOYMENT.RETIRED
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Retired (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.RETIRED is a Boolean in the Employee Central OData model. Any text other than true or false
+    is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read RETIRED misread the flag, so the employee is treated as if it were not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.RETIRED to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: RETIRED is {actual_value}. Set EMPEMPLOYMENT.RETIRED to true or false.'
+- id: EC800
+  field: EMPEMPLOYMENT.HEALTH_RISK
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Health risk (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.HEALTH_RISK is a Boolean in the Employee Central OData model. Any text other than true or
+    false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read HEALTH_RISK misread the flag, so the employee is treated as if it were not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.HEALTH_RISK to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: HEALTH_RISK is {actual_value}. Set EMPEMPLOYMENT.HEALTH_RISK to true
+    or false.'
+- id: EC801
+  field: EMPEMPLOYMENT.HAZARD
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Hazard (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.HAZARD is a Boolean in the Employee Central OData model. Any text other than true or false
+    is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read HAZARD misread the flag, so the employee is treated as if it were not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.HAZARD to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: HAZARD is {actual_value}. Set EMPEMPLOYMENT.HAZARD to true or false.'
+- id: EC802
+  field: EMPEMPLOYMENT.INTEGRATION_AGENT
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Integration agent (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: EMPEMPLOYMENT.INTEGRATION_AGENT is a text field of at most 256 characters. Padded or doubled blanks defeat
+    exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on INTEGRATION_AGENT treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.INTEGRATION_AGENT and keep it within 256 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: INTEGRATION_AGENT is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.INTEGRATION_AGENT and keep it within 256 characters.'
+- id: EC803
+  field: EMPEMPLOYMENT.EDUCATIONAL_ENTITY
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Educational entity (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: EMPEMPLOYMENT.EDUCATIONAL_ENTITY is a text field of at most 256 characters. Padded or doubled blanks defeat
+    exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on EDUCATIONAL_ENTITY treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.EDUCATIONAL_ENTITY and keep it within 256 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: EDUCATIONAL_ENTITY is {actual_value}. Remove leading, trailing and
+    repeated blanks from EMPEMPLOYMENT.EDUCATIONAL_ENTITY and keep it within 256 characters.'
+- id: EC804
+  field: EMPEMPLOYMENT.WORK_LOCATION
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Work location (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: EMPEMPLOYMENT.WORK_LOCATION is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on WORK_LOCATION treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.WORK_LOCATION and keep it within 256 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: WORK_LOCATION is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.WORK_LOCATION and keep it within 256 characters.'
+- id: EC805
+  field: EMPEMPLOYMENT.LABOR_PROTECTION
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Labor protection (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.LABOR_PROTECTION is a Boolean in the Employee Central OData model. Any text other than true
+    or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read LABOR_PROTECTION misread the flag, so the employee is treated as if it were not
+    set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.LABOR_PROTECTION to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: LABOR_PROTECTION is {actual_value}. Set EMPEMPLOYMENT.LABOR_PROTECTION
+    to true or false.'
+- id: EC806
+  field: EMPEMPLOYMENT.NEW_CALC_AVG_PPU
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: New calc avg ppu (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.NEW_CALC_AVG_PPU is a Boolean in the Employee Central OData model. Any text other than true
+    or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read NEW_CALC_AVG_PPU misread the flag, so the employee is treated as if it were not
+    set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.NEW_CALC_AVG_PPU to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: NEW_CALC_AVG_PPU is {actual_value}. Set EMPEMPLOYMENT.NEW_CALC_AVG_PPU
+    to true or false.'
+- id: EC807
+  field: EMPEMPLOYMENT.NEW_CALC_AVG_DNP
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: New calc avg dnp (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.NEW_CALC_AVG_DNP is a Boolean in the Employee Central OData model. Any text other than true
+    or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read NEW_CALC_AVG_DNP misread the flag, so the employee is treated as if it were not
+    set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.NEW_CALC_AVG_DNP to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: NEW_CALC_AVG_DNP is {actual_value}. Set EMPEMPLOYMENT.NEW_CALC_AVG_DNP
+    to true or false.'
+- id: EC808
+  field: EMPEMPLOYMENT.ASSEDIC_CERT_INITIAL_STATE_NUM
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.ASSEDIC_CERT_INITIAL_STATE_NUM`.notna() & (`EMPEMPLOYMENT.ASSEDIC_CERT_INITIAL_STATE_NUM` < 0)'
+  severity: low
+  dimension: validity
+  message: Assedic cert initial state num (country-specific) must not be negative
+  why_it_matters: EMPEMPLOYMENT.ASSEDIC_CERT_INITIAL_STATE_NUM is a count, number, period or amount. A negative value has
+    no meaning and signals a sign error in the source or the import file.
+  rule_authority: best_practice
+  sap_impact: Reports and payroll hand-over that read ASSEDIC_CERT_INITIAL_STATE_NUM produce wrong or negative results.
+  fix_map:
+    __other__: Correct EMPEMPLOYMENT.ASSEDIC_CERT_INITIAL_STATE_NUM to zero or a positive value.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: ASSEDIC_CERT_INITIAL_STATE_NUM is {actual_value}. Correct EMPEMPLOYMENT.ASSEDIC_CERT_INITIAL_STATE_NUM
+    to zero or a positive value.'
+- id: EC809
+  field: EMPEMPLOYMENT.ASSEDIC_CERT_OBJECT_NUM
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.ASSEDIC_CERT_OBJECT_NUM`.notna() & (`EMPEMPLOYMENT.ASSEDIC_CERT_OBJECT_NUM` < 0)'
+  severity: low
+  dimension: validity
+  message: Assedic cert object num (country-specific) must not be negative
+  why_it_matters: EMPEMPLOYMENT.ASSEDIC_CERT_OBJECT_NUM is a count, number, period or amount. A negative value has no meaning
+    and signals a sign error in the source or the import file.
+  rule_authority: best_practice
+  sap_impact: Reports and payroll hand-over that read ASSEDIC_CERT_OBJECT_NUM produce wrong or negative results.
+  fix_map:
+    __other__: Correct EMPEMPLOYMENT.ASSEDIC_CERT_OBJECT_NUM to zero or a positive value.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: ASSEDIC_CERT_OBJECT_NUM is {actual_value}. Correct EMPEMPLOYMENT.ASSEDIC_CERT_OBJECT_NUM
+    to zero or a positive value.'
+- id: EC810
+  field: EMPEMPLOYMENT.CONTRACT_REFERENCE_FOR_AED
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Contract reference for aed (country-specific) must not contain leading, trailing or repeated blanks and at most
+    256 characters
+  why_it_matters: EMPEMPLOYMENT.CONTRACT_REFERENCE_FOR_AED is a text field of at most 256 characters. Padded or doubled blanks
+    defeat exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on CONTRACT_REFERENCE_FOR_AED treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.CONTRACT_REFERENCE_FOR_AED and keep it within
+      256 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: CONTRACT_REFERENCE_FOR_AED is {actual_value}. Remove leading, trailing
+    and repeated blanks from EMPEMPLOYMENT.CONTRACT_REFERENCE_FOR_AED and keep it within 256 characters.'
+- id: EC811
+  field: EMPEMPLOYMENT.EXCL_EXECUTIVE_SECTOR
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Excl executive sector (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.EXCL_EXECUTIVE_SECTOR is a Boolean in the Employee Central OData model. Any text other than
+    true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read EXCL_EXECUTIVE_SECTOR misread the flag, so the employee is treated as if it were
+    not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.EXCL_EXECUTIVE_SECTOR to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: EXCL_EXECUTIVE_SECTOR is {actual_value}. Set EMPEMPLOYMENT.EXCL_EXECUTIVE_SECTOR
+    to true or false.'
+- id: EC812
+  field: EMPEMPLOYMENT.RESIDENT_VOTE
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Resident vote (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.RESIDENT_VOTE is a Boolean in the Employee Central OData model. Any text other than true or
+    false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read RESIDENT_VOTE misread the flag, so the employee is treated as if it were not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.RESIDENT_VOTE to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: RESIDENT_VOTE is {actual_value}. Set EMPEMPLOYMENT.RESIDENT_VOTE to
+    true or false.'
+- id: EC813
+  field: EMPEMPLOYMENT.MUNICIPAL_INSEE_CODE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.MUNICIPAL_INSEE_CODE`.notna() & (`EMPEMPLOYMENT.MUNICIPAL_INSEE_CODE` < 0)'
+  severity: low
+  dimension: validity
+  message: Municipal insee code (country-specific) must not be negative
+  why_it_matters: EMPEMPLOYMENT.MUNICIPAL_INSEE_CODE is a count, number, period or amount. A negative value has no meaning
+    and signals a sign error in the source or the import file.
+  rule_authority: best_practice
+  sap_impact: Reports and payroll hand-over that read MUNICIPAL_INSEE_CODE produce wrong or negative results.
+  fix_map:
+    __other__: Correct EMPEMPLOYMENT.MUNICIPAL_INSEE_CODE to zero or a positive value.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: MUNICIPAL_INSEE_CODE is {actual_value}. Correct EMPEMPLOYMENT.MUNICIPAL_INSEE_CODE
+    to zero or a positive value.'
+- id: EC814
+  field: EMPEMPLOYMENT.NOTICE_PERIOD
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Notice period (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: EMPEMPLOYMENT.NOTICE_PERIOD is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on NOTICE_PERIOD treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.NOTICE_PERIOD and keep it within 256 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: NOTICE_PERIOD is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.NOTICE_PERIOD and keep it within 256 characters.'
+- id: EC815
+  field: EMPEMPLOYMENT.CONTRACT_ID
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Contract id (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: EMPEMPLOYMENT.CONTRACT_ID is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on CONTRACT_ID treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.CONTRACT_ID and keep it within 256 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: CONTRACT_ID is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.CONTRACT_ID and keep it within 256 characters.'
+- id: EC816
+  field: EMPEMPLOYMENT.CONTRACT_NUMBER
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.CONTRACT_NUMBER`.notna() & (`EMPEMPLOYMENT.CONTRACT_NUMBER` < 0)'
+  severity: low
+  dimension: validity
+  message: Contract number (country-specific) must not be negative
+  why_it_matters: EMPEMPLOYMENT.CONTRACT_NUMBER is a count, number, period or amount. A negative value has no meaning and
+    signals a sign error in the source or the import file.
+  rule_authority: best_practice
+  sap_impact: Reports and payroll hand-over that read CONTRACT_NUMBER produce wrong or negative results.
+  fix_map:
+    __other__: Correct EMPEMPLOYMENT.CONTRACT_NUMBER to zero or a positive value.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: CONTRACT_NUMBER is {actual_value}. Correct EMPEMPLOYMENT.CONTRACT_NUMBER
+    to zero or a positive value.'
+- id: EC817
+  field: EMPEMPLOYMENT.INELIGIBLE_STATUTORY_MIN_WAGE
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Ineligible statutory min wage (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.INELIGIBLE_STATUTORY_MIN_WAGE is a Boolean in the Employee Central OData model. Any text other
+    than true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read INELIGIBLE_STATUTORY_MIN_WAGE misread the flag, so the employee is treated as if
+    it were not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.INELIGIBLE_STATUTORY_MIN_WAGE to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: INELIGIBLE_STATUTORY_MIN_WAGE is {actual_value}. Set EMPEMPLOYMENT.INELIGIBLE_STATUTORY_MIN_WAGE
+    to true or false.'
+- id: EC818
+  field: EMPEMPLOYMENT.SPCL_RULE_NON_MANUAL_WORKER
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Spcl rule non manual worker (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.SPCL_RULE_NON_MANUAL_WORKER is a Boolean in the Employee Central OData model. Any text other
+    than true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read SPCL_RULE_NON_MANUAL_WORKER misread the flag, so the employee is treated as if it
+    were not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.SPCL_RULE_NON_MANUAL_WORKER to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: SPCL_RULE_NON_MANUAL_WORKER is {actual_value}. Set EMPEMPLOYMENT.SPCL_RULE_NON_MANUAL_WORKER
+    to true or false.'
+- id: EC819
+  field: EMPEMPLOYMENT.PAYMENT_IN_LIEU_OF_NOTICE
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Payment in lieu of notice (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.PAYMENT_IN_LIEU_OF_NOTICE is a Boolean in the Employee Central OData model. Any text other
+    than true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read PAYMENT_IN_LIEU_OF_NOTICE misread the flag, so the employee is treated as if it
+    were not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.PAYMENT_IN_LIEU_OF_NOTICE to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: PAYMENT_IN_LIEU_OF_NOTICE is {actual_value}. Set EMPEMPLOYMENT.PAYMENT_IN_LIEU_OF_NOTICE
+    to true or false.'
+- id: EC820
+  field: EMPEMPLOYMENT.CALCULATION_BASE
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Calculation base (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: EMPEMPLOYMENT.CALCULATION_BASE is a text field of at most 256 characters. Padded or doubled blanks defeat
+    exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on CALCULATION_BASE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.CALCULATION_BASE and keep it within 256 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: CALCULATION_BASE is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.CALCULATION_BASE and keep it within 256 characters.'
+- id: EC821
+  field: EMPEMPLOYMENT.CREDIT_FOR_PREVIOUS_SERVICE
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Credit for previous service (country-specific) must not contain leading, trailing or repeated blanks and at most
+    256 characters
+  why_it_matters: EMPEMPLOYMENT.CREDIT_FOR_PREVIOUS_SERVICE is a text field of at most 256 characters. Padded or doubled blanks
+    defeat exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on CREDIT_FOR_PREVIOUS_SERVICE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.CREDIT_FOR_PREVIOUS_SERVICE and keep it within
+      256 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: CREDIT_FOR_PREVIOUS_SERVICE is {actual_value}. Remove leading, trailing
+    and repeated blanks from EMPEMPLOYMENT.CREDIT_FOR_PREVIOUS_SERVICE and keep it within 256 characters.'
+- id: EC822
+  field: EMPEMPLOYMENT.CURRENT_WAGE_LEVEL
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.CURRENT_WAGE_LEVEL`.notna() & (`EMPEMPLOYMENT.CURRENT_WAGE_LEVEL` < 0)'
+  severity: low
+  dimension: validity
+  message: Current wage level (country-specific) must not be negative
+  why_it_matters: EMPEMPLOYMENT.CURRENT_WAGE_LEVEL is a count, number, period or amount. A negative value has no meaning and
+    signals a sign error in the source or the import file.
+  rule_authority: best_practice
+  sap_impact: Reports and payroll hand-over that read CURRENT_WAGE_LEVEL produce wrong or negative results.
+  fix_map:
+    __other__: Correct EMPEMPLOYMENT.CURRENT_WAGE_LEVEL to zero or a positive value.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: CURRENT_WAGE_LEVEL is {actual_value}. Correct EMPEMPLOYMENT.CURRENT_WAGE_LEVEL
+    to zero or a positive value.'
+- id: EC823
+  field: EMPEMPLOYMENT.SICK_PAY_SUPPLEMENT_PERIOD
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.SICK_PAY_SUPPLEMENT_PERIOD`.notna() & (`EMPEMPLOYMENT.SICK_PAY_SUPPLEMENT_PERIOD` < 0)'
+  severity: low
+  dimension: validity
+  message: Sick pay supplement period (country-specific) must not be negative
+  why_it_matters: EMPEMPLOYMENT.SICK_PAY_SUPPLEMENT_PERIOD is a count, number, period or amount. A negative value has no meaning
+    and signals a sign error in the source or the import file.
+  rule_authority: best_practice
+  sap_impact: Reports and payroll hand-over that read SICK_PAY_SUPPLEMENT_PERIOD produce wrong or negative results.
+  fix_map:
+    __other__: Correct EMPEMPLOYMENT.SICK_PAY_SUPPLEMENT_PERIOD to zero or a positive value.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: SICK_PAY_SUPPLEMENT_PERIOD is {actual_value}. Correct EMPEMPLOYMENT.SICK_PAY_SUPPLEMENT_PERIOD
+    to zero or a positive value.'
+- id: EC824
+  field: EMPEMPLOYMENT.CHANGE_REASON
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Change reason (country-specific) must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: EMPEMPLOYMENT.CHANGE_REASON is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on CHANGE_REASON treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.CHANGE_REASON and keep it within 128 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: CHANGE_REASON is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.CHANGE_REASON and keep it within 128 characters.'
+- id: EC825
+  field: EMPEMPLOYMENT.CHANGE_REASON_EXTERNAL
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Change reason external (country-specific) must not contain leading, trailing or repeated blanks and at most 128
+    characters
+  why_it_matters: EMPEMPLOYMENT.CHANGE_REASON_EXTERNAL is a text field of at most 128 characters. Padded or doubled blanks
+    defeat exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on CHANGE_REASON_EXTERNAL treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.CHANGE_REASON_EXTERNAL and keep it within 128
+      characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: CHANGE_REASON_EXTERNAL is {actual_value}. Remove leading, trailing
+    and repeated blanks from EMPEMPLOYMENT.CHANGE_REASON_EXTERNAL and keep it within 128 characters.'
+- id: EC826
+  field: EMPEMPLOYMENT.VALID_FROM
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.VALID_FROM`.dt.year < 1900'
+  severity: low
+  dimension: validity
+  message: Valid from (country-specific) lies before the year 1900
+  why_it_matters: EMPEMPLOYMENT.VALID_FROM is a calendar date. A year before 1900 is almost always a placeholder or conversion
+    error and breaks effective-dating.
+  rule_authority: best_practice
+  sap_impact: Effective-dated selections that use VALID_FROM pick the wrong record or none.
+  fix_map:
+    __other__: Correct EMPEMPLOYMENT.VALID_FROM to the intended date or clear it.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: VALID_FROM is {actual_value}. Correct EMPEMPLOYMENT.VALID_FROM to the
+    intended date or clear it.'
+- id: EC827
+  field: EMPEMPLOYMENT.CALC_METHOD_INDICATOR
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Calc method indicator (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.CALC_METHOD_INDICATOR is a Boolean in the Employee Central OData model. Any text other than
+    true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read CALC_METHOD_INDICATOR misread the flag, so the employee is treated as if it were
+    not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.CALC_METHOD_INDICATOR to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: CALC_METHOD_INDICATOR is {actual_value}. Set EMPEMPLOYMENT.CALC_METHOD_INDICATOR
+    to true or false.'
+- id: EC828
+  field: EMPEMPLOYMENT.WORKING_TIME_DIRECTIVE
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Working time directive (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.WORKING_TIME_DIRECTIVE is a Boolean in the Employee Central OData model. Any text other than
+    true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read WORKING_TIME_DIRECTIVE misread the flag, so the employee is treated as if it were
+    not set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.WORKING_TIME_DIRECTIVE to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: WORKING_TIME_DIRECTIVE is {actual_value}. Set EMPEMPLOYMENT.WORKING_TIME_DIRECTIVE
+    to true or false.'
+- id: EC829
+  field: EMPEMPLOYMENT.TUPE_ORG_NUMBER
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Tupe org number (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: EMPEMPLOYMENT.TUPE_ORG_NUMBER is a text field of at most 256 characters. Padded or doubled blanks defeat
+    exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on TUPE_ORG_NUMBER treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPEMPLOYMENT.TUPE_ORG_NUMBER and keep it within 256 characters.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: TUPE_ORG_NUMBER is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPEMPLOYMENT.TUPE_ORG_NUMBER and keep it within 256 characters.'
+- id: EC830
+  field: EMPEMPLOYMENT.PENSION_PROTECTION
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Pension protection (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.PENSION_PROTECTION is a Boolean in the Employee Central OData model. Any text other than true
+    or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read PENSION_PROTECTION misread the flag, so the employee is treated as if it were not
+    set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.PENSION_PROTECTION to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: PENSION_PROTECTION is {actual_value}. Set EMPEMPLOYMENT.PENSION_PROTECTION
+    to true or false.'
+- id: EC831
+  field: EMPEMPLOYMENT.TEACHERS_PENSION
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Teachers pension (country-specific) must be true or false
+  why_it_matters: EMPEMPLOYMENT.TEACHERS_PENSION is a Boolean in the Employee Central OData model. Any text other than true
+    or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read TEACHERS_PENSION misread the flag, so the employee is treated as if it were not
+    set.
+  fix_map:
+    __other__: Set EMPEMPLOYMENT.TEACHERS_PENSION to true or false.
+  record_fix_template: 'Record {EMPEMPLOYMENT.USERID}: TEACHERS_PENSION is {actual_value}. Set EMPEMPLOYMENT.TEACHERS_PENSION
+    to true or false.'
+- id: EC832
+  field: PERINFO.REGION_OF_BIRTH
+  check_class: regex_check
+  pattern: ^(?=.{0,100}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Region of birth must not contain leading, trailing or repeated blanks and at most 100 characters
+  why_it_matters: PERINFO.REGION_OF_BIRTH is a text field of at most 100 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on REGION_OF_BIRTH treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.REGION_OF_BIRTH and keep it within 100 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: REGION_OF_BIRTH is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.REGION_OF_BIRTH and keep it within 100 characters.'
+- id: EC833
+  field: PERINFO.SECOND_LAST_NAME
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Second last name must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.SECOND_LAST_NAME is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on SECOND_LAST_NAME treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.SECOND_LAST_NAME and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: SECOND_LAST_NAME is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.SECOND_LAST_NAME and keep it within 128 characters.'
+- id: EC834
+  field: PERINFO.FIRST_NAME_ALT1
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: First name alt1 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.FIRST_NAME_ALT1 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on FIRST_NAME_ALT1 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.FIRST_NAME_ALT1 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: FIRST_NAME_ALT1 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.FIRST_NAME_ALT1 and keep it within 128 characters.'
+- id: EC835
+  field: PERINFO.MIDDLE_NAME_ALT1
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Middle name alt1 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.MIDDLE_NAME_ALT1 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on MIDDLE_NAME_ALT1 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.MIDDLE_NAME_ALT1 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: MIDDLE_NAME_ALT1 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.MIDDLE_NAME_ALT1 and keep it within 128 characters.'
+- id: EC836
+  field: PERINFO.LAST_NAME_ALT1
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Last name alt1 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.LAST_NAME_ALT1 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on LAST_NAME_ALT1 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.LAST_NAME_ALT1 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: LAST_NAME_ALT1 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.LAST_NAME_ALT1 and keep it within 128 characters.'
+- id: EC837
+  field: PERINFO.FIRST_NAME_ALT2
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: First name alt2 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.FIRST_NAME_ALT2 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on FIRST_NAME_ALT2 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.FIRST_NAME_ALT2 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: FIRST_NAME_ALT2 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.FIRST_NAME_ALT2 and keep it within 128 characters.'
+- id: EC838
+  field: PERINFO.MIDDLE_NAME_ALT2
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Middle name alt2 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.MIDDLE_NAME_ALT2 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on MIDDLE_NAME_ALT2 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.MIDDLE_NAME_ALT2 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: MIDDLE_NAME_ALT2 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.MIDDLE_NAME_ALT2 and keep it within 128 characters.'
+- id: EC839
+  field: PERINFO.LAST_NAME_ALT2
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Last name alt2 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.LAST_NAME_ALT2 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on LAST_NAME_ALT2 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.LAST_NAME_ALT2 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: LAST_NAME_ALT2 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.LAST_NAME_ALT2 and keep it within 128 characters.'
+- id: EC840
+  field: PERINFO.DISPLAY_NAME
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Display name must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.DISPLAY_NAME is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on DISPLAY_NAME treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.DISPLAY_NAME and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: DISPLAY_NAME is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.DISPLAY_NAME and keep it within 128 characters.'
+- id: EC841
+  field: PERINFO.FORMAL_NAME
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Formal name must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.FORMAL_NAME is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on FORMAL_NAME treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.FORMAL_NAME and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: FORMAL_NAME is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERINFO.FORMAL_NAME and keep it within 128 characters.'
+- id: EC842
+  field: PERINFO.TITLE
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Title must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.TITLE is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match lookups,
+    and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on TITLE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.TITLE and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: TITLE is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERINFO.TITLE and keep it within 128 characters.'
+- id: EC843
+  field: PERINFO.BIRTH_NAME_ALT1
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Birth name alt1 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.BIRTH_NAME_ALT1 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on BIRTH_NAME_ALT1 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.BIRTH_NAME_ALT1 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: BIRTH_NAME_ALT1 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.BIRTH_NAME_ALT1 and keep it within 128 characters.'
+- id: EC844
+  field: PERINFO.BIRTH_NAME_ALT2
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Birth name alt2 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.BIRTH_NAME_ALT2 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on BIRTH_NAME_ALT2 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.BIRTH_NAME_ALT2 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: BIRTH_NAME_ALT2 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.BIRTH_NAME_ALT2 and keep it within 128 characters.'
+- id: EC845
+  field: PERINFO.INITIALS
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Initials must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.INITIALS is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on INITIALS treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.INITIALS and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: INITIALS is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERINFO.INITIALS and keep it within 128 characters.'
+- id: EC846
+  field: PERINFO.DISPLAY_NAME_ALT1
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Display name alt1 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.DISPLAY_NAME_ALT1 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on DISPLAY_NAME_ALT1 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.DISPLAY_NAME_ALT1 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: DISPLAY_NAME_ALT1 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.DISPLAY_NAME_ALT1 and keep it within 128 characters.'
+- id: EC847
+  field: PERINFO.DISPLAY_NAME_ALT2
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Display name alt2 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.DISPLAY_NAME_ALT2 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on DISPLAY_NAME_ALT2 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.DISPLAY_NAME_ALT2 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: DISPLAY_NAME_ALT2 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.DISPLAY_NAME_ALT2 and keep it within 128 characters.'
+- id: EC848
+  field: PERINFO.FORMAL_NAME_ALT1
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Formal name alt1 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.FORMAL_NAME_ALT1 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on FORMAL_NAME_ALT1 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.FORMAL_NAME_ALT1 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: FORMAL_NAME_ALT1 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.FORMAL_NAME_ALT1 and keep it within 128 characters.'
+- id: EC849
+  field: PERINFO.FORMAL_NAME_ALT2
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Formal name alt2 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.FORMAL_NAME_ALT2 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on FORMAL_NAME_ALT2 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.FORMAL_NAME_ALT2 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: FORMAL_NAME_ALT2 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.FORMAL_NAME_ALT2 and keep it within 128 characters.'
+- id: EC850
+  field: PERINFO.PARTNER_NAME
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Partner name must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.PARTNER_NAME is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on PARTNER_NAME treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.PARTNER_NAME and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: PARTNER_NAME is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.PARTNER_NAME and keep it within 128 characters.'
+- id: EC851
+  field: PERINFO.NAME_FORMAT_CODE
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Name format code must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.NAME_FORMAT_CODE is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on NAME_FORMAT_CODE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.NAME_FORMAT_CODE and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: NAME_FORMAT_CODE is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.NAME_FORMAT_CODE and keep it within 128 characters.'
+- id: EC852
+  field: PERINFO.SCRIPT
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Script must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.SCRIPT is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match lookups,
+    and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on SCRIPT treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.SCRIPT and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: SCRIPT is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERINFO.SCRIPT and keep it within 128 characters.'
+- id: EC853
+  field: PERINFO.SCRIPT_ALT1
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Script alt1 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.SCRIPT_ALT1 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on SCRIPT_ALT1 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.SCRIPT_ALT1 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: SCRIPT_ALT1 is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERINFO.SCRIPT_ALT1 and keep it within 128 characters.'
+- id: EC854
+  field: PERINFO.SCRIPT_ALT2
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Script alt2 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.SCRIPT_ALT2 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on SCRIPT_ALT2 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.SCRIPT_ALT2 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: SCRIPT_ALT2 is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERINFO.SCRIPT_ALT2 and keep it within 128 characters.'
+- id: EC855
+  field: PERINFO.THIRD_NAME
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Third name must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.THIRD_NAME is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on THIRD_NAME treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.THIRD_NAME and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: THIRD_NAME is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERINFO.THIRD_NAME and keep it within 128 characters.'
+- id: EC856
+  field: PERINFO.THIRD_NAME_ALT1
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Third name alt1 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.THIRD_NAME_ALT1 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on THIRD_NAME_ALT1 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.THIRD_NAME_ALT1 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: THIRD_NAME_ALT1 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.THIRD_NAME_ALT1 and keep it within 128 characters.'
+- id: EC857
+  field: PERINFO.THIRD_NAME_ALT2
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Third name alt2 must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: PERINFO.THIRD_NAME_ALT2 is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on THIRD_NAME_ALT2 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERINFO.THIRD_NAME_ALT2 and keep it within 128 characters.
+  record_fix_template: 'Record {PERINFO.PERSON_ID}: THIRD_NAME_ALT2 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERINFO.THIRD_NAME_ALT2 and keep it within 128 characters.'
+- id: EC858
+  field: PERADDRESS.ADDRESS3
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Address3 (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PERADDRESS.ADDRESS3 is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on ADDRESS3 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERADDRESS.ADDRESS3 and keep it within 256 characters.
+  record_fix_template: 'Record {PERADDRESS.PERSON_ID}: ADDRESS3 is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERADDRESS.ADDRESS3 and keep it within 256 characters.'
+- id: EC859
+  field: PERADDRESS.ADDRESS4
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Address4 (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PERADDRESS.ADDRESS4 is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on ADDRESS4 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERADDRESS.ADDRESS4 and keep it within 256 characters.
+  record_fix_template: 'Record {PERADDRESS.PERSON_ID}: ADDRESS4 is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERADDRESS.ADDRESS4 and keep it within 256 characters.'
+- id: EC860
+  field: PERADDRESS.ADDRESS5
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Address5 (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PERADDRESS.ADDRESS5 is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on ADDRESS5 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERADDRESS.ADDRESS5 and keep it within 256 characters.
+  record_fix_template: 'Record {PERADDRESS.PERSON_ID}: ADDRESS5 is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERADDRESS.ADDRESS5 and keep it within 256 characters.'
+- id: EC861
+  field: PERADDRESS.COUNTY
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: County (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PERADDRESS.COUNTY is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on COUNTY treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERADDRESS.COUNTY and keep it within 256 characters.
+  record_fix_template: 'Record {PERADDRESS.PERSON_ID}: COUNTY is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERADDRESS.COUNTY and keep it within 256 characters.'
+- id: EC862
+  field: PERADDRESS.ADDRESS6
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Address6 (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PERADDRESS.ADDRESS6 is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on ADDRESS6 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERADDRESS.ADDRESS6 and keep it within 256 characters.
+  record_fix_template: 'Record {PERADDRESS.PERSON_ID}: ADDRESS6 is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERADDRESS.ADDRESS6 and keep it within 256 characters.'
+- id: EC863
+  field: PERADDRESS.ADDRESS8
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Address8 (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PERADDRESS.ADDRESS8 is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on ADDRESS8 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERADDRESS.ADDRESS8 and keep it within 256 characters.
+  record_fix_template: 'Record {PERADDRESS.PERSON_ID}: ADDRESS8 is {actual_value}. Remove leading, trailing and repeated blanks
+    from PERADDRESS.ADDRESS8 and keep it within 256 characters.'
+- id: EC864
+  field: PERADDRESS.ADDRESS13
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Address13 (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PERADDRESS.ADDRESS13 is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on ADDRESS13 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERADDRESS.ADDRESS13 and keep it within 256 characters.
+  record_fix_template: 'Record {PERADDRESS.PERSON_ID}: ADDRESS13 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERADDRESS.ADDRESS13 and keep it within 256 characters.'
+- id: EC865
+  field: PERADDRESS.ADDRESS10
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Address10 (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PERADDRESS.ADDRESS10 is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on ADDRESS10 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERADDRESS.ADDRESS10 and keep it within 256 characters.
+  record_fix_template: 'Record {PERADDRESS.PERSON_ID}: ADDRESS10 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERADDRESS.ADDRESS10 and keep it within 256 characters.'
+- id: EC866
+  field: PERADDRESS.ADDRESS11
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Address11 (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PERADDRESS.ADDRESS11 is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on ADDRESS11 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERADDRESS.ADDRESS11 and keep it within 256 characters.
+  record_fix_template: 'Record {PERADDRESS.PERSON_ID}: ADDRESS11 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERADDRESS.ADDRESS11 and keep it within 256 characters.'
+- id: EC867
+  field: PERADDRESS.ADDRESS15
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Address15 (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PERADDRESS.ADDRESS15 is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on ADDRESS15 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERADDRESS.ADDRESS15 and keep it within 256 characters.
+  record_fix_template: 'Record {PERADDRESS.PERSON_ID}: ADDRESS15 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERADDRESS.ADDRESS15 and keep it within 256 characters.'
+- id: EC868
+  field: PERADDRESS.ADDRESS20
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Address20 (country-specific) must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PERADDRESS.ADDRESS20 is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on ADDRESS20 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PERADDRESS.ADDRESS20 and keep it within 256 characters.
+  record_fix_template: 'Record {PERADDRESS.PERSON_ID}: ADDRESS20 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PERADDRESS.ADDRESS20 and keep it within 256 characters.'
+- id: EC869
+  field: PEREMERGENCY.IS_EMERGENCY_CONTACT
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Is emergency contact must be true or false
+  why_it_matters: PEREMERGENCY.IS_EMERGENCY_CONTACT is a Boolean in the Employee Central OData model. Any text other than
+    true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read IS_EMERGENCY_CONTACT misread the flag, so the employee is treated as if it were
+    not set.
+  fix_map:
+    __other__: Set PEREMERGENCY.IS_EMERGENCY_CONTACT to true or false.
+  record_fix_template: 'Record {PEREMERGENCY.PERSON_ID}: IS_EMERGENCY_CONTACT is {actual_value}. Set PEREMERGENCY.IS_EMERGENCY_CONTACT
+    to true or false.'
+- id: EC870
+  field: PEREMERGENCY.GENDER
+  check_class: regex_check
+  pattern: ^(?=.{0,2}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Gender must not contain leading, trailing or repeated blanks and at most 2 characters
+  why_it_matters: PEREMERGENCY.GENDER is a text field of at most 2 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on GENDER treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PEREMERGENCY.GENDER and keep it within 2 characters.
+  record_fix_template: 'Record {PEREMERGENCY.PERSON_ID}: GENDER is {actual_value}. Remove leading, trailing and repeated blanks
+    from PEREMERGENCY.GENDER and keep it within 2 characters.'
+- id: EC871
+  field: PEREMERGENCY.IS_DISABLED
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Is disabled must be true or false
+  why_it_matters: PEREMERGENCY.IS_DISABLED is a Boolean in the Employee Central OData model. Any text other than true or false
+    is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read IS_DISABLED misread the flag, so the employee is treated as if it were not set.
+  fix_map:
+    __other__: Set PEREMERGENCY.IS_DISABLED to true or false.
+  record_fix_template: 'Record {PEREMERGENCY.PERSON_ID}: IS_DISABLED is {actual_value}. Set PEREMERGENCY.IS_DISABLED to true
+    or false.'
+- id: EC872
+  field: PEREMERGENCY.EC_NAME_ALT1
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Ec name alt1 must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PEREMERGENCY.EC_NAME_ALT1 is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on EC_NAME_ALT1 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PEREMERGENCY.EC_NAME_ALT1 and keep it within 256 characters.
+  record_fix_template: 'Record {PEREMERGENCY.PERSON_ID}: EC_NAME_ALT1 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PEREMERGENCY.EC_NAME_ALT1 and keep it within 256 characters.'
+- id: EC873
+  field: PEREMERGENCY.EC_NAME_ALT2
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Ec name alt2 must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: PEREMERGENCY.EC_NAME_ALT2 is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on EC_NAME_ALT2 treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PEREMERGENCY.EC_NAME_ALT2 and keep it within 256 characters.
+  record_fix_template: 'Record {PEREMERGENCY.PERSON_ID}: EC_NAME_ALT2 is {actual_value}. Remove leading, trailing and repeated
+    blanks from PEREMERGENCY.EC_NAME_ALT2 and keep it within 256 characters.'
+- id: EC874
+  field: EMPWORKPERMIT.DOCUMENT_TITLE
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Document title must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: EMPWORKPERMIT.DOCUMENT_TITLE is a text field of at most 256 characters. Padded or doubled blanks defeat
+    exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on DOCUMENT_TITLE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPWORKPERMIT.DOCUMENT_TITLE and keep it within 256 characters.
+  record_fix_template: 'Record {EMPWORKPERMIT.USERID}: DOCUMENT_TITLE is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPWORKPERMIT.DOCUMENT_TITLE and keep it within 256 characters.'
+- id: EC875
+  field: EMPWORKPERMIT.ISSUE_PLACE
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Issue place must not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: EMPWORKPERMIT.ISSUE_PLACE is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on ISSUE_PLACE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from EMPWORKPERMIT.ISSUE_PLACE and keep it within 256 characters.
+  record_fix_template: 'Record {EMPWORKPERMIT.USERID}: ISSUE_PLACE is {actual_value}. Remove leading, trailing and repeated
+    blanks from EMPWORKPERMIT.ISSUE_PLACE and keep it within 256 characters.'
+- id: EC876
+  field: PAYMENTINFO.WORKER
+  check_class: regex_check
+  pattern: ^(?=.{0,100}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Worker must not contain leading, trailing or repeated blanks and at most 100 characters
+  why_it_matters: PAYMENTINFO.WORKER is a text field of at most 100 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on WORKER treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PAYMENTINFO.WORKER and keep it within 100 characters.
+  record_fix_template: 'Record {PAYMENTINFO.USERID}: WORKER is {actual_value}. Remove leading, trailing and repeated blanks
+    from PAYMENTINFO.WORKER and keep it within 100 characters.'
+- id: EC877
+  field: PAYMENTINFO.PURPOSE
+  check_class: regex_check
+  pattern: ^(?=.{0,40}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Purpose must not contain leading, trailing or repeated blanks and at most 40 characters
+  why_it_matters: PAYMENTINFO.PURPOSE is a text field of at most 40 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on PURPOSE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from PAYMENTINFO.PURPOSE and keep it within 40 characters.
+  record_fix_template: 'Record {PAYMENTINFO.USERID}: PURPOSE is {actual_value}. Remove leading, trailing and repeated blanks
+    from PAYMENTINFO.PURPOSE and keep it within 40 characters.'
+- id: EC878
+  field: COMPINFO.PAYROLL_ID
+  check_class: regex_check
+  pattern: ^(?=.{0,256}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Personnel number in the payroll system (EC Payroll PERNR); not a documented standard EmpCompensation property must
+    not contain leading, trailing or repeated blanks and at most 256 characters
+  why_it_matters: COMPINFO.PAYROLL_ID is a text field of at most 256 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on PAYROLL_ID treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from COMPINFO.PAYROLL_ID and keep it within 256 characters.
+  record_fix_template: 'Record {COMPINFO.USERID}: PAYROLL_ID is {actual_value}. Remove leading, trailing and repeated blanks
+    from COMPINFO.PAYROLL_ID and keep it within 256 characters.'
+- id: EC879
+  field: COMPINFO.PAY_COMPONENT_CURRENCY
+  check_class: regex_check
+  pattern: ^(?=.{0,20}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Default currency of the pay component must not contain leading, trailing or repeated blanks and at most 20 characters
+  why_it_matters: COMPINFO.PAY_COMPONENT_CURRENCY is a text field of at most 20 characters. Padded or doubled blanks defeat
+    exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on PAY_COMPONENT_CURRENCY treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from COMPINFO.PAY_COMPONENT_CURRENCY and keep it within 20 characters.
+  record_fix_template: 'Record {COMPINFO.USERID}: PAY_COMPONENT_CURRENCY is {actual_value}. Remove leading, trailing and repeated
+    blanks from COMPINFO.PAY_COMPONENT_CURRENCY and keep it within 20 characters.'
+- id: EC880
+  field: COMPINFO.PAY_COMPONENT_FREQUENCY
+  check_class: regex_check
+  pattern: ^(?=.{0,32}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Default frequency of the pay component must not contain leading, trailing or repeated blanks and at most 32 characters
+  why_it_matters: COMPINFO.PAY_COMPONENT_FREQUENCY is a text field of at most 32 characters. Padded or doubled blanks defeat
+    exact-match lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on PAY_COMPONENT_FREQUENCY treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from COMPINFO.PAY_COMPONENT_FREQUENCY and keep it within 32 characters.
+  record_fix_template: 'Record {COMPINFO.USERID}: PAY_COMPONENT_FREQUENCY is {actual_value}. Remove leading, trailing and
+    repeated blanks from COMPINFO.PAY_COMPONENT_FREQUENCY and keep it within 32 characters.'
+- id: EC881
+  field: COMPINFO.PAY_COMPONENT_IS_EARNING
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Pay component is an earning (not a deduction) must be true or false
+  why_it_matters: COMPINFO.PAY_COMPONENT_IS_EARNING is a Boolean in the Employee Central OData model. Any text other than
+    true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read PAY_COMPONENT_IS_EARNING misread the flag, so the employee is treated as if it were
+    not set.
+  fix_map:
+    __other__: Set COMPINFO.PAY_COMPONENT_IS_EARNING to true or false.
+  record_fix_template: 'Record {COMPINFO.USERID}: PAY_COMPONENT_IS_EARNING is {actual_value}. Set COMPINFO.PAY_COMPONENT_IS_EARNING
+    to true or false.'
+- id: EC882
+  field: COMPINFO.SEQ_NUMBER
+  check_class: cross_field_check
+  fail_when: '`COMPINFO.SEQ_NUMBER`.notna() & (`COMPINFO.SEQ_NUMBER` < 0)'
+  severity: low
+  dimension: validity
+  message: Seq number must not be negative
+  why_it_matters: COMPINFO.SEQ_NUMBER is a count, number, period or amount. A negative value has no meaning and signals a
+    sign error in the source or the import file.
+  rule_authority: best_practice
+  sap_impact: Reports and payroll hand-over that read SEQ_NUMBER produce wrong or negative results.
+  fix_map:
+    __other__: Correct COMPINFO.SEQ_NUMBER to zero or a positive value.
+  record_fix_template: 'Record {COMPINFO.USERID}: SEQ_NUMBER is {actual_value}. Correct COMPINFO.SEQ_NUMBER to zero or a positive
+    value.'
+- id: EC883
+  field: COMPINFO.IS_ELIGIBLE_FOR_BENEFITS
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Is eligible for benefits must be true or false
+  why_it_matters: COMPINFO.IS_ELIGIBLE_FOR_BENEFITS is a Boolean in the Employee Central OData model. Any text other than
+    true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read IS_ELIGIBLE_FOR_BENEFITS misread the flag, so the employee is treated as if it were
+    not set.
+  fix_map:
+    __other__: Set COMPINFO.IS_ELIGIBLE_FOR_BENEFITS to true or false.
+  record_fix_template: 'Record {COMPINFO.USERID}: IS_ELIGIBLE_FOR_BENEFITS is {actual_value}. Set COMPINFO.IS_ELIGIBLE_FOR_BENEFITS
+    to true or false.'
+- id: EC884
+  field: COMPINFO.IS_ELIGIBLE_FOR_CAR
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Is eligible for car must be true or false
+  why_it_matters: COMPINFO.IS_ELIGIBLE_FOR_CAR is a Boolean in the Employee Central OData model. Any text other than true
+    or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read IS_ELIGIBLE_FOR_CAR misread the flag, so the employee is treated as if it were not
+    set.
+  fix_map:
+    __other__: Set COMPINFO.IS_ELIGIBLE_FOR_CAR to true or false.
+  record_fix_template: 'Record {COMPINFO.USERID}: IS_ELIGIBLE_FOR_CAR is {actual_value}. Set COMPINFO.IS_ELIGIBLE_FOR_CAR
+    to true or false.'
+- id: EC885
+  field: COMPINFO.IS_HIGHLY_COMPENSATED_EMPLOYEE
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Is highly compensated employee must be true or false
+  why_it_matters: COMPINFO.IS_HIGHLY_COMPENSATED_EMPLOYEE is a Boolean in the Employee Central OData model. Any text other
+    than true or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read IS_HIGHLY_COMPENSATED_EMPLOYEE misread the flag, so the employee is treated as if
+    it were not set.
+  fix_map:
+    __other__: Set COMPINFO.IS_HIGHLY_COMPENSATED_EMPLOYEE to true or false.
+  record_fix_template: 'Record {COMPINFO.USERID}: IS_HIGHLY_COMPENSATED_EMPLOYEE is {actual_value}. Set COMPINFO.IS_HIGHLY_COMPENSATED_EMPLOYEE
+    to true or false.'
+- id: EC886
+  field: COMPINFO.IS_INSIDER
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Is insider must be true or false
+  why_it_matters: COMPINFO.IS_INSIDER is a Boolean in the Employee Central OData model. Any text other than true or false
+    is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read IS_INSIDER misread the flag, so the employee is treated as if it were not set.
+  fix_map:
+    __other__: Set COMPINFO.IS_INSIDER to true or false.
+  record_fix_template: 'Record {COMPINFO.USERID}: IS_INSIDER is {actual_value}. Set COMPINFO.IS_INSIDER to true or false.'
+- id: EC887
+  field: POSITION.POSITION_TITLE
+  check_class: regex_check
+  pattern: ^(?=.{0,255}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Position title must not contain leading, trailing or repeated blanks and at most 255 characters
+  why_it_matters: POSITION.POSITION_TITLE is a text field of at most 255 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on POSITION_TITLE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from POSITION.POSITION_TITLE and keep it within 255 characters.
+  record_fix_template: 'Record {POSITION.CODE}: POSITION_TITLE is {actual_value}. Remove leading, trailing and repeated blanks
+    from POSITION.POSITION_TITLE and keep it within 255 characters.'
+- id: EC888
+  field: POSITION.POSITION_CONTROLLED
+  check_class: regex_check
+  pattern: ^(true|false)$
+  severity: low
+  dimension: validity
+  message: Position controlled must be true or false
+  why_it_matters: POSITION.POSITION_CONTROLLED is a Boolean in the Employee Central OData model. Any text other than true
+    or false is rejected on import or silently read as false.
+  rule_authority: sap_hard_constraint
+  sap_impact: Imports and rules that read POSITION_CONTROLLED misread the flag, so the employee is treated as if it were not
+    set.
+  fix_map:
+    __other__: Set POSITION.POSITION_CONTROLLED to true or false.
+  record_fix_template: 'Record {POSITION.CODE}: POSITION_CONTROLLED is {actual_value}. Set POSITION.POSITION_CONTROLLED to
+    true or false.'
+- id: EC889
+  field: POSITION.COMMENT
+  check_class: regex_check
+  pattern: ^(?=.{0,255}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Comment must not contain leading, trailing or repeated blanks and at most 255 characters
+  why_it_matters: POSITION.COMMENT is a text field of at most 255 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on COMMENT treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from POSITION.COMMENT and keep it within 255 characters.
+  record_fix_template: 'Record {POSITION.CODE}: COMMENT is {actual_value}. Remove leading, trailing and repeated blanks from
+    POSITION.COMMENT and keep it within 255 characters.'
+- id: EC890
+  field: POSITION.DESCRIPTION
+  check_class: regex_check
+  pattern: ^(?=.{0,255}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Description must not contain leading, trailing or repeated blanks and at most 255 characters
+  why_it_matters: POSITION.DESCRIPTION is a text field of at most 255 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on DESCRIPTION treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from POSITION.DESCRIPTION and keep it within 255 characters.
+  record_fix_template: 'Record {POSITION.CODE}: DESCRIPTION is {actual_value}. Remove leading, trailing and repeated blanks
+    from POSITION.DESCRIPTION and keep it within 255 characters.'
+- id: EC891
+  field: POSITION.JOB_TITLE
+  check_class: regex_check
+  pattern: ^(?=.{0,255}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Job title must not contain leading, trailing or repeated blanks and at most 255 characters
+  why_it_matters: POSITION.JOB_TITLE is a text field of at most 255 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on JOB_TITLE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from POSITION.JOB_TITLE and keep it within 255 characters.
+  record_fix_template: 'Record {POSITION.CODE}: JOB_TITLE is {actual_value}. Remove leading, trailing and repeated blanks
+    from POSITION.JOB_TITLE and keep it within 255 characters.'
+- id: EC892
+  field: POSITION.POSITION_MATRIX_RELATIONSHIP
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Position matrix relationship must not contain leading, trailing or repeated blanks
+  why_it_matters: POSITION.POSITION_MATRIX_RELATIONSHIP is a text field. Padded or doubled blanks defeat exact-match lookups,
+    and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on POSITION_MATRIX_RELATIONSHIP treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from POSITION.POSITION_MATRIX_RELATIONSHIP.
+  record_fix_template: 'Record {POSITION.CODE}: POSITION_MATRIX_RELATIONSHIP is {actual_value}. Remove leading, trailing and
+    repeated blanks from POSITION.POSITION_MATRIX_RELATIONSHIP.'
+- id: EC893
+  field: POSITION.RIGHT_TO_RETURN
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Right to return must not contain leading, trailing or repeated blanks
+  why_it_matters: POSITION.RIGHT_TO_RETURN is a text field. Padded or doubled blanks defeat exact-match lookups, and overlong
+    text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on RIGHT_TO_RETURN treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from POSITION.RIGHT_TO_RETURN.
+  record_fix_template: 'Record {POSITION.CODE}: RIGHT_TO_RETURN is {actual_value}. Remove leading, trailing and repeated blanks
+    from POSITION.RIGHT_TO_RETURN.'
+- id: EC894
+  field: FOCOMPANY.DESCRIPTION
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Description must not contain leading, trailing or repeated blanks
+  why_it_matters: FOCOMPANY.DESCRIPTION is a text field. Padded or doubled blanks defeat exact-match lookups, and overlong
+    text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on DESCRIPTION treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FOCOMPANY.DESCRIPTION.
+  record_fix_template: 'Record {FOCOMPANY.EXTERNAL_CODE}: DESCRIPTION is {actual_value}. Remove leading, trailing and repeated
+    blanks from FOCOMPANY.DESCRIPTION.'
+- id: EC895
+  field: FODIVISION.NAME
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Name must not contain leading, trailing or repeated blanks
+  why_it_matters: FODIVISION.NAME is a text field. Padded or doubled blanks defeat exact-match lookups, and overlong text
+    is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on NAME treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FODIVISION.NAME.
+  record_fix_template: 'Record {FODIVISION.EXTERNAL_CODE}: NAME is {actual_value}. Remove leading, trailing and repeated blanks
+    from FODIVISION.NAME.'
+- id: EC896
+  field: FODIVISION.HEAD_OF_UNIT
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Head of unit must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: FODIVISION.HEAD_OF_UNIT is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on HEAD_OF_UNIT treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FODIVISION.HEAD_OF_UNIT and keep it within 128 characters.
+  record_fix_template: 'Record {FODIVISION.EXTERNAL_CODE}: HEAD_OF_UNIT is {actual_value}. Remove leading, trailing and repeated
+    blanks from FODIVISION.HEAD_OF_UNIT and keep it within 128 characters.'
+- id: EC897
+  field: FOBUSINESSUNIT.NAME
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Name must not contain leading, trailing or repeated blanks
+  why_it_matters: FOBUSINESSUNIT.NAME is a text field. Padded or doubled blanks defeat exact-match lookups, and overlong text
+    is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on NAME treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FOBUSINESSUNIT.NAME.
+  record_fix_template: 'Record {FOBUSINESSUNIT.EXTERNAL_CODE}: NAME is {actual_value}. Remove leading, trailing and repeated
+    blanks from FOBUSINESSUNIT.NAME.'
+- id: EC898
+  field: FOBUSINESSUNIT.DESCRIPTION
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Description must not contain leading, trailing or repeated blanks
+  why_it_matters: FOBUSINESSUNIT.DESCRIPTION is a text field. Padded or doubled blanks defeat exact-match lookups, and overlong
+    text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on DESCRIPTION treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FOBUSINESSUNIT.DESCRIPTION.
+  record_fix_template: 'Record {FOBUSINESSUNIT.EXTERNAL_CODE}: DESCRIPTION is {actual_value}. Remove leading, trailing and
+    repeated blanks from FOBUSINESSUNIT.DESCRIPTION.'
+- id: EC899
+  field: FOBUSINESSUNIT.HEAD_OF_UNIT
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Head of unit must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: FOBUSINESSUNIT.HEAD_OF_UNIT is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on HEAD_OF_UNIT treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FOBUSINESSUNIT.HEAD_OF_UNIT and keep it within 128 characters.
+  record_fix_template: 'Record {FOBUSINESSUNIT.EXTERNAL_CODE}: HEAD_OF_UNIT is {actual_value}. Remove leading, trailing and
+    repeated blanks from FOBUSINESSUNIT.HEAD_OF_UNIT and keep it within 128 characters.'
+- id: EC900
+  field: FODEPARTMENT.DESCRIPTION
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Description must not contain leading, trailing or repeated blanks
+  why_it_matters: FODEPARTMENT.DESCRIPTION is a text field. Padded or doubled blanks defeat exact-match lookups, and overlong
+    text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on DESCRIPTION treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FODEPARTMENT.DESCRIPTION.
+  record_fix_template: 'Record {FODEPARTMENT.EXTERNAL_CODE}: DESCRIPTION is {actual_value}. Remove leading, trailing and repeated
+    blanks from FODEPARTMENT.DESCRIPTION.'
+- id: EC901
+  field: FODEPARTMENT.HEAD_OF_UNIT
+  check_class: regex_check
+  pattern: ^(?=.{0,128}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Head of unit must not contain leading, trailing or repeated blanks and at most 128 characters
+  why_it_matters: FODEPARTMENT.HEAD_OF_UNIT is a text field of at most 128 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on HEAD_OF_UNIT treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FODEPARTMENT.HEAD_OF_UNIT and keep it within 128 characters.
+  record_fix_template: 'Record {FODEPARTMENT.EXTERNAL_CODE}: HEAD_OF_UNIT is {actual_value}. Remove leading, trailing and
+    repeated blanks from FODEPARTMENT.HEAD_OF_UNIT and keep it within 128 characters.'
+- id: EC902
+  field: FOLOCATION.CITY
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: City must not contain leading, trailing or repeated blanks
+  why_it_matters: FOLOCATION.CITY is a text field. Padded or doubled blanks defeat exact-match lookups, and overlong text
+    is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on CITY treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FOLOCATION.CITY.
+  record_fix_template: 'Record {FOLOCATION.EXTERNAL_CODE}: CITY is {actual_value}. Remove leading, trailing and repeated blanks
+    from FOLOCATION.CITY.'
+- id: EC903
+  field: FOJOBCODE.NAME
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Name must not contain leading, trailing or repeated blanks
+  why_it_matters: FOJOBCODE.NAME is a text field. Padded or doubled blanks defeat exact-match lookups, and overlong text is
+    truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on NAME treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FOJOBCODE.NAME.
+  record_fix_template: 'Record {FOJOBCODE.EXTERNAL_CODE}: NAME is {actual_value}. Remove leading, trailing and repeated blanks
+    from FOJOBCODE.NAME.'
+- id: EC904
+  field: FOJOBCODE.DESCRIPTION
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Description must not contain leading, trailing or repeated blanks
+  why_it_matters: FOJOBCODE.DESCRIPTION is a text field. Padded or doubled blanks defeat exact-match lookups, and overlong
+    text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on DESCRIPTION treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FOJOBCODE.DESCRIPTION.
+  record_fix_template: 'Record {FOJOBCODE.EXTERNAL_CODE}: DESCRIPTION is {actual_value}. Remove leading, trailing and repeated
+    blanks from FOJOBCODE.DESCRIPTION.'
+- id: EC905
+  field: FOJOBCODE.WORKER_COMP_CODE
+  check_class: regex_check
+  pattern: ^(?=.{0,32}$)\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Worker comp code must not contain leading, trailing or repeated blanks and at most 32 characters
+  why_it_matters: FOJOBCODE.WORKER_COMP_CODE is a text field of at most 32 characters. Padded or doubled blanks defeat exact-match
+    lookups, and overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on WORKER_COMP_CODE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FOJOBCODE.WORKER_COMP_CODE and keep it within 32 characters.
+  record_fix_template: 'Record {FOJOBCODE.EXTERNAL_CODE}: WORKER_COMP_CODE is {actual_value}. Remove leading, trailing and
+    repeated blanks from FOJOBCODE.WORKER_COMP_CODE and keep it within 32 characters.'
+- id: EC906
+  field: FOJOBCODE.DEFAULT_JOB_LEVEL
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Default job level must not contain leading, trailing or repeated blanks
+  why_it_matters: FOJOBCODE.DEFAULT_JOB_LEVEL is a text field. Padded or doubled blanks defeat exact-match lookups, and overlong
+    text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on DEFAULT_JOB_LEVEL treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FOJOBCODE.DEFAULT_JOB_LEVEL.
+  record_fix_template: 'Record {FOJOBCODE.EXTERNAL_CODE}: DEFAULT_JOB_LEVEL is {actual_value}. Remove leading, trailing and
+    repeated blanks from FOJOBCODE.DEFAULT_JOB_LEVEL.'
+- id: EC907
+  field: FOJOBCODE.STANDARD_WEEKLY_HOURS
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Standard weekly hours must not contain leading, trailing or repeated blanks
+  why_it_matters: FOJOBCODE.STANDARD_WEEKLY_HOURS is a text field. Padded or doubled blanks defeat exact-match lookups, and
+    overlong text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on STANDARD_WEEKLY_HOURS treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FOJOBCODE.STANDARD_WEEKLY_HOURS.
+  record_fix_template: 'Record {FOJOBCODE.EXTERNAL_CODE}: STANDARD_WEEKLY_HOURS is {actual_value}. Remove leading, trailing
+    and repeated blanks from FOJOBCODE.STANDARD_WEEKLY_HOURS.'
+- id: EC908
+  field: FOJOBCODE.FULLTIME_EMPLOYEE
+  check_class: regex_check
+  pattern: ^\S+( \S+)*$
+  severity: low
+  dimension: validity
+  message: Fulltime employee must not contain leading, trailing or repeated blanks
+  why_it_matters: FOJOBCODE.FULLTIME_EMPLOYEE is a text field. Padded or doubled blanks defeat exact-match lookups, and overlong
+    text is truncated or rejected on import.
+  rule_authority: best_practice
+  sap_impact: Matching, reporting and integrations on FULLTIME_EMPLOYEE treat padded and clean values as different.
+  fix_map:
+    __other__: Remove leading, trailing and repeated blanks from FOJOBCODE.FULLTIME_EMPLOYEE.
+  record_fix_template: 'Record {FOJOBCODE.EXTERNAL_CODE}: FULLTIME_EMPLOYEE is {actual_value}. Remove leading, trailing and
+    repeated blanks from FOJOBCODE.FULLTIME_EMPLOYEE.'

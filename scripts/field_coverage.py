@@ -75,8 +75,6 @@ CURATED: dict[str, dict[str, str]] = {
     "sd_customer_master": {
     },
     "employee_central": {
-        "COMPINFO.PAYROLL_ID": "uniqueness: one USERID per PAYROLL_ID; mandatory for EC Payroll employees"
-        " (unverified: non-standard property)",
     },
 }
 
