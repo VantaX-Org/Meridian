@@ -18120,3 +18120,291 @@ rules:
   fix_map:
     __other__: Rerun the actual costing settlement (CKMLCP) for the period to reset the date.
   record_fix_template: 'Cost estimate number {CKMLHD.KALNR}: last price determination date {actual_value} is in the future.'
+- id: MM1152
+  field: KNMT.KDMAT
+  check_class: null_check
+  grain: KNMT
+  severity: medium
+  dimension: completeness
+  message: Customer-material info record has no customer material number
+  why_it_matters: The record in KNMT exists to translate the customer's own part number (KNMT.KDMAT) to the material. Without
+    it the record cannot be found from the customer's number and only adds clutter.
+  rule_authority: best_practice
+  sap_impact: Sales orders and EDI orders that carry the customer part number do not find the material.
+  fix_map:
+    __blank__: Enter the customer material number in VD51, or delete the record if the customer does not use its own number.
+  record_fix_template: 'Customer {KNMT.KUNNR}, material {KNMT.MATNR}, sales area {KNMT.VKORG}/{KNMT.VTWEG}: customer material
+    number is blank. Maintain it in VD51.'
+- id: MM1153
+  field: KNMT.MATNR
+  check_class: exists_check
+  grain: KNMT
+  fields:
+  - KNMT.MATNR
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: high
+  dimension: consistency
+  message: Customer-material info record points at a material that does not exist
+  why_it_matters: KNMT.MATNR must be a material in MARA. A record for a missing material cannot be migrated to S/4HANA, where
+    the foreign key to the material is enforced.
+  rule_authority: sap_hard_constraint
+  sap_impact: The customer-material record is dropped or fails in the migration load.
+  fix_map:
+    __other__: Correct the material in VD51 or delete the record.
+  record_fix_template: 'Customer {KNMT.KUNNR}, sales area {KNMT.VKORG}/{KNMT.VTWEG}: material {KNMT.MATNR} does not exist.'
+- id: MM1154
+  field: KNMT.KUNNR
+  check_class: exists_check
+  grain: KNMT
+  fields:
+  - KNMT.KUNNR
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  severity: high
+  dimension: consistency
+  message: Customer-material info record points at a customer that does not exist
+  why_it_matters: KNMT.KUNNR must be a customer in KNA1. Customer-material records are customer-specific and lose their meaning
+    when the customer is gone.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record cannot be linked to a business partner in S/4HANA and fails in the migration load.
+  fix_map:
+    __other__: Correct the customer in VD51 or delete the record.
+  record_fix_template: 'Material {KNMT.MATNR}, sales area {KNMT.VKORG}/{KNMT.VTWEG}: customer {KNMT.KUNNR} does not exist.'
+- id: MM1155
+  field: KNMT.MATNR
+  check_class: cross_field_check
+  grain: KNMT
+  fail_when: '`MARA.LVORM` == ''X'''
+  severity: medium
+  dimension: validity
+  message: Customer-material info record points at a material flagged for deletion
+  why_it_matters: A material flagged for deletion (MARA.LVORM) is on its way out. Its customer-material records should go
+    with it, or the customer should be moved to the successor material.
+  rule_authority: best_practice
+  sap_impact: Orders that use the customer part number resolve to a material that is blocked for further use.
+  fix_map:
+    __other__: Point the record at the successor material or delete it in VD51.
+  record_fix_template: 'Customer {KNMT.KUNNR}, customer material {KNMT.KDMAT}: material {KNMT.MATNR} is flagged for deletion.'
+- id: MM1156
+  field: KNMT.KUNNR
+  check_class: cross_field_check
+  grain: KNMT
+  fail_when: (`KNA1.LOEVM` == 'X') | (`KNA1.SPERR` == 'X') | `KNA1.AUFSD`.notna()
+  severity: medium
+  dimension: validity
+  message: Customer-material info record belongs to a blocked or deleted customer
+  why_it_matters: A customer flagged for deletion (KNA1.LOEVM), blocked centrally (SPERR) or with an order block (AUFSD)
+    cannot place orders, so its customer-material records are dead data to clean before migration.
+  rule_authority: best_practice
+  sap_impact: Dead records add to migration volume and to cleansing effort without ever being used.
+  fix_map:
+    __other__: Delete the record in VD51 or lift the block on the customer if it is still active.
+  record_fix_template: 'Customer {KNMT.KUNNR}, material {KNMT.MATNR}: customer is blocked or flagged for deletion.'
+- id: MM1157
+  field: KNMT.VTWEG
+  check_class: exists_check
+  grain: KNMT
+  fields:
+  - KNMT.VKORG
+  - KNMT.VTWEG
+  target_table: TVKOV
+  target_fields:
+  - VKORG
+  - VTWEG
+  severity: high
+  dimension: consistency
+  message: Customer-material info record uses a sales organisation and distribution channel that are not assigned to each other
+  why_it_matters: A distribution channel is only valid in a sales organisation when the pair is in TVKOV. A record for any
+    other pair can never be used in a sales document.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record is never read and fails the sales area check in the migration load.
+  fix_map:
+    __other__: Correct the sales area in VD51 or assign the channel to the sales organisation in OVXK.
+  record_fix_template: 'Customer {KNMT.KUNNR}, material {KNMT.MATNR}: {KNMT.VKORG}/{KNMT.VTWEG} is not a valid sales area.'
+- id: MM1158
+  field: KNMT.MATNR
+  check_class: exists_check
+  grain: KNMT
+  fields:
+  - KNMT.MATNR
+  - KNMT.VKORG
+  - KNMT.VTWEG
+  target_table: MVKE
+  target_fields:
+  - MATNR
+  - VKORG
+  - VTWEG
+  severity: high
+  dimension: consistency
+  message: Customer-material info record is for a sales area the material is not extended to
+  why_it_matters: The sales document needs the material in the sales area (MVKE). Without the sales data view the customer
+    part number cannot be used and the order is rejected.
+  rule_authority: sap_hard_constraint
+  sap_impact: The customer part number is found but the material is not sellable in that sales area.
+  fix_map:
+    __other__: Extend the material to the sales area in MM01 or MM02 > Sales org. 1, or correct the sales area on the record.
+  record_fix_template: 'Customer {KNMT.KUNNR}, material {KNMT.MATNR}: not extended to sales area {KNMT.VKORG}/{KNMT.VTWEG}.'
+- id: MM1159
+  field: KNMT.WERKS
+  check_class: exists_check
+  grain: KNMT
+  fields:
+  - KNMT.MATNR
+  - KNMT.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  severity: medium
+  dimension: consistency
+  message: Customer-material info record names a delivering plant that does not hold the material
+  why_it_matters: The delivering plant in the record (KNMT.WERKS) overrides plant determination. It must be a plant where
+    the material exists (MARC), or delivery scheduling fails.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales orders propose a plant where the material is not maintained, and availability check and delivery fail.
+  fix_map:
+    __other__: Clear or correct the delivering plant in VD51, or extend the material to that plant.
+  record_fix_template: 'Customer {KNMT.KUNNR}, material {KNMT.MATNR}: delivering plant {KNMT.WERKS} has no plant data.'
+- id: MM1160
+  field: KNMT.UNTTO
+  check_class: cross_field_check
+  grain: KNMT
+  fail_when: (`KNMT.UNTTO` < 0) | (`KNMT.UNTTO` > 99.9) | (`KNMT.UEBTO` < 0) | (`KNMT.UEBTO` > 99.9) | (`KNMT.MINLF` < 0)
+  severity: medium
+  dimension: validity
+  message: Customer-material info record has a delivery tolerance outside 0 to 99.9 percent or a negative minimum quantity
+  why_it_matters: Under- and overdelivery tolerance (UNTTO, UEBTO) are percentages with a field size of 99.9 and cannot be
+    negative. The minimum delivery quantity (MINLF) cannot be below zero.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery proposals and the tolerance check in goods issue use a nonsensical limit.
+  fix_map:
+    __other__: Enter tolerances between 0 and 99.9 and a minimum quantity of zero or more in VD51.
+  record_fix_template: 'Customer {KNMT.KUNNR}, material {KNMT.MATNR}: underdelivery {KNMT.UNTTO}, overdelivery {KNMT.UEBTO},
+    minimum quantity {KNMT.MINLF}.'
+- id: MM1161
+  field: KNMT.UEBTK
+  check_class: cross_field_check
+  grain: KNMT
+  fail_when: (`KNMT.UEBTK` == 'X') & (`KNMT.UEBTO` > 0)
+  severity: low
+  dimension: consistency
+  message: Customer-material info record allows unlimited overdelivery and also sets an overdelivery tolerance
+  why_it_matters: With the unlimited-overdelivery flag (UEBTK) set, the overdelivery tolerance (UEBTO) is never checked, so
+    the percentage is dead data and shows an unclear intent.
+  rule_authority: best_practice
+  sap_impact: Users read the tolerance as a limit, but the system lets any overdelivery through.
+  fix_map:
+    __other__: Clear the tolerance or remove the unlimited flag in VD51.
+  record_fix_template: 'Customer {KNMT.KUNNR}, material {KNMT.MATNR}: unlimited overdelivery is set with tolerance {KNMT.UEBTO}.'
+- id: MM1162
+  field: KNMT.MEINS
+  check_class: cross_field_check
+  grain: KNMT
+  fail_when: (`KNMT.MINLF` > 0) & `KNMT.MEINS`.isna()
+  severity: medium
+  dimension: completeness
+  message: Customer-material info record has a minimum delivery quantity but no unit of measure
+  why_it_matters: The minimum delivery quantity (KNMT.MINLF) is a number without meaning unless the unit (KNMT.MEINS) is given.
+  rule_authority: sap_hard_constraint
+  sap_impact: The minimum quantity is ignored or read in the wrong unit during delivery creation.
+  fix_map:
+    __other__: Enter the unit of measure in VD51, or clear the minimum quantity.
+  record_fix_template: 'Customer {KNMT.KUNNR}, material {KNMT.MATNR}: minimum delivery quantity {KNMT.MINLF} has no unit.'
+- id: MM1163
+  field: KNMT.KDMAT
+  check_class: uniqueness_check
+  grain: KNMT
+  fields:
+  - KNMT.KUNNR
+  - KNMT.VKORG
+  - KNMT.VTWEG
+  - KNMT.KDMAT
+  severity: medium
+  dimension: uniqueness
+  message: One customer material number maps to more than one material in the same sales area
+  why_it_matters: Inbound orders carry the customer part number only. When it resolves to two materials, SAP picks one by
+    chance or raises a message.
+  rule_authority: best_practice
+  sap_impact: Orders created from EDI or by the customer service team get the wrong material.
+  fix_map:
+    __other__: Keep one record per customer part number and sales area, or give the others a distinct number in VD51.
+  record_fix_template: 'Customer {KNMT.KUNNR}, sales area {KNMT.VKORG}/{KNMT.VTWEG}: customer material {KNMT.KDMAT} is used
+    by more than one material.'
+- id: MM1164
+  field: TVKOV.VKORG
+  check_class: exists_check
+  grain: TVKOV
+  fields:
+  - TVKOV.VKORG
+  target_table: TVKO
+  target_fields:
+  - VKORG
+  severity: high
+  dimension: consistency
+  message: Sales organisation in the distribution-channel assignment does not exist
+  why_it_matters: TVKOV assigns distribution channels to sales organisations. A row whose sales organisation is not in TVKO
+    is an orphan and invalidates sales views (MVKE) that rely on it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The sales area is unusable and every material extended to it fails the sales area check.
+  fix_map:
+    __other__: Create the sales organisation in OVX5 or remove the assignment in OVXK.
+  record_fix_template: 'Sales organisation {TVKOV.VKORG}, channel {TVKOV.VTWEG}: sales organisation is not defined.'
+- id: MM1165
+  field: TVKOV.VTWEG
+  check_class: exists_check
+  grain: TVKOV
+  fields:
+  - TVKOV.VTWEG
+  target_table: TVTW
+  target_fields:
+  - VTWEG
+  severity: high
+  dimension: consistency
+  message: Distribution channel in the sales organisation assignment does not exist
+  why_it_matters: A channel assigned in TVKOV must be defined in TVTW. An orphan row creates a sales area that cannot be
+    used.
+  rule_authority: sap_hard_constraint
+  sap_impact: Materials extended to this sales area fail the sales area check and the migration load.
+  fix_map:
+    __other__: Create the distribution channel in OVXI or remove the assignment in OVXK.
+  record_fix_template: 'Sales organisation {TVKOV.VKORG}, channel {TVKOV.VTWEG}: distribution channel is not defined.'
+- id: MM1166
+  field: TVKOV.VTWKO
+  check_class: exists_check
+  grain: TVKOV
+  fields:
+  - TVKOV.VKORG
+  - TVKOV.VTWKO
+  target_table: TVKOV
+  target_fields:
+  - VKORG
+  - VTWEG
+  severity: medium
+  dimension: consistency
+  message: Common-data distribution channel is not itself a channel of the sales organisation
+  why_it_matters: VTWKO is the channel whose material master data (MVKE) and conditions are shared by this channel. If it
+    is not a channel of the same sales organisation, the shared data cannot be found.
+  rule_authority: sap_hard_constraint
+  sap_impact: Common master data and condition records are missing for the channel, so pricing and material data fail.
+  fix_map:
+    __other__: Set the common-data channel to a channel of the same sales organisation in OVXK.
+  record_fix_template: 'Sales organisation {TVKOV.VKORG}, channel {TVKOV.VTWEG}: common-data channel {TVKOV.VTWKO} is not
+    a channel of this sales organisation.'
+- id: MM1167
+  field: MARC.SERNP
+  check_class: cross_field_check
+  fail_when: '`MARA.SERLV`.notna() & `MARC.SERNP`.isna()'
+  severity: low
+  dimension: consistency
+  message: Serial number level is set on the material but the plant has no serial number profile
+  why_it_matters: The serial number level (MARA.SERLV) says at what level serial numbers are unique, but the profile at plant
+    level (MARC.SERNP, checked against T377P) is what turns serialisation on. Without it the level has no effect.
+  rule_authority: best_practice
+  sap_impact: Serial numbers are not required in goods movements although the material master says it is serialised.
+  fix_map:
+    __other__: Assign a serial number profile in MM02 > Plant data/stor. 2, or clear the serial number level.
+  record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: serial number level {MARA.SERLV} is set but the profile
+    is blank.'
