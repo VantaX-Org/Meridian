@@ -9702,6 +9702,15 @@ export const en = {
   "The batch could not be reassigned.": "The batch could not be reassigned.",
   "Reassign batch {label}": "Reassign batch {label}",
   "Reassign whole batch": "Reassign whole batch",
+  "Upload required": "Upload required",
+  "This table cannot be read from the system. Upload it as a file; its rules wait until then.": "This table cannot be read from the system. Upload it as a file; its rules wait until then.",
+  "Preview source": "Preview source",
+  "This source is a preview: its connector is not yet verified against a live tenant, so its rules wait and are left out of the score.": "This source is a preview: its connector is not yet verified against a live tenant, so its rules wait and are left out of the score.",
+  "No rules read it": "No rules read it",
+  "Read, but no rule checks this table yet, so it adds nothing to the score.": "Read, but no rule checks this table yet, so it adds nothing to the score.",
+  "Not installed": "Not installed",
+  "The component is not installed in this system, so its rules do not apply.": "The component is not installed in this system, so its rules do not apply.",
+  "{module}: {count} {count, plural, one {rule waits} other {rules wait}} for data and {count, plural, one {is} other {are}} left out of the score.": "{module}: {count} {count, plural, one {rule waits} other {rules wait}} for data and {count, plural, one {is} other {are}} left out of the score.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -9703,4 +9703,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The batch could not be reassigned.": "Der Stapel konnte nicht neu zugewiesen werden.",
   "Reassign batch {label}": "Stapel {label} neu zuweisen",
   "Reassign whole batch": "Ganzen Stapel neu zuweisen",
+  "Upload required": "Upload erforderlich",
+  "This table cannot be read from the system. Upload it as a file; its rules wait until then.": "Diese Tabelle kann nicht aus dem System gelesen werden. Laden Sie sie als Datei hoch; ihre Regeln warten bis dahin.",
+  "Preview source": "Vorschauquelle",
+  "This source is a preview: its connector is not yet verified against a live tenant, so its rules wait and are left out of the score.": "Diese Quelle ist eine Vorschau: Ihr Konnektor ist noch nicht gegen einen Live-Mandanten verifiziert, daher warten ihre Regeln und zählen nicht zur Bewertung.",
+  "No rules read it": "Keine Regel liest sie",
+  "Read, but no rule checks this table yet, so it adds nothing to the score.": "Gelesen, aber noch keine Regel prüft diese Tabelle, daher trägt sie nichts zur Bewertung bei.",
+  "Not installed": "Nicht installiert",
+  "The component is not installed in this system, so its rules do not apply.": "Die Komponente ist in diesem System nicht installiert, daher gelten ihre Regeln nicht.",
+  "{module}: {count} {count, plural, one {rule waits} other {rules wait}} for data and {count, plural, one {is} other {are}} left out of the score.": "{module}: {count} {count, plural, one {Regel wartet} other {Regeln warten}} auf Daten und {count, plural, one {zählt} other {zählen}} nicht zur Bewertung.",
 };

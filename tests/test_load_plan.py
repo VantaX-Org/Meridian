@@ -32,9 +32,44 @@ def test_every_evidence_field_is_a_real_ddic_field():
     plan = lp.build_plan(list(lp.OWNED_TABLES), d, _cols)
     assert not plan.unknown
     for e in plan.edges:
+        stated = {q for q, *_ in lp.SF_EDGES.get((e.before, e.after), [])}
         for x in e.evidence:
             f = d.resolve(x.field)
-            assert f is not None and f.check_table == x.check_table and not f.key
+            assert f is not None
+            if x.field in stated:  # SF edges are stated; the field and the table it needs must both exist
+                assert d.table(x.check_table) is not None
+            else:
+                assert f.check_table.upper() == x.check_table and not f.key
+
+
+SF = ["succession_planning", "performance_goals", "benefits", "compensation", "employee_central"]
+
+
+def test_successfactors_load_order():
+    plan = lp.build_plan(SF, get_dictionary("s4hana"), _cols)
+    assert not plan.unknown
+    step = {o.module: o.step for o in plan.objects}
+    assert step["employee_central"] < step["compensation"]
+    for m in ("benefits", "performance_goals", "succession_planning"):
+        assert step["compensation"] < step[m]
+    req = {(e.before, e.after) for e in plan.edges if e.kind == "required"}
+    assert ("employee_central", "compensation") in req
+    # Inside Employee Central: foundation objects, Position, Person, Employment, Job.
+    ec = next(o for o in plan.objects if o.module == "employee_central")
+    pos = {t: i for i, t in enumerate(ec.tables)}
+    assert max(pos[t] for t in ec.tables if t.startswith("FO")) < pos["POSITION"] < pos["PERINFO"] \
+        < pos["EMPEMPLOYMENT"] < pos["EMPJOBHIST"]
+    # FO check tables (entity names such as FOCompany) resolve inside the object, not as prerequisites.
+    assert not any(p.table.startswith("FO") for p in ec.prerequisites)
+
+
+def test_every_owned_table_is_in_the_dictionary_and_owned_once():
+    d = get_dictionary("s4hana")
+    seen = [t for ts in lp.OWNED_TABLES.values() for t in ts]
+    assert len(seen) == len(set(seen))
+    assert all(d.table(t) is not None for t in seen)
+    assert sorted(lp.EC_LOAD_ORDER) == sorted(lp.OWNED_TABLES["employee_central"])
+    assert {"MARD", "MBEW", "MVKE", "MLAN"} <= set(lp.OWNED_TABLES["material_master"])
 
 
 def test_unknown_module_is_reported_not_planned():

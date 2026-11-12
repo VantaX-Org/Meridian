@@ -9703,4 +9703,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The batch could not be reassigned.": "バッチを再割り当てできませんでした。",
   "Reassign batch {label}": "バッチ {label} を再割り当て",
   "Reassign whole batch": "バッチ全体を再割り当て",
+  "Upload required": "アップロードが必要",
+  "This table cannot be read from the system. Upload it as a file; its rules wait until then.": "このテーブルはシステムから読み取れません。ファイルとしてアップロードしてください。それまでルールは待機します。",
+  "Preview source": "プレビューソース",
+  "This source is a preview: its connector is not yet verified against a live tenant, so its rules wait and are left out of the score.": "このソースはプレビューです。コネクタが本番テナントでまだ検証されていないため、ルールは待機し、スコアから除外されます。",
+  "No rules read it": "読み取るルールなし",
+  "Read, but no rule checks this table yet, so it adds nothing to the score.": "読み取り済みですが、このテーブルを検査するルールがまだないため、スコアには影響しません。",
+  "Not installed": "未インストール",
+  "The component is not installed in this system, so its rules do not apply.": "このコンポーネントはこのシステムにインストールされていないため、ルールは適用されません。",
+  "{module}: {count} {count, plural, one {rule waits} other {rules wait}} for data and {count, plural, one {is} other {are}} left out of the score.": "{module}: {count} 件のルールがデータ待ちで、スコアから除外されています。",
 };
