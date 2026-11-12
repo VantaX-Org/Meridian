@@ -868,7 +868,7 @@ def test_export_uses_scoped_maps_and_target_dict(app_engine, monkeypatch):
     resp = _client_run(app, tid, router, calls, monkeypatch)
     assert resp.status_code == 200, resp.text
     with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
-        assert z.read("LFA1.csv").decode().split() == ["SOURCE_RECORD,LIFNR,KTOKK", "LIFNR=1,1,KRED", "LIFNR=2,2,KRED"]
+        assert z.read("01_LFA1.csv").decode().split() == ["SOURCE_RECORD,LIFNR,KTOKK", "LIFNR=1,1,KRED", "LIFNR=2,2,KRED"]
 
 
 @pg
