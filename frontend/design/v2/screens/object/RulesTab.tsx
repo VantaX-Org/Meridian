@@ -617,7 +617,7 @@ function AcceptPreview({ check, module, run, count, busy, onConfirm, onCancel }:
             <li key={r.record_key}>
               <Mono>{r.record_key}</Mono>{": "}
               {r.current_value ? <Coded code={r.current_value} text={r.current_label} first /> : <Dash />}
-              {" \u2192 "}
+              {" "}{t("to")}{" "}
               {r.suggested_value ? <Coded code={r.suggested_value} text={r.suggested_label} first /> : <Dash />}
             </li>
           ))}
@@ -689,7 +689,7 @@ export function RulesTab({ module: moduleSegment, system: systemSegment }: { sys
   const [pending, setPending] = useState<string | null>(null);
   const [batch, setBatch] = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);
-  const onAccept = useCallback((id: string) => { setNote(null); setPending(id); }, []);
+  const onAccept = useCallback((id: string) => { setNote(null); setPending(id); }, [setNote, setPending]);
   const confirmAccept = async (id: string, sample: Parameters<typeof actions.acceptRule>[3]) => {
     setAccepting(true);
     const r = await actions.acceptRule(id, proposed.get(id) ?? 0, receipt?.run_id, sample);
