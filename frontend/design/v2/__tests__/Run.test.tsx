@@ -52,7 +52,7 @@ describe("Run canvas", () => {
     const mm = within(table).getByRole("row", { name: /Material master/ });
     // the band reads the tenant quality thresholds: material master overall is held to 92, 80, 65
     await waitFor(() => expect(within(mm).getByTestId("band-overall")).toBeInTheDocument());
-    expect(within(mm).getAllByRole("cell").map((c) => norm(c))).toEqual(["71.8", "70.0 capped", "No-go", "Below warning", "61,816", "80", "25,712"]);
+    expect(within(mm).getAllByRole("cell").map((c) => norm(c))).toEqual(["71.8", "70.0 capped", "No-go", "Below warning Target 92", "61,816", "80", "25,712"]);
     expect(within(mm).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining(`/o/ecc-production/material-master?run=${R8}`));
     const gl = within(table).getByRole("row", { name: /FI general ledger/ });
     expect(within(gl).getByText("Go")).toBeInTheDocument();
