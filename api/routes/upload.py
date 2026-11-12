@@ -3,7 +3,8 @@ import json
 import logging
 import re
 import uuid
-from typing import Optional
+from contextlib import asynccontextmanager
+from typing import AsyncIterator, Optional
 
 import pandas as pd
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -346,7 +347,6 @@ _NEWER_RUN_SQL = f"""
 
 # The newest cleaned copy of the same extraction: uploads for other objects of that run build on it, so each
 # object's edits accumulate instead of replacing one another.
-# ponytail: two uploads at the same instant both build on the same tip; serialise per base run if that matters.
 _TIP_SQL = """
     SELECT id, metadata FROM analysis_versions
      WHERE tenant_id = :t AND metadata->>'source' = 'roundtrip'
@@ -356,6 +356,21 @@ _TIP_SQL = """
 """
 
 MAX_OVERLAY_EDITS = 5000
+
+
+@asynccontextmanager
+async def _base_lock(base: str) -> AsyncIterator[None]:
+    """One cleaned copy at a time per extraction, so a second upload builds on the first one's copy instead of
+    racing it to the same tip. The request session commits midway (create_version), which would drop a
+    transaction lock, so a session lock is held on its own connection until the copy is committed."""
+    from api.deps import engine
+
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT pg_advisory_lock(hashtext(:k))"), {"k": f"roundtrip:{base}"})
+        try:
+            yield
+        finally:
+            await conn.execute(text("SELECT pg_advisory_unlock(hashtext(:k))"), {"k": f"roundtrip:{base}"})
 
 
 def _notes_sql(where: str, update: str) -> str:
@@ -601,56 +616,57 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
             unchanged=0, unmatched=0, unmapped=report["unmapped"], skipped=report["skipped"], no_table=[],
             no_field=[], notes=note_counts)
 
-    tip = (await db.execute(text(_TIP_SQL), {"t": tenant.id, "b": base})).fetchone()
-    source_id, source_meta = (str(tip[0]), dict(tip[1] or {})) if tip else (parent, meta)
-    prior = (source_meta.get("cleaned_overlay") or {}) if source_id != base else {}
+    async with _base_lock(base):
+        tip = (await db.execute(text(_TIP_SQL), {"t": tenant.id, "b": base})).fetchone()
+        source_id, source_meta = (str(tip[0]), dict(tip[1] or {})) if tip else (parent, meta)
+        prior = (source_meta.get("cleaned_overlay") or {}) if source_id != base else {}
 
-    new_meta = {k: v for k, v in meta.items() if k not in ("error", "scoring", "cleaned_overlay", "monitor")}
-    new_meta.update({"source": "roundtrip", "trigger": "roundtrip", "file_name": file.filename,
-                     "roundtrip": {"parent_version_id": source_id, "base_version_id": base, "kind": kind,
-                                   "edits": len(edits), "module": module}})
-    version = await versions.create_version(db, tenant.id, new_meta,
-                                            label=f"{label or 'Run'} (cleaned)"[:120])
-    prefix = f"staging/{tenant.id}/{version.id}/"
-    try:
-        result = await run_in_threadpool(rt.apply_edits, source_meta["dataset_path"], prefix, edits,
-                                         await run_in_threadpool(_dictionary, tenant.id, system_id))
-    except Exception as e:  # noqa: BLE001 - the version row must not linger pending
-        await versions.mark_version_failed(db, tenant.id, version.id, f"Could not apply the edits: {type(e).__name__}")
-        if isinstance(e, rt.RoundTripError):
-            raise HTTPException(status_code=422, detail=str(e))
-        raise
-    if not result["applied"]:
-        await versions.mark_version_failed(db, tenant.id, version.id, "No edit matched a record of the run.")
-        raise HTTPException(status_code=422, detail={"error": "nothing_applied", "detail":
-                            "No edit matched a record of the run.", "unmatched": result["unmatched_total"],
-                            "notes": note_counts})
-    # the cleaned copy is a forecast: a later real extraction that still fails on these records is not a
-    # regression of the source, it is a fix not yet made there (workers/tasks/run_checks.py)
-    overlay = {"base_version_id": base,
-               "modules": sorted({*(prior.get("modules") or []), *([module] if module else [])}),
-               "edits": ((prior.get("edits") or []) + result.get("edited", []))[:MAX_OVERLAY_EDITS]}
-    await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
-    await db.execute(text(
-        "UPDATE analysis_versions SET parent_version_id = CAST(:p AS uuid), "
-        "metadata = metadata || jsonb_build_object('dataset_path', CAST(:d AS text), "
-        "'cleaned_overlay', CAST(:o AS jsonb)), "
-        "run_number = COALESCE((SELECT max(run_number) FROM analysis_versions WHERE tenant_id = :t "
-        "AND COALESCE(metadata->>'system_id', 'upload') = COALESCE(:sys, 'upload')), 0) + 1 "
-        "WHERE id = :v AND tenant_id = :t"),
-        {"p": source_id, "d": prefix, "t": tenant.id, "v": version.id, "sys": system_id, "o": json.dumps(overlay)})
-    await write_audit(db, tenant.id, request, "upload.roundtrip", "analysis_version", str(version.id), None,
-                      {"parent_version_id": source_id, "base_version_id": base, "kind": kind,
-                       "applied": result["applied"]})
-    await db.commit()
-    jobs.start_job(str(tenant.id), str(version.id), "upload", file.filename or "Upload", status="queued",
-                   progress_key=str(version.id), version_id=str(version.id))
-    job_id = await _enqueue_checks(db, tenant.id, version.id, prefix)
-    return RoundTripResponse(
-        version_id=str(version.id), job_id=job_id, status="pending", parent_version_id=source_id, kind=kind,
-        applied=result["applied"], unchanged=result["unchanged"], unmatched=result["unmatched_total"],
-        unmapped=report["unmapped"], skipped=report["skipped"], no_table=result["no_table"], no_field=result["no_field"],
-        notes=note_counts)
+        new_meta = {k: v for k, v in meta.items() if k not in ("error", "scoring", "cleaned_overlay", "monitor")}
+        new_meta.update({"source": "roundtrip", "trigger": "roundtrip", "file_name": file.filename,
+                         "roundtrip": {"parent_version_id": source_id, "base_version_id": base, "kind": kind,
+                                       "edits": len(edits), "module": module}})
+        version = await versions.create_version(db, tenant.id, new_meta,
+                                                label=f"{label or 'Run'} (cleaned)"[:120])
+        prefix = f"staging/{tenant.id}/{version.id}/"
+        try:
+            result = await run_in_threadpool(rt.apply_edits, source_meta["dataset_path"], prefix, edits,
+                                             await run_in_threadpool(_dictionary, tenant.id, system_id))
+        except Exception as e:  # noqa: BLE001 - the version row must not linger pending
+            await versions.mark_version_failed(db, tenant.id, version.id, f"Could not apply the edits: {type(e).__name__}")
+            if isinstance(e, rt.RoundTripError):
+                raise HTTPException(status_code=422, detail=str(e))
+            raise
+        if not result["applied"]:
+            await versions.mark_version_failed(db, tenant.id, version.id, "No edit matched a record of the run.")
+            raise HTTPException(status_code=422, detail={"error": "nothing_applied", "detail":
+                                "No edit matched a record of the run.", "unmatched": result["unmatched_total"],
+                                "notes": note_counts})
+        # the cleaned copy is a forecast: a later real extraction that still fails on these records is not a
+        # regression of the source, it is a fix not yet made there (workers/tasks/run_checks.py)
+        overlay = {"base_version_id": base,
+                   "modules": sorted({*(prior.get("modules") or []), *([module] if module else [])}),
+                   "edits": ((prior.get("edits") or []) + result.get("edited", []))[:MAX_OVERLAY_EDITS]}
+        await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
+        await db.execute(text(
+            "UPDATE analysis_versions SET parent_version_id = CAST(:p AS uuid), "
+            "metadata = metadata || jsonb_build_object('dataset_path', CAST(:d AS text), "
+            "'cleaned_overlay', CAST(:o AS jsonb)), "
+            "run_number = COALESCE((SELECT max(run_number) FROM analysis_versions WHERE tenant_id = :t "
+            "AND COALESCE(metadata->>'system_id', 'upload') = COALESCE(:sys, 'upload')), 0) + 1 "
+            "WHERE id = :v AND tenant_id = :t"),
+            {"p": source_id, "d": prefix, "t": tenant.id, "v": version.id, "sys": system_id, "o": json.dumps(overlay)})
+        await write_audit(db, tenant.id, request, "upload.roundtrip", "analysis_version", str(version.id), None,
+                          {"parent_version_id": source_id, "base_version_id": base, "kind": kind,
+                           "applied": result["applied"]})
+        await db.commit()
+        jobs.start_job(str(tenant.id), str(version.id), "upload", file.filename or "Upload", status="queued",
+                       progress_key=str(version.id), version_id=str(version.id))
+        job_id = await _enqueue_checks(db, tenant.id, version.id, prefix)
+        return RoundTripResponse(
+            version_id=str(version.id), job_id=job_id, status="pending", parent_version_id=source_id, kind=kind,
+            applied=result["applied"], unchanged=result["unchanged"], unmatched=result["unmatched_total"],
+            unmapped=report["unmapped"], skipped=report["skipped"], no_table=result["no_table"], no_field=result["no_field"],
+            notes=note_counts)
 
 
 def _dictionary(tenant_id, system_id):

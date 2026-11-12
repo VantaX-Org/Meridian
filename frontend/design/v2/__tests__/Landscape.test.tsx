@@ -43,6 +43,14 @@ describe("landscape canvas, fixture mode", () => {
     expect(screen.getByText(/794 rules measured/)).toBeInTheDocument();
   });
 
+  it("has one primary button: the next step under the lede, the go-live banner offers a plain link", async () => {
+    const { container } = renderWithQuery(<LandscapeCanvas />);
+    await screen.findByTestId("landscape-sentence");
+    await waitFor(() => expect(container.querySelectorAll(".m2-cc-act a").length).toBeGreaterThan(0));
+    expect(container.querySelectorAll(".m2-cc-act .m2-btn")).toHaveLength(0);
+    expect(within(screen.getByTestId("home-next")).getAllByRole("link").filter((l) => l.classList.contains("m2-next")).length).toBeLessThanOrEqual(1);
+  });
+
   it("draws the coverage matrix: 3 systems as columns with version, client, last extraction and records; 15 objects as rows", async () => {
     renderWithQuery(<LandscapeCanvas />);
     const table = await screen.findByTestId("coverage-matrix");

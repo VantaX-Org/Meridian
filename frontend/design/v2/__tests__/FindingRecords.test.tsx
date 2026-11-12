@@ -2,12 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { FindingRecords } from "../screens/FindingRecords";
+import { setUrl } from "./nav-store";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
 beforeEach(() => window.sessionStorage.setItem("mn_v2_fixture", "1"));
 afterEach(() => {
+  setUrl("/");
   window.sessionStorage.clear();
   vi.restoreAllMocks();
 });
@@ -24,9 +26,25 @@ describe("Finding records", () => {
     await waitFor(() => expect(screen.getByTestId("finding-records-range")).toHaveTextContent("Records 26 to 50 of 137"));
   });
 
+  it("shows the meaning beside a value the rule's value list explains, and the bare code otherwise", async () => {
+    renderWithQuery(<FindingRecords checkId="MM-001" runs={[{ id: "r1", label: "Material master" }]} />);
+    const table = await screen.findByTestId("finding-records-table");
+    const first = within(table).getAllByRole("row")[1];
+    expect(within(first).getByTitle("Raw material (ROH)")).toBeInTheDocument();
+    expect(within(first).getByText("002").closest("[title]")).toBeNull();
+  });
+
   it("offers a run choice only when there is more than one run", async () => {
     renderWithQuery(<FindingRecords checkId="MM-001" runs={[{ id: "r1", label: "A" }, { id: "r2", label: "B" }]} />);
     expect(await screen.findByRole("combobox", { name: "Run" })).toBeInTheDocument();
+  });
+
+  it("links each record key to the record and starts at the run in the address", async () => {
+    setUrl("/r/MM-001?run=r2");
+    renderWithQuery(<FindingRecords checkId="MM-001" runs={[{ id: "r1", label: "A" }, { id: "r2", label: "B" }]} />);
+    expect(await screen.findByRole("combobox", { name: "Run" })).toHaveValue("r2");
+    const link = (await screen.findAllByTestId("finding-record-link"))[0];
+    expect(link.getAttribute("href")).toContain("open=record%3A");
   });
 
   it("renders nothing without a run", () => {

@@ -76,6 +76,9 @@ export function RuleCanvas({ id }: { id: string }) {
   }
 
   const v = state.view;
+  // Only an object path is a safe way back: the link is built from the address, so anything else is ignored.
+  const fromParam = params.get("from");
+  const from = fromParam && /^\/o\/[\w-]+\/[\w-]+$/.test(fromParam) ? fromParam : null;
   const name = v.scope.name ?? v.scope.definition.message ?? null;
   const href = (key: TabKey) => {
     const next = new URLSearchParams(params.toString());
@@ -122,7 +125,12 @@ export function RuleCanvas({ id }: { id: string }) {
           <span key={t}>{t}</span>
         ))}
       </p>
-      <p className="m2-prov">
+      <p className="m2-prov" data-testid="rule-back">
+        {from ? (
+          <>
+            <V2Link href={`${from}${params.get("run") ? `?run=${encodeURIComponent(params.get("run")!)}` : ""}`}>{tr("Back to the object")}</V2Link>{" "}
+          </>
+        ) : null}
         <V2Link href="/rules">{tr("All rules")}</V2Link>
       </p>
       <nav className="m2-tabs" aria-label={tr("Views of {id}", { id })}>

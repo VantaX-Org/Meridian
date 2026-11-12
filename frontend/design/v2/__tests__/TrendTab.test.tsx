@@ -78,7 +78,7 @@ describe("the Runs tab chart", () => {
     render();
     const svg = await screen.findByTestId("score-chart");
     expect(svg).toHaveAttribute("role", "img");
-    expect(svg).toHaveAccessibleName("Measured score of Material master, last 8 runs: 67.8 on 28 Aug, 71.8 on 16 Oct. Baseline run 2 Oct. Cap 70.");
+    expect(svg).toHaveAccessibleName("Score of Material master, last 8 runs: 67.8 on 28 Aug, 70.0 on 16 Oct. Baseline run 2 Oct. Cap 70.");
     const line = within(svg as unknown as HTMLElement).getByTestId("score-line");
     expect(line.getAttribute("points")?.split(" ")).toHaveLength(8);
     expect(css).toMatch(/\.m2-chart \.m2-ln \{[^}]*stroke: var\(--m2-chart-line\);[^}]*stroke-width: 2;/);
@@ -94,7 +94,8 @@ describe("the Runs tab chart", () => {
     expect(svg.querySelectorAll("marker, [class*='legend']")).toHaveLength(0);
     const hueUses = css.split("\n").filter((l) => l.includes(".m2-chart") && l.includes("var(--m2-chart-line)"));
     expect(hueUses.map((l) => l.split(" {")[0])).toEqual([".m2-root .m2-chart .m2-ln", ".m2-root .m2-chart .m2-end, .m2-root .m2-chart .m2-pt"]);
-    expect(svg.querySelector("text.m2-lab")).toHaveTextContent("71.8");
+    // The chart plots the shown score, the one in the header: the last run is held at the cap of 70.
+    expect(svg.querySelector("text.m2-lab")).toHaveTextContent("70.0");
   });
 
   it("draws the cap level dashed and names it", async () => {
@@ -191,6 +192,15 @@ describe("Compare with…", () => {
     fireEvent.change(within(form).getByLabelText("Earlier run"), { target: { value: CURRENT } });
     expect(within(form).queryByRole("link", { name: "Compare" })).toBeNull();
     expect(within(form).getByRole("button", { name: "Compare" })).toBeDisabled();
+  });
+
+  it("will not compare a later run as the earlier one, and says why", async () => {
+    render();
+    const form = await screen.findByRole("form", { name: "Compare two runs" });
+    fireEvent.change(within(form).getByLabelText("Earlier run"), { target: { value: CURRENT } });
+    fireEvent.change(within(form).getByLabelText("Later run"), { target: { value: FIRST } });
+    expect(within(form).queryByRole("link", { name: "Compare" })).toBeNull();
+    expect(within(form).getByTestId("compare-order")).toHaveTextContent("The earlier run must come before the later run.");
   });
 });
 

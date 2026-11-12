@@ -2,6 +2,7 @@
 
 The database, bucket and queue are faked; the real file reading (api/services/sf_roundtrip.py) and the
 route's own checks run. A live Postgres is not needed."""
+import contextlib
 import io
 import uuid
 from types import SimpleNamespace
@@ -115,6 +116,7 @@ def env(monkeypatch):
     monkeypatch.setattr(upload, "_enqueue_checks", enqueue)
     monkeypatch.setattr(upload, "_dictionary", lambda t, s: None)
     monkeypatch.setattr(upload.jobs, "start_job", lambda *a, **k: None)
+    monkeypatch.setattr(upload, "_base_lock", lambda base: contextlib.nullcontext())
 
     app = FastAPI()
     app.include_router(upload.router)
@@ -147,6 +149,21 @@ def test_happy_path_returns_applied_counts_and_queues_a_rerun(env):
     assert env.enqueued == [prefix] and env.audits == ["upload.roundtrip"]
     assert env.meta["roundtrip"] == {"parent_version_id": str(PARENT), "base_version_id": str(PARENT),
                                      "kind": "cleaning", "edits": 1, "module": "employee_central"}
+
+
+def test_the_cleaned_copy_is_built_under_the_base_run_lock(env, monkeypatch):
+    """Two uploads of one extraction must not both read the same tip: the read through the commit is locked."""
+    seen = []
+
+    @contextlib.asynccontextmanager
+    async def lock(base):
+        seen.append(("enter", base, len(env.applied_with)))
+        yield
+        seen.append(("exit", base, len(env.applied_with)))
+
+    monkeypatch.setattr(upload, "_base_lock", lock)
+    assert _post(env, _good()).status_code == 200
+    assert seen == [("enter", str(PARENT), 0), ("exit", str(PARENT), 1)]
 
 
 def test_file_from_another_run_than_the_one_chosen_is_refused(env):

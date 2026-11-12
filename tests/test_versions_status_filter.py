@@ -40,8 +40,8 @@ def _run(status: Any) -> list[str]:
     db = _Session()
     tenant = Tenant(uuid.UUID("00000000-0000-0000-0000-0000000000aa"), "t", [])
     body = asyncio.run(versions.list_versions(limit=100, offset=0, module=None, system_id="sys-1",
-                                              include_archived=False, status=status, db=db, tenant=tenant))
-    assert body == {"versions": [], "total": 0}
+                                              include_archived=False, status=status, sort="-run_at", db=db, tenant=tenant))
+    assert body["versions"] == [] and body["total"] == 0
     return db.sql
 
 

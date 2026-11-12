@@ -27,6 +27,10 @@ describe("groupRuns", () => {
     const g = groupRuns([run("1", "gone", "2026-01-01"), run("2", null, "2026-01-01")], systems);
     expect(g.map((x) => x.name)).toEqual(["Unknown system", "Unknown system"]);
   });
+  it("names a system the landscape no longer lists from the name the run list carries", () => {
+    const g = groupRuns([{ ...run("1", "gone", "2026-01-01"), system_name: "ECC sandbox" }], systems);
+    expect(g.map((x) => x.name)).toEqual(["ECC sandbox"]);
+  });
 });
 
 describe("the compare guard", () => {

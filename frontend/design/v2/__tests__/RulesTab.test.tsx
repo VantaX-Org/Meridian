@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as objectApi from "@/lib/api/v2/object";
+import * as workApi from "@/lib/api/v2/work";
 import * as landscapeApi from "@/lib/api/v2/landscape";
 import { resetObjectFixture } from "@/lib/api/v2/fixtures/object";
 import { resetWorkFixture } from "@/lib/api/v2/fixtures";
@@ -210,15 +211,31 @@ describe("pivot", () => {
 });
 
 describe("accept all", () => {
-  it("calls the accept-all endpoint for the rule on the object's run, then says where the values went", async () => {
-    const spy = vi.spyOn(objectApi, "acceptAllSuggested").mockResolvedValue({ accepted: 112, draft_batch_id: "B-243" });
+  it("previews first, then calls the accept-all endpoint for the rule on the object's run and says where the values went", async () => {
+    const spy = vi.spyOn(workApi, "postAcceptAll").mockResolvedValue({ accepted: 112, draft_batch_id: "B-243" });
     render();
     const g = await grid();
     const btn = await within(g).findByRole("button", { name: "Accept all 112 suggested values for MM142" });
     fireEvent.click(btn);
+    const preview = await screen.findByTestId("accept-preview");
+    expect(spy).not.toHaveBeenCalled();
+    expect(preview).toHaveTextContent("You can undo this");
+    fireEvent.click(within(preview).getByRole("button", { name: "Accept 112 suggested values" }));
     await waitFor(() => expect(spy).toHaveBeenCalledWith("MM142", "d3229ded-0708-4967-9dfb-1b7f4fada953"));
-    expect(await screen.findByTestId("rules-note")).toHaveTextContent("112 suggested values for MM142 are in your draft batch B-243");
+    const note = await screen.findByTestId("rules-note");
+    expect(note).toHaveTextContent("112 suggested values for MM142 are in your fix batch");
+    expect(within(note).getByRole("link", { name: "Open the fix batch" })).toHaveAttribute("href", expect.stringContaining("open=batch%3AB-243"));
     await waitFor(() => expect(norm(dataRows(g)[0])).toContain("Suggested values accepted"));
+  });
+
+  it("cancel closes the preview without accepting", async () => {
+    const spy = vi.spyOn(workApi, "postAcceptAll");
+    render();
+    const g = await grid();
+    fireEvent.click(await within(g).findByRole("button", { name: "Accept all 112 suggested values for MM142" }));
+    fireEvent.click(within(await screen.findByTestId("accept-preview")).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByTestId("accept-preview")).toBeNull();
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it("offers View instead of Accept all to a role that cannot apply fixes", async () => {
@@ -325,11 +342,12 @@ describe("on a phone", () => {
     expect(within(list).queryByRole("button", { name: /^About/ })).toBeNull(); // the header is outside the list
   });
 
-  it("accepts all suggested values from the list", async () => {
-    const spy = vi.spyOn(objectApi, "acceptAllSuggested").mockResolvedValue({ accepted: 112, draft_batch_id: "B-243" });
+  it("accepts all suggested values from the list after the preview", async () => {
+    const spy = vi.spyOn(workApi, "postAcceptAll").mockResolvedValue({ accepted: 112, draft_batch_id: "B-243" });
     render();
     const list = await screen.findByRole("list", { name: "Rules for Material master" });
     fireEvent.click(await within(list).findByRole("button", { name: "Accept all 112 suggested values for MM142" }));
+    fireEvent.click(within(await screen.findByTestId("accept-preview")).getByRole("button", { name: "Accept 112 suggested values" }));
     await waitFor(() => expect(spy).toHaveBeenCalledWith("MM142", "d3229ded-0708-4967-9dfb-1b7f4fada953"));
   });
 });

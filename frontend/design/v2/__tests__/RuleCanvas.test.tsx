@@ -92,6 +92,18 @@ describe("the rule canvas /r/{check_id}", () => {
     expect(screen.getByRole("link", { name: "Failing records" })).toHaveAttribute("aria-current", "page");
   });
 
+  it("links back to the object and its run when the drill came from one, and ignores any other path", async () => {
+    setUrl("/r/MM142?tab=failing&run=r9&from=%2Fo%2Fecc-production%2Fmaterial-master&fixture=1");
+    const { unmount } = renderWithQuery(<RuleCanvas id="MM142" />);
+    const back = await screen.findByRole("link", { name: "Back to the object" });
+    expect(back).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master?run=r9"));
+    unmount();
+    setUrl("/r/MM142?from=https%3A%2F%2Fevil.example&fixture=1");
+    renderWithQuery(<RuleCanvas id="MM142" />);
+    await screen.findByTestId("rule-back");
+    expect(screen.queryByRole("link", { name: "Back to the object" })).toBeNull();
+  });
+
   it("Prove in SAP gives the SE16 selection, what SE16 cannot express, the counts and five keys", async () => {
     setUrl("/r/MM142?tab=prove&fixture=1");
     renderWithQuery(<RuleCanvas id="MM142" />);
