@@ -98,3 +98,59 @@ def verify(session: Session, tenant_id: str, version_id: str) -> tuple[list[dict
 def latest(session_rows) -> dict[str, dict]:
     """{batch id: its latest verdict as the API returns it} from the rows of ``LATEST_SQL``."""
     return {r["batch_id"]: out(r) for r in session_rows}
+
+
+# Applied cleaning items the run re-checked: same check and record, in the run's scope, applied before the run.
+# record_issues marks a record verified_fixed on a run that checked it and found it passing; finding_records holds the
+# records the run still found failing.
+_ITEM_SCOPE = ("CASE WHEN iv.metadata->>'sandbox' = 'true' THEN 'sandbox:' ELSE '' END"
+               " || COALESCE(iv.metadata->>'system_id', 'upload')")
+_APPLIED_SQL = f"""
+    SELECT cq.id FROM cleaning_queue cq
+      LEFT JOIN analysis_versions iv ON iv.id = cq.version_id AND iv.tenant_id = cq.tenant_id
+      JOIN analysis_versions rv ON rv.id = CAST(:v AS uuid) AND rv.tenant_id = cq.tenant_id
+     WHERE cq.tenant_id = CAST(:t AS uuid) AND cq.status = 'applied' AND cq.check_id IS NOT NULL
+       AND cq.applied_at < rv.run_at AND (cq.version_id IS NULL OR {_ITEM_SCOPE} = :scope)"""
+_CLEANING_VERIFIED_SQL = f"""
+    WITH done AS (
+        UPDATE cleaning_queue cq SET status = 'verified'
+         WHERE cq.id IN ({_APPLIED_SQL})
+           AND EXISTS (SELECT 1 FROM record_issues ri
+                        WHERE ri.tenant_id = cq.tenant_id AND ri.scope = :scope AND ri.check_id = cq.check_id
+                          AND ri.record_key = cq.record_key AND ri.resolved_version = CAST(:v AS uuid)
+                          AND ri.resolution = 'verified_fixed')
+        RETURNING cq.id, cq.rule_id, cq.record_key, cq.object_type)
+    INSERT INTO cleaning_audit (id, tenant_id, queue_id, rule_id, action, actor_name, record_key, object_type, metadata,
+                                created_at)
+    SELECT gen_random_uuid(), CAST(:t AS uuid), id, rule_id, 'verified', 'system:verification', record_key, object_type,
+           jsonb_build_object('version_id', CAST(:v AS text)), now()
+      FROM done"""
+# Still failing: there is no 'reopened' status (migration 005), so the item stays 'applied' and the run's verdict is
+# audited once per run as 'verify_failed'.
+_CLEANING_FAILED_SQL = f"""
+    INSERT INTO cleaning_audit (id, tenant_id, queue_id, rule_id, action, actor_name, record_key, object_type, metadata,
+                                created_at)
+    SELECT gen_random_uuid(), cq.tenant_id, cq.id, cq.rule_id, 'verify_failed', 'system:verification', cq.record_key,
+           cq.object_type, jsonb_build_object('version_id', CAST(:v AS text)), now()
+      FROM cleaning_queue cq
+     WHERE cq.id IN ({_APPLIED_SQL})
+       AND EXISTS (SELECT 1 FROM finding_records fr
+                    WHERE fr.version_id = CAST(:v AS uuid) AND fr.check_id = cq.check_id
+                      AND fr.record_key = cq.record_key)
+       AND NOT EXISTS (SELECT 1 FROM cleaning_audit a
+                        WHERE a.queue_id = cq.id AND a.action = 'verify_failed'
+                          AND a.metadata->>'version_id' = CAST(:v AS text))"""
+
+
+def verify_cleaning(session: Session, tenant_id: str, version_id: str) -> tuple[int, int]:
+    """Set applied cleaning items the run proves fixed to 'verified' and audit the ones it finds still failing.
+    Returns (verified, still failing). A second call for the same run changes nothing."""
+    from api.services.record_issues import scope_of
+
+    tid, vid = str(tenant_id), str(version_id)
+    meta = session.execute(text("SELECT metadata FROM analysis_versions WHERE id = CAST(:v AS uuid) "
+                                "AND tenant_id = CAST(:t AS uuid)"), {"v": vid, "t": tid}).scalar()
+    p = {"t": tid, "v": vid, "scope": scope_of(meta or {})}
+    verified = session.execute(text(_CLEANING_VERIFIED_SQL), p).rowcount
+    failing = session.execute(text(_CLEANING_FAILED_SQL), p).rowcount
+    return verified, failing
