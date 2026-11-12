@@ -728,6 +728,7 @@ export function WorkCanvas() {
       : []),
     ...(can.apply ? [{ kind: "item", id: "import", label: tr("Import filled sheet"), onSelect: () => setImportOpen((v) => !v) } as MenuEntry] : []),
   ];
+  const groupWhy = narrowed ? tr("Grouping by rule does not apply to a policy class or a past run") : GROUPABLE.has(state.chip) ? null : tr("Grouping applies to rows to fix");
   const toolbar = (
     <div className="m2-tool" role="toolbar" aria-label={tr("Ledger controls")}>
       <label className="m2-selbox">
@@ -745,10 +746,11 @@ export function WorkCanvas() {
         <button type="button" aria-pressed={!grouped} onClick={() => go({ group: false })}>
           {tr("Flat")}
         </button>
-        <button type="button" aria-pressed={grouped} disabled={!GROUPABLE.has(state.chip) || narrowed} title={narrowed ? tr("Grouping by rule does not apply to a policy class or a past run") : GROUPABLE.has(state.chip) ? undefined : tr("Grouping applies to rows to fix")} onClick={() => go({ group: true })}>
+        <button type="button" aria-pressed={grouped} disabled={groupWhy !== null} aria-describedby={groupWhy ? "group-why" : undefined} onClick={() => go({ group: true })}>
           {tr("By rule")}
         </button>
       </div>
+      {groupWhy ? <span id="group-why" className="m2-prov">{groupWhy}</span> : null}
       <span className="m2-tool-sp" />
       <MenuButton label={tr("More")} entries={moreEntries} className="m2-btn m2-sm" align="end">
         {tr("More")}

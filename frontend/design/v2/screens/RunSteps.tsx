@@ -28,10 +28,11 @@ function StepsExport({ id }: { id: string }) {
   return (
     <span className="m2-cta" data-testid="run-steps-export">
       {(["xlsx", "csv"] as const).map((f) => (
-        <button key={f} type="button" className="m2-btn" disabled={!allowed || pending !== null} title={allowed ? tr("Export steps") : tr("Exporting steps needs the export permission")} onClick={() => go(f)}>
+        <button key={f} type="button" className="m2-btn" disabled={!allowed || pending !== null} title={allowed ? tr("Export steps") : undefined} aria-describedby={allowed ? undefined : "run-steps-export-why"} onClick={() => go(f)}>
           {f === "xlsx" ? tr("Export steps to Excel") : tr("Export steps to CSV")}
         </button>
       ))}
+      {allowed ? null : <span id="run-steps-export-why" className="m2-prov">{tr("Exporting steps needs the export permission")}</span>}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
     </span>
   );

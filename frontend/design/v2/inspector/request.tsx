@@ -13,7 +13,7 @@ import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { useFieldHistory, useRequest } from "@/lib/v2/requests-queries";
 import { int } from "@/lib/v2/score";
 import { t as tr } from "@/lib/v2/i18n";
-import { Field } from "../forms";
+import { ConfirmBar, Field } from "../forms";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
 import { describeField } from "@/lib/v2/sap-fields";
 import { Coded, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
@@ -222,6 +222,7 @@ function RequestBody({ d }: { d: RequestDetail }) {
   const session = useV2Session();
   const { outcome, pending, run } = useOutcome(`request:${r.id}`);
   const [checked, setChecked] = useState(false);
+  const [asking, setAsking] = useState(false);
   const mine = r.requester_id != null && r.requester_id === session.id;
   const write = session.can("mdm.write") && !session.shared;
   const done = async (title: string) => {
@@ -342,12 +343,12 @@ function RequestBody({ d }: { d: RequestDetail }) {
       ) : null}
       <Actions>
         {r.status === "draft" && mine && write ? (
-          <button type="button" className="m2-btn m2-btn-primary" disabled={pending !== null} onClick={() => void run("submit", async () => { await submitRequest(r.id); return done(tr("Submitted for approval.")); })}>
+          <button type="button" className="m2-btn m2-strong" disabled={pending !== null} onClick={() => void run("submit", async () => { await submitRequest(r.id); return done(tr("Submitted for approval.")); })}>
             {tr("Submit")}
           </button>
         ) : null}
         {r.status === "failed" && write ? (
-          <button type="button" className="m2-btn m2-btn-primary" disabled={pending !== null || !checked} onClick={() => void run("retry", async () => { await retryRequest(r.id, checked); return done(tr("Sent to SAP again.")); })}>
+          <button type="button" className="m2-btn m2-strong" disabled={pending !== null || !checked} onClick={() => void run("retry", async () => { await retryRequest(r.id, checked); return done(tr("Sent to SAP again.")); })}>
             {tr("Retry")}
           </button>
         ) : null}
@@ -366,11 +367,23 @@ function RequestBody({ d }: { d: RequestDetail }) {
           </button>
         ) : null}
         {["draft", "submitted", "in_approval", "approved", "failed"].includes(r.status) && !r.entry_released_at && mine && write ? (
-          <button type="button" className="m2-btn" disabled={pending !== null} onClick={() => void run("cancel", async () => { await cancelRequest(r.id); return done(tr("Request cancelled.")); })}>
+          <button type="button" className="m2-btn" disabled={pending !== null} onClick={() => setAsking(true)}>
             {tr("Cancel request")}
           </button>
         ) : null}
       </Actions>
+      {asking ? (
+        <ConfirmBar
+          message={tr("This request is cancelled: its approval stops and nothing from it is sent to SAP.")}
+          confirmLabel={tr("Cancel request")}
+          pending={pending === "cancel"}
+          onConfirm={() => {
+            setAsking(false);
+            void run("cancel", async () => { await cancelRequest(r.id); return done(tr("Request cancelled.")); });
+          }}
+          onCancel={() => setAsking(false)}
+        />
+      ) : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Talk d={d} />
     </>

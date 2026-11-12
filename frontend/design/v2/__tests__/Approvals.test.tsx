@@ -106,7 +106,7 @@ describe("Waiting for approval: records under their batch", () => {
     const grid = await ledger();
     const own = await within(grid).findByRole("button", { name: "Approve batch B-244" });
     expect(own).toBeDisabled();
-    expect(own).toHaveAttribute("title", "You built this batch; a second person approves it.");
+    expect(own).toHaveAccessibleDescription("You built this batch; a second person approves it.");
   });
 
   it("offers no Approve or Send back to a role that cannot approve", async () => {

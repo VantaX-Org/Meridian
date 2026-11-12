@@ -9,7 +9,7 @@ import { useV2Session } from "@/lib/v2/hooks";
 import { refreshV2 } from "@/lib/v2/queries";
 import { t } from "@/lib/v2/i18n";
 import { ConfirmBar, Gate } from "../forms";
-import { Mono } from "../parts";
+import { ErrorFrame, Mono } from "../parts";
 import { useToast } from "../Toast";
 import { Panel } from "./Mining";
 
@@ -35,6 +35,13 @@ export function WritebackApprovals() {
     },
     onError: (e) => toast.show(errorSentence(e, t("The write-back could not be approved.")), "error"),
   });
+  if (allowed && q.isError) {
+    return (
+      <Panel title={t("Write-back waiting for a second approver")} testId="writeback-approvals">
+        <ErrorFrame onRetry={() => void q.refetch()}>{errorSentence(q.error, t("The write-backs waiting for a second approver could not be loaded."))}</ErrorFrame>
+      </Panel>
+    );
+  }
   if (!allowed || !q.data || q.data.approvals.length === 0) return null;
   const sel = q.data.approvals.find((w) => w.id === pick);
   return (
@@ -60,10 +67,10 @@ export function WritebackApprovals() {
                 <td>{w.requested_by_name ?? w.requested_by ?? ""}</td>
                 <td>{w.records_updated}</td>
                 <td>
-                  <button type="button" className="m2-btn m2-sm" disabled={own} title={own ? t("You asked for this write-back. A second person must approve it.") : undefined} onClick={() => setPick(w.id)}>
+                  <button type="button" className="m2-btn m2-sm" disabled={own} aria-describedby={own ? `wb-own-${w.id}` : undefined} onClick={() => setPick(w.id)}>
                     {t("Approve write-back")}
                   </button>
-                  {own ? <span className="m2-prov"> {t("Four eyes: someone else approves.")}</span> : null}
+                  {own ? <span id={`wb-own-${w.id}`} className="m2-prov"> {t("You asked for this write-back. A second person must approve it.")}</span> : null}
                 </td>
               </tr>
             );

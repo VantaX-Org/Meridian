@@ -201,12 +201,13 @@ export function BatchButtons({ b, c, sm = true, live = false }: { b: BatchRow; c
     if (!c.can.approve) return null;
     return (
       <>
-        <button type="button" className={`${cls} m2-strong`} disabled={block !== null || c.busy !== null} title={block ?? undefined} aria-label={t("Approve batch {label}", { label: b.label })} onClick={() => void c.approve(b)}>
+        <button type="button" className={`${cls} m2-strong`} disabled={block !== null || c.busy !== null} aria-describedby={block ? `batch-why-${b.id}` : undefined} aria-label={t("Approve batch {label}", { label: b.label })} onClick={() => void c.approve(b)}>
           {c.busy === `approve:${b.id}` ? t("Approving…") : t("Approve")}
         </button>
-        <button type="button" className={cls} disabled={block !== null || c.busy !== null} title={block ?? undefined} aria-label={t("Send batch {label} back", { label: b.label })} onClick={() => c.askSendBack(b)}>
+        <button type="button" className={cls} disabled={block !== null || c.busy !== null} aria-describedby={block ? `batch-why-${b.id}` : undefined} aria-label={t("Send batch {label} back", { label: b.label })} onClick={() => c.askSendBack(b)}>
           {t("Send back")}
         </button>
+        {block ? <span id={`batch-why-${b.id}`} className="m2-prov">{block}</span> : null}
       </>
     );
   }
@@ -214,9 +215,12 @@ export function BatchButtons({ b, c, sm = true, live = false }: { b: BatchRow; c
     if (!c.can.send) return null;
     const mine = b.ownerId != null && b.ownerId === c.can.me;
     return (
-      <button type="button" className={`${cls}${live ? "" : " m2-strong"}`} disabled={c.busy !== null || mine} title={mine ? t("You built this batch; a second person sends it.") : undefined} aria-label={t("Export batch {label} as a load file", { label: b.label })} onClick={() => c.askSend(b)}>
+      <>
+      <button type="button" className={`${cls}${live ? "" : " m2-strong"}`} disabled={c.busy !== null || mine} aria-describedby={mine ? `batch-why-${b.id}` : undefined} aria-label={t("Export batch {label} as a load file", { label: b.label })} onClick={() => c.askSend(b)}>
         {c.busy === `send:${b.id}` ? t("Exporting…") : t("Export load file")}
       </button>
+      {mine ? <span id={`batch-why-${b.id}`} className="m2-prov">{t("You built this batch; a second person sends it.")}</span> : null}
+      </>
     );
   }
   return null;

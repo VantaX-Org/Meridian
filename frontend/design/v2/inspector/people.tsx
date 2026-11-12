@@ -354,7 +354,7 @@ function UserBody({ user }: { user: User }) {
       </Facts>
       <Actions>
         {user.is_active ? (
-          <button type="button" className="m2-btn" disabled={!edit || self || pending !== null} title={self ? t("You can't change your own access") : undefined} onClick={() => setAsk("suspend")}>
+          <button type="button" className="m2-btn" disabled={!edit || self || pending !== null} aria-describedby={self ? "user-self-why" : undefined} onClick={() => setAsk("suspend")}>
             {t("Suspend")}
           </button>
         ) : (
@@ -399,13 +399,14 @@ function UserBody({ user }: { user: User }) {
             {t("Reset the password")}
           </button>
         )}
-        <button type="button" className="m2-btn m2-crit" disabled={!edit || self || pending !== null} title={self ? t("You can't remove yourself") : undefined} onClick={() => setAsk("remove")}>
+        <button type="button" className="m2-btn m2-crit" disabled={!edit || self || pending !== null} aria-describedby={self ? "user-self-why" : undefined} onClick={() => setAsk("remove")}>
           {t("Remove the user")}
         </button>
       </Actions>
       {link ? <p className="m2-secret" aria-label={t("Invite link")}>{link}</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {!edit ? <p className="m2-prov">{t("Changing a user needs the manage users permission.")}</p> : null}
+      {edit && self ? <p id="user-self-why" className="m2-prov">{t("You can't suspend or remove yourself.")}</p> : null}
       <GrantsBlock user={user} canEdit={edit} onChanged={refresh} />
       <EffectiveBlock userId={user.id} />
       {ask === "suspend" ? <Confirm title={t("Suspend {name}", { name: user.name })} body={t("They are signed out and cannot sign in until someone reactivates them. Their work stays where it is.")} confirm={t("Suspend")} danger pending={pending === "suspend"} onCancel={() => setAsk(null)} onConfirm={() => setActive(false)} /> : null}
