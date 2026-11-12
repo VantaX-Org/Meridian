@@ -124,22 +124,22 @@ function Mine() {
 
 function CreateForm({ onDone }: { onDone: () => void }) {
   const toast = useToast();
-  const [module, setModule] = useState("");
+  const [objectKey, setObjectKey] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [owner, setOwner] = useState("");
   const [due, setDue] = useState("");
   const [note, setNote] = useState("");
-  const found = useQuery({ queryKey: ["data-requests", "findings", module], queryFn: () => getRequestFindings(module.trim()), enabled: module.trim().length > 0 });
+  const found = useQuery({ queryKey: ["data-requests", "findings", objectKey], queryFn: () => getRequestFindings(objectKey.trim()), enabled: objectKey.trim().length > 0 });
   const users = useQuery({ queryKey: ["data-requests", "owners"], queryFn: getAssignable });
   const m = useMutation({
-    mutationFn: () => createDataRequest({ module: module.trim(), check_ids: picked, owner_id: owner, due_date: due, note }),
+    mutationFn: () => createDataRequest({ module: objectKey.trim(), check_ids: picked, owner_id: owner, due_date: due, note }),
     onSuccess: () => { toast.show(t("The request was sent.")); setPicked([]); setNote(""); onDone(); },
     onError: (e) => toast.show(errorSentence(e, t("The request could not be sent.")), "error"),
   });
   const toggle = (id: string) => setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id]);
   return (
     <div className="m2-acts" role="group" aria-label={t("Ask an owner for data")} data-testid="dr-create">
-      <Field label={t("Object")}>{(p) => <input {...p} value={module} onChange={(e) => { setModule(e.target.value); setPicked([]); }} data-testid="dr-module" />}</Field>
+      <Field label={t("Object")}>{(p) => <input {...p} value={objectKey} onChange={(e) => { setObjectKey(e.target.value); setPicked([]); }} data-testid="dr-module" />}</Field>
       {found.data ? (
         <fieldset data-testid="dr-findings">
           <legend>{t("Findings to ask about")}</legend>

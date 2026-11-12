@@ -38,7 +38,7 @@ class InsightOverviewOut(_Loose):
     blockers: Optional[dict[str, Any]] = None
     auto_fixable: Optional[dict[str, Any]] = None
     value_at_risk: Optional[dict[str, Any]] = None
-    narrative: Optional[str] = None
+    narrative: Optional[Any] = None
 
 
 class InsightExecOut(_Loose):

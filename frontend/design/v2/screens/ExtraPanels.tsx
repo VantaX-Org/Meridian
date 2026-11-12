@@ -11,7 +11,7 @@ import { useState } from "react";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getImpactPortfolio, getMdmHealthSeries, getSprintPlan } from "@/lib/api/v2/analytics";
 import { getCleansing, getDuplicateCluster, getExec, getOverview, getOwners } from "@/lib/api/v2/insights";
-import { formatDate, formatModuleName } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { money } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
 import { f1, int, pct1 } from "@/lib/v2/score";
@@ -151,7 +151,7 @@ export function ExecRead({ area }: { area: (l1: string | null) => string }) {
         <Table title={t("Executive read")} head={[t("Measure"), t("Value"), t("Before")]}>
           <tr>
             <th scope="row" className="m2-card-lead">{t("Data quality score")}</th>
-            <td data-label={t("Value")} className="m2-num">{f1(o.dqs.composite)}{o.dqs.tier ? <span className="m2-meta"> {o.dqs.tier}</span> : null}</td>
+            <td data-label={t("Value")} className="m2-num">{f1(o.dqs.composite)}{o.dqs.tier ? <span className="m2-meta"> {labelOf(o.dqs.tier)}</span> : null}</td>
             <td data-label={t("Before")} className="m2-num">{f1(o.dqs.previous)}</td>
           </tr>
           {o.blockers ? (
@@ -312,7 +312,7 @@ export function RecordSheetFallback({ object, recordKey, notFound }: { object: s
             {failing.map((f) => (
               <tr key={f.check_id}>
                 <th scope="row" className="m2-card-lead"><Mono>{f.check_id}</Mono> {f.message ?? ""}</th>
-                <td data-label={t("Severity")}>{f.severity}</td>
+                <td data-label={t("Severity")}>{labelOf(f.severity)}</td>
                 <td data-label={t("Field")}>{f.field ? <Mono>{f.field}</Mono> : dash}</td>
               </tr>
             ))}

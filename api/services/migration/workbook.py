@@ -779,7 +779,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         control = [c.id for c in columns if c.header not in hits and _norm(c.id) in IMPORT_CONTROL]
         unmapped = sorted((c for c in columns if c.header not in hits and _norm(c.id) not in IMPORT_CONTROL),
                           key=lambda c: not c.mandatory)
-        row = {"name": sheet.name, "kind": sheet.kind, "table": table, "columns": len(columns), "added_keys": added,
+        row: dict[str, Any] = {"name": sheet.name, "kind": sheet.kind, "table": table, "columns": len(columns), "added_keys": added,
                "control": control, "map": {h: f.qualified for h, f in hits.items()}, "mapped": [],
                "matched": len(hits), "rows": 0, "ready": 0, "held": 0,
                "known": bool(options) or sheet.base in SHEET_ENTITIES, "required": sheet.required,

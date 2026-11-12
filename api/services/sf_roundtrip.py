@@ -8,7 +8,7 @@ Nothing in the uploaded file is executed: cells are read as cached values, and e
 """
 import io
 import json
-from typing import Optional
+from typing import Any, Optional
 
 MARKER = "_meridian"
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
@@ -156,7 +156,7 @@ def apply_edits(parent_prefix: str, new_prefix: str, edits: list[dict], dictiona
     by_table: dict[str, list[dict]] = {}
     for e in edits:
         by_table.setdefault(e["table"], []).append(e)
-    out = {"applied": 0, "unchanged": 0, "unmatched": [], "no_table": sorted(set(by_table)), "no_field": []}
+    out: dict[str, Any] = {"applied": 0, "unchanged": 0, "unmatched": [], "no_table": sorted(set(by_table)), "no_field": []}
     objects = list_prefix(bucket, parent_prefix)
     if not any(n.endswith(".parquet") for n, _ in objects):
         raise RoundTripError("The run has no extracted tables to edit.")
