@@ -27,6 +27,9 @@ import type { DimensionKey, Landscape, LandscapeCell, Receipt, RuleRow, RunList,
 import { DIMENSIONS } from "../types";
 import type {
   AutomationSettings,
+  ChatAlerts,
+  ChatEvent,
+  ContactVerification,
   CertSigner,
   CertVersion,
   ContractBreach,
@@ -93,8 +96,39 @@ interface State {
   webhooks: Webhook[];
   deliveries: Record<string, WebhookDelivery[]>;
   automation: AutomationSettings;
+  chat: ChatAlerts;
+  contact: ContactVerification;
   enforcement: Record<string, { enforce: boolean; thresholds: ContractThresholds | null }>;
 }
+
+// Synthetic contact results: invented keys, reserved example domains and masked values only.
+const CONTACT: ContactVerification = {
+  settings: { mx: false },
+  rules: [
+    {
+      check_id: "SDCM939", module: "sd_customer_master", message: "Customer email address is not a valid address (RFC 5321/5322)", field: "ADR6.SMTP_ADDR",
+      affected: 3, total: 1240, pass_rate: 99.8, fixes: 0, checked_at: "2026-11-10T06:00:00Z",
+      reasons: { bad_domain: { count: 2, text: "Domain is not a valid host name (letters, digits, hyphens, at least one dot)" }, no_at: { count: 1, text: "Address has no single @ between a local part and a domain" } },
+      samples: [
+        { record_key: "ADDRNUMBER=0000100001", value: "***", reason: "bad_domain", reason_text: "Domain is not a valid host name (letters, digits, hyphens, at least one dot)" },
+        { record_key: "ADDRNUMBER=0000100007", value: "***", reason: "no_at", reason_text: "Address has no single @ between a local part and a domain" },
+      ],
+    },
+    {
+      check_id: "SDCM942", module: "sd_customer_master", message: "Customer postal code does not match its country's format", field: "KNA1.PSTLZ",
+      affected: 4, total: 1180, pass_rate: 99.7, fixes: 2, checked_at: "2026-11-10T06:00:00Z",
+      reasons: { postcode_layout: { count: 2, text: "Postal code is valid but not in its country's standard layout (spacing or case)" }, postcode_format: { count: 2, text: "Postal code does not match the format of its country" } },
+      samples: [
+        { record_key: "KUNNR=C-0001", value: "sw1a1aa", reason: "postcode_layout", reason_text: "Postal code is valid but not in its country's standard layout (spacing or case)" },
+        { record_key: "KUNNR=C-0004", value: "1011", reason: "postcode_format", reason_text: "Postal code does not match the format of its country" },
+      ],
+    },
+    {
+      check_id: "BP902", module: "business_partner", message: "Business partner phone number is not plausible for its country (E.164)", field: "ADR2.TEL_NUMBER",
+      affected: 0, total: 860, pass_rate: 100, fixes: 0, checked_at: "2026-11-10T06:00:00Z", reasons: {}, samples: [],
+    },
+  ],
+};
 
 function build(): State {
   return {
@@ -132,6 +166,8 @@ function build(): State {
       "wh-2": [],
     },
     automation: { drift_alerts: { enabled: true }, rule_mining: { min_records: 25 }, score_drop: { below: null, points: 5 } },
+    contact: CONTACT,
+    chat: { channels: { slack: true, teams: false }, events: ["dqs_drop", "threshold_breach", "run_failed", "sla_breach"], available: ["dqs_drop", "threshold_breach", "run_failed", "sla_breach", "firewall_rejections"] },
     // `?contracts=enforced` starts the fixture with the contract enforced, so a page load can show the baseline gate.
     enforcement: { "ct-1": { enforce: fixtureParam("contracts") === "enforced", thresholds: { min_score: 85, max_critical_breaches: 0, dimensions: { completeness: 80 } } } },
   };
@@ -644,6 +680,8 @@ export function step9Read(path: string, params: Params): unknown {
     return { deliveries: clone((st().deliveries[id] ?? []).filter((d) => !status || d.status === status)) };
   }
   if (path === "/settings/automation") return clone(st().automation);
+  if (path === "/settings/chat-alerts") return clone(st().chat);
+  if (path === "/contact-verification") return clone(st().contact);
   if (path === "/config/drift/alerts") return { alerts: clone(ALERTS.slice(0, Number(params.limit ?? 50))) };
   const oc = /^\/objects\/([^/]+)\/contracts$/.exec(path);
   if (oc) return objectContractsFixture(decodeURIComponent(oc[1]));
@@ -681,6 +719,19 @@ export function step9Write(method: string, path: string, body: unknown): unknown
   }
   const test = /^\/webhooks\/([^/]+)\/test$/.exec(path);
   if (method === "POST" && test) return testWebhookFixture(decodeURIComponent(test[1]));
+  if (method === "PUT" && path === "/contact-verification/settings") {
+    st().contact.settings.mx = Boolean(b.mx);
+    return clone(st().contact.settings);
+  }
+  if (method === "PUT" && path === "/settings/chat-alerts") {
+    const chosen = Array.isArray(b.events) ? (b.events as ChatEvent[]) : [];
+    st().chat.events = st().chat.available.filter((e) => chosen.includes(e));
+    return clone(st().chat);
+  }
+  if (method === "POST" && path === "/settings/chat-alerts/test") {
+    const c = st().chat.channels;
+    return { channels: { slack: { configured: c.slack, delivered: c.slack, error: null }, teams: { configured: c.teams, delivered: false, error: null } } };
+  }
   if (method === "PUT" && path === "/settings/automation") {
     const a = st().automation;
     const next = b as Partial<AutomationSettings>;

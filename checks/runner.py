@@ -40,6 +40,7 @@ from checks.types.group_range_check import GroupRangeCheck
 from checks.types.count_per_parent_check import CountPerParentCheck
 from checks.types.all_children_check import AllChildrenCheck
 from checks.types.char_set_check import CharSetCheck
+from checks.types.contact_check import ContactCheck
 
 logger = logging.getLogger("meridian.checks")
 
@@ -152,6 +153,7 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "count_per_parent_check": CountPerParentCheck,
     "all_children_check": AllChildrenCheck,
     "char_set_check": CharSetCheck,
+    "contact_check": ContactCheck,
 }
 
 # check types judging a group of rows together: only sound on a complete extract

@@ -284,7 +284,7 @@ export function ReferenceSection() {
             }
           </Loaded>
           {write ? (
-            <Block title={t("Upload or replace a list")} hint={t("Postal codes: a CSV with the columns country, postcode (the SAP country key). Bank codes: the licensed SWIFT BIC directory as CSV, BIC in the first column. An upload replaces the system's current list.")}>
+            <Block title={t("Upload or replace a list")} hint={t("Postal codes: a CSV with the columns country, postcode (the SAP country key), and optionally city and region, so address rules also check each record's city and region against its postal code. Bank codes: the licensed SWIFT BIC directory as CSV, BIC in the first column. An upload replaces the system's current list.")}>
               <div className="m2-fgrid">
                 <Fld label={t("List")}>
                   <select value={kind} onChange={(e) => setKind(e.target.value as "postal-codes" | "bic")}>

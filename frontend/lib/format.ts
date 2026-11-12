@@ -279,6 +279,7 @@ const CHECK_CLASS_LABELS: Record<string, string> = {
   count_per_parent_check: "Count per parent",
   all_children_check: "Parent matches all children",
   char_set_check: "Allowed characters",
+  contact_check: "Email, phone or postcode verification",
 };
 
 /** "domain_value_check" -> "Allowed values"; unknown ids are humanized ("older_than_days" -> "Older than days"). */

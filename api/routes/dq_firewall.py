@@ -39,6 +39,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes import change_requests as cr_routes
 from api.services import change_requests as crs
 from api.services import ddic_value_check as dvc
+from api.services import chat_alerts
 from api.services import dq_firewall as fw
 from api.services import entry_duplicates as ed
 from api.services.rbac import current_user_id, current_user_label, require_permission, write_audit
@@ -505,6 +506,10 @@ async def validate(body: ValidateBody, request: Request, db: AsyncSession = Depe
         "blocking_rule_counts": dict(sorted(_count_blocking(fails).items(), key=lambda kv: -kv[1])[:50]),
         "blocking_rules": sorted({f["rule_id"] for f in fails if f["severity"] == fw.BLOCK_SEVERITY})[:50],
         **dup_audit})
+    blocked = sum(r["verdict"] == "block" for r in res["records"])
+    if blocked and not chat_alerts.throttled(str(tenant.id), "firewall_rejections", body.module):
+        await chat_alerts.notify(db, str(tenant.id), "firewall_rejections",
+                                 {"module": body.module, "records_blocked": blocked, "records_checked": len(res["records"])})
     await db.commit()
     return ValidateOut(**res)
 

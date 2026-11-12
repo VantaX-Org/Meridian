@@ -35,6 +35,9 @@ TARGETS = (
     ("PA0006", "PSTLZ", "PA0006.LAND1", "postal", "PA0006.STRAS"),
     ("PA0009", "BANKN", "PA0009.BANKS", "bank_account", None), ("PA0009", "BANKL", "PA0009.BANKS", "bank_number", None),
 )
+# postal code table: (postcode field, city field, region field) checked against REF_POSTAL's CITY / REGION
+PLACE = {"KNA1": ("PSTLZ", "ORT01", "REGIO"), "LFA1": ("PSTLZ", "ORT01", "REGIO"),
+         "ADRC": ("POST_CODE1", "CITY1", "REGION"), "PA0006": ("PSTLZ", "ORT01", "STATE")}
 LABELS = {"postal": "postal code", "tax1": "tax number 1", "tax2": "tax number 2",
           "bank_account": "bank account number", "bank_number": "bank key"}
 
@@ -49,7 +52,14 @@ def message(code: str, t: str, f: str, kind: str) -> str:
         "PX": f"Postal code ({col}) is not in the official postal code list for its country",
         "BK": f"Bank key ({col}) does not exist in the system's bank directory (BNKA)",
         "BX": f"SWIFT/BIC ({col}) is not in the SWIFT directory loaded for its country",
+        "PC": f"City ({col}) does not belong to the postal code in the official postal code list",
+        "PR": f"Region ({col}) does not belong to the postal code in the official postal code list",
     }[code]
+
+
+def place_key(*parts) -> str:
+    """Upper-case, single-spaced ``COUNTRY|POSTCODE[|CITY]`` key (reference and record sides alike)."""
+    return "|".join(" ".join(str(p or "").upper().split()) for p in parts)
 
 
 def rule_name(check_id: str) -> str | None:
@@ -57,6 +67,9 @@ def rule_name(check_id: str) -> str | None:
     if check_id == "BX-BNKA":
         return message("BX", "BNKA", "SWIFT", "bic")
     code, _, rest = (check_id or "").partition("-")
+    for t, (_pc, city, region) in PLACE.items():
+        if (code, rest) in (("PC", f"{t}-{city}"), ("PR", f"{t}-{region}")):
+            return message(code, t, city if code == "PC" else region, "place")
     for t, f, _country, kind, street in TARGETS:
         if code in ("CF", "PX", "CR") and rest == f"{t}-{f}":
             if code == "CF" or (kind == "postal" and (code == "PX" or street)):
@@ -98,6 +111,8 @@ def fields_for(table: str, dictionary) -> set[str]:
             out |= {f, country.split(".")[1]} | ({street.split(".")[1]} if street else set())
             if t in ("LFBK", "KNBK", "BUT0BK", "PA0009"):
                 out.add("BANKL")
+            if t in PLACE:
+                out |= set(PLACE[t][1:])
     return {f for f in out if dictionary.field(table, f) is not None}
 
 
@@ -143,6 +158,23 @@ def generate(module: str, static_rules: list[dict], config: dict[str, list[dict]
                           "why_it_matters": "A postal code that does not exist cannot be delivered to and puts the "
                                             "address in the wrong tax jurisdiction and carrier zone. Judged only "
                                             "for countries whose official list is loaded."})
+        if kind == "postal" and t in PLACE and config.get("REF_POSTAL"):
+            for code, idx, what in (("PC", 1, "CITY"), ("PR", 2, "REGION")):
+                part = PLACE[t][idx]
+                ref = [r for r in config["REF_POSTAL"] if str(r.get(what) or "").strip()]
+                if not ref or dictionary.field(t, part) is None:
+                    continue
+                keys = sorted({place_key(r.get("COUNTRY"), r.get("POSTCODE"), r.get(what)) for r in ref})
+                rules.append({**base, "id": f"{code}-{t}-{part}", "family": "place", "field": f"{t}.{part}",
+                              "country_field": country, "postcode_field": col, "keys": keys,
+                              "scope": sorted({k.rsplit("|", 1)[0] for k in keys}), "reference": "REF_POSTAL",
+                              "rule_authority": "customer_reference_data", "severity": "medium",
+                              "dimension": "accuracy", "message": message(code, t, part, "place"),
+                              "why_it_matters": f"The {what.lower()} must be one the official list gives for the "
+                                                "postal code. A mismatch means the postal code or the "
+                                                f"{what.lower()} was keyed wrongly, so deliveries, carrier zones "
+                                                "and tax jurisdictions follow the wrong one. Judged only for "
+                                                f"postal codes the loaded list names a {what.lower()} for."})
         if kind == "bank_number" and config.get("BNKA"):
             keys = sorted({f"{str(r.get('BANKS') or '').strip()}|{str(r.get('BANKL') or '').strip()}"
                            for r in config["BNKA"]})

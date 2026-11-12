@@ -284,6 +284,41 @@ export const listDeliveries = (id: string, status?: WebhookDelivery["status"]): 
 export const getAutomation = (): Promise<AutomationSettings> => v2Get("/settings/automation");
 export const putAutomation = (body: Partial<AutomationSettings>): Promise<AutomationSettings> => v2Send("PUT", "/settings/automation", body);
 
+export type ChatEvent = "dqs_drop" | "threshold_breach" | "run_failed" | "sla_breach" | "firewall_rejections";
+export type ChatKind = "slack" | "teams";
+/** Chat alerts: the webhook URLs are server environment secrets; the API only says whether each is set. */
+export interface ChatAlerts {
+  channels: Record<ChatKind, boolean>;
+  events: ChatEvent[];
+  available: ChatEvent[];
+}
+export interface ChatTest {
+  channels: Record<ChatKind, { configured: boolean; delivered: boolean; error: string | null }>;
+}
+export const getChatAlerts = (): Promise<ChatAlerts> => v2Get("/settings/chat-alerts");
+export const putChatAlerts = (events: ChatEvent[]): Promise<ChatAlerts> => v2Send("PUT", "/settings/chat-alerts", { events });
+export const testChatAlerts = (): Promise<ChatTest> => v2Send("POST", "/settings/chat-alerts/test");
+
+/** Email, phone and address verification: the latest result of each contact rule, with every sampled record's own reason. */
+export interface ContactReason { count: number; text: string }
+export interface ContactSample { record_key: string; value: string | null; reason: string | null; reason_text: string | null }
+export interface ContactRule {
+  check_id: string;
+  module: string;
+  message: string;
+  field: string | null;
+  affected: number;
+  total: number;
+  pass_rate: number;
+  reasons: Record<string, ContactReason>;
+  fixes: number;
+  samples: ContactSample[];
+  checked_at: string | null;
+}
+export interface ContactVerification { rules: ContactRule[]; settings: { mx: boolean } }
+export const getContactVerification = (): Promise<ContactVerification> => v2Get("/contact-verification");
+export const putContactVerification = (mx: boolean): Promise<{ mx: boolean }> => v2Send("PUT", "/contact-verification/settings", { mx });
+
 // ── config drift alerts ──────────────────────────────────────────────────────
 
 export interface DriftArea {
