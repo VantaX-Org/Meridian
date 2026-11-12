@@ -45,13 +45,15 @@ export function RunSwitcher({ runs, value, onChange, onCompare }: { runs: RunOpt
   }, [sorted, q]);
   const rows = onCompare ? list.length + 1 : list.length;
 
+  // Reset the filter and selection each time the popover opens, in the handler that opens it.
+  const openPop = () => {
+    setQ("");
+    setAt(Math.max(0, sorted.findIndex((r) => r.id === value)));
+    setOpen(true);
+  };
   useEffect(() => {
-    if (open) {
-      setQ("");
-      setAt(Math.max(0, sorted.findIndex((r) => r.id === value)));
-      filter.current?.focus();
-    }
-  }, [open, sorted, value]);
+    if (open) filter.current?.focus();
+  }, [open]);
 
   const step = (d: -1 | 1) => {
     const i = sorted.findIndex((r) => r.id === value);
@@ -81,7 +83,7 @@ export function RunSwitcher({ runs, value, onChange, onCompare }: { runs: RunOpt
       step(1);
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      setOpen(true);
+      openPop();
     }
   };
 
@@ -94,7 +96,7 @@ export function RunSwitcher({ runs, value, onChange, onCompare }: { runs: RunOpt
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={`${base}-pop`}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? setOpen(false) : openPop())}
         onKeyDown={onBtnKey}
       >
         <Icon name="history" />
@@ -102,7 +104,12 @@ export function RunSwitcher({ runs, value, onChange, onCompare }: { runs: RunOpt
         <Icon name="chevron-down" />
       </button>
       {open ? (
-        <div id={`${base}-pop`} className="nx-menu nx-runsw-pop" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), close())}>
+        <div id={`${base}-pop`} className="nx-menu nx-runsw-pop" onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            close();
+          }
+        }}>
           <input
             ref={filter}
             className="nx-input"
@@ -118,10 +125,16 @@ export function RunSwitcher({ runs, value, onChange, onCompare }: { runs: RunOpt
               setAt(0);
             }}
             onKeyDown={(e) => {
-              if (e.key === "ArrowDown") (e.preventDefault(), setAt((a) => Math.min(rows - 1, a + 1)));
-              else if (e.key === "ArrowUp") (e.preventDefault(), setAt((a) => Math.max(0, a - 1)));
-              else if (e.key === "Enter") (e.preventDefault(), rows > 0 && choose(at));
-              else if (e.key === "Tab") setOpen(false);
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setAt((a) => Math.min(rows - 1, a + 1));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setAt((a) => Math.max(0, a - 1));
+              } else if (e.key === "Enter") {
+                e.preventDefault();
+                if (rows > 0) choose(at);
+              } else if (e.key === "Tab") setOpen(false);
             }}
           />
           <div id={`${base}-list`} role="listbox" aria-label={t("Runs, newest first")} className="nx-runsw-list">

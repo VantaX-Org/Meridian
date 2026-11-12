@@ -22,7 +22,14 @@ export interface CommandGroup {
  * Ctrl or Cmd K, in the caller. Type to filter across groups; a leading ? lists what the palette can do. Combobox
  * pattern: focus stays in the input, aria-activedescendant names the highlighted result.
  */
-export function CommandPalette({ open, onClose, groups }: { open: boolean; onClose: () => void; groups: CommandGroup[] }) {
+type PaletteProps = { open: boolean; onClose: () => void; groups: CommandGroup[] };
+
+/** Mounts the palette body only while open, so the query and selection reset by remounting. */
+export function CommandPalette(props: PaletteProps) {
+  return props.open ? <PaletteBody {...props} /> : null;
+}
+
+function PaletteBody({ onClose, groups }: PaletteProps) {
   const [q, setQ] = useState("");
   const [at, setAt] = useState(0);
   const box = useRef<HTMLDivElement>(null);
@@ -31,13 +38,10 @@ export function CommandPalette({ open, onClose, groups }: { open: boolean; onClo
   const base = useId();
 
   useEffect(() => {
-    if (!open) return;
-    setQ("");
-    setAt(0);
     opener.current = document.activeElement as HTMLElement | null;
     input.current?.focus();
     return () => opener.current?.focus?.();
-  }, [open]);
+  }, []);
 
   const help = q.startsWith("?");
   const shown = useMemo(() => {
@@ -47,14 +51,13 @@ export function CommandPalette({ open, onClose, groups }: { open: boolean; onClo
       .filter((g) => g.items.length > 0);
   }, [groups, q, help]);
   const flat = shown.flatMap((g) => g.items);
-
-  if (!open) return null;
+  // Flat index of each group's first item, so rows get their index without a render-time counter.
+  const starts = shown.map((_, gi) => shown.slice(0, gi).reduce((sum, g) => sum + g.items.length, 0));
   const run = (c?: Command) => {
     if (!c) return;
     onClose();
     c.run();
   };
-  let n = -1;
   return (
     <div className="nx-scrim nx-scrim-top" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
@@ -104,12 +107,11 @@ export function CommandPalette({ open, onClose, groups }: { open: boolean; onClo
         {help ? <p className="nx-palette-help">{t("Pick a command with the arrow keys and press Enter. Type a word to filter. Esc closes.")}</p> : null}
         <div id={`${base}-list`} role="listbox" aria-label={t("Commands")} className="nx-palette-list">
           {shown.length === 0 ? <p className="nx-palette-empty">{t("No command matches.")}</p> : null}
-          {shown.map((g) => (
+          {shown.map((g, gi) => (
             <div key={g.id} role="group" aria-labelledby={`${base}-g-${g.id}`}>
               <div id={`${base}-g-${g.id}`} className="nx-palette-group">{g.label}</div>
-              {g.items.map((c) => {
-                n += 1;
-                const i = n;
+              {g.items.map((c, ci) => {
+                const i = starts[gi] + ci;
                 return (
                   <div key={c.id} id={`${base}-${c.id}`} role="option" aria-selected={i === at} className={cx("nx-palette-item", i === at && "nx-palette-on")} onMouseMove={() => setAt(i)} onClick={() => run(c)}>
                     <span>{c.label}</span>

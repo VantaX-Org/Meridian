@@ -9,7 +9,7 @@ import { trapTab } from "./focus";
  * A modal that states the consequence in numbers ("This writes 4,210 records to the live system"). For a live system
  * the person types a phrase first; the confirm button says why it is off until they do.
  */
-export function Confirm({ open, title, consequence, confirmLabel, danger, phrase, onConfirm, onCancel }: {
+type ConfirmProps = {
   open: boolean;
   title: string;
   consequence: ReactNode;
@@ -19,7 +19,14 @@ export function Confirm({ open, title, consequence, confirmLabel, danger, phrase
   phrase?: string;
   onConfirm: () => void;
   onCancel: () => void;
-}) {
+};
+
+/** Mounts the dialog body only while open, so the typed phrase resets by remounting. */
+export function Confirm(props: ConfirmProps) {
+  return props.open ? <ConfirmBody {...props} /> : null;
+}
+
+function ConfirmBody({ title, consequence, confirmLabel, danger, phrase, onConfirm, onCancel }: ConfirmProps) {
   const [typed, setTyped] = useState("");
   const box = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLElement | null>(null);
@@ -28,16 +35,13 @@ export function Confirm({ open, title, consequence, confirmLabel, danger, phrase
   const ok = !phrase || typed.trim() === phrase;
 
   useEffect(() => {
-    if (!open) return;
-    setTyped("");
     opener.current = document.activeElement as HTMLElement | null;
     // The safe choice takes focus: Cancel, or the phrase box.
     const el = box.current?.querySelector<HTMLElement>("[data-autofocus]");
     el?.focus();
     return () => opener.current?.focus?.();
-  }, [open]);
+  }, []);
 
-  if (!open) return null;
   return (
     <div className="nx-scrim" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
       <div

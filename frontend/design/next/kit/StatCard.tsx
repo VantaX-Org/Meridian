@@ -12,11 +12,12 @@ const reducedMotion = () => typeof window !== "undefined" && typeof window.match
 function useCountTo(target: number): number {
   const [shown, setShown] = useState(target);
   const from = useRef(target);
+  // Reduced motion (or no rAF) skips the tween and reads the target straight at render, so no state is set in the effect.
+  const instant = reducedMotion() || typeof requestAnimationFrame !== "function";
   useEffect(() => {
     if (from.current === target) return;
-    if (reducedMotion() || typeof requestAnimationFrame !== "function") {
+    if (instant) {
       from.current = target;
-      setShown(target);
       return;
     }
     const start = performance.now();
@@ -33,8 +34,8 @@ function useCountTo(target: number): number {
       cancelAnimationFrame(raf);
       from.current = target;
     };
-  }, [target]);
-  return shown;
+  }, [target, instant]);
+  return instant ? target : shown;
 }
 
 export function Sparkline({ points, label }: { points: number[]; label: string }) {
