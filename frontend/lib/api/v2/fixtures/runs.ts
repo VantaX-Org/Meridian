@@ -38,7 +38,7 @@ class FixtureNotFound extends Error {
 // ── State a fixture session can change: the pinned baseline and which runs are archived ──────────
 
 const BASELINE_DEFAULT = RUNS[2].id; // 2 Oct
-const state: { baseline: string | null; archived: Set<string>; retried: Set<string>; tested: Record<string, boolean>; started: Job[] } = { baseline: BASELINE_DEFAULT, archived: new Set(), retried: new Set(), tested: {}, started: [] };
+const state: { baseline: string | null; archived: Set<string>; retried: Set<string>; tested: Record<string, boolean>; started: Job[]; labels: Record<string, string> } = { baseline: BASELINE_DEFAULT, archived: new Set(), retried: new Set(), tested: {}, started: [], labels: {} };
 
 /** Puts the fixture session back as it started: tests call this between cases. */
 /** Jobs a fixture session cancelled. */
@@ -161,7 +161,7 @@ function head(k: number): VersionHead {
   return {
     id: run.id,
     run_at: run.run_at,
-    label: null,
+    label: state.labels[run.id] ?? null,
     run_number: k,
     parent_version_id: k > 1 ? RUNS[RUNS.length - k + 1].id : null,
     status: "complete",
@@ -699,6 +699,27 @@ export function fixtureAction(name: string, args: Record<string, unknown>): unkn
     }
     case "download":
       return { ok: true };
+    case "rename": {
+      const id = String(args.id);
+      state.labels[id] = String(args.label);
+      return { id, label: state.labels[id] };
+    }
+    case "rerun_agents": {
+      const id = String(args.id);
+      const job = `agents-${id.slice(-6)}`;
+      state.started.unshift(startedJob("analysis", job, "Agents | ECC production", ECC.id));
+      return { version_id: id, job_id: job, status: "agents_enqueued" };
+    }
+    case "finding_records": {
+      const total = 137;
+      const limit = Number(args.limit ?? 100);
+      const offset = Number(args.offset ?? 0);
+      const records = Array.from({ length: Math.max(0, Math.min(limit, total - offset)) }, (_, i) => {
+        const n = offset + i + 1;
+        return { record_key: `MAT${100000 + n}`, grain: "MARA", module: "material_master", field_values: { MTART: n % 3 ? "ROH" : "FERT", MEINS: n % 5 ? "EA" : "", MATKL: `00${(n % 4) + 1}` } };
+      });
+      return { version_id: String(args.versionId), check_id: String(args.checkId), total, records };
+    }
     case "cancel": {
       const id = String(args.id);
       const j = jobs().find((x) => x.id === id);

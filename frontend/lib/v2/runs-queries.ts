@@ -20,7 +20,7 @@ import {
   getVersionsPage,
   type VersionsQuery,
 } from "@/lib/api/v2/runs";
-import { getCompareRecordKeys, getCompareRecords, getRunSteps, type CompareKeysQuery } from "@/lib/api/v2/run-ops";
+import { getCompareRecordKeys, getCompareRecords, getFindingRecords, getRunSteps, type CompareKeysQuery } from "@/lib/api/v2/run-ops";
 import { JOBS_QUERY_OPTIONS } from "@/hooks/use-jobs";
 
 /** Query keys of the step 3 reads. Every key starts with "v2" and carries the fixture flag, like the landscape keys. */
@@ -70,6 +70,19 @@ export function useVersionChanges(a: string, b: string) {
 export function useRunSteps(id: string) {
   const fixture = useFixture();
   return useQuery({ queryKey: ["v2", "run-steps", fixture, id] as const, queryFn: () => getRunSteps(id), staleTime: 15_000, retry: false });
+}
+
+/** One page of the records that fail a check at a run. Kept while the next page loads so the table does not blink. */
+export function useFindingRecords(versionId: string | null, checkId: string, page: { limit: number; offset: number }) {
+  const fixture = useFixture();
+  return useQuery({
+    queryKey: ["v2", "finding-records", fixture, versionId, checkId, page.limit, page.offset] as const,
+    queryFn: () => getFindingRecords(versionId as string, checkId, page),
+    enabled: !!versionId,
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
+    retry: false,
+  });
 }
 
 export function useCompareRecords(v2: string, v1: string) {

@@ -23,6 +23,11 @@ const ITEMS: AttentionItem[] = [
 ];
 
 export function attentionRead(path: string, params: Record<string, unknown>): unknown {
+  if (path === "/attention/count") {
+    // Fixture totals exceed the ten listed items so the badge shows a grouped number.
+    const c = { critical: 212, high: 1030, medium: 0, low: 0 };
+    return { ...c, top: ITEMS[0] };
+  }
   if (path !== "/attention") return NONE_ATTENTION;
   const kinds = params.kinds ? new Set(String(params.kinds).split(",")) : null;
   const items = ITEMS.filter((i) => (!kinds || kinds.has(i.kind)) && (!params.system_id || i.system_id === params.system_id));

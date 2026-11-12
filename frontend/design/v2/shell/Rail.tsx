@@ -4,7 +4,7 @@ import { useEffect, useRef, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useV2Session } from "@/lib/v2/hooks";
 import { canAdminister } from "@/lib/v2/admin-sections";
-import { useCounts } from "@/lib/v2/queries";
+import { useAttentionCount, useCounts } from "@/lib/v2/queries";
 import { int } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { IconClose } from "../marks";
@@ -133,7 +133,10 @@ function FlyoutBody({ dest, onClose, pinned, setPinned }: { dest: Destination; o
 export function Rail({ fly, setFly }: { fly: FlyId; setFly: (id: FlyId) => void }) {
   const pathname = usePathname();
   const [pinned, setPinned] = usePinned();
-  const fix = useCounts().data?.fix;
+  const counts = useCounts().data?.fix;
+  const att = useAttentionCount().data;
+  // The action centre's own count (every severity) wins; the landscape count stands in until it answers.
+  const fix = att ? att.critical + att.high + att.medium + att.low : counts;
   const all = destinations();
   const active = destinationAt(pathname, all);
   const shown = all.find((d) => d.id === (fly ?? (pinned ? active?.id ?? "objects" : null)));

@@ -188,3 +188,19 @@ describe("the trigger of a run", () => {
     expect(kindWord(triggerOf(null, { upload_id: "u1" }))).toBe("Upload");
   });
 });
+
+describe("Run actions", () => {
+  it("renames the run and starts the agents again", async () => {
+    renderWithQuery(<RunCanvas id={R8} />);
+    const input = await screen.findByRole("textbox", { name: "Run name" });
+    await waitFor(() => expect(input).not.toBeDisabled());
+    fireEvent.change(input, { target: { value: "Cutover rehearsal" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save name" }));
+    expect(await screen.findByText("Run named Cutover rehearsal")).toBeInTheDocument();
+    const rerun = screen.getByRole("button", { name: "Re-run agents" });
+    await waitFor(() => expect(rerun).not.toBeDisabled());
+    fireEvent.click(rerun);
+    expect(await screen.findByText("Agents started")).toBeInTheDocument();
+    expect(screen.getByTestId("run-events")).toBeInTheDocument();
+  });
+});

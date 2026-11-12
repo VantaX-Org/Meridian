@@ -9,6 +9,8 @@ import { CcBanner, CcPage } from "./cc-parts";
 import { LedgerSlot } from "./object/LedgerSlot";
 import { RuleOverview } from "./RuleOverview";
 import { BlastRadius } from "./BlastRadius";
+import { FindingRecords } from "./FindingRecords";
+import { moduleText } from "@/lib/v2/labels";
 import { t as tr } from "@/lib/v2/i18n";
 import { useState } from "react";
 import { exportFindingRecords } from "@/lib/api/findings";
@@ -153,6 +155,13 @@ export function RuleCanvas({ id }: { id: string }) {
           ) : tab === "failing" ? (
             <>
               <RecordsExport checkId={id} runIds={[...new Set(v.scope.objects.map((o) => o.run_id).filter((r): r is string => !!r))]} />
+              <FindingRecords
+                checkId={id}
+                runs={v.scope.objects
+                  .filter((o): o is typeof o & { run_id: string } => !!o.run_id)
+                  .filter((o, i, all) => all.findIndex((x) => x.run_id === o.run_id) === i)
+                  .map((o) => ({ id: o.run_id, label: moduleText(o.module) }))}
+              />
               <LedgerSlot label={id} scope={{ module: v.scope.module ?? v.scope.objects[0]?.module, filters: { check_id: id } }} />
             </>
           ) : tab === "prove" ? (
