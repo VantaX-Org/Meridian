@@ -13,3 +13,7 @@
 .nx-mon-find li { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--nx-s2) var(--nx-s3); }
 .nx-mon-reason { color: var(--nx-ink-2); }
 .nx-mon-foot { display: flex; align-items: center; gap: var(--nx-s3); color: var(--nx-ink-2); }
+.nx-mon-watched h2 { margin: 0 0 var(--nx-s2); font-size: var(--nx-fs-h3, 1rem); }
+.nx-mon-watched ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--nx-s2); }
+.nx-mon-watched li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s3); }
+.nx-mon-wname { min-width: 12ch; font-weight: 600; }
