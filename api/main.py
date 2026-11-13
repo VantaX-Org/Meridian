@@ -201,7 +201,21 @@ async def lifespan(app: FastAPI):
                     result = await session.execute(
                         text("SELECT id FROM tenants WHERE id = '00000000-0000-0000-0000-000000000001'")
                     )
-                    if not result.scalar():
+                    if result.scalar():
+                        logger.info("Dev tenant exists")
+                    elif settings.env != "development":
+                        # Production first run: the deployment tenant row only. Its modules come from the
+                        # licence (LicenceMiddleware), never from this seed; the all-module dev tenant below
+                        # is seeded only when MERIDIAN_ENV=development.
+                        await session.execute(
+                            text(
+                                "INSERT INTO tenants (id, name) "
+                                "VALUES ('00000000-0000-0000-0000-000000000001', 'Tenant')"
+                            )
+                        )
+                        await session.commit()
+                        logger.info("Deployment tenant created (no seeded modules: not a development env)")
+                    else:
                         await session.execute(
                             text(
                                 "INSERT INTO tenants (id, name, licensed_modules) "
@@ -220,8 +234,6 @@ async def lifespan(app: FastAPI):
                         )
                         await session.commit()
                         logger.info("Dev tenant created")
-                    else:
-                        logger.info("Dev tenant exists")
 
                     # Ensure jwt_secret exists on the dev tenant for local auth
                     secret_row = await session.execute(
@@ -415,10 +427,10 @@ app.add_middleware(LicenceMiddleware)
 # Tenant middleware — resolves tenant_id and sets Postgres RLS context
 app.add_middleware(TenantMiddleware)
 
-# Local auth middleware — JWT verification when AUTH_MODE=local
-if settings.auth_mode == "local":
-    from api.middleware.local_auth import LocalAuthMiddleware
-    app.add_middleware(LocalAuthMiddleware)
+# Local auth middleware — JWT verification on every /api/ route. Always mounted: Settings refuses any
+# AUTH_MODE other than local/oidc, so no mode runs without it.
+from api.middleware.local_auth import LocalAuthMiddleware  # noqa: E402
+app.add_middleware(LocalAuthMiddleware)
 
 # Register routers
 app.include_router(health_router)
