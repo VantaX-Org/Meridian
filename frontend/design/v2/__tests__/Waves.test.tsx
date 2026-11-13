@@ -119,7 +119,8 @@ describe("the Waves view of the landscape", () => {
     setUrl(edit.getAttribute("href") as string);
     // The test id keeps this cheap: a role query walks the whole coverage matrix on every retry. The accessible name
     // still proves it is the waves editor.
-    expect(await screen.findByTestId("inspector")).toHaveAccessibleName("Migration waves");
+    await screen.findByTestId("inspector");
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Migration waves");
   });
 
   it("at phone width the list keeps each wave's heading with its gate, Edit and Certificate", async () => {

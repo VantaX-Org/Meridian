@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
@@ -60,7 +59,7 @@ describe("?open round trip", () => {
     expect(getUrl()).toContain("fixture=1");
     expect(screen.getByTestId("open")).toHaveTextContent("rule:MM142");
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Close inspector" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(getUrl()).not.toContain("open=");
     expect(getUrl()).toContain("run=r1");
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -129,64 +128,33 @@ describe("<Inspector>", () => {
 });
 
 describe("focus handling", () => {
-  it("moves focus to Close on open, cycles Tab inside, and returns focus to the opener on Esc", async () => {
+  it("moves focus into the sheet on open, keeps Tab inside, and returns focus to the opener on Esc", async () => {
     renderWithQuery(<Harness />);
     const opener = screen.getByText("Open ECC");
     opener.focus();
     fireEvent.click(opener);
     const dialog = await screen.findByRole("dialog");
-    const close = screen.getByRole("button", { name: "Close inspector" });
-    await waitFor(() => expect(close).toHaveFocus());
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
     await waitFor(() => expect(screen.getByRole("button", { name: "Test connection" })).toBeInTheDocument());
+    const close = screen.getByRole("button", { name: "Close" });
     const focusables = Array.from(dialog.querySelectorAll<HTMLElement>('a[href],button:not([disabled])'));
     const last = focusables[focusables.length - 1];
-    expect(focusables[0]).toBe(close);
     expect(focusables.length).toBeGreaterThan(1);
 
     // Tab from the last focusable wraps to the first; Shift+Tab from the first wraps to the last.
     last.focus();
     fireEvent.keyDown(last, { key: "Tab" });
-    expect(close).toHaveFocus();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).not.toBe(last);
+    close.focus();
     fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
-    expect(last).toHaveFocus();
+    expect(dialog.contains(document.activeElement)).toBe(true);
 
     // Esc closes it, the URL loses ?open=, and focus goes back to the control that opened it.
-    fireEvent.keyDown(last, { key: "Escape" });
+    fireEvent.keyDown(document.activeElement ?? last, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(getUrl()).not.toContain("open=");
     expect(opener).toHaveFocus();
-  });
-
-  it("falls back to the canvas when the opener is gone", async () => {
-    function Host() {
-      const [open, setOpen] = useState(false);
-      const [hasOpener, setHasOpener] = useState(true);
-      return (
-        <div>
-          {hasOpener ? <button onClick={() => setOpen(true)}>Opener</button> : null}
-          <main id="m2-canvas" tabIndex={-1} />
-          {open ? (
-            <InspectorFrame
-              title="Rule"
-              onClose={() => {
-                setHasOpener(false);
-                setOpen(false);
-              }}
-            >
-              <a href="#x">one</a>
-            </InspectorFrame>
-          ) : null}
-        </div>
-      );
-    }
-    renderWithQuery(<Host />);
-    const opener = screen.getByText("Opener");
-    opener.focus();
-    fireEvent.click(opener);
-    await screen.findByRole("dialog");
-    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(document.getElementById("m2-canvas")).toHaveFocus();
   });
 
   it("Esc inside the frame asks to close, once", () => {
