@@ -5,6 +5,8 @@ import { Shell } from "@/design/next/shell/Shell";
 import "@/design/next/tokens.css";
 import "@/design/next/motion.css";
 import "@/design/next/kit/kit.css";
+import "@/design/next/kit/content.css";
+import "@/design/next/layers.css";
 import "@/design/v2/tokens.css";
 import "@/design/v2/v2.css";
 import "@/design/v2/admin.css";
