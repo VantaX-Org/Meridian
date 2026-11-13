@@ -1,11 +1,10 @@
 """Per-router licence gating: every route keyed on a module checks that the licence entitles it."""
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from api.main import app
 from api.middleware.licence import licensed_module
+from tests.test_all_routes_guarded import _routes as _walk
 
 GUARD = "licensed_module_guard"
 
@@ -18,20 +17,22 @@ def _names(dependant, out):
 
 
 def _routes():
-    return [r for r in app.routes if isinstance(r, APIRoute)]
+    """(full path, dependency names); the walker sees through FastAPI >=0.140 included-router wrappers."""
+    routes = [(path, _names(r.dependant, extra)) for path, r, extra in _walk()]
+    assert len(routes) > 100
+    return routes
 
 
 def test_every_module_path_route_is_licence_gated():
-    missing = [f"{sorted(r.methods)} {r.path}" for r in _routes()
-               if "{module}" in r.path and not any(GUARD in n for n in _names(r.dependant, []))]
+    missing = [path for path, names in _routes() if "{module}" in path and not any(GUARD in n for n in names)]
     assert not missing, "module routes without licensed_module():\n" + "\n".join(missing)
 
 
 def test_material_360_is_gated_on_material_master():
-    routes = [r for r in _routes() if r.path.startswith("/api/v1/materials")]
+    routes = [(path, names) for path, names in _routes() if path.startswith("/api/v1/materials")]
     assert routes
-    for r in routes:
-        assert any(GUARD in n for n in _names(r.dependant, [])), r.path
+    for path, names in routes:
+        assert any(GUARD in n for n in names), path
 
 
 def _client(licensed):
