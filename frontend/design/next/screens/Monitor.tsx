@@ -8,9 +8,10 @@ import { t } from "@/lib/v2/i18n";
 import { useV2Href } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
 import { groupByRun, useFeed, type RunGroup } from "@/lib/api/next/monitor";
+import { usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { LearnedMonitors } from "@/design/v2/screens/LearnedMonitors";
 import { LegacyMount } from "../shell/LegacyMount";
-import { Button, Chip, Code, EmptyState, ErrorState, Skeleton, Tabs } from "../kit";
+import { Button, Chip, Code, EmptyState, ErrorState, Skeleton, Sparkline, Tabs } from "../kit";
 import "../shell/shell.css";
 import "../monitor/monitor.css";
 
@@ -53,14 +54,38 @@ function Run({ g, open, onToggle }: { g: RunGroup; open: boolean; onToggle: () =
   );
 }
 
+/** One line per watched object: score trend, open (new plus regressed) and resolved issue counts of its newest run. */
+export function Watched({ rows }: { rows: PortfolioRow[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <section className="nx-mon-watched" aria-label={t("Watched objects")}>
+      <h2>{t("Watched objects")}</h2>
+      <ul>
+        {rows.map((r) => (
+          <li key={`${r.module}-${r.version_id}`}>
+            <span className="nx-mon-wname">{r.label}</span>
+            <Sparkline points={r.trend} label={t("DQS trend of {name}", { name: r.label })} />
+            <span>{t("{n} open", { n: formatInt(r.new_issues + r.regressed) })}</span>
+            <span>{t("{n} resolved", { n: formatInt(r.resolved) })}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function Feed() {
   const landscape = useLandscape(null).data;
   const [module, setModule] = useState("");
   const [system, setSystem] = useState("");
   const [only, setOnly] = useState<"" | "new" | "regressed">("");
+  const [owner, setOwner] = useState("");
   const [since, setSince] = useState("");
   const [limit, setLimit] = useState(STEP);
   const [openRuns, setOpenRuns] = useState<Set<string>>(new Set());
+  const portfolio = usePortfolio({ limit: 500 }).data?.objects;
+  const owners = useMemo(() => [...new Set((portfolio ?? []).map((r) => r.owner).filter((o): o is string => !!o))].sort(), [portfolio]);
+  const watched = useMemo(() => (portfolio ?? []).filter((r) => (!module || r.module === module) && (!system || r.system_id === system) && (!owner || r.owner === owner)), [portfolio, module, system, owner]);
   const q = useFeed({ module: module || undefined, limit });
 
   const inSystem = useMemo(() => {
@@ -69,9 +94,9 @@ function Feed() {
   }, [system, landscape]);
 
   const groups = useMemo(() => {
-    const items = (q.data?.items ?? []).filter((f) => (!only || f.change === only) && (!inSystem || inSystem.has(f.module)) && (!since || (f.detected_at ?? "") >= since));
+    const items = (q.data?.items ?? []).filter((f) => (!only || f.change === only) && (!inSystem || inSystem.has(f.module)) && (!owner || watched.some((r) => r.module === f.module)) && (!since || (f.detected_at ?? "") >= since));
     return groupByRun(items);
-  }, [q.data, only, inSystem, since]);
+  }, [q.data, only, inSystem, since, owner, watched]);
 
   const total = q.data?.total ?? 0;
   const loaded = q.data?.items.length ?? 0;
@@ -93,12 +118,19 @@ function Feed() {
             {(landscape?.systems ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
+        <label>{t("Owner")}
+          <select value={owner} onChange={(e) => setOwner(e.target.value)}>
+            <option value="">{t("All owners")}</option>
+            {owners.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </label>
         <label>{t("Since")}
           <input type="date" value={since} onChange={(e) => setSince(e.target.value)} />
         </label>
         <Chip tone="regressed" pressed={only === "regressed"} onClick={() => setOnly(only === "regressed" ? "" : "regressed")}>{t("Only regressions")}</Chip>
         <Chip tone="new" pressed={only === "new"} onClick={() => setOnly(only === "new" ? "" : "new")}>{t("Only new")}</Chip>
       </div>
+      <Watched rows={watched} />
       {q.isLoading ? (
         <Skeleton lines={4} />
       ) : q.isError ? (
