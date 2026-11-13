@@ -9,21 +9,25 @@
   --nx-dur-fast: 120ms;
   --nx-dur-base: 200ms;
   --nx-dur-slow: 320ms;
+  --nx-dur-spring: 420ms;
   --nx-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @keyframes nx-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes nx-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes nx-fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes nx-slide-in { from { transform: translateX(100%); } to { transform: none; } }
 @keyframes nx-slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes nx-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @keyframes nx-spin { to { transform: rotate(360deg); } }
 @keyframes nx-indeterminate { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@keyframes nx-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes nx-sheet-down { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+@keyframes nx-count { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes nx-draw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
 
 .nx-enter { animation: nx-fade-up var(--nx-dur-base) var(--nx-ease) both; }
 .nx-panel { animation: nx-slide-in var(--nx-dur-base) var(--nx-ease) both; }
-.nx-scrim { animation: nx-fade var(--nx-dur-base) var(--nx-ease) both; }
+.nx-scrim, .nx-sheet-scrim { animation: nx-fade var(--nx-dur-base) var(--nx-ease) both; }
 .nx-toast { animation: nx-slide-up var(--nx-dur-fast) var(--nx-ease) both; }
 .nx-dialog { animation: nx-fade-up var(--nx-dur-base) var(--nx-ease) both; }
 .nx-menu { animation: nx-fade var(--nx-dur-fast) var(--nx-ease) both; }
@@ -34,6 +38,19 @@
 }
 .nx-spinner { animation: nx-spin 0.8s linear infinite; }
 .nx-bar-indeterminate { animation: nx-indeterminate 1.4s var(--nx-ease) infinite; }
+.nx-count { animation: nx-count var(--nx-dur-slow) var(--nx-ease) both; }
+/* Story feed frame: sheets slide in from the right on desktop, rise from the bottom on a phone, and the command sheet drops from the top. */
+.nx-sheet { animation: nx-slide-in var(--nx-dur-spring) var(--nx-ease) both; }
+.nx-sheet-top { animation: nx-sheet-down var(--nx-dur-base) var(--nx-ease) both; }
+.nx-popover { animation: nx-fade-up var(--nx-dur-fast) var(--nx-ease) both; }
+.nx-hairline-fill { transition: width var(--nx-dur-slow) var(--nx-ease), opacity var(--nx-dur-base) var(--nx-ease); }
+.nx-stab, .nx-nav-item, .nx-account-btn, .nx-header-btn, .nx-sheet-close, .nx-title-compact {
+  transition: background-color var(--nx-dur-fast) var(--nx-ease), color var(--nx-dur-fast) var(--nx-ease), opacity var(--nx-dur-base) var(--nx-ease);
+}
+.nx-title-large { transition: opacity var(--nx-dur-base) var(--nx-ease); }
+@media (max-width: 760px) {
+  .nx-sheet { animation-name: nx-sheet-up; }
+}
 .nx-tick path { stroke-dasharray: 24; animation: nx-draw var(--nx-dur-base) var(--nx-ease) both; }
 
 .nx-btn,
@@ -60,11 +77,33 @@
     --nx-dur-base: 1ms;
     --nx-dur-slow: 1ms;
   }
-  .nx-enter, .nx-panel, .nx-toast, .nx-dialog { animation: nx-fade 1ms both; }
+  .nx-root {
+    --nx-dur-spring: 1ms;
+  }
+  .nx-enter, .nx-panel, .nx-toast, .nx-dialog, .nx-sheet, .nx-sheet-top, .nx-popover { animation: nx-fade 1ms both; }
+  .nx-count { animation: none; }
   .nx-skeleton-bar, .nx-spinner, .nx-bar-indeterminate { animation: none; }
   .nx-skeleton-bar { background: var(--nx-surface-2); }
   .nx-bar-indeterminate { width: 100%; transform: none; opacity: 0.5; }
   .nx-tick path { animation: none; }
 }
 
-.nx-rail-in { transition: width var(--nx-dur-fast) var(--nx-ease); }
+/* The person can turn motion off in the app, whatever the system says. */
+html[data-motion="off"] .nx-root {
+  --nx-dur-fast: 1ms;
+  --nx-dur-base: 1ms;
+  --nx-dur-slow: 1ms;
+  --nx-dur-spring: 1ms;
+}
+html[data-motion="off"] .nx-enter,
+html[data-motion="off"] .nx-panel,
+html[data-motion="off"] .nx-toast,
+html[data-motion="off"] .nx-dialog,
+html[data-motion="off"] .nx-sheet,
+html[data-motion="off"] .nx-sheet-top,
+html[data-motion="off"] .nx-popover { animation: nx-fade 1ms both; }
+html[data-motion="off"] .nx-skeleton-bar,
+html[data-motion="off"] .nx-spinner,
+html[data-motion="off"] .nx-bar-indeterminate,
+html[data-motion="off"] .nx-count,
+html[data-motion="off"] .nx-tick path { animation: none; }

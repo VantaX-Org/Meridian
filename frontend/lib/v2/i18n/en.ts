@@ -10267,6 +10267,22 @@ export const en = {
   "Two systems, side by side.": "Two systems, side by side.",
   "Service health and recent incidents.": "Service health and recent incidents.",
   "Esc": "Esc",
+  // story-feed: frame
+  "Step {n} of {total}, {label}": "Step {n} of {total}, {label}",
+  "Leave without saving?": "Leave without saving?",
+  "Your edits on this step are not saved yet.": "Your edits on this step are not saved yet.",
+  "Leave": "Leave",
+  "You are looking at sample data.": "You are looking at sample data.",
+  "You are viewing a shared link. Actions are read only.": "You are viewing a shared link. Actions are read only.",
+  "You are viewing as {role}.": "You are viewing as {role}.",
+  "Go to Home": "Go to Home",
+  "Go to Runs": "Go to Runs",
+  "Move between the page, the panel and the tabs": "Move between the page, the panel and the tabs",
+  "Close the sheet, the menu or the panel": "Close the sheet, the menu or the panel",
+  "Skip to the tabs": "Skip to the tabs",
+  "Shortcuts": "Shortcuts",
+  "Switch persona to {label}": "Switch persona to {label}",
+  "{n} need attention": "{n} need attention",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
