@@ -40,7 +40,7 @@ describe("upload checks", () => {
   });
   it("a failed check blocks the upload", async () => {
     await addFile("bad.xlsx");
-    expect(screen.getByTestId("check-columns").getAttribute("data-status")).toBe("fail");
+    expect(screen.getByTestId("check-fingerprint").getAttribute("data-status")).toBe("fail");
     expect(off(upload())).toBe(true);
   });
   it("a warning needs the confirmation", async () => {

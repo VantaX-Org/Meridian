@@ -98,7 +98,7 @@ export function PullStep({ o }: { o: ObjectRun }) {
           }}
         />
       ) : can ? (
-        <Button variant="primary" loading={busy} loadingLabel={t("Starting")} icon="play" onClick={() => setAsking(true)}>{t("Pull a new run")}</Button>
+        <Button variant="secondary" loading={busy} loadingLabel={t("Starting")} icon="play" onClick={() => setAsking(true)}>{t("Pull a new run")}</Button>
       ) : (
         <p className="nx-note" data-testid="pull-no-right">{t("Only data stewards can pull a new run. Ask one to pull, or work on the latest run.")}</p>
       )}

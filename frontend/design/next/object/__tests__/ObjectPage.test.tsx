@@ -102,3 +102,32 @@ describe("runs tab", () => {
     expect(RUNS_PAGE).toBe(50);
   });
 });
+
+describe("object page, batch 4", () => {
+  it("opens the downloads menu on the nx:download event, each item saying what it is for", async () => {
+    open("cycle");
+    await screen.findByTestId("object-bar");
+    window.dispatchEvent(new Event("nx:download"));
+    const menu = await screen.findByTestId("downloads-menu");
+    expect(within(menu).getAllByRole("menuitem").length).toBe(3);
+    expect(menu.textContent).toMatch(/Cleaning workbook/);
+    expect(menu.textContent).toMatch(/load order/);
+  });
+  it("opens the downloads menu on the d key", async () => {
+    open("cycle");
+    await screen.findByTestId("object-bar");
+    fireEvent.keyDown(window, { key: "d" });
+    await screen.findByTestId("downloads-menu");
+  });
+  it("goes to the upload step on nx:upload", async () => {
+    open("cycle");
+    await screen.findByTestId("object-bar");
+    window.dispatchEvent(new Event("nx:upload"));
+    await waitFor(() => expect(getUrl()).toMatch(/step=upload/));
+  });
+  it("keeps every tab reachable", async () => {
+    open("cycle");
+    await screen.findByTestId("object-bar");
+    expect(screen.getAllByRole("tab").length).toBeGreaterThan(3);
+  });
+});

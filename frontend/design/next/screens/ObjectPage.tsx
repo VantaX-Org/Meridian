@@ -4,12 +4,13 @@
  * The object page: the object bar, the tabs, and the open tab under them. The tab is a path segment, the run is
  * `?run=`; both survive a reload and a shared link. Under 1100 px the tabs after Fixes move into one list.
  */
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, Skeleton, ErrorState, EmptyState } from "@/design/next/kit";
 import { V2Link } from "@/design/v2/parts";
 import { t } from "@/lib/v2/i18n";
 import { useObjectCycle } from "@/lib/api/next/runs";
+import { DownloadsMenu } from "../object/DownloadsMenu";
 import { ObjectBar } from "../object/ObjectBar";
 import { useObjectRun } from "../object/useObjectRun";
 import { PRIMARY, TAB_IDS, renderTab, tabLabel, type TabId } from "../object/tabs";
@@ -47,6 +48,24 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
     [params, router, system, module, tab],
   );
 
+  const [menu, setMenu] = useState(false);
+  const { heads, runId, setRun } = o;
+  // Batch 3 turns the keys `[`, `]`, `u` and `d` into these window events; this page answers them.
+  useEffect(() => {
+    const step = (e: Event) => {
+      const by = Number((e as CustomEvent<number>).detail) < 0 ? 1 : -1; // heads are newest first
+      const i = heads.findIndex((h) => h.id === runId);
+      const next = heads[i + by];
+      if (i >= 0 && next) setRun(next.id);
+    };
+    const up = () => go("cycle", { step: "upload" });
+    const down = () => setMenu(true);
+    window.addEventListener("nx:run-step", step);
+    window.addEventListener("nx:upload", up);
+    window.addEventListener("nx:download", down);
+    return () => { window.removeEventListener("nx:run-step", step); window.removeEventListener("nx:upload", up); window.removeEventListener("nx:download", down); };
+  }, [heads, runId, setRun, go]);
+
   const shown = wide ? TAB_IDS : PRIMARY;
   const items = shown.map((id) => ({ id, label: tabLabel(id) }));
   const inMore = !shown.includes(tab);
@@ -65,7 +84,7 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
 
   return (
     <div className="nx-object" data-testid="object-page">
-      <ObjectBar o={o} cycle={cycle} onCompare={() => go("cycle", { step: "compare" })} />
+      <ObjectBar o={o} cycle={cycle} onCompare={() => go("cycle", { step: "compare" })} downloads={<DownloadsMenu o={o} open={menu} onOpen={setMenu} />} />
       <div className="nx-otabs">
         <Tabs items={items} value={inMore ? "" : tab} onChange={(id) => go(id as TabId)} label={t("Object views")} idBase={ID} />
         {!wide ? (

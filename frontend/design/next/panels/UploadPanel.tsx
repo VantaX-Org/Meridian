@@ -7,6 +7,8 @@ import { t } from "@/lib/v2/i18n";
 import { V2Link } from "@/design/v2/parts";
 import { getVersionsPage } from "@/lib/api/v2/runs";
 import { needsParent, uploadCleaned, uploadSentence, type RoundTripResult } from "@/lib/api/v2/roundtrip";
+import { blocks, checkWorkbook, holdReason, worstOf, type UploadCheck } from "@/lib/api/v2/upload-checks";
+import { CheckList } from "../object/cycle/UploadStep";
 import { checkFile, pool, readMarker, type Marker } from "@/lib/api/next/upload";
 import type { PortfolioRow } from "@/lib/api/next/portfolio";
 import { Button, Chip, DropZone, SidePanel, type ChipTone } from "../kit";
@@ -22,6 +24,11 @@ interface Item {
   status: Status;
   error?: string;
   result?: RoundTripResult;
+  /** What the server says about the file before it is scored; undefined while it is being asked. */
+  checks?: UploadCheck[];
+  checking?: boolean;
+  /** The person accepted the warnings. */
+  confirmed?: boolean;
 }
 
 const STATUS: Record<Status, [() => string, ChipTone]> = {
@@ -65,16 +72,29 @@ export function UploadPanel({ open, onClose, expected, onDone }: {
       }),
     );
     setItems((xs) => [...xs, ...fresh]);
+    for (const it of fresh) if (it.status === "ready") void verify(it.key, it.file, it.parent);
   };
 
+  /** Ask the server what it thinks of the file; the upload stays off until the answer is in. */
+  const verify = async (key: string, file: File, parent: string) => {
+    patch(key, { checking: true, checks: undefined, confirmed: false });
+    try {
+      const r = await checkWorkbook(file, parent);
+      patch(key, { checking: false, checks: r.checks });
+    } catch (err) {
+      patch(key, { checking: false, status: "failed", error: uploadSentence(err, t("The file could not be checked. Try again.")) });
+    }
+  };
+  const goes = (x: Item) => x.status === "ready" && !x.checking && !!x.checks && !blocks(x.checks) && holdReason(x.checks, !!x.confirmed) === null;
+
   const uploadAll = async () => {
-    const todo = items.filter((x) => x.status === "ready");
+    const todo = items.filter(goes);
     const done: RoundTripResult[] = [];
     setBusy(true);
     await pool(todo, 3, async (it) => {
       patch(it.key, { status: "uploading", error: undefined });
       try {
-        const res = await uploadCleaned(it.file, it.parent);
+        const res = await uploadCleaned(it.file, it.parent, !!it.confirmed);
         done.push(res);
         patch(it.key, { status: res.status === "pending" || res.status === "running" ? "scoring" : "done", result: res });
       } catch (err) {
@@ -86,7 +106,8 @@ export function UploadPanel({ open, onClose, expected, onDone }: {
     if (done.length) onDone(done);
   };
 
-  const ready = items.filter((x) => x.status === "ready").length;
+  const ready = items.filter(goes).length;
+  const waiting = items.some((x) => x.status === "ready" && !goes(x));
   const runName = (id: string) => {
     const r = known.get(id);
     if (r) return t("Run {n} of {name}", { n: formatInt(r.run_number ?? 0), name: r.label });
@@ -106,7 +127,7 @@ export function UploadPanel({ open, onClose, expected, onDone }: {
       title={t("Upload cleaned workbooks")}
       footer={
         <>
-          <Button variant="primary" icon="upload" loading={busy} loadingLabel={t("Uploading")} disabled={!ready} reason={ready ? undefined : t("Add a workbook that names its run first.")} onClick={() => void uploadAll()}>
+          <Button variant="primary" icon="upload" loading={busy} loadingLabel={t("Uploading")} disabled={!ready} reason={ready ? undefined : waiting ? t("A workbook is checked, failed or waits for you to confirm its warnings.") : t("Add a workbook that names its run first.")} onClick={() => void uploadAll()}>
             {ready > 1 ? t("Upload all {n}", { n: formatInt(ready) }) : t("Upload")}
           </Button>
           <Button variant="quiet" onClick={close} disabled={busy}>{t("Close")}</Button>
@@ -129,11 +150,19 @@ export function UploadPanel({ open, onClose, expected, onDone }: {
               {it.status === "needs" ? (
                 <label className="nx-field">
                   <span>{t("This file does not say which run it came from. Pick the run.")}</span>
-                  <select className="nx-input" value={it.parent} onChange={(e) => patch(it.key, { parent: e.target.value, status: e.target.value ? "ready" : "needs" })}>
+                  <select className="nx-input" value={it.parent} onChange={(e) => { patch(it.key, { parent: e.target.value, status: e.target.value ? "ready" : "needs" }); if (e.target.value) void verify(it.key, it.file, e.target.value); }}>
                     <option value="">{t("Choose a run")}</option>
                     {expected.map((r) => <option key={r.version_id} value={r.version_id}>{`${r.label} (${r.module}), ${runName(r.version_id)}`}</option>)}
                     {(runs.data?.versions ?? []).filter((v) => !known.has(v.id)).map((v) => <option key={v.id} value={v.id}>{`${v.label ?? v.id.slice(0, 8)}, ${runName(v.id)}`}</option>)}
                   </select>
+                </label>
+              ) : null}
+              {it.checking ? <p className="nx-pf-meta" role="status">{t("Checking the workbook")}</p> : null}
+              {it.checks ? <CheckList checks={it.checks} /> : null}
+              {it.checks && worstOf(it.checks) === "warn" && it.status === "ready" ? (
+                <label className="nx-confirm-line">
+                  <input type="checkbox" checked={!!it.confirmed} onChange={(e) => patch(it.key, { confirmed: e.target.checked })} data-testid="confirm-warnings" />{" "}
+                  {t("Add it with these warnings")}
                 </label>
               ) : null}
               {it.error ? <p className="nx-pf-error" role="alert">{it.error}</p> : null}

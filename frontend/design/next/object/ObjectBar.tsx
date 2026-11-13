@@ -1,6 +1,7 @@
 "use client";
 
 /** One sticky line over the object: where it is, which run is shown, its score against the run before, the cycle. */
+import type { ReactNode } from "react";
 import { Chip } from "@/design/next/kit";
 import { V2Link } from "@/design/v2/parts";
 import { t } from "@/lib/v2/i18n";
@@ -17,7 +18,7 @@ const STEP: Record<ObjectCycle["step"], () => string> = {
   compare: () => t("compare"),
 };
 
-export function ObjectBar({ o, cycle, onCompare }: { o: ObjectRun; cycle: ObjectCycle | null; onCompare: () => void }) {
+export function ObjectBar({ o, cycle, onCompare, downloads }: { o: ObjectRun; cycle: ObjectCycle | null; onCompare: () => void; downloads?: ReactNode }) {
   const now = dqsOf(o.run, o.module);
   const before = dqsOf(o.previous, o.module);
   const delta = now !== null && before !== null ? now - before : null;
@@ -32,6 +33,7 @@ export function ObjectBar({ o, cycle, onCompare }: { o: ObjectRun; cycle: Object
           {o.label} <span className="nx-mono nx-obar-code">{o.module}</span>
         </span>
       </nav>
+      <h1 className="nx-obar-title">{o.label}</h1>
       <ObjectRunSwitcher o={o} onCompare={onCompare} />
       {now !== null ? (
         <span className="nx-obar-dqs" data-testid="object-dqs">
@@ -43,6 +45,7 @@ export function ObjectBar({ o, cycle, onCompare }: { o: ObjectRun; cycle: Object
           ) : null}
         </span>
       ) : null}
+      {downloads}
       {cycle ? <Chip tone="accent">{t("Cycle {n}, {step}", { n: cycle.number, step: STEP[cycle.step]() })}</Chip> : null}
     </div>
   );
