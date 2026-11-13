@@ -37,6 +37,8 @@ def two_tenants_with_version():
         )
     yield t1, t2, v1
     with engine.begin() as conn:
+        conn.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard: test cleanup only
+        conn.execute(text("DELETE FROM audit_log WHERE tenant_id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
         conn.execute(text("DELETE FROM config_impact_results WHERE tenant_id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
         conn.execute(text("DELETE FROM analysis_versions WHERE tenant_id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
         conn.execute(text("DELETE FROM tenants WHERE id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
