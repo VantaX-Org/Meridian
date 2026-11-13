@@ -138,9 +138,20 @@ describe("the cut-over redirects", () => {
       "/me/preferences": "/?open=preferences",
       "/import": "/admin/runs",
       "/migration/W1": "/?view=waves&open=waves",
+      "/system-compare": "/load/compare",
+      "/migration/load-plan": "/load/plan",
+      "/s4": "/load/s4",
+      "/go-live": "/load/go-live",
       "/mdm/golden/G1": "/?open=golden%3AG1",
     };
     for (const [from, to] of Object.entries(cases)) expect(await land(from), from).toBe(to);
+  });
+
+  it("sends the old Waves view to Load", async () => {
+    const rules = await nextConfig.redirects!();
+    const rule = rules.find((x) => x.source === "/" && x.has?.some((h) => h.key === "view" && h.value === "waves"));
+    expect(rule?.destination).toBe("/load/waves");
+    expect(rule?.permanent).toBe(true);
   });
 
   it("carries the filter of an old address into the ledger", async () => {

@@ -82,7 +82,7 @@ describe("rail and flyout", () => {
     mount();
     const rail = screen.getByTestId("rail");
     const links = within(rail).getAllByRole("link").map((l) => norm(l));
-    expect(links.slice(0, 7).map((l) => l.replace(/\d[\d,]*$/, ""))).toEqual(["Home", "Objects", "Runs", "Fix", "Rules", "Master data", "Migration"]);
+    expect(links.slice(0, 7).map((l) => l.replace(/\d[\d,]*$/, ""))).toEqual(["Home", "Objects", "Runs", "Fix", "Rules", "Master data", "Load"]);
     expect(links).toEqual(expect.arrayContaining(["Reports", "Atlas"]));
     expect(within(rail).getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
     expect(within(rail).getByRole("link", { name: "Objects" })).toHaveAttribute("href", expect.stringMatching(/^\/objects/));
@@ -94,7 +94,7 @@ describe("rail and flyout", () => {
     fireEvent.mouseEnter(within(screen.getByTestId("rail")).getByRole("link", { name: "Fix" }));
     const fly = await screen.findByTestId("flyout");
     const links = within(within(fly).getByRole("navigation", { name: "Fix" })).getAllByRole("link");
-    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Action centre", "Work", "Aletheia verified fixes", "Data requests", "Cleansing", "Requests", "Data collection form", "Process analytics", "People"]);
+    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Action centre", "Work", "Aletheia verified fixes", "Data requests", "Cleansing", "Requests", "Approvals", "Data collection form", "Process analytics", "People"]);
     await waitFor(() => expect(links[1]).toHaveTextContent("25,712"));
     expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/work/));
     keyOnBody("Escape");

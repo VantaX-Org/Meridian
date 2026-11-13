@@ -7,12 +7,13 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, Stepper, Skeleton, ErrorState, type StepItem } from "@/design/next/kit";
-import { V2Link } from "@/design/v2/parts";
 import { Migration } from "@/design/v2/screens/Migration";
 import { SystemCompare } from "@/design/v2/screens/SystemCompare";
 import { LoadPlan } from "@/design/v2/screens/LoadPlan";
 import { S4Readiness } from "@/design/v2/screens/S4Readiness";
 import { FlightDeck } from "@/design/v2/screens/FlightDeck";
+import { LandscapeCanvas } from "@/design/v2/screens/Landscape";
+import { LoadPrepare } from "../load/LoadPrepare";
 import { t } from "@/lib/v2/i18n";
 import { useLoadRuns } from "@/lib/api/next/load";
 import { ChooseTarget } from "../load/ChooseTarget";
@@ -95,18 +96,13 @@ export function Load({ tab }: { tab: LoadTab }) {
   const body = () => {
     switch (tab) {
       case "prepare": return prepare();
-      case "analysis": return <Migration />;
+      case "analysis": return <><LoadPrepare /><Migration /></>;
       case "compare": return <SystemCompare />;
       case "plan": return <LoadPlan />;
       case "s4": return <S4Readiness />;
       case "go-live": return <FlightDeck />;
-      case "waves": return (
-        <section className="nx-ld-step" data-testid="load-waves">
-          <h2>{t("Waves")}</h2>
-          <p className="nx-ld-lede">{t("Waves group objects into the loads that go live together. They are planned on the landscape.")}</p>
-          <V2Link className="nx-btn nx-btn-secondary" href="/?view=waves">{t("Open the waves")}</V2Link>
-        </section>
-      );
+      // The waves view lives here now; /?view=waves redirects to this tab.
+      case "waves": return <LandscapeCanvas waves />;
       case "history": return <History />;
     }
   };

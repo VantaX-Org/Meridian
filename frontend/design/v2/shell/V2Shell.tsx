@@ -40,7 +40,7 @@ const DESTINATION: Record<GoDestination, string> = {
   fix: "/attention",
   rules: "/rules",
   master: "/mdm",
-  migration: "/migration",
+  load: "/load",
   work: "/work",
   people: "/people",
 };

@@ -6,7 +6,7 @@ import { t } from "@/lib/v2/i18n";
  */
 
 export type KeyScope = "global" | "go" | "grid" | "ledger" | "inspector" | "command";
-export type GoDestination = "home" | "objects" | "runs" | "fix" | "rules" | "master" | "migration" | "work" | "people";
+export type GoDestination = "home" | "objects" | "runs" | "fix" | "rules" | "master" | "load" | "work" | "people";
 
 /** What a focused or registered grid lets the keyboard do. */
 export interface GridTarget {
@@ -72,7 +72,7 @@ export const KEYS: readonly KeyDef[] = [
   { id: "go.fix", keys: ["g f"], get display() { return t("g then f"); }, scope: "go", get label() { return t("Fix"); }, run: (c) => handled(() => c.go?.("fix")) },
   { id: "go.rules", keys: ["g u"], get display() { return t("g then u"); }, scope: "go", get label() { return t("Rules"); }, run: (c) => handled(() => c.go?.("rules")) },
   { id: "go.master", keys: ["g m"], get display() { return t("g then m"); }, scope: "go", get label() { return t("Master data"); }, run: (c) => handled(() => c.go?.("master")) },
-  { id: "go.migration", keys: ["g i"], get display() { return t("g then i"); }, scope: "go", get label() { return t("Migration"); }, run: (c) => handled(() => c.go?.("migration")) },
+  { id: "go.load", keys: ["g l", "g i"], get display() { return t("g then l"); }, scope: "go", get label() { return t("Load"); }, run: (c) => handled(() => c.go?.("load")) },
   { id: "go.work", keys: ["g w"], get display() { return t("g then w"); }, scope: "go", get label() { return t("Work"); }, run: (c) => handled(() => c.go?.("work")) },
   { id: "go.people", keys: ["g p"], get display() { return t("g then p"); }, scope: "go", get label() { return t("People"); }, run: (c) => handled(() => c.go?.("people")) },
 
