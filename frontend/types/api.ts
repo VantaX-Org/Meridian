@@ -546,7 +546,8 @@ export type NotificationType =
   | "sla_at_risk"
   | "sla_ack_breached"
   | "sla_breached"
-  | "report";
+  | "report"
+  | "role_change";
 
 export interface Notification {
   id: string;

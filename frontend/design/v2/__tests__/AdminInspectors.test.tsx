@@ -66,6 +66,7 @@ describe("the user inspector", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Add the role" }));
     await waitFor(() => expect(add).toHaveBeenCalledWith("u-3", { role_key: "auditor", system_id: null, module: null }));
     await waitFor(() => expect(within(within(dialog).getByRole("list", { name: "Roles granted" })).getAllByRole("listitem")).toHaveLength(3));
+    expect(await screen.findByText(/Added .* to Aisha Khan\. They will be notified\./)).toBeInTheDocument();
     const newest = within(within(dialog).getByRole("list", { name: "Roles granted" })).getAllByRole("listitem")[2];
     fireEvent.click(within(newest).getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(remove).toHaveBeenCalledWith("u-3", expect.stringMatching(/^g-/)));

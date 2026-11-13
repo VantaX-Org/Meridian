@@ -167,7 +167,7 @@ function GrantsBlock({ user, canEdit, onChanged }: { user: User; canEdit: boolea
                     void run(`rm-${g.id}`, async () => {
                       await api.removeGrant(user.id, g.id);
                       await onChanged();
-                      done(t("Removed {role_name} from {name}", { role_name: g.role_name || g.role_key, name: user.name }), async () => {
+                      done(t("Removed {role_name} from {name}. They will be notified.", { role_name: g.role_name || g.role_key, name: user.name }), async () => {
                         await api.addGrant(user.id, { role_key: g.role_key, system_id: g.system_id, module: g.module, expires_at: g.expires_at ?? null });
                         await onChanged();
                       });
@@ -202,7 +202,7 @@ function GrantsBlock({ user, canEdit, onChanged }: { user: User; canEdit: boolea
                   await onChanged();
                   setScope({ role: "", system: "", module: "" });
                   setExpires("");
-                  done(t("Added {role} to {name}", { role: labelText(scope.role), name: user.name }), async () => {
+                  done(t("Added {role} to {name}. They will be notified.", { role: labelText(scope.role), name: user.name }), async () => {
                     await api.removeGrant(user.id, g.id);
                     await onChanged();
                   });
