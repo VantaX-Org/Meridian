@@ -6,7 +6,7 @@ import { f1 } from "@/lib/v2/score";
 import { V2Link } from "@/design/v2/parts";
 import { actionOf, daysOnStep, type CycleStep, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { Button, Chip, Sparkline, Stepper, type StepItem } from "../kit";
-import { objectHref, type PortfolioActions } from "./BulkBar";
+import { cycleHref, objectHref, type PortfolioActions } from "./BulkBar";
 
 const STEPS = ["pull", "clean", "upload", "score", "compare", "load"] as const;
 
@@ -37,13 +37,13 @@ function Primary({ row, act }: { row: PortfolioRow; act: PortfolioActions }) {
     return <Button variant="primary" size={32} icon="refresh" onClick={() => act.score([row])} disabled={running || !!deny("analyse")} reason={running ? t("Scoring run {n}", { n }) : deny("analyse")}>{t("Score again")}</Button>;
   }
   if (at === "ready") return <V2Link className="nx-btn nx-btn-primary nx-btn-sm" href={`/load?object=${encodeURIComponent(row.module)}&run=${row.version_id}`}>{t("Prepare load files")}</V2Link>;
-  return <V2Link className="nx-btn nx-btn-primary nx-btn-sm" href={objectHref(row, act.sysName, `/cycle?step=compare&run=${row.version_id}`)}>{t("Compare runs")}</V2Link>;
+  return <V2Link className="nx-btn nx-btn-primary nx-btn-sm" href={cycleHref(row, act.sysName, `?step=compare&run=${row.version_id}`)}>{t("Compare runs")}</V2Link>;
 }
 
 export function ObjectCard({ row, act, selected, onSelect }: { row: PortfolioRow; act: PortfolioActions; selected: boolean; onSelect: () => void }) {
   const delta = row.composite_score != null && row.previous_score != null ? row.composite_score - row.previous_score : null;
   const days = daysOnStep(row);
-  const compare = objectHref(row, act.sysName, `/cycle?step=compare&run=${row.version_id}`);
+  const compare = cycleHref(row, act.sysName, `?step=compare&run=${row.version_id}`);
   const name = `${row.label} (${row.module})`;
   return (
     <article className="nx-card nx-pf-card" aria-label={name} data-testid="pf-card" data-selected={selected}>
