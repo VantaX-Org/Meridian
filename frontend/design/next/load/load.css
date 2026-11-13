@@ -33,3 +33,15 @@
 .nx-ld-file { display: flex; gap: var(--nx-s3); align-items: flex-start; padding: var(--nx-s3); border: 1px solid var(--nx-border); border-radius: var(--nx-r-control); background: var(--nx-surface); }
 .nx-ld-num { display: inline-flex; align-items: center; justify-content: center; inline-size: var(--nx-h-control-sm); block-size: var(--nx-h-control-sm); border-radius: 50%; background: var(--nx-surface-2); font-variant-numeric: tabular-nums; font-weight: var(--nx-w-label); flex: none; }
 .nx-ld-pager { display: flex; gap: var(--nx-s3); align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+
+.nx-load-opts { display: flex; flex-direction: column; gap: var(--nx-s3); margin: 0; padding: var(--nx-s4); border: 1px solid var(--nx-border); border-radius: var(--nx-r-control); background: var(--nx-surface); min-inline-size: 0; }
+.nx-load-legend { padding-inline: var(--nx-s2); font-size: var(--nx-fs-small); color: var(--nx-ink-2); }
+.nx-load-note { margin: 0; font-size: var(--nx-fs-small); color: var(--nx-ink-2); }
+.nx-load-since { display: flex; flex-direction: column; gap: var(--nx-s1); max-inline-size: 16rem; font-size: var(--nx-fs-small); color: var(--nx-ink-2); }
+.nx-load-since input { block-size: var(--nx-h-control-sm); border: 1px solid var(--nx-control-edge); border-radius: var(--nx-r-control); background: var(--nx-surface); color: var(--nx-ink); font: inherit; padding-inline: var(--nx-s2); }
+.nx-load-since input[aria-invalid="true"] { border-color: var(--nx-bad); }
+.nx-load-error { margin: 0; color: var(--nx-bad-ink); }
+.nx-load-entities { display: flex; flex-direction: column; gap: var(--nx-s1); }
+.nx-load-check { display: inline-flex; align-items: center; gap: var(--nx-s2); font-size: var(--nx-fs-body); color: var(--nx-ink); }
+.nx-load-files { display: flex; flex-direction: column; gap: var(--nx-s3); padding: var(--nx-s4); }
+.nx-load-actions { display: flex; flex-wrap: wrap; gap: var(--nx-s2); }

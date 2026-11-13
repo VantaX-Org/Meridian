@@ -34,18 +34,22 @@ class UniquenessCheck(BaseCheck):
         populated = pd.Series(True, index=df.index)
         for c in cols:
             populated &= ~is_blank(df[c])
+        from checks.value_placement import fold, name_key
+
         def _norm(s: pd.Series) -> pd.Series:
             s = s.astype("string").str.strip()
-            if self.rule.get("normalize") == "name":  # 'Acme (Pty) Ltd.' == 'ACME PTY LTD'
-                from checks.value_placement import name_key
+            if self.rule.get("normalize") == "name":  # 'Acme (Pty) Ltd.' == 'ACME PTY LTD', any script
                 return name_key(s)
             if self.rule.get("normalize") == "alnum":  # identifiers: 'ZA 4012-345.678' == 'ZA4012345678'
-                return s.str.replace(r"[^0-9A-Za-z]", "", regex=True).str.upper()
+                return fold(s).str.replace(r"\s", "", regex=True)
             if self.rule.get("normalize") == "space":  # 'PUMP 100' == 'PUMP100' but not 'PUMP-100'
-                return s.str.replace(r"\s", "", regex=True).str.upper()
-            return s.str.upper() if self.rule.get("case_insensitive") else s
+                return s.str.normalize("NFKC").str.casefold().str.replace(r"\s", "", regex=True)
+            return s.str.normalize("NFKC").str.casefold() if self.rule.get("case_insensitive") else s
 
         norm = df[cols].apply(_norm)
+        # A value that normalises to nothing ('Ltd.', '---') names no one: it is not comparable, so two of them
+        # are never a duplicate.
+        populated &= (norm.fillna("") != "").all(axis=1)
         across = self.rule.get("unique_across")
         evidence = {"fields_checked": cols}
         if across:
