@@ -23,6 +23,7 @@ case "$1" in
       echo '{"name":"opt","networks":{"meridian-net":{"name":"opt_meridian-net"}}}'
     fi
     if [[ "$args" == *" ps -q "* ]]; then echo app1; fi
+    if [[ "$args" == *"inspect active"* ]]; then echo '{"celery@w1": []}'; fi
     if [[ "$args" == *"storage_migration"* && -n "${FAIL_COPY:-}" ]]; then exit 1; fi
     if [[ "$args" == *"pg_dump"* ]]; then echo "PGDMP-fake"; fi
     if [[ "$args" == *"curl -sf http://localhost:8000/health"* ]]; then echo '{"status":"ok","version":"9.9.9"}'; fi
