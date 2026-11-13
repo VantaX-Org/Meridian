@@ -475,14 +475,33 @@ class FeedItemOut(BaseModel):
     version_id: str
     baseline_version_id: str
     detected_at: Optional[datetime] = None
+    severity: Optional[str] = None      # findings.severity of the check in this run; None when the run has no such row
+    owner: Optional[str] = None         # the object's data owner (data_owners), None when unassigned
+
+
+class FeedRunOut(BaseModel):
+    version_id: str
+    resolved: int                       # records failing in the baseline and passing in this run (compare_sets)
 
 
 class FeedOut(BaseModel):
     items: list[FeedItemOut]
+    runs: list[FeedRunOut] = []         # every run with new findings, not only the page's
     total: int
     limit: int
     offset: int
     next_offset: Optional[int] = None
+
+
+def _feed_rows(row: dict, res: dict, severities: dict[str, str], owner: Optional[str]) -> tuple[list[dict], int]:
+    """The feed items of one monitor row from its drift counts, and the run's resolved record total."""
+    base = row["baseline"]["version_id"]
+    items = [{"module": row["module"], "label": _label(row["module"]), "check_id": c["check_id"], "change": kind,
+              "records": c[kind], "reason": c["reason"], "version_id": row["last_version_id"],
+              "baseline_version_id": base, "detected_at": row["last_run_at"],
+              "severity": severities.get(c["check_id"]), "owner": owner}
+             for c in res["checks"] for kind in ("new", "regressed") if c[kind]]
+    return items, int(res["totals"]["resolved"])
 
 
 @router.get("/monitor/feed", response_model=FeedOut,
@@ -493,21 +512,23 @@ async def monitor_feed(limit: int = Query(50, ge=1, le=500), offset: int = Query
     """New and regressed issues across objects since each object's baseline, newest run first, most records first.
     Objects whose drift shows nothing new are not classified."""
     await _rls(db, tenant)
-    items = []
+    owners = {r[0]: r[1] for r in (await db.execute(text(
+        "SELECT d.ref, u.name FROM data_owners d JOIN users u ON u.id = d.owner_user_id "
+        "WHERE d.tenant_id = :t AND d.kind = 'object'"), {"t": str(tenant.id)})).fetchall()}
+    items: list[dict] = []
+    runs: list[dict] = []
     for row in await object_monitor.for_current_state(db, tenant.id, module):
         res = await _drift_counts(db, row)
         if not res:
             continue
-        base = row["baseline"]["version_id"]
-        for c in res["checks"]:
-            for kind in ("new", "regressed"):
-                if c[kind]:
-                    items.append({"module": row["module"], "label": _label(row["module"]), "check_id": c["check_id"],
-                                  "change": kind, "records": c[kind], "reason": c["reason"],
-                                  "version_id": row["last_version_id"], "baseline_version_id": base,
-                                  "detected_at": row["last_run_at"]})
+        sev = {r[0]: r[1] for r in (await db.execute(text(
+            "SELECT check_id, severity FROM findings WHERE tenant_id = :t AND version_id = :v"),
+            {"t": str(tenant.id), "v": row["last_version_id"]})).fetchall()}
+        got, resolved = _feed_rows(row, res, sev, owners.get(row["module"]))
+        items += got
+        runs.append({"version_id": str(row["last_version_id"]), "resolved": resolved})
     items.sort(key=lambda i: (-(i["detected_at"].timestamp() if i["detected_at"] else 0), -i["records"], i["module"], i["check_id"]))
-    return {"items": items[offset:offset + limit], **page_meta(len(items), limit, offset)}
+    return {"items": items[offset:offset + limit], "runs": runs, **page_meta(len(items), limit, offset)}
 
 
 _OBJECTS_EXPORT_COLUMNS = [
