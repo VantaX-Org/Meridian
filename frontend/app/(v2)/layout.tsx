@@ -6,6 +6,7 @@ import "@/design/v2/admin.css";
 import "@/design/v2/status.css";
 import "@/design/v2/print.css";
 import { V2Shell } from "@/design/v2/shell/V2Shell";
+import { NextRedirect } from "@/design/next/shell/NextRedirect";
 
 
 export const metadata: Metadata = {
@@ -19,6 +20,7 @@ export default function V2Layout({ children }: Readonly<{ children: React.ReactN
       {/* The shell reads the address (fixture mode, the open inspector), so it renders in the browser; until then its
           place is held at full height and nothing under it moves. */}
       <Suspense fallback={<div className="m2-boot" aria-hidden="true" />}>
+        <NextRedirect />
         <V2Shell>{children}</V2Shell>
       </Suspense>
     </div>

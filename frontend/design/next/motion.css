@@ -66,3 +66,5 @@
   .nx-bar-indeterminate { width: 100%; transform: none; opacity: 0.5; }
   .nx-tick path { animation: none; }
 }
+
+.nx-rail-in { transition: width var(--nx-dur-fast) var(--nx-ease); }

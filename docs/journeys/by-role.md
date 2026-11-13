@@ -21,6 +21,22 @@ Notes that apply to every role:
 Legacy roles `admin`, `manager`, `steward`, `approver` and `ai_reviewer` still work for existing users. They show with
 "(legacy)" and cannot be granted again. Custom roles are built in `/admin/roles` from resource and action pairs.
 
+## Addresses in the new interface
+
+With the new interface turned on (preference `ui_next`), the old addresses below redirect to their new home and keep the
+query string. The steps in `steps.json` still name the old addresses, which stay valid with the flag off.
+
+| Old address | New address |
+|---|---|
+| `/work`, `/work/analytics` | `/next/work`, `/next/work/analytics` |
+| `/fix-drafts`, `/data-requests`, `/cleansing`, `/requests`, `/people` | `/next/work/fix-drafts`, `/next/work/data-requests`, `/next/work/approve`, `/next/work/requests`, `/next/work/people` |
+| Monitoring feed, learned monitors | `/monitor`, `/monitor?tab=learned` |
+| Rules, Aletheia, master data, insights screens | `/more/rules`, `/more/aletheia`, `/more/master-data`, `/more/insights` (tab in `?tab=`) |
+| Runs, systems, reports, atlas, administration | `/more/runs`, `/more/systems`, `/more/reports`, `/more/atlas`, `/more/admin` |
+
+Migration, S/4 readiness, go-live and system compare stay at their own addresses and are linked from **More**. `/run/...`,
+`/o/...` and `/s/<id>` do not move. Keyboard: `g` then `w` (Work), `n` (Monitor), `m` (More); `Ctrl/Cmd+K` opens the palette.
+
 ## Rights by role
 
 Y means the role holds the right. Codes: PA platform_admin, PL programme_lead, DS data_steward, DO data_owner, SB
