@@ -1,84 +1,71 @@
-import type { V2Persona } from "@/lib/v2/hooks";
-
-/** Where each destination lives. Work sits under /next because /work is the old interface's address. */
+/** The five tabs of the Story feed, in order. */
 export const PATHS = {
-  portfolio: "/portfolio",
-  objects: "/next/objects",
-  work: "/next/work",
-  monitor: "/monitor",
+  home: "/",
+  work: "/work",
   load: "/load",
+  runs: "/runs",
   more: "/more",
 } as const;
 export type DestId = keyof typeof PATHS;
+export const TABS: readonly DestId[] = ["home", "work", "load", "runs", "more"];
 
-type Group = "business" | "steward" | "lead" | "admin";
-const GROUP: Record<V2Persona, Group> = {
-  owner: "business", analyst: "business", viewer: "business",
-  steward: "steward",
-  lead: "lead", process: "lead",
-  admin: "admin", basis: "admin", auditor: "admin",
-};
-
-/** The five destinations in the order this role works through them. Admin and Basis lead with More and drop Load. */
-export function railOrder(persona: V2Persona, canExport: boolean): DestId[] {
-  switch (GROUP[persona]) {
-    case "business": return canExport ? ["portfolio", "objects", "work", "monitor", "load"] : ["portfolio", "objects", "work", "monitor"];
-    case "steward": return ["portfolio", "work", "objects", "monitor", "load"];
-    case "lead": return ["portfolio", "load", "objects", "monitor", "work"];
-    case "admin": return ["portfolio", "more", "objects", "monitor", "work"];
-  }
-}
-
-/** More is a quiet entry below the divider, except for the roles that carry it in the five. */
-export const moreInFive = (order: DestId[]) => order.includes("more");
-
-/** The old address of a screen and where it lives now. Exact matches only; nothing here touches /o, /run or /s/[id]. */
+/** Exact old addresses and where they live now. A segment target travels as ?tab=<segment>. */
 export const REDIRECTS: Readonly<Record<string, string>> = {
-  "/": "/portfolio",
-  "/objects": "/next/objects",
-  "/work": "/next/work",
-  "/attention": "/next/work",
-  "/fix-drafts": "/next/work/fix-drafts",
-  "/data-requests": "/next/work/data-requests",
-  "/cleansing": "/next/work/approve",
-  "/requests": "/next/work/requests",
-  "/requests/new": "/next/work/requests/new",
-  "/requests/analytics": "/next/work/requests/analytics",
-  "/people": "/next/work/people",
-  "/work/monitor": "/monitor",
-  "/monitors": "/monitor?tab=learned",
+  // Legacy interface
+  "/attention": "/work",
+  "/fix-drafts": "/work/drafts",
+  "/cleansing": "/work/approvals",
+  "/requests": "/work/requests",
+  "/requests/new": "/work/requests",
+  "/requests/analytics": "/work/requests",
+  "/people": "/more/people",
   "/rules": "/more/rules",
   "/rule-promotion": "/more/rules?tab=promotion",
-  "/rule-dry-run": "/more/rules?tab=dry-run",
-  "/anomaly-rules": "/more/rules?tab=anomaly",
-  "/aletheia/evidence": "/more/aletheia?tab=evidence",
-  "/aletheia/foresight": "/more/aletheia?tab=foresight",
-  "/aletheia/reason": "/more/aletheia?tab=reason",
-  "/aletheia-survivorship": "/more/aletheia?tab=survivorship",
-  "/mdm": "/more/master-data",
-  "/entry-gate": "/more/master-data?tab=entry-gate",
-  "/reference-data": "/more/master-data?tab=reference",
-  "/links": "/more/master-data?tab=links",
-  "/catalogue": "/more/master-data?tab=catalogue",
+  "/anomaly-rules": "/more/rules?tab=learned",
+  "/migration": "/load",
+  "/s4": "/load?tab=s4-readiness",
+  "/go-live": "/load?tab=go-live",
+  "/forecast": "/more/insights?tab=forecast",
+  "/insights": "/more/insights",
+  "/score": "/more/insights?tab=scores",
+  "/value": "/more/insights?tab=value",
+  "/atlas": "/more/atlas",
   "/issues": "/more/master-data?tab=issues",
+  "/links": "/more/master-data?tab=links",
+  "/mdm": "/more/master-data",
   "/mining": "/more/master-data?tab=mining",
   "/processes": "/more/master-data?tab=processes",
-  "/score": "/more/insights",
-  "/insights": "/more/insights?tab=insights",
-  "/forecast": "/more/insights?tab=forecast",
-  "/value": "/more/insights?tab=value",
-  "/config": "/more/systems/config",
+  "/config": "/more/systems?tab=configuration",
   "/s": "/more/systems",
-  "/runs": "/more/runs",
+  "/s/new": "/more/systems?sheet=connect",
   "/reports": "/more/reports",
-  "/atlas": "/more/atlas",
-  "/admin": "/more/admin",
+  // Preview interface
+  "/portfolio": "/",
+  "/next/objects": "/",
+  "/next/work": "/work",
+  "/monitor": "/work/monitor",
+  "/next/kit": "/more/kit",
 };
+
+/** Old address families: prefix, then the new prefix. The rest of the path carries over. */
+const PREFIXES: readonly (readonly [string, string])[] = [
+  ["/r/", "/more/rules/"],
+  ["/s/", "/more/systems/"],
+  ["/next/work/", "/work/"],
+  ["/load/", "/load?tab="],
+];
 
 /** The new address for an old one, or null when the screen stays where it is. */
 export function redirectFor(path: string): string | null {
   const p = path.length > 1 ? path.replace(/\/+$/, "") : path;
-  if (REDIRECTS[p]) return REDIRECTS[p];
-  if (p.startsWith("/admin/")) return `/more${p}`;
+  const hit = REDIRECTS[p];
+  if (hit && hit !== p) return hit;
+  for (const [from, to] of PREFIXES) {
+    if (p.startsWith(from) && p.length > from.length) {
+      const rest = p.slice(from.length);
+      if (from === "/load/") return rest.includes("/") ? "/load" : `${to}${rest}`;
+      return `${to}${rest}`;
+    }
+  }
   return null;
 }
