@@ -106,7 +106,7 @@ describe("Work", () => {
 });
 
 describe("Monitor", () => {
-  const f = (over: Partial<Finding>): Finding => ({ module: "material_master", label: "Material master", check_id: "MM1", change: "new", records: 3, reason: "r", version_id: "v1", baseline_version_id: "b1", detected_at: "2026-11-01T00:00:00Z", ...over });
+  const f = (over: Partial<Finding>): Finding => ({ module: "material_master", label: "Material master", check_id: "MM1", change: "new", records: 3, reason: "r", version_id: "v1", baseline_version_id: "b1", detected_at: "2026-11-01T00:00:00Z", severity: "high", owner: null, ...over });
 
   it("groups findings by run and totals new and regressed records", () => {
     const g = groupByRun([f({}), f({ check_id: "MM2", change: "regressed", records: 5 }), f({ version_id: "v2", module: "customer_master", label: "Customer master" })]);

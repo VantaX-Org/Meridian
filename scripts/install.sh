@@ -81,4 +81,9 @@ log "logged in to ghcr.io"
 
 echo "→ Handing off to the installer"
 cd "${INSTALL_DIR}"
-exec bash scripts/meridian-deploy.sh "$@"
+bash scripts/meridian-deploy.sh "$@"
+
+echo "→ Scheduling the nightly backup"
+# Idempotent: rewrites the same timer (or cron entry) on every run.
+bash scripts/backup.sh --install-timer \
+    || echo "WARNING: nightly backup not scheduled. Run: sudo bash ${INSTALL_DIR}/scripts/backup.sh --install-timer" >&2
