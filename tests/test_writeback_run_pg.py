@@ -184,7 +184,7 @@ async def test_repeated_connection_failures_pause_and_leave_the_rest_unsent(env,
     drive(tid, run["id"])
     got = (await _call("GET", f"/api/v1/writeback/batches/{bid}/run")).json()
     assert got["status"] == "paused" and "3 connection failures" in got["pause_reason"]
-    assert got["counts"] == {"pending": N, "sending": 0, "committed": 0, "failed": 0, "needs_check": 0, "export_only": 0}
+    assert got["counts"] == {"pending": N, "sending": 0, "committed": 0, "failed": 0, "needs_check": 0, "export_only": 0, "stale": 0}
     assert len(opened) == 3
     assert q(env, "SELECT status FROM remediation_batches WHERE id = :b", b=bid)[0][0] == "approved"
 
