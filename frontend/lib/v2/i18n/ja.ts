@@ -10392,6 +10392,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Run {n}: {count} resolved": "実行{n}: 解決{count}件",
   "Records failing, by rule": "ルール別の不合格レコード",
   "Other rules": "その他のルール",
+  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "アクセス権が変更されました。現在のロール: {roles}。メニューを更新するには再読み込みしてください。",
   "Reload": "再読み込み",
   "different roles": "別のロール",

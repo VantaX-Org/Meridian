@@ -10391,6 +10391,7 @@ export const en = {
   "Run {n}: {count} resolved": "Run {n}: {count} resolved",
   "Records failing, by rule": "Records failing, by rule",
   "Other rules": "Other rules",
+  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "Your access changed: you now have {roles}. Reload to update the menu.",
   "Reload": "Reload",
   "different roles": "different roles",

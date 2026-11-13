@@ -10392,6 +10392,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Run {n}: {count} resolved": "Lauf {n}: {count} behoben",
   "Records failing, by rule": "Fehlerhafte Datensätze nach Regel",
   "Other rules": "Andere Regeln",
+  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "Ihr Zugriff hat sich geändert: Sie haben jetzt {roles}. Laden Sie neu, um das Menü zu aktualisieren.",
   "Reload": "Neu laden",
   "different roles": "andere Rollen",
