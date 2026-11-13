@@ -11,9 +11,12 @@ import { CycleTab } from "./CycleTab";
 import { RunsTab } from "./RunsTab";
 import { TrendStack } from "./TrendStack";
 import { PairedScores } from "./PairedScores";
+import { FailingRecords } from "../report/FailingRecords";
+import { SteeringReport } from "../report/SteeringReport";
+import { LoadFilesPanel } from "../load/LoadFilesPanel";
 import type { ObjectRun } from "./useObjectRun";
 
-export const TAB_IDS = ["cycle", "runs", "overview", "rules", "records", "fixes", "trend", "readiness", "processes", "lineage", "profile", "glossary", "golden"] as const;
+export const TAB_IDS = ["cycle", "runs", "overview", "rules", "records", "failing", "fixes", "report", "trend", "readiness", "processes", "lineage", "profile", "glossary", "golden"] as const;
 export type TabId = (typeof TAB_IDS)[number];
 /** Shown as tabs at every width; the rest go into the "More tabs" list under 1100 px. */
 export const PRIMARY: readonly TabId[] = ["cycle", "runs", "overview", "rules", "records", "fixes"];
@@ -27,7 +30,9 @@ export function tabLabel(id: TabId): string {
     case "overview": return t("Overview");
     case "rules": return t("Rules");
     case "records": return t("Records");
+    case "failing": return t("Failing records");
     case "fixes": return t("Fixes");
+    case "report": return t("Report");
     case "trend": return t("Trend");
     case "readiness": return t("Readiness");
     case "processes": return t("Processes");
@@ -44,6 +49,8 @@ export function renderTab(id: TabId, o: ObjectRun, go: (tab: TabId) => void): Re
     case "runs": return <RunsTab o={o} onOpen={(run) => { o.setRun(run); go("overview"); }} />;
     case "overview": return <><PairedScores o={o} /><ObjectOverviewRoute /></>;
     case "rules": return <ObjectRulesRoute />;
+    case "failing": return <FailingRecords o={o} />;
+    case "report": return <><SteeringReport o={o} /><LoadFilesPanel module={o.module} /></>;
     case "trend": return <><TrendStack o={o} /><ObjectTabRoute tab="trend" /></>;
     default: return <ObjectTabRoute tab={id} />;
   }
