@@ -39,6 +39,8 @@ services:
     logging: *default-logging
     image: redis:7.2-alpine@sha256:2c933526722b4126a61d5c170f766dc159adf97682f0b1cbbc27b1666ba96d84  # 7.4 and later are not open source (RSALv2/SSPLv1)
     container_name: meridian-redis
+    # Append-only file on redis_data so queued tasks and locks survive a Redis restart.
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     volumes:
       - redis_data:/data
     networks:
@@ -132,6 +134,18 @@ services:
         condition: service_healthy
     networks:
       - meridian-net
+    # A runaway job is OOM-killed inside this limit instead of the host killing Postgres.
+    # Size it in .env (MERIDIAN_WORKER_MEM_LIMIT, e.g. 12g) to leave room for db, api and the OS.
+    mem_limit: ${MERIDIAN_WORKER_MEM_LIMIT:-8g}
+    mem_reservation: ${MERIDIAN_WORKER_MEM_RESERVATION:-1g}
+    stop_grace_period: 120s
+    healthcheck:
+      # Ping this worker over the broker without importing the app (cheap, no task modules loaded).
+      test: ["CMD-SHELL", "celery -b \"$${REDIS_URL:-redis://redis:6379/0}\" inspect ping -d \"celery@$$(hostname)\" -t 10 >/dev/null"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
 
   beat:
