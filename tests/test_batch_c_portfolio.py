@@ -29,26 +29,22 @@ def test_portfolio_publishes_the_new_filters_sorts_and_fields():
     assert {"new_issues", "regressed", "resolved", "system_id"} <= set(objects._PORTFOLIO_SORTS)
 
 
-def test_monitor_feed_reports_resolved_records_per_run(monkeypatch):
-    from datetime import datetime, timezone
-    from types import SimpleNamespace
+def test_feed_rows_carry_severity_owner_and_the_runs_resolved_total():
+    row = {"module": "mm", "last_version_id": "v2", "last_run_at": None, "baseline": {"version_id": "v1"}}
+    res = {"totals": {"resolved": 7}, "checks": [
+        {"check_id": "A", "new": 3, "regressed": 1, "reason": "data"},
+        {"check_id": "B", "new": 0, "regressed": 0, "reason": "data"}]}
+    items, resolved = objects._feed_rows(row, res, {"A": "high"}, "Ada")
+    assert resolved == 7
+    assert [(i["check_id"], i["change"], i["records"], i["severity"], i["owner"]) for i in items] == [
+        ("A", "new", 3, "high", "Ada"), ("A", "regressed", 1, "high", "Ada")]
+    assert objects._feed_rows(row, res, {}, None)[0][0]["severity"] is None
 
-    row = {"module": "material_master", "last_version_id": "v2", "last_run_at": datetime(2026, 11, 1, tzinfo=timezone.utc),
-           "baseline": {"version_id": "v1"}}
 
-    async def rows(*_a):
-        return [row]
+def test_feed_publishes_severity_owner_and_runs():
+    from api.main import app
 
-    async def drift(*_a):
-        return {"totals": {"new": 2, "regressed": 0, "resolved": 7, "persisting": 0},
-                "checks": [{"check_id": "MM1", "new": 2, "regressed": 0, "resolved": 7, "reason": "r"}]}
-
-    async def rls(*_a):
-        return None
-
-    monkeypatch.setattr(objects.object_monitor, "for_current_state", rows)
-    monkeypatch.setattr(objects, "_drift_counts", drift)
-    monkeypatch.setattr(objects, "_rls", rls)
-    out = asyncio.run(objects.monitor_feed(limit=50, offset=0, module=None, db=None, tenant=SimpleNamespace(id="t")))  # type: ignore[arg-type]
-    assert out["resolved"] == {"v2": 7}
-    assert [(i["check_id"], i["change"]) for i in out["items"]] == [("MM1", "new")]
+    schemas = app.openapi()["components"]["schemas"]
+    assert {"severity", "owner"} <= set(schemas["FeedItemOut"]["properties"])
+    assert {"version_id", "resolved"} <= set(schemas["FeedRunOut"]["properties"])
+    assert "runs" in schemas["FeedOut"]["properties"]
