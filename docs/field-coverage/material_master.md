@@ -57,14 +57,14 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| MARA | MATNR | Material Number | y | 44 / 44 | MM001, MM002, MM1100, MM1101, MM1102, MM1103 +38 more |  |
+| MARA | MATNR | Material Number | y | 45 / 45 | MM001, MM002, MM1100, MM1101, MM1102, MM1103 +39 more |  |
 | MARA | ERSDA | Created On | y | 3 / 3 | MM011, MM452, MM453 |  |
 | MARA | ERNAM | Name of Person who Created the Object | y | 1 / 1 | MM052 |  |
 | MARA | LAEDA | Date of Last Change | y | 1 / 1 | MM452 |  |
 | MARA | AENAM | Name of Person Who Changed Object |  | 0 / 0 |  | no rule: technical audit field (system-set create/change stamp) |
 | MARA | VPSTA | Maintenance status of complete material | y | 6 / 6 | MM077, MM079, MM330, MM331, MM332, MM557 |  |
 | MARA | PSTAT | Maintenance status | y | 1 / 1 | MM069 |  |
-| MARA | LVORM | Flag Material for Deletion at Client Level | y | 13 / 13 | MM013, MM1074, MM1106, MM1107, MM365, MM380 +7 more |  |
+| MARA | LVORM | Flag Material for Deletion at Client Level | y | 14 / 14 | MM013, MM1074, MM1106, MM1107, MM1155, MM365 +8 more |  |
 | MARA | MTART | Material type | y | 9 / 9 | MM003, MM140, MM305, MM554, MM601, MM603 +3 more |  |
 | MARA | MBRSH | Industry sector | y | 2 / 2 | MM005, MM006 |  |
 | MARA | MATKL | Material Group | y | 3 / 3 | MM007, MM141, MM870 |  |
@@ -171,7 +171,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | MARA | PROFL | Dangerous goods indicator profile | y | 1 / 1 | MM661 |  |
 | MARA | IHIVI | Indicator: Highly viscous |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
 | MARA | ILOOS | Indicator: In bulk/liquid |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
-| MARA | SERLV | Level of Explicitness for Serial Number | y | 1 / 1 | MM456 |  |
+| MARA | SERLV | Level of Explicitness for Serial Number | y | 2 / 2 | MM1167, MM456 |  |
 | MARA | KZGVH | Shipping material is closed packaging |  | 0 / 0 |  | domain: flag is blank or `X`; profile set-rate, then a cross-field rule on what the flag implies |
 | MARA | XGCHP | Indicator: Approved batch record required | y | 1 / 1 | MM1075 |  |
 | MARA | KZEFF | Assign effectivity parameter values/ override change numbers | y | 1 / 1 | MM1076 |  |
@@ -286,8 +286,8 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| MARC | MATNR | Material Number | y | 45 / 45 | MM1023, MM1097, MM1098, MM1099, MM1100, MM1129 +39 more |  |
-| MARC | WERKS | Plant | y | 43 / 43 | MM1023, MM1097, MM1098, MM1129, MM212, MM228 +37 more |  |
+| MARC | MATNR | Material Number | y | 46 / 46 | MM1023, MM1097, MM1098, MM1099, MM1100, MM1129 +40 more |  |
+| MARC | WERKS | Plant | y | 44 / 44 | MM1023, MM1097, MM1098, MM1129, MM1159, MM212 +38 more |  |
 | MARC | PSTAT | Maintenance status | y | 3 / 3 | MM095, MM333, MM438 |  |
 | MARC | LVORM | Flag Material for Deletion at Plant Level | y | 15 / 15 | MM1115, MM222, MM380, MM398, MM399, MM424 +9 more |  |
 | MARC | BWTTY | Valuation Category | y | 2 / 1 | DXRba047ed6, MM818 |  |
@@ -406,7 +406,7 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 | MARC | COPAM | Local field name for CO/PA link to SOP |  | 0 / 0 |  | mandatory-if-used: profile population rate per type/org unit, then a conditional null_check (unverified) |
 | MARC | ABCIN | Physical inventory indicator for cycle counting | y | 2 / 2 | MM031, MM1130 |  |
 | MARC | AWSLS | Variance Key | y | 2 / 2 | MM083, MM192 |  |
-| MARC | SERNP | Serial Number Profile | y | 2 / 2 | MM024, MM456 |  |
+| MARC | SERNP | Serial Number Profile | y | 3 / 3 | MM024, MM1167, MM456 |  |
 | MARC | CUOBJ | Internal object number |  | 0 / 0 |  | format: digits only, length 18 |
 | MARC | STDPD | Configurable material | y | 1 / 1 | MM1008 |  |
 | MARC | SFEPR | Repetitive manufacturing profile | y | 3 / 3 | MM401, MM403, MM404 |  |
@@ -675,9 +675,9 @@ Read: `y` when the current extraction plan pulls the field. Rules: all / enabled
 
 | Table | Field | Description | Read | Rules | Rule IDs | Gap note |
 |---|---|---|---|---|---|---|
-| MVKE | MATNR | Material Number | y | 11 / 11 | MM1099, MM1102, MM220, MM227, MM304, MM330 +5 more |  |
-| MVKE | VKORG | Sales Organization | y | 8 / 8 | MM020, MM021, MM1108, MM214, MM362, MM474 +2 more |  |
-| MVKE | VTWEG | Distribution Channel | y | 5 / 5 | MM1108, MM215, MM474, MM827, MM836 |  |
+| MVKE | MATNR | Material Number | y | 12 / 12 | MM1099, MM1102, MM1158, MM220, MM227, MM304 +6 more |  |
+| MVKE | VKORG | Sales Organization | y | 9 / 9 | MM020, MM021, MM1108, MM1158, MM214, MM362 +3 more |  |
+| MVKE | VTWEG | Distribution Channel | y | 6 / 6 | MM1108, MM1158, MM215, MM474, MM827, MM836 |  |
 | MVKE | LVORM | Ind.: Flag material for deletion at distribution chain level | y | 1 / 1 | MM365 |  |
 | MVKE | VERSG | Material statistics group | y | 1 / 1 | MM356 |  |
 | MVKE | BONUS | Volume rebate group | y | 1 / 1 | MM477 |  |
