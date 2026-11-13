@@ -8,6 +8,7 @@ import { AskBody } from "@/design/v2/inspector/ask";
 import { LegacyScope } from "./LegacyMount";
 import { NextPalette } from "../CommandPalette";
 import { popSheet, pushSheet, sheetsOf, stepOf, withSheets, type SheetRef } from "@/lib/next/sheet";
+import { registry, registerSheet } from "./registry";
 import "./sheets";
 
 export interface SheetCtx {
@@ -22,11 +23,7 @@ export interface SheetCtx {
 }
 export type SheetRenderer = (ctx: SheetCtx) => ReactNode;
 
-const registry = new Map<string, SheetRenderer>();
-/** Adds a sheet kind. The renderer returns a kit `Sheet` (open is the renderer's to set to true). */
-export function registerSheet(kind: string, render: SheetRenderer): void {
-  registry.set(kind, render);
-}
+export { registerSheet };
 
 /** How many sheets this page session pushed, so Back can be used to close and the history stays clean. */
 let pushed = 0;
