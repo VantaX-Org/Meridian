@@ -122,7 +122,7 @@ const QUERY: Record<string, string> = {
   target_kind: "object", target_id: "material_master", module: "material_master", run: L.cells[0].run_id,
   system_id: L.systems[0].id, domain: "material_master", fields: "MARA.MATNR", check_ids: "MM142", rule_id: "MM142",
   node: "check:MM142", q: "material", route: "work",
-  v2: L.cells[0].run_id, from_snapshot: "ds-1", to_snapshot: "ds-2",
+  v2: L.cells[0].run_id, version_id: L.cells[0].run_id, from_snapshot: "ds-1", to_snapshot: "ds-2",
 };
 const ROUTE_QUERY: Record<string, Record<string, string>> = { "/api/v1/lineage/guards": { node: "kpi:dpo" }, "/api/v1/compare/comparisons/{cid}/pair": { table: "MARA", key: "MATNR=000000000000000232" } };
 

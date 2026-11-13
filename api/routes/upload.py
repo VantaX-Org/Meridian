@@ -122,15 +122,7 @@ async def upload_file(
 
     # Step 4: Read into DataFrame
     try:
-        if ext == "csv":
-            try:
-                df = pd.read_csv(io.BytesIO(content), encoding="utf-8")
-            except UnicodeDecodeError:
-                df = pd.read_csv(io.BytesIO(content), encoding="latin-1")
-        elif ext in ("xlsx", "xls"):
-            df = pd.read_excel(io.BytesIO(content))
-        else:
-            raise HTTPException(422, {"error": "invalid_file_type", "detail": "Unsupported extension"})
+        df = _read_frame(content, ext)
     except HTTPException:
         raise
     except Exception as e:
@@ -746,7 +738,9 @@ async def _enqueue_checks(db: AsyncSession, tenant_id: uuid.UUID, version_id: uu
 
 # Leading whitespace before a formula char still executes in Excel/Sheets
 # (they strip it), so match optional whitespace (\t \r \n space) first.
-_FORMULA_PREFIX = re.compile(r"^\s*[=+\-@]")
+# A plain signed number ("-12.50", "+5") is data, not a formula: every column is read as text now, so a numeric
+# custom column would otherwise gain a quote it never had when it was parsed as numbers.
+_FORMULA_PREFIX = re.compile(r"^\s*(?:[=@]|[+\-](?!\d[\d.,]*$))")
 
 
 def _is_corroborated_sap_mapping(src: str, tgt: str, module: str) -> bool:
@@ -769,6 +763,37 @@ def _is_corroborated_sap_mapping(src: str, tgt: str, module: str) -> bool:
         return True
     src_lower = src_stripped.lower()
     return any(canonical == tgt and alias.lower() == src_lower for alias, canonical in col_map.items())
+
+
+# Every cell as text, and only an empty cell is blank: "00123" keeps its zeros, "NA" (Namibia) stays a value.
+_AS_TEXT = {"dtype": str, "keep_default_na": False, "na_values": [""]}
+
+
+def _read_frame(content: bytes, ext: str) -> pd.DataFrame:
+    """The uploaded file as a frame of strings. CSV must be UTF-8 (a BOM is fine): any other encoding is refused,
+    never guessed, since a wrong guess turns Arabic or Cyrillic names into mojibake without a trace."""
+    if ext == "csv":
+        try:
+            text = content.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            raise HTTPException(422, {
+                "error": "unsupported_encoding",
+                "detail": "The CSV file is not UTF-8. In Excel use Save As > 'CSV UTF-8 (Comma delimited)' and upload again.",
+            })
+        df = pd.read_csv(io.StringIO(text), **_AS_TEXT)
+    elif ext in ("xlsx", "xls"):
+        if ext == "xlsx":
+            from api.services.migration.workbook_formats import WorkbookError, check_zip_budget
+            try:
+                check_zip_budget(content)
+            except WorkbookError as e:
+                raise HTTPException(413, {"error": "workbook_too_large", "detail": str(e)})
+        df = pd.read_excel(io.BytesIO(content), **_AS_TEXT)
+    else:
+        raise HTTPException(422, {"error": "invalid_file_type", "detail": "Unsupported extension"})
+    if len(df.columns):  # a BOM inside an Excel header cell, or a doubled one in a CSV
+        df = df.rename(columns={df.columns[0]: str(df.columns[0]).lstrip("\ufeff")})
+    return df
 
 
 def _validate_magic_bytes(content: bytes, ext: str) -> None:
