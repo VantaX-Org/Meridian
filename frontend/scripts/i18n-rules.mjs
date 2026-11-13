@@ -21,6 +21,7 @@ export const EXCLUDE = [
   /__tests__\//,
   /\.test\.tsx?$/,
   /\/fixtures\//,
+  /-fixture\.ts$/,
 ];
 
 export function listFiles(root) {

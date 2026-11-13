@@ -30,7 +30,15 @@ export function runSentence(r: RunOption): string {
  * The run picker on every run-scoped screen. Left and right arrows on the button step to the older or newer run.
  * The popover lists newest first; typing filters; the last row opens the comparison.
  */
-export function RunSwitcher({ runs, value, onChange, onCompare }: { runs: RunOption[]; value: string; onChange: (id: string) => void; onCompare?: () => void }) {
+export function RunSwitcher({ runs, value, onChange, onCompare, onMore, moreLabel }: {
+  runs: RunOption[];
+  value: string;
+  onChange: (id: string) => void;
+  onCompare?: () => void;
+  /** Loads the next page of runs when the list is paged on the server; shown after the list, outside the options. */
+  onMore?: () => void;
+  moreLabel?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [at, setAt] = useState(0);
@@ -164,6 +172,11 @@ export function RunSwitcher({ runs, value, onChange, onCompare }: { runs: RunOpt
               </div>
             ) : null}
           </div>
+          {onMore ? (
+            <button type="button" className="nx-btn nx-btn-quiet nx-btn-sm nx-runsw-more" onClick={onMore}>
+              {moreLabel ?? t("Show older runs")}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
