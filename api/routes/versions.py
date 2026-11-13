@@ -78,6 +78,18 @@ class CompareSetsSummaryOut(BaseModel):
     checks: list[dict[str, Any]]
 
 
+class CompareSetsListOut(BaseModel):
+    """One page of v2's failing records against v1, each with its change, reason and values in both runs."""
+    model_config = ConfigDict(extra="allow")
+    v1: str
+    v2: str
+    records: list[dict[str, Any]]
+    total: int
+    limit: int
+    offset: int
+    next_offset: Optional[int] = None
+
+
 class ArchivedOut(BaseModel):
     archived: int
 
@@ -479,7 +491,7 @@ async def _classify_args(db: AsyncSession, v1: Optional[str], v2: str):
     return vid1, vid2, await earlier_runs(db, await _scope_of(db, vid2) or "", vid1)
 
 
-@router.get("/versions/compare/sets")
+@router.get("/versions/compare/sets", response_model=CompareSetsListOut)
 async def compare_sets_list(
     v2: str = Query(...),
     v1: Optional[str] = Query(None, description="Default: pinned baseline, else the previous run"),

@@ -518,7 +518,7 @@ def _cleaning_sync(tenant_id: str, vid: str, module: str) -> Optional[tuple[byte
         return build(session, tenant_id, vid, module)
 
 
-@router.get("/reports/{version_id}/cleaning/{module}.xlsx")
+@router.get("/reports/{version_id}/cleaning/{module}.xlsx", response_class=Response)
 async def cleaning_xlsx(version_id: uuid.UUID, module: str, request: Request, db: AsyncSession = Depends(get_db),
                         tenant: Tenant = Depends(get_tenant)) -> Response:
     """Cleaning workbook for one object: every failing record with its value, suggestion and instructions."""
