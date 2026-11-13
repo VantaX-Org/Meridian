@@ -459,7 +459,8 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
                 jobs.update_job(tenant_id, job_id, stage="register", message="Filling the assigned templates")
                 from api.services.extract_target import autofill
                 try:
-                    extract_target = autofill(session, tenant_id, version_id, extract_target)
+                    extract_target = autofill(session, tenant_id, version_id, extract_target,
+                                              delta=not fell_back)
                 except Exception as e:  # noqa: BLE001 - never fail a stored extraction over a fill
                     logger.warning("auto-fill of %s failed: %s", version_id, e)
                 jobs.update_job(tenant_id, job_id, extract_target=extract_target)

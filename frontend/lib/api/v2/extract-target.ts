@@ -6,12 +6,12 @@
 import { v2Get } from "./client";
 import { v2Download } from "./download";
 
-export type TemplateFillStatus = "pending" | "filled" | "failed";
+export type TemplateFillStatus = "pending" | "filled" | "failed" | "skipped";
 
 /** What the caller picks at extraction start. Both are optional; the API defaults them (paired target, latest template). */
 export interface ExtractTargetChoice {
   target_system_id?: string;
-  /** Module to target-template id. Each key must be among the requested modules. */
+  /** Module to target-template id. Each key must be among the requested modules. An empty id fills nothing for that module (no default newest template). */
   target_template_ids?: Record<string, string>;
 }
 

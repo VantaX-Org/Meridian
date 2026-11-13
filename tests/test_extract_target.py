@@ -37,6 +37,10 @@ def test_source_role_system_rejected():
     assert e.value.status_code == 422 and "target role" in e.value.detail
 
 
+def test_empty_template_id_opts_module_out_of_default():
+    assert choose(templates={"material_master": ""})["templates"] == []
+
+
 def test_foreign_tenant_system_rejected():
     with pytest.raises(HTTPException) as e:
         choose(system="not-in-tenant")
@@ -110,3 +114,73 @@ def test_stale_fix_is_flagged_not_applied():
                                {"KEY=1": "old", "KEY=2": "old"}, stale)
     assert n == 1 and list(out["T.F"]) == ["fixed", "newer-in-sap"]
     assert stale == [{"field": "T.F", "record_key": "KEY=2"}]
+
+
+def test_stale_compare_ignores_whitespace_and_number_formatting():
+    import pandas as pd
+    from api.services.fix_simulation import _patch_records
+    df = pd.DataFrame({"T.KEY": ["1", "2", "3"], "T.F": [" 1,000.00 ", "10.0", "abc"]})
+    stale: list = []
+    out, n, _ = _patch_records(df, "T", "T.F", {"KEY=1": "x", "KEY=2": "y", "KEY=3": "z"}, ["KEY"],
+                               {"KEY=1": "1000", "KEY=2": "10", "KEY=3": "abd"}, stale)
+    assert n == 2 and list(out["T.F"]) == ["x", "y", "abc"]
+    assert stale == [{"field": "T.F", "record_key": "KEY=3"}]
+
+
+def test_autofill_skips_delta_run_without_exporting(monkeypatch):
+    import api.routes.migration as mig
+
+    def boom(*a, **k):
+        raise AssertionError("must not export partial data")
+    monkeypatch.setattr(mig, "_export_workbook", boom)
+    out = xt.autofill(_session(), "tenant", "ver-1", _target(), delta=True)
+    e = out["templates"][0]
+    assert e["status"] == "skipped" and e["error"] == "delta run; refill from full version"
+
+
+def test_extract_succeeds_when_autofill_raises(monkeypatch):
+    import contextlib
+
+    import pandas as pd
+    from api.services import connectivity_manager, source_design, storage, suppression
+    from workers.tasks import run_extraction as re_
+
+    session = MagicMock()
+    session.execute.return_value.fetchone.return_value = None
+    monkeypatch.setattr(re_, "get_sync_engine", lambda: object())
+    monkeypatch.setattr(re_, "tenant_session", lambda e, t: contextlib.nullcontext(session))
+    monkeypatch.setattr(re_, "wait_for_config", lambda *a, **k: "loaded")
+    monkeypatch.setattr(re_, "_mark_modules", lambda *a, **k: None)
+    monkeypatch.setattr(re_, "_store_profiles", lambda *a, **k: None)
+    monkeypatch.setattr(re_, "_profile", lambda *a, **k: ("MARA", {}, []))
+    monkeypatch.setattr(re_, "_touch_system_lock", lambda *a, **k: None)
+    monkeypatch.setattr("api.services.task_progress.publish_progress", lambda *a, **k: None)
+    monkeypatch.setattr(storage, "upload_file", lambda *a, **k: None)
+    monkeypatch.setattr("sap.rfc.require_memory", lambda *a, **k: None)
+    monkeypatch.setattr(suppression, "filter_frame", lambda t, df: (df, 0))
+    monkeypatch.setattr(suppression, "record_dropped", lambda *a, **k: None)
+    monkeypatch.setattr(source_design, "dictionary_for", lambda *a, **k: None)
+    monkeypatch.setattr(re_.jobs, "get_job", lambda *a, **k: {})
+    monkeypatch.setattr(re_.jobs, "update_job", lambda *a, **k: None)
+    finished = []
+    monkeypatch.setattr(re_.jobs, "finish_job", lambda *a, **k: finished.append((a, k)))
+
+    class FakeManager:
+        def __init__(self, *a, **k):
+            pass
+
+        def extract(self, system_id, modules, scope=None, progress=None, sink=None, delta=None):
+            cov = {"table": "MARA", "status": "live", "modules": ["material_master"], "purpose": "data"}
+            sink("MARA", pd.DataFrame({"MARA.MATNR": ["1"]}), cov)
+            return {}, [cov]
+    monkeypatch.setattr(connectivity_manager, "ConnectivityManager", FakeManager)
+
+    def boom(*a, **k):
+        raise RuntimeError("fill exploded")
+    monkeypatch.setattr(xt, "autofill", boom)
+
+    target = {"target_system_id": PAIRED, "templates": [{"module": "material_master", "template_id": "t", "status": "pending"}]}
+    out = re_._extract(MagicMock(), "tenant", "sys", ["material_master"], False, "data", None, False, "lbl", "ver-1",
+                       False, None, extract_target=target)
+    assert out["status"] == "success" and out["version_id"] == "ver-1"
+    assert finished and finished[0][1].get("error") is None

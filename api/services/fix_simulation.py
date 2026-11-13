@@ -16,7 +16,10 @@ Pure functions only — the Celery task (workers/tasks/run_simulation.py) does t
 from __future__ import annotations
 
 import copy
+from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable, Optional
+
+from decimal import Decimal, InvalidOperation
 
 import pandas as pd
 
@@ -90,6 +93,17 @@ def _map_column(s: pd.Series, mapping: dict[str, str]) -> tuple[pd.Series, int]:
     return out, int(changed.sum())
 
 
+def _same_value(a: str, b: str) -> bool:
+    """Equal after stripping whitespace; numerically equal when both parse as Decimal ("10.0" == "10")."""
+    a, b = str(a).strip(), str(b).strip()
+    if a == b:
+        return True
+    try:
+        return Decimal(a.replace(",", "")) == Decimal(b.replace(",", ""))
+    except (InvalidOperation, ValueError):
+        return False
+
+
 def _patch_records(df: pd.DataFrame, table: str, field: str, fixes: dict[str, str],
                    key_names: list[str], expected: Optional[dict[str, str]] = None,
                    stale: Optional[list[dict]] = None) -> tuple[pd.DataFrame, int, int]:
@@ -119,7 +133,7 @@ def _patch_records(df: pd.DataFrame, table: str, field: str, fixes: dict[str, st
     current = df.loc[hit, field].astype("string").str.strip().fillna("")
     if expected:
         was = rk[hit].map({k: v for k, v in expected.items() if k in want})
-        changed = was.notna() & (was != current)
+        changed = was.notna() & ~pd.Series([_same_value(w, c) for w, c in zip(was.fillna(''), current)], index=was.index)
         for k in rk[hit][changed]:
             if stale is not None:
                 stale.append({"field": field, "record_key": k})

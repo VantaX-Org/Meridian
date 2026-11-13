@@ -24,7 +24,7 @@ class TemplateFillOut(BaseModel):
     module: str
     template_id: str
     template_name: Optional[str] = None
-    status: str = "pending"  # pending | filled | failed
+    status: str = "pending"  # pending | filled | failed | skipped (delta run)
     error: Optional[str] = None
     filled_at: Optional[str] = None
     format: Optional[str] = None
@@ -54,17 +54,21 @@ def choose_target(source_id: str, source_paired: Optional[str], modules: list[st
         if s["role"] != "target" and target_system_id != source_paired:
             raise HTTPException(422, "The target system must have the target role or be the system paired to this source.")
     chosen: dict[str, str] = {}
+    none: set[str] = set()  # an empty template id opts the module out of the default newest template
     for module, tpl in (template_ids or {}).items():
-        t = templates.get(str(tpl).lower())
         if module not in modules:
             raise HTTPException(422, f"Template given for {module}, which is not among the requested modules.")
+        if not tpl:
+            none.add(module)
+            continue
+        t = templates.get(str(tpl).lower())
         if t is None:
             raise HTTPException(422, f"Template {tpl} is not one of this tenant's templates.")
         if t["module"] != module:
             raise HTTPException(422, f"Template {tpl} belongs to {t['module']}, not {module}.")
         chosen[module] = str(tpl).lower()
     for m in modules:
-        if m not in chosen and m in latest:
+        if m not in chosen and m not in none and m in latest:
             chosen[m] = latest[m]
     return {"target_system_id": tid, "templates": [
         {"module": m, "template_id": chosen[m], "template_name": templates.get(chosen[m], {}).get("name"),
@@ -107,9 +111,15 @@ def _save(session: Any, tenant_id: str, version_id: str, target: dict) -> None:
     session.commit()
 
 
-def autofill(session: Any, tenant_id: str, version_id: str, target: dict) -> dict:
+DELTA_SKIP = "delta run; refill from full version"
+
+
+def autofill(session: Any, tenant_id: str, version_id: str, target: dict, delta: bool = False) -> dict:
     """Fill each assigned template from the stored run with the on-demand export, store the file, set
-    last_fill_version_id and audit it. A failed fill is recorded on its entry and never raised."""
+    last_fill_version_id and audit it. A failed fill is recorded on its entry and never raised.
+
+    ``delta`` is true only for a run that stored partial data (not a delta that fell back to a full read): a
+    load file built from it would be a partial load, so each entry is marked skipped instead."""
     import datetime
 
     from api.config import settings
@@ -118,6 +128,10 @@ def autofill(session: Any, tenant_id: str, version_id: str, target: dict) -> dic
     from api.services.purge import write_audit_row
 
     for entry in target.get("templates", []):
+        if delta:
+            entry.update(status="skipped", error=DELTA_SKIP)
+            _save(session, tenant_id, version_id, target)
+            continue
         try:
             row = session.execute(text("SELECT name, version, filename, column_map, content FROM target_templates "
                                        "WHERE CAST(id AS text) = :i AND module = :m AND tenant_id = CAST(:t AS uuid)"),
