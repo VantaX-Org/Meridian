@@ -37,6 +37,8 @@ router = APIRouter(prefix="/api/v1", tags=["rbac"])
 _LEGACY = LEGACY_ROLES
 LEGACY_GRANT_DETAIL = "Legacy roles can no longer be granted. Choose a persona role or a custom role"
 LAST_ADMIN_DETAIL = "This is the last active admin. Make another user an admin before changing this one."
+LAST_LASTING_ADMIN_DETAIL = ("This is the last admin grant without an expiry. Give another user a lasting admin grant "
+                             "before setting an expiry on this one, so the tenant cannot be left without an admin.")
 _SLUG = re.compile(r"[^a-z0-9]+")
 _PLATFORM_ADMIN = {"platform_admin", PERSONA_ALIAS["platform_admin"]}
 _PLATFORM_PAIR = ("licence", "admin")  # manage_system: held only by admin / platform_admin
@@ -222,11 +224,13 @@ async def lock_admin_rows(db: AsyncSession, tenant_id: uuid.UUID) -> None:
 
 
 async def forbid_last_admin_grant(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID,
-                                  grant_id: uuid.UUID, role_key: str) -> None:
+                                  grant_id: uuid.UUID, role_key: str, *, lasting: bool = False) -> None:
     """409 when revoking this unscoped admin/platform_admin grant leaves the tenant without an active admin.
 
     users.role is derived from grants, so an admin is an active user holding an unscoped grant of either
-    key; the grant being revoked no longer counts. Revoking from an inactive user takes no admin away."""
+    key; the grant being revoked no longer counts. Revoking from an inactive user takes no admin away.
+    lasting=True (setting an expiry on the grant): only other grants with no expiry count, since an expiring
+    grant would leave the tenant without an admin once every expiry passes."""
     if role_key not in _PLATFORM_ADMIN:
         return
     await lock_admin_rows(db, tenant_id)
@@ -237,10 +241,11 @@ async def forbid_last_admin_grant(db: AsyncSession, tenant_id: uuid.UUID, user_i
     left = (await db.execute(text(
         "SELECT count(*) FROM user_role_scopes g JOIN users u ON u.id = g.user_id AND u.tenant_id = g.tenant_id "
         "WHERE g.tenant_id = :t AND g.id <> :g AND g.system_id IS NULL AND g.module IS NULL "
-        "AND g.role_key = ANY(:keys) AND u.is_active AND (g.expires_at IS NULL OR g.expires_at > now())"),
+        "AND g.role_key = ANY(:keys) AND u.is_active AND (g.expires_at IS NULL"
+        + ("" if lasting else " OR g.expires_at > now()") + ")"),
         {"t": str(tenant_id), "g": str(grant_id), "keys": sorted(_PLATFORM_ADMIN)})).scalar()
     if not left:
-        raise HTTPException(status_code=409, detail=LAST_ADMIN_DETAIL)
+        raise HTTPException(status_code=409, detail=LAST_LASTING_ADMIN_DETAIL if lasting else LAST_ADMIN_DETAIL)
 
 
 async def insert_grant(db: AsyncSession, tenant: Tenant, request: Request, user_id: str, role_key: str,
@@ -274,6 +279,9 @@ async def insert_grant(db: AsyncSession, tenant: Tenant, request: Request, user_
     row = existing.fetchone()
     if row:
         gid = row[0]
+        if expires_at is not None and system_id is None and module is None:
+            # A repeat grant that adds an expiry must not time out the tenant's last lasting admin.
+            await forbid_last_admin_grant(db, tenant.id, uuid.UUID(user_id), gid, role_key, lasting=True)
         await db.execute(text("UPDATE user_role_scopes SET expires_at = :x WHERE id = :g AND tenant_id = :t"),
                          {"x": expires_at, "g": str(gid), "t": str(tenant.id)})
     else:
