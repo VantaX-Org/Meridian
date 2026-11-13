@@ -10142,7 +10142,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Across the portfolio": "Im gesamten Portfolio",
   "Approve waiting batches": "Wartende Stapel freigeben",
   "Load a file": "Datei laden",
-  "See what changed": "Änderungen ansehen",
   "Recent runs": "Letzte Läufe",
   "Focus the search": "Suche fokussieren",
   "Show this list": "Diese Liste anzeigen",

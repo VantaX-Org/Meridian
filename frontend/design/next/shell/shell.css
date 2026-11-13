@@ -6,7 +6,7 @@
 .nx-skip:focus { transform: none; outline: 2px solid var(--nx-focus); }
 
 .nx-rail { grid-area: rail; position: relative; z-index: 30; width: var(--nx-rail-w); }
-.nx-rail-in { position: absolute; inset: 0 auto 0 0; width: var(--nx-rail-w); display: flex; flex-direction: column; gap: var(--nx-s1); padding: var(--nx-s3) var(--nx-s2); background: var(--nx-surface); border-right: 1px solid var(--nx-border); overflow: hidden; transition: width 120ms ease-out; }
+.nx-rail-in { position: absolute; inset: 0 auto 0 0; width: var(--nx-rail-w); display: flex; flex-direction: column; gap: var(--nx-s1); padding: var(--nx-s3) var(--nx-s2); background: var(--nx-surface); border-right: 1px solid var(--nx-border); overflow: hidden; }
 .nx-rail[data-open="true"] .nx-rail-in { width: var(--nx-rail-open); box-shadow: var(--nx-elev-2); }
 .nx-rail[data-pinned="true"] { width: var(--nx-rail-open); }
 .nx-rail[data-pinned="true"] .nx-rail-in { box-shadow: none; }

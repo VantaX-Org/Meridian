@@ -10142,7 +10142,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Across the portfolio": "ポートフォリオ全体",
   "Approve waiting batches": "待機中のバッチを承認",
   "Load a file": "ファイルを読み込む",
-  "See what changed": "変更点を見る",
   "Recent runs": "最近の実行",
   "Focus the search": "検索にフォーカス",
   "Show this list": "この一覧を表示",

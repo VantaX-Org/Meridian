@@ -10141,7 +10141,6 @@ export const en = {
   "Across the portfolio": "Across the portfolio",
   "Approve waiting batches": "Approve waiting batches",
   "Load a file": "Load a file",
-  "See what changed": "See what changed",
   "Recent runs": "Recent runs",
   "Focus the search": "Focus the search",
   "Show this list": "Show this list",
