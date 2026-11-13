@@ -3985,6 +3985,7 @@ export const en = {
   "Your identity provider did not share a verified email address.": "Your identity provider did not share a verified email address.",
   "Your email domain is not allowed to sign in here. Ask an administrator.": "Your email domain is not allowed to sign in here. Ask an administrator.",
   "This account is suspended. Ask an administrator to reactivate it.": "This account is suspended. Ask an administrator to reactivate it.",
+  "Your identity provider has not confirmed this email address, so it cannot be linked to an existing account. Ask an administrator.": "Your identity provider has not confirmed this email address, so it cannot be linked to an existing account. Ask an administrator.",
   "This account is already linked to a different identity. Ask an administrator.": "This account is already linked to a different identity. Ask an administrator.",
   "Licence seats are full, so a new account could not be created. Ask an administrator.": "Licence seats are full, so a new account could not be created. Ask an administrator.",
   "Single sign-on failed. Try again, or use your email and password.": "Single sign-on failed. Try again, or use your email and password.",

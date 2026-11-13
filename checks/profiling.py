@@ -52,7 +52,9 @@ NUMERIC_TYPES = {"DEC", "CURR", "QUAN", "INT1", "INT2", "INT4", "INT8", "FLTP",
 # ── privacy masking ──────────────────────────────────────────────────────────
 
 SENSITIVE_TABLE_PREFIXES = ("PA", "HRPY", "ZMERIDIAN", "PERINFO", "PERPHONE", "PEREMAIL",
-                            "PERADDRESS", "EMPEMPLOYMENT")
+                            "PERADDRESS", "EMPEMPLOYMENT",
+                            # SuccessFactors pay: every field of these entities is compensation data
+                            "EMPCOMPENSATION", "EMPPAYCOMP", "PAYCOMPNONREC")
 
 # name*, address*, bank, tax, personal-ID and contact fields (field name or data element)
 _SENSITIVE_PREFIX = ("NAME", "ORT", "CITY", "POST_CODE", "TEL", "SMTP", "STCD", "USRID",
