@@ -482,6 +482,8 @@ class FeedOut(BaseModel):
     limit: int
     offset: int
     next_offset: Optional[int] = None
+    # records that failed in the baseline and pass in the run, per run (version id); runs with none are left out
+    resolved: dict[str, int] = {}
 
 
 @router.get("/monitor/feed", response_model=FeedOut,
@@ -493,11 +495,14 @@ async def monitor_feed(limit: int = Query(50, ge=1, le=500), offset: int = Query
     Objects whose drift shows nothing new are not classified."""
     await _rls(db, tenant)
     items = []
+    resolved: dict[str, int] = {}
     for row in await object_monitor.for_current_state(db, tenant.id, module):
         res = await _drift_counts(db, row)
         if not res:
             continue
         base = row["baseline"]["version_id"]
+        if res["totals"]["resolved"]:
+            resolved[row["last_version_id"]] = res["totals"]["resolved"]
         for c in res["checks"]:
             for kind in ("new", "regressed"):
                 if c[kind]:
@@ -506,7 +511,7 @@ async def monitor_feed(limit: int = Query(50, ge=1, le=500), offset: int = Query
                                   "version_id": row["last_version_id"], "baseline_version_id": base,
                                   "detected_at": row["last_run_at"]})
     items.sort(key=lambda i: (-(i["detected_at"].timestamp() if i["detected_at"] else 0), -i["records"], i["module"], i["check_id"]))
-    return {"items": items[offset:offset + limit], **page_meta(len(items), limit, offset)}
+    return {"items": items[offset:offset + limit], "resolved": resolved, **page_meta(len(items), limit, offset)}
 
 
 _OBJECTS_EXPORT_COLUMNS = [

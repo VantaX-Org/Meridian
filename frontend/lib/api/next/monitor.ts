@@ -24,6 +24,8 @@ export interface FeedPage {
   limit: number;
   offset: number;
   next_offset: number | null;
+  /** Records that failed in the baseline and pass in the run, per run (version id). Runs with none are absent. */
+  resolved?: Record<string, number>;
 }
 
 export interface FeedQuery {
@@ -50,15 +52,16 @@ export interface RunGroup {
   findings: Finding[];
   newCount: number;
   regressedCount: number;
+  resolvedCount: number;
 }
 
 /** One entry per run, in the order the feed delivers them; findings keep the feed's order (most records first). */
-export function groupByRun(items: Finding[]): RunGroup[] {
+export function groupByRun(items: Finding[], resolved: Record<string, number> = {}): RunGroup[] {
   const by = new Map<string, RunGroup>();
   for (const f of items) {
     let g = by.get(f.version_id);
     if (!g) {
-      g = { version_id: f.version_id, baseline_version_id: f.baseline_version_id, module: f.module, label: f.label, detected_at: f.detected_at, findings: [], newCount: 0, regressedCount: 0 };
+      g = { version_id: f.version_id, baseline_version_id: f.baseline_version_id, module: f.module, label: f.label, detected_at: f.detected_at, findings: [], newCount: 0, regressedCount: 0, resolvedCount: resolved[f.version_id] ?? 0 };
       by.set(f.version_id, g);
     }
     g.findings.push(f);

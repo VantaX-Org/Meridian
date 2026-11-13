@@ -31,6 +31,7 @@ function Run({ g, open, onToggle }: { g: RunGroup; open: boolean; onToggle: () =
         <span className="nx-mon-when">{when(g.detected_at)}</span>
         {g.newCount ? <Chip tone="new" count={g.newCount}>{t("new")}</Chip> : null}
         {g.regressedCount ? <Chip tone="regressed" count={g.regressedCount}>{t("regressed")}</Chip> : null}
+        {g.resolvedCount ? <Chip tone="resolved" count={g.resolvedCount}>{t("resolved")}</Chip> : null}
         <span className="nx-mon-end">
           <Link className="nx-link" href={href(`/run/${g.version_id}/vs/${g.baseline_version_id}`)}>{t("Open all in Compare")}</Link>
         </span>
@@ -70,7 +71,7 @@ function Feed() {
 
   const groups = useMemo(() => {
     const items = (q.data?.items ?? []).filter((f) => (!only || f.change === only) && (!inSystem || inSystem.has(f.module)) && (!since || (f.detected_at ?? "") >= since));
-    return groupByRun(items);
+    return groupByRun(items, q.data?.resolved);
   }, [q.data, only, inSystem, since]);
 
   const total = q.data?.total ?? 0;

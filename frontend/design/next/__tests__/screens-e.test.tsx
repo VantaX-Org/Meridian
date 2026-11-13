@@ -115,6 +115,11 @@ describe("Monitor", () => {
     expect(g[0].findings).toHaveLength(2);
   });
 
+  it("carries the feed's resolved records onto their run", () => {
+    const g = groupByRun([f({}), f({ version_id: "v2" })], { v1: 9 });
+    expect(g.map((x) => x.resolvedCount)).toEqual([9, 0]);
+  });
+
   it("shows the heading, the sentence and a Compare link per run", async () => {
     setUrl("/monitor?fixture=1");
     renderWithQuery(<Monitor />);
