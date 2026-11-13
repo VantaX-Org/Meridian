@@ -10466,6 +10466,7 @@ export const en = {
   "No rows to show": "No rows to show",
   "Target score over comparisons": "Target score over comparisons",
   "Score trend": "Score trend",
+  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "Your access changed: you now have {roles}. Reload to update the menu.",
   "Reload": "Reload",
   "different roles": "different roles",

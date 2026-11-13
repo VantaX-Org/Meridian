@@ -10467,6 +10467,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "No rows to show": "Keine Zeilen vorhanden",
   "Target score over comparisons": "Zielwert über die Vergleiche",
   "Score trend": "Verlauf des Werts",
+  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "Ihr Zugriff hat sich geändert: Sie haben jetzt {roles}. Laden Sie neu, um das Menü zu aktualisieren.",
   "Reload": "Neu laden",
   "different roles": "andere Rollen",

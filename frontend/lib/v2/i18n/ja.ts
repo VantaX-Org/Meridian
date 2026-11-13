@@ -10467,6 +10467,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "No rows to show": "表示する行はありません",
   "Target score over comparisons": "比較ごとのターゲットスコア",
   "Score trend": "スコアの推移",
+  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "アクセス権が変更されました。現在のロール: {roles}。メニューを更新するには再読み込みしてください。",
   "Reload": "再読み込み",
   "different roles": "別のロール",
