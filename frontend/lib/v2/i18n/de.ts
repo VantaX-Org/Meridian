@@ -3986,6 +3986,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Your identity provider did not share a verified email address.": "Ihr Identitätsanbieter hat keine bestätigte E-Mail-Adresse übermittelt.",
   "Your email domain is not allowed to sign in here. Ask an administrator.": "Ihre E-Mail-Domäne darf sich hier nicht anmelden. Fragen Sie einen Administrator.",
   "This account is suspended. Ask an administrator to reactivate it.": "Dieses Konto ist gesperrt. Bitten Sie einen Administrator, es wieder zu aktivieren.",
+  "Your identity provider has not confirmed this email address, so it cannot be linked to an existing account. Ask an administrator.": "Ihr Identitätsanbieter hat diese E-Mail-Adresse nicht bestätigt, daher kann sie nicht mit einem bestehenden Konto verknüpft werden. Fragen Sie einen Administrator.",
   "This account is already linked to a different identity. Ask an administrator.": "Dieses Konto ist bereits mit einer anderen Identität verknüpft. Fragen Sie einen Administrator.",
   "Licence seats are full, so a new account could not be created. Ask an administrator.": "Die Lizenzplätze sind belegt, daher konnte kein neues Konto angelegt werden. Fragen Sie einen Administrator.",
   "Single sign-on failed. Try again, or use your email and password.": "Single Sign-on ist fehlgeschlagen. Versuchen Sie es erneut oder verwenden Sie E-Mail und Kennwort.",

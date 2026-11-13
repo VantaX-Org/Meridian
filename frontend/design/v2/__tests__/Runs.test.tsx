@@ -154,6 +154,24 @@ describe("Runs canvas", () => {
     expect(within(result).getByRole("link", { name: "Open the job" })).toHaveAttribute("href", expect.stringContaining("open=job%3As4-extract"));
   });
 
+  it("Start a run opens its panel right under the banner and brings it into view", async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    renderWithQuery(<RunsCanvas />);
+    fireEvent.click(await screen.findByRole("button", { name: "Start a run" }));
+    const panel = await screen.findByTestId("start-run");
+    expect(screen.getByTestId("runs-banner").nextElementSibling).toBe(panel);
+    expect(scroll).toHaveBeenCalled();
+  });
+
+  it("Start a run says so when the system's extractions cannot be read", async () => {
+    vi.spyOn(runsApi, "getSystemExtractions").mockRejectedValue(new Error("down"));
+    renderWithQuery(<RunsCanvas />);
+    fireEvent.click(await screen.findByRole("button", { name: "Start a run" }));
+    const panel = await screen.findByTestId("start-run");
+    expect(await within(panel).findByRole("alert")).toHaveTextContent("The extractions of this system could not be read.");
+  });
+
   it("Start a run links to extracting fresh data from the chosen system", async () => {
     renderWithQuery(<RunsCanvas />);
     fireEvent.click(await screen.findByRole("button", { name: "Start a run" }));
