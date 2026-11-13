@@ -573,7 +573,7 @@ def build(s: Session, tid: str, vid: str, module: str,
     run = data["run"]
     recs = [sh for sh in sheets if sh.title.startswith("Records to clean")]
     fp = fingerprint("cleaning", tid, run.get("system_id"), [c.header for c in recs[0].columns] if recs else [],
-                     sum(len(sh.rows) for sh in recs))
+                     sum(1 for sh in recs for _ in sh.rows))
     # hidden and last: tells the upload-back which run and object this file came from (api/services/sf_roundtrip.py)
     sheets.append(SheetSpec(MARKER, [ColumnSpec("key", "key"), ColumnSpec("value", "value")],
                             marker_rows(str(run["id"]), module, "cleaning", None, fp), hidden=True))
