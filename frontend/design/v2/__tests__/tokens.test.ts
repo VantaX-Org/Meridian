@@ -195,3 +195,48 @@ describe("v2 density", () => {
     expect(resolveDensity("compact", "lead")).toBe("compact");
   });
 });
+
+describe("v2 Apple/Meta-spirit twins (design-apple-meta.md 2.1)", () => {
+  const NEW = [
+    "--m2-glass-bg", "--m2-glass-bg-strong", "--m2-glass-blur", "--m2-glass-sat", "--m2-elev-1", "--m2-elev-2", "--m2-elev-3",
+    "--m2-surface-3", "--m2-thumb", "--m2-thumb-shadow", "--m2-sel", "--m2-sel-ink", "--m2-handle", "--m2-accent-pressed", "--m2-ink-on-glass",
+  ];
+  const alpha = (hex: string) => parseInt(hex.slice(7, 9), 16) / 255;
+  /** Composite an #RRGGBBAA over an #RRGGBB ground. */
+  function over(top: string, under: string): string {
+    const a = alpha(top);
+    const ch = (i: number) => Math.round(parseInt(top.slice(i, i + 2), 16) * a + parseInt(under.slice(i, i + 2), 16) * (1 - a));
+    return `#${[1, 3, 5].map((i) => ch(i).toString(16).padStart(2, "0")).join("")}`;
+  }
+
+  it("sets every twin in light and in both dark blocks", () => {
+    for (const k of NEW) {
+      expect(LIGHT[k], `${k} light`).toBeDefined();
+      expect(DARK_ATTR[k], `${k} dark attr`).toBeDefined();
+      expect(DARK_MEDIA[k], `${k} dark media`).toBeDefined();
+    }
+  });
+
+  for (const theme of THEMES) {
+    it(`${theme}: ink on glass reads 4.5:1 over the ground and the data wash`, () => {
+      for (const under of ["--m2-bg", "--m2-data-bg"]) {
+        const ground = over(resolve(theme, "--m2-glass-bg-strong"), resolve(theme, under));
+        expect(contrastOf(resolve(theme, "--m2-ink-on-glass"), ground), under).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+    it(`${theme}: selected ink on the selection wash reads 4.5:1`, () => {
+      expect(tokenContrast(theme, "--m2-sel-ink", "--m2-sel")).toBeGreaterThanOrEqual(4.5);
+    });
+    it(`${theme}: glass stays at least 64 percent opaque`, () => {
+      expect(alpha(resolve(theme, "--m2-glass-bg"))).toBeGreaterThanOrEqual(0.64);
+      expect(alpha(resolve(theme, "--m2-glass-bg-strong"))).toBeGreaterThanOrEqual(alpha(resolve(theme, "--m2-glass-bg")));
+    });
+  }
+
+  it("ships the glass class with supports, print and forced-colours fallbacks", () => {
+    expect(tokens).toContain(".m2-root .m2-glass");
+    expect(tokens).toContain("@media print");
+    expect(tokens).toContain("Canvas");
+    expect(tokens).toContain("@supports not");
+  });
+});

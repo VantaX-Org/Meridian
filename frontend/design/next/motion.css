@@ -10,6 +10,11 @@
   --nx-dur-base: 200ms;
   --nx-dur-slow: 320ms;
   --nx-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --nx-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --nx-dur-spring: 420ms;
+  --nx-ease-spring: cubic-bezier(0.34, 1.26, 0.64, 1);
+  --nx-dur-collapse: 240ms;
+  --nx-pop-origin: top left;
 }
 
 @keyframes nx-fade { from { opacity: 0; } to { opacity: 1; } }
@@ -54,12 +59,41 @@
 .nx-bar-fill { transition: width var(--nx-dur-slow) var(--nx-ease); }
 .nx-spark-line { transition: d var(--nx-dur-slow) var(--nx-ease); }
 
+/* Apple/Meta-spirit motion (design-apple-meta.md 2.5). Components add the class and flip data-state, nothing else. */
+.nx-m-spring { transition: transform var(--nx-dur-spring) var(--nx-ease-spring); }
+.nx-m-sheet {
+  transition: transform var(--nx-dur-spring) var(--nx-ease-spring), opacity var(--nx-dur-base) var(--nx-ease);
+}
+.nx-m-sheet[data-state="closed"] { transform: translateY(100%); opacity: 0; }
+.nx-m-sheet[data-state="open"] { transform: none; opacity: 1; }
+.nx-m-pop {
+  transform-origin: var(--nx-pop-origin);
+  transition: transform var(--nx-dur-spring) var(--nx-ease-spring), opacity var(--nx-dur-fast) var(--nx-ease);
+}
+.nx-m-pop[data-state="closed"] { transform: scale(0.96); opacity: 0; }
+.nx-m-pop[data-state="open"] { transform: none; opacity: 1; }
+.nx-m-title {
+  transition: font-size var(--nx-dur-collapse) var(--nx-ease-out), opacity var(--nx-dur-collapse) var(--nx-ease-out), transform var(--nx-dur-collapse) var(--nx-ease-out);
+}
+.nx-m-thumb { transition: transform var(--nx-dur-spring) var(--nx-ease-spring), width var(--nx-dur-spring) var(--nx-ease-spring); }
+.nx-m-row { transition: background-color var(--nx-dur-fast) var(--nx-ease), transform var(--nx-dur-fast) var(--nx-ease); }
+.nx-m-row:active { transform: scale(0.99); }
+.nx-m-count { transition: opacity var(--nx-dur-slow) var(--nx-ease), transform var(--nx-dur-slow) var(--nx-ease); }
+.nx-m-sidebar { transition: width var(--nx-dur-collapse) var(--nx-ease-out), transform var(--nx-dur-collapse) var(--nx-ease-out); }
+
 @media (prefers-reduced-motion: reduce) {
   .nx-root {
     --nx-dur-fast: 1ms;
     --nx-dur-base: 1ms;
     --nx-dur-slow: 1ms;
+    --nx-dur-spring: 1ms;
+    --nx-dur-collapse: 1ms;
   }
+  .nx-m-sheet, .nx-m-pop { transition: opacity 1ms; }
+  .nx-m-sheet[data-state="closed"], .nx-m-sheet[data-state="open"],
+  .nx-m-pop[data-state="closed"], .nx-m-pop[data-state="open"] { transform: none; }
+  .nx-m-spring, .nx-m-thumb, .nx-m-title, .nx-m-sidebar { transition: none; }
+  .nx-m-row:active { transform: none; }
   .nx-enter, .nx-panel, .nx-toast, .nx-dialog { animation: nx-fade 1ms both; }
   .nx-skeleton-bar, .nx-spinner, .nx-bar-indeterminate { animation: none; }
   .nx-skeleton-bar { background: var(--nx-surface-2); }
@@ -68,3 +102,18 @@
 }
 
 .nx-rail-in { transition: width var(--nx-dur-fast) var(--nx-ease); }
+
+/* Same fallback for a user setting inside the app (data-reduce-motion on the root). */
+.nx-root[data-reduce-motion] {
+  --nx-dur-fast: 1ms;
+  --nx-dur-base: 1ms;
+  --nx-dur-slow: 1ms;
+  --nx-dur-spring: 1ms;
+  --nx-dur-collapse: 1ms;
+}
+.nx-root[data-reduce-motion] .nx-m-sheet,
+.nx-root[data-reduce-motion] .nx-m-pop { transition: opacity 1ms; transform: none; }
+.nx-root[data-reduce-motion] .nx-m-spring,
+.nx-root[data-reduce-motion] .nx-m-thumb,
+.nx-root[data-reduce-motion] .nx-m-title,
+.nx-root[data-reduce-motion] .nx-m-sidebar { transition: none; }

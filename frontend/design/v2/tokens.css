@@ -102,6 +102,22 @@
   --m2-glass-filter: blur(16px) saturate(140%);
   /* The Aletheia lift: a hairline contact shadow and one soft drop, on cards and floating chrome alike. */
   --m2-shadow-card: 0 1px 2px #1111120A, 0 14px 36px -18px #1111122E;
+  /* Apple/Meta-spirit twins of the next tokens (design-apple-meta.md 2.1); glass-edge and glass-line are above. */
+  --m2-glass-bg: #FFFFFFB8;
+  --m2-glass-bg-strong: #FFFFFFDB;
+  --m2-glass-blur: 20px;
+  --m2-glass-sat: 180%;
+  --m2-elev-1: 0 1px 2px #1111120F;
+  --m2-elev-2: 0 1px 2px #1111120A, 0 14px 36px -18px #1111122E;
+  --m2-elev-3: 0 2px 6px #11111214, 0 24px 64px #1111122E;
+  --m2-surface-3: #E6E7EB;
+  --m2-thumb: #FFFFFF;
+  --m2-thumb-shadow: 0 1px 3px #11111224;
+  --m2-sel: #E8F0FF;
+  --m2-sel-ink: #0549B0;
+  --m2-handle: #C9CDD3;
+  --m2-accent-pressed: #0549B0;
+  --m2-ink-on-glass: #111112;
   --m2-inverse: var(--m2-n-925);
   --m2-on-inverse: var(--m2-n-25);
   /* The stop red where it marks an error on the inverse ground (a toast) */
@@ -343,6 +359,21 @@
     --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
     --m2-glass-filter: blur(16px) saturate(120%);
   --m2-shadow-card: 0 1px 2px #00000052, 0 14px 36px -18px #00000080;
+    --m2-glass-bg: #141024A8;
+    --m2-glass-bg-strong: #141024D1;
+    --m2-glass-blur: 20px;
+    --m2-glass-sat: 140%;
+    --m2-elev-1: 0 1px 2px #00000066;
+    --m2-elev-2: 0 1px 2px #00000052, 0 14px 36px -18px #00000080;
+    --m2-elev-3: 0 2px 6px #00000080, 0 24px 64px #00000099;
+    --m2-surface-3: #241E3A;
+    --m2-thumb: #332C4D;
+    --m2-thumb-shadow: 0 1px 3px #00000099;
+    --m2-sel: #17244A;
+    --m2-sel-ink: #BBD2FF;
+    --m2-handle: #3A3355;
+    --m2-accent-pressed: #A3C2FF;
+    --m2-ink-on-glass: #ECEAF5;
     --m2-inverse: var(--m2-n-100);
     --m2-on-inverse: var(--m2-n-950);
   --m2-on-inverse-crit: #A3221A;
@@ -473,6 +504,21 @@ html[data-theme="dark"] .m2-root {
   --m2-glass-edge: inset 0 1px 0 var(--m2-glass-hi), var(--m2-shadow-3);
   --m2-glass-filter: blur(16px) saturate(120%);
   --m2-shadow-card: 0 1px 2px #00000052, 0 14px 36px -18px #00000080;
+  --m2-glass-bg: #141024A8;
+  --m2-glass-bg-strong: #141024D1;
+  --m2-glass-blur: 20px;
+  --m2-glass-sat: 140%;
+  --m2-elev-1: 0 1px 2px #00000066;
+  --m2-elev-2: 0 1px 2px #00000052, 0 14px 36px -18px #00000080;
+  --m2-elev-3: 0 2px 6px #00000080, 0 24px 64px #00000099;
+  --m2-surface-3: #241E3A;
+  --m2-thumb: #332C4D;
+  --m2-thumb-shadow: 0 1px 3px #00000099;
+  --m2-sel: #17244A;
+  --m2-sel-ink: #BBD2FF;
+  --m2-handle: #3A3355;
+  --m2-accent-pressed: #A3C2FF;
+  --m2-ink-on-glass: #ECEAF5;
   --m2-inverse: var(--m2-n-100);
   --m2-on-inverse: var(--m2-n-950);
   --m2-on-inverse-crit: #A3221A;
@@ -773,4 +819,27 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
 }
 @media (forced-colors: active) {
   .m2-root { --m2-glass-filter: none; }
+}
+
+/* The same glass as a class for new chrome (next and v2 screens share it). Floating chrome only. */
+.m2-root .m2-glass,
+.m2-root .m2-glass-strong {
+  background: var(--m2-glass-bg);
+  color: var(--m2-ink-on-glass);
+  -webkit-backdrop-filter: blur(var(--m2-glass-blur)) saturate(var(--m2-glass-sat));
+  backdrop-filter: blur(var(--m2-glass-blur)) saturate(var(--m2-glass-sat));
+  box-shadow: inset 0 1px 0 var(--m2-glass-hi), 0 0 0 1px var(--m2-glass-line);
+}
+.m2-root .m2-glass-strong { background: var(--m2-glass-bg-strong); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .m2-root .m2-glass, .m2-root .m2-glass-strong { background: var(--m2-sheet); color: var(--m2-fg); }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .m2-root .m2-glass, .m2-root .m2-glass-strong { background: var(--m2-sheet); color: var(--m2-fg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media print {
+  .m2-root .m2-glass, .m2-root .m2-glass-strong { background: var(--m2-sheet); color: var(--m2-fg); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+}
+@media (forced-colors: active) {
+  .m2-root .m2-glass, .m2-root .m2-glass-strong { background: Canvas; color: CanvasText; border: 1px solid CanvasText; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
 }

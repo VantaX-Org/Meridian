@@ -43,6 +43,21 @@
   --nx-focus: #1F5EFF;
   --nx-scrim: rgb(20 22 26 / 24%);
   --nx-elev-2: 0 8px 24px rgb(0 0 0 / 12%);
+  --nx-elev-1: 0 1px 2px rgb(20 22 26 / 6%);
+  --nx-elev-3: 0 2px 6px rgb(20 22 26 / 8%), 0 24px 64px rgb(20 22 26 / 18%);
+  --nx-glass-bg: rgb(255 255 255 / 72%);
+  --nx-glass-bg-strong: rgb(255 255 255 / 86%);
+  --nx-glass-edge: rgb(255 255 255 / 60%);
+  --nx-glass-line: rgb(20 22 26 / 10%);
+  --nx-glass-sat: 180%;
+  --nx-surface-3: #E9ECF1;
+  --nx-thumb: #FFFFFF;
+  --nx-thumb-shadow: 0 1px 3px rgb(20 22 26 / 14%);
+  --nx-sel: #E8EEFF;
+  --nx-sel-ink: #1540C7;
+  --nx-handle: #C9CED6;
+  --nx-accent-pressed: #1848D1;
+  --nx-ink-on-glass: #14161A;
 }
 
 html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
@@ -77,6 +92,21 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
   --nx-focus: #6B96FF;
   --nx-scrim: rgb(236 238 242 / 24%);
   --nx-elev-2: 0 8px 24px rgb(0 0 0 / 40%);
+  --nx-elev-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --nx-elev-3: 0 2px 6px rgb(0 0 0 / 50%), 0 24px 64px rgb(0 0 0 / 60%);
+  --nx-glass-bg: rgb(21 24 29 / 66%);
+  --nx-glass-bg-strong: rgb(21 24 29 / 82%);
+  --nx-glass-edge: rgb(255 255 255 / 9%);
+  --nx-glass-line: rgb(0 0 0 / 50%);
+  --nx-glass-sat: 140%;
+  --nx-surface-3: #232831;
+  --nx-thumb: #2B313B;
+  --nx-thumb-shadow: 0 1px 3px rgb(0 0 0 / 60%);
+  --nx-sel: #1B2A52;
+  --nx-sel-ink: #C7D6FF;
+  --nx-handle: #3A414D;
+  --nx-accent-pressed: #5A86F5;
+  --nx-ink-on-glass: #ECEEF2;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -111,6 +141,21 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
     --nx-focus: #6B96FF;
     --nx-scrim: rgb(236 238 242 / 24%);
     --nx-elev-2: 0 8px 24px rgb(0 0 0 / 40%);
+    --nx-elev-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --nx-elev-3: 0 2px 6px rgb(0 0 0 / 50%), 0 24px 64px rgb(0 0 0 / 60%);
+    --nx-glass-bg: rgb(21 24 29 / 66%);
+    --nx-glass-bg-strong: rgb(21 24 29 / 82%);
+    --nx-glass-edge: rgb(255 255 255 / 9%);
+    --nx-glass-line: rgb(0 0 0 / 50%);
+    --nx-glass-sat: 140%;
+    --nx-surface-3: #232831;
+    --nx-thumb: #2B313B;
+    --nx-thumb-shadow: 0 1px 3px rgb(0 0 0 / 60%);
+    --nx-sel: #1B2A52;
+    --nx-sel-ink: #C7D6FF;
+    --nx-handle: #3A414D;
+    --nx-accent-pressed: #5A86F5;
+    --nx-ink-on-glass: #ECEEF2;
   }
 }
 
@@ -134,6 +179,16 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
   --nx-w-body: 400;
   --nx-w-label: 500;
   --nx-w-heading: 600;
+  /* Apple/Meta-spirit additions (design-apple-meta.md 2.3): large title, collapsed title, card headline, figures */
+  --nx-fs-large: 2.125rem;
+  --nx-lh-large: 1.15;
+  --nx-ls-large: -0.02em;
+  --nx-fs-title: 1.375rem;
+  --nx-lh-title: 1.25;
+  --nx-fs-headline: 1.0625rem;
+  --nx-lh-headline: 1.35;
+  --nx-w-large: 700;
+  --nx-nums: "tnum" 1, "cv11" 1;
   /* Spacing scale 4, 8, 12, 16, 24, 32, 48, 64 */
   --nx-s1: 4px;
   --nx-s2: 8px;
@@ -145,8 +200,10 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
   --nx-s8: 64px;
   --nx-gutter: var(--nx-s5);
   /* Shape */
-  --nx-r-control: 6px;
-  --nx-r-card: 10px;
+  --nx-r-control: 8px;
+  --nx-r-card: 12px;
+  --nx-r-popover: 12px;
+  --nx-r-sheet: 16px;
   --nx-r-pill: 999px;
   /* Sizes */
   --nx-h-control: 40px;
@@ -155,6 +212,18 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
   --nx-h-row-comfortable: 44px;
   --nx-panel-w: 420px;
   --nx-ring: 2px;
+  /* Layout (shell.css keeps --nx-rail-* and --nx-top-h; these are the names the new shell reads) */
+  --nx-sidebar-w: 15rem;
+  --nx-sidebar-min: 4rem;
+  --nx-insp-w: 25rem;
+  --nx-toolbar-h: 3.25rem;
+  --nx-large-h: 6.5rem;
+  --nx-seg-h: 2rem;
+  --nx-feed-max: 46rem;
+  --nx-sheet-max: 40rem;
+  --nx-tabbar-h: 3.5rem;
+  /* Glass: the blur is shared, colour and saturation come with the theme */
+  --nx-glass-blur: 20px;
   --nx-ring-offset: 2px;
 
   font-family: var(--nx-font);
@@ -182,4 +251,76 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
   .nx-root {
     --nx-gutter: var(--nx-s4);
   }
+}
+
+.nx-root[data-density="comfortable"] {
+  --nx-seg-h: 2.25rem;
+}
+
+/* Phone: 44px hit targets and a smaller large title. */
+@media (max-width: 760px) {
+  .nx-root {
+    --nx-fs-large: 1.75rem;
+    --nx-h-control: 2.75rem;
+  }
+}
+
+/*
+ * Tenant accent: a tenant's colour (data-tenant-accent, lib/v2/theme.ts) keeps overriding the accent in next. The
+ * v2 root already clamps it to 4.5:1 on its ground, and the text on it and the wash under it follow it. The fallbacks
+ * are Meridian's own accent for when no v2 root is above.
+ */
+.nx-root[data-tenant-accent],
+[data-tenant-accent] .nx-root {
+  --nx-accent: var(--m2-data, #1F5EFF);
+  --nx-accent-ink: var(--m2-on-data, #FFFFFF);
+  --nx-accent-soft: var(--m2-data-bg, #E8EEFF);
+}
+html[data-theme="dark"] .nx-root[data-tenant-accent]:not([data-nx-theme="light"]),
+html[data-theme="dark"] [data-tenant-accent] .nx-root:not([data-nx-theme="light"]),
+.nx-root[data-tenant-accent][data-nx-theme="dark"] {
+  --nx-accent: var(--m2-data, #6B96FF);
+  --nx-accent-ink: var(--m2-on-data, #0E1013);
+  --nx-accent-soft: var(--m2-data-bg, #1B2A52);
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .nx-root[data-tenant-accent]:not([data-nx-theme="light"]),
+  html:not([data-theme="light"]) [data-tenant-accent] .nx-root:not([data-nx-theme="light"]) {
+    --nx-accent: var(--m2-data, #6B96FF);
+    --nx-accent-ink: var(--m2-on-data, #0E1013);
+    --nx-accent-soft: var(--m2-data-bg, #1B2A52);
+  }
+}
+
+/* Glass: floating chrome only (collapsed toolbar, popover, palette, phone tab bar). Never a content surface. */
+.nx-glass,
+.nx-glass-strong,
+.nx-menu {
+  background: var(--nx-glass-bg);
+  color: var(--nx-ink-on-glass);
+  -webkit-backdrop-filter: blur(var(--nx-glass-blur)) saturate(var(--nx-glass-sat));
+  backdrop-filter: blur(var(--nx-glass-blur)) saturate(var(--nx-glass-sat));
+  box-shadow: inset 0 1px 0 var(--nx-glass-edge), 0 0 0 1px var(--nx-glass-line);
+}
+.nx-glass-strong,
+.nx-menu { background: var(--nx-glass-bg-strong); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .nx-glass,
+  .nx-glass-strong,
+  .nx-menu { background: var(--nx-surface); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .nx-glass,
+  .nx-glass-strong,
+  .nx-menu { background: var(--nx-surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media print {
+  .nx-glass,
+  .nx-glass-strong,
+  .nx-menu { background: var(--nx-surface); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+}
+@media (forced-colors: active) {
+  .nx-glass,
+  .nx-glass-strong,
+  .nx-menu { background: Canvas; border: 1px solid CanvasText; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
 }

@@ -191,7 +191,7 @@ Before and after screenshots of the refresh are in `docs/design-refresh.md`.
   12/13/14/16/20/24 (`--m2-fs-*`, `--m2-lh-*`), plus two headline sizes outside the scale, `--m2-fs-hero` 36/40 for
   the hero's verdict and the signed-out promise and `--m2-fs-stat` 34/38 for the hero's figures; nothing else may use
   them. Sentence case everywhere.
-- **Space and shape**: `--m2-s1` to `--m2-s10` on a 4px grid, radii `--m2-r1` 4px and `--m2-r2` 6px, the shadow
+- **Space and shape**: `--m2-s1` to `--m2-s10` on a 4px grid, radii `--m2-r1` 8px and `--m2-r2` 12px, the shadow
   `--m2-shadow` only for what floats (menus, the inspector on a phone).
 - **Density**: two modes, a preference in the Preferences panel saved with the theme and the language (server and this
   browser). Comfortable: grid rows `--m2-row-h` 36px, list rows 40px, map and fact rows 32px, 12px cell sides, 14px row
@@ -221,6 +221,29 @@ Before and after screenshots of the refresh are in `docs/design-refresh.md`.
   stored: on the light ground the first darker shade that reads at 4.5:1, on the dark ground the first lighter tint
   that does. The selection wash and the text on the accent follow it, so a tenant's colour changes the hue of the
   interface but never its legibility.
+
+### Apple/Meta-spirit tokens and motion (the `next` layer, `--nx-*`, scope `.nx-root`)
+
+Inspiration only: no logos, glyphs or trademarks. Spec: `design-apple-meta.md` section 2. The v2 layer carries `--m2-*`
+twins of the colour tokens, in hex with alpha, set identically in both dark blocks.
+
+- **Shape**: `--nx-r-control` 8px, `--nx-r-card` 12px, `--nx-r-popover` 12px, `--nx-r-sheet` 16px, `--nx-r-pill`.
+- **Colour, per theme**: `--nx-glass-bg` and `--nx-glass-bg-strong` (never under 64% opaque), `--nx-glass-edge`,
+  `--nx-glass-line`, `--nx-glass-sat`, `--nx-elev-1` and `--nx-elev-3`, `--nx-surface-3` (segment track),
+  `--nx-thumb` and `--nx-thumb-shadow` (selected segment), `--nx-sel` and `--nx-sel-ink`, `--nx-handle`,
+  `--nx-accent-pressed`, `--nx-ink-on-glass` (4.5:1 over the strong glass on the bg and on the accent wash; tested).
+  `--nx-glass-blur` is shared. A tenant accent (`data-tenant-accent`) overrides `--nx-accent` through `--m2-data`.
+- **Type**: `--nx-fs-large` 34px (28px under 760px), `--nx-fs-title` 22px, `--nx-fs-headline` 17px, `--nx-w-large`,
+  `--nx-nums` (tabular figures).
+- **Layout**: `--nx-sidebar-w` 15rem, `--nx-sidebar-min`, `--nx-insp-w`, `--nx-toolbar-h`, `--nx-large-h`, `--nx-seg-h`,
+  `--nx-feed-max`, `--nx-sheet-max`, `--nx-tabbar-h`. Under 760px `--nx-h-control` is 44px.
+- **Glass** (`.nx-glass`, `.nx-glass-strong`, `.m2-glass`, `.m2-glass-strong`): floating chrome only, never a content
+  surface. Falls back to the solid surface without `backdrop-filter`, under reduced transparency, in print, and to
+  `Canvas` and `CanvasText` in forced colours.
+- **Motion** (`design/next/motion.css` only): `--nx-dur-spring` 420ms with `--nx-ease-spring`, `--nx-dur-collapse` 240ms,
+  `--nx-ease-out`. Classes `.nx-m-spring`, `.nx-m-sheet` and `.nx-m-pop` (both read `data-state` open or closed;
+  pop reads `--nx-pop-origin`), `.nx-m-title`, `.nx-m-thumb`, `.nx-m-row`, `.nx-m-count`, `.nx-m-sidebar`. Under
+  `prefers-reduced-motion` and `.nx-root[data-reduce-motion]` the durations are 1ms and sheet and pop use opacity only.
 
 ## 3. Components
 
