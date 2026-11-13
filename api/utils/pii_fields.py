@@ -28,6 +28,9 @@ PII_HEADER_WORDS: frozenset[str] = frozenset({
     "POSTCODE", "POSTAL", "ZIP", "PHONE", "TELEPHONE", "TEL", "MOBILE", "FAX", "EMAIL", "MAIL", "IBAN", "BANK",
     "ACCOUNT", "SWIFT", "BIC", "TAX", "VAT", "BIRTH", "BIRTHDAY", "DOB", "NATIONALITY", "PASSPORT", "SSN",
     "SALARY", "PAY", "WAGE",
+    # special-category data (GDPR art. 9, POPIA s26)
+    "GENDER", "SEX", "MARITAL", "RELIGION", "RELIGIOUS", "ETHNIC", "ETHNICITY", "RACE", "RACIAL", "DISABILITY",
+    "DISABLED", "HEALTH", "MEDICAL", "NATIONALID", "IDNUMBER",
 })
 
 _WORD_SPLIT = re.compile(r"[^A-Z0-9]+")
@@ -60,8 +63,9 @@ def is_pii_header(header: str | None) -> bool:
         return False
     if is_pii_field(header):
         return True
-    words = {w for w in _WORD_SPLIT.split(_CAMEL.sub(" ", header.strip()).upper()) if w}
-    return bool(words & PII_HEADER_WORDS)
+    words = [w for w in _WORD_SPLIT.split(_CAMEL.sub(" ", header.strip()).upper()) if w]
+    # 'NationalId' / 'National ID' also match as one word (NATIONALID).
+    return bool(PII_HEADER_WORDS.intersection(words)) or "".join(words) in PII_HEADER_WORDS
 
 
 def sanitise_for_prompt(field_name: str, value: object, mapped_field: str | None = None) -> str:
