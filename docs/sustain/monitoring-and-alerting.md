@@ -18,7 +18,7 @@ Full setup detail is in [docs/ops/monitoring.md](../ops/monitoring.md). This doc
 | Licence status | Administration, Licence; header `X-Licence-Warning: offline_grace` | Licence state and grace period | L2 |
 | Aletheia engine status | Administration, Aletheia engine | Verdict for the sidecar | L2 |
 | `/metrics` | `api:8000/metrics`, internal only | Prometheus metrics from `api/middleware/metrics.py` | Prometheus |
-| Container health | `docker compose -f docker/docker-compose.customer.yml ps` | Health checks for nginx, api, frontend, db, redis and storage | L2 |
+| Container health | `docker compose -f docker/docker-compose.customer.yml ps` | Health checks for nginx, api, frontend, db, redis, storage and worker (the worker answers a Celery ping over Redis every 60 seconds; three missed pings mark it unhealthy) | L2 |
 
 ## Monitoring stack
 
@@ -69,9 +69,10 @@ The alert rules watch the api only. The items below have no alert rule in the re
 
 | Item | Proposed check | Owner |
 |---|---|---|
-| Worker and beat running | Daily look at `docker compose ps` and Runs, Jobs; failed or stuck jobs | Meridian administrator |
+| Worker and beat running | Daily look at `docker compose ps` (worker shows `healthy`) and Runs, Jobs; failed or stuck jobs | Meridian administrator |
+| Worker memory | `docker stats` or host monitoring. The worker has a memory cap (default 8 GB, `MERIDIAN_WORKER_MEM_LIMIT` in `docker/.env`; reservation `MERIDIAN_WORKER_MEM_RESERVATION`, default 1 GB). A job that goes over it is killed inside the worker container, which restarts, instead of the host killing PostgreSQL. Repeated restarts (`docker inspect --format '{{.State.OOMKilled}}'` on the worker) mean the cap is too low for the data: raise it, leaving room for db, api and the operating system, then `docker compose up -d worker`. | Customer infrastructure or hosting team |
 | Host disk space | Host monitoring; `update.sh` needs 10 GB free | Customer infrastructure or hosting team |
-| Backups succeeded and left the host | Check the backup job output daily | Customer infrastructure or hosting team |
+| Backups succeeded and left the host | `systemctl list-timers meridian-backup.timer` and `journalctl -u meridian-backup` daily | Customer infrastructure or hosting team |
 | Certificate expiry for nginx | Host or certificate monitoring | Customer infrastructure or hosting team |
 | SAP connection failures | Systems screens and the Basis home | Basis team |
 | Licence expiry date | Administration, Licence, checked monthly | Meridian administrator |

@@ -122,6 +122,7 @@ class _DB:
         self.users, self.grants = users, grants
         self.sql: list[str] = []
         self.commits = 0
+        self.notes: list[tuple[Any, ...]] = []
 
     def _unscoped(self, user: str) -> list[dict[str, Any]]:
         return [g for g in self.grants if g["user"] == user and g["system"] is None and g["module"] is None]
@@ -148,6 +149,8 @@ class _DB:
         if sql.startswith("DELETE FROM user_role_scopes"):
             self.grants = [g for g in self.grants if g["id"] != p["g"]]
             return _Result([])
+        if sql.startswith("SELECT g.role_key, r.name FROM user_role_scopes g"):
+            return _Result([(g["key"], None) for g in self.grants if g["user"] == p["u"]])
         if sql.startswith("SELECT role_key FROM user_role_scopes"):
             return _Result([(g["key"],) for g in self._unscoped(p["u"])])
         if sql.startswith("UPDATE users SET role"):
@@ -190,6 +193,11 @@ def _client(monkeypatch: pytest.MonkeyPatch, db: _DB) -> TestClient:
     async def ceiling(*_a: Any, **_k: Any) -> None:
         return None
 
+    async def note(_t: str, user: str, kind: str, title: str, body: str, *_a: Any) -> str:
+        db.notes.append((user, kind, title, body))
+        return "n"
+
+    monkeypatch.setattr(roles_routes, "create_notification", note)
     monkeypatch.setattr(roles_routes, "resolve_caller", caller)
     monkeypatch.setattr(roles_routes, "enforce_ceiling", ceiling)
     app = FastAPI()
@@ -291,3 +299,39 @@ def test_invite_role_is_one_unscoped_grant_and_users_role_is_derived() -> None:
         InviteGrant(role_key="auditor")])
     assert [g.role_key for g in invite_grants(body)] == ["analyst", "data_steward", "auditor"]  # role ignored
     assert invite_users_role(body) == "analyst"
+
+
+def test_revoking_a_grant_notifies_the_person_with_old_and_new_roles(monkeypatch: pytest.MonkeyPatch) -> None:
+    target = str(uuid.uuid4())
+    keep, drop = _grant(target, "analyst"), _grant(target, "viewer")
+    db = _DB({ME: {"role": "viewer", "active": True}, target: {"role": "analyst", "active": True}}, [keep, drop])
+    r = _client(monkeypatch, db).delete(f"/api/v1/users/{target}/grants/{drop['id']}")
+    assert r.status_code == 200, r.text
+    assert db.notes == [(target, "role_change", "Your access changed", "Before: Analyst, Viewer. Now: Analyst.")]
+
+
+def test_granting_a_role_notifies_the_person(monkeypatch: pytest.MonkeyPatch) -> None:
+    target = str(uuid.uuid4())
+    db = _DB({ME: {"role": "viewer", "active": True}, target: {"role": "viewer", "active": True}},
+             [_grant(target, "viewer")])
+
+    orig = db.execute
+
+    async def execute(stmt: Any, params: Optional[dict[str, Any]] = None) -> _Result:
+        sql = " ".join(str(stmt).split())
+        if sql.startswith("SELECT 1 FROM users WHERE id"):
+            return _Result([(1,)])
+        if sql.startswith("SELECT id FROM user_role_scopes WHERE"):
+            return _Result([])
+        if sql.startswith("INSERT INTO user_role_scopes"):
+            db.grants.append({"id": str(uuid.uuid4()), "user": target, "key": params["k"], "system": None, "module": None})
+            res = _Result([(uuid.uuid4(),)])
+            res.scalar_one = res.scalar  # type: ignore[attr-defined]
+            return res
+        return await orig(stmt, params)
+
+    db.execute = execute  # type: ignore[method-assign]
+    r = _client(monkeypatch, db).post(f"/api/v1/users/{target}/grants", json={"role_key": "analyst"})
+    assert r.status_code == 201, r.text
+    assert len(db.notes) == 1 and db.notes[0][:3] == (target, "role_change", "Your access changed")
+    assert db.notes[0][3].startswith("Before: Viewer. Now: Viewer, ")
