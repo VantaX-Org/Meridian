@@ -10343,6 +10343,20 @@ export const en = {
   "Two systems, side by side.": "Two systems, side by side.",
   "Service health and recent incidents.": "Service health and recent incidents.",
   "Esc": "Esc",
+  // Batch 6: More and admin flows.
+  "Add a user and role": "Add a user and role",
+  "Promote a rule": "Promote a rule",
+  "Test a logon, choose objects, then extract.": "Test a logon, choose objects, then extract.",
+  "Invite someone with a role, then share the link.": "Invite someone with a role, then share the link.",
+  "Dry-run generated rules and promote the ones that hold.": "Dry-run generated rules and promote the ones that hold.",
+  "Guided tasks": "Guided tasks",
+  "No roles could be read.": "No roles could be read.",
+  "Dry-run and review": "Dry-run and review",
+  "Confirm that you reviewed the impact.": "Confirm that you reviewed the impact.",
+  "I reviewed the impact of these rules.": "I reviewed the impact of these rules.",
+  "Promoted rules score the next run. Open the catalogue to see them.": "Promoted rules score the next run. Open the catalogue to see them.",
+  "Open all systems": "Open all systems",
+  "Open all users": "Open all users",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

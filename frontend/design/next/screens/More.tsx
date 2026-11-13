@@ -8,6 +8,7 @@ import { useV2Href } from "@/lib/v2/hooks";
 import { EmptyState, Tabs } from "../kit";
 import { GROUPS, LINKS, SINGLES } from "../more/groups";
 import { LegacyMount } from "../shell/LegacyMount";
+import { AdminFlow, FlowCards, isAdminFlow } from "../admin/AdminFlows";
 import "../shell/shell.css";
 import "../more/more.css";
 
@@ -68,12 +69,15 @@ export function More({ slug }: { slug?: string[] }) {
     );
   }
 
+  if (slug?.[0] === "admin" && slug[1] === "flow" && slug.length === 3 && isAdminFlow(slug[2])) return <AdminFlow name={slug[2]} />;
+
   const adminSection = slug?.[0] === "admin" && slug.length === 2 ? slug[1] : null;
   const single = SINGLES[key];
   if (single || adminSection) {
     return (
       <div className="nx-more">
         <header className="nx-strip"><Back /><h1>{single ? single.title() : t("Administration")}</h1></header>
+        {key === "admin" ? <FlowCards /> : null}
         <LegacyMount>{adminSection ? <AdminCanvas section={adminSection} /> : single ? <single.Screen /> : null}</LegacyMount>
       </div>
     );

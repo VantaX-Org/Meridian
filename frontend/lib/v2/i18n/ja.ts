@@ -10344,4 +10344,18 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "2 つのシステムを並べて表示。",
   "Service health and recent incidents.": "サービスの状態と最近のインシデント。",
   "Esc": "Esc",
+  // Batch 6: More and admin flows.
+  "Add a user and role": "ユーザーとロールを追加",
+  "Promote a rule": "ルールを昇格",
+  "Test a logon, choose objects, then extract.": "ログオンをテストし、オブジェクトを選んで抽出します。",
+  "Invite someone with a role, then share the link.": "ロールを付けて招待し、リンクを共有します。",
+  "Dry-run generated rules and promote the ones that hold.": "生成されたルールをドライランし、有効なものを昇格します。",
+  "Guided tasks": "ガイド付きタスク",
+  "No roles could be read.": "ロールを読み取れませんでした。",
+  "Dry-run and review": "ドライランと確認",
+  "Confirm that you reviewed the impact.": "影響を確認したことを確定してください。",
+  "I reviewed the impact of these rules.": "これらのルールの影響を確認しました。",
+  "Promoted rules score the next run. Open the catalogue to see them.": "昇格したルールは次回の実行で採点されます。カタログで確認できます。",
+  "Open all systems": "すべてのシステムを開く",
+  "Open all users": "すべてのユーザーを開く",
 };
