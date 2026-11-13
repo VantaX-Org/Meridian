@@ -10147,6 +10147,8 @@ export const en = {
   "Is it ready for the target, and how do you get the files? Readiness, value, forecast and go-live.": "Is it ready for the target, and how do you get the files? Readiness, value, forecast and go-live.",
   "g then l": "g then l",
   "Approvals": "Approvals",
+  "All severities": "All severities",
+  "Watched objects": "Watched objects",
   "SAP S/4HANA": "SAP S/4HANA",
   "Migration Cockpit templates, one sheet per target table.": "Migration Cockpit templates, one sheet per target table.",
   "SAP SuccessFactors": "SAP SuccessFactors",
@@ -10279,6 +10281,11 @@ export const en = {
   "Two systems, side by side.": "Two systems, side by side.",
   "Service health and recent incidents.": "Service health and recent incidents.",
   "Esc": "Esc",
+  "Your access changed: you now have {roles}. Reload to update the menu.": "Your access changed: you now have {roles}. Reload to update the menu.",
+  "Reload": "Reload",
+  "different roles": "different roles",
+  "Removed {role_name} from {name}. They will be notified.": "Removed {role_name} from {name}. They will be notified.",
+  "Added {role} to {name}. They will be notified.": "Added {role} to {name}. They will be notified.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
