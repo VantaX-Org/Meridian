@@ -10212,6 +10212,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Wait for the checks to finish.": "Warten Sie, bis die Prüfungen abgeschlossen sind.",
   "A check failed. Fix the workbook and add it again.": "Eine Prüfung ist fehlgeschlagen. Korrigieren Sie die Arbeitsmappe und fügen Sie sie erneut hinzu.",
   "Confirm the warnings to continue.": "Bestätigen Sie die Warnungen, um fortzufahren.",
+  "All severities": "Alle Schweregrade",
+  "Watched objects": "Beobachtete Objekte",
   "SAP S/4HANA": "SAP S/4HANA",
   "Migration Cockpit templates, one sheet per target table.": "Migration-Cockpit-Vorlagen, ein Blatt je Zieltabelle.",
   "SAP SuccessFactors": "SAP SuccessFactors",
@@ -10344,4 +10346,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "Zwei Systeme nebeneinander.",
   "Service health and recent incidents.": "Dienstzustand und aktuelle Störungen.",
   "Esc": "Esc",
+  "Your access changed: you now have {roles}. Reload to update the menu.": "Ihr Zugriff hat sich geändert: Sie haben jetzt {roles}. Laden Sie neu, um das Menü zu aktualisieren.",
+  "Reload": "Neu laden",
+  "different roles": "andere Rollen",
+  "Removed {role_name} from {name}. They will be notified.": "{role_name} von {name} entfernt. Die Person wird benachrichtigt.",
+  "Added {role} to {name}. They will be notified.": "{role} zu {name} hinzugefügt. Die Person wird benachrichtigt.",
 };
