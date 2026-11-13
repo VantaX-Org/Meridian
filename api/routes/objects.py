@@ -342,6 +342,14 @@ class PortfolioRowOut(BaseModel):
     readiness: Optional[str] = None           # tier against the default bands; the objects list uses the tenant's
     step: Optional[str] = None                # cycle.step, for sorting and filtering
     cycle: Optional[dict] = None
+    run_number: Optional[int] = None
+    owner: Optional[str] = None               # the object's data owner (data_owners), None when unassigned
+    trend: list[float] = []                   # composite score of the lineage's last 8 finished runs, oldest first
+    previous_score: Optional[float] = None    # composite score of the run before this one, for the delta
+    new_issues: int = 0                       # records failing now and never before (against the monitor baseline)
+    regressed: int = 0                        # records failing now that were fixed in an earlier run
+    resolved: int = 0                         # records failing in the baseline that pass now
+    freshness: Optional[str] = None           # object monitor freshness: fresh, due, stale, failed, paused, manual
 
 
 class PortfolioOut(BaseModel):
@@ -352,18 +360,24 @@ class PortfolioOut(BaseModel):
     next_offset: Optional[int] = None
 
 
-_PORTFOLIO_SORTS = ("module", "measured_score", "composite_score", "run_at", "step")
-_PORTFOLIO_RUNS_SQL = ("SELECT id::text AS id, run_at, dqs_summary, " + lineage_sql() + " AS scope, metadata->>'system_id' AS system_id "
+_PORTFOLIO_SORTS = ("module", "measured_score", "composite_score", "run_at", "step", "system_id", "new_issues",
+                    "regressed", "resolved")
+_PORTFOLIO_TREND_SQL = (f"SELECT dqs_summary FROM analysis_versions v WHERE v.tenant_id = CAST(:t AS uuid) "
+                        f"AND v.status = ANY(:done) AND {lineage_sql('v')} = :s ORDER BY v.run_at DESC LIMIT :n")
+_PORTFOLIO_RUNS_SQL = ("SELECT id::text AS id, run_at, run_number, dqs_summary, " + lineage_sql() + " AS scope, "
+                       "metadata->>'system_id' AS system_id "
                        "FROM analysis_versions WHERE tenant_id = CAST(:t AS uuid) AND id = ANY(CAST(:ids AS uuid[]))")
 
 
 @router.get("/portfolio", response_model=PortfolioOut,
             dependencies=[Depends(require_permission("view", scope=scope_from_path))])
-async def portfolio(sort: str = Query("module", description="module, measured_score, composite_score, run_at or step; "
+async def portfolio(sort: str = Query("module", description="module, measured_score, composite_score, run_at, step, system_id, new_issues, "
+                                      "regressed or resolved; "
                                       "a leading - sorts descending"),
                     q: Optional[str] = Query(None, description="Part of the module id or label"),
                     readiness: Optional[str] = Query(None),
                     step: Optional[Literal["pull", "clean", "upload", "score", "compare"]] = Query(None),
+                    system_id: Optional[str] = Query(None), owner: Optional[str] = Query(None),
                     limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0),
                     db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Every object of the current state, each at its own newest run, with its cycle step. Paged and sorted on the
@@ -376,8 +390,20 @@ async def portfolio(sort: str = Query("module", description="module, measured_sc
     runs = {r["id"]: r for r in (await db.execute(text(_PORTFOLIO_RUNS_SQL), {"t": str(tenant.id), "ids": ids})).mappings()} if ids else {}
     thresholds = DEFAULT_THRESHOLDS
     cycles: dict[str, dict] = {}
+    trends: dict[str, list[dict]] = {}
     for scope in {r["scope"] for r in runs.values()}:
         cycles[scope] = await cycle_state.cycles_for(db, tenant.id, scope)
+        trends[scope] = [r[0] or {} for r in reversed((await db.execute(text(_PORTFOLIO_TREND_SQL), {
+            "t": str(tenant.id), "s": scope, "done": list(FINISHED), "n": _TREND_RUNS})).fetchall())]
+    owners = {r[0]: r[1] for r in (await db.execute(text(
+        "SELECT d.ref, u.name FROM data_owners d JOIN users u ON u.id = d.owner_user_id "
+        "WHERE d.tenant_id = :t AND d.kind = 'object'"), {"t": str(tenant.id)})).fetchall()}
+    drift: dict[str, dict] = {}
+    for row in await object_monitor.for_current_state(db, tenant.id):
+        res = await _drift_counts(db, row)
+        drift[row["module"]] = {"freshness": row["freshness"], "resolved": row["drift"]["recovered"],
+                                **({"new_issues": res["totals"]["new"], "regressed": res["totals"]["regressed"],
+                                    "resolved": res["totals"]["resolved"]} if res else {})}
     items = []
     for pr in pairs:
         run = runs.get(pr["version_id"])
@@ -390,7 +416,13 @@ async def portfolio(sort: str = Query("module", description="module, measured_sc
                       "run_at": run["run_at"], "system_id": run["system_id"], "composite_score": score,
                       "raw_score": m.get("raw_score"), "measured_score": measured_of(m), "capped": bool(m.get("capped")),
                       "readiness": tier(score, thresholds) if score is not None else None,
-                      "cycle": cyc, "step": cyc["step"] if cyc else None})
+                      "cycle": cyc, "step": cyc["step"] if cyc else None, "run_number": run["run_number"],
+                      "owner": owners.get(pr["module"]), **_trend_of(trends.get(run["scope"], []), pr["module"]),
+                      **drift.get(pr["module"], {})})
+    if system_id:
+        items = [i for i in items if i["system_id"] == system_id]
+    if owner:
+        items = [i for i in items if i["owner"] == owner]
     if q:
         items = [i for i in items if q.lower() in i["module"].lower() or q.lower() in i["label"].lower()]
     if readiness:
@@ -399,6 +431,24 @@ async def portfolio(sort: str = Query("module", description="module, measured_sc
         items = [i for i in items if i["step"] == step]
     items = sort_items(items, sort, _PORTFOLIO_SORTS, "module")
     return {"objects": items[offset:offset + limit], **page_meta(len(items), limit, offset)}
+
+
+def _trend_of(history: list[dict], module: str) -> dict:
+    """{trend, previous_score} of one object from its lineage's run summaries, oldest first."""
+    pts = [float(h[module]["composite_score"]) for h in history
+           if isinstance(h.get(module), dict) and h[module].get("composite_score") is not None]
+    return {"trend": pts, "previous_score": pts[-2] if len(pts) > 1 else None}
+
+
+async def _drift_counts(db: AsyncSession, row: dict) -> Optional[dict]:
+    """New, regressed and resolved records of one monitor row against its baseline; None when nothing is new."""
+    base = row["baseline"].get("version_id")
+    if not base or not row["drift"]["new_failing"]:
+        return None
+    scope = str((await db.execute(text(f"SELECT {lineage_sql()} FROM analysis_versions WHERE id = :v"),
+                                  {"v": row["last_version_id"]})).scalar())
+    earlier = await compare_sets.earlier_runs(db, scope, base)
+    return await compare_sets.counts(db, base, row["last_version_id"], earlier)
 
 
 class BulkStartIn(BaseModel):
@@ -444,13 +494,10 @@ async def monitor_feed(limit: int = Query(50, ge=1, le=500), offset: int = Query
     await _rls(db, tenant)
     items = []
     for row in await object_monitor.for_current_state(db, tenant.id, module):
-        base = row["baseline"].get("version_id")
-        if not base or not row["drift"]["new_failing"]:
+        res = await _drift_counts(db, row)
+        if not res:
             continue
-        scope = (await db.execute(text(f"SELECT {lineage_sql()} FROM analysis_versions WHERE id = :v"),
-                                  {"v": row["last_version_id"]})).scalar()
-        earlier = await compare_sets.earlier_runs(db, scope, base)
-        res = await compare_sets.counts(db, base, row["last_version_id"], earlier)
+        base = row["baseline"]["version_id"]
         for c in res["checks"]:
             for kind in ("new", "regressed"):
                 if c[kind]:
