@@ -23,6 +23,7 @@ import { FixtureJobLine, LiveJobLine } from "./JobLine";
 import { AdminMap } from "../admin/Admin";
 import { BottomTabs, Rail, type FlyId } from "./Rail";
 import { RoleBanners } from "./RoleBanners";
+import { RoleChangeNotice } from "./RoleChangeNotice";
 import { SandboxBanner } from "./SandboxBanner";
 import { DemoBar } from "./DemoBar";
 import { StatusStrip } from "./StatusStrip";
@@ -143,6 +144,7 @@ function ChromeBody({ children }: { children: ReactNode }) {
       <TopBar key={localeKey} onOpenCommand={() => setCommandOpen(true)} onShortcuts={() => setSheetOpen(true)} />
       {fixture ? <FixtureJobLine /> : <LiveJobLine />}
       <RoleBanners />
+      <RoleChangeNotice />
       <SandboxBanner />
       <div className="m2-main">
         <Rail key={localeKey} fly={fly} setFly={setFly} />
