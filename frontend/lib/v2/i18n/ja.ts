@@ -10191,5 +10191,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "2 つのシステムを並べて表示。",
   "Service health and recent incidents.": "サービスの状態と最近のインシデント。",
   "Esc": "Esc",
+  "All severities": "すべての重大度",
   "Watched objects": "監視中のオブジェクト",
 };

@@ -15,12 +15,12 @@ const row = (over: Partial<PortfolioRow>): PortfolioRow => ({
   capped: false, readiness: "pass", step: null, cycle: null, run_number: 2, owner: "Owner A", trend: [70, 75, 80], previous_score: 75, new_issues: 4, regressed: 1, resolved: 9, freshness: null, ...over,
 });
 const rows = [row({}), row({ module: "customer_master", label: "Customer master", version_id: "v2", owner: "Owner B", system_id: "s2", trend: [60, 55], new_issues: 2, regressed: 0, resolved: 0 })];
-const fnd = (module: string, label: string, version_id: string): Finding => ({ module, label, check_id: `C-${module}`, change: "new", records: 2, reason: "r", version_id, baseline_version_id: "b", detected_at: "2026-11-01T00:00:00Z" });
+const fnd = (module: string, label: string, version_id: string): Finding => ({ module, label, check_id: `C-${module}`, change: "new", records: 2, reason: "r", version_id, baseline_version_id: "b", detected_at: "2026-11-01T00:00:00Z", severity: module === "material_master" ? "high" : "low", owner: module === "material_master" ? "Owner A" : "Owner B" });
 
 vi.mock("@/lib/api/next/portfolio", async (orig) => ({ ...(await orig<object>()), usePortfolio: () => ({ data: { objects: rows } }) }));
 vi.mock("@/lib/api/next/monitor", async (orig) => ({
   ...(await orig<object>()),
-  useFeed: () => ({ isLoading: false, isError: false, data: { items: [fnd("material_master", "Material master", "v1"), fnd("customer_master", "Customer master", "v2")], total: 2 } }),
+  useFeed: () => ({ isLoading: false, isError: false, data: { items: [fnd("material_master", "Material master", "v1"), fnd("customer_master", "Customer master", "v2")], total: 2, runs: [{ version_id: "v1", resolved: 6 }, { version_id: "v2", resolved: 0 }] } }),
 }));
 vi.mock("@/lib/v2/queries", () => ({ useLandscape: () => ({ data: { objects: [], systems: [], cells: [] } }) }));
 
@@ -46,5 +46,14 @@ describe("Monitor watched objects", () => {
     expect(screen.queryByRole("heading", { name: "Customer master" })).not.toBeInTheDocument();
     expect(screen.queryByText("Customer master")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Material master" })).toBeInTheDocument();
+  });
+
+  it("shows resolved per run and filters the feed by severity", async () => {
+    setUrl("/monitor");
+    renderWithQuery(<Monitor />);
+    expect(within(screen.getByRole("heading", { name: "Material master" }).closest("li")!).getByText(/6/)).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText("Severity"), "low");
+    expect(screen.queryByRole("heading", { name: "Material master" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Customer master" })).toBeInTheDocument();
   });
 });

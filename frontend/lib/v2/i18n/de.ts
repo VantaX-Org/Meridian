@@ -10191,5 +10191,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "Zwei Systeme nebeneinander.",
   "Service health and recent incidents.": "Dienstzustand und aktuelle Störungen.",
   "Esc": "Esc",
+  "All severities": "Alle Schweregrade",
   "Watched objects": "Beobachtete Objekte",
 };
