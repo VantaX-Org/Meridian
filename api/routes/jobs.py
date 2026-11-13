@@ -54,6 +54,27 @@ async def stream_jobs(tenant: Tenant = Depends(get_tenant), db: AsyncSession = D
                                       "X-Accel-Buffering": "no"})
 
 
+@router.get("/active/progress")
+async def active_progress(tenant: Tenant = Depends(get_tenant)):
+    """Every queued and running job of the tenant with its truthful progress (api/services/run_progress.py)."""
+    from api.services.run_prediction import with_queue_positions
+    from api.services.run_progress import compute_progress
+
+    listed = with_queue_positions(jobs.list_jobs(str(tenant.id), active_only=True, limit=200))
+    return {"runs": [compute_progress(j) for j in listed]}
+
+
+@router.get("/{job_id}/progress")
+async def job_progress(job_id: str, tenant: Tenant = Depends(get_tenant)):
+    """One job's progress, also after it finished (completed, failed or cancelled)."""
+    from api.services.run_progress import compute_progress
+
+    job = jobs.get_job(str(tenant.id), job_id)
+    if job is None:
+        raise HTTPException(404, "Job not found")
+    return compute_progress(job)
+
+
 @router.get("/{job_id}")
 async def get_job(job_id: str, tenant: Tenant = Depends(get_tenant)):
     job = jobs.get_job(str(tenant.id), job_id)
