@@ -139,7 +139,7 @@ export interface VersionHead {
     /** Tables read only up to the row cap (MERIDIAN_EXTRACT_MAX_ROWS) or with a capped slice: the scores cover part of them. */
     truncated_tables?: string[];
     /** Per-table read status; older runs carry the cap here only, as truncated or truncated_slices. */
-    coverage?: { table: string; status: string; truncated?: boolean; truncated_slices?: unknown[] }[] } | null;
+    coverage?: { table: string; status: string; rows?: number; source_rows?: number; truncated?: boolean; truncated_slices?: unknown[] }[] } | null;
   severity_counts?: Record<string, number> | null;
   /** The name of the system the run came from; the list endpoint fills it, null when the system is gone. */
   system_name?: string | null;
@@ -223,6 +223,32 @@ export function getVersionCompare(v1: string, v2: string): Promise<VersionCompar
 export function cappedTables(meta: VersionHead["metadata"]): string[] {
   if (meta?.truncated_tables) return meta.truncated_tables;
   return (meta?.coverage ?? []).filter((c) => c.status === "live" && (c.truncated || c.truncated_slices?.length)).map((c) => c.table);
+}
+
+/** Each capped table with the rows read and, when SAP counted them, the rows the scope holds (null when unknown). */
+export function cappedReads(meta: VersionHead["metadata"]): { table: string; rows: number | null; source_rows: number | null }[] {
+  const byTable = new Map((meta?.coverage ?? []).map((c) => [c.table, c]));
+  return cappedTables(meta).map((table) => {
+    const c = byTable.get(table);
+    return { table, rows: c?.rows ?? null, source_rows: c?.source_rows ?? null };
+  });
+}
+
+export interface SplitScope {
+  split_by: string;
+  scopes: DownloadScope[];
+  tables: string[];
+  downloads?: { job_id: string; version_id: string }[];
+}
+
+/**
+ * POST /systems/{id}/versions/{v}/split-scope: the capped run's scope split into smaller scopes, each under the cap.
+ * `start` also queues one analysed download per scope. Needs trigger_sync. 422 says why a scope cannot be split.
+ */
+export async function splitScope(systemId: string, versionId: string, start: boolean): Promise<SplitScope> {
+  if (fixtureActive()) return fixtureAction("split-scope", { systemId, versionId, start }) as SplitScope;
+  const { data } = await apiClient.post<SplitScope>(`/api/v1/systems/${systemId}/versions/${versionId}/split-scope`, { start });
+  return data;
 }
 
 export function getVersionHead(id: string): Promise<VersionHead> {

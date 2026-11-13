@@ -10269,6 +10269,19 @@ export const en = {
   "Esc": "Esc",
   "These tables reached the row cap, so the scores cover only the rows read. Raise MERIDIAN_EXTRACT_MAX_ROWS or narrow the scope and run again.": "These tables reached the row cap, so the scores cover only the rows read. Raise MERIDIAN_EXTRACT_MAX_ROWS or narrow the scope and run again.",
   "Read capped: {tables}": "Read capped: {tables}",
+  "{verdict} on a partial read": "{verdict} on a partial read",
+  "Partial score: the read stopped at the row cap, so only the rows read are scored.": "Partial score: the read stopped at the row cap, so only the rows read are scored.",
+  "{table}: {rows} of {total} rows": "{table}: {rows} of {total} rows",
+  "{table}: {rows} rows read, total not counted": "{table}: {rows} rows read, total not counted",
+  "{table}: total not counted": "{table}: total not counted",
+  "Split this run's scope into smaller scopes that each read under the row cap": "Split this run's scope into smaller scopes that each read under the row cap",
+  "{n} smaller scopes": "{n} smaller scopes",
+  "Each scope is one download, scored when it finishes. Check them, then start the downloads.": "Each scope is one download, scored when it finishes. Check them, then start the downloads.",
+  "Split scope": "Split scope",
+  "{n} downloads started": "{n} downloads started",
+  "Each smaller scope is read and scored as a run of its own.": "Each smaller scope is read and scored as a run of its own.",
+  "Start {n} downloads": "Start {n} downloads",
+  "Splitting the scope needs the trigger sync permission.": "Splitting the scope needs the trigger sync permission.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
