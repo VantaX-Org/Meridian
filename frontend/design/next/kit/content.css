@@ -1,0 +1,16 @@
+/* Content kit for the Story feed: the large title and its compact twin in the header. */
+.nx-lt { position: relative; display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--nx-s3) var(--nx-s5); padding: var(--nx-s7) 0 var(--nx-s5); }
+.nx-lt-text { flex: 1 1 20rem; min-width: 0; }
+.nx-lt-h { margin: 0; font-size: var(--nx-fs-display); line-height: var(--nx-lh-display); font-weight: var(--nx-w-heading); color: var(--nx-ink); }
+.nx-lt-sub { margin: var(--nx-s2) 0 0; max-width: 60ch; color: var(--nx-ink-2); font-size: var(--nx-fs-body); line-height: var(--nx-lh-body); }
+.nx-lt-meta { display: flex; align-items: center; gap: var(--nx-s2); color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-lt-sentinel { position: absolute; inset-inline: 0; top: 0; height: var(--nx-s2); pointer-events: none; }
+[data-title-scope][data-collapsed="true"] .nx-lt-h { opacity: 0; }
+.nx-title-compact { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--nx-fs-small); font-weight: var(--nx-w-label); color: var(--nx-ink); opacity: 0; pointer-events: none; }
+[data-title-scope][data-collapsed="true"] .nx-title-compact { opacity: 1; }
+@media (max-width: 760px) {
+  .nx-lt { padding: var(--nx-s5) 0 var(--nx-s4); }
+}
+@media (max-width: 760px) {
+  .nx-lt-h { font-size: var(--nx-fs-headline); line-height: var(--nx-lh-headline); }
+}
