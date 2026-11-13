@@ -468,6 +468,20 @@ def _roundtrip_edits(tenant_id, parent_id: str, system_id: Optional[str], parent
     return kind, edits, report
 
 
+class RoundTripCheck(BaseModel):
+    id: str
+    status: str  # pass | warn | fail
+    detail: str
+
+
+class RoundTripCheckResponse(BaseModel):
+    verdict: str  # pass | warn | fail
+    checks: list[RoundTripCheck]
+    parent_version_id: str
+    latest_version_id: Optional[str] = None
+    edits: int = 0
+
+
 @router.post(
     "/upload/roundtrip",
     response_model=RoundTripResponse,
@@ -480,6 +494,7 @@ async def upload_roundtrip(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     role: str = Depends(require_permission("upload")),
+    confirm_warnings: bool = Form(False),
 ):
     """An edited export (filled template or cleaning workbook) comes back as the next run of the same lineage
     and is analysed at once. The hidden marker names the parent run; without one the caller sends it.
@@ -487,7 +502,21 @@ async def upload_roundtrip(
     The edits go onto the newest cleaned copy of the same extraction, so uploads for several objects of one run
     accumulate; the new run is tagged ``cleaned_overlay``. A file from an extraction that a newer one of the same
     object has replaced is refused (409). Status, Owner and Comment on cleaning rows update the record issues."""
-    return await _roundtrip_one(request, file, parent_version_id, db, tenant, role=role)
+    return await _roundtrip_one(request, file, parent_version_id, db, tenant, role=role, confirm_warnings=confirm_warnings)
+
+
+@router.post("/upload/roundtrip/check", response_model=RoundTripCheckResponse, dependencies=[Depends(_upload_rate_limit)])
+async def upload_roundtrip_check(
+    request: Request,
+    file: UploadFile = File(...),
+    parent_version_id: str = Form(None),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("upload")),
+):
+    """Run every check on an edited file and change nothing: fingerprint, run, template version, columns, rows,
+    record keys, value types and lengths, formulas. Each check is pass, warn or fail; no cell value is returned."""
+    return await _roundtrip_one(request, file, parent_version_id, db, tenant, role=role, check_only=True)
 
 
 class RoundTripBatchItem(BaseModel):
@@ -541,7 +570,8 @@ MAX_ROUNDTRIP_BATCH = 20
 
 
 async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: Optional[str], db: AsyncSession,
-                         tenant: Tenant, role: str = "") -> "RoundTripResponse":
+                         tenant: Tenant, role: str = "", check_only: bool = False,
+                         confirm_warnings: bool = False):
     from starlette.concurrency import run_in_threadpool
 
     from api.middleware.licence import enforce_licensed_modules
@@ -598,6 +628,29 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
     base = str((meta.get("roundtrip") or {}).get("base_version_id") or parent)
     module = marker.get("module") or (modules[0] if len(modules) == 1 else None)
     newer = (await db.execute(text(_NEWER_RUN_SQL), {"t": tenant.id, "b": base, "m": module})).fetchone()
+    from api.services import upload_checks as uc
+
+    tip = (await db.execute(text(_TIP_SQL), {"t": tenant.id, "b": base})).fetchone()
+    path = str(dict(tip[1] or {}).get("dataset_path") or meta["dataset_path"]) if tip else meta["dataset_path"]
+    dictionary = await run_in_threadpool(_dictionary, tenant.id, system_id) if edits else None
+    dry = await run_in_threadpool(rt.apply_edits, path, "", edits, dictionary, True) if edits else {}
+    run_check = uc.check_run(marker, parent, modules, None)
+    if newer:
+        run_check = {"id": "run", "status": "fail", "detail": "A newer extraction of this object has finished since "
+                     "this file was exported. Download the workbook from the latest run."}
+    checks = [uc.check_fingerprint(marker, str(tenant.id)), run_check, uc.check_template(marker, kind),
+              uc.check_columns(parsed["sheets"], marker, kind, marker.get("map")), uc.check_rows(parsed["sheets"], marker, kind),
+              uc.check_keys(dry), uc.check_values(edits, dictionary), uc.check_formulas(edits)]
+    verdict = uc.verdict(checks)
+    if check_only:
+        return RoundTripCheckResponse(verdict=verdict, checks=[RoundTripCheck(**c) for c in checks], parent_version_id=parent,
+                                      latest_version_id=str(newer[0]) if newer else None, edits=len(edits))
+    if verdict == "fail" and not newer:
+        raise HTTPException(status_code=422, detail={"error": "checks_failed", "checks": checks,
+                            "detail": "The file did not pass its checks. Fix the failed checks and upload again."})
+    if verdict == "warn" and not confirm_warnings:
+        raise HTTPException(status_code=422, detail={"error": "confirm_required", "checks": checks,
+                            "detail": "The file passed with warnings. Confirm to continue."})
     if newer:
         raise HTTPException(status_code=409, detail={
             "error": "stale_run", "latest_version_id": str(newer[0]), "detail":

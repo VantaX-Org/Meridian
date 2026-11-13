@@ -15,6 +15,7 @@ from openpyxl import Workbook
 from api.deps import Tenant, get_db, get_tenant
 from api.routes import upload
 from api.services import sf_roundtrip as rt
+from api.services import upload_checks as uc
 
 TID = uuid.uuid4()
 PARENT = uuid.uuid4()
@@ -27,7 +28,7 @@ pytestmark = pytest.mark.skipif(
 HEAD = ["Table", "Record key", "Field", "Corrected value"]
 
 
-def _xlsx(sheets: dict, version_id=PARENT, module="employee_central") -> bytes:
+def _xlsx(sheets: dict, version_id=PARENT, module="employee_central", fp=True, extra=None) -> bytes:
     wb = Workbook()
     wb.remove(wb.active)
     for name, rows in sheets.items():
@@ -37,7 +38,10 @@ def _xlsx(sheets: dict, version_id=PARENT, module="employee_central") -> bytes:
     if version_id:
         ws = wb.create_sheet(rt.MARKER)
         ws.append(["key", "value"])
-        for r in rt.marker_rows(str(version_id), module, "cleaning"):
+        recs = sheets.get("Records to clean")
+        if fp and recs:  # the fingerprint a real download carries
+            extra = {**uc.fingerprint("cleaning", str(TID), None, recs[0], len(recs) - 1), **(extra or {})}
+        for r in rt.marker_rows(str(version_id), module, "cleaning", None, extra):
             ws.append([r["key"], r["value"]])
         ws.sheet_state = "hidden"
     out = io.BytesIO()
@@ -103,7 +107,9 @@ def env(monkeypatch):
         state.enqueued.append(prefix)
         return "job-1"
 
-    def apply_edits(parent, prefix, edits, dictionary):
+    def apply_edits(parent, prefix, edits, dictionary, dry=False):
+        if dry:
+            return {**state.result, "total": len(edits)}
         state.applied_with.append((parent, prefix, edits))
         return dict(state.result)
 
@@ -211,6 +217,8 @@ def test_status_and_comment_only_file_saves_notes_without_a_new_run(env):
 
 def test_parent_comes_from_the_form_when_the_file_has_no_marker(env):
     r = _post(env, _good(version_id=None), parent_version_id=str(PARENT))
+    assert r.status_code == 422 and r.json()["detail"]["error"] == "confirm_required"  # no fingerprint: a warning
+    r = _post(env, _good(version_id=None), parent_version_id=str(PARENT), confirm_warnings="true")
     assert r.status_code == 200 and r.json()["parent_version_id"] == str(PARENT)
     r = _post(env, _good(version_id=None))
     assert r.status_code == 422 and r.json()["detail"]["error"] == "parent_required"
@@ -242,8 +250,9 @@ def test_file_with_no_filled_corrections_is_refused(env):
 def test_nothing_matching_marks_the_new_run_failed(env):
     env.result.update(applied=0, unmatched=[{"table": "EmpJob"}], unmatched_total=1)
     r = _post(env, _good())
-    assert r.status_code == 422 and r.json()["detail"]["error"] == "nothing_applied"
-    assert env.failed and env.enqueued == []
+    assert r.status_code == 422 and r.json()["detail"]["error"] == "checks_failed"  # the keys check stops it first
+    assert {c["id"]: c["status"] for c in r.json()["detail"]["checks"]}["keys"] == "fail"
+    assert env.enqueued == []
 
 
 def test_run_that_has_not_finished_or_is_not_an_extraction_is_refused(env):
@@ -274,3 +283,85 @@ def test_the_parent_run_is_looked_up_for_this_tenant_only(env):
     config, select = env.db.calls[0], env.db.calls[1]
     assert "set_config('app.tenant_id'" in config[0] and config[1] == {"t": str(TID)}
     assert "tenant_id = :t" in select[0] and select[1] == {"v": str(PARENT), "t": TID}
+
+
+def _checks(env, data, **form):
+    r = env.client.post("/api/v1/upload/roundtrip/check", files={"file": ("c.xlsx", data, XLSX)}, data=form,
+                        headers={"X-User-Role": "analyst"})
+    assert r.status_code == 200, r.text
+    return r.json(), {c["id"]: c for c in r.json()["checks"]}
+
+
+def test_check_endpoint_lists_every_check_and_changes_nothing(env):
+    body, by = _checks(env, _good())
+    assert body["verdict"] == "pass" and list(by) == list(uc.CHECK_IDS)
+    assert env.applied_with == [] and env.enqueued == [] and env.audits == []
+
+
+def test_check_run_other_run_object_or_tenant_fails(env):
+    r = env.client.post("/api/v1/upload/roundtrip/check", files={"file": ("c.xlsx", _good(), XLSX)},
+                        data={"parent_version_id": str(uuid.uuid4())}, headers={"X-User-Role": "analyst"})
+    assert r.status_code == 422  # parent_mismatch is raised before the checks
+    _, by = _checks(env, _good(extra={"tenant": str(uuid.uuid4())}))
+    assert by["fingerprint"]["status"] == "fail"
+    r = env.client.post("/api/v1/upload/roundtrip/check", files={"file": ("c.xlsx", _good(module="benefits"), XLSX)},
+                        headers={"X-User-Role": "analyst"})
+    assert r.status_code == 422 and r.json()["detail"]["error"] == "module_mismatch"
+
+
+def test_check_older_template_version_fails(env):
+    _, by = _checks(env, _good(extra={"template_version": "0"}))
+    assert by["template"]["status"] == "fail"
+    _, by = _checks(env, _good(extra={"template_version": ""}))
+    assert by["template"]["status"] == "warn"
+
+
+def test_check_renamed_or_extra_column_fails(env):
+    head = ["Table", "Record key", "Field", "Corrected value"]
+    ok = [head, ["EmpJob", "userId=u1", "jobTitle", "Lead"]]
+    renamed = _xlsx({"Records to clean": [["Table", "Record key", "Field", "Fixed value"], ok[1]]}, fp=False,
+                    extra=uc.fingerprint("cleaning", str(TID), None, head, 1))
+    r = env.client.post("/api/v1/upload/roundtrip/check", files={"file": ("c.xlsx", renamed, XLSX)},
+                        headers={"X-User-Role": "analyst"})
+    assert r.status_code == 422 and "Corrected value" in str(r.json()["detail"])  # refused while reading
+    extra_col = _xlsx({"Records to clean": [head + ["Extra"], ok[1] + [""]]}, fp=False,
+                      extra=uc.fingerprint("cleaning", str(TID), None, head, 1))
+    _, by = _checks(env, extra_col)
+    assert by["columns"]["status"] == "fail"
+
+
+def test_check_added_or_removed_rows_fail(env):
+    head = ["Table", "Record key", "Field", "Corrected value"]
+    rows = [head, ["EmpJob", "userId=u1", "jobTitle", "Lead"], ["EmpJob", "userId=u2", "jobTitle", ""]]
+    fp = uc.fingerprint("cleaning", str(TID), None, head, 3)  # the download had three records
+    _, by = _checks(env, _xlsx({"Records to clean": rows}, fp=False, extra=fp))
+    assert by["rows"]["status"] == "fail"
+
+
+def test_check_unknown_keys_fail_or_warn(env):
+    env.result.update(unmatched=[{}], unmatched_total=1)
+    _, by = _checks(env, _good())
+    assert by["keys"]["status"] == "fail"  # one edit, none found
+    head = ["Table", "Record key", "Field", "Corrected value"]
+    two = _xlsx({"Records to clean": [head, ["EmpJob", "userId=u1", "jobTitle", "Lead"],
+                                      ["EmpJob", "userId=u2", "jobTitle", "Boss"]]})
+    _, by = _checks(env, two)
+    assert by["keys"]["status"] == "warn"
+
+
+def test_check_formula_values_fail_and_numbers_pass(env):
+    head = ["Table", "Record key", "Field", "Corrected value"]
+    bad = _xlsx({"Records to clean": [head, ["EmpJob", "userId=u1", "jobTitle", "@SUM(A1)"],
+                                      ["EmpJob", "userId=u2", "jobTitle", "-5"]]})
+    body, by = _checks(env, bad)
+    assert by["formulas"]["status"] == "fail" and "1 value" in by["formulas"]["detail"]
+    assert "SUM" not in str(body)  # never echo a cell value
+    assert not uc.unsafe("-5") and uc.unsafe("@SUM(A1)") and uc.unsafe("+cmd") and uc.unsafe("-cmd|x")
+
+
+def test_confirm_required_for_warnings_and_failures_block(env):
+    r = _post(env, _good(extra={"template_version": ""}))
+    assert r.status_code == 422 and r.json()["detail"]["error"] == "confirm_required"
+    assert _post(env, _good(extra={"template_version": ""}), confirm_warnings="true").status_code == 200
+    r = _post(env, _good(extra={"template_version": "0"}), confirm_warnings="true")  # confirm never overrides a fail
+    assert r.status_code == 422 and r.json()["detail"]["error"] == "checks_failed"

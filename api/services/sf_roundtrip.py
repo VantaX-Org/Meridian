@@ -22,21 +22,27 @@ class RoundTripError(ValueError):
     """The file cannot be applied; the message is shown to the person."""
 
 
-def marker_rows(version_id: str, module: str, kind: str, maps: Optional[dict] = None) -> list[dict]:
+def marker_rows(version_id: str, module: str, kind: str, maps: Optional[dict] = None, extra: Optional[dict] = None) -> list[dict]:
+    """The hidden fingerprint: run, object, kind, and (api/services/upload_checks.py) tenant, system, template id and
+    version, column-set hash, record count, generated time."""
+    from api.services.upload_checks import TEMPLATE_VERSIONS
+
+    extra = {"template_id": kind, "template_version": str(TEMPLATE_VERSIONS[kind]), **(extra or {})}
     rows = [{"key": "version_id", "value": version_id}, {"key": "module", "value": module}, {"key": "kind", "value": kind}]
+    rows += [{"key": k, "value": v} for k, v in extra.items()]
     # one row per sheet: a cell holds 32,767 characters at most
     rows += [{"key": "sheet", "value": json.dumps({"name": n, **m}, separators=(",", ":"))} for n, m in (maps or {}).items()]
     return rows
 
 
-def stamp_xlsx(data: bytes, version_id: str, module: str, maps: dict) -> bytes:
+def stamp_xlsx(data: bytes, version_id: str, module: str, maps: dict, extra: Optional[dict] = None) -> bytes:
     """The template workbook with the hidden marker sheet added."""
     from openpyxl import load_workbook
 
     wb = load_workbook(io.BytesIO(data))
     ws = wb.create_sheet(MARKER)
     ws.append(["key", "value"])
-    for r in marker_rows(version_id, module, "template", maps):
+    for r in marker_rows(version_id, module, "template", maps, extra):
         ws.append([r["key"], r["value"]])
     ws.sheet_state = "hidden"
     out = io.BytesIO()
@@ -170,7 +176,7 @@ def template_edits(sheets: list, maps: dict, keys_of) -> tuple[list[dict], dict]
     return edits, report
 
 
-def apply_edits(parent_prefix: str, new_prefix: str, edits: list[dict], dictionary) -> dict:
+def apply_edits(parent_prefix: str, new_prefix: str, edits: list[dict], dictionary, dry: bool = False) -> dict:
     """Copy the parent bundle to ``new_prefix`` with the edits written in. Returns the counts and the edits
     that matched nothing, as ``{"applied", "unchanged", "unmatched": [..], "no_table", "no_field"}``."""
     import pandas as pd
@@ -196,7 +202,8 @@ def apply_edits(parent_prefix: str, new_prefix: str, edits: list[dict], dictiona
         target = new_prefix + name[len(parent_prefix):]
         table = unquote(name.rsplit("/", 1)[-1][: -len(".parquet")]) if name.endswith(".parquet") else None
         if table not in by_table:
-            client.copy_object(bucket, target, CopySource(bucket, name))
+            if not dry:
+                client.copy_object(bucket, target, CopySource(bucket, name))
             continue
         out["no_table"].remove(table)
         resp = client.get_object(bucket, name)
@@ -227,9 +234,12 @@ def apply_edits(parent_prefix: str, new_prefix: str, edits: list[dict], dictiona
             df.iloc[rows, df.columns.get_loc(c)] = e["value"]
             out["applied"] += len(rows)
             out["edited"].append({"table": table, "key": e["key"], "field": e["field"]})
+        if dry:  # a check run: nothing is written
+            continue
         buf = io.BytesIO()
         df.to_parquet(buf, index=False)
         upload_file(bucket, target, buf.getvalue(), "application/octet-stream")
+    out["total"] = len(edits)
     out["unmatched_total"] = len(out["unmatched"])
     out["unmatched"] = out["unmatched"][:200]
     return out
