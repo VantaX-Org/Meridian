@@ -84,7 +84,7 @@ async def _extraction(job: dict, request: Request, db: AsyncSession, tenant: Ten
 
 async def _analysis(job: dict, request: Request, db: AsyncSession, tenant: Tenant) -> Any:
     from api.routes.versions import AnalyseOptions, analyse_version
-    await db.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": str(tenant.id)})
+    await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
     kept = (await db.execute(text("SELECT metadata->'analysis_options' FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
                              {"v": job["version_id"], "t": str(tenant.id)})).scalar()  # a limited run is retried as limited
     return await analyse_version(job["version_id"], request, db=db, tenant=tenant,
@@ -182,7 +182,7 @@ async def cancel_job(job_id: str, request: Request, tenant: Tenant = Depends(get
     saved = jobs.mark_cancelled(str(tenant.id), job_id, by=current_user_id(request), by_label=current_user_label())
     if saved is None:
         raise HTTPException(503, "The job registry is not reachable")
-    await db.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": str(tenant.id)})
+    await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
     version_id = job.get("version_id")
     if job.get("kind") in ("analysis", "upload") and _as_uuid(version_id):
         await db.execute(text(

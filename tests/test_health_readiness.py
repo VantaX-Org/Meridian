@@ -1,4 +1,6 @@
-"""GET /health probes Postgres and Redis and answers 503 when either is down (D-26); /health/live stays shallow."""
+"""GET /health probes Postgres and Redis and answers 503 when either is down (D-26); /health/live stays shallow.
+
+Workers are probed and reported (with a "degraded" list) but do not gate readiness (edge-ops #41)."""
 
 from __future__ import annotations
 
@@ -14,7 +16,7 @@ DOWN = {"status": "down", "latency_ms": None, "detail": "OperationalError"}
 
 
 def _client(monkeypatch: pytest.MonkeyPatch, db: dict[str, Any] | None = None,
-            redis: dict[str, Any] | None = None) -> TestClient:
+            redis: dict[str, Any] | None = None, workers: dict[str, Any] | None = None) -> TestClient:
     from api.routes import health
 
     monkeypatch.setattr(health, "email_backend_name", lambda: None)
@@ -23,6 +25,7 @@ def _client(monkeypatch: pytest.MonkeyPatch, db: dict[str, Any] | None = None,
         monkeypatch.setattr(health, "_probe_db", lambda: db)
     if redis is not None:
         monkeypatch.setattr(health, "_probe_redis", lambda: redis)
+    monkeypatch.setattr(health, "_probe_workers", lambda: workers or UP)
     app = FastAPI()
     app.include_router(health.router)
     return TestClient(app)
@@ -33,7 +36,8 @@ def test_ready_when_both_answer(monkeypatch: pytest.MonkeyPatch) -> None:
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok"  # scripts/update.sh greps for "status":"ok"
-    assert body["components"] == {"db": UP, "redis": UP}
+    assert body["components"] == {"db": UP, "redis": UP, "workers": UP}
+    assert body["degraded"] == []
     assert {"version", "llm_provider", "licence", "email_backend", "timestamp"} <= set(body)
 
 
@@ -48,6 +52,25 @@ def test_503_with_per_component_status_when_one_is_down(monkeypatch: pytest.Monk
     assert body["components"]["redis"]["status"] == redis["status"]
     if down:
         assert body["components"][down]["detail"] == "OperationalError"
+        assert body["degraded"] == [down]
+
+
+def test_stopped_workers_are_reported_but_do_not_fail_readiness(monkeypatch: pytest.MonkeyPatch) -> None:
+    workers = {"status": "down", "latency_ms": None, "detail": "No worker answered the ping"}
+    r = _client(monkeypatch, UP, UP, workers).get("/health")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["components"]["workers"]["status"] == "down"
+    assert body["degraded"] == ["workers"]
+
+
+def test_health_probe_degraded_lists_faults_only() -> None:
+    from api.services.health_probe import Component, degraded
+
+    comps = [Component(id=i, label=i, status=s) for i, s in
+             (("db", "up"), ("redis", "degraded"), ("workers", "down"), ("garage", "not_configured"))]
+    assert degraded(comps) == ["redis", "workers"]
 
 
 def test_live_touches_no_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -71,4 +94,5 @@ def test_unreachable_redis_is_down_not_an_error(monkeypatch: pytest.MonkeyPatch)
 def test_real_probes_against_the_test_services(monkeypatch: pytest.MonkeyPatch) -> None:
     r = _client(monkeypatch).get("/health")
     assert r.status_code == 200, r.text
-    assert {c["status"] for c in r.json()["components"].values()} == {"up"}
+    comps = r.json()["components"]
+    assert comps["db"]["status"] == comps["redis"]["status"] == "up"  # no worker runs beside the test services
