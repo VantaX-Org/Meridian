@@ -1013,7 +1013,7 @@ async def retry_failed_batch_run(
 # --- request view: list, detail (before/after), reject ---------------------------------------------------------
 
 class RejectRequest(BaseModel):
-    reason: str = Field("", max_length=500, description="Why the second person declines; shown to the requester.")
+    reason: str = Field(..., min_length=1, max_length=500, description="Why the second person declines; the requester is told.")
 
 
 class RejectResponse(BaseModel):
@@ -1187,12 +1187,22 @@ async def reject_writeback(
     if user == rec[0]:
         raise HTTPException(status_code=403, detail="4-eyes violation: rejecting user must differ from requesting user")
     reason = body.reason.strip()
+    if not reason:
+        raise HTTPException(status_code=422, detail="A reason is required")
     await db.execute(
         text("UPDATE write_back_log SET rejected_by = :u, rejected_at = :now, reject_reason = :why "
              "WHERE id = :aid AND tenant_id = :tid"),
-        {"u": user, "now": datetime.now(timezone.utc), "why": reason or None, "aid": str(approval_id), "tid": tenant_id})
+        {"u": user, "now": datetime.now(timezone.utc), "why": reason, "aid": str(approval_id), "tid": tenant_id})
     from api.services.rbac import write_audit
     await write_audit(db, tenant.id, request, "writeback.reject", "write_back_log", str(approval_id),
-                      {"requested_by": rec[0]}, {"rejected_by": user, "reason": reason or None})
+                      {"requested_by": rec[0]}, {"rejected_by": user, "reason": reason})
+    # the requester is told only when they are a user of this tenant (a service key or auth-off request is not)
+    requester = (await db.execute(
+        text("SELECT id::text FROM users WHERE id::text = :u AND tenant_id = :tid"),
+        {"u": rec[0] or "", "tid": tenant_id})).scalar()
+    if requester:
+        from api.services.notifications import create_notification
+        await create_notification(tenant_id, requester, "writeback_rejected", "Write-back rejected",
+                                  f"Your write-back request was rejected: {reason}", "/work", db)
     await db.commit()
     return RejectResponse(id=str(approval_id), status="rejected")

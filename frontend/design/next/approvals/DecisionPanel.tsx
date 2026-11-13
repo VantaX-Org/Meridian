@@ -58,12 +58,13 @@ export function DecisionPanel({ req }: { req: RequestDetail }) {
         title={t("Reject this write-back?")}
         consequence={
           <label className="nx-field">
-            <span>{t("Reason (optional)")}</span>
+            <span>{t("Reason")}</span>
             <input className="nx-input" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} />
           </label>
         }
         confirmLabel={t("Reject")}
-        onConfirm={() => run(reason)}
+        blocked={reason.trim() ? undefined : t("Give a reason first")}
+        onConfirm={() => run(reason.trim())}
         onCancel={() => setAsk(null)}
       />
     </section>

@@ -27,6 +27,8 @@ def pending():
               "auto_fix": True}]
     with engine.begin() as c:
         c.execute(text("INSERT INTO tenants (id, name) VALUES (:id, :id)"), {"id": tid})
+        c.execute(text("INSERT INTO users (id, tenant_id, email, name, role, is_active) "
+                       "VALUES (:u, :t, :e, 'Requester', 'admin', true)"), {"u": REQUESTER, "t": tid, "e": f"{tid}@example.com"})
         c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status) VALUES (:v, :t, 'complete')"), {"v": vid, "t": tid})
         c.execute(text("""INSERT INTO findings (id, version_id, tenant_id, module, check_id, severity, dimension, affected_count,
                           total_count, pass_rate, details, record_fixes)
@@ -38,7 +40,7 @@ def pending():
                   {"w": wid, "t": tid, "f": fid, "v": vid, "r": REQUESTER})
     yield tid, wid
     with engine.begin() as c:
-        for t in ("audit_log", "write_back_log", "findings", "analysis_versions"):
+        for t in ("notifications", "audit_log", "write_back_log", "findings", "analysis_versions", "users"):
             c.execute(text(f"DELETE FROM {t} WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM tenants WHERE id = :t"), {"t": tid})
     engine.dispose()
@@ -74,7 +76,7 @@ async def test_other_user_rejects_once_and_it_cannot_be_approved(pending, monkey
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r = await client.post(f"/api/v1/writeback/reject/{wid}", json={"reason": "wrong tax number"}, headers=HEADERS)
         assert r.status_code == 200, r.text
-        assert (await client.post(f"/api/v1/writeback/reject/{wid}", json={}, headers=HEADERS)).status_code == 409
+        assert (await client.post(f"/api/v1/writeback/reject/{wid}", json={"reason": "again"}, headers=HEADERS)).status_code == 409
         assert (await client.post(f"/api/v1/writeback/approve/{wid}", headers=HEADERS)).status_code == 409
         assert (await client.get("/api/v1/writeback/approvals", headers=HEADERS)).json()["approvals"] == []
         d = (await client.get(f"/api/v1/writeback/requests/{wid}", headers=HEADERS)).json()
@@ -82,5 +84,19 @@ async def test_other_user_rejects_once_and_it_cannot_be_approved(pending, monkey
     engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
     with engine.begin() as c:
         n = c.execute(text("SELECT count(*) FROM audit_log WHERE tenant_id = :t AND action = 'writeback.reject'"), {"t": tid}).scalar()
+        notes = c.execute(text("SELECT title, link FROM notifications WHERE tenant_id = :t AND user_id::text = :u"),
+                          {"t": tid, "u": REQUESTER}).all()
     engine.dispose()
     assert n == 1
+    assert [tuple(r) for r in notes] == [("Write-back rejected", "/work")]
+
+
+@pytest.mark.anyio
+async def test_reject_needs_a_reason(pending, monkeypatch):
+    tid, wid = pending
+    _as(monkeypatch, tid, OTHER)
+    await api_deps.engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        for body in ({}, {"reason": ""}, {"reason": "   "}):
+            assert (await client.post(f"/api/v1/writeback/reject/{wid}", json=body, headers=HEADERS)).status_code == 422
+        assert (await client.get(f"/api/v1/writeback/requests/{wid}", headers=HEADERS)).json()["state"] == "pending"

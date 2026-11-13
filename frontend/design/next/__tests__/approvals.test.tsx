@@ -62,8 +62,14 @@ describe("Approvals", () => {
     setUrl("/next/approvals?fixture=1&id=WB-3");
     page();
     await userEvent.click(await screen.findByRole("button", { name: "Reject" }));
-    await userEvent.type(screen.getByLabelText("Reason (optional)"), "wrong unit");
-    await userEvent.click(screen.getAllByRole("button", { name: "Reject" }).at(-1) as HTMLElement);
+    const send = () => screen.getAllByRole("button", { name: "Reject" }).at(-1) as HTMLElement;
+    expect(send().getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getByText("Give a reason first")).toBeTruthy();
+    await userEvent.type(screen.getByLabelText("Reason"), "   ");
+    expect(send().getAttribute("aria-disabled")).toBe("true");
+    await userEvent.type(screen.getByLabelText("Reason"), "wrong unit");
+    expect(send().getAttribute("aria-disabled")).toBeNull();
+    await userEvent.click(send());
     await waitFor(() => expect(screen.getByText("Rejected. Nothing was written.")).toBeTruthy());
   });
 });
