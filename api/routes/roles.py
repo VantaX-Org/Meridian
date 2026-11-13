@@ -22,6 +22,7 @@ from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.notifications import create_notification
 from api.services.rbac import (
     _as_uuid,
     ACTIONS, BUILTIN_NAMES, LEGACY_ROLES, PERSONA_ALIAS, RESOURCES, VALID_ROLES,
@@ -286,6 +287,30 @@ async def insert_grant(db: AsyncSession, tenant: Tenant, request: Request, user_
                     expires_at=expires_at.isoformat() if expires_at else None)
 
 
+# ── Telling the person ──────────────────────────────────────────────────────
+
+
+async def held_role_names(db: AsyncSession, tenant_id: uuid.UUID, user_id: str) -> list[str]:
+    """Names of the roles a user holds now (unexpired grants), once each, in grant order."""
+    rows = await db.execute(
+        text("SELECT g.role_key, r.name FROM user_role_scopes g LEFT JOIN roles r ON r.tenant_id = g.tenant_id "
+             "AND r.key = g.role_key WHERE g.tenant_id = :t AND g.user_id = :u "
+             "AND (g.expires_at IS NULL OR g.expires_at > now()) ORDER BY g.created_at, g.role_key"),
+        {"t": str(tenant_id), "u": user_id})
+    return list(dict.fromkeys(name or BUILTIN_NAMES.get(key, key) for key, name in rows.fetchall()))
+
+
+async def notify_roles_changed(db: AsyncSession, tenant_id: uuid.UUID, user_id: str, before: list[str]) -> None:
+    """In-app notification (type role_change) to the person whose grants just changed, naming the roles before
+    and now; nothing when the set of names did not change. The web app reads "Now: ..." to tell them to reload.
+    Caller commits."""
+    after = await held_role_names(db, tenant_id, user_id)
+    if after == before:
+        return
+    body = f"Before: {', '.join(before) or 'none'}. Now: {', '.join(after) or 'none'}."
+    await create_notification(str(tenant_id), user_id, "role_change", "Your access changed", body, None, db)
+
+
 # ── Roles ────────────────────────────────────────────────────────────────────
 
 
@@ -444,8 +469,10 @@ async def list_grants(user_id: uuid.UUID, db: AsyncSession = Depends(get_db),
 async def add_grant(user_id: uuid.UUID, body: GrantBody, request: Request, db: AsyncSession = Depends(get_db),
                     tenant: Tenant = Depends(get_tenant)) -> GrantOut:
     await _rls(db, tenant)
+    before = await held_role_names(db, tenant.id, str(user_id))
     out = await insert_grant(db, tenant, request, str(user_id), body.role_key, body.system_id, body.module,
                              body.expires_at)
+    await notify_roles_changed(db, tenant.id, str(user_id), before)
     await write_audit(db, tenant.id, request, "grant.create", "user", str(user_id), None, out.model_dump())
     await db.commit()
     return out
@@ -468,10 +495,12 @@ async def delete_grant(user_id: uuid.UUID, grant_id: uuid.UUID, request: Request
     if system_id is None and module is None:
         await forbid_last_admin_grant(db, tenant.id, user_id, grant_id, key)
     await enforce_ceiling(db, tenant.id, caller, key)
+    before = await held_role_names(db, tenant.id, str(user_id))
     await db.execute(text("DELETE FROM user_role_scopes WHERE id = :g AND tenant_id = :t"),
                      {"g": str(grant_id), "t": str(tenant.id)})
     # users.role is derived from the unscoped grants: re-derive it so the revoked role stops counting.
     await recompute_users_role(db, tenant.id, user_id)
+    await notify_roles_changed(db, tenant.id, str(user_id), before)
     await write_audit(db, tenant.id, request, "grant.delete", "user", str(user_id),
                       {"role_key": key, "system_id": str(system_id) if system_id else None, "module": module},
                       None)
