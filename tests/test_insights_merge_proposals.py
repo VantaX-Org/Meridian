@@ -34,6 +34,8 @@ def tenant_a_match_score():
         )
     yield t1, t2, match_score_id
     with engine.begin() as conn:
+        conn.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard: test cleanup only
+        conn.execute(text("DELETE FROM audit_log WHERE tenant_id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
         conn.execute(text("DELETE FROM stewardship_queue WHERE tenant_id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
         conn.execute(text("DELETE FROM match_scores WHERE tenant_id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
         conn.execute(text("DELETE FROM tenants WHERE id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
