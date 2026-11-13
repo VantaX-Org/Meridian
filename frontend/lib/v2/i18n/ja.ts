@@ -10268,4 +10268,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "2 つのシステムを並べて表示。",
   "Service health and recent incidents.": "サービスの状態と最近のインシデント。",
   "Esc": "Esc",
+  "Open this run": "この実行を開く",
+  "Trend per object": "オブジェクト別の推移",
+  "New plus regressed records in each run, oldest to newest. Lower is better.": "各実行の新規と悪化したレコード数を古い順に表示。低いほど良好です。",
+  "{n} runs": "{n} 回の実行",
 };

@@ -10268,4 +10268,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "Zwei Systeme nebeneinander.",
   "Service health and recent incidents.": "Dienstzustand und aktuelle Störungen.",
   "Esc": "Esc",
+  "Open this run": "Diesen Lauf öffnen",
+  "Trend per object": "Trend je Objekt",
+  "New plus regressed records in each run, oldest to newest. Lower is better.": "Neue plus verschlechterte Datensätze je Lauf, vom ältesten zum neuesten. Niedriger ist besser.",
+  "{n} runs": "{n} Läufe",
 };

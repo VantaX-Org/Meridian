@@ -18,6 +18,7 @@ import { StatRow } from "../portfolio/StatRow";
 import { Table } from "../portfolio/Table";
 import { UploadPanel } from "../panels/UploadPanel";
 import "../portfolio/portfolio.css";
+import "../portfolio/feeds.css";
 
 const PAGE = 50;
 type View = "cards" | "table" | "compare";
@@ -116,7 +117,7 @@ export function Portfolio() {
 
   return (
     <main className="nx-pf" data-testid="portfolio">
-      <header className="nx-pf-head">
+      <header className="nx-pf-head nx-lt">
         <div>
           <h1>{t("Portfolio")}</h1>
           <p>{t("Every object at its newest run, where it stands in the cycle, and what to do next.")}</p>

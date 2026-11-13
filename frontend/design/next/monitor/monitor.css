@@ -13,3 +13,6 @@
 .nx-mon-find li { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--nx-s2) var(--nx-s3); }
 .nx-mon-reason { color: var(--nx-ink-2); }
 .nx-mon-foot { display: flex; align-items: center; gap: var(--nx-s3); color: var(--nx-ink-2); }
+.nx-mon-h2 { margin: 0; font-size: var(--nx-fs-h3, 1rem); color: var(--nx-ink-2); font-weight: var(--nx-w-label); }
+.nx-mon-find .nx-link { margin-inline-start: auto; }
+.nx-mon-teach { margin: var(--nx-s2) 0 0; color: var(--nx-ink-2); }

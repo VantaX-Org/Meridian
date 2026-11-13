@@ -10,9 +10,11 @@ import { useLandscape } from "@/lib/v2/queries";
 import { groupByRun, useFeed, type RunGroup } from "@/lib/api/next/monitor";
 import { LearnedMonitors } from "@/design/v2/screens/LearnedMonitors";
 import { LegacyMount } from "../shell/LegacyMount";
-import { Button, Chip, Code, EmptyState, ErrorState, Skeleton, Tabs } from "../kit";
+import { Button, Chip, Code, EmptyState, ErrorState, SegmentedControl, Skeleton, Sparkline, Tabs } from "../kit";
+import { objectTrends } from "../monitor/trends";
 import "../shell/shell.css";
 import "../monitor/monitor.css";
+import "../portfolio/feeds.css";
 
 const STEP = 100;
 const TOP = 5;
@@ -33,6 +35,7 @@ function Run({ g, open, onToggle }: { g: RunGroup; open: boolean; onToggle: () =
         {g.regressedCount ? <Chip tone="regressed" count={g.regressedCount}>{t("regressed")}</Chip> : null}
         {g.resolvedCount ? <Chip tone="resolved" count={g.resolvedCount}>{t("resolved")}</Chip> : null}
         <span className="nx-mon-end">
+          <Link className="nx-link" href={href(`/run/${g.version_id}`)}>{t("Open this run")}</Link>
           <Link className="nx-link" href={href(`/run/${g.version_id}/vs/${g.baseline_version_id}`)}>{t("Open all in Compare")}</Link>
         </span>
       </div>
@@ -58,7 +61,7 @@ function Feed() {
   const landscape = useLandscape(null).data;
   const [module, setModule] = useState("");
   const [system, setSystem] = useState("");
-  const [only, setOnly] = useState<"" | "new" | "regressed">("");
+  const [only, setOnly] = useState<"all" | "new" | "regressed" | "resolved">("all");
   const [since, setSince] = useState("");
   const [limit, setLimit] = useState(STEP);
   const [openRuns, setOpenRuns] = useState<Set<string>>(new Set());
@@ -70,9 +73,11 @@ function Feed() {
   }, [system, landscape]);
 
   const groups = useMemo(() => {
-    const items = (q.data?.items ?? []).filter((f) => (!only || f.change === only) && (!inSystem || inSystem.has(f.module)) && (!since || (f.detected_at ?? "") >= since));
-    return groupByRun(items, q.data?.resolved);
+    const items = (q.data?.items ?? []).filter((f) => (only === "all" || only === "resolved" || f.change === only) && (!inSystem || inSystem.has(f.module)) && (!since || (f.detected_at ?? "") >= since));
+    const all = groupByRun(items, q.data?.resolved);
+    return only === "resolved" ? all.filter((g) => g.resolvedCount > 0) : all;
   }, [q.data, only, inSystem, since]);
+  const trends = useMemo(() => objectTrends(groups).filter((x) => x.runs > 1), [groups]);
 
   const total = q.data?.total ?? 0;
   const loaded = q.data?.items.length ?? 0;
@@ -97,9 +102,29 @@ function Feed() {
         <label>{t("Since")}
           <input type="date" value={since} onChange={(e) => setSince(e.target.value)} />
         </label>
-        <Chip tone="regressed" pressed={only === "regressed"} onClick={() => setOnly(only === "regressed" ? "" : "regressed")}>{t("Only regressions")}</Chip>
-        <Chip tone="new" pressed={only === "new"} onClick={() => setOnly(only === "new" ? "" : "new")}>{t("Only new")}</Chip>
       </div>
+      <div className="nx-segbar">
+        <SegmentedControl
+          label={t("Show")}
+          value={only}
+          onChange={setOnly}
+          items={[{ value: "all", label: t("All") }, { value: "new", label: t("New") }, { value: "regressed", label: t("Regressed") }, { value: "resolved", label: t("Resolved") }]}
+        />
+      </div>
+      {trends.length ? (
+        <section aria-label={t("Trend per object")}>
+          <h2 className="nx-mon-h2">{t("Trend per object")}</h2>
+          <p className="nx-mon-teach">{t("New plus regressed records in each run, oldest to newest. Lower is better.")}</p>
+          <ul className="nx-tr" data-testid="mon-trends">
+            {trends.map((x) => (
+              <li key={x.module}>
+                <span className="nx-tr-name">{x.label}<span>{t("{n} runs").replace("{n}", formatInt(x.runs))}{x.delta === null ? "" : ` ${x.delta > 0 ? "+" : ""}${formatInt(x.delta)}`}</span></span>
+                <Sparkline points={x.points} label={t("{n} runs").replace("{n}", formatInt(x.runs))} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {q.isLoading ? (
         <Skeleton lines={4} />
       ) : q.isError ? (

@@ -10,6 +10,7 @@ import { Chip, EmptyState, ErrorState, Skeleton } from "../kit";
 import { objectHref } from "../portfolio/BulkBar";
 import { stepLabel } from "../portfolio/Cards";
 import "../portfolio/portfolio.css";
+import "../portfolio/feeds.css";
 
 /** Every licensed object on every connected system, grouped by system, each at its newest run. */
 export function ObjectsList() {
@@ -26,7 +27,7 @@ export function ObjectsList() {
 
   return (
     <main className="nx-pf" data-testid="objects-list">
-      <header className="nx-pf-head">
+      <header className="nx-pf-head nx-lt">
         <div>
           <h1>{t("Objects")}</h1>
           <p>{t("Every licensed object on every connected system, at its newest run.")}</p>

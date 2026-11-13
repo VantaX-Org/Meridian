@@ -1,0 +1,16 @@
+/* Shared by Portfolio, Objects, Work and Monitor: large title, segment row, feed list. Tokens only; new tokens fall back to the existing ones. */
+.nx-lt { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--nx-s3) var(--nx-s4); }
+.nx-lt h1 { margin: 0; font-size: var(--nx-fs-display, var(--nx-fs-h1)); line-height: var(--nx-lh-display, var(--nx-lh-h1)); font-weight: var(--nx-w-heading); letter-spacing: -0.01em; }
+.nx-lt p { margin: var(--nx-s1) 0 0; color: var(--nx-ink-2); }
+.nx-lt-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2); }
+.nx-segbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2) var(--nx-s3); }
+.nx-segbar .nx-seg { max-width: 100%; overflow-x: auto; }
+.nx-pick { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.nx-pick li { border-bottom: 1px solid var(--nx-border); }
+.nx-pick a { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2) var(--nx-s3); padding: var(--nx-s3) 0; color: var(--nx-ink); text-decoration: none; }
+.nx-pick a:hover { color: var(--nx-accent); }
+.nx-tr { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: var(--nx-s3); }
+.nx-tr li { display: flex; align-items: center; justify-content: space-between; gap: var(--nx-s3); padding: var(--nx-s3) var(--nx-s4); background: var(--nx-surface); border: 1px solid var(--nx-border); border-radius: var(--nx-r-card, var(--nx-r-control)); color: var(--nx-accent); }
+.nx-tr-name { display: flex; flex-direction: column; min-width: 0; color: var(--nx-ink); }
+.nx-tr-name span { color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-ol-card { padding: 0; overflow: hidden; }
