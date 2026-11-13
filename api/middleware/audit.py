@@ -31,7 +31,7 @@ logger = logging.getLogger("meridian.audit")
 # Tracks in-flight fire-and-forget audit tasks so graceful shutdown can
 # await them rather than dropping the tail of the log. Tasks remove
 # themselves via a done-callback when they finish.
-_pending_audit_tasks: set[asyncio.Task[None]] = set()
+_pending_audit_tasks: set[asyncio.Task[bool]] = set()
 
 
 async def flush_pending_audits(timeout: float = 10.0) -> int:

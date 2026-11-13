@@ -440,4 +440,4 @@ async def verify_audit_chain(
     from api.services.audit_chain import verify
 
     await _set_rls(db, tenant.id)
-    return await db.run_sync(lambda s: verify(s, tenant.id))
+    return await db.run_sync(lambda s: verify(s, str(tenant.id)))
