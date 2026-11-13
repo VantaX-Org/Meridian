@@ -21,7 +21,7 @@ SAP stays the system of record. Findings can be rebuilt by extracting again. Hum
 
 | Item | Why it is not needed, or what to do |
 |---|---|
-| Redis | Task queue and cache only. It rebuilds as jobs run. |
+| Redis | Task queue, locks and cache. It persists to an append-only file on its own volume, so a Redis or host restart keeps queued tasks, but a restore does not need it: it rebuilds as jobs run. |
 | Celery beat state | Rebuilt from the schedule in the code when beat starts. |
 | Docker volumes | Not copied as volumes. The database and objects are exported logically, so a backup restores onto any host. |
 | Container logs | Not backed up. Logs rotate at 5 files of 50 MB per container. |
@@ -31,8 +31,10 @@ SAP stays the system of record. Findings can be rebuilt by extracting again. Hum
 
 | Kind | Made by | When | Kept |
 |---|---|---|---|
-| Scheduled backup | `scripts/backup.sh` from cron | Daily, as proposed by the backup doc (03:00, 14-day rotation) | As the cron rotation sets |
+| Scheduled backup | `scripts/backup.sh`, from the systemd timer `meridian-backup.timer` (or `/etc/cron.d/meridian-backup` without systemd) that `install.sh` sets up | Nightly at 03:00 | The newest 14 bundles. `--keep N` or `MERIDIAN_BACKUP_KEEP` changes the number. |
 | Pre-update dump | `scripts/update.sh`, before migrations | Every update | The newest five `backups/pre-update-*.dump` files. `BACKUP_KEEP` changes the number. |
+
+The backup runs while Meridian is in use: `pg_dump` reads one consistent snapshot and does not block the app.
 
 A pre-update dump holds the database only, not objects or `docker/.env`. It is for rolling back an update, not for disaster recovery. Copy a pre-update dump off the host if it must be kept longer than five updates.
 
@@ -46,7 +48,7 @@ The passphrase is needed to restore. Store a copy away from the host, in the cus
 
 These items must be in place before hand-over (exit criterion 4 in [README.md](README.md)).
 
-1. The daily backup cron from [docs/ops/backup-restore.md](../ops/backup-restore.md) is installed, with a passphrase file. Status: To confirm (owner: customer infrastructure or hosting team).
+1. The nightly backup is scheduled, with a passphrase file kept in the secrets store. New installs get it from `install.sh`; on a host installed earlier, run `sudo bash scripts/backup.sh --install-timer` once. Check with `systemctl list-timers meridian-backup.timer`. Status: To confirm (owner: customer infrastructure or hosting team).
 2. Backup directories are copied off the host after each run. A backup that stays on the host does not survive loss of the host. The off-host destination: To confirm (owner: customer infrastructure or hosting team).
 3. The weekly drill `scripts/backup-restore-drill.sh` is scheduled, and its exit code reaches monitoring, so that a failed drill is seen. Status: To confirm (owner: customer infrastructure or hosting team).
 4. One restore drill has passed on the customer deployment and its duration is recorded.
@@ -60,10 +62,12 @@ These items must be in place before hand-over (exit criterion 4 in [README.md](R
 
 ## Restore
 
-`scripts/restore.sh` is destructive. It drops the `meridian` database and asks you to type `YES`. Use it only for a real recovery, with approval from the customer service owner.
+`scripts/restore.sh` is destructive. It drops the `meridian` database and asks you to type `YES` (`--yes` skips the prompt for scripted use). Use it only for a real recovery, with approval from the customer service owner.
 
+- It reads the whole dump first. A damaged or truncated dump stops the restore before anything changes.
+- It stops api, worker and beat itself, saves the current database to `backups/pre-restore-<UTC>.dump`, drops the database `WITH (FORCE)` so no open session blocks it, and starts the three services again when the restore succeeds.
+- If the restore fails part way, api, worker and beat stay stopped, because the database may be half-restored. The script prints the command to start them.
 - Exit code 3 means the restored migration head does not match the manifest. Run the migrations as the backup doc shows.
-- After a restore, restart api, worker and frontend.
 - Any work done after the backup was taken is lost. Tell users what period to re-check.
 
 Full steps: "Full restore" in [docs/ops/backup-restore.md](../ops/backup-restore.md) and runbook 4.
@@ -89,7 +93,7 @@ The repository states no recovery point objective (RPO) or recovery time objecti
 
 | Objective | Proposed target | Basis |
 |---|---|---|
-| RPO | Up to 24 hours | The daily backup cron. The product has no continuous archiving or point-in-time recovery, so data written since the last backup can be lost. A shorter RPO needs more frequent backups. |
+| RPO | Up to 24 hours | The nightly backup timer. The product has no continuous archiving or point-in-time recovery, so data written since the last backup can be lost. A shorter RPO needs more frequent backups. |
 | RTO, database or data loss on a working host | About 10 minutes plus restart and checks | The backup doc's estimate for a warm host and a database under 1 GB |
 | RTO, loss of the host | To confirm (owner: customer infrastructure or hosting team) | Depends on the time to provide a new host, install Docker and Meridian, and copy the backup in |
 
@@ -99,7 +103,7 @@ The measured RTO from the drill on the customer deployment: To confirm (owner: c
 
 | Task | Owner |
 |---|---|
-| Install and monitor the backup cron and off-host copy | Customer infrastructure or hosting team |
+| Monitor the nightly backup timer and set up the off-host copy | Customer infrastructure or hosting team |
 | Keep the passphrase safe | Customer security team |
 | Check drill results | Meridian administrator |
 | Approve a destructive restore | Customer service owner |

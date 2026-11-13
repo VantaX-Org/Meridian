@@ -233,16 +233,19 @@ export interface WorkbookReport {
   /** Columns Meridian added to the extraction for this system; `waiting` are not in this run yet. */
   learned?: { new: number; waiting: number; missing?: number; system_id: string | null; modules: string[] };
 }
+/** How a load file is built: a full load replaces each person's history, an incremental one loads rows changed on or after `since`. */
+export interface LoadOptions { load_mode: "full" | "incremental"; since?: string | null }
+export const loadParams = (o?: LoadOptions) => (o ? { load_mode: o.load_mode, ...(o.load_mode === "incremental" && o.since ? { since: o.since } : {}) } : {});
 const workbookForm = (file: File) => { const form = new FormData(); form.append("file", file); return form; };
 /** Reads the new system's workbook against a finished run. Nothing is stored. */
-export async function checkTargetWorkbook(versionId: string, file: File): Promise<WorkbookReport> {
+export async function checkTargetWorkbook(versionId: string, file: File, opts?: LoadOptions): Promise<WorkbookReport> {
   if (fixtureActive()) return fixtureWorkbookReport();
-  const { data } = await uploadApiClient.post<WorkbookReport>(`/api/v1${P}/target-workbook/${encodeURIComponent(versionId)}/check`, workbookForm(file), { headers: { "Content-Type": "multipart/form-data" } });
+  const { data } = await uploadApiClient.post<WorkbookReport>(`/api/v1${P}/target-workbook/${encodeURIComponent(versionId)}/check`, workbookForm(file), { params: loadParams(opts), headers: { "Content-Type": "multipart/form-data" } });
   return data;
 }
 /** The run's data in the workbook's own columns; csv arrives as a zip. */
-export const exportTargetWorkbook = (versionId: string, file: File, fmt: WorkbookFormat, writtenAs = "zip") =>
-  v2Download(`${P}/target-workbook/${encodeURIComponent(versionId)}/export`, { format: fmt }, `target_workbook_${versionId}.${fmt === "source" ? writtenAs : fmt === "xlsx" ? "xlsx" : "zip"}`, "post", workbookForm(file));
+export const exportTargetWorkbook = (versionId: string, file: File, fmt: WorkbookFormat, writtenAs = "zip", opts?: LoadOptions) =>
+  v2Download(`${P}/target-workbook/${encodeURIComponent(versionId)}/export`, { format: fmt, ...loadParams(opts) }, `target_workbook_${versionId}.${fmt === "source" ? writtenAs : fmt === "xlsx" ? "xlsx" : "zip"}`, "post", workbookForm(file));
 
 export interface TemplateCoverage {
   columns: number;
@@ -274,11 +277,12 @@ export async function uploadTemplate(module: string, file: File, name: string): 
 }
 export const saveTemplateMapping = (module: string, id: string, columns: Record<string, string>) =>
   v2Send<{ column_map: Record<string, string>; coverage: TemplateCoverage }>("PUT", `${tpl(module, id)}/mapping`, { columns });
-export const checkTemplate = (module: string, id: string) => v2Send<WorkbookReport & { version_id: string; cleansed?: { approved: number; cells_changed: number } }>("POST", `${tpl(module, id)}/check`, {});
-export const downloadBlankTemplate = (module: string) => v2Download(`${tpl(module)}/blank`, undefined, `${module}_template.xlsx`);
+export const checkTemplate = (module: string, id: string, opts?: LoadOptions) => v2Send<WorkbookReport & { version_id: string; cleansed?: { approved: number; cells_changed: number } }>("POST", `${tpl(module, id)}/check`, {}, loadParams(opts));
+/** `allEntities` gives every SuccessFactors entity the dictionary describes, each marked as generated. */
+export const downloadBlankTemplate = (module: string, allEntities = false) => v2Download(`${tpl(module)}/blank`, allEntities ? { all_entities: "true" } : undefined, `${module}_template.xlsx`);
 export const downloadTemplateFile = (module: string, t: TargetTemplate) => v2Download(`${tpl(module, t.id)}/file`, undefined, t.filename);
-export const exportTemplate = (module: string, t: TargetTemplate, fmt: WorkbookFormat) =>
-  v2Download(`${tpl(module, t.id)}/export`, { format: fmt }, `${t.name}_v${t.version}.${fmt === "csv" ? "zip" : "xlsx"}`, "post");
+export const exportTemplate = (module: string, t: TargetTemplate, fmt: WorkbookFormat, opts?: LoadOptions) =>
+  v2Download(`${tpl(module, t.id)}/export`, { format: fmt, ...loadParams(opts) }, `${t.name}_v${t.version}.${fmt === "csv" ? "zip" : "xlsx"}`, "post");
 
 export const startMigration = (body: AnalyzeBody) => v2Send<{ run_id: string; status: string }>("POST", `${P}/analyze`, body);
 
