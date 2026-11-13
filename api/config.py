@@ -110,6 +110,14 @@ class Settings(BaseSettings):
         ),
     )
 
+    @field_validator("auth_mode", mode="before")
+    @classmethod
+    def _auth_mode(cls, v: object) -> str:
+        mode = str(v or "").strip().lower()
+        if mode in ("local", "oidc"):
+            return "local"
+        raise ValueError(f"AUTH_MODE={v!r} is not supported. Set AUTH_MODE to 'local' or 'oidc'.")
+
     @field_validator("licence_server_url")
     @classmethod
     def _normalise_licence_server_url(cls, v: str) -> str:
@@ -152,7 +160,9 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://frontend:3000"
 
     # Auth
-    # Clerk removed - using local auth only
+    # One auth path: local sign-in (password and OIDC SSO both issue the local session cookie). "oidc" is
+    # accepted as a synonym of "local"; any other value refuses to start (see _auth_mode), so a typo can never
+    # boot the API without its auth middleware.
     auth_mode: str = "local"
     # This deployment's own tenant. A signed-in request takes its tenant from the verified token's tenant_id
     # claim (api/middleware/local_auth.py); this id is used only for the public pages before sign-in (theme,

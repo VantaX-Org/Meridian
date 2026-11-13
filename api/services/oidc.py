@@ -235,9 +235,11 @@ def verify_id_token(id_token: str, discovery: dict[str, Any], *, client_id: str,
     return claims
 
 
-def identity_from_claims(claims: dict[str, Any]) -> dict[str, str]:
-    """{sub, email, name} from verified claims. The email is `email`, else an address-shaped `preferred_username`
-    or `upn` (Entra ID often omits `email`). A provider that says the email is unverified is refused."""
+def identity_from_claims(claims: dict[str, Any]) -> dict[str, Any]:
+    """{sub, email, name, email_verified} from verified claims. The email is `email`, else an address-shaped
+    `preferred_username` or `upn` (Entra ID often omits `email`). A provider that says the email is unverified is
+    refused. `email_verified` is True only when the provider explicitly asserts it (claim true or "true"); an absent
+    claim is False, and the callback then never links the identity to an existing account by email."""
     if claims.get("email_verified") is False:
         raise OidcError("Your identity provider has not verified your email address.", "email_missing")
     email = ""
@@ -250,7 +252,10 @@ def identity_from_claims(claims: dict[str, Any]) -> dict[str, str]:
         raise OidcError("Your identity provider did not share an email address, which Meridian needs to match you to an account.",
                         "email_missing")
     name = claims.get("name")
-    return {"sub": claims["sub"], "email": email, "name": name.strip() if isinstance(name, str) and name.strip() else email.split("@")[0]}
+    verified = claims.get("email_verified")
+    return {"sub": claims["sub"], "email": email,
+            "name": name.strip() if isinstance(name, str) and name.strip() else email.split("@")[0],
+            "email_verified": verified is True or (isinstance(verified, str) and verified.strip().lower() == "true")}
 
 
 def email_domain_allowed(email: str, allowed_domains: list[str]) -> bool:

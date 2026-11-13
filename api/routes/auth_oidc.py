@@ -67,6 +67,7 @@ ERROR_SENTENCES: dict[str, str] = {
     "domain_not_allowed": "Your email domain is not allowed to sign in here. Ask an administrator.",
     "suspended": "This account is suspended. Ask an administrator to reactivate it.",
     "subject_conflict": "This account is already linked to a different identity. Ask an administrator.",
+    "email_unverified": "Your identity provider has not confirmed this email address, so it cannot be linked to an existing account. Ask an administrator.",
     "seats_full": "Licence seats are full, so a new account could not be created. Ask an administrator.",
     "failed": "Single sign-on failed. Try again, or use your email and password.",
 }
@@ -165,9 +166,10 @@ class _Refused(Exception):
         self.code = code
 
 
-def _resolve_user(conn: Any, cfg: dict[str, Any], ident: dict[str, str]) -> tuple[Any, bool]:
+def _resolve_user(conn: Any, cfg: dict[str, Any], ident: dict[str, Any]) -> tuple[Any, bool]:
     """(users row, created) for a verified identity; raises _Refused. Row columns: id, email, name, role,
-    is_active, token_version. Maps by external_subject, else by email (domain must be allowed), else provisions."""
+    is_active, token_version. Maps by external_subject, else by email (domain must be allowed, and the provider
+    must assert email_verified: an unverified address never takes over an existing account), else provisions."""
     cols = "id, email, name, role, is_active, token_version"
     tid, sub, email = DEV_TENANT_ID, ident["sub"], ident["email"]
     row = conn.execute(text(f"SELECT {cols} FROM users WHERE tenant_id = :t AND external_subject = :s"),
@@ -187,6 +189,10 @@ def _resolve_user(conn: Any, cfg: dict[str, Any], ident: dict[str, str]) -> tupl
             raise _Refused("suspended")
         if row[6] and row[6] != sub:
             raise _Refused("subject_conflict")
+        if ident.get("email_verified") is not True:
+            log.warning("OIDC sign-in refused: the email matches existing user %s but the identity provider did "
+                        "not assert email_verified; no link created", row[0])
+            raise _Refused("email_unverified")
         conn.execute(text("UPDATE users SET external_subject = :s WHERE id = :u AND external_subject IS NULL"),
                      {"s": sub, "u": str(row[0])})
         return row[:6], False
