@@ -10268,4 +10268,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "2 つのシステムを並べて表示。",
   "Service health and recent incidents.": "サービスの状態と最近のインシデント。",
   "Esc": "Esc",
+  "Rows that matched nothing in {file}": "{file} で一致しなかった行",
+  "Row": "行",
+  "Showing {n} of {total} rows. The download has them all.": "{total} 行中 {n} 行を表示しています。ダウンロードにはすべて含まれます。",
+  "Download the rejected rows": "却下された行をダウンロード",
 };

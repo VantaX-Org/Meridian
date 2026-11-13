@@ -10268,4 +10268,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "Zwei Systeme nebeneinander.",
   "Service health and recent incidents.": "Dienstzustand und aktuelle Störungen.",
   "Esc": "Esc",
+  "Rows that matched nothing in {file}": "Zeilen ohne Treffer in {file}",
+  "Row": "Zeile",
+  "Showing {n} of {total} rows. The download has them all.": "{n} von {total} Zeilen angezeigt. Der Download enthält alle.",
+  "Download the rejected rows": "Abgelehnte Zeilen herunterladen",
 };

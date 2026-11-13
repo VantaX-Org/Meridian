@@ -104,16 +104,38 @@ def _calamine(data: bytes, kind: str, name: str) -> Source:
     return Source(kind, name, sheets)
 
 
-def _openpyxl(data: bytes, name: str) -> Source:
+def too_many_rows(cap: int) -> str:
+    return f"The file has more than {cap:,} rows. Split it into parts of up to {cap:,} rows and upload each part."
+
+
+def _capped(rows, left: Optional[list[int]], cap: Optional[int]) -> list[tuple]:
+    """The rows, read one at a time, stopping as soon as the files together pass ``cap`` rows.
+
+    A sheet with one stray cell far down reads as that many rows, so the count stops the read before memory goes."""
+    if left is None or cap is None:
+        return list(rows)
+    out = []
+    for row in rows:
+        left[0] -= 1
+        if left[0] < 0:
+            raise WorkbookError(too_many_rows(cap))
+        out.append(row)
+    return out
+
+
+def _openpyxl(data: bytes, name: str, max_rows: Optional[int] = None) -> Source:
+    left = None if max_rows is None else [max_rows]
     try:
         book = load_workbook(io.BytesIO(data), read_only=True, data_only=True, keep_links=False)
         try:
             sheets = []
             for ws in book.worksheets:
                 ws.reset_dimensions()
-                sheets.append((ws.title, list(ws.iter_rows(values_only=True))))
+                sheets.append((ws.title, _capped(ws.iter_rows(values_only=True), left, max_rows)))
         finally:
             book.close()
+    except WorkbookError:
+        raise
     except (zipfile.BadZipFile, KeyError, OSError, ValueError) as e:
         raise WorkbookError(_DAMAGED) from e
     return Source("xlsx", name, sheets)
@@ -146,7 +168,7 @@ def _archive(z: zipfile.ZipFile, name: str, budget: list[int]) -> Source:
 _TOO_LARGE = "This workbook is too large once unpacked."
 
 
-def _zip(data: bytes, name: str, budget: Optional[list[int]]) -> Source:
+def _zip(data: bytes, name: str, budget: Optional[list[int]], max_rows: Optional[int] = None) -> Source:
     left = [MAX_UNPACKED_BYTES] if budget is None else budget
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as z:
@@ -155,7 +177,7 @@ def _zip(data: bytes, name: str, budget: Optional[list[int]]) -> Source:
                 raise WorkbookError(_TOO_LARGE)
             names = set(z.namelist())
             if "xl/workbook.xml" in names:
-                return _openpyxl(data, name)
+                return _openpyxl(data, name, max_rows)
             if "xl/workbook.bin" in names:
                 return _calamine(data, "xlsb", name)
             if "mimetype" in names and z.read("mimetype").startswith(_ODS):
@@ -254,26 +276,30 @@ def _sheet_name(filename: str) -> str:
     return re.sub(r"[\[\]:*?/\\]", " ", stem).strip() or "Load file"
 
 
-def _delimited(text: str, encoding: str, name: str) -> Source:
+def _delimited(text: str, encoding: str, name: str, max_rows: Optional[int] = None) -> Source:
     line = next((ln for ln in text.splitlines() if ln.strip()), "")
     try:
         delimiter = max(",;\t|", key=lambda d: len(next(csv.reader([line], delimiter=d), [])))
         if len(next(csv.reader([line], delimiter=delimiter), [])) < 2:
             raise WorkbookError(_UNKNOWN)
-        rows = [tuple(c or None for c in r) for r in csv.reader(io.StringIO(text, newline=""), delimiter=delimiter)]
+        reader = csv.reader(io.StringIO(text, newline=""), delimiter=delimiter)
+        rows = _capped((tuple(c or None for c in r) for r in reader), None if max_rows is None else [max_rows], max_rows)
     except csv.Error as e:
         raise WorkbookError(_UNKNOWN) from e
     return Source("delimited", name, [(_sheet_name(name), rows)], encoding=encoding, delimiter=delimiter,
                   newline="\r\n" if "\r\n" in text else "\n")
 
 
-def read_source(data: bytes, filename: str = "", budget: Optional[list[int]] = None) -> Source:
-    """What the bytes are, from the bytes. The file name only names the output."""
+def read_source(data: bytes, filename: str = "", budget: Optional[list[int]] = None,
+                max_rows: Optional[int] = None) -> Source:
+    """What the bytes are, from the bytes. The file name only names the output.
+
+    ``max_rows`` stops an Excel or delimited read early once the sheets together pass that many rows."""
     name = PurePosixPath((filename or "").replace("\\", "/")).name
     if not data:
         raise WorkbookError("This file is empty.")
     if data[:2] == b"PK":
-        return _zip(data, name, budget)
+        return _zip(data, name, budget, max_rows)
     if data[:8] == _OLE:
         if "EncryptedPackage".encode("utf-16-le") in data:
             raise WorkbookError(_LOCKED)
@@ -284,7 +310,7 @@ def read_source(data: bytes, filename: str = "", budget: Optional[list[int]] = N
         if _SPREADSHEET_NS not in head:
             raise WorkbookError(_UNKNOWN)
         return _xml2003(text, encoding, name)
-    return _delimited(text, encoding, name)
+    return _delimited(text, encoding, name, max_rows)
 
 
 def _ext(source: Source) -> str:

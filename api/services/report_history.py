@@ -43,6 +43,7 @@ CONTENT_TYPES: dict[str, str] = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "json": "application/json",
     "csv": "text/csv",
+    "zip": "application/zip",  # a cleaning workbook too big for one upload comes as parts
 }
 CADENCES = ("daily", "weekly", "monthly")
 SOURCES = ("download", "schedule", "run_now")
@@ -251,7 +252,7 @@ def generate_report(session: Session, tenant_id: str, kind: str, params: dict) -
         from api.services.cleaning_workbook import build as build_cleaning
 
         out = build_cleaning(session, str(tenant_id), vid, module) if module and vid else None
-        return Generated(out[0], out[1], CONTENT_TYPES["xlsx"], vid) if out else None
+        return Generated(out[0], out[1], CONTENT_TYPES[format_of(out[1])], vid) if out else None
     if kind == "json":
         payload = session.execute(text("SELECT report_json FROM reports WHERE tenant_id = :t AND version_id = :v"),
                                   {"t": str(tenant_id), "v": vid}).scalar()

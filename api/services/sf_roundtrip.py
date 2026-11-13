@@ -65,14 +65,12 @@ def read_upload(data: bytes, filename: str) -> dict:
     from api.services.migration.workbook_formats import WorkbookError, read_source
 
     try:
-        source = read_source(data, filename)
+        source = read_source(data, filename, max_rows=MAX_EDIT_ROWS)  # counted while the rows stream in
     except WorkbookError as e:
         raise RoundTripError(str(e))
     if source.format not in ("xlsx", "delimited"):
         raise RoundTripError("Upload the Excel (.xlsx) or CSV file you exported.")
     sheets = [(n, [tuple(_text(c) for c in r) for r in rows]) for n, rows in source.sheets]
-    if sum(len(r) for _, r in sheets) > MAX_EDIT_ROWS:
-        raise RoundTripError(f"The file has more than {MAX_EDIT_ROWS:,} rows.")
     marker: dict = {}
     for name, rows in sheets:
         if name == MARKER:
@@ -85,7 +83,11 @@ def read_upload(data: bytes, filename: str) -> dict:
                         marker[r[0]] = r[1]
             except (ValueError, KeyError, TypeError):
                 raise RoundTripError("The marker in this file is damaged. Choose the run it came from.")
-    return {"sheets": [(n, r) for n, r in sheets if n != MARKER], "marker": marker, "ext": ext}
+    from api.services.cycle_limits import check_upload
+
+    sheets = [(n, r) for n, r in sheets if n != MARKER]
+    check_upload(ext, sheets, marker)
+    return {"sheets": sheets, "marker": marker, "ext": ext}
 
 
 def field_name(label: str, table: str) -> str:
@@ -102,8 +104,10 @@ def _value(cell: str) -> str:
 
 def _record_rows(sheets: list, need: tuple[str, ...]):
     """A cell getter for every data row of the cleaning workbook's record sheets."""
+    from api.services.cycle_limits import is_record_sheet
+
     for name, rows in sheets:
-        if not name.startswith("Records to clean") or not rows:
+        if not rows or not is_record_sheet(name, rows):  # by name, or by header when the sheet was renamed
             continue
         head = {h: i for i, h in enumerate(rows[0])}
         if any(h not in head for h in need):

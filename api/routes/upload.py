@@ -331,6 +331,8 @@ class RoundTripResponse(UploadResponse):
     no_table: list[str]
     no_field: list[str]
     notes: dict[str, int] = {}
+    # the edits that matched nothing: {sheet, row, table, key, field, reason}, at most 200
+    unmatched_rows: list[dict] = []
 
 
 # A newer extraction of the same lineage holding the file's object: the file's edits would overwrite newer data.
@@ -452,7 +454,9 @@ def _roundtrip_edits(tenant_id, parent_id: str, system_id: Optional[str], parent
     from workers.db import get_sync_engine, tenant_session
 
     sheets, marker = parsed["sheets"], parsed["marker"]
-    kind = marker.get("kind") or ("cleaning" if any(n.startswith("Records to clean") for n, _ in sheets) else "template")
+    from api.services.cycle_limits import is_record_sheet, rename_by_header
+
+    kind = marker.get("kind") or ("cleaning" if any(is_record_sheet(n, r) for n, r in sheets) else "template")
     if kind not in rt.KINDS:
         raise rt.RoundTripError("The marker in this file is damaged. Choose the run it came from.")
     if kind == "cleaning":
@@ -464,6 +468,8 @@ def _roundtrip_edits(tenant_id, parent_id: str, system_id: Optional[str], parent
         maps = {r["name"]: r for r in _fill_workbook(tenant_id, parent_id, data, filename)[2]["sheets"]}
     with tenant_session(get_sync_engine(), tenant_id) as s:
         dictionary = dictionary_for(s, system_id)
+    parsed["sheets"] = sheets = rename_by_header(sheets, maps)
+    parsed["maps"] = maps
     edits, report = rt.template_edits(sheets, maps, lambda t: list(dictionary.keys(t)))
     return kind, edits, report
 
@@ -480,6 +486,7 @@ async def upload_roundtrip(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     role: str = Depends(require_permission("upload")),
+    module: str = Form(None),
 ):
     """An edited export (filled template or cleaning workbook) comes back as the next run of the same lineage
     and is analysed at once. The hidden marker names the parent run; without one the caller sends it.
@@ -487,7 +494,7 @@ async def upload_roundtrip(
     The edits go onto the newest cleaned copy of the same extraction, so uploads for several objects of one run
     accumulate; the new run is tagged ``cleaned_overlay``. A file from an extraction that a newer one of the same
     object has replaced is refused (409). Status, Owner and Comment on cleaning rows update the record issues."""
-    return await _roundtrip_one(request, file, parent_version_id, db, tenant, role=role)
+    return await _roundtrip_one(request, file, parent_version_id, db, tenant, role=role, module=module)
 
 
 class RoundTripBatchItem(BaseModel):
@@ -516,6 +523,7 @@ async def upload_roundtrip_batch(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     role: str = Depends(require_permission("upload")),
+    module: str = Form(None),
 ):
     """Several edited files in one call (one per object). Each goes through the same checks as a single upload
     (parent_mismatch, stale_run, notes, newest cleaned copy) and builds on the copies before it, so the files of
@@ -525,14 +533,15 @@ async def upload_roundtrip_batch(
     items: list[RoundTripBatchItem] = []
     for f in files:
         try:
-            r = await _roundtrip_one(request, f, parent_version_id, db, tenant, role=role)
+            r = await _roundtrip_one(request, f, parent_version_id, db, tenant, role=role, module=module)
             items.append(RoundTripBatchItem(file_name=f.filename or "", ok=True, parent_version_id=r.parent_version_id,
                                             result=r))
         except HTTPException as e:
             await db.rollback()
             d = e.detail
             items.append(RoundTripBatchItem(file_name=f.filename or "", ok=False,
-                                            error=d if isinstance(d, str) else str(d.get("detail") or d.get("error"))))
+                                            error=d if isinstance(d, str) else " ".join(
+                                                str(x) for x in (d.get("detail") or d.get("error"), d.get("fix")) if x)))
     ok = sum(1 for i in items if i.ok)
     return RoundTripBatchResponse(items=items, succeeded=ok, failed=len(items) - ok)
 
@@ -541,10 +550,11 @@ MAX_ROUNDTRIP_BATCH = 20
 
 
 async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: Optional[str], db: AsyncSession,
-                         tenant: Tenant, role: str = "") -> "RoundTripResponse":
+                         tenant: Tenant, role: str = "", module: Optional[str] = None) -> "RoundTripResponse":
     from starlette.concurrency import run_in_threadpool
 
     from api.middleware.licence import enforce_licensed_modules
+    from api.services import cycle_limits as cl
     from api.services import sf_roundtrip as rt
     from api.services.rbac import write_audit
     from db.queries import versions
@@ -581,6 +591,16 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
     if marker.get("module") and marker["module"] not in modules:
         raise HTTPException(status_code=422, detail={"error": "module_mismatch", "detail":
                             f"This file was exported from {marker['module']}, which is not an object of the chosen run."})
+    if module and module not in modules:
+        raise HTTPException(status_code=422, detail={"error": "module_mismatch", "detail":
+                            f"{module} is not an object of the chosen run.", "fix": "Choose an object of this run."})
+    # the file names its object; a run of one object names it; otherwise the caller must
+    module = marker.get("module") or module or (modules[0] if len(modules) == 1 else None)
+    if not module:
+        raise HTTPException(status_code=422, detail={
+            "error": "module_required", "modules": modules, "detail":
+            f"This file does not say which object it holds, and the run has {len(modules)} objects.",
+            "fix": "Upload the .xlsx file Meridian gave you (it names its object), or choose the object."})
     enforce_licensed_modules(request, modules)
     system_id = meta.get("system_id")
     if system_id:
@@ -592,11 +612,11 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
         raise HTTPException(status_code=422, detail=str(e))
     notes = report.pop("notes", [])
     if not edits and not notes:
-        raise HTTPException(status_code=422, detail="The file holds no edits to apply.")
+        detail, fix = cl.no_edit_reason(kind, report)
+        raise HTTPException(status_code=422, detail={"error": "no_edits", "detail": detail, "fix": fix})
 
     # the extraction this file's data came from: a cleaned copy points back at it
     base = str((meta.get("roundtrip") or {}).get("base_version_id") or parent)
-    module = marker.get("module") or (modules[0] if len(modules) == 1 else None)
     newer = (await db.execute(text(_NEWER_RUN_SQL), {"t": tenant.id, "b": base, "m": module})).fetchone()
     if newer:
         raise HTTPException(status_code=409, detail={
@@ -636,11 +656,13 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
             if isinstance(e, rt.RoundTripError):
                 raise HTTPException(status_code=422, detail=str(e))
             raise
+        rows, rejected = await run_in_threadpool(_rejected, parsed, kind, tenant.id, system_id, edits, result)
         if not result["applied"]:
-            await versions.mark_version_failed(db, tenant.id, version.id, "No edit matched a record of the run.")
-            raise HTTPException(status_code=422, detail={"error": "nothing_applied", "detail":
-                                "No edit matched a record of the run.", "unmatched": result["unmatched_total"],
-                                "notes": note_counts})
+            reason, detail, fix = cl.nothing_applied(result, rejected, already=source_id != base)
+            await versions.mark_version_failed(db, tenant.id, version.id, detail)
+            raise HTTPException(status_code=422, detail={"error": "nothing_applied", "reason": reason, "detail": detail,
+                                "fix": fix, "unmatched": result["unmatched_total"], "rejected": rejected,
+                                "unmatched_rows": rows, "unchanged": result["unchanged"], "notes": note_counts})
         # the cleaned copy is a forecast: a later real extraction that still fails on these records is not a
         # regression of the source, it is a fix not yet made there (workers/tasks/run_checks.py)
         overlay = {"base_version_id": base,
@@ -666,7 +688,17 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
             version_id=str(version.id), job_id=job_id, status="pending", parent_version_id=source_id, kind=kind,
             applied=result["applied"], unchanged=result["unchanged"], unmatched=result["unmatched_total"],
             unmapped=report["unmapped"], skipped=report["skipped"], no_table=result["no_table"], no_field=result["no_field"],
-            notes=note_counts)
+            notes=note_counts, unmatched_rows=rows)
+
+
+def _rejected(parsed: dict, kind: str, tenant_id, system_id, edits: list[dict], result: dict) -> tuple[list[dict], int]:
+    """The rows that matched nothing, with sheet and row number (blocking; run in a thread)."""
+    from api.services.cycle_limits import rejected_rows
+
+    if not (result.get("unmatched_total") or result.get("no_table") or result.get("no_field")):
+        return [], 0
+    keys_of = (lambda t: []) if kind == "cleaning" else (lambda t: list(_dictionary(tenant_id, system_id).keys(t)))
+    return rejected_rows(parsed["sheets"], kind, parsed.get("maps"), keys_of, edits, result)
 
 
 def _dictionary(tenant_id, system_id):

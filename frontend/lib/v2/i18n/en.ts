@@ -10267,6 +10267,10 @@ export const en = {
   "Two systems, side by side.": "Two systems, side by side.",
   "Service health and recent incidents.": "Service health and recent incidents.",
   "Esc": "Esc",
+  "Rows that matched nothing in {file}": "Rows that matched nothing in {file}",
+  "Row": "Row",
+  "Showing {n} of {total} rows. The download has them all.": "Showing {n} of {total} rows. The download has them all.",
+  "Download the rejected rows": "Download the rejected rows",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
