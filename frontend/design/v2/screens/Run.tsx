@@ -8,7 +8,7 @@ import { getObjectRules } from "@/lib/api/v2/landscape";
 import { formatDate } from "@/lib/format";
 import { exportFindings } from "@/lib/api/findings";
 import type { LandscapeCell, RuleRow } from "@/lib/api/v2/types";
-import { analyseRun, archiveRuns, downloadRunReport, pinBaseline, restoreRuns, type TimelineRun } from "@/lib/api/v2/runs";
+import { analyseRun, archiveRuns, cappedTables, downloadRunReport, pinBaseline, restoreRuns, type TimelineRun } from "@/lib/api/v2/runs";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject, jobSeconds } from "@/lib/v2/jobs";
 import { useLandscape, v2Keys } from "@/lib/v2/queries";
@@ -398,6 +398,7 @@ export function RunCanvas({ id }: { id: string }) {
   const baseline = Boolean(v?.metadata?.baseline);
   const [refusal, setRefusal] = useState<BaselineRefusal | null>(null);
   const archived = Boolean(v?.metadata?.archived);
+  const capped = cappedTables(v?.metadata ?? null);
   const canChange = session.can("analyse");
   const strip = L?.status_strip;
 
@@ -450,6 +451,12 @@ export function RunCanvas({ id }: { id: string }) {
             ) : null}
             {archived ? (
               <span>{tr("Archived")}</span>
+            ) : null}
+            {capped.length ? (
+              <span className="m2-v" data-testid="run-capped" title={tr("These tables reached the row cap, so the scores cover only the rows read. Raise MERIDIAN_EXTRACT_MAX_ROWS or narrow the scope and run again.")}>
+                <VerdictMark verdict="at-risk" />
+                {tr("Read capped: {tables}", { tables: capped.join(", ") })}
+              </span>
             ) : null}
             {v.status === "failed" ? (
               <span className="m2-v">

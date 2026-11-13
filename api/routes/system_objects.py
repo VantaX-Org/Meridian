@@ -429,7 +429,8 @@ async def system_versions(system_id: uuid.UUID, limit: int = Query(50, le=200),
             # per-table read status; anything not read completely is listed with its reason
             "coverage": {"read": sum(1 for c in meta.get("coverage") or [] if c.get("status") == "live"),
                          "issues": [{"table": c.get("table"), "status": c.get("status"), "rows": c.get("rows"),
-                                     "source_rows": c.get("source_rows"), "detail": c.get("detail")}
+                                     "source_rows": c.get("source_rows"), "detail": c.get("detail"),
+                                     "truncated": bool(c.get("truncated") or c.get("truncated_slices"))}
                                     for c in meta.get("coverage") or []
                                     if c.get("status") != "live" or c.get("complete") is False]},
             "outliers": {k: {"label": v.get("label"), "outliers": v.get("outliers", 0), "checked": v.get("checked", 0)}

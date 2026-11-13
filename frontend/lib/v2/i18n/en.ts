@@ -10267,6 +10267,8 @@ export const en = {
   "Two systems, side by side.": "Two systems, side by side.",
   "Service health and recent incidents.": "Service health and recent incidents.",
   "Esc": "Esc",
+  "These tables reached the row cap, so the scores cover only the rows read. Raise MERIDIAN_EXTRACT_MAX_ROWS or narrow the scope and run again.": "These tables reached the row cap, so the scores cover only the rows read. Raise MERIDIAN_EXTRACT_MAX_ROWS or narrow the scope and run again.",
+  "Read capped: {tables}": "Read capped: {tables}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

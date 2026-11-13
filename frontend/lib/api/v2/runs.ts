@@ -135,7 +135,11 @@ export interface VersionHead {
   parent_version_id?: string | null;
   status: string;
   dqs_summary: Record<string, { total_checks?: number; composite_score?: number | null; raw_score?: number | null; capped?: boolean }> | null;
-  metadata: { system_id?: string; trigger?: string; baseline?: boolean; archived?: boolean; modules?: string[]; source?: string; upload_id?: string; file_name?: string; filename?: string; module_rows?: Record<string, number> } | null;
+  metadata: { system_id?: string; trigger?: string; baseline?: boolean; archived?: boolean; modules?: string[]; source?: string; upload_id?: string; file_name?: string; filename?: string; module_rows?: Record<string, number>;
+    /** Tables read only up to the row cap (MERIDIAN_EXTRACT_MAX_ROWS) or with a capped slice: the scores cover part of them. */
+    truncated_tables?: string[];
+    /** Per-table read status; older runs carry the cap here only, as truncated or truncated_slices. */
+    coverage?: { table: string; status: string; truncated?: boolean; truncated_slices?: unknown[] }[] } | null;
   severity_counts?: Record<string, number> | null;
   /** The name of the system the run came from; the list endpoint fills it, null when the system is gone. */
   system_name?: string | null;
@@ -213,6 +217,12 @@ export function getScoreDelta(a: string, b: string, module: string): Promise<Sco
 
 export function getVersionCompare(v1: string, v2: string): Promise<VersionCompare> {
   return v2Get<VersionCompare>("/versions/compare", { v1, v2 });
+}
+
+/** The tables this run read only in part. Runs before truncated_tables existed derive it from their coverage. */
+export function cappedTables(meta: VersionHead["metadata"]): string[] {
+  if (meta?.truncated_tables) return meta.truncated_tables;
+  return (meta?.coverage ?? []).filter((c) => c.status === "live" && (c.truncated || c.truncated_slices?.length)).map((c) => c.table);
 }
 
 export function getVersionHead(id: string): Promise<VersionHead> {

@@ -10268,4 +10268,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "2 つのシステムを並べて表示。",
   "Service health and recent incidents.": "サービスの状態と最近のインシデント。",
   "Esc": "Esc",
+  "These tables reached the row cap, so the scores cover only the rows read. Raise MERIDIAN_EXTRACT_MAX_ROWS or narrow the scope and run again.": "これらのテーブルは行数上限に達したため、スコアは読み取った行のみを対象としています。MERIDIAN_EXTRACT_MAX_ROWS を引き上げるか、範囲を絞って再実行してください。",
+  "Read capped: {tables}": "読み取り上限到達: {tables}",
 };
