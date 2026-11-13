@@ -917,7 +917,7 @@ def sync_profile_scheduler():
 
                 # Find due profiles: active, with a schedule, and next_run_at <= now
                 result = session.execute(text("""
-                    SELECT id, schedule_cron, next_run_at
+                    SELECT id, schedule_cron, next_run_at, modules, domain
                     FROM sync_profiles
                     WHERE tenant_id = :tid AND active = true AND schedule_cron IS NOT NULL
                       AND (next_run_at IS NULL OR next_run_at <= now())
@@ -929,10 +929,15 @@ def sync_profile_scheduler():
                     profile_id = str(row[0])
                     schedule_cron = row[1]
 
-                    # Enqueue sync task
+                    # Enqueue sync task, unless the licence no longer covers any of its modules (as run_sync
+                    # reads them); the schedule still moves on, so it is not retried every tick
+                    from api.middleware.licence import licensed_modules_of
                     from workers.tasks.run_sync import run_sync
-                    run_sync.delay(profile_id, tid, trigger="scheduled")
-                    logger.info(f"  tenant={tid}: enqueued run_sync for profile={profile_id}")
+                    if licensed_modules_of(list(row[3] or []) or [row[4]]):
+                        run_sync.delay(profile_id, tid, trigger="scheduled")
+                        logger.info(f"  tenant={tid}: enqueued run_sync for profile={profile_id}")
+                    else:
+                        logger.warning(f"  tenant={tid}: profile={profile_id} not run, no module is licensed")
 
                     # Compute next run time from cron expression
                     next_run = _compute_next_run(schedule_cron)

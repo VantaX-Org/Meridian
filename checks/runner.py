@@ -599,17 +599,17 @@ def _unmaintained(rule: dict, result: "CheckResult | None") -> bool:
     populated rows are noise, not signal: on material_master MVKE.DWERK is blank in 200000
     of a 200000-row profile but the check still passed 50 of 5,728,702 rows.
 
-    Scoped to non-critical presence checks on purpose. A uniqueness, validity or cross-field
-    rule failing 100% means something is genuinely broken; and a *critical* field blank in
-    every record is a catastrophic systemic gap that must keep capping the score and stay
-    loud, not be filed away as an unmaintained column.
+    Scoped to low and medium presence checks on purpose. A uniqueness, validity or cross-field
+    rule failing 100% means something is genuinely broken; and a *critical* or *high* field
+    blank in every record is a systemic gap that must stay in the score and the coverage
+    (and, for critical, keep capping the score), not be filed away as an unmaintained column.
 
     Also requires a population of at least ``UNMAINTAINED_MIN_ROWS``. Over a handful of rows
     "every value is blank" carries no information — one missing telephone number in a
     one-record population is a defect, not an unmaintained column — so a small population is
     always judged on its merits.
     """
-    if rule.get("check_class") != "null_check" or rule.get("severity") == "critical":
+    if rule.get("check_class") != "null_check" or rule.get("severity") in ("critical", "high"):
         return False
     if result is None or result.error or result.total_count < UNMAINTAINED_MIN_ROWS:
         return False

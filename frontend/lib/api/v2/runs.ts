@@ -203,6 +203,10 @@ export interface ScoreDelta {
   tolerance: number;
   within_tolerance: boolean;
   reproduced: boolean;
+  /** True when the rule set differs between the two runs, so part of the move is the rules, not the data. */
+  rules_changed?: boolean;
+  rules_added?: number;
+  rules_removed?: number;
   /** `ai` when the model's sentences all passed number verification, else `template`. */
   narrative: { source: "ai" | "template"; sentences: string[]; dropped: number };
 }

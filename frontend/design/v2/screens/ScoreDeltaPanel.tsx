@@ -58,6 +58,11 @@ export function ScoreDeltaPanel({ a, b, S }: { a: string; b: string; S: CompareS
           <p className="m2-meta" data-testid="score-delta-sum">
             {tr("{before} to {after}. The contributions add up to {sum} points of the {delta} points that changed.", { before: d.before.toFixed(2), after: d.after.toFixed(2), sum: sgn(d.sum), delta: sgn(d.delta) })}
           </p>
+          {d.rules_changed ? (
+            <p className="m2-meta" role="note" data-testid="score-delta-rules-changed">
+              {tr("The rule set changed between these runs: {added} rules added, {removed} removed. Part of this move comes from the rules, not the data.", { added: d.rules_added ?? 0, removed: d.rules_removed ?? 0 })}
+            </p>
+          ) : null}
           <CcDelta
             testId="score-delta-bars"
             label={tr("Points by rule")}

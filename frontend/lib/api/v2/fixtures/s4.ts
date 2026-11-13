@@ -34,7 +34,8 @@ const areas = [
 export function s4Read(path: string): unknown {
   if (path !== "/findings/s4-readiness") return NONE_S4;
   return {
-    version_id: null, scope: "current", version_ids: ["v-12"], status: "red", ready: false,
-    rules: 24, evaluated: 19, failing: 4, failing_records: 4_780, blocking_failing: 2, warning_failing: 2, areas,
+    version_id: null, scope: "current", version_ids: ["v-12"], status: "red", ready: false, assessment: "incomplete",
+    rules: 24, evaluated: 19, failing: 4, failing_records: 4_780, blocking_failing: 2, warning_failing: 2,
+    blocking_rules: 6, blocking_evaluated: 4, blocking_unevaluated: 2, areas,
   };
 }

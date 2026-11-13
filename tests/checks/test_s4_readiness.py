@@ -77,8 +77,24 @@ def test_rollup_statuses_and_counts():
 
 
 def test_rollup_ready_when_no_blocking_failure():
+    # two rules pass, but most blocking rules were never evaluated: not ready, and it says how many
     out = rollup([_f("S4R-FI-CSKS-PRCTR", 1, 99.0, "low"), _f("S4-CVI-LFA1", 0, 100.0, "high")])
-    assert out["ready"] is True and out["status"] == "green"
+    assert out["status"] == "green" and out["assessment"] == "incomplete" and out["ready"] is False
+    assert out["blocking_unevaluated"] == out["blocking_rules"] - out["blocking_evaluated"] > 0
+
+
+def test_rollup_ready_only_when_every_blocking_rule_was_evaluated():
+    blocking = [cid for cid, (_, impact) in membership().items() if impact == "blocking"]
+    out = rollup([_f(cid, 0, 100.0, "high") for cid in blocking])
+    assert (out["assessment"], out["ready"], out["blocking_unevaluated"]) == ("complete", True, 0)
+    errored = rollup([_f(cid, 0, 100.0, "high") for cid in blocking[1:]]
+                     + [_f(blocking[0], 0, 0.0, "high", error="not evaluated")])
+    assert errored["ready"] is False and errored["blocking_unevaluated"] == 1
+
+
+def test_rollup_with_no_findings_is_not_assessed():
+    out = rollup([])
+    assert out["assessment"] == "not_assessed" and out["ready"] is False
 
 
 def test_readiness_route_scopes_to_tenant_and_version():

@@ -404,6 +404,11 @@ class ScoreDeltaOut(BaseModel):
     tolerance: float
     within_tolerance: bool
     reproduced: bool                       # the findings recompute the stored measured-score change
+    # the rule set differs between the runs (fingerprint of YAML, overrides, lexicon, generated rules, app version):
+    # the delta then mixes data change with rule change; rules_added / rules_removed count rules run in one only
+    rules_changed: bool = False
+    rules_added: int = 0
+    rules_removed: int = 0
     narrative: NarrativeOut
 
 
@@ -417,13 +422,15 @@ async def score_delta(a: uuid.UUID, b: uuid.UUID, module: str = Query(..., min_l
     from api.services import score_delta as sd
     await _rls(db, tenant)
     t = str(tenant.id)
-    heads = {r["id"]: r["dqs_summary"] for r in (await db.execute(text(
-        "SELECT id::text AS id, dqs_summary FROM analysis_versions WHERE tenant_id = CAST(:t AS uuid) "
+    meta = {r["id"]: r for r in (await db.execute(text(
+        "SELECT id::text AS id, dqs_summary, metadata->'scoring' AS scoring, metadata->>'rule_set' AS rule_set "
+        "FROM analysis_versions WHERE tenant_id = CAST(:t AS uuid) "
         "AND id = ANY(CAST(:ids AS uuid[]))"), {"t": t, "ids": sorted({str(a), str(b)})})).mappings().all()}
-    if len(heads) != len({a, b}):
+    if len(meta) != len({a, b}):
         raise HTTPException(status_code=404, detail="One or both runs not found")
-    sums = [(heads[str(v)] or {}).get(module) for v in (a, b)]
-    if not all(isinstance(s, dict) for s in sums):
+    found = [(meta[str(v)]["dqs_summary"] or {}).get(module) for v in (a, b)]
+    sums: list[dict] = [s for s in found if isinstance(s, dict)]
+    if len(sums) != 2:
         raise HTTPException(status_code=404, detail="The object has no score in one of these runs")
     rows = []
     for v in (a, b):
@@ -431,8 +438,10 @@ async def score_delta(a: uuid.UUID, b: uuid.UUID, module: str = Query(..., min_l
             "SELECT check_id, severity, dimension, affected_count, total_count, COALESCE(pass_rate, 100) AS pass_rate "
             "FROM findings WHERE tenant_id = CAST(:t AS uuid) AND version_id = CAST(:v AS uuid) AND module = :m "
             "AND finding_type = 'rule' AND details->>'error' IS NULL"), {"t": t, "v": str(v), "m": module})).mappings().all()])
+    # each run weighted under the scoring config it was scored with; today's config only for a run stored before that
     raw_scoring = (await db.execute(text("SELECT dqs_weights FROM tenants WHERE id = CAST(:t AS uuid)"), {"t": t})).scalar() or {}
-    d = sd.decompose(rows[0], rows[1], sums[0], sums[1], raw_scoring)
+    d = sd.decompose(rows[0], rows[1], sums[0], sums[1], sd.run_scoring(meta[str(a)]["scoring"], raw_scoring),
+                     sd.run_scoring(meta[str(b)]["scoring"], raw_scoring))
     if d is None:
         raise HTTPException(status_code=404, detail="The object has no score in one of these runs")
     label = _label(module)
@@ -443,4 +452,5 @@ async def score_delta(a: uuid.UUID, b: uuid.UUID, module: str = Query(..., min_l
             "contributions": [{**c, "description": names.get(c["check_id"] or "")} for c in d["contributions"]],
             "by_dimension": d["by_dimension"], "sum": d["sum"], "residual": d["residual"], "tolerance": sd.SUM_TOLERANCE,
             "within_tolerance": d["within_tolerance"], "reproduced": d["reproduced"],
+            **sd.rule_set_change(meta[str(a)]["rule_set"], meta[str(b)]["rule_set"], rows[0], rows[1]),
             "narrative": sd.narrative(d, names, label, generated)}

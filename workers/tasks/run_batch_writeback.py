@@ -190,6 +190,13 @@ def run(session: Any, tenant_id: str, run_id: str, enqueue: Callable[[float], No
         groups: dict[tuple[str, str], list] = {}
         for r in rows:
             groups.setdefault((r[1], r[2]), []).append(r)
+        # between chunks, never inside one: records already written stay written, the rest stay pending
+        from api.middleware.licence import licensed_modules_of
+        held = sorted({m for _, m in groups})
+        unlicensed = sorted(set(held) - set(licensed_modules_of(held)))
+        if unlicensed:
+            return stop("paused", f"The licence no longer covers {', '.join(unlicensed)}: the remaining records "
+                                  "were not sent. Resume once the licence covers them", "writeback_run.paused")
         for (system_id, module), recs in groups.items():
             params = _system_params(session, tenant_id, system_id)
             if params is None:

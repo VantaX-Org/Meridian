@@ -84,6 +84,13 @@ def start_run(session: Session, tenant_id: str, sched: dict) -> Optional[str]:
     if system is None or l1 not in L1S_BY_SYSTEM.get(system.system_type, ()):
         logger.warning("process schedule %s: %s is not minable on this system; skipped", sched["id"], l1)
         return None
+    # the licence rule start_runs applies (l1_unlicensed): the L1 needs one licensed module of the tables it reads
+    from api.middleware.licence import licensed_modules_of
+    from api.services.process_discovery import licence_modules
+    mods = licence_modules(l1, system.system_type)
+    if mods and not licensed_modules_of(mods):
+        logger.warning("process schedule %s: %s needs a module the licence does not hold; skipped", sched["id"], l1)
+        return None
     client = _redis_client()
     if client is None:
         logger.warning("process schedule %s: job queue unavailable; slot skipped", sched["id"])
