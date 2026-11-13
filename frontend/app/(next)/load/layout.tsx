@@ -9,7 +9,7 @@ import { V2Shell } from "@/design/v2/shell/V2Shell";
 
 export const metadata: Metadata = { title: "Load" };
 
-// The object page keeps the v2 shell (menu, command bar, inspector) until the shell itself moves to the new design.
+// The next shell (app/(next)/layout.tsx) is the frame here; V2Shell under it renders only the v2 token scope.
 export default function LoadLayout({ children }: { children: ReactNode }) {
   return (
     <div className="m2-fonts">

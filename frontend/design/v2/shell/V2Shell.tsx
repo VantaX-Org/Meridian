@@ -1,7 +1,7 @@
 "use client";
 
 import { GridOverlay, useGridOverlay } from "./GridOverlay";
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Suspense, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AuthGuard } from "../auth/Guard";
 import { useAuth } from "@/context/auth-context";
@@ -28,6 +28,7 @@ import { DemoBar } from "./DemoBar";
 import { StatusStrip } from "./StatusStrip";
 import { ToastProvider, useToast } from "../Toast";
 import { TopBar } from "./TopBar";
+import { InNextShell, LegacyScope } from "@/design/next/shell/LegacyMount";
 import { useDocumentLang } from "./Standalone";
 import { useKeyboardScrollers } from "./scrollers";
 
@@ -201,7 +202,10 @@ function PreferencesSync() {
  * with no session; otherwise it sits behind the same sign-in and permissions as the rest of the app.
  */
 export function V2Shell({ children }: { children: ReactNode }) {
+  const nested = useContext(InNextShell);
   const fixture = useFixture();
+  // Under the next shell (a route group that adopted it) the frame is already there: keep the v2 tokens, drop the chrome.
+  if (nested) return <div className="nx-v2scope"><LegacyScope>{children}</LegacyScope></div>;
   const inner = (
     <Suspense fallback={<div className="m2-boot" aria-hidden="true" />}>
       <Chrome fixture={fixture}>{children}</Chrome>

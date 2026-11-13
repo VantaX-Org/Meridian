@@ -17,6 +17,7 @@ import { PATHS, railOrder, type DestId } from "@/lib/next/nav-defaults";
 import { Button, InspectorColumn, Sheet } from "../kit";
 import { NextPalette } from "../CommandPalette";
 import { onObjectPage, openDownload, openUpload, stepRun } from "./events";
+import { InNextShell } from "./LegacyMount";
 import { Rail } from "./Rail";
 import { TopBar } from "./TopBar";
 import { BottomBar } from "./BottomBar";
@@ -187,7 +188,7 @@ function Frame({ children }: { children: ReactNode }) {
         onAccount={() => document.querySelector<HTMLElement>(".nx-account")?.click()}
       />
       <TopBar collapsed={collapsed} onObjectPage={onObjectPage(pathname)} onOpenCommand={() => setPalette(true)} onShortcuts={() => setSheet(true)} />
-      <main id="nx-main" className="nx-main" data-title-scope="" tabIndex={-1}>{children}</main>
+      <main id="nx-main" className="nx-main" data-title-scope="" tabIndex={-1}><InNextShell.Provider value>{children}</InNextShell.Provider></main>
       <BottomBar order={order} workBadge={badge} />
       <InspectorColumn />
       <NextPalette open={palette} onClose={() => setPalette(false)} />

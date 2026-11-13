@@ -1,12 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { createContext, type ReactNode } from "react";
 import { usePreferences } from "@/hooks/use-preferences";
 import { useV2Session } from "@/lib/v2/hooks";
 import { DensityContext, resolveDensity } from "@/lib/v2/density";
 import { useInterfaceLang } from "@/lib/v2/i18n";
 import { themeRootProps, useTenantTheme } from "@/lib/v2/theme";
 import { ToastProvider } from "@/design/v2/Toast";
+
+/** True under the next shell. V2Shell reads it and renders only its token scope there, so a route never gets two frames. */
+export const InNextShell = createContext(false);
 
 /** The v2 token scope, density and toasts: what a v2 screen needs around it to render as it does in the old interface. */
 export function LegacyScope({ children }: { children: ReactNode }) {

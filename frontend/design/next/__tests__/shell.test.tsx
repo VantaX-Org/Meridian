@@ -5,6 +5,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import { getUrl, push, setUrl } from "@/design/v2/__tests__/nav-store";
 import { stubLayout } from "@/design/v2/__tests__/layout-stub";
 import { Shell } from "../shell/Shell";
+import { V2Shell } from "@/design/v2/shell/V2Shell";
 import { nextPlaces } from "../CommandPalette";
 import { redirectFor } from "@/lib/next/nav-defaults";
 
@@ -140,6 +141,16 @@ describe("Shell", () => {
     mount();
     await screen.findByText("page body");
     expect(getUrl()).toContain("/portfolio");
+  });
+
+  it("renders one frame when a route under it also mounts the v2 shell, as /load does", async () => {
+    setUrl("/load?fixture=1");
+    renderWithQuery(<Shell><V2Shell><p>page body</p></V2Shell></Shell>);
+    await screen.findByText("page body");
+    expect(document.querySelectorAll(".nx-shell")).toHaveLength(1);
+    expect(document.querySelectorAll("main")).toHaveLength(1);
+    expect(document.getElementById("m2-canvas")).toBeNull();
+    expect(screen.getByText("page body").closest(".m2-root")).toBeTruthy();
   });
 });
 

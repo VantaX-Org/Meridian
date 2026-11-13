@@ -66,6 +66,7 @@
 .nx-legacy > .m2-root { background: transparent; min-height: 0; }
 .nx-legacy .m2-sheetwrap { margin: 0; min-height: 60vh; }
 .nx-legacy .m2-canvas { overflow: visible; }
+.nx-v2scope > .m2-root { height: auto; min-height: 100%; overflow: visible; padding: 0; background: transparent; }
 .nx-insp-host { position: fixed; top: var(--nx-top-h); right: 0; bottom: 0; z-index: 40; display: flex; }
 .nx-insp-host > .m2-root { background: transparent; min-height: 0; display: flex; }
 .nx-insp-host .m2-insp { position: static; height: 100%; }
