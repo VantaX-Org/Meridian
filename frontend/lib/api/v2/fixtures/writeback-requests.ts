@@ -6,6 +6,11 @@ import type { ChangeRow, RequestDetail, RequestRow } from "@/lib/api/next/approv
  */
 export const NONE_WB = Symbol("none-wb");
 
+const ROW_KEYS: (keyof RequestRow)[] = [
+  "id", "state", "finding_id", "version_id", "module", "check_id", "rule_message", "requested_by", "requested_by_name",
+  "approved_by_name", "rejected_by_name", "records_updated", "sap_host", "created_at", "applied_at", "rejected_at", "reject_reason",
+];
+
 const CHANGES: ChangeRow[] = [
   { record_key: "MARA|000000000000100200", field: "MARA.MEINS", before: "PCE", after: "EA", delivery: "bapi", bapi: "BAPI_MATERIAL_SAVEDATA", reason: null },
   { record_key: "MARA|000000000000100201", field: "MARA.MATKL", before: "", after: "FG100", delivery: "bapi", bapi: "BAPI_MATERIAL_SAVEDATA", reason: null },
@@ -29,7 +34,9 @@ export const resetWbFixture = () => { rows = seed(); };
 
 export function wbRead(path: string, params: Record<string, string | number | boolean | undefined>): unknown {
   if (path === "/writeback/requests") {
-    const items = rows.filter((r) => !params.state || r.state === params.state).map((r) => { const row: Partial<typeof r> = { ...r }; delete row.changes; delete row.approvers; return row; });
+    // The list sends RequestRow only; the viewer's verdict, errors and undo note come with the detail.
+    const items = rows.filter((r) => !params.state || r.state === params.state)
+      .map((r) => Object.fromEntries(ROW_KEYS.map((k) => [k, r[k]])));
     return { items, live_enabled: true };
   }
   const m = /^\/writeback\/requests\/([^/]+)$/.exec(path);
