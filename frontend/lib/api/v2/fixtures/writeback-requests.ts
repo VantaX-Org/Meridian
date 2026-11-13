@@ -29,7 +29,7 @@ export const resetWbFixture = () => { rows = seed(); };
 
 export function wbRead(path: string, params: Record<string, string | number | boolean | undefined>): unknown {
   if (path === "/writeback/requests") {
-    const items = rows.filter((r) => !params.state || r.state === params.state).map(({ changes: _c, approvers: _a, ...row }) => row);
+    const items = rows.filter((r) => !params.state || r.state === params.state).map((r) => { const row: Partial<typeof r> = { ...r }; delete row.changes; delete row.approvers; return row; });
     return { items, live_enabled: true };
   }
   const m = /^\/writeback\/requests\/([^/]+)$/.exec(path);
