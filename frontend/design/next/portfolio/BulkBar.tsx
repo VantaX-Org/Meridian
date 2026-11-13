@@ -25,6 +25,11 @@ export function objectHref(row: PortfolioRow, sysName: (id: string | null) => st
   return `/o/${systemSlug(sysName(row.system_id))}/${moduleSlug(row.module)}${tail}`;
 }
 
+/** The cycle tab of a row's object; only the next object page has one. */
+export function cycleHref(row: PortfolioRow, sysName: (id: string | null) => string, query = ""): string {
+  return `/next${objectHref(row, sysName, `/cycle${query}`)}`;
+}
+
 export const rowKey = (r: PortfolioRow) => r.version_id;
 
 /** The buttons for a selection, also used inside the table's own bulk bar. */
