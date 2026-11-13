@@ -11,6 +11,7 @@ import { fixtureParam } from "../fixture";
 import { NONE, runsFixtureResponse } from "./runs";
 import { objectFixture } from "./object";
 import { failingRulesOf } from "./library";
+import { fixtureFailingRecords, RECORDS_PAGE } from "@/lib/api/next/failing";
 import { mdmFixture, mdmFixtureWrite } from "./mdm";
 import * as wf from "./work-fixture";
 import * as ap from "./approvals";
@@ -567,6 +568,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
       const mod = String(params.module ?? "");
       return { rules: mod === "material_master" ? baseRules : failingRulesOf(mod) };
     }
+    const failing = /^\/findings\/rules\/([^/]+)\/records$/.exec(path);
+    if (failing) return fixtureFailingRecords(String(params.version_id ?? ""), decodeURIComponent(failing[1]), Number(params.limit ?? RECORDS_PAGE), Number(params.offset ?? 0));
     const more = objectFixture(path, params);
     if (more !== undefined) return more;
     const mdm = mdmFixture(path, params);

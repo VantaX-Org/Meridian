@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
@@ -84,8 +84,11 @@ function StartRun({ onClose }: { onClose: () => void }) {
   const { outcome, pending, run } = useOutcome();
   const allowed = session.can("analyse");
   const system = systems.find((s) => s.id === chosen);
+  // The panel opens under the banner's button; bring it into view so the click visibly does something.
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => box.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" }), []);
   return (
-    <div className="m2-handoff" data-testid="start-run" role="group" aria-label={t("Start a run")}>
+    <div ref={box} className="m2-handoff" data-testid="start-run" role="group" aria-label={t("Start a run")}>
       {systems.length === 0 ? (
         <>
           <p>{t("No system has been extracted yet, so there is nothing to analyse. Extract a system first.")}</p>
@@ -134,6 +137,7 @@ function StartRun({ onClose }: { onClose: () => void }) {
           </div>
           {newest ? <RunForecast systemId={chosen} modules={newest.objects} what="analysis" /> : null}
           {extractions.isSuccess && !newest ? <p className="m2-prov">{t("This system has no stored extraction that can be analysed.")}</p> : null}
+          {extractions.isError ? <p className="m2-prov" role="alert">{t("The extractions of this system could not be read.")}</p> : null}
           {!allowed ? <p className="m2-prov">{t("Starting a run needs the analyse permission.")}</p> : null}
         </>
       )}
@@ -451,6 +455,8 @@ export function RunsCanvas() {
         action={<PrimaryAction action={startButton} why={t("A new run measures the data again, so you can compare it with the last one.")} />}
       />
 
+      {starting ? <StartRun onClose={() => setStarting(false)} /> : null}
+
       <section className="m2-sec" aria-label={t("Timeline")}>
         {timeline.isLoading ? (
           <Skeleton width="100%" height={100} />
@@ -476,8 +482,6 @@ export function RunsCanvas() {
           </>
         )}
       </section>
-
-      {starting ? <StartRun onClose={() => setStarting(false)} /> : null}
 
       {view === "runs" ? (
         <section className="m2-sec" aria-label={t("Runs")} style={{ marginTop: "var(--m2-s4)" }}>
