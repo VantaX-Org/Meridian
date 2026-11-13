@@ -10136,6 +10136,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{n} workbooks uploaded. {m} new runs scoring.": "{n} 件のワークブックをアップロードしました。新しい実行 {m} 件をスコアリング中です。",
   "Upload the Excel (.xlsx) or CSV file you exported.": "エクスポートした Excel (.xlsx) または CSV ファイルをアップロードしてください。",
   "The file is larger than 25 MB.": "ファイルが 25 MB を超えています。",
+  "All severities": "すべての重大度",
+  "Watched objects": "監視中のオブジェクト",
   "SAP S/4HANA": "SAP S/4HANA",
   "Migration Cockpit templates, one sheet per target table.": "移行コックピットのテンプレート。ターゲットテーブルごとに1シート。",
   "SAP SuccessFactors": "SAP SuccessFactors",
@@ -10350,4 +10352,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Run {n}: {count} resolved": "実行{n}: 解決{count}件",
   "Records failing, by rule": "ルール別の不合格レコード",
   "Other rules": "その他のルール",
+  "Your access changed: you now have {roles}. Reload to update the menu.": "アクセス権が変更されました。現在のロール: {roles}。メニューを更新するには再読み込みしてください。",
+  "Reload": "再読み込み",
+  "different roles": "別のロール",
+  "Removed {role_name} from {name}. They will be notified.": "{name} から {role_name} を削除しました。本人に通知されます。",
+  "Added {role} to {name}. They will be notified.": "{name} に {role} を追加しました。本人に通知されます。",
 };

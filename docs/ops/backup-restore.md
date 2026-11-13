@@ -24,7 +24,9 @@ Total bundle size for a typical customer: ~100 MB to a few GB, depending on how 
 sudo bash scripts/backup.sh
 ```
 
-Produces `backups/<utc-timestamp>/` under the repo root. Each run is independent — clean up old ones with a cron or manually.
+Produces `backups/<utc-timestamp>/` under the repo root. After a successful run it removes the oldest bundles so only the newest 14 remain: `--keep N` (or `MERIDIAN_BACKUP_KEEP`) changes the number and `--keep 0` keeps all. Only bundle directories with a `manifest.json` count; `pre-update-*.dump` files belong to `update.sh`, which rotates them itself.
+
+The backup is safe to run while Meridian is in use. `pg_dump` reads one consistent snapshot without blocking the app, and the object export reads over S3. Nothing needs to stop.
 
 ### The .env file is encrypted
 
@@ -47,21 +49,24 @@ when set, and otherwise prompts.
 sudo bash scripts/backup.sh --output /mnt/backups
 ```
 
-### Automated (recommended)
+### Automated (installed by default)
 
-Add a daily cron on the Meridian host:
+`scripts/install.sh` schedules the nightly backup at the end of an install. On a host installed before this, run once:
 
-```cron
-# Daily backup at 03:00, rotates at 14 days
-0 3 * * * /opt/meridian/scripts/backup.sh --passphrase-file /root/.meridian-backup-pass --output /var/backups/meridian && \
-          find /var/backups/meridian -maxdepth 1 -type d -mtime +14 -exec rm -rf {} +
+```bash
+sudo bash /opt/meridian/scripts/backup.sh --install-timer
+# options: --output /var/backups/meridian  --keep 30  --passphrase-file /root/.meridian-backup-pass
 ```
+
+It installs the systemd timer `meridian-backup.timer` (03:00, up to 15 minutes random delay, catches up after the host was off), or, on a host without systemd, `/etc/cron.d/meridian-backup`. Running it again rewrites the same schedule, so it is safe to repeat, for example to change `--keep`. If the passphrase file does not exist, it creates one with a random passphrase and says so: copy that file to the customer's secrets store at once, because `env.gpg` cannot be decrypted without it.
+
+Check it: `systemctl list-timers meridian-backup.timer` and `journalctl -u meridian-backup` (or `/var/log/meridian-backup.log` with cron).
 
 ## Restoring a backup
 
 ### The restore is destructive
 
-`scripts/restore.sh` **drops the `meridian` database** before restoring. All data currently in the DB will be lost unless it's in the backup you're restoring. You'll be prompted to type `YES` before it proceeds.
+`scripts/restore.sh` **drops the `meridian` database** before restoring. All data currently in the DB will be lost unless it's in the backup you're restoring. You'll be prompted to type `YES` before it proceeds. `--yes` skips the prompt for scripted use; with no terminal and no `--yes` it refuses.
 
 ### Full restore (production incident response)
 
@@ -70,17 +75,22 @@ sudo bash scripts/restore.sh /path/to/backups/20260424_031500
 ```
 
 Steps it performs:
-1. Parses `manifest.json` for expected migration head.
-2. Drops `meridian` database and recreates it empty.
-3. `pg_restore` the dump.
-4. Verifies the `alembic_version` row matches the manifest — if not, exits with code 3 and a warning telling you to `alembic upgrade head`.
-5. Imports `objects.tar` into object storage (objects added after the backup are left in place).
-6. Restores (or decrypts) the `.env` file.
+1. Parses `manifest.json` for expected migration head, and checks the dump: it must start with the pg_dump signature and `pg_restore` must read it end to end. A damaged or truncated dump stops the restore before anything changes.
+2. Asks for `YES` (unless `--yes`).
+3. Stops `api`, `worker` and `beat`, so nothing writes while the database is replaced.
+4. Dumps the current database to `backups/pre-restore-<UTC>.dump`, a way back if the wrong bundle was picked (it only warns if that dump fails, since a broken database is often why you restore).
+5. Drops the `meridian` database `WITH (FORCE)`, which ends any session still open, and recreates it empty.
+6. `pg_restore` the dump.
+7. Verifies the `alembic_version` row matches the manifest — if not, exits with code 3 and a warning telling you to `alembic upgrade head`.
+8. Imports `objects.tar` into object storage (objects added after the backup are left in place), and restores (or decrypts) the `.env` file.
+9. Starts `api`, `worker` and `beat` again. The api runs migrations as it starts.
 
-After restore completes successfully, restart the stack:
+If a step fails after step 3, the script leaves `api`, `worker` and `beat` stopped on purpose, because the database may be half-restored, and prints the command to start them. Fix the cause and run `restore.sh` again.
+
+If `.env` changed with the restore, recreate the containers so they read it:
 
 ```bash
-docker compose -f docker/docker-compose.customer.yml restart api worker frontend
+docker compose -f docker/docker-compose.customer.yml up -d
 ```
 
 ### Verifying a backup without touching production (the drill)
@@ -144,7 +154,7 @@ Expected recovery time on a warm host: ~10 minutes for a typical customer (<1 GB
 
 ## What the backup does NOT cover
 
-- **Redis** — contains ephemeral data only (task queue, response cache). A restored system will rebuild it as jobs run.
+- **Redis** — task queue, locks and response cache. It writes an append-only file to its `redis_data` volume, so queued tasks survive a Redis or host restart, but it is not part of a backup. A restored system rebuilds it as jobs run.
 - **Celery beat state** — rescheduled automatically from `workers/scheduler.py` on first beat start.
 - **Docker volumes themselves** — the database and objects are exported logically (`pg_dump`, S3), so a backup restores onto any host; logs are not backed up.
 - **Backups taken before the Garage release** hold MinIO's raw data files (`meridian-*.tar.gz`), which Garage cannot load. `restore.sh` restores their database and says so for the objects; to recover those objects, start the old MinIO on an empty volume, untar into `/data`, and run `python -m api.services.storage_migration --source-endpoint <that-minio>:9000` in the api image.
