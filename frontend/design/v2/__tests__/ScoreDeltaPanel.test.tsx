@@ -49,4 +49,26 @@ describe("Score delta panel", () => {
     await screen.findByTestId("score-delta-bars");
     expect(screen.queryByTestId("score-delta-rules-changed")).toBeNull();
   });
+
+  it("names each rule whose logic changed, with the hash before and after", async () => {
+    const S = fixtureCompare(A, B);
+    const mod = S.objects[0].module;
+    vi.spyOn(runsApi, "getScoreDelta").mockResolvedValue({
+      ...fixtureScoreDelta(A, B, mod), rules_changed: true,
+      logic_changed: [{ check_id: "T001", description: "Field is blank", hash_before: "aaaa1111", hash_after: "bbbb2222" }],
+    });
+    renderWithQuery(<ScoreDeltaPanel a={A} b={B} S={S} />);
+    const note = await screen.findByTestId("score-delta-logic-changed");
+    expect(note).toHaveTextContent("Rules that ran with changed logic: 1.");
+    expect(note).toHaveTextContent("T001 (Field is blank): logic aaaa1111 before, bbbb2222 after");
+  });
+
+  it("shows no logic note when no rule's logic changed", async () => {
+    const S = fixtureCompare(A, B);
+    const mod = S.objects[0].module;
+    vi.spyOn(runsApi, "getScoreDelta").mockResolvedValue(fixtureScoreDelta(A, B, mod));
+    renderWithQuery(<ScoreDeltaPanel a={A} b={B} S={S} />);
+    await screen.findByTestId("score-delta-sum");
+    expect(screen.queryByTestId("score-delta-logic-changed")).toBeNull();
+  });
 });

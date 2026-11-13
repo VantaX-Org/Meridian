@@ -75,11 +75,17 @@ def run_scoring(stored: object, fallback: Optional[dict] = None) -> Optional[dic
 
 def rule_set_change(fp_a: Optional[str], fp_b: Optional[str], rows_a: list[dict], rows_b: list[dict]) -> dict:
     """Whether run b ran a different rule set from run a: the stored fingerprints differ (a rule's logic, an
-    override or the app version changed) or a rule ran in one run only. Unknown fingerprints count as unchanged."""
+    override or the app version changed) or a rule ran in one run only. Unknown fingerprints count as unchanged.
+    ``logic_changed`` lists the rules run in both whose recorded logic hash (``rule_hash``) differs; a run
+    stored before results recorded the hash has none, and its rules are not listed."""
     ids_a, ids_b = {r["check_id"] for r in rows_a}, {r["check_id"] for r in rows_b}
     added, removed = len(ids_b - ids_a), len(ids_a - ids_b)
-    return {"rules_changed": bool(fp_a and fp_b and fp_a != fp_b) or bool(added or removed),
-            "rules_added": added, "rules_removed": removed}
+    ha = {r["check_id"]: r.get("rule_hash") for r in rows_a}
+    logic = [{"check_id": r["check_id"], "hash_before": ha[r["check_id"]], "hash_after": r.get("rule_hash")}
+             for r in sorted(rows_b, key=lambda r: r["check_id"])
+             if ha.get(r["check_id"]) and r.get("rule_hash") and ha[r["check_id"]] != r["rule_hash"]]
+    return {"rules_changed": bool(fp_a and fp_b and fp_a != fp_b) or bool(added or removed or logic),
+            "rules_added": added, "rules_removed": removed, "logic_changed": logic}
 
 
 def decompose(rows_a: list[dict], rows_b: list[dict], sum_a: dict, sum_b: dict, tenant_scoring: Optional[dict] = None,

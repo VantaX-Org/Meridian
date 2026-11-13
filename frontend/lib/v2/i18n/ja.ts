@@ -10271,4 +10271,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "2 つのシステムを並べて表示。",
   "Service health and recent incidents.": "サービスの状態と最近のインシデント。",
   "Esc": "Esc",
+  "Rules that ran with changed logic: {n}. Each result records the logic that produced it.": "ロジックが変更された状態で実行されたルール: {n}。各結果には、それを生成したロジックが記録されています。",
+  "{rule} ({description}): logic {before} before, {after} after": "{rule} ({description}): ロジック 変更前 {before}、変更後 {after}",
+  "no description": "説明なし",
 };

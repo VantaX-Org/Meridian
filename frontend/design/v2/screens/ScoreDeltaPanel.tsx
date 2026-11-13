@@ -63,6 +63,18 @@ export function ScoreDeltaPanel({ a, b, S }: { a: string; b: string; S: CompareS
               {tr("The rule set changed between these runs: {added} rules added, {removed} removed. Part of this move comes from the rules, not the data.", { added: d.rules_added ?? 0, removed: d.rules_removed ?? 0 })}
             </p>
           ) : null}
+          {d.logic_changed?.length ? (
+            <div className="m2-meta" role="note" data-testid="score-delta-logic-changed">
+              <p>{tr("Rules that ran with changed logic: {n}. Each result records the logic that produced it.", { n: d.logic_changed.length })}</p>
+              <ul>
+                {d.logic_changed.map((c) => (
+                  <li key={c.check_id}>
+                    {tr("{rule} ({description}): logic {before} before, {after} after", { rule: c.check_id, description: c.description || tr("no description"), before: c.hash_before, after: c.hash_after })}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <CcDelta
             testId="score-delta-bars"
             label={tr("Points by rule")}

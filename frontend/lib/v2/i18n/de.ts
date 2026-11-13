@@ -10271,4 +10271,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "Zwei Systeme nebeneinander.",
   "Service health and recent incidents.": "Dienstzustand und aktuelle Störungen.",
   "Esc": "Esc",
+  "Rules that ran with changed logic: {n}. Each result records the logic that produced it.": "Regeln, die mit geänderter Logik liefen: {n}. Jedes Ergebnis hält die Logik fest, die es erzeugt hat.",
+  "{rule} ({description}): logic {before} before, {after} after": "{rule} ({description}): Logik vorher {before}, nachher {after}",
+  "no description": "keine Beschreibung",
 };

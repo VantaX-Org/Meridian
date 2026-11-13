@@ -731,6 +731,13 @@ def _prefetch_plan(order: list[int], rules: list[dict], grain: str, frames: Tabl
     return plan
 
 
+def logic_hash(rule: dict) -> str:
+    """Stable id of a rule's logic: the parsed rule as canonical JSON (sorted keys, so YAML key order and
+    whitespace do not count), without the runner's own ``_`` keys, hashed by checks/lifecycle.rule_hash."""
+    from checks.lifecycle import rule_hash
+    return rule_hash({k: v for k, v in rule.items() if not str(k).startswith("_")})
+
+
 def run_checks(
     module_name: str,
     data: pd.DataFrame | TableFrames,
@@ -767,6 +774,8 @@ def run_checks(
     # HQ / tenant governance (checks/overrides.py) applies to generated rules too
     rules = apply(module_rules(module_name) + [r for r in (extra_rules or []) if r.get("module") == module_name],
                   overrides)
+    # each result records the logic that produced it: a hash of the effective rule (YAML plus governance)
+    logic = [logic_hash(r) for r in rules]
     module = config.get("module", module_name)
     frames = data if isinstance(data, TableFrames) else TableFrames.from_flat(data, module=module)
     frames.module = module
@@ -860,6 +869,7 @@ def run_checks(
                 why = rule.get("_skip", "not_evaluable")
                 stats[why] = stats.get(why, 0) + 1
             continue
+        result.details = {**(result.details or {}), "rule_hash": logic[i]}
         results.append(result)
         result_rules.append(rule)
 

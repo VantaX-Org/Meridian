@@ -102,7 +102,23 @@ def test_rule_set_change_is_flagged():
 
     ra, _ = _run(BASE)
     rb, _ = _run(BASE[1:] + [_r("MM009", "validity", "low", 0)])
-    assert rule_set_change("fp1", "fp1", ra, ra) == {"rules_changed": False, "rules_added": 0, "rules_removed": 0}
+    assert rule_set_change("fp1", "fp1", ra, ra) == {"rules_changed": False, "rules_added": 0, "rules_removed": 0,
+                                                    "logic_changed": []}
     assert rule_set_change("fp1", "fp2", ra, ra)["rules_changed"] is True  # same ids, different logic or version
-    assert rule_set_change("fp1", "fp1", ra, rb) == {"rules_changed": True, "rules_added": 1, "rules_removed": 1}
+    assert rule_set_change("fp1", "fp1", ra, rb) == {"rules_changed": True, "rules_added": 1, "rules_removed": 1,
+                                                    "logic_changed": []}
     assert rule_set_change(None, "fp2", ra, ra)["rules_changed"] is False  # unknown fingerprint is not a change
+
+
+def test_rule_logic_change_is_named_per_rule():
+    from api.services.score_delta import rule_set_change
+
+    ra, _ = _run(BASE)
+    a = [{**r, "rule_hash": "h1"} for r in ra]
+    b = [{**r, "rule_hash": "h2" if r["check_id"] == ra[0]["check_id"] else "h1"} for r in ra]
+    out = rule_set_change("fp1", "fp1", a, b)
+    assert out["rules_changed"] is True
+    assert out["logic_changed"] == [{"check_id": ra[0]["check_id"], "hash_before": "h1", "hash_after": "h2"}]
+    # a run stored before results recorded the hash: no rule is named, and no change is claimed
+    assert rule_set_change("fp1", "fp1", ra, b) == {"rules_changed": False, "rules_added": 0, "rules_removed": 0,
+                                                    "logic_changed": []}

@@ -10270,6 +10270,9 @@ export const en = {
   "Two systems, side by side.": "Two systems, side by side.",
   "Service health and recent incidents.": "Service health and recent incidents.",
   "Esc": "Esc",
+  "Rules that ran with changed logic: {n}. Each result records the logic that produced it.": "Rules that ran with changed logic: {n}. Each result records the logic that produced it.",
+  "{rule} ({description}): logic {before} before, {after} after": "{rule} ({description}): logic {before} before, {after} after",
+  "no description": "no description",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
