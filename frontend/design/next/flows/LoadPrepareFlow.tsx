@@ -8,8 +8,7 @@ import { useEffect, useState } from "react";
 import { SegBar } from "@/design/next/kit/charts";
 import { Button, EmptyState, ErrorState, ProgressBar, Sheet, Skeleton } from "@/design/next/kit";
 import { exportLoadFiles } from "@/lib/api/v2/migration";
-import { useLoadRuns, useLoadSimulation } from "@/lib/api/next/load";
-import { readApproval } from "@/lib/api/next/load";
+import { useLoadApproval, useLoadRuns, useLoadSimulation } from "@/lib/api/next/load";
 import { t } from "@/lib/v2/i18n";
 import { loadBlock, loadReason } from "../load/approval";
 import { ApprovePanel } from "../load/Approve";
@@ -61,7 +60,7 @@ export function LoadPrepareFlow({ id, step, setStep, close, under, setRun }: { i
   const chosen = objects ?? run?.modules ?? [];
   const newest = list[0];
   const stale = newest && run && newest.id !== run.id ? newest.id : null;
-  const approval = restored && runId ? readApproval(runId) : null;
+  const approval = useLoadApproval(restored && runId ? runId : null).data ?? null;
   const block = approval ? (loadBlock(approval) ? loadReason(approval) : undefined) : t("The first approval is not given yet.");
 
   if (!session.can("export")) return <Sheet open onClose={close} title={t("Load")} size="medium" under={under}><Denied right={t("export")} /></Sheet>;

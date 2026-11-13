@@ -1,24 +1,21 @@
 "use client";
 
 /** The approval of one load as a sheet: review the totals, then the two approvals. `?sheet=approve:<runId>&step=n` */
-import { useState } from "react";
 import { SegBar } from "@/design/next/kit/charts";
 import { Button, EmptyState, ErrorState, Sheet, Skeleton } from "@/design/next/kit";
-import { useLoadSimulation } from "@/lib/api/next/load";
-import type { ApprovalState } from "@/lib/api/next/load";
+import { useLoadApproval, useLoadRuns, useLoadSimulation } from "@/lib/api/next/load";
 import { t } from "@/lib/v2/i18n";
 import { loadBlock, loadReason } from "../load/approval";
 import { ApprovePanel } from "../load/Approve";
 import { loadSegs } from "../load/segs";
 import { compactInt, StaleNudge } from "../load/states";
-import { useLoadRuns } from "@/lib/api/next/load";
 
 export const APPROVE_STEPS = () => [t("Review the totals"), t("Approve")];
 
 export function ApproveFlow({ id, step, setStep, close, under, onLoad }: { id: string; step: number; setStep: (n: number) => void; close: () => void; under: boolean; onLoad?: () => void }) {
   const sim = useLoadSimulation(id || null);
   const runs = useLoadRuns();
-  const [state, setState] = useState<ApprovalState | null>(null);
+  const state = useLoadApproval(id || null).data ?? null;
   const n = Math.min(Math.max(step, 1), 2);
   const newest = runs.data?.[0];
   const stale = newest && id && newest.id !== id ? newest.id : null;
@@ -44,7 +41,7 @@ export function ApproveFlow({ id, step, setStep, close, under, onLoad }: { id: s
         </div>
       ) : <div data-testid="approve-nothing"><EmptyState heading={t("Nothing to load")}>{t("This run has no rows to load. Check that the objects were scored.")}</EmptyState></div>;
     }
-  } else body = <ApprovePanel runId={id} onState={setState} />;
+  } else body = <ApprovePanel runId={id} />;
 
   return (
     <Sheet

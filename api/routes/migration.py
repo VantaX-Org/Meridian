@@ -789,6 +789,97 @@ async def accept_reconciliation(
     return await get_reconciliation(run_id, db, tenant, _role)
 
 
+class LoadApprovalIn(BaseModel):
+    decision: Literal["approved", "rejected"]
+    comment: Optional[str] = Field(default=None, max_length=2000)
+
+
+class LoadApprovalOut(BaseModel):
+    run_id: uuid.UUID
+    prepared_by: Optional[uuid.UUID] = None
+    prepared_by_label: Optional[str] = None
+    prepared_at: Optional[datetime.datetime] = None
+    decision: Optional[Literal["approved", "rejected"]] = None
+    decided_by: Optional[uuid.UUID] = None
+    decided_by_label: Optional[str] = None
+    decided_at: Optional[datetime.datetime] = None
+    comment: Optional[str] = None
+
+
+def check_load_decision(preparer: Optional[str], approver: Optional[str], existing: bool,
+                        decision: str, comment: Optional[str]) -> Optional[tuple[int, str]]:
+    """Pure four-eyes rule for a load decision. Returns (status, detail) when refused, else None."""
+    if existing:
+        return 409, "This load already has a decision."
+    if not approver or (preparer and str(preparer) == str(approver)):
+        return 403, "A different user from the one who prepared the load must decide it."
+    if decision == "rejected" and not (comment or "").strip():
+        return 422, "A rejection needs a comment."
+    return None
+
+
+async def _load_approval(db: AsyncSession, tenant: Tenant, run_id: uuid.UUID) -> LoadApprovalOut:
+    run = (await db.execute(text(
+        "SELECT r.requested_by, r.created_at, coalesce(u.name, u.email) AS label FROM migration_runs r "
+        "LEFT JOIN users u ON u.id = r.requested_by WHERE r.id = :r AND r.tenant_id = :t"),
+        {"r": run_id, "t": str(tenant.id)})).mappings().first()
+    if run is None:
+        raise HTTPException(status_code=404, detail="Migration run not found.")
+    a = (await db.execute(text(
+        "SELECT a.decision, a.decided_by, a.decided_at, a.comment, coalesce(u.name, u.email) AS label "
+        "FROM load_approvals a JOIN users u ON u.id = a.decided_by WHERE a.run_id = :r AND a.tenant_id = :t"),
+        {"r": run_id, "t": str(tenant.id)})).mappings().first()
+    return LoadApprovalOut(
+        run_id=run_id, prepared_by=run["requested_by"], prepared_by_label=run["label"], prepared_at=run["created_at"],
+        decision=a["decision"] if a else None, decided_by=a["decided_by"] if a else None,
+        decided_by_label=a["label"] if a else None, decided_at=a["decided_at"] if a else None,
+        comment=a["comment"] if a else None)
+
+
+@router.get("/runs/{run_id}/load-approval", response_model=LoadApprovalOut)
+async def get_load_approval(
+    run_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
+):
+    """Who prepared the load and, when decided, who approved or rejected it."""
+    await _set_rls(db, tenant.id)
+    return await _load_approval(db, tenant, run_id)
+
+
+@router.post("/runs/{run_id}/load-approval", response_model=LoadApprovalOut)
+async def decide_load_approval(
+    run_id: uuid.UUID,
+    body: LoadApprovalIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
+):
+    """Four-eyes decision on a load, held on the server. The preparer can never decide; one decision per run."""
+    await _set_rls(db, tenant.id)
+    cur = await _load_approval(db, tenant, run_id)
+    me = current_user_id(request)
+    refused = check_load_decision(str(cur.prepared_by) if cur.prepared_by else None, str(me) if me else None,
+                                  cur.decision is not None, body.decision, body.comment)
+    if refused:
+        raise HTTPException(status_code=refused[0], detail=refused[1])
+    try:
+        await db.execute(text(
+            "INSERT INTO load_approvals (tenant_id, run_id, decision, decided_by, comment) "
+            "VALUES (:t, :r, :d, :u, :c)"),
+            {"t": str(tenant.id), "r": run_id, "d": body.decision, "u": me, "c": (body.comment or "").strip() or None})
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="This load already has a decision.")
+    await _audit(db, tenant, request, f"load_{body.decision}", run_id, 200,
+                 {"decision": body.decision, "decided_by": str(me), "prepared_by": str(cur.prepared_by),
+                  "comment": (body.comment or "").strip() or None})
+    await db.commit()
+    return await _load_approval(db, tenant, run_id)
+
+
 @router.get("/runs/{run_id}/reconciliation/records", response_model=ReconciliationRecordsPage)
 async def get_reconciliation_records(
     run_id: uuid.UUID,

@@ -147,6 +147,17 @@ const loadEvents: LoadEvent[] = [{
   wave_id: "wave-1", wave_name: "Wave 1", wave_stage: "mock1", snapshot_kept: true,
 }];
 
+/** Load approvals by run. The fixture runs were prepared by someone else, so the signed-in fixture user may decide. */
+const loadDecisions: Record<string, { decision: "approved" | "rejected"; at: string; comment: string | null }> = {};
+const loadApproval = (id: string) => {
+  const d = loadDecisions[id];
+  return {
+    run_id: id, prepared_by: "u-prep", prepared_by_label: "Pat Preparer", prepared_at: "2026-11-01T09:00:00Z",
+    decision: d?.decision ?? null, decided_by: d ? "u-me" : null, decided_by_label: d ? "Resh Naidoo" : null,
+    decided_at: d?.at ?? null, comment: d?.comment ?? null,
+  };
+};
+
 export function migrationRead(path: string, params: Record<string, unknown> = {}): unknown {
   if (path === "/migration/runs") return { runs };
   if (path === "/migration/load-history") return { items: loadEvents, total: loadEvents.length, limit: 50, offset: 0, next_offset: null };
@@ -166,6 +177,7 @@ export function migrationRead(path: string, params: Record<string, unknown> = {}
       const rows = records.filter((x) => x.status === params.status);
       return { total: params.status === "load_fail" ? r.records_blocked : (r.records_total ?? 0) - (r.records_blocked ?? 0), rows };
     }
+    if (rest === "/load-approval") return loadApproval(r.id);
     if (rest === "/reconciliation") return r.id === "mig-0002" ? recon : r.id === "mig-0003" ? reconNoTarget : NONE_MIGRATION;
     if (rest === "/reconciliation/records" && r.id === "mig-0002") {
       const rows = reconRecords.filter((x) => (!params.kind || x.kind === params.kind) && (!params.table || x.source_record.startsWith(`${params.table}:`)) && (!params.real_only || !("cause" in x) || x.cause === "real"));
@@ -185,6 +197,14 @@ export function migrationWrite(method: string, path: string, body: unknown): unk
   const b = (body ?? {}) as Record<string, unknown>;
   if (method === "POST" && path === "/migration/analyze") return { run_id: `mig-${++seq}`, task_id: "t-fixture", status: "queued", mode: b.mode, modules: b.modules };
   if (method === "POST" && /^\/migration\/runs\/[^/]+\/reconcile$/.test(path)) return { reconciliation_id: "rec-0002", task_id: "t-fixture", status: "queued" };
+  const la = /^\/migration\/runs\/([^/]+)\/load-approval$/.exec(path);
+  if (method === "POST" && la) {
+    if (loadDecisions[la[1]]) return refuse("This load already has a decision.");
+    const comment = typeof b.comment === "string" && b.comment.trim() ? b.comment.trim() : null;
+    if (b.decision === "rejected" && !comment) return refuse("A rejection needs a comment.", 422);
+    loadDecisions[la[1]] = { decision: b.decision === "rejected" ? "rejected" : "approved", at: new Date().toISOString(), comment };
+    return loadApproval(la[1]);
+  }
   const ex = /^\/migration\/runs\/([^/]+)\/extract-target$/.exec(path);
   if (method === "POST" && ex) return { job_id: "dl-fixture", version_id: "v-fixture", status: "queued", modules: runs.find((x) => x.id === ex[1])?.modules ?? [] };
   const rd = /^\/migration\/runs\/([^/]+)$/.exec(path);

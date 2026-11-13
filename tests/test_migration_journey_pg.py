@@ -50,7 +50,7 @@ def seeded():
     yield SimpleNamespace(owner=owner, tid=tid, src=src, sv=sv, failed_v=failed_v, foreign_v=foreign_v, run=run)
     with owner.begin() as c:
         for t in (tid, other_tid):
-            for table in ("audit_log", "migration_reconciliations", "migration_export_files", "migration_runs",
+            for table in ("audit_log", "load_approvals", "migration_reconciliations", "migration_export_files", "migration_runs",
                           "migration_waves", "analysis_versions", "users", "sap_systems", "tenants"):
                 col = "id" if table == "tenants" else "tenant_id"
                 c.execute(text(f"DELETE FROM {table} WHERE {col} = :t"), {"t": t})
@@ -120,3 +120,55 @@ async def test_a_second_user_accepts_once_and_it_is_audited(seeded, monkeypatch)
         n = c.execute(text("SELECT count(*) FROM audit_log WHERE tenant_id = :t AND action = 'accept_reconciliation'"),
                       {"t": seeded.tid}).scalar()
     assert n == 1
+
+
+def _prepared_by(s, user: str) -> None:
+    with s.owner.begin() as c:
+        c.execute(text("UPDATE migration_runs SET requested_by = :u WHERE id = :r"), {"u": user, "r": s.run})
+
+
+@pytest.mark.anyio
+async def test_the_user_who_prepared_the_load_cannot_decide_it(seeded, monkeypatch):
+    url = f"/api/v1/migration/runs/{seeded.run}/load-approval"
+    async with await _client(monkeypatch, seeded.tid) as client:
+        r = await client.post(url, headers=H, json={"decision": "approved"})
+        assert r.status_code == 403, r.text
+        assert (await client.get(url, headers=H)).json()["decision"] is None
+
+
+@pytest.mark.anyio
+async def test_a_second_decision_on_the_load_is_refused(seeded, monkeypatch):
+    _prepared_by(seeded, _OTHER)
+    url = f"/api/v1/migration/runs/{seeded.run}/load-approval"
+    async with await _client(monkeypatch, seeded.tid) as client:
+        assert (await client.post(url, headers=H, json={"decision": "approved"})).status_code == 200
+        assert (await client.post(url, headers=H, json={"decision": "rejected", "comment": "no"})).status_code == 409
+        assert (await client.get(url, headers=H)).json()["decision"] == "approved"
+
+
+@pytest.mark.anyio
+async def test_a_second_user_approves_once_and_it_is_audited(seeded, monkeypatch):
+    _prepared_by(seeded, _OTHER)
+    url = f"/api/v1/migration/runs/{seeded.run}/load-approval"
+    async with await _client(monkeypatch, seeded.tid) as client:
+        before = (await client.get(url, headers=H)).json()
+        assert before["decision"] is None and before["prepared_by"] == _OTHER
+        r = await client.post(url, headers=H, json={"decision": "approved"})
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["decision"] == "approved" and body["decided_by"] == _USER and body["decided_by_label"] == "Dev"
+        assert body["decided_at"] and body["prepared_by_label"] == "Other"
+    with seeded.owner.connect() as c:
+        n = c.execute(text("SELECT count(*) FROM audit_log WHERE tenant_id = :t AND action = 'load_approved'"),
+                      {"t": seeded.tid}).scalar()
+    assert n == 1
+
+
+@pytest.mark.anyio
+async def test_a_rejection_needs_a_comment(seeded, monkeypatch):
+    _prepared_by(seeded, _OTHER)
+    url = f"/api/v1/migration/runs/{seeded.run}/load-approval"
+    async with await _client(monkeypatch, seeded.tid) as client:
+        assert (await client.post(url, headers=H, json={"decision": "rejected"})).status_code == 422
+        r = await client.post(url, headers=H, json={"decision": "rejected", "comment": "Wrong plant"})
+        assert r.status_code == 200 and r.json()["decision"] == "rejected" and r.json()["comment"] == "Wrong plant"

@@ -425,6 +425,21 @@ export interface ReconRecordsPage {
 }
 
 export const getReconciliation = (id: string) => v2Get<Reconciliation>(`${run(id)}/reconciliation`);
+/** The four-eyes state of one load, held on the server: who prepared it and, once decided, who approved or rejected it. */
+export interface LoadApproval {
+  run_id: string;
+  prepared_by: string | null;
+  prepared_by_label: string | null;
+  prepared_at: string | null;
+  decision: "approved" | "rejected" | null;
+  decided_by: string | null;
+  decided_by_label: string | null;
+  decided_at: string | null;
+  comment: string | null;
+}
+export const getLoadApproval = (id: string) => v2Get<LoadApproval>(`${run(id)}/load-approval`);
+export const decideLoad = (id: string, decision: "approved" | "rejected", comment?: string) =>
+  v2Send<LoadApproval>("POST", `${run(id)}/load-approval`, { decision, comment: comment ?? null });
 export const acceptReconciliation = (id: string) => v2Send<Reconciliation>("POST", `${run(id)}/reconciliation/accept`);
 export const startReconciliation = (id: string) => v2Send<{ reconciliation_id: string; task_id: string | null; status: string }>("POST", `${run(id)}/reconcile`);
 export const getReconciliationRecords = (id: string, q: { table?: string; kind?: ReconKind; offset?: number; limit?: number; real_only?: boolean }) =>
