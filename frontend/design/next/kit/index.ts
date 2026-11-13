@@ -2,6 +2,7 @@ export { Button, type ButtonProps, type ButtonVariant } from "./Button";
 export { Chip, type ChipProps, type ChipTone } from "./Chip";
 export { StatCard, Sparkline, type StatCardProps } from "./StatCard";
 export { Stepper, type StepItem, type StepState } from "./Stepper";
+export { StepFlow, type FlowStep } from "./StepFlow";
 export { RunSwitcher, runSentence, type RunOption } from "./RunSwitcher";
 export { DataTable, type Column, type DataTableProps } from "./DataTable";
 export { SidePanel } from "./SidePanel";

@@ -40,7 +40,7 @@ export function CleanStep({ o }: { o: ObjectRun }) {
 
   return (
     <div className="nx-stack" data-testid="clean-step">
-      <p>{t("The workbook lists every failing record of run {n} with the rule, the field and the value to correct. Fix the values in Excel and upload the workbook in the next step.", { n: o.run?.run_number ?? "" })}</p>
+      <p>{t("One workbook for run {n}: instructions, a fix template and the failing records. Fix the values in Excel, keep the key columns and the sheet names as they are, and upload it in the next step.", { n: o.run?.run_number ?? "" })}</p>
       <fieldset disabled className="nx-fieldset">
         <legend className="nx-field-label">{t("What goes in the workbook")}</legend>
         <SegmentedControl items={scopes} value={scope} onChange={setScope} label={t("Workbook scope")} />
@@ -56,9 +56,14 @@ export function CleanStep({ o }: { o: ObjectRun }) {
       ) : (
         <p className="nx-note">{t("Only users with the export right can download the workbook.")}</p>
       )}
-      <details className="nx-details">
+      <details className="nx-details" open>
         <summary>{t("What is in the workbook")}</summary>
-        <p>{t("One sheet per table. Each row is a record that fails at least one rule; the failing fields are marked and the rule and its description are beside them. Change only the values; keep the key columns as they are, so Meridian can match each row to its record.")}</p>
+        <ol data-testid="workbook-contents">
+          <li>{t("Instructions: what to fix, step by step, the rule texts, the allowed values and how to upload.")}</li>
+          <li>{t("Fix template: the load-format columns, required ones marked, the allowed values and a description beside each field.")}</li>
+          <li>{t("Records: every failing record with its current values and the failing rule; the key columns are locked.")}</li>
+          <li>{t("A hidden fingerprint sheet, so the upload can check that the workbook belongs to this object and run.")}</li>
+        </ol>
       </details>
       <V2Link className="nx-link" href={`/next/o/${o.systemSeg}/${o.moduleSeg}/fixes${o.runId ? `?run=${encodeURIComponent(o.runId)}` : ""}`}>{t("Fix inside Meridian instead")}</V2Link>
     </div>
