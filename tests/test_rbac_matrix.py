@@ -13,6 +13,8 @@ _UNGUARDED_OK = {
     ("auth.py", "/forgot-password"), ("auth.py", "/reset-password"), ("auth.py", "/invite/preview"),
     # signing out needs only a session (LocalAuthMiddleware); any role may end its own
     ("auth.py", "/logout"),
+    # refreshing re-issues the caller's own session cookie; LocalAuthMiddleware already gates it
+    ("auth.py", "/refresh"),
     ("notifications.py", "/notifications/{notification_id}/read"),
     ("notifications.py", "/notifications/read-all"),
     ("preferences.py", "/me/preferences"),
@@ -83,8 +85,8 @@ def test_every_mutating_route_is_guarded():
 
 def test_audit_reads_accept_view_audit_or_manage_users():
     src = (ROOT / "api" / "routes" / "audit.py").read_text()
-    # the log, its export, its summary and its actors (the Who filter, F25)
-    assert src.count('require_any_permission("view_audit", "manage_users")') == 5
+    # the log, its export, its summary, its actors (the Who filter, F25) and the chain verify
+    assert src.count('require_any_permission("view_audit", "manage_users")') == 6
     assert 'require_permission("manage_users")' not in src
     assert has_permission("auditor", "view_audit") and not has_permission("auditor", "manage_users")
 

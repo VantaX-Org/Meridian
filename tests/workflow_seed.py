@@ -51,6 +51,8 @@ def drop_tenant(eng, tid: str) -> None:
                 continue
             if c.execute(text("SELECT to_regclass(:n)"), {"n": table}).scalar() is None:
                 continue
+            if table == "audit_log":  # migration 175 guard: test cleanup only
+                c.execute(text("SET LOCAL app.audit_purge = 'on'"))
             c.execute(text(f"DELETE FROM {table} WHERE tenant_id = :t"), {"t": tid})
     with eng.begin() as c:
         c.execute(text("DELETE FROM tenants WHERE id = :t"), {"t": tid})

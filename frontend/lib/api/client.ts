@@ -110,6 +110,77 @@ export function clearBrowserSession(): void {
   }
 }
 
+// A sliding session: the cookie lives 24h and POST /auth/refresh renews it (up to the server's absolute limit), so
+// an active page never meets the expiry. At most one refresh per window; it goes through plain axios so its own
+// failure never loops back through these interceptors.
+const REFRESH_EVERY_MS = 30 * 60 * 1000;
+let lastRefresh = 0;
+
+function maybeRefresh(url: string): void {
+  if (url.includes("/api/v1/auth/") || !hasSessionMarker() || Date.now() - lastRefresh < REFRESH_EVERY_MS) return;
+  lastRefresh = Date.now();
+  const csrf = csrfToken();
+  axios.post("/api/v1/auth/refresh", null, { headers: csrf ? { "X-CSRF-Token": csrf } : {} }).catch(() => {
+    // the next real call meets the 401 and goes to sign-in
+  });
+}
+
+/** Test hook: forget when the session was last refreshed. */
+export function resetRefreshClock(): void {
+  lastRefresh = 0;
+}
+
+/** Where an edit lost to an expired session is kept until the user signs in again in this tab. */
+export const DRAFT_KEY = "mn_unsaved_draft";
+const DRAFT_MAX_CHARS = 64_000;
+const SECRET_LIKE = /password|secret|token/i;
+
+export interface UnsavedDraft { method: string; url: string; data: string; path: string; at: number }
+
+function keepDraft(config: { method?: string; url?: string; data?: unknown }): void {
+  const method = (config.method ?? "get").toLowerCase();
+  const url = String(config.url ?? "");
+  if (SAFE_METHODS.has(method) || url.includes("/api/v1/auth/")) return;
+  let data: string;
+  if (config.data == null) data = "";
+  else if (typeof config.data === "string") data = config.data;
+  else if (Object.getPrototypeOf(config.data) === Object.prototype || Array.isArray(config.data)) data = JSON.stringify(config.data);
+  else return; // a file or form upload is not kept
+  // ponytail: a key-name screen; a body that names a secret is never written to storage at all.
+  if (data.length > DRAFT_MAX_CHARS || SECRET_LIKE.test(data) || SECRET_LIKE.test(url)) return;
+  const draft: UnsavedDraft = { method, url, data, path: window.location.pathname + window.location.search, at: Date.now() };
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // storage blocked: the edit is lost as before
+  }
+}
+
+/** The edit kept when the session ran out, if any (and only within 30 minutes). */
+export function readDraft(): UnsavedDraft | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    const d = raw ? (JSON.parse(raw) as UnsavedDraft) : null;
+    return d && Date.now() - d.at < REFRESH_EVERY_MS ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearDraft(): void {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // storage blocked: nothing was kept
+  }
+}
+
+function signInHref(): string {
+  const here = window.location.pathname + window.location.search;
+  const href = here === "/" ? "/sign-in" : `/sign-in?next=${encodeURIComponent(here)}`;
+  return new URL(href, window.location.origin).href;
+}
+
 const PER_PAGE_CAP = 100;
 let warnedPerPageCap = false;
 
@@ -128,6 +199,7 @@ function instrument(client: AxiosInstance): AxiosInstance {
       }
     }
     if (typeof window === "undefined") return config;
+    maybeRefresh(String(config.url ?? ""));
     // The session cookie rides along by itself (same origin); a mutating request also proves it came from this page.
     if (!SAFE_METHODS.has((config.method ?? "get").toLowerCase())) {
       const csrf = csrfToken();
@@ -145,9 +217,11 @@ function instrument(client: AxiosInstance): AxiosInstance {
       }
       if (typeof window !== "undefined" && error.response) {
         // a 401 from the login call means wrong credentials, not an expired session: let the form show it
+        // the user comes back to the same page after signing in, and an edit in flight is kept for this tab
         if (error.response.status === 401 && !String(error.config?.url ?? "").endsWith("/api/v1/auth/login")) {
+          keepDraft(error.config ?? {});
           clearBrowserSession();
-          window.location.href = new URL("/sign-in", window.location.origin).href;
+          window.location.href = signInHref();
           return Promise.reject(error);
         }
         const lock = licenceLockFrom(error.response.status, error.response.data);

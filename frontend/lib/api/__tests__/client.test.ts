@@ -1,6 +1,6 @@
-import { AxiosError, AxiosHeaders, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosError, AxiosHeaders, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it, vi } from "vitest";
-import apiClient, { isRetryable, licenceLockFrom } from "../client";
+import apiClient, { DRAFT_KEY, clearDraft, isRetryable, licenceLockFrom, readDraft, resetRefreshClock } from "../client";
 
 // axios doesn't publicly type the interceptor manager's internal handler
 // list, but it's the only way to invoke the request interceptor directly
@@ -175,6 +175,68 @@ describe("apiClient licence lock", () => {
       expect(onPage.href).toBe("http://localhost/licence-error"); // no redirect loop
     } finally {
       Object.defineProperty(window, "location", { value: original, configurable: true, writable: true });
+    }
+  });
+});
+
+describe("apiClient session continuity", () => {
+  function stubLocation(pathname: string, search = ""): { href: string } {
+    const loc = { href: `http://localhost${pathname}${search}`, pathname, search, origin: "http://localhost" };
+    Object.defineProperty(window, "location", { value: loc, configurable: true, writable: true });
+    return loc;
+  }
+  const expired = (method: string, url: string, data?: unknown) => ({ config: { method, url, data }, response: { status: 401, data: {} } });
+
+  it("sends the user to sign-in with the page to come back to", async () => {
+    const original = window.location;
+    try {
+      const loc = stubLocation("/o/ecc/material_master", "?open=rule:MM-1");
+      await runResponseErrorInterceptors(apiClient, expired("get", "/api/v1/rules"));
+      expect(loc.href).toBe(`http://localhost/sign-in?next=${encodeURIComponent("/o/ecc/material_master?open=rule:MM-1")}`);
+      const home = stubLocation("/");
+      await runResponseErrorInterceptors(apiClient, expired("get", "/api/v1/rules"));
+      expect(home.href).toBe("http://localhost/sign-in");
+    } finally {
+      Object.defineProperty(window, "location", { value: original, configurable: true, writable: true });
+    }
+  });
+
+  it("keeps an edit lost to the expiry for this tab, never a read, an auth call or a secret", async () => {
+    const original = window.location;
+    try {
+      stubLocation("/work");
+      clearDraft();
+      await runResponseErrorInterceptors(apiClient, expired("get", "/api/v1/rules"));
+      await runResponseErrorInterceptors(apiClient, expired("post", "/api/v1/auth/logout"));
+      await runResponseErrorInterceptors(apiClient, expired("post", "/api/v1/connections", { client_secret: "x" }));
+      expect(sessionStorage.getItem(DRAFT_KEY)).toBeNull();
+      await runResponseErrorInterceptors(apiClient, expired("put", "/api/v1/rules/MM-1", { severity: "high" }));
+      expect(readDraft()).toMatchObject({ method: "put", url: "/api/v1/rules/MM-1", data: '{"severity":"high"}', path: "/work" });
+      clearDraft();
+      expect(readDraft()).toBeNull();
+    } finally {
+      Object.defineProperty(window, "location", { value: original, configurable: true, writable: true });
+    }
+  });
+
+  it("refreshes a signed-in session once per window, never for an auth call or when signed out", () => {
+    const post = vi.spyOn(axios, "post").mockResolvedValue({});
+    try {
+      resetRefreshClock();
+      document.cookie = "mn_csrf=abc123; Path=/";
+      runRequestInterceptors(apiClient, { url: "/api/v1/rules", headers: new AxiosHeaders() } as InternalAxiosRequestConfig);
+      expect(post).not.toHaveBeenCalled(); // signed out
+      document.cookie = "mn_session=1; Path=/";
+      runRequestInterceptors(apiClient, { url: "/api/v1/auth/me", headers: new AxiosHeaders() } as InternalAxiosRequestConfig);
+      expect(post).not.toHaveBeenCalled();
+      runRequestInterceptors(apiClient, { url: "/api/v1/rules", headers: new AxiosHeaders() } as InternalAxiosRequestConfig);
+      runRequestInterceptors(apiClient, { url: "/api/v1/runs", headers: new AxiosHeaders() } as InternalAxiosRequestConfig);
+      expect(post).toHaveBeenCalledTimes(1);
+      expect(post).toHaveBeenCalledWith("/api/v1/auth/refresh", null, { headers: { "X-CSRF-Token": "abc123" } });
+    } finally {
+      post.mockRestore();
+      document.cookie = "mn_session=; Path=/; Max-Age=0";
+      document.cookie = "mn_csrf=; Path=/; Max-Age=0";
     }
   });
 });

@@ -426,3 +426,18 @@ async def list_llm_audit(
         entries=[LlmAuditEntry(**e) for e in entries], total=total, limit=limit, offset=offset,
         cache=[LlmCacheSummary(**c) for c in cache_summary],
     )
+
+
+@router.get("/audit/verify")
+async def verify_audit_chain(
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_any_permission("view_audit", "manage_users")),
+):
+    """Tamper check of this tenant's audit log: every remaining row's hash is recomputed and its link to the row
+    before it checked, back to genesis or to the checkpoint a retention purge left. ``ok`` false lists the first
+    breaks (an edited, removed or reordered row)."""
+    from api.services.audit_chain import verify
+
+    await _set_rls(db, tenant.id)
+    return await db.run_sync(lambda s: verify(s, tenant.id))
