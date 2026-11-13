@@ -10135,6 +10135,8 @@ export const en = {
   "{n} workbooks uploaded. {m} new runs scoring.": "{n} workbooks uploaded. {m} new runs scoring.",
   "Upload the Excel (.xlsx) or CSV file you exported.": "Upload the Excel (.xlsx) or CSV file you exported.",
   "The file is larger than 25 MB.": "The file is larger than 25 MB.",
+  "All severities": "All severities",
+  "Watched objects": "Watched objects",
   "SAP S/4HANA": "SAP S/4HANA",
   "Migration Cockpit templates, one sheet per target table.": "Migration Cockpit templates, one sheet per target table.",
   "SAP SuccessFactors": "SAP SuccessFactors",

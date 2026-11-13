@@ -10136,6 +10136,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{n} workbooks uploaded. {m} new runs scoring.": "{n} Arbeitsmappen hochgeladen. {m} neue Läufe werden bewertet.",
   "Upload the Excel (.xlsx) or CSV file you exported.": "Laden Sie die exportierte Excel- (.xlsx) oder CSV-Datei hoch.",
   "The file is larger than 25 MB.": "Die Datei ist größer als 25 MB.",
+  "All severities": "Alle Schweregrade",
+  "Watched objects": "Beobachtete Objekte",
   "SAP S/4HANA": "SAP S/4HANA",
   "Migration Cockpit templates, one sheet per target table.": "Migration-Cockpit-Vorlagen, ein Blatt je Zieltabelle.",
   "SAP SuccessFactors": "SAP SuccessFactors",
