@@ -16,6 +16,7 @@ from typing import Any, Optional
 
 STALL_AFTER_S = 300  # no update for 5 minutes on a running job: stalled (analysis beats every 30 s)
 ETA_AFTER_S = 60     # no estimate before a minute of observed rate
+SETTLE_S = 120       # a finished run stays on the live list this long, so its card can show how it ended
 ACTIVE = ("queued", "running")
 _RULE = re.compile(r"rule (\d+)/(\d+)")
 _TABLE_ACTIVE = ("queued", "running")
@@ -65,6 +66,14 @@ def _parts(job: dict) -> list[dict]:
         out.append({"name": t.get("table"), "state": state, "status": st, "done": int(t.get("rows") or 0),
                     "total": exp, "pct": pct})
     return out
+
+
+def is_live(job: dict, now: Optional[float] = None) -> bool:
+    """Queued or running, or finished within the last SETTLE_S seconds."""
+    if (job.get("status") or "queued") in ACTIVE:
+        return True
+    now = time.time() if now is None else now
+    return float(job.get("finished_at") or job.get("updated_at") or 0) >= now - SETTLE_S
 
 
 def compute_progress(job: dict, now: Optional[float] = None) -> dict:

@@ -56,11 +56,12 @@ async def stream_jobs(tenant: Tenant = Depends(get_tenant), db: AsyncSession = D
 
 @router.get("/active/progress")
 async def active_progress(tenant: Tenant = Depends(get_tenant)):
-    """Every queued and running job of the tenant with its truthful progress (api/services/run_progress.py)."""
+    """Every queued and running job of the tenant, plus those finished in the last two minutes, with truthful
+    progress (api/services/run_progress.py)."""
     from api.services.run_prediction import with_queue_positions
-    from api.services.run_progress import compute_progress
+    from api.services.run_progress import compute_progress, is_live
 
-    listed = with_queue_positions(jobs.list_jobs(str(tenant.id), active_only=True, limit=200))
+    listed = with_queue_positions([j for j in jobs.list_jobs(str(tenant.id), limit=200) if is_live(j)])
     return {"runs": [compute_progress(j) for j in listed]}
 
 

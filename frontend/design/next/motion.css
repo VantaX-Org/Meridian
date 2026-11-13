@@ -68,3 +68,14 @@
 }
 
 .nx-rail-in { transition: width var(--nx-dur-fast) var(--nx-ease); }
+
+/* Live run progress: the ring arc and segment fills move to new values; an unknown ring turns. */
+.nx-live-ring-arc { transition: stroke-dashoffset var(--nx-dur-slow) var(--nx-ease), stroke var(--nx-dur-base) var(--nx-ease); }
+.nx-live-seg-fill { transition: width var(--nx-dur-slow) var(--nx-ease); }
+.nx-live-ring-spin { transform-box: view-box; transform-origin: 50% 50%; animation: nx-spin 1.2s linear infinite; }
+.nx-live-seg-busy { animation: nx-live-pulse 1.4s var(--nx-ease) infinite alternate; }
+@keyframes nx-live-pulse { from { opacity: 0.15; } to { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) {
+  .nx-live-ring-spin { animation: none; }
+  .nx-live-seg-busy { animation: none; opacity: 0.3; }
+}

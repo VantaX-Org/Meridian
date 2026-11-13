@@ -100,3 +100,10 @@ def test_completed_is_100_and_failed_keeps_its_place():
     assert done["pct"] == 100.0 and done["elapsed_s"] == 500
     failed = compute_progress(_job(status="failed", finished_at=NOW - 100), NOW)
     assert failed["state"] == "failed" and failed["pct"] == 20.0
+
+
+def test_is_live_keeps_recently_finished_runs_only():
+    from api.services.run_progress import is_live
+    assert is_live({"status": "running"}, now=10_000)
+    assert is_live({"status": "completed", "finished_at": 9_950}, now=10_000)
+    assert not is_live({"status": "failed", "finished_at": 9_000}, now=10_000)
