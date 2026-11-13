@@ -16,19 +16,21 @@ from api.main import app
 pytestmark = pytest.mark.skipif(not os.getenv("MERIDIAN_TEST_DB_URL"), reason="requires MERIDIAN_TEST_DB_URL")
 
 HEADERS = {"X-User-Role": "admin", "Authorization": "Bearer test-token"}
-REQUESTER, OTHER = "00000000-0000-0000-0000-0000000000a1", "00000000-0000-0000-0000-0000000000a2"
+# Fresh user ids per test: test_worklist_pg and test_worklist_since_pg seed a fixed steward id and leave it behind,
+# so a fixed id here collides on users_pkey when those files run first in the same shard.
+OTHER = str(uuid.uuid4())
 
 
 @pytest.fixture
 def pending():
     engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
-    tid, vid, fid, wid = (str(uuid.uuid4()) for _ in range(4))
+    tid, vid, fid, wid, requester = (str(uuid.uuid4()) for _ in range(5))
     fixes = [{"record_key": "LIFNR=0000100001", "field": "LFA1.STCD1", "invalid_value": "12 34", "proposed_value": "1234",
               "auto_fix": True}]
     with engine.begin() as c:
         c.execute(text("INSERT INTO tenants (id, name) VALUES (:id, :id)"), {"id": tid})
         c.execute(text("INSERT INTO users (id, tenant_id, email, name, role, is_active) "
-                       "VALUES (:u, :t, :e, 'Requester', 'admin', true)"), {"u": REQUESTER, "t": tid, "e": f"{tid}@example.com"})
+                       "VALUES (:u, :t, :e, 'Requester', 'admin', true)"), {"u": requester, "t": tid, "e": f"{tid}@example.com"})
         c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status) VALUES (:v, :t, 'complete')"), {"v": vid, "t": tid})
         c.execute(text("""INSERT INTO findings (id, version_id, tenant_id, module, check_id, severity, dimension, affected_count,
                           total_count, pass_rate, details, record_fixes)
@@ -37,8 +39,8 @@ def pending():
                   {"f": fid, "v": vid, "t": tid, "d": json.dumps({"message": "Tax number has a space"}), "rf": json.dumps(fixes)})
         c.execute(text("""INSERT INTO write_back_log (id, tenant_id, finding_id, version_id, requested_by, records_updated,
                           dry_run, sap_host) VALUES (:w, :t, :f, :v, :r, 1, false, 'sap-host')"""),
-                  {"w": wid, "t": tid, "f": fid, "v": vid, "r": REQUESTER})
-    yield tid, wid
+                  {"w": wid, "t": tid, "f": fid, "v": vid, "r": requester})
+    yield tid, wid, requester
     with engine.begin() as c:
         for t in ("notifications", "audit_log", "write_back_log", "findings", "analysis_versions", "users"):
             c.execute(text(f"DELETE FROM {t} WHERE tenant_id = :t"), {"t": tid})
@@ -56,8 +58,8 @@ def _as(monkeypatch, tid: str, user: str) -> None:
 
 @pytest.mark.anyio
 async def test_detail_shows_before_after_and_requester_is_blocked(pending, monkeypatch):
-    tid, wid = pending
-    _as(monkeypatch, tid, REQUESTER)
+    tid, wid, requester = pending
+    _as(monkeypatch, tid, requester)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         d = (await client.get(f"/api/v1/writeback/requests/{wid}", headers=HEADERS)).json()
@@ -70,7 +72,7 @@ async def test_detail_shows_before_after_and_requester_is_blocked(pending, monke
 
 @pytest.mark.anyio
 async def test_other_user_rejects_once_and_it_cannot_be_approved(pending, monkeypatch):
-    tid, wid = pending
+    tid, wid, requester = pending
     _as(monkeypatch, tid, OTHER)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -85,7 +87,7 @@ async def test_other_user_rejects_once_and_it_cannot_be_approved(pending, monkey
     with engine.begin() as c:
         n = c.execute(text("SELECT count(*) FROM audit_log WHERE tenant_id = :t AND action = 'writeback.reject'"), {"t": tid}).scalar()
         notes = c.execute(text("SELECT title, link FROM notifications WHERE tenant_id = :t AND user_id::text = :u"),
-                          {"t": tid, "u": REQUESTER}).all()
+                          {"t": tid, "u": requester}).all()
     engine.dispose()
     assert n == 1
     assert [tuple(r) for r in notes] == [("Write-back rejected", "/work")]
@@ -93,7 +95,7 @@ async def test_other_user_rejects_once_and_it_cannot_be_approved(pending, monkey
 
 @pytest.mark.anyio
 async def test_reject_needs_a_reason(pending, monkeypatch):
-    tid, wid = pending
+    tid, wid, requester = pending
     _as(monkeypatch, tid, OTHER)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
