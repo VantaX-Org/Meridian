@@ -11,11 +11,12 @@ Rules (non-negotiable):
 """
 
 import asyncio
+import hashlib
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from typing import NoReturn, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -53,6 +54,16 @@ def _structured(fix) -> bool:
     """A structured auto_fix proposal: field, full record key and proposed value (never instruction text)."""
     return isinstance(fix, dict) and bool(fix.get("auto_fix") and fix.get("record_key")
                                           and fix.get("field") and fix.get("proposed_value") is not None)
+
+
+# A write-back request waits this long for its second user; after that it expires and is submitted again.
+APPROVAL_TTL_DAYS = 7
+
+
+def fixes_sha256(fixes: list) -> str:
+    """Hash of the exact fix rows a request asks approval for (the snapshot the approver signs). The approval runs only
+    when every snapshot row is still, unchanged, a fix of the finding."""
+    return hashlib.sha256(json.dumps(fixes, sort_keys=True, default=str).encode()).hexdigest()
 
 
 def field_support(module: str, fix: dict) -> dict:
@@ -164,14 +175,25 @@ async def create_writeback(
                                                     "register and connect the system before write-back")
 
     # Filter: only structured auto_fix proposals (deterministic fixes only)
-    valid_fixes = []
+    asked = []
     skipped = 0
     for fix in body.record_fixes:
         if _structured(fix):
-            valid_fixes.append(fix)
+            asked.append(fix)
         else:
             skipped += 1
             logger.info(f"Skipping fix without sql_statement: {fix.get('field', 'unknown')}")
+    # The snapshot is the finding's own fix rows for the asked record fields, never values from the request: a fix
+    # the finding does not hold (another value, or none) is refused.
+    live = {(str(f["record_key"]), str(f["field"])): f for f in (finding[2] or []) if _structured(f)}
+    foreign = [f for f in asked if (live.get((str(f["record_key"]), str(f["field"]))) or {}).get("proposed_value")
+               != f["proposed_value"]]
+    if foreign:
+        raise HTTPException(status_code=409, detail=f"{len(foreign)} fix(es) are not fixes of this finding as it "
+                                                    "stands (another value, or none); reload the finding and submit "
+                                                    "again.")
+    valid_fixes = list({(str(f["record_key"]), str(f["field"])): live[(str(f["record_key"]), str(f["field"]))]
+                        for f in asked}.values())
 
     if not valid_fixes:
         return WriteBackResponse(
@@ -205,10 +227,11 @@ async def create_writeback(
             text("""
                 INSERT INTO write_back_log
                     (id, tenant_id, finding_id, version_id, requested_by, dry_run,
-                     records_updated, errors, sap_host, created_at)
+                     records_updated, errors, sap_host, system_id, record_fixes, fixes_sha256, status, created_at)
                 SELECT :log_id, :tid, :fid,
                     (SELECT version_id FROM findings WHERE id = :fid AND tenant_id = :tid),
-                    :requested_by, true, :count, CAST(:errors AS jsonb), :host, now()
+                    :requested_by, true, :count, CAST(:errors AS jsonb), :host, CAST(:sid AS uuid),
+                    CAST(:fixes AS jsonb), :sha, 'dry_run', now()
             """),
             {
                 "log_id": log_id,
@@ -218,6 +241,9 @@ async def create_writeback(
                 "count": len(valid_fixes),
                 "errors": json.dumps({"errors": errors}) if errors else None,
                 "host": system.host,
+                "sid": str(body.system_id),
+                "fixes": json.dumps(valid_fixes, default=str),
+                "sha": fixes_sha256(valid_fixes),
             },
         )
         await db.commit()
@@ -231,16 +257,18 @@ async def create_writeback(
             fields=support,
         )
 
-    # Non-dry-run: create pending approval record (4-eyes requirement)
+    # Non-dry-run: create pending approval record (4-eyes requirement). The request freezes the exact fix rows it
+    # asks approval for (record_fixes, with their sha256) and the system they go to; the approval runs only those.
     approval_id = str(uuid.uuid4())
     await db.execute(
         text("""
             INSERT INTO write_back_log
                 (id, tenant_id, finding_id, version_id, requested_by, dry_run,
-                 records_updated, sap_host, created_at)
+                 records_updated, sap_host, system_id, record_fixes, fixes_sha256, status, expires_at, created_at)
             SELECT :log_id, :tid, :fid,
                 (SELECT version_id FROM findings WHERE id = :fid AND tenant_id = :tid),
-                :requested_by, false, :count, :host, now()
+                :requested_by, false, :count, :host, CAST(:sid AS uuid), CAST(:fixes AS jsonb), :sha, 'pending',
+                now() + make_interval(days => :ttl), now()
         """),
         {
             "log_id": approval_id,
@@ -249,6 +277,10 @@ async def create_writeback(
             "requested_by": requesting_user,
             "count": len(valid_fixes),
             "host": system.host,
+            "sid": str(body.system_id),
+            "fixes": json.dumps(valid_fixes, default=str),
+            "sha": fixes_sha256(valid_fixes),
+            "ttl": APPROVAL_TTL_DAYS,
         },
     )
     await db.commit()
@@ -279,6 +311,7 @@ class PendingApproval(BaseModel):
     module: Optional[str] = None
     rule_message: Optional[str] = None
     requested_by_name: Optional[str] = None
+    expires_at: Optional[str] = None   # after this the request expires and is submitted again
 
 
 class PendingApprovalList(BaseModel):
@@ -301,11 +334,13 @@ async def list_pending_writebacks(
     result = await db.execute(
         text("""
             SELECT w.id, w.finding_id, w.version_id, w.requested_by, w.records_updated, w.sap_host, w.created_at,
-                   f.check_id, f.module, COALESCE(f.details->>'message', f.rule_context->>'message'), COALESCE(NULLIF(u.name, ''), u.email)
+                   f.check_id, f.module, COALESCE(f.details->>'message', f.rule_context->>'message'), COALESCE(NULLIF(u.name, ''), u.email),
+                   w.expires_at
             FROM write_back_log w
             LEFT JOIN findings f ON f.id = w.finding_id AND f.tenant_id = w.tenant_id
             LEFT JOIN users u ON u.id::text = w.requested_by AND u.tenant_id = w.tenant_id
-            WHERE w.tenant_id = :tid AND w.dry_run = false AND w.approved_by IS NULL
+            WHERE w.tenant_id = :tid AND w.dry_run = false AND w.approved_by IS NULL AND w.status = 'pending'
+              AND (w.expires_at IS NULL OR w.expires_at > now())
             ORDER BY w.created_at DESC
             LIMIT 200
         """),
@@ -319,6 +354,7 @@ async def list_pending_writebacks(
                 requested_by=str(r[3]) if r[3] else None, records_updated=r[4] or 0, sap_host=r[5],
                 created_at=r[6].isoformat() if r[6] else None,
                 check_id=r[7], module=r[8], rule_message=r[9] or None, requested_by_name=r[10] or None,
+                expires_at=r[11].isoformat() if r[11] else None,
             )
             for r in result.fetchall()
         ],
@@ -337,28 +373,12 @@ async def approve_writeback(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """Second user approves a pending write-back. Validates approving_user != requesting_user."""
+    """Second user approves a pending write-back and it runs. The approval claims the request with one conditional
+    UPDATE (pending, not expired, not the requester's own), so two approvals can never both run it. It runs only the
+    fix rows frozen at submit, against the system named at submit, and is blocked when the finding's fixes have
+    changed since. Per record, the current SAP value is read first; a record changed in SAP since is skipped."""
     tenant_id = str(tenant.id)
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
-
-    # Load the pending write-back
-    result = await db.execute(
-        text("""
-            SELECT id, requested_by, approved_by, finding_id, sap_host, dry_run
-            FROM write_back_log
-            WHERE id = :aid AND tenant_id = :tid
-        """),
-        {"aid": approval_id, "tid": tenant_id},
-    )
-    record = result.fetchone()
-    if not record:
-        raise HTTPException(status_code=404, detail="Write-back request not found")
-
-    if record[2]:  # approved_by already set
-        raise HTTPException(status_code=409, detail="Write-back already approved")
-
-    if record[5]:  # dry_run — a validation-only request can never be executed
-        raise HTTPException(status_code=409, detail="This was a dry-run request; submit a new write-back to execute")
 
     from api.config import settings
     if not settings.live_writeback_enabled:
@@ -375,38 +395,73 @@ async def approve_writeback(
         raise HTTPException(status_code=409, detail="Sandbox mode is on: nothing is written back to SAP. "
                                                     "Exit the sandbox to apply this write-back.")
 
-    # 4-eyes: approving user must differ from requesting user
     approving_user = _require_user(request)
-    if approving_user == record[1]:
-        raise HTTPException(
-            status_code=403,
-            detail="4-eyes violation: approving user must differ from requesting user",
-        )
+    # The claim: pending -> approved in one statement. Only one approval ever gets the row back.
+    claimed = (await db.execute(
+        text("""
+            UPDATE write_back_log SET approved_by = :approver, status = 'approved'
+             WHERE id = :aid AND tenant_id = :tid AND status = 'pending' AND approved_by IS NULL
+               AND dry_run = false AND requested_by IS DISTINCT FROM :approver
+               AND (expires_at IS NULL OR expires_at > now())
+            RETURNING finding_id, system_id, record_fixes, fixes_sha256
+        """),
+        {"aid": approval_id, "tid": tenant_id, "approver": approving_user},
+    )).fetchone()
+    if not claimed:
+        await db.rollback()
+        await _refuse_claim(db, tenant_id, approval_id, approving_user)
+    await db.commit()
+    finding_id, system_id, snapshot, snapshot_sha = claimed
 
-    # Load the finding's record_fixes
-    finding_result = await db.execute(
+    async def _close(status: str, errors: list[str], records: Optional[list] = None, applied: int = 0) -> None:
+        await db.execute(text("""
+            UPDATE write_back_log SET status = :st, applied_at = :now, records_updated = :applied,
+                   errors = CAST(:errors AS jsonb)
+             WHERE id = :aid AND tenant_id = :tid
+        """), {"st": status, "now": datetime.now(timezone.utc), "applied": applied, "aid": approval_id,
+               "tid": tenant_id,
+               # per record: the simulation and the call with SAP's RETURN messages; no field values
+               "errors": json.dumps({"errors": errors, "records": records or []}) if errors or records else None})
+        await db.commit()
+
+    if not system_id or snapshot is None or not snapshot_sha:
+        # submitted before requests froze their fixes (migration 173): never run the live fixes unseen
+        msg = "This request was submitted before approvals froze their fixes; submit the write-back again."
+        await _close("blocked", [msg])
+        raise HTTPException(status_code=409, detail=msg)
+    snapshot = snapshot if isinstance(snapshot, list) else json.loads(snapshot)
+    if fixes_sha256(snapshot) != snapshot_sha:
+        msg = "The stored fixes of this request do not match their hash; nothing was sent. Submit it again."
+        await _close("blocked", [msg])
+        raise HTTPException(status_code=409, detail=msg)
+
+    finding = (await db.execute(
         text("SELECT module, record_fixes FROM findings WHERE id = :fid AND tenant_id = :tid"),
-        {"fid": str(record[3]), "tid": tenant_id},
-    )
-    finding = finding_result.fetchone()
+        {"fid": str(finding_id), "tid": tenant_id},
+    )).fetchone()
     if not finding:
+        await _close("blocked", ["Finding no longer exists"])
         raise HTTPException(status_code=404, detail="Finding no longer exists")
-
     module = finding[0]
-    record_fixes = finding[1] or []
+    live = {fixes_sha256([f]) for f in (finding[1] or []) if _structured(f)}
+    if any(fixes_sha256([f]) not in live for f in snapshot):
+        msg = ("The finding's fixes changed after this request was submitted; nothing was sent. Review the fixes and "
+               "submit the write-back again.")
+        await _close("blocked", [msg])
+        raise HTTPException(status_code=409, detail=msg)
 
-    # Filter to deterministic fixes only
-    valid_fixes = [f for f in record_fixes if _structured(f)]
-
+    valid_fixes = [f for f in snapshot if _structured(f)]
     support = [field_support(module, f) for f in valid_fixes]
     errors: list[str] = []
     applied = 0
     records: list[dict] = []
-    # record_key -> {TABLE.FIELD: proposed value}, only the fields a BAPI carries
+    # record_key -> {TABLE.FIELD: proposed value}, only the fields a BAPI carries; and the value each was based on
     by_record: dict[str, dict] = {}
+    based_on: dict[str, dict] = {}
     for fix, sup in zip(valid_fixes, support):
         if sup["supported"]:
             by_record.setdefault(sup["record_key"], {})[sup["field"]] = fix["proposed_value"]
+            based_on.setdefault(sup["record_key"], {})[sup["field"]] = fix.get("invalid_value")
     unsupported = [x for x in support if not x["supported"]]
     if unsupported:
         errors.append(f"{len(unsupported)} field(s) have no BAPI mapping and were not sent; deliver them with the "
@@ -417,50 +472,23 @@ async def approve_writeback(
     elif not by_record:
         errors.append(f"No field of this finding has a BAPI mapping for '{module}'")
     else:
-        # Execute via SAP connector. Resolve REAL credentials from the
-        # registered on-prem SAP system matching this write-back's host —
-        # never fabricate a user/password (the old "WRITEBACK"/"****" literals
-        # could never connect). Decrypted only here, at execution time.
+        # Credentials of the system named at submit, by its id (never by host: two systems may share one).
+        # Decrypted only here, at execution time.
         from sap import get_connector
-        from sap.base import SAPConnectionParams, SAPConnectorError, rfc_route_params, rfc_user
+        from sap.base import SAPConnectorError
 
-        sys_result = await db.execute(
-            text("""
-                SELECT s.client, s.sysnr, c.encrypted_password, s.saprouter, s.snc_mode, s.snc_partnername,
-                       s.snc_qop, s.snc_myname, s.username
-                FROM sap_systems s
-                JOIN system_credentials c ON c.system_id = s.id
-                WHERE s.tenant_id = :tid AND s.host = :host
-                  AND s.system_type IN ('ecc', 's4hana_onprem', 'ewm')
-                LIMIT 1
-            """),
-            {"tid": tenant_id, "host": record[4]},
-        )
-        sys_row = sys_result.fetchone()
-        if not sys_row:
-            errors.append(
-                "No registered SAP system with stored credentials for this host "
-                "— register and connect the system before write-back"
-            )
+        params = await _system_params(db, tenant_id, str(system_id))
+        if params is None:
+            errors.append("The SAP system of this request has no stored credentials any more; register and connect "
+                          "it before write-back")
         else:
-            from api.services.credential_store import decrypt_password
-
-            params = SAPConnectionParams(
-                host=record[4],   # sap_host from write_back_log
-                client=sys_row[0] or "",
-                sysnr=sys_row[1] or "",
-                user=rfc_user(sys_row),
-                password=decrypt_password(tenant_id, sys_row[2]),
-                **rfc_route_params(sys_row),
-            )
-
             def _apply() -> tuple[list[dict], list[str]]:
                 """Synchronous RFC work on a worker thread (asyncio.to_thread): this handler is ``async def``,
                 so calling it directly would block the event loop for every request for the whole round-trip."""
                 try:
                     with get_connector() as conn:
                         conn.connect(params)
-                        return apply_records(conn, module, by_record), []
+                        return apply_records(conn, module, by_record, based_on), []
                 except SAPConnectorError as e:
                     if "pyrfc_not_installed" in str(e):
                         return [], ["PyRFC not installed"]
@@ -471,30 +499,73 @@ async def approve_writeback(
             applied = sum(1 for r in records if r["committed"])
             errors.extend(record_errors(records, support))
 
-    # Update the log record
-    await db.execute(
-        text("""
-            UPDATE write_back_log
-            SET approved_by = :approver, applied_at = :now,
-                records_updated = :applied, errors = CAST(:errors AS jsonb)
-            WHERE id = :aid AND tenant_id = :tid
-        """),
-        {
-            "approver": approving_user,
-            "now": datetime.now(timezone.utc),
-            "applied": applied,
-            # per record: the simulation and the call with SAP's RETURN messages; no field values
-            "errors": json.dumps({"errors": errors, "records": records}) if errors or records else None,
-            "aid": approval_id,
-            "tid": tenant_id,
-        },
-    )
-    await db.commit()
+    await _close("approved", errors, records, applied)
 
     status = "completed" if not errors else "completed_with_errors"
     logger.info(f"Write-back approved: {approval_id} — applied={applied}, errors={len(errors)}")
 
     return ApprovalResponse(applied=applied, errors=errors, status=status, fields=support, records=records)
+
+
+async def _refuse_claim(db: AsyncSession, tenant_id: str, approval_id: str, user: str) -> NoReturn:
+    """The claim got no row: say why (always raises)."""
+    row = (await db.execute(text(
+        "SELECT requested_by, status, dry_run, (expires_at IS NOT NULL AND expires_at <= now()) "
+        "FROM write_back_log WHERE id = :aid AND tenant_id = :tid"), {"aid": approval_id, "tid": tenant_id})).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Write-back request not found")
+    requested_by, status, dry_run, expired = row
+    if dry_run:  # a validation-only request can never be executed
+        raise HTTPException(status_code=409, detail="This was a dry-run request; submit a new write-back to execute")
+    if status == "pending" and expired:
+        await db.execute(text("UPDATE write_back_log SET status = 'expired' WHERE id = :aid AND tenant_id = :tid "
+                              "AND status = 'pending'"), {"aid": approval_id, "tid": tenant_id})
+        await db.commit()
+        raise HTTPException(status_code=409, detail="This write-back request has expired; submit it again.")
+    if status == "pending" and requested_by == user:
+        raise HTTPException(status_code=403, detail="4-eyes violation: approving user must differ from requesting user")
+    if status == "approved":
+        raise HTTPException(status_code=409, detail="Write-back already approved")
+    raise HTTPException(status_code=409, detail=f"This write-back request is {status}; it can no longer be approved.")
+
+
+class RejectRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=4000, description="Why the write-back is not approved.")
+
+
+@router.post(
+    "/writeback/reject/{approval_id}",
+    dependencies=[Depends(require_permission("approve"))],
+)
+async def reject_writeback(
+    request: Request,
+    approval_id: str,
+    body: RejectRequest,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Reject a pending write-back with a reason. Nothing is sent; the request is closed and keeps the reason."""
+    tenant_id = str(tenant.id)
+    await db.execute(text(f"SET app.tenant_id = \'{tenant_id}\'"))
+    reason = body.reason.strip()
+    if not reason:
+        raise HTTPException(status_code=422, detail="Say why the write-back is rejected.")
+    user = _require_user(request)
+    row = (await db.execute(text("""
+        UPDATE write_back_log SET status = 'rejected', rejected_by = :u, rejected_at = now(), reject_reason = :r
+         WHERE id = :aid AND tenant_id = :tid AND status = 'pending' AND approved_by IS NULL
+        RETURNING id
+    """), {"u": user, "r": reason, "aid": approval_id, "tid": tenant_id})).fetchone()
+    if not row:
+        await db.rollback()
+        exists = (await db.execute(text("SELECT status FROM write_back_log WHERE id = :aid AND tenant_id = :tid"),
+                                   {"aid": approval_id, "tid": tenant_id})).fetchone()
+        if not exists:
+            raise HTTPException(status_code=404, detail="Write-back request not found")
+        raise HTTPException(status_code=409, detail=f"This write-back request is {exists[0]}; it can no longer be "
+                                                    "rejected.")
+    await db.commit()
+    return {"id": approval_id, "status": "rejected", "reason": reason}
 
 
 def record_errors(records: list[dict], support: list[dict]) -> list[str]:
@@ -531,13 +602,16 @@ def resolve_vendors(conn, by_record: dict[str, list[str]]) -> dict[str, dict[str
     return {key: resolve_vendor(conn, key, fields, cache)[1] for key, fields in by_record.items()}
 
 
-def apply_records(conn, module: str, by_record: dict[str, dict]) -> list[dict]:
+def apply_records(conn, module: str, by_record: dict[str, dict],
+                  based_on: Optional[dict[str, dict]] = None) -> list[dict]:
     """Simulate then write each record (sap/bapi_writeback.py write_record) on one connection; per-record
-    results with SAP's RETURN messages. The interface of each BAPI is read once per run."""
+    results with SAP's RETURN messages. The interface of each BAPI is read once per run. ``based_on`` (record_key ->
+    {TABLE.FIELD: value the fix was based on}): a record whose SAP value differs now is skipped as stale, never sent."""
     from sap.bapi_writeback import write_record
 
     cache: dict = {}
-    return [write_record(conn, module, key, changes, apply=True, cache=cache).as_dict()
+    return [write_record(conn, module, key, changes, apply=True, cache=cache,
+                         based_on=(based_on or {}).get(key)).as_dict()
             for key, changes in by_record.items()]
 
 
@@ -565,6 +639,7 @@ class RunCounts(BaseModel):
     failed: int = 0
     needs_check: int = 0              # SAP may hold the change: check it in SAP before sending the record again
     export_only: int = 0
+    stale: int = 0                    # changed in SAP since the fix was proposed: not sent, never overwritten
 
 
 class RunOut(BaseModel):
@@ -762,10 +837,25 @@ async def _send_guards(request: Request, db: AsyncSession, tenant: Tenant, batch
 
     if not settings.live_writeback_enabled:
         raise HTTPException(status_code=409, detail=_LIVE_OFF)
+    from api.routes.remediation import APPROVAL_TTL_DAYS, items_sha256
+
     b, items = await _approved_batch(db, tenant, batch_id)
     user = _require_user(request)
     if b.get("created_by") and str(b["created_by"]) == user:
         raise HTTPException(status_code=403, detail="The batch creator cannot send it to SAP; a second person sends it.")
+    approved_at = b.get("approved_at")
+    if isinstance(approved_at, str):
+        approved_at = datetime.fromisoformat(approved_at)
+    if approved_at is not None and approved_at.tzinfo is None:
+        approved_at = approved_at.replace(tzinfo=timezone.utc)
+    if (b["status"] == "approved" and approved_at is not None
+            and datetime.now(timezone.utc) - approved_at > timedelta(days=APPROVAL_TTL_DAYS)):
+        raise HTTPException(status_code=409, detail=f"This approval is older than {APPROVAL_TTL_DAYS} days and has "
+                                                    "expired. Send the batch back and approve it again before sending.")
+    # the items must be the ones approved: a change edited after approval is never sent under that approval
+    if b.get("approved_sha256") and items_sha256(items) != b["approved_sha256"]:
+        raise HTTPException(status_code=409, detail="The batch's changes differ from the ones that were approved. "
+                                                    "Send the batch back and approve it again before sending.")
     if await held_back(db, str(tenant.id), "write_back", "bapi", str(batch_id)):
         await db.commit()
         raise HTTPException(status_code=409, detail="Sandbox mode is on: nothing is written back to SAP. "
@@ -809,10 +899,14 @@ async def send_batch_writeback(
     errors: list[str] = []
     # (system, module, record_key) -> {TABLE.FIELD: proposed value}, only the fields a BAPI carries
     by_record: dict[tuple[str, str, str], dict] = {}
+    # the same keys -> {TABLE.FIELD: the value the change was based on}; the worker skips the record as stale when SAP
+    # holds another value now (sap/bapi_writeback.py check_stale)
+    based_on: dict[tuple[str, str, str], dict] = {}
     for item, sup in zip(items, support):
         if sup["supported"]:
-            by_record.setdefault((str(item["scope"]), item["module"], item["record_key"]), {})[
-                sup["field"]] = item["proposed_value"]
+            k = (str(item["scope"]), item["module"], item["record_key"])
+            by_record.setdefault(k, {})[sup["field"]] = item["proposed_value"]
+            based_on.setdefault(k, {})[sup["field"]] = item.get("current_value")
     export_only = sum(1 for x in support if not x["supported"])
     if export_only:
         errors.append(f"{export_only} field(s) have no BAPI mapping and were not sent; deliver them with the export")
@@ -839,10 +933,10 @@ async def send_batch_writeback(
             {"id": run_id, "tid": tenant_id, "bid": batch_id, "u": user, "l": current_user_label(), "eo": export_only,
              "errs": json.dumps(errors)})
         await db.execute(text(
-            "INSERT INTO writeback_run_records (tenant_id, run_id, seq, system_id, module, record_key, changes) "
-            "VALUES (:tid, :r, :seq, :sys, :m, :k, CAST(:c AS jsonb))"),
+            "INSERT INTO writeback_run_records (tenant_id, run_id, seq, system_id, module, record_key, changes, "
+            "based_on) VALUES (:tid, :r, :seq, :sys, :m, :k, CAST(:c AS jsonb), CAST(:b AS jsonb))"),
             [{"tid": tenant_id, "r": run_id, "seq": seq, "sys": system_id, "m": module, "k": key,
-              "c": json.dumps(changes, default=str)}
+              "c": json.dumps(changes, default=str), "b": json.dumps(based_on.get((system_id, module, key)), default=str)}
              for seq, ((system_id, module, key), changes) in enumerate(sorted(todo.items()))])
         await db.commit()
     except IntegrityError:  # a second send won the race for the one open run
@@ -886,7 +980,7 @@ async def get_batch_run_records(
     run = await _latest_run(db, tenant, batch_id)
     if not run:
         raise HTTPException(status_code=404, detail="This batch has not been sent to SAP")
-    states = [state] if state else ["failed", "needs_check"]
+    states = [state] if state else ["failed", "needs_check", "stale"]
     limit, offset = max(1, min(limit, 200)), max(0, offset)
     args = {"r": run["id"], "tid": str(tenant.id), "st": states}
     total = (await db.execute(text("SELECT count(*) FROM writeback_run_records WHERE run_id = :r AND tenant_id = :tid "
