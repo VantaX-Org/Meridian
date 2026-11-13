@@ -13,7 +13,7 @@ from api.config import settings
 from api.main import app
 from sap.base import SAPConnectorError
 from tests.route_auth import patch_tenant
-from tests.test_bapi_writeback import FakeRFC
+from tests.test_writeback_safety import ReadRFC
 from tests.test_writeback_batch_route_pg import HEADERS, ME, drive
 from workers.db import tenant_session
 from workers.tasks import run_batch_writeback as worker
@@ -66,7 +66,7 @@ def env(monkeypatch):
 
 def _sap(monkeypatch, fake=None, fail_connect=False):
     """A fake connector; ``opened`` counts connections (one per chunk)."""
-    fake = fake or FakeRFC(testrun=True)
+    fake = fake or ReadRFC({})  # SAP still holds the blank each item was based on
     opened: list = []
 
     class _Conn:
@@ -262,7 +262,7 @@ async def test_the_batch_creator_cannot_resume_or_retry(env, monkeypatch):
 async def test_retry_failed_requeues_only_failed_records(env, monkeypatch):
     engine, tid, bid, sid, queued = env
     bad = {"TYPE": "E", "ID": "M3", "NUMBER": "100", "MESSAGE": "plant not maintained"}
-    fake, _ = _sap(monkeypatch, FakeRFC(testrun=True, sim_return=bad))
+    fake, _ = _sap(monkeypatch, ReadRFC({}, sim_return=bad))
     run = await _send(env)
     drive(tid, run["id"])
     got = (await _call("GET", f"/api/v1/writeback/batches/{bid}/run")).json()

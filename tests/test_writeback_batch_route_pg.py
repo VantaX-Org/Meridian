@@ -15,6 +15,7 @@ from api import deps as api_deps
 from api.main import app
 from tests.route_auth import patch_tenant
 from tests.test_bapi_writeback import FakeRFC
+from tests.test_writeback_safety import ReadRFC
 
 pytestmark = pytest.mark.skipif(not os.getenv("MERIDIAN_TEST_DB_URL"), reason="requires MERIDIAN_TEST_DB_URL")
 
@@ -102,7 +103,7 @@ async def send_and_drive(monkeypatch, tid, bid):
 
 
 def _fake_sap(monkeypatch) -> FakeRFC:
-    fake = FakeRFC(testrun=True)
+    fake = ReadRFC({"MARC.PLIFZ": ""})  # SAP still holds the blank the item was based on (current_value '')
 
     class _Conn(FakeRFC):
         def __enter__(self):
