@@ -3,6 +3,8 @@
 .nx-load-h { margin: 0; font-size: var(--nx-fs-h1); line-height: var(--nx-lh-h1); font-weight: var(--nx-w-heading); }
 .nx-load-tabs { min-inline-size: 0; overflow-x: auto; }
 .nx-load-panel { min-inline-size: 0; }
+/* The Load page already gives the gutter, so a v2 screen on a tab takes no second or third one. */
+.nx-load .nx-legacy, .nx-load .nx-legacy > .m2-root { padding-inline: 0; }
 .nx-load-panel:focus { outline: none; }
 
 .nx-ld-step { display: flex; flex-direction: column; gap: var(--nx-s4); min-inline-size: 0; }

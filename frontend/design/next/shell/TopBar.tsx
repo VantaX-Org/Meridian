@@ -110,7 +110,7 @@ export function TopBar({ onOpenCommand, onShortcuts }: TopBarProps) {
         <button type="button" className="nx-tbtn" aria-haspopup="dialog" aria-expanded={open?.kind === "inbox"} aria-label={t("Inbox {inbox}, unread", { inbox })} onClick={() => toggle("inbox")}>
           {t("Inbox")} <b>{inbox}</b>
         </button>
-        <button type="button" className="nx-tbtn" aria-label={theme === "dark" ? t("Switch to light") : t("Switch to dark")} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+        <button type="button" className="nx-tbtn nx-theme-btn" aria-label={theme === "dark" ? t("Switch to light") : t("Switch to dark")} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
           <Icon name={theme === "dark" ? "sun" : "moon"} size={16} />
         </button>
         <Account onShortcuts={onShortcuts} />

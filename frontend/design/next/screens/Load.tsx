@@ -14,6 +14,7 @@ import { S4Readiness } from "@/design/v2/screens/S4Readiness";
 import { FlightDeck } from "@/design/v2/screens/FlightDeck";
 import { LandscapeCanvas } from "@/design/v2/screens/Landscape";
 import { LoadPrepare } from "../load/LoadPrepare";
+import { LegacyMount } from "../shell/LegacyMount";
 import { t } from "@/lib/v2/i18n";
 import { useLoadRuns } from "@/lib/api/next/load";
 import { ChooseTarget } from "../load/ChooseTarget";
@@ -96,13 +97,13 @@ export function Load({ tab }: { tab: LoadTab }) {
   const body = () => {
     switch (tab) {
       case "prepare": return prepare();
-      case "analysis": return <><LoadPrepare /><Migration /></>;
-      case "compare": return <SystemCompare />;
-      case "plan": return <LoadPlan />;
-      case "s4": return <S4Readiness />;
-      case "go-live": return <FlightDeck />;
+      case "analysis": return <><LoadPrepare /><LegacyMount><Migration /></LegacyMount></>;
+      case "compare": return <LegacyMount><SystemCompare /></LegacyMount>;
+      case "plan": return <LegacyMount><LoadPlan /></LegacyMount>;
+      case "s4": return <LegacyMount><S4Readiness /></LegacyMount>;
+      case "go-live": return <LegacyMount><FlightDeck /></LegacyMount>;
       // The waves view lives here now; /?view=waves redirects to this tab.
-      case "waves": return <LandscapeCanvas waves />;
+      case "waves": return <LegacyMount><LandscapeCanvas waves /></LegacyMount>;
       case "history": return <History />;
     }
   };

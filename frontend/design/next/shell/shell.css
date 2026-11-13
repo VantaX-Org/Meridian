@@ -14,7 +14,7 @@
 .nx-rail-item { display: flex; align-items: center; gap: var(--nx-s3); min-height: var(--nx-h-control); padding: 0 var(--nx-s3); border-radius: var(--nx-r-control); color: var(--nx-ink-2); text-decoration: none; background: transparent; border: 0; font: inherit; cursor: pointer; white-space: nowrap; position: relative; text-align: left; }
 .nx-rail-item:hover { background: var(--nx-surface-2); color: var(--nx-ink); }
 .nx-rail-item:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: -2px; }
-.nx-rail-item[aria-current="page"] { background: var(--nx-accent-soft); color: var(--nx-accent-ink); }
+.nx-rail-item[aria-current="page"] { background: var(--nx-accent-soft); color: var(--nx-ink); }
 .nx-rail-glyph { flex: none; width: 1.25rem; height: 1.25rem; }
 .nx-rail-label { overflow: hidden; text-overflow: ellipsis; }
 .nx-rail:not([data-open="true"]):not([data-pinned="true"]) .nx-rail-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -30,16 +30,16 @@
 .nx-crumb a:hover { color: var(--nx-ink); text-decoration: underline; }
 .nx-crumb [aria-current] { color: var(--nx-ink); font-weight: var(--nx-w-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nx-crumb-sep { color: var(--nx-ink-3); }
-.nx-search { flex: 1 1 auto; max-width: 32rem; margin: 0 auto; display: flex; align-items: center; gap: var(--nx-s2); height: var(--nx-h-control); padding: 0 var(--nx-s3); background: var(--nx-surface-2); border: 1px solid var(--nx-control-edge); border-radius: var(--nx-r-control); color: var(--nx-ink-3); font: inherit; font-size: var(--nx-fs-small); cursor: text; min-width: 0; }
+.nx-search { flex: 1 1 auto; max-width: 32rem; margin: 0 auto; display: flex; align-items: center; gap: var(--nx-s2); height: var(--nx-h-control); padding: 0 var(--nx-s3); background: var(--nx-surface-2); border: 1px solid var(--nx-control-edge); border-radius: var(--nx-r-control); color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); cursor: text; min-width: 0; }
 .nx-search:hover { border-color: var(--nx-border-strong); }
 .nx-search:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: 1px; }
 .nx-search-ph { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nx-kbd { font-family: var(--nx-mono); font-size: var(--nx-fs-micro); color: var(--nx-ink-3); border: 1px solid var(--nx-border); border-radius: var(--nx-r-control); padding: 0 var(--nx-s1); }
+.nx-kbd { font-family: var(--nx-mono); font-size: var(--nx-fs-micro); color: var(--nx-ink-2); border: 1px solid var(--nx-border); border-radius: var(--nx-r-control); padding: 0 var(--nx-s1); }
 .nx-top-r { display: flex; align-items: center; gap: var(--nx-s2); margin-left: auto; }
 .nx-tbtn { display: inline-flex; align-items: center; gap: var(--nx-s2); height: var(--nx-h-control); padding: 0 var(--nx-s3); background: transparent; border: 1px solid transparent; border-radius: var(--nx-r-control); color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); cursor: pointer; text-decoration: none; }
 .nx-tbtn:hover { background: var(--nx-surface-2); color: var(--nx-ink); }
 .nx-tbtn:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: 1px; }
-.nx-tbtn[aria-expanded="true"] { background: var(--nx-accent-soft); color: var(--nx-accent-ink); }
+.nx-tbtn[aria-expanded="true"] { background: var(--nx-accent-soft); color: var(--nx-ink); }
 .nx-tbtn b { font-variant-numeric: tabular-nums; color: var(--nx-ink); }
 
 .nx-main { grid-area: main; min-width: 0; min-height: 0; overflow: auto; position: relative; }
@@ -53,11 +53,13 @@
   .nx-rail { display: none; }
   .nx-bottom { grid-area: bottom; display: flex; background: var(--nx-surface); border-top: 1px solid var(--nx-border); }
   .nx-bottom a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--nx-s1); color: var(--nx-ink-2); text-decoration: none; font-size: var(--nx-fs-micro); line-height: var(--nx-lh-micro); position: relative; min-width: 0; }
-  .nx-bottom a[aria-current="page"] { color: var(--nx-accent-ink); background: var(--nx-accent-soft); }
+  .nx-bottom a[aria-current="page"] { color: var(--nx-ink); background: var(--nx-accent-soft); }
   .nx-bottom a:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: -2px; }
   .nx-bottom .nx-rail-badge { position: absolute; top: var(--nx-s1); right: 25%; margin: 0; }
   .nx-search-ph { display: none; }
   .nx-search { flex: none; margin: 0; }
+  /* At phone width the theme sits in the account menu and the account shows its icon only, so the bar fits. */
+  .nx-theme-btn, .nx-account > span, .nx-kbd { display: none; }
   .nx-crumb { display: none; }
 }
 
