@@ -8,7 +8,7 @@ import { V2Link } from "@/design/v2/parts";
 import type { AletheiaFinding } from "@/lib/api/v2/insights";
 import { actionOf, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { AreaSpark, Button, Ring, SegBar } from "../kit";
-import { objectHref, type PortfolioActions } from "../portfolio/BulkBar";
+import { cycleHref, objectHref, type PortfolioActions } from "../portfolio/BulkBar";
 import { deltaOf, deltaSentence } from "./model";
 
 /** The one primary action of a card, by cycle step. */
@@ -24,7 +24,7 @@ function Primary({ row, act }: { row: PortfolioRow; act: PortfolioActions }) {
     return <Button variant="primary" size={32} icon="refresh" onClick={() => act.score([row])} disabled={running || !!deny("analyse")} reason={running ? t("Scoring run {n}", { n }) : deny("analyse")}>{t("Score again")}</Button>;
   }
   if (at === "ready") return <V2Link className="nx-btn nx-btn-primary nx-btn-sm" href={`/load?object=${encodeURIComponent(row.module)}&run=${row.version_id}`}>{t("Prepare load files")}</V2Link>;
-  return <V2Link className="nx-btn nx-btn-primary nx-btn-sm" href={objectHref(row, act.sysName, `/cycle?step=compare&run=${row.version_id}`)}>{t("Compare runs")}</V2Link>;
+  return <V2Link className="nx-btn nx-btn-primary nx-btn-sm" href={cycleHref(row, act.sysName, `?step=compare&run=${row.version_id}`)}>{t("Compare runs")}</V2Link>;
 }
 
 /** The visual lead of a card: score ring, DQS trend and the records that need a fix. Real data only. */
@@ -72,7 +72,7 @@ export function StoryCard({ row, act, finding, evidence = 0, onEvidence, selecte
   const d = deltaOf(row);
   const name = `${row.label} (${row.module})`;
   const failed = row.freshness === "failed";
-  const compare = objectHref(row, act.sysName, `/cycle?step=compare&run=${row.version_id}`);
+  const compare = cycleHref(row, act.sysName, `?step=compare&run=${row.version_id}`);
   return (
     <article className="nx-fd-card" aria-label={name} data-testid="pf-card" data-selected={selected ?? false}>
       <header className="nx-fd-card-head">
