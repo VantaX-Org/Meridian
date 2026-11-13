@@ -10294,5 +10294,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The output of this run could not be read.": "この実行の出力を読み込めませんでした。",
   "Output": "出力",
   "No template was chosen for this run.": "この実行にはテンプレートが選択されていません。",
-  "To fill again, open the object in Migration and fill its template from the full version.": "再入力するには、移行でオブジェクトを開き、完全版からテンプレートを入力してください。",
+  "Refill fills the template again from the newest full extraction of this system.": "再入力では、このシステムの最新の完全抽出からテンプレートをもう一度入力します。",
+  "Refill": "再入力",
+  "Refilling…": "再入力中…",
+  "The template could not be filled again. Try again.": "テンプレートを再入力できませんでした。もう一度お試しください。",
 };

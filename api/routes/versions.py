@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import jobs
-from api.services.extract_target import ExtractTargetOut
+from api.services.extract_target import ExtractTargetOut, TemplateFillOut
 from api.services.paging import order_by, page_meta
 from api.services.run_lineage import lineage_sql
 from api.services.version_status import ENDED, finished_sql
@@ -929,3 +929,49 @@ async def get_extract_target_file(version_id: str, module: str, db: AsyncSession
     data = await run_in_threadpool(storage.download_file, settings.minio_bucket_reports, key)
     return Response(data, media_type=media_type(entry["format"]),
                     headers={"Content-Disposition": f"attachment; filename={module}_{version_id[:8]}.{entry['format']}"})
+
+
+@router.post("/versions/{version_id}/extract-target/{module}/refill", response_model=TemplateFillOut,
+             dependencies=[Depends(require_permission("export", scope=scope_from_path))])
+async def refill_extract_target(version_id: str, module: str, request: Request, db: AsyncSession = Depends(get_db),
+                                tenant: Tenant = Depends(get_tenant)):
+    """Fill this run's template for ``module`` again, from the newest full extraction of the run's system.
+
+    The file replaces this run's filled file. 409 while an extraction of that system is queued or running, or when
+    no full extraction covers the module. A failed fill comes back on the entry (status failed), not as an error."""
+    from starlette.concurrency import run_in_threadpool
+
+    from api.services import extract_target as xt
+    from api.services.rbac import write_audit
+    from workers.db import get_sync_engine, tenant_session
+
+    try:
+        vid = uuid.UUID(version_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Not a run id.") from None
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    found = (await db.execute(text("SELECT extract_target, metadata->>'system_id' FROM analysis_versions "
+                                   "WHERE id = :v AND tenant_id = :t"), {"v": vid, "t": str(tenant.id)})).fetchone()
+    target = (found[0] if found else None) or {}
+    if found is None or not any(e.get("module") == module for e in target.get("templates", [])):
+        raise HTTPException(status_code=404, detail="No template was chosen for this object on this run.")
+    system_id = found[1]
+    if xt.extraction_running(str(tenant.id), system_id):
+        raise HTTPException(status_code=409, detail="An extraction of this system is still running. "
+                                                    "Refill when it has finished.")
+    src = (await db.execute(text(xt.LATEST_FULL_SQL), {"t": str(tenant.id), "s": system_id,
+                                                       "mj": json.dumps([module])})).scalar()
+    if not src:
+        raise HTTPException(status_code=409, detail="No full extraction of this system covers this object yet.")
+
+    def fill() -> dict:
+        with tenant_session(get_sync_engine(), tenant.id) as s:
+            return xt.autofill(s, str(tenant.id), version_id, target, only=module, source_version_id=src, audit=False)
+
+    target = await run_in_threadpool(fill)
+    entry = next(e for e in target["templates"] if e["module"] == module)
+    await write_audit(db, tenant.id, request, "migration.template.refill", "target_template", entry["template_id"],
+                      None, {"version_id": version_id, "source_version_id": src, "module": module,
+                             "status": entry["status"], "error": entry.get("error"), **(entry.get("summary") or {})})
+    await db.commit()
+    return entry

@@ -10293,7 +10293,10 @@ export const en = {
   "The output of this run could not be read.": "The output of this run could not be read.",
   "Output": "Output",
   "No template was chosen for this run.": "No template was chosen for this run.",
-  "To fill again, open the object in Migration and fill its template from the full version.": "To fill again, open the object in Migration and fill its template from the full version.",
+  "Refill fills the template again from the newest full extraction of this system.": "Refill fills the template again from the newest full extraction of this system.",
+  "Refill": "Refill",
+  "Refilling…": "Refilling…",
+  "The template could not be filled again. Try again.": "The template could not be filled again. Try again.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

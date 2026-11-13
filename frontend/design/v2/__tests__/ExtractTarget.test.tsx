@@ -15,13 +15,14 @@ const mocks = vi.hoisted(() => ({
   templates: {} as Record<string, { id: string; name: string; version: number; created_at: string }[]>,
   run: { target_system_id: "tgt", templates: [] } as unknown,
   open: vi.fn(async () => "f.xlsx"),
+  refill: vi.fn(async () => ({})),
 }));
 
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 vi.mock("@/lib/v2/runs-queries", () => ({ useSystemsExtended: () => ({ data: mocks.systems }) }));
 vi.mock("../admin/kit", async (orig) => ({ ...(await orig<object>()), useCan: () => () => mocks.can }));
 vi.mock("@/lib/api/v2/migration", () => ({ getTemplates: async (m: string) => ({ module: m, templates: mocks.templates[m] ?? [] }) }));
-vi.mock("@/lib/api/v2/extract-target", () => ({ getRunExtractTarget: async () => mocks.run, openExtractTargetFile: mocks.open }));
+vi.mock("@/lib/api/v2/extract-target", () => ({ getRunExtractTarget: async () => mocks.run, openExtractTargetFile: mocks.open, refillExtractTarget: mocks.refill }));
 
 const wrap = (ui: ReactNode) => render(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);
 const tpl = (id: string, name: string, at: string) => ({ id, name, version: 1, created_at: at });
@@ -30,6 +31,8 @@ beforeEach(() => {
   mocks.can = true;
   mocks.templates = { material_master: [tpl("old", "Material load", "2026-01-01"), tpl("new", "Material load v2", "2026-02-01")] };
   mocks.open.mockClear();
+  mocks.refill.mockReset();
+  mocks.refill.mockImplementation(async () => ({}));
 });
 
 describe("buildChoice", () => {
@@ -134,6 +137,31 @@ describe("RunOutputCard", () => {
     mocks.run = { target_system_id: "tgt", templates: [filled] };
     wrap(<RunOutputCard id="v1" />);
     expect(await screen.findByText(/this template has since been deleted/)).toBeInTheDocument();
+  });
+
+  it("refills a module from the newest full extraction", async () => {
+    mocks.run = { target_system_id: "tgt", templates: [filled] };
+    wrap(<RunOutputCard id="v1" />);
+    fireEvent.click(await screen.findByTestId("run-output-refill-material_master"));
+    await waitFor(() => expect(mocks.refill).toHaveBeenCalledWith("v1", "material_master"));
+  });
+
+  it("shows why a refill was refused while an extraction runs", async () => {
+    mocks.refill.mockImplementation(async () => {
+      throw { response: { status: 409, data: { detail: "An extraction of this system is still running. Refill when it has finished." } } };
+    });
+    mocks.run = { target_system_id: "tgt", templates: [{ module: "material_master", template_id: "new", status: "skipped", error: "delta run; refill from full version" }] };
+    wrap(<RunOutputCard id="v1" />);
+    fireEvent.click(await screen.findByTestId("run-output-refill-material_master"));
+    expect(await screen.findByText("An extraction of this system is still running. Refill when it has finished.")).toBeInTheDocument();
+  });
+
+  it("hides Refill without the export permission", async () => {
+    mocks.can = false;
+    mocks.run = { target_system_id: "tgt", templates: [filled] };
+    wrap(<RunOutputCard id="v1" />);
+    await screen.findByTestId("run-output-noexport-material_master");
+    expect(screen.queryByTestId("run-output-refill-material_master")).toBeNull();
   });
 
   it("renders nothing for a run without a target", async () => {

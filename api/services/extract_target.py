@@ -30,6 +30,7 @@ class TemplateFillOut(BaseModel):
     format: Optional[str] = None
     summary: Optional[dict[str, Any]] = None
     download_url: Optional[str] = None
+    source_version_id: Optional[str] = None  # the run whose data filled it: this run, or the one a refill read
 
 
 class ExtractTargetOut(BaseModel):
@@ -114,12 +115,15 @@ def _save(session: Any, tenant_id: str, version_id: str, target: dict) -> None:
 DELTA_SKIP = "delta run; refill from full version"
 
 
-def autofill(session: Any, tenant_id: str, version_id: str, target: dict, delta: bool = False) -> dict:
+def autofill(session: Any, tenant_id: str, version_id: str, target: dict, delta: bool = False, *,
+             only: Optional[str] = None, source_version_id: Optional[str] = None, audit: bool = True) -> dict:
     """Fill each assigned template from the stored run with the on-demand export, store the file, set
     last_fill_version_id and audit it. A failed fill is recorded on its entry and never raised.
 
     ``delta`` is true only for a run that stored partial data (not a delta that fell back to a full read): a
-    load file built from it would be a partial load, so each entry is marked skipped instead."""
+    load file built from it would be a partial load, so each entry is marked skipped instead.
+    A refill passes ``only`` (one module), ``source_version_id`` (the run whose data fills it; the file and the
+    entry stay on ``version_id``) and ``audit=False`` (the route audits with the person who asked)."""
     import datetime
 
     from api.config import settings
@@ -127,7 +131,10 @@ def autofill(session: Any, tenant_id: str, version_id: str, target: dict, delta:
     from api.services import storage
     from api.services.purge import write_audit_row
 
+    data_vid = source_version_id or version_id
     for entry in target.get("templates", []):
+        if only and entry["module"] != only:
+            continue
         if delta:
             entry.update(status="skipped", error=DELTA_SKIP)
             _save(session, tenant_id, version_id, target)
@@ -138,16 +145,17 @@ def autofill(session: Any, tenant_id: str, version_id: str, target: dict, delta:
                                   {"i": entry["template_id"], "m": entry["module"], "t": str(tenant_id)}).fetchone()
             if row is None:
                 raise ValueError("Template no longer exists.")
-            content, ext, summary = _export_workbook(tenant_id, version_id, bytes(row[4]), row[2], "xlsx",
+            content, ext, summary = _export_workbook(tenant_id, data_vid, bytes(row[4]), row[2], "xlsx",
                                                      row[3] or {}, True, fresh=True)
             key = file_key(tenant_id, version_id, entry["module"], ext)
             storage.upload_file(settings.minio_bucket_reports, key, content, suppress=False)
             session.execute(text("UPDATE target_templates SET last_fill_at = now(), last_fill_version_id = :v "
                                  "WHERE id = CAST(:i AS uuid) AND tenant_id = CAST(:t AS uuid)"),
-                            {"v": version_id, "i": entry["template_id"], "t": str(tenant_id)})
-            write_audit_row(session, tenant_id, None, "migration.template.autofill", "target_template",
-                            entry["template_id"], {"format": "xlsx", "version_id": version_id, **summary})
-            entry.update(status="filled", error=None, format=ext, summary=summary,
+                            {"v": data_vid, "i": entry["template_id"], "t": str(tenant_id)})
+            if audit:
+                write_audit_row(session, tenant_id, None, "migration.template.autofill", "target_template",
+                                entry["template_id"], {"format": "xlsx", "version_id": version_id, **summary})
+            entry.update(status="filled", error=None, format=ext, summary=summary, source_version_id=data_vid,
                          filled_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
                          download_url=download_url(version_id, entry["module"]))
         except Exception as e:  # noqa: BLE001 - a fill must never fail the extraction
@@ -157,3 +165,29 @@ def autofill(session: Any, tenant_id: str, version_id: str, target: dict, delta:
             entry.update(status="failed", error=re.sub(r"\s+", " ", str(detail))[:300])
         _save(session, tenant_id, version_id, target)
     return target
+
+
+# The newest run of a system that stored every row of ``module``: a delta that read only the changes (it names a
+# baseline) would fill a partial load, and a failed run stored nothing to read.
+LATEST_FULL_SQL = (
+    "SELECT CAST(id AS text) FROM analysis_versions WHERE tenant_id = :t AND metadata->>'system_id' = :s "
+    "AND metadata->'modules' @> CAST(:mj AS jsonb) AND metadata->>'dataset_path' IS NOT NULL "
+    "AND status <> 'failed' AND metadata->'delta'->>'baseline_version_id' IS NULL "
+    "ORDER BY run_at DESC, id DESC LIMIT 1")
+BUSY_WINDOW_SECONDS = 24 * 3600  # an extraction job silent this long crashed and must not block a refill for ever
+
+
+def extraction_running(tenant_id: str, system_id: Optional[str]) -> bool:
+    """Whether an extraction of ``system_id`` is queued or running. An unreadable job registry raises 503:
+    "cannot tell" is not "nothing is running"."""
+    import time
+
+    from api.services import jobs
+
+    try:
+        active = jobs.list_jobs(str(tenant_id), active_only=True, strict=True)
+    except Exception as e:
+        raise HTTPException(503, "Could not check for running extractions. Try again shortly.") from e
+    cutoff = time.time() - BUSY_WINDOW_SECONDS
+    return any(j.get("kind") == "extraction" and str(j.get("system_id")) == str(system_id)
+               and float(j.get("updated_at") or 0) > cutoff for j in active)

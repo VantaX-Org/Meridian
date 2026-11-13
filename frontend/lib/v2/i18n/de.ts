@@ -10294,5 +10294,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The output of this run could not be read.": "Das Ergebnis dieses Laufs konnte nicht gelesen werden.",
   "Output": "Ergebnis",
   "No template was chosen for this run.": "Für diesen Lauf wurde keine Vorlage gewählt.",
-  "To fill again, open the object in Migration and fill its template from the full version.": "Zum erneuten Füllen öffnen Sie das Objekt unter Migration und füllen die Vorlage aus der vollständigen Version.",
+  "Refill fills the template again from the newest full extraction of this system.": "Neu füllen füllt die Vorlage erneut aus der neuesten vollständigen Extraktion dieses Systems.",
+  "Refill": "Neu füllen",
+  "Refilling…": "Wird neu gefüllt…",
+  "The template could not be filled again. Try again.": "Die Vorlage konnte nicht erneut gefüllt werden. Versuchen Sie es noch einmal.",
 };

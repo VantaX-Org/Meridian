@@ -3,7 +3,7 @@
  * a target template per object has each template filled from the run once it is stored. These read the outcome and
  * open the filled file. A failed fill never fails the run: its entry carries the error.
  */
-import { v2Get } from "./client";
+import { v2Get, v2Send } from "./client";
 import { v2Download } from "./download";
 
 export type TemplateFillStatus = "pending" | "filled" | "failed" | "skipped";
@@ -26,6 +26,8 @@ export interface TemplateFill {
   summary?: Record<string, unknown> | null;
   /** Relative to the site root; open it with openExtractTargetFile. */
   download_url?: string | null;
+  /** The run the rows were read from: this run, or the newest full extraction of its system after a refill. */
+  source_version_id?: string | null;
 }
 
 export interface ExtractTarget {
@@ -41,3 +43,7 @@ export const getRunExtractTarget = (versionId: string): Promise<ExtractTarget> =
 /** Saves the template filled from this run for one module. Returns the saved file name. */
 export const openExtractTargetFile = (versionId: string, module: string): Promise<string> =>
   v2Download(`/versions/${enc(versionId)}/extract-target/${enc(module)}/file`, undefined, `${module}.xlsx`);
+
+/** Fills this run's template for one module again, from the newest full extraction of the run's system. 409 while an extraction of that system runs. */
+export const refillExtractTarget = (versionId: string, module: string): Promise<TemplateFill> =>
+  v2Send("POST", `/versions/${enc(versionId)}/extract-target/${enc(module)}/refill`);

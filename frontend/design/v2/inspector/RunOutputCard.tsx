@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getRunExtractTarget, openExtractTargetFile, type TemplateFill } from "@/lib/api/v2/extract-target";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getRunExtractTarget, openExtractTargetFile, refillExtractTarget, type TemplateFill } from "@/lib/api/v2/extract-target";
 import { getTemplates } from "@/lib/api/v2/migration";
+import { errorSentence } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
 import { labelText } from "@/lib/v2/labels";
@@ -33,6 +34,8 @@ export function fillSummary(s: Record<string, unknown> | null | undefined): stri
 function Row({ versionId, fill, exists, canExport }: { versionId: string; fill: TemplateFill; exists: boolean | null; canExport: boolean }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [refilling, setRefilling] = useState(false);
+  const qc = useQueryClient();
   const word = fill.status === "filled" ? t("Filled") : fill.status === "failed" ? t("Failed") : fill.status === "skipped" ? t("Skipped") : t("Waiting");
   const summary = fillSummary(fill.summary);
   return (
@@ -65,6 +68,22 @@ function Row({ versionId, fill, exists, canExport }: { versionId: string; fill: 
         ) : (
           <div className="m2-meta" data-testid={`run-output-noexport-${fill.module}`}>{t("Downloading needs the export permission. Ask an administrator.")}</div>
         )
+      ) : null}
+      {canExport ? (
+        <button type="button" className="m2-btn" disabled={refilling} data-testid={`run-output-refill-${fill.module}`} onClick={async () => {
+          setRefilling(true);
+          setErr(null);
+          try {
+            await refillExtractTarget(versionId, fill.module);
+            await qc.invalidateQueries({ queryKey: ["v2", "run-extract-target"] });
+          } catch (e) {
+            setErr(errorSentence(e, t("The template could not be filled again. Try again.")));
+          } finally {
+            setRefilling(false);
+          }
+        }}>
+          {refilling ? t("Refilling…") : t("Refill")}
+        </button>
       ) : null}
       {err ? <div className="m2-prov" role="alert">{err}</div> : null}
     </li>
@@ -108,7 +127,7 @@ export function RunOutputCard({ id }: { id: string }) {
       )}
       {fills.some((f) => f.status === "failed" || f.status === "skipped") ? (
         <p className="m2-meta">
-          {t("To fill again, open the object in Migration and fill its template from the full version.")}
+          {t("Refill fills the template again from the newest full extraction of this system.")}
         </p>
       ) : null}
     </section>

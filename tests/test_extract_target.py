@@ -184,3 +184,130 @@ def test_extract_succeeds_when_autofill_raises(monkeypatch):
                        False, None, extract_target=target)
     assert out["status"] == "success" and out["version_id"] == "ver-1"
     assert finished and finished[0][1].get("error") is None
+
+
+# ── Refill: POST /versions/{id}/extract-target/{module}/refill ────────────────
+
+RUN, NEWEST = "11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222"
+
+
+class _Res:
+    def __init__(self, row):
+        self.row = row
+
+    def fetchone(self):
+        return self.row
+
+    def scalar(self):
+        return self.row[0] if self.row else None
+
+
+class _RefillDB:
+    """Answers the three reads the route makes and records the audit insert."""
+
+    def __init__(self, target, newest=NEWEST):
+        self.target, self.newest, self.audits, self.commits = target, newest, [], 0
+
+    async def execute(self, stmt, params=None):
+        sql = str(stmt)
+        if "INSERT INTO audit_log" in sql:
+            self.audits.append(params)
+        if "SELECT extract_target" in sql:
+            return _Res((self.target, "sys-1") if self.target is not None else None)
+        if "dataset_path" in sql:
+            return _Res((self.newest,) if self.newest else None)
+        return _Res(None)
+
+    async def commit(self):
+        self.commits += 1
+
+
+def _refill_client(monkeypatch, db, running=False):
+    import contextlib
+    import uuid as _uuid
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes.versions import router
+
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    monkeypatch.setattr("api.services.jobs.list_jobs", lambda *a, **k: [
+        {"kind": "extraction", "system_id": "sys-1", "status": "running", "updated_at": 9e12}] if running else [])
+    monkeypatch.setattr("workers.db.get_sync_engine", lambda: object())
+    monkeypatch.setattr("workers.db.tenant_session", lambda e, t: contextlib.nullcontext(MagicMock()))
+    api = FastAPI()
+    api.include_router(router)
+
+    async def _db():
+        yield db
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(_uuid.UUID("33333333-3333-3333-3333-333333333333"), "T", [])
+    return TestClient(api)
+
+
+def _refill(client, role="steward", module="material_master"):
+    return client.post(f"/api/v1/versions/{RUN}/extract-target/{module}/refill", headers={"X-User-Role": role})
+
+
+def test_refill_fills_from_newest_full_run_and_audits(monkeypatch):
+    calls = []
+
+    def fake_autofill(session, tenant_id, version_id, target, delta=False, **kw):
+        calls.append((version_id, kw))
+        target["templates"][0].update(status="filled", summary={"rows": 2}, source_version_id=kw["source_version_id"])
+        return target
+    monkeypatch.setattr(xt, "autofill", fake_autofill)
+    db = _RefillDB(_target())
+    r = _refill(_refill_client(monkeypatch, db))
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "filled" and r.json()["source_version_id"] == NEWEST
+    assert calls == [(RUN, {"only": "material_master", "source_version_id": NEWEST, "audit": False})]
+    assert db.audits and db.audits[0]["a"] == "migration.template.refill" and db.commits == 1
+
+
+def test_refill_409_while_extraction_of_the_system_runs(monkeypatch):
+    monkeypatch.setattr(xt, "autofill", lambda *a, **k: pytest.fail("must not fill"))
+    db = _RefillDB(_target())
+    r = _refill(_refill_client(monkeypatch, db, running=True))
+    assert r.status_code == 409 and "still running" in r.json()["detail"]
+    assert db.audits == []
+
+
+def test_refill_409_without_a_full_run(monkeypatch):
+    r = _refill(_refill_client(monkeypatch, _RefillDB(_target(), newest=None)))
+    assert r.status_code == 409
+
+
+def test_refill_404_for_module_without_template_or_foreign_run(monkeypatch):
+    assert _refill(_refill_client(monkeypatch, _RefillDB(_target())), module="customer_master").status_code == 404
+    assert _refill(_refill_client(monkeypatch, _RefillDB(None))).status_code == 404
+
+
+def test_refill_needs_export_permission(monkeypatch):
+    assert _refill(_refill_client(monkeypatch, _RefillDB(_target())), role="viewer").status_code == 403
+
+
+def test_extraction_running_unreadable_registry_is_503(monkeypatch):
+    def down(*a, **k):
+        raise RuntimeError("registry down")
+    monkeypatch.setattr("api.services.jobs.list_jobs", down)
+    with pytest.raises(HTTPException) as e:
+        xt.extraction_running("t", "sys-1")
+    assert e.value.status_code == 503
+
+
+def test_autofill_only_refills_one_module_from_source_run(monkeypatch):
+    import api.routes.migration as mig
+    from api.services import storage
+    seen, uploads = [], []
+    monkeypatch.setattr(mig, "_export_workbook", lambda t, v, *a, **k: seen.append(v) or (b"f", "xlsx", {}))
+    monkeypatch.setattr(storage, "upload_file", lambda b, k, c, **kw: uploads.append(k))
+    target = {"templates": [{"module": "material_master", "template_id": "t-mat", "status": "failed"},
+                            {"module": "customer_master", "template_id": "t-cus", "status": "failed"}]}
+    out = xt.autofill(_session(), "tenant", "ver-1", target, only="material_master", source_version_id="ver-0",
+                      audit=False)
+    assert seen == ["ver-0"] and uploads == ["autofill/tenant/ver-1/material_master.xlsx"]
+    assert [e["status"] for e in out["templates"]] == ["filled", "failed"]
+    assert out["templates"][0]["source_version_id"] == "ver-0"
