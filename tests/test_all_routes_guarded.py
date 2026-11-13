@@ -51,29 +51,45 @@ def _dependency_names(dependant, out):
     return out
 
 
+def _routes(routes=None, prefix="", extra=()):
+    """(full path, route, include-level dependency names) for every APIRoute.
+
+    FastAPI <0.140 flattens included routers into app.routes with the prefix and include dependencies
+    applied. FastAPI >=0.140 (CI pins 0.146) keeps each include as one _IncludedRouter whose
+    original_router holds the bare routes, with prefix and dependencies on include_context; reading
+    app.routes alone there finds no APIRoute at all, so the guard test passed vacuously."""
+    for r in app.routes if routes is None else routes:
+        if isinstance(r, APIRoute):
+            yield prefix + r.path, r, list(extra)
+        elif hasattr(r, "original_router"):
+            ctx = r.include_context
+            deps = [getattr(d.dependency, "__qualname__", repr(d.dependency)) for d in ctx.dependencies]
+            yield from _routes(r.original_router.routes, prefix + ctx.prefix, (*extra, *deps))
+
+
 def _guarded(names):
     return any("require_permission" in n or "require_any_permission" in n for n in names)
 
 
 def test_every_route_has_a_permission_dependency():
     missing = []
-    for route in app.routes:
-        if not isinstance(route, APIRoute):
-            continue
-        names = _dependency_names(route.dependant, [])
-        if route.path.startswith(SCIM_PREFIX):
-            assert any("scim_context" in n for n in names), f"{route.path} lacks the SCIM bearer check"
+    routes = list(_routes())
+    assert len(routes) > 100, "route enumeration found almost nothing; the FastAPI router layout changed"
+    for path, route, extra in routes:
+        names = _dependency_names(route.dependant, extra)
+        if path.startswith(SCIM_PREFIX):
+            assert any("scim_context" in n for n in names), f"{path} lacks the SCIM bearer check"
             continue
         if _guarded(names):
             continue
-        if all((m, route.path) in ALLOWLIST for m in route.methods):
+        if all((m, path) in ALLOWLIST for m in route.methods):
             continue
-        missing.append(f"{sorted(route.methods)} {route.path} ({route.endpoint.__module__})")
+        missing.append(f"{sorted(route.methods)} {path} ({route.endpoint.__module__})")
     assert not missing, "Routes without a permission dependency:\n" + "\n".join(missing)
 
 
 def test_allowlist_has_no_stale_entries():
-    live = {(m, r.path) for r in app.routes if isinstance(r, APIRoute) for m in r.methods}
+    live = {(m, path) for path, r, _ in _routes() for m in r.methods}
     assert ALLOWLIST <= live, f"Allowlist names routes that no longer exist: {sorted(ALLOWLIST - live)}"
 
 
