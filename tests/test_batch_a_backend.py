@@ -74,13 +74,14 @@ def test_cleaning_edits_strip_the_field_description():
     rows = [("Table", "Record key", "Field", "Corrected value"), ("MARA", "MATNR=1", "MARA.MATKL (Material Group)", "X1"),
             ("MARA", "MATNR=2", "MARA.MATKL (Material Group)", "")]
     edits, blank = cleaning_edits([("Records to clean", rows)])
-    assert edits == [{"table": "MARA", "key": "MATNR=1", "field": "MARA.MATKL", "value": "X1"}] and blank == 1
+    # one parser (sf_roundtrip.field_name): the description goes, and a field of the row's own table loses its prefix
+    assert edits == [{"table": "MARA", "key": "MATNR=1", "field": "MATKL", "value": "X1"}] and blank == 1
 
 
 def test_roundtrip_batch_isolates_a_bad_file(monkeypatch):
     from api.routes import upload
 
-    async def one(request, f, parent, db, tenant):
+    async def one(request, f, parent, db, tenant, role=""):
         if f.filename == "bad.xlsx":
             raise HTTPException(status_code=422, detail="The file holds no edits to apply.")
         return SimpleNamespace(parent_version_id="p-" + f.filename)

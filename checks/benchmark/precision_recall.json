@@ -12,9 +12,9 @@
    "rules": 795
   },
   "material_master": {
-   "benchmarked": 249,
-   "perfect": 249,
-   "rules": 931
+   "benchmarked": 255,
+   "perfect": 255,
+   "rules": 947
   },
   "sd_customer_master": {
    "benchmarked": 324,
@@ -8283,6 +8283,160 @@
    "module": "material_master",
    "reason": "a field appears in more than one condition",
    "rule_id": "MM1151"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "null_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1152",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1153"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1154"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1155",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "MM1156"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1157"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1158"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1159"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "MM1160"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1161",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1162",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "uniqueness_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 20,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1163",
+   "true_positives": 20
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1164"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1165"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "exists_check",
+   "module": "material_master",
+   "reason": "exists_check needs reference data or a second dataset",
+   "rule_id": "MM1166"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1167",
+   "true_positives": 10
   },
   {
    "benchmarkable": true,

@@ -14,6 +14,8 @@ MARKER = "_meridian"
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 MAX_EDIT_ROWS = 200_000
 KINDS = ("template", "cleaning")
+CLEAR = "#CLEAR"  # a cell holding only this empties the field; a blank cell is never an edit
+NOTE_STATUSES = {"in progress": "in_progress", "not an error": "not_an_error", "fixed": "fixed"}
 
 
 class RoundTripError(ValueError):
@@ -86,26 +88,54 @@ def read_upload(data: bytes, filename: str) -> dict:
     return {"sheets": [(n, r) for n, r in sheets if n != MARKER], "marker": marker, "ext": ext}
 
 
-def cleaning_edits(sheets: list) -> tuple[list[dict], int]:
-    """Edits from the cleaning workbook's record sheets, and how many rows had no corrected value."""
-    out: list[dict] = []
-    blank = 0
+def field_name(label: str, table: str) -> str:
+    """The field from the workbook's Field cell: ``MARA.MATKL (Material Group)`` on table MARA is ``MATKL``.
+    The description in brackets comes from cleaning_workbook.field_label; a field of another table keeps its
+    table prefix, so apply_edits looks it up by its qualified column name."""
+    name = label.split(" (", 1)[0].strip()
+    return name[len(table) + 1:] if table and name.startswith(table + ".") else name
+
+
+def _value(cell: str) -> str:
+    return "" if cell.strip().upper() == CLEAR else cell
+
+
+def _record_rows(sheets: list, need: tuple[str, ...]):
+    """A cell getter for every data row of the cleaning workbook's record sheets."""
     for name, rows in sheets:
         if not name.startswith("Records to clean") or not rows:
             continue
         head = {h: i for i, h in enumerate(rows[0])}
-        need = ("Table", "Record key", "Field", "Corrected value")
         if any(h not in head for h in need):
             raise RoundTripError(f"The sheet {name} is missing one of: {', '.join(need)}.")
         for r in rows[1:]:
-            get = lambda h: r[head[h]] if head[h] < len(r) else ""  # noqa: E731
-            if not get("Corrected value"):
-                blank += 1
-                continue
-            # the workbook writes "TABLE.FIELD (description)"; edits match on the name alone
-            out.append({"table": get("Table"), "key": get("Record key"), "field": get("Field").split(" (", 1)[0],
-                        "value": get("Corrected value")})
+            yield lambda h, r=r: r[head[h]] if h in head and head[h] < len(r) else ""
+
+
+def cleaning_edits(sheets: list) -> tuple[list[dict], int]:
+    """Edits from the cleaning workbook's record sheets, and how many rows had no corrected value."""
+    out: list[dict] = []
+    blank = 0
+    for get in _record_rows(sheets, ("Table", "Record key", "Field", "Corrected value")):
+        if not get("Corrected value"):
+            blank += 1
+            continue
+        out.append({"table": get("Table"), "key": get("Record key"), "field": field_name(get("Field"), get("Table")),
+                    "value": _value(get("Corrected value"))})
     return out, blank
+
+
+def cleaning_notes(sheets: list) -> list[dict]:
+    """Status, Owner and Comment set on record rows: ``{"rule", "table", "key", "status", "owner", "comment"}``.
+    ``status`` is in_progress, not_an_error, fixed or "" (Open, or unknown text, changes nothing)."""
+    out: list[dict] = []
+    for get in _record_rows(sheets, ()):  # cleaning_edits checks the columns; a row with no Rule has no note
+        status = NOTE_STATUSES.get(get("Status").strip().lower(), "")
+        owner, comment = get("Owner").strip()[:200], get("Comment").strip()[:2000]
+        if (status or owner or comment) and get("Rule") and get("Record key"):
+            out.append({"rule": get("Rule"), "table": get("Table"), "key": get("Record key"), "status": status,
+                        "owner": owner, "comment": comment})
+    return out
 
 
 def template_edits(sheets: list, maps: dict, keys_of) -> tuple[list[dict], dict]:
@@ -134,9 +164,9 @@ def template_edits(sheets: list, maps: dict, keys_of) -> tuple[list[dict], dict]
             get = lambda h: r[head[h]] if head[h] < len(r) else ""  # noqa: E731
             key = "|".join(f"{k}={get(by_field[k])}" for k in keys)
             for h, f in cols.items():
-                # ponytail: a blank cell is never an edit (the export blanks held and zero dates), so a field cannot be cleared here
+                # a blank cell is never an edit (the export blanks held and zero dates); #CLEAR empties a field
                 if h in head and f not in keys and get(h):
-                    edits.append({"table": table, "key": key, "field": f, "value": get(h), "cell": True})
+                    edits.append({"table": table, "key": key, "field": f, "value": _value(get(h)), "cell": True})
     return edits, report
 
 
@@ -157,7 +187,8 @@ def apply_edits(parent_prefix: str, new_prefix: str, edits: list[dict], dictiona
     by_table: dict[str, list[dict]] = {}
     for e in edits:
         by_table.setdefault(e["table"], []).append(e)
-    out: dict[str, Any] = {"applied": 0, "unchanged": 0, "unmatched": [], "no_table": sorted(set(by_table)), "no_field": []}
+    out: dict[str, Any] = {"applied": 0, "unchanged": 0, "unmatched": [], "no_table": sorted(set(by_table)), "no_field": [],
+                           "edited": []}
     objects = list_prefix(bucket, parent_prefix)
     if not any(n.endswith(".parquet") for n, _ in objects):
         raise RoundTripError("The run has no extracted tables to edit.")
@@ -195,6 +226,7 @@ def apply_edits(parent_prefix: str, new_prefix: str, edits: list[dict], dictiona
             df[c] = df[c].astype(object)
             df.iloc[rows, df.columns.get_loc(c)] = e["value"]
             out["applied"] += len(rows)
+            out["edited"].append({"table": table, "key": e["key"], "field": e["field"]})
         buf = io.BytesIO()
         df.to_parquet(buf, index=False)
         upload_file(bucket, target, buf.getvalue(), "application/octet-stream")

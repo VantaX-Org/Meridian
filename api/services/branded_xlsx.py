@@ -158,6 +158,7 @@ class ColumnSpec:
     muted: bool = False  # bookkeeping columns (ids for re-import): grey header and text
     editable: bool = False  # a column the reader fills in: green header and tinted cells
     help: str = ""  # a note shown on the header cell
+    row_choices_key: Optional[str] = None  # row key holding this row's own drop-down values (a list)
 
 
 @dataclass(frozen=True)
@@ -339,6 +340,8 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
     _EDIT_FILL = PatternFill(fill_type="solid", fgColor=STATUS_TINTS["ok"][0])
 
     sample_values: dict[int, list[str]] = {i: [] for i in range(1, len(spec.columns) + 1)}
+    row_lists: dict[tuple[int, tuple[str, ...]], list[str]] = {}  # (column, values) -> cells
+    unlocked = Protection(locked=False)
     row_count = 0
     truncated = False
     row_idx = 2
@@ -362,7 +365,14 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
                 cell.fill = wash
             if col.editable:
                 cell.fill = _EDIT_FILL
-                cell.protection = Protection(locked=False)
+                if spec.protect:
+                    cell.protection = unlocked
+            if col.row_choices_key:
+                choices = row.get(col.row_choices_key)
+                vals = tuple(str(v) for v in choices) if isinstance(choices, (list, tuple)) else ()
+                # an Excel list formula holds 255 characters and no commas: longer lists stay a typed value
+                if vals and len(",".join(vals)) <= 250 and not any("," in v or '"' in v for v in vals):
+                    row_lists.setdefault((col_idx, vals), []).append(f"{get_column_letter(col_idx)}{row_idx}")
             if col.fill_by_value and raw in col.fill_by_value:
                 tint = col.fill_by_value[raw]
                 cell.fill = PatternFill(fill_type="solid", fgColor=tint)
@@ -380,6 +390,12 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
             letter = get_column_letter(col_idx)
             dv.add(f"{letter}2:{letter}{last_row}")
             ws.add_data_validation(dv)
+    for (_, vals), cells in row_lists.items():
+        dv = DataValidation(type="list", formula1='"' + ",".join(vals) + '"', allow_blank=True,
+                            errorStyle="warning", showErrorMessage=True, errorTitle="Not an allowed value",
+                            error="This value is not in the field's allowed values. Keep it only if you are sure.")
+        dv.add(" ".join(cells))
+        ws.add_data_validation(dv)
     ws.freeze_panes = "A2"
     if last_row >= 1:
         ws.auto_filter.ref = ws.dimensions

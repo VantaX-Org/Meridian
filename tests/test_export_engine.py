@@ -139,7 +139,8 @@ class TestExportLSMW:
     def test_lsmw_structure(self, engine: ExportEngine):
         result = engine.export_lsmw(CUSTOMER_RECORDS, "customer")
         lines = result.split("\n")
-        assert lines[0].startswith("TRANSACTION\t")
+        assert lines[0].startswith("* Review only, not a load file")
+        assert next(ln for ln in lines if not ln.startswith("*") and ln).startswith("TRANSACTION\t")
         assert "BEGIN_SESSION" in result
         assert "END_SESSION" in result
         assert "EXECUTE" in result
@@ -354,3 +355,39 @@ class TestExportEdgeCases:
         next(reader)
         row = next(reader)
         assert row[0] == ""  # None mapped to empty string
+
+
+# ── Cleaning records: SAP names, record key, review only ─────────────────────
+
+
+class TestCleaningRecords:
+    """Cleaning exports hand over records keyed by SAP field names (plain or TABLE.FIELD) plus RECORD_KEY."""
+
+    REC = {"RECORD_KEY": "KUNNR=0000000001", "KNA1.KUNNR": "0000000001", "NAME1": "Test Customer One", "LAND1": "ZA"}
+
+    def test_sap_and_dotted_names_are_mapped(self, engine: ExportEngine):
+        row = next(csv.DictReader(io.StringIO(engine.export_csv([self.REC], "customer"))))
+        assert (row["KUNNR"], row["NAME1"], row["LAND1"]) == ("0000000001", "Test Customer One", "ZA")
+
+    def test_record_key_is_the_first_column(self, engine: ExportEngine):
+        head = next(csv.reader(io.StringIO(engine.export_csv([self.REC], "customer"))))
+        assert head[0] == "RECORD_KEY"
+        assert "RECORD_KEY" not in next(csv.reader(io.StringIO(engine.export_csv(CUSTOMER_RECORDS, "customer"))))
+
+    def test_lsmw_carries_the_key_as_a_comment(self, engine: ExportEngine):
+        result = engine.export_lsmw([self.REC], "customer")
+        assert "* RECORD_KEY KUNNR=0000000001" in result and "SET RECORD_KEY" not in result
+
+    @pytest.mark.parametrize("fmt", ["export_bapi", "export_idoc"])
+    def test_bapi_and_idoc_are_marked_review_only(self, engine: ExportEngine, fmt):
+        data = json.loads(getattr(engine, fmt)([self.REC], "customer"))
+        assert data["review_only"] is True and "not a load file" in data["review_note"]
+
+    def test_business_partner_names_no_change_transaction(self, engine: ExportEngine):
+        assert "business_partner" not in TRANSACTION_CODES
+        assert "No change transaction is named" in engine.export_lsmw([{"partner": "1"}], "business_partner")
+
+    def test_sales_order_idoc_type(self, engine: ExportEngine):
+        """ORDERS05 is a plain string entry; the sales order IDoc export builds."""
+        data = json.loads(engine.export_idoc([{"sales_order": "1"}], "sd_sales_orders"))
+        assert data["idocs"][0]["EDI_DC40"]["IDOCTYP"] == "ORDERS05"

@@ -130,3 +130,60 @@ def test_apply_edits_writes_a_copy_and_counts(monkeypatch):
     assert pd.read_parquet(io.BytesIO(store["n/EmpJob.parquet"]))["jobTitle"].tolist() == ["Lead", "Ops"]
     assert store["n/Other.parquet"] == b"keep"  # untouched tables are copied
     assert pd.read_parquet(io.BytesIO(store["p/EmpJob.parquet"]))["jobTitle"].tolist() == ["Eng", "Ops"]  # parent unchanged
+
+
+def test_field_name_strips_the_description_and_own_table_prefix():
+    assert rt.field_name("MARA.MATKL (Material Group)", "MARA") == "MATKL"
+    assert rt.field_name("MARC.WERKS (Plant)", "MARA") == "MARC.WERKS"
+    assert rt.field_name("jobTitle", "EmpJob") == "jobTitle"
+
+
+def test_clear_empties_a_field_in_both_kinds():
+    head = ["Table", "Record key", "Field", "Corrected value"]
+    edits, _ = rt.cleaning_edits([("Records to clean", [head, ["T", "id=1", "T.f (F)", "#clear"]])])
+    assert edits == [{"table": "T", "key": "id=1", "field": "f", "value": ""}]
+    t_edits, _ = rt.template_edits([("Job", [["User ID", "Title"], ["u1", "#CLEAR"]])], MAPS, lambda t: ["userId"])
+    assert t_edits[0]["value"] == ""
+
+
+def test_cleaning_notes_map_statuses_and_skip_rows_without_a_rule():
+    head = ["Rule", "Table", "Record key", "Field", "Corrected value", "Status", "Owner", "Comment"]
+    rows = [head, ["R1", "T", "id=1", "f", "", "Not an error", "", ""], ["R1", "T", "id=2", "f", "", "Open", "a", ""],
+            ["", "T", "id=3", "f", "", "Fixed", "", ""], ["R2", "T", "id=4", "f", "", "", "", ""]]
+    notes = rt.cleaning_notes([("Records to clean", rows)])
+    assert [(n["key"], n["status"], n["owner"]) for n in notes] == [("id=1", "not_an_error", ""), ("id=2", "", "a")]
+    assert rt.cleaning_notes([("Records to clean", [["Table", "Record key"], ["T", "id=1"]])]) == []
+
+
+def test_two_objects_across_two_runs_build_on_each_other(monkeypatch):
+    """Run 1 edits one object's table, run 2 another's on run 1's copy: both edits land, earlier copies stay."""
+    from checks import base
+    from api.services import storage
+
+    def pq(df):
+        b = io.BytesIO()
+        df.to_parquet(b, index=False)
+        return b.getvalue()
+
+    mara = pd.DataFrame({"MARA.MATNR": ["M1", "M2"], "MARA.MATKL": ["A", "B"]})
+    kna1 = pd.DataFrame({"KNA1.KUNNR": ["C1"], "KNA1.LAND1": ["XX"]})
+    store = {"r0/MARA.parquet": pq(mara), "r0/KNA1.parquet": pq(kna1)}
+    monkeypatch.setattr(storage, "get_minio_client", lambda: _Client(store))
+    monkeypatch.setattr(storage, "list_prefix", lambda b, p: [(n, 0) for n in list(store) if n.startswith(p)])
+    monkeypatch.setattr(storage, "upload_file", lambda b, n, d, c: store.__setitem__(n, d))
+    keys = {"MARA": ["MATNR"], "KNA1": ["KUNNR"]}
+    dictionary = type("D", (), {"keys": lambda self, t: keys[t]})()
+    head = ["Table", "Record key", "Field", "Corrected value"]
+    k_m = base.record_keys(mara, ["MARA.MATNR"])[0]
+    k_c = base.record_keys(kna1, ["KNA1.KUNNR"])[0]
+
+    e1, _ = rt.cleaning_edits([("Records to clean", [head, ["MARA", k_m, "MARA.MATKL (Material Group)", "Z"]])])
+    assert rt.apply_edits("r0/", "r1/", e1, dictionary)["applied"] == 1
+    e2, _ = rt.cleaning_edits([("Records to clean", [head, ["KNA1", k_c, "KNA1.LAND1 (Country)", "#CLEAR"]])])
+    assert rt.apply_edits("r1/", "r2/", e2, dictionary)["applied"] == 1
+
+    read = lambda n: pd.read_parquet(io.BytesIO(store[n]))  # noqa: E731
+    assert read("r2/MARA.parquet")["MARA.MATKL"].tolist() == ["Z", "B"]
+    assert read("r2/KNA1.parquet")["KNA1.LAND1"].tolist() == [""]
+    assert read("r1/KNA1.parquet")["KNA1.LAND1"].tolist() == ["XX"]
+    assert read("r0/MARA.parquet")["MARA.MATKL"].tolist() == ["A", "B"]
