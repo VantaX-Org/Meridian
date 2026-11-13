@@ -3,7 +3,7 @@ import logging
 import uuid
 from typing import Annotated, Any, Literal, Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 
 from api.services.rbac import require_permission, scope_from_path
 from pydantic import BaseModel, ConfigDict, Field
@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import jobs
+from api.services.extract_target import ExtractTargetOut
 from api.services.paging import order_by, page_meta
 from api.services.run_lineage import lineage_sql
 from api.services.version_status import ENDED, finished_sql
@@ -145,6 +146,7 @@ class VersionStatusOut(BaseModel):
     status: str
     run_at: str
     metadata: Optional[dict[str, Any]] = None
+    extract_target: Optional[ExtractTargetOut] = None
 
 
 def _meta(v: AnalysisVersion) -> dict[str, Any]:
@@ -181,7 +183,7 @@ async def list_versions(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     stmt = (
         select(AnalysisVersion)
         .where(AnalysisVersion.tenant_id == tenant.id)
@@ -833,7 +835,7 @@ async def get_version(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     vid = uuid.UUID(version_id)
     result = await db.execute(
         select(AnalysisVersion).where(
@@ -854,7 +856,7 @@ async def patch_version(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     vid = uuid.UUID(version_id)
     result = await db.execute(
         select(AnalysisVersion).where(
@@ -877,7 +879,7 @@ async def get_version_status(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     vid = uuid.UUID(version_id)
     result = await db.execute(
         select(AnalysisVersion).where(
@@ -893,4 +895,37 @@ async def get_version_status(
         "status": version.status,
         "run_at": version.run_at.isoformat() if version.run_at else "",
         "metadata": version.metadata_,
+        "extract_target": version.extract_target,
     }
+
+
+@router.get("/versions/{version_id}/extract-target", response_model=ExtractTargetOut)
+async def get_extract_target(version_id: str, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """The target system and templates this run was started with, and each template's auto-fill status."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    found = (await db.execute(text("SELECT extract_target FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
+                              {"v": uuid.UUID(version_id), "t": str(tenant.id)})).fetchone()
+    if not found:
+        raise HTTPException(status_code=404, detail="Version not found")
+    return found[0] or {}
+
+
+@router.get("/versions/{version_id}/extract-target/{module}/file", response_class=Response,
+            dependencies=[Depends(require_permission("export", scope=scope_from_path))])
+async def get_extract_target_file(version_id: str, module: str, db: AsyncSession = Depends(get_db),
+                                  tenant: Tenant = Depends(get_tenant)):
+    """The template filled automatically from this run for ``module``."""
+    from starlette.concurrency import run_in_threadpool
+    from api.config import settings
+    from api.services import storage
+    from api.services.extract_target import file_key
+    from api.services.migration.workbook_formats import media_type
+
+    target = await get_extract_target(version_id, db, tenant)
+    entry = next((t for t in target.get("templates", []) if t["module"] == module and t["status"] == "filled"), None)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="No filled template for this module on this run.")
+    key = file_key(str(tenant.id), version_id, module, entry["format"])
+    data = await run_in_threadpool(storage.download_file, settings.minio_bucket_reports, key)
+    return Response(data, media_type=media_type(entry["format"]),
+                    headers={"Content-Disposition": f"attachment; filename={module}_{version_id[:8]}.{entry['format']}"})

@@ -40,6 +40,10 @@ class DownloadBody(BaseModel):
     dry_run: bool = False
     # Re-read only what SAP's change documents say changed since the last download of the same objects and scope.
     delta: bool = False
+    # Optional target: a target system and/or a target template per module (module -> template id). Omitted system
+    # defaults to the source's paired target; an omitted template to the module's newest one, if any.
+    target_system_id: Optional[str] = None
+    target_template_ids: Optional[dict[str, str]] = None
 
 
 async def _rls(db: AsyncSession, tenant: Tenant) -> None:
@@ -364,15 +368,20 @@ async def start_download(system_id: uuid.UUID, body: DownloadBody, request: Requ
     enforce_licensed_modules(request, body.objects)
     if body.dry_run:
         return await _dry_run(db, tenant, system_id, st, body.objects, scope)
+    from api.services.extract_target import resolve_target
+
+    target = await resolve_target(db, str(tenant.id), str(system_id), body.objects, body.target_system_id,
+                                  body.target_template_ids)
     version_id = str(uuid.uuid4())
     jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", body.label or ", ".join(body.objects),
                    status="queued", system_id=str(system_id), modules=body.objects, version_id=version_id,
-                   retry={"via": "downloads", "body": body.model_dump(mode="json")})
+                   extract_target=target, retry={"via": "downloads", "body": body.model_dump(mode="json")})
     task = run_extraction.delay(str(tenant.id), str(system_id), body.objects, True, "both",
-                                scope, body.analyse, body.label, version_id, **({"delta": True} if body.delta else {}))
+                                scope, body.analyse, body.label, version_id, **({"delta": True} if body.delta else {}),
+                                **({"extract_target": target} if target else {}))
     jobs.set_task_ids(str(tenant.id), f"dl-{version_id}", [getattr(task, "id", None)])
     return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "objects": body.objects,
-            "scope": scope, "analyse": body.analyse, "delta": body.delta}
+            "scope": scope, "analyse": body.analyse, "delta": body.delta, "extract_target": target}
 
 
 async def _delta_state(db: AsyncSession, tenant: Tenant, system_id: uuid.UUID, objects: list[str],

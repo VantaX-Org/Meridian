@@ -1655,8 +1655,10 @@ def _mark_learned(report: dict, pending: dict, unresolved: Optional[dict] = None
 
 def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "",
                    column_map: Optional[dict] = None, cleansed: bool = False, *, load_mode: str = "full",
-                   since: Optional[datetime.date] = None) -> tuple:
+                   since: Optional[datetime.date] = None, fresh: bool = False) -> tuple:
     """Parse an uploaded workbook and fill it from one finished run. Nothing is stored.
+
+    `fresh` accepts a run that is stored but not analysed yet (the automatic fill right after an extraction).
 
     `column_map` holds a person's corrections to unresolved columns ("sheet::header" to TABLE.FIELD). With
     `cleansed`, the approved proposals of the run's modules' remediation batches replace the extracted values first.
@@ -1685,7 +1687,7 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "",
         if not row:
             raise HTTPException(status_code=404, detail="Run not found.")
         meta = row[1] or {}
-        if "complete" not in (row[0] or "") or not meta.get("dataset_path"):
+        if not meta.get("dataset_path") or not (fresh or "complete" in (row[0] or "")):
             raise HTTPException(status_code=409, detail="This run has not finished, so it holds no data to export.")
         system_id = meta.get("system_id")
         dictionary = dictionary_for(s, system_id)
@@ -1743,7 +1745,8 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "",
         strict = {t for t, vm in maps.items() if vm.keys() - config.get(t, {}).keys()}
     tabs, report = wb.fill(book, frames, maps, strict, load_mode=load_mode, since=since)
     if cleansed:
-        report["cleansed"] = {"approved": len(fixes), **({k: stats[k] for k in ("cells_changed", "by_field")}
+        report["cleansed"] = {"approved": len(fixes), "stale": len(stats["stale_records"]) if fixes else 0,
+                              **({k: stats[k] for k in ("cells_changed", "by_field")}
                                                          if fixes else {"cells_changed": 0, "by_field": {}})}
     waiting, missing = _mark_learned(report, pending, unresolved)
     report["learned"] = {"new": sum(len(f) for f in learned.values()), "waiting": waiting, "missing": missing,
@@ -1756,17 +1759,17 @@ def _approved_fixes(s, modules: list[str]) -> list[dict]:
     if not modules or not s.execute(text("SELECT to_regclass('remediation_items')")).scalar():
         return []
     rows = s.execute(text(
-        "SELECT i.field, i.record_key, i.proposed_value FROM remediation_items i "
+        "SELECT i.field, i.record_key, i.proposed_value, i.current_value FROM remediation_items i "
         "JOIN remediation_batches b ON b.id = i.batch_id AND b.tenant_id = i.tenant_id "
         "WHERE b.status IN ('approved', 'awaiting_load', 'exported') AND i.field IS NOT NULL "
         "AND i.record_key IS NOT NULL AND i.proposed_value IS NOT NULL AND i.module = ANY(:mods) "
         "ORDER BY b.approved_at NULLS FIRST, i.id"), {"mods": list(modules)}).fetchall()
-    return [{"field": f, "record_key": k, "new_value": v} for f, k, v in rows]
+    return [{"field": f, "record_key": k, "new_value": v, "expected": c or ""} for f, k, v, c in rows]
 
 
 def _export_workbook(tenant_id, version_id: str, data: bytes, filename: str, export_format: str,
                      column_map: Optional[dict] = None, cleansed: bool = False, *, load_mode: str = "full",
-                     since: Optional[datetime.date] = None) -> tuple[bytes, str, dict]:
+                     since: Optional[datetime.date] = None, fresh: bool = False) -> tuple[bytes, str, dict]:
     """The filled workbook as bytes, its extension and the fill summary, with held rows on their own tab or file."""
     import pandas as pd
     from api.services.branded_xlsx import guard_frame
@@ -1774,12 +1777,13 @@ def _export_workbook(tenant_id, version_id: str, data: bytes, filename: str, exp
     from api.services.migration.export import to_csv_zip, to_xlsx
 
     book, tabs, report = _fill_workbook(tenant_id, version_id, data, filename, column_map, cleansed,
-                                        load_mode=load_mode, since=since)
+                                        load_mode=load_mode, since=since, fresh=fresh)
     if not tabs:
         raise HTTPException(status_code=422, detail="Nothing in this run matches the sheets in this workbook.")
     # Record keys are source values, so held rows take the formula guard; load tabs stay exact.
     held = guard_frame(pd.DataFrame(report["held"])) if report["held"] else None
-    summary = {**report["summary"], **({"cleansed": report["cleansed"]["cells_changed"]} if cleansed else {})}
+    summary = {**report["summary"], **({"cleansed": report["cleansed"]["cells_changed"],
+                                              "stale_fixes": report["cleansed"]["stale"]} if cleansed else {})}
     if export_format == "source":
         if not report["format"]["same"]:
             raise HTTPException(status_code=422, detail="This workbook defines fields but has no load layout to "
