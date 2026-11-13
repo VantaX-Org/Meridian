@@ -135,11 +135,11 @@ async def test_crash_mid_chunk_leaves_the_record_in_doubt_and_resume_does_not_re
 
     orig, calls = bw.write_record, []
 
-    def flaky(conn, module, key, changes, apply, cache):
+    def flaky(conn, module, key, changes, apply, cache, based_on=None):
         calls.append(key)
         if len(calls) == 2:
             raise RuntimeError("worker killed")
-        return orig(conn, module, key, changes, apply=apply, cache=cache)
+        return orig(conn, module, key, changes, apply=apply, cache=cache, based_on=based_on)
 
     monkeypatch.setattr(bw, "write_record", flaky)
     run = await _send(env)
