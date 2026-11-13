@@ -18,6 +18,14 @@
 #                                                    # (or MERIDIAN_BACKUP_PASSPHRASE_FILE)
 #   sudo bash scripts/backup.sh --plain-env          # opt out: copy .env in clear (chmod 600)
 #   sudo bash scripts/backup.sh --database-only      # skip object storage (useful in CI drills)
+#   sudo bash scripts/backup.sh --keep 14            # keep the newest 14 bundles in the output dir
+#                                                    # (or MERIDIAN_BACKUP_KEEP; default 14, 0 keeps all)
+#   sudo bash scripts/backup.sh --install-timer      # schedule a nightly backup (systemd timer, else
+#                                                    # /etc/cron.d), idempotent. Takes --output and --keep;
+#                                                    # creates the passphrase file if it is missing
+#
+# Safe while Meridian is live: pg_dump reads one consistent snapshot and takes no locks that block
+# the app's reads or writes.
 #
 # Without a passphrase file, gpg prompts for a symmetric passphrase; with no terminal to
 # prompt on and no passphrase file the backup fails rather than writing .env in clear.
@@ -41,6 +49,8 @@ OUTPUT_DIR="${REPO_ROOT}/backups"
 ENCRYPT=true
 PASSPHRASE_FILE="${MERIDIAN_BACKUP_PASSPHRASE_FILE:-}"
 DATABASE_ONLY=false
+KEEP="${MERIDIAN_BACKUP_KEEP:-14}"
+INSTALL_TIMER=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -49,6 +59,8 @@ while [[ $# -gt 0 ]]; do
         --plain-env)      ENCRYPT=false; shift ;;
         --passphrase-file) PASSPHRASE_FILE="$2"; shift 2 ;;
         --database-only)  DATABASE_ONLY=true; shift ;;
+        --keep)           KEEP="$2"; shift 2 ;;
+        --install-timer)  INSTALL_TIMER=true; shift ;;
         -h|--help)
             grep '^# ' "$0" | sed 's/^# //'
             exit 0
@@ -56,6 +68,56 @@ while [[ $# -gt 0 ]]; do
         *)                echo "Unknown flag: $1 (try --help)" >&2; exit 2 ;;
     esac
 done
+
+[[ "$KEEP" =~ ^[0-9]+$ ]] || { echo "--keep needs a whole number, got: $KEEP" >&2; exit 2; }
+
+# ─── --install-timer: nightly schedule, then exit ───────────────────────────
+# Rewrites the same unit (or cron) file each run, so running it again only updates the schedule.
+if [[ "$INSTALL_TIMER" == "true" ]]; then
+    PASSPHRASE_FILE="${PASSPHRASE_FILE:-/root/.meridian-backup-pass}"
+    if [[ ! -s "$PASSPHRASE_FILE" ]]; then
+        (umask 077; mkdir -p "$(dirname "$PASSPHRASE_FILE")"; openssl rand -base64 32 > "$PASSPHRASE_FILE") \
+            || fail "could not create the passphrase file $PASSPHRASE_FILE"
+        warn "Created $PASSPHRASE_FILE. Copy it to your secrets store now: without it env.gpg cannot be decrypted."
+    fi
+    CMD="/bin/bash ${SCRIPT_DIR}/backup.sh --passphrase-file ${PASSPHRASE_FILE} --output ${OUTPUT_DIR} --keep ${KEEP}"
+    SYSTEMD_DIR="${MERIDIAN_SYSTEMD_DIR:-/etc/systemd/system}"
+    if command -v systemctl >/dev/null && [[ -d /run/systemd/system || -n "${MERIDIAN_SYSTEMD_DIR:-}" ]]; then
+        cat > "${SYSTEMD_DIR}/meridian-backup.service" <<UNIT
+[Unit]
+Description=Meridian nightly backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+Nice=10
+IOSchedulingClass=idle
+ExecStart=${CMD}
+UNIT
+        cat > "${SYSTEMD_DIR}/meridian-backup.timer" <<UNIT
+[Unit]
+Description=Meridian nightly backup
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+        systemctl daemon-reload && systemctl enable --now meridian-backup.timer >/dev/null \
+            || fail "could not enable meridian-backup.timer"
+        info "Nightly backup scheduled: systemd timer meridian-backup.timer (03:00, keeps ${KEEP}). Logs: journalctl -u meridian-backup"
+    else
+        CRON_DIR="${MERIDIAN_CRON_DIR:-/etc/cron.d}"
+        echo "0 3 * * * root ${CMD} >> /var/log/meridian-backup.log 2>&1" > "${CRON_DIR}/meridian-backup"
+        chmod 644 "${CRON_DIR}/meridian-backup"
+        info "Nightly backup scheduled: ${CRON_DIR}/meridian-backup (03:00, keeps ${KEEP}). Log: /var/log/meridian-backup.log"
+    fi
+    exit 0
+fi
 
 # Check how .env will be encrypted before anything is dumped.
 if [[ "$ENCRYPT" == "true" && -f "${REPO_ROOT}/.env" ]]; then
@@ -145,7 +207,17 @@ cat > "${BACKUP_DIR}/manifest.json" <<MANIFEST
 }
 MANIFEST
 
-# ─── 5. Summary ─────────────────────────────────────────────────────────────
+# ─── 5. Rotation ────────────────────────────────────────────────────────────
+# Keep the newest $KEEP complete bundles (those with a manifest). Only <ts> directories are
+# considered: update.sh's pre-update-*.dump files in backups/ have their own rotation.
+if [[ "$KEEP" -gt 0 ]]; then
+    while IFS= read -r old; do
+        rm -rf "$old" && info "Removed old backup $old"
+    done < <(find "$OUTPUT_DIR" -mindepth 1 -maxdepth 1 -type d -name '[0-9]*_[0-9]*' \
+                 -exec test -f '{}/manifest.json' ';' -print | sort -r | tail -n "+$((KEEP + 1))")
+fi
+
+# ─── 6. Summary ─────────────────────────────────────────────────────────────
 echo ""
 info "Backup complete: $BACKUP_DIR"
 info "  Bundle size: $(du -sh "$BACKUP_DIR" | cut -f1)"

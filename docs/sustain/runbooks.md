@@ -145,14 +145,20 @@ Take a backup:
 ```bash
 sudo bash scripts/backup.sh --passphrase-file /root/.meridian-backup-pass --output /var/backups/meridian
 ```
-Options: `--output DIR`, `--passphrase-file F` (or `MERIDIAN_BACKUP_PASSPHRASE_FILE`), `--plain-env`, `--database-only`, `--encrypt`. A backup directory holds `manifest.json`, `meridian.dump`, `objects.tar` and `env.gpg` (or `env.txt` with `--plain-env`). Store the passphrase separately from the backups.
+Options: `--output DIR`, `--passphrase-file F` (or `MERIDIAN_BACKUP_PASSPHRASE_FILE`), `--keep N` (or `MERIDIAN_BACKUP_KEEP`, default 14, 0 keeps all), `--plain-env`, `--database-only`, `--encrypt`. It is safe while users work. After each run it removes all but the newest N bundles. A backup directory holds `manifest.json`, `meridian.dump`, `objects.tar` and `env.gpg` (or `env.txt` with `--plain-env`). Store the passphrase separately from the backups.
+
+The nightly schedule is installed by `install.sh`. On an older host, or to change `--output` or `--keep`, run (safe to repeat):
+```bash
+sudo bash scripts/backup.sh --install-timer --output /var/backups/meridian --keep 14
+systemctl list-timers meridian-backup.timer
+```
 
 Test a backup without touching production:
 ```bash
 sudo bash scripts/restore.sh --drill /path/to/backup-dir
 ```
 
-Restore (destructive: it drops the `meridian` database; you must type `YES`):
+Restore (destructive: it drops the `meridian` database; you must type `YES`, or pass `--yes`). It checks the dump first, stops api, worker and beat, saves the current database to `backups/pre-restore-<UTC>.dump`, restores, and starts the three again:
 1. Stop users from working and confirm no job is running.
 2. Run:
    ```bash
@@ -162,10 +168,7 @@ Restore (destructive: it drops the `meridian` database; you must type `YES`):
    ```bash
    docker compose -f docker/docker-compose.customer.yml run --rm api alembic upgrade head
    ```
-4. Restart:
-   ```bash
-   docker compose -f docker/docker-compose.customer.yml restart api worker frontend
-   ```
+4. If the script failed after stopping the app, api, worker and beat are left stopped. Fix the cause and run it again, or start them with the command it printed.
 5. Run the health check ([runbook 1](#1-health-check)).
 
 ## 5. Rotate credentials
