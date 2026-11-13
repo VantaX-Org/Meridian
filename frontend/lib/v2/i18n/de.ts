@@ -10139,6 +10139,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{n} workbooks uploaded. {m} new runs scoring.": "{n} Arbeitsmappen hochgeladen. {m} neue Läufe werden bewertet.",
   "Upload the Excel (.xlsx) or CSV file you exported.": "Laden Sie die exportierte Excel- (.xlsx) oder CSV-Datei hoch.",
   "The file is larger than 25 MB.": "Die Datei ist größer als 25 MB.",
+  "All severities": "Alle Schweregrade",
+  "Watched objects": "Beobachtete Objekte",
   "SAP S/4HANA": "SAP S/4HANA",
   "Migration Cockpit templates, one sheet per target table.": "Migration-Cockpit-Vorlagen, ein Blatt je Zieltabelle.",
   "SAP SuccessFactors": "SAP SuccessFactors",
@@ -10274,4 +10276,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Rules that ran with changed logic: {n}. Each result records the logic that produced it.": "Regeln, die mit geänderter Logik liefen: {n}. Jedes Ergebnis hält die Logik fest, die es erzeugt hat.",
   "{rule} ({description}): logic {before} before, {after} after": "{rule} ({description}): Logik vorher {before}, nachher {after}",
   "no description": "keine Beschreibung",
+  "Your access changed: you now have {roles}. Reload to update the menu.": "Ihr Zugriff hat sich geändert: Sie haben jetzt {roles}. Laden Sie neu, um das Menü zu aktualisieren.",
+  "Reload": "Neu laden",
+  "different roles": "andere Rollen",
+  "Removed {role_name} from {name}. They will be notified.": "{role_name} von {name} entfernt. Die Person wird benachrichtigt.",
+  "Added {role} to {name}. They will be notified.": "{role} zu {name} hinzugefügt. Die Person wird benachrichtigt.",
 };
