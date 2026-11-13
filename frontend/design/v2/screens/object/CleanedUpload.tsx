@@ -10,7 +10,7 @@ import { useObjectRules } from "@/lib/v2/queries";
 import { useCompareRecords, useScoreDelta, useTimeline } from "@/lib/v2/runs-queries";
 import { f1, int } from "@/lib/v2/score";
 import { t as tr } from "@/lib/v2/i18n";
-import { Coded, Dash } from "../../parts";
+import { Coded, Dash, V2Link } from "../../parts";
 
 const DONE = ["complete", "finished", "agents_complete", "failed"];
 
@@ -66,12 +66,12 @@ export function CleanedUpload({ module, label }: { module: string; label: string
       </div>
       {askParent ? <p className="m2-sub" role="status">{tr("This file does not say which run it came from. Choose the run you exported it from.")}</p> : null}
       {send.isError && !askParent ? <p className="m2-err" role="alert">{uploadSentence(send.error, tr("The file could not be uploaded."))}</p> : null}
-      {result ? <Outcome result={result} module={module} ready={ready} failed={status === "failed"} /> : null}
+      {result ? <Outcome result={result} module={module} ready={ready} failed={status === "failed"} systemId={head.data?.metadata?.system_id} /> : null}
     </section>
   );
 }
 
-function Outcome({ result, module, ready, failed }: { result: RoundTripResult; module: string; ready: boolean; failed: boolean }) {
+function Outcome({ result, module, ready, failed, systemId }: { result: RoundTripResult; module: string; ready: boolean; failed: boolean; systemId?: string }) {
   const unmapped = Object.entries(result.unmapped).filter(([, cols]) => cols.length);
   const skipped = Object.entries(result.skipped);
   return (
@@ -94,6 +94,11 @@ function Outcome({ result, module, ready, failed }: { result: RoundTripResult; m
       ))}
       {failed ? <p className="m2-err" role="alert">{tr("The new run failed. The values were saved; run the analysis again from Runs.")}</p> : null}
       {ready ? <BeforeAfter after={result.version_id} before={result.parent_version_id} module={module} /> : result && !failed ? <p className="m2-sub" role="status">{tr("Scoring the cleaned file.")}</p> : null}
+      {ready && systemId ? (
+        <p className="m2-meta">
+          <V2Link href={`/migration?start=1&system=${encodeURIComponent(systemId)}&source_version=${encodeURIComponent(result.version_id)}`} data-testid="cleaned-to-migration">{tr("Check what will load from this run")}</V2Link>
+        </p>
+      ) : null}
     </div>
   );
 }

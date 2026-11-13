@@ -3,6 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { getLoadPlan, type LoadObject, type LoadStatus, type PrerequisiteKind } from "@/lib/api/v2/load-plan";
 import { useFixture } from "@/lib/api/v2/fixture";
+import { getLoadEvents, type LoadEvent } from "@/lib/api/v2/migration";
+import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int, VERDICT_LABEL } from "@/lib/v2/score";
@@ -48,9 +50,40 @@ function ObjectRow({ o, names }: { o: LoadObject; names: Map<string, string> }) 
   );
 }
 
+/** Every load file downloaded from a migration run: when, by whom, which wave, which objects, how many records. */
+function LoadHistory({ events }: { events: LoadEvent[] | undefined }) {
+  return (
+    <Panel title={t("Load history")} meta={t("Every load file downloaded from a migration run. Each download is recorded as a load.")} testId="lp-history">
+      {events === undefined ? <Skeleton width="100%" height={60} /> : events.length === 0 ? <EmptyFrame>{t("No load file has been downloaded yet.")}</EmptyFrame> : (
+        <ScrollFrame label={t("Load history, scrollable")}>
+          <table className="m2-tbl">
+            <caption className="m2-sr">{t("Load files downloaded from migration runs")}</caption>
+            <thead><tr><th scope="col">{t("When")}</th><th scope="col">{t("Wave")}</th><th scope="col">{t("Objects")}</th><th scope="col">{t("File")}</th><th scope="col">{t("Records")}</th><th scope="col">{t("By")}</th></tr></thead>
+            <tbody>
+              {events.map((e) => (
+                <tr key={e.id} data-testid={`lp-load-${e.id}`}>
+                  <td>{formatDate(e.exported_at, "datetime")}</td>
+                  <td>{e.wave_name ? <Coded code={e.wave_stage ?? ""} text={e.wave_name} /> : <span className="m2-meta">{t("No wave")}</span>}</td>
+                  <td>{e.modules.map((m) => <span key={m}><Coded code={m} text={moduleText(m)} />{" "}</span>)}</td>
+                  <td><Coded code={e.export_format} text={e.filename} /></td>
+                  <td>{int(e.record_count)}</td>
+                  <td>{e.exported_by_label ?? e.exported_by ?? ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ScrollFrame>
+      )}
+    </Panel>
+  );
+}
+
 export function LoadPlan() {
   const fixture = useFixture();
   const q = useQuery({ queryKey: ["load-plan", fixture], queryFn: () => getLoadPlan(), staleTime: 60_000 });
+  const ev = useQuery({ queryKey: ["load-history", fixture], queryFn: () => getLoadEvents(), staleTime: 60_000 });
+  const events = ev.data?.items ?? (ev.isError ? [] : undefined);
+  const loaded = (events?.length ?? 0) > 0;
   const title = t("Load plan");
   if (q.isPending) return <CcPage title={title}><Skeleton width="100%" height={320} /></CcPage>;
   if (q.isError) return <CcPage title={title}><ErrorFrame onRetry={() => void q.refetch()}>{t("The load plan could not be read.")}</ErrorFrame></CcPage>;
@@ -65,9 +98,9 @@ export function LoadPlan() {
   return (
     <CcPage title={title}>
       <Guide
-        steps={{ labels: [t("Read the order"), t("Fix the no-go objects"), t("Load step by step"), t("Reconcile after each step")], current: noGo ? 1 : 2 }}
+        steps={{ labels: [t("Read the order"), t("Fix the no-go objects"), t("Load step by step"), t("Reconcile after each step")], current: noGo ? 1 : loaded ? 3 : 2 }}
         shows={t("Shows the order in which the migration objects load, and why, from the data dictionary.")}
-        next={{ href: "/migration", label: t("Open the migration analysis") }}
+        next={loaded ? { href: "/migration#mig-post-load", label: t("Reconcile the load") } : { href: "/migration", label: t("Open the migration analysis") }}
         means={[
           [t("Required"), t("The target refuses the record without this field, so the other object must load first.")],
           [t("Reference"), t("The record loads, but the reference stays empty or is rejected until the other object is in.")],
@@ -143,6 +176,7 @@ export function LoadPlan() {
           </table>
         </ScrollFrame>
       </Panel>
+      <LoadHistory events={events} />
     </CcPage>
   );
 }

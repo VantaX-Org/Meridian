@@ -135,7 +135,7 @@ export interface VersionHead {
   parent_version_id?: string | null;
   status: string;
   dqs_summary: Record<string, { total_checks?: number; composite_score?: number | null; raw_score?: number | null; capped?: boolean }> | null;
-  metadata: { system_id?: string; trigger?: string; baseline?: boolean; archived?: boolean; modules?: string[]; source?: string; upload_id?: string; file_name?: string; filename?: string } | null;
+  metadata: { system_id?: string; trigger?: string; baseline?: boolean; archived?: boolean; modules?: string[]; source?: string; upload_id?: string; file_name?: string; filename?: string; module_rows?: Record<string, number> } | null;
   severity_counts?: Record<string, number> | null;
   /** The name of the system the run came from; the list endpoint fills it, null when the system is gone. */
   system_name?: string | null;

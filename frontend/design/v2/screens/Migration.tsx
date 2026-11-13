@@ -11,13 +11,14 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import {
   checkTargetWorkbook, checkTemplate, deleteFieldMapping, downloadBlankTemplate, downloadTemplateFile, exportTemplate, getTemplateFields, getTemplates, saveTemplateMapping, uploadTemplate, type TargetTemplate, deleteMigrationRun, deleteValueEntry, decideValueEntry, exportDryRunReport, exportLoadFiles, exportTargetWorkbook, extractMigrationTarget, exportMigrationFindings, exportReconciliation, getFieldMap, getMigrationFindings,
   getMigrationRecords, getMigrationRun, getMigrationRuns, getReconciliation, getReconciliationRecords, getValueCandidates, getValueMap,
-  saveValueMap, seedFieldMap, startMigration, startReconciliation, updateFieldMapping, type FieldDef, type MigrationMode, type WorkbookFormat, type MigrationRun,
+  acceptReconciliation, releaseFor, saveValueMap, seedFieldMap, startMigration, startReconciliation, updateFieldMapping, type FieldDef, type MigrationMode, type WorkbookFormat, type MigrationRun,
   type ReconKind,
   type ReconRecord,
 } from "@/lib/api/v2/migration";
-import { extractObjects, getVersionsPage } from "@/lib/api/v2/runs";
+import { extractObjects, getVersionsPage, type VersionHead } from "@/lib/api/v2/runs";
+import { draftBlockerFixBatch } from "@/lib/api/v2/reports";
 import { formatDate, formatModuleName } from "@/lib/format";
-import { useUrlParam, useV2Session } from "@/lib/v2/hooks";
+import { useOpenItem, useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { fieldDelta, needsTransform, type Delta, type DeltaKind } from "@/lib/v2/field-delta";
 import { labelText, moduleText } from "@/lib/v2/labels";
@@ -25,7 +26,7 @@ import { useLandscape } from "@/lib/v2/queries";
 import { f1, int } from "@/lib/v2/score";
 import { Confirm } from "../admin/kit";
 import { Sev } from "../inspector/rule";
-import { Coded, EmptyFrame, ErrorFrame, PageTitle, Skeleton } from "../parts";
+import { Coded, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Panel } from "./Mining";
@@ -132,7 +133,13 @@ export function Migration() {
     return () => clearInterval(id);
   }, [busy, refetch]);
   const [picked, setPicked] = useState<string | null>(null);
-  const [starting, setStarting] = useState(false);
+  // A cleaned re-upload links here with ?start=1&system=&source_version= so the form opens on that run.
+  const [startParam] = useUrlParam<string>("start", "");
+  const [startSystem] = useUrlParam<string>("system", "");
+  const [startVersion] = useUrlParam<string>("source_version", "");
+  const [starting, setStarting] = useState(startParam === "1");
+  const firstDone = runs.data?.runs.find((r) => analysed(r)) ?? null;
+  const recon = useMig(["recon", firstDone?.id], () => getReconciliation(firstDone?.id ?? ""), firstDone !== null);
   const [removing, setRemoving] = useState<MigrationRun | null>(null);
   const { can, shared, viewAs } = useV2Session();
   const toast = useToast();
@@ -156,13 +163,17 @@ export function Migration() {
   const list = runs.data.runs;
   const latest = list.find((r) => analysed(r)) ?? null;
   const current = list.find((r) => r.id === picked) ?? latest;
+  // Step 3 (load) ends when the files are exported or a reconciliation exists; step 4 (check) when it is accepted.
+  const rc = recon.data;
+  const step = !latest ? 0 : (latest.records_blocked ?? 0) > 0 ? 1 : rc?.accepted_at ? 4 : rc || latest.status === "exported" ? 3 : 2;
   const startBtn = can("analyse") ? (
     <button type="button" className="m2-btn m2-next" aria-expanded={starting} onClick={() => setStarting((s) => !s)}>{t("Start an analysis")}</button>
   ) : undefined;
   return (
     <CcPage><PageTitle>{t("Migration")}</PageTitle>
       <Guide
-        steps={{ labels: [t("Start an analysis"), t("Fix what would not load"), t("Load into the target"), t("Check the result")], current: !latest ? 0 : (latest.records_blocked ?? 0) > 0 ? 1 : 2 }}
+        steps={{ labels: [t("Start an analysis"), t("Fix what would not load"), t("Load into the target"), t("Check the result")], current: step }}
+        next={step === 2 ? { href: "/migration/load-plan", label: t("Open the load plan") } : step === 3 ? { href: "#mig-post-load", label: t("Check the result") } : undefined}
         shows={t("Each analysis checks whether your records would load into the target system, and compares the quality of every object before and after.")}
         means={[
           [t("Readiness"), t("A score from 0 to 100 for how ready the records are to load.")],
@@ -189,7 +200,7 @@ export function Migration() {
         <CcBanner eyebrow={t("Migration analysis")} headline={t("No analysis has finished yet")} why={t("Start one to see which records would not load into the target system.")} action={startBtn} testId="mig-banner" label={t("Migration analysis")} />
       )}
       {starting ? <p className="m2-meta">{t("Starting an analysis only checks your records. The page updates by itself while it runs.")}</p> : null}
-      {starting ? <StartForm onDone={() => setStarting(false)} /> : null}
+      {starting ? <StartForm onDone={() => setStarting(false)} initialSystem={startSystem} initialVersion={startVersion} /> : null}
       {removing ? (
         <Confirm
           title={t("Delete the analysis of {d}", { d: formatDate(removing.created_at, "datetime") })}
@@ -226,19 +237,28 @@ export function Migration() {
       </Panel>
       </Disclose>
       {current && analysed(current) ? <RunDetail run={current} /> : null}
-      <FieldMapPanel modules={current?.modules ?? []} />
+      <FieldMapPanel modules={current?.modules ?? []} release={current?.target_release === "ecc6" ? "ecc6" : "s4hana"} />
     </CcPage>
   );
 }
 
-function StartForm({ onDone }: { onDone: () => void }) {
+/** Complete source runs, newest first: the ones an analysis can read (migration.py _latest_source_version). */
+export const completeRuns = (vs: VersionHead[]) => vs.filter((v) => v.status.includes("complete")).sort((a, b) => b.run_at.localeCompare(a.run_at));
+const rowsOf = (v: VersionHead) => Object.values(v.metadata?.module_rows ?? {}).reduce((a, b) => a + b, 0);
+
+export function StartForm({ onDone, initialSystem = "", initialVersion = "" }: { onDone: () => void; initialSystem?: string; initialVersion?: string }) {
   const land = useLandscape(null);
   const toast = useToast();
   const qc = useQueryClient();
   const [mode, setMode] = useState<MigrationMode>("s4_dry_run");
-  const [src, setSrc] = useState("");
+  const [src, setSrc] = useState(initialSystem);
+  const [ver, setVer] = useState(initialVersion);
   const [dest, setDest] = useState("");
+  const [release, setRelease] = useState<"s4hana" | "ecc6">("s4hana");
   const [mods, setMods] = useState<string[]>([]);
+  const versions = useMig(["versions", src], () => getVersionsPage({ system_id: src, limit: 50 }), src !== "");
+  const runsOf = completeRuns(versions.data?.versions ?? []);
+  const picked = runsOf.find((v) => v.id === ver) ?? runsOf[0] ?? null;
   const start = useMutation({
     mutationFn: startMigration,
     onSuccess: () => {
@@ -251,10 +271,12 @@ function StartForm({ onDone }: { onDone: () => void }) {
   const systems = land.data?.systems ?? [];
   const objects = land.data?.objects ?? [];
   const needsDest = mode !== "s4_dry_run";
-  const ok = src !== "" && mods.length > 0 && (!needsDest || dest !== "");
+  const destSys = systems.find((s) => s.id === dest);
+  const targetRelease = mode === "s4_dry_run" ? "s4hana" : destSys ? releaseFor(destSys.system_type) : release;
+  const ok = src !== "" && picked !== null && mods.length > 0 && (mode !== "source_to_source" || dest !== "");
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (ok) start.mutate({ mode, source_system_id: src, dest_system_id: needsDest ? dest : undefined, target_release: "s4hana", modules: mods });
+    if (ok && picked) start.mutate({ mode, source_system_id: src, source_version_id: picked.id, dest_system_id: needsDest && dest ? dest : undefined, target_release: targetRelease, modules: mods });
   };
   return (
     <Panel title={t("Start an analysis")} testId="mig-start">
@@ -265,16 +287,34 @@ function StartForm({ onDone }: { onDone: () => void }) {
           </select>
         </label>
         <label>{t("Source system")}
-          <select className="m2-sel" value={src} onChange={(e) => setSrc(e.target.value)}>
+          <select className="m2-sel" value={src} onChange={(e) => { setSrc(e.target.value); setVer(""); }}>
             <option value="">{t("Choose a system")}</option>
             {systems.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
+        {src ? (
+          <label>{t("Source run")}
+            <select className="m2-sel" data-testid="mig-start-version" value={picked?.id ?? ""} onChange={(e) => setVer(e.target.value)} disabled={runsOf.length === 0}>
+              {runsOf.length === 0 ? <option value="">{versions.isPending ? t("Reading the runs") : t("No complete run for this system")}</option> : null}
+              {runsOf.map((v, i) => (
+                <option key={v.id} value={v.id}>{i === 0 ? t("{date}, {n} rows (latest)", { date: formatDate(v.run_at, "datetime"), n: int(rowsOf(v)) }) : t("{date}, {n} rows", { date: formatDate(v.run_at, "datetime"), n: int(rowsOf(v)) })}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         {needsDest ? (
           <label>{t("Target system")}
             <select className="m2-sel" value={dest} onChange={(e) => setDest(e.target.value)}>
-              <option value="">{t("Choose a system")}</option>
+              <option value="">{mode === "source_to_source" ? t("Choose a system") : t("No target system")}</option>
               {systems.filter((s) => s.id !== src).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
+        ) : null}
+        {needsDest && !destSys ? (
+          <label>{t("Target release")}
+            <select className="m2-sel" data-testid="mig-start-release" value={release} onChange={(e) => setRelease(e.target.value as "s4hana" | "ecc6")}>
+              <option value="s4hana">{t("S/4HANA")}</option>
+              <option value="ecc6">{t("ECC 6.0")}</option>
             </select>
           </label>
         ) : null}
@@ -294,10 +334,14 @@ function StartForm({ onDone }: { onDone: () => void }) {
 
 function RunDetail({ run }: { run: MigrationRun }) {
   const q = useMig(["run", run.id], () => getMigrationRun(run.id));
+  // Which source run the analysis read: same query (and cache) as the start form's picker.
+  const src = run.source_system_id ?? "";
+  const versions = useMig(["versions", src], () => getVersionsPage({ system_id: src, limit: 50 }), src !== "" && Boolean(run.source_version_id));
+  const srcRun = versions.data?.versions.find((v) => v.id === run.source_version_id) ?? null;
   const title = t("Gaps by kind");
   return (
     <>
-      <Panel title={title} meta={t("Analysis of {date}", { date: formatDate(run.created_at, "date") })} testId="mig-gaps">
+      <Panel title={title} meta={srcRun ? t("Analysis of {date}, from the source run of {run}, {n} rows", { date: formatDate(run.created_at, "date"), run: formatDate(srcRun.run_at, "datetime"), n: int(rowsOf(srcRun)) }) : t("Analysis of {date}", { date: formatDate(run.created_at, "date") })} testId="mig-gaps">
         {q.isPending ? <Skeleton width="100%" height={120} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("This analysis could not be read.")}</ErrorFrame> : q.data.gap_breakdown.length === 0 ? (
           <EmptyFrame>{t("The analysis found no gaps.")}</EmptyFrame>
         ) : (
@@ -319,8 +363,8 @@ function RunDetail({ run }: { run: MigrationRun }) {
       </Panel>
       {analysed(run) ? <LoadSimulationPanel runId={run.id} /> : null}
       <LoadFilesPanel run={run} />
-      {analysed(run) ? <PostLoadPanel run={run} /> : null}
-      <FindingsPanel run={run} gapTypes={[...new Set((q.data?.gap_breakdown ?? []).map((g) => g.gap_type))]} />
+      {analysed(run) ? <div id="mig-post-load"><PostLoadPanel run={run} /></div> : null}
+      <FindingsPanel run={run} gapTypes={[...new Set((q.data?.gap_breakdown ?? []).map((g) => g.gap_type))]} groups={[...new Map((q.data?.gap_breakdown ?? []).map((g) => [`${g.module}:${g.gap_type}`, { module: g.module, gap_type: g.gap_type }])).values()]} />
       <RecordsPanel run={run} />
     </>
   );
@@ -776,7 +820,21 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
     onSuccess: (name) => toast.show(t("Reconciliation saved as {name}", { name })),
     onError: (e) => toast.show(errorSentence(e, t("The reconciliation could not be prepared.")), "error"),
   });
+  const accept = useMutation({
+    mutationFn: () => acceptReconciliation(run.id),
+    onSuccess: () => { toast.show(t("Reconciliation accepted")); void qc.invalidateQueries({ queryKey: ["migration"] }); },
+    onError: (e) => toast.show(errorSentence(e, t("The reconciliation could not be accepted.")), "error"),
+  });
+  const { hrefFor } = useOpenItem();
+  const [batch, setBatch] = useState<string | null>(null);
+  const draft = useMutation({
+    mutationFn: (key: string) => draftBlockerFixBatch(run.wave_id ?? "", { module: run.modules[0], record_keys: [key] }),
+    onSuccess: (b) => { setBatch(b.id); toast.show(t("Fix batch drafted with {n} items", { n: int(b.items) })); },
+    onError: (e) => toast.show(errorSentence(e, t("The fix batch could not be drafted.")), "error"),
+  });
   const act = !shared && !viewAs;
+  // ponytail: a difference row carries no object, so the fix batch is offered on single-object runs only
+  const canFix = Boolean(run.wave_id) && run.modules.length === 1 && can("apply") && act;
   const d = q.data;
   const sum = d?.summary ?? {};
   const rules = (d?.scores ?? []).flatMap((m) => m.reasons.map((r) => ({ ...r, module: m.module })));
@@ -786,8 +844,11 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
     <Panel title={t("Post-load reconciliation")} meta={d?.completed_at ? t("Compared on {date}", { date: formatDate(d.completed_at, "date") }) : t("Load files against the target system")} testId="mig-post-load">
       <p>
         {can("analyse") && act ? <button type="button" className="m2-btn" disabled={start.isPending || d?.status === "queued" || d?.status === "running"} onClick={() => start.mutate()}>{t("Run reconciliation")}</button> : null}{" "}
-        {can("export") && act && done ? <button type="button" className="m2-btn" disabled={exp.isPending} onClick={() => exp.mutate()}>{t("Download as Excel")}</button> : null}
+        {can("export") && act && done ? <button type="button" className="m2-btn" disabled={exp.isPending} onClick={() => exp.mutate()}>{t("Download as Excel")}</button> : null}{" "}
+        {can("approve") && act && done && !d?.accepted_at ? <button type="button" className="m2-btn m2-next" data-testid="mig-post-load-accept" disabled={accept.isPending} onClick={() => accept.mutate()}>{t("Accept reconciliation")}</button> : null}
       </p>
+      {d?.accepted_at ? <p className="m2-meta" data-testid="mig-post-load-accepted">{t("Accepted by {who} on {date}.", { who: d.accepted_by_label ?? f1(null), date: formatDate(d.accepted_at, "datetime") })}</p> : done && can("approve") ? <p className="m2-meta">{t("Someone other than the person who ran the reconciliation accepts it.")}</p> : null}
+      {batch ? <p className="m2-meta"><V2Link href={hrefFor({ kind: "batch", id: batch })}>{t("Open the fix batch")}</V2Link></p> : null}
       {q.isPending ? <Skeleton width="100%" height={120} /> : status(q.error) === 404 ? (
         <EmptyFrame>{t("This run has not been reconciled against the target system.")}</EmptyFrame>
       ) : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("This reconciliation could not be read.")}</ErrorFrame> : (
@@ -916,7 +977,8 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
                         <td data-label={t("Expected")}>{r.withheld ? t("Withheld") : r.expected ?? f1(null)}</td>
                         <td data-label={t("Found")}>{r.withheld ? t("Withheld") : r.found ?? f1(null)}</td>
                         {kind === "differing" ? (
-                          <td data-label={t("Cause")}>{r.cause ? <>{RECON_CAUSE[r.cause]?.() ?? r.cause}{causeEvidence(r) ? <span className="m2-meta"> {causeEvidence(r)}</span> : null}</> : f1(null)}</td>
+                          <td data-label={t("Cause")}>{r.cause ? <>{RECON_CAUSE[r.cause]?.() ?? r.cause}{causeEvidence(r) ? <span className="m2-meta"> {causeEvidence(r)}</span> : null}</> : f1(null)}
+                            {canFix && r.source_record ? <div><button type="button" className="m2-btn m2-sm" disabled={draft.isPending} aria-label={t("Draft a fix batch for {r}", { r: r.source_record })} onClick={() => draft.mutate(r.source_record ?? "")}>{t("Draft a fix batch")}</button></div> : null}</td>
                         ) : null}
                       </tr>
                     ))}
@@ -933,9 +995,17 @@ function PostLoadPanel({ run }: { run: MigrationRun }) {
   );
 }
 
-function FindingsPanel({ run, gapTypes }: { run: MigrationRun; gapTypes: string[] }) {
-  const { can } = useV2Session();
+function FindingsPanel({ run, gapTypes, groups }: { run: MigrationRun; gapTypes: string[]; groups: { module: string; gap_type: string }[] }) {
+  const { can, shared, viewAs } = useV2Session();
   const toast = useToast();
+  const { hrefFor } = useOpenItem();
+  const [batch, setBatch] = useState<string | null>(null);
+  const draft = useMutation({
+    mutationFn: (g: { module: string; gap_type: string }) => draftBlockerFixBatch(run.wave_id ?? "", g),
+    onSuccess: (b) => { setBatch(b.id); toast.show(t("Fix batch drafted with {n} items", { n: int(b.items) })); },
+    onError: (e) => toast.show(errorSentence(e, t("The fix batch could not be drafted.")), "error"),
+  });
+  const canFix = Boolean(run.wave_id) && can("apply") && !shared && !viewAs;
   const [module, setModule] = useUrlParam<string>("gap_module", "");
   const [gap, setGap] = useState("");
   const [sev, setSev] = useState("");
@@ -976,6 +1046,14 @@ function FindingsPanel({ run, gapTypes }: { run: MigrationRun; gapTypes: string[
         </label>
         {can("export") ? <button type="button" className="m2-btn" disabled={exp.isPending} onClick={() => exp.mutate()}>{t("Export to Excel")}</button> : null}
       </form>
+      {canFix && groups.length > 0 ? (
+        <div className="m2-rfilters" data-testid="mig-fix-groups">
+          {groups.map((g) => (
+            <button key={`${g.module}:${g.gap_type}`} type="button" className="m2-btn m2-sm" disabled={draft.isPending} onClick={() => draft.mutate(g)}>{t("Draft a fix batch for {r}", { r: `${gapText(g.gap_type)}, ${formatModuleName(g.module)}` })}</button>
+          ))}
+          {batch ? <V2Link href={hrefFor({ kind: "batch", id: batch })}>{t("Open the fix batch")}</V2Link> : null}
+        </div>
+      ) : null}
       {q.isPending ? <Skeleton width="100%" height={120} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("This list could not be read.")}</ErrorFrame> : q.data.items.length === 0 ? (
         <EmptyFrame>{t("No gap matches these filters.")}</EmptyFrame>
       ) : (
@@ -1044,18 +1122,18 @@ function RecordsPanel({ run }: { run: MigrationRun }) {
   );
 }
 
-function FieldMapPanel({ modules }: { modules: string[] }) {
+function FieldMapPanel({ modules, release }: { modules: string[]; release: "s4hana" | "ecc6" }) {
   const { can } = useV2Session();
   const toast = useToast();
   const qc = useQueryClient();
   const [module, setModule] = useUrlParam<string>("map_module", modules[0] ?? "material_master");
   const [valueField, setValueField] = useState<string | null>(null);
-  const q = useMig(["field-map", module], () => getFieldMap(module, "s4hana"));
+  const q = useMig(["field-map", module, release], () => getFieldMap(module, release));
   const done = (msg: string) => () => { toast.show(msg); void qc.invalidateQueries({ queryKey: ["migration", "field-map"] }); };
   const fail = (msg: string) => (e: unknown) => toast.show(errorSentence(e, msg), "error");
   const confirm = useMutation({ mutationFn: (id: string) => updateFieldMapping(id, { is_confirmed: true }), onSuccess: done(t("The mapping is confirmed.")), onError: fail(t("The mapping could not be confirmed.")) });
   const remove = useMutation({ mutationFn: deleteFieldMapping, onSuccess: done(t("The mapping was removed.")), onError: fail(t("The mapping could not be removed.")) });
-  const seed = useMutation({ mutationFn: () => seedFieldMap(module, "s4hana"), onSuccess: done(t("The field map was proposed from the source.")), onError: fail(t("The field map could not be proposed.")) });
+  const seed = useMutation({ mutationFn: () => seedFieldMap(module, release), onSuccess: done(t("The field map was proposed from the source.")), onError: fail(t("The field map could not be proposed.")) });
   const edit = can("analyse");
   const title = t("Field map");
   const rows = q.data?.mappings ?? [];
