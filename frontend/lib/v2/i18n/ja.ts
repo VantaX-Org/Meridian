@@ -10175,6 +10175,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Fix {n} records failing {rule}: {name}": "{rule} で不合格の {n} 件を修正: {name}",
   "Assign the open records that have no owner.": "担当者のいない未解決レコードを割り当てる。",
   "Nothing to do. Keep the monitoring on.": "対応は不要です。モニタリングを継続してください。",
+  "All severities": "すべての重大度",
+  "Watched objects": "監視中のオブジェクト",
   "SAP S/4HANA": "SAP S/4HANA",
   "Migration Cockpit templates, one sheet per target table.": "移行コックピットのテンプレート。ターゲットテーブルごとに1シート。",
   "SAP SuccessFactors": "SAP SuccessFactors",

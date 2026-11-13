@@ -10174,6 +10174,8 @@ export const en = {
   "Fix {n} records failing {rule}: {name}": "Fix {n} records failing {rule}: {name}",
   "Assign the open records that have no owner.": "Assign the open records that have no owner.",
   "Nothing to do. Keep the monitoring on.": "Nothing to do. Keep the monitoring on.",
+  "All severities": "All severities",
+  "Watched objects": "Watched objects",
   "SAP S/4HANA": "SAP S/4HANA",
   "Migration Cockpit templates, one sheet per target table.": "Migration Cockpit templates, one sheet per target table.",
   "SAP SuccessFactors": "SAP SuccessFactors",

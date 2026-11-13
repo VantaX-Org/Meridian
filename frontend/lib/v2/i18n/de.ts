@@ -10175,6 +10175,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Fix {n} records failing {rule}: {name}": "{n} Datensätze beheben, die {rule} nicht bestehen: {name}",
   "Assign the open records that have no owner.": "Weisen Sie die offenen Datensätze ohne Verantwortlichen zu.",
   "Nothing to do. Keep the monitoring on.": "Nichts zu tun. Die Überwachung bleibt aktiv.",
+  "All severities": "Alle Schweregrade",
+  "Watched objects": "Beobachtete Objekte",
   "SAP S/4HANA": "SAP S/4HANA",
   "Migration Cockpit templates, one sheet per target table.": "Migration-Cockpit-Vorlagen, ein Blatt je Zieltabelle.",
   "SAP SuccessFactors": "SAP SuccessFactors",
