@@ -32,6 +32,7 @@ from python_calamine import CalamineError, CalamineWorkbook, PasswordError, Work
 
 MAX_UNPACKED_BYTES = 500 * 1024 * 1024
 MAX_MEMBERS = 200
+MAX_ZIP_ENTRIES = 1000  # a real workbook holds tens of parts; thousands is a zip bomb
 MAX_XML_ROWS = 1_048_576
 MAX_XML_COLUMNS = 16_384
 MAX_XML_CELLS = 20_000_000
@@ -146,13 +147,28 @@ def _archive(z: zipfile.ZipFile, name: str, budget: list[int]) -> Source:
 _TOO_LARGE = "This workbook is too large once unpacked."
 
 
+def _check_budget(z: zipfile.ZipFile, left: list[int]) -> None:
+    """Refuse before anything is unpacked. ``file_size`` is the declared size, and zipfile never reads past it."""
+    infos = z.infolist()
+    if len(infos) > MAX_ZIP_ENTRIES:
+        raise WorkbookError(f"This file holds more than {MAX_ZIP_ENTRIES} parts.")
+    left[0] -= sum(i.file_size for i in infos)
+    if left[0] < 0:
+        raise WorkbookError(_TOO_LARGE)
+
+
+def check_zip_budget(data: bytes) -> None:
+    """Decompression-bomb guard for a zip-based workbook read outside read_source: WorkbookError when too large,
+    zipfile.BadZipFile when it is not a zip at all."""
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        _check_budget(z, [MAX_UNPACKED_BYTES])
+
+
 def _zip(data: bytes, name: str, budget: Optional[list[int]]) -> Source:
     left = [MAX_UNPACKED_BYTES] if budget is None else budget
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as z:
-            left[0] -= sum(i.file_size for i in z.infolist())
-            if left[0] < 0:
-                raise WorkbookError(_TOO_LARGE)
+            _check_budget(z, left)
             names = set(z.namelist())
             if "xl/workbook.xml" in names:
                 return _openpyxl(data, name)
