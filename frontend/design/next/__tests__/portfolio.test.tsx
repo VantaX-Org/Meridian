@@ -76,6 +76,13 @@ describe("Portfolio", () => {
     expect(new Set(start.mock.calls[0][0])).toEqual(mods);
     expect(await screen.findByText("5 objects queued to pull.")).toBeInTheDocument();
   });
+  it("sends Compare runs and the change chips to the next object page's cycle tab, which exists", async () => {
+    renderWithQuery(<ToastProvider><Portfolio /></ToastProvider>);
+    const card = (await screen.findAllByTestId("pf-card"))[0];
+    const hrefs = within(card).getAllByRole("link").map((a) => a.getAttribute("href") ?? "").filter((h) => h.includes("step=compare"));
+    expect(hrefs.length).toBeGreaterThan(0);
+    for (const h of hrefs) expect(h).toMatch(/^\/next\/o\/[^/]+\/[^/]+\/cycle\?step=compare&run=/);
+  });
 });
 
 describe("Objects list", () => {
