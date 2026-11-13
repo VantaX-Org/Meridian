@@ -10135,6 +10135,19 @@ export const en = {
   "{n} workbooks uploaded. {m} new runs scoring.": "{n} workbooks uploaded. {m} new runs scoring.",
   "Upload the Excel (.xlsx) or CSV file you exported.": "Upload the Excel (.xlsx) or CSV file you exported.",
   "The file is larger than 25 MB.": "The file is larger than 25 MB.",
+  "Analysis started for {n} objects": "Analysis started for {n} objects",
+  "Could not start the analysis": "Could not start the analysis",
+  "Prepare": "Prepare",
+  "Pick the objects to load and the run each one loads from.": "Pick the objects to load and the run each one loads from.",
+  "No objects to load yet": "No objects to load yet",
+  "Start analysis": "Start analysis",
+  "{run}, {date}, DQS {dqs}": "{run}, {date}, DQS {dqs}",
+  "Loading runs": "Loading runs",
+  "No finished run to load from": "No finished run to load from",
+  "Source run for {object}": "Source run for {object}",
+  "Is it ready for the target, and how do you get the files? Readiness, value, forecast and go-live.": "Is it ready for the target, and how do you get the files? Readiness, value, forecast and go-live.",
+  "g then l": "g then l",
+  "Approvals": "Approvals",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -309,7 +309,9 @@ function ViewToggle({ view }: { view: "systems" | "waves" }) {
     if (next === "waves") q.set("view", "waves");
     else q.delete("view");
     const qs = q.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    // The waves view lives at /load/waves; "All objects" is the landscape itself.
+    const base = pathname === "/load/waves" ? (next === "systems" ? "/" : pathname) : pathname;
+    router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
   };
   return (
     <div role="group" aria-label={t("Group the matrix")} className="m2-segs" data-testid="view-toggle">
@@ -645,13 +647,13 @@ function NoSystemYet() {
 }
 
 /** The landscape canvas: the go-live banner, the readiness matrix, the fix pipeline, value at risk, the failing rules, the docked Aletheia, the coverage matrix and the next work. */
-export function LandscapeCanvas() {
+export function LandscapeCanvas({ waves: wavesView = false }: { waves?: boolean } = {}) {
   const run = useRunParam();
   const q = useLandscape(run);
   const session = useV2Session();
   const params = useSearchParams();
   const waves = useWaves().data ?? [];
-  const view = params.get("view") === "waves" ? "waves" : "systems";
+  const view = wavesView || params.get("view") === "waves" ? "waves" : "systems";
   const L = q.data;
   const scopeName = useMemo(() => {
     const chosen = params.get("system");
