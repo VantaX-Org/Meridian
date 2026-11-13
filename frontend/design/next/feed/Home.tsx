@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
@@ -22,6 +22,7 @@ import { orderFeed, runningNow } from "./model";
 import { QuietRow } from "./QuietRow";
 import { StoryCard } from "./StoryCard";
 import { StoryCardSkeleton } from "./StoryCardSkeleton";
+import { CapNotice } from "./CapNotice";
 import "./feed.css";
 
 // The Objects switcher opens from the greeting; registered here so SheetHost and sheets.ts stay free of a cycle.
@@ -35,11 +36,13 @@ export function Home() {
   const sheets = useSheets();
   const fixture = useFixture();
   const systems = useSystemsExtended().data ?? [];
-  const feed = usePortfolio({ limit: 500 });
+  const [all, setAll] = useState(false);
+  const feed = usePortfolio({ limit: 500 }, all);
   const found = useQuery({ queryKey: ["aletheia-found", fixture, "home"], queryFn: () => getFindings(), staleTime: 60_000 });
   const [pulling, setPulling] = useState<PortfolioRow[] | null>(null);
   const [uploadFor, setUploadFor] = useState<PortfolioRow[] | null>(null);
   const [scoring, setScoring] = useState<Set<string>>(new Set());
+  const pullBusy = useRef(false);
 
   const rows = useMemo(() => feed.data?.objects ?? [], [feed.data]);
   const { needs, quiet } = useMemo(() => orderFeed(rows, session.persona), [rows, session.persona]);
@@ -77,6 +80,9 @@ export function Home() {
     score: async (rs) => {
       setScoring((s) => new Set([...s, ...rs.map((r) => r.version_id)]));
       const out = await Promise.allSettled(rs.map((r) => analyseRun(r.version_id)));
+      // A failed score frees its button again; a started one stays locked until the refreshed row shows the new run.
+      const freed = rs.filter((_, i) => out[i].status === "rejected").map((r) => r.version_id);
+      if (freed.length) setScoring((s) => new Set([...s].filter((id) => !freed.includes(id))));
       const failed = out.filter((o) => o.status === "rejected").length;
       toast(failed ? { text: t("{n} of {m} runs could not be scored. Try again.", { n: formatInt(failed), m: formatInt(rs.length) }), tone: "bad" } : { text: t("Scoring {n} runs.", { n: formatInt(rs.length) }), tone: "good" });
       refresh();
@@ -84,6 +90,8 @@ export function Home() {
   };
 
   const confirmPull = async () => {
+    if (pullBusy.current) return;
+    pullBusy.current = true;
     const rs = pulling ?? [];
     setPulling(null);
     try {
@@ -92,11 +100,13 @@ export function Home() {
       refresh();
     } catch (err) {
       toast({ text: errorSentence(err, t("The pull could not start. Try again.")), tone: "bad" });
+    } finally {
+      pullBusy.current = false;
     }
   };
 
   const card = (r: PortfolioRow) => (
-    <StoryCard key={r.version_id} row={r} act={act} finding={top.get(r.module)} evidence={count.get(r.module)} onEvidence={() => { const f = top.get(r.module); if (f) sheets.open({ kind: "evidence", id: f.id }); }} />
+    <StoryCard key={r.version_id} row={r} act={act} finding={top.get(r.module)} evidence={count.get(r.module) ?? 0} onEvidence={() => { const f = top.get(r.module); if (f) sheets.open({ kind: "evidence", id: f.id }); }} />
   );
 
   return (
@@ -104,12 +114,17 @@ export function Home() {
       <Greeting name={session.name} needs={needs.length} running={rows.filter(runningNow).length} onCompare={() => sheets.open({ kind: "compare", id: "" })} onObjects={() => sheets.open({ kind: "objects", id: "" })} />
       {feed.isError ? <ErrorState error={feed.error} fallback={t("Home could not be read. Check that the API is reachable, then retry.")} onRetry={() => void feed.refetch()} />
         : feed.isLoading ? <div className="nx-fd-feed" aria-live="polite">{[0, 1, 2].map((i) => <StoryCardSkeleton key={i} />)}</div>
-        : rows.length === 0 ? (
+        : rows.length === 0 && systems.length > 0 ? (
+          <EmptyState heading={t("No run yet.")} action={<V2Link className="nx-btn nx-btn-primary" href={`/s/${systems[0].id}`}>{t("Run your first pull")}</V2Link>}>
+            {t("A system is connected. Pull its objects to see their quality here.")}
+          </EmptyState>
+        ) : rows.length === 0 ? (
           <EmptyState heading={t("Nothing to show yet.")} action={<><Button variant="primary" onClick={() => sheets.open({ kind: "connect", id: "" })}>{t("Connect a system")}</Button> <V2Link className="nx-btn nx-btn-quiet" href="/portfolio?fixture=1">{t("See the sample")}</V2Link></>}>
             {t("Connect a system and run the first analysis.")}
           </EmptyState>
         ) : (
           <>
+            <CapNotice page={feed.data} onAll={() => setAll(true)} loading={all && feed.isFetching} />
             <div className="nx-fd-feed">{needs.map(card)}</div>
             <QuietRow rows={quiet} sysName={sysName} />
           </>

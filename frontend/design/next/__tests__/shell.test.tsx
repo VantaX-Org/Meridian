@@ -125,3 +125,19 @@ describe("palette places and redirects", () => {
     expect(redirectFor("/work/analytics")).toBeNull();
   });
 });
+
+describe("offline banner", () => {
+  afterEach(() => vi.restoreAllMocks());
+  it("shows when the browser goes offline and clears when it is back", async () => {
+    const { Banners } = await import("../shell/Banners");
+    const on = vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    renderWithQuery(<Banners />);
+    expect(screen.queryByTestId("offline-banner")).toBeNull();
+    on.mockReturnValue(false);
+    act(() => { window.dispatchEvent(new Event("offline")); });
+    expect(screen.getByTestId("offline-banner")).toHaveTextContent("You are offline.");
+    on.mockReturnValue(true);
+    act(() => { window.dispatchEvent(new Event("online")); });
+    expect(screen.queryByTestId("offline-banner")).toBeNull();
+  });
+});

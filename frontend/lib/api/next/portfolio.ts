@@ -66,9 +66,24 @@ export function getPortfolio(q: PortfolioQuery = {}): Promise<PortfolioPage> {
   return v2Get<PortfolioPage>("/objects/portfolio", { ...q, q: q.q || undefined });
 }
 
-export function usePortfolio(q: PortfolioQuery) {
+/** Every page of the portfolio from q.offset on, joined into one page. The API caps one page at 500 objects. */
+export async function getPortfolioAll(q: PortfolioQuery = {}, get: (q: PortfolioQuery) => Promise<PortfolioPage> = getPortfolio): Promise<PortfolioPage> {
+  const first = await get({ ...q, limit: 500 });
+  const objects = [...first.objects];
+  let next = first.next_offset;
+  while (next != null && objects.length < first.total) {
+    const page = await get({ ...q, limit: 500, offset: next });
+    if (!page.objects.length) break;
+    objects.push(...page.objects);
+    next = page.next_offset;
+  }
+  return { objects, total: first.total, limit: objects.length, offset: first.offset, next_offset: null };
+}
+
+/** One page of the portfolio, or with all set every page joined. */
+export function usePortfolio(q: PortfolioQuery, all = false) {
   const fixture = useFixture();
-  return useQuery({ queryKey: ["next", "portfolio", fixture, q], queryFn: () => getPortfolio(q), placeholderData: keepPreviousData });
+  return useQuery({ queryKey: ["next", "portfolio", fixture, q, all], queryFn: () => (all ? getPortfolioAll(q) : getPortfolio(q)), placeholderData: keepPreviousData });
 }
 
 export function startObjects(moduleIds: string[]): Promise<{ queued: string[]; skipped: string[] }> {
