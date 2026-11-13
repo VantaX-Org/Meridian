@@ -7,6 +7,11 @@
 import { uploadApiClient } from "@/lib/api/client";
 import { fixtureActive } from "./fixture";
 import { getVersionsPage } from "./runs";
+import { v2Download } from "./download";
+
+/** GET /reports/{run}/cleaning/{module}.xlsx: the cleaning workbook for one object of one run, ready to edit and upload back. */
+export const downloadCleaningWorkbook = (runId: string, module: string) =>
+  v2Download(`/reports/${encodeURIComponent(runId)}/cleaning/${encodeURIComponent(module)}.xlsx`, undefined, `cleaning_${module}.xlsx`);
 
 export interface RoundTripResult {
   version_id: string;

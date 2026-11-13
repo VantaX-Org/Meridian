@@ -93,6 +93,7 @@ export function destinations(): Destination[] {
       key: "i",
       kids: [
         { href: "/migration", label: t("Migration") },
+        { href: "/?view=waves", label: t("Waves") },
         { href: "/system-compare", label: t("System comparison") },
         { href: "/migration/load-plan", label: t("Load plan") },
         { href: "/s4", label: t("S/4HANA readiness") },

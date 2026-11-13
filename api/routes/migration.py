@@ -18,7 +18,7 @@ from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response, StreamingResponse
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,7 +42,7 @@ _LIST_TREND_POINTS = 12  # sparkline points shown per wave in the wave list
 class AnalyzeBody(BaseModel):
     mode: str
     source_system_id: Optional[str] = None
-    source_version_id: Optional[str] = None   # default: latest analysis of the source system
+    source_version_id: Optional[uuid.UUID] = None   # default: latest analysis of the source system
     dest_system_id: Optional[str] = None      # connected target (live DDIC + config)
     target_release: str = "s4hana"            # used when no target system is connected
     modules: list[str] = []
@@ -177,6 +177,13 @@ async def start_migration(
         raise HTTPException(status_code=400, detail="A source system or a source analysis version is required.")
     if body.source_system_id and not await _load_system(db, tenant.id, body.source_system_id):
         raise HTTPException(status_code=404, detail="Source system not found.")
+    if body.source_version_id:  # the picked run must be this tenant's (RLS), complete with a dataset, and the named system's
+        vsys = (await db.execute(text("SELECT coalesce(metadata->>'system_id', '') FROM analysis_versions "
+                                      "WHERE id = CAST(:v AS uuid) AND tenant_id = :t "
+                                      "AND position('complete' in status) > 0 AND metadata->>'dataset_path' IS NOT NULL"),
+                                 {"v": str(body.source_version_id), "t": str(tenant.id)})).fetchone()
+        if vsys is None or (body.source_system_id and vsys[0] and vsys[0] != str(body.source_system_id)):
+            raise HTTPException(status_code=404, detail="No complete source run with that id for this system.")
 
     dest_id = None
     if body.mode == "source_to_destination" and body.dest_system_id:
@@ -191,7 +198,8 @@ async def start_migration(
             raise HTTPException(status_code=400, detail=f"Unknown target release '{body.target_release}'.")
 
     return await _enqueue_run(db, tenant.id, current_user_id(request), body.mode, body.source_system_id, dest_id,
-                              body.modules, body.source_version_id, body.target_release)
+                              body.modules, str(body.source_version_id) if body.source_version_id else None,
+                              body.target_release)
 
 
 async def _enqueue_run(db: AsyncSession, tenant_id: uuid.UUID, user_id: Optional[str], mode: str,
@@ -245,7 +253,7 @@ async def list_runs(
         text(f"""
             SELECT id, mode, source_system_id, dest_system_id, source_version_id, target_release,
                    target_connected, modules, status, readiness_verdict, readiness_score, critical_count,
-                   records_total, records_blocked, error_detail, created_at, completed_at
+                   records_total, records_blocked, error_detail, created_at, completed_at, wave_id
             FROM migration_runs WHERE {where}
             ORDER BY created_at DESC LIMIT 100
         """),
@@ -501,6 +509,10 @@ class ReconciliationOut(BaseModel):
     automatic: bool = False                # started by a finished target analysis, not by a person
     needs_target_extraction: bool = False  # it failed because the target system has not been extracted and analysed
     previous: Optional[ReconciliationPrevious] = None   # the reconciliation before this one, when it finished
+    requested_by: Optional[uuid.UUID] = None
+    accepted_by: Optional[uuid.UUID] = None   # four-eyes sign-off: never the user who ran it
+    accepted_by_label: Optional[str] = None
+    accepted_at: Optional[datetime.datetime] = None
 
 
 class ReconciliationRecord(BaseModel):
@@ -525,7 +537,8 @@ class ReconciliationRecordsPage(BaseModel):
 
 
 _RECON_COLS = ("id, run_id, status, error_detail, target_system_id, target_version_id, target_synced_at, "
-               "created_at, completed_at, record_cap, summary, tables, scores, auto_started")
+               "created_at, completed_at, record_cap, summary, tables, scores, auto_started, requested_by, accepted_by, "
+               "accepted_at")
 
 
 async def _latest_reconciliation(db: AsyncSession, tenant_id: uuid.UUID, run_id: uuid.UUID, cols: str):
@@ -741,7 +754,39 @@ async def get_reconciliation(
         target_synced_at=r["target_synced_at"], created_at=r["created_at"], completed_at=r["completed_at"],
         stale=bool(r["status"] == "done" and latest and r["target_synced_at"] and latest > r["target_synced_at"]),
         latest_target_synced_at=latest, record_cap=r["record_cap"], summary=r["summary"] or {},
-        tables=r["tables"] or [], scores=(r["scores"] or {}).get("modules", []))
+        tables=r["tables"] or [], scores=(r["scores"] or {}).get("modules", []),
+        requested_by=r["requested_by"], accepted_by=r["accepted_by"], accepted_at=r["accepted_at"],
+        accepted_by_label=(await db.execute(text("SELECT coalesce(name, email) FROM users WHERE id = :u"),
+                                            {"u": r["accepted_by"]})).scalar() if r["accepted_by"] else None)
+
+
+@router.post("/runs/{run_id}/reconciliation/accept", response_model=ReconciliationOut)
+async def accept_reconciliation(
+    run_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
+):
+    """Sign off the latest finished reconciliation. Four-eyes: the user who ran it cannot accept it."""
+    await _set_rls(db, tenant.id)
+    rec = _row(await _latest_reconciliation(db, tenant.id, run_id, "id, status, requested_by, accepted_by"))
+    if rec["status"] != "done":
+        raise HTTPException(status_code=409, detail="Only a finished reconciliation can be accepted.")
+    if rec["accepted_by"]:
+        raise HTTPException(status_code=409, detail="This reconciliation is already accepted.")
+    ran_by = rec["requested_by"] or (await db.execute(
+        text("SELECT requested_by FROM migration_runs WHERE id = :r AND tenant_id = :t"),
+        {"r": run_id, "t": str(tenant.id)})).scalar()
+    me = current_user_id(request)
+    if me is None or (ran_by and str(ran_by) == str(me)):
+        raise HTTPException(status_code=403, detail="A different user from the one who ran the reconciliation must accept it.")
+    await db.execute(text("UPDATE migration_reconciliations SET accepted_by = :u, accepted_at = now() "
+                          "WHERE id = :id AND tenant_id = :t"), {"u": me, "id": rec["id"], "t": str(tenant.id)})
+    await _audit(db, tenant, request, "accept_reconciliation", run_id, 200,
+                 {"reconciliation_id": str(rec["id"]), "accepted_by": str(me)})
+    await db.commit()
+    return await get_reconciliation(run_id, db, tenant, _role)
 
 
 @router.get("/runs/{run_id}/reconciliation/records", response_model=ReconciliationRecordsPage)
@@ -1137,8 +1182,9 @@ async def signoff_wave(
 
 class FixBatchBody(BaseModel):
     module: str
-    gap_type: str
+    gap_type: Optional[str] = None
     field: Optional[str] = None
+    record_keys: Optional[list[str]] = Field(default=None, max_length=50_000)   # reconciliation difference rows
 
 
 @router.get("/waves/{wave_id}/report.{fmt}")
@@ -1235,27 +1281,31 @@ async def blocker_fix_batch(
     # record_issues.scope is the source system id (or 'upload') — without this filter, a tenant
     # with another scope holding the same record key would leak those issues into this batch.
     scope = str(w.source_system_id)
-    rows = (await db.execute(text("""
+    if not body.gap_type and not body.record_keys:
+        raise HTTPException(status_code=422, detail="Give a gap type or the record keys.")
+    # A blocker names a gap; a reconciliation difference names its records (SOURCE_RECORD is the same key format).
+    keys_sql = ("SELECT unnest(CAST(:keys AS text[]))" if body.record_keys else
+                """SELECT DISTINCT record_key FROM migration_gap_findings
+                 WHERE run_id = :r AND module = :m AND gap_type = :g
+                   AND field IS NOT DISTINCT FROM :fld AND record_key IS NOT NULL""")
+    rows = (await db.execute(text(f"""
         SELECT ri.id AS issue_id, ri.scope, ri.module, ri.check_id, ri.record_key, ri.grain,
                ri.last_seen_version, f.details->>'field_checked' AS field
           FROM record_issues ri
           LEFT JOIN findings f ON f.version_id = ri.last_seen_version AND f.check_id = ri.check_id
          WHERE ri.tenant_id = :t AND ri.scope = :scope AND ri.module = :m AND ri.status IN ('open', 'in_progress')
-           AND ri.record_key IN (
-                SELECT DISTINCT record_key FROM migration_gap_findings
-                 WHERE run_id = :r AND module = :m AND gap_type = :g
-                   AND field IS NOT DISTINCT FROM :fld AND record_key IS NOT NULL)
+           AND ri.record_key IN ({keys_sql})
          ORDER BY ri.record_key
          LIMIT 50001"""),
         {"t": str(tenant.id), "scope": scope, "m": body.module, "r": str(run_id), "g": body.gap_type,
-         "fld": body.field})).fetchall()
+         "fld": body.field, "keys": body.record_keys})).fetchall()
     if not rows:
         raise HTTPException(status_code=400, detail="No open data quality issues match these records. "
                                                     "Fix the mapping in the Mapping tab.")
     if len(rows) > 50_000:
         raise HTTPException(status_code=400, detail="More than 50000 records; fix this blocker in parts.")
     issues = [dict(r._mapping) for r in rows]
-    name = f"{w.name}: {object_label(body.module)} {body.gap_type} {body.field or ''}".rstrip()
+    name = f"{w.name}: {object_label(body.module)} {body.gap_type or 'reconciliation'} {body.field or ''}".rstrip()
     uid, label = current_user_id(request), current_user_label()
     out = await db.run_sync(lambda s: remediation.draft_batch(s, str(tenant.id), name, body.model_dump_json(),
                                                               issues, uid, label))
@@ -1384,8 +1434,12 @@ class LoadHistoryItem(BaseModel):
     record_count: int
     exported_by: Optional[str] = None
     exported_at: Optional[datetime.datetime] = None
+    exported_by_label: Optional[str] = None
     modules: list[str] = []
     snapshot_kept: bool = False
+    wave_id: Optional[str] = None
+    wave_name: Optional[str] = None
+    wave_stage: Optional[str] = None
 
 
 class LoadHistoryOut(BaseModel):
@@ -1405,7 +1459,8 @@ async def load_history(
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
-    """Every load file Meridian handed over, newest first, with the run and objects it came from."""
+    """Every load file Meridian handed over, newest first: who downloaded it, and the run, wave and objects it came from.
+    The /export route records each download in migration_export_files, so that table is the load history."""
     from api.services.paging import page_meta
 
     await _set_rls(db, tenant.id)
@@ -1416,12 +1471,17 @@ async def load_history(
     rows = (await db.execute(text(
         f"SELECT f.id::text AS id, f.run_id::text AS run_id, f.export_format, f.filename, "
         f"COALESCE(f.record_count, 0) AS record_count, f.exported_by::text AS exported_by, f.created_at, "
-        f"r.modules, (f.snapshot_prefix IS NOT NULL) AS kept FROM migration_export_files f "
-        f"JOIN migration_runs r ON r.id = f.run_id WHERE {where} "
+        f"r.modules, (f.snapshot_prefix IS NOT NULL) AS kept, coalesce(u.name, u.email) AS exported_by_label, "
+        f"r.wave_id::text AS wave_id, w.name AS wave_name, w.stage AS wave_stage FROM migration_export_files f "
+        f"JOIN migration_runs r ON r.id = f.run_id "
+        f"LEFT JOIN migration_waves w ON w.id = r.wave_id AND w.tenant_id = f.tenant_id "
+        f"LEFT JOIN users u ON u.id = f.exported_by WHERE {where} "
         f"ORDER BY f.created_at DESC, f.id LIMIT :l OFFSET :o"), {**args, "l": limit, "o": offset})).mappings().all()
     items = [LoadHistoryItem(id=r["id"], run_id=r["run_id"], export_format=r["export_format"], filename=r["filename"],
                              record_count=r["record_count"], exported_by=r["exported_by"], exported_at=r["created_at"],
-                             modules=list(r["modules"] or []), snapshot_kept=bool(r["kept"])) for r in rows]
+                             modules=list(r["modules"] or []), snapshot_kept=bool(r["kept"]),
+                             exported_by_label=r["exported_by_label"], wave_id=r["wave_id"],
+                             wave_name=r["wave_name"], wave_stage=r["wave_stage"]) for r in rows]
     return LoadHistoryOut(items=items, **page_meta(total, limit, offset))
 
 

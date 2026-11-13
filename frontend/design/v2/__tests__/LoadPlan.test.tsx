@@ -33,6 +33,14 @@ describe("load plan", () => {
     expect(within(screen.getByTestId("lp-object-mm_purchasing")).getByText("Not analysed yet")).toBeInTheDocument();
   });
 
+  it("lists every downloaded load file with its wave, objects and records", async () => {
+    renderWithQuery(<LoadPlan />);
+    const row = await screen.findByTestId("lp-load-exp-0001");
+    expect(within(row).getByText("Wave 1")).toBeInTheDocument();
+    expect(within(row).getByText("material_master_cockpit.xlsx")).toBeInTheDocument();
+    expect(within(row).getByText("Resh Naidoo")).toBeInTheDocument();
+  });
+
   it("blocks the objects that need a no-go object through a required field", async () => {
     renderWithQuery(<LoadPlan />);
     const blocked = await screen.findByTestId("lp-blocked-accounts_payable");

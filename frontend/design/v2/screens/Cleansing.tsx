@@ -24,6 +24,9 @@ import { DdicCard, SafetyBadge } from "./DdicEvidence";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { Fld } from "../admin/kit";
 import { TableExport } from "@/design/v2/TableExport";
+import { downloadCleaningWorkbook } from "@/lib/api/v2/roundtrip";
+import { useLandscape } from "@/lib/v2/queries";
+import { CleanedUpload } from "./object/CleanedUpload";
 
 /**
  * Cleansing: what the cleaning engine proposed, what was applied to SAP and what was undone. The weekly task stores a
@@ -90,7 +93,7 @@ export function Cleansing() {
 
   const weeks = weekly(metrics.data.metrics);
   const now = weeks.at(-1);
-  if (!now) return <CcPage title={t("Cleansing")}><EmptyFrame>{t("Nothing has been cleansed yet. The figures appear after the weekly cleansing task has run once.")}</EmptyFrame></CcPage>;
+  if (!now) return <CcPage title={t("Cleansing")}><EmptyFrame>{t("Nothing has been cleansed yet. The figures appear after the weekly cleansing task has run once.")}</EmptyFrame><CleanInExcel /></CcPage>;
   const prev = weeks.at(-2);
   const s = now.sums;
   const gain = prev ? cleaned(s) - cleaned(prev.sums) : null;
@@ -134,6 +137,7 @@ export function Cleansing() {
       <Safety />
       <Rollbacks query={queue} />
       <Duplicates />
+      <CleanInExcel />
 
       <MoreDetail title={t("Trends, breakdown by object, export and audit trail")}>
       <Panel title={t("Where every proposal stands")} meta={t("The latest snapshot of the queue, all objects.")} testId="cleansing-status">
@@ -807,6 +811,45 @@ function Export() {
           </Fld>
           <button type="submit" className="m2-btn" disabled={!st || save.isPending}>{save.isPending ? t("Building the file…") : t("Download")}</button>
         </form>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * Clean in Excel: the cleaning workbook of one object's latest run, edited offline and uploaded back through the same
+ * round trip as the object page (CleanedUpload), which scores it as the next run.
+ */
+function CleanInExcel() {
+  const land = useLandscape(null);
+  const toast = useToast();
+  const cells = (land.data?.cells ?? []).filter((c) => c.run_id);
+  const [pick, setPick] = useState("");
+  const keyOf = (c: { system_id: string; module: string }) => `${c.system_id}|${c.module}`;
+  const cell = cells.find((c) => keyOf(c) === pick) ?? cells[0] ?? null;
+  const sysName = (id: string) => land.data?.systems.find((s) => s.id === id)?.name ?? id;
+  const objLabel = (m: string) => land.data?.objects.find((o) => o.module === m)?.label ?? moduleText(m);
+  const save = useMutation({
+    mutationFn: (c: { run_id: string; module: string }) => downloadCleaningWorkbook(c.run_id, c.module),
+    onSuccess: (name) => toast.show(t("Saved {name}.", { name })),
+    onError: (e) => toast.show(errorSentence(e, t("The file could not be built.")), "error"),
+  });
+  return (
+    <Panel title={t("Clean in Excel")} meta={t("Download the cleaning workbook, correct the values in Excel, and upload it back. Meridian scores it as the next run.")} testId="cleansing-excel">
+      {land.isPending ? <Skeleton width="100%" height={60} /> : cells.length === 0 ? (
+        <EmptyFrame>{t("No object has been scored yet, so there is no workbook to download.")}</EmptyFrame>
+      ) : (
+        <>
+          <form className="m2-fbar" aria-label={t("Download the cleaning workbook")} onSubmit={(e) => { e.preventDefault(); if (cell) save.mutate(cell); }}>
+            <Fld label={t("Object")}>
+              <select value={cell ? keyOf(cell) : ""} onChange={(e) => setPick(e.target.value)} data-testid="cleansing-excel-object">
+                {cells.map((c) => <option key={keyOf(c)} value={keyOf(c)}>{t("{system}: {label} {code}", { system: sysName(c.system_id), label: objLabel(c.module), code: c.module })}</option>)}
+              </select>
+            </Fld>
+            <button type="submit" className="m2-btn" disabled={!cell || save.isPending}>{save.isPending ? t("Building the file…") : t("Download the cleaning workbook")}</button>
+          </form>
+          {cell ? <CleanedUpload key={cell.module} module={cell.module} label={objLabel(cell.module)} /> : null}
+        </>
       )}
     </Panel>
   );
