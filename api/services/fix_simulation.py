@@ -19,8 +19,6 @@ import copy
 from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable, Optional
 
-from decimal import Decimal, InvalidOperation
-
 import pandas as pd
 
 from checks import auto_fix
