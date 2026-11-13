@@ -222,6 +222,80 @@ async def rule_applicability(
     return {"check_id": check_id, "module": module, "object": objs[0] if objs else None, "systems": rows}
 
 
+def failing_record_row(record_key: str, field: Optional[str], field_values: Optional[dict],
+                       value_fix_map: Any, record_fixes: Any) -> dict:
+    """One failing record of a rule: the checked field (code and its text from the data dictionary, None when the rule
+    names no field), the record's current value, and the expected value the rule proposes (the rule's fix for that
+    value, else the fix stored for the record; None when the rule proposes none, never invented)."""
+    from api.services.cleaning_workbook import field_label
+
+    fv = field_values or {}
+    current = None
+    if field:
+        v = fv[field] if field in fv else fv.get(field.rpartition(".")[2])
+        current = None if v is None else str(v)
+    expected = None
+    if current is not None and isinstance(value_fix_map, dict):
+        fix = value_fix_map.get(current)
+        if isinstance(fix, dict) and fix.get("suggested_value") is not None:
+            expected = str(fix["suggested_value"])
+    if expected is None and isinstance(record_fixes, list):
+        expected = next((str(e["proposed_value"]) for e in record_fixes
+                         if isinstance(e, dict) and e.get("record_key") == record_key
+                         and e.get("proposed_value") is not None), None)
+    return {"record_key": record_key, "field": field, "field_text": field_label(field) if field else None,
+            "current_value": current, "expected_value": expected}
+
+
+class FailingRecord(BaseModel):
+    record_key: str
+    field: Optional[str] = None
+    field_text: Optional[str] = None
+    current_value: Optional[str] = None
+    expected_value: Optional[str] = None
+
+
+class FailingRecordsPage(BaseModel):
+    version_id: str
+    check_id: str
+    module: str
+    total: int
+    limit: int
+    offset: int
+    items: list[FailingRecord]
+
+
+@router.get("/findings/rules/{check_id}/records", response_model=FailingRecordsPage)
+async def rule_failing_records(
+    check_id: str,
+    version_id: uuid.UUID = Query(...),
+    limit: int = Query(25, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("view")),
+):
+    """The failing records of one rule in one run, a page at a time: record key, the checked field with its text,
+    the current value (sensitive columns arrive masked) and the expected value."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant.id)})
+    f = (await db.execute(select(Finding).where(Finding.tenant_id == tenant.id, Finding.version_id == version_id,
+                                                Finding.check_id == check_id).limit(1))).scalars().first()
+    if f is None:
+        raise HTTPException(404, "No such rule in this run")
+    details: dict[str, Any] = f.details or {}  # type: ignore[assignment]  # JSON column typed as Column
+    field = details.get("field_checked")
+    total = (await db.execute(text(
+        "SELECT count(*) FROM finding_records WHERE tenant_id = CAST(:t AS uuid) AND version_id = :v AND check_id = :c"),
+        {"t": str(tenant.id), "v": version_id, "c": check_id})).scalar() or 0
+    rows = (await db.execute(text(
+        "SELECT record_key, field_values FROM finding_records WHERE tenant_id = CAST(:t AS uuid) AND version_id = :v "
+        "AND check_id = :c ORDER BY record_key LIMIT :l OFFSET :o"),
+        {"t": str(tenant.id), "v": version_id, "c": check_id, "l": limit, "o": offset})).fetchall()
+    items = [failing_record_row(r.record_key, field, r.field_values, f.value_fix_map, f.record_fixes) for r in rows]
+    return {"version_id": str(version_id), "check_id": check_id, "module": f.module, "total": total,
+            "limit": limit, "offset": offset, "items": items}
+
+
 @router.get("/findings/aggregate")
 async def aggregate_findings(
     version_id: Optional[str] = Query(None, description="One version; default = latest complete run per system"),

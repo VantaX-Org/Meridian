@@ -180,3 +180,37 @@ def test_concurrent_admin_removals_cannot_remove_the_last_admin(owner: Engine) -
             "SELECT count(*) FROM users WHERE tenant_id = :t AND is_active AND role = 'platform_admin'"),
             {"t": tid}).scalar()
     assert active_admins == 1
+
+
+def test_repeat_grant_cannot_expire_the_last_lasting_admin(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A repeat grant that sets an expiry on an admin grant is refused (409) when no other admin grant without
+    an expiry is left, so a tenant can never time out of all its admins; the stored expiry is unchanged."""
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import text
+
+    tid, u = _tenant(owner, {"padmin": "platform_admin", "admin2": "platform_admin", "boot": "platform_admin"})
+    gids = {n: _grant(owner, tid, u[n], "platform_admin") for n in ("padmin", "admin2")}
+    later = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+
+    def expiry(gid: str) -> object:
+        with owner.connect() as c:
+            return c.execute(text("SELECT expires_at FROM user_role_scopes WHERE id = :g"), {"g": gid}).scalar()
+
+    async def scenario(c: AsyncClient) -> None:
+        grants = "/api/v1/users/{}/grants"
+        body = {"role_key": "platform_admin", "expires_at": later}
+        # padmin still holds a lasting admin grant, so admin2's may take an expiry.
+        r = await c.post(grants.format(u["admin2"]), json=body, headers={"x-test-uid": u["padmin"]})
+        assert r.status_code == 201, r.text
+        assert expiry(gids["admin2"]) is not None
+        # padmin's is now the last lasting admin grant: an expiry on it is refused with the reason.
+        r = await c.post(grants.format(u["padmin"]), json=body, headers={"x-test-uid": u["boot"]})
+        assert r.status_code == 409 and "without an expiry" in r.json()["detail"], r.text
+        assert expiry(gids["padmin"]) is None
+        # A repeat grant without an expiry stays allowed.
+        r = await c.post(grants.format(u["padmin"]), json={"role_key": "platform_admin"},
+                         headers={"x-test-uid": u["boot"]})
+        assert r.status_code == 201, r.text
+
+    _serve(owner, monkeypatch, tid, scenario)

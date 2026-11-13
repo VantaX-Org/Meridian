@@ -152,6 +152,8 @@ export function InspectorSkeleton() {
 export function useWindowTitle(ref: RefObject<HTMLElement | null>): void {
   useEffect(() => {
     const h = ref.current;
+    // Only the page's first h1 holds the title: two holders (v2 screens mounted together) would put it back and forth forever.
+    if (!h || document.querySelector("h1") !== h) return;
     const clean = (text: string | null | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
     const sub = h?.querySelector(".m2-h1-sub");
     const all = clean(h?.textContent);
