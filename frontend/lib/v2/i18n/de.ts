@@ -10268,4 +10268,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "Zwei Systeme nebeneinander.",
   "Service health and recent incidents.": "Dienstzustand und aktuelle Störungen.",
   "Esc": "Esc",
+  "Write-back rejected. The requester has been told.": "Rückschreibung abgelehnt. Der Antragsteller wurde informiert.",
+  "The write-back could not be rejected.": "Die Rückschreibung konnte nicht abgelehnt werden.",
+  "Reject write-back": "Rückschreibung ablehnen",
 };

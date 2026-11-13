@@ -306,6 +306,7 @@ async def list_pending_writebacks(
             LEFT JOIN findings f ON f.id = w.finding_id AND f.tenant_id = w.tenant_id
             LEFT JOIN users u ON u.id::text = w.requested_by AND u.tenant_id = w.tenant_id
             WHERE w.tenant_id = :tid AND w.dry_run = false AND w.approved_by IS NULL
+              AND w.rejected_at IS NULL
             ORDER BY w.created_at DESC
             LIMIT 200
         """),
@@ -326,6 +327,69 @@ async def list_pending_writebacks(
     )
 
 
+class RejectBody(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=1000)
+
+
+@router.post(
+    "/writeback/reject/{approval_id}",
+    dependencies=[Depends(require_permission("approve"))],
+)
+async def reject_writeback(
+    request: Request,
+    approval_id: str,
+    body: RejectBody,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """A second user declines a pending write-back, with a reason. Nothing is sent to SAP; the requester is told."""
+    tenant_id = str(tenant.id)
+    await db.execute(text(f"SET app.tenant_id = \'{tenant_id}\'"))
+    reason = body.reason.strip()
+    if not reason:
+        raise HTTPException(status_code=422, detail="A reason is required")
+    user = _require_user(request)
+    row = (await db.execute(
+        text("SELECT requested_by, approved_by, rejected_at, dry_run FROM write_back_log "
+             "WHERE id = :aid AND tenant_id = :tid FOR UPDATE"),
+        {"aid": approval_id, "tid": tenant_id},
+    )).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Write-back request not found")
+    if row[1]:
+        raise HTTPException(status_code=409, detail="Write-back already approved")
+    if row[2]:
+        raise HTTPException(status_code=409, detail="Write-back already rejected")
+    if row[3]:
+        raise HTTPException(status_code=409, detail="This was a dry-run request; there is nothing to reject")
+    await db.execute(
+        text("UPDATE write_back_log SET rejected_by = :u, rejected_at = now(), reject_reason = :r "
+             "WHERE id = :aid AND tenant_id = :tid"),
+        {"u": user, "r": reason, "aid": approval_id, "tid": tenant_id},
+    )
+    # actor is NULL when the id is not a users row (auth off, a service key): audit_log.actor_user_id is a foreign key
+    await db.execute(text(
+        "INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, method, path, "
+        "status_code, before_json, after_json) "
+        "VALUES (CAST(:t AS uuid), (SELECT id FROM users WHERE id::text = :u AND tenant_id = CAST(:t AS uuid)), "
+        ":e, 'writeback_reject', 'write_back_log', :ei, :m, :p, 200, CAST(:b AS jsonb), CAST(:af AS jsonb))"),
+        {"t": tenant_id, "u": user, "e": current_user_label(), "ei": approval_id, "m": request.method,
+         "p": request.url.path, "b": json.dumps({"requested_by": row[0]}),
+         "af": json.dumps({"rejected_by": user, "reason": reason})})
+    from api.services.notifications import create_notification
+    requester = row[0]
+    if requester:
+        try:
+            uid = str(uuid.UUID(str(requester)))
+        except ValueError:
+            uid = None
+        if uid:
+            await create_notification(tenant_id, uid, "writeback_rejected", "Write-back rejected",
+                                      f"Your write-back request was rejected: {reason}", "/work", db)
+    await db.commit()
+    return {"id": approval_id, "status": "rejected"}
+
+
 @router.post(
     "/writeback/approve/{approval_id}",
     response_model=ApprovalResponse,
@@ -344,7 +408,7 @@ async def approve_writeback(
     # Load the pending write-back
     result = await db.execute(
         text("""
-            SELECT id, requested_by, approved_by, finding_id, sap_host, dry_run
+            SELECT id, requested_by, approved_by, finding_id, sap_host, dry_run, rejected_at
             FROM write_back_log
             WHERE id = :aid AND tenant_id = :tid
         """),
@@ -356,6 +420,8 @@ async def approve_writeback(
 
     if record[2]:  # approved_by already set
         raise HTTPException(status_code=409, detail="Write-back already approved")
+    if record[6]:
+        raise HTTPException(status_code=409, detail="Write-back was rejected")
 
     if record[5]:  # dry_run — a validation-only request can never be executed
         raise HTTPException(status_code=409, detail="This was a dry-run request; submit a new write-back to execute")

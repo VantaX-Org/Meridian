@@ -10268,4 +10268,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "2 つのシステムを並べて表示。",
   "Service health and recent incidents.": "サービスの状態と最近のインシデント。",
   "Esc": "Esc",
+  "Write-back rejected. The requester has been told.": "書き戻しを却下しました。依頼者に通知しました。",
+  "The write-back could not be rejected.": "書き戻しを却下できませんでした。",
+  "Reject write-back": "書き戻しを却下",
 };

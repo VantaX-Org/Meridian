@@ -10267,6 +10267,9 @@ export const en = {
   "Two systems, side by side.": "Two systems, side by side.",
   "Service health and recent incidents.": "Service health and recent incidents.",
   "Esc": "Esc",
+  "Write-back rejected. The requester has been told.": "Write-back rejected. The requester has been told.",
+  "The write-back could not be rejected.": "The write-back could not be rejected.",
+  "Reject write-back": "Reject write-back",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

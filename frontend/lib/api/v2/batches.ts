@@ -41,6 +41,8 @@ export const getPendingWritebacks = (): Promise<{ approvals: PendingWriteback[];
 /** POST /writeback/approve/{id} (approve): the second person releases the write to SAP. Four eyes: never the requester. */
 export interface WritebackApproved { applied: number; errors: string[]; status: string }
 export const approveWriteback = (id: string): Promise<WritebackApproved> => v2Send("POST", `/writeback/approve/${enc(id)}`);
+/** POST /writeback/reject/{id} (approve): the second person declines the request, with a reason the requester is told. */
+export const rejectWriteback = (id: string, reason: string): Promise<{ id: string; status: "rejected" }> => v2Send("POST", `/writeback/reject/${enc(id)}`, { reason });
 
 /* ── Live write-back of an approved batch (POST /writeback/batches/{id}/check and /send) ── */
 
