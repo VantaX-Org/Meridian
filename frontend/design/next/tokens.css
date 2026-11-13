@@ -41,7 +41,25 @@
   --nx-sev-medium: #D9A400;
   --nx-sev-low: #5C7CFA;
   --nx-focus: #1F5EFF;
-  --nx-scrim: rgb(20 22 26 / 24%);
+  --nx-scrim: rgb(20 22 26 / 40%);
+  --nx-data: #0759DB;
+  --nx-chart-1: #406FD1;
+  --nx-chart-2: #C65A1E;
+  --nx-chart-3: #0F8A78;
+  --nx-chart-4: #A87600;
+  --nx-chart-5: #7559C7;
+  --nx-chart-6: #4D7F1A;
+  --nx-chart-7: #1F7FAE;
+  --nx-chart-8: #B8487E;
+  --nx-seq-1: #E8EEFF;
+  --nx-seq-2: #BCCEFF;
+  --nx-seq-3: #84A6FF;
+  --nx-seq-4: #3F72FF;
+  --nx-seq-5: #1644B8;
+  --nx-glass-bg: rgb(255 255 255 / 72%);
+  --nx-glass-line: rgb(20 22 26 / 8%);
+  --nx-elev-1: 0 1px 2px rgb(20 22 26 / 4%);
+  --nx-elev-3: 0 16px 48px rgb(20 22 26 / 18%);
   --nx-elev-2: 0 8px 24px rgb(0 0 0 / 12%);
 }
 
@@ -75,7 +93,25 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
   --nx-sev-medium: #F2C94C;
   --nx-sev-low: #8FA6FF;
   --nx-focus: #6B96FF;
-  --nx-scrim: rgb(236 238 242 / 24%);
+  --nx-scrim: rgb(0 0 0 / 60%);
+  --nx-data: #7FA9FF;
+  --nx-chart-1: #648FE7;
+  --nx-chart-2: #D06A30;
+  --nx-chart-3: #1E9C88;
+  --nx-chart-4: #B98A1C;
+  --nx-chart-5: #8C70DE;
+  --nx-chart-6: #5F962A;
+  --nx-chart-7: #2E94C8;
+  --nx-chart-8: #CC5A93;
+  --nx-seq-1: #1B2A52;
+  --nx-seq-2: #2B4690;
+  --nx-seq-3: #4B70D6;
+  --nx-seq-4: #86A5FF;
+  --nx-seq-5: #C5D4FF;
+  --nx-glass-bg: rgb(21 24 29 / 72%);
+  --nx-glass-line: rgb(236 238 242 / 10%);
+  --nx-elev-1: 0 1px 2px rgb(0 0 0 / 30%);
+  --nx-elev-3: 0 16px 48px rgb(0 0 0 / 60%);
   --nx-elev-2: 0 8px 24px rgb(0 0 0 / 40%);
 }
 
@@ -109,7 +145,25 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
     --nx-sev-medium: #F2C94C;
     --nx-sev-low: #8FA6FF;
     --nx-focus: #6B96FF;
-    --nx-scrim: rgb(236 238 242 / 24%);
+    --nx-scrim: rgb(0 0 0 / 60%);
+    --nx-data: #7FA9FF;
+    --nx-chart-1: #648FE7;
+    --nx-chart-2: #D06A30;
+    --nx-chart-3: #1E9C88;
+    --nx-chart-4: #B98A1C;
+    --nx-chart-5: #8C70DE;
+    --nx-chart-6: #5F962A;
+    --nx-chart-7: #2E94C8;
+    --nx-chart-8: #CC5A93;
+    --nx-seq-1: #1B2A52;
+    --nx-seq-2: #2B4690;
+    --nx-seq-3: #4B70D6;
+    --nx-seq-4: #86A5FF;
+    --nx-seq-5: #C5D4FF;
+    --nx-glass-bg: rgb(21 24 29 / 72%);
+    --nx-glass-line: rgb(236 238 242 / 10%);
+    --nx-elev-1: 0 1px 2px rgb(0 0 0 / 30%);
+    --nx-elev-3: 0 16px 48px rgb(0 0 0 / 60%);
     --nx-elev-2: 0 8px 24px rgb(0 0 0 / 40%);
   }
 }
@@ -119,8 +173,16 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
   --nx-font: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
   --nx-mono: var(--font-jbmono), ui-monospace, "SF Mono", Menlo, monospace;
   /* The scale from the spec: display 2.0/1.1, h1 1.5/1.2, h2 1.125/1.3, body 0.9375/1.5, small 0.8125/1.45, micro 0.75/1.4 */
-  --nx-fs-display: 2rem;
-  --nx-lh-display: 1.1;
+  --nx-fs-hero: 3.5rem;
+  --nx-lh-hero: 3.75rem;
+  --nx-fs-display: 2.5rem;
+  --nx-lh-display: 2.75rem;
+  --nx-fs-headline: 1.25rem;
+  --nx-lh-headline: 1.625rem;
+  --nx-fs-title: 1.0625rem;
+  --nx-lh-title: 1.5rem;
+  --nx-fs-large: 1rem;
+  --nx-lh-large: 1.5rem;
   --nx-fs-h1: 1.5rem;
   --nx-lh-h1: 1.2;
   --nx-fs-h2: 1.125rem;
@@ -143,10 +205,16 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
   --nx-s6: 32px;
   --nx-s7: 48px;
   --nx-s8: 64px;
+  --nx-s9: 96px;
   --nx-gutter: var(--nx-s5);
   /* Shape */
-  --nx-r-control: 6px;
-  --nx-r-card: 10px;
+  --nx-r-control: 10px;
+  --nx-r-card: 20px;
+  --nx-r-sheet: 20px;
+  --nx-feed-max: 72rem;
+  --nx-glass-blur: blur(20px) saturate(1.4);
+  --nx-h-header: 56px;
+  --nx-h-tabbar: 56px;
   --nx-r-pill: 999px;
   /* Sizes */
   --nx-h-control: 40px;
@@ -182,4 +250,18 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
   .nx-root {
     --nx-gutter: var(--nx-s4);
   }
+}
+
+@media (min-width: 761px) {
+  .nx-root {
+    --nx-r-sheet: 16px;
+  }
+}
+
+/* Glass is allowed on the header and the tab bar only; blur is a token-file concern (lint:tokens). */
+.nx-glass {
+  background: var(--nx-glass-bg);
+  border-color: var(--nx-glass-line);
+  -webkit-backdrop-filter: var(--nx-glass-blur);
+  backdrop-filter: var(--nx-glass-blur);
 }

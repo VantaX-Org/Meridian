@@ -182,7 +182,7 @@ describe("NextRedirect", () => {
   it("sends an old address to its new home and keeps the query", () => {
     setUrl("/cleansing?fixture=1&run=r1");
     render(<NextRedirect />);
-    expect(replace).toHaveBeenCalledWith(expect.stringMatching(/^\/next\/work\/approve\?/));
+    expect(replace).toHaveBeenCalledWith(expect.stringMatching(/^\/work\/approvals\?/));
     expect(replace.mock.calls[0][0]).toContain("run=r1");
   });
 
