@@ -10162,6 +10162,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Write-back request": "書き戻しの依頼",
   "No field changes are stored for this request.": "この依頼には保存された項目の変更がありません。",
   "The finding holds no proposed values.": "この指摘には提案値がありません。",
+  "All severities": "すべての重大度",
+  "Watched objects": "監視中のオブジェクト",
   "SAP S/4HANA": "SAP S/4HANA",
   "Migration Cockpit templates, one sheet per target table.": "移行コックピットのテンプレート。ターゲットテーブルごとに1シート。",
   "SAP SuccessFactors": "SAP SuccessFactors",
@@ -10294,4 +10296,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "2 つのシステムを並べて表示。",
   "Service health and recent incidents.": "サービスの状態と最近のインシデント。",
   "Esc": "Esc",
+  "Your access changed: you now have {roles}. Reload to update the menu.": "アクセス権が変更されました。現在のロール: {roles}。メニューを更新するには再読み込みしてください。",
+  "Reload": "再読み込み",
+  "different roles": "別のロール",
+  "Removed {role_name} from {name}. They will be notified.": "{name} から {role_name} を削除しました。本人に通知されます。",
+  "Added {role} to {name}. They will be notified.": "{name} に {role} を追加しました。本人に通知されます。",
 };
