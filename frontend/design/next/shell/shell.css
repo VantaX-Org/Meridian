@@ -1,5 +1,5 @@
 /* The next shell: rail, top bar, bottom bar, canvas. Tokens only; solid surfaces with hairlines, no blur. */
-.nx-shell { --nx-rail-w: 4rem; --nx-rail-open: 13.75rem; --nx-top-h: 3rem; --nx-bottom-h: 3.5rem; display: grid; grid-template-columns: var(--nx-rail-w) minmax(0, 1fr); grid-template-rows: var(--nx-top-h) minmax(0, 1fr); grid-template-areas: "rail top" "rail main"; height: 100vh; height: 100dvh; background: var(--nx-bg); color: var(--nx-ink); }
+.nx-shell { --nx-rail-w: 4rem; --nx-rail-open: 13.75rem; --nx-top-h: 3rem; --nx-bottom-h: 3.5rem; display: grid; grid-template-columns: var(--nx-rail-w) minmax(0, 1fr); grid-template-rows: var(--nx-top-h) minmax(0, 1fr); grid-template-areas: "rail top" "rail main"; height: calc(100vh - var(--m-attribution-h, 0px)); height: calc(100dvh - var(--m-attribution-h, 0px)); background: var(--nx-bg); color: var(--nx-ink); }
 .nx-shell[data-density="compact"] { --nx-top-h: 2.75rem; }
 .nx-skips { position: absolute; left: 0; top: 0; z-index: 90; }
 .nx-skip { position: absolute; left: var(--nx-s3); top: var(--nx-s3); padding: var(--nx-s2) var(--nx-s3); background: var(--nx-surface); color: var(--nx-ink); border: 1px solid var(--nx-border-strong); border-radius: var(--nx-r-control); transform: translateY(-300%); }
