@@ -10135,6 +10135,8 @@ export const en = {
   "{n} workbooks uploaded. {m} new runs scoring.": "{n} workbooks uploaded. {m} new runs scoring.",
   "Upload the Excel (.xlsx) or CSV file you exported.": "Upload the Excel (.xlsx) or CSV file you exported.",
   "The file is larger than 25 MB.": "The file is larger than 25 MB.",
+  "All severities": "All severities",
+  "Watched objects": "Watched objects",
   "SAP S/4HANA": "SAP S/4HANA",
   "Migration Cockpit templates, one sheet per target table.": "Migration Cockpit templates, one sheet per target table.",
   "SAP SuccessFactors": "SAP SuccessFactors",
@@ -10311,6 +10313,11 @@ export const en = {
   "{n} objects need you today.": "{n} objects need you today.",
   "One run is in progress.": "One run is in progress.",
   "{n} runs are in progress.": "{n} runs are in progress.",
+  "Your access changed: you now have {roles}. Reload to update the menu.": "Your access changed: you now have {roles}. Reload to update the menu.",
+  "Reload": "Reload",
+  "different roles": "different roles",
+  "Removed {role_name} from {name}. They will be notified.": "Removed {role_name} from {name}. They will be notified.",
+  "Added {role} to {name}. They will be notified.": "Added {role} to {name}. They will be notified.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
