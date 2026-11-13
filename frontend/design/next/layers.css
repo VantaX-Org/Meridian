@@ -1,0 +1,52 @@
+/* Batch 3 layers: sheet, popover, inspector column, sidebar width, palette. Glass and motion come from the Batch 1 classes
+   (nx-glass, nx-glass-strong, nx-m-sheet, nx-m-pop, nx-m-sidebar) in the markup; here a solid fallback stands behind them. */
+.nx-shell { --nx-rail-w: var(--nx-sidebar-min, 4rem); --nx-rail-open: var(--nx-sidebar-w, 15rem); }
+
+/* Sheet */
+.nx-sheet-scrim { place-items: center; }
+.nx-sheet { width: min(var(--nx-sheet-max, 36rem), 100%); max-height: 100%; display: flex; flex-direction: column; background: var(--nx-surface); color: var(--nx-ink); border: 1px solid var(--nx-border-strong); border-radius: var(--nx-r-sheet, var(--nx-r-card)); box-shadow: var(--nx-elev-3, var(--nx-elev-2)); overflow: hidden; }
+.nx-sheet:focus, .nx-sheet:focus-visible { outline: none; }
+.nx-sheet[data-size="full"] { width: 100%; height: 100%; }
+.nx-sheet-handle { display: none; align-self: center; width: var(--nx-handle, 2.25rem); height: var(--nx-s1); margin: var(--nx-s2) 0 0; border-radius: var(--nx-r-pill); background: var(--nx-border-strong); touch-action: none; cursor: grab; }
+.nx-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--nx-s3); padding: var(--nx-s4) var(--nx-s5); border-bottom: 1px solid transparent; background: var(--nx-surface); }
+.nx-sheet-head[data-scrolled] { border-bottom-color: var(--nx-border); }
+.nx-sheet-body { padding: var(--nx-s5); overflow: auto; min-height: 0; display: flex; flex-direction: column; gap: var(--nx-s4); }
+@media (max-width: 760px) {
+  .nx-sheet-scrim { place-items: end center; padding: 0; }
+  .nx-sheet { border-bottom-left-radius: 0; border-bottom-right-radius: 0; max-height: 90%; }
+  .nx-sheet-handle { display: block; }
+}
+
+/* Popover */
+.nx-pop { position: fixed; z-index: 60; min-width: 12rem; max-width: min(24rem, calc(100vw - var(--nx-s4))); padding: var(--nx-s2); background: var(--nx-glass-bg, var(--nx-surface)); color: var(--nx-ink); border: 1px solid var(--nx-border-strong); border-radius: var(--nx-r-popover, var(--nx-r-card)); box-shadow: var(--nx-elev-3, var(--nx-elev-2)); transform-origin: var(--nx-pop-origin, top left); }
+.nx-pop:focus, .nx-pop:focus-visible { outline: none; }
+
+/* Palette: a glass-strong popover near the top */
+.nx-palette { width: min(var(--nx-sheet-max, 36rem), 100%); border-radius: var(--nx-r-popover, var(--nx-r-card)); box-shadow: var(--nx-elev-3, var(--nx-elev-2)); background: var(--nx-glass-bg-strong, var(--nx-surface)); }
+.nx-scrim-top { padding-top: 10vh; }
+
+/* Inspector column: solid, a hairline on its left. Content makes room at 1280px and wider; below that it overlays. */
+.nx-insp-col { position: fixed; top: var(--nx-top-h); right: 0; bottom: 0; z-index: 40; width: var(--nx-insp-w, 24rem); max-width: 100%; display: flex; flex-direction: column; background: var(--nx-surface); border-left: 1px solid var(--nx-border); }
+.nx-insp-col:focus, .nx-insp-col:focus-visible { outline: none; }
+.nx-insp-head { display: flex; align-items: center; gap: var(--nx-s3); padding: var(--nx-s3) var(--nx-s4); border-bottom: 1px solid var(--nx-border); }
+.nx-insp-title { margin: 0; flex: 1; font-size: var(--nx-fs-h2); line-height: var(--nx-lh-h2); font-weight: var(--nx-w-heading); }
+.nx-insp-body { flex: 1; min-height: 0; overflow: auto; display: flex; }
+.nx-insp-body > .m2-root { background: transparent; min-height: 0; display: flex; flex: 1; }
+.nx-insp-body .m2-insp { position: static; height: 100%; width: 100%; border: 0; }
+.nx-insp-scrim { display: none; }
+@media (max-width: 1279px) {
+  .nx-insp-scrim { display: block; position: fixed; inset: var(--nx-top-h) 0 0 0; z-index: 39; background: var(--nx-scrim); }
+  .nx-insp-col { box-shadow: var(--nx-elev-3, var(--nx-elev-2)); }
+}
+@media (min-width: 1280px) {
+  .nx-shell:has(.nx-insp-col) .nx-main { margin-right: var(--nx-insp-w, 24rem); }
+}
+
+/* Between a phone and a desktop the sidebar stays at its icon width and does not pin open. */
+@media (min-width: 761px) and (max-width: 1099px) {
+  .nx-shell, .nx-shell:has(.nx-rail[data-pinned="true"]) { grid-template-columns: var(--nx-rail-w) minmax(0, 1fr); grid-template-rows: var(--nx-top-h) minmax(0, 1fr); grid-template-areas: "rail top" "rail main"; }
+  .nx-rail { display: block; }
+  .nx-rail[data-pinned="true"] { width: var(--nx-rail-w); }
+  .nx-bottom { display: none; }
+  .nx-crumb { display: flex; }
+}

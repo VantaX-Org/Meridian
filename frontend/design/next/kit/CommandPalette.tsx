@@ -65,7 +65,7 @@ function PaletteBody({ onClose, groups }: PaletteProps) {
         role="dialog"
         aria-modal="true"
         aria-label={t("Command palette")}
-        className="nx-dialog nx-palette"
+        className="nx-dialog nx-palette nx-glass-strong"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.stopPropagation();

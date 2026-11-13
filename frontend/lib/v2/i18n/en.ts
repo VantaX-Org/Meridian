@@ -10267,6 +10267,12 @@ export const en = {
   "Two systems, side by side.": "Two systems, side by side.",
   "Service health and recent incidents.": "Service health and recent incidents.",
   "Esc": "Esc",
+  "Details": "Details",
+  "Show or hide the details panel": "Show or hide the details panel",
+  "Previous or next run, on an object": "Previous or next run, on an object",
+  "Upload a file, on an object": "Upload a file, on an object",
+  "Download, on an object": "Download, on an object",
+  "Move between the menu, the page and the panel": "Move between the menu, the page and the panel",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

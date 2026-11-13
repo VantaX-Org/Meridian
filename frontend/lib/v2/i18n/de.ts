@@ -10268,4 +10268,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "Zwei Systeme nebeneinander.",
   "Service health and recent incidents.": "Dienstzustand und aktuelle Störungen.",
   "Esc": "Esc",
+  "Details": "Details",
+  "Show or hide the details panel": "Detailbereich ein- oder ausblenden",
+  "Previous or next run, on an object": "Vorheriger oder nächster Lauf, bei einem Objekt",
+  "Upload a file, on an object": "Datei hochladen, bei einem Objekt",
+  "Download, on an object": "Herunterladen, bei einem Objekt",
+  "Move between the menu, the page and the panel": "Zwischen Menü, Seite und Bereich wechseln",
 };

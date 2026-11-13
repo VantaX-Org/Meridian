@@ -23,6 +23,15 @@ With nothing typed it offers **Go to**: Landscape, Objects, Work, Runs, People, 
 - `⌘Z`: undo the last change (when focus is not in a text field).
 - `Esc`: close the top layer: menu, then inspector, then the selection.
 
+## Panels and objects
+
+- `i`: show or hide the details panel. It remembers the last item it showed.
+- `F6`: move between the menu, the page and the details panel. `Shift+F6` goes back.
+- `[` and `]`: on an object, step to the previous or next run.
+- `u` and `d`: on an object, upload a file or download.
+
+The same commands are in the command line under "On this object".
+
 ## Go to
 
 - `g` then `h`: Home.

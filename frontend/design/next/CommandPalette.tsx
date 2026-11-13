@@ -10,6 +10,7 @@ import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { placeIndex } from "@/design/v2/CommandLine";
 import { redirectFor } from "@/lib/next/nav-defaults";
 import { t } from "@/lib/v2/i18n";
+import { openDownload, openUpload, stepRun } from "./shell/events";
 
 /** Every place the old command line knew, at its address in this interface. */
 export function nextPlaces(can: (a: string) => boolean) {
@@ -50,6 +51,10 @@ export function NextPalette({ open, onClose }: { open: boolean; onClose: () => v
       out.push({ id: "here", label: t("On this object"), items: [
         { id: "here-rules", label: t("Open its rules"), run: go(`${base}/rules`) },
         { id: "here-trend", label: t("Open its trend"), run: go(`${base}/trend`) },
+        { id: "here-upload", label: t("Upload"), hint: "u", run: openUpload },
+        { id: "here-download", label: t("Download"), hint: "d", run: openDownload },
+        { id: "here-prev", label: t("Previous run"), hint: "[", run: () => stepRun(-1) },
+        { id: "here-next", label: t("Next run"), hint: "]", run: () => stepRun(1) },
       ] });
     }
     out.push({ id: "across", label: t("Across the portfolio"), items: [

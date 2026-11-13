@@ -7,13 +7,13 @@ import { t } from "@/lib/v2/i18n";
 import { PATHS, type DestId } from "@/lib/next/nav-defaults";
 import { Glyph, LABEL, destAt } from "./dest";
 
-/** Under 1100 px the rail gives way to this bar: the five destinations, a solid surface and a hairline, no blur. */
+/** Under 1100 px the rail gives way to this bar: the five destinations, glass over the page. */
 export function BottomBar({ order, workBadge = 0 }: { order: DestId[]; workBadge?: number }) {
   const pathname = usePathname();
   const href = useV2Href();
   const here = destAt(pathname);
   return (
-    <nav className="nx-bottom" aria-label={t("Main")}>
+    <nav className="nx-bottom nx-glass" aria-label={t("Main")}>
       {order.map((id) => (
         <Link key={id} href={href(PATHS[id])} aria-current={here === id ? "page" : undefined}>
           <Glyph id={id} />

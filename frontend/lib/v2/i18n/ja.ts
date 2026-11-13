@@ -10268,4 +10268,10 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Two systems, side by side.": "2 つのシステムを並べて表示。",
   "Service health and recent incidents.": "サービスの状態と最近のインシデント。",
   "Esc": "Esc",
+  "Details": "詳細",
+  "Show or hide the details panel": "詳細パネルを表示または非表示にする",
+  "Previous or next run, on an object": "前の実行または次の実行 (オブジェクト上)",
+  "Upload a file, on an object": "ファイルをアップロード (オブジェクト上)",
+  "Download, on an object": "ダウンロード (オブジェクト上)",
+  "Move between the menu, the page and the panel": "メニュー、ページ、パネルを移動する",
 };

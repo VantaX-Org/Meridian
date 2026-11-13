@@ -15,6 +15,7 @@ import { MenuButton, type MenuEntry } from "@/design/v2/Menu";
 import { Icon } from "../Icon";
 import { Button } from "../kit";
 import { LABEL, destAt } from "./dest";
+import { openDownload, openUpload } from "./events";
 
 /** Where you are: the destination, then the part of it. */
 function Crumb() {
@@ -87,9 +88,9 @@ function Account({ onShortcuts }: { onShortcuts: () => void }) {
   return <NextAccountMenu theme={theme} setTheme={setTheme} onShortcuts={onShortcuts} onSignOut={session.fixture ? undefined : logout} />;
 }
 
-export interface TopBarProps { onOpenCommand: () => void; onShortcuts: () => void }
+export interface TopBarProps { onOpenCommand: () => void; onShortcuts: () => void; collapsed?: boolean; onObjectPage?: boolean }
 
-export function TopBar({ onOpenCommand, onShortcuts }: TopBarProps) {
+export function TopBar({ onOpenCommand, onShortcuts, collapsed, onObjectPage }: TopBarProps) {
   const unread = useUnread().data;
   const { open, openItem, close } = useOpenItem();
   const { theme, setTheme } = useAuroraPrefs();
@@ -97,7 +98,7 @@ export function TopBar({ onOpenCommand, onShortcuts }: TopBarProps) {
   const inbox = unread ? String(unread.count) : "—";
   const toggle = (kind: string) => (open?.kind === kind ? close() : openItem({ kind, id: "" } as never));
   return (
-    <header className="nx-top">
+    <header className={collapsed ? "nx-top nx-glass" : "nx-top"} data-collapsed={collapsed ? "true" : undefined}>
       <span className="nx-brand" style={{ fontWeight: 600 }}>{name}</span>
       <Crumb />
       <button type="button" id="nx-search" className="nx-search" aria-haspopup="dialog" aria-label={t("Search, ask, or type a command")} onClick={onOpenCommand}>
@@ -106,6 +107,12 @@ export function TopBar({ onOpenCommand, onShortcuts }: TopBarProps) {
         <span className="nx-kbd" aria-hidden="true">{"⌘"}K</span>
       </button>
       <div className="nx-top-r">
+        {onObjectPage ? (
+          <>
+            <button type="button" className="nx-tbtn" aria-label={t("Upload")} onClick={openUpload}><Icon name="upload" size={16} /></button>
+            <button type="button" className="nx-tbtn" aria-label={t("Download")} onClick={openDownload}><Icon name="download" size={16} /></button>
+          </>
+        ) : null}
         <button type="button" className="nx-tbtn" aria-haspopup="dialog" aria-expanded={open?.kind === "ask"} onClick={() => toggle("ask")}>{t("Ask Meridian")}</button>
         <button type="button" className="nx-tbtn" aria-haspopup="dialog" aria-expanded={open?.kind === "inbox"} aria-label={t("Inbox {inbox}, unread", { inbox })} onClick={() => toggle("inbox")}>
           {t("Inbox")} <b>{inbox}</b>

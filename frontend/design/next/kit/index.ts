@@ -16,3 +16,8 @@ export { SegmentedControl, type Segment } from "./SegmentedControl";
 export { Code } from "./Code";
 export { DropZone } from "./DropZone";
 export { ProgressBar } from "./ProgressBar";
+
+// Batch 3: layers
+export { Sheet, type SheetProps } from "./Sheet";
+export { Popover, type PopoverProps, type Placement } from "./Popover";
+export { InspectorColumn } from "./InspectorColumn";

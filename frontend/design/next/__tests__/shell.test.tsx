@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "@/__tests__/render";
 import { getUrl, push, setUrl } from "@/design/v2/__tests__/nav-store";
@@ -98,6 +98,42 @@ describe("Shell", () => {
     const pin = await screen.findByRole("button", { name: /pin/i });
     await u.click(pin);
     expect(window.localStorage.getItem("nx.rail.pin")).toBeTruthy();
+  });
+
+  it("toggles the inspector on i and reaches it with F6", async () => {
+    const u = userEvent.setup();
+    setUrl("/portfolio?fixture=1&open=inbox");
+    mount();
+    const insp = await waitFor(() => {
+      const el = document.getElementById("nx-inspector");
+      expect(el).toBeTruthy();
+      return el as HTMLElement;
+    });
+    act(() => { (document.querySelector("#nx-rail a") as HTMLElement).focus(); });
+    act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "F6", bubbles: true })); });
+    act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "F6", bubbles: true })); });
+    expect(insp.contains(document.activeElement)).toBe(true);
+    (document.activeElement as HTMLElement).blur();
+    await u.keyboard("i");
+    await waitFor(() => expect(document.getElementById("nx-inspector")).toBeNull());
+  });
+
+  it("sends run, upload and download events from the keys, on an object page only", async () => {
+    const u = userEvent.setup();
+    const seen: string[] = [];
+    const on = (e: Event) => seen.push(`${e.type}${e instanceof CustomEvent ? e.detail : ""}`);
+    for (const n of ["nx:run-step", "nx:upload", "nx:download"]) window.addEventListener(n, on);
+    mount();
+    await screen.findByText("page body");
+    await u.keyboard("[[u");
+    expect(seen).toEqual([]);
+    cleanup();
+    setUrl("/o/ecc/material-master?fixture=1");
+    mount();
+    await screen.findByText("page body");
+    await u.keyboard("[[]ud");
+    for (const n of ["nx:run-step", "nx:upload", "nx:download"]) window.removeEventListener(n, on);
+    expect(seen).toEqual(["nx:run-step-1", "nx:run-step1", "nx:upload", "nx:download"]);
   });
 
   it("leaves the shell when the address has no chord target", async () => {
