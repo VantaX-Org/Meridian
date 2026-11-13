@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.rbac import require_permission, scope_from_path
 
 router = APIRouter(prefix="/api/v1/business-process", tags=["business-process"])
 logger = logging.getLogger("meridian.business_process")
@@ -14,7 +15,7 @@ logger = logging.getLogger("meridian.business_process")
 NO_PROCESS_DEFINITION = "no_process_definition"
 
 
-@router.get("/{version_id}/{module}")
+@router.get("/{version_id}/{module}", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_business_process(
     version_id: str,
     module: str,

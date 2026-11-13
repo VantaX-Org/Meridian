@@ -3,6 +3,7 @@ given run, must belong to a version downloaded from that system."""
 
 import uuid
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -40,7 +41,12 @@ def _client(db: _DB) -> TestClient:
 
     api.dependency_overrides[get_db] = _db
     api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.uuid4(), "D", [])
-    return TestClient(api)
+    return TestClient(api, headers={"X-User-Role": "viewer"})
+
+
+@pytest.fixture(autouse=True)
+def _dev_roles(monkeypatch):
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")  # the routes' view guard; viewer holds view
 
 
 def _stub_processes(monkeypatch) -> list[str]:

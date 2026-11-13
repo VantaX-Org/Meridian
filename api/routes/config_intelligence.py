@@ -37,6 +37,7 @@ from api.services.config_intelligence.serializers import (
     result_to_discover_response,
     root_cause_to_response,
 )
+from api.services.rbac import scope_from_path
 
 router = APIRouter(prefix="/api/v1/config", tags=["config-intelligence"])
 logger = logging.getLogger("meridian.config_intelligence")
@@ -102,7 +103,7 @@ async def discover_config(
 # 2. GET /inventory — config element inventory
 # ------------------------------------------------------------------
 
-@router.get("/inventory", response_model=ConfigInventoryListResponse)
+@router.get("/inventory", response_model=ConfigInventoryListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_inventory(
     run_id: Optional[str] = Query(None),
     system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
@@ -126,7 +127,7 @@ async def list_inventory(
 # 3. GET /inventory/{module} — module-filtered inventory
 # ------------------------------------------------------------------
 
-@router.get("/inventory/{module}", response_model=ConfigInventoryListResponse)
+@router.get("/inventory/{module}", response_model=ConfigInventoryListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_inventory_by_module(
     module: str,
     run_id: Optional[str] = Query(None),
@@ -150,7 +151,7 @@ async def get_inventory_by_module(
 # 4. GET /processes — all process health summaries
 # ------------------------------------------------------------------
 
-@router.get("/processes", response_model=ProcessListResponse)
+@router.get("/processes", response_model=ProcessListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_processes(
     run_id: Optional[str] = Query(None),
     system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
@@ -171,7 +172,7 @@ async def list_processes(
 # 5. GET /processes/{process_id} — single process detail
 # ------------------------------------------------------------------
 
-@router.get("/processes/{process_id}", response_model=ProcessHealthResponse)
+@router.get("/processes/{process_id}", response_model=ProcessHealthResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_process_detail(
     process_id: str,
     run_id: Optional[str] = Query(None),
@@ -192,7 +193,7 @@ async def get_process_detail(
 # 6. GET /alignment — all alignment findings
 # ------------------------------------------------------------------
 
-@router.get("/alignment", response_model=AlignmentListResponse)
+@router.get("/alignment", response_model=AlignmentListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_alignment_findings(
     run_id: Optional[str] = Query(None),
     system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
@@ -219,7 +220,7 @@ async def list_alignment_findings(
 # 7. GET /alignment/{module} — module-filtered findings
 # ------------------------------------------------------------------
 
-@router.get("/alignment/{module}", response_model=AlignmentListResponse)
+@router.get("/alignment/{module}", response_model=AlignmentListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_alignment_by_module(
     module: str,
     run_id: Optional[str] = Query(None),
@@ -244,7 +245,7 @@ async def get_alignment_by_module(
 # 8. GET /ghost — Ghost Config Register
 # ------------------------------------------------------------------
 
-@router.get("/ghost", response_model=AlignmentListResponse)
+@router.get("/ghost", response_model=AlignmentListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_ghost_config(
     run_id: Optional[str] = Query(None),
     system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
@@ -267,7 +268,7 @@ async def list_ghost_config(
 # 9. GET /shadow — Shadow Process Alerts
 # ------------------------------------------------------------------
 
-@router.get("/shadow", response_model=AlignmentListResponse)
+@router.get("/shadow", response_model=AlignmentListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_shadow_processes(
     run_id: Optional[str] = Query(None),
     system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
@@ -290,7 +291,7 @@ async def list_shadow_processes(
 # 10. GET /drift — config drift between runs
 # ------------------------------------------------------------------
 
-@router.get("/drift", response_model=DriftListResponse)
+@router.get("/drift", response_model=DriftListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_drift(
     run_id: Optional[str] = Query(None),
     system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
@@ -321,7 +322,7 @@ async def list_drift(
 # 11. GET /licence-utilisation — module utilisation analysis
 # ------------------------------------------------------------------
 
-@router.get("/licence-utilisation", response_model=LicenceUtilisationListResponse)
+@router.get("/licence-utilisation", response_model=LicenceUtilisationListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_licence_utilisation(
     run_id: Optional[str] = Query(None),
     system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
@@ -373,7 +374,7 @@ async def list_licence_utilisation(
 # 12. GET /health-score — CHS per module
 # ------------------------------------------------------------------
 
-@router.get("/health-score", response_model=HealthScoreListResponse)
+@router.get("/health-score", response_model=HealthScoreListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_health_scores(
     run_id: Optional[str] = Query(None),
     system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
@@ -394,7 +395,7 @@ async def list_health_scores(
 # 13. GET /root-cause/{finding_id} — DQ-to-config root cause bridge
 # ------------------------------------------------------------------
 
-@router.get("/root-cause/{finding_id}", response_model=RootCauseResponse)
+@router.get("/root-cause/{finding_id}", response_model=RootCauseResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_root_cause(
     finding_id: str,
     run_id: Optional[str] = Query(None),

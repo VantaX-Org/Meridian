@@ -61,12 +61,14 @@ export interface StewardMetrics {
   summary: { total_processed: number; total_approved: number; total_rejected: number; total_review_hours: number; approval_rate: number; avg_review_hours: number };
 }
 
-/** A steward's throughput by period. Null when no metric is recorded yet (the API answers 404 then). */
+/** A steward's throughput by period. Null when no metric is recorded yet (404), or when the caller may see only their
+ * own metrics (403: another person's need the `assign` permission). */
 export async function getStewardMetrics(userId: string): Promise<StewardMetrics | null> {
   try {
     return await v2Get<StewardMetrics>(`/analytics/operational/team/${encodeURIComponent(userId)}`);
   } catch (e) {
-    if ((e as { response?: { status?: number } }).response?.status === 404) return null;
+    const status = (e as { response?: { status?: number } }).response?.status;
+    if (status === 404 || status === 403) return null;
     throw e;
   }
 }

@@ -35,7 +35,8 @@ from api.services.worklist import CLEANING_VALUE_MATCH
 from api.services.current_state import current_pairs, pairs_clause, run_ids
 from api.services import cost_model_meta
 from api.services.rbac import (Scope, _grants_allow, actions_for, current_user_id, current_user_label,
-                               dev_role_override, grants_for, has_permission, require_permission)
+                               dev_role_override, grants_for, has_permission, require_permission,
+                               scope_from_path)
 from api.services.record_issues import scope_of
 from api.services.run_context import latest_run
 
@@ -929,7 +930,7 @@ async def record(
     version_id: Optional[uuid.UUID] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("view")),
+    _perm: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """One record: every check it fails in the run, the field, its current value, the suggested value and
     where it comes from, the issue's status and history, and what the user may do."""

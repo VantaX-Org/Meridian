@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import current_user_id
+from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["preferences"])
 
@@ -101,7 +102,7 @@ async def _load(db: AsyncSession, tenant: Tenant, uid: uuid.UUID, *, for_update:
     return prefs if isinstance(prefs, dict) else {}
 
 
-@router.get("/me/preferences")
+@router.get("/me/preferences", dependencies=[Depends(require_permission("view"))])
 async def get_preferences(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -110,7 +111,7 @@ async def get_preferences(
     return await _load(db, tenant, _user(request))
 
 
-@router.patch("/me/preferences")
+@router.patch("/me/preferences", dependencies=[Depends(require_permission("view"))])
 async def patch_preferences(
     body: Preferences,
     request: Request,

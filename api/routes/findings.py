@@ -158,7 +158,7 @@ async def _system_config(db: AsyncSession, tid: str, system_id: Optional[str],
     return load, system_type, config
 
 
-@router.get("/findings/config-aware-score", response_model=ConfigAwareScore)
+@router.get("/findings/config-aware-score", response_model=ConfigAwareScore, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def config_aware_score(
     system_id: Optional[str] = Query(None, description="System whose loaded configuration decides applicability"),
     version_id: Optional[str] = Query(None, description="Default = latest complete run of the system"),
@@ -191,7 +191,7 @@ async def config_aware_score(
             "existing_dqs": composite_dqs(summaries, scoring=await _scoring_raw(db, tenant)), **result}
 
 
-@router.get("/findings/rules/{check_id}/applicability", response_model=RuleApplicability)
+@router.get("/findings/rules/{check_id}/applicability", response_model=RuleApplicability, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def rule_applicability(
     check_id: str,
     module: Optional[str] = Query(None, description="Rule module; default = the shipped rule's module"),
@@ -222,7 +222,7 @@ async def rule_applicability(
     return {"check_id": check_id, "module": module, "object": objs[0] if objs else None, "systems": rows}
 
 
-@router.get("/findings/aggregate")
+@router.get("/findings/aggregate", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def aggregate_findings(
     version_id: Optional[str] = Query(None, description="One version; default = latest complete run per system"),
     module: Optional[str] = Query(None),
@@ -332,7 +332,7 @@ async def aggregate_findings(
     }
 
 
-@router.get("/scores/history")
+@router.get("/scores/history", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def score_history(
     limit: int = Query(50, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
@@ -373,7 +373,7 @@ async def score_history(
     return {"history": out, "modules": modules}
 
 
-@router.get("/findings")
+@router.get("/findings", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_findings(
     version_id: Optional[str] = Query(None),
     module: Optional[str] = Query(None),
@@ -712,7 +712,7 @@ class S4Readiness(BaseModel):
     version_ids: Optional[list[str]] = None
 
 
-@router.get("/findings/s4-readiness", response_model=S4Readiness)
+@router.get("/findings/s4-readiness", response_model=S4Readiness, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def s4_readiness(
     version_id: Optional[str] = Query(None),
     scope: Literal["run", "current"] = Query("run", description="current: every object at the latest complete "
@@ -761,7 +761,7 @@ async def s4_readiness(
     return S4Readiness(version_id=str(vid) if vid else None, **rollup([dict(r) for r in rows]))
 
 
-@router.get("/findings/{finding_id}/report-context")
+@router.get("/findings/{finding_id}/report-context", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_finding_report_context(
     finding_id: str,
     db: AsyncSession = Depends(get_db),
@@ -852,7 +852,7 @@ def _view_owner(request: Request) -> str:
     return current_user_id(request) or "local"
 
 
-@router.get("/saved-views")
+@router.get("/saved-views", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_saved_views(
     request: Request,
     route: str = Query(..., min_length=1, max_length=64),

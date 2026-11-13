@@ -67,7 +67,7 @@ class UnreadCountOut(BaseModel):
 # ── GET /api/v1/notifications ────────────────────────────────────────────────
 
 
-@router.get("/notifications", response_model=NotificationList)
+@router.get("/notifications", response_model=NotificationList, dependencies=[Depends(require_permission("view"))])
 async def list_notifications(
     request: Request,
     is_read: Optional[bool] = None,
@@ -117,7 +117,7 @@ async def list_notifications(
 # ── PUT /api/v1/notifications/{id}/read ─────────────────────────────────────
 
 
-@router.put("/notifications/{notification_id}/read", response_model=NotificationReadOut)
+@router.put("/notifications/{notification_id}/read", response_model=NotificationReadOut, dependencies=[Depends(require_permission("view"))])
 async def mark_notification_read(
     notification_id: str,
     request: Request,
@@ -146,7 +146,7 @@ async def mark_notification_read(
 # ── PUT /api/v1/notifications/read-all ──────────────────────────────────────
 
 
-@router.put("/notifications/read-all", response_model=StatusOut)
+@router.put("/notifications/read-all", response_model=StatusOut, dependencies=[Depends(require_permission("view"))])
 async def mark_all_read(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -171,7 +171,7 @@ async def mark_all_read(
 # ── GET /api/v1/notifications/unread-count ──────────────────────────────────
 
 
-@router.get("/notifications/unread-count", response_model=UnreadCountOut)
+@router.get("/notifications/unread-count", response_model=UnreadCountOut, dependencies=[Depends(require_permission("view"))])
 async def unread_count(
     request: Request,
     db: AsyncSession = Depends(get_db),

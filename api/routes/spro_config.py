@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.rbac import require_permission, scope_from_path
 
 router = APIRouter(prefix="/api/v1/spro", tags=["spro"])
 logger = logging.getLogger("meridian.spro")
@@ -21,7 +22,7 @@ class SPROConfigResponse(BaseModel):
     field_purposes: dict  # {field: {config_table, description, impacts_features}}
 
 
-@router.get("/config/{module}", response_model=SPROConfigResponse)
+@router.get("/config/{module}", response_model=SPROConfigResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_spro_config(
     module: str,
     system_id: str = None,
