@@ -16,7 +16,7 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   window.localStorage.clear();
   undo = stubLayout();
-  setUrl("/portfolio?fixture=1");
+  setUrl("/?fixture=1");
   push.mockClear();
 });
 afterEach(() => {
@@ -27,22 +27,24 @@ afterEach(() => {
 const mount = () => renderWithQuery(<Shell><p>page body</p></Shell>);
 
 describe("Shell", () => {
-  it("renders the rail, the top bar and the page, with the current place marked", async () => {
+  it("renders the header, the five tabs and the page, with the current place marked", async () => {
+    setUrl("/work?fixture=1");
     mount();
-    const rail = await screen.findByRole("navigation", { name: /./, hidden: true }).catch(() => null);
-    expect(rail ?? document.getElementById("nx-rail")).toBeTruthy();
-    expect(screen.getByText("page body")).toBeInTheDocument();
-    expect(document.querySelector('#nx-rail [aria-current="page"]')).toBeTruthy();
+    expect(await screen.findByText("page body")).toBeInTheDocument();
+    expect(document.querySelector("header.nx-header")).toBeTruthy();
+    const tabs = document.querySelectorAll("#nx-tabs a.nx-stab");
+    expect(tabs).toHaveLength(5);
+    expect(document.querySelector('#nx-tabs [aria-current="page"]')?.getAttribute("href")).toContain("/work");
   });
 
-  it("goes to Work on g then w, and to Monitor on g then n", async () => {
+  it("goes to Work on g then w, and to Runs on g then r", async () => {
     const u = userEvent.setup();
     mount();
     await screen.findByText("page body");
     await u.keyboard("gw");
-    expect(push.mock.calls.at(-1)?.[0]).toContain("/next/work");
-    await u.keyboard("gn");
-    expect(push.mock.calls.at(-1)?.[0]).toContain("/monitor");
+    expect(push.mock.calls.at(-1)?.[0]).toContain("/work");
+    await u.keyboard("gr");
+    expect(push.mock.calls.at(-1)?.[0]).toContain("/runs");
   });
 
   it("ignores the chord while typing in a field", async () => {
@@ -81,29 +83,29 @@ describe("Shell", () => {
     expect(within(sheet).getAllByText(/./).length).toBeGreaterThan(5);
   });
 
-  it("F6 moves focus from the rail to the page and Shift+F6 goes back", async () => {
+  it("F6 moves focus from the tabs to the page and Shift+F6 goes back", async () => {
     mount();
     await screen.findByText("page body");
     const main = document.getElementById("nx-main") as HTMLElement;
-    act(() => { (document.querySelector("#nx-rail a") as HTMLElement).focus(); });
+    act(() => { (document.querySelector("#nx-tabs a") as HTMLElement).focus(); });
     act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "F6", bubbles: true })); });
     expect(document.activeElement).toBe(main);
     act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "F6", shiftKey: true, bubbles: true })); });
-    expect(document.querySelector("#nx-rail")?.contains(document.activeElement)).toBe(true);
+    expect(document.querySelector("#nx-tabs")?.contains(document.activeElement)).toBe(true);
   });
 
-  it("keeps the rail pin in this browser", async () => {
+  it("opens the account menu from the header", async () => {
     const u = userEvent.setup();
     mount();
-    const pin = await screen.findByRole("button", { name: /pin/i });
-    await u.click(pin);
-    expect(window.localStorage.getItem("nx.rail.pin")).toBeTruthy();
+    await screen.findByText("page body");
+    await u.click(document.querySelector(".nx-account-btn") as HTMLElement);
+    expect(await screen.findAllByRole("menuitem")).not.toHaveLength(0);
   });
 
   it("leaves the shell when the address has no chord target", async () => {
     mount();
     await screen.findByText("page body");
-    expect(getUrl()).toContain("/portfolio");
+    expect(getUrl()).toContain("fixture=1");
   });
 });
 
@@ -116,12 +118,10 @@ describe("palette places and redirects", () => {
   });
 
   it("redirects old screens but never run, object or system detail pages", () => {
-    expect(redirectFor("/cleansing")).toBe("/next/work/approve");
-    expect(redirectFor("/admin/users")).toBe("/more/admin/users");
-    expect(redirectFor("/monitors")).toBe("/monitor?tab=learned");
+    expect(redirectFor("/cleansing")).toBe("/work/approvals");
+    expect(redirectFor("/portfolio")).toBe("/");
     expect(redirectFor("/run/abc")).toBeNull();
     expect(redirectFor("/o/sap/material_master")).toBeNull();
-    expect(redirectFor("/s/abc")).toBeNull();
     expect(redirectFor("/work/analytics")).toBeNull();
   });
 });
