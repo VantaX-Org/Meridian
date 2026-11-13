@@ -1,66 +1,50 @@
-/* The next shell: rail, top bar, bottom bar, canvas. Tokens only; solid surfaces with hairlines, no blur. */
-.nx-shell { --nx-rail-w: 4rem; --nx-rail-open: 13.75rem; --nx-top-h: 3rem; --nx-bottom-h: 3.5rem; display: grid; grid-template-columns: var(--nx-rail-w) minmax(0, 1fr); grid-template-rows: var(--nx-top-h) minmax(0, 1fr); grid-template-areas: "rail top" "rail main"; height: 100vh; height: 100dvh; background: var(--nx-bg); color: var(--nx-ink); }
-.nx-shell[data-density="compact"] { --nx-top-h: 2.75rem; }
+/* The Story feed shell: glass header, five tabs, one hairline, one banner, a single feed column. Tokens only. */
+.nx-shell { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: var(--nx-bg); color: var(--nx-ink); }
 .nx-skips { position: absolute; left: 0; top: 0; z-index: 90; }
 .nx-skip { position: absolute; left: var(--nx-s3); top: var(--nx-s3); padding: var(--nx-s2) var(--nx-s3); background: var(--nx-surface); color: var(--nx-ink); border: 1px solid var(--nx-border-strong); border-radius: var(--nx-r-control); transform: translateY(-300%); }
 .nx-skip:focus { transform: none; outline: 2px solid var(--nx-focus); }
 
-.nx-rail { grid-area: rail; position: relative; z-index: 30; width: var(--nx-rail-w); }
-.nx-rail-in { position: absolute; inset: 0 auto 0 0; width: var(--nx-rail-w); display: flex; flex-direction: column; gap: var(--nx-s1); padding: var(--nx-s3) var(--nx-s2); background: var(--nx-surface); border-right: 1px solid var(--nx-border); overflow: hidden; }
-.nx-rail[data-open="true"] .nx-rail-in { width: var(--nx-rail-open); box-shadow: var(--nx-elev-2); }
-.nx-rail[data-pinned="true"] { width: var(--nx-rail-open); }
-.nx-rail[data-pinned="true"] .nx-rail-in { box-shadow: none; }
-.nx-shell:has(.nx-rail[data-pinned="true"]) { grid-template-columns: var(--nx-rail-open) minmax(0, 1fr); }
-.nx-rail-item { display: flex; align-items: center; gap: var(--nx-s3); min-height: var(--nx-h-control); padding: 0 var(--nx-s3); border-radius: var(--nx-r-control); color: var(--nx-ink-2); text-decoration: none; background: transparent; border: 0; font: inherit; cursor: pointer; white-space: nowrap; position: relative; text-align: left; }
-.nx-rail-item:hover { background: var(--nx-surface-2); color: var(--nx-ink); }
-.nx-rail-item:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: -2px; }
-.nx-rail-item[aria-current="page"] { background: var(--nx-accent-soft); color: var(--nx-ink); }
-.nx-rail-glyph { flex: none; width: 1.25rem; height: 1.25rem; }
-.nx-rail-label { overflow: hidden; text-overflow: ellipsis; }
-.nx-rail:not([data-open="true"]):not([data-pinned="true"]) .nx-rail-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.nx-rail-badge { margin-left: auto; min-width: 1.25rem; padding: 0 var(--nx-s1); text-align: center; border-radius: var(--nx-r-pill); background: var(--nx-bad); color: var(--nx-accent-ink); font-size: var(--nx-fs-micro); line-height: var(--nx-lh-micro); font-variant-numeric: tabular-nums; }
-.nx-rail:not([data-open="true"]):not([data-pinned="true"]) .nx-rail-badge { position: absolute; top: var(--nx-s1); right: var(--nx-s1); margin: 0; }
-.nx-rail-rule { height: 1px; margin: var(--nx-s2) var(--nx-s2); background: var(--nx-border); border: 0; }
-.nx-rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--nx-s1); }
-.nx-rail-avatar { flex: none; width: 1.5rem; height: 1.5rem; border-radius: var(--nx-r-pill); background: var(--nx-surface-2); border: 1px solid var(--nx-border-strong); display: grid; place-items: center; font-size: var(--nx-fs-micro); color: var(--nx-ink); }
+.nx-header { position: sticky; top: 0; z-index: var(--nx-z-header); display: flex; align-items: center; gap: var(--nx-s4); height: var(--nx-h-header); padding: 0 var(--nx-gutter); border-bottom: 1px solid var(--nx-glass-line); min-width: 0; }
+.nx-wordmark { flex: none; color: var(--nx-ink); font-weight: var(--nx-w-heading); font-size: var(--nx-fs-large); text-decoration: none; border-radius: var(--nx-r-control); }
+.nx-wordmark:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: 2px; }
+.nx-title-slot { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; }
+.nx-header-r { display: flex; align-items: center; gap: var(--nx-s2); margin-left: auto; }
+.nx-header-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--nx-s2); min-width: var(--nx-h-control); height: var(--nx-h-control); padding: 0 var(--nx-s3); background: transparent; border: 0; border-radius: var(--nx-r-pill); color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); cursor: pointer; text-decoration: none; }
+.nx-header-btn:hover { background: var(--nx-surface-2); color: var(--nx-ink); }
+.nx-header-btn:focus-visible, .nx-account-btn:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: 1px; }
+.nx-header-btn[aria-expanded="true"] { background: var(--nx-accent-soft); color: var(--nx-ink); }
+.nx-header-label { white-space: nowrap; }
+.nx-account-btn { display: inline-flex; align-items: center; gap: var(--nx-s2); height: var(--nx-h-control); padding: 0 var(--nx-s2); background: transparent; border: 0; border-radius: var(--nx-r-pill); color: var(--nx-ink); font: inherit; font-size: var(--nx-fs-small); cursor: pointer; }
+.nx-account-btn:hover { background: var(--nx-surface-2); }
+.nx-avatar { flex: none; width: var(--nx-h-control-sm); height: var(--nx-h-control-sm); border-radius: var(--nx-r-pill); background: var(--nx-accent-soft); color: var(--nx-accent-ink); display: grid; place-items: center; font-size: var(--nx-fs-micro); font-weight: var(--nx-w-label); }
+.nx-account-name { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.nx-top { grid-area: top; display: flex; align-items: center; gap: var(--nx-s4); padding: 0 var(--nx-gutter); background: var(--nx-surface); border-bottom: 1px solid var(--nx-border); min-width: 0; }
-.nx-crumb { display: flex; align-items: center; gap: var(--nx-s2); min-width: 0; color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
-.nx-crumb a { color: inherit; text-decoration: none; }
-.nx-crumb a:hover { color: var(--nx-ink); text-decoration: underline; }
-.nx-crumb [aria-current] { color: var(--nx-ink); font-weight: var(--nx-w-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nx-crumb-sep { color: var(--nx-ink-3); }
-.nx-search { flex: 1 1 auto; max-width: 32rem; margin: 0 auto; display: flex; align-items: center; gap: var(--nx-s2); height: var(--nx-h-control); padding: 0 var(--nx-s3); background: var(--nx-surface-2); border: 1px solid var(--nx-control-edge); border-radius: var(--nx-r-control); color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); cursor: text; min-width: 0; }
-.nx-search:hover { border-color: var(--nx-border-strong); }
-.nx-search:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: 1px; }
-.nx-search-ph { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nx-kbd { font-family: var(--nx-mono); font-size: var(--nx-fs-micro); color: var(--nx-ink-2); border: 1px solid var(--nx-border); border-radius: var(--nx-r-control); padding: 0 var(--nx-s1); }
-.nx-top-r { display: flex; align-items: center; gap: var(--nx-s2); margin-left: auto; }
-.nx-tbtn { display: inline-flex; align-items: center; gap: var(--nx-s2); height: var(--nx-h-control); padding: 0 var(--nx-s3); background: transparent; border: 1px solid transparent; border-radius: var(--nx-r-control); color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); cursor: pointer; text-decoration: none; }
-.nx-tbtn:hover { background: var(--nx-surface-2); color: var(--nx-ink); }
-.nx-tbtn:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: 1px; }
-.nx-tbtn[aria-expanded="true"] { background: var(--nx-accent-soft); color: var(--nx-ink); }
-.nx-tbtn b { font-variant-numeric: tabular-nums; color: var(--nx-ink); }
+/* Tabs: text pills under the header on a desktop, a fixed bar with glyphs on a phone. */
+.nx-tabs-bar { position: sticky; top: var(--nx-h-header); z-index: var(--nx-z-tabbar); display: flex; align-items: center; justify-content: center; gap: var(--nx-s1); height: var(--nx-h-control); padding: 0 var(--nx-gutter); }
+.nx-stab { position: relative; display: inline-flex; align-items: center; gap: var(--nx-s2); height: var(--nx-h-control-sm); padding: 0 var(--nx-s4); border-radius: var(--nx-r-pill); color: var(--nx-ink-2); font-size: var(--nx-fs-small); font-weight: var(--nx-w-label); text-decoration: none; }
+.nx-stab:hover { background: var(--nx-surface-2); color: var(--nx-ink); }
+.nx-stab:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: -2px; }
+.nx-stab[aria-current="page"] { background: var(--nx-accent-soft); color: var(--nx-ink); }
+.nx-tab-glyph { display: none; flex: none; width: 1.5rem; height: 1.5rem; }
+.nx-stab-badge { min-width: 1.25rem; padding: 0 var(--nx-s1); text-align: center; border-radius: var(--nx-r-pill); background: var(--nx-bad); color: var(--nx-bg); font-size: var(--nx-fs-micro); line-height: var(--nx-lh-micro); font-variant-numeric: tabular-nums; }
 
-.nx-main { grid-area: main; min-width: 0; min-height: 0; overflow: auto; position: relative; }
+.nx-hairline { padding: 0 var(--nx-gutter); }
+.nx-hairline-bar { height: 2px; background: var(--nx-border); overflow: hidden; }
+.nx-hairline-fill { height: 100%; background: var(--nx-accent); }
+.nx-hairline-text { margin: var(--nx-s1) 0 0; color: var(--nx-ink-2); font-size: var(--nx-fs-micro); }
+.nx-banner-text { margin: 0; }
+
+.nx-main { flex: 1 1 auto; width: 100%; max-width: var(--nx-feed-max); margin: 0 auto; padding: var(--nx-s5) var(--nx-gutter) var(--nx-s8); min-width: 0; position: relative; }
 .nx-main:focus, .nx-main:focus-visible { outline: none; }
 .nx-main[data-focus-ring="true"] { outline: 2px solid var(--nx-focus); outline-offset: -2px; }
 
-.nx-bottom { display: none; }
-@media (max-width: 1099px) {
-  .nx-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--nx-top-h) minmax(0, 1fr) var(--nx-bottom-h); grid-template-areas: "top" "main" "bottom"; }
-  .nx-shell:has(.nx-rail[data-pinned="true"]) { grid-template-columns: minmax(0, 1fr); }
-  .nx-rail { display: none; }
-  .nx-bottom { grid-area: bottom; display: flex; background: var(--nx-surface); border-top: 1px solid var(--nx-border); }
-  .nx-bottom a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--nx-s1); color: var(--nx-ink-2); text-decoration: none; font-size: var(--nx-fs-micro); line-height: var(--nx-lh-micro); position: relative; min-width: 0; }
-  .nx-bottom a[aria-current="page"] { color: var(--nx-ink); background: var(--nx-accent-soft); }
-  .nx-bottom a:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: -2px; }
-  .nx-bottom .nx-rail-badge { position: absolute; top: var(--nx-s1); right: 25%; margin: 0; }
-  .nx-search-ph { display: none; }
-  .nx-search { flex: none; margin: 0; }
-  /* At phone width the theme sits in the account menu and the account shows its icon only, so the bar fits. */
-  .nx-theme-btn, .nx-account > span, .nx-kbd { display: none; }
-  .nx-crumb { display: none; }
+@media (max-width: 760px) {
+  .nx-tabs-bar { position: fixed; top: auto; bottom: var(--m-attribution-h); left: 0; right: 0; height: var(--nx-h-tabbar); justify-content: space-around; gap: 0; padding: 0; border-top: 1px solid var(--nx-glass-line); }
+  .nx-stab { flex: 1; flex-direction: column; justify-content: center; gap: var(--nx-s1); height: 100%; padding: 0; border-radius: 0; font-size: var(--nx-fs-micro); }
+  .nx-tab-glyph { display: block; }
+  .nx-stab-badge { position: absolute; top: var(--nx-s1); left: 55%; }
+  .nx-account-name, .nx-header-label { display: none; }
+  .nx-main { padding-bottom: calc(var(--nx-h-tabbar) + var(--m-attribution-h) + var(--nx-s5)); }
 }
 
 /* The v2 screens ride inside the next shell as a sheet, so none of them changes. */
@@ -68,7 +52,7 @@
 .nx-legacy > .m2-root { background: transparent; min-height: 0; }
 .nx-legacy .m2-sheetwrap { margin: 0; min-height: 60vh; }
 .nx-legacy .m2-canvas { overflow: visible; }
-.nx-insp-host { position: fixed; top: var(--nx-top-h); right: 0; bottom: 0; z-index: 40; display: flex; }
+.nx-insp-host { position: fixed; top: var(--nx-h-header); right: 0; bottom: 0; z-index: 40; display: flex; }
 .nx-insp-host > .m2-root { background: transparent; min-height: 0; display: flex; }
 .nx-insp-host .m2-insp { position: static; height: 100%; }
 .nx-keys { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: max-content 1fr; gap: var(--nx-s2) var(--nx-s5); }

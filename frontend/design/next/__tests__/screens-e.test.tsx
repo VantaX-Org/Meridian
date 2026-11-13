@@ -115,6 +115,11 @@ describe("Monitor", () => {
     expect(g[0].findings).toHaveLength(2);
   });
 
+  it("carries the feed's resolved records onto their run", () => {
+    const g = groupByRun([f({}), f({ version_id: "v2" })], [{ version_id: "v1", resolved: 9 }]);
+    expect(g.map((x) => x.resolvedCount)).toEqual([9, 0]);
+  });
+
   it("shows the heading, the sentence and a Compare link per run", async () => {
     setUrl("/monitor?fixture=1");
     renderWithQuery(<Monitor />);
@@ -177,7 +182,7 @@ describe("NextRedirect", () => {
   it("sends an old address to its new home and keeps the query", () => {
     setUrl("/cleansing?fixture=1&run=r1");
     render(<NextRedirect />);
-    expect(replace).toHaveBeenCalledWith(expect.stringMatching(/^\/next\/work\/approve\?/));
+    expect(replace).toHaveBeenCalledWith(expect.stringMatching(/^\/work\/approvals\?/));
     expect(replace.mock.calls[0][0]).toContain("run=r1");
   });
 
