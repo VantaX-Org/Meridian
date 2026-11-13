@@ -23,6 +23,7 @@ no VP/PH rule: that rule already fails the record — one defect, one finding.
 from __future__ import annotations
 
 import re
+import unicodedata
 from functools import lru_cache
 from pathlib import Path
 
@@ -338,13 +339,27 @@ def vat_status(v: str) -> str:
 
 
 _LEGAL_FORMS = re.compile(r"\b(?:PTY|PROPRIETARY|LTD|LIMITED|PLC|GMBH|MBH|AG|KG|OHG|EK|BV|NV|SA|SAS|SARL|SPA|SRL|"
-                          r"INC|INCORPORATED|LLC|CORP|CORPORATION|CO|COMPANY|CC|AB|OY|AS|APS|SE)\b")
+                          r"INC|INCORPORATED|LLC|CORP|CORPORATION|CO|COMPANY|CC|AB|OY|AS|APS|SE)\b", re.IGNORECASE)
+
+
+_NOT_WORD = re.compile(r"[\W_]")
+
+
+def _space_unless_mark(m: re.Match) -> str:
+    """\\W also matches combining marks; keeping them stops 'हिन्दी' or 'مُحَمَّد' being split into fragments."""
+    return m.group() if unicodedata.category(m.group()).startswith("M") else " "
+
+
+def fold(s: pd.Series) -> pd.Series:
+    """NFKC + casefold, punctuation to spaces: one comparison form for every script ('ＡＣＭＥ' == 'acme',
+    'STRASSE' == 'straße')."""
+    return s.astype("string").str.normalize("NFKC").str.casefold().str.replace(_NOT_WORD, _space_unless_mark, regex=True)
 
 
 def name_key(s: pd.Series) -> pd.Series:
-    """'Acme (Pty) Ltd.' == 'ACME PTY LTD' == 'acme': legal form, case and punctuation ignored."""
-    t = s.astype("string").str.upper().str.replace(r"[^0-9A-Z ]", " ", regex=True)
-    return t.str.replace(_LEGAL_FORMS, " ", regex=True).str.replace(r"\s+", "", regex=True)
+    """'Acme (Pty) Ltd.' == 'ACME PTY LTD' == 'acme': legal form, case and punctuation ignored, in any script.
+    A name of punctuation or legal form only ('Ltd.') gives '': callers treat that as not comparable."""
+    return fold(s).str.replace(_LEGAL_FORMS, " ", regex=True).str.replace(r"\s+", "", regex=True)
 
 
 @lru_cache(maxsize=1)
