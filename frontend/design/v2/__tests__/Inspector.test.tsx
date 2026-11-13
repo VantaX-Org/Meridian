@@ -59,7 +59,7 @@ describe("?open round trip", () => {
     expect(getUrl()).toContain("fixture=1");
     expect(screen.getByTestId("open")).toHaveTextContent("rule:MM142");
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close inspector" }));
     expect(getUrl()).not.toContain("open=");
     expect(getUrl()).toContain("run=r1");
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -128,15 +128,15 @@ describe("<Inspector>", () => {
 });
 
 describe("focus handling", () => {
-  it("moves focus into the sheet on open, keeps Tab inside, and returns focus to the opener on Esc", async () => {
+  it("moves focus to Close on open, keeps Tab inside, and returns focus to the opener on Esc", async () => {
     renderWithQuery(<Harness />);
     const opener = screen.getByText("Open ECC");
     opener.focus();
     fireEvent.click(opener);
     const dialog = await screen.findByRole("dialog");
-    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+    const close = screen.getByRole("button", { name: "Close inspector" });
+    await waitFor(() => expect(close).toHaveFocus());
     await waitFor(() => expect(screen.getByRole("button", { name: "Test connection" })).toBeInTheDocument());
-    const close = screen.getByRole("button", { name: "Close" });
     const focusables = Array.from(dialog.querySelectorAll<HTMLElement>('a[href],button:not([disabled])'));
     const last = focusables[focusables.length - 1];
     expect(focusables.length).toBeGreaterThan(1);

@@ -12,6 +12,11 @@ import { extensionFor } from "./inspector/registry";
 import { RuleInspectorBody } from "./inspector/rule";
 import { RecordInspector } from "./screens/RecordInspector";
 import { t } from "@/lib/v2/i18n";
+// The kit Sheet's styles are scoped under .nx-root; the v2 layout does not load them, so the frame does.
+import "@/design/next/tokens.css";
+import "@/design/next/motion.css";
+import "@/design/next/kit/kit.css";
+import "@/design/next/layers.css";
 
 export interface InspectorFrameProps {
   title: ReactNode;
@@ -27,12 +32,14 @@ export interface InspectorFrameProps {
  */
 export function InspectorFrame({ title, status, onClose, children }: InspectorFrameProps) {
   return (
-    <Sheet open onClose={onClose} title={title} size="large">
-      <div className="m2-ib" data-testid="inspector">
-        {status ? <div className="m2-ih-sl">{status}</div> : null}
-        {children}
-      </div>
-    </Sheet>
+    <aside className="nx-root nx-scope" aria-label={t("Inspector")} data-testid="inspector">
+      <Sheet open onClose={onClose} title={title} size="large" id="m2-inspector" closeLabel={t("Close inspector")} focusClose>
+        <div className="m2-ib">
+          {status ? <div className="m2-ih-sl">{status}</div> : null}
+          {children}
+        </div>
+      </Sheet>
+    </aside>
   );
 }
 
