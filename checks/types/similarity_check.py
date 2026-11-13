@@ -25,9 +25,8 @@ from checks.base import BaseCheck, Evaluation, is_blank
 
 
 def _key(s: pd.Series) -> pd.Series:
-    from checks.value_placement import _LEGAL_FORMS
-    t = s.astype("string").str.upper().str.replace(r"[^0-9A-Z ]", " ", regex=True)
-    t = t.str.replace(_LEGAL_FORMS, " ", regex=True)
+    from checks.value_placement import _LEGAL_FORMS, fold
+    t = fold(s).str.replace(_LEGAL_FORMS, " ", regex=True)
     return t.map(lambda v: " ".join(sorted(v.split())) if isinstance(v, str) else "")
 
 
@@ -113,7 +112,15 @@ class SimilarityCheck(BaseCheck):
             if len(pairs) < 20:
                 pairs.append([str(df.at[a, ev_col]), str(df.at[b, ev_col])])
         failing |= df.index.isin(list(hit))
+        # Populated names whose key is under 5 characters (often 2-4 character CJK names) are not compared:
+        # counted, so they are never silently missing.
+        from checks.value_placement import name_key
+        filled = ~is_blank(df[r["field"]])
+        for c in r.get("block_by") or []:
+            filled &= ~is_blank(df[c])
+        too_short = int((filled & (name_key(df[r["field"]]).fillna("").str.len() < 5)).sum())
         return Evaluation(scope, failing, {"near_duplicate_pairs": pairs,
+                                           "records_too_short_to_compare": too_short,
                                            "blocks_skipped_too_large": len(oversized),
                                            "records_not_compared": sum(len(g) for g in oversized),
                                            "threshold": threshold})

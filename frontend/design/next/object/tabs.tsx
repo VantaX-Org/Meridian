@@ -11,12 +11,15 @@ import { t } from "@/lib/v2/i18n";
 import { RunsTab } from "./RunsTab";
 import { WhySection } from "./WhySection";
 import { FixSection } from "./FixSection";
+import { FailingRecords } from "../report/FailingRecords";
+import { SteeringReport } from "../report/SteeringReport";
+import { LoadFilesPanel } from "../load/LoadFilesPanel";
 import type { ObjectRun } from "./useObjectRun";
 
-export const TAB_IDS = ["overview", "why", "fix", "records", "rules", "fixes", "runs", "readiness", "processes", "golden", "glossary", "lineage", "profile", "cycle", "trend"] as const;
+export const TAB_IDS = ["overview", "why", "fix", "records", "failing", "rules", "fixes", "report", "runs", "readiness", "processes", "golden", "glossary", "lineage", "profile", "cycle", "trend"] as const;
 export type TabId = (typeof TAB_IDS)[number];
 /** The segment row, in order. */
-export const SEGMENTS: readonly TabId[] = ["overview", "why", "fix", "records", "rules", "fixes", "runs", "readiness", "processes"];
+export const SEGMENTS: readonly TabId[] = ["overview", "why", "fix", "records", "failing", "rules", "fixes", "report", "runs", "readiness", "processes"];
 /** Behind the More segment. */
 export const MORE: readonly TabId[] = ["golden", "glossary", "lineage", "profile"];
 
@@ -29,7 +32,9 @@ export function tabLabel(id: TabId): string {
     case "fix": return t("What to fix");
     case "records": return t("Records");
     case "rules": return t("Rules");
+    case "failing": return t("Failing records");
     case "fixes": return t("Fixes");
+    case "report": return t("Report");
     case "runs": return t("Runs");
     case "readiness": return t("Readiness");
     case "processes": return t("Processes");
@@ -51,6 +56,8 @@ export function renderTab(id: TabId, o: ObjectRun, go: (tab: TabId) => void): Re
     case "fix": return <FixSection o={o} />;
     case "runs": return <RunsTab o={o} onOpen={(run) => { o.setRun(run); go("overview"); }} />;
     case "rules": return <ObjectRulesRoute />;
+    case "failing": return <FailingRecords o={o} />;
+    case "report": return <><SteeringReport o={o} /><LoadFilesPanel module={o.module} /></>;
     default: return <ObjectTabRoute tab={id} />;
   }
 }
