@@ -2,6 +2,7 @@
 
 The database, bucket and queue are faked; the real file reading (api/services/sf_roundtrip.py) and the
 route's own checks run. A live Postgres is not needed."""
+import contextlib
 import io
 import uuid
 from types import SimpleNamespace
@@ -50,6 +51,8 @@ def _good(**kw) -> bytes:
 
 
 class _Result:
+    rowcount = 0
+
     def __init__(self, row):
         self._row = row
 
@@ -59,10 +62,15 @@ class _Result:
 
 class _DB:
     def __init__(self, row):
-        self.row, self.calls = row, []
+        self.row, self.calls, self.newer, self.tip = row, [], None, None
 
     async def execute(self, stmt, params=None):
-        self.calls.append((" ".join(str(stmt).split()), params))
+        sql = " ".join(str(stmt).split())
+        self.calls.append((sql, params))
+        if "run_at > (SELECT run_at" in sql:  # _NEWER_RUN_SQL
+            return _Result(self.newer)
+        if "metadata->>'source' = 'roundtrip'" in sql:  # _TIP_SQL
+            return _Result(self.tip)
         return _Result(self.row)
 
     async def commit(self):
@@ -108,6 +116,7 @@ def env(monkeypatch):
     monkeypatch.setattr(upload, "_enqueue_checks", enqueue)
     monkeypatch.setattr(upload, "_dictionary", lambda t, s: None)
     monkeypatch.setattr(upload.jobs, "start_job", lambda *a, **k: None)
+    monkeypatch.setattr(upload, "_base_lock", lambda base: contextlib.nullcontext())
 
     app = FastAPI()
     app.include_router(upload.router)
@@ -138,7 +147,66 @@ def test_happy_path_returns_applied_counts_and_queues_a_rerun(env):
     assert parent == "staging/x/parent/" and prefix == f"staging/{TID}/{NEW}/"
     assert edits == [{"table": "EmpJob", "key": "userId=u1", "field": "jobTitle", "value": "Lead"}]
     assert env.enqueued == [prefix] and env.audits == ["upload.roundtrip"]
-    assert env.meta["roundtrip"] == {"parent_version_id": str(PARENT), "kind": "cleaning", "edits": 1}
+    assert env.meta["roundtrip"] == {"parent_version_id": str(PARENT), "base_version_id": str(PARENT),
+                                     "kind": "cleaning", "edits": 1, "module": "employee_central"}
+
+
+def test_the_cleaned_copy_is_built_under_the_base_run_lock(env, monkeypatch):
+    """Two uploads of one extraction must not both read the same tip: the read through the commit is locked."""
+    seen = []
+
+    @contextlib.asynccontextmanager
+    async def lock(base):
+        seen.append(("enter", base, len(env.applied_with)))
+        yield
+        seen.append(("exit", base, len(env.applied_with)))
+
+    monkeypatch.setattr(upload, "_base_lock", lock)
+    assert _post(env, _good()).status_code == 200
+    assert seen == [("enter", str(PARENT), 0), ("exit", str(PARENT), 1)]
+
+
+def test_file_from_another_run_than_the_one_chosen_is_refused(env):
+    r = _post(env, _good(), parent_version_id=str(uuid.uuid4()))
+    assert r.status_code == 422 and r.json()["detail"]["error"] == "parent_mismatch"
+    assert env.applied_with == [] and env.db.calls == []
+
+
+def test_file_from_a_run_a_newer_extraction_replaced_is_refused(env):
+    latest = uuid.uuid4()
+    env.db.newer = (latest, None)
+    r = _post(env, _good())
+    assert r.status_code == 409
+    assert r.json()["detail"]["error"] == "stale_run" and r.json()["detail"]["latest_version_id"] == str(latest)
+    assert env.applied_with == []
+
+
+def test_edits_build_on_the_newest_cleaned_copy_of_the_same_extraction(env):
+    """A second object's upload lands on the cleaned copy the first made, so both objects' edits accumulate."""
+    tip = uuid.uuid4()
+    env.db.tip = (tip, {"dataset_path": "staging/x/tip/", "cleaned_overlay": {
+        "base_version_id": str(PARENT), "modules": ["compensation"],
+        "edits": [{"table": "EmpCompensation", "key": "userId=u9", "field": "payGroup"}]}})
+    env.result["edited"] = [{"table": "EmpJob", "key": "userId=u1", "field": "jobTitle"}]
+    r = _post(env, _good())
+    assert r.status_code == 200, r.text
+    assert r.json()["parent_version_id"] == str(tip)
+    assert env.applied_with[0][0] == "staging/x/tip/"
+    assert env.meta["roundtrip"]["parent_version_id"] == str(tip)
+    assert env.meta["roundtrip"]["base_version_id"] == str(PARENT)
+    update = next(p for sql, p in env.db.calls if sql.startswith("UPDATE analysis_versions SET parent_version_id"))
+    overlay = __import__("json").loads(update["o"])
+    assert overlay["modules"] == ["compensation", "employee_central"] and len(overlay["edits"]) == 2
+
+
+def test_status_and_comment_only_file_saves_notes_without_a_new_run(env):
+    rows = [["Rule", "Table", "Record key", "Field", "Corrected value", "Status", "Owner", "Comment"],
+            ["EC_001", "EmpJob", "userId=u1", "jobTitle", "", "In progress", "Data team", "Checking with HR"]]
+    r = _post(env, _xlsx({"Records to clean": rows}))
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "notes_saved" and r.json()["version_id"] == str(PARENT)
+    assert env.applied_with == [] and env.enqueued == []
+    assert any("in_progress" in str(p) for _, p in env.db.calls)
 
 
 def test_parent_comes_from_the_form_when_the_file_has_no_marker(env):
