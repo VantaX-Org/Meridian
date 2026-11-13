@@ -41,10 +41,11 @@ describe("load tabs", () => {
 });
 
 describe("step 1, choose the target", () => {
-  it("offers four targets and marks the ECC formats review only", async () => {
+  it("offers only the targets that fit the object and marks the ECC formats review only", async () => {
     open("prepare");
     await screen.findByTestId("choose-target");
-    for (const id of ["s4", "sf", "ecc", "workbook"]) expect(screen.getByTestId(`target-${id}`)).toBeTruthy();
+    for (const id of ["s4", "ecc", "workbook"]) expect(screen.getByTestId(`target-${id}`)).toBeTruthy();
+    expect(screen.queryByTestId("target-sf")).toBeNull();
     expect(screen.getByText("LSMW, BAPI, IDoc: review only")).toBeTruthy();
   });
 

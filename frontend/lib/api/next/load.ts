@@ -7,7 +7,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { v2Get } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { getFieldMap, getMigrationRuns, type LoadHistoryPage, type MigrationRun } from "@/lib/api/v2/migration";
+import { getFieldMap, getMigrationRuns, getTemplateFields, getTemplates, type LoadHistoryPage, type MigrationRun } from "@/lib/api/v2/migration";
 import { getLoadSimulation } from "@/lib/api/v2/load-simulation";
 import { getLoadPlan } from "@/lib/api/v2/load-plan";
 
@@ -57,4 +57,45 @@ export function useFieldCoverage(modules: string[], release: string) {
     },
     enabled: modules.length > 0,
   });
+}
+
+/** One person's approval: who, and when. */
+export interface Approval { id: string; name: string; at: string }
+/**
+ * The four-eyes state of one load. The backend has no load-approval endpoint yet, so the state is kept in this browser
+ * (localStorage, per run); the shape matches what an endpoint would return, so only `readApproval` and `writeApproval` change.
+ */
+export interface ApprovalState {
+  preparer: { id: string; name: string };
+  first?: Approval;
+  second?: Approval;
+  rejected?: Approval & { comment: string };
+}
+
+const approvalKey = (runId: string) => `mn_next_load_approval_${runId}`;
+export function readApproval(runId: string): ApprovalState | null {
+  try {
+    const raw = window.localStorage.getItem(approvalKey(runId));
+    return raw ? (JSON.parse(raw) as ApprovalState) : null;
+  } catch {
+    return null;
+  }
+}
+export function writeApproval(runId: string, s: ApprovalState | null): void {
+  try {
+    if (s) window.localStorage.setItem(approvalKey(runId), JSON.stringify(s));
+    else window.localStorage.removeItem(approvalKey(runId));
+  } catch {
+    // Storage blocked: the approval lasts for this screen only.
+  }
+}
+
+/** The kept target templates of one object (the workbooks the new system gave). */
+export function useTemplates(module: string | null) {
+  const fx = useFixture();
+  return useQuery({ queryKey: [...loadKeys.all, "templates", fx, module] as const, queryFn: () => getTemplates(module as string), enabled: !!module });
+}
+export function useTemplateFields(module: string | null) {
+  const fx = useFixture();
+  return useQuery({ queryKey: [...loadKeys.all, "template-fields", fx, module] as const, queryFn: () => getTemplateFields(module as string), enabled: !!module });
 }

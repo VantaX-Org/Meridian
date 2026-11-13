@@ -16,6 +16,7 @@ import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 import { dqsOf, reasonText, score, signed, valuesText } from "../model";
 import { PairedScores } from "../PairedScores";
+import { DeltaBar, Hero } from "./Meter";
 import type { ObjectRun } from "../useObjectRun";
 
 const SEGS: readonly Change[] = ["new", "resolved", "regressed", "persisting"];
@@ -93,6 +94,11 @@ export function CompareStep({ o, cycle, onNextCycle }: { o: ObjectRun; cycle: nu
           ? t("DQS {a} to {b} ({delta})", { a: score(dA), b: score(dB), delta: signed(dB - dA) })
           : t("One of the runs has no score for this object.")}
       </p>
+      <div className="nx-heroes" data-testid="compare-heroes">
+        <Hero label={t("Before: run {n}", { n: a?.run_number ?? "" })} value={dA} />
+        <Hero label={t("After: run {n}", { n: b?.run_number ?? "" })} value={dB} delta={dA !== null && dB !== null ? dB - dA : null} />
+      </div>
+      <DeltaBar before={dA} after={dB} />
       {totals ? (
         <p className="nx-receipt nx-num" data-testid="compare-receipt">
           {t("{new} new, {resolved} resolved, {regressed} regressed, {persisting} still failing", { new: int(totals.new), resolved: int(totals.resolved), regressed: int(totals.regressed), persisting: int(totals.persisting) })}

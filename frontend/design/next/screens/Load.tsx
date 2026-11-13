@@ -6,7 +6,12 @@
  */
 import { useCallback, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Tabs, Stepper, Skeleton, ErrorState, type StepItem } from "@/design/next/kit";
+import { Button, EmptyState, Tabs, Stepper, Skeleton, ErrorState, type StepItem } from "@/design/next/kit";
+import { downloadBlankTemplate } from "@/lib/api/v2/migration";
+import { pushSheet, sheetsOf, withSheets } from "@/lib/next/sheet";
+import { useV2Session } from "@/lib/v2/hooks";
+import { PairedTrio } from "../load/PairedTrio";
+import { StaleNudge, Denied } from "../load/states";
 import { V2Link } from "@/design/v2/parts";
 import { Migration } from "@/design/v2/screens/Migration";
 import { SystemCompare } from "@/design/v2/screens/SystemCompare";
@@ -28,6 +33,8 @@ export function Load({ tab }: { tab: LoadTab }) {
   const router = useRouter();
   const params = useSearchParams();
   const runs = useLoadRuns();
+  const session = useV2Session();
+  const openSheet = (kind: string, id: string) => router.push(`/load?${withSheets(params, pushSheet(sheetsOf(params), { kind, id }))}`, { scroll: false });
 
   const go = useCallback(
     (next: LoadTab, extra: Record<string, string | null> = {}) => {
@@ -68,8 +75,21 @@ export function Load({ tab }: { tab: LoadTab }) {
   const prepare = () => {
     if (runs.isLoading) return <Skeleton lines={5} label={t("Loading the runs")} />;
     if (runs.isError) return <ErrorState sentence={t("The runs could not be loaded.")} error={runs.error} onRetry={() => void runs.refetch()} />;
+    if (!session.can("export")) return <Denied right={t("export")} />;
+    if (list.length === 0) return <div data-testid="load-empty"><EmptyState heading={t("No run to load from")}>{t("Run an analysis first. Its result is what the load files are built from.")}</EmptyState></div>;
+    const failedRun = run && run.status === "failed";
+    const newest = list[0];
+    const mod = objects[0] ?? run?.modules[0] ?? "";
     return (
       <>
+        {run && newest && newest.id !== run.id ? <StaleNudge newer={newest.id} onOpen={() => set({ run: newest.id, objs: null })} /> : null}
+        {failedRun ? <div data-testid="load-failed"><ErrorState sentence={t("This run failed, so no files can be built from it. Pull again.")} onRetry={() => go("analysis")} /></div> : null}
+        <div className="nx-ld-actions" data-testid="load-actions">
+          <Button variant="primary" disabled={!run || Boolean(failedRun)} reason={t("Choose a run first.")} onClick={() => run && openSheet("load", run.id)}>{t("Open the load")}</Button>
+          <Button variant="secondary" disabled={!mod} onClick={() => openSheet("templates", mod)}>{t("Migration templates")}</Button>
+          <Button variant="secondary" icon="download" disabled={!mod} onClick={() => void downloadBlankTemplate(mod)}>{t("Download templates")}</Button>
+        </div>
+        <PairedTrio />
         <Stepper steps={steps} label={t("Steps")} onSelect={(id) => (id === "target" || ready) && set({ step: id })} />
         {step === "target" || !ready ? (
           <ChooseTarget

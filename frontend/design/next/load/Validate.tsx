@@ -7,6 +7,8 @@ import { t } from "@/lib/v2/i18n";
 import { V2Link } from "@/design/v2/parts";
 import type { SimGroup, SimObject } from "@/lib/api/v2/load-simulation";
 import { useFieldCoverage, useLoadSimulation } from "@/lib/api/next/load";
+import { SegBar } from "../kit/charts";
+import { loadSegs } from "./segs";
 import { Button, Chip, Confirm, DataTable, ErrorState, Skeleton, type Column, type ChipTone } from "../kit";
 
 type Verdict = "ready" | "conditions" | "not_ready";
@@ -47,6 +49,8 @@ export function Validate({ runId, objects, release, onBack, onBuild }: { runId: 
     <section className="nx-ld-step" data-testid="validate" aria-labelledby="nx-ld-h-validate">
       <h2 id="nx-ld-h-validate">{t("What fits and what would not load")}</h2>
       <p className="nx-ld-lede">{t("Every row of the chosen runs is checked against the target's rules. Fix the red ones first, or build the files without them and keep the list.")}</p>
+
+      <SegBar segs={loadSegs({ would_load: sum.load, provisional: sum.warn, would_fail: sum.fail })} format={formatInt} testid="validate-bar" />
 
       <ul className="nx-ld-verdicts">
         {objs.map((o) => (

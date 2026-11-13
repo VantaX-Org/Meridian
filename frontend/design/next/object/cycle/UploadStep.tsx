@@ -4,16 +4,19 @@
  * Upload: the cleaned workbooks go back, Meridian applies the changed values to a copy of the run and scores it.
  * `upload` is the seam for the shared upload panel; without it the step calls the round-trip endpoint itself.
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, DropZone, StatCard } from "@/design/next/kit";
 import { fixtureActive } from "@/lib/api/v2/fixture";
 import { fixtureUpload } from "@/lib/api/next/runs-fixture";
+import { readCleanedRows } from "@/lib/api/next/upload";
 import { needsParent, uploadCleaned, uploadSentence, type RoundTripResult } from "@/lib/api/v2/roundtrip";
 import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 import type { ObjectRun } from "../useObjectRun";
+import { CheckList, type CheckRow } from "./CheckList";
+import { checkCleaned, gate, tally, type CheckId, type UploadCheck } from "./uploadGate";
 
 export const MAX_BYTES = 25 * 1024 * 1024;
 export const MAX_ROWS = 200_000;
@@ -24,7 +27,28 @@ interface Item {
   state: "ready" | "too-big" | "wrong-type" | "uploading" | "done" | "failed" | "parent";
   result?: RoundTripResult;
   error?: string;
+  checks?: UploadCheck[];
+  /** Rows changed, unchanged and rejected, worked out from the workbook before it is sent. */
+  counts?: { changed: number; unchanged: number; rejected: number };
+  confirmed?: boolean;
 }
+
+const CHECK_LABEL: Record<CheckId, () => string> = {
+  structure: () => t("Structure: the sheet and its columns are as exported"),
+  keys: () => t("Keys unchanged: every edit names its record"),
+  domain: () => t("Values in domain: every value is an allowed value"),
+  mandatory: () => t("Mandatory fields: none is emptied"),
+  deleted: () => t("Nothing deleted: no row was removed"),
+};
+const CHECK_FIX: Record<CheckId, () => string> = {
+  structure: () => t("Download the workbook again and edit that copy; keep the sheet names and header row."),
+  keys: () => t("Put back the key columns you changed; they tie each row to its record."),
+  domain: () => t("Use one of the allowed values listed in the workbook for that column."),
+  mandatory: () => t("Fill the emptied mandatory cells again, or restore the old value."),
+  deleted: () => t("Add the deleted rows back; to drop a record, mark it instead of removing the row."),
+};
+const checkDetail = (c: UploadCheck): string | undefined => (c.status === "pass" ? undefined : t("{n, plural, one {# row} other {# rows}}", { n: c.count }));
+export const rowsOfChecks = (checks: UploadCheck[]): CheckRow[] => checks.map((c) => ({ id: c.id, status: c.status, label: CHECK_LABEL[c.id](), detail: checkDetail(c) }));
 
 const okType = (f: File) => /\.(xlsx|xlsm|csv)$/i.test(f.name);
 const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
@@ -36,14 +60,28 @@ export function UploadStep({ o, upload, onScored }: { o: ObjectRun; upload?: (fi
   const [parent, setParent] = useState<string>("");
   const send = upload ?? ((f: File, p?: string) => (fixtureActive() ? Promise.resolve(fixtureUpload(f.name)) : uploadCleaned(f, p)));
   const busy = items.some((i) => i.state === "uploading");
-  const ready = items.filter((i) => i.state === "ready" || i.state === "parent");
+  const waiting = items.filter((i) => i.state === "ready" || i.state === "parent");
+  const gates = useMemo(() => waiting.map((i) => (i.checks ? gate(i.checks, Boolean(i.confirmed)) : null)), [waiting]);
+  const blockedFile = gates.some((g) => g?.state === "blocked");
+  const unconfirmed = gates.some((g) => g?.state === "confirm" && !g.canUpload);
+  const ready = blockedFile ? [] : waiting;
   const askParent = items.some((i) => i.state === "parent");
 
-  const add = (files: File[]) =>
+  const add = (files: File[]) => {
     setItems((cur) => [
       ...cur.filter((c) => c.state !== "done"),
       ...files.map((file): Item => ({ file, state: !okType(file) ? "wrong-type" : file.size > MAX_BYTES ? "too-big" : "ready" })),
     ]);
+    // The checks read the workbook in the browser; a file that cannot be read here is left to the server's own checks.
+    for (const file of files) {
+      if (!okType(file) || file.size > MAX_BYTES) continue;
+      void readCleanedRows(file).then((input) => {
+        if (!input) return;
+        const checks = checkCleaned(input);
+        setItems((cur) => cur.map((c) => (c.file === file ? { ...c, checks, counts: tally(input, checks) } : c)));
+      });
+    }
+  };
 
   const run = async () => {
     for (const it of ready) {
@@ -85,6 +123,28 @@ export function UploadStep({ o, upload, onScored }: { o: ObjectRun; upload?: (fi
                 {it.state === "uploading" ? t("Uploading and reading") : null}
                 {it.state === "done" ? t("Read") : null}
               </span>
+              {it.checks ? <CheckList rows={rowsOfChecks(it.checks)} label={t("Checks on {file}", { file: it.file.name })} testid="upload-checks" /> : null}
+              {it.counts ? (
+                <p className="nx-note" data-testid="upload-counts">
+                  {t("{changed} rows changed, {unchanged} unchanged, {rejected} rejected", { changed: int(it.counts.changed), unchanged: int(it.counts.unchanged), rejected: int(it.counts.rejected) })}
+                </p>
+              ) : null}
+              {it.checks && gate(it.checks, true).warns > 0 && gate(it.checks, true).fails === 0 && it.state !== "done" ? (
+                <label className="nx-field-label">
+                  <input type="checkbox" checked={Boolean(it.confirmed)} onChange={(e) => setItems((cur) => cur.map((c) => (c === it ? { ...c, confirmed: e.target.checked } : c)))} data-testid="upload-confirm" />{" "}
+                  {t("I have read the warnings and want to upload this workbook")}
+                </label>
+              ) : null}
+              {it.checks && gate(it.checks, false).state === "blocked" ? (
+                <div role="alert" className="nx-error-line" data-testid="upload-rejected">
+                  <p>{t("A check failed. Fix the workbook and add it again.")}</p>
+                  <ul>
+                    {it.checks.filter((c) => c.status === "fail").map((c) => (
+                      <li key={c.id}>{CHECK_LABEL[c.id]()}. {CHECK_FIX[c.id]()}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               {it.error ? <p role="alert" className="nx-error-line">{it.error}</p> : null}
               {it.state !== "uploading" ? (
                 <Button variant="quiet" size={32} onClick={() => setItems((cur) => cur.filter((c) => c !== it))} aria-label={t("Remove {file}", { file: it.file.name })}>{t("Remove")}</Button>
@@ -104,7 +164,7 @@ export function UploadStep({ o, upload, onScored }: { o: ObjectRun; upload?: (fi
           </select>
         </label>
       ) : null}
-      <Button variant="primary" icon="upload" loading={busy} loadingLabel={t("Uploading and scoring")} disabled={ready.length === 0 || (askParent && !parent)} reason={ready.length === 0 ? t("Add a workbook first.") : askParent && !parent ? t("Choose the run the workbook was made from.") : undefined} onClick={() => void run()}>
+      <Button variant="primary" icon="upload" loading={busy} loadingLabel={t("Uploading and scoring")} disabled={ready.length === 0 || unconfirmed || (askParent && !parent)} reason={blockedFile ? t("A check failed. Fix the workbook and add it again.") : unconfirmed ? t("Confirm the warnings first.") : ready.length === 0 ? t("Add a workbook first.") : askParent && !parent ? t("Choose the run the workbook was made from.") : undefined} onClick={() => void run()}>
         {t("Upload and score")}
       </Button>
       {last ? (
