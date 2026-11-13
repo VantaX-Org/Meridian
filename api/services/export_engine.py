@@ -163,7 +163,8 @@ SAP_EXPORT_FIELDS: dict[str, dict[str, str]] = {
 TRANSACTION_CODES: dict[str, str] = {
     "customer": "XD02", "vendor": "XK02", "material": "MM02",
     "equipment": "IE02", "employee": "PA30", "financial": "FS00",
-    "business_partner": "BP02", "accounts_payable": "FK02",
+    # business_partner has none: BP is one transaction for display and change, so no recording is named
+    "accounts_payable": "FK02",
     "accounts_receivable": "FD02", "asset_accounting": "AS02", "hcm": "PA30",
     "mm_purchasing": "ME22N", "plant_maintenance": "IE02",
     "production_planning": "MD02", "sd_customer_master": "VD02",
@@ -219,22 +220,36 @@ SF_FIELD_NAMES: dict[str, str] = {
 }
 
 
+REVIEW_ONLY = ("Review only, not a load file: check the values here, then load them with the target "
+               "workbook export (Migration) or your own LSMW project, BAPI program or IDoc partner profile")
+
+
 class ExportEngine:
     """Generates SAP-compatible export files in multiple formats."""
 
     def _map_record(self, record: dict[str, Any], object_type: str) -> dict[str, str]:
-        """Map source field names to SAP field names for a single record."""
+        """The record under SAP field names. A cleaning record holds SAP names (``NAME1`` or ``KNA1.NAME1``),
+        older callers the friendly names; both are read. ``RECORD_KEY`` comes first when the record has one."""
         field_map = SAP_EXPORT_FIELDS.get(object_type, {})
         mapped: dict[str, str] = {}
+        if record.get("RECORD_KEY") is not None:
+            mapped["RECORD_KEY"] = str(record["RECORD_KEY"])
         for source_field, sap_field in field_map.items():
-            value = record.get(source_field, "")
+            value = record.get(sap_field)
+            if value is None:
+                value = next((v for k, v in record.items() if k.endswith("." + sap_field) and v is not None), None)
+            if value is None:
+                value = record.get(source_field)
             mapped[sap_field] = str(value) if value is not None else ""
         return mapped
 
+    def _headers(self, records: list[dict], object_type: str) -> list[str]:
+        heads = list(SAP_EXPORT_FIELDS.get(object_type, {}).values())
+        return (["RECORD_KEY"] if any("RECORD_KEY" in r for r in records) else []) + heads
+
     def export_csv(self, records: list[dict], object_type: str) -> str:
         """Generate CSV with SAP field headers."""
-        field_map = SAP_EXPORT_FIELDS.get(object_type, {})
-        sap_headers = list(field_map.values())
+        sap_headers = self._headers(records, object_type)
 
         output = io.StringIO()
         writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
@@ -249,12 +264,17 @@ class ExportEngine:
     def export_lsmw(self, records: list[dict], object_type: str) -> str:
         """Generate LSMW tab-delimited recording format."""
         tcode = TRANSACTION_CODES.get(object_type, "")
-        lines: list[str] = []
+        lines: list[str] = [f"* {REVIEW_ONLY}.", "* SET lines use SAP field names, not your recording's screen fields."]
+        if not tcode:
+            lines.append("* No change transaction is named for this object.")
+        lines.append("")
 
         for i, record in enumerate(records):
             if i > 0:
                 lines.append("")
             mapped = self._map_record(record, object_type)
+            if "RECORD_KEY" in mapped:
+                lines.append(f"* RECORD_KEY {mapped.pop('RECORD_KEY')}")
             lines.append(f"TRANSACTION\t{tcode}")
             lines.append("BEGIN_SESSION")
             for sap_field, value in mapped.items():
@@ -277,7 +297,7 @@ class ExportEngine:
                 "import_params": mapped,
             })
 
-        out: dict[str, Any] = {"bapi_calls": calls}
+        out: dict[str, Any] = {"review_only": True, "review_note": REVIEW_ONLY, "bapi_calls": calls}
         note = BAPI_NOTES.get(object_type) if bapi_name else (
             "No change BAPI is named for this object; load the file with the LSMW recording instead")
         if note:
@@ -303,7 +323,7 @@ class ExportEngine:
                 "E1segment": mapped,
             })
 
-        return json.dumps({"idocs": idocs}, indent=2)
+        return json.dumps({"review_only": True, "review_note": REVIEW_ONLY, "idocs": idocs}, indent=2)
 
     def export_sf_csv(self, records: list[dict], object_type: str) -> str:
         """Generate SuccessFactors-compatible CSV with OData field names."""
@@ -337,7 +357,7 @@ class ExportEngine:
         """
         field_map = SAP_EXPORT_FIELDS.get(object_type, {})
         if field_map:
-            sap_headers = list(field_map.values())
+            sap_headers = self._headers(records, object_type)
         elif records:
             sap_headers = list(records[0].keys())
         else:

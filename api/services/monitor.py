@@ -43,7 +43,7 @@ _ISSUES_SQL = """
       JOIN record_issues ri ON ri.scope = :scope AND ri.check_id = b.check_id AND ri.record_key = b.record_key
       LEFT JOIN findings f ON f.version_id = :v AND f.check_id = b.check_id
      WHERE b.version_id = :v AND b.check_id = ANY(:checks)
-       AND ri.status IN ('open', 'in_progress')
+       AND ri.status IN ('open', 'in_progress') AND ri.id <> ALL(CAST(:skip AS uuid[]))
        AND NOT EXISTS (SELECT 1 FROM finding_records a
                         WHERE a.version_id = :base AND a.check_id = b.check_id AND a.record_key = b.record_key)
        AND NOT EXISTS (SELECT 1 FROM remediation_items i JOIN remediation_batches rb ON rb.id = i.batch_id
@@ -68,21 +68,41 @@ def _summary(session, base, version_id: str) -> tuple[dict, list[dict]]:
             "batch_id": None, "batch_items": 0}, regressed
 
 
-def check(session, tenant_id: str, version_id: str, scope: str) -> Optional[dict]:
+# the skipped issues new against the baseline, per check: taken off the regression counts
+_SKIP_NEW_SQL = """
+    SELECT ri.check_id, count(*) AS n FROM record_issues ri
+     WHERE ri.tenant_id = :t AND ri.id = ANY(CAST(:skip AS uuid[]))
+       AND NOT EXISTS (SELECT 1 FROM finding_records a
+                        WHERE a.version_id = :base AND a.check_id = ri.check_id AND a.record_key = ri.record_key)
+     GROUP BY ri.check_id
+"""
+
+
+def check(session, tenant_id: str, version_id: str, scope: str, skip: Optional[list[str]] = None) -> Optional[dict]:
     """Compare a run with its system's pinned baseline; draft a batch for new regressions.
 
     Pinned-only: an explicit baseline is intent to clean, so a run with no pin drafts nothing (``status``
     shows its change against the previous run instead). Returns the summary stored on the run (None when the
-    system has no baseline). The caller owns the transaction.
+    system has no baseline). ``skip`` are issues from ``fix_not_in_source``: not regressions, left out of the
+    counts and the batch. The caller owns the transaction.
     """
+    skip = skip or []
     base = session.execute(text(_BASELINE_SQL), {"scope": scope, "v": version_id}).fetchone()
     if not base:
         return None
     summary, regressed = _summary(session, base, version_id)
+    if skip:
+        less = {r.check_id: r.n for r in session.execute(text(_SKIP_NEW_SQL), {
+            "t": tenant_id, "skip": skip, "base": base[0]})}
+        for c in regressed:
+            c["new"] -= min(c["new"], less.get(c["check_id"], 0))
+        regressed = [c for c in regressed if c["new"]]
+        summary |= {"new_records": sum(c["new"] for c in regressed), "regressed_checks": regressed[:50],
+                    "regressed_check_count": len(regressed), "fix_not_in_source": len(skip)}
 
     if regressed:
         issues = [dict(r._mapping) for r in session.execute(text(_ISSUES_SQL), {
-            "scope": scope, "v": version_id, "base": base[0],
+            "scope": scope, "v": version_id, "base": base[0], "skip": skip,
             "checks": [c["check_id"] for c in regressed], "lim": MAX_ITEMS})]
         if issues:
             from api.services.remediation import draft_batch
@@ -122,6 +142,89 @@ def notify(session, tenant_id: str, version_id: str, summary: dict) -> None:
                         regressed_records=n)
     for ch in _channels(session, "immediate_critical") if alert else []:
         deliver(ch, alert)
+
+
+# The cleaned copy (an uploaded cleaning workbook, metadata.cleaned_overlay) made from the previous real
+# extraction of this lineage: its edits were made in Excel, not in SAP, so a real extraction that still fails
+# on those records reopens their issues. Those reopenings are noted and kept out of the regressions.
+_FIX_NOT_IN_SOURCE_SQL = f"""
+    WITH prev AS (
+        SELECT p.id FROM analysis_versions p
+         WHERE p.tenant_id = :t AND p.id <> CAST(:v AS uuid) AND {same_lineage_as("v", "p")}
+           AND p.metadata->>'source' IS DISTINCT FROM 'roundtrip' AND p.status IN ('complete', 'agents_complete')
+           AND p.run_at < (SELECT run_at FROM analysis_versions WHERE id = CAST(:v AS uuid))
+         ORDER BY p.run_at DESC LIMIT 1),
+    ov AS (
+        SELECT o.metadata->'cleaned_overlay' AS c FROM analysis_versions o, prev
+         WHERE o.tenant_id = :t AND o.metadata->>'source' = 'roundtrip'
+           AND o.metadata->'cleaned_overlay'->>'base_version_id' = prev.id::text
+           AND o.status IN ('complete', 'agents_complete')
+         ORDER BY o.run_at DESC LIMIT 1),
+    e AS (SELECT DISTINCT x->>'table' AS grain, x->>'key' AS record_key
+            FROM ov, jsonb_array_elements(ov.c->'edits') x),
+    hit AS (SELECT DISTINCT ri.id FROM record_issue_events ev
+              JOIN record_issues ri ON ri.id = ev.issue_id AND ri.tenant_id = :t AND ri.scope = :scope
+              JOIN e ON e.grain = ri.grain AND e.record_key = ri.record_key
+             WHERE ev.tenant_id = :t AND ev.version_id = CAST(:v AS uuid) AND ev.action = 'reopened'),
+    noted AS (INSERT INTO record_issue_events (tenant_id, issue_id, action, note, version_id, user_label)
+              SELECT :t, id, 'comment', :note, CAST(:v AS uuid), 'system' FROM hit RETURNING issue_id)
+    SELECT issue_id FROM noted
+"""
+
+FIX_NOT_IN_SOURCE = ("Fix not yet in source: this record was corrected in the cleaning workbook, but the new "
+                     "extraction still holds the old value. Make the change in SAP.")
+
+
+def fix_not_in_source(session, tenant_id: str, version_id: str, scope: str) -> list[str]:
+    """Issues this real extraction reopened only because the earlier cleaned copy's edits are not yet in SAP.
+    Each gets a note, the run stores the count, and the caller passes the ids to ``check`` and
+    ``notify_since_previous`` as ``skip``. The caller owns the transaction."""
+    ids = [str(r[0]) for r in session.execute(text(_FIX_NOT_IN_SOURCE_SQL), {
+        "t": tenant_id, "v": version_id, "scope": scope, "note": FIX_NOT_IN_SOURCE})]
+    if ids:
+        session.execute(text(
+            "UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
+            "|| jsonb_build_object('fix_not_in_source', CAST(:n AS int)) "
+            "WHERE id = CAST(:v AS uuid) AND tenant_id = :t"),
+            {"n": len(ids), "v": version_id, "t": tenant_id})
+    return ids
+
+
+# issues of this run new or reopened, per object, when the lineage has an earlier complete run
+_SINCE_PREVIOUS_SQL = f"""
+    SELECT ri.module, count(*) FILTER (WHERE ri.first_seen_version = CAST(:v AS uuid)) AS new,
+           count(*) FILTER (WHERE ev.issue_id IS NOT NULL) AS reopened
+      FROM record_issues ri
+      LEFT JOIN (SELECT DISTINCT issue_id FROM record_issue_events
+                  WHERE tenant_id = :t AND version_id = CAST(:v AS uuid) AND action = 'reopened') ev
+             ON ev.issue_id = ri.id
+     WHERE ri.tenant_id = :t AND ri.scope = :scope
+       AND (ri.first_seen_version = CAST(:v AS uuid) OR ev.issue_id IS NOT NULL)
+       AND ri.id <> ALL(CAST(:skip AS uuid[]))
+       AND EXISTS (SELECT 1 FROM analysis_versions p
+                    WHERE p.tenant_id = :t AND p.id <> CAST(:v AS uuid) AND {same_lineage_as("v", "p")}
+                      AND p.status IN ('complete', 'agents_complete')
+                      AND p.run_at < (SELECT run_at FROM analysis_versions WHERE id = CAST(:v AS uuid)))
+     GROUP BY ri.module ORDER BY ri.module
+"""
+
+
+def notify_since_previous(session, tenant_id: str, version_id: str, scope: str,
+                          skip: Optional[list[str]] = None) -> dict:
+    """With no pinned baseline, alert on issues new or reopened since the previous run of the lineage, per
+    object. The first run of a lineage alerts nothing. Returns ``{module: {"new", "reopened"}}``."""
+    per = {r.module: {"new": r.new, "reopened": r.reopened} for r in session.execute(text(_SINCE_PREVIOUS_SQL), {
+        "t": tenant_id, "v": version_id, "scope": scope, "skip": skip or []})}
+    if not per:
+        return per
+    from api.services.notifications import create_notification_sync
+    new, reopened = sum(m["new"] for m in per.values()), sum(m["reopened"] for m in per.values())
+    create_notification_sync(
+        tenant_id=tenant_id, user_id=None, type="monitor",
+        title=f"{new} new and {reopened} reopened issue(s) since the previous run",
+        body="; ".join(f"{m}: {c['new']} new, {c['reopened']} reopened" for m, c in per.items()),
+        link=app_links.run(str(version_id)), session=session)
+    return per
 
 
 def status(session) -> list[dict]:
