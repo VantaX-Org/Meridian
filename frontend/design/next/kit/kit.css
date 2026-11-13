@@ -46,7 +46,7 @@
 .nx-btn-primary { background: var(--nx-accent); border-color: var(--nx-accent); color: var(--nx-accent-ink); }
 .nx-btn-primary:hover { background: var(--nx-accent); filter: brightness(0.92); }
 .nx-btn-quiet { background: transparent; border-color: transparent; color: var(--nx-accent); }
-.nx-btn-quiet:hover { background: var(--nx-accent-soft); }
+.nx-btn-quiet:hover { background: var(--nx-accent-soft); color: var(--nx-ink); }
 .nx-btn-danger { color: var(--nx-bad-ink); border-color: var(--nx-bad); background: var(--nx-surface); }
 .nx-btn-danger:hover { background: var(--nx-bad-soft); }
 .nx-btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
@@ -86,7 +86,7 @@
 .nx-chip-count { font-variant-numeric: tabular-nums; }
 .nx-chip-btn { cursor: pointer; }
 .nx-chip-btn[aria-pressed="true"] { border-color: var(--nx-accent); }
-.nx-chip-accent, .nx-chip-new { background: var(--nx-accent-soft); color: var(--nx-accent); }
+.nx-chip-accent, .nx-chip-new { background: var(--nx-accent-soft); color: var(--nx-ink); }
 .nx-chip-good, .nx-chip-resolved { background: var(--nx-good-soft); color: var(--nx-good-ink); }
 .nx-chip-warn { background: var(--nx-warn-soft); color: var(--nx-warn-ink); }
 .nx-chip-bad, .nx-chip-regressed { background: var(--nx-bad-soft); color: var(--nx-bad-ink); }
@@ -178,6 +178,7 @@ button.nx-step-btn:hover, .nx-step-btn[data-open] { border-color: var(--nx-accen
 .nx-chooser-menu { position: absolute; inset-inline-end: 0; top: calc(100% + var(--nx-s1)); min-width: 12rem; display: flex; flex-direction: column; }
 .nx-chooser-row { display: flex; align-items: center; gap: var(--nx-s3); padding: var(--nx-s2) var(--nx-s3); font-size: var(--nx-fs-small); }
 .nx-bulk { display: flex; align-items: center; flex-wrap: wrap; gap: var(--nx-s3); padding: var(--nx-s2) var(--nx-s4); border-radius: var(--nx-r-control); background: var(--nx-accent-soft); }
+.nx-bulk .nx-btn-quiet { color: var(--nx-ink); }
 .nx-table-scroll { overflow: auto; max-height: 24rem; border: 1px solid var(--nx-border); border-radius: var(--nx-r-card); background: var(--nx-surface); }
 .nx-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--nx-fs-small); }
 .nx-th { position: sticky; top: 0; z-index: 1; background: var(--nx-surface-2); text-align: start; font-weight: var(--nx-w-label); color: var(--nx-ink-2); padding: 0 var(--nx-s4); height: var(--nx-h-row); border-bottom: 1px solid var(--nx-border); white-space: nowrap; }

@@ -72,7 +72,8 @@ export function StatCard({ label, value, format = int, delta, spark, sparkLabel 
     <div className="nx-card nx-stat">
       <div className="nx-stat-label">{label}</div>
       <div className="nx-stat-row">
-        <span className="nx-stat-value" data-testid="stat-value" aria-label={format(value)}>
+        <span className="nx-stat-value" data-testid="stat-value">
+          <span className="nx-sr">{format(value)}</span>
           <span aria-hidden="true">{format(shown)}</span>
         </span>
         {spark ? <Sparkline points={spark} label={sparkLabel ?? t("Trend of {label}", { label })} /> : null}

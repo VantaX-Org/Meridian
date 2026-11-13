@@ -1,0 +1,48 @@
+/* Portfolio, Objects list and the upload panel. Tokens only; kit.css carries the shared controls. */
+.nx-pf { display: flex; flex-direction: column; gap: var(--nx-s5); padding: var(--nx-s6) var(--nx-gutter); max-width: 100%; min-width: 0; }
+.nx-pf-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--nx-s4); }
+.nx-pf-head h1 { margin: 0; font-size: var(--nx-fs-h1); line-height: var(--nx-lh-h1); }
+.nx-pf-head p { margin: var(--nx-s1) 0 0; color: var(--nx-ink-2); }
+.nx-pf-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: var(--nx-s3); }
+.nx-pf-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--nx-s3); }
+.nx-pf-filters .nx-field { flex: 1 1 10rem; min-width: 0; }
+.nx-check-row { display: inline-flex; align-items: center; gap: var(--nx-s2); min-height: var(--nx-h-control); font-size: var(--nx-fs-small); }
+.nx-pf-viewbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--nx-s3); }
+.nx-pf-bulk { margin-bottom: var(--nx-s4); }
+.nx-pf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); gap: var(--nx-s4); }
+.nx-pf-card { display: flex; flex-direction: column; gap: var(--nx-s3); min-width: 0; }
+/* Six steps never fit a card at full size: dots only, labels stay for screen readers. */
+.nx-pf-card .nx-stepper { gap: var(--nx-s1); }
+.nx-pf-card .nx-step-btn { justify-content: center; padding: var(--nx-s1); }
+.nx-pf-card .nx-step-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.nx-pf-card[data-selected="true"] { border-color: var(--nx-accent); }
+.nx-pf-card-head { display: flex; align-items: flex-start; gap: var(--nx-s3); }
+.nx-pf-card-title { margin: 0; font-size: var(--nx-fs-body); font-weight: var(--nx-w-heading); min-width: 0; overflow-wrap: anywhere; }
+.nx-pf-code { color: var(--nx-ink-3); font-size: var(--nx-fs-small); }
+.nx-pf-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2); color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-pf-cycle { margin: 0; color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-pf-score { display: flex; align-items: center; gap: var(--nx-s3); }
+.nx-pf-dqs { font-size: var(--nx-fs-h2); line-height: var(--nx-lh-h2); font-weight: var(--nx-w-heading); font-variant-numeric: tabular-nums; }
+.nx-pf-run { color: var(--nx-ink-3); font-size: var(--nx-fs-small); }
+.nx-pf-chips { display: flex; flex-wrap: wrap; gap: var(--nx-s2); }
+.nx-pf-card-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2); margin-top: auto; }
+.nx-pf-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--nx-s3); margin-top: var(--nx-s4); color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-pf-compare { display: flex; flex-direction: column; gap: var(--nx-s3); }
+.nx-pf-compare-bar { display: flex; justify-content: flex-end; }
+.nx-pf-scroll { overflow-x: auto; max-width: 100%; }
+.nx-pf-matrix { border-collapse: collapse; width: 100%; font-size: var(--nx-fs-small); }
+.nx-pf-matrix th, .nx-pf-matrix td { padding: var(--nx-s2) var(--nx-s3); border-bottom: 1px solid var(--nx-border); text-align: start; vertical-align: top; }
+.nx-pf-matrix td { font-variant-numeric: tabular-nums; }
+.nx-pf-matrix thead th { color: var(--nx-ink-2); font-weight: var(--nx-w-label); }
+.nx-pf-files { list-style: none; margin: var(--nx-s4) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--nx-s3); }
+.nx-pf-file { display: flex; flex-direction: column; gap: var(--nx-s2); padding: var(--nx-s3); border: 1px solid var(--nx-border); border-radius: var(--nx-r-control); background: var(--nx-surface); }
+.nx-pf-file-head { display: flex; align-items: center; justify-content: space-between; gap: var(--nx-s2); min-width: 0; }
+.nx-pf-file-head strong { overflow-wrap: anywhere; min-width: 0; }
+.nx-pf-error { margin: 0; color: var(--nx-bad-ink); font-size: var(--nx-fs-small); }
+.nx-ol-system { padding: 0; }
+.nx-ol-system > summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s3); padding: var(--nx-s4) var(--nx-s5); cursor: pointer; }
+.nx-ol-system > summary h2 { margin: 0; font-size: var(--nx-fs-h2); line-height: var(--nx-lh-h2); }
+.nx-ol-system > div { padding: 0 var(--nx-s5) var(--nx-s5); }
+.nx-ol-list { list-style: none; margin: 0; padding: 0; }
+.nx-ol-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s3); padding: var(--nx-s3) 0; border-top: 1px solid var(--nx-border); }
+.nx-ol-list li > a { flex: 1 1 14rem; min-width: 0; color: var(--nx-ink); }
