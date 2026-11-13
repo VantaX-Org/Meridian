@@ -21,7 +21,7 @@ export interface SheetStep {
 export interface SheetProps {
   open: boolean;
   onClose: () => void;
-  title: string;
+  title: ReactNode;
   /** Right of the title: a chip, a run sentence. */
   meta?: ReactNode;
   size?: SheetSize;
