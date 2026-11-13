@@ -10343,6 +10343,25 @@ export const en = {
   "Two systems, side by side.": "Two systems, side by side.",
   "Service health and recent incidents.": "Service health and recent incidents.",
   "Esc": "Esc",
+  // Batch 2 content kit (nx-b2)
+  "LargeTitle and Toolbar": "LargeTitle and Toolbar",
+  "Start a cycle": "Start a cycle",
+  "ObjectSegments": "ObjectSegments",
+  "FeedCard": "FeedCard",
+  "Composer": "Composer",
+  "Add a note for the steward": "Add a note for the steward",
+  "Send": "Send",
+  "Note sent": "Note sent",
+  "CheckList": "CheckList",
+  "This did not send. Your text is kept.": "This did not send. Your text is kept.",
+  "Press Ctrl or Cmd with Enter to send.": "Press Ctrl or Cmd with Enter to send.",
+  "Object, version and run": "Object, version and run",
+  "Filter {label}": "Filter {label}",
+  "Type to filter": "Type to filter",
+  "Nothing matches.": "Nothing matches.",
+  "Continue with warnings?": "Continue with warnings?",
+  "Continue anyway": "Continue anyway",
+  "More actions": "More actions",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { t } from "@/lib/v2/i18n";
 import {
   Button, Chip, Code, CommandPalette, Confirm, DataTable, DropZone, EmptyState, ErrorState, ProgressBar, RunSwitcher,
+  CheckList, Composer, FeedCard, LargeTitle, ObjectSegments, Toolbar,
   SegmentedControl, SidePanel, Skeleton, StatCard, Stepper, Tabs, useToast,
   type Column, type RunOption, type StepItem,
 } from "./kit";
@@ -45,6 +46,41 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="nx-kit-h2">{title}</h2>
       {children}
     </section>
+  );
+}
+
+const CHECKS = [
+  { code: "marker", level: "pass" as const, text: "The file belongs to this object and run." }, // i18n-ignore
+  { code: "rows", level: "warn" as const, text: "12 rows are new and will be added.", fix: { label: "See the rows", href: "#rows" } }, // i18n-ignore
+  { code: "cols", level: "block" as const, text: "Column Plant is missing.", fix: { label: "Download the template", href: "#template" } }, // i18n-ignore
+];
+const OBJS = [{ id: "mm", label: "Material master" }, { id: "cu", label: "Customer master" }]; // i18n-ignore
+const VERS = [{ id: "v1", label: "Version 1" }, { id: "v2", label: "Version 2" }]; // i18n-ignore
+
+function ContentKit() {
+  const toast = useToast();
+  const [v, setV] = useState({ object: "mm", version: "v2", run: "r15" });
+  return (
+    <>
+      <Section title={t("LargeTitle and Toolbar")}>
+        <div data-title-scope>
+          <Toolbar title="Material master" actions={[{ id: "a", label: t("Download"), onClick: () => undefined }, { id: "b", label: t("Share"), onClick: () => undefined }, { id: "c", label: t("Compare"), onClick: () => undefined }, { id: "d", label: t("Export"), onClick: () => undefined }]} /> {/* i18n-ignore */}
+          <LargeTitle title="Material master" subtitle="184,220 records in 14 runs" primary={{ label: t("Start a cycle"), onClick: () => undefined }} /> {/* i18n-ignore */}
+        </div>
+      </Section>
+      <Section title={t("ObjectSegments")}>
+        <ObjectSegments objects={OBJS} versions={VERS} runs={RUNS} value={v} onChange={setV} />
+      </Section>
+      <Section title={t("FeedCard")}>
+        <FeedCard tone="warn" title="Seal kit, boom cylinder" reason="Its score fell 6 points since run 14." meta={[{ label: "Score", value: "58" }, { label: "Records", value: "95" }]} href="#card" actions={[{ label: t("Open"), onClick: () => undefined, primary: true }]} /> {/* i18n-ignore */}
+      </Section>
+      <Section title={t("Composer")}>
+        <Composer label={t("Note")} placeholder={t("Add a note for the steward")} submitLabel={t("Send")} doneText={t("Note sent")} onSubmit={() => toast({ text: t("Sent") })} />
+      </Section>
+      <Section title={t("CheckList")}>
+        <CheckList checks={CHECKS} />
+      </Section>
+    </>
   );
 }
 
@@ -146,6 +182,7 @@ function Showcase() {
         <ProgressBar label={t("Pulling records")} value={42} text={t("Pulled 77,000 of 184,220 records")} />
         <ProgressBar label={t("Checking")} text={t("Waiting for the system to answer")} />
       </Section>
+      <ContentKit />
     </>
   );
 }
