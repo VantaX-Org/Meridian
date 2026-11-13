@@ -36,9 +36,10 @@ from api.services.scoring import (DEFAULT_THRESHOLDS, critical_over_tolerance, e
 from api.services.version_status import FINISHED
 from api.services.cost_model_meta import CostModelOut, meta_of as cost_model_meta
 from api.services.not_found import require_object
+from api.middleware.licence import licensed_module
 from checks.cost import effective as effective_cost_model
 
-router = APIRouter(prefix="/api/v1/objects", tags=["objects"])
+router = APIRouter(prefix="/api/v1/objects", tags=["objects"], dependencies=[Depends(licensed_module())])
 
 
 def _label(module: str) -> str:

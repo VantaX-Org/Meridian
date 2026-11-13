@@ -32,6 +32,13 @@ class NotificationPrefs(_Strict):
     channels: Optional[dict[str, Optional[bool]]] = Field(default=None, max_length=20)
 
 
+class NotificationReads(_Strict):
+    """Which tenant-wide notifications this user has read; written by the notification routes."""
+
+    before: Optional[str] = Field(default=None, max_length=40)
+    ids: Optional[list[str]] = Field(default=None, max_length=500)
+
+
 class SavedView(BaseModel):
     """A saved table view; extra keys are kept so the client can evolve the shape."""
 
@@ -48,6 +55,7 @@ class Preferences(_Strict):
     tours_done: Optional[list[str]] = Field(default=None, max_length=50)
     seen_version: Optional[str] = Field(default=None, max_length=40)
     notifications: Optional[NotificationPrefs] = None
+    notifications_read: Optional[NotificationReads] = None
     # the persona whose home screen opens at sign-in, instead of the one the user's role implies
     start_screen: Optional[str] = Field(default=None, min_length=1, max_length=40)
     # show keyboard shortcut hints next to actions

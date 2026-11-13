@@ -24,6 +24,7 @@ from api.services.pdf_reports import _modules
 from api.services.rbac import require_permission
 from api.services.storage import download_file
 from api.config import settings
+from api.middleware.licence import licensed_module
 from db.schema import Report
 
 logger = logging.getLogger("meridian.reports")
@@ -106,7 +107,7 @@ class HistoryRoute(APIRoute):
 
 
 # Every route here returns a downloadable file, so the whole router needs export.
-router = APIRouter(prefix="/api/v1", tags=["reports"], dependencies=[Depends(require_permission("export"))],
+router = APIRouter(prefix="/api/v1", tags=["reports"], dependencies=[Depends(licensed_module()), Depends(require_permission("export"))],
                    route_class=HistoryRoute)
 
 

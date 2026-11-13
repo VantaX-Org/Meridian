@@ -1,9 +1,10 @@
 """Notification centre API routes."""
 
 import asyncio
+import json
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -32,6 +33,46 @@ def _own(request: Request, params: dict) -> str:
         return "user_id IS NULL"
     params["uid"] = uid
     return "(user_id IS NULL OR user_id = :uid)"
+
+
+# Tenant-wide rows are shared, so their is_read column cannot say whether *this* user has
+# read them. Each user's read state for those rows lives on users.preferences under
+# "notifications_read": a read-all watermark ("before") plus ids read one by one since.
+# The caller's own rows keep using is_read.
+_READ_KEY = "notifications_read"
+_READ_IDS_CAP = 500  # ponytail: oldest single reads fall off past this; read-all resets the list
+_READ = ("(CASE WHEN user_id IS NULL THEN COALESCE(created_at <= CAST(:read_before AS timestamptz), false)"
+         " OR CAST(id AS text) = ANY(CAST(:read_ids AS text[])) ELSE is_read END)")
+
+
+async def _load_reads(db: AsyncSession, tenant: Tenant, uid: str, *, for_update: bool = False) -> dict:
+    row = (await db.execute(
+        text("SELECT preferences FROM users WHERE id = :uid AND tenant_id = :tid" + (" FOR UPDATE" if for_update else "")),
+        {"uid": uid, "tid": str(tenant.id)},
+    )).first()
+    prefs = row[0] if row is not None else None
+    if isinstance(prefs, str):
+        prefs = json.loads(prefs)
+    return prefs if isinstance(prefs, dict) else {}
+
+
+async def _read_filter(db: AsyncSession, tenant: Tenant, request: Request, params: dict) -> str:
+    """SQL for "the caller has read this row", binding the caller's read state into params."""
+    uid = current_user_id(request)
+    if not uid:
+        return "is_read"
+    reads = (await _load_reads(db, tenant, uid)).get(_READ_KEY) or {}
+    before = reads.get("before")
+    params["read_before"] = datetime.fromisoformat(before) if before else None
+    params["read_ids"] = [str(i) for i in reads.get("ids") or []]
+    return _READ
+
+
+async def _save_reads(db: AsyncSession, tenant: Tenant, uid: str, prefs: dict) -> None:
+    await db.execute(
+        text("UPDATE users SET preferences = CAST(:p AS JSONB) WHERE id = :uid AND tenant_id = :tid"),
+        {"p": json.dumps(prefs), "uid": uid, "tid": str(tenant.id)},
+    )
 
 
 class NotificationOut(BaseModel):
@@ -81,9 +122,10 @@ async def list_notifications(
 
     params: dict = {"tid": str(tenant.id)}
     conditions = ["tenant_id = :tid", _own(request, params)]
+    read = await _read_filter(db, tenant, request, params)
 
     if is_read is not None:
-        conditions.append("is_read = :is_read")
+        conditions.append(f"{read} = :is_read")
         params["is_read"] = is_read
     if type:
         conditions.append("type = :type")
@@ -101,7 +143,7 @@ async def list_notifications(
 
     result = await db.execute(
         text(f"""
-            SELECT id, tenant_id, user_id, type, title, body, link, is_read, created_at
+            SELECT id, tenant_id, user_id, type, title, body, link, {read} AS is_read, created_at
             FROM notifications
             WHERE {where}
             ORDER BY created_at DESC
@@ -126,17 +168,28 @@ async def mark_notification_read(
 ):
     await _set_rls(db, tenant.id)
 
-    params = {"nid": notification_id, "tid": str(tenant.id)}
-    own = _own(request, params)
-    result = await db.execute(
-        text(f"""
-            UPDATE notifications SET is_read = true
-            WHERE id = :nid AND tenant_id = :tid AND {own}
-            RETURNING id
-        """),
-        params,
-    )
-    if not result.fetchone():
+    uid = current_user_id(request)
+    if not uid:  # no user to key on: the shared flag is the only read state there is
+        params = {"nid": notification_id, "tid": str(tenant.id)}
+        found = (await db.execute(text(
+            "UPDATE notifications SET is_read = true WHERE id = :nid AND tenant_id = :tid AND user_id IS NULL RETURNING id"
+        ), params)).fetchone()
+    else:
+        params = {"nid": notification_id, "tid": str(tenant.id), "uid": uid}
+        found = (await db.execute(text(
+            "UPDATE notifications SET is_read = true WHERE id = :nid AND tenant_id = :tid AND user_id = :uid RETURNING id"
+        ), params)).fetchone()
+        if not found:  # a tenant-wide row: record the read for this user only
+            found = (await db.execute(text(
+                "SELECT id FROM notifications WHERE id = :nid AND tenant_id = :tid AND user_id IS NULL"
+            ), {"nid": notification_id, "tid": str(tenant.id)})).fetchone()
+            if found:
+                prefs = await _load_reads(db, tenant, uid, for_update=True)
+                reads = dict(prefs.get(_READ_KEY) or {})
+                ids = [i for i in reads.get("ids") or [] if i != str(found[0])] + [str(found[0])]
+                reads["ids"] = ids[-_READ_IDS_CAP:]
+                await _save_reads(db, tenant, uid, {**prefs, _READ_KEY: reads})
+    if not found:
         raise HTTPException(status_code=404, detail="Notification not found")
 
     await db.commit()
@@ -154,15 +207,19 @@ async def mark_all_read(
 ):
     await _set_rls(db, tenant.id)
 
-    params = {"tid": str(tenant.id)}
-    own = _own(request, params)
-    await db.execute(
-        text(f"""
-            UPDATE notifications SET is_read = true
-            WHERE tenant_id = :tid AND is_read = false AND {own}
-        """),
-        params,
-    )
+    uid = current_user_id(request)
+    if not uid:  # no user to key on: the shared flag is the only read state there is
+        await db.execute(text(
+            "UPDATE notifications SET is_read = true WHERE tenant_id = :tid AND is_read = false AND user_id IS NULL"
+        ), {"tid": str(tenant.id)})
+    else:
+        await db.execute(text(
+            "UPDATE notifications SET is_read = true WHERE tenant_id = :tid AND is_read = false AND user_id = :uid"
+        ), {"tid": str(tenant.id), "uid": uid})
+        prefs = await _load_reads(db, tenant, uid, for_update=True)
+        now = (await db.execute(text("SELECT now()"))).scalar()
+        before = now.isoformat() if isinstance(now, datetime) else datetime.now(timezone.utc).isoformat()
+        await _save_reads(db, tenant, uid, {**prefs, _READ_KEY: {"before": before, "ids": []}})
     await db.commit()
 
     return {"status": "ok"}
@@ -179,10 +236,11 @@ async def unread_count(
 ):
     await _set_rls(db, tenant.id)
 
-    params = {"tid": str(tenant.id)}
+    params: dict = {"tid": str(tenant.id)}
     own = _own(request, params)
+    read = await _read_filter(db, tenant, request, params)
     result = await db.execute(
-        text(f"SELECT COUNT(*) FROM notifications WHERE tenant_id = :tid AND is_read = false AND {own}"),
+        text(f"SELECT COUNT(*) FROM notifications WHERE tenant_id = :tid AND NOT {read} AND {own}"),
         params,
     )
     count = result.scalar() or 0

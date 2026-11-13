@@ -39,8 +39,9 @@ from api.services.rbac import (Scope, _grants_allow, actions_for, current_user_i
                                scope_from_path)
 from api.services.record_issues import scope_of
 from api.services.run_context import latest_run
+from api.middleware.licence import licensed_module
 
-router = APIRouter(prefix="/api/v1/work", tags=["work"])
+router = APIRouter(prefix="/api/v1/work", tags=["work"], dependencies=[Depends(licensed_module())])
 
 Status = Literal["to_fix", "proposed", "approved", "awaiting_load", "sent", "not_an_issue", "fixed"]
 OPEN = ("to_fix", "proposed", "approved", "awaiting_load", "sent")

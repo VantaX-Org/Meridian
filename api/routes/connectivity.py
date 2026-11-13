@@ -14,8 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.models.config_score import LandscapeConfigStatus
 from api.services import jobs
+from api.middleware.licence import licensed_module
 
-router = APIRouter(prefix="/api/v1/connectivity", tags=["connectivity"])
+router = APIRouter(prefix="/api/v1/connectivity", tags=["connectivity"], dependencies=[Depends(licensed_module())])
 logger = logging.getLogger("meridian.connectivity")
 
 

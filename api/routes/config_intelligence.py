@@ -38,8 +38,9 @@ from api.services.config_intelligence.serializers import (
     root_cause_to_response,
 )
 from api.services.rbac import scope_from_path
+from api.middleware.licence import licensed_module
 
-router = APIRouter(prefix="/api/v1/config", tags=["config-intelligence"])
+router = APIRouter(prefix="/api/v1/config", tags=["config-intelligence"], dependencies=[Depends(licensed_module())])
 logger = logging.getLogger("meridian.config_intelligence")
 
 persistence = ConfigIntelligencePersistence()

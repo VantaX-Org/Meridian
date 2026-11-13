@@ -25,8 +25,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.server_error import server_failure
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import require_permission, scope_from_path
+from api.middleware.licence import licensed_module
 
-router = APIRouter(prefix="/api/v1/process", tags=["process-mining"])
+router = APIRouter(prefix="/api/v1/process", tags=["process-mining"], dependencies=[Depends(licensed_module())])
 logger = logging.getLogger("meridian.process_mining")
 
 

@@ -18,8 +18,9 @@ from api.routes.record_issues import _rls
 from api.routes.rule_authoring import _dictionary, _latest
 from api.services import material_360 as m360
 from api.services.rbac import require_permission
+from api.middleware.licence import licensed_module
 
-router = APIRouter(prefix="/api/v1/materials", tags=["materials"])
+router = APIRouter(prefix="/api/v1/materials", tags=["materials"], dependencies=[Depends(licensed_module("material_master"))])
 
 
 class Level(BaseModel):

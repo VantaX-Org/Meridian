@@ -838,6 +838,28 @@ def enforce_licensed_modules(request: Request, requested: list[str]) -> None:
         )
 
 
+def licensed_module(module: str | None = None):
+    """Router dependency: 402 unless the licence entitles the router's module.
+
+    ``licensed_module("material_master")`` gates a router that serves one module. ``licensed_module()`` gates each
+    route by its ``{module}`` path parameter, so a router for any object serves only licensed objects. A path value
+    the rule catalogue does not know is left to the route (its own 404 or 422): it names no licensable module.
+    Add it with ``APIRouter(..., dependencies=[Depends(licensed_module(...))])``."""
+
+    def licensed_module_guard(request: Request) -> None:
+        name = module or request.path_params.get("module")
+        if not name:
+            return
+        if module is None:
+            from api.services.pdf_reports import _modules
+
+            if name not in _modules():
+                return
+        enforce_licensed_modules(request, [name])
+
+    return licensed_module_guard
+
+
 def _within_grace(expiry: str | None) -> bool:
     if not expiry:
         return False
