@@ -3986,6 +3986,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Your identity provider did not share a verified email address.": "ID プロバイダーから確認済みのメールアドレスが提供されませんでした。",
   "Your email domain is not allowed to sign in here. Ask an administrator.": "このメールドメインではここにサインインできません。管理者に問い合わせてください。",
   "This account is suspended. Ask an administrator to reactivate it.": "このアカウントは停止されています。再有効化を管理者に依頼してください。",
+  "Your identity provider has not confirmed this email address, so it cannot be linked to an existing account. Ask an administrator.": "ID プロバイダーがこのメールアドレスを確認していないため、既存のアカウントに関連付けできません。管理者に問い合わせてください。",
   "This account is already linked to a different identity. Ask an administrator.": "このアカウントは別の ID にすでに関連付けられています。管理者に問い合わせてください。",
   "Licence seats are full, so a new account could not be created. Ask an administrator.": "ライセンスのシートが埋まっているため、新しいアカウントを作成できませんでした。管理者に問い合わせてください。",
   "Single sign-on failed. Try again, or use your email and password.": "シングルサインオンに失敗しました。もう一度試すか、メールアドレスとパスワードを使ってください。",
