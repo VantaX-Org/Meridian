@@ -247,7 +247,25 @@ def failing_record_row(record_key: str, field: Optional[str], field_values: Opti
             "current_value": current, "expected_value": expected}
 
 
-@router.get("/findings/rules/{check_id}/records")
+class FailingRecord(BaseModel):
+    record_key: str
+    field: Optional[str] = None
+    field_text: Optional[str] = None
+    current_value: Optional[str] = None
+    expected_value: Optional[str] = None
+
+
+class FailingRecordsPage(BaseModel):
+    version_id: str
+    check_id: str
+    module: str
+    total: int
+    limit: int
+    offset: int
+    items: list[FailingRecord]
+
+
+@router.get("/findings/rules/{check_id}/records", response_model=FailingRecordsPage)
 async def rule_failing_records(
     check_id: str,
     version_id: uuid.UUID = Query(...),
