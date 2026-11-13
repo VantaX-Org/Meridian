@@ -145,13 +145,13 @@ def test_similarity_check_matches_previous_implementation():
     assert run(False, 3) == ([3, 7, 14, 31, 41, 42, 43, 50], in_scope, {
         "near_duplicate_pairs": [["M0", "M1"], ["M0", "M2"], ["M1", "M2"], ["M5", "M6"],
                                  ["M9", "M10"], ["M9", "M11"], ["M10", "M11"]],
-        "blocks_skipped_too_large": 0, "records_not_compared": 0, "threshold": 0.9})
+        "blocks_skipped_too_large": 0, "records_not_compared": 0, "records_too_short_to_compare": 0, "threshold": 0.9})
     assert run(True, 3) == ([7, 31, 41, 42, 43, 50], in_scope, {
         "near_duplicate_pairs": [["M0", "M1"], ["M1", "M2"], ["M9", "M11"], ["M10", "M11"]],
-        "blocks_skipped_too_large": 0, "records_not_compared": 0, "threshold": 0.9})
+        "blocks_skipped_too_large": 0, "records_not_compared": 0, "records_too_short_to_compare": 0, "threshold": 0.9})
     assert run(False, 2) == ([3, 14], [3, 8, 14, 60], {
         "near_duplicate_pairs": [["M5", "M6"]],
-        "blocks_skipped_too_large": 2, "records_not_compared": 6, "threshold": 0.9})
+        "blocks_skipped_too_large": 2, "records_not_compared": 6, "records_too_short_to_compare": 0, "threshold": 0.9})
 
 
 def test_near_pairs_prefilter_matches_brute_force_ratio():
